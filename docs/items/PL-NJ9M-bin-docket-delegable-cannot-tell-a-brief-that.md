@@ -3,12 +3,13 @@ id: PL-NJ9M
 title: bin/docket delegable cannot tell a brief that determines the fix from one that leaves the choice open, so a hand-off meant to need no reading still does
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: infra
 feature: delegation
 touches: subprojects/docket, docs/worker.md
-verify: uv run pytest subprojects/docket/tests/test_cli.py -q && grep -rq 'def test_delegable_sends_the_worker_to_the_instructions' subprojects/docket/tests/ && grep -q 'reads as unclear and is not' docs/worker.md
 added: 2026-09-08
+closed: 2026-09-22
+verify: uv run pytest subprojects/docket/tests/test_cli.py -q && grep -rq 'def test_delegable_sends_the_worker_to_the_instructions' subprojects/docket/tests/ && grep -q 'reads as unclear and is not' docs/worker.md
 ---
 
 **Problem.** bin/docket delegable cannot tell a brief that determines the fix from one that leaves the choice open, so a hand-off meant to need no reading still does
@@ -111,3 +112,20 @@ withheld twice: `Item.delegability` returns at `status != "ready"` before
 `model_guidance` returns "open design decision" for `needs-decision`. A third
 read of the same fact would withhold the four answered items above, whose briefs
 determine their fix completely.
+
+**Decided 2026-09-22 (project owner, ratified)**, over all three options the
+brief named - triage resolving a brief's open options before it may read as
+delegable, `delegable` printing the caution beside the item, and making the
+shape of a resolved brief decidable. None is built. The population measured
+zero, and the round trip the item was filed on is removed in `docs/worker.md`
+instead.
+
+**What would reopen this.** The count, not the argument. A brief that reaches
+`bin/docket delegable` leaving its fix genuinely open - no answer recorded
+below the question, and the worker blocks correctly - is the instance this
+decision says does not currently exist. One is ordinary evidence, since the
+decision is ratified rather than specified: say so and put it back. The two
+items filed alongside are what keep the count from drifting silently - `PL-RWJD`
+(the answer-under-the-question convention is written down nowhere a triaging
+session reads) and `PL-X4RX` (a brief's prose contradicting its own status field
+goes unchecked), grouped as `feature: answered-decision-record`.
