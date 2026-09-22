@@ -9,6 +9,7 @@ feature: ci-cost
 touches: Makefile, .github/workflows/quality.yml, docs/items, .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/checks.py, subprojects/docket/README.md
 added: 2026-09-14
 closed: 2026-09-22
+pr: 920
 verify: grep -qF 'bin/docket check --verify --verify-base origin/main' Makefile
 root-cause-of: PL-J3BB, PL-J3WK, PL-PBP5
 generator: live - make check and quality.yml are separate lists and make check omits the scoped verify replay, so a failure class reaches CI only; #915 went red this way on 2026-09-22, after a local make check exit 0 (PL-KVDK)
