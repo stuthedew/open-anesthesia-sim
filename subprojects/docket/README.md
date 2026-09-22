@@ -1428,6 +1428,19 @@ with a notes file and the current version: the first exempts releases cut
 before the project wrote notes at all, the second covers a first release,
 where there is no notes directory to take a floor from.
 
+**A notes file stops claiming partway down, since `PL-P669`.** Below the
+`### also inside this tag's span` heading are bullets of the same shape naming
+work *another* release stamped - a closing pull request inside this tag's span
+that this cut did not name, and the release that does describe it, which
+`ROADMAP.md` § "Tags" is the reasoning for. Read as claims they are the exact
+shape `_check_release_notes` reports as the notes and the store disagreeing, so
+`release.notes_claims` splits the file at that heading and the three readers
+take the first half: `notes_by_version`, `unreferenced_by_version`, and
+`restate_references`, which puts the second half back byte for byte rather than
+appending a second reference to a line already carrying one.
+`doc_check.check_tag_span_covers_its_notes` is what fails the next span that
+needs a pointer and has none.
+
 **The offer a session reads is reconciled with the plan before it is
 printed.** `readiness` reads the store and only the store, which is what
 makes it honest about what is finished and blind to what a number *means*:
