@@ -119,6 +119,7 @@ try:
         GateEntry,
         MilestoneSection,
         baseline_heading,
+        list_entries,
         parse_milestones,
         parse_timeline,
         parse_version_table,
@@ -1906,6 +1907,35 @@ def _table_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
     """
     for line, cells in table_rows(text, family.heading, family.level):
         yield line, " | ".join(cells)
+
+
+def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
+    """Each top-level entry of the list under the family's heading, as one line.
+
+    The second member shape, and it arrives with the first family that is laid
+    out as a list rather than as a table - `BoundFamily.members` is a callable
+    so that neither shape is carried before something takes it.
+
+    Continuation lines are folded into the entry they open, because a member of
+    this shape routinely wraps and an entity named on a bullet's second line is
+    named by that bullet. `list_entries` is borrowed rather than rewritten for
+    the reason its own docstring gives: what a list entry *is* is one question,
+    and a fourth answer to it would be a fourth thing to keep true.
+
+    Its bound is the next heading at depth three or shallower, so a family
+    whose list is closed by a `####` heading would read that subsection's
+    bullets as its own. No family is laid out that way today; one that is
+    belongs in `list_entries` as a depth argument rather than in a second
+    walker here.
+    """
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        heading = HEADING_RE.match(line)
+        if heading is None or len(heading.group("hashes")) != family.level:
+            continue
+        if heading.group("title").strip() == family.heading:
+            yield from list_entries(lines, index + 1)
+            return
 
 
 # Every family bound by clause 2 today. **One entry, and that is the design
