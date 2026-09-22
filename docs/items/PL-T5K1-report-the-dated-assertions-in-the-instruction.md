@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: instruction-staleness-audit
+milestone: v0.5.3
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests, docket.toml
 added: 2026-09-21
 closed: 2026-09-21

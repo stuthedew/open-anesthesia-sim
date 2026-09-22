@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: worker-instructions
+milestone: v0.5.3
 touches: .claude/hooks/, .claude/settings.json, tests/unit/, docs/worker.md, docket.toml, docs/ARCHITECTURE.md
 added: 2026-09-21
 closed: 2026-09-22
+pr: 887
 payoff: a red tree can no longer be reported and committed as green: the spellings that discard a gate's exit status are refused at the moment they are written, with the one-token remedy in the refusal
 verify: printf %s "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"make check 2>&1 | tail -45\"}}" | bash .claude/hooks/gate-status-guard.sh | grep -q permissionDecision
 ---

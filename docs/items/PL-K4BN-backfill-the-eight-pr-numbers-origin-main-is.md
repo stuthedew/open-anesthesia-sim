@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: housekeeping
 feature: commit-provenance
+milestone: v0.5.3
 touches: docs/items
 added: 2026-09-22
 closed: 2026-09-22
+pr: 886
 payoff: the eight advisories that were 8 of 13 in make docket clear, so the section a session skims again contains only findings that need judgment
 verify: test "$(grep -l "^pr:" docs/items/PL-2JRC-*.md docs/items/PL-44DG-*.md docs/items/PL-G7ST-*.md docs/items/PL-J3WK-*.md docs/items/PL-JYTJ-*.md docs/items/PL-PBP5-*.md docs/items/PL-PHK4-*.md docs/items/PL-T5K1-*.md | wc -l)" = 8
 ---
