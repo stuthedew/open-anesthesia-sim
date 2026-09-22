@@ -8,6 +8,8 @@ classes: defect, infra
 feature: gate-list-integrity
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/
 added: 2026-09-21
+root-cause-of: PL-H6VQ, PL-Z891, PL-YVP7, PL-B60Q, PL-JN3F
+generator: live - gate membership, deferrals, marks and counts live in ROADMAP.md prose read by several functions; seven instances after PL-HWW1 closed, v0.6.0 gained 14 deferrals in 1.5 days (PL-KVDK)
 ---
 
 **Problem.** plan.gate()'s feature test and roadmap.GateStatus.self_cleared's Required-scope test both answer 'cleared by the milestone itself' and disagree, so bin/docket gate and bin/docket wave can report different membership for the same milestone with nothing saying which is authoritative

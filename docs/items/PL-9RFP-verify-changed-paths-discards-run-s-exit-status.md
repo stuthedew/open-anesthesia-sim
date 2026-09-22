@@ -10,6 +10,8 @@ touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_
 added: 2026-09-22
 payoff: the commission audit says it could not read the diff when the base does not resolve, instead of auditing git's error text as three edits and missing the real ones
 verify: grep -q 'def test_changed_paths_declines_an_unresolvable_base' subprojects/docket/tests/test_verify.py
+root-cause-of: PL-19T3, PL-ZPDM, PL-73P0, PL-MM7F
+generator: live - git runs through several runners and only vcs.py's has a failure channel; verify._run discards status at seven sites and doc_check turns failure into an empty list (PL-KVDK)
 ---
 
 **Problem.** verify.changed_paths discards _run's exit status and _run returns combined stdout+stderr, so any base that does not resolve makes git's three-line fatal message come back as three changed paths and the commission audit reports them as findings while missing the real ones
