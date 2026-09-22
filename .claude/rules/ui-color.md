@@ -16,6 +16,17 @@ not measure a ratio by hand, quote one in a comment, or reason about whether a
 pair "looks fine" — run the tool, which prints the measured value for every
 declared pair. What follows is only the half it cannot decide.
 
+**What it cannot see at all is a control that declares nothing.** It measures
+the pairs somebody wrote down, so a control with no colour of its own is absent
+from its count rather than reported by it — which is how `PL-DHBX`'s three
+invisible transport buttons reached a release.
+`tests/integration/test_simulation_view.py` is what holds the built dashboard
+to declaring one, control by control, so a widget added here either declares a
+foreground or is named in that module's `FOREGROUND_NOT_DECLARED` against the
+reason it draws no text. Naming it is a judgment worth making deliberately: the
+list is held to being live in both directions, and an entry that stops being
+true fails there rather than sitting on.
+
 **`tools/agent_identity_check.py` decides one thing the ratios cannot reach: no
 control carrying agent identity may be *rendered* disabled** (project owner,
 2026-09-08). A toolkit paints a disabled control's text from a palette role the

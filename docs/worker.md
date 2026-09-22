@@ -354,6 +354,26 @@ underspecified is a cheap problem — one sentence fixes it. A guess that
 happens to pass its check is an expensive one, because nothing downstream will
 catch it.
 
+**One thing reads as unclear and is not: the decision section.** A
+`**Decision needed.**` heading in a brief you were given is a record of a
+question the item once faced, not a question waiting on you. The convention
+here is to leave the question standing and write the answer *underneath* it —
+`**Answered 2026-09-19 under PL-4Q9B**`, `**Decided 2026-09-19 by PL-4FBP's
+ratified convention**`, `**Question 2 is answered (project owner, 2026-09-17,
+ratified).**` — so that the brief carries what was weighed as well as what was
+chosen, and a later reader can tell a settled question from one nobody asked.
+
+**So read to the end of the brief before blocking on one.** The answer can sit
+a long way below the question: measured 2026-09-22 across the four items
+`bin/docket delegable` offered that carry the section, the gap ran 16 to 46
+lines, and `PL-SYG4` (the digest's reserved verdict) puts the sentence "Left at
+`needs-decision` rather than triaged to `ready`" in between. An item whose
+question is *genuinely* still open is held at `status: needs-decision`, which
+`bin/docket delegable` withholds and the front matter states at the top of the
+file — so a decision section on an item you were handed has almost always been
+answered further down. If you read to the end and it has not been, that is a
+real block and the rule above applies.
+
 ## The `**Worked.**` note
 
 Append to each item you complete:

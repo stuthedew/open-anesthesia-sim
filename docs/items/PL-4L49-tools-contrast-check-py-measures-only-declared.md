@@ -3,12 +3,13 @@ id: PL-4L49
 title: tools/contrast_check.py measures only declared pairs, so a control that declares no colour reads as covered when nothing measures it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: platform-palette
-touches: tests/integration/test_simulation_view.py, tools/contrast_check.py
+touches: tests/integration/test_simulation_view.py, tools/contrast_check.py, tests/unit/test_contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/ui-color.md
 added: 2026-09-17
-verify: uv run pytest tests/integration/test_simulation_view.py -q && grep -q 'def test_every_text_bearing_control_declares_its_foreground' tests/integration/test_simulation_view.py
+closed: 2026-09-22
+verify: uv run pytest tests/integration/test_simulation_view.py tests/unit/test_contrast_check.py -q && grep -q 'def test_every_control_that_paints_its_own_content_declares_a_foreground' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** `tools/contrast_check.py` measures only declared pairs, so a

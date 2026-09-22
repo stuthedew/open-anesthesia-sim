@@ -6859,7 +6859,16 @@ All of this is visible rather than asserted:
 dialogs under the palette a dark host supplies and fails on any content widget
 resolving to it - which is what caught six controls that had declared nothing
 (`PL-RKRY`, `PL-7W9N`, `PL-0NVN`) - and holds the chrome and the untouched
-`Disabled` group against the same host.
+`Disabled` group against the same host. Which controls that
+reaches is not left to a remembered list of widget kinds:
+`tests/integration/test_simulation_view.py` builds the whole dashboard under a
+foreground colour this interface never uses and fails on any control that
+paints its own content and resolves to it, so a control added later is held to
+declaring a colour rather than to being noticed. What it exempts is named there
+against the reason it draws no text, and `tools/contrast_check.py` counts those
+kinds into its report line: a requirement exists only where somebody wrote a
+colour down, so a control that writes none would otherwise be absent from both
+sides of that line's count and read there as covered (`PL-4L49`).
 
 ### The six compartment traces: what separates them
 

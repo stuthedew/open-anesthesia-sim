@@ -812,6 +812,43 @@ def test_verify_base_narrows_the_replay_to_what_the_branch_changed(tmp_path: Pat
     assert not (tmp_path / "ran.marker").exists()
 
 
+def test_verify_refuses_a_base_no_candidate_resolved(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The commission audit is a claim about a base, so a guessed one voids it.
+
+    `PL-73P0`, and worse than the silent clean it was filed as. `changed_paths`
+    asks for `diff --name-only <base>...HEAD`, discards the exit status, and
+    `_run` returns git's *combined* output - so on a checkout with no default
+    branch the audit reads git's three-line fatal message as three changed
+    paths. Measured 2026-09-22: it reported `fatal: ambiguous argument
+    'main...HEAD'...` as a path outside the commission, and named neither of
+    the two files the branch had actually changed.
+
+    A real repository rather than an injected runner, because what is under
+    test is the whole path from `default_base`'s probe through to the refusal.
+    """
+    subprocess.run(
+        ["git", "init", "--quiet", "--initial-branch=feature", str(tmp_path)], check=True
+    )
+    for setting, value in (("user.email", "t@example.invalid"), ("user.name", "Test")):
+        subprocess.run(["git", "config", setting, value], cwd=tmp_path, check=True)
+    store = tmp_path / "docs" / "items"
+    store.mkdir(parents=True)
+    (store / "item-0.md").write_text(MARKING, encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "--quiet", "-m", "PL-M4RK Seed"], cwd=tmp_path, check=True)
+
+    assert _run("verify", "PL-M4RK", "--items", str(store)) == 1
+    out = capsys.readouterr().out
+    assert "no candidate default branch resolved" in out
+    assert "--base <ref>" in out
+    # What it must no longer do: report git's own complaint as a finding about
+    # the branch, on a check whose whole job is to certify that branch's scope.
+    assert "fatal:" not in out
+    assert "ambiguous argument" not in out
+
+
 #: An item whose command reads a file, so that editing the file - and nothing
 #: else - can change what the command returns. `touch` runs first so the marker
 #: says the command was executed at all, which is the question the scope is
@@ -1113,6 +1150,29 @@ def test_delegable_lists_only_what_qualifies(
     assert "verify: pytest tests/test_a.py" in out
     for excluded in ("PL-BBBB", "PL-CCCC", "PL-DDDD", "PL-GGFF"):
         assert excluded not in out
+
+
+def test_delegable_sends_the_worker_to_the_instructions_that_qualify_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """This one line is the whole delivery path for the decision-section rule.
+
+    `docs/worker.md` carries the rule that a `**Decision needed.**` heading on
+    an offered item is a record of a settled question rather than a live one -
+    the answer is written underneath it, 16 to 46 lines below across the four
+    items that carried the section on 2026-09-22. Without that rule a worker
+    meets the heading, reads it as an unclear brief under "Stop. Do not guess.",
+    and returns the item: the round trip `delegable` exists to remove
+    (`PL-NJ9M`).
+
+    The listing cannot annotate the items themselves, and deliberately does not
+    try. Nothing in the front matter distinguishes an answered decision section
+    from an open one - that reading is prose, which is the judgment half - so
+    the guidance is standing rather than per-item. Which makes this footer the
+    only thing carrying it to a worker, and it was untested.
+    """
+    assert main(["--items", str(_delegable_store(tmp_path)), "--no-git", "delegable"]) == 0
+    assert "docs/worker.md" in capsys.readouterr().out
 
 
 def test_delegable_says_so_when_nothing_qualifies(

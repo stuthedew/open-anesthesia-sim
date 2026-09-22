@@ -58,6 +58,7 @@ from docket.vcs import (
     records_on_base,
     ref_walk,
     released_on_base,
+    resolved,
     settled_branches,
     stranded,
     tags,
@@ -224,12 +225,16 @@ def repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def _declined(answer: Any) -> bool:
     """Whether the read said what it could not read, in whichever way it has.
 
-    Three shapes across the module: a `declined` reason, a `known` flag, and -
-    for the two reads answering with a bare optional - `None` itself.
+    Four shapes across the module: a `declined` reason, a `known` flag, `None`
+    itself for the two reads answering with a bare optional, and - for
+    `default_base`, whose answer is a ref name with nowhere to put a reason - a
+    string carrying the mark `resolved` reads (`PL-73P0`).
     """
     if answer is None:
         return True
     if getattr(answer, "declined", ""):
+        return True
+    if isinstance(answer, str) and not resolved(answer):
         return True
     return hasattr(answer, "known") and not answer.known
 
@@ -241,12 +246,6 @@ class Read:
     name: str
     call: Callable[[Path, Runner], Any]
     found: Callable[[Any], frozenset[Any]]
-    #: The item recording why this read cannot decline at all, where one does.
-    #: An entry here is a gap in the floor rather than a design, and it is
-    #: *asserted* below rather than marked expected-to-fail: a test that states
-    #: the breach still holds is a record, where a disabled one is a hole, and
-    #: both fail the day somebody closes it.
-    known_gap: str = ""
 
 
 def _findings(*names: str) -> Callable[[Any], frozenset[Any]]:
@@ -357,8 +356,10 @@ READS: tuple[Read, ...] = (
         lambda r, g: changed_items(r, "origin/main", runner=g),
         _findings("identifiers"),
     ),
-    # No channel at all: recorded as a breach rather than covered (`PL-73P0`).
-    Read("default_base", lambda r, g: default_base(r, runner=g), _findings(), known_gap="PL-73P0"),
+    # Its finding is the ref itself, and a guessed one is no finding: `_declined`
+    # reads the mark, so a silence that stops every candidate resolving declines
+    # here rather than answering `main` (`PL-73P0`).
+    Read("default_base", lambda r, g: default_base(r, runner=g), _findings()),
 )
 
 
@@ -401,11 +402,6 @@ def _silencing(recorded: _Recording, nth: int) -> Runner:
     return run
 
 
-#: The reads the sweep holds to the floor, and the ones it cannot yet.
-SWEPT = tuple(read for read in READS if not read.known_gap)
-GAPS = tuple(read for read in READS if read.known_gap)
-
-
 def _lost_to_a_silence(read: Read, repo: Path) -> list[tuple[int, frozenset[Any]]]:
     """Every silenced call after which the read lost a finding and said nothing.
 
@@ -433,7 +429,7 @@ def _lost_to_a_silence(read: Read, repo: Path) -> list[tuple[int, frozenset[Any]
     return lost
 
 
-@pytest.mark.parametrize("read", SWEPT, ids=lambda read: read.name)
+@pytest.mark.parametrize("read", READS, ids=lambda read: read.name)
 def test_one_silenced_git_call_never_leaves_a_read_looking_clean(read: Read, repo: Path) -> None:
     """Silence any one call and the read declines, or reports what it did before.
 
@@ -457,39 +453,6 @@ def test_one_silenced_git_call_never_leaves_a_read_looking_clean(read: Read, rep
     )
 
 
-@pytest.mark.parametrize("read", GAPS, ids=lambda read: read.name)
-def test_a_read_answering_with_a_bare_value_has_no_way_to_decline(read: Read, repo: Path) -> None:
-    """The breach the sweep cannot yet close, recorded as a fact rather than skipped.
-
-    `default_base` answers with a bare string, so there is nowhere in the answer
-    to say git did not speak - a silence is indistinguishable from a checkout
-    that holds no `origin/main`, and the fallback both produce is the literal
-    `main`. It is `PL-73P0`, which carries the wider case: the base is the one
-    input whose wrongness cannot be seen in any answer downstream of it,
-    because every downstream answer is *about* that base.
-
-    `tags` and `changed_items` sat here too until `PL-ZPDM` gave them
-    `TagSet` and `ChangedItems`; they are in the sweep above now. What that
-    close cost is the measure of what is left here - two public return types
-    and three callers, one of them the release gate, which had been skipping
-    itself whenever git failed.
-
-    **Asserted rather than marked expected-to-fail**, and the difference is what
-    a reader is left with. A test marked that way does not run, which reads as a
-    hole whatever the reason attached to it; this states what is true today and
-    fails the moment it stops being - the same signal, in the form of a record.
-    It is also the form `bin/docket verify` can tell apart from a suppression,
-    correctly, since it cannot read the reason on a marker.
-    """
-    lost = _lost_to_a_silence(read, repo)
-
-    assert lost, (
-        f"{read.name} no longer loses a finding to a silence, so {read.known_gap} may be "
-        "closed: move it out of the gaps and into the sweep above, and delete this "
-        "expectation rather than leaving a test asserting a breach that is gone"
-    )
-
-
 def test_the_sweep_covers_every_public_read_that_takes_a_runner() -> None:
     """A read added later is covered, or the omission fails here rather than silently.
 
@@ -501,7 +464,6 @@ def test_the_sweep_covers_every_public_read_that_takes_a_runner() -> None:
 
     from docket import vcs
 
-    assert set(READS) == set(SWEPT) | set(GAPS)
     public = {
         name
         for name, obj in vars(vcs).items()

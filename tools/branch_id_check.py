@@ -80,7 +80,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.vcs import BRANCH_ID_RE, default_base, leading_ids  # noqa: E402
+from docket.vcs import (  # noqa: E402
+    BRANCH_ID_RE,
+    DEFAULT_BRANCHES,
+    default_base,
+    leading_ids,
+    resolved,
+)
 
 #: What `make release` writes and `git tag -a vX.Y.Z` marks. Anchored, so a
 #: subject that merely mentions a release is not one.
@@ -185,6 +191,17 @@ def main() -> int:
     args = parser.parse_args()
 
     base = args.base or default_base(ROOT, runner=lambda argv, _root: _git(argv))
+    if not resolved(base):
+        # `_git` collapses a failed walk to the empty string, so a base that is
+        # not there yields no subjects and this would have printed "no id is
+        # owed" and exited 0 - the gate passing every branch in a checkout it
+        # could not read (`PL-73P0`). Say what happened instead of certifying.
+        print(
+            f"branch-id: no candidate default branch resolved here "
+            f"(tried {', '.join(DEFAULT_BRANCHES)}), so there is nothing to walk from; "
+            f"not checked. `git fetch origin`, or pass --base <ref>."
+        )
+        return 0
     subjects, sound = _subjects(base)
     if not subjects:
         print(f"branch-id: nothing ahead of {base}; no id is owed")

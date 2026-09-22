@@ -28,14 +28,19 @@ from collections.abc import Iterator, Sequence
 
 import pytest
 from PySide6.QtCore import QEvent, Qt
-from PySide6.QtGui import QBrush, QColor
+from PySide6.QtGui import QBrush, QColor, QPalette
 from PySide6.QtWidgets import (
     QAbstractButton,
+    QAbstractItemView,
+    QAbstractSpinBox,
     QApplication,
     QComboBox,
     QDialog,
+    QFrame,
+    QGroupBox,
     QLabel,
     QLayout,
+    QLineEdit,
     QScrollArea,
     QSplitter,
     QWidget,
@@ -2729,6 +2734,308 @@ def test_the_interface_never_predicts_a_time_to_wake_up(application: QApplicatio
 
     assert "population" in prose
     assert "±1 sd" in prose
+
+
+# ------------------------------------------- what declares its own foreground
+
+
+#: Every control kind on the built dashboard that paints its own content and
+#: declares no foreground, against the reason it is allowed not to. Read by
+#: `tools/contrast_check.py`, which counts the entries into its report line:
+#: that tool measures declared pairs, so a control declaring nothing is absent
+#: from its numerator *and* its denominator and reads there as covered. What
+#: nothing measures has to be stated somewhere, and this is where.
+#:
+#: A name here is a claim about a kind, not an excuse for one: the test below
+#: fails on an entry naming a kind the dashboard no longer builds, and on one
+#: that has since been given a foreground, so an entry cannot outlive the
+#: reason beside it.
+FOREGROUND_NOT_DECLARED: dict[str, str] = {
+    "PlotWidget": (
+        "the concentration chart and the wash-in plot. Their axis ticks and "
+        "labels are text, and pyqtgraph draws them from a pen rather than from "
+        "the palette: `qt_chart._plot` sets setTextPen(mkPen(MUTED)) on every "
+        "axis and passes color=MUTED to each setLabel. So the colour is "
+        "declared and contrast_check measures it as MUTED on PANEL; it is "
+        "only unreachable through the palette this test reads."
+    ),
+    "QScrollArea": (
+        "the page's scroll area. It paints the viewport surface, which "
+        "`SimulationView` declares as BACKGROUND in a stylesheet, and no text: "
+        "every string inside it belongs to a widget of its own."
+    ),
+    "QScrollBar": (
+        "Qt's own chrome, on the page and inside each selector's popup. It "
+        "draws no text, and its groove and handle come from the platform "
+        "style rather than from the foreground role. Whether this interface "
+        "should declare a colour scheme so the chrome follows it is PL-KRZW, "
+        "which is the project owner's decision and open."
+    ),
+    "QSlider": (
+        "the four setting sliders. Each draws no text - the value beside it is "
+        "a label of its own - and `_slider_stylesheet` declares the groove, "
+        "the filled track and the handle, none of which is painted from the "
+        "foreground role."
+    ),
+    "QSplitterHandle": (
+        "the grips between the sidebar, the chart column and the run panels. "
+        "Chrome with no text, painted by the platform style; PL-KRZW covers "
+        "it with the scroll bars above."
+    ),
+    "_LineSwatch": (
+        "the legend's line samples. Each paints with the pen of the trace it "
+        "stands for and never reads its foreground role; contrast_check holds "
+        "every trace colour to TRACE_FLOOR against PANEL, in all four vision "
+        "models."
+    ),
+    "_BandSwatch": (
+        "the MAC-awake band's legend mark, painted with the band's own edge "
+        "pen and fill for the reason the line swatches are."
+    ),
+}
+
+#: A six-digit sRGB hex literal, the form every colour in `app/theme.py`
+#: takes and the form `QColor.name` returns.
+_HEX_COLOUR = re.compile(r"#[0-9A-Fa-f]{6}")
+
+#: A foreground colour nothing in this interface declares, installed on the
+#: application palette before the dashboard is built. A control that declares
+#: none of its own resolves to it, which makes "undeclared" a value to read
+#: rather than an absence to infer - and stops a host whose own default
+#: happened to match a theme colour from making the walk vacuous.
+_ALIEN_FOREGROUND = "#FF00FF"
+
+#: The palette roles a control on this dashboard draws its content in. All of
+#: them move together, because `QWidget.foregroundRole` differs by control -
+#: WindowText for a label, ButtonText for a button, Text for a list - and a
+#: role left at the platform's value would read as declared.
+_ALIEN_ROLES = (
+    QPalette.ColorRole.WindowText,
+    QPalette.ColorRole.Text,
+    QPalette.ColorRole.ButtonText,
+    QPalette.ColorRole.BrightText,
+    QPalette.ColorRole.ToolTipText,
+    QPalette.ColorRole.PlaceholderText,
+    QPalette.ColorRole.HighlightedText,
+    QPalette.ColorRole.Link,
+    QPalette.ColorRole.LinkVisited,
+)
+
+#: The Qt classes that paint a string of their own. Held to declaring a
+#: foreground whatever they are painting today: a label built empty and filled
+#: on the first frame draws text just as one built with its string does, and a
+#: check that read `text()` would pass it while it was empty.
+_TEXT_CONTROLS = (
+    QAbstractButton,
+    QAbstractItemView,
+    QAbstractSpinBox,
+    QComboBox,
+    QGroupBox,
+    QLabel,
+    QLineEdit,
+)
+
+#: The frame shapes Qt rules from the foreground role. A `NoFrame` frame draws
+#: no line at all and a `StyledPanel` is drawn by the style from its bevel
+#: roles, so neither says anything about a foreground - which is what keeps
+#: every panel and column container out of the walk without naming one.
+_PLAIN_LINE_SHAPES = (
+    QFrame.Shape.Box,
+    QFrame.Shape.Panel,
+    QFrame.Shape.WinPanel,
+    QFrame.Shape.HLine,
+    QFrame.Shape.VLine,
+)
+
+
+def _declared_colours() -> frozenset[str]:
+    """Every colour `app/theme.py` declares, including both agent pairs.
+
+    Read off the module rather than listed here: `contrast_check`'s
+    `check_colors_live_in_the_theme` is what holds every colour to being
+    declared there, so the module is the complete set by construction.
+    """
+
+    colours = {
+        value.upper()
+        for value in vars(theme).values()
+        if isinstance(value, str) and _HEX_COLOUR.fullmatch(value)
+    }
+
+    for scheme in theme.AGENT_COLOR_SCHEMES.values():
+        colours.update({scheme.fill.upper(), scheme.foreground.upper()})
+
+    return frozenset(colours)
+
+
+def _paints_its_own_content(widget: QWidget) -> bool:
+    """Whether `widget` draws anything of its own in its foreground role.
+
+    Three questions in order, because the first two would answer the third
+    wrongly. A text control is in whatever it inherits from - `QLabel` is a
+    `QFrame`, and asking the frame question first would drop every label on
+    the dashboard. A frame that is not a plain line is a container or is drawn
+    by the style, so it is out unless its class paints below `QFrame`; that is
+    what keeps `MetricPanel`, `QSplitter` and the panels out of the walk while
+    keeping `PlotWidget`, which is a `QGraphicsView` and paints its own scene.
+    Everything else is in exactly when its class overrides `paintEvent`, which
+    is the decidable form of "draws something nobody else declares".
+    """
+
+    if isinstance(widget, _TEXT_CONTROLS):
+        return True
+
+    if isinstance(widget, QFrame):
+        plain_line = (
+            widget.frameShape() in _PLAIN_LINE_SHAPES
+            and widget.frameShadow() is QFrame.Shadow.Plain
+        )
+
+        return plain_line or type(widget).paintEvent is not QFrame.paintEvent
+
+    return type(widget).paintEvent is not QWidget.paintEvent
+
+
+def _content_painters(view: SimulationView) -> list[QWidget]:
+    """Every widget of the built dashboard that paints its own content.
+
+    A selector's popup is reached through `view()` rather than by the child
+    walk: it is a window of its own, so `findChildren` never returns it, and
+    it is where `PL-0NVN`'s rows were drawn from the host palette.
+    """
+
+    widgets: list[QWidget] = [view, *view.findChildren(QWidget)]
+
+    for widget in list(widgets):
+        if isinstance(widget, QComboBox):
+            widgets.append(widget.view())
+
+    return [widget for widget in widgets if _paints_its_own_content(widget)]
+
+
+def _resolved_foreground(widget: QWidget) -> str:
+    widget.ensurePolished()
+
+    return widget.palette().color(widget.foregroundRole()).name().upper()
+
+
+@pytest.fixture
+def alien_foreground(application: QApplication) -> Iterator[QApplication]:
+    """The application with every foreground role set to `_ALIEN_FOREGROUND`.
+
+    On the application rather than on a widget, for the reason
+    `tests/integration/test_dark_appearance.py` sets a host appearance there:
+    a palette assigned to the widget under test would overwrite the
+    declaration being tested instead of exercising it. The dashboard is built
+    inside the fixture's scope so that every stylesheet resolves against this
+    palette, and the views are deleted before it is restored, since the
+    modules in this tree share one `QApplication`.
+    """
+
+    original = QPalette(application.palette())
+    alien = QPalette(original)
+
+    for role in _ALIEN_ROLES:
+        alien.setColor(QPalette.ColorGroup.All, role, QColor(_ALIEN_FOREGROUND))
+
+    application.setPalette(alien)
+
+    yield application
+
+    _delete_shown_views(application)
+    application.setPalette(original)
+
+
+def test_every_control_that_paints_its_own_content_declares_a_foreground(
+    alien_foreground: QApplication,
+) -> None:
+    """`PL-4L49`: what declares nothing is drawn by the host, and says nothing.
+
+    `tools/contrast_check.py` measures the pairs somebody wrote down. A
+    control that writes none contributes to neither side of its count, so its
+    report line reads the same whether the interface is covered or has three
+    invisible controls on it - which is the state `PL-DHBX` was found in, by
+    the project owner, on his own screen. The question it cannot answer is
+    this one, and it needs a built tree rather than an `ast` walk: which
+    widget a stylesheet actually reached is settled by Qt, not by the source.
+
+    So every foreground role is set to a colour this interface never uses, the
+    dashboard is built under it, and each content-painting widget is asked
+    what it resolves to. A declared control answers with its own colour,
+    because Qt folds a stylesheet's `color` into the widget's palette when it
+    polishes it - and inherits it down from an ancestor's stylesheet exactly
+    as it would on screen, which is why no rule here has to parse CSS or
+    decide which selector reached what.
+    """
+
+    view = _shown_view(alien_foreground, SimulationController())
+    declared = _declared_colours()
+    painters = _content_painters(view)
+
+    undeclared = sorted(
+        {
+            f"{type(widget).__name__} draws in {_resolved_foreground(widget)}"
+            for widget in painters
+            if type(widget).__name__ not in FOREGROUND_NOT_DECLARED
+            and _resolved_foreground(widget) not in declared
+        }
+    )
+
+    assert undeclared == [], (
+        "these controls take their foreground from the host palette; declare each "
+        "colour in app/theme.py with a requirement in tools/contrast_check.py, or "
+        "name the kind in FOREGROUND_NOT_DECLARED with the reason it draws no text: "
+        f"{undeclared}"
+    )
+
+    status = view.runs[0]._status_text
+    status.setStyleSheet("")
+
+    assert _resolved_foreground(status) == _ALIEN_FOREGROUND, (
+        "a control stripped of its own declaration still read as a theme colour, so "
+        "the walk above proved nothing"
+    )
+
+
+def test_no_control_kind_is_exempted_from_declaring_a_foreground_without_cause(
+    alien_foreground: QApplication,
+) -> None:
+    """Every entry in `FOREGROUND_NOT_DECLARED` still names a live exemption.
+
+    The half that keeps the list from becoming a comment nobody checks, which
+    is what `tools/contrast_check.py` does with `KNOWN_SHORTFALLS`: an entry
+    for a kind the dashboard stopped building, or for one that has since been
+    given a foreground, fails here rather than sitting on as an exemption
+    nothing needs. Both directions matter to the count the report line prints
+    - it is the size of this mapping, and an entry that has stopped being true
+    overstates what nothing measures just as a missing one understates it.
+    """
+
+    view = _shown_view(alien_foreground, SimulationController())
+    painters = _content_painters(view)
+    built = {type(widget).__name__ for widget in painters}
+
+    absent = sorted(set(FOREGROUND_NOT_DECLARED) - built)
+
+    assert absent == [], (
+        "these kinds are exempted and the dashboard no longer builds them - remove "
+        f"the entry: {absent}"
+    )
+
+    declared = _declared_colours()
+    now_declaring = sorted(
+        {
+            type(widget).__name__
+            for widget in painters
+            if type(widget).__name__ in FOREGROUND_NOT_DECLARED
+            and _resolved_foreground(widget) in declared
+        }
+    )
+
+    assert now_declaring == [], (
+        "these kinds declare a foreground now, so their exemption is stale - remove "
+        f"the entry: {now_declaring}"
+    )
 
 
 # ---------------------------------------------------------------- the page
