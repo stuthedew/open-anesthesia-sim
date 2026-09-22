@@ -119,6 +119,7 @@ try:
         GateEntry,
         MilestoneSection,
         baseline_heading,
+        list_entries,
         parse_milestones,
         parse_timeline,
         parse_version_table,
@@ -1908,12 +1909,53 @@ def _table_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
         yield line, " | ".join(cells)
 
 
-# Every family bound by clause 2 today. **One entry, and that is the design
-# rather than a start.** The check is introduced over the hazard table, which
-# conforms already, so it lands green; each annotation pass - `PL-8LDF` for the
-# required invariants, `PL-2M9N` for the required tests, `PL-036` for the
-# minimum displayed outputs - adds its family here as it lands, so the check
-# never holds `make check` red for work nobody has done yet.
+def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
+    """Each top-level entry of the list under the family's heading, as one line.
+
+    The second member shape, and it arrives with the first family that is laid
+    out as a list rather than as a table - `BoundFamily.members` is a callable
+    so that neither shape is carried before something takes it.
+
+    Continuation lines are folded into the entry they open, because a member of
+    this shape routinely wraps and an entity named on a bullet's second line is
+    named by that bullet. `list_entries` is borrowed rather than rewritten for
+    the reason its own docstring gives: what a list entry *is* is one question,
+    and a fourth answer to it would be a fourth thing to keep true.
+
+    Its bound is the next heading at depth three or shallower, so a family
+    whose list is closed by a `####` heading would read that subsection's
+    bullets as its own. No family is laid out that way today; one that is
+    belongs in `list_entries` as a depth argument rather than in a second
+    walker here.
+    """
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        heading = HEADING_RE.match(line)
+        if heading is None or len(heading.group("hashes")) != family.level:
+            continue
+        if heading.group("title").strip() == family.heading:
+            yield from list_entries(lines, index + 1)
+            return
+
+
+# Every family bound by clause 2 today. **An entry arrives with the annotation
+# pass that makes its family conform, never in anticipation of one**, so the
+# check never holds `make check` red for work nobody has done yet. The check was
+# introduced over the hazard table, which conformed already, so it landed green;
+# `PL-036` added the minimum displayed outputs, and `PL-8LDF` (required
+# invariants) and `PL-2M9N` (required tests) are the two passes still due.
+#
+# Both entries name `TEST_ENTITY`, and for the displayed outputs that was a
+# decision rather than an inheritance (`PL-036`, project owner, 2026-09-22,
+# ratified, over naming the `SimulationSnapshot` field behind each bullet).
+# Three of that list's entries have no snapshot field to name - the playback
+# rate and the chart's time base are view settings, and F_A/F_I is derived at
+# the point of drawing - so a field-kinded family could only have declared an
+# absence that nothing owed, which is the permanent hole clause 3's form exists
+# to make impossible. A field would also have checked the wrong half of the
+# chain: it proves the value still travels, never that a widget still draws it,
+# and a value travelling to a display that no longer shows it is the failure
+# that section's own subsection calls silent.
 BOUND_FAMILIES = (
     BoundFamily(
         document=MODEL,
@@ -1922,6 +1964,14 @@ BOUND_FAMILIES = (
         kind=TEST_ENTITY,
         members=_table_members,
         promise="every row names the test that holds it, or says plainly that it has none",
+    ),
+    BoundFamily(
+        document=MODEL,
+        heading="Minimum displayed outputs",
+        level=2,
+        kind=TEST_ENTITY,
+        members=_list_members,
+        promise="every entry names the test that holds it",
     ),
 )
 

@@ -44,6 +44,11 @@ tools/
 #: it in a suite of its own, so a fixture repository resolves its own citation
 #: and `check_named_tests` has nothing to decline.
 FAMILY_TEST = "test_the_demo_says_it_is_a_demo"
+#: The list-shaped family's test, deliberately a second name: `_family_model`
+#: rewrites every occurrence of `FAMILY_TEST`, so a fixture sharing one name
+#: between the two families would rewrite both and make each hazard-table
+#: test assert about a second error it never meant to raise.
+LIST_FAMILY_TEST = "test_the_demo_shows_the_time_it_is_at"
 
 FAT_KEY = "tissue_gas_partition_coefficients.fat"
 ROW = "| {} | {} | dimensionless | `data/agents/demo.json` · `{}` |"
@@ -80,6 +85,20 @@ MODEL = "\n".join(
         "| A reader could be misled into | What stops it | Held by |",
         "| --- | --- | --- |",
         f"| reading a demo value as a real one | it says so | `{FAMILY_TEST}` |",
+        "",
+        # The second shape, for the same reason: `BOUND_FAMILIES` holds a
+        # list-shaped family too, and it errors on a heading it cannot find,
+        # so a fixture without one would fail every test asserting that a
+        # clean repository stays clean. The second entry wraps, because that
+        # is the shape `_list_members` has to fold and the real section is
+        # full of it.
+        "## Minimum displayed outputs",
+        "",
+        "The interface must show:",
+        "",
+        f"- the demo value (`{LIST_FAMILY_TEST}`);",
+        "- the time the demo value was read at",
+        f"  (`{LIST_FAMILY_TEST}`).",
         "",
     ]
 )
@@ -191,7 +210,9 @@ def _repo(
         suite = root / "tests" / "unit"
         suite.mkdir(parents=True, exist_ok=True)
         (suite / "test_family.py").write_text(
-            f"def {FAMILY_TEST}() -> None:\n    pass\n", encoding="utf-8"
+            f"def {FAMILY_TEST}() -> None:\n    pass\n\n\n"
+            f"def {LIST_FAMILY_TEST}() -> None:\n    pass\n",
+            encoding="utf-8",
         )
     return root
 
@@ -4198,6 +4219,87 @@ def test_a_bound_family_whose_heading_has_moved_is_an_error(tmp_path: Path) -> N
 
     assert len(errors) == 1
     assert "the heading has moved or its entries are gone" in errors[0]
+
+
+LIST_FAMILY_DOCUMENT = "\n".join(
+    [
+        "## Minimum displayed outputs",
+        "",
+        "The interface must show:",
+        "",
+        "- simulated time;",
+        "- the rate simulated time is advancing at, held by",
+        "  `test_the_clock_states_its_playback_rate`;",
+        "- run state; and",
+        "  - a nested note, which is part of the entry above rather than one of its own",
+        "- why a run halted, whenever one has.",
+        "",
+        "A closing paragraph, which is not a member.",
+        "",
+        "### What this list requires once the layout is the reader's",
+        "",
+        "- a bullet under a subsection, which belongs to that subsection",
+        "",
+    ]
+)
+
+
+def _list_family(
+    heading: str = "Minimum displayed outputs", level: int = 2
+) -> doc_check.BoundFamily:
+    """A list-shaped family over `LIST_FAMILY_DOCUMENT`, built here rather than
+    read from `BOUND_FAMILIES`.
+
+    The shape is what these tests are about, so they must keep answering after
+    the tuple's entries change - and they have to be able to ask about a
+    heading the document does not carry, which no real entry can.
+    """
+    return doc_check.BoundFamily(
+        document=doc_check.MODEL,
+        heading=heading,
+        level=level,
+        kind=doc_check.TEST_ENTITY,
+        members=doc_check._list_members,
+        promise="every entry names the test that holds it",
+    )
+
+
+def test_a_list_shaped_family_reads_one_member_per_top_level_entry() -> None:
+    """Wrapped entries and nested bullets fold into the entry they belong to.
+
+    A member of this shape routinely wraps, so a walker reading one line at a
+    time would see an entity named on a bullet's second line as named by
+    nothing - which is the forgotten-link error this check exists to report,
+    raised against a member that is conforming.
+    """
+    members = list(doc_check._list_members(LIST_FAMILY_DOCUMENT, _list_family()))
+
+    assert [line for line, _ in members] == [5, 6, 8, 10]
+    assert "`test_the_clock_states_its_playback_rate`" in members[1][1]
+    assert "a nested note" in members[2][1]
+
+
+def test_a_list_shaped_family_stops_at_the_next_subsection() -> None:
+    """The bullets of a following subsection are that subsection's, not this
+    family's.
+
+    § "Minimum displayed outputs" is closed by a subsection that carries
+    bullets of its own, so a family reading to the end of the section would
+    hold prose about the list to the promise the list makes.
+    """
+    members = list(doc_check._list_members(LIST_FAMILY_DOCUMENT, _list_family()))
+
+    assert all("under a subsection" not in member for _, member in members)
+
+
+def test_a_list_shaped_family_whose_heading_has_moved_reads_no_members() -> None:
+    """Which `check_bound_families` reports as an error rather than a pass.
+
+    The walker's own answer is emptiness; the decision that emptiness is a
+    failure is made once, for every shape, where the family is checked.
+    """
+    assert list(doc_check._list_members(LIST_FAMILY_DOCUMENT, _list_family("Moved"))) == []
+    assert list(doc_check._list_members(LIST_FAMILY_DOCUMENT, _list_family(level=3))) == []
 
 
 def test_this_repository_holds_every_bound_family_to_its_members() -> None:
