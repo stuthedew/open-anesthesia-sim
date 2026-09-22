@@ -9,6 +9,7 @@ feature: commit-provenance
 touches: docs/releases, ROADMAP.md, tools/doc_check.py
 added: 2026-09-14
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def check_tag_span_covers_its_notes' tools/doc_check.py
+recurrences: 2026-09-22 PL-YKSD
 ---
 
 
