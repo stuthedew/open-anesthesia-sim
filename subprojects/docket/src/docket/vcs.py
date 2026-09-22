@@ -85,6 +85,65 @@ def answered(text: str) -> bool:
     return not isinstance(text, GitSilence)
 
 
+class GuessedBase(str):
+    """A base ref nothing established, whether or not the name is real.
+
+    Two different answers wear this mark, and what they share is the property
+    that matters: the ref came back without the reading that would make it the
+    right one. Either no candidate resolved at all, and the name is the bare
+    fallback; or one resolved only because a *preferred* candidate ahead of it
+    went unanswered, so `origin/main` may be sitting there unread while the
+    local `main` is handed back in its place. The second is the dangerous one,
+    because the name is real and the ref exists - it is simply the wrong one,
+    and the docstring on `default_base` measures that mistake at 20 paths
+    reported outside a commission whose true answer was 4.
+
+    `GitSilence` is this same idea one question lower down, and the pair is
+    worth holding apart. There, git said nothing and the empty string carries
+    the fact. Here git may have answered every probe truthfully, saying *no*
+    four times over - so the ref that comes back was picked rather than read,
+    which `_Silences` structurally cannot catch because nothing failed.
+
+    A `str` subclass for the reason `GitSilence` is one: `default_base` is
+    consumed as a bare ref name by sixteen reads in this module, and a guess
+    still formats, compares and interpolates as the `"main"` they have always
+    been handed - so a caller with no use for the distinction is untouched,
+    while one that must not compare against a guessed base asks `resolved`.
+
+    **The mark survives no string operation**, exactly as `GitSilence`'s does
+    not: `f"{base}"`, `base.strip()` and `base + ""` are all plain `str`. Read
+    it off `default_base`'s own return value and nowhere else - or, inside this
+    module, let the read's `_Silences` wrapper carry it, which is what
+    `default_base` marks on the way past.
+    """
+
+    __slots__ = ()
+
+
+#: The one guess. `main` rather than the empty string because every caller
+#: interpolates the base into something a person reads, and "this checkout has
+#: no  to compare against" names nothing at all.
+GUESSED_BASE = GuessedBase("main")
+
+
+def resolved(base: str) -> bool:
+    """Whether `base` is the ref this repository calls for, as against a guess.
+
+    Stronger than "this ref exists", deliberately. It answers False for a name
+    that resolves perfectly well but was reached by falling past a candidate
+    git would not answer for, because a caller comparing against the local
+    `main` when `origin/main` was merely unread gets a wrong answer that looks
+    entirely ordinary.
+
+    The base is the one input whose wrongness cannot be seen in any answer
+    downstream of it, because every downstream answer is *about* that base: a
+    diff taken against a ref that is not there reports no change, and nothing
+    in that answer distinguishes it from a branch that changed nothing
+    (`PL-73P0`).
+    """
+    return not isinstance(base, GuessedBase)
+
+
 def _asks_for_a_blob(args: list[str]) -> bool:
     """Whether the call names one path inside one revision, `<rev>:<path>`.
 
@@ -176,6 +235,10 @@ class _Silences:
     #: Every call git did not answer, in the order they were put.
     unanswered: list[tuple[str, ...]] = field(default_factory=list)
     asked: int = 0
+    #: Set by `default_base` when no candidate ref resolved beneath this read.
+    #: Not a silence - git answered - so nothing above would otherwise see it,
+    #: and every comparison the read goes on to make is against a guess.
+    guessed_base: bool = False
 
     def __call__(self, args: list[str], root: Path) -> str:
         self.asked += 1
@@ -186,14 +249,26 @@ class _Silences:
 
     @property
     def reason(self) -> str:
-        """Why this read is partial, or `""` where git answered everything."""
-        if not self.unanswered:
-            return ""
-        first = " ".join(self.unanswered[0])
-        return (
-            f"git did not answer {len(self.unanswered)} of the {self.asked} questions this "
-            f"read put to it, the first being `git {first}`"
+        """Why this read is partial, or `""` where git answered and the base resolved."""
+        silence = ""
+        if self.unanswered:
+            first = " ".join(self.unanswered[0])
+            silence = (
+                f"git did not answer {len(self.unanswered)} of the {self.asked} questions this "
+                f"read put to it, the first being `git {first}`"
+            )
+        if not self.guessed_base:
+            return silence
+        guess = (
+            "no candidate default branch could be established here (tried "
+            f"{', '.join(DEFAULT_BRANCHES)}), so the base fell back to `{GUESSED_BASE}` with "
+            "nothing confirming it is there"
         )
+        # Lead with the guess. Where no base resolved, the silences beneath it
+        # are usually git refusing the very calls that name the missing ref -
+        # `for-each-ref --merged=main` and the like - so reporting those first
+        # sends a reader after a git failure that never happened.
+        return f"{guess}; {silence}" if silence else guess
 
 
 #: The subcommands that cannot change anything, whatever arguments they are
@@ -2934,22 +3009,48 @@ def default_base(root: Path, *, runner: Runner | None = None) -> str:
     ref is preferred wherever it resolves, because that is what the branch
     actually forked from.
 
-    Falls back to `main` when nothing resolves, which is a repository this
-    tool cannot answer about either way; `verify` then reports finding no
-    change rather than reporting a clean scope.
+    **An answer nothing established is marked, and two cases reach that mark.**
+    Where no candidate resolves, the answer is `GUESSED_BASE` rather than the
+    bare literal `main`. Where one resolves only after a preferred candidate
+    went unanswered, that name comes back marked too - it is a real ref, and
+    still not the one this repository forks from. The
+    two compare equal and format alike, so a caller with no use for the
+    distinction reads what it always read; one that must not compare against a
+    ref nobody established asks `resolved`. Before `PL-73P0` the fallback was
+    the bare literal, and a checkout holding no default branch was handed a
+    string indistinguishable from one where `main` was really there.
 
-    **It cannot decline in its own type, so its silence travels to its
-    caller's** (`PL-Q9Z1`). The answer is a ref name, and every call site here
-    passes the runner its own read already wraps in `_Silences` - so a probe git
-    failed to answer reaches the report as a `declined` even though `main` came
-    back from here. `cli`'s `verify` is the one caller that passes none, which
-    is recorded as `PL-29HL` rather than fixed under an item about this module.
+    Two different failures reach that fallback, and only one of them was ever
+    visible. Git may answer nothing - no repository, no git - which `_Silences`
+    catches beneath any read that wraps its runner (`PL-Q9Z1`). Or git may
+    answer, truthfully, `no` to all four candidates, which is a checkout that
+    genuinely has no default branch: nothing failed, so no silence is raised
+    and the wrapper sees nothing. That second case is why marking the return
+    value is not enough on its own, and why this also sets `guessed_base` on a
+    `_Silences` runner on the way past - the sixteen reads in this module that
+    wrap one then decline with the cause rather than with whichever call git
+    happened to refuse afterwards.
+
+    The two callers that pass no wrapped runner - `cli`'s `verify` and
+    `tools/branch_id_check` - read `resolved` directly, which is the whole of
+    what `PL-29HL` asked for before it was folded in here.
     """
     run = runner or _run_git
+    silenced = False
     for candidate in DEFAULT_BRANCHES:
-        if run(["rev-parse", "--verify", "--quiet", candidate], root).strip():
-            return candidate
-    return "main"
+        answer = run(["rev-parse", "--verify", "--quiet", candidate], root)
+        if answer.strip():
+            # Reached by falling past a candidate git would not answer for, so
+            # the ref that did resolve is not established as the preferred one:
+            # `origin/main` may be sitting there unread. Marked rather than
+            # returned plain, because this is the fallback the docstring above
+            # measures at 20 paths reported against a true 4.
+            return GuessedBase(candidate) if silenced else candidate
+        if not answered(answer):
+            silenced = True
+    if isinstance(run, _Silences):
+        run.guessed_base = True
+    return GUESSED_BASE
 
 
 def behind_remote(root: Path, base: str, *, runner: Runner | None = None) -> int | None:
@@ -5002,8 +5103,15 @@ def stranded(
         # Either the read failed or the store does not live where it was said
         # to. Both would make every item on every branch look stranded, which
         # is the one output worse than none: it is long, alarming and wrong.
+        #
+        # A third cause reaches here and needs its own words: where no base
+        # resolved, saying "no items found on main" asserts the very ref that
+        # is missing, and sends a reader to look at a branch rather than at
+        # their checkout (`PL-73P0`).
         return StrandedReport(
-            declined=f"no items found on {base}, so every branch would read as stranding its own",
+            declined=run.reason
+            if run.guessed_base
+            else f"no items found on {base}, so every branch would read as stranding its own",
             fetched=fetched,
         )
 

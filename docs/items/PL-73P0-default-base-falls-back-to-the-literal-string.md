@@ -6,8 +6,9 @@ effort: M
 status: ready
 classes: defect
 feature: evidence-declines
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_cli.py, tools/branch_id_check.py, tests/unit/test_branch_id_check.py
 added: 2026-09-19
+payoff: stops bin/docket verify certifying a branch's scope against a base that is not there - it was reporting git's own error text as three changed paths while missing the files the branch really changed
 verify: grep -q 'def test_default_base_declines_when_no_candidate_resolves' subprojects/docket/tests/test_vcs.py
 ---
 

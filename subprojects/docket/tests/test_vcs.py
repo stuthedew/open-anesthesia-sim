@@ -15,27 +15,16 @@ from pathlib import Path
 from docket.checks import Report
 from docket.vcs import (
     _PATHSPEC_BYTES,
-    REWRITTEN,
-    SILENT,
-    BaseRelease,
-    Branch,
-    BranchCut,
-    BranchState,
-    FlightFiles,
-    FlightReport,
-    OrphanedBranch,
-    OrphanedReport,
-    RewriteReport,
-    SettledBranch,
-    SettledReport,
-    StrandedItem,
-    StrandedReport,
     _pathspec_chunks,
     _standing,
     _superseded,
+    BaseRelease,
     behind_remote,
+    Branch,
     branch_state,
+    BranchCut,
     branches_in_flight,
+    BranchState,
     changed_items,
     closed_by,
     closures_on_base,
@@ -44,14 +33,26 @@ from docket.vcs import (
     default_base,
     filed_with_work,
     files_in_flight,
+    FlightFiles,
+    FlightReport,
     lost,
     merged_pull_requests,
     orphaned,
+    OrphanedBranch,
+    OrphanedReport,
     precedence,
     records_on_base,
     released_on_base,
+    resolved,
+    RewriteReport,
+    REWRITTEN,
     settled_branches,
+    SettledBranch,
+    SettledReport,
+    SILENT,
     stranded,
+    StrandedItem,
+    StrandedReport,
     tags,
 )
 
@@ -568,11 +569,33 @@ def test_no_git_declines_rather_than_reporting_no_branches() -> None:
     assert not silent.known
     assert "did not answer" in silent.declined
 
-    # The original assertion, kept verbatim: a git that ran and found nothing is
-    # the other case, and it is still a clean answer. What was wrong was that
-    # this line was the *whole* test while claiming to be about no git at all.
-    assert branches_in_flight(ROOT, runner=lambda args, root: "").branches == ()
-    assert branches_in_flight(ROOT, runner=lambda args, root: "").known
+    # The other case, and still a clean answer: a git that ran, resolved a base,
+    # and found nothing beyond it. It needs a base that resolves, which the
+    # original form of this line did not give it. Answering `""` to every
+    # candidate probe is a checkout with no default branch at all, and since
+    # `PL-73P0` that declines on its own account - see the test below.
+    empty = branches_in_flight(ROOT, runner=_refs({"origin/main": "abc123"}))
+
+    assert empty.branches == ()
+    assert empty.known
+
+
+def test_a_flight_report_against_a_base_nobody_established_declines() -> None:
+    """No default branch is not a checkout with nothing in flight (`PL-73P0`).
+
+    The gap the sweep could not see, because it is not a silence: git runs, and
+    answers `no` to all four candidates truthfully. `default_base` fell back to
+    the literal `main`, every ref comparison was then taken against a branch
+    that is not there, and the report came back clean - which a session reads as
+    "nobody is working anything", the one answer that costs two sessions a merge.
+    """
+    report = branches_in_flight(ROOT, runner=lambda args, root: "")
+
+    assert not report.known
+    assert "no candidate default branch" in report.declined
+    # The cause, not whichever call failed downstream of it. A reader sent after
+    # a git failure that never happened goes looking in the wrong place.
+    assert "did not answer" not in report.declined
 
 
 def test_a_harness_named_branch_is_found_by_what_it_committed() -> None:
@@ -1839,12 +1862,58 @@ def test_the_default_base_prefers_the_ref_the_branch_forked_from() -> None:
 
 
 def test_the_default_base_falls_back_to_a_local_branch() -> None:
-    assert default_base(ROOT, runner=_refs({"main": "def456"})) == "main"
+    base = default_base(ROOT, runner=_refs({"main": "def456"}))
+
+    assert base == "main"
+    # Reached by git answering `no` for both remote candidates, which is an
+    # answer: this is the checkout the fallback is *for*, so it is not a guess.
+    assert resolved(base)
 
 
-def test_a_repository_resolving_no_default_branch_still_answers() -> None:
-    """Nothing to compare against is reported by verify as no change, not as clean."""
-    assert default_base(ROOT, runner=_refs({})) == "main"
+def test_a_repository_resolving_no_default_branch_says_the_base_was_guessed() -> None:
+    """The literal `main` handed back for a checkout that has no `main` (`PL-73P0`).
+
+    It still answers, and it still answers `main`, because sixteen reads in this
+    module interpolate the base into a message and the empty string names
+    nothing. What has changed is that the answer carries the mark, so a caller
+    comparing against it can tell the ref was picked rather than read.
+    """
+    base = default_base(ROOT, runner=_refs({}))
+
+    assert base == "main"
+    assert not resolved(base)
+
+
+def test_a_base_reached_by_falling_past_an_unanswered_probe_is_a_guess() -> None:
+    """A real ref can still be the wrong one, and this is the costly case.
+
+    `main` resolves, so nothing here looks broken - but the probe for
+    `origin/main` went unanswered, and the remote ref may be sitting there
+    unread. A fresh clone's local `main` can trail the remote by many commits,
+    and a diff taken against it reports everything that landed in between as
+    this branch's own work: the measured instance named 20 paths outside an
+    item's commission where the true answer was 4.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if args[-1] == "origin/main":
+            return SILENT
+        return "def456" if args[-1] == "main" else ""
+
+    base = default_base(ROOT, runner=run)
+
+    assert base == "main"
+    assert not resolved(base)
+
+
+def test_a_base_every_candidate_was_read_for_is_not_marked() -> None:
+    """The ordinary path stays unmarked, or the mark means nothing.
+
+    A guard against the cheap way to pass the tests above: marking every answer
+    would satisfy them and would make `resolved` useless to every caller.
+    """
+    assert resolved(default_base(ROOT, runner=_refs({"origin/main": "abc123"})))
+    assert resolved(default_base(ROOT, runner=_refs({"origin/main": "a", "main": "b"})))
 
 
 def test_a_local_base_behind_its_remote_is_counted() -> None:
