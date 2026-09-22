@@ -812,6 +812,43 @@ def test_verify_base_narrows_the_replay_to_what_the_branch_changed(tmp_path: Pat
     assert not (tmp_path / "ran.marker").exists()
 
 
+def test_verify_refuses_a_base_no_candidate_resolved(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The commission audit is a claim about a base, so a guessed one voids it.
+
+    `PL-73P0`, and worse than the silent clean it was filed as. `changed_paths`
+    asks for `diff --name-only <base>...HEAD`, discards the exit status, and
+    `_run` returns git's *combined* output - so on a checkout with no default
+    branch the audit reads git's three-line fatal message as three changed
+    paths. Measured 2026-09-22: it reported `fatal: ambiguous argument
+    'main...HEAD'...` as a path outside the commission, and named neither of
+    the two files the branch had actually changed.
+
+    A real repository rather than an injected runner, because what is under
+    test is the whole path from `default_base`'s probe through to the refusal.
+    """
+    subprocess.run(
+        ["git", "init", "--quiet", "--initial-branch=feature", str(tmp_path)], check=True
+    )
+    for setting, value in (("user.email", "t@example.invalid"), ("user.name", "Test")):
+        subprocess.run(["git", "config", setting, value], cwd=tmp_path, check=True)
+    store = tmp_path / "docs" / "items"
+    store.mkdir(parents=True)
+    (store / "item-0.md").write_text(MARKING, encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "--quiet", "-m", "PL-M4RK Seed"], cwd=tmp_path, check=True)
+
+    assert _run("verify", "PL-M4RK", "--items", str(store)) == 1
+    out = capsys.readouterr().out
+    assert "no candidate default branch resolved" in out
+    assert "--base <ref>" in out
+    # What it must no longer do: report git's own complaint as a finding about
+    # the branch, on a check whose whole job is to certify that branch's scope.
+    assert "fatal:" not in out
+    assert "ambiguous argument" not in out
+
+
 #: An item whose command reads a file, so that editing the file - and nothing
 #: else - can change what the command returns. `touch` runs first so the marker
 #: says the command was executed at all, which is the question the scope is

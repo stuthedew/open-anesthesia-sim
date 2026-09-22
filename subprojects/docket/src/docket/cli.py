@@ -101,6 +101,7 @@ from .trend import BY_DAY, BY_WEEK
 from .trend import analyze as analyze_trend
 from .vcs import (
     CURRENT,
+    DEFAULT_BRANCHES,
     BranchCut,
     Churn,
     CutsInFlight,
@@ -117,7 +118,6 @@ from .vcs import (
     closures_on_base,
     cut_window,
     cuts_in_flight,
-    DEFAULT_BRANCHES,
     default_base,
     fetch_remote,
     filed_with_work,

@@ -74,6 +74,32 @@ def test_the_case_this_exists_for_is_refused(
     assert "bin/docket new" in err
 
 
+def test_a_checkout_with_no_default_branch_says_so_rather_than_passing(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The guard passing every branch in a checkout it could not read (`PL-73P0`).
+
+    `default_base` used to hand back the literal `main` when no candidate
+    resolved, and `_git` collapses a failed walk to the empty string - so
+    `git log main..HEAD` against a `main` that is not there yielded no
+    subjects, and this printed "nothing ahead of main; no id is owed" and
+    exited 0. The unattributed branch in the first test above would have
+    passed, on a checkout where nothing was checked at all.
+    """
+    _install(
+        monkeypatch,
+        ["Clear the stale origin ref and resolve the docs sweep"],
+        base="",  # no candidate resolves
+    )
+
+    assert branch_id_check.main() == 0  # advisory, as an unsound walk already is
+    out = capsys.readouterr().out
+    assert "not checked" in out
+    assert "no candidate default branch resolved" in out
+    # The claim it must no longer make.
+    assert "no id is owed" not in out
+
+
 def test_a_subject_leading_with_an_id_passes(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
