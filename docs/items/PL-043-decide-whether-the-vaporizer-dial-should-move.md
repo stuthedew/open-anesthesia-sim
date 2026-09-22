@@ -1,37 +1,27 @@
 ---
 id: PL-043
-title: Record in docs/MODEL.md why the delivered-concentration control is continuous, and what reopens that choice
-priority: P3
+title: Decide whether the vaporizer dial should move in real increments
+priority: P2
 effort: S
-status: ready
+status: dropped
 classes: ux
 feature: vaporizer-controls
 touches: docs/MODEL.md
 added: 2026-08-24
+closed: 2026-09-22
+reason: Its premise was false. The Problem assumed real variable-bypass vaporizers are dialed in discrete increments; the project owner reports the dial turns smoothly (2026-09-22), so the continuous delivered-concentration control already matches the device and the docs/MODEL.md paragraph this item still owed would justify nothing. The simulator models no vaporizer dial - the control is a delivered-concentration input - so dial mechanics would arise only if planned milestone 1, the machine abstraction, ever modelled one. Its other two parts landed elsewhere: § Runtime controls names no single agent, and PL-DHV7 put the MAC multiple on the dial (PL-Y4YG).
 ---
 
-> **Groomed 2026-09-22 (`PL-Y4YG`): the decision stands and one paragraph is
-> left.** Retitled from "Decide whether the vaporizer dial should move in real
-> increments" and moved to `P3`, because two of its three parts have landed
-> elsewhere: `docs/MODEL.md` § "Runtime controls" now reads "delivered agent
-> concentration", so **Also in scope** is done, and `PL-DHV7` (done
-> 2026-09-04) put the MAC multiple on the delivered dial's second line, which
-> is the substitute **Better substitute for detents** asked for. Still owed is
-> **Done when**: nothing in `docs/MODEL.md` says why the control is
-> continuous.
->
-> Two things that paragraph must now respect. The **Problem**'s premise that
-> real variable-bypass vaporizers are dialed in discrete increments is
-> recorded as unknown by `docs/machine-survey.md` ("Dial increments: unknown,
-> and deliberately not guessed"), so the note must not assert it. And the
-> reversal condition in **Accepted cost** is now on the roadmap - `ROADMAP.md`
-> § "Planned milestones" item 1 is the modular machine abstraction with
-> interlock behaviour - so, per `.claude/rules/expert-review.md` § "Say what
-> would falsify it, then record the instance rather than the rule", the note
-> names that milestone as what reopens the choice rather than stating it as a
-> rule. `PL-FG9D` said it was where the reversal would be decided and closed
-> without deciding it, so the question passes to that milestone's scoping. The
-> decision's kind is unrecorded; it predates 2026-09-16.
+> **Groomed 2026-09-22 (`PL-Y4YG`), and dropped the same day.** Two of this
+> item's three parts had landed elsewhere: `docs/MODEL.md` § "Runtime
+> controls" reads "delivered agent concentration", and `PL-DHV7` (done
+> 2026-09-04) put the MAC multiple on the delivered dial's second line. The
+> third, a `docs/MODEL.md` paragraph on why the control is continuous, rested
+> on the **Problem**'s premise that real variable-bypass vaporizers are dialed
+> in discrete increments, which `docs/machine-survey.md` had recorded as
+> unknown. Asked, the project owner reports that the dial turns smoothly
+> (2026-09-22), so the continuous control already matches the device and the
+> paragraph would justify nothing. `reason:` carries the disposition.
 
 **Problem.** `_delivered_concentration_slider` has no `divisions`, so the
 delivered-agent setting is continuous over 0 to the agent's dial maximum. A
