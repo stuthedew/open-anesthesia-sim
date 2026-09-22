@@ -7,8 +7,9 @@ status: ready
 classes: docs
 touches: docs/ARCHITECTURE.md
 added: 2026-09-05
-verify: python3 tools/doc_check.py check && grep -q 'check_resident_instructions' docs/ARCHITECTURE.md
+verify: grep -q 'check_resident_instructions' docs/ARCHITECTURE.md && python3 tools/doc_check.py check
 ---
+
 **Problem.** `docs/ARCHITECTURE.md` describes `tools/doc_check.py`'s
 gate-count, version-table and release-tag checks, and never
 `check_resident_instructions` — the one whose output prints on every run.

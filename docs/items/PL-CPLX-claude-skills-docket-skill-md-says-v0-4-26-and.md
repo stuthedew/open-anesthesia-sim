@@ -7,7 +7,7 @@ status: ready
 classes: docs
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-17
-verify: python3 tools/doc_check.py check && ! grep -rqF 'v0.4.26 and v0.6.0 are both in that state' .claude/skills/docket/
+verify: ! grep -rqF 'v0.4.26 and v0.6.0 are both in that state' .claude/skills/docket/ && python3 tools/doc_check.py check
 ---
 
 **Problem.** .claude/skills/docket/SKILL.md says v0.4.26 and v0.6.0 are both milestones scoped out of turn whose gate freezes when the milestone before them ships, but v0.4.26 shipped on 2026-09-17 and took no gate of its own, so the example names a release that can no longer be waiting for anything

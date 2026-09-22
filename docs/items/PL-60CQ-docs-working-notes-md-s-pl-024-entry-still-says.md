@@ -8,7 +8,7 @@ classes: docs
 feature: model-spec-accuracy
 touches: docs/WORKING_NOTES.md
 added: 2026-09-08
-verify: python3 tools/doc_check.py check && ! grep -qF '1.0 L is the Gas Man reference value' docs/WORKING_NOTES.md
+verify: ! grep -qF '1.0 L is the Gas Man reference value' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** docs/WORKING_NOTES.md's PL-024 entry still says the venous pool is 1.0 L and cited twice in reference_adult.json; both stopped being true when PL-8ZJQ adopted Davis and Mapleson's 1.222 L (found while closing `PL-7HDS`, 2026-09-08).

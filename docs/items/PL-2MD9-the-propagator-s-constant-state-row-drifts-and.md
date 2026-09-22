@@ -1,6 +1,6 @@
 ---
 id: PL-2MD9
-title: "The propagator's constant state row drifts and the squarings amplify it: 2.28e+222 at an alveolar volume of 1e-19 L, where governing_equations.UNIT_STATE promises no step can perturb it"
+title: The propagator's constant state row drifts and the squarings amplify it: 2.28e+222 at an alveolar volume of 1e-19 L, where governing_equations.UNIT_STATE promises no step can perturb it
 priority: P2
 effort: M
 status: ready
@@ -8,9 +8,8 @@ classes: defect
 feature: numerical-domain
 touches: src/anesthesia_sim/core/matrix_exponential.py, src/anesthesia_sim/core/governing_equations.py, tests/unit/test_matrix_exponential.py, docs/MODEL.md
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_matrix_exponential.py && grep -q 'def test_a_zero_row_propagates_to_its_exact_basis_row' tests/unit/test_matrix_exponential.py
+verify: grep -q 'def test_a_zero_row_propagates_to_its_exact_basis_row' tests/unit/test_matrix_exponential.py && uv run pytest tests/unit/test_matrix_exponential.py
 ---
-
 
 **Problem.** `governing_equations.UNIT_STATE` is the constant 1 that turns
 $`dy/dt = Ay + b`$ into $`dy/dt = Ay`$, and its docstring states the guarantee

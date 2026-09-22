@@ -7,8 +7,9 @@ status: ready
 classes: docs, infra
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'resident-instructions' tools/doc_check.py
+verify: grep -q 'resident-instructions' tools/doc_check.py && uv run pytest tests/unit/test_doc_check.py
 ---
+
 **Problem.** `PL-JK0M` wrote `docs/resident-instructions.md`, the ledger of what
 loads at launch and why - which block was routed where, which stayed, and which
 reductions were considered and refused. Nothing points a session at it at the

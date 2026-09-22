@@ -8,7 +8,7 @@ classes: infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-07
-verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_nested_docket_check_from_verify_declines' subprojects/docket/tests/test_verify.py
+verify: grep -q 'def test_a_nested_docket_check_from_verify_declines' subprojects/docket/tests/test_verify.py && uv run pytest subprojects/docket/tests/test_verify.py
 recurrences: 2026-09-20 PL-S8JT withdrawn 2026-09-21 PL-34BG, 2026-09-20 PL-34BG withdrawn 2026-09-21 PL-34BG
 ---
 

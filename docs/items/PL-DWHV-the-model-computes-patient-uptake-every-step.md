@@ -8,7 +8,7 @@ classes: feature, ux
 feature: liquid-agent-consumption
 touches: ROADMAP.md
 added: 2026-09-16
-verify: python3 tools/doc_check.py check && grep -qF 'uptake beside delivered' ROADMAP.md
+verify: grep -qF 'uptake beside delivered' ROADMAP.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** The model computes patient uptake every step (UptakeStepResult.patient_agent_change_l) and displays it nowhere, though Gas Man makes Uptake and Delivered its headline pair - the difference between them is the low-flow lesson

@@ -8,7 +8,7 @@ classes: docs
 feature: public-history
 touches: README.md, CONTRIBUTING.md
 added: 2026-08-30
-verify: python3 tools/doc_check.py check && grep -qiF 'co-authored-by' CONTRIBUTING.md
+verify: grep -qiF 'co-authored-by' CONTRIBUTING.md && python3 tools/doc_check.py check
 not-delegable: the wording states publicly what the project owner did and did not write, and he approves it before the item closes; doc_check proves only that the citations resolve
 ---
 

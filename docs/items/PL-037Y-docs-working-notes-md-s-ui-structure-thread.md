@@ -8,9 +8,8 @@ classes: docs
 feature: queue-hygiene
 touches: docs/WORKING_NOTES.md
 added: 2026-09-14
-verify: python3 tools/doc_check.py check && ! grep -q '`PL-NGF7` decides the theme object' docs/WORKING_NOTES.md
+verify: ! grep -q '`PL-NGF7` decides the theme object' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
-
 
 **Problem.** docs/WORKING_NOTES.md's UI-structure thread glosses PL-NGF7 as 'decides the theme object', which is not what that item is or does
 

@@ -8,7 +8,7 @@ classes: defect, infra
 feature: release-process
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py, tools/doc_check.py, .claude/skills/docket/SKILL.md
 added: 2026-09-07
-verify: uv run pytest -q subprojects/docket/tests/test_release.py && grep -q 'def test_release_refuses_a_version_whose_tag_names_a_commit_without_it' subprojects/docket/tests/test_release.py
+verify: grep -q 'def test_release_refuses_a_version_whose_tag_names_a_commit_without_it' subprojects/docket/tests/test_release.py && uv run pytest -q subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** Observed on `origin` at 2026-09-07 17:35 UTC:

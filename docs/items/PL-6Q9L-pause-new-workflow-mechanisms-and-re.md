@@ -9,6 +9,7 @@ feature: generator-identification
 touches: CLAUDE.md
 added: 2026-09-22
 closed: 2026-09-22
+pr: 916
 payoff: additions pause while live generators drain, so the convergence expectation can finally be tested
 verify: grep -qF 'no new workflow mechanism is' CLAUDE.md
 ---

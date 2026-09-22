@@ -316,16 +316,25 @@ run - and do not record one on its own: `doc_check.py check` passes whenever
 the docs are internally consistent, which they are before the item is started
 too, and five open items once shared exactly that command with none of them
 proving anything. The commands recorded before 2026-09-20 still carry such a
-clause; each loses it as its item is started, never in a pass.
+clause, and each loses it as its item is started. One pass has run over them,
+and it removed nothing: it moved each deciding clause ahead of the health check
+(project owner, 2026-09-22, ratified, over replaying the commands as they
+stood, a replay that reorders clauses itself, or waiting for them to drain).
+Since `PL-0HPV`, `make check` replays the `verify:` commands a branch can have
+changed, and a test file or `doc_check.py check` run ahead of a `grep` that
+then fails was most of what that replay would have cost. So a legacy command
+now leads with its `grep` and runs the health check behind it, and what is
+stripped as its item starts is still that trailing clause.
 
 **The `pytest` half of that is now refused rather than remembered.** `docket
 set` will not write, and `docket check` errors on, a command captured from
 2026-09-20 that runs `pytest` over `tests/` or `subprojects/docket/tests/`
-while another clause stands beside it - the shape 82 open commands carry and
-`PL-FZ58` costed at 59% of a whole-store replay. So this paragraph now only
-has to be remembered for the clauses a check cannot judge: `doc_check.py
-check` and `bin/docket check`, where which clause discriminates depends on
-what the item's work is (`PL-09G9`).
+while another clause stands beside it - the shape 82 open commands carried
+when this rule landed, 57 on 2026-09-22, and `PL-FZ58` costed at 59% of a
+whole-store replay. So this paragraph now only has to be remembered for the
+clauses a check cannot judge: `doc_check.py check` and `bin/docket check`,
+where which clause discriminates depends on what the item's work is
+(`PL-09G9`).
 
 The first is the one that goes wrong loudly. `--cov=` takes the **dotted module**
 (`anesthesia_sim.core.tissue`), never the path, and the run is the **whole

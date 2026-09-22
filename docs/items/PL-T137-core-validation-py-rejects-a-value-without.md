@@ -8,7 +8,7 @@ classes: ux, docs
 feature: documentation-standard
 touches: src/anesthesia_sim/core/validation.py, tests/unit/test_validation.py
 added: 2026-09-05
-verify: uv run pytest tests/unit/test_validation.py && grep -q 'def test_a_rejected_value_appears_in_the_message' tests/unit/test_validation.py
+verify: grep -q 'def test_a_rejected_value_appears_in_the_message' tests/unit/test_validation.py && uv run pytest tests/unit/test_validation.py
 ---
 
 **Problem.** The three shared guards raise on the parameter name alone:
