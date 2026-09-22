@@ -351,15 +351,14 @@ READS: tuple[Read, ...] = (
     # `None` is how these two decline, and they reach it under every silence.
     Read("is_shallow", lambda r, g: is_shallow(r, runner=g), _findings()),
     Read("behind_remote", lambda r, g: behind_remote(r, "main", runner=g), _findings()),
-    # No channel at all: recorded as breaches rather than covered (`PL-ZPDM`).
-    Read("tags", lambda r, g: tags(r, runner=g), _findings(), known_gap="PL-ZPDM"),
+    Read("tags", lambda r, g: tags(r, runner=g), _findings("names")),
     Read(
         "changed_items",
         lambda r, g: changed_items(r, "origin/main", runner=g),
-        _findings(),
-        known_gap="PL-ZPDM",
+        _findings("identifiers"),
     ),
-    Read("default_base", lambda r, g: default_base(r, runner=g), _findings(), known_gap="PL-ZPDM"),
+    # No channel at all: recorded as a breach rather than covered (`PL-73P0`).
+    Read("default_base", lambda r, g: default_base(r, runner=g), _findings(), known_gap="PL-73P0"),
 )
 
 
@@ -462,14 +461,18 @@ def test_one_silenced_git_call_never_leaves_a_read_looking_clean(read: Read, rep
 def test_a_read_answering_with_a_bare_value_has_no_way_to_decline(read: Read, repo: Path) -> None:
     """The breach the sweep cannot yet close, recorded as a fact rather than skipped.
 
-    `tags`, `changed_items` and `default_base` answer with a bare collection or
-    string, so there is nowhere in the answer to say git did not speak - a
-    silence is indistinguishable from a repository with no tags, no changed
-    items, no `origin/main`. The first two are `PL-ZPDM`; `default_base` is
-    `PL-73P0`, which carries the wider case - the base is the one input whose
-    wrongness cannot be seen in any answer downstream of it, because every
-    downstream answer is *about* that base. Giving them a channel changes three
-    public return types and every caller, which is a build of its own.
+    `default_base` answers with a bare string, so there is nowhere in the answer
+    to say git did not speak - a silence is indistinguishable from a checkout
+    that holds no `origin/main`, and the fallback both produce is the literal
+    `main`. It is `PL-73P0`, which carries the wider case: the base is the one
+    input whose wrongness cannot be seen in any answer downstream of it,
+    because every downstream answer is *about* that base.
+
+    `tags` and `changed_items` sat here too until `PL-ZPDM` gave them
+    `TagSet` and `ChangedItems`; they are in the sweep above now. What that
+    close cost is the measure of what is left here - two public return types
+    and three callers, one of them the release gate, which had been skipping
+    itself whenever git failed.
 
     **Asserted rather than marked expected-to-fail**, and the difference is what
     a reader is left with. A test marked that way does not run, which reads as a

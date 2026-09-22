@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: git-silence-channel
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs_silence.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, tools/doc_check.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 verify: ! grep -qF 'def tags(root: Path, *, runner: Runner | None = None) -> frozenset[str]:' subprojects/docket/src/docket/vcs.py
 ---
