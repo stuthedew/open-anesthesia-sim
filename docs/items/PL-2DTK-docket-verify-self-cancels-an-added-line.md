@@ -3,12 +3,14 @@ id: PL-2DTK
 title: docket verify --self cancels an added line against its removal only within the commits it selects per id, so an item is charged with removing an assertion a commit that does not name it had added on the same branch
 priority: P2
 effort: M
-status: blocked
+status: dropped
 classes: defect
 feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 blocked-by: PL-4W2L
 added: 2026-09-19
+closed: 2026-09-22
+reason: superseded by PL-4W2L's decision (2026-09-22): an existing assertion is one the base's copy of the file holds, so a form a sibling commit added on the branch is never charged; PL-C4RS's shape is a named test in PL-4W2L's done-when
 verify: grep -q 'def test_a_removal_is_not_charged_to_an_id_whose_selection_excludes_the_addition' subprojects/docket/tests/test_verify.py
 ---
 
