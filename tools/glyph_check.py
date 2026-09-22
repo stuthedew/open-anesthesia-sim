@@ -111,6 +111,12 @@ CONFIRMED: dict[int, str] = {
     0x00D7: "MULTIPLICATION SIGN - rendered in the MAC-multiple readout (PL-8XPQ, 2026-09-04).",
     0x2013: "EN DASH - rendered in the control-change list (PL-8XPQ, 2026-09-04).",
     0x2014: "EM DASH - rendered in the halted-run banner (PL-8XPQ, 2026-09-04).",
+    0x2022: (
+        "BULLET - MARK_ROW_BULLET in app/theme.py, where each mark row starts. Rendered "
+        "through app/qt_widgets.styled_label under PySide6's offscreen platform in "
+        "DejaVu Sans at 12 px, which holds the glyph itself, and looked at beside the "
+        "confirmed middle dot it must not be mistaken for (PL-FPY2, 2026-09-22)."
+    ),
 }
 
 

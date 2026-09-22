@@ -114,6 +114,9 @@ from anesthesia_sim.app.theme import (
     FORK_POINT_SELECTOR_WIDTH,
     GRIDLINE,
     INK,
+    MARK_ROW_BULLET,
+    MARK_ROW_BULLET_SPACING,
+    MARK_ROW_SPACING,
     METRIC_NAME_SIZE,
     METRIC_QUALIFIER_SIZE,
     METRIC_SECONDARY_VALUE_SIZE,
@@ -1063,31 +1066,70 @@ class NewCaseDialog(QDialog):
         self.keep_button.clicked.connect(self.reject)
 
 
+class MarkRow(QWidget):
+    """One mark's row: a bullet, and beside it the row's text, wrapping under itself.
+
+    The bullet has a column of its own because a row can wrap, and a row's
+    continuation can be a whole clause naming a run - `Run 2 reached` - that
+    reads as a row of its own when it starts at the margin every row starts at
+    (`PL-FPY2`). Here a continuation starts under the text, right of the column
+    the next row's bullet stands in, so which mark a standing belongs to is read
+    off its position rather than off its wording.
+
+    Attributes:
+        bullet_label: Where the row starts.
+        text_label: The row itself.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.bullet_label = styled_label(
+            MARK_ROW_BULLET, color=MUTED, size_px=METRIC_QUALIFIER_SIZE
+        )
+        self.text_label = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, wrap=True)
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(MARK_ROW_BULLET_SPACING)
+        row.addWidget(self.bullet_label, 0, Qt.AlignmentFlag.AlignTop)
+        row.addWidget(self.text_label, 1)
+
+
 class MarkListingLabel(QWidget):
     """One bookmark collection, drawn read-only: a heading and its rows.
 
     Two of these rather than one widget holding both collections, because the
     two are listed apart (`PL-LPLD`) and a widget that knew there were exactly
     two of them could not be placed anywhere a third kind was wanted. It is
-    given a `MarkListing` and decides nothing: which of the rows and the empty
-    line is drawn is settled in `dashboard_frame.MarkListing.text`, where a
-    test can read it without a display.
+    given a `MarkListing` and decides nothing: whether the rows or the empty
+    line is drawn is settled in `dashboard_frame.MarkListing.empty_line`, where
+    a test can read it without a display.
+
+    Each mark is a `MarkRow` of its own rather than a line in one label, so a
+    row that wraps is told apart from the row below it (`PL-FPY2`). The rows
+    are rewritten in place each tick and only added or removed when the
+    number of marks changes.
 
     Attributes:
         heading_label: The collection's name.
-        rows_label: The rows, or the line that stands in for them when the
-            collection is empty.
+        empty_label: The line that stands in for the rows when the collection
+            is empty.
+        rows: One `MarkRow` per mark, in the order they were added.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.heading_label = styled_label("", color=INK, bold=True)
-        self.rows_label = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, wrap=True)
+        self.empty_label = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, wrap=True)
+        self.rows: list[MarkRow] = []
+        self._rows_column = QVBoxLayout()
+        self._rows_column.setContentsMargins(0, 0, 0, 0)
+        self._rows_column.setSpacing(MARK_ROW_SPACING)
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(BOOKMARK_ROW_SPACING)
         column.addWidget(self.heading_label)
-        column.addWidget(self.rows_label)
+        column.addWidget(self.empty_label)
+        column.addLayout(self._rows_column)
 
     def set_listing(self, listing: MarkListing) -> None:
         """Draw `listing`, heading and rows both.
@@ -1097,7 +1139,35 @@ class MarkListingLabel(QWidget):
         """
 
         self.heading_label.setText(listing.heading)
-        self.rows_label.setText(listing.text)
+        self.empty_label.setText(listing.empty_line or "")
+        self.empty_label.setHidden(listing.empty_line is None)
+
+        while len(self.rows) < len(listing.rows):
+            row = MarkRow(self)
+            self._rows_column.addWidget(row)
+            self.rows.append(row)
+
+        while len(self.rows) > len(listing.rows):
+            row = self.rows.pop()
+            self._rows_column.removeWidget(row)
+            row.hide()
+            row.deleteLater()
+
+        for row, text in zip(self.rows, listing.rows, strict=True):
+            row.text_label.setText(text)
+
+    def text(self) -> str:
+        """What the collection draws under its heading, one row to a line.
+
+        Returns:
+            The rows' text joined by newlines, or the empty line when there
+            are no rows.
+        """
+
+        if self.rows:
+            return "\n".join(row.text_label.text() for row in self.rows)
+
+        return self.empty_label.text()
 
 
 class BookmarksPanel(QWidget):
