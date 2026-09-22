@@ -3,11 +3,12 @@ id: PL-3XWZ
 title: Cut v0.5.5 from the fifteen items finished since v0.5.4: one hover box stops holding two moments, and four checks stop passing on what they could not see, with nothing computational moving
 priority: P2
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-22
+closed: 2026-09-22
 payoff: the fifteen items finished since v0.5.4 ship under their own number and stop being re-offered in every session digest, and the release that fixes which instant a hover labels a value with states what a learner now sees and proves by measurement that no computed value moved with it
 verify: grep -q "^version = \"0.5.5\"" pyproject.toml
 ---
@@ -60,6 +61,36 @@ shape, a check passing on what it could not see: `PL-5B88`, `PL-Q8RQ`,
 `PL-6Q9L`, `PL-G40Z`, `PL-KVDK`, `PL-Q89J`, `PL-14QR`, `PL-Y4YG` - and
 `PL-4KSZ`, the v0.5.4 cut. The baseline section in `ROADMAP.md` is written
 around that rather than around the class labels.
+
+## Shipped as cut
+
+`list_sessions` at the cut showed two sibling sessions running - `PL-0HPV`'s
+and `PL-7TVT`'s, both on item work - and two idle, `PL-4W2L`'s and an earlier
+`PL-0HPV` session, each of whose closing blocks asked the project owner whether
+to cut v0.5.5. This is the session that answers them: neither held a cut,
+`bin/docket flight` reported no ref carrying one, and `bin/docket release`
+fetched and did not refuse. The mechanical half was pushed first, so a second
+cut from any of them is now refused. This is therefore not `PL-66FP`'s
+two-sessions-one-release case as far as anything could see.
+
+**`app/` was read by syntax tree, not only by hash**, because it is the one
+simulator tree that moved. With docstrings stripped: `chart_frame.py` changes
+in `nearest_trace_point`, `nearest_wash_in_point`, their two replaced helpers
+and one import (`PL-1K9G`), and in `_run_frame` and `assemble_chart_frame` by a
+rename each (`PL-CZTR`, `PL-59WB`); `chart_time_base.fit_to_run` by its
+parameter's name and error message (`PL-59WB`); `controller.py`,
+`simulation_view.py` by alias reads rewritten to `fork.instant_s` or a local
+renamed (`PL-CZTR`), `bookmarks.py` in docstrings and comments only; `qt_widgets.py`,
+`dashboard_frame.py` and `theme.py` by `MarkRow`, `MarkListing.empty_line` and
+three layout constants (`PL-FPY2`). Every `format_*` function in `app/` and
+`_hover_value` are identical, and the numeric literals differ only by two `1`s
+in `chart_frame.py` and `PL-FPY2`'s layout values.
+
+The cut ships as taken, on `PL-V065`'s ratified precedent (project owner,
+2026-09-21): anything merging between this cut and the tag sits inside the
+`v0.5.5` tag without being named in its notes, and takes the `### also inside
+this tag's span` pointer `PL-P669` introduced. This item closes here and ships
+under the next release - a cut cannot stamp itself.
 
 **Done when.** `pyproject.toml` reads 0.5.5, `docs/releases/v0.5.5.md` holds
 the notes, `ROADMAP.md` carries the version-table row with the `current
