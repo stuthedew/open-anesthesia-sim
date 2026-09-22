@@ -2673,9 +2673,12 @@ def check_tags(root: Path, report: Report) -> None:
     with nothing reading the sentence.
 
     Three silences are deliberate. A checkout git cannot answer for - no
-    repository, no git, no tags fetched - is told nothing at all, because a
-    check that fails on how somebody fetched the repository is a check that
-    gets switched off.
+    repository, no git - is told nothing at all, because a check that fails on
+    how somebody fetched the repository is a check that gets switched off. A
+    checkout that answers and holds no tags is told nothing either, for the
+    reason `release.is_untagged` gives: adopting the practice is the project's
+    decision rather than this tool's. Those two arrived as one empty set until
+    `PL-ZPDM`, and they stay one behaviour by choice rather than by collapse.
 
     A **truncated** checkout is the second, and it was missed for exactly as
     long as this docstring claimed the first one covered it (`PL-J295`). A
@@ -2744,9 +2747,14 @@ def check_tags(root: Path, report: Report) -> None:
                 "version table marks it completed"
             )
 
-    existing = tags(root)
-    if not existing:
+    # Two reasons to say nothing here, told apart since `PL-ZPDM` and both
+    # deliberate: git would not answer, and a repository that holds no tags.
+    # The behaviour is the same and the distinction is not idle - it is what
+    # keeps this silence a decision rather than the accident of an empty set.
+    held = tags(root)
+    if not held.known or not held.names:
         return
+    existing = held.names
 
     marked = [row for row in rows if row.is_baseline]
     baseline = marked[0].version if len(marked) == 1 else ""

@@ -797,10 +797,12 @@ def test_verify_base_narrows_the_replay_to_what_the_branch_changed(tmp_path: Pat
     changed item, so the marking command must not run: that is the flag
     narrowing rather than being ignored.
 
-    An unresolvable base lands in the same place deliberately, and the two
-    cases are one line apart in `_changed_items`: it returns nothing where it
-    cannot resolve a merge base, so a scoped run checks nothing rather than
-    checking the wrong thing. `docket check`'s cost line says which it was.
+    An unresolvable base lands in the same place *here*, and for a reason this
+    store's shape supplies: outside a repository `git diff` exits 1 rather than
+    128, which `_run_git` reads as git answering no. So this drives the
+    narrowing alone, and `docket check`'s cost line says the scope was empty.
+    The same base inside a repository is the other case entirely - git exits
+    128, the read declines, and the test below holds it to that.
     """
     store = _store(tmp_path, MARKING)
 
@@ -875,6 +877,33 @@ def test_a_branch_that_invalidates_another_item_s_command_replays_it(
     printed = capsys.readouterr().out
     assert "PL-R34D" in printed
     assert "whose `verify:` command reads a file it changed" in printed
+
+
+def test_a_base_a_repository_cannot_resolve_declines_the_replay(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The shape CI produces: a shallow clone whose base ref was never fetched.
+
+    Inside a repository `git diff --name-only <base>...HEAD` exits 128 for a
+    base that does not resolve, and the empty set that came back was
+    indistinguishable from a branch that changed no item file. The replay was
+    scoped to nothing, ran nothing, and the run reported a clean result - on
+    the gate a pull request is held to. The reason travels with the answer now
+    (`PL-ZPDM`), so the replay declines whole and the headline counts it.
+
+    Still exit 0, deliberately: "not checked" is not a finding about the store,
+    and `Report.declined` is the channel that keeps the two apart.
+    """
+    root, _ = _reading_repo(tmp_path)
+    store = str(root / "items")
+
+    assert _run("check", "--verify", "--verify-base", "docket-no-such-ref", "--items", store) == 0
+
+    printed = capsys.readouterr().out
+    assert not (root / "ran.marker").exists()
+    assert "not checked" in printed
+    assert "scoped to what this branch changed against docket-no-such-ref" in printed
+    assert "could not be read" in printed
 
 
 def test_digest_is_silent_on_an_empty_store(
@@ -1271,12 +1300,19 @@ commit: abc1234
 """
 
 
-def _release_repo(tmp_path: Path, *tag_names: str) -> Path:
-    """A repository with one unreleased item, a version, and the tags given."""
+def _release_repo(tmp_path: Path, *tag_names: str, git: bool = True) -> Path:
+    """A repository with one unreleased item, a version, and the tags given.
+
+    `git=False` leaves it a plain directory, which is how a real `git tag
+    --list` is made to fail: it exits 128 outside a repository, and how that
+    exit is classified is half of what the refusal below is tested on.
+    """
     root = tmp_path / "repo"
     (root / "items").mkdir(parents=True)
     (root / "items" / "done.md").write_text(DONE, encoding="utf-8")
     (root / "pyproject.toml").write_text('[project]\nversion = "0.2.5"\n', encoding="utf-8")
+    if not git:
+        return root
     # A real git checkout, built by running real git from `PATH`: the release
     # commands read tags and refs, so a stub would test the stub.
     subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
@@ -1297,6 +1333,31 @@ def test_a_release_is_refused_while_the_previous_one_is_untagged(
 
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
     assert "v0.2.5 shipped and carries no tag" in capsys.readouterr().out
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text()
+
+
+def test_a_release_is_refused_where_git_will_not_say_which_tags_exist(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A silence is not "this project does not tag", and this gate turns on that.
+
+    `is_untagged` holds a project with no tags to nothing, which is right for a
+    repository that answered and was free passage for one that did not: the
+    same empty set came back from a `git tag --list` that failed, so the one
+    gate guarding a gap nothing can repair afterwards skipped itself with
+    nothing said (`PL-ZPDM`).
+
+    The untagged warning is deliberately not what prints. It asserts a specific
+    fact - v0.2.5 carries no tag - which is exactly what has not been
+    established here, and sends the operator to push a tag that may exist.
+    """
+    root = _release_repo(tmp_path, git=False)
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
+
+    printed = capsys.readouterr().out
+    assert "Cannot tell whether v0.2.5 is tagged" in printed
+    assert "shipped and carries no tag" not in printed
     assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text()
 
 
