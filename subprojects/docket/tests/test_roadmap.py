@@ -1629,7 +1629,7 @@ def test_a_milestone_row_the_version_has_passed_without_a_release_is_reported() 
     assert ", section line " in statement
     assert "which the project has passed with no v0.3.5 release in the version table" in statement
     assert "The plan and the project disagree" in format_wave(plan)
-    assert "The plan's numbering is behind the project - check `wave`." in _digest(plan)
+    assert "the beat rests on a stale plan - check `wave`." in _digest(plan)
 
 
 def test_a_milestone_number_the_version_has_just_reached_names_both_edits() -> None:
@@ -1670,6 +1670,23 @@ def test_a_section_no_row_bears_is_reported_rather_than_placed_by_guess() -> Non
     )
     assert plan.scope.placement("PL-WXYZ") == OUT_OF_SCOPE
     assert plan.scope.milestone("PL-WXYZ") == "v0.5.0"
+
+
+def test_the_digest_does_not_call_a_rowless_section_a_numbering_lag() -> None:
+    """`PL-DK8Y`: the digest's one sentence stands over all four kinds of
+    statement `Wave.stale` carries, and this is the kind it used to misname.
+    Nothing here is behind anything - the timeline places the section nowhere,
+    so a reader sent to the timeline's numbers is sent to the wrong file."""
+    rowless = SCOPED_ROADMAP.replace(
+        "| 4 | **v0.5.0 — the case you can branch** | Not yet scoped. | — |\n", ""
+    )
+    plan = _wave("0.2.5", roadmap=rowless, known=KNOWN | {"PL-WXYZ"})
+    digest = _digest(plan)
+
+    (statement,) = plan.stale
+    assert "has no timeline row" in statement
+    assert "the beat rests on a stale plan - check `wave`." in digest
+    assert "numbering is behind" not in digest
 
 
 #: `RECORDED_PORT_ROADMAP` with the port's own number recorded as shipped - the

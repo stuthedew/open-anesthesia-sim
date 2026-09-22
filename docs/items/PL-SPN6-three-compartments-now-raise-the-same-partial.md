@@ -9,6 +9,7 @@ feature: core-guard-coverage
 touches: src/anesthesia_sim/core, tests/unit/test_uptake_system_failure.py
 added: 2026-09-13
 closed: 2026-09-22
+pr: 889
 verify: uv run pytest tests/unit/test_uptake_system_failure.py -q
 ---
 

@@ -9,6 +9,7 @@ feature: gate-list-integrity
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-09-21
 closed: 2026-09-22
+pr: 891
 payoff: A gate disposition recorded under any heading the roadmap actually writes is read, so check_gate_dispositions stops reporting answered items as owed and the gate block stays worth reading.
 verify: grep -q 'def test_a_sequenced_past_heading_is_read_as_a_disposition' tests/unit/test_doc_check.py
 ---
