@@ -94,6 +94,37 @@ one merge**: enable auto-merge from the mobile app on any open pull request and
 read `auto_merge.commit_message` before it merges - `""` confirms the app,
 `null` exonerates it and moves the suspicion to the direct-merge path.
 
+**Both clients named, and the defect is a public, acknowledged one**
+(2026-09-22). Asked which client merges, the project owner answered: "Website
+and app on iPhone." Whether "website" means Safari on the phone, a desktop
+browser or both is not recorded, so a test has to cover both phone clients.
+
+- **The committer timestamp's offset records the route, not the client.**
+  Over the 806 squash commits on `main` (`git log --first-parent`, subjects
+  ending `(#N)`, bodies counted net of trailers): `+00:00` on 128, 9 bodies
+  lost, which is the count of empty-string auto-merges above; `-05:00` on 678,
+  192 lost (28.3%), the direct-merge rate. A direct merge carries the owner's
+  local offset whichever client made it, so the tree still cannot name one.
+- **GitHub's own forum carries the defect.** "Squash and Merge on Github
+  Mobile doesn't match the same on web", community discussion #51016
+  (https://github.com/orgs/community/discussions/51016), opened 2023-03-25:
+  no obvious prompt to confirm the message, and the squash body omitted.
+  GitHub staff put the message editor "behind a cog icon" (2023-04-04), cited
+  an internal issue (2024-05-10) and a fix in progress (2025-07-09); the latest
+  reply (2026-09-16) reports every squash merge that month landing with no
+  body. That matches this item's pattern - intermittent, sitting-pure,
+  away-from-desk - without being an observation in this repository.
+
+**Recommendation, this session's, for the owner to decide: adopt the habit
+now rather than wait on the one-merge test.** Squash-merge, and enable
+auto-merge, from the website rather than the GitHub app; on a phone, check the
+message box holds the pull request's description before confirming, since the
+at-desk hours are the only evidence the website keeps it (97 merges, none
+lost). In the app, if it is the only option, open the cog and confirm the
+message first. The one-merge test becomes optional confirmation, and
+`tools/pr_body_check.py` stays the backstop because a habit can lapse. Once
+agreed, the habit goes in `docs/maintainer.md` and this item closes.
+
 **Done when** the mobile app is confirmed or exonerated by the one-merge test
 above, and either a habit or a tooling change prevents the next empty body - or
 it is recorded that no prevention is available and detection via
