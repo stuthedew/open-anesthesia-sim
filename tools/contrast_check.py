@@ -461,7 +461,13 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "stepper and the drop-down arrow (PL-RKRY, PL-7W9N). Also the rows of the "
         "list a selector opens (`popup_stylesheet`), which a stylesheet on the "
         "selector had left resolving from the application palette - the host "
-        "appearance's - however the selector itself was declared (PL-0NVN)",
+        "appearance's - however the selector itself was declared (PL-0NVN). Also "
+        "whatever is left resolving from the application palette itself: the page's "
+        "scroll bars, and any surface a widget added later declares nothing for. "
+        "`declare_application_colours` writes this same role set on the "
+        "application at startup, so what neither a stylesheet nor a widget palette "
+        "reaches falls back to this interface rather than to the host appearance "
+        "(PL-KRZW)",
     ),
     Requirement(
         "MUTED",
@@ -524,7 +530,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "(`BookmarkDialog`). It is the role a half-fix makes worse rather than "
         "better: declaring a light fill and leaving this one the host's puts a "
         "near-white hint on PANEL, so the pair has to be declared with the fill "
-        "(PL-RKRY).",
+        "(PL-RKRY). `declare_application_colours` writes the same role on the "
+        "application, so a placeholder in a control added later starts from this "
+        "pair rather than from the host appearance's (PL-KRZW).",
     ),
     Requirement(
         "ACCENT_TEXT",
@@ -594,7 +602,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "`declare_interface_colours` and as `selection-color` on "
         "`selection-background-color` by `popup_stylesheet`. The selection is "
         'what "Remove selected" acts on, so which row is selected is a claim a '
-        "reader acts on rather than decoration (PL-RKRY, PL-0NVN)",
+        "reader acts on rather than decoration (PL-RKRY, PL-0NVN). "
+        "`declare_application_colours` writes the pair on the application too, so a "
+        "list added later is selected in it from the start (PL-KRZW)",
     ),
     Requirement(
         "sevoflurane.foreground",

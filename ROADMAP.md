@@ -4350,7 +4350,11 @@ by `tools/agent_identity_check.py`.
 
 `PL-KRZW` — whether the application declares a Light colour scheme to Qt, leaves
 the host appearance alone, or grows a second palette — is a decision this gate
-should not force, on the same ground as `PL-3JP0` and `PL-HKTB` above. Its
+should not force, on the same ground as `PL-3JP0` and `PL-HKTB` above.
+*Answered 2026-09-20 and built 2026-09-22, as a Gate 2 entry: the application
+declares the light palette, in the stronger form of `QApplication.setPalette`
+rather than a colour-scheme hint. The paragraph stands as this gate's
+reasoning for declining it rather than as a live question.* Its
 Qt-specific form arrived *with* the port on 2026-09-14, after this freeze, so it
 does not pass the presence test in the first place; and the `v0.5.x` interface
 pass is where the interface's visual decisions are made once, which is where

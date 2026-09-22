@@ -46,6 +46,7 @@ from typing import Final
 from PySide6.QtCore import QPoint, QRect, QSignalBlocker, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette, QResizeEvent
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDialog,
     QDoubleSpinBox,
@@ -380,13 +381,88 @@ def declare_interface_colours(widget: QWidget) -> None:
             already resolved to - and the `Disabled` group keeps all of it.
     """
 
-    palette = QPalette(widget.palette())
+    widget.setPalette(_with_declared_roles(widget.palette()))
+
+
+def declare_application_colours(application: QApplication) -> None:
+    """Draw the chrome no stylesheet and no widget palette reaches in this interface's colours.
+
+    `declare_interface_colours` declares one widget; this declares the surface
+    everything falls back to. Qt's application palette follows the *host
+    appearance*, so on a machine set to Dark the parts of the window this
+    interface never names arrived dark around a light interface (`PL-KRZW`,
+    the project owner's decision, 2026-09-20, ratified - chosen over leaving
+    the host appearance alone and over growing a second palette for dark
+    support, which would mean re-measuring all 24 contrast requirements and
+    re-picking the six traces against dark surfaces). The reason the light
+    theme is the one declared is the contrast apparatus: every requirement in
+    `tools/contrast_check.py` is measured on PANEL and BACKGROUND, so an
+    interface that renders anything else is measured against surfaces that are
+    not on screen.
+
+    **A palette rather than `styleHints().setColorScheme`.** Qt 6.8's colour
+    scheme is documented as a hint that "overriding the color scheme is not
+    supported on all platforms", and it was observed being ignored outright on
+    2026-09-20: `styleHints().colorScheme()` still reported `Unknown` after it
+    was set. Nothing may rest on it. An application palette is authoritative
+    at any depth, and it is the only thing that reaches a widget under a
+    stylesheet ancestor - a stylesheet makes everything beneath it resolve
+    from the *application* palette rather than from the styled widget, which
+    is what left a list's scroll bar and three selector popups unreachable
+    from the widget containing them (`PL-0NVN`).
+
+    **What it covers, measured:** the scroll bar of the page's scroll area
+    went from 94.3% of its pixels darker than mid-grey to 0% under the dark
+    host palette `tests/integration/test_dark_appearance.py` supplies.
+
+    **What it does not cover, and why that is the rule rather than a gap:**
+    the `Disabled` colour group is left exactly as the platform supplied it,
+    for the reason `declare_interface_colours` gives - so the splitter handles
+    `freeze_splitter_handles` disables keep drawing the host's surface, which
+    `PL-05M4` carries. Declaring a disabled colour is a decision under
+    `.claude/rules/ui-color.md` rather than a style choice, and this interface
+    has exactly one, measured.
+
+    **The per-widget declarations stay.** They are not made redundant by this:
+    a view is built by tests, and could be embedded, without `main()` ever
+    running, and `test_dark_appearance.py` asserts that a widget's own
+    declaration survives a *hostile* application palette - the property that
+    fails if the only declaration is global.
+
+    Args:
+        application: The application to declare. Called immediately after it
+            is constructed and before any widget exists, so nothing is built
+            under the host's palette; its current palette is the starting
+            point, so the `Disabled` group and every role not named here keep
+            what the platform supplied.
+    """
+
+    application.setPalette(_with_declared_roles(application.palette()))
+
+
+def _with_declared_roles(existing: QPalette) -> QPalette:
+    """A copy of `existing` carrying this interface's colours in its live groups.
+
+    The single place the `Active`-and-`Inactive`-only guarantee is written, so
+    that the widget declaration and the application declaration cannot drift
+    apart on it. Both of their docstrings say why the `Disabled` group is the
+    platform's.
+
+    Args:
+        existing: The palette to start from. Every role `_DECLARED_ROLES` does
+            not name keeps what it already resolved to.
+
+    Returns:
+        The copy. `existing` is not modified.
+    """
+
+    palette = QPalette(existing)
 
     for role, color in _DECLARED_ROLES:
         for group in (QPalette.ColorGroup.Active, QPalette.ColorGroup.Inactive):
             palette.setColor(group, role, QColor(color))
 
-    widget.setPalette(palette)
+    return palette
 
 
 class FlowLayout(QLayout):

@@ -9,6 +9,7 @@ feature: git-silence-channel
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, tools/doc_check.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 closed: 2026-09-22
+pr: 892
 verify: uv run pytest "subprojects/docket/tests/test_vcs_silence.py::test_one_silenced_git_call_never_leaves_a_read_looking_clean[tags]" "subprojects/docket/tests/test_vcs_silence.py::test_one_silenced_git_call_never_leaves_a_read_looking_clean[changed_items]"
 ---
 

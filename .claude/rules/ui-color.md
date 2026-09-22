@@ -66,6 +66,22 @@ the control ends up worse than the colour it fixed. The one place the opposite
 holds is a combo box's popup, where a palette does not survive the selector
 being laid out and `popup_stylesheet` is the declaration instead.
 
+**The application palette is the floor under both, and it is already
+declared.** `main()` calls `qt_widgets.declare_application_colours` before the
+first widget exists, so the same ten roles are what anything undeclared falls
+back to rather than the host appearance (`PL-KRZW`, project owner 2026-09-20,
+ratified - chosen over leaving the host appearance alone and over growing a
+second palette for dark support). That is what reaches the chrome no
+stylesheet touches, the page's scroll bars, and it is why a control added
+later arrives light rather than near-black. It does not retire the per-widget
+call: a view built by a test or embedded elsewhere never runs `main()`, and
+`test_dark_appearance.py` asserts that a widget's own declaration survives a
+*hostile* application palette, which is the property that fails if the only
+declaration is global. Two things stay the platform's by rule - the `Disabled`
+colour group, so the inert splitter handles keep the host's surface
+(`PL-05M4`), and `ToolTipBase` and `ToolTipText`, which are outside the
+declared role set and which nothing here uses.
+
 Two consequences worth knowing before adding a control. A stylesheet on a
 *parent* makes everything under it resolve from the application palette rather
 than from the parent, so declaring a container's surface as a stylesheet

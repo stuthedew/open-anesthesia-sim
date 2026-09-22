@@ -3,11 +3,12 @@ id: PL-KRZW
 title: Decide what the interface does under a dark system appearance, now that every colour it declares is a light-theme value
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, ux
 feature: platform-palette
 touches: src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_dark_appearance.py, docs/MODEL.md
 added: 2026-09-17
+closed: 2026-09-22
 payoff: the window stops mixing a light interface with the host's dark scroll bars and splitter handles, and a widget added later inherits the theme rather than the host
 verify: grep -q 'def test_the_chrome_draws_the_theme_rather_than_the_host_palette' tests/integration/test_dark_appearance.py
 ---
