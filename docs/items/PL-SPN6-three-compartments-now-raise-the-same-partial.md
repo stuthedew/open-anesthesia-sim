@@ -3,11 +3,13 @@ id: PL-SPN6
 title: Three compartments now raise the same 'partial_pressure_fraction must be between 0 and 1', so a refused step no longer says which one refused
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, test
 feature: core-guard-coverage
 touches: src/anesthesia_sim/core, tests/unit/test_uptake_system_failure.py
 added: 2026-09-13
+closed: 2026-09-22
+verify: uv run pytest tests/unit/test_uptake_system_failure.py -q
 ---
 
 **Problem.** Three compartments now raise the same 'partial_pressure_fraction must be between 0 and 1', so a refused step no longer says which one refused
@@ -71,3 +73,64 @@ longer proves what its name claims, and that file exists to keep a refused step
 diagnosable back to the invariant that broke.
 
 **Decision needed.** Does the guard take a compartment-qualified name, an optional owner argument, or neither - leaving the message as it is because the wrapped `SimulationNumericalError` already names the step?
+
+**Recommended, and taken: a compartment-qualified name built at the call
+site.** The brief's first option, with one correction to it and one to the
+count above.
+
+*The collision is five-way, not three.* `AgentUptakeSystem._write_state_vector`
+writes all three tissue groups through the same `TissueGroup.
+set_partial_pressure_fraction`, so `vessel_rich`, `muscle` and `fat` share the
+string with the alveolar compartment and the venous pool. A class-qualified
+name - `TissueGroup.partial_pressure_fraction` - would have taken it from five
+to three and stopped there. The instance's own `name` takes it to one.
+
+*And the message is read on a banner, not in a traceback*, which is what
+retires the third option. `app/dashboard_frame.py`'s `refused_setting_notice`
+renders a `SimulationConfigurationError` verbatim into "Setting refused —
+{error}", and `halt_disposition` puts the wrapped `SimulationNumericalError`
+into the halted-run notice. The brief's "a reader with a traceback has the
+frame" is true of a developer and false of the person the message was written
+for. It is reachable outside the injected test failures, too:
+`resume_at` writes all five from a state vector that
+`require_canonical_state` checks for shape, finiteness and the unit constant
+but not for range, so the compartment setters are the only thing enforcing
+[0, 1] on a resume, and whichever is reached first is the one that refuses.
+
+*Why not the optional owner argument.* `core/governing_equations.py` already
+solved this problem for the twin class at the call site -
+`TissueGroupEquationSettings.__post_init__` passes `f"{self.name} volume_l"`,
+pinned by `tests/unit/test_governing_equations.py`'s `"^muscle volume_l must be
+positive and finite$"` - so an `owner=` parameter would be a second mechanism
+for a job `core/` has a convention for. It also puts the formatting decision
+inside the guard, where the line that raises no longer shows the sentence a
+reader will see. And it would edit `core/validation.py`'s signature and body,
+which is the one file this item and `PL-T137` (each guard's message should
+carry the rejected value) were expected to collide in; qualifying at the call
+site leaves that function untouched, so the two items compose instead.
+
+*Form.* `f"{self.name} partial_pressure_fraction"` on `TissueGroup`, and the
+compartment's domain word where the class holds no instance name - `"alveolar
+partial_pressure_fraction"`, `"venous partial_pressure_fraction"`. Lowercase
+and space-separated rather than dotted, matching the existing convention and
+`.claude/rules/core-domain.md`'s test: a reader who knows uptake recognizes
+`fat partial_pressure_fraction` and has to translate
+`TissueGroup.partial_pressure_fraction`.
+
+*Scope held.* Only the three colliding `require_fraction` call sites changed.
+The same ambiguity runs through the rest of `core/`'s guard surface -
+`agent_amount_l`, `volume_l`, `blood_flow_l_min`, `simulation_step_s` and
+`blood_gas_partition_coefficient` are each passed unqualified by several
+classes, and every `TissueGroup` guard but this one is three-way ambiguous
+across its instances - which is `PL-2TZT` rather than this item.
+The convention is stated in `core/validation.py`'s module docstring so the
+next caller has it.
+
+*Tests.* The three assertions now pin `fat partial_pressure_fraction must be
+between 0 and 1`, through one named constant so they cannot drift apart, and
+`test_every_compartment_guarding_a_fraction_says_which_one_refused` asserts the
+five messages are pairwise distinct and each prefixed by its owner - the check
+that would have caught `PL-9SH6`'s collision, and the one that catches the next
+one. Asserted as a prefix rather than as five literal sentences so it survives
+`PL-T137` adding the rejected value to the same message. All four fail against
+the pre-fix source and pass against this one.

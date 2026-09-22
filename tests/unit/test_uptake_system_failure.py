@@ -73,6 +73,16 @@ from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUp
 # leaves all eight dynamic values distinct and nonzero.
 STEPS_BEFORE_FAILURE = 600
 
+# What the armed fat group's refusal says, in full.
+#
+# Asserted whole rather than as the bare parameter name, which is PL-SPN6: the
+# alveolar compartment, the venous pool and all three tissue groups guard a
+# `partial_pressure_fraction`, so an assertion on that name alone would still
+# pass if a different one of the five refused first - and the runs below arm
+# exactly one of them. The compartment word is what makes the message pin the
+# invariant these tests claim it stays diagnosable back to.
+FAT_REFUSAL_TEXT = "fat partial_pressure_fraction must be between 0 and 1"
+
 
 def _sevoflurane_at_one_mac() -> AgentUptakeSystem:
     return AgentUptakeSystem.for_agent("sevoflurane")
@@ -213,11 +223,59 @@ def test_a_failed_step_names_the_step_and_keeps_the_failing_guard() -> None:
         system.advance(MAXIMUM_SIMULATION_STEP_S)
 
     assert f"{MAXIMUM_SIMULATION_STEP_S} s" in str(raised.value)
-    assert "partial_pressure_fraction must be between 0 and 1" in str(raised.value)
+    assert FAT_REFUSAL_TEXT in str(raised.value)
 
     cause = raised.value.__cause__
     assert isinstance(cause, SimulationConfigurationError)
-    assert "partial_pressure_fraction must be between 0 and 1" in str(cause)
+    assert FAT_REFUSAL_TEXT in str(cause)
+
+
+def test_every_compartment_guarding_a_fraction_says_which_one_refused() -> None:
+    """Five compartments guard a fraction, and a refusal must pin one of them.
+
+    Regression cover for PL-SPN6, the defect the assertion above could not
+    have caught. PL-9SH6 gave the alveolar compartment, the venous pool and
+    the three tissue groups one accessor name; each passed that name to the
+    shared guard unqualified, so all five raised the same sentence and a
+    refusal said only that *a* fraction had left [0, 1].
+
+    Not a readability point. The message reaches its reader as a banner
+    rather than a traceback - `app/dashboard_frame.py` renders a refused
+    setting verbatim, and `advance()` wraps a refused step into the
+    halted-run notice - so the frame that would have disambiguated it is not
+    available where it is read. And the collision is reachable from outside
+    this file's injected failures: `_write_state_vector` writes all five from
+    a state vector whose range `require_canonical_state` does not check, so a
+    `resume_at` into a malformed state is refused by whichever of the five it
+    reaches first.
+
+    Asserted as a prefix and a pairwise-distinctness check rather than
+    against five literal sentences, so the property survives PL-T137 adding
+    the rejected value to the same message, and so a sixth compartment
+    cannot quietly collide with one already here.
+    """
+
+    system = _sevoflurane_at_one_mac()
+    compartments = {
+        "alveolar": system.alveoli,
+        "venous": system.patient.venous_blood,
+        **{tissue.name: tissue for tissue in system.patient.tissues},
+    }
+
+    assert len(compartments) == 5, "a compartment was added or renamed without being covered here"
+
+    messages = {}
+
+    for owner, compartment in compartments.items():
+        with pytest.raises(SimulationConfigurationError) as raised:
+            compartment.set_partial_pressure_fraction(-1.0)
+
+        messages[owner] = str(raised.value)
+
+    for owner, message in messages.items():
+        assert message.startswith(f"{owner} "), f"{owner} refused without naming itself: {message}"
+
+    assert len(set(messages.values())) == len(messages), messages
 
 
 def test_a_step_above_the_maximum_simulation_step_is_refused() -> None:
@@ -468,7 +526,7 @@ def test_a_failed_step_says_it_was_rolled_back_and_names_the_invariant() -> None
     assert "rolled back" in message
     assert "last completed step" in message
     assert f"{MAXIMUM_SIMULATION_STEP_S} s" in message
-    assert "partial_pressure_fraction must be between 0 and 1" in message
+    assert FAT_REFUSAL_TEXT in message
 
 
 def test_simulation_time_does_not_advance_through_a_failed_step() -> None:

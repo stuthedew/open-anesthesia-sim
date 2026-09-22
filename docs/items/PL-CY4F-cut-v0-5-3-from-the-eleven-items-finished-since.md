@@ -9,6 +9,7 @@ feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-22
 closed: 2026-09-22
+pr: 888
 payoff: the eleven items finished since v0.5.2 ship under their own number and stop being re-offered in every session digest, and the release whose theme is gates reporting unearned success states its own no-computational-movement claim from a tree hash rather than from an argument
 verify: grep -q "^version = \"0.5.3\"" pyproject.toml
 ---

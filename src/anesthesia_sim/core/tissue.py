@@ -156,7 +156,7 @@ class TissueGroup:
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         """Set tissue state from a partial-pressure-equivalent fraction."""
 
-        require_fraction("partial_pressure_fraction", partial_pressure_fraction)
+        require_fraction(f"{self.name} partial_pressure_fraction", partial_pressure_fraction)
         self.agent_amount_l = self.capacity_l * partial_pressure_fraction
 
     def advance(
