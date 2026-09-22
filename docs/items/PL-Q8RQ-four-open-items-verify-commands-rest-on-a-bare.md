@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: delegation
+milestone: v0.5.5
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_config.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docket.toml
 added: 2026-09-15
 closed: 2026-09-22
