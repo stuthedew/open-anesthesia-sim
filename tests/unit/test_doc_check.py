@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import subprocess
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import doc_check
@@ -4575,3 +4575,287 @@ def test_a_deferral_naming_a_historical_id_disposes_of_it(tmp_path: Path) -> Non
     )
 
     assert _dispositions(tmp_path, {"PL-001": DEBT, "PL-ZZZZ": DEBT}, roadmap) == []
+
+
+# --- what a tag's span covers -----------------------------------------------
+
+
+NOTES_0_2_4 = "## v0.2.4 - 2026-09-01\n\n### defect\n\n- PL-9WX1 The stamped one - #10\n"
+NOTES_0_2_5 = "## v0.2.5 - 2026-09-08\n\n### defect\n\n- PL-7KD2 The late one - #11\n"
+
+
+def _git_run(root: Path, *command: str) -> None:
+    # Real git, for the reason `_git_init` gives: what is under test is how
+    # doc_check reads a checkout, so a stub would test the stub.
+    subprocess.run(("git", *command), cwd=root, check=True, capture_output=True)
+
+
+def _closed(pr: str, milestone: str) -> str:
+    return f"status: done\nclosed: 2026-09-07\nmilestone: {milestone}\npr: {pr}\n"
+
+
+def _span_repo(
+    tmp_path: Path,
+    history: Sequence[tuple[str, Mapping[str, str], str]],
+    items: Mapping[str, str],
+    *,
+    name: str = "spans",
+) -> Path:
+    """A checkout whose history carries release tags, notes files and a store.
+
+    `history` is one entry per commit, oldest first: its subject, the files it
+    writes, and the release tag to put on it or `""` for none. Written this way
+    rather than as a fixed fixture because every rule below turns on *where* in
+    a span a commit sits, which only a real ordering can express.
+    """
+    root = tmp_path / name
+    (root / "docs" / "items").mkdir(parents=True, exist_ok=True)
+    (root / "docs" / "releases").mkdir(parents=True, exist_ok=True)
+    (root / "docket.toml").write_text('items_dir = "docs/items"\n', encoding="utf-8")
+    for identifier, front in items.items():
+        (root / "docs" / "items" / f"{identifier}-demo.md").write_text(
+            f"---\nid: {identifier}\ntitle: Demo\npriority: P2\neffort: S\n{front}"
+            "classes: docs\nadded: 2026-09-06\n---\n\n**Problem.** A thing.\n"
+            "**Why it matters.** It does.\n**Done when.** Fixed.\n",
+            encoding="utf-8",
+        )
+    _git_run(root, "init", "-q")
+    _git_run(root, "config", "user.email", "test@example.invalid")
+    _git_run(root, "config", "user.name", "Test")
+    for subject, files, tag in history:
+        for relative, text in files.items():
+            written = root / relative
+            written.parent.mkdir(parents=True, exist_ok=True)
+            written.write_text(text, encoding="utf-8")
+        _git_run(root, "add", "-A")
+        _git_run(root, "commit", "-qm", subject)
+        if tag:
+            _git_run(root, "tag", tag)
+    return root
+
+
+#: The ordinary shape: v0.2.4 stamped `#10` and was cut in `#12`, while `#11`
+#: merged before that cut without being stamped. v0.2.5 follows so that v0.2.4's
+#: span is a closed one and therefore judged.
+SPAN_HISTORY: tuple[tuple[str, dict[str, str], str], ...] = (
+    ("PL-9WX1: the stamped one (#10)", {"work.txt": "a"}, ""),
+    ("PL-7KD2: the late one (#11)", {"work.txt": "b"}, ""),
+    ("PL-3NP4: cut v0.2.4 (#12)", {"docs/releases/v0.2.4.md": NOTES_0_2_4}, "v0.2.4"),
+    ("PL-6RT5: cut v0.2.5 (#13)", {"docs/releases/v0.2.5.md": NOTES_0_2_5}, "v0.2.5"),
+)
+
+SPAN_ITEMS = {
+    "PL-9WX1": _closed("10", "v0.2.4"),
+    "PL-7KD2": _closed("11", "v0.2.5"),
+    "PL-3NP4": _closed("12", "v0.2.5"),
+    "PL-6RT5": "status: done\nclosed: 2026-09-14\npr: 13\n",
+}
+
+
+def _span_report(root: Path) -> doc_check.Report:
+    report = doc_check.Report()
+    doc_check.check_tag_span_covers_its_notes(root, report)
+    return report
+
+
+def test_a_closure_inside_a_span_its_notes_never_name_is_an_error(tmp_path: Path) -> None:
+    """`PL-P669`: the two records disagree and neither points at the other.
+
+    `#11` merged while v0.2.4 was being cut, so `git describe --contains`
+    resolves it to v0.2.4 while v0.2.4's own notes stop short of it.
+    """
+    errors = _span_report(_span_repo(tmp_path, SPAN_HISTORY, SPAN_ITEMS)).errors
+
+    assert len(errors) == 1
+    assert errors[0].startswith("docs/releases/v0.2.4.md: 1 closing pull request")
+    assert "(#11)" in errors[0]
+
+
+def test_the_error_carries_the_line_that_clears_it(tmp_path: Path) -> None:
+    """The message states the repair rather than the rule, so it can be pasted.
+
+    `CLAUDE.md` asks a tool to print the few lines a decision needs instead of
+    making the reader assemble them; here that is the bullet and the heading it
+    belongs under, which is also what stops the line landing among what the cut
+    stamped.
+    """
+    errors = _span_report(_span_repo(tmp_path, SPAN_HISTORY, SPAN_ITEMS)).errors
+
+    assert doc_check.SPAN_HEADING in errors[0]
+    assert "`- PL-7KD2 - #11 - described in v0.2.5`" in errors[0]
+
+
+def test_naming_the_closure_in_the_notes_clears_it(tmp_path: Path) -> None:
+    """The pointer is the whole requirement, and where it sits is the reader's.
+
+    Both dispositions `PL-028F` left with a person satisfy this: a cut re-run
+    that absorbs the work names it among the bullets, and a pointer section
+    names it while leaving the cut's own account alone.
+    """
+    root = _span_repo(tmp_path, SPAN_HISTORY, SPAN_ITEMS)
+    notes = root / "docs" / "releases" / "v0.2.4.md"
+    notes.write_text(
+        notes.read_text(encoding="utf-8")
+        + f"\n{doc_check.SPAN_HEADING}\n\n"
+        + doc_check.span_bullet(("PL-7KD2",), "11", "v0.2.5")
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert _span_report(root).errors == []
+
+
+def test_a_span_whose_notes_name_every_closure_is_quiet(tmp_path: Path) -> None:
+    """The common case, and the one that decides whether this check earns its place."""
+    notes = NOTES_0_2_4 + "- PL-7KD2 The late one - #11\n"
+    history = tuple(
+        (subject, {"docs/releases/v0.2.4.md": notes}, tag)
+        if tag == "v0.2.4"
+        else (subject, files, tag)
+        for subject, files, tag in SPAN_HISTORY
+    )
+
+    report = _span_report(_span_repo(tmp_path, history, SPAN_ITEMS))
+
+    assert (report.errors, report.advisories, report.declined) == ([], [], [])
+
+
+def test_a_releases_own_cut_is_not_a_closure_its_notes_owe_a_line(tmp_path: Path) -> None:
+    """Inside its own span by construction, and stamped by the next release every time.
+
+    `#12` cut v0.2.4 and `PL-3NP4` carries `milestone: v0.2.5`, which is the
+    convention `ROADMAP.md` § "Tags" writes down. It accounted for 40 of the 63
+    span-crossing closures in this repository on 2026-09-22, so reporting it
+    would bury the 23 that are findings.
+    """
+    errors = _span_report(_span_repo(tmp_path, SPAN_HISTORY, SPAN_ITEMS)).errors
+
+    assert not any("#12" in message for message in errors)
+
+
+def test_the_cut_is_found_from_the_notes_it_added_not_from_its_subject(tmp_path: Path) -> None:
+    """A release whose cut is worded another way keeps its exemption.
+
+    "cut v0.2.4" is prose and nothing holds a subject to it; the commit that
+    *added* `docs/releases/v0.2.4.md` is a fact about the tree.
+    """
+    history = tuple(
+        ("PL-3NP4: ship it (#12)", files, tag) if tag == "v0.2.4" else (subject, files, tag)
+        for subject, files, tag in SPAN_HISTORY
+    )
+
+    errors = _span_report(_span_repo(tmp_path, history, SPAN_ITEMS)).errors
+
+    assert not any("#12" in message for message in errors)
+
+
+def test_the_newest_spans_strangers_are_not_reported_yet(tmp_path: Path) -> None:
+    """Its pointer would have to name a release that has not been cut.
+
+    Requiring it would turn `make check` red on a state nobody can clear, which
+    is the failure `PL-8HJ2` removed and the one `check_tags` stays silent on
+    for the same reason. `#13` cut v0.2.5 and is stamped by nothing yet.
+    """
+    errors = _span_report(_span_repo(tmp_path, SPAN_HISTORY, SPAN_ITEMS)).errors
+
+    assert not any("v0.2.5.md" in message for message in errors)
+
+
+def test_a_dropped_items_pull_request_is_not_a_closure(tmp_path: Path) -> None:
+    """Nothing shipped, so no release's notes owe it a line."""
+    items = dict(SPAN_ITEMS)
+    items["PL-7KD2"] = "status: dropped\nclosed: 2026-09-07\nreason: Superseded.\npr: 11\n"
+
+    assert _span_report(_span_repo(tmp_path, SPAN_HISTORY, items)).errors == []
+
+
+def test_a_closure_whose_subject_carries_no_number_is_invisible(tmp_path: Path) -> None:
+    """A floor on what the span read can prove, not a rule about it.
+
+    85 of this store's recorded pull requests are in that state, all numbered 3
+    to 105, from before the squash-subject convention. Saying nothing is the
+    honest answer: the commit cannot be placed in a span at all.
+    """
+    history = tuple(
+        ("PL-7KD2: the late one", files, tag) if "#11" in subject else (subject, files, tag)
+        for subject, files, tag in SPAN_HISTORY
+    )
+
+    assert _span_report(_span_repo(tmp_path, history, SPAN_ITEMS)).errors == []
+
+
+def test_a_truncated_clone_declines_instead_of_reporting_a_span_it_cannot_walk(
+    tmp_path: Path,
+) -> None:
+    """The shape `check_tags` settled on, withholding only what truncation invents.
+
+    A shallow clone holds some tags and not the commits between them, so a span
+    it cannot walk and one whose notes are genuinely short look identical from
+    inside it.
+    """
+    origin = _span_repo(tmp_path, SPAN_HISTORY, SPAN_ITEMS, name="origin")
+    clone = tmp_path / "shallow"
+    subprocess.run(
+        ("git", "clone", "-q", "--depth", "3", "--no-local", origin.as_uri(), str(clone)),
+        check=True,
+        capture_output=True,
+    )
+
+    report = _span_report(clone)
+
+    assert report.errors == []
+    assert any("shallow clone" in message for message in report.declined)
+
+
+def test_a_store_that_will_not_read_declines(tmp_path: Path) -> None:
+    """A check that never ran is never reported as one that passed (`PL-XCYB`)."""
+    root = _span_repo(tmp_path, SPAN_HISTORY, SPAN_ITEMS)
+    for brief in (root / "docs" / "items").glob("*.md"):
+        brief.unlink()
+    (root / "docs" / "items").rmdir()
+
+    report = _span_report(root)
+
+    assert report.errors == []
+    assert any("item store would not read" in message for message in report.declined)
+
+
+def test_one_pull_request_stamped_by_two_releases_gets_a_line_for_each(tmp_path: Path) -> None:
+    """`#225` closed `PL-SZ56`, stamped by v0.3.0, and `PL-21GS`, stamped by v0.4.15.
+
+    One bullet naming both releases would leave the reader to work out which id
+    is described where, which is the lookup the pointer exists to remove.
+    """
+    items = dict(SPAN_ITEMS)
+    items["PL-9WX1"] = _closed("11", "v0.3.0")
+    notes = NOTES_0_2_4.replace("- PL-9WX1 The stamped one - #10\n", "")
+    history = tuple(
+        (subject, {"docs/releases/v0.2.4.md": notes}, tag)
+        if tag == "v0.2.4"
+        else (subject, files, tag)
+        for subject, files, tag in SPAN_HISTORY
+    )
+
+    errors = _span_report(_span_repo(tmp_path, history, items)).errors
+
+    assert len(errors) == 1
+    assert "`- PL-7KD2 - #11 - described in v0.2.5`" in errors[0]
+    assert "`- PL-9WX1 - #11 - described in v0.3.0`" in errors[0]
+
+
+def test_a_repository_that_writes_no_release_notes_is_told_nothing(tmp_path: Path) -> None:
+    """Silence rather than a decline, the shape `release.is_untagged` uses.
+
+    Adopting the practice is the project's decision and not this tool's, so a
+    checkout that keeps no notes is told nothing at all. A decline there would
+    report an unrun check on every run of every such checkout, which costs
+    attention forever and changes no decision.
+    """
+    root = _span_repo(tmp_path, SPAN_HISTORY, SPAN_ITEMS, name="bare")
+    for notes in (root / "docs" / "releases").glob("*.md"):
+        notes.unlink()
+    (root / "docs" / "releases").rmdir()
+
+    report = _span_report(root)
+
+    assert (report.errors, report.declined) == ([], [])

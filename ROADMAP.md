@@ -127,18 +127,39 @@ release claims it. That is not rare and it is not visible afterwards: measured
 2026-09-14 across 47 tagged spans, 12 closing pull requests merged inside a
 tag's span its own notes never named, in 11 distinct spans - close to one
 release in four - and a squash merge gives the release commit one date, so
-`main`'s own history cannot say how long the branch was open.
+`main`'s own history cannot say how long the branch was open. Re-counted
+2026-09-22 across 65 spans: **20 closing pull requests in 16 spans**, the two
+most recent completed spans among them, so the rate has held rather than
+decayed (`PL-P669`).
 
 So the two records answer different questions, deliberately. **The tag span is
 what shipped**; `git describe --contains` is authoritative for that and is the
 provenance guarantee above. **The notes are what the cut stamped**, which is
 the release's own account of the work it was for. Where they differ, the work
-is described in the *next* release's notes, and this project already writes
-that convention down for the one case that recurs every time - a release's own
-cut item, which the next release names.
+is described in another release's notes - usually the next one, and this
+project already writes that convention down for the one case that recurs every
+time, a release's own cut item. Not always the next, though: `#412` was
+attributed back to v0.4.6, the release its code shipped in, and `#225` was
+recorded twelve releases later by v0.4.15. So the pointer below names the
+release rather than assuming one.
 
-Nothing reconciles them automatically, and that was the decision rather than an
-omission. Re-stamping at merge would need a job fired by the merge, which
+**Each notes file carries its own pointer, since 2026-09-22.** A span reaching
+work the cut did not stamp says so in an `### also inside this tag's span`
+section naming the pull request and the release that does describe it, and
+`tools/doc_check.py`'s `check_tag_span_covers_its_notes` fails `make check` on
+the next span that has one and does not. The section is additive, so the cut's
+own account of what it was for is untouched; it is written after the tag, which
+is the one time a notes file is edited and is safe because a tagged release is
+never re-cut. Two spans are exempt and neither for quiet: a release's own cut
+pull request, which is inside its own span by construction and stamped by the
+next release every time, and the newest tag's span, whose pointer would have to
+name a release nobody has cut yet. The claim this makes is navigation only, and
+it falls the moment either mechanism behind it changes - the tag going on the
+merge commit, or the notes being rendered at the cut.
+
+Nothing *reconciles* them automatically, and that was the decision rather than
+an omission - the pointer above is navigation, and leaves the reconciliation
+untouched. Re-stamping at merge would need a job fired by the merge, which
 cannot write to `main` here: a push made with `GITHUB_TOKEN` starts no
 workflow, so the required status checks can never report on it (`PL-N5WZ`).
 Every variant that does land needs a person at the merge anyway, and absorbing

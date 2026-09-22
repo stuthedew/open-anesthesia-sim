@@ -158,6 +158,30 @@ def notes_name(version: str) -> str:
     return f"v{version.strip().lstrip('v')}.md"
 
 
+#: Where a notes file stops claiming work and starts pointing at it. Bullets
+#: below this heading name a closing pull request inside this tag's span that
+#: the *cut* did not stamp, and the release another cut did stamp it in -
+#: `ROADMAP.md` § "Tags" for why the two records differ, and
+#: `doc_check.check_tag_span_covers_its_notes` for what holds them to it.
+SPAN_HEADING = "### also inside this tag's span"
+
+
+def notes_claims(text: str) -> tuple[str, str]:
+    """One notes file split into what its release claims and what it only points at.
+
+    Every reader and writer of a bullet below takes the first half, and the
+    writer puts the second back byte for byte. The pointer section is bullets
+    of the same shape naming items *another* release stamped, so a reader given
+    the whole file reports each one as the notes and the store disagreeing -
+    which is the thing the pointer exists to say - and `restate_references`
+    would append a second reference to a line that already carries one.
+
+    The second half keeps its heading, so `head + tail` is the file.
+    """
+    head, separator, tail = text.partition(SPAN_HEADING)
+    return head, separator + tail
+
+
 #: An item id at the head of a notes bullet, which is the only place a release's
 #: notes *claim* an item. Anchored deliberately: the rest of the line is the
 #: item's title, and titles quote other ids - "PL-2GQW PL-L9JS's not-delegable
@@ -183,7 +207,9 @@ def notes_by_version(root: Path, notes_dir: str = NOTES_DIR) -> dict[str, frozen
     if not directory.is_dir():
         return {}
     return {
-        path.stem: frozenset(NOTES_ENTRY_RE.findall(path.read_text(encoding="utf-8")))
+        path.stem: frozenset(
+            NOTES_ENTRY_RE.findall(notes_claims(path.read_text(encoding="utf-8"))[0])
+        )
         for path in sorted(directory.glob("v*.md"))
         if SEMVER_RE.match(path.stem)
     }
@@ -436,7 +462,8 @@ def unreferenced_by_version(root: Path, notes_dir: str = NOTES_DIR) -> dict[str,
     for path in sorted(directory.glob("v*.md")):
         if not SEMVER_RE.match(path.stem):
             continue
-        if missing := unreferenced(path.read_text(encoding="utf-8")):
+        claims, _ = notes_claims(path.read_text(encoding="utf-8"))
+        if missing := unreferenced(claims):
             found[path.stem] = missing
     return found
 
@@ -472,7 +499,8 @@ def restate_references(text: str, by_id: Mapping[str, Item]) -> tuple[str, tuple
         repaired.append(identifier)
         return f"- {identifier}{tail}{suffix}"
 
-    return NOTES_BULLET_RE.sub(restate, text), tuple(repaired)
+    claims, pointer = notes_claims(text)
+    return NOTES_BULLET_RE.sub(restate, claims) + pointer, tuple(repaired)
 
 
 @dataclass(frozen=True)

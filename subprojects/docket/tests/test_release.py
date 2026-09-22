@@ -10,10 +10,12 @@ import pytest
 
 from docket.model import Item
 from docket.release import (
+    SPAN_HEADING,
     Readiness,
     already_released,
     is_untagged,
     milestones,
+    notes_claims,
     outstanding_roadmap_edits,
     prepare_bump,
     read_version,
@@ -462,6 +464,70 @@ def test_unreferenced_by_version_reports_only_the_releases_with_a_gap(tmp_path: 
 
 def test_a_project_that_writes_no_notes_reports_nothing_rather_than_raising(tmp_path: Path) -> None:
     assert unreferenced_by_version(tmp_path) == {}
+
+
+# --- the pointer section, which is not a claim -------------------------------
+
+POINTED = (
+    SHIPPED
+    + f"\n{SPAN_HEADING}\n\n"
+    + "`git describe --contains` resolves these commits to v0.3.0, but this cut did\n"
+    + "not stamp them, so each is described in the release named beside it.\n\n"
+    + "- PL-4444 - #52 - described in v0.3.1\n"
+)
+
+
+def test_notes_claims_splits_a_file_into_its_claims_and_its_pointer() -> None:
+    """Both halves back, so a writer can put the second one down byte for byte."""
+    claims, pointer = notes_claims(POINTED)
+
+    assert claims + pointer == POINTED
+    assert pointer.startswith(SPAN_HEADING)
+    assert "PL-4444" not in claims
+
+
+def test_a_file_with_no_pointer_section_is_all_claims() -> None:
+    assert notes_claims(SHIPPED) == (SHIPPED, "")
+
+
+def test_a_pointed_item_is_not_read_as_shipped_by_the_release_pointing_at_it(
+    tmp_path: Path,
+) -> None:
+    """`PL-P669`: the pointer names work *another* cut stamped, which is its content.
+
+    Read as a claim it is the exact shape `_check_release_notes` reports as the
+    notes and the store disagreeing - so every pointer would redden the tree it
+    was added to repair.
+    """
+    from docket.release import notes_by_version
+
+    notes = tmp_path / "docs" / "releases"
+    notes.mkdir(parents=True)
+    (notes / "v0.3.0.md").write_text(POINTED, encoding="utf-8")
+
+    assert notes_by_version(tmp_path) == {"v0.3.0": frozenset({"PL-1111", "PL-2222", "PL-3333"})}
+
+
+def test_a_pointed_bullet_is_not_reported_as_missing_a_reference(tmp_path: Path) -> None:
+    """It carries the number already, in the grammar the pointer uses rather than the cut's."""
+    notes = tmp_path / "docs" / "releases"
+    notes.mkdir(parents=True)
+    (notes / "v0.3.0.md").write_text(POINTED, encoding="utf-8")
+
+    assert unreferenced_by_version(tmp_path) == {"v0.3.0": ("PL-2222",)}
+
+
+def test_restating_leaves_the_pointer_section_byte_for_byte() -> None:
+    """Otherwise `make fix` appends a second reference to a line that has one.
+
+    `- PL-4444 - #52 - described in v0.3.1` ends in prose rather than in
+    `REFERENCED_RE`'s tail, so a restate reading the whole file would write
+    `... - described in v0.3.1 — #52` and the pointer would stop being one.
+    """
+    restated, repaired = restate_references(POINTED, {"PL-4444": _item("PL-4444")})
+
+    assert repaired == ()
+    assert restated.endswith("- PL-4444 - #52 - described in v0.3.1\n")
 
 
 # --- what a release leaves the roadmap owing ---------------------------------

@@ -101,12 +101,16 @@ try:
     # borrowed rather than reimplemented. `roadmap` carries the release-train
     # grammar and the frozen-list reader; `config`, `model` and `store` carry
     # the queue, which `check_gate_reentries` reads an item's `classes` and
-    # `status` from. A second copy of either grammar would drift from the one
+    # `status` from; `release` carries the notes format - where a cut writes
+    # them, and the heading below which a bullet stops being a claim - which
+    # `check_tag_span_covers_its_notes` reads and must not spell a second time.
+    # A second copy of either grammar would drift from the one
     # `bin/docket check` enforces, and the drift would be in the documents that
     # say which milestone is current and what it still owes.
     from docket.config import Config
     from docket.config import load as load_docket_config
     from docket.model import CLOSED_STATUSES, Item
+    from docket.release import NOTES_DIR, SPAN_HEADING
     from docket.roadmap import (
         BASELINE_MARK,
         DECLARATION_RE,
@@ -138,7 +142,8 @@ try:
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
-        "grammar, docket/vcs.py for the tag read and the default-branch list, and "
+        "grammar, docket/vcs.py for the tag read and the default-branch list, "
+        "docket/release.py for where a cut writes its notes, and "
         "docket/{config,model,store}.py for the queue, "
         f"and could not import them: {error}"
     ) from error
@@ -2864,6 +2869,259 @@ def check_tags(root: Path, report: Report) -> None:
             )
 
 
+# --- what a tag's span covers -----------------------------------------------
+
+
+#: A squash merge's subject ends with the pull request it closed, which is how
+#: `bin/docket record` recovers a closure's number and how `docket check` holds
+#: a recorded one to the default branch. Read the same way here rather than
+#: spelled a second time.
+SQUASH_PR_RE = re.compile(r"\(#(\d+)\)\s*$")
+
+#: A tag as `%D` prints it under `--decorate=full`: comma-separated ref names,
+#: a tag among them written in full. Matching the full form rather than the
+#: `tag: ` prefix is what keeps this independent of the log's decoration style.
+TAG_REF_RE = re.compile(r"refs/tags/([^,\s]+)")
+
+
+def _release_order(version: str) -> tuple[int, int, int]:
+    """A release version as a comparable triple; an unreadable one sorts first."""
+    return version_tuple(version) or (0, 0, 0)
+
+
+def span_bullet(identifiers: Sequence[str], number: str, described: str) -> str:
+    """One line of a `SPAN_HEADING` section, spelled in one place.
+
+    The error message that asks for the line and any pass that writes one both
+    read this, so what a session is told to paste is what the check accepts.
+    """
+    return f"- {', '.join(identifiers)} - #{number} - described in {described}"
+
+
+@dataclass(frozen=True)
+class _TagSpans:
+    """One read of this checkout's tagged history, in the shapes the rule needs."""
+
+    #: Commit hash -> the release version whose span holds it. A span runs from
+    #: just after one release tag up to and including the next, which is what
+    #: `git describe --contains` resolves a commit to.
+    version: Mapping[str, str]
+    #: Commit hash -> the pull request number its squash subject names.
+    pull_request: Mapping[str, str]
+    #: Release version -> the commit that added its notes file. That commit is
+    #: the cut, and its squash lands on the default branch carrying the tag.
+    cut: Mapping[str, str]
+    #: The newest release version reachable here, whose span is not judged.
+    newest: str
+
+
+def _tag_spans(root: Path) -> _TagSpans | None:
+    """This checkout's history in span form, or `None` where git would not answer.
+
+    Read from `HEAD` rather than from the default branch. `HEAD` is the one ref
+    that always exists - a bare checkout, a detached CI merge ref, a feature
+    branch - and it carries the tagged history in every one of them, where
+    `origin/main` is absent in some and stale in others. A feature branch's own
+    commits sit past the newest tag and so fall outside every span, which is
+    the same answer the default branch would give for them.
+
+    Two passes rather than one, because they ask git different questions: which
+    span a commit is in is read off the decorations of a plain log, and which
+    commit cut a release is read off the one that *added* its notes file. The
+    second is deliberately not inferred from the subject line - "cut v0.4.28"
+    is prose, and a release whose subject is worded another way would silently
+    lose its exemption.
+    """
+    history = _git_text(root, "log", "--format=%H%x09%D%x09%s", "--decorate=full", "HEAD")
+    if history is None:
+        return None
+    version: dict[str, str] = {}
+    pull_request: dict[str, str] = {}
+    current = ""
+    for line in history.splitlines():
+        commit, _, rest = line.partition("\t")
+        decoration, _, subject = rest.partition("\t")
+        tagged = [
+            match.group("version")
+            for name in TAG_REF_RE.findall(decoration)
+            if (match := RELEASE_TAG_RE.match(name)) is not None
+        ]
+        if tagged:
+            # Newest first, so the tag met here opens the span every older
+            # commit belongs to - and the tagged commit is in its own span,
+            # which is where `git describe --contains` puts it.
+            current = max(tagged, key=_release_order)
+        if current:
+            version[commit] = current
+        found = SQUASH_PR_RE.search(subject)
+        if found:
+            pull_request[commit] = found.group(1)
+    if not version:
+        return None
+
+    added = _git_text(
+        root, "log", "--diff-filter=A", "--format=%x00%H", "--name-only", "HEAD", "--", NOTES_DIR
+    )
+    if added is None:
+        return None
+    cut: dict[str, str] = {}
+    commit = ""
+    for line in added.splitlines():
+        if line.startswith("\x00"):
+            commit = line[1:].strip()
+        elif commit and line.strip().endswith(".md"):
+            match = RELEASE_TAG_RE.match(PurePosixPath(line.strip()).stem)
+            if match is not None:
+                # `setdefault` under a newest-first log keeps the most recent
+                # add, which is the cut a notes file deleted and rewritten
+                # still has.
+                cut.setdefault(match.group("version"), commit)
+    return _TagSpans(version, pull_request, cut, max(version.values(), key=_release_order))
+
+
+def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
+    """Hold each release tag's span to notes that name every closure inside it.
+
+    A tag is what a commit resolves to. `git describe --contains` answers with
+    a version, the reader opens that version's notes, and where the work is not
+    there the trail stops: the two records disagree about what shipped and
+    neither points at the other. Measured over this repository on 2026-09-22,
+    20 closing pull requests across 16 tagged spans were in exactly that state,
+    against 12 across 11 when `PL-P669` was filed on 2026-09-14 - the mechanism
+    is live, and each instance is permanent once the tag is pushed.
+
+    **What this does not decide.** Whether to absorb such work into the release
+    that shipped it or let it go to the next release is a judgment `PL-028F`
+    settled and left with a person: absorbing means the release narrative
+    describes work that cut did not do. So the rule asks for the *pointer* and
+    nothing else, and both dispositions satisfy it - `ROADMAP.md` § "Tags"
+    carries the reasoning, and `SPAN_HEADING` is where a pointer goes.
+
+    **Two exemptions, each for a stated reason rather than for quiet.**
+
+    The release's own cut is the first. Its pull request is inside its own span
+    by construction and is stamped by the *next* release, every time, which
+    `ROADMAP.md` already writes down as the one case that recurs on every
+    release; it accounted for 40 of the 63 span-crossing closures here. Taking
+    it from the commit that added the notes file makes the exemption a fact
+    about the tree rather than a reading of prose.
+
+    The newest tag's span is the second. Its strangers are described in a
+    release that has not been cut yet, so a pointer naming one cannot be
+    written and requiring it would turn `make check` red on a state nobody can
+    clear - the failure `PL-8HJ2` removed and `check_tags` stays silent on for
+    the same reason. The span is judged from the next cut onward, when the
+    release that describes the work exists and can be named.
+
+    **What it cannot see, and says nothing about.** A closure whose squash
+    subject carries no `(#N)` is invisible to the span read: 85 of this store's
+    recorded pull requests are, all of them numbered 3 to 105, from before the
+    convention. A truncated clone declines rather than reporting, because a
+    span this checkout cannot walk and one whose notes are genuinely short look
+    identical from inside it.
+    """
+    held = tags(root)
+    if not held.known or not held.names:
+        return
+    # A repository that writes no release notes has nothing for this rule to
+    # hold, and is told so by silence rather than by a decline - the reasoning
+    # `release.is_untagged` gives for the tag read, one document along:
+    # adopting the practice is the project's decision and not this tool's.
+    if not (root / NOTES_DIR).is_dir():
+        return
+    store = _read_store(root)
+    if store is None:
+        report.declined.append(
+            f"{NOTES_DIR}: no tag span was compared against its notes, because the item "
+            "store would not read; `bin/docket check` is what reports why"
+        )
+        return
+    spans = _tag_spans(root)
+    if spans is None:
+        report.declined.append(
+            f"{NOTES_DIR}: no tag span was compared against its notes, because git would "
+            "not read this checkout's history"
+        )
+        return
+
+    commit_of = {number: commit for commit, number in spans.pull_request.items()}
+    # Version -> (pull request, the release describing it) -> the items it
+    # carried. One line per pull request is what the reader wants, and the
+    # release is part of the key because one pull request can close items that
+    # two different cuts went on to stamp - #225 closed `PL-SZ56`, stamped by
+    # v0.3.0, and `PL-21GS`, stamped twelve releases later by v0.4.15.
+    uncovered: dict[str, dict[tuple[str, str], list[Item]]] = {}
+    for item in sorted(store.items.values(), key=lambda entry: entry.identifier):
+        # `done` rather than `CLOSED_STATUSES`: a dropped item shipped nothing,
+        # so no release's notes owe it a line and its pull request is not a
+        # closure the span is missing.
+        if item.status != "done" or not item.pr:
+            continue
+        commit = commit_of.get(item.pr)
+        if commit is None:
+            continue
+        version = spans.version.get(commit)
+        if version is None or version == spans.newest or spans.cut.get(version) == commit:
+            continue
+        notes = root / NOTES_DIR / f"v{version}.md"
+        if not notes.is_file():
+            continue
+        if f"#{item.pr}" in notes.read_text(encoding="utf-8"):
+            continue
+        described = item.milestone or "a later release"
+        uncovered.setdefault(version, {}).setdefault((item.pr, described), []).append(item)
+
+    findings: list[str] = []
+    for version in sorted(uncovered, key=_release_order):
+        rows = sorted(uncovered[version], key=lambda row: (int(row[0]), row[1]))
+        numbers = sorted({number for number, _ in rows}, key=int)
+        bullets = [
+            "`"
+            + span_bullet(
+                tuple(entry.identifier for entry in uncovered[version][row]), row[0], row[1]
+            )
+            + "`"
+            for row in rows
+        ]
+        findings.append(
+            f"{NOTES_DIR}/v{version}.md: "
+            + _plural(len(numbers), "closing pull request", "closing pull requests")
+            + " inside v"
+            + version
+            + "'s tag span "
+            + ("is", "are")[len(numbers) > 1]
+            + " named nowhere in its notes ("
+            + ", ".join(f"#{number}" for number in numbers)
+            + f"), so `git describe --contains` resolves {('it', 'them')[len(numbers) > 1]} to a "
+            "release whose own account does not reach the work. Add "
+            + ("it", "them")[len(numbers) > 1]
+            + f' under a "{SPAN_HEADING}" heading - '
+            + "; ".join(bullets)
+            + f" - rather than among what the cut stamped; {ROADMAP} "
+            '§ "Tags" is why the two records differ'
+        )
+
+    # Only a finding a truncated checkout could have invented is withheld, and
+    # only when there is one - the shape `check_tags` settled on, for the same
+    # reason: declining on `is_shallow` alone would silence this everywhere it
+    # runs, including the clones that have since fetched and can answer.
+    truncated = is_shallow(root)
+    if findings and truncated is not False:
+        report.declined.append(
+            f"{NOTES_DIR}: "
+            + (
+                "the checkout is a shallow clone"
+                if truncated
+                else "git cannot say whether this checkout is complete"
+            )
+            + f", so the {_plural(len(findings), 'span', 'spans')} whose notes look short here "
+            "cannot be told from a span this clone cannot walk; "
+            "`git fetch --unshallow --tags` makes the question answerable"
+        )
+    else:
+        report.errors.extend(findings)
+
+
 def _project_version(pyproject: Path) -> str:
     match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject.read_text(encoding="utf-8"), re.M)
     return match.group(1) if match else ""
@@ -4360,6 +4618,7 @@ def analyze(root: Path) -> Report:
     check_gate_reentries(root, report)
     check_gate_dispositions(root, report)
     check_tags(root, report)
+    check_tag_span_covers_its_notes(root, report)
     check_make_targets(root, documents, report)
     check_workflow_paths(root, report)
     check_coverage_gate(root, report)
