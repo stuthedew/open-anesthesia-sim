@@ -1,11 +1,12 @@
 ---
 id: PL-615L
-title: "Drop PL-W8NH as a duplicate of PL-ZM8P once #864 and #866 both land: both name check_quoted_sources holding closed briefs to current prose, PL-ZM8P is the one implemented"
+title: Drop PL-W8NH as a duplicate of PL-ZM8P once #864 and #866 both land: both name check_quoted_sources holding closed briefs to current prose, PL-ZM8P is the one implemented
 priority: P3
 effort: S
 status: done
 classes: housekeeping
 feature: dev-tooling
+milestone: v0.5.2
 added: 2026-09-21
 closed: 2026-09-21
 pr: 868

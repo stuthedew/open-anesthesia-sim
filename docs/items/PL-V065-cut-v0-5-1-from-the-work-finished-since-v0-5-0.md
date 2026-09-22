@@ -1,11 +1,12 @@
 ---
 id: PL-V065
-title: "Cut v0.5.1 from the work finished since v0.5.0: the grooming, sweep and queue-tooling fixes that follow the MVP, with nothing computational moved"
+title: Cut v0.5.1 from the work finished since v0.5.0: the grooming, sweep and queue-tooling fixes that follow the MVP, with nothing computational moved
 priority: P2
 effort: S
 status: done
 classes: housekeeping
 feature: release-process
+milestone: v0.5.2
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-21
 closed: 2026-09-21

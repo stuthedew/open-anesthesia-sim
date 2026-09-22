@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: one-id-grammar
+milestone: v0.5.2
 touches: tools/generator_check.py, tools/doc_check.py, tools/item_reads.py, tools/dead_ends.py, tools/pr_body_check.py, tools/fixture_id_check.py, tests/unit/test_generator_check.py, tests/unit/test_doc_check.py, tests/unit/test_dead_ends.py, tests/unit/test_pr_body_check.py, tests/unit/test_fixture_id_check.py
 added: 2026-09-21
 closed: 2026-09-21

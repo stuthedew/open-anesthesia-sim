@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: project-introduction
+milestone: v0.5.2
 touches: docs/WORKING_NOTES.md
 added: 2026-09-13
 closed: 2026-09-21

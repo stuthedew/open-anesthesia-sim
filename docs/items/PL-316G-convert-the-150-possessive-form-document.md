@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, infra
 feature: dev-tooling
+milestone: v0.5.2
 touches: docs/, src/anesthesia_sim/, tests/, tools/, CLAUDE.md, .claude/, ROADMAP.md, README.md, subprojects/docket/, docket.toml, Makefile
 added: 2026-09-13
 closed: 2026-09-21

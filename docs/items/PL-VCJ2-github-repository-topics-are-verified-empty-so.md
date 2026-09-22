@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: project-introduction
+milestone: v0.5.2
 touches: docs/items/PL-VCJ2-github-repository-topics-are-verified-empty-so.md
 added: 2026-09-21
 closed: 2026-09-21

@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 feature: one-id-grammar
+milestone: v0.5.2
 touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py, subprojects/docket/tests/test_store.py, Makefile, .github/workflows/quality.yml, tests/unit/test_tools_portability.py, tests/unit/test_contrast_check.py, tests/unit/test_doc_check.py, tests/unit/test_generator_check.py, tests/unit/test_item_read_log.py, tests/unit/test_workflow_paths_check.py, .claude/rules/citation-drift.md, .claude/skills/docket/modes/ideas.md
 added: 2026-09-21
 closed: 2026-09-21

@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.5.2
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-19
 closed: 2026-09-21

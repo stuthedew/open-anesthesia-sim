@@ -1,11 +1,12 @@
 ---
 id: PL-ZM8P
-title: "doc_check's check_quoted_sources reads every item file while check_line_citations reads only live ones, so a closed brief quoting the Current baseline heading fails make check at the next release cut"
+title: doc_check's check_quoted_sources reads every item file while check_line_citations reads only live ones, so a closed brief quoting the Current baseline heading fails make check at the next release cut
 priority: P2
 effort: S
 status: done
 classes: defect
 feature: dev-tooling
+milestone: v0.5.2
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-21
 closed: 2026-09-21
