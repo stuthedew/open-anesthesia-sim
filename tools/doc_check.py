@@ -137,8 +137,10 @@ try:
     # repository, timed out - into an empty answer, and a check that asked the
     # question itself would either duplicate that or, by omitting it, fail on a
     # checkout with no git at all. The emptiness is read here as "this checkout
-    # cannot say", never as "there are no tags".
-    from docket.vcs import DEFAULT_BRANCHES, is_shallow, tags
+    # cannot say", never as "there are no tags". `GitRunner` is borrowed for its
+    # blob batch, which answers every tag's `pyproject.toml` from one process,
+    # and `answered` for telling git's silence from an empty file.
+    from docket.vcs import DEFAULT_BRANCHES, GitRunner, answered, is_shallow, tags
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
@@ -435,6 +437,15 @@ QUOTED_SOURCE_RE = re.compile(
 TAGS_MARK_RE = re.compile(r"^\*\*Tags\.\*\*")
 UNTAGGED_CLAIM_RE = re.compile(
     r"\*\*(?P<count>[A-Za-z]+|\d+)\s+versions?\s+(?:are|is)\s+untagged\*\*", re.I
+)
+# The second exception, written the same way: a version whose tag is on the
+# commit it shipped from although that commit's version file was never bumped.
+# The wording is the claim - the release went out like that - so a tag that is
+# merely on the wrong commit cannot honestly be excused by it, and is moved.
+STALE_VERSION_CLAIM_RE = re.compile(
+    r"\*\*(?P<count>[A-Za-z]+|\d+)\s+versions?\s+shipped\s+with\s+"
+    r"a\s+stale\s+version\s+file\*\*",
+    re.I,
 )
 # `: v0.1.0, v0.2.0 and v0.3.0` - read one version at a time so the list ends
 # where the prose resumes, rather than sweeping up every version in the region.
@@ -2682,14 +2693,18 @@ def _version_list(text: str, start: int) -> list[str]:
         position = candidate.end()
 
 
-def _untagged_claim(body: str, first_line: int) -> tuple[frozenset[str], list[str], int]:
-    """The versions the roadmap says went out untagged, and whether it counts them right.
+def _version_claim(
+    claim: re.Pattern[str], said: str, body: str, first_line: int
+) -> tuple[frozenset[str], list[str], int]:
+    """The versions an exception sentence names, and whether it counts them right.
 
     Two sentences that each agree with `git tag` can still disagree with each
     other, which is why the count is read at all: it is the one part of the
-    claim that no comparison with the repository would catch.
+    claim that no comparison with the repository would catch. Both exceptions
+    to the `**Tags.**` statement take this one form, and `said` is how an error
+    quotes the sentence back.
     """
-    match = UNTAGGED_CLAIM_RE.search(body)
+    match = claim.search(body)
     if match is None:
         return frozenset(), [], 0
     line = first_line + body[: match.start()].count("\n")
@@ -2703,7 +2718,7 @@ def _untagged_claim(body: str, first_line: int) -> tuple[frozenset[str], list[st
         return (
             frozenset(named),
             [
-                f"{ROADMAP}:{line}: the sentence says {stated} untagged, but names "
+                f"{ROADMAP}:{line}: the sentence says {stated} {said}, but names "
                 f"{len(named)}; the two halves cannot both be right"
             ],
             line,
@@ -2772,6 +2787,10 @@ def check_tags(root: Path, report: Report) -> None:
     --contains` only fails once history has moved past the gap. The reminder
     to tag also still arrives where it can be answered, from `docket release`,
     which refuses to cut the next release while the previous one is untagged.
+
+    All of that turns on whether a tag *exists*. Whether a present tag sits on
+    its own release's commit is the other question, and `_check_tag_versions`
+    below answers it (`PL-YKSD`).
     """
     roadmap = root / ROADMAP
     if not roadmap.is_file():
@@ -2793,14 +2812,22 @@ def check_tags(root: Path, report: Report) -> None:
         return
     first_line, body = region
 
-    untagged, problems, claim_line = _untagged_claim(body, first_line)
+    untagged, problems, claim_line = _version_claim(UNTAGGED_CLAIM_RE, "untagged", body, first_line)
     report.errors.extend(problems)
-    for version in sorted(untagged):
-        if version not in completed:
-            report.errors.append(
-                f"{ROADMAP}:{claim_line}: v{version} is named as untagged, but no row of the "
-                "version table marks it completed"
-            )
+    stale, problems, stale_line = _version_claim(
+        STALE_VERSION_CLAIM_RE, "shipped with a stale version file", body, first_line
+    )
+    report.errors.extend(problems)
+    for named, line, said in (
+        (untagged, claim_line, "untagged"),
+        (stale, stale_line, "shipping with a stale version file"),
+    ):
+        for version in sorted(named):
+            if version not in completed:
+                report.errors.append(
+                    f"{ROADMAP}:{line}: v{version} is named as {said}, but no row of the "
+                    "version table marks it completed"
+                )
 
     # Two reasons to say nothing here, told apart since `PL-ZPDM` and both
     # deliberate: git would not answer, and a repository that holds no tags.
@@ -2867,6 +2894,85 @@ def check_tags(root: Path, report: Report) -> None:
                 f"{ROADMAP}: git holds {name}, but no row of the version table marks v{version} "
                 "completed; a release that shipped is one this table has to name"
             )
+
+    _check_tag_versions(
+        root,
+        report,
+        existing,
+        {version: row.line for version, row in completed.items()},
+        stale,
+        stale_line,
+    )
+
+
+def _check_tag_versions(
+    root: Path,
+    report: Report,
+    existing: frozenset[str],
+    rows: Mapping[str, int],
+    stale: frozenset[str],
+    stale_line: int,
+) -> None:
+    """Hold every release tag to the version its own tree declares (`PL-YKSD`).
+
+    `check_tags` reads which tag *names* exist, and a name cannot show where its
+    tag points. So a tag pushed at the wrong commit read as tagged to every
+    check this project has: `v0.5.3` was pushed before its release merged, onto
+    the commit before its own, whose `pyproject.toml` still declared 0.5.2, and
+    `make check` stayed green across it. `bin/docket release` refuses to cut the
+    next version only while the previous one is *untagged*, so nothing stood
+    between that tag and a release cut on top of it.
+
+    Unlike an absent tag, a present one can always be checked however the
+    checkout was fetched, because git holds a tag only together with the commit
+    it points at. The version is read with the pattern `check_baseline` reads
+    the working tree with, so the two cannot disagree about what a version file
+    declares. A tree that yields none - the file absent at that commit, or git
+    not answering - is declined rather than refused: an empty read cannot say
+    whether the file was never there or is only missing from this clone.
+    """
+    version_file = root / "pyproject.toml"
+    if not version_file.is_file() or not _project_version(version_file):
+        return
+    releases = sorted(
+        (
+            (match.group("version"), name)
+            for name in existing
+            if (match := RELEASE_TAG_RE.match(name)) is not None
+        ),
+        key=lambda release: _release_order(release[0]),
+    )
+    unread: list[str] = []
+    with GitRunner() as run:
+        for version, name in releases:
+            text = run(["show", f"refs/tags/{name}:pyproject.toml"], root)
+            declared = _declared_version(text) if answered(text) else ""
+            if not declared:
+                unread.append(name)
+            elif declared == version:
+                if version in stale:
+                    report.errors.append(
+                        f"{ROADMAP}:{stale_line}: v{version} is named as shipping with a stale "
+                        f"version file, but the commit {name} points at declares {declared}; "
+                        "take it out of that sentence, which has nothing left to excuse"
+                    )
+            elif version not in stale:
+                commit = run(["rev-parse", "--short", f"refs/tags/{name}^{{commit}}"], root)
+                where = f"{ROADMAP}:{rows[version]}" if version in rows else ROADMAP
+                report.errors.append(
+                    f"{where}: {name} points at "
+                    f"{commit.strip() or 'a commit git would not name'}, whose pyproject.toml "
+                    f"declares {declared}. A release tag goes on the commit its release shipped "
+                    "from, so move it there - or, if that release really did ship without its "
+                    "version bump, name it in the Tags statement's sentence on versions that "
+                    "shipped with a stale version file"
+                )
+    if unread:
+        report.declined.append(
+            f"release tags: no version could be read from the pyproject.toml at "
+            f"{', '.join(unread)} - the file is absent or declares none at that commit, or git "
+            "did not answer - so whether each sits on its own release's commit is unknown"
+        )
 
 
 # --- what a tag's span covers -----------------------------------------------
@@ -3123,7 +3229,12 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
 
 
 def _project_version(pyproject: Path) -> str:
-    match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject.read_text(encoding="utf-8"), re.M)
+    return _declared_version(pyproject.read_text(encoding="utf-8"))
+
+
+def _declared_version(text: str) -> str:
+    """The version a `pyproject.toml` declares, or `""` where it declares none."""
+    match = re.search(r'^version\s*=\s*"([^"]+)"', text, re.M)
     return match.group(1) if match else ""
 
 

@@ -113,6 +113,18 @@ and including the latest release - verified on 2026-08-30 across the whole of
 newest tag, which the next release's tag will cover. That span is the
 provenance guarantee PL-J3ZK was opened to restore.
 
+A tag also has to sit on its own release's commit, which its name cannot show:
+`v0.5.3` was pushed before its release merged, onto the commit before its own,
+and read as tagged to every check (`PL-YKSD`). So `tools/doc_check.py` also
+reads each release tag's own `pyproject.toml`, and fails on one declaring a
+version other than the tag's, naming the commit the tag points at and the
+version it holds. **One version shipped with a stale version file**: v0.2.0.
+Its tag is on the release commit `69a5888c`, whose `pyproject.toml` still read
+0.1.0; the bump followed as `8687bdf2`, "Fix stale app version", which went out
+in v0.2.1. Moving the tag onto the bump would make that commit read as shipped
+in v0.2.0, so the tag stays where the release shipped and the exception is
+named here instead.
+
 The tag goes on the merge commit, so between cutting a release and pushing its
 tag the newest version is Completed and carries none. That window is reported
 as an advisory rather than an error: failing it would turn `make check` red on

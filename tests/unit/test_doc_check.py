@@ -1798,9 +1798,7 @@ def test_a_tag_whose_pyproject_version_disagrees_is_refused(tmp_path: Path) -> N
     ), errors
 
 
-def test_a_version_named_as_shipping_with_a_stale_version_file_is_excused(
-    tmp_path: Path,
-) -> None:
+def test_a_version_named_as_shipping_with_a_stale_version_file_is_excused(tmp_path: Path) -> None:
     """v0.2.0's case: the tag is on the commit that shipped, which never bumped.
 
     Moving that tag onto the later bump would claim the bump shipped in the
@@ -1834,9 +1832,7 @@ def test_a_stale_version_file_count_is_held_to_its_names(tmp_path: Path) -> None
     ), errors
 
 
-def test_a_tag_whose_tree_yields_no_version_is_declined_rather_than_refused(
-    tmp_path: Path,
-) -> None:
+def test_a_tag_whose_tree_yields_no_version_is_declined_rather_than_refused(tmp_path: Path) -> None:
     """A tree with no version to read is a question unanswered, not a wrong answer.
 
     An empty read cannot say whether the file is absent at that commit or
