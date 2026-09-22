@@ -6,10 +6,10 @@ effort: S
 status: ready
 classes: refactor
 feature: core-domain-language
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_frame.py, tests/integration/test_controller.py, tests/unit/test_chart_frame.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_controller.py, tests/unit/test_chart_frame.py, tests/integration/test_simulation_view.py
 added: 2026-09-14
 payoff: a branch's fork instant is read under one name, fork.instant_s, so no reader meets a duration's name on an instant and _open_at stops reading one value two ways
-verify: ! grep -rqE '(opened_from|resume_point)\.elapsed_s' src/anesthesia_sim/app tests/integration/test_controller.py tests/unit/test_chart_frame.py && ! grep -q 'def elapsed_s' src/anesthesia_sim/app/controller.py
+verify: ! grep -rqE '(opened_from|resume_point|ResumePoint)\.elapsed_s' src tests && ! grep -q 'def elapsed_s' src/anesthesia_sim/app/controller.py
 ---
 
 **Problem.** ResumePoint.elapsed_s is the fork instant on the case's axis and should be named fork_instant_s, now that the definition's own instants are instant_s
