@@ -52,6 +52,11 @@ SWALLOWED = (
     "make doc-check 2>&1 | grep -i error",
     # Redirecting to a file keeps the status only until something else runs.
     "make check > /tmp/gate.log 2>&1; tail -45 /tmp/gate.log",
+    # `$?` reads the status only while it is still the gate's - here `tail` has
+    # replaced it, so the number printed is 0 whatever the gate did.
+    "make check > /tmp/gate.log 2>&1; tail -45 /tmp/gate.log; echo $?",
+    # After a background launch `$?` is the launch, never the gate.
+    "make check & echo $?",
     # The fallback succeeds, so the failure never reaches the caller.
     "make check || true",
     # Backgrounded: the string exits before the gate has an answer.
@@ -122,6 +127,12 @@ PRESERVED = (
     # `&&` short-circuits on failure, so the string still exits non-zero.
     "make check && tail -45 /tmp/gate.log",
     "make check > /tmp/gate.log 2>&1 && tail -45 /tmp/gate.log",
+    # Reading `$?` straight out into the output. The guard's own first live
+    # firing refused this one, which is what added the exemption: the `echo`
+    # is the reader, and a printed verdict is plainer than an exit code.
+    'make check > /tmp/gate.log 2>&1; echo "exit=$?"',
+    "make check > /tmp/gate.log 2>&1; s=$?; tail -45 /tmp/gate.log; exit $s",
+    'make check || echo "gate failed: $?"',
     # Informational `docket` subcommands are piped in almost every session.
     "bin/docket next | head -30",
     "bin/docket show PL-D0W8 | head -20",
@@ -186,6 +197,7 @@ def test_the_refusal_answers_the_question_the_caller_had() -> None:
     reason = _decision("make check 2>&1 | tail -45")["permissionDecisionReason"]
     assert "set -o pipefail; make check 2>&1 | tail -45" in reason
     assert "make check > /tmp/gate.log 2>&1" in reason
+    assert 'echo "exit=$?"' in reason
     assert "PL-2JRC" in reason
     assert "keeping the session short" in reason
 
@@ -209,12 +221,7 @@ def test_the_refusal_names_the_gate_it_caught() -> None:
     )
 
 
-MALFORMED = (
-    "",
-    "make check 2>&1 | tail -45 'unbalanced",
-    "   ",
-    "|||",
-)
+MALFORMED = ("", "make check 2>&1 | tail -45 'unbalanced", "   ", "|||")
 
 
 @pytest.mark.parametrize("command", MALFORMED)

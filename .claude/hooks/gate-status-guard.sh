@@ -30,6 +30,15 @@
 # summarize rather than to load - and loses nothing. A guard whose remedy costs
 # context would be a guard sessions learn to work around.
 #
+# **Reading `$?` counts as keeping the status, and the first live firing is why.**
+# It refused `make check > /tmp/gate.log 2>&1; echo "exit=$?"` on the `;`, which
+# is correct by the separator and wrong about the command: that `echo` *is* the
+# reader, and it puts the verdict in the output in words rather than in an exit
+# code. `CLAUDE.md` retires a check that fires without changing a decision, so
+# the exemption is the fix rather than a concession - restricted to the segment
+# immediately after the separator, since anything in between replaces `$?` with
+# its own status, and never after `&`, where `$?` is the background launch.
+#
 # **What counts as a gate is a list, not an inference.** The guarded commands
 # are the ones whose exit status *is* the evidence a session reports:
 # `make check|test|docket|doc-check|prebuild|pr-title`, `bin/docket
@@ -192,14 +201,32 @@ for index, segment in enumerate(segments):
     # and the string exits non-zero. `|` propagates it only under pipefail. `;`
     # and `&` hand the status to whatever runs next, and `||` hands it to a
     # fallback that succeeds, which is the same loss wearing a different face.
-    for separator in separators[index:]:
+    lost = None
+    for offset, separator in enumerate(separators[index:]):
         if separator is None or separator == "&&":
             continue
         if separator == "|" and pipefail:
             continue
-        offender, swallowed_by = name, separator
+        # Unless the next thing the string does is *read* the status. `make
+        # check > /tmp/gate.log 2>&1; echo "exit=$?"` prints the verdict into
+        # the output, which is the same guarantee the exit code gives and a
+        # plainer one; `s=$?` captures it into a variable. Either way the
+        # status has survived and the walk is over; what runs after a capture
+        # is not this hook to police. Only the segment immediately after this
+        # separator counts, because anything in between replaces `$?` with its
+        # own status, and `&` is excluded outright: after a background launch
+        # `$?` is the launch, never the gate.
+        following = index + offset + 1
+        if (
+            separator != "&"
+            and following < len(segments)
+            and any("$?" in token for token in segments[following])
+        ):
+            break
+        lost = separator
         break
-    if offender is not None:
+    if lost is not None:
+        offender, swallowed_by = name, lost
         break
 
 if offender is None:
@@ -231,9 +258,11 @@ reason = (
     "second call\n\n"
     "`set -o pipefail` makes a pipeline report its rightmost non-zero stage, "
     "so `tail` still trims the output and a red gate still exits non-zero. It "
-    "is one token, it costs no context, and it is never wrong to add. `&&` "
-    "also preserves the status, where the sequencing suits: "
-    "`" + offender + " && tail -45 /tmp/gate.log`.\n\n"
+    "is one token, it costs no context, and it is never wrong to add. Two more "
+    "spellings are accepted, where the sequencing suits: `&&`, which "
+    "short-circuits on failure (`" + offender + " && tail -45 /tmp/gate.log`), "
+    "and reading the status straight out into the output "
+    "(`" + offender + " > /tmp/gate.log 2>&1; echo \"exit=$?\"`).\n\n"
     "Guarded because their exit status IS the evidence a session reports: "
     "`make check|test|docket|doc-check|prebuild|pr-title`, `bin/docket "
     "check|verify`, `pytest`, `mypy`, `ruff`, and `tools/*_check.py`. "

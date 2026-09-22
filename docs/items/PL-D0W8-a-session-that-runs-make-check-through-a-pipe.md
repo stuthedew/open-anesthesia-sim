@@ -3,11 +3,12 @@ id: PL-D0W8
 title: A session that runs make check through a pipe - make check 2>&1 | tail - reads the pipeline's exit status, which is tail's and always 0, so a red tree is reported and committed as green: it happened on PL-2JRC and the false claim reached both the commit message and the pull request body
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: worker-instructions
-touches: .claude/hooks/, .claude/settings.json, tests/unit/, docs/worker.md
+touches: .claude/hooks/, .claude/settings.json, tests/unit/, docs/worker.md, docket.toml, docs/ARCHITECTURE.md
 added: 2026-09-21
+closed: 2026-09-22
 payoff: a red tree can no longer be reported and committed as green: the spellings that discard a gate's exit status are refused at the moment they are written, with the one-token remedy in the refusal
 verify: printf %s "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"make check 2>&1 | tail -45\"}}" | bash .claude/hooks/gate-status-guard.sh | grep -q permissionDecision
 ---
@@ -75,3 +76,32 @@ here blocks a session: `make check|test|docket|doc-check|prebuild|pr-title`,
   settings wiring.
 - `docs/worker.md` states the rule in prose, because a worker running under
   another harness fires no hook and would otherwise have nothing.
+
+**Worked.** The guard refused its own author on its first live firing, and the
+refusal was right about the separator and wrong about the command: `make check >
+/tmp/gate.log 2>&1; echo "exit=$?"` loses the status by the `;` and reads it by
+the `echo`. Reading `$?` is now accepted, restricted to the segment immediately
+after the separator - anything in between replaces `$?` with its own status -
+and never after `&`, where `$?` is the background launch rather than the gate.
+`CLAUDE.md` retires a check that fires without changing a decision, so this was
+the fix rather than a concession.
+
+Two consequences outside the declared `touches`, both forced by the new test
+file rather than chosen: `docket.toml`'s `workflow_paths` gains
+`tests/unit/test_gate_status_guard.py`, because `tools/workflow_paths_check.py`
+fails until the lane list agrees that a test importing no `anesthesia_sim` is
+apparatus (`PL-JBZK`); `touches` was widened to match. And the gate-disposition
+error this item raised while `status: ready` needed no `ROADMAP.md` entry - the
+check counts *open* debt items, and this one closes in the commit that carries
+the work.
+
+**Found by the docs sweep.** `docs/ARCHITECTURE.md` § "Wired hooks
+(`.claude/hooks/`)" counted the wired scripts and listed them by name, and both
+were stale - the count read five against six actually wired, and the list had
+never picked up `item_read_log.py`. This change made it stale by two rather
+than one, so the count is now seven and the list names every wired script but
+`stop_hook_patch.py`, which the paragraph below it covers on its own.
+`touches` was widened to declare the file. That document sits outside
+`docket.toml`'s `workflow_paths` deliberately, so declaring it puts this item
+in neither lane - which costs nothing on an item that closes in the same
+commit, and is the honest declaration either way.
