@@ -8,6 +8,8 @@ classes: defect, infra
 feature: carrier-detection
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
+root-cause-of: PL-N2PP, PL-HX5C, PL-99YZ, PL-X3NY, PL-Q664
+generator: live - in-flight state is read only from pushed refs, so a session that has not pushed yet is invisible to flight, show, next, concurrent and the digest, and a ref whose session has ended still reads as live; on 2026-09-22 a session reported PL-0HPV unstarted while another was running it, 20 minutes before that session's first push (PL-KVDK)
 ---
 
 **Problem.** bin/docket flight separates a live session from an abandoned branch only by commit age, which cannot fire in the first hour: PR #757 sat green and unclaimed 25 minutes after its session was archived, with its three items still reading 'do not start these again'
