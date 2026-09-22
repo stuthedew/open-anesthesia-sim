@@ -54,5 +54,5 @@ beside it. `release.md` matches none of `Declined`, `deferr`, `closed in v` or
 `snapshot`. **Triage chose the `doc_check` route** for the `verify:` below. The
 brief shows the rule is decidable, and `CLAUDE.md` gives deterministic tooling
 standing approval over a prose line a release session would have to remember.
-`PL-Z891` carries no `milestone:` yet, so it ships in the next release, and the
-check's first finding will probably exist before this is worked.
+`PL-Z891` then shipped in v0.5.4 (`#903`, merged while this pass was open).
+Its entry is still unmarked, so the check's first finding already exists.
