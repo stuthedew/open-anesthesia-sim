@@ -489,7 +489,13 @@ is a property of the display rather than of the model:
   takes every branch off the dashboard and rebuilds the case on the restarted
   run, because a trunk that has started over never passed through the instant
   a branch was taken at; resetting a *branch* returns it to its own fork and
-  leaves the comparison standing.
+  leaves the comparison standing. **The lock says which of those two Resets
+  it means, in the words the screen carries** (`PL-WG73`).
+  `comparing_fork_lock_text` fills its sentence from `run_label` and
+  `RESET_LABEL`, so an instruction cannot name a control that is not there:
+  the sentence it replaced sent a learner to "Reset the case", and the Reset
+  they reach for is the branch's - the run they are trying to end, which that
+  press returns to its fork while the lock stays exactly where it was.
 
 **No agent may be chosen while two runs are shown** (`PL-QRD1`). A branch's
 `set_agent` refuses outright, so its `RunView` shows the agent chip in place

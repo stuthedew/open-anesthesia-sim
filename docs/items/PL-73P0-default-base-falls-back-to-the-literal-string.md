@@ -9,6 +9,7 @@ feature: evidence-declines
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_cli.py, tools/branch_id_check.py, tests/unit/test_branch_id_check.py, docs/WORKING_NOTES.md
 added: 2026-09-19
 closed: 2026-09-22
+pr: 896
 payoff: stops bin/docket verify certifying a branch's scope against a base that is not there - it was reporting git's own error text as three changed paths while missing the files the branch really changed
 verify: grep -q 'def test_a_repository_resolving_no_default_branch_says_the_base_was_guessed' subprojects/docket/tests/test_vcs.py
 ---

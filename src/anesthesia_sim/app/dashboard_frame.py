@@ -129,6 +129,14 @@ INITIAL_CHART_TIME_BASE: Final = TIME_BASE_LADDER[0]
 # is two-level (`PL-HLD5`: the run on line width, under a cap of two
 # compartments). A third run would have nothing left to be drawn with.
 MAX_DISPLAYED_RUNS: Final = 2
+# Where the two runs of a comparison are drawn, and so what `run_label` calls
+# them. The trunk first and its branch second is an invariant of how
+# `SimulationView` builds and adds runs rather than a fact about a case, and
+# `comparing_fork_lock_text` is what depends on it: a sentence sending a
+# learner to one run's Reset is only findable if it names the run that Reset
+# belongs to.
+TRUNK_RUN_INDEX: Final = 0
+BRANCH_RUN_INDEX: Final = 1
 
 # A readout with no gloss still draws the gloss line, so every reading in the
 # row sits on one baseline (`PL-8M05`). A non-breaking space rather than an
@@ -348,7 +356,26 @@ TAKE_FORK_LABEL: Final = "Branch here"
 # no run selector yet - `ROADMAP.md` § "Explicitly out of scope for v0.5.0" -
 # so a second branch would have to replace the shown one silently, with the
 # first still live inside `BranchedCase`.
-COMPARING_FORK_LOCK_TEXT: Final = "One comparison at a time. Reset the case to end this one."
+#
+# **A template, because the way out is a button and a button is found by the
+# words on it** (`PL-WG73`). It read "Reset the case" while the only Reset in
+# `app/` is labelled `RESET_LABEL` and nothing on screen says "case", so the
+# way out named a control this interface does not have. A comparison draws
+# two of them, one per run, and they do opposite things: the trunk's rebuilds
+# the case, the branch's returns that run to its own fork and leaves this
+# lock standing - which is the one a learner reaches for, being the run they
+# are trying to end. So the sentence names both, and
+# `comparing_fork_lock_text` fills it from `run_label` and `RESET_LABEL`,
+# which is what stops an instruction and the control it names drifting apart
+# again.
+#
+# It states what the trunk's Reset costs as well as what it ends. Sending a
+# learner to a control that discards every run without saying so would be
+# this same defect with the consequence hidden rather than the label.
+COMPARING_FORK_LOCK_TEMPLATE: Final = (
+    "One comparison at a time. {trunk}'s {reset} ends it and starts the case over; "
+    "{branch}'s {reset} only returns {branch} to where it branched."
+)
 FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
 
 # The fork at a bookmark halt, which is a second control rather than a row in
@@ -1677,6 +1704,30 @@ class ForkOffer:
     refusal: str | None
 
 
+def comparing_fork_lock_text() -> str:
+    """The caption standing where the branch control stood, naming the way out of the lock.
+
+    Filled from `run_label` and `RESET_LABEL` rather than written out. The way
+    out is a button, a button is found by the words on it, and a comparison
+    draws two Resets - one per run, each in a transport row led by that run's
+    name - so a sentence that names neither leaves the reader to guess which
+    (`PL-WG73`, and `COMPARING_FORK_LOCK_TEMPLATE` for what that guess cost).
+
+    The lock stands only while a second run is drawn - `fork_offer`'s
+    `comparing` - so the first two positions both name a run on screen
+    whenever this text is on screen: the trunk, whose Reset ends the
+    comparison, and the branch, whose Reset returns that run to its fork and
+    leaves the lock exactly where it was.
+
+    Returns:
+        The sentence, naming both Resets as the screen names them.
+    """
+
+    return COMPARING_FORK_LOCK_TEMPLATE.format(
+        trunk=run_label(TRUNK_RUN_INDEX), branch=run_label(BRANCH_RUN_INDEX), reset=RESET_LABEL
+    )
+
+
 def fork_offer(
     fork_points_s: Sequence[float],
     *,
@@ -1738,7 +1789,7 @@ def fork_offer(
         points_s=points,
         labels=tuple(format_elapsed(instant_s) for instant_s in points),
         locked=comparing,
-        lock_reason=COMPARING_FORK_LOCK_TEXT if comparing else "",
+        lock_reason=comparing_fork_lock_text() if comparing else "",
         halt_offered=offered_halt is not None,
         halt_label=(
             ""

@@ -49,8 +49,8 @@ from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     ACCOUNTING_UNIT_CAPTION,
     BRANCH_AGENT_LOCK_TEXT,
+    BRANCH_RUN_INDEX,
     COMPARING_AGENT_LOCK_TEXT,
-    COMPARING_FORK_LOCK_TEXT,
     CONTROL_MARK_LEGEND_LABEL,
     CONTROL_TIMELINE_CAPTION,
     CONTROL_TIMELINE_HEADING,
@@ -72,6 +72,7 @@ from anesthesia_sim.app.dashboard_frame import (
     READOUT_RESERVATIONS,
     READOUT_ROW_LADDER,
     RENDER_INTERVAL_S,
+    RESET_LABEL,
     RUNNING_AGENT_LOCK_TEXT,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
@@ -79,6 +80,7 @@ from anesthesia_sim.app.dashboard_frame import (
     STATUS_PAUSED_TEXT,
     STATUS_RUNNING_TEXT,
     TIME_BOOKMARK_HEADING,
+    TRUNK_RUN_INDEX,
     USE_DISCLAIMER_TEXT,
     WIDEST_COMPARTMENT_SECONDARY,
     WIDEST_COMPARTMENT_VALUE,
@@ -93,6 +95,7 @@ from anesthesia_sim.app.dashboard_frame import (
     compared_panel_heading,
     compared_run_line,
     compared_run_notice,
+    comparing_fork_lock_text,
     delivered_fraction,
     fork_offer,
     format_mac_target,
@@ -2313,14 +2316,47 @@ def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out(
     """The display is capped at two runs and there is no run selector yet.
 
     A refused control that does not say how to un-refuse itself is a dead
-    end rather than a mode, so the reason names Reset.
+    end rather than a mode, so the reason names the Reset that ends the
+    comparison - by the run it belongs to, which is the test below.
     """
 
     offer = fork_offer((0.0, 60.0), comparing=True, halt=None)
 
     assert offer.locked is True
-    assert offer.lock_reason == COMPARING_FORK_LOCK_TEXT
-    assert "Reset" in COMPARING_FORK_LOCK_TEXT
+    assert offer.lock_reason == comparing_fork_lock_text()
+
+
+def test_the_comparison_lock_names_a_control_the_learner_can_press() -> None:
+    """`PL-WG73`: "Reset the case to end this one" named no control on screen.
+
+    The bare word "Reset" was all the old assertion held, and it held while
+    the sentence pointed at a "case" nothing is labelled with. What a learner
+    can act on is a run's name and the word on its transport button, so both
+    named controls are asserted as the pair the screen draws them as.
+
+    **Each clause is asserted against the run it is about, rather than the
+    sentence against both names.** Naming both controls correctly and pairing
+    them with each other's outcomes would send the learner to the same wrong
+    button as the sentence this replaced, and a test reading the whole string
+    cannot tell the two apart. So the way out is read on its own: it names the
+    trunk's Reset, it does not mention the branch at all, and what it says
+    that press costs is the case starting over.
+
+    The clause after it is the branch's, named for what it does *instead*,
+    because that is the Reset a learner reaches for - it belongs to the run
+    they are trying to end, and pressing it discards what that run has
+    simulated since its fork while leaving the lock exactly where it was.
+    """
+
+    way_out, _, instead = comparing_fork_lock_text().partition(";")
+
+    assert f"{run_label(TRUNK_RUN_INDEX)}'s {RESET_LABEL}" in way_out
+    assert run_label(BRANCH_RUN_INDEX) not in way_out
+    assert "starts the case over" in way_out
+
+    assert f"{run_label(BRANCH_RUN_INDEX)}'s {RESET_LABEL}" in instead
+    assert run_label(TRUNK_RUN_INDEX) not in instead
+    assert "where it branched" in instead
 
 
 def test_fork_offer_offers_no_halt_fork_while_the_trunk_stands_on_no_halt() -> None:
