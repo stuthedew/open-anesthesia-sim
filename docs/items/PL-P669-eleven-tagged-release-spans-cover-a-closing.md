@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: docs
 feature: commit-provenance
+milestone: v0.5.4
 touches: docs/releases, ROADMAP.md, docs/ARCHITECTURE.md, tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md
 added: 2026-09-14
 closed: 2026-09-22
+pr: 901
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def check_tag_span_covers_its_notes' tools/doc_check.py
 recurrences: 2026-09-22 PL-YKSD
 ---

@@ -99,7 +99,8 @@ capability-boundary rule above governs.
 | v0.5.0 | Completed | **MVP: the release where a learner can take a branch.** A case runs, a time bookmark or MAC target stops it on the step that crosses it, the run forks where it stopped, a setting is changed on the branch, and both runs are drawn on one time axis with every curve, readout, banner and legend entry attributable to the run that produced it - which is "The plan"'s MVP sentence, *a learner can run, branch, and compare a case*, satisfied. Seventy-eight items since v0.4.35, and twenty Required-scope ids, which are not the same set: fourteen of the twenty had already shipped along the `v0.4.x` track by the plan rather than by drift, and **six close here**. `PL-VKJW` is the entry the milestone was missing and that nothing made visible as missing - every part of a branch had shipped since v0.4.25 and none of it was reachable, because nothing in `src/` constructed a `BranchedCase` and `SimulationView` froze its run set at construction, so the milestone could have closed with every other entry `done` and a learner still unable to branch (`PL-XJ37`, project owner, 2026-09-20). A second fork is refused while a comparison is shown, and both agent selectors lock while two runs are drawn (`PL-QRD1`), because the shared MAC axis refuses a mismatched pair only after the controller has switched. **`PL-B8MK` takes the route that costs the trunk nothing**: the obvious way to make a bookmark forkable is to record a keyframe where the run halts, which moves the trunk's own later answers away from what the case would have said unmarked - marking a run would change the run - so the branch opens at the keyframe *before* the mark instead (`SimulationController.resumed_at_halt`, `BranchedCase.fork_at_halt`, `RunDefinition.segment_at`), propagating from the same keyframe its parent does with no keyframe recorded anywhere. `PL-TYWQ` exposes it as a separate transient control (project owner, 2026-09-21, ratified, over a single list that grows a row while the run is halted), which is the honest shape for a branch point that exists only while the run stands on the halt. `PL-Z3W6` discharges the milestone's central claim as a test rather than an argument - a branch reproduces its parent element-wise at every sampled point up to the branch point, at the arithmetic and at the columns both - and `PL-W7H9` states in `docs/MODEL.md` (+417/-14) and `docs/ARCHITECTURE.md` (+225/-57) what a comparison asserts and does not, since two runs on one axis invite a reader to attribute every visible difference to the change they made. `PL-49R8` is the same discipline pointed at the code: a path-scoped rule against re-introducing a sample store, the one change that would quietly restore `PL-011`'s unbounded growth debt. **Nothing computational moved**, by tree object: `src/anesthesia_sim/data/` resolves to `ab3499f` at both ends, so no parameter, constant or stored scientific value changed; `core/` moves `0c8e708` to `ca5a354` in exactly one file, `core/run_definition.py` (+37/-4, a `segment_at` query and three docstrings), touching no equation, coefficient, numerical method or solver step; `app/` moves `87baee9` to `01bc2d9`, eight files, +2,138/-220, and is where the release lives. **`tests/reference/` moves and no published expected value moves with it** - `5b43d4b` to `a184830`, the whole of it `test_canonical_evaluation.py` (+225/-20), `PL-Z3W6`'s assertion - so the v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference tests are unchanged by tree identity and passing at the same numbers. **Gate 1 ends at 184 cleared and one deferred**: `PL-WZVZ` goes to Gate 2 by `PL-S5Q9` on § "The cadence" beat 3's terms, which `PL-Y949` made legal rather than a fudge by giving a frozen-list entry a third disposition stated once in the cadence instead of in each milestone's own bullet, and `PL-0H5D` records its holding condition in a field rather than in prose `blocked-by` cannot express. Gate 2 is frozen under v0.6.0 with this release. Thirteen features complete, the rest of them apparatus: the cut now writes the pull request numbers its notes cite and the 128 bullets across 22 releases that shipped without one are repaired (`PL-W7WL`, `PL-WXX8`); `model.FIELD_RE`'s line-at-a-time front-matter read is the one regex behind three item-corruption defects, measured deleting nine of ten `reason` lines with exit 0 (`PL-9HD1`); `bin/docket stranded` learned to report a section appended to an item `main` already holds, recovering eight items and a ratified decision from five branches nobody would merge; and the 150k handoff budget is re-anchored to spend since baseline, read live from the session transcript (`PL-W80S`, `PL-BZVY`). | 78 items |
 | v0.5.1 | Completed | **The release in which the apparatus caught up with the milestone it had just shipped, and nothing a learner can reach moved.** Thirteen items, and the simulator is untouched by tree identity rather than by reading a diff: `src/anesthesia_sim/data/` (`ab3499f`), `core/` (`ca5a354`), `app/` (`01bc2d9`) and `tests/reference/` (`a184830`) resolve to the same objects at v0.5.0 and at this cut, so **no equation, parameter, constant, numerical method, solver step or displayed clinical value moves**. What it carries instead is the bookkeeping the MVP's own cut left behind. Gate 2's frozen list of 168 clearable entries is swept against the tree for the first time, and beat 3 of the cadence gains an instrument that cannot close - `PL-6ZQY`, named as the standing one by `ROADMAP.md`, the v0.6.0 gate section and the release mode alike, had closed two days before the gate froze, so a session looking it up read `done` (`PL-C4W8`, `PL-D8KW`). `docs/WORKING_NOTES.md`'s header has always asked that a resolved thread be deleted rather than left stale and nothing read that policy; six sessions filed six instances of it one at a time, and `PL-DG84` answers the class with a grooming advisory that names a `##` section only when its heading's own leading word still says `Open` **and** every `PL-` id it cites has closed. Both clauses, on the measurement: clause 2 alone names 16 of 26 sections, most of them correct content other rules cite, where the pair named four - two of which `PL-DL4M` and `PL-FFG9` then deleted - and one of the remaining two is a permanent false fire, which is what keeps it an advisory rather than a close-out check. `PL-YVP7` puts `PL-CNCF` and `PL-PGZF` inside Required-scope entry 9's `(queue item ...)` slot, the only place `roadmap._declared_ids` reads, so v0.6.0 clears them itself instead of being blocked by the measurement they are taken against; an id added to the prose beside it would have registered nowhere and still read as done. The rest is the queue's own machinery: `doc_check`'s `_declined_ids` counted every id a deferral's prose merely cited and went silent on it (`PL-H6VQ`), `generator_check.py` printed a `root-cause-of:` example `docket check` rejects (`PL-DPY6`), and test fixtures used ids outside the id alphabet, so a test routing one through id-aware machinery exercised nothing (`PL-GXPP`). | 13 items |
 | v0.5.2 | Completed | **The release where "nothing computational moved" stopped being readable off a tree hash and had to be proved instead.** Fifteen items, all apparatus and documentation, and a patch because no capability boundary is crossed. Three of the four trees the safety-critical standard cares about are byte-identical at v0.5.1 and at this cut - `src/anesthesia_sim/data/` (`ab3499f`), `app/` (`01bc2d9`) and `tests/reference/` (`a184830`) - and **`core/` is not**, moving `ca5a354` to `061714b`, the object it had held since v0.5.0. The move is two files, +6/-6, and every changed line sits inside a docstring: `PL-316G`'s conversion of 150 possessive document citations to the section-mark form, the only form `tools/doc_check.py` can hold without reading ordinary prose as a citation. Rather than assert that from the diff, both files were parsed at each revision with every docstring constant replaced by a sentinel and the resulting ASTs compared - comments never reach an AST at all - and both are identical, so **no executable statement moves in `core/`** and, with `data/` resolving to the same object, **no equation, parameter, constant, numerical method, solver step or displayed clinical value moves** either. Two features complete. **`one-id-grammar`** ends the disagreement about what an item id *is*: three tools each restated the grammar more loosely than `store.ID_PATTERN`, so a tool and `docket check` could reach opposite verdicts on the same token (`PL-KYW3`); `fixture_id_check.py` could not see an id spelled with underscores as a keyword argument, which is how an out-of-alphabet fixture name reached the `doc_check` fixtures (`PL-L609`); its reach stopped at `subprojects/docket/tests`, leaving the apparatus fixtures under `tests/unit` held to no grammar at all (`PL-7922`); and `PL-3BZS` retires `PL-A1B2` from the documented placeholder set for sitting outside `store.ID_ALPHABET` - Crockford base32 minus the vowels - so the one document a session reads to learn what a placeholder *is* stopped teaching a grammar the store does not have. **`remote-ref-deletion`** closes on `PL-ZM48` and `PL-X9WZ`, which between them replace `docs/worker.md`'s single recorded shape for deleting a remote branch with the three actually observed: exit 0, the 403 carried alongside `Everything up-to-date` at exit 1, and `git ls-remote --heads` exiting 0 with empty output while a force-with-lease push fails `stale info`. The standing-machinery half is `PL-D1NT`, `PL-ZM8P` and `PL-0GMC`: `doc_check`'s path-citation resolver crashed the whole run on one unstattable token where the glob branch beside it was already guarded; `check_quoted_sources` read every item file while `check_line_citations` read only live ones, so a closed brief quoting the `Current baseline` heading would have failed `make check` at this very cut, the release that renames it; and the durable-versus-cheap trade, which had reached a session only when the project owner typed it into the chat, is resident in `.claude/rules/expert-review.md` as a forcing question, so a design round held without them no longer picks the cheap route unopposed. | 15 items |
-| v0.5.3 | Completed / current baseline | **The release where the project's own gates stopped reporting a result they had not established.** Eleven items, all apparatus and documentation, and a patch on § "Versioning decision"'s test because no capability boundary is crossed. **Nothing in the simulator moved, and this cut says so by tree identity alone**: `src/` resolves to `422b27e1` at v0.5.2 and here, so `core/` (`061714b`), `data/` (`ab3499f`) and `app/` (`01bc2d9`) are byte-identical and `tests/reference/` (`a184830`) with them - the sentence v0.5.2 had to prove by comparing ASTs, because its `core/` tree had moved on a docstring. The eleven items' own work is 35 files, +2,818/-113, of which 14 are item files, and `.github/` is the one shipped tree that moves (`6f63412` to `da3c951`), for the release's own reason. **Four defects, one shape at four altitudes.** `PL-D0W8`: a session running `make check 2>&1 | tail` reads `tail`'s exit status, always 0, so a red tree is reported as green - it happened on `PL-2JRC`, also in this release, and the false claim reached both the commit message and the pull request body. The rule is a `PreToolUse` deny hook rather than resident prose because it has to fire when a command is *written*, which no read precedes, and inside exploration subagents, which carry no resident context but do run hooks; it recommends `set -o pipefail`, one token, so a session keeping a passing gate's output out of its context has no reason to route around it. It refused its own author on its first firing, right about the separator and wrong about the command, so reading `$?` in the segment immediately after the separator is now accepted. `PL-J3WK` and `PL-PBP5` are one seam from opposite sides: `make check` ran `bin/docket check` bare while CI ran it `--verify`, so a `verify:` command that can prove nothing - a literal `true`, or one recorded against three open items - passed every local gate and turned CI red after review had started; and `quality.yml` enumerated its own steps, leaving `dead_ends.py`, `ignore_check.py` and `possessive_section_check.py` with no CI backstop. Both halves were live: of 11 red runs in the 100 most recent `pull_request` runs, **6 were the `--verify` replay and 5 were at a step `make check` also runs**. The two statically decidable questions moved into the bare check and the replay stayed where it is, on a count that came back **zero and zero** against 220 open commands, so the rule catches the regression `PL-4W2L` had already produced rather than a backlog; and the gate lists are deliberately *not* merged - the floor section runs the standard-library tools before `uv` exists, which is what proves they need none - so `check_gate_parity` reconciles them in both directions instead, refusing any asymmetry not in `GATE_ONLY`, which holds exactly one entry. `PL-44DG`: the gauge the project consults about its own resident cost was **7.2% low**, counting neither the SessionStart digest nor the `docket` skill description, both resent every turn - and the digest is the half that grows with no edit to any instruction file, carrying the dead-ends list. **`instruction-staleness-audit` completes, 3 of 3**, against the failure that outlives a size problem: a rule that is long costs attention, while one that was true when written and is false two years later gets *obeyed*. `PL-T5K1` reports the dated lines past a threshold as a grooming advisory on `make docket`, dated by the newest date on each line so re-verify-and-re-date discharges an entry and the report can reach zero; `PL-PHK4` makes the threshold `instruction_stale_days`, defaulting to 90 (project owner, 2026-09-21, ratified, over 180), tested against synthetic dates because it cannot fire on this tree - all 74 dated assertions across 17 files are under 30 days old, the project being 30 days old. Age is a proxy for staleness, and the brief records that rather than smoothing it. **The rest is the record telling a reader something untrue.** `PL-K4BN` backfills the eight `pr:` numbers `origin/main` was owed, each verified against the squash subject naming its id - 8 of the 13 advisories that morning, 5 now - and records why they accumulated: "let it ride the commit you are already making" is right while commits are flowing and silently wrong once nobody has one in hand, which is the routed-around test rather than tidiness. `PL-R5HK` corrects `docs/ARCHITECTURE.md`'s wired-hook count, five where `.claude/settings.json` wires six, wrong since `item_read_log.py` landed and found twice independently. `PL-G7ST` removes a false provenance claim from inside the item about provenance: `PL-M7W1` said #880's squash subject was frozen at arm time and the commit carrying the sentence is its own disproof, the renamed title having landed, which narrows the hazard to auto-merge performing the merge itself - a hand merge composes from the live title, and is the ordinary case here. `PL-2JRC` is the triage pass, and `PL-JYTJ`, the cut of v0.5.2, closes here because a cut cannot stamp itself. | 11 items |
+| v0.5.3 | Completed | **The release where the project's own gates stopped reporting a result they had not established.** Eleven items, all apparatus and documentation, and a patch on § "Versioning decision"'s test because no capability boundary is crossed. **Nothing in the simulator moved, and this cut says so by tree identity alone**: `src/` resolves to `422b27e1` at v0.5.2 and here, so `core/` (`061714b`), `data/` (`ab3499f`) and `app/` (`01bc2d9`) are byte-identical and `tests/reference/` (`a184830`) with them - the sentence v0.5.2 had to prove by comparing ASTs, because its `core/` tree had moved on a docstring. The eleven items' own work is 35 files, +2,818/-113, of which 14 are item files, and `.github/` is the one shipped tree that moves (`6f63412` to `da3c951`), for the release's own reason. **Four defects, one shape at four altitudes.** `PL-D0W8`: a session running `make check 2>&1 | tail` reads `tail`'s exit status, always 0, so a red tree is reported as green - it happened on `PL-2JRC`, also in this release, and the false claim reached both the commit message and the pull request body. The rule is a `PreToolUse` deny hook rather than resident prose because it has to fire when a command is *written*, which no read precedes, and inside exploration subagents, which carry no resident context but do run hooks; it recommends `set -o pipefail`, one token, so a session keeping a passing gate's output out of its context has no reason to route around it. It refused its own author on its first firing, right about the separator and wrong about the command, so reading `$?` in the segment immediately after the separator is now accepted. `PL-J3WK` and `PL-PBP5` are one seam from opposite sides: `make check` ran `bin/docket check` bare while CI ran it `--verify`, so a `verify:` command that can prove nothing - a literal `true`, or one recorded against three open items - passed every local gate and turned CI red after review had started; and `quality.yml` enumerated its own steps, leaving `dead_ends.py`, `ignore_check.py` and `possessive_section_check.py` with no CI backstop. Both halves were live: of 11 red runs in the 100 most recent `pull_request` runs, **6 were the `--verify` replay and 5 were at a step `make check` also runs**. The two statically decidable questions moved into the bare check and the replay stayed where it is, on a count that came back **zero and zero** against 220 open commands, so the rule catches the regression `PL-4W2L` had already produced rather than a backlog; and the gate lists are deliberately *not* merged - the floor section runs the standard-library tools before `uv` exists, which is what proves they need none - so `check_gate_parity` reconciles them in both directions instead, refusing any asymmetry not in `GATE_ONLY`, which holds exactly one entry. `PL-44DG`: the gauge the project consults about its own resident cost was **7.2% low**, counting neither the SessionStart digest nor the `docket` skill description, both resent every turn - and the digest is the half that grows with no edit to any instruction file, carrying the dead-ends list. **`instruction-staleness-audit` completes, 3 of 3**, against the failure that outlives a size problem: a rule that is long costs attention, while one that was true when written and is false two years later gets *obeyed*. `PL-T5K1` reports the dated lines past a threshold as a grooming advisory on `make docket`, dated by the newest date on each line so re-verify-and-re-date discharges an entry and the report can reach zero; `PL-PHK4` makes the threshold `instruction_stale_days`, defaulting to 90 (project owner, 2026-09-21, ratified, over 180), tested against synthetic dates because it cannot fire on this tree - all 74 dated assertions across 17 files are under 30 days old, the project being 30 days old. Age is a proxy for staleness, and the brief records that rather than smoothing it. **The rest is the record telling a reader something untrue.** `PL-K4BN` backfills the eight `pr:` numbers `origin/main` was owed, each verified against the squash subject naming its id - 8 of the 13 advisories that morning, 5 now - and records why they accumulated: "let it ride the commit you are already making" is right while commits are flowing and silently wrong once nobody has one in hand, which is the routed-around test rather than tidiness. `PL-R5HK` corrects `docs/ARCHITECTURE.md`'s wired-hook count, five where `.claude/settings.json` wires six, wrong since `item_read_log.py` landed and found twice independently. `PL-G7ST` removes a false provenance claim from inside the item about provenance: `PL-M7W1` said #880's squash subject was frozen at arm time and the commit carrying the sentence is its own disproof, the renamed title having landed, which narrows the hazard to auto-merge performing the merge itself - a hand merge composes from the live title, and is the ordinary case here. `PL-2JRC` is the triage pass, and `PL-JYTJ`, the cut of v0.5.2, closes here because a cut cannot stamp itself. | 11 items |
+| v0.5.4 | Completed / current baseline | **The release where the window stopped drawing the host's colours, and the two sentences a learner meets at a refusal started naming what refused and the control that ends it.** Sixteen items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed - every change corrects what an existing control renders or says - and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **It is the first release since the MVP to move `src/anesthesia_sim/app/`**, off the object it had held since v0.5.0 (`01bc2d9` to `50d13b3`, four files, +149/-8), **and nothing computational moved with it, measured rather than asserted**: `src/anesthesia_sim/data/` (`ab3499f`) and `tests/reference/` (`a184830`) are byte-identical, so no stored parameter and no published-reference expected value changed; `core/` moves (`061714b` to `d9e3ca9`), but with docstrings stripped its syntax tree differs at exactly three call sites, each the name a `require_fraction` guard reports, and it holds 133 numeric literals at both ends with none differing. **`platform-palette` completes, 6 of 6.** `PL-KRZW` declares the interface's light palette on the `QApplication` before the first widget exists (project owner, 2026-09-20, ratified, over leaving the host appearance alone and over a second palette for dark support), so the chrome no stylesheet reaches stops drawing a dark host around a light window - the page's scroll bar went from 94.3% of its pixels darker than mid-grey to 0% under the test suite's dark host palette - and it is a palette rather than `styleHints().setColorScheme` because that hint was observed being ignored outright. `PL-4L49` makes the contrast report count what nothing measures - 7 control kinds, each named by the test that admits it - and holds every text-bearing control in the built dashboard to declaring its own foreground, because a report counting only declared pairs read identically whether the interface was covered or had three illegible buttons on it. **`PL-WG73` is the one a learner would have paid for**: the comparison lock read "Reset the case to end this one", a phrase no control carries, while two Resets are drawn and the one a learner reaches for - the branch's - discards everything simulated since the fork and leaves the lock standing. It now reads "Run 1's Reset ends it and starts the case over; Run 2's Reset only returns Run 2 to where it branched", filled from the labels the screen carries so the instruction and the control cannot drift apart again. `PL-SPN6` names the compartment in a refused fraction - five compartments were raising one string, so a halted run could not say which had refused. `PL-036` binds each of `docs/MODEL.md`'s 21 minimum displayed outputs to the display test that holds it (project owner, 2026-09-22, ratified, over the `SimulationSnapshot`-field mechanism, which three of the entries have no field for). **The tooling half is one shape: a git that did not answer, read as an answer.** `git-silence-channel` completes, 2 of 2, with `PL-ZPDM` - on silence `vcs.tags` returned an empty set, and an empty set is a project the untagged-release gate holds to nothing, so the one gate guarding a gap that cannot be repaired afterwards waved the cut through; `PL-73P0` stops `bin/docket verify` certifying a branch's scope against a `main` nothing established; `PL-T441` and `PL-WF3X` make a git read address the store the command actually read. **Ten of the sixteen are Gate 2 entries**, which stands at 22 of 185 cleared at this cut, and `PL-CY4F`, the v0.5.3 cut, closes here because a cut cannot stamp itself. | 16 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -185,187 +186,180 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.3
+## Current baseline: v0.5.4
 
-v0.5.3 is the release where the project's own gates stopped reporting a result
-they had not established. Eleven items, all of them apparatus and documentation
-work, and a patch on § "Versioning decision"'s test because no capability
-boundary is crossed. Every one of the four defects in it is the same shape at a
-different altitude: a check, a gauge or a record that said *pass* about
-something it had never looked at.
+v0.5.4 is the release where the window stopped drawing the host's colours, and
+the two sentences a learner meets at a refusal started naming what refused and
+which control ends it. Sixteen items, and a patch on both halves of §
+"Versioning decision"'s test: no capability boundary is crossed, because every
+change corrects what an existing control renders or says, and every number
+above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. Ten
+of the sixteen are entries in Gate 2, the debt gate frozen under v0.6.0, which
+stands at 22 of its 185 entries cleared at this cut.
 
-**Nothing in the simulator moved, and this cut can say so by tree identity
-alone.** `src/` resolves to `422b27e1` at v0.5.2 and at this cut, so
-`src/anesthesia_sim/core/` (`061714b`), `src/anesthesia_sim/data/` (`ab3499f`)
-and `src/anesthesia_sim/app/` (`01bc2d9`) are byte-identical, and
-`tests/reference/` (`a184830`) with them. **No equation, parameter, constant,
-numerical method, solver step or displayed clinical value moves**, and unlike
-v0.5.2 - which had to prove that claim by parsing two `core/` files at each
-revision and comparing ASTs, because the tree had moved on a docstring - here
-one hash answers it. The eleven items' own work is 35 files, +2,818/-113, of
-which 14 are item files; `.github/` is the one shipped tree that does move
-(`6f63412` to `da3c951`), and it moves for the release's own reason.
+**It is the first release since the MVP whose changes a learner can see, and
+nothing computational moved with it** - measured by tree object, and then by
+syntax tree where an object moved:
 
-### A verification command whose exit status could be thrown away
+| Tree | v0.5.3 | This cut | What moved |
+| --- | --- | --- | --- |
+| `src/anesthesia_sim/data/` | `ab3499f` | `ab3499f` | nothing - every stored parameter is byte-identical |
+| `tests/reference/` | `a184830` | `a184830` | nothing - every published-reference case, expected value and tolerance is byte-identical |
+| `src/anesthesia_sim/core/` | `061714b` | `d9e3ca9` | the names three guards report, and one docstring |
+| `src/anesthesia_sim/app/` | `01bc2d9` | `50d13b3` | four files, +149/-8: an application palette and one sentence |
+| `.github/` | `da3c951` | `da3c951` | nothing |
 
-`PL-D0W8` is the defect worth remembering, because the false answer it gave
-reached the permanent record. A session that runs `make check 2>&1 | tail -40`
-reads the *pipeline's* exit status, which is `tail`'s and always 0, so a red
-tree is reported as green. It happened on `PL-2JRC` - also in this release -
-and the wrong claim reached both the commit message and the pull request body.
-That is the first of `CLAUDE.md`'s three compounding-friction tests: a check
-passes while the guarantee it stands for is void.
+`core/` is the tree the safety-critical standard cares about most, so its move
+was read rather than taken on trust. With module, class and function docstrings
+stripped, its syntax tree at v0.5.3 and at this cut differs at exactly three
+call sites - the name argument that each of `AlveolarCompartment`,
+`VenousBloodCompartment` and `TissueGroup` passes to `require_fraction` - and it
+holds 133 numeric literals at both ends with none added, removed or changed.
+**No equation, parameter, constant, numerical method, solver step or displayed
+clinical value moves.** `core/validation.py` moved without its code moving: it
+gained the docstring paragraph stating the naming convention `PL-SPN6` settled.
+`app/` had held one object since v0.5.0, and the whole of its move is
+`PL-KRZW`'s palette declaration and `PL-WG73`'s sentence, neither of which
+formats, rounds or computes a displayed value. `docs/MODEL.md` moves in two
+sections only - § "Minimum displayed outputs" and § "Color contrast, and the
+standard this interface is held to" - and neither states an equation, a
+parameter or a method. The sixteen items' own work is 87 files, +4,363/-329, of
+which 32 are item files.
 
-The rule is routed into a `PreToolUse` deny hook on `Bash`,
-`.claude/hooks/gate-status-guard.sh`, rather than into resident prose, for two
-reasons that decided the shape rather than decorating it. It has to fire when a
-command is *written*, which no read precedes, so no path-scoped rule reaches it;
-and it has to fire inside exploration subagents, which carry none of the
-resident context but do run these hooks. The resident set does not grow to pay
-for it.
+### The window stopped drawing the host's colours
 
-What keeps the guard from being routed around is the remedy it recommends. The
-session piped because a passing `make check` is thousands of tokens it is asked
-not to load, so a guard answering "do not pipe" would trade a false green for a
-blown context budget and be worked around within the week. `set -o pipefail` is
-one token, keeps the output just as short, and is never wrong to add. The guard
-covers the other spellings of the same fault - after `;`, after `||`,
-backgrounded with `&` - across `make check|test|docket|doc-check|prebuild|pr-title`,
-`bin/docket check|verify`, `pytest`, `mypy`, `ruff` and `tools/*_check.py`, and
-fails open on every error path like the two guards beside it. Guarding `make
-check` alone was refused: that is the observed instance, not the fault.
+**`platform-palette` completes, 6 of 6**, and this release carries its last
+two. Every colour the interface declares is a light-theme value, while Qt's
+application palette follows the host appearance. The four fixes that shipped by
+v0.4.34 made the controls they reached declare their own colours, and left the
+chrome no stylesheet reaches - the page's scroll bars among it - drawing a dark
+host's surfaces around a light window.
 
-It refused its own author on its first live firing, and the refusal was right
-about the separator and wrong about the command - `make check > /tmp/gate.log
-2>&1; echo "exit=$?"` loses the status by the `;` and reads it back by the
-`echo`. Reading `$?` in the segment immediately after the separator is now
-accepted, and never after `&`, where `$?` is the background launch rather than
-the gate. `CLAUDE.md` retires a check that fires without changing a decision,
-so narrowing it was the fix rather than a concession.
+`PL-KRZW` answers the general question those fixes had deferred: the interface
+declares its light palette on the `QApplication` itself, before the first widget
+exists (project owner, 2026-09-20, ratified, over leaving the host appearance
+alone and over growing a second palette for dark support, which would have meant
+re-measuring all 24 contrast requirements and re-picking the six chart traces
+against dark surfaces). Light is the scheme declared because the contrast
+apparatus is: every requirement `tools/contrast_check.py` holds is measured on
+`PANEL` and `BACKGROUND`, so an interface rendering anything else would be
+measured against surfaces that are not on screen. **It is a palette rather than
+`styleHints().setColorScheme`**, which Qt documents as a hint that is "not
+supported on all platforms" and which was observed being ignored outright -
+`colorScheme()` still reported `Unknown` after it was set. Under the dark host
+palette `tests/integration/test_dark_appearance.py` supplies, the page's scroll
+bar went from 94.3% of its pixels darker than mid-grey to 0%. The per-widget
+declarations stay, because a view built by a test or embedded elsewhere never
+runs `main()`; and the `Disabled` colour group stays the platform's, so the
+splitter handles `freeze_splitter_handles` disables still draw the host's
+surface, which `PL-05M4` carries.
 
-### Two gates that disagreed with each other where nobody could see it
+`PL-4L49` closes the reason `PL-DHBX`'s three illegible buttons reached a
+release at all. The contrast report counted requirements, and a requirement
+exists only where somebody wrote a colour down, so a control declaring none
+contributed to neither side of "24 of 24" and the line read identically whether
+the interface was covered or not. It now says what nothing measures - **7 control kinds declare no
+foreground and are measured by nothing** - and
+`tests/integration/test_simulation_view.py` walks the built dashboard, holding
+every text-bearing control to declaring its own foreground and naming each
+platform-owned exception, so the next undeclared control fails instead of
+joining them silently.
 
-`PL-J3WK` and `PL-PBP5` are the same seam from opposite sides, and both were
-measured against the same window: over the 100 most recent completed
-`pull_request` runs of `quality.yml` on 2026-09-21, 74 green, 15 cancelled by
-the workflow's own concurrency and 11 red, **6 of the 11 failures were the
-`--verify` replay and 5 were at a step `make check` also runs**. Both halves of
-the seam were live.
+### The two sentences a learner meets at a refusal
 
-`PL-J3WK` is the local gate passing what CI would refuse. `make check` ran
-`bin/docket check` bare while CI ran it `--verify`, so a `verify:` command that
-can never discriminate - a literal `true`, or one recorded against three open
-items - passed every local gate and turned CI red after review had started.
-Both of those questions are answerable from the store without running anything,
-so both moved into the bare check, which is `CLAUDE.md` § "Prefer deterministic
-tooling over repeated model work" taking the decidable half and leaving the
-replay where it is. Whether a command that *looks* discriminating actually fails
-on the current tree still needs the subprocess, and guessing at it would be
-scripting the judgment half. The count `.claude/rules/expert-review.md` § "Name
-the number that would change your mind, then go and count it" demanded before
-tightening came back **zero and zero** - no open item's command is a no-op and
-none is shared, across the 220 open items that carry one - so the rule catches a
-regression rather than a backlog, and the regression is not hypothetical:
-`PL-4W2L`'s branch put three items in exactly that state four weeks after the
-store was last clean of it.
+`PL-WG73` is the item in this release a learner would have paid for. While a
+branch is drawn the fork control is locked, and the lock read "One comparison at
+a time. Reset the case to end this one." - a phrase no control carries. Two
+Resets are drawn, one per run, and they do opposite things: the trunk's rebuilds
+the case and lifts the lock, while the branch's returns that run to its fork,
+discarding everything simulated since, and leaves the lock exactly where it was.
+The branch's is the one a learner reaches for, since it belongs to the run they
+are trying to end. The sentence now reads **"One comparison at a time. Run 1's
+Reset ends it and starts the case over; Run 2's Reset only returns Run 2 to
+where it branched."**, filled from `run_label` and `RESET_LABEL` so that the
+instruction and the control it names cannot drift apart again, and it says what
+the trunk's Reset costs as well as what it ends. It is not classed `safety`: no
+clinical value was wrong or misattributed, and the cost was lost simulated work
+and a mode with no visible way out.
 
-`PL-PBP5` is CI passing what the local gate would refuse. `quality.yml`
-enumerated its own steps, so `tools/dead_ends.py`, `tools/ignore_check.py` and
-`tools/possessive_section_check.py` had no CI backstop at all, and a branch
-pushed without a local `make check` landed green on a tree `make check` would
-have refused - at roughly one pull-request run in twenty, by the count above.
-The two lists are deliberately **not** merged, and the reason is stronger than
-the one the brief had: `quality.yml`'s floor section runs the standard-library
-tools under the 3.11 floor *before* `uv` exists, which is what proves they need
-no virtualenv, while `make check` opens by creating one. The local gate is also
-legitimately stricter in a place nobody had noticed, `uv run ruff check
---no-cache .` against CI's plain `ruff check`. So what changed is that the
-difference stopped being invisible: `check_gate_parity` in `tools/doc_check.py`
-reconciles the set of this project's own scripts each gate runs, in both
-directions, and refuses every asymmetry not recorded in `GATE_ONLY` - which
-ends up holding exactly one entry, `tools/required_checks_check.py`, whose
-answer is not in the tree at all. Scripts rather than command strings, because
-how a script is invoked differs by construction between the floor section and
-the synced one, so comparing strings would report every line as drift. All
-three uncovered scripts are now covered, each placed on what it costs:
-`dead_ends.py` at 0.07 s and `possessive_section_check.py` at 1.6 s in the floor
-section, and `ignore_check.py` immediately after `uv run mypy`, where the warm
-`.mypy_cache` makes it 9.2 s against 27.3 s cold.
+`PL-SPN6` names the compartment in a refused fraction. `PL-9SH6` had left the
+alveolar compartment, the venous pool and all three tissue groups raising one
+string, `partial_pressure_fraction must be between 0 and 1`, and that message is
+read on a banner rather than in a traceback: `app/dashboard_frame.py` renders a
+refused setting verbatim, and a refused step is wrapped into the halted-run
+notice. It is reachable outside injected failures too - `resume_at` writes all
+five compartments from a state vector checked for shape, finiteness and its unit
+constant but not for range, so whichever setter is reached first is the one that
+refuses. Each now says which it is - `fat partial_pressure_fraction`, `alveolar
+partial_pressure_fraction`, `venous partial_pressure_fraction` - qualified at
+the call site, which is the convention `core/governing_equations.py` already
+used for the tissue groups' volume and flow, and `core/validation.py`'s module
+docstring now states it for the next caller. A new test holds the five messages
+pairwise distinct, which is the check that would have caught `PL-9SH6`'s
+collision.
 
-### The instruction set learned how old its own claims are
+### What the specification promises is displayed, bound to the tests that display it
 
-`instruction-staleness-audit` completes, 3 of 3. It is the failure that outlives
-a size problem: a rule that is long costs attention, while a rule that was true
-when it was written and is false two years later gets *obeyed*, and every size
-gauge a project keeps is blind to that because it measures how much text there
-is rather than how old what the text claims has become.
+`PL-036` gives `docs/MODEL.md` § "Minimum displayed outputs" the kind of linkage
+check its provenance table already has: each of its 21 entries names the display
+test that holds it, and `tools/doc_check.py` fails `make check` on an entry that
+names none or names one that does not resolve. The item had specified naming a
+`SimulationSnapshot` field instead, and was built otherwise (project owner,
+2026-09-22, ratified, over that field mechanism): three of the 21 outputs - the
+playback rate, the chart's time base and `F_A/F_I` - have no snapshot field and
+should not be given one, and a field would prove only that a value *travels*,
+where the live risk is a readout removed while its value goes on travelling. The
+check is **linkage, not truth**, as its provenance sibling is. The chain's second
+link - that the text reaches a widget, for the four agent-accounting entries held
+only at the view-model layer and the two readouts with no on-screen assertion -
+stays `PL-41YP`'s.
 
-`PL-T5K1` reports the dated assertions past a threshold as a grooming advisory
-on `make docket`, never on `make check`, which is edit-triggered and where it
-would be noise. The unit is the line, dated by the newest date on it, and that
-choice is what lets the report reach zero: counted per date occurrence, a line
-re-verified by appending a second date would report its first one forever, and
-an advisory that cannot be discharged costs the next advisory its reader.
-Re-verify and re-date discharges an entry, which works for both kinds of dated
-text - a measured fact is re-measured, and a record of what the project owner
-decided keeps its original date and gains a re-verification one, so nothing has
-to be falsified to clear it. `PL-PHK4` makes the threshold configurable as
-`instruction_stale_days`, defaulting to **90** (project owner, 2026-09-21,
-ratified, over 180), and was filed separately so the advisory could be tested
-against synthetic dates before it can first fire - which it cannot do on this
-tree, where all 74 dated assertions across 17 instruction files are under 30
-days old, because the project is 30 days old. Age is a proxy for staleness
-rather than staleness, and the limitation is recorded in the brief rather than
-smoothed over: this audit would have caught neither `PL-BSYZ` nor `PL-GDB0`,
-both filed within days. It targets the slow failure.
+### A git that did not answer, read as an answer
 
-`PL-44DG` is the gauge beside it, and it was wrong by a measurable amount.
-`measure_resident` counted `CLAUDE.md` and the unscoped rules files and reported
-66,773 characters, while two payloads reach every session at launch and are
-resent on every turn with nothing counting either: the SessionStart digest and
-the `docket` skill's description frontmatter, 4,794 characters between them on
-the day it was measured, making the reported figure **7.2% low**. The digest is
-the half that matters most, because it is the one component of resident cost
-that can rise with no edit to any instruction file - it carries the dead-ends
-list and scales with the store. Both are counted now, and a test pins the digest
-contribution so a change to the hook cannot silently drop out of the total. The
-gauge reads 70,512 characters over 978 lines on this cut.
+The tooling half is one shape at four call sites. **`git-silence-channel`
+completes, 2 of 2**, with `PL-ZPDM`: `vcs.tags` and `vcs.changed_items` answered
+with a bare empty set, so a git that did not answer was indistinguishable from a
+repository with no tags and a branch that changed nothing. The brief had the
+direction backwards, and the real one was worse: `release.is_untagged` holds a
+project with no tags to nothing, so silence was free passage through the one
+gate that exists because the gap it guards - a release shipped untagged - cannot
+be repaired afterwards. `cmd_release` now refuses on a declined read, and
+`cmd_check` declines its `verify:` replay whole rather than scoping it to an
+empty set and reporting a clean run.
 
-### Three records that were telling a reader something untrue
+`PL-73P0` closes the same hole in the command whose whole job is certifying a
+branch: `default_base` fell back to the literal string `main` when no candidate
+ref resolved, so `bin/docket verify` could audit a branch's scope against a base
+nothing established - reading git's own error text as three changed paths while
+missing the files the branch really changed. It now marks that base and declines
+against it. `PL-T441` and `PL-WF3X` are one defect in two commands: the git
+reads behind a printed count, and the `--verify` replay's scope diff, resolved
+the store from `config.items_dir` rather than from the directory the run
+actually read, so a store outside `docs/items` got a clean provenance record for
+closures it never read and a replay of nothing. Both now resolve it through
+`_tracked`, as `_flight` and `_stranded` already did.
 
-`PL-K4BN` backfills the eight `pr:` numbers `origin/main` was owed, each
-verified against the squash subject that carries its id. They were **8 of the 13
-advisories** `make docket` printed that morning - the largest single block, all
-of it one deterministic command - and the count is 5 now. The brief records why
-they accumulated, which is the durable half: the advisory's own wording says to
-let the number "ride the commit you are already making rather than composing
-one", which is right while commits are flowing and silently wrong once nobody
-has a commit in hand. Six of the eight merged inside a three-hour window in
-which every session that could have carried them had already pushed. That is
-`CLAUDE.md`'s routed-around test rather than tidiness: a block of advisories
-nobody acts on trains a session to skim the section where a real one is printed,
-and the same run carried four that did need judgment.
+### The rest
 
-`PL-R5HK` corrects `docs/ARCHITECTURE.md`'s wired-hooks sentence, which said
-five scripts where `.claude/settings.json` wires six - wrong since
-`item_read_log.py` was added, found once by `doc_check.py candidates` and then
-independently again by `PL-D0W8`'s own docs sweep, which is what a prose
-enumeration of a tree fact costs when nothing checks it.
-
-`PL-G7ST` removes a false provenance claim from inside the item about
-provenance. `PL-M7W1`'s section on #880 asserted that the frozen squash subject
-was the original, and the commit carrying that sentence is its own disproof: the
-*renamed* title landed. The claim had been written from the arm time while the
-pull request was open and never checked against what merged, which would have
-inflated the observed rate of the defect that item exists to measure. The
-correction carries a finding the item did not have: the freeze bites only when
-auto-merge performs the merge itself, because a human merging by hand composes
-the subject from the live title - and a hand merge is the ordinary case here.
-
-Alongside them, `PL-2JRC` is the triage pass that folded the 10 untriaged
-captures standing in the queue on 2026-09-21 into it, and `PL-JYTJ`, the cut of
-v0.5.2 itself, closes here for the structural reason `PL-V065` closed under
-v0.5.2: a cut cannot stamp itself.
+`PL-P669` re-took the count of closing pull requests a tag's span covers that
+its own notes never name - **20 across 16 of 65 spans**, the two most recent
+completed spans among them - wrote a pointer into each affected notes file, and
+made `tools/doc_check.py`'s `check_tag_span_covers_its_notes` fail `make check`
+on the next span that acquires one without it; the convention is recorded under
+**Tags** above. `PL-Z891` widens the gate-disposition reader from one heading
+form to every verb a gate has used to head a deferral - `Declined`, `Deferred`,
+`Sequenced` - so answered items stop being reported as owed. `PL-DK8Y` makes the
+session-start digest's sentence true of every kind of `Wave.stale` statement: it
+had called the plan's numbering behind the project for all four, which is false
+of a section no timeline row bears. `PL-YZJD` routes the `falsifies:`
+prescription to the triage pass, the only one that can write it, since the
+declaration counts only once it has merged. `PL-NJ9M` closes with nothing built
+(project owner, 2026-09-22, ratified, over all three options it named): the
+population it was filed for measured zero, and the round trip is removed in
+`docs/worker.md` instead. `PL-P4XB` lets `test_verify.py`'s `_commission` helper
+commit a no-op commission empty rather than dying inside `subprocess`. And
+`PL-CY4F`, the cut of v0.5.3, closes here for the structural reason every cut
+does: a cut cannot stamp itself.
 
 ## The plan
 

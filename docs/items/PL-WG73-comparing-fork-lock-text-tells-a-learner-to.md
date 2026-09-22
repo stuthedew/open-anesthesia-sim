@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, ux
 feature: two-run-attribution
+milestone: v0.5.4
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py, docs/ARCHITECTURE.md
 added: 2026-09-20
 closed: 2026-09-22
+pr: 902
 payoff: stops a learner losing their branch's simulated progress by following an instruction that names a control this interface does not have
 verify: grep -q 'def test_the_comparison_lock_names_a_control_the_learner_can_press' tests/unit/test_dashboard_frame.py
 ---

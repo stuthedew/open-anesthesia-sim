@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect
 feature: count-input-addressing
+milestone: v0.5.4
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
 closed: 2026-09-22
+pr: 899
 payoff: docket check --items pointed at a store elsewhere stops reporting a clean provenance record for a store it never read
 verify: grep -q 'def test_counts_resolve_the_store_from_the_tracked_directory' subprojects/docket/tests/test_cli.py
 recurrences: 2026-09-22 PL-WF3X
