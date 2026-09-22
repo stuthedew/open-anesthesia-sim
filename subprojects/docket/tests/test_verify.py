@@ -2598,7 +2598,12 @@ def _commission(root: Path, name: str, **fields: str) -> None:
     """Rewrite an item in the store and commit it, so the *base* is what declares."""
     (root / "docs" / "items" / name).write_text(_stored("PL-K7QX", "Do the thing", **fields))
     _git(root, "add", "-A")
-    _git(root, "commit", "-qm", "commission PL-K7QX")
+    # `--allow-empty`: fields the store already holds - `status: ready` is
+    # `_stored`'s own default - rewrite the file to what it was, and a bare
+    # commit exits 1 four frames inside `subprocess`. One call stays one
+    # commit either way, which is what the callers' `HEAD~1` counts
+    # (`PL-P4XB`).
+    _git(root, "commit", "--allow-empty", "-qm", "commission PL-K7QX")
 
 
 def test_an_assertion_the_commission_declared_falsified_is_folded(tmp_path: Path) -> None:
@@ -2749,14 +2754,16 @@ def test_a_ready_commission_is_still_the_only_word_on_what_it_falsifies(tmp_path
     This is the property relaxing the check for every self-audited branch would
     have given away. A delegated worker cannot reach the fold by closing the
     item, because `ready` is the commission saying the work was settled before
-    the branch opened. `_repo`'s base already holds the item at `ready`, so
-    there is no commission to rewrite here - which is the whole difference from
-    the test above.
+    the branch opened. So this commission and the one above differ in that
+    field and in nothing else, which is also what pins `_commission`'s
+    `--allow-empty`: `ready` is `_stored`'s own default, so the call here
+    rewrites the file to what it already held.
     """
     root = _repo(tmp_path)
     (root / "tests" / "test_thing.py").write_text(PINNED)
     _git(root, "add", "-A")
     _git(root, "commit", "-qm", "base: the assertion that pins the string")
+    _commission(root, "PL-K7QX-do-the-thing.md", status="ready")
     _close(root, "PL-K7QX delete it and close", status="done", falsifies=FALSIFIES)
 
     report = verify(
