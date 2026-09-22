@@ -9,6 +9,7 @@ feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
 closed: 2026-09-22
+pr: 910
 payoff: makes the check able to fail on the two decorators that actually disable a pytest test, which it has never been able to report
 verify: grep -q 'def test_a_pytest_mark_skip_is_a_suppression' subprojects/docket/tests/test_verify.py
 recurrences: 2026-09-22 PL-DNZ0

@@ -9,6 +9,7 @@ feature: generator-identification
 touches: .claude/skills/docket/modes/triage.md, .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-22
 closed: 2026-09-22
+pr: 915
 payoff: an unfound cause behind new workflow items is caught at the item it produces, instead of being patched one instance at a time
 verify: grep -qF 'Ask every workflow-lane item where it came from' .claude/skills/docket/modes/triage.md
 ---

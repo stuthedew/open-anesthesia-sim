@@ -50,6 +50,17 @@ rather than a ratio — no ratio is tracked or enforced. `PL-04KR` (the
 pre-registered apparatus-convergence baseline) holds its numbers and the two
 signals that test it.
 
+**While any open item carries `generator: live`, no new workflow mechanism is
+built** (project owner, 2026-09-22, ratified, over adding them under standing
+approval and ratified recommendations while six closed generator heads were
+still producing, which is how at least nine mechanisms and their tails arrived
+on 09-20 and 09-21, `PL-KVDK`). A new command, check, field or rule, or a
+re-specification of the generator rule, is captured and not built, nor offered
+as the answer to a finding. Fixing a live generator, or a defect in what exists,
+is not new. The pause ends when `bin/docket next` shows the generator tier
+empty. A request from the project owner lifts it for that request, and the
+session says so (`PL-6Q9L`).
+
 ## Working with the project owner
 
 **The outcome is the requirement. An implementation sketched alongside it is
@@ -250,7 +261,8 @@ context in every session that needs it. `tools/doc_check.py` and
 - **Find the decidable part and put it in code.** Anything answerable by
   reading the tree, a data file, or a diff belongs in a script wired into `make
   check`, a hook, or CI. Prefer this without being asked — it is standing
-  approval, needing no case put for it each time.
+  approval, needing no case put for it each time, suspended while any item
+  carries `generator: live` (§ "What this project is").
 - **Do not script the judgment.** `tools/doc_check.py` decides whether a cited
   path exists, never whether the sentence around it is still true. A tool that
   guesses at the judgment half is worse than no tool, because its output looks
@@ -356,7 +368,14 @@ deviating from a described deliverable, not acting without one.
   2. **It touches no file outside what the current item's work already
      touches.** `bin/docket verify` reads the diff for files outside an item's
      declared `touches`, so a wider fix either fails that audit honestly or
-     tempts the single edit that defeats it.
+     tempts the single edit that defeats it. A no-behaviour repair to another
+     item's file or to `docs/WORKING_NOTES.md` (drift, a stale status sentence,
+     a missing recommendation marker) is not a fix-now use at all. Declare the
+     file in the current item's `touches`, and it rides the commit already being
+     made, counting against neither this test nor the two (project owner,
+     2026-09-22, ratified, over leaving that licence in the path-scoped
+     citation-drift rule, which loads only after the decision to file; eleven
+     such repairs became items in three days, `PL-G40Z`).
   3. **No reasonable person could prefer the current state.** A typo, a stale
      doc line, a dead import, a wrong error string. Not a rename, an extracted
      helper, or anything where what is there is a defensible choice — that is a
