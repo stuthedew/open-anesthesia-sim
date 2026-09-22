@@ -27,7 +27,7 @@ import re
 from collections.abc import Iterator, Sequence
 
 import pytest
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEvent, QPoint, Qt
 from PySide6.QtGui import QBrush, QColor, QPalette
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -91,6 +91,7 @@ from anesthesia_sim.app.dashboard_frame import (
     START_NEW_CASE_TEMPLATE,
     STATUS_FAILED_TEXT,
     TRUNK_RUN_INDEX,
+    MarkListing,
     comparing_fork_lock_text,
     run_label,
     slider_position,
@@ -116,7 +117,7 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
-from anesthesia_sim.app.qt_widgets import BookmarkDialog, ParameterSlider
+from anesthesia_sim.app.qt_widgets import BookmarkDialog, MarkListingLabel, ParameterSlider
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -125,6 +126,7 @@ from anesthesia_sim.app.theme import (
     AGENT_COLOR_SCHEMES,
     AGENT_SELECTOR_WIDTH,
     INK,
+    MARK_ROW_BULLET,
     MUTED,
     PANEL,
     WARNING,
@@ -3620,6 +3622,43 @@ def test_the_dialog_and_the_panel_list_one_set_of_rows(application: QApplication
     listed = [dialog.time_list.item(row).text() for row in range(dialog.time_list.count())]
 
     assert view._bookmarks_panel.times.rows_label.text() == "\n".join(listed)
+
+
+# The narrow end of the sidebar's real width range: the window opens at 0.8 of
+# the screen's width with a 3:1 chart-to-sidebar split, which puts the sidebar
+# between about 300 and 380 px.
+_NARROW_SIDEBAR_WIDTH_PX = 300
+
+
+def test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it(application: QApplication) -> None:
+    # `PL-FPY2`: the two rows `PL-LHBY`'s review measured wrapping at 350 px.
+    # Joined into one label, the first row's continuation began at the margin
+    # every row begins at, so `Run 2 reached` read as a mark of its own and
+    # attached one run's answer to the wrong mark.
+    listing = MarkListingLabel()
+    listing.setFixedWidth(_NARROW_SIDEBAR_WIDTH_PX)
+    listing.set_listing(
+        MarkListing(
+            heading="MAC targets",
+            rows=(
+                "Fat 1.25 ×MAC – saturation probe · Run 1 not yet · Run 2 reached",
+                "Alveolar 0.50 ×MAC · Run 1 reached · Run 2 not yet",
+            ),
+            empty_text=NO_MAC_TARGETS_TEXT,
+        )
+    )
+    listing.show()
+    application.processEvents()
+
+    wrapped, below = listing.rows
+    continuation_x = wrapped.text_label.mapTo(listing, QPoint(0, 0)).x()
+    next_row_x = below.bullet_label.mapTo(listing, QPoint(0, 0)).x()
+
+    # The case is exercised only if the first row really does wrap here.
+    assert wrapped.text_label.height() >= 2 * wrapped.text_label.fontMetrics().lineSpacing()
+    assert below.bullet_label.text() == MARK_ROW_BULLET
+    assert continuation_x > next_row_x
+    assert wrapped.geometry().bottom() < below.geometry().top()
 
 
 # The branch crosses 0.50 xMAC at 114.7 s, 547 steps after it opens at 60 s.
