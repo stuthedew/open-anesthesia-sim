@@ -166,21 +166,27 @@ set it when the session opens rather than toggling it.
   safety requirements depend on. `docs/items/` and `docs/WORKING_NOTES.md`
   exist so a new session can pick up cold.
 
-## Merge from the website, not the GitHub app
+## Merge on the Mac or by auto-merge, never in the GitHub app
 
-Squash-merge, and arm auto-merge, on github.com rather than in the GitHub app
-(project owner, 2026-09-22, ratified, over leaving after-the-fact detection as
-the whole remedy). A pull request's description is this repository's squash
-commit message, so it is where a change's reasoning reaches `main`. The GitHub
-iPhone app submits the squash with an empty message, which GitHub honours over
-the repository's default, and the reasoning is gone from `main` with nothing
-saying so. `#918` confirmed it: merged from the phone, it reached `main` with no
-body. GitHub has acknowledged the defect since 2023, in community discussion
+You merge by three routes: the Mac's browser, auto-merge armed through Claude,
+and the GitHub iPhone app (project owner, 2026-09-22). Squash-merge and arm
+auto-merge by the first two, and not in the app (project owner, 2026-09-22,
+ratified, over leaving after-the-fact detection as the whole remedy). A pull
+request's description is this repository's squash commit message, so it is
+where a change's reasoning reaches `main`. The GitHub iPhone app submits the
+squash with an empty message, which GitHub honours over the repository's
+default, and the reasoning is gone from `main` with nothing saying so. `#918`,
+merged in the app, reached `main` with no body. GitHub has acknowledged the
+defect since 2023, in community discussion
 [#51016](https://github.com/orgs/community/discussions/51016); `PL-WFFX` holds
 the measurements.
 
-- On the website, the commit message box should hold the pull request's
-  description before you confirm. On a phone's browser, check that it does.
+- In the Mac's browser, the commit message box should hold the pull request's
+  description before you confirm.
+- Auto-merge is safe when nothing sets its message: all 49 auto-merges armed
+  that way kept their body. The nine that lost theirs carried an explicitly
+  empty message, six of them armed in the away-from-desk hours when the app is
+  in use.
 - If the app is the only option, check the message behind its cog icon first.
 - `python3 tools/pr_body_check.py` still reports any body that goes missing,
   and `--recover` fetches it back from GitHub into `docs/pr-bodies/`.

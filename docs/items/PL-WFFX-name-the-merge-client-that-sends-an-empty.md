@@ -137,9 +137,18 @@ is where 178 of the losses above sit.
 **Decided: the habit** (project owner, 2026-09-22, ratified, over leaving
 `tools/pr_body_check.py`'s after-the-fact detection as the whole remedy). The
 owner agreed with the recommendation above. It is written into
-`docs/maintainer.md` § "Merge from the website, not the GitHub app", where the
-person merging reads it; detection stays as the backstop, since a habit can
-lapse.
+`docs/maintainer.md` § "Merge on the Mac or by auto-merge, never in the
+GitHub app", where the person merging reads it; detection stays as the
+backstop, since a habit can lapse.
+
+**The routes, stated whole** (project owner, 2026-09-22): "i never use my phones
+browser. I use mac computer browser, you auto merge, and phone app." That
+settles two things left open above. The website is the Mac's browser, so the
+test's "merged from phone" was the GitHub app and nothing else. And auto-merge
+armed through Claude is a route of its own: the GitHub tool a session arms it
+with takes a merge method and no message, so it cannot send the empty string,
+which fits the 49 auto-merges with no message set, all of which kept their
+body.
 
 **Done when** the mobile app is confirmed or exonerated by the one-merge test
 above, and either a habit or a tooling change prevents the next empty body - or
