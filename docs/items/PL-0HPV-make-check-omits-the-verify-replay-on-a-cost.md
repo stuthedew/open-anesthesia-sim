@@ -151,3 +151,77 @@ open `verify:` commands read, `CLAUDE.md` or `ROADMAP.md` - not on this one. If
 that comes back above roughly 20 s, the skip-by-default-with-an-opt-in-target
 answer is better than putting it in `make check` unconditionally.
 
+
+## Timed 2026-09-22: the cost does not fit as the commands stand, and one ordering fixes it
+
+**The rate is no longer one instance.** Every `pull_request` run of
+`quality.yml` since 2026-09-10 was read (722 completed, 56 failed): **20 runs
+on 19 distinct pull requests failed at `verify replay, scoped to what this
+branch changed`**, all with "`<id>` is open but its `verify:` command already
+passes". It is the single commonest failing step - 20 of 56, ahead of
+`doc_check.py check` at 18. Each went green 6 to 13 minutes later (median 8),
+`#915` after 71. Run 35783744615 (`#915`) was re-read from the API to confirm
+the step. So the check changes a session's answer about once every 18 pull
+requests, which is the rate the brief asked for before recommending anything.
+
+**The cost, four cores.** A branch that changes no item and no file an open
+command reads adds nothing (1.3 s against 1.3 s bare). Anything else is set by
+the slowest command in scope, not by the number of commands in scope. Four
+real file sets from `origin/main`, replayed as working-tree edits:
+
+| merge | files | scope | replay |
+| --- | ---: | ---: | ---: |
+| `462a34c7` | 21 | 32 | 14.1 s |
+| `172f93e1` (widest of the last 80) | 19 | 55 | 41-46 s |
+| `c128173a` | 6 | 11 | 52.0 s |
+| `9070d8a0` | 5 | 22 | 67.5 s |
+
+Modelled over the last 80 merges from per-command timings (all 222 candidates
+run once at eight workers: 1,559 s serial, 217 s wall): **median 31 s, p75
+67 s, p90 76 s, 41 of 80 above 20 s.** That is under full contention, so read
+it as 15-25% high; the four measured rows are the honest figures. Either way it
+fails the 20 s bar above, on the widest scope and on the typical one. `make
+check` itself took 118 s on the same box that day, so the typical branch would
+add about a quarter to it and the p90 branch nearly two thirds.
+
+**Why, and the fix.** 98 of the 222 open commands run an expensive clause
+(`uv run pytest <file>`, `doc_check.py check`) *before* the `grep` that
+decides the answer, so an open item pays a whole test file only for the `grep`
+to fail. Twenty commands take over 20 s that way (`PL-2M9N` 75 s, `PL-VN6M`
+67 s, `PL-1BS2` 31 s). Run cheap clause first, the same model gives **median
+1.2 s, p75 3.2 s, p90 27.6 s, mean 4.9 s**. The p90 is `PL-WTXB`, which has no
+cheap clause of the strict kind. Swapping the two sides of `&&` leaves exit 0
+meaning exactly what it meant before, because neither clause writes what the
+other one reads.
+
+**That reopens a ratified decision, which is why this item stays at
+`needs-decision`.** `PL-FZ58` records the project owner declining a one-pass
+repair of these legacy clauses on 2026-09-19 (ratified), and triage's guidance
+says "each loses it as its item is started, never in a pass". The case for that
+rested on the whole-store bill falling as the queue turns over. It is falling:
+there were 82 of these pytest-beside-a-clause commands on 2026-09-20 and 60
+today. But that case never priced a local gate, whose cost is set by one slow
+command in scope rather than by the total. The slowest commands belong to
+`ready` items that can sit for weeks.
+
+**Recommended (a session's, 2026-09-22, not the project owner's): reorder
+every legacy command cheap-clause-first in one pass, then add
+`bin/docket check --verify --verify-base origin/main` to `make check`.** The
+reorder was chosen over three alternatives:
+- adding the replay as the commands stand, which costs about 30 s a run to
+  save one 8-minute round trip in 18;
+- teaching the replay to run `grep` clauses first itself, which saves the
+  same time without touching any data, but puts a shell parser on the path of
+  a check whose failure is a finding silently missed;
+- waiting for the drain, which leaves the tail to the slowest `ready` items.
+
+The reorder adds no code, keeps every recorded command literally what runs,
+and leaves each command to lose its health-check clause when its item is
+started, as `PL-FZ58`'s decision has it. Check it by running old and new forms
+of each command and requiring the same exit-zero-ness. Today every one of the
+222 exits non-zero.
+
+**The degradation needs no Makefile logic.** `bin/docket check --verify
+--verify-base origin/no-such-branch` already exits 0 with one "Not checked"
+line naming the unreadable base (`PL-ZPDM`'s decline), which is the
+bare-checkout behaviour this brief asked for.
