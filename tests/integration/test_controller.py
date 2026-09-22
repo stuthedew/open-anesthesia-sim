@@ -2561,7 +2561,7 @@ def test_a_bookmark_fork_opens_its_definition_at_the_keyframe_before_it() -> Non
 
     assert branch.snapshot().elapsed_s == fork_s
     assert branch.opened_from is not None
-    assert branch.opened_from.elapsed_s == fork_s
+    assert branch.opened_from.fork.instant_s == fork_s
 
     # The definition opens earlier, at the trunk's own keyframe rather than at
     # the fork, and nothing was recorded on the trunk to make one there.
@@ -2796,7 +2796,7 @@ def test_a_case_forks_at_the_bookmark_its_trunk_is_standing_on() -> None:
     assert case.branches == (branch,)
     assert case.runs == (marked, branch)
     assert branch.opened_from is not None
-    assert branch.opened_from.elapsed_s == fork_s
+    assert branch.opened_from.fork.instant_s == fork_s
     # The trunk is left standing where it was, still on its halt.
     assert marked.snapshot().elapsed_s == fork_s
     assert marked.snapshot().bookmark_halt is not None

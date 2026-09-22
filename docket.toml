@@ -36,6 +36,15 @@ process_classes = ["session-cost", "docs", "infra", "housekeeping"]
 # reads this.
 debt_classes = ["defect", "safety", "science", "refactor", "perf"]
 
+# What `bin/docket next --oldest` leaves out as new work rather than work owed
+# (`PL-Q89J`): the line "What counts" draws, where an item classed `feature` or
+# `planning` "is **not** debt". Everything else startable is owed, which reaches
+# the `docs`, `infra`, `test` and `ux` items no gate will hold - the half of the
+# owed work at risk of being forgotten. A debt class or `needs-decision` keeps
+# an item owed whatever else it carries, so the gate and `--oldest` cannot
+# disagree about one item.
+new_work_classes = ["feature", "planning"]
+
 # Past this, the top band stops answering "what next?" at a glance.
 #
 # Raised from the package default of 5 on 2026-08-30, deliberately and not as
@@ -146,6 +155,28 @@ verify_prerequisite_refused_from = 2026-09-20
 # configuration. Drift is one-directional and safe: a tree added to `testpaths`
 # and not here makes the rule refuse *less*, never more.
 collected_test_paths = ["tests", "subprojects/docket/tests"]
+
+# The first obligation `PL-6TP8` put on a command, made mechanical (`PL-Q8RQ`):
+# its failure before the work is an evaluation - an ordinary exit 1 - and never
+# pytest's 5. A pytest run narrowed by `-k` over a tree `collected_test_paths`
+# names cannot be one. Every test there passes or `make check` is red, so the
+# run selects tests that already pass (0) or selects none (5), and a substring
+# is satisfied by whatever test later comes to carry it: `PL-S5YM`'s
+# `-k covered` began passing when an unrelated merge added a test so named, and
+# three sessions diagnosed the red `main` that followed inside four minutes
+# (`PL-99YZ`). Refused wherever the clause stands in the `&&` chain; a run piped
+# into another command, one carrying `--cov`, and one over a tree outside the
+# list above are left alone, because there the reading stops being true.
+#
+# A date of its own rather than `verify_prerequisite_refused_from`'s, because the
+# two close different sets. That rule leaves any run carrying `-k` alone, so
+# `PL-W4XQ` was captured on its first day with one ahead of a `grep`, and
+# sharing its date would refuse that item the moment this landed. Dated
+# tomorrow, as both rules before it were, so the grandfathered set is exactly
+# what the store held when the rule began working - five open items, `PL-10MX`,
+# `PL-GVC0`, `PL-8JY7` and `PL-W4XQ` at `ready` and `PL-LWMS` at `blocked` -
+# each repaired as its item is started, never in a pass.
+verify_k_selector_refused_from = 2026-09-23
 
 # The date an item reaching `ready` must carry one plain-language line of what
 # closing it buys (`PL-WYKF`). The project owner asked for the half of "why this

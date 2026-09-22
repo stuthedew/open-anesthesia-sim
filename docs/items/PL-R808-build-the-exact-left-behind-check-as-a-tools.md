@@ -9,6 +9,8 @@ feature: parallel-sessions
 touches: tools, tests/unit/test_left_behind_check.py, docket.toml
 added: 2026-09-12
 verify: uv run pytest -q tests/unit/test_tools_portability.py && grep -q 'tests/unit/test_left_behind_check.py' docket.toml
+root-cause-of: PL-8JQQ, PL-X5PK, PL-CZR6, PL-NPWP, PL-BYMX, PL-B78T, PL-1X2C
+generator: live - PL-BHVM closed with this exact landing test unbuilt; all seven members were filed after it closed, each adding another content, date or subject heuristic to vcs.py (PL-KVDK)
 ---
 
 **Problem.** Build the exact left-behind check as a tools/ script comparing a branch tip against refs/pull/<n>/head, declining where those refs are not fetched

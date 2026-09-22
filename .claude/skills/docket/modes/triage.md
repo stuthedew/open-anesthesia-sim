@@ -167,6 +167,39 @@ because silence cannot be told apart from an omission. Marking the
 declination also satisfies the check, which is deliberate: the advisory is
 asking the brief to be explicit, not to hold an opinion.
 
+### Ask every workflow-lane item where it came from
+
+**Each item triaged into the workflow lane is scrutinized for an unresolved
+generator or a cause the code does not recognize** (project owner,
+2026-09-22). The apparatus is largely built, so its inflow should be falling,
+and an item that arrives anyway is evidence of why. Triage is the first pass
+that knows the lane, because capture leaves `touches` unset. Keep asking *why
+did this exist?* until the answer is a design fact rather than the symptom:
+a representation choice, a missing single source of truth, an invariant no
+code enforces, an external behaviour nothing models, or a rule that forces the
+work. Then grep for whether any one function or check already encodes that
+fact. Land on one of these:
+
+- **An instance of a closed head's mechanism, filed after the head closed.**
+  `bin/docket generators` gives each head and its close date. The head's fix
+  did not stop the mechanism, and nothing else in the store can record that:
+  every attributed child to date was filed in the commit that closed its parent
+  (`PL-04KR`).
+- **A re-entry**: the same defect, or the same mechanism at a sibling site, as
+  an item closed within 30 days whose fix should have covered it.
+- **One mechanism shared with two or more other items that no head names.**
+  That is a generator. Record it under `CLAUDE.md` § "A root cause of more than
+  two items is pulled, not queued", which also sets its two endings. Three
+  post-close instances of one head count the same way, as a generator whose
+  fix did not hold.
+- **A one-off, bookkeeping, or work the owner asked for.** This is the common
+  answer, not a failure to find anything.
+
+Sharing a file or a feature is not sharing a mechanism, so prefer the one-off
+over a weak cluster. Write the answer into the brief as one `**Generator
+check.**` line, naming the head or the item where there is one. The reply is
+gone before a later session or `PL-04KR`'s re-entry reading looks for it.
+
 ### The `verify:` command, and running it before writing it down
 
 Triaging an item to `ready` means naming the command that proves it done.
@@ -240,6 +273,15 @@ selector with a `grep` for the test the work adds. The sentence carries how many
 the store are in the same state, which is context rather than a backlog to
 clear in one pass — a command written away from its work is how every wrong one
 here came to exist, so each is repaired as its item is started.
+
+**From 2026-09-23 a `-k` is refused rather than remembered.** `docket check`
+errors on, and `docket set` will not write, a command captured from that date
+whose `&&` chain narrows a `pytest` run over `tests/` or
+`subprojects/docket/tests/` with `-k` - wherever the clause stands, since ahead
+of the `grep` it answers 5 and behind it it re-proves `make check` (`PL-Q8RQ`).
+A run piped into another command, one carrying `--cov`, and one over any other
+tree are left alone. The five open commands of the shape on 2026-09-22 are
+grandfathered, and lose it as their items are started.
 
 **What the exit status is read to mean once the command is recorded** is one
 contract - `subprojects/docket/README.md` § "What a `verify:` exit status

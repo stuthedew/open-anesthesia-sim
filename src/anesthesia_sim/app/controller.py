@@ -262,8 +262,9 @@ class ResumePoint:
         fork: The instant the branch was taken at and the canonical state the
             parent held there - the parent's own keyframe for a fork at a
             control event, and one propagation from it for a fork at a
-            bookmark. It is where the branch's clock and its live system
-            stand.
+            bookmark. Its instant is where the branch began: where the
+            branch's clock and its live system stand, what a reset returns
+            to, and where `drawn_window` stops drawing to the left.
         step_count: How many steps the case had completed at the fork, so
             the branch's clock continues the case's rather than restarting.
             `docs/MODEL.md` § "Supported run length" is measured against this.
@@ -290,18 +291,6 @@ class ResumePoint:
     simulation_step_s: float | None
     accounting_anchor_l: float
     crossing: BookmarkCrossing | None
-
-    @property
-    def elapsed_s(self) -> float:
-        """The fork instant, in the case's own time.
-
-        The instant the branch *began*, which is what every reader of this
-        wants: where the clock stands, what a reset returns to, and where
-        `drawn_window` stops drawing to the left. It is not in general the
-        instant the branch's run definition opens at - see `fork` above.
-        """
-
-        return self.fork.instant_s
 
 
 class SimulationController:
@@ -565,9 +554,9 @@ class SimulationController:
 
         if self._opened_from is not None:
             raise SimulationConfigurationError(
-                f"this run is a branch opened at {self._opened_from.elapsed_s} s, and a branch "
-                "carries the agent of the case it continues; changing agent begins a new case, "
-                "so change it on the run this branch came from or start a new one"
+                f"this run is a branch opened at {self._opened_from.fork.instant_s} s, and a "
+                "branch carries the agent of the case it continues; changing agent begins a "
+                "new case, so change it on the run this branch came from or start a new one"
             )
 
         self.pause()
@@ -783,7 +772,7 @@ class SimulationController:
         earlier than it exists and draw it across an interval it never lived.
         """
 
-        return 0.0 if self._opened_from is None else self._opened_from.elapsed_s
+        return 0.0 if self._opened_from is None else self._opened_from.fork.instant_s
 
     def resumed_at(self, elapsed_s: float) -> SimulationController:
         """Open a second live run at this run's canonical state at `elapsed_s`.
@@ -924,7 +913,7 @@ class SimulationController:
         them. What a branch *is* is stated once, here.
         """
 
-        elapsed_s = resume_point.elapsed_s
+        fork_at_s = resume_point.fork.instant_s
         circuit = self._state.uptake_system.circuit
         alveoli = self._state.uptake_system.alveoli
         patient = self._state.uptake_system.patient
@@ -933,18 +922,18 @@ class SimulationController:
             agent_id=self._agent_id,
             circuit_volume_l=circuit.circuit_volume_l,
             fresh_gas_flow_l_min=self._setting_at(
-                ControlInput.FRESH_GAS_FLOW, elapsed_s, circuit.fresh_gas_flow_l_min
+                ControlInput.FRESH_GAS_FLOW, fork_at_s, circuit.fresh_gas_flow_l_min
             ),
             delivered_partial_pressure_fraction=Fraction(
                 self._setting_at(
-                    ControlInput.DELIVERED, elapsed_s, circuit.delivered_partial_pressure_fraction
+                    ControlInput.DELIVERED, fork_at_s, circuit.delivered_partial_pressure_fraction
                 )
             ),
             alveolar_ventilation_l_min=self._setting_at(
-                ControlInput.ALVEOLAR_VENTILATION, elapsed_s, alveoli.alveolar_ventilation_l_min
+                ControlInput.ALVEOLAR_VENTILATION, fork_at_s, alveoli.alveolar_ventilation_l_min
             ),
             cardiac_output_l_min=self._setting_at(
-                ControlInput.CARDIAC_OUTPUT, elapsed_s, patient.cardiac_output_l_min
+                ControlInput.CARDIAC_OUTPUT, fork_at_s, patient.cardiac_output_l_min
             ),
         )
 
@@ -952,7 +941,7 @@ class SimulationController:
 
         if replayed != resume_point.segment.settings:
             raise SimulationConfigurationError(
-                f"the settings replayed for a branch at {resume_point.elapsed_s} s are not the "
+                f"the settings replayed for a branch at {fork_at_s} s are not the "
                 "ones this run was computed under there, so the branch would solve equations "
                 "its parent never did; the recorded timeline does not reproduce its own "
                 "segments"
@@ -1189,9 +1178,9 @@ class SimulationController:
 
         if self._opened_from is not None:
             raise SimulationConfigurationError(
-                f"this run is itself a branch opened at {self._opened_from.elapsed_s} s, and a "
-                "branch of a branch is refused rather than silently flattened; branch from "
-                "the trunk instead"
+                f"this run is itself a branch opened at {self._opened_from.fork.instant_s} s, "
+                "and a branch of a branch is refused rather than silently flattened; branch "
+                "from the trunk instead"
             )
 
     def _resume_point(
@@ -1791,8 +1780,8 @@ class BranchedCase:
         if trunk.opened_from is not None:
             raise SimulationConfigurationError(
                 f"a case is rooted in a trunk, and this run is a branch opened at "
-                f"{trunk.opened_from.elapsed_s} s; branches of branches are excluded rather "
-                "than unimplemented, so build the case on the run the branch came from"
+                f"{trunk.opened_from.fork.instant_s} s; branches of branches are excluded "
+                "rather than unimplemented, so build the case on the run the branch came from"
             )
 
         self._trunk = trunk

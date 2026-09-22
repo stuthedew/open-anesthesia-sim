@@ -10,6 +10,25 @@ touches: tests/
 added: 2026-08-25
 ---
 
+> **Groomed 2026-09-22 (`PL-Y4YG`): still owed, and its premise has moved.**
+> `PL-036` closed on 2026-09-22 binding § "Minimum displayed outputs" to a
+> named test per bullet rather than to a `SimulationSnapshot` field (ratified
+> over the field, because a field "proves the value still travels, never that
+> a widget still draws it" - the comment above `BOUND_FAMILIES` in
+> `tools/doc_check.py`). So **Problem**'s first sentence describes a design
+> that was not adopted. The gap survives it: of the 33 tests the section
+> names, 27 assert the toolkit-free frame or the model and 6 build a Qt
+> widget, so the chain is now doc → named test → formatted value, and which
+> bullets have no test reaching a drawn widget is the first thing to count.
+> The harness **Notes** implied was missing exists: `tests/integration/`
+> builds the real view offscreen (`PL-YCWZ`).
+>
+> Build it now. It is one test file with nothing downstream; switching its
+> list to `PL-NWTM`'s declaration is a small change once that exists, and
+> `PL-NWTM`'s own after-a-split-and-a-close test should extend this one rather
+> than write a second. Naming the new test in each bullet lets the existing
+> binding carry the widget link with no new check.
+
 **Problem.** PL-036 makes `docs/MODEL.md` § "Minimum displayed outputs" name
 the `SimulationSnapshot` field behind each bullet and checks those fields
 exist. That proves the field exists, not that the interface displays it.

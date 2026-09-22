@@ -24,6 +24,7 @@ from shared state. There is no lock, because there is nothing to lock.
 docket new "The induction curve looks wrong" "Colour-blind palette check"
 docket next --effort S       # what to work on, and why
 docket next workflow         # ...confined to one half of the project, for a second session
+docket next --oldest         # owed work longest-waiting first, so what newer work outranks surfaces
 docket wave                  # which beat of the plan's cadence is due
 docket list                  # the queue, one line per item
 docket triage                # what is untriaged, and the rules the answers must satisfy
@@ -973,6 +974,40 @@ below it — "the same priority as a generator" is what was asked for, so where
 both are startable the ordinary terms below settle the order rather than a
 sub-order nobody decided. Its reason line quotes the declared prose instead of
 naming items, because that prose is the only evidence the claim has.
+
+### What newer work keeps outranking: `docket next --oldest`
+
+Every term `next` ranks on favours work that is newer, more urgent or more
+central, so an owed item that is none of those waits while new work keeps
+arriving above it. Priority scheduling calls that *starvation*, and its
+standard remedy is *aging*: a request's priority rises the longer it waits
+(Silberschatz, Galvin and Gagne, *Operating System Concepts*, 10th ed., the
+CPU-scheduling chapter's section on priority scheduling). `--oldest` is aging's
+extreme form, pure age order, and the simplest to audit. It answers the
+question "what have we forgotten" beside the plan rather than changing it: a
+bare `docket next` prints exactly what it printed before the flag existed.
+
+- **Order.** Longest-waiting first by `added:`, ties by band and then id, `P0`
+  on top whatever its age. Age is `--today` minus `added`, so no git read is
+  needed and a bare checkout answers.
+- **Population.** What `next` could start, narrowed by a lane and `--effort`
+  exactly as `next` narrows it, less *new work*: items classed in
+  `new_work_classes` (`feature` and `planning` by default), which are the work
+  a gate protects rather than work owed. Everything else is owed, including the
+  `docs`, `infra` and `test` work the debt gate never counts, which is the half
+  at risk of being forgotten. A debt class or `needs-decision` keeps an item
+  owed whatever else it carries, so `docket gate` and this cannot disagree about
+  one item.
+- **Decisions apart.** Owed work at `needs-decision` is listed on a line of its
+  own, oldest first, never ranked: its next step is the project owner's answer,
+  and ranked by age the oldest unanswered decision would hold the top for good.
+- **Never silent about the plan.** Each pick carries the placement sentence
+  `next` writes, so an off-gate pick says so, and the last line names the plan's
+  own pick for the same lane and effort, with the command that explains it.
+
+The flag is `--oldest` rather than `--debt` because `docket gate` and the
+roadmap already use *debt* for the narrower class list a gate holds, and one
+word meaning two sets would make two commands disagree about what debt is.
 
 ### Two sessions, one queue: the lanes
 
@@ -2029,8 +2064,8 @@ the moment of writing and no exit status can decide afterwards:
    is an evaluation - an ordinary exit 1, never pytest's 5 - and it goes green
    only for what *this* item's work creates. A clause a neighbouring item's
    work satisfies makes the replay accuse the wrong item the day the neighbour
-   lands (`PL-3DXV`); a bare `-k` is a bet on a name no test may ever carry
-   (`PL-Q8RQ`).
+   lands (`PL-3DXV`); a bare `-k` is a bet on a name no test may ever carry,
+   and `docket check` refuses one at the field (`PL-Q8RQ`, below).
 2. **It reads the tree the item touches.** The paths its discriminating clause
    reads are declared in `touches`, so `docket concurrent` and the pull
    request's replay scope both see them (`PL-LBW5`); a `pytest` clause naming
@@ -2062,7 +2097,8 @@ stands beside it. The separate clause is what makes it decidable: the author
 has already said which clause discriminates, so the `pytest` run is not it,
 whatever the item turns out to be about. A command whose only clause is the
 `pytest` run says the opposite and is untouched, as is one whose run carries
-`-k`, `-m`, `--cov` or a `::`, and as is a target outside the declared trees -
+`-k`, `-m`, `--cov` or a `::` (a `-k` is refused by the rule below instead), and
+as is a target outside the declared trees -
 that one is running something no other consumer does, which is the condition
 that would falsify the rule and the reason the trees are declared rather than
 assumed. Measured 2026-09-19: 0 of the 82 open commands of this shape name
@@ -2083,6 +2119,24 @@ it. It leaks in the same bounded way `verify_required_from` does: an item
 captured before the cutover can still have a command written after it. Because
 `docket set` refuses any write `docket check` would then fail, the rule is met
 at the moment the command is typed rather than at the next run.
+
+**A `-k` is refused on its own account** (`PL-Q8RQ`), which is the contract's
+first obligation made mechanical. `verify_k_selector_refused_from` refuses a
+command whose `&&` chain narrows a `pytest` run over the collected trees with
+`-k`. Every test in those trees passes or `make check` is red, so such a run can
+only select tests the check already proves (exit 0) or select none (exit 5, or
+4 for a path the work has yet to write), and a substring is satisfied by
+whatever test later comes to carry it: `PL-S5YM`'s `-k covered` began passing
+when an unrelated merge added one, and three sessions diagnosed the red `main`
+that followed (`PL-99YZ`). It is refused wherever the clause stands, since
+position decides only which half of the contract it breaks - ahead of a `grep`
+its 5 is the command's answer before the work, behind one it re-proves the
+tree. Three runs are left alone, each because that reading stops being true:
+one whose status a pipe or `||` replaces, one carrying `--cov`, and one over a
+tree outside `collected_test_paths`. The date is its own rather than the
+prerequisite rule's, because that rule leaves any `-k` alone and `PL-W4XQ` was
+captured on its first day carrying one; the five open commands of this shape
+on 2026-09-22 are grandfathered and repaired as each item is started.
 
 ### A closed item's command is a record, and it is not rewritten
 
@@ -2643,9 +2697,13 @@ forever.
 The transient case — a session that ran the work before editing its item —
 resolves in the commit the close-out procedure already requires, since `status:
 done` travels with the work. `_check_selects_nothing` stays an *advisory* beside
-it, deliberately: a selector matching no test is the recommended shape for an
-item whose work has yet to write the test, so only the item's author can say
-which repair it wants.
+it, deliberately, though no longer because the repair is in doubt. A selector
+matching no test was once the recommended shape for an item whose work had yet
+to write the test; since `PL-6TP8` the repair is always a `grep` for the test
+the work adds, and since `PL-Q8RQ` a `-k` is refused outright on a command
+captured from `verify_k_selector_refused_from`. What the advisory still reaches
+is that rule's grandfathered set, repaired as each item is started - an error
+would force the one-pass repair instead.
 
 One part of that *is* decidable. A command recorded against more than one open
 item cannot be proving any single one of them done, whatever it returns, so
@@ -2897,9 +2955,28 @@ directive - 56 of them, all carrying an explicit error code, and none of them a
 disabled test - and whether an ignore is load-bearing is a question for mypy,
 which `warn_unused_ignores` asks of every directive in the repository:
 `strict = true` over `[tool.mypy] files`, and `tools/ignore_check.py` over the
-two test trees that list excludes. The four markers that remain have matched a
-real directive zero times; they stay at that price because a count of zero
+two test trees that list excludes. The four markers that remained had matched a
+real directive zero times, and stayed at that price because a count of zero
 cannot tell deterrence from absence (`PL-G21K`, `PL-J5NN`).
+
+`none` means none of the markers, so the markers are listed rather than
+implied. `xfail` reads the mark, the call and `xfail_strict`; `pytest.skip`
+the imperative call; `mark.skip` reads `@pytest.mark.skip` and
+`@pytest.mark.skipif`, and leaves off `pytest.` so that `@mark.skip` after
+`from pytest import mark` is read too; `unittest.skip` reads the standard
+library's `skip`, `skipIf` and `skipUnless`, and `@skip` their bare imported
+form; `typing.no_type_check` the decorator that switches a function's type
+checking off. The two pytest decorators - the commonest ways a test is
+disabled - had no entry until `PL-5B88`, so the check reported `none` with
+one in the diff. The widening owed the count a narrowing does: replayed over
+`main`'s 1,115 non-merge commits, it flags one added line, a
+`@pytest.mark.skipif` on a test that needs `bash` - a real directive, which a
+reviewer should see - and no prose in any suffix the check reads. Not read,
+and absent from that history too: `pytest.importorskip`,
+`unittest.expectedFailure`, `self.skipTest`, a raised `unittest.SkipTest`, and
+`collect_ignore` in a `conftest.py` (`PL-DNZ0`). A deselection in `addopts` is
+configuration: in `pyproject.toml`, one of `gate_paths`' defaults, the gate
+check reads it, and in a `.cfg` or `.ini` file nothing does.
 
 What counts as a *removed assertion* is decided by shape rather than by the
 word: a line in a file Python executes, opening an `assert` statement, calling
@@ -3054,6 +3131,7 @@ items_dir = "docs/items"
 safety_classes = ["safety", "science"]
 process_classes = ["session-cost", "docs", "infra"]
 debt_classes = ["defect", "safety", "science", "refactor", "perf"]
+new_work_classes = ["feature", "planning"]   # what `next --oldest` leaves out
 top_band_limit = 5
 untriaged_stale_days = 14
 instruction_stale_days = 90        # a dated assertion goes this long
@@ -3064,6 +3142,8 @@ verify_required_from = 2026-08-30   # omit to leave the `verify:` rule off
 verify_prerequisite_refused_from = 2026-09-20   # when a command may no longer
                                    # re-run a tree `check_command` collects
 collected_test_paths = ["tests"]   # the trees it does collect; empty = rule off
+verify_k_selector_refused_from = 2026-09-23   # when a command may no longer
+                                   # narrow a run over those trees with `-k`
 payoff_required_from = 2026-09-20  # omit to leave the `payoff:` rule off
 recommendation_required_from = 2026-09-21   # a `needs-decision` brief
                                    # marks a recommendation; omit for off

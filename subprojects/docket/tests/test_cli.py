@@ -4761,6 +4761,97 @@ def test_an_unknown_lane_is_rejected_by_the_parser(tmp_path: Path) -> None:
         _run("next", "crossing", "--items", str(_laned_store(tmp_path)))
 
 
+# `READY`'s id, band and capture date changed, for the `--oldest` tests below.
+OLDER_P3 = (
+    READY.replace("PL-B1B1", "PL-C2C2")
+    .replace("priority: P1", "priority: P3")
+    .replace("added: 2026-08-01", "added: 2026-07-01")
+)
+FEATURE = READY.replace("PL-B1B1", "PL-F3F3").replace("classes: perf", "classes: feature")
+
+
+def test_next_oldest_hands_out_the_longest_waiting_and_names_the_plans_pick_last(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """End to end: age orders the answer, and the plan's own pick is named last.
+
+    The older item is `P3` and the newer `P1`, so the two orders disagree -
+    the case the footer exists for, since a session handed work by age must
+    see what the plan would have handed it instead (`PL-Q89J`).
+    """
+    assert _run("next", "--oldest", "--items", str(_store(tmp_path, READY, OLDER_P3))) == 0
+    out = capsys.readouterr().out
+
+    assert out.index("1. P3 PL-C2C2") < out.index("2. P1 PL-B1B1")
+    assert "Added 2026-07-01, 54 days waiting." in out
+    assert out.rstrip().splitlines()[-1] == "The plan's own pick is PL-B1B1 (P1): `docket next`."
+
+
+def test_next_oldest_composes_with_a_lane_and_an_effort(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The lane filters first, as it does for the plan's ranking, and the footer
+    names the plan's pick for the same lane and effort."""
+    assert (
+        _run("next", "product", "--oldest", "--effort", "S", "--items", str(_laned_store(tmp_path)))
+        == 0
+    )
+    answer, footer = capsys.readouterr().out.split("The plan's own pick")
+
+    assert "1. P2 PL-PR0D" in answer and "PL-W0RK" not in answer
+    assert footer.startswith(
+        " in the product lane is PL-PR0D (P2): `docket next product --effort S`."
+    )
+
+
+def test_next_oldest_lists_decisions_on_a_line_of_their_own(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An unanswered decision is named, never ranked, however long it has waited."""
+    decision = OLDER_P3.replace("status: ready", "status: needs-decision")
+    assert _run("next", "--oldest", "--items", str(_store(tmp_path, READY, decision))) == 0
+    out = capsys.readouterr().out
+
+    assert "  1. P1 PL-B1B1" in out and "  2. " not in out
+    assert (
+        "Waiting on a decision, oldest first (1): PL-C2C2 (added 2026-07-01, 54 days waiting)."
+        in out
+    )
+
+
+def test_next_without_oldest_still_ranks_new_work(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The flag filters only under itself: a bare `next` is the plan's ranking,
+    new work included, with none of `--oldest`'s lines."""
+    store = str(_store(tmp_path, READY, FEATURE))
+
+    assert _run("next", "--items", store) == 0
+    plain = capsys.readouterr().out
+    assert _run("next", "--oldest", "--items", store) == 0
+    oldest = capsys.readouterr().out
+
+    assert "PL-F3F3" in plain
+    assert "longest-waiting" not in plain and "The plan's own pick" not in plain
+    assert "PL-F3F3" not in oldest.split("The plan's own pick")[0]
+    assert "Left out as new work, classed feature or planning: 1 item(s)" in oldest
+
+
+def test_next_oldest_reads_what_counts_as_new_work_from_the_config(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A setting the loader dropped would look applied and not be, so it is read
+    end to end: declared empty, nothing is left out."""
+    store = str(_store(tmp_path, FEATURE))
+    (tmp_path / "docket.toml").write_text("[docket]\nnew_work_classes = []\n", encoding="utf-8")
+
+    assert _run("next", "--oldest", "--items", store) == 0
+    out = capsys.readouterr().out
+
+    assert "  1. P1 PL-F3F3" in out
+    assert "Left out as new work" not in out
+
+
 def test_the_digest_names_each_lane_s_pick_for_a_parallel_session(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

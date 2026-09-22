@@ -124,3 +124,14 @@ never cut - a real fault in the remote. `PL-LT77` is a tag deleted on the
 remote that a warm checkout keeps, because `git fetch --tags` does not prune -
 a fault in local state only. The two demand opposite actions from the reader,
 and today the error cannot tell them apart. The group closes when it can.
+
+**The guard is built, by `PL-YKSD`, 2026-09-22; closing this is one test.**
+`tools/doc_check.py`'s `_check_tag_versions` reports a tag pushed ahead of its
+cut by name: the tag, the commit it peels to, and the previous version that
+commit's `pyproject.toml` still declares, alongside the version-table error
+rather than behind it. What this item's own `verify:` still wants is a test
+named `test_a_tag_ahead_of_its_own_cut_is_named` pinning its shape - an
+annotated tag on the tip of a `_tagged` checkout, whose version table has no
+row for it, so the error is anchored on the bare `ROADMAP.md` rather than a
+row. `test_a_tag_whose_pyproject_version_disagrees_is_refused` covers the
+row-anchored path only.

@@ -6,9 +6,30 @@ effort: S
 status: ready
 classes: docs, ux
 feature: chart-readout
-touches: docs/MODEL.md, src/anesthesia_sim/app/simulation_view.py
+touches: docs/MODEL.md, src/anesthesia_sim/app/dashboard_frame.py
 added: 2026-08-24
 ---
+
+> **Groomed 2026-09-22 (`PL-Y4YG`): still owed, but the numbers below are for
+> a pool that no longer exists.** The venous pool is 1.222 L, not 1.0 L: Davis
+> and Mapleson's combined venous pool (*Br J Anaesth* 1981;53:399–405) was
+> adopted on 2026-09-07 (`PL-8ZJQ`), and `docs/MODEL.md` records that at the
+> stored 5.0 L/min "the mixed-venous time constant moves from 12.0 s to 14.7
+> s". The 55/34/17% figures were measured against 1.0 L and must be
+> re-measured before any of them reaches `docs/MODEL.md`, and **Why it
+> matters**'s "1.0 L is the Gas Man reference value" is superseded by the same
+> adoption. Neither § "Venous blood" nor § "Known limitations" yet says what
+> the pool does to the first minute, so the item stands.
+>
+> One framing point for whoever writes the note: with the pool now a published
+> physiologic volume rather than a program default, the early lag is arguably
+> the model's lumped stand-in for venous transit rather than an artifact, so
+> check the framing against Davis and Mapleson before calling it either. What
+> a learner needs either way is that a low mixed-venous reading in the first
+> minute is mostly the pool's residence time, not tissue uptake. The readout
+> is `ReadoutPanel("Mixed venous", ...)` in `app/dashboard_frame.py`, whose
+> qualifier slot is empty, and the trace is `app/chart_frame.py`'s; `touches`
+> names the first in place of `app/simulation_view.py`.
 
 **Problem.** The venous pool's mixing time constant — 60 · V/Q̇ = 12 s at the
 reference 1.0 L and 5 L/min — dominates the displayed mixed-venous value

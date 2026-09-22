@@ -3,12 +3,25 @@ id: PL-043
 title: Decide whether the vaporizer dial should move in real increments
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: ux
 feature: vaporizer-controls
 touches: docs/MODEL.md
 added: 2026-08-24
+closed: 2026-09-22
+reason: Its premise was false. The Problem assumed real variable-bypass vaporizers are dialed in discrete increments; the project owner reports the dial turns smoothly (2026-09-22), so the continuous delivered-concentration control already matches the device and the docs/MODEL.md paragraph this item still owed would justify nothing. The simulator models no vaporizer dial - the control is a delivered-concentration input - so dial mechanics would arise only if planned milestone 1, the machine abstraction, ever modelled one. Its other two parts landed elsewhere: § Runtime controls names no single agent, and PL-DHV7 put the MAC multiple on the dial (PL-Y4YG).
 ---
+
+> **Groomed 2026-09-22 (`PL-Y4YG`), and dropped the same day.** Two of this
+> item's three parts had landed elsewhere: `docs/MODEL.md` § "Runtime
+> controls" reads "delivered agent concentration", and `PL-DHV7` (done
+> 2026-09-04) put the MAC multiple on the delivered dial's second line. The
+> third, a `docs/MODEL.md` paragraph on why the control is continuous, rested
+> on the **Problem**'s premise that real variable-bypass vaporizers are dialed
+> in discrete increments, which `docs/machine-survey.md` had recorded as
+> unknown. Asked, the project owner reports that the dial turns smoothly
+> (2026-09-22), so the continuous control already matches the device and the
+> paragraph would justify nothing. `reason:` carries the disposition.
 
 **Problem.** `_delivered_concentration_slider` has no `divisions`, so the
 delivered-agent setting is continuous over 0 to the agent's dial maximum. A

@@ -3,11 +3,13 @@ id: PL-027
 title: Confirm the per-frame slider write-back on a live Flet client
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: ux
 feature: vaporizer-controls
 touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-08-24
+closed: 2026-09-22
+reason: Mooted by the Qt port, as ROADMAP.md § 'Items this port moots or transforms' anticipated: no Flet client is left to confirm on. The residual question - can a write-back landing mid-drag snap the thumb - was answered without a client on 2026-09-22 (PL-Y4YG): a dragged setting is applied and written back within the same event (RunView._apply_setting, then _refresh_against_last_frame, then ParameterControl.set_setting); all 3,426 slider positions across the four controls and the three agents' delivered ranges round-trip exactly through apply, snapshot and slider_position; and QAbstractSlider.setValue with an unchanged value leaves a dragged thumb where it is. Only a refused setting writes a different value, which is PL-018's intended snap-back.
 ---
 
 > **The Qt port moots or transforms this.** `ROADMAP.md` § "Completed: v0.4.26 -

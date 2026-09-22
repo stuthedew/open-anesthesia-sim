@@ -3,11 +3,13 @@ id: PL-YKSD
 title: check_tags verifies a release tag exists and never that it points at that release's own commit, so a tag pushed before the release merged reads as tagged to every check and lets bin/docket release cut the next version on a false premise
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: release-process
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-09-22
+closed: 2026-09-22
+pr: 909
 payoff: a release tag pushed at the wrong commit fails make check, instead of reading as tagged to every check and letting the next version be cut on top of it
 verify: grep -q 'def test_a_tag_whose_pyproject_version_disagrees_is_refused' tests/unit/test_doc_check.py
 ---
@@ -53,3 +55,36 @@ whose `pyproject.toml` reads `0.5.3`, so the instance is repaired. `check_tags`
 (`tools/doc_check.py` line 2719) contains no `rev-parse`, `rev-list`,
 `^{commit}` or `pyproject` read, so nothing in it would have seen the wrong
 target.
+
+**Done 2026-09-22.** `_check_tag_versions` in `tools/doc_check.py` reads every
+release-shaped tag's own `pyproject.toml` through docket's `GitRunner` blob
+batch - one `cat-file --batch` process for all 67 tags - with the pattern
+`check_baseline` reads the working tree with. A disagreement is an error on the
+version table's row, naming the commit the tag peels to and the version its tree
+declares; a tree that yields no version is declined rather than refused, since
+an empty read cannot tell a file never there from one missing from this clone.
+
+**The premise held for 66 of the 67 tags, not all of them.** `v0.2.0` resolves
+to `69a5888c`, the release commit by its subject, whose `pyproject.toml` reads
+0.1.0: that release shipped without its bump, which `8687bdf2` "Fix stale app
+version" supplied as its direct child and which went out in v0.2.1 (`git
+describe --contains 8687bdf2` gives `v0.2.1~8^2~6`). CI checks out with
+`fetch-depth: 0`, so the check as briefed would have turned `main` red on its
+first run.
+
+**Decided by this session, over moving the tag to `8687bdf2`:** `v0.2.0` stays,
+and `ROADMAP.md`'s Tags statement names it in a second exception sentence,
+"**One version shipped with a stale version file**", read in the untagged
+sentence's count-and-names form and held to the tag in both directions - a
+named version whose tag agrees is an error, because an exception left standing
+would excuse the next mis-tag. Moving the tag would make `8687bdf2` read as
+shipped in v0.2.0, which is the question tags exist to answer, and would take a
+force-push of a published tag, which an existing clone's fetch rejects rather
+than follows unless forced (git 2.20 onward). `PL-J3ZK`'s placement predates
+the ratified/specified record, so its kind is unrecorded; it was reopened on
+ordinary evidence here, and the evidence favoured keeping it.
+
+**Not done, deliberately:** `bin/docket release` still refuses a cut only on an
+*untagged* predecessor. A mis-tagged one now fails `make check` and CI, which
+the cut's own branch runs before it can merge, so a second reading of the tag in
+docket would be a copy free to drift from this one for no case it catches.

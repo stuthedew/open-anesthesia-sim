@@ -108,7 +108,7 @@ class MarkStanding(StrEnum):
     bookmark lying before the branch's own fork instant comes across with the
     rest and the branch can never reach it going forward — and unlike
     `STILL_RUNNING` and the cap this is decidable statically, from
-    `ResumePoint.elapsed_s`, without running anything. Telling a learner it
+    `ResumePoint.fork.instant_s`, without running anything. Telling a learner it
     was "not reached within the cap" would say that running longer might reach
     it, which is false. It is inherited rather than dropped so that a trunk's
     list and a branch's do not disagree about what the case is marked at
@@ -189,7 +189,7 @@ class TimeBookmark:
     """An instant of the case a learner wants the run stopped at and returned to.
 
     The instant is in the **case's** own simulated time, which is the axis a
-    branch shares with its trunk — `ResumePoint.elapsed_s` is on it and
+    branch shares with its trunk — `ResumePoint.fork.instant_s` is on it and
     `RunDefinition` opens a branch at a keyframe of the case rather than
     re-basing to zero, so one number means the same thing on every run of a
     case.
@@ -656,7 +656,7 @@ class BookmarkSet:
                 and `without_mac_target` match, so relabelling a mark does not
                 reset what the run did.
             opened_at_s: Where this run began, in the case's own time: zero on
-                a trunk, and `ResumePoint.elapsed_s` on a branch. A time
+                a trunk, and `ResumePoint.fork.instant_s` on a branch. A time
                 bookmark before it is `BEFORE_THIS_BRANCH`, because a reset
                 returns a branch to its fork rather than to the case's
                 opening, so no step of this run can reach it.

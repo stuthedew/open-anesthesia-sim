@@ -36,15 +36,15 @@ lists, and `app/qt_chart.py` draws its curves and its legend from this one
 rather than keeping a second copy (`PL-2CS8`).
 
 **The window is a viewport and the run fills it.** The axis a frame draws
-is decided here from the selected time base and the longest run on the
-chart - fitted to the run under "Fit run", or held at the chosen width and
-following the newest instant - and every run draws into that one window.
+is decided here from the selected time base and the newest instant any run on
+the chart has reached - fitted to it under "Fit run", or held at the chosen
+width and following it - and every run draws into that one window.
 `app/chart_time_base.py` carries both rules and why they are not one.
 """
 
 from __future__ import annotations
 
-from bisect import bisect_left, bisect_right
+from bisect import bisect_left
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from math import ceil, floor, isfinite, sqrt
@@ -734,18 +734,18 @@ def assemble_chart_frame(
         )
 
     reference = runs[0].snapshot
-    elapsed_s = max(run.snapshot.elapsed_s for run in runs)
+    newest_sample_s = max(run.snapshot.elapsed_s for run in runs)
 
     # The visible window, and the two modes it can be in. "Fit run" derives
-    # the width from the run so the whole of it is drawn, pinned at zero; a
-    # chosen width is held exactly and follows the newest instant, so a
+    # the width from the newest instant so the whole case is drawn, pinned at
+    # zero; a chosen width is held exactly and follows that instant, so a
     # trace's slope on the plot means the same thing at every moment.
     if time_base is None:
-        base = fit_to_run(elapsed_s)
+        base = fit_to_run(newest_sample_s)
         start_s, stop_s = fitted_window(base)
     else:
         base = time_base
-        start_s, stop_s = following_window(base, elapsed_s)
+        start_s, stop_s = following_window(base, newest_sample_s)
 
     columns = chart_columns(plot_width_px)
     # The cap is applied here rather than where a reader clicks, so that what
@@ -809,8 +809,8 @@ def _run_frame(run: RunInput, start_s: float, stop_s: float, columns: int) -> Ru
     # agreeing at a time it did not happen.
     opened_from = run.controller.opened_from
     branch_point_s = (
-        opened_from.elapsed_s
-        if opened_from is not None and start_s <= opened_from.elapsed_s <= stop_s
+        opened_from.fork.instant_s
+        if opened_from is not None and start_s <= opened_from.fork.instant_s <= stop_s
         else None
     )
 
@@ -1172,20 +1172,16 @@ def format_compared_trace_hover(
     then its run while more than one is drawn. The qualifiers still precede
     the numbers in both, which is the safety argument the order carries.
 
-    **The instant is stated per line rather than once for the box.** Two runs
-    share the anchored grid but each adds its own control-event columns
-    (`SimulationController.drawn_window`), so their nearest points can be up
-    to one grid column apart - 4 s on the 60-minute axis and 48 s on the
-    12-hour one, both of which `format_elapsed` shows. A single instant above
-    a column of values would assert a simultaneity the readings do not have,
-    which `CLAUDE.md`'s safety-critical standard counts as a failure of the
-    value rather than of its presentation. Two *compartments* of one run do
-    not share one either, though a run draws all six traces at one set of
-    times: each keeps its own nearest point, and nearest is measured in two
-    dimensions, so the pointer's height decides which column a trace answers
-    at where two are near-equidistant in time. Observed at t = 1200 s on the
-    branched case, where muscle answers at 19m56s and fat at 20m for the same
-    run and the same pointer.
+    **The instant is stated per line rather than once for the box.** Every
+    compartment of one run answers at one instant (`nearest_trace_point`,
+    `PL-1K9G`), but two runs need not: each draws the columns its own control
+    events fall on (`SimulationController.drawn_window`) and a branch draws
+    none before its fork, so the instants nearest one pointer can differ
+    between runs - by up to a grid column where both are drawn, 4 s on the
+    60-minute axis and 48 s on the 12-hour one, both of which `format_elapsed`
+    shows. A single instant above a column of values would assert a
+    simultaneity the readings do not have, which `CLAUDE.md`'s safety-critical
+    standard counts as a failure of the value rather than of its presentation.
 
     Args:
         answering: Every drawn point within reach, in the frame's own drawing
@@ -1393,10 +1389,12 @@ class HoverReading:
             compartment answers where two compressed traces are inside one
             radius of each other, and a value whose trace the reader has to
             infer is the failure `PL-0RZ0` closes.
-        time_s: The point's simulated time. Each trace answers at its own
-            nearest drawn point, so two readings of one hover can differ
-            here by up to one grid column - which is why the readout states
-            the instant per reading rather than once for the box.
+        time_s: The point's simulated time: its run's drawn instant nearest
+            the pointer in time, which every reading of one run shares
+            (`PL-1K9G`). Two runs can still differ here - each also draws the
+            columns its own control events fall on, and a branch draws none
+            before its fork - which is why the readout states the instant per
+            reading rather than once for the box.
         value: The point's height in the plot's own unit: percent on the
             compartment chart, the dimensionless ratio on the wash-in plot.
     """
@@ -1480,7 +1478,7 @@ def nearest_trace_point(
     percent_per_pixel: float,
     radius_pixels: float,
 ) -> HoverTarget | None:
-    """Which drawn compartment points, if any, a pointer is within reach of.
+    """Which drawn compartment points, at the instant a pointer names, are within its reach.
 
     Distance is measured in pixels rather than in axis units, because the
     two axes are in different units and a reader's hand is in neither: a
@@ -1488,11 +1486,28 @@ def nearest_trace_point(
     whole window at the one-minute one. The caller supplies the scale of
     the view it is drawing.
 
-    **Distance settles nothing at all.** Every drawn point inside the radius
-    answers, whichever run and whichever compartment it belongs to, at each
-    trace's own nearest such point - so no hand movement can change what the
-    box reports without also changing what is in reach. `HoverTarget` carries
-    why, `PL-JVHL` the run measurements and `PL-0RZ0` the compartment ones.
+    **The pointer's position along the time axis names the instant, and
+    distance decides only what is in reach** (`PL-1K9G`). Each run answers at
+    its drawn instant nearest the pointer in time, ties to the earlier, and
+    every compartment of it whose point there is inside the radius answers -
+    so every compartment of one run answers at one instant, and a hand
+    movement up or down the percent axis can change what is in reach but
+    never the instant a value is labelled with. Taking each trace's nearest
+    point in both dimensions instead let the pointer's height choose the
+    column on a sloped trace: on the single-run chart 70.1% of the boxes
+    holding two or more of one run's readings carried two instants, up to
+    72 s apart on the 60-minute axis and fifteen minutes on the 12-hour one.
+    The radius is measured to the point at the named instant rather than to
+    the nearest of the trace's points, so every value reported is at that
+    instant *and* within reach of the pointer; the cost is aim beside a steep
+    segment, and no drawn instant becomes unreachable. `docs/MODEL.md` §
+    "Where more than one trace answers" carries the measurement.
+
+    **Distance settles nothing between traces either.** Every run and every
+    compartment whose point is inside the radius answers, so no hand movement
+    can change which of them the box reports without also changing what is in
+    reach. `HoverTarget` carries why, `PL-JVHL` the run measurements and
+    `PL-0RZ0` the compartment ones.
 
     Only the compartments the frame draws are candidates, so a hidden trace
     answers nothing, and only the six compartments are - the clinical
@@ -1511,41 +1526,37 @@ def nearest_trace_point(
             and still answer.
 
     Returns:
-        Every drawn point within the radius, or `None` when none is that
-        close.
+        Every run's and compartment's drawn point at the named instant that
+        is within the radius, or `None` when none is that close.
     """
 
-    nearest: dict[tuple[int, RecordedQuantity], tuple[float, int]] = {}
-
-    for run_index, run in enumerate(frame.runs):
-        for column in _columns_within(run.times_s, time_s, radius_pixels * seconds_per_pixel):
-            for quantity in frame.visible:
-                distance = _pixel_distance(
-                    time_s,
-                    percent,
-                    run.times_s[column],
-                    percent_from_fraction(Fraction(run.fractions[quantity][column])),
-                    seconds_per_pixel,
-                    percent_per_pixel,
-                )
-
-                if distance <= radius_pixels:
-                    _keep_nearest(nearest, (run_index, quantity), distance, column)
-
-    if not nearest:
-        return None
+    columns = [_nearest_column(run.times_s, time_s) for run in frame.runs]
+    answering: list[tuple[int, RunFrame, RecordedQuantity, int]] = []
 
     # In the frame's own drawing order - compartment by the trace table, run
-    # by the chart - stated rather than inherited from the order the scan
-    # happened to fill the table in: it is what the readout's lines are
-    # ordered by, and a readout whose lines could reorder under the pointer
-    # would be this defect in its layout.
-    answering = [
-        (run_index, frame.runs[run_index], quantity, nearest[(run_index, quantity)][1])
-        for quantity in frame.visible
-        for run_index in range(len(frame.runs))
-        if (run_index, quantity) in nearest
-    ]
+    # by the chart - because it is what the readout's lines are ordered by,
+    # and a readout whose lines could reorder under the pointer would be this
+    # defect in its layout.
+    for quantity in frame.visible:
+        for run_index, (run, column) in enumerate(zip(frame.runs, columns, strict=True)):
+            if column is None:
+                continue
+
+            distance = _pixel_distance(
+                time_s,
+                percent,
+                run.times_s[column],
+                percent_from_fraction(Fraction(run.fractions[quantity][column])),
+                seconds_per_pixel,
+                percent_per_pixel,
+            )
+
+            if distance <= radius_pixels:
+                answering.append((run_index, run, quantity, column))
+
+    if not answering:
+        return None
+
     first_run, first_quantity, first_column = answering[0][1:]
 
     return HoverTarget(
@@ -1577,13 +1588,18 @@ def nearest_wash_in_point(
     ratio_per_pixel: float,
     radius_pixels: float,
 ) -> HoverTarget | None:
-    """Which drawn wash-in points, if any, a pointer is within reach of.
+    """Which drawn wash-in points, at the instant a pointer names, are within its reach.
 
-    `nearest_trace_point` for the wash-in plot: the same pixel-space rule and
-    the same answer-for-every-run-in-reach rule, over every drawn stretch of
-    every run. One plot-wide trace rather than six, so there is no
-    compartment for distance to settle. The equilibrium line and the control
-    marks are not candidates.
+    `nearest_trace_point` for the wash-in plot, on the same rules: the pointer
+    names the instant, each run answers at its drawn wash-in instant nearest
+    it in time if that point is inside the radius, and every run in reach
+    answers. A run's stretches are one set of drawn instants with gaps where
+    the ratio left its domain, so the instant named across a gap is the
+    nearer end of either stretch. One plot-wide trace rather than six, so
+    there is no compartment for distance to settle - but the retired
+    two-dimensional distance still let a vertical 2 px movement move the one
+    instant this reports, on 23.9-44.4% of such movements (`PL-1K9G`). The
+    equilibrium line and the control marks are not candidates.
 
     Args:
         frame: The frame on the plot.
@@ -1595,38 +1611,34 @@ def nearest_wash_in_point(
             and still answer.
 
     Returns:
-        Every run within the radius, or `None`.
+        Every run whose drawn wash-in point at the named instant is within
+        the radius, or `None`.
     """
 
-    nearest: dict[int, tuple[float, WashInStretch, int]] = {}
-
-    for run_index, run in enumerate(frame.runs):
-        for stretch in run.wash_in:
-            for column in _columns_within(
-                stretch.times_s, time_s, radius_pixels * seconds_per_pixel
-            ):
-                distance = _pixel_distance(
-                    time_s,
-                    ratio,
-                    stretch.times_s[column],
-                    stretch.ratios[column],
-                    seconds_per_pixel,
-                    ratio_per_pixel,
-                )
-                found = nearest.get(run_index)
-
-                if distance <= radius_pixels and (found is None or distance < found[0]):
-                    nearest[run_index] = (distance, stretch, column)
-
-    if not nearest:
-        return None
+    answering: list[tuple[int, RunFrame, WashInStretch, int]] = []
 
     # In drawing order, for the reason `nearest_trace_point` states.
-    answering = [
-        (run_index, frame.runs[run_index], nearest[run_index][1], nearest[run_index][2])
-        for run_index in range(len(frame.runs))
-        if run_index in nearest
-    ]
+    for run_index, run in enumerate(frame.runs):
+        named = _nearest_wash_in_point(run.wash_in, time_s)
+
+        if named is None:
+            continue
+
+        stretch, column = named
+        distance = _pixel_distance(
+            time_s,
+            ratio,
+            stretch.times_s[column],
+            stretch.ratios[column],
+            seconds_per_pixel,
+            ratio_per_pixel,
+        )
+
+        if distance <= radius_pixels:
+            answering.append((run_index, run, stretch, column))
+
+    if not answering:
+        return None
 
     return HoverTarget(
         quantities=(RecordedQuantity.WASH_IN_RATIO,),
@@ -1649,30 +1661,51 @@ def nearest_wash_in_point(
     )
 
 
-def _keep_nearest(
-    nearest: dict[tuple[int, RecordedQuantity], tuple[float, int]],
-    key: tuple[int, RecordedQuantity],
-    distance: float,
-    column: int,
-) -> None:
-    """Record this drawn point as one run's answer for one compartment, if it is its nearest."""
+def _nearest_column(times_s: Sequence[float], time_s: float) -> int | None:
+    """The drawn column nearest `time_s` in time, or `None` where nothing is drawn.
 
-    found = nearest.get(key)
-
-    if found is None or distance < found[0]:
-        nearest[key] = (distance, column)
-
-
-def _columns_within(times_s: Sequence[float], time_s: float, reach_s: float) -> range:
-    """The drawn columns whose instant is within `reach_s` of `time_s`.
-
-    The instants are ascending, so this is two bisections rather than a
-    scan of the run: a pointer moving at sixty events a second over two
-    runs of six traces is otherwise a distance computation per drawn point
-    per event.
+    The instants are ascending, so this is one bisection rather than a scan
+    of the run: a pointer moving at sixty events a second over two runs is
+    otherwise a comparison per drawn point per event. A tie goes to the
+    earlier column, so the answer is a function of the instant alone rather
+    than of which neighbour a search happened to reach first.
     """
 
-    return range(bisect_left(times_s, time_s - reach_s), bisect_right(times_s, time_s + reach_s))
+    after = bisect_left(times_s, time_s)
+
+    if after == len(times_s):
+        return after - 1 if times_s else None
+
+    if after == 0 or times_s[after] - time_s < time_s - times_s[after - 1]:
+        return after
+
+    return after - 1
+
+
+def _nearest_wash_in_point(
+    stretches: Sequence[WashInStretch], time_s: float
+) -> tuple[WashInStretch, int] | None:
+    """A run's drawn wash-in point nearest `time_s` in time, across every stretch it draws.
+
+    A tie goes to the earlier stretch, as it goes to the earlier column
+    within one - which is also where a column drawn twice, as the shared end
+    of two stretches, is read from.
+    """
+
+    named: tuple[float, WashInStretch, int] | None = None
+
+    for stretch in stretches:
+        column = _nearest_column(stretch.times_s, time_s)
+
+        if column is None:
+            continue
+
+        apart_s = abs(stretch.times_s[column] - time_s)
+
+        if named is None or apart_s < named[0]:
+            named = (apart_s, stretch, column)
+
+    return None if named is None else (named[1], named[2])
 
 
 def _pixel_distance(

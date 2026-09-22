@@ -3,14 +3,15 @@ id: PL-CZTR
 title: ResumePoint.elapsed_s is the fork instant on the case's axis and should be named fork_instant_s, now that the definition's own instants are instant_s
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: core-domain-language
-touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_controller.py, tests/unit/test_chart_frame.py, tests/integration/test_simulation_view.py
 added: 2026-09-14
-verify: uv run pytest tests/integration/test_controller.py && ! grep -q 'resume_point.elapsed_s' src/anesthesia_sim/app/controller.py
+closed: 2026-09-22
+payoff: a branch's fork instant is read under one name, fork.instant_s, so no reader meets a duration's name on an instant and _open_at stops reading one value two ways
+verify: ! grep -rqE '(opened_from|resume_point|ResumePoint)\.elapsed_s' src tests && ! grep -q 'def elapsed_s' src/anesthesia_sim/app/controller.py
 ---
-
 
 **Problem.** ResumePoint.elapsed_s is the fork instant on the case's axis and should be named fork_instant_s, now that the definition's own instants are instant_s
 
@@ -31,3 +32,40 @@ told "a branch at N s" where N is a case instant.
 **Done when.** `ResumePoint`'s field is `fork_instant_s`, every reader is
 updated, and no `resume_point.elapsed_s` remains in
 `src/anesthesia_sim/app/controller.py`.
+
+**Re-verified 2026-09-22, while closing `PL-59WB`; not started, for session
+length.** The brief above predates `PL-B8MK`. `ResumePoint` now holds
+`fork: Keyframe`, and `elapsed_s` is no longer a field but a property
+returning `self.fork.instant_s`, so what is left is an alias. Its readers in `src/` are `controller.py`'s
+`began_at_s`; `_branch_from`, for the settings replay and its "the settings
+replayed for a branch at" refusal; the "this run is a branch opened at"
+refusals in `set_agent` and in `BranchedCase`; the "this run is itself a
+branch opened at" refusal in `_require_forkable`; and `chart_frame.py`'s
+`_run_frame`, where it places `branch_point_s`. Tests read it in two
+assertions in `tests/integration/test_controller.py` and one docstring in
+`tests/unit/test_chart_frame.py`. A fork reads the one value under both names
+on one path: `_branch_from` as `resume_point.elapsed_s`, then `_open_at` as
+`resume_point.fork.instant_s` to advance the definition.
+
+**Approach, decided 2026-09-22 (internal structure only): delete the alias
+rather than rename it.** Every reader writes `fork.instant_s`, which already
+reads as the domain says it: the fork's instant. A `fork_instant_s` property
+beside `fork.instant_s` would keep two spellings of one value, which is the
+state the fork path is in now. The displayed strings keep their text, since the
+value is unchanged.
+
+**Done when, as re-verified 2026-09-22.** `ResumePoint` has no `elapsed_s`,
+every reader above reads `fork.instant_s`, and the suite passes unchanged apart
+from those readers.
+
+**Closed 2026-09-22.** Done as decided: the alias is deleted and every reader
+writes `fork.instant_s`. The reader list above was one short - `SimulationView`'s
+`add_run`, whose "opened at N s but belongs to another case" refusal read the
+alias through a local named `opened_at`. mypy found it once the property was
+gone, which is the check to trust over a grep for this kind of list; the local
+is now `opened_from`, as in `chart_frame.py`. `_branch_from`'s local is
+`fork_at_s`, matching the halt fork's. Every refusal renders the text it did
+before. The `elapsed_s` parameters of `resumed_at`, `fork_at`,
+`_resume_point_at` and `_setting_at` carry the same case instant under the
+duration name and are left to their own item, `PL-BT2J`, since renaming a
+public parameter is a decision this one did not take.
