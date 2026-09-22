@@ -79,8 +79,9 @@ exactly what `docket next` returns today).**
   `recommend` already writes, so an off-gate pick says so. The last line names
   the plan's own pick: "The plan's own pick is PL-XXXX (P2, on the debt gate):
   `docket next`." That mirrors the lane footer in `_say_answer_lane`, so a
-  session is never handed off-gate work silently (`picking.md`: "Recommending
-  off-gate work is allowed, and is never silent about being off-gate").
+  session is never handed off-gate work silently
+  (`.claude/skills/docket/modes/picking.md`: "Recommending off-gate work is
+  allowed, and is never silent about being off-gate").
 
 **Done when.** `docket next --oldest` prints the longest-waiting startable owed
 items with their ages, `P0` first. `needs-decision` items are listed apart.

@@ -1457,7 +1457,7 @@ def test_oldest_keeps_p0_on_top_whatever_its_age() -> None:
 
     assert [pick.item.identifier for pick in picks] == ["PL-2222", "PL-1111"]
     assert picks[0].reason.startswith("P0: this comes before feature work, whatever its age.")
-    assert "added 2026-09-22, 0 days waiting" in picks[0].reason
+    assert picks[0].reason.endswith("Added 2026-09-22, 0 days waiting.")
 
 
 def test_oldest_breaks_a_tie_in_age_by_band_then_by_id() -> None:

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from collections.abc import Collection
 from dataclasses import dataclass, field
+from datetime import date
 
 from .model import (
     CLOSED_STATUSES,
@@ -245,6 +246,26 @@ def is_debt(item: Item, debt_classes: tuple[str, ...]) -> bool:
     if item.status == "needs-decision":
         return True
     return any(cls in debt_classes for cls in item.classes)
+
+
+def is_new_work(
+    item: Item, new_work_classes: tuple[str, ...], debt_classes: tuple[str, ...]
+) -> bool:
+    """Whether an open item is new work, which `docket next --oldest` leaves out.
+
+    The one exclusion from what that command treats as owed. Everything else a
+    session marked as wanting doing and set aside is owed, including the
+    `docs`, `infra` and `test` work `is_debt` never counts - which is the
+    at-risk set, because no gate will ever hold it (`PL-Q89J`).
+
+    `is_debt` wins where the two meet: a `needs-decision` item is owed whatever
+    it is about, and a debt class beside a new-work one keeps the item owed.
+    Otherwise `docket gate` and `--oldest` could disagree about one item, which
+    is the hazard the flag's name was chosen to avoid.
+    """
+    if is_debt(item, debt_classes):
+        return False
+    return any(cls in new_work_classes for cls in item.classes)
 
 
 def gate(items: list[Item], feature: str, debt_classes: tuple[str, ...]) -> Gate:
@@ -733,6 +754,122 @@ def _clipped(text: str, limit: int = 160) -> str:
     return text[:limit].rsplit(" ", 1)[0] + "..."
 
 
+def _placed(
+    scope: Scope | None, item: Item, reason: str, *, ranks_on_band: bool
+) -> tuple[str, str]:
+    """`reason` with the plan's placement of `item` stated on it, and the milestone scoping it.
+
+    Shared by `recommend` and `longest_waiting`, so the two cannot describe one
+    item's placement differently. What differs between them is how the item
+    ranked, and exactly one sentence here states that: an unplaced item "ranks
+    on its band alone", which is true of `recommend`'s ordinary pick and false
+    of a generator, which ranked above every band, and of every `--oldest`
+    pick, which ranked by age. `ranks_on_band` is the caller saying which.
+    """
+    if scope is None:
+        return reason, ""
+    where = scope.placement(item.identifier)
+    scoped_to = ""
+    if where == IN_SCOPE:
+        # Three arrangements, and conflating them is what PL-1J0P fixed.
+        # The step usually *is* the milestone placing the id. But the
+        # roadmap lets a gate ship as its own version, and then the id is
+        # on a list recorded under one milestone and cleared by another -
+        # and separately, a milestone's `Required scope` becomes current
+        # work only once its gate is clear. Saying "the step the project is
+        # on" of either told every session the project was on a release it
+        # had not reached.
+        if scope.clearing and scope.step_label:
+            # Which row is current, and never which row clears the gate.
+            # The two labels differ here, and the shorter sentence naming
+            # one as clearing the other was read as the plan's own answer:
+            # `ROADMAP.md`'s timeline makes the gate a row of its own, and
+            # "The cadence" has cleared gate work ship inside the milestone
+            # that recorded it rather than in the patch track beneath it -
+            # so "v0.4.x - the code is the model clears it" told every
+            # session a patch may carry the gate, on the one question the
+            # cadence exists to settle (`PL-TNB6`). `Scope` carries no row
+            # for the gate itself, so the honest line says where the
+            # project stands and leaves the clearing to the milestone the
+            # gate is recorded under, which the first clause already names.
+            reason = (
+                f"On the debt gate recorded under {scope.anchor}, which clears before "
+                f"that milestone is implemented; the project stands on "
+                f"{scope.step_label}. {reason}"
+            )
+        elif scope.clearing:
+            # "debt gate", in those words, because this is the branch that
+            # fires on the ordinary arrangement - a milestone clearing its
+            # own gate - and it was the one wording in the project that
+            # never said "gate" at all. `placement_line` says "on the debt
+            # gate recorded under", `placement_mark` draws `[gate]`, and
+            # `ROADMAP.md` calls it the debt gate; only `docket next` - the
+            # command that actually hands over the work - called it "the
+            # frozen list", which is the store's internal name for the
+            # recorded list rather than the thing the project owner is
+            # tracking. So every gate item this project has ever offered
+            # was offered without being announced as gate work, and the
+            # owner reported exactly that: `next` "hasn't recommended a
+            # gate item in a while, or at least hasn't called something a
+            # gate item if it was" (2026-09-19). The relation was right
+            # throughout; only the noun was unreadable (`PL-MN0F`).
+            reason = (
+                f"On the debt gate recorded under {scope.anchor}, "
+                f"the step the project is on. {reason}"
+            )
+        elif scope.step_label:
+            reason = (
+                f"In scope for {scope.anchor}, which the step the project is on "
+                f"({scope.step_label}) comes before. {reason}"
+            )
+        else:
+            reason = f"In scope for {scope.anchor}, the step the project is on. {reason}"
+    elif where == UNPLACED and scope.anchor:
+        # The third placement said nothing until PL-J790, and silence is
+        # not one of the three answers: a session reading a reason line
+        # with no gate sentence cannot tell "no section places this" from
+        # "nobody looked". The wording has to stay narrow, though. `Scope`
+        # reads a section's frozen list and its `Required scope` and
+        # nothing else, so a timeline row places nothing here - `PL-FZ6T`
+        # is unplaced by this test while `ROADMAP.md`'s `v0.4.x` row names
+        # it outright. Saying "the roadmap places this nowhere" would have
+        # every session assert that falsehood.
+        placed_nowhere = (
+            f"Placed by no section of {scope.anchor}: neither its frozen list nor "
+            f"its `Required scope` names this id. A timeline row or prose may still "
+            f"place it."
+        )
+        # The tail states how the item ranked, and for a generator that
+        # sentence is false - it did not rank on its band, it ranked above
+        # every band - as it is for an `--oldest` pick, which age ranked.
+        # Two claims about one ranking, in one reason line, is the
+        # apparatus floor broken where a reader can see both.
+        if ranks_on_band:
+            placed_nowhere = (
+                f"Placed by no section of {scope.anchor}: neither its frozen "
+                f"list nor its `Required scope` names this id, so it is neither "
+                f"preferred nor excluded and ranks on its band alone. A timeline "
+                f"row or prose may still place it."
+            )
+        reason = f"{reason} {placed_nowhere}"
+    elif where == OUT_OF_SCOPE:
+        scoped_to = scope.milestone(item.identifier)
+        reason = (
+            f"{reason} Outside what {scope.anchor} names: this id appears in "
+            f"{scoped_to}'s section, which the current step has not reached."
+        )
+    elif where == EXCLUDED:
+        # A decision rather than a delay, so the sentence says so and the
+        # item sorts below out-of-scope work rather than level with it.
+        # `scoped_to` stays empty: no milestone *places* this id, and
+        # naming the excluding one there would read as one that does.
+        reason = (
+            f"{reason} Explicitly out of scope for {scope.anchor}: its section names "
+            f"this id under that heading, so the roadmap has ruled on it."
+        )
+    return reason, scoped_to
+
+
 def recommend(
     items: list[Item],
     in_flight: Collection[str] | None = None,
@@ -946,104 +1083,12 @@ def recommend(
         else:
             reason = f"Highest-priority work that is ready to start ({item.priority})."
 
-        where = placement(item)
-        scoped_to = ""
-        if scope is not None and where == IN_SCOPE:
-            # Three arrangements, and conflating them is what PL-1J0P fixed.
-            # The step usually *is* the milestone placing the id. But the
-            # roadmap lets a gate ship as its own version, and then the id is
-            # on a list recorded under one milestone and cleared by another -
-            # and separately, a milestone's `Required scope` becomes current
-            # work only once its gate is clear. Saying "the step the project is
-            # on" of either told every session the project was on a release it
-            # had not reached.
-            if scope.clearing and scope.step_label:
-                # Which row is current, and never which row clears the gate.
-                # The two labels differ here, and the shorter sentence naming
-                # one as clearing the other was read as the plan's own answer:
-                # `ROADMAP.md`'s timeline makes the gate a row of its own, and
-                # "The cadence" has cleared gate work ship inside the milestone
-                # that recorded it rather than in the patch track beneath it -
-                # so "v0.4.x - the code is the model clears it" told every
-                # session a patch may carry the gate, on the one question the
-                # cadence exists to settle (`PL-TNB6`). `Scope` carries no row
-                # for the gate itself, so the honest line says where the
-                # project stands and leaves the clearing to the milestone the
-                # gate is recorded under, which the first clause already names.
-                reason = (
-                    f"On the debt gate recorded under {scope.anchor}, which clears before "
-                    f"that milestone is implemented; the project stands on "
-                    f"{scope.step_label}. {reason}"
-                )
-            elif scope.clearing:
-                # "debt gate", in those words, because this is the branch that
-                # fires on the ordinary arrangement - a milestone clearing its
-                # own gate - and it was the one wording in the project that
-                # never said "gate" at all. `placement_line` says "on the debt
-                # gate recorded under", `placement_mark` draws `[gate]`, and
-                # `ROADMAP.md` calls it the debt gate; only `docket next` - the
-                # command that actually hands over the work - called it "the
-                # frozen list", which is the store's internal name for the
-                # recorded list rather than the thing the project owner is
-                # tracking. So every gate item this project has ever offered
-                # was offered without being announced as gate work, and the
-                # owner reported exactly that: `next` "hasn't recommended a
-                # gate item in a while, or at least hasn't called something a
-                # gate item if it was" (2026-09-19). The relation was right
-                # throughout; only the noun was unreadable (`PL-MN0F`).
-                reason = (
-                    f"On the debt gate recorded under {scope.anchor}, "
-                    f"the step the project is on. {reason}"
-                )
-            elif scope.step_label:
-                reason = (
-                    f"In scope for {scope.anchor}, which the step the project is on "
-                    f"({scope.step_label}) comes before. {reason}"
-                )
-            else:
-                reason = f"In scope for {scope.anchor}, the step the project is on. {reason}"
-        elif scope is not None and where == UNPLACED and scope.anchor:
-            # The third placement said nothing until PL-J790, and silence is
-            # not one of the three answers: a session reading a reason line
-            # with no gate sentence cannot tell "no section places this" from
-            # "nobody looked". The wording has to stay narrow, though. `Scope`
-            # reads a section's frozen list and its `Required scope` and
-            # nothing else, so a timeline row places nothing here - `PL-FZ6T`
-            # is unplaced by this test while `ROADMAP.md`'s `v0.4.x` row names
-            # it outright. Saying "the roadmap places this nowhere" would have
-            # every session assert that falsehood.
-            placed_nowhere = (
-                f"Placed by no section of {scope.anchor}: neither its frozen list nor "
-                f"its `Required scope` names this id. A timeline row or prose may still "
-                f"place it."
-            )
-            # The tail states how the item ranked, and for a generator that
-            # sentence is false - it did not rank on its band, it ranked above
-            # every band. Two claims about one ranking, in one reason line,
-            # is the apparatus floor broken where a reader can see both.
-            if item.identifier not in generating and item.identifier not in impairing:
-                placed_nowhere = (
-                    f"Placed by no section of {scope.anchor}: neither its frozen "
-                    f"list nor its `Required scope` names this id, so it is neither "
-                    f"preferred nor excluded and ranks on its band alone. A timeline "
-                    f"row or prose may still place it."
-                )
-            reason = f"{reason} {placed_nowhere}"
-        elif scope is not None and where == OUT_OF_SCOPE:
-            scoped_to = scope.milestone(item.identifier)
-            reason = (
-                f"{reason} Outside what {scope.anchor} names: this id appears in "
-                f"{scoped_to}'s section, which the current step has not reached."
-            )
-        elif scope is not None and where == EXCLUDED:
-            # A decision rather than a delay, so the sentence says so and the
-            # item sorts below out-of-scope work rather than level with it.
-            # `scoped_to` stays empty: no milestone *places* this id, and
-            # naming the excluding one there would read as one that does.
-            reason = (
-                f"{reason} Explicitly out of scope for {scope.anchor}: its section names "
-                f"this id under that heading, so the roadmap has ruled on it."
-            )
+        reason, scoped_to = _placed(
+            scope,
+            item,
+            reason,
+            ranks_on_band=item.identifier not in generating and item.identifier not in impairing,
+        )
         ranked.append(
             Recommendation(
                 item,
@@ -1056,3 +1101,119 @@ def recommend(
         )
 
     return ranked[:limit]
+
+
+def waiting_since(item: Item, today: date) -> str:
+    """How long an item has waited, as the clause `docket next --oldest` prints.
+
+    Read from `added` against `today`, so no git read is needed and a test can
+    pin the date. An item with no `added` says it cannot be aged rather than
+    claiming an age; `docket check` already errors on it.
+    """
+    if item.added is None:
+        return "no `added` date, so how long it has waited cannot be read"
+    days = (today - item.added).days
+    return f"added {item.added.isoformat()}, {days} {'day' if days == 1 else 'days'} waiting"
+
+
+@dataclass(frozen=True)
+class Waiting:
+    """What `docket next --oldest` answers, in the three parts it prints."""
+
+    #: Startable owed work, longest-waiting first with `P0` above all of it,
+    #: cut to the caller's limit.
+    picks: list[Recommendation]
+    #: Owed work at `needs-decision`, oldest first and uncut: named beside the
+    #: picks and never ranked among them.
+    decisions: list[Item]
+    #: How many startable items were left out as new work, so the filter is
+    #: never silent about what it dropped.
+    new_work: int
+
+
+def longest_waiting(
+    items: list[Item],
+    in_flight: Collection[str] | None = None,
+    *,
+    today: date,
+    new_work_classes: tuple[str, ...],
+    debt_classes: tuple[str, ...],
+    effort: str | None = None,
+    limit: int = 3,
+    scope: Scope | None = None,
+    lane: str | None = None,
+    workflow_paths: tuple[str, ...] = (),
+    generator_paths: tuple[str, ...] = (),
+    protected_paths: tuple[str, ...] = (),
+    gate_paths: tuple[str, ...] = (),
+) -> Waiting:
+    """Owed work in the order it has waited, for `docket next --oldest`.
+
+    Every term `recommend` ranks on favours work that is newer, more urgent or
+    more central, so an owed item that is none of those waits while new work
+    keeps arriving above it. That is *starvation*, and the standard remedy in
+    priority scheduling is *aging*: a request's priority rises the longer it
+    waits. Pure age order is aging's extreme form, and the simplest to audit.
+    It sits beside the plan rather than inside it: `recommend` is unchanged,
+    and this answers the question a session asks when it wants what the plan
+    keeps passing over (`PL-Q89J`, project owner, 2026-09-22, ratified, over
+    a `--debt` filter in the plan's own order, which would have returned what
+    `docket next` already returns).
+
+    Longest-waiting first by `added`, ties by band and then id. `P0` stays on
+    top whatever its age and whatever its status: a hotfix never waits behind
+    an old doc fix, and is never moved onto the decisions line. An item with
+    no `added` sorts last.
+
+    The population is `_startable`'s, narrowed by `lane` the way `recommend`
+    narrows it, less new work (`is_new_work`). Owed work at `needs-decision` is
+    split out rather than ranked. Its next step is the project owner's answer
+    rather than a session's work, and ranked by age the oldest unanswered
+    decision would hold the top of this list for good - `PL-JW39`'s hazard in
+    `next` itself.
+
+    Each pick carries the placement sentence `recommend` writes, so an
+    off-gate pick says so, and never the clause saying it "ranks on its band
+    alone", which age makes false.
+    """
+    startable = [
+        item
+        for item in _startable(items, in_flight, effort=effort)
+        if lane is None or item.lane(workflow_paths) == lane
+    ]
+    owed = [item for item in startable if not is_new_work(item, new_work_classes, debt_classes)]
+    known = {item.identifier for item in items if item.identifier}
+
+    def rank(item: Item) -> tuple[int, int, date, int, str]:
+        hotfix = 0 if item.priority == "P0" else 1
+        undated = 0 if item.added is not None else 1
+        band = PRIORITIES.index(item.priority) if item.priority in PRIORITIES else len(PRIORITIES)
+        return (hotfix, undated, item.added or date.max, band, item.identifier)
+
+    def deciding(item: Item) -> bool:
+        return item.status == "needs-decision" and item.priority != "P0"
+
+    picks: list[Recommendation] = []
+    for item in sorted((i for i in owed if not deciding(i)), key=rank)[:limit]:
+        waited = waiting_since(item, today)
+        waited = f"{waited[:1].upper()}{waited[1:]}."
+        if item.priority == "P0":
+            reason = f"P0: this comes before feature work, whatever its age. {waited}"
+        else:
+            reason = waited
+        reason, scoped_to = _placed(scope, item, reason, ranks_on_band=False)
+        picks.append(
+            Recommendation(
+                item,
+                reason,
+                scoped_to=scoped_to,
+                generator=len(item.root_cause_of) if ranks_as_generator(item, known) else 0,
+                impairs_generators=impairs_generators_soundly(item, generator_paths),
+                delegable=item.delegability(protected_paths, gate_paths) is None,
+            )
+        )
+    return Waiting(
+        picks=picks,
+        decisions=sorted((i for i in owed if deciding(i)), key=rank),
+        new_work=len(startable) - len(owed),
+    )

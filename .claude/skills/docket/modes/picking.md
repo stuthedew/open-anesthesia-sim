@@ -8,7 +8,8 @@ page and decides which file a session reads.
 
 ## Mode: recommend what to work on
 
-Triggered by "what should we work on next", "I have some time", "what's left".
+Triggered by "what should we work on next", "I have some time", "what's left",
+"what is next debt", "what have we forgotten".
 
 ```bash
 docket wave            # which beat of the plan is due - read this first
@@ -16,6 +17,7 @@ docket status          # features first - lead with this
 docket next            # the specific next item, with its reason and its lane
 docket next product    # ...the simulator only
 docket next workflow   # ...the apparatus only
+docket next --oldest   # owed work longest-waiting first - "what is next debt"
 ```
 
 **Start above the queue.** `docket wave` says where the project stands on the
@@ -118,6 +120,17 @@ as ruled out. Lead the reply with its answer. Add judgment the tool cannot
 have: whether the item is still real, whether the marking is right about a
 milestone whose prose it cannot read, and how it fits what the owner said
 they were trying to do.
+
+**"What is next debt" and "what have we forgotten" are `docket next
+--oldest`** (`PL-Q89J`). The plan's order favours what is newer, more urgent or
+more central, so owed work that is none of those - the `docs`, `infra` and
+`test` items no gate will hold - waits for good. `--oldest` hands out owed work
+longest-waiting first with `P0` on top, lists `needs-decision` items apart,
+and composes with a lane and `--effort`. Its picks are usually off-gate, and
+the placement sentence under each one says so; offer them under the off-gate
+rule below, and name the plan's own pick, which its last line prints. Age is a
+reason to look, not evidence the item is still real: an old brief can describe
+code that has since moved, so read it against the tree before starting it.
 
 **The digest already names both lanes' picks.** Its `By lane, for a second
 session:` line carries each half's top item and how many span both, so the

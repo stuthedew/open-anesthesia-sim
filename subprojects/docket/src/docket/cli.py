@@ -59,6 +59,8 @@ from .plan import (
     features,
     gate,
     generator_defects,
+    is_new_work,
+    longest_waiting,
     placement_clause,
     placement_line,
     promotable,
@@ -66,6 +68,7 @@ from .plan import (
     recurring,
     set_aside,
     unsound_generator_claims,
+    waiting_since,
 )
 from .release import (
     NOTES_DIR,
@@ -86,7 +89,7 @@ from .release import (
     unrecorded_milestones,
     unreferenced_by_version,
 )
-from .roadmap import MilestoneStates, Wave, milestone_states, wave
+from .roadmap import MilestoneStates, Scope, Wave, milestone_states, wave
 from .store import (
     ID_PREFIX,
     find_item,
@@ -1704,6 +1707,10 @@ def cmd_next(args: argparse.Namespace) -> int:
     next" and never be handed the same item. The unfiltered answer is
     unchanged, and remains the default: the split is a tool for running two
     sessions at once, not a new way to read the queue.
+
+    `--oldest` asks a different question of the same queue - owed work in the
+    order it has waited - and `_next_oldest` answers it. Without the flag
+    nothing below changes.
     """
     _, items, config = _load(args)
     lane = None if args.lane == "all" else args.lane
@@ -1723,6 +1730,8 @@ def cmd_next(args: argparse.Namespace) -> int:
     report = _complete_report(root, items, config, args)
     plan = _plan(root, items, config)
     flight = _flight(args)
+    if args.oldest:
+        return _next_oldest(items, flight, config, args, plan, lane, report)
     picks = recommend(
         items,
         flight.ids,
@@ -1760,6 +1769,126 @@ def cmd_next(args: argparse.Namespace) -> int:
         )
     _say_unread(flight)
     return 0
+
+
+def _next_oldest(
+    items: list[Item],
+    flight: FlightReport,
+    config: Config,
+    args: argparse.Namespace,
+    plan: Wave | None,
+    lane: str | None,
+    report: Report,
+) -> int:
+    """`docket next --oldest`: owed work in the order it has waited.
+
+    A different question of the same queue, and `plan.longest_waiting` carries
+    why it is asked. The ranking a bare `docket next` prints is untouched by
+    the flag. The last line names that ranking's own pick, in the lane
+    footer's shape, so a session handed off-gate work by age is never handed
+    it silently.
+    """
+    today = args.today or date.today()
+    scope = plan.scope if plan is not None else None
+    waiting = longest_waiting(
+        items,
+        flight.ids,
+        today=today,
+        new_work_classes=config.new_work_classes,
+        debt_classes=config.debt_classes,
+        effort=args.effort,
+        limit=args.limit,
+        scope=scope,
+        lane=lane,
+        workflow_paths=config.workflow_paths,
+        generator_paths=config.generator_paths,
+        protected_paths=config.protected_paths,
+        gate_paths=config.gate_paths,
+    )
+    where = f" in the {lane} lane" if lane else ""
+    if waiting.picks:
+        print(f"{render.open_count(report)} open. Owed work{where}, longest-waiting first:\n")
+        for index, pick in enumerate(waiting.picks, start=1):
+            print(f"  {index}. {pick.describe()}\n")
+    else:
+        print(f"No owed work is ready to start{where}.")
+    _say_decisions(waiting.decisions, today, args.limit)
+    if waiting.new_work:
+        print(
+            f"Left out as new work, classed {' or '.join(config.new_work_classes)}: "
+            f"{waiting.new_work} item(s), which `docket next` still ranks."
+        )
+    if flight.ids:
+        print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
+    _say_promotable(items)
+    # The lane's set-aside count is taken over the owed work alone, so it
+    # describes the answer above rather than a queue it was never drawn from.
+    owed = [i for i in items if not is_new_work(i, config.new_work_classes, config.debt_classes)]
+    _say_lane_holdouts(owed, flight, config, args, lane)
+    _say_plan_pick(items, flight, config, args, scope, lane)
+    _say_unread(flight)
+    return 0
+
+
+def _say_decisions(decisions: list[Item], today: date, limit: int) -> None:
+    """Name the owed work waiting on a decision, oldest first, beside `--oldest`'s picks.
+
+    Named and never ranked, for the reason `plan.longest_waiting` gives. Cut to
+    the picks' own limit with the rest counted, so a store holding forty open
+    decisions prints one line rather than forty.
+    """
+    if not decisions:
+        return
+    shown = ", ".join(
+        f"{item.identifier} ({waiting_since(item, today)})" for item in decisions[:limit]
+    )
+    rest = len(decisions) - limit
+    more = f", and {rest} more (`--limit` shows them)" if rest > 0 else ""
+    print(f"Waiting on a decision, oldest first ({len(decisions)}): {shown}{more}.")
+    print(
+        "  Not ranked above - each one's next step is the project owner's answer rather than "
+        "a session's work, and ranked by age the oldest would hold the top for good."
+    )
+
+
+def _say_plan_pick(
+    items: list[Item],
+    flight: FlightReport,
+    config: Config,
+    args: argparse.Namespace,
+    scope: Scope | None,
+    lane: str | None,
+) -> None:
+    """Name the plan's own pick under `--oldest`'s, with the command that explains it.
+
+    The lane footer's shape (`_say_answer_lane`), for the rule the `docket`
+    skill's picking mode states: recommending off-gate work is allowed, and is
+    never silent about being off-gate. Asked with the same lane and effort, so
+    the two answers are one question put two ways.
+    """
+    found = recommend(
+        items,
+        flight.ids,
+        effort=args.effort,
+        limit=1,
+        scope=scope,
+        lane=lane,
+        workflow_paths=config.workflow_paths,
+        generator_paths=config.generator_paths,
+        protected_paths=config.protected_paths,
+        gate_paths=config.gate_paths,
+    )
+    if not found:
+        return
+    top = found[0].item
+    command = "docket next"
+    if lane:
+        command += f" {lane}"
+    if args.effort:
+        command += f" --effort {args.effort}"
+    where = f" in the {lane} lane" if lane else ""
+    because = _band_and_place(scope, top)
+    print(f"The plan's own pick{where} is {top.identifier} ({because}): `{command}`.")
 
 
 def _say_promotable(items: list[Item]) -> None:
@@ -1865,6 +1994,20 @@ def _say_lane_holdouts(
         )
 
 
+def _band_and_place(scope: Scope | None, item: Item) -> str:
+    """The band and the gate relation - what "why this one" reduces to in a footer.
+
+    Both are facts in the store rather than readings of it, which is what
+    keeps this on the right side of scripting the judgment: the tool says
+    where the item stands, and what the work buys stays prose somebody
+    wrote. Before `PL-Z27P` the lane footer offered the other lane's pick as
+    a bare id and title, so the one place the project owner meets the
+    workflow lane carried no ranking information at all.
+    """
+    clause = placement_clause(scope, item.identifier)
+    return f"{item.priority}, {clause}" if clause else item.priority
+
+
 def _say_answer_lane(
     items: list[Item],
     flight: FlightReport,
@@ -1916,19 +2059,6 @@ def _say_answer_lane(
 
     scope = plan.scope if plan is not None else None
 
-    def why(item: Item) -> str:
-        """The band and the gate relation - what "why this one" reduces to here.
-
-        Both are facts in the store rather than readings of it, which is what
-        keeps this on the right side of scripting the judgment: the tool says
-        where the item stands, and what the work buys stays prose somebody
-        wrote. Before `PL-Z27P` this line offered the other lane's pick as a
-        bare id and title, so the one place the project owner meets the
-        workflow lane carried no ranking information at all.
-        """
-        clause = placement_clause(scope, item.identifier)
-        return f"{item.priority}, {clause}" if clause else item.priority
-
     def name(wanted: str) -> str:
         # The payoff on its own line rather than inside the parentheses beside
         # the band: it is a sentence, and the marks in there are tokens. A
@@ -1937,14 +2067,15 @@ def _say_answer_lane(
         found = pick_for(wanted)
         if found is None:
             return "nothing startable"
-        named = f"{found.identifier} ({why(found)}): {found.title}"
+        named = f"{found.identifier} ({_band_and_place(scope, found)}): {found.title}"
         return f"{named}\n  - payoff: {found.payoff}" if found.payoff else named
 
     top_lane = top.lane(config.workflow_paths)
     if top_lane in SELECTABLE_LANES:
         other = next(one for one in SELECTABLE_LANES if one != top_lane)
+        because = _band_and_place(scope, top)
         print(
-            f"Lane of this answer: {top.identifier} is {top_lane} work ({why(top)}).\n"
+            f"Lane of this answer: {top.identifier} is {top_lane} work ({because}).\n"
             f"The {other} lane's own pick is {name(other)}\n"
             f"  - `docket next {other}` for its reason."
         )
@@ -3351,6 +3482,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="only work that fits the time available",
     )
     nxt.add_argument("--limit", type=int, default=3)
+    nxt.add_argument(
+        "--oldest",
+        action="store_true",
+        default=False,
+        help="owed work longest-waiting first, P0 on top, so what newer work keeps "
+        "outranking surfaces",
+    )
     nxt.set_defaults(func=cmd_next)
 
     gate_cmd = add("gate", "the open debt a milestone has to clear")
