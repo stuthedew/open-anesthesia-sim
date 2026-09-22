@@ -1,4 +1,4 @@
-"""Print the branch name of every open pull request, one per line.
+"""Print the branch name of every open pull request, and its number, one per line.
 
 `bin/docket flight` reports an item as in flight from a branch that carries it,
 and cannot tell a live session from a branch nobody will merge; it says so, and
@@ -12,7 +12,11 @@ and surfaced three hours later only because the project owner asked whether the
 feature had been built.
 
 `docket` decides the first half from the branch's own item files. This is the
-second half, and it lives here rather than in `subprojects/docket/` for the
+second half, and since `PL-7TVT` it is also the pull-request clause on every row
+`flight` prints: a branch outlives its session, so an age alone reads a pull
+request waiting on review as somebody's live work. The number follows the
+branch name, so the row can say which pull request rather than send the reader
+to look it up. It lives here rather than in `subprojects/docket/` for the
 reason `main_ci_status.py` does: that package answers from a bare checkout with
 no network and knows nothing about GitHub, and it should stay that way. Which
 forge a project uses is not a fact about its queue, so the package asks a
@@ -152,7 +156,7 @@ def main() -> int:
     if found is None:
         return 1
     for pull_request in found:
-        print(pull_request.head)
+        print(f"{pull_request.head} {pull_request.number}")
     return 0
 
 

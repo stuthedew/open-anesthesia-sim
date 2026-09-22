@@ -200,9 +200,12 @@ class Config:
     #: item's command. Shelled out, so it may be whatever the project uses.
     check_command: str = "make check"
     #: A command printing, one branch name per line, every branch the project's
-    #: forge has an open pull request for. `docket flight` runs it to tell a
-    #: branch waiting on review from one nobody opened, which is the second
-    #: half of knowing that finished work has stalled.
+    #: forge has an open pull request for - each optionally followed by
+    #: whitespace and that pull request's number. `docket flight` runs it to
+    #: tell a branch waiting on review from one nobody opened, which is the
+    #: second half of knowing that finished work has stalled, and to say on
+    #: every row whether a pull request is open, since a branch outlives its
+    #: session and an age alone cannot say so in the first hour (`PL-7TVT`).
     #:
     #: A command rather than an API call, because this package answers from a
     #: bare checkout with no network and knows nothing about GitHub or any

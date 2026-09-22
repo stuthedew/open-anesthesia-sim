@@ -53,6 +53,7 @@ from docket.vcs import (
     is_shallow,
     lost,
     merged_pull_requests,
+    open_pull_requests,
     orphaned,
     precedence,
     records_on_base,
@@ -295,6 +296,19 @@ READS: tuple[Read, ...] = (
         "settled_branches",
         lambda r, g: settled_branches(r, branches_in_flight(r, runner=g), opened=tuple, runner=g),
         _findings("branches"),
+    ),
+    Read(
+        # The forge answers for the fixture's own branch, so there is a row to
+        # lose: what a silence can take is the match between a ref and the
+        # branch name a pull request carries.
+        "open_pull_requests",
+        lambda r, g: open_pull_requests(
+            r,
+            branches_in_flight(r, runner=g),
+            opened=lambda: {"claude/pl-k7qx-carried": 757},
+            runner=g,
+        ),
+        _findings("numbers"),
     ),
     Read("stranded", lambda r, g: stranded(r, set(), runner=g), _findings("items")),
     Read("lost", lambda r, g: lost(r, runner=g), _findings("items")),

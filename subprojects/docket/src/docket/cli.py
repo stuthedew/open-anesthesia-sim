@@ -12,7 +12,7 @@ import shlex
 import subprocess
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import replace as with_fields
-from datetime import date
+from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Any
 
@@ -127,6 +127,7 @@ from .vcs import (
     files_in_flight,
     lost,
     merged_pull_requests,
+    open_pull_requests,
     orphaned,
     precedence,
     records_on_base,
@@ -775,6 +776,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         generator_paths=config.generator_paths,
         protected_paths=config.protected_paths,
         gate_paths=config.gate_paths,
+        now=_now(args),
     )
     if rendered:
         print(rendered)
@@ -1513,7 +1515,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         root, items_dir = _tracked(args)
         print(
             render.format_precedence(
-                precedence(root, item.identifier, items_dir=items_dir), args.today or date.today()
+                precedence(root, item.identifier, items_dir=items_dir), _now(args)
             )
         )
     elif edit := next((e for e in flight.editing if e.item_id == item.identifier), None):
@@ -1521,7 +1523,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         # that names an item reaches `show` and nothing else, so before this
         # the one thing it could not learn here was that another branch had
         # already written to the file it was about to write to (`PL-N1JK`).
-        print(render.format_queue_edit(edit, args.today or date.today()))
+        print(render.format_queue_edit(edit, _now(args)))
     if threads := _notes_threads(root, config, item.identifier):
         print(render.format_notes_threads(threads, item.identifier, config.notes_file))
     print()
@@ -2957,12 +2959,17 @@ OPEN_LOOKUP_TIMEOUT = 8.0
 
 def _open_pull_requests(
     args: argparse.Namespace, root: Path, config: Config
-) -> Callable[[], Collection[str] | None] | None:
+) -> Callable[[], Mapping[str, int | None] | None] | None:
     """A way to ask which branches have a pull request open, or None if there is none.
 
-    A callable rather than an answer, because `settled_branches` asks only
-    where the cheap half found a branch worth asking about - which on a normal
-    day is none of them, and the command then reaches nothing at all.
+    A callable rather than an answer, so that a command with no branch to ask
+    about reaches nothing at all.
+
+    The answer maps each branch to its pull request's number, where the command
+    printed one after the name - `claude/pl-k7qx-thing 920` - and to `None`
+    where it printed the name alone, which is the whole of the contract a
+    project's own command owes (`PL-7TVT`). A branch name cannot hold a space,
+    so the first field is the name however the line continues.
 
     **Every way this can fail is a skip, never a failure**, which is the
     contract `tools/pr_title_check.py --discover` already holds to: no command
@@ -2977,7 +2984,7 @@ def _open_pull_requests(
     if args.no_remote or not command:
         return None
 
-    def ask() -> Collection[str] | None:
+    def ask() -> Mapping[str, int | None] | None:
         try:
             done = subprocess.run(
                 shlex.split(command),
@@ -2991,7 +2998,14 @@ def _open_pull_requests(
             return None
         if done.returncode != 0:
             return None
-        return [line.strip() for line in done.stdout.splitlines() if line.strip()]
+        found: dict[str, int | None] = {}
+        for line in done.stdout.splitlines():
+            fields = line.split()
+            if not fields:
+                continue
+            number = fields[1].lstrip("#") if len(fields) > 1 else ""
+            found.setdefault(fields[0], int(number) if number.isdigit() else None)
+        return found
 
     return ask
 
@@ -3013,11 +3027,48 @@ def cmd_flight(args: argparse.Namespace) -> int:
     """
     root, items_dir = _tracked(args)
     report = branches_in_flight(root, items_dir=items_dir)
-    settled = settled_branches(
-        root, report, opened=_open_pull_requests(args, root, load_config(root)), items_dir=items_dir
-    )
-    print(render.format_flight(report, args.today or date.today(), settled))
+    # One question to the forge for both readings, asked wherever a row exists:
+    # the settled rows and the pull-request clause on every live row ask it the
+    # same thing (`PL-7TVT`), and a report with no row asks nothing.
+    lookup = _open_pull_requests(args, root, load_config(root))
+    answer = lookup() if lookup is not None and report.branches else None
+    opened = None if lookup is None else (lambda: answer)
+    settled = settled_branches(root, report, opened=opened, items_dir=items_dir)
+    reviews = open_pull_requests(root, report, opened=opened)
+    print(render.format_flight(report, _now(args), settled, reviews))
     return 0
+
+
+def _instant(text: str) -> datetime:
+    """An ISO 8601 instant carrying its offset, for `--now`.
+
+    A value without one is refused rather than read as UTC or as local time:
+    an age is a subtraction, and a reference that means two different instants
+    on two machines is the error `PL-3QM9` was.
+    """
+    value = datetime.fromisoformat(text)
+    if value.tzinfo is None:
+        raise argparse.ArgumentTypeError(f"{text!r} carries no UTC offset, e.g. +00:00")
+    return value
+
+
+def _now(args: argparse.Namespace) -> datetime:
+    """The instant a branch's age is measured to.
+
+    `--now` where given, and the clock where nothing is. `--today` alone names
+    a day and no time, and is read as the last instant of it in UTC: a commit
+    whose UTC date is earlier then ages by exactly the whole days between the
+    two dates, which is what every age read under `--today` said before ages
+    were measured in elapsed time (`PL-3QM9`), so a caller that states only a
+    date is told nothing different about any earlier day.
+    """
+    now: datetime | None = getattr(args, "now", None)
+    if now is not None:
+        return now
+    today: date | None = getattr(args, "today", None)
+    if today is not None:
+        return datetime.combine(today, time.max, tzinfo=UTC)
+    return datetime.now(UTC)
 
 
 def cmd_record(args: argparse.Namespace) -> int:
@@ -3288,6 +3339,13 @@ def build_parser() -> argparse.ArgumentParser:
             default=None,
             dest="today" + suffix,
             help="reference date",
+        )
+        parser.add_argument(
+            "--now",
+            type=_instant,
+            default=None,
+            dest="now" + suffix,
+            help="reference instant for a branch's age, ISO 8601 with its UTC offset",
         )
         parser.add_argument(
             "--no-git",
@@ -3573,11 +3631,16 @@ def merge_shared(args: argparse.Namespace) -> argparse.Namespace:
     error, since they cannot disagree without the user having written the flag
     twice on purpose.
     """
-    for name in ("items", "today", "no_git"):
+    for name in ("items", "today", "now", "no_git"):
         sub = getattr(args, name + "_sub", None)
         if sub:
             setattr(args, name, sub)
         delattr(args, name + "_sub")
+    if args.now is not None and args.today is None:
+        # One reference, not two: a caller placing "now" has placed "today",
+        # and every command reading the date alone should agree with the one
+        # reading the instant.
+        args.today = args.now.date()
     return args
 
 

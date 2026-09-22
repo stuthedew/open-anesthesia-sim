@@ -648,8 +648,10 @@ ITEM_FILE_RE = re.compile(rf"^({ID_PATTERN})-")
 # because `precedence` has to put two branches in a single order that both of
 # their sessions compute identically. Two sessions start minutes apart, so a
 # day cannot separate them, and two commits can share a second - which is what
-# the hash is there to break. `flight` still wants only the day and takes it
-# from the same read.
+# the hash is there to break. A branch's age is read from the same timestamp,
+# and for the same reason: an age cut to the day cannot separate a session that
+# committed three minutes ago from a branch that sat all night, and across
+# midnight it reads the first as the second (`PL-3QM9`).
 COMMIT_FORMAT = "--format=%S%x1f%cI%x1f%p%x1f%H%x1f%s"
 
 
@@ -657,10 +659,12 @@ COMMIT_FORMAT = "--format=%S%x1f%cI%x1f%p%x1f%H%x1f%s"
 class Branch:
     """One ref that is carrying an item's work.
 
-    `last_commit` is the day of the newest commit the ref holds that the
-    default branch does not, or `None` when this checkout could read none of
-    them - a branch created but not yet committed on, or one whose commits sit
-    beyond a truncated clone's horizon.
+    `last_commit` is when the newest commit the ref holds that the default
+    branch does not was made - the full timestamp git wrote, offset and all,
+    because the age a reader judges a branch by is measured in minutes while a
+    session is live and in days once it is not (`PL-3QM9`) - or `None` when
+    this checkout could read none of them: a branch created but not yet
+    committed on, or one whose commits sit beyond a truncated clone's horizon.
 
     **`on_base` changes what a reader is told, never whether the claim is
     made** (`PL-3CTW`). A capture commit that also reaches outside the queue
@@ -687,7 +691,7 @@ class Branch:
 
     name: str
     item_id: str
-    last_commit: date | None = None
+    last_commit: datetime | None = None
     #: Whether the default branch holds this item's file at all. `True` for an
     #: item a reader could actually start, which is every claim the older
     #: reading was right about.
@@ -717,7 +721,7 @@ class QueueEdit:
 
     name: str
     item_id: str
-    last_commit: date | None = None
+    last_commit: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -836,6 +840,11 @@ class Stake:
 # one of these does not raise if a later change puts them side by side.
 _UNDATED = Stake(when=datetime.min.replace(tzinfo=UTC), commit="")
 
+# Earlier than any commit git can write, and aware for the reason `_UNDATED`
+# is: every timestamp compared against it comes from `%cI`, which carries its
+# offset.
+_EARLIEST = datetime.min.replace(tzinfo=UTC)
+
 
 @dataclass(frozen=True)
 class _Walk:
@@ -847,7 +856,9 @@ class _Walk:
     every time.
     """
 
-    last: dict[str, date]
+    #: Per ref, when its newest unlanded commit was made - the timestamp, not
+    #: the day, so an age can be told to the minute (`PL-3QM9`).
+    last: dict[str, datetime]
     #: Per item id, every ref whose commit subjects led with it, ordered by
     #: candidate rank. **Every carrier rather than the nearest**, because the
     #: guards that judge a claim judge it per *ref*: collapsing here put a
@@ -1142,7 +1153,7 @@ def _unmerged_commits(
     # error - and every error here collapses to "nothing known".
     output = run(["log", "--source", COMMIT_FORMAT, "--name-only", f"^{base}", *refs, "--"], root)
     prefix = items_dir.strip("/") + "/"
-    last: dict[str, date] = {}
+    last: dict[str, datetime] = {}
     claimed: dict[str, list[str]] = {}
     named: set[str] = set()
     edited: dict[str, list[tuple[str, str]]] = {}
@@ -1256,8 +1267,8 @@ def _unmerged_commits(
             # that reports less rather than the one that reports wrongly.
             when = None
         stake = None if when is None else Stake(when=when, commit=commit)
-        if when is not None and when.date() > last.get(ref, date.min):
-            last[ref] = when.date()
+        if when is not None and when > last.get(ref, _EARLIEST):
+            last[ref] = when
         if stake is not None:
             first = opened.get(ref)
             if first is None or stake < first:
@@ -2187,7 +2198,7 @@ def branches_in_flight(
     named = [name for name in candidates if name in unlanded_set or name in unreadable]
     claimants: dict[str, list[Branch]] = {}
 
-    def claim(identifier: str, name: str, moved: date | None) -> None:
+    def claim(identifier: str, name: str, moved: datetime | None) -> None:
         """Record `name` as a carrier of `identifier`, behind any already held."""
         carriers = claimants.setdefault(identifier, [])
         if all(branch.name != name for branch in carriers):
@@ -2469,7 +2480,7 @@ class Carrier:
     ref: str
     item_id: str
     staked: Stake | None = None
-    last_commit: date | None = None
+    last_commit: datetime | None = None
     mine: bool = False
 
 
@@ -2612,7 +2623,7 @@ def precedence(
     # tracking ref.
     staked: dict[str, Stake | None] = {}
     grouped: dict[str, list[str]] = {}
-    moved: dict[str, date] = {}
+    moved: dict[str, datetime] = {}
     for name in refs.candidates:
         if name not in readable and name not in unreadable:
             continue
@@ -2645,8 +2656,8 @@ def precedence(
         key = stake.commit if stake is not None else f"\x00{name}"
         grouped.setdefault(key, []).append(name)
         staked[key] = stake
-        if (day := walk.last.get(name)) is not None and day > moved.get(key, date.min):
-            moved[key] = day
+        if (when := walk.last.get(name)) is not None and when > moved.get(key, _EARLIEST):
+            moved[key] = when
 
     branch = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
     if branch == "HEAD":
@@ -2818,14 +2829,14 @@ class SettledBranch:
     """One unmerged ref on which nothing is left for anybody to work.
 
     `item_ids` is every item this ref claimed, all of them closed in the ref's
-    own copy; `last_commit` is the day it last moved, carried across from the
+    own copy; `last_commit` is when it last moved, carried across from the
     flight report so a reader judging how long it has sat does not have to look
     it up separately.
     """
 
     name: str
     item_ids: tuple[str, ...]
-    last_commit: date | None = None
+    last_commit: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -2981,6 +2992,90 @@ def settled_branches(
             )
         ),
         declined=report.declined or run.reason,
+    )
+
+
+@dataclass(frozen=True)
+class OpenPullRequests:
+    """Which in-flight refs have a pull request open, where the forge was asked.
+
+    **`asked` is why this is a type rather than a mapping**, for the reason
+    `SettledReport.asked` is: a ref absent from `numbers` has no pull request
+    open *only when the forge answered*, and "could not look" read as "none is
+    open" would tell a reader that work waiting on review is a session still
+    typing.
+    """
+
+    #: Per ref, spelled as `FlightReport.branches` spells it, the number of the
+    #: pull request open for it - `None` where the forge named the branch
+    #: without a number. Every ref the forge was asked about and did not name
+    #: is absent.
+    numbers: Mapping[str, int | None] = field(default_factory=dict)
+    #: Whether the forge answered at all. `False` is a bare checkout, no token,
+    #: no network, `--no-remote`, or a forge that refused.
+    asked: bool = False
+    #: Git was asked something beneath this reading and did not answer - the
+    #: flight report's own silence, or the remotes this matches names against.
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        """Whether every question this reading rests on was answered."""
+        return not self.declined and self.asked
+
+
+def open_pull_requests(
+    root: Path,
+    report: FlightReport,
+    *,
+    opened: Callable[[], Mapping[str, int | None] | None] | None = None,
+    runner: Runner | None = None,
+) -> OpenPullRequests:
+    """Which of the refs carrying an item have a pull request open on them.
+
+    **The second fact a row needs, because the age alone cannot fire in the
+    first hour** (`PL-7TVT`). A branch outlives its session, so a young branch
+    and a branch whose session ended ten minutes ago read alike by age, and the
+    one reading that separates part of that is the forge's: with a pull request
+    open, the work is written and waits on review, whoever or nothing is still
+    driving it. PR `#757` sat green for 25 minutes after its session was
+    archived while its three items read as somebody's live work, and nothing
+    `flight` printed could have said otherwise.
+
+    Asked through the same `opened` that `settled_branches` takes, and for the
+    same reason: this package answers from a bare checkout with no network and
+    knows nothing about GitHub, so the caller supplies the way to ask. It is
+    asked only where a ref is carrying something, and a caller holding both
+    readings passes one memoized callable to each so the forge is asked once.
+
+    Unlike `settled_branches`, it asks on every run that has a row to answer
+    for - which is nearly every run. That is the price of the row carrying the
+    fact, and it was measured before it was paid: one request, 0.55 s in an
+    agent session on 2026-09-22, and every way it fails is a row printed
+    without the clause.
+    """
+    names = {branch.name for branch in report.branches}
+    if not names or opened is None:
+        return OpenPullRequests(declined=report.declined)
+    answer = opened()
+    if answer is None:
+        return OpenPullRequests(declined=report.declined)
+    run = _Silences(runner or _run_git)
+    remotes = _remotes(root, run)
+    if run.reason:
+        # Without the remotes, `origin/claude/x` cannot be matched to the
+        # branch a pull request names, and every row would read "none open" -
+        # the confident wrong answer `asked` exists to prevent.
+        return OpenPullRequests(declined=report.declined or run.reason)
+    heads = {head.strip(): number for head, number in answer.items() if head.strip()}
+    return OpenPullRequests(
+        numbers={
+            name: heads[head]
+            for name in sorted(names)
+            if (head := _head_name(name, remotes)) in heads
+        },
+        asked=True,
+        declined=report.declined,
     )
 
 

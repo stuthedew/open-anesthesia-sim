@@ -139,13 +139,13 @@ def test_a_body_the_api_has_promised_nothing_about_is_a_refusal(_served, body: s
     assert open_pull_requests.open_pull_requests("owner/repo") is None
 
 
-def test_the_command_prints_one_branch_per_line_and_exits_zero(
+def test_the_command_prints_each_branch_and_its_number_and_exits_zero(
     _served, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _served(_payload(_entry(841, "claude/one"), _entry(842, "claude/two")))
     monkeypatch.setattr(open_pull_requests, "repo_slug", lambda: "owner/repo")
     assert open_pull_requests.main() == 0
-    assert capsys.readouterr().out == "claude/one\nclaude/two\n"
+    assert capsys.readouterr().out == "claude/one 841\nclaude/two 842\n"
 
 
 def test_the_command_exits_non_zero_and_prints_nothing_when_it_could_not_look(

@@ -3,11 +3,13 @@ id: PL-HX5C
 title: Both in-flight guards passed and two sessions still implemented PL-W8XP independently: the second never renamed and its branch was named after a different item, so neither the ref read nor the session read could see it
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: infra, session-cost
 feature: parallel-sessions
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-08
+closed: 2026-09-22
+verify: grep -q 'Do the same the moment you pick up a second item' .claude/skills/docket/modes/start.md && grep -q 'def test_an_empty_commit_leading_with_an_id_claims_the_item_before_any_work' subprojects/docket/tests/test_vcs.py && uv run pytest -q subprojects/docket/tests/test_vcs.py -k an_empty_commit_leading_with_an_id_claims_the_item
 ---
 
 **Problem.** Both in-flight guards passed and two sessions still implemented PL-W8XP independently: the second never renamed and its branch was named after a different item, so neither the ref read nor the session read could see it
@@ -91,3 +93,15 @@ evidence proves a **ref is done**, and this asks how a session's **claim**
 becomes visible before any ref carries it. Bundling the two is what made the
 cluster look uniform. Nothing here is answered by `PL-BHVM`'s decision, and
 nothing here waits on it — `feature: parallel-sessions` is where this belongs.
+
+**Closed 2026-09-22: the skill now carries a rule that would have caught
+this sequence.** `.claude/skills/docket/modes/start.md` tells a session to push
+an empty commit leading with an id "the moment you pick up a second item - ...
+the item the first turned out to be waiting on", and names this item as the
+instance. The session that took `PL-W8XP` as the thing `PL-B9PY` was waiting on
+would have pushed `PL-W8XP: start` before writing any of it, and the fetched
+`bin/docket show PL-W8XP` this session ran would have marked it `IN FLIGHT`.
+It is the second candidate above, made cheap enough to follow: nothing to write
+first, no CI run (no pull request is open), and the squash folds it away. It is
+still an instruction; the session-list read in rule 14 is the backstop for a
+session that does not follow it.
