@@ -199,8 +199,8 @@ other one reads.
 repair of these legacy clauses on 2026-09-19 (ratified), and triage's guidance
 says "each loses it as its item is started, never in a pass". The case for that
 rested on the whole-store bill falling as the queue turns over. It is falling:
-there were 82 of these pytest-beside-a-clause commands on 2026-09-20 and 60
-today. But that case never priced a local gate, whose cost is set by one slow
+triage's guidance counted 82 pytest-beside-a-clause commands when its refusal
+landed (2026-09-19/20), and a looser regex over today's store finds 60. But that case never priced a local gate, whose cost is set by one slow
 command in scope rather than by the total. The slowest commands belong to
 `ready` items that can sit for weeks.
 
