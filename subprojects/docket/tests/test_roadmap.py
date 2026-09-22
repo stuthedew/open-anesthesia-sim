@@ -1673,7 +1673,7 @@ def test_a_section_no_row_bears_is_reported_rather_than_placed_by_guess() -> Non
 
 
 def test_the_digest_does_not_call_a_rowless_section_a_numbering_lag() -> None:
-    """`PL-DK8Y`: the digest's one sentence stands over all four kinds of
+    """`PL-DK8Y`: the digest's one sentence stands over all five kinds of
     statement `Wave.stale` carries, and this is the kind it used to misname.
     Nothing here is behind anything - the timeline places the section nowhere,
     so a reader sent to the timeline's numbers is sent to the wrong file."""
@@ -1741,9 +1741,7 @@ def test_a_released_milestone_row_with_its_frozen_list_still_open_is_reported() 
     released section leaves `ahead`, so no gate counts its list, and an open
     entry no later section places has dropped out of the plan - which, before
     this, `wave` printed nowhere at all."""
-    plan = _wave(
-        "0.3.6", frozenset(GATE_IDS), roadmap=GATE_ONLY_SHIPPED_ROADMAP, known=PORT_KNOWN
-    )
+    plan = _wave("0.3.6", frozenset(GATE_IDS), roadmap=GATE_ONLY_SHIPPED_ROADMAP, known=PORT_KNOWN)
 
     assert plan.gate is not None and plan.gate.milestone.label == "v0.4.0 — the teachable case"
     (statement,) = plan.stale

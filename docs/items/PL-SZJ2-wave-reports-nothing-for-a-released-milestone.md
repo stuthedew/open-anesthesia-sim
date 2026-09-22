@@ -3,11 +3,14 @@ id: PL-SZJ2
 title: wave reports nothing for a released milestone row whose own frozen list still has open entries, which is PL-LN3T's case in the other subsection: a gate-only milestone released with its list open drops out of the report entirely
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect
 feature: timeline-arrangement
-touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md
 added: 2026-09-19
+closed: 2026-09-22
+payoff: stops gate work a release stepped past from vanishing out of every report with nothing saying so, while a correctly deferred entry such as PL-WZVZ stays silent
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py::test_a_released_milestone_row_with_its_frozen_list_still_open_is_reported subprojects/docket/tests/test_roadmap.py::test_a_released_frozen_list_entry_deferred_to_a_later_gate_says_nothing
 ---
 
 **Problem.** wave reports nothing for a released milestone row whose own frozen list still has open entries, which is PL-LN3T's case in the other subsection: a gate-only milestone released with its list open drops out of the report entirely
@@ -63,3 +66,31 @@ copy of `stale_scopes`.
 `CLAUDE.md`'s retirement test is the frame for the first: a check that fires every
 run without changing a decision is a defect in the check, and one that can never
 fire is a line of code claiming coverage it does not provide.
+
+**Decided 2026-09-22, by the session that implemented it.** Apparatus-internal
+and confined to one report's behaviour, so the session's call rather than the
+owner's (`.claude/rules/instruction-writing.md` rule 14).
+
+1. **Yes, report it.** It has a live subject on every future cut rather than
+   none. `ROADMAP.md` § "The cadence" beat 3 makes deferring a frozen entry to a
+   later gate the normal case, and nothing checked the one decidable term of a
+   deferral - that it names a later gate holding the entry - once the releasing
+   section had left `ReleaseTrain.ahead`. v0.6.0's own list carries `PL-Y04W`
+   deferred to Gate 3 and fifteen entries blocked on v0.7.0 work, so v0.6.0's
+   cut is the next moment it can fire.
+2. **Open is neither `outstanding` nor `clearable`: it is an open entry that no
+   section ahead places** (`ReleaseTrain.places` - the frozen list and the
+   `Required scope` of every unreleased section). Measured on the real file:
+   released v0.2.8 and v0.4.0 hold no open entry, and v0.5.0 holds one,
+   `PL-WZVZ`, blocked outside the list and deferred onto Gate 2's by `PL-S5Q9`.
+   `outstanding` reports it - a mutant ignoring placement makes `bin/docket wave`
+   exit 1 on this repository's own file - over a deferral done exactly as the
+   cadence asks. `clearable` is silent on it for the wrong reason: it would stay
+   silent on an entry blocked outside and deferred to nowhere, the case the
+   cadence names as illegitimate, and would report an unblocked entry deferred
+   correctly. Placement is the cadence's own test, so it is the one used. Ids
+   the released section's own `Required scope` names are `stale_scopes`'
+   statement already and are passed over, as are ids the store does not hold.
+
+Shipped as `roadmap.stale_gates`, beside `stale_scopes` and sharing its loop
+over released rows (`_released_rows`); `wave` appends its statements to `stale`.
