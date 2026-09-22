@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, test
 feature: core-guard-coverage
+milestone: v0.5.4
 touches: src/anesthesia_sim/core, tests/unit/test_uptake_system_failure.py
 added: 2026-09-13
 closed: 2026-09-22

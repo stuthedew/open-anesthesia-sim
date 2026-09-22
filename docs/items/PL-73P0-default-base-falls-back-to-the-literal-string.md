@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: evidence-declines
+milestone: v0.5.4
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_cli.py, tools/branch_id_check.py, tests/unit/test_branch_id_check.py, docs/WORKING_NOTES.md
 added: 2026-09-19
 closed: 2026-09-22

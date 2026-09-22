@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: delegation
+milestone: v0.5.4
 touches: subprojects/docket, docs/worker.md
 added: 2026-09-08
 closed: 2026-09-22

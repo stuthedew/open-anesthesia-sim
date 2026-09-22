@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect, test
+milestone: v0.5.4
 touches: subprojects/docket/tests/test_verify.py
 added: 2026-09-20
 closed: 2026-09-22

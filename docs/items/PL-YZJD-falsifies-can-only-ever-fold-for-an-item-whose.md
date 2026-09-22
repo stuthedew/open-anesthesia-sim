@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: verify-false-reject
+milestone: v0.5.4
 touches: .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-21
 closed: 2026-09-22

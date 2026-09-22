@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: docs, infra, session-cost
 feature: dev-tooling
+milestone: v0.5.4
 touches: docs/MODEL.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-08-24
 closed: 2026-09-22
+pr: 900
 verify: python3 tools/doc_check.py check && grep -q 'heading="Minimum displayed outputs"' tools/doc_check.py && grep -q 'def _list_members' tools/doc_check.py
 recurrences: 2026-09-21 PL-L609
 ---

@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect
 feature: count-input-addressing
+milestone: v0.5.4
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-22
 closed: 2026-09-22
+pr: 899
 payoff: a scoped check --verify against a store outside docs/items replays the items the branch changed rather than nothing
 verify: grep -q 'def test_the_replay_scope_reads_the_store_the_run_was_pointed_at' subprojects/docket/tests/test_cli.py
 ---

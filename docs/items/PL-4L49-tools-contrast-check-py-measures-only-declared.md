@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: defect, infra
 feature: platform-palette
+milestone: v0.5.4
 touches: tests/integration/test_simulation_view.py, tools/contrast_check.py, tests/unit/test_contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/ui-color.md
 added: 2026-09-17
 closed: 2026-09-22
+pr: 897
 verify: uv run pytest tests/integration/test_simulation_view.py tests/unit/test_contrast_check.py -q && grep -q 'def test_every_control_that_paints_its_own_content_declares_a_foreground' tests/integration/test_simulation_view.py
 ---
 
