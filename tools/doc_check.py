@@ -2360,13 +2360,40 @@ def check_gate_reentries(root: Path, report: Report) -> None:
         "date and the reason it re-entered, or place it in Required scope so the "
         "milestone clears it. Deferring is not a third option here as it is for "
         'the other debt classes: "The gate is a snapshot" ends by making these '
-        "two not deferrable, so a `### Declined to Gate ...` entry answers the "
-        "disposition advisory and leaves this one standing - which is the "
-        "disagreement to resolve, not a fault in either check"
+        "two not deferrable, so a deferral subsection answers the disposition "
+        "error and leaves this one standing - which is the disagreement to "
+        "resolve, not a fault in either check"
     )
 
 
-DECLINED_HEADING_RE = re.compile(r"^###\s+Declined to Gate\b", re.IGNORECASE)
+# The verbs a gate's own section has actually used to head a deferral:
+# `### Declined to Gate 2, because ...`, `### Deferred to v0.4.26, because ...`,
+# `### Sequenced past v0.5.0, so ...`. Everything after the verb is free prose,
+# because the ground for the deferral is what the heading is for, and no two
+# grounds are worded alike. Adding a fourth verb is an edit here and a line in
+# `ROADMAP.md` § "Recording it", which names this tuple as what it is checked
+# against.
+DEFERRAL_VERBS = ("Declined", "Deferred", "Sequenced")
+
+# Both names here predate the other two verbs and are kept deliberately: this
+# project's record cites them, and a record is about what was true when it was
+# written. `_declined_ids` below is named in seven `ROADMAP.md` lines, in
+# `docs/releases/v0.4.35.md` and `docs/releases/v0.5.1.md`, and in three pull
+# request bodies; `DECLINED_HEADING_RE` in v0.6.0's own deferral entry for
+# `PL-Z891`. Renaming either would leave a dozen true sentences naming a symbol
+# that no longer exists, which buys less than the docstring below costs.
+DECLINED_HEADING_RE = re.compile(rf"^###\s+(?:{'|'.join(DEFERRAL_VERBS)})\b", re.IGNORECASE)
+
+
+def _deferral_headings() -> str:
+    """The recognized heading forms, for an error that has to name them.
+
+    Rendered from `DEFERRAL_VERBS` rather than written out, so the message
+    cannot come to describe a vocabulary the pattern no longer has - which is
+    the defect this whole block exists to answer, one level up.
+    """
+    forms = [f"`### {verb} ...`" for verb in DEFERRAL_VERBS]
+    return f"{', '.join(forms[:-1])} or {forms[-1]}"
 
 
 def _section_end(lines: Sequence[str], start: int) -> int:
@@ -2389,9 +2416,34 @@ def _declined_ids(text: str, gate: MilestoneSection) -> frozenset[str]:
     `MilestoneSection.scope_ids` deliberately names only what a section
     *places* - its frozen list, then `Required scope`. A deferral is the
     opposite disposition and must not read as a placement, so it lives in a
-    `### Declined to Gate ...` subsection of its own and is read here instead.
-    Its ids are excluded from the gate's counts for the same reason: they are
-    not entries the gate has to clear.
+    subsection of its own and is read here instead. Its ids are excluded from
+    the gate's counts for the same reason: they are not entries the gate has to
+    clear.
+
+    **Every verb a gate has used to head a deferral is read, not the first one
+    written** (`PL-Z891`). The pattern was `### Declined to Gate` exactly, and
+    the roadmap has headed a deferral three ways: v0.5.0 alone carries `###
+    Declined to Gate 2, because this milestone's own work created them`, `###
+    Deferred to v0.4.26, because the port dissolves the defect` and `###
+    Sequenced past v0.5.0, so not clearable before it begins`. Two of the three
+    read as no disposition at all, and the last of those names 40 ids (measured
+    2026-09-22) - `PL-TH35` and `PL-WZVZ` among them still open debt.
+
+    The failure is loud and points the wrong way, which is what made it worth
+    fixing before it fired: the ids come back as dispositions the gate owes, and
+    the error told the reader to write the subsection they had already written.
+    v0.6.0's author took the other way out - its deferral subsection says in
+    its own entry for this item that it "was written to match the pattern
+    deliberately" - so the constraint was being routed around by the one person
+    it was constraining, which is `CLAUDE.md`'s second test for friction that
+    compounds.
+
+    What follows the verb is deliberately unconstrained. The ground for a
+    deferral is what the heading carries, and holding that to a form would be
+    the narrow rule arriving again one word to the right; the vocabulary that
+    *is* fixed is three verbs long, stated in `ROADMAP.md` § "Recording it",
+    and named by the error when this check fires so that a fourth verb
+    diagnoses itself in one read.
 
     **Every such subsection of the gate's own section is read, not the first**
     (`PL-82B0`). Nothing says one subsection is where a deferral goes, and a
@@ -2538,8 +2590,9 @@ def check_gate_dispositions(root: Path, report: Report) -> None:
         f"{_plural(len(owed), 'open debt item', 'open debt items')} - neither placed on "
         f"the frozen list or in Required scope, nor deferred with a reason: {listed}. "
         "The presence rule allows either answer and forbids neither being written "
-        "down; add each to the list, or to a `### Declined to Gate ...` subsection "
-        "saying why"
+        "down; add each to the list, or to a deferral subsection saying why. "
+        f"{_deferral_headings()} are the headings read as one, so a disposition "
+        "written under any other is not being read"
     )
 
 

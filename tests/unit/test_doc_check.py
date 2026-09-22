@@ -3641,6 +3641,86 @@ def test_a_group_deferral_naming_its_ids_only_in_prose_is_read(tmp_path: Path) -
     assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT, "PL-YYYY": DEBT}, roadmap) == []
 
 
+def test_a_deferred_to_heading_is_read_as_a_disposition(tmp_path: Path) -> None:
+    """`PL-Z891`: `### Deferred to vX.Y.Z ...` is a form the roadmap writes.
+
+    The pattern was `### Declined to Gate` exactly, so v0.5.0's `### Deferred
+    to v0.4.26, because the port dissolves the defect` recorded a disposition
+    that counted for nothing. Wording a deferral after the milestone it goes
+    to, rather than after the gate it leaves, is the natural way to write one
+    and is not a variant anybody announced.
+    """
+    roadmap = VERSIONED_GATE_ROADMAP.replace(
+        "### Definition of done",
+        "### Deferred to v0.9.9, because that milestone dissolves the defect\n\n"
+        "Deferred because the port removes the code this describes.\n\n"
+        "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
+        1,
+    )
+
+    assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT}, roadmap) == []
+
+
+def test_a_sequenced_past_heading_is_read_as_a_disposition(tmp_path: Path) -> None:
+    """`PL-Z891`: `### Sequenced past vX.Y.Z ...` is the third form, and the widest.
+
+    v0.5.0's `### Sequenced past v0.5.0, so not clearable before it begins`
+    names 40 ids - `PL-TH35` and `PL-WZVZ` among them still open debt, measured
+    2026-09-22 - which is 40 of the 41 the narrow pattern left unread across the
+    whole roadmap. The other form, `### Deferred to ...`, carries the remaining
+    one, so the two are pinned separately rather than by whichever fixture
+    happens to exercise the regex.
+    """
+    roadmap = VERSIONED_GATE_ROADMAP.replace(
+        "### Definition of done",
+        "### Sequenced past v0.4.0, so not clearable before it begins\n\n"
+        "Deferred because this milestone is what makes them reachable.\n\n"
+        "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
+        1,
+    )
+
+    assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT}, roadmap) == []
+
+
+def test_a_subsection_headed_by_no_deferral_verb_defers_nothing(tmp_path: Path) -> None:
+    """The widening must not turn every sibling subsection into a disposition.
+
+    `PL-Z891` widened the pattern from one heading form to three verbs, and the
+    failure that widening can introduce is the opposite of the one it fixed:
+    silence on an item nobody disposed of, because some other subsection of the
+    same section happens to name it. `### Explicitly out of scope ...` is the
+    case that would bite - it names ids, sits in the gate's own section, and is
+    a statement about the milestone's scope rather than a disposition of the
+    gate's debt.
+    """
+    roadmap = VERSIONED_GATE_ROADMAP.replace(
+        "### Definition of done",
+        "### Explicitly out of scope for v0.4.0\n\n"
+        "- PL-ZZZZ (S) Not this milestone's subject\n\n### Definition of done",
+        1,
+    )
+
+    advisories = _dispositions(tmp_path, {"PL-ZZZZ": DEBT}, roadmap)
+
+    assert any("PL-ZZZZ" in advisory for advisory in advisories)
+
+
+def test_the_disposition_error_names_every_heading_form_it_reads(tmp_path: Path) -> None:
+    """`PL-Z891`: the remedy has to name the vocabulary, or a fourth verb repeats this.
+
+    The error used to prescribe `### Declined to Gate ...` alone, which is how
+    a session with a written-but-unread deferral was told to write the
+    subsection it had already written. Naming all three forms is what makes the
+    next unrecognized verb diagnose itself in one read, and is the whole reason
+    the pattern is rendered from a tuple rather than spelled out twice.
+    """
+    (error,) = _dispositions(tmp_path, {"PL-ZZZZ": DEBT})
+
+    assert "`### Declined ...`" in error
+    assert "`### Deferred ...`" in error
+    assert "`### Sequenced ...`" in error
+
+
 def test_a_declined_subsection_of_the_next_milestone_is_not_this_gate_s(tmp_path: Path) -> None:
     """The sweep stops at the next `##`, which the single-subsection reader did not.
 

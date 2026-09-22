@@ -6398,6 +6398,19 @@ Record the frozen list in the milestone's own section here, as the item ids it
 had to clear. A gate nobody wrote down is a gate that gets renegotiated, and
 the point of freezing the list is that it cannot be.
 
+**Record a deferral in a `###` subsection of the same milestone section, headed
+by one of three verbs: `Declined`, `Deferred` or `Sequenced`.** What follows the
+verb is free prose and should carry the ground, which is what the heading is
+for — the three this roadmap has written are `### Declined to Gate 2, because
+this milestone's own work created them`, `### Deferred to v0.4.26, because the
+port dissolves the defect` and `### Sequenced past v0.5.0, so not clearable
+before it begins`. The verb list is closed because it is what reads the
+subsection: `tools/doc_check.py` builds `check_gate_dispositions`' heading
+pattern out of `DEFERRAL_VERBS`, so a deferral written under a fourth verb is
+not read at all — its items come back named as debt the gate owes, under an
+error telling you to write the subsection you have already written. A deferral that wants a verb of its own adds it to that tuple in the
+same change (`PL-Z891`).
+
 ## Development pathway
 
 The numbered list below is the catalogue; this is the order it is intended to
