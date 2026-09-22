@@ -1468,7 +1468,7 @@ symptoms will mix them, which this one did. The test that separated them was
 cheap: ask whether the document already states the fact somewhere with a
 grammar. For arrangement it does; for membership it does not.
 
-## The evidence layer has no failure channel, so every reader re-decides what silence means — PL-Q9Z1, PL-MM7F, PL-73P0
+## The evidence layer has no failure channel, so every reader re-decides what silence means — PL-Q9Z1, PL-MM7F, PL-73P0 (closed 2026-09-22)
 
 `PL-BHVM` closed on 2026-09-19 as a design round, and this is the thread that
 outlives it. The item asked whether the apparatus should *record* evidence
@@ -1567,13 +1567,36 @@ afterwards skipped itself whenever git failed. `cmd_release` refuses on
 to nothing; `doc_check.check_tags` keeps its silence, which is now a decision it
 takes rather than the accident of one empty set.
 
-`default_base` is the third of that shape and stays open as `PL-73P0`, which
-carries the wider case: the base is the one input whose wrongness cannot be seen
-in any answer downstream of it. It is still held by a test asserting the breach
-rather than by a marker excusing it - `bin/docket verify` reads a suppression
-marker and cannot read the reason attached to it, so a recorded breach has to be
-written as an assertion to survive its own audit (`PL-4FD2`, which that audit
-refused three times on its own brief).
+`default_base` was the third of that shape and closed as `PL-73P0` on
+2026-09-22, which ends the thread: every public read in `vcs.py` is in the
+sweep, the gap list is empty, and the machinery that recorded a gap went with
+it rather than sitting there parametrized over nothing.
+
+**Two things that close found are worth keeping, because neither was in the
+brief.** The first is that the failure is not one case but two, and the brief
+named the harmless one. "No candidate resolves" is visible the moment anyone
+looks. The costly one is a candidate resolving *only because a preferred probe
+went unanswered*: `main` is a real ref, it resolves, nothing looks wrong, and a
+fresh clone's local `main` can trail the remote by many commits - which is the
+fallback `default_base`'s own docstring already measured at 20 paths reported
+outside a commission whose true answer was 4. Marking only the first would have
+left that one live and looked like a fix. The silence sweep is what found it:
+it failed on the second case within a minute of the first being written.
+
+The second is that the brief's measured example had gone stale, and in the
+direction that matters. It records `branch_state` returning `behind=0, ahead=0`
+under a total silence - "you are current with the base" - and that is no longer
+reproducible: `_Silences` and `_branch_state`'s own re-probe both landed since,
+and it declines in both failure states. What was still live was narrower and
+worse. `bin/docket verify` passes no wrapped runner, `verify.changed_paths`
+discards `_run`'s exit status, and `_run` returns *combined* stdout and stderr -
+so a base that does not resolve makes git's three-line fatal message come back
+as three changed paths. Measured 2026-09-22: the commission audit reported
+`fatal: ambiguous argument 'main...HEAD'...` as a path outside the commission
+and named neither of the two files the branch had actually changed. Confidently
+wrong in both directions at once, on the check whose whole job is to certify a
+branch's scope. `verify` refuses on an unresolved base now; the underlying
+stderr-as-paths defect fires for any bad `--base` and is filed as `PL-9RFP`.
 
 ## Decided: three silently-wrong checks go ahead of product work - PL-VKGJ, PL-STC4, PL-T83R (2026-09-19)
 

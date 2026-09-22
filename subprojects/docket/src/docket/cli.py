@@ -101,6 +101,7 @@ from .trend import BY_DAY, BY_WEEK
 from .trend import analyze as analyze_trend
 from .vcs import (
     CURRENT,
+    DEFAULT_BRANCHES,
     BranchCut,
     Churn,
     CutsInFlight,
@@ -128,6 +129,7 @@ from .vcs import (
     records_on_base,
     ref_walk,
     released_on_base,
+    resolved,
     settled_branches,
     stranded,
     tags,
@@ -2553,6 +2555,41 @@ def cmd_delegable(args: argparse.Namespace) -> int:
     return 0
 
 
+def _guessed_base_refusal() -> str:
+    """Refuse the audit where no candidate default branch resolved.
+
+    The commission audit is a claim about what a branch changed *against a
+    base*, so a base nobody established makes every one of its findings
+    unfounded - and not visibly so. `changed_paths` asks git for
+    `diff --name-only <base>...HEAD`, git exits non-zero for a ref that is not
+    there, and what comes back is not an empty diff but git's own three-line
+    fatal message, which the caller then reads as three changed paths. Measured
+    2026-09-22 on a checkout with no default branch: the audit reported
+    `fatal: ambiguous argument 'main...HEAD'...` as a path outside the
+    commission and missed both files the branch had actually changed.
+
+    Refusing rather than reporting, because the direction is the one that
+    cannot be recovered from. A refusal costs one re-run and says which ref to
+    supply; a report names paths that do not exist while passing over the ones
+    that do, on the check whose whole job is to certify a branch's scope.
+    """
+    return "\n".join(
+        [
+            "Cannot verify: no candidate default branch resolved in this checkout,",
+            "so there is no base to audit the commission against "
+            f"(tried {', '.join(DEFAULT_BRANCHES)}).",
+            "",
+            "Every finding here is a claim about what this branch changed relative to",
+            "a base, so a guessed one would report paths that do not exist and pass",
+            "over the ones that do. Name the base explicitly and re-run:",
+            "",
+            "  bin/docket verify <ID> --base <ref>",
+            "",
+            "`git fetch origin` first where the remote-tracking ref is merely missing.",
+        ]
+    )
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     """Prove each item's work stayed inside the commission it was given.
 
@@ -2584,6 +2621,9 @@ def cmd_verify(args: argparse.Namespace) -> int:
         wanted.append(item)
     root = _root(args)
     base = args.base or default_base(root)
+    if not resolved(base):
+        print(_guessed_base_refusal())
+        return 1
     reports = verify_batch(root, wanted, config, base, self_audit=args.self_audit)
     print("\n\n".join(report.describe() for report in reports))
     if len(reports) > 1:
