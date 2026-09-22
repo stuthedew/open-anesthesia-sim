@@ -50,9 +50,11 @@ looked like then" is the correct meaning and the only one available.
 acts on them. Drift found there is repaired in place, by the session that finds
 it, in the commit it is already making.
 
-**Repairing one does not need an item of its own.** It changes no behavior, and
-`bin/docket verify --self` already expects other items' files in a diff — the
-capture and leading-id rules put them there. So it rides the current item's
+**Repairing one does not need an item of its own.** It changes no behavior.
+Declare the file in the current item's `touches` first, because `bin/docket
+verify --self` sanctions only capture, `pr:` and recurrence edits to another
+item's file, and `CLAUDE.md`'s fix-now rule states this licence where it is read
+before the decision to file (`PL-G40Z`). So it rides the current item's
 commit under the current item's id, and it does **not** consume `CLAUDE.md`'s
 fix-now cap of two, which exists to stop scope creep in code. Filing it instead
 is what produced the cluster: a session that cannot repair another item's brief

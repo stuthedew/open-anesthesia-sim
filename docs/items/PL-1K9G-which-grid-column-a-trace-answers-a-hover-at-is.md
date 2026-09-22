@@ -9,6 +9,7 @@ feature: compartment-trace-legibility
 touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py
 added: 2026-09-20
 closed: 2026-09-22
+pr: 912
 payoff: two compartments of one run stop being labelled with two different instants in one hover box, so a reader comparing them is comparing one moment
 verify: grep -q 'def test_every_compartment_of_one_run_answers_at_one_instant' tests/unit/test_chart_frame.py
 ---
