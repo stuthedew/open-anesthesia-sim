@@ -9,6 +9,7 @@ feature: timeline-arrangement
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-22
+pr: 906
 payoff: stops gate work a release stepped past from vanishing out of every report with nothing saying so, while a correctly deferred entry such as PL-WZVZ stays silent
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py::test_a_released_milestone_row_with_its_frozen_list_still_open_is_reported subprojects/docket/tests/test_roadmap.py::test_a_released_frozen_list_entry_deferred_to_a_later_gate_says_nothing
 ---

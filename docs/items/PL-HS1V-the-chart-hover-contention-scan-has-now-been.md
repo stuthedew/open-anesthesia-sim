@@ -136,6 +136,7 @@ RADIUS = 12.0
 # Four sub-pixel phases per pixel column, so nothing below is an artefact of
 # where the anchored grid happens to fall against the pixel grid.
 import os
+
 PHASES = tuple(float(p) for p in os.environ.get("PHASES", "0.125,0.375,0.625,0.875").split(","))
 
 
@@ -156,7 +157,9 @@ def frame_of(controllers, shown, span_s):
     for controller in controllers:
         snapshot = controller.snapshot()
         runs.append(
-            RunInput(run_label(len(runs)), controller, snapshot, grouping.of(snapshot.control_timeline))
+            RunInput(
+                run_label(len(runs)), controller, snapshot, grouping.of(snapshot.control_timeline)
+            )
         )
 
     return assemble_chart_frame(runs, time_base_for_span(span_s), shown, plot_width_px=WIDTH_PX)
@@ -180,7 +183,9 @@ def build_cases():
         advance(branch, 600.0)
         branches[name] = branch
 
-    cases = [("one run, 60 min axis", "all six", frame_of((trunk,), COMPARTMENT_QUANTITIES, 3600.0))]
+    cases = [
+        ("one run, 60 min axis", "all six", frame_of((trunk,), COMPARTMENT_QUANTITIES, 3600.0))
+    ]
     pairs = (
         ("muscle + fat", (Q.MUSCLE, Q.FAT)),
         ("mixed venous + vessel rich", (Q.MIXED_VENOUS, Q.VESSEL_RICH)),
@@ -190,7 +195,11 @@ def build_cases():
     for name, branch in branches.items():
         for pair_name, pair in pairs:
             cases.append(
-                (f"two runs, branch {name}, 60 min axis", pair_name, frame_of((trunk, branch), pair, 3600.0))
+                (
+                    f"two runs, branch {name}, 60 min axis",
+                    pair_name,
+                    frame_of((trunk, branch), pair, 3600.0),
+                )
             )
 
     # Long axes, where a dial change is a near-vertical step: a two-hour case
@@ -203,8 +212,20 @@ def build_cases():
     advance(long_run, 3000.0)
     dial(long_run, 0.0)
     advance(long_run, 3600.0)
-    cases.append(("one run, 2 h case, 2 h axis", "all six", frame_of((long_run,), COMPARTMENT_QUANTITIES, 7200.0)))
-    cases.append(("one run, 2 h case, 12 h axis", "all six", frame_of((long_run,), COMPARTMENT_QUANTITIES, 43200.0)))
+    cases.append(
+        (
+            "one run, 2 h case, 2 h axis",
+            "all six",
+            frame_of((long_run,), COMPARTMENT_QUANTITIES, 7200.0),
+        )
+    )
+    cases.append(
+        (
+            "one run, 2 h case, 12 h axis",
+            "all six",
+            frame_of((long_run,), COMPARTMENT_QUANTITIES, 43200.0),
+        )
+    )
 
     return cases
 
@@ -262,7 +283,11 @@ def scan(frame):
     traces = traces_of(frame)
     last_px = max(float(t.times[-1]) for t in traces) / s_per_px + RADIUS + 1
     xs = np.array(
-        [frame.start_s + (px + phase) * s_per_px for px in range(int(last_px) + 1) for phase in PHASES]
+        [
+            frame.start_s + (px + phase) * s_per_px
+            for px in range(int(last_px) + 1)
+            for phase in PHASES
+        ]
     )
     ys = (np.arange(HEIGHT_PX) + 0.5) * p_per_px
     n_x, n_y = len(xs), len(ys)
@@ -320,7 +345,9 @@ def report(label, pair, frame, results):
     row["adjacent pairs"] = adjacent
     row["adjacent differ %"] = pct(differing, adjacent)
     row["adjacent differ by trace"] = {
-        f"{t.quantity.value}/r{t.run}": round(pct(int(np.count_nonzero(t.codes[1:] != t.codes[:-1])), len(t.codes) - 1), 1)
+        f"{t.quantity.value}/r{t.run}": round(
+            pct(int(np.count_nonzero(t.codes[1:] != t.codes[:-1])), len(t.codes) - 1), 1
+        )
         for t in traces
     }
 
@@ -398,16 +425,24 @@ def report(label, pair, frame, results):
         extra += int((n & ~o).sum())
         retained[f"{key[1].value}/r{key[0]}"] = round(pct(int((o & n).sum()), int(o.sum())), 1)
         drawn = int(len(trace.times))
-        reachable_old[f"{key[1].value}/r{key[0]}"] = round(pct(len(set(old_col[key][o].tolist())), drawn), 1)
-        reachable_new[f"{key[1].value}/r{key[0]}"] = round(pct(len(set(new_col[key][n].tolist())), drawn), 1)
+        reachable_old[f"{key[1].value}/r{key[0]}"] = round(
+            pct(len(set(old_col[key][o].tolist())), drawn), 1
+        )
+        reachable_new[f"{key[1].value}/r{key[0]}"] = round(
+            pct(len(set(new_col[key][n].tolist())), drawn), 1
+        )
         # Pixel columns (any phase, any height) at which the trace answers,
         # over the pixel columns the trace is drawn across.
-        px_of = (np.arange(len(xs)) // len(PHASES))
+        px_of = np.arange(len(xs)) // len(PHASES)
         first_px = int(trace.times[0] / s_per_px)
         last_px = int(trace.times[-1] / s_per_px)
         drawn_px = set(range(first_px, last_px + 1))
-        columns_old[f"{key[1].value}/r{key[0]}"] = round(pct(len(set(px_of[o.any(axis=1)].tolist()) & drawn_px), len(drawn_px)), 1)
-        columns_new[f"{key[1].value}/r{key[0]}"] = round(pct(len(set(px_of[n.any(axis=1)].tolist()) & drawn_px), len(drawn_px)), 1)
+        columns_old[f"{key[1].value}/r{key[0]}"] = round(
+            pct(len(set(px_of[o.any(axis=1)].tolist()) & drawn_px), len(drawn_px)), 1
+        )
+        columns_new[f"{key[1].value}/r{key[0]}"] = round(
+            pct(len(set(px_of[n.any(axis=1)].tolist()) & drawn_px), len(drawn_px)), 1
+        )
     row["new answers where old does not"] = extra
     row["old answering area kept under new %"] = retained
     row["drawn instants reachable, old %"] = reachable_old
@@ -430,12 +465,22 @@ def report(label, pair, frame, results):
         moved = both & (old_col[key] != new_col[key])
         codes = by_key[key].codes
         column_moved |= moved
-        value_moved |= moved & (codes[np.where(moved, old_col[key], 0)] != codes[np.where(moved, new_col[key], 0)])
+        value_moved |= moved & (
+            codes[np.where(moved, old_col[key], 0)] != codes[np.where(moved, new_col[key], 0)]
+        )
     row["readout identical %"] = pct(int((same_set & ~column_moved).sum()), int(hoverable.sum()))
-    row["same traces, an instant moved %"] = pct(int((same_set & column_moved).sum()), int(hoverable.sum()))
-    row["same traces, a printed value moved %"] = pct(int((same_set & value_moved).sum()), int(hoverable.sum()))
-    row["a trace stops answering %"] = pct(int((hoverable & (old_sets != new_sets)).sum()), int(hoverable.sum()))
-    row["nothing answers under new %"] = pct(int((hoverable & (new_sets == 0)).sum()), int(hoverable.sum()))
+    row["same traces, an instant moved %"] = pct(
+        int((same_set & column_moved).sum()), int(hoverable.sum())
+    )
+    row["same traces, a printed value moved %"] = pct(
+        int((same_set & value_moved).sum()), int(hoverable.sum())
+    )
+    row["a trace stops answering %"] = pct(
+        int((hoverable & (old_sets != new_sets)).sum()), int(hoverable.sum())
+    )
+    row["nothing answers under new %"] = pct(
+        int((hoverable & (new_sets == 0)).sum()), int(hoverable.sum())
+    )
 
     # Magnitudes. Instant spread inside one box, per run (old rule), in drawn
     # columns and seconds; and how far a vertical 2 px move shifts the instant.
@@ -448,14 +493,18 @@ def report(label, pair, frame, results):
         times = by_key[run_keys[0]].times
         present = cols >= 0
         count = present.sum(axis=0)
-        hi = np.where(present, cols, -10**9).max(axis=0)
+        hi = np.where(present, cols, -(10**9)).max(axis=0)
         lo = np.where(present, cols, 10**9).min(axis=0)
         sel = (count >= 2) & (hi != lo)
         if sel.any():
             spreads.extend((times[hi[sel]] - times[lo[sel]]).tolist())
     if spreads:
         a = np.array(spreads)
-        row["mixed-instant spread s (median/p95/max)"] = (float(np.median(a)), float(np.percentile(a, 95)), float(a.max()))
+        row["mixed-instant spread s (median/p95/max)"] = (
+            float(np.median(a)),
+            float(np.percentile(a, 95)),
+            float(a.max()),
+        )
     shifts = []
     rel = []
     pp = []
@@ -472,11 +521,24 @@ def report(label, pair, frame, results):
         rel.extend((np.maximum(a, b) / np.maximum(np.minimum(a, b), 1e-12)).tolist())
     if shifts:
         a = np.array(shifts)
-        row["vertical-move instant shift s (median/p95/max)"] = (float(np.median(a)), float(np.percentile(a, 95)), float(a.max()))
+        row["vertical-move instant shift s (median/p95/max)"] = (
+            float(np.median(a)),
+            float(np.percentile(a, 95)),
+            float(a.max()),
+        )
     if pp:
-        a = np.array(pp); r = np.array(rel)
-        row["vertical-move value change pp (median/p95/max)"] = (round(float(np.median(a)), 4), round(float(np.percentile(a, 95)), 4), round(float(a.max()), 4))
-        row["vertical-move value ratio (median/p95/max)"] = (round(float(np.median(r)), 3), round(float(np.percentile(r, 95)), 3), round(float(r.max()), 3))
+        a = np.array(pp)
+        r = np.array(rel)
+        row["vertical-move value change pp (median/p95/max)"] = (
+            round(float(np.median(a)), 4),
+            round(float(np.percentile(a, 95)), 4),
+            round(float(a.max()), 4),
+        )
+        row["vertical-move value ratio (median/p95/max)"] = (
+            round(float(np.median(r)), 3),
+            round(float(np.percentile(r, 95)), 3),
+            round(float(r.max()), 3),
+        )
     # Rule B (old eligibility, time-nearest column): how far the reported point
     # would sit from the pointer where rule A declines to answer.
     far = []
@@ -488,10 +550,20 @@ def report(label, pair, frame, results):
         ii, jj = np.nonzero(lost)
         for i, j in zip(ii[::7], jj[::7]):
             c = time_nearest(trace.times, xs[i])
-            far.append(float(np.hypot((xs[i] - trace.times[c]) / s_per_px, (ys[j] - trace.percents[c]) / p_per_px)))
+            far.append(
+                float(
+                    np.hypot(
+                        (xs[i] - trace.times[c]) / s_per_px, (ys[j] - trace.percents[c]) / p_per_px
+                    )
+                )
+            )
     if far:
         a = np.array(far)
-        row["rule B: reported point from pointer px where A declines (median/p95/max)"] = (round(float(np.median(a)), 1), round(float(np.percentile(a, 95)), 1), round(float(a.max()), 1))
+        row["rule B: reported point from pointer px where A declines (median/p95/max)"] = (
+            round(float(np.median(a)), 1),
+            round(float(np.percentile(a, 95)), 1),
+            round(float(a.max()), 1),
+        )
     return row
 
 
@@ -507,7 +579,9 @@ def cross_check(frame, results, rng, which):
         i = rng.randrange(len(xs))
         j = rng.randrange(len(ys))
         target = nearest_trace_point(frame, float(xs[i]), float(ys[j]), s_per_px, p_per_px, RADIUS)
-        shipped = set() if target is None else {(r.run, r.quantity, r.time_s) for r in target.readings}
+        shipped = (
+            set() if target is None else {(r.run, r.quantity, r.time_s) for r in target.readings}
+        )
         scanned = {
             (key[0], key[1], float(by_key[key].times[col[key][i, j]]))
             for key in by_key
@@ -590,10 +664,14 @@ def main(which):
             codes = np.array([hash(format_wash_in_ratio(v)) for v in ratios])
             last = times[-1] / s + RADIUS + 1
             xs = [frame.start_s + (px + ph) * s for px in range(int(last) + 1) for ph in PHASES]
-            oa = np.zeros((len(xs), HEIGHT_PX), bool); oc = np.full(oa.shape, -1)
-            na = np.zeros(oa.shape, bool); nc = np.full(oa.shape, -1)
+            oa = np.zeros((len(xs), HEIGHT_PX), bool)
+            oc = np.full(oa.shape, -1)
+            na = np.zeros(oa.shape, bool)
+            nc = np.full(oa.shape, -1)
             for i, t in enumerate(xs):
-                d = np.sqrt(((t - times[None, :]) / s) ** 2 + ((ys[:, None] - ratios[None, :]) / r) ** 2)
+                d = np.sqrt(
+                    ((t - times[None, :]) / s) ** 2 + ((ys[:, None] - ratios[None, :]) / r) ** 2
+                )
                 k = np.argmin(d, axis=1)
                 inside = d[np.arange(HEIGHT_PX), k] <= RADIUS
                 oa[i], oc[i] = inside, np.where(inside, k, -1)
@@ -604,11 +682,22 @@ def main(which):
                 both = ans[:, :-2] & ans[:, 2:]
                 moved = both & (col[:, :-2] != col[:, 2:])
                 if rule == "old":
-                    pairs += int(both.sum()); flips += int(moved.sum())
-                    vflips += int((moved & (codes[np.where(moved, col[:, :-2], 0)] != codes[np.where(moved, col[:, 2:], 0)])).sum())
+                    pairs += int(both.sum())
+                    flips += int(moved.sum())
+                    vflips += int(
+                        (
+                            moved
+                            & (
+                                codes[np.where(moved, col[:, :-2], 0)]
+                                != codes[np.where(moved, col[:, 2:], 0)]
+                            )
+                        ).sum()
+                    )
                 else:
                     assert not moved.any(), "the time rule moved an instant vertically"
-            area_old += int(oa.sum()); area_new += int((oa & na).sum()); extra += int((na & ~oa).sum())
+            area_old += int(oa.sum())
+            area_new += int((oa & na).sum())
+            extra += int((na & ~oa).sum())
             reach_new = len(set(nc[na].tolist())) / len(times)
             # hold the scan's time rule against the shipped function
             if which == "new":
@@ -616,12 +705,20 @@ def main(which):
                 for _ in range(300):
                     i, j = rng.randrange(len(xs)), rng.randrange(HEIGHT_PX)
                     target = nearest_wash_in_point(frame, xs[i], float(ys[j]), s, r, RADIUS)
-                    got = None if target is None else next((x.time_s for x in target.readings if x.run == run_index), None)
+                    got = (
+                        None
+                        if target is None
+                        else next((x.time_s for x in target.readings if x.run == run_index), None)
+                    )
                     want = float(times[nc[i, j]]) if na[i, j] else None
                     bad += got != want
                 print(f"  cross-check run {run_index}: {bad} mismatches of 300")
-            print(f"{label} run {run_index}: stretches {len(run.wash_in)}, drawn instants reachable under new {100*reach_new:.1f}%")
-        print(f"{label}: vertical 2 px pairs {pairs}, instant moves {100*flips/max(pairs,1):.1f}%, printed ratio moves {100*vflips/max(pairs,1):.1f}%; old area kept {100*area_new/max(area_old,1):.1f}%; new-only area {extra}")
+            print(
+                f"{label} run {run_index}: stretches {len(run.wash_in)}, drawn instants reachable under new {100 * reach_new:.1f}%"
+            )
+        print(
+            f"{label}: vertical 2 px pairs {pairs}, instant moves {100 * flips / max(pairs, 1):.1f}%, printed ratio moves {100 * vflips / max(pairs, 1):.1f}%; old area kept {100 * area_new / max(area_old, 1):.1f}%; new-only area {extra}"
+        )
 
 
 main("new" if "--check-new" in sys.argv else "old")

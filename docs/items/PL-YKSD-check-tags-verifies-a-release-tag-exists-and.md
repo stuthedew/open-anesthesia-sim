@@ -9,6 +9,7 @@ feature: release-process
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-09-22
 closed: 2026-09-22
+pr: 909
 payoff: a release tag pushed at the wrong commit fails make check, instead of reading as tagged to every check and letting the next version be cut on top of it
 verify: grep -q 'def test_a_tag_whose_pyproject_version_disagrees_is_refused' tests/unit/test_doc_check.py
 ---
