@@ -79,7 +79,8 @@ to be picked up cold; if it is not enough, see **When a brief is unclear**.
 2. For each item, in turn:
    - Do exactly what the brief says.
    - Run the item's `verify:` command from its front matter. It must pass.
-   - Run `make check`. It must pass.
+   - Run `make check`. It must pass, **and its own exit status is what says
+     so** — see below.
    - Add a `**Worked.**` line to the item's file (see below).
    - Commit, **one commit per item**, with the item id first in the subject:
      `PL-QGZV Cover the alveolar compartment's capacity guards`.
@@ -87,6 +88,32 @@ to be picked up cold; if it is not enough, see **When a brief is unclear**.
 
 One commit per item matters: it lets the reviewer accept four items and reject
 one, instead of rejecting the batch.
+
+### Read the gate's own exit status, not the pipeline's
+
+A shell pipeline reports its **last** stage. `make check 2>&1 | tail -45`
+therefore exits with `tail`'s status, and `tail` succeeds on any input, so a red
+tree arrives as exit 0. `PL-2JRC` reported the gate green on exactly that
+reading and the false claim reached both a commit message and a pull request
+body. The same loss happens after a `;` (the next command's status wins), after
+`|| ...` (the fallback succeeds) and after `&` (the gate is backgrounded).
+
+Pipe freely — just keep the status while you do:
+
+```bash
+set -o pipefail; make check 2>&1 | tail -45
+```
+
+`set -o pipefail` makes the pipeline report its rightmost non-zero stage, so the
+output stays short and a red gate still exits non-zero. It is never wrong to
+add. Redirecting to a file and reading it afterwards works too, as long as
+nothing runs between the gate and your reading of its status.
+
+This applies to every command whose status is your evidence — `make check`, the
+item's own `verify:`, `pytest`, `mypy`, `ruff`, `bin/docket check`. Claude Code
+sessions have `.claude/hooks/gate-status-guard.sh` refusing the unsafe spellings
+for them; under any other harness that hook does not run, so this paragraph is
+the whole of the guard (`PL-D0W8`).
 
 ### The item file is the commission
 

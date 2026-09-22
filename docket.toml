@@ -344,6 +344,7 @@ workflow_paths = [
   "tests/unit/test_docket_digest_hook.py",
   "tests/unit/test_fixture_id_check.py",
   "tests/unit/test_floor_interpreter_guard.py",
+  "tests/unit/test_gate_status_guard.py",
   "tests/unit/test_glyph_check.py",
   "tests/unit/test_ignore_check.py",
   "tests/unit/test_main_ci_status.py",

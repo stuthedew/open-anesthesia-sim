@@ -3,11 +3,12 @@ id: PL-R5HK
 title: docs/ARCHITECTURE.md's wired-hooks section says five scripts where settings.json wires six, so the count has been wrong since item_read_log.py was added
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: project-introduction
 touches: docs/ARCHITECTURE.md
 added: 2026-09-19
+closed: 2026-09-22
 verify: ! grep -q 'The five scripts' docs/ARCHITECTURE.md
 ---
 
@@ -70,3 +71,20 @@ neither caught it, which is what says no reader will.
 agreement is either held there by a check or removed as a claim - `PL-5N7T`
 carries the general rule for a marked prose enumeration and this is its second
 caller in the same document.
+
+**Closed by `PL-D0W8`'s docs sweep, 2026-09-22.** Found again independently,
+from the other direction: that item wired a sixth Bash guard
+(`.claude/hooks/gate-status-guard.sh`), which made this section's count wrong by
+*two*, and its close-out sweep read the section and recounted the file rather
+than incrementing what it found. The sentence now reads seven, and the
+by-name list beside it - which had never picked up `item_read_log.py` either -
+names every wired script but `stop_hook_patch.py`, which the next paragraph
+covers on its own.
+
+**The mechanism is not closed with it, and that is deliberate.** This brief
+argued the durable remedy is `PL-5N7T`'s `tools/doc_check.py` rule holding a
+marked prose enumeration to the file it enumerates, priced against two callers
+rather than one. That rule is still unbuilt and `PL-5N7T` still carries it, so
+nothing yet stops the count going wrong a fourth time - only this instance is
+gone. The recount happened because a sweep was run, which is judgment rather
+than a gate, and this is now the third time the same sentence has drifted.
