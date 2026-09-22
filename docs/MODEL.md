@@ -178,7 +178,8 @@ stays a reviewer's question.
 | reading a displayed value as resolved to its last digit | displayed precision is a recorded choice within a justified band, and the model retains precision the display discards rather than rounding its own state | `test_the_model_keeps_precision_the_display_throws_away`, `test_concentration_decimals_are_a_choice_within_a_recorded_band` |
 | reading a control mark on the timeline as a measurement | the timeline labels its marks "Settings only — not a measurement." | `test_the_interface_says_a_control_mark_is_an_input_not_a_measurement` |
 | reading a modelled compartment value as a measured one | the readout section states beside its values that they are model outputs and not measurements (`INTERPRETATION_DISCLAIMER_TEXT`, `PL-2K1R`), and the chart's hover names every value it reports as modelled (§ "The chart's hover readout: what the tooltip may show") | `test_the_interface_says_the_readouts_are_model_outputs_not_measurements`, `test_the_readouts_say_they_are_model_outputs_beside_the_values`, `test_the_hover_reports_the_drawn_state_through_the_formatters` |
-| reading one compartment's concentration as another's where two traces are drawn on top of each other | the compartment is named in text on every value line, and every compartment whose drawn point is inside the hover radius answers under its own name rather than the nearest trace being chosen for the reader (§ "Where more than one trace answers") - because the percent axis is scaled by the alveolar peak, so the slow compartments are drawn within a pixel or two of one another and no aim can separate them (`PL-0RZ0`, `PL-QYBW`) | `test_two_compartments_within_one_hover_radius_answer_under_their_own_names`, `test_a_contended_hover_names_no_run_while_only_one_is_drawn` |
+| reading one compartment's concentration as another's where two traces are drawn on top of each other | the compartment is named in text on every value line, and every compartment whose drawn point at the instant the pointer names is inside the hover radius answers under its own name rather than the nearest trace being chosen for the reader (§ "Where more than one trace answers") - because the percent axis is scaled by the alveolar peak, so the slow compartments are drawn within a pixel or two of one another and no aim can separate them (`PL-0RZ0`, `PL-QYBW`) | `test_two_compartments_within_one_hover_radius_answer_under_their_own_names`, `test_a_contended_hover_names_no_run_while_only_one_is_drawn` |
+| comparing two compartments of one run in one hover box as one moment when the box took them from different instants | every compartment of one run answers at the run's drawn instant nearest the pointer in time, so the instant a value is labelled with is a function of the pointer's position along the time axis alone and the pointer's height decides only what is in reach - where each trace's own nearest point had been taken in both dimensions, which labelled 70.1% of the single-run chart's multi-reading boxes with two instants, up to fifteen minutes apart on the 12-hour axis (§ "Where more than one trace answers", `PL-1K9G`) | `test_every_compartment_of_one_run_answers_at_one_instant`, `test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports`, `test_a_trace_answers_only_where_its_point_at_the_named_instant_is_in_reach` |
 | reading one run's displayed value, or the record of what was changed on it, as the other's while two are compared | the run is named in text wherever a value is shown: on each run's own readout panel (§ "Minimum displayed outputs") and, while more than one run is drawn, in the chart's hover readout - on its first line where one run answers (§ "The hover and the run it belongs to") and on each value line where several do, every run inside the hover radius answering so that no hand movement can swap which is read (§ "Where more than one trace answers") - because the hover floats free of the legend and line width has no textual analogue; and on the two advisories that sit in the chart column rather than on either run's panel, the wash-in state line and the off-scale notice, which stack one line per run and so are named for the same reason the hover is - stacking order is declared nowhere on screen and the run names sit in a different splitter section, which would leave the branch's F_A/F_I readable as the trunk's and its off-scale notice attributable to a run whose traces are all inside the axis (`PL-25DD`); and in the headings of the two sidebar panels, the agent-accounting validation and the control-change record, which stack whole panels rather than lines - accounting, control changes, accounting, control changes - so the name goes in each panel's own heading, where it travels with the panel rather than with its position in the column, because "What was changed during this run" over a list of settings read as the other run's says the trunk received an intervention it never got (`PL-C3GS`); and on the notice banner, which sits in a third shared column and qualifies the values rather than showing one - "The values shown are the last completed step" read as the dashboard's says both runs' readouts are frozen at a failed step when one is still going, and "The simulation is unchanged and still running its previous setting" is false of the run that took the setting. Stacking order separates these less than it separates any of the surfaces above, because a banner with nothing to say is hidden rather than blank: with one run halted the column holds a single block whose position moves by the column's spacing alone, 12 px measured on 2026-09-21, while the words are identical (`PL-TSZM`) | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers`, `test_the_wash_in_state_and_off_scale_lines_name_their_run`, `test_a_lone_run_leaves_the_shared_chart_lines_unnamed`, `test_the_sidebar_panels_name_the_run_they_record`, `test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed`, `test_the_halt_and_refusal_banners_name_their_run`, `test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped`, `test_a_lone_run_leaves_the_notice_banner_unnamed` |
 
 ### The row that was only partly mitigated until the Qt port
@@ -7600,9 +7601,10 @@ floats over the plot with nothing around it, which is the argument the top of
 this section already makes for why the modelled marker travels with the value.
 
 **The argument that the pointer is already over one curve is false, and was
-measured.** `nearest_trace_point` keeps the single globally nearest drawn point
-across *every* run on the frame, so the pointer is within reach of both runs
-wherever their curves for one compartment run close together. Measured
+measured.** `nearest_trace_point` then kept the single globally nearest drawn
+point across *every* run on the frame (`PL-JVHL` retired that rule, below), and
+the pointer is within reach of both runs wherever their curves for one
+compartment run close together. Measured
 2026-09-17 on a branched sevoflurane case — reference adult, trunk held at
 1 MAC, branch forked at 10 min, a 60-minute axis 900 px wide and 360 px tall,
 so 4.00 s/px and 0.0167 %/px — the share of the shared axis on which both runs'
@@ -7733,10 +7735,9 @@ answered for somewhere at 98% or more of the axis columns it is drawn at, worst
 being muscle at 2.0% on the single-run chart. The defect was that the reader got
 the wrong trace, never that a trace could not be got at.
 
-So every drawn point inside the radius answers, whichever run and whichever
-compartment it is on, each at its own nearest such point. Nothing is left for a
-hand movement too small to aim with to decide, which is what takes the flip rate
-to zero on both axes.
+So every run and every compartment whose drawn point is inside the radius
+answers. Nothing is left for a hand movement too small to aim with to decide,
+which is what takes the flip rate to zero on both axes.
 
 **The box keeps the form it had wherever one compartment answers**, which is
 54.3–99.5% of hovers across the measured cases and 63.0% on the single-run
@@ -7760,22 +7761,63 @@ as the legend beside it. The box carries one value line on 21–93% of hovers an
 never more than four on the two-run chart or three on the single-run one, which
 is what made stopping choosing affordable here.
 
-**Two compartments of one run do not share an instant either.** A run draws all
-six traces at one set of times, but each trace keeps its own nearest point and
-nearest is measured in two dimensions, so the pointer's height decides which
-column a trace answers at where two are near-equidistant in time — observed at
-t = 1200 s on the branched case, where muscle answers at 19m56s and fat at 20m
-for the same run under one pointer. The per-line instant is therefore required
-rather than merely consistent.
+**The pointer names the instant, and the radius decides only what is in
+reach** (`PL-1K9G`, 2026-09-22). Each run answers at its drawn instant nearest
+the pointer in time — a tie goes to the earlier — and each of its compartments
+answers there if that point is inside the radius. So every compartment of one
+run answers at one instant, and a movement up or down the percent axis can
+change what is in reach but never the instant a value is labelled with.
 
-**The instant is stated per line rather than once for the box.** Two runs share
-the anchored grid, but each also draws the columns its own control events fall
-on, so their points nearest one pointer can be one grid column apart — 4 s on
-the 60-minute axis, 48 s on the 12-hour one, both of which `format_elapsed`
-shows. A single instant above a column of values would assert a simultaneity
-the readings do not have. That is the same rule as the modelled marker
-travelling with the value rather than sitting in a heading: a qualifier belongs
-to the number it qualifies.
+Until then each trace kept its own drawn point nearest the pointer measured in
+both dimensions, so on a sloped trace the pointer's height chose the column.
+Measured on the branched case above, plus a two-hour single run on its fitted
+2-hour axis and on the 12-hour one, where a dial change draws a near-vertical
+step — every pixel of height at four sub-pixel phases per column, the scan's
+selection held against the shipped function before any number was kept:
+
+| Chart | Boxes holding 2+ of one run's readings that mixed instants | Spread, median / max | A vertical 2 px move changed the instant / the printed value |
+| --- | ---: | ---: | ---: |
+| one run, 60 min | 70.1% | 16 s / 72 s | 44.9% / 35.1% |
+| two runs, mixed venous + vessel-rich | 88.3–94.7% | 12–16 s / 32–52 s | 50.6–62.8% / 36.9–52.8% |
+| two runs, muscle + fat | 13.0–16.8% | 4 s / 4 s | 3.0–5.4% / 0.3–0.8% |
+| one run, 12 h axis | 84.5% | 288 s / 912 s | 37.3% / 33.3% |
+
+The premise that made it look cosmetic — that two adjacent columns usually print
+the same value — holds for fat and mostly for muscle, the pair it was first
+observed on, and fails for the other four: on the 60-minute axis 44.0–93.3% of
+adjacent columns of the circuit, alveolar, mixed venous and vessel-rich traces
+print differently, against 3.3–16.0% for muscle and 0.7–1.3% for fat. Nor was
+the spread one grid column, as this section said: a sloped trace's nearest point
+can lie as far to the side as the radius reaches, which is fifteen minutes on the
+12-hour axis. `PL-1K9G` holds the whole scan.
+
+**The radius is measured at the named instant, not to the nearest of the
+trace's points.** Keeping the old reach and reporting the point at the named
+instant would also have made the instant a function of the pointer's time
+alone, and would have kept every answer the old rule gave; where this rule
+declines it would have reported a point a median 13.5 px and up to 42.5 px from
+the pointer on the 60-minute axis, and up to 146 px on the 12-hour one — the dot
+and the box hung on a value the reader is nowhere near. So every value the box
+reports is at the instant the pointer names *and* within reach of it. What that
+costs is aim beside a steep segment, where a pointer level with a point several
+columns on no longer answers from it: of the area each trace answered over,
+84–100% is kept on the 60-minute and 2-hour axes, and 45–54% for the four fast
+compartments on the 12-hour one. Nothing is answered that the old rule did not
+answer, and no drawn instant becomes unreachable.
+
+The wash-in plot answers on the same rule, a run's stretches being one set of
+drawn instants. It draws one trace per run, so no box there mixed instants, but
+the same vertical movement moved its one instant on 23.9–44.4% of movements.
+
+**The instant is stated per line rather than once for the box.** Every
+compartment of one run shares it, but two runs need not: each also draws the
+columns its own control events fall on, and a branch draws none before its
+fork, so the instants nearest one pointer can differ between runs — by up to
+one grid column where both are drawn, 4 s on the 60-minute axis and 48 s on the
+12-hour one, both of which `format_elapsed` shows. A single instant above a
+column of values would assert a simultaneity the readings do not have. That is
+the same rule as the modelled marker travelling with the value rather than
+sitting in a heading: a qualifier belongs to the number it qualifies.
 
 **The lines are ordered by the run, not by distance**, and so is the box's own
 position, which hangs from the first answering run's point. Ordering by
@@ -7809,9 +7851,11 @@ a roadmap question rather than a targeting one (`PL-QYBW`).
 `chart_frame.format_compared_wash_in_hover` produce both forms above — through
 `app/formatting.py` like every other number here, `format_percent`,
 `format_mac_multiple` and `format_elapsed` — and `nearest_trace_point` and
-`nearest_wash_in_point` collect the traces in reach. Both worked examples above
-are held verbatim in `tests/unit/test_chart_frame.py`, beside the measured fat
-and muscle cases the two halves of this rule were decided from.
+`nearest_wash_in_point` collect the traces in reach at the instant the pointer
+names. Both worked examples above are held verbatim in
+`tests/unit/test_chart_frame.py`, beside the measured fat and muscle cases the
+run and compartment rules were decided from and the geometry the instant rule
+was (`test_every_compartment_of_one_run_answers_at_one_instant`).
 
 #### Resolution: the readouts' derivation applies unchanged
 
@@ -7951,12 +7995,13 @@ while they look for it.
 
 **Built on pyqtgraph, over the drawn points within a pixel radius**
 (`PL-G59B`, 2026-09-14; the radius stopped choosing between runs with
-`PL-JVHL`, 2026-09-19, and between compartments with `PL-0RZ0`, 2026-09-20): `app/chart_frame.py` holds the derivation above as
+`PL-JVHL`, 2026-09-19, and between compartments with `PL-0RZ0`, 2026-09-20, and
+the pointer's height stopped choosing the instant with `PL-1K9G`, 2026-09-22): `app/chart_frame.py` holds the derivation above as
 code — `format_trace_hover` and `format_wash_in_hover` produce the three-line
 form and `format_compared_trace_hover` and `format_compared_wash_in_hover` the
 compared one, while `nearest_trace_point` answers only for a compartment the
-reader has left shown, within a pixel radius of a point the plot actually
-draws — and `app/qt_chart.py` shows it wherever the pointer is, running or
+reader has left shown, within a pixel radius of the point the plot draws at
+the instant the pointer names — and `app/qt_chart.py` shows it wherever the pointer is, running or
 paused. Every instant it prints is stated at the step the run advances by,
 `HOVER_INSTANT_RESOLUTION_S`: a drawn column sits wherever the anchored grid
 puts it, and the state reported is the state at exactly that instant, but

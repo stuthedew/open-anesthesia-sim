@@ -7,6 +7,7 @@ display and no plotting library, which is the point of that module.
 """
 
 from dataclasses import replace
+from math import hypot
 from types import MappingProxyType
 
 import pytest
@@ -793,6 +794,269 @@ def test_a_contended_hover_names_no_run_while_only_one_is_drawn() -> None:
         "Muscle · 20m   0.19%   0.10 ×MAC",
         "Fat · 20m   0.01%   0.01 ×MAC",
     ]
+
+
+def _retired_nearest_instant(
+    run: RunFrame,
+    quantity: RecordedQuantity,
+    time_s: float,
+    percent: float,
+    reach: dict[str, float],
+) -> float | None:
+    """The instant the retired rule answered one trace at: its drawn point nearest in pixels.
+
+    The counterfactual the `PL-1K9G` tests are held against, so that a
+    geometry which stops exercising the retired rule's failure fails as a
+    geometry rather than passing as a fix.
+    """
+
+    distance, instant = min(
+        (
+            hypot(
+                (drawn_s - time_s) / reach["seconds_per_pixel"],
+                (drawn - percent) / reach["percent_per_pixel"],
+            ),
+            drawn_s,
+        )
+        for drawn_s, drawn in zip(run.times_s, run.percents(quantity), strict=True)
+    )
+
+    return instant if distance <= reach["radius_pixels"] else None
+
+
+def _named_instant(run: RunFrame, time_s: float) -> float:
+    """The drawn instant nearest `time_s` in time, ties to the earlier: what the pointer names."""
+
+    return min(run.times_s, key=lambda drawn_s: (abs(drawn_s - time_s), drawn_s))
+
+
+def test_every_compartment_of_one_run_answers_at_one_instant() -> None:
+    """`PL-1K9G`: the pointer names the instant, and every trace of a run answers at it.
+
+    The retired rule kept each trace's drawn point nearest the pointer in
+    pixels, so a steep trace and a flat one inside one radius answered at
+    different columns - the pointer's height deciding which - and one box
+    labelled two compartments of one run with two instants. Measured on the
+    single-run chart, 70.1% of the boxes holding two or more of one run's
+    readings mixed instants, up to 72 s apart on the 60-minute axis and 15
+    minutes apart on the 12-hour one, and 91.9% of those printed digits the
+    same compartments do not print at one shared instant.
+
+    The geometry is that shape reduced to two traces: vessel-rich flat and
+    mixed venous rising two pixels a column through it, at the 60-minute
+    axis's 4.00 s/px and 0.0167 %/px. The pointer is a quarter of a column
+    past 20m, which is the instant it names, and three pixels above the flat
+    trace - where the steep one's nearest point is three columns on.
+    """
+
+    reach = dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
+    times_s = tuple(1160.0 + 4.0 * column for column in range(20))
+    run = _run_frame(
+        times_s,
+        vessel_rich=tuple(0.0060 for _ in times_s),
+        mixed_venous=tuple(0.0060 + (column - 12) * 0.000334 for column in range(20)),
+    )
+    frame = _frame(run, visible=(RecordedQuantity.MIXED_VENOUS, RecordedQuantity.VESSEL_RICH))
+    time_s = 1201.0
+    above_flat = run.percents(RecordedQuantity.VESSEL_RICH)[0] + 3 * 0.0167
+
+    # The geometry is one the retired rule split: its two traces answered
+    # twelve seconds apart under this pointer.
+    assert {
+        _retired_nearest_instant(run, quantity, time_s, above_flat, reach)
+        for quantity in frame.visible
+    } == {1200.0, 1212.0}
+
+    target = nearest_trace_point(frame, time_s, above_flat, **reach)
+
+    assert target is not None
+    assert tuple((reading.quantity, reading.time_s) for reading in target.readings) == (
+        (RecordedQuantity.MIXED_VENOUS, 1200.0),
+        (RecordedQuantity.VESSEL_RICH, 1200.0),
+    )
+    assert target.readout.splitlines() == [
+        "Modelled sevoflurane",
+        "Mixed venous · 20m   0.53%   0.27 ×MAC",
+        "Vessel-rich · 20m   0.60%   0.30 ×MAC",
+    ]
+
+    # And no height at which anything answers moves it.
+    for y_px in range(-12, 13):
+        moved = nearest_trace_point(frame, time_s, above_flat + y_px * 0.0167, **reach)
+
+        if moved is not None:
+            assert {reading.time_s for reading in moved.readings} == {1200.0}
+
+
+@pytest.mark.parametrize("compared", [False, True], ids=["one run", "two runs"])
+def test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports(compared: bool) -> None:
+    """`PL-1K9G` on real runs: the instant a value is labelled with is the pointer's time alone.
+
+    Under the retired rule a purely vertical 2 px movement moved it on 44.9%
+    of such movements on the single-run chart, and moved the printed value on
+    35.1% - by up to 0.13 percentage points on the 60-minute axis and 0.39 on
+    the 12-hour one, with nothing else in the box moving. Swept here across
+    the dial change at ten minutes and the live end at twenty, where the fast
+    compartments are steepest, at every other pixel of height and at three
+    points between each pair of columns, one of them the exact midpoint: every
+    run that answers does so at its own drawn instant nearest the pointer in
+    time, whatever the pointer's height.
+    """
+
+    trunk = _run(600.0)
+    trunk.begin_control_adjustment()
+    trunk.set_delivered_partial_pressure_fraction(Fraction(0.03))
+    _advance(trunk, 600.0)
+    controllers = [trunk]
+
+    if compared:
+        branch = BranchedCase(trunk).fork_at(600.0)
+        branch.start()
+        branch.begin_control_adjustment()
+        branch.set_delivered_partial_pressure_fraction(Fraction(0.0))
+        _advance(branch, 600.0)
+        controllers.append(branch)
+
+    frame = assemble_chart_frame(
+        [_input(controller, run_index=index) for index, controller in enumerate(controllers)],
+        time_base_for_span(3600.0),
+        (RecordedQuantity.ALVEOLAR, RecordedQuantity.FAT) if compared else COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+    reach = dict(
+        seconds_per_pixel=(frame.stop_s - frame.start_s) / _PLOT_WIDTH_PX,
+        percent_per_pixel=frame.axis_top_percent / 360.0,
+        radius_pixels=12.0,
+    )
+    assert reach["seconds_per_pixel"] == 4.0, "the sweep is the 60-minute axis the item measured"
+    pointer_times_s = [
+        drawn_s + offset_s
+        for drawn_s in frame.runs[0].times_s
+        if 560.0 <= drawn_s < 640.0 or 1160.0 <= drawn_s < 1200.0
+        for offset_s in (1.0, 2.0, 3.0)
+    ]
+    heights = [y_px * reach["percent_per_pixel"] for y_px in range(0, 361, 2)]
+
+    # The region is one where the retired rule labelled values with an
+    # instant the pointer's time does not name.
+    assert any(
+        _retired_nearest_instant(run, quantity, time_s, percent, reach)
+        not in (None, _named_instant(run, time_s))
+        for time_s in pointer_times_s
+        for percent in heights
+        for run in frame.runs
+        for quantity in frame.visible
+    ), "the swept region must be one the retired rule mislabelled to test anything"
+
+    answered = 0
+
+    for time_s in pointer_times_s:
+        named = [_named_instant(run, time_s) for run in frame.runs]
+
+        for percent in heights:
+            target = nearest_trace_point(frame, time_s, percent, **reach)
+
+            if target is None:
+                continue
+
+            answered += 1
+
+            for reading in target.readings:
+                assert reading.time_s == named[reading.run]
+
+    assert answered > len(pointer_times_s), "the sweep must be answered to test anything"
+
+
+def test_a_trace_answers_only_where_its_point_at_the_named_instant_is_in_reach() -> None:
+    """The radius still decides whether a trace answers - measured at the instant the pointer names.
+
+    A steep trace passes within the radius of a pointer beside it at an
+    instant several columns away, and the retired rule answered with that
+    point. Answering from the named instant's point whatever its distance was
+    the other way to make the instant a function of the pointer's time, and
+    it was measured and refused: where this rule declines, it would have hung
+    the dot and the box a median 13.5 px and up to 42.5 px from the pointer on
+    the 60-minute axis, and up to 146 px on the 12-hour one - a value the
+    reader is nowhere near, reported as the one under the pointer.
+    """
+
+    reach = dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
+    times_s = tuple(1160.0 + 4.0 * column for column in range(18))
+    # Twenty pixels a column: the near-vertical step a dial change draws.
+    run = _run_frame(times_s, circuit=tuple(0.0005 + column * 0.00334 for column in range(18)))
+    frame = _frame(run, visible=(RecordedQuantity.CIRCUIT,))
+    circuit = run.percents(RecordedQuantity.CIRCUIT)
+    time_s = 1201.0
+
+    # Level with the step three columns on: 2.75 px from that point, which the
+    # retired rule answered with, and 60 px above the point at 20m.
+    assert _retired_nearest_instant(run, RecordedQuantity.CIRCUIT, time_s, circuit[13], reach) == (
+        1212.0
+    )
+    assert nearest_trace_point(frame, time_s, circuit[13], **reach) is None
+
+    # On the trace at the instant the pointer names, it answers there.
+    on_trace = nearest_trace_point(frame, time_s, circuit[10], **reach)
+
+    assert on_trace is not None
+    assert (on_trace.anchor.time_s, on_trace.anchor.value) == (1200.0, circuit[10])
+
+
+def test_the_wash_in_hover_answers_at_the_instant_the_pointer_names() -> None:
+    """`PL-1K9G` on the wash-in plot, which measured its distance in the same two dimensions.
+
+    One trace per run, so no box there could mix one run's instants - but a
+    purely vertical 2 px movement moved the one instant it reports on
+    23.9-44.4% of such movements across the measured cases, the printed ratio
+    with it on 7.7-20.6%. A run's stretches are one set of drawn instants, so
+    the pointer names one of them across the gap between two stretches too.
+    """
+
+    reach = dict(seconds_per_pixel=4.0, ratio_per_pixel=0.00575, radius_pixels=12.0)
+    # Rising two pixels a column, as early wash-in does on the 60-minute axis.
+    early = WashInStretch(
+        tuple(40.0 + 4.0 * column for column in range(10)),
+        tuple(0.30 + 0.0115 * column for column in range(10)),
+        False,
+    )
+    late = WashInStretch((100.0, 104.0, 108.0), (0.80, 0.80, 0.80), False)
+    run = replace(_run_frame((40.0, 108.0)), wash_in=(early, late))
+    frame = _frame(run)
+    reported = []
+
+    for y_px in range(-12, 13):
+        target = nearest_wash_in_point(frame, 57.0, early.ratios[4] + y_px * 0.00575, **reach)
+
+        if target is not None:
+            reported.append(target.anchor.time_s)
+
+    assert reported and set(reported) == {56.0}
+
+    # In the gap, nearer in time to the late stretch: it answers, at its first point.
+    in_gap = nearest_wash_in_point(frame, 92.0, 0.80, **reach)
+
+    assert in_gap is not None
+    assert (in_gap.anchor.time_s, in_gap.anchor.value) == (100.0, 0.80)
+
+
+def test_a_run_that_draws_no_instant_answers_no_hover_and_silences_no_other() -> None:
+    """A run with nothing drawn has no instant to name, so it answers nothing; the rest still do.
+
+    `SimulationController.drawn_window` always draws both ends of the range a
+    run covers, so no assembled frame holds such a run; it is held here
+    because the bisection that names the instant would otherwise read one
+    before the first column of an empty run, on both plots.
+    """
+
+    drawn = _run_frame((1208.0,), alveolar=(0.0143,))
+    empty = replace(drawn, label=run_label(1), times_s=(), wash_in=(WashInStretch((), (), False),))
+    frame = replace(_frame(drawn), runs=(empty, drawn))
+
+    target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, 0.0167, 12.0)
+    wash_in = nearest_wash_in_point(frame, 1208.0, 0.71, 4.0, 0.00575, 12.0)
+
+    assert target is not None and tuple(reading.run for reading in target.readings) == (1,)
+    assert wash_in is not None and tuple(reading.run for reading in wash_in.readings) == (1,)
 
 
 def test_the_hover_keeps_the_below_resolution_forms_and_the_readout_row_s_glosses() -> None:
