@@ -444,6 +444,21 @@ BOOKMARK_ROW_SPACING = 4
 # two rather than as one long list with words in it.
 BOOKMARK_SECTION_SPACING = 12
 
+# A mark row's bullet, drawn in a column of its own so a row that wraps
+# continues under its own text rather than at the margin every row starts at
+# (`PL-FPY2`). Confirmed to render in `tools/glyph_check.py`.
+MARK_ROW_BULLET = "•"
+
+# Between the bullet and the row's text, which is how far a wrapped
+# continuation sits in from where the next row starts - the whole of what tells
+# the two apart.
+MARK_ROW_BULLET_SPACING = 6
+
+# Between one mark's row and the next. Tighter than the heading's spacing, so
+# the rows read as one list, and not zero, so a continuation sits closer to its
+# own first line than to the row below it.
+MARK_ROW_SPACING = 2
+
 # How tall each of the editor's two lists may grow: about six rows, after
 # which it scrolls. A bound rather than a stretch, because a list widget given
 # free rein takes the whole dialog and leaves the form it belongs to floating

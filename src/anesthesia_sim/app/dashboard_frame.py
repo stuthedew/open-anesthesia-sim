@@ -1364,16 +1364,15 @@ class MarkListing:
     empty_text: str
 
     @property
-    def text(self) -> str:
-        """The rows as one block, or the empty line where there are none.
+    def empty_line(self) -> str | None:
+        """The line that stands where the rows would be, or None while there are rows.
 
-        What a label draws, in the shape `TimelinePanel.entries` already has:
-        the widget writes one string and decides nothing, so the choice
-        between the rows and the empty line is made here where a test can
-        read it.
+        The choice between the rows and the empty line is made here, where a
+        test can read it, so the widget decides nothing: it draws `rows` one
+        to a row (`PL-FPY2`) and this line only when it is not None.
         """
 
-        return "\n".join(self.rows) if self.rows else self.empty_text
+        return None if self.rows else self.empty_text
 
 
 @dataclass(frozen=True, slots=True)

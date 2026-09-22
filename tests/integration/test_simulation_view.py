@@ -3383,8 +3383,8 @@ def _opened_bookmark_dialog(view: SimulationView) -> BookmarkDialog:
 def test_a_dashboard_opens_with_both_collections_listed_as_empty(application: QApplication) -> None:
     view = _shown_view(application, SimulationController())
 
-    assert view._bookmarks_panel.times.rows_label.text() == NO_TIME_BOOKMARKS_TEXT
-    assert view._bookmarks_panel.targets.rows_label.text() == NO_MAC_TARGETS_TEXT
+    assert view._bookmarks_panel.times.text() == NO_TIME_BOOKMARKS_TEXT
+    assert view._bookmarks_panel.targets.text() == NO_MAC_TARGETS_TEXT
 
 
 def test_an_instant_entered_in_the_dialog_is_listed_beside_the_chart(
@@ -3396,7 +3396,7 @@ def test_an_instant_entered_in_the_dialog_is_listed_beside_the_chart(
     dialog.time_label_edit.setText("intubation")
     dialog.add_time_button.click()
 
-    assert "intubation" in view._bookmarks_panel.times.rows_label.text()
+    assert "intubation" in view._bookmarks_panel.times.text()
     assert dialog.time_list.count() == 1
 
 
@@ -3423,7 +3423,7 @@ def test_a_target_entered_in_the_dialog_names_its_compartment_and_height(
     dialog.height_spin.setValue(0.8)
     dialog.add_target_button.click()
 
-    listed = view._bookmarks_panel.targets.rows_label.text()
+    listed = view._bookmarks_panel.targets.text()
 
     assert listed == "Vessel-rich 0.80 ×MAC"
 
@@ -3577,7 +3577,7 @@ def test_a_mark_edited_after_a_fork_reaches_the_branch_too(application: QApplica
     # And the panel still draws, which is what the refusal above would stop.
     view.present(False)
 
-    assert view._bookmarks_panel.targets.rows_label.text().startswith("Vessel-rich")
+    assert view._bookmarks_panel.targets.text().startswith("Vessel-rich")
 
 
 def test_a_refusal_leaves_every_run_carrying_the_same_marks(application: QApplication) -> None:
@@ -3621,7 +3621,7 @@ def test_the_dialog_and_the_panel_list_one_set_of_rows(application: QApplication
 
     listed = [dialog.time_list.item(row).text() for row in range(dialog.time_list.count())]
 
-    assert view._bookmarks_panel.times.rows_label.text() == "\n".join(listed)
+    assert view._bookmarks_panel.times.text() == "\n".join(listed)
 
 
 # The narrow end of the sidebar's real width range: the window opens at 0.8 of
@@ -3729,7 +3729,7 @@ def test_a_branch_halted_on_a_mark_says_so(application: QApplication) -> None:
     assert view.runs[1].snapshot().elapsed_s == pytest.approx(114.7)
     assert view.runs[1].is_running is False
 
-    listed = view._bookmarks_panel.targets.rows_label.text()
+    listed = view._bookmarks_panel.targets.text()
 
     assert f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}" in listed
     assert f"{run_label(0)} {MARK_STILL_RUNNING_TEXT}" in listed
@@ -3750,7 +3750,7 @@ def test_a_mark_the_branch_cannot_reach_is_not_drawn_as_the_trunk_left_it(
 
     view = _halted_branch_view(application)
 
-    listed = view._bookmarks_panel.times.rows_label.text()
+    listed = view._bookmarks_panel.times.text()
 
     assert listed.endswith(
         f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.BEFORE_THIS_BRANCH]}"
@@ -3804,8 +3804,8 @@ def test_a_failed_run_s_marks_do_not_stand_as_reachable(application: QApplicatio
 
     said = MARK_STANDING_COMPARED_TEXT[MarkStanding.NOT_REACHED_BEFORE_FAILURE]
     still_reachable = f"{run_label(0)} {MARK_STILL_RUNNING_TEXT}"
-    times = view._bookmarks_panel.times.rows_label.text()
-    targets = view._bookmarks_panel.targets.rows_label.text()
+    times = view._bookmarks_panel.times.text()
+    targets = view._bookmarks_panel.targets.text()
 
     assert f"{run_label(0)} {said}" in times
     assert f"{run_label(0)} {said}" in targets
@@ -3835,7 +3835,7 @@ def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
     controller.add_time_bookmark(TimeBookmark(30.0, "check"))
     view.present(False)
 
-    listed = view._bookmarks_panel.times.rows_label.text()
+    listed = view._bookmarks_panel.times.text()
 
     assert listed.endswith(MARK_STANDING_TEXT[MarkStanding.PASSED])
     assert run_label(0) not in listed
