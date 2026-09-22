@@ -47,7 +47,9 @@ states the cost: "Deferred debt is not kept; it is paid for twice or silently
 dropped." The gate protects the class-listed half. This item protects the
 rest.
 
-**Design (recommended by the session that filed it, not yet ratified).**
+**Design (project owner, 2026-09-22, ratified - chosen over a `--debt` filter
+on the roadmap's class list in the plan's order, which would have returned
+exactly what `docket next` returns today).**
 
 - **Order: longest-waiting first, by `added:`.** This is *aging*, the standard
   remedy for starvation in priority scheduling. Pure age order is its extreme

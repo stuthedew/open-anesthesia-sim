@@ -31,7 +31,8 @@ progress: "Clearing means `done` **or** `dropped` with the reason recorded."
 So the check converts a stale item into a closed one rather than into a wasted
 session.
 
-**Design (recommended by the session that filed it, not yet ratified).** Split
+**Design (project owner, 2026-09-22, ratified - chosen over a store-wide
+`docket check` advisory naming every item past the line).** Split
 on the line `CLAUDE.md` draws, the same one `tools/doc_check.py` draws:
 compute the facts, never the verdict.
 
