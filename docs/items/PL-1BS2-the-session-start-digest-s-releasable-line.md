@@ -8,7 +8,7 @@ classes: defect, infra
 feature: release-process
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-13
-verify: uv run pytest subprojects/docket/tests/test_cli.py -q && grep -rq 'def test_the_digest_names_an_interrupted_cut_behind_the_releasable_line' subprojects/docket/tests/
+verify: grep -rq 'def test_the_digest_names_an_interrupted_cut_behind_the_releasable_line' subprojects/docket/tests/ && uv run pytest subprojects/docket/tests/test_cli.py -q
 ---
 
 **Problem.** The session-start digest's Releasable line reads readiness without the interrupted-cut resume, so during an unfinished cut it reports the short remainder with nothing saying why

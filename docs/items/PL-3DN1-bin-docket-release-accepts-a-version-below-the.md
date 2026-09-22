@@ -8,7 +8,7 @@ classes: defect, infra
 feature: release-process
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-13
-verify: uv run pytest subprojects/docket/tests/test_release.py subprojects/docket/tests/test_cli.py -q && grep -rq 'def test_a_version_below_the_current_one_is_refused' subprojects/docket/tests/
+verify: grep -rq 'def test_a_version_below_the_current_one_is_refused' subprojects/docket/tests/ && uv run pytest subprojects/docket/tests/test_release.py subprojects/docket/tests/test_cli.py -q
 ---
 
 **Problem.** bin/docket release accepts a VERSION below the current one, so a typo silently downgrades pyproject.toml's version field

@@ -8,9 +8,8 @@ classes: defect
 feature: scenario-branching
 touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py, docs/MODEL.md
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_run_definition.py && grep -q 'def test_a_recorded_setting_round_trips_to_what_was_set' tests/unit/test_run_definition.py
+verify: grep -q 'def test_a_recorded_setting_round_trips_to_what_was_set' tests/unit/test_run_definition.py && uv run pytest tests/unit/test_run_definition.py
 ---
-
 
 **Problem.** A run's settings cannot be recovered from RunSegment.settings: the L/min to L/s conversion does not round-trip for 7 of 101 cardiac outputs
 

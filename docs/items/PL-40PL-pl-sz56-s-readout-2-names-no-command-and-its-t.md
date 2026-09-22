@@ -8,7 +8,7 @@ classes: docs, infra
 feature: planning-cadence
 touches: docs/releases/v0.3.0.md, docs/items/PL-SZ56-assess-the-v0-3-0-loop-trial-against-its-pre.md
 added: 2026-09-02
-verify: python3 tools/doc_check.py check && grep -qF 'How readout 2 is counted' docs/releases/v0.3.0.md
+verify: grep -qF 'How readout 2 is counted' docs/releases/v0.3.0.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** `PL-SZ56` pre-registered five readouts for the v0.3.0 loop trial.

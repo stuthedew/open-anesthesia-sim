@@ -7,7 +7,7 @@ status: ready
 classes: docs
 touches: docs/WORKING_NOTES.md
 added: 2026-09-06
-verify: python3 tools/doc_check.py check && ! grep -qE "into .make check. and CI.s .floor. job" docs/WORKING_NOTES.md
+verify: ! grep -qE "into .make check. and CI.s .floor. job" docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** `docs/WORKING_NOTES.md:837` reads "`PL-LLWN` added

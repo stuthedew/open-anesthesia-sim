@@ -8,7 +8,7 @@ classes: test, infra
 feature: model-spec-accuracy
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md
 added: 2026-09-03
-verify: python3 tools/doc_check.py check && uv run pytest tests/unit/test_doc_check.py && grep -q 'def check_required_tests' tools/doc_check.py
+verify: grep -q 'def check_required_tests' tools/doc_check.py && python3 tools/doc_check.py check && uv run pytest tests/unit/test_doc_check.py
 ---
 
 **Problem.** `docs/MODEL.md` § "Required tests" carries fifteen `###` headings,

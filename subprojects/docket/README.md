@@ -2649,6 +2649,9 @@ pull request cannot have changed whether some *other* item's work merged, any
 more than a pre-commit gate can, and the sweep was measured at 74.6 s of a
 102-command run against 5.5 s scoped. So CI scopes on `pull_request` and sweeps
 on `push` to the default branch, where the answer is a fact about that branch.
+This project's `make check` runs the scoped form too, against `origin/main`, so
+a session sees the finding before it pushes rather than from CI (`PL-0HPV`);
+the whole-store sweep stays off it, for the reason above.
 
 **That is two sets, and reading it as one was a defect** (`PL-XMNC`). The first
 is the items whose own file the branch edited, read from the diff rather than

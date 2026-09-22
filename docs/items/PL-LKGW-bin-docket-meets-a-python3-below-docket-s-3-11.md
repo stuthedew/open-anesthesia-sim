@@ -8,7 +8,7 @@ classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/__main__.py, subprojects/docket/tests/test_portability.py
 added: 2026-09-14
-verify: uv run pytest subprojects/docket/tests/test_portability.py && grep -q 'def test_an_interpreter_below_the_floor_names_the_floor_and_itself' subprojects/docket/tests/test_portability.py
+verify: grep -q 'def test_an_interpreter_below_the_floor_names_the_floor_and_itself' subprojects/docket/tests/test_portability.py && uv run pytest subprojects/docket/tests/test_portability.py
 ---
 
 **Problem.** bin/docket meets a python3 below docket's 3.11 floor with render.py's ImportError traceback rather than naming the floor and the interpreter it found, so a Mac whose python3 is Apple's 3.9 gets a cryptic failure by hand and silent hooks with nothing saying why

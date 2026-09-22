@@ -8,9 +8,8 @@ classes: test
 feature: scenario-branching
 touches: tests/reference/test_canonical_evaluation.py
 added: 2026-09-14
-verify: uv run pytest tests/reference/test_canonical_evaluation.py && ! grep -q 'probe from a hard-coded 0.0' tests/reference/test_canonical_evaluation.py && grep -q 'definition.opened_at_s' tests/reference/test_canonical_evaluation.py
+verify: ! grep -q 'probe from a hard-coded 0.0' tests/reference/test_canonical_evaluation.py && grep -q 'definition.opened_at_s' tests/reference/test_canonical_evaluation.py && uv run pytest tests/reference/test_canonical_evaluation.py
 ---
-
 
 **Problem.** test_canonical_evaluation.py's _query helper probes from a hard-coded 0.0 rather than the definition's own opening, so it cannot be pointed at a branch-shaped definition
 

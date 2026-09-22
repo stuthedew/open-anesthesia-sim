@@ -8,9 +8,8 @@ classes: perf
 feature: scenario-branching
 touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_run_definition.py && grep -q 'def test_recording_many_changes_does_not_rebuild_the_whole_record' tests/unit/test_run_definition.py
+verify: grep -q 'def test_recording_many_changes_does_not_rebuild_the_whole_record' tests/unit/test_run_definition.py && uv run pytest tests/unit/test_run_definition.py
 ---
-
 
 **Problem.** RunDefinition.record_change rebuilds the whole segment tuple per change, and each segment carries a keyframe, so it is the larger of the two unbounded records
 

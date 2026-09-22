@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: core-domain-language
+milestone: v0.5.5
 touches: src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/chart_frame.py, tests/unit/test_chart_time_base.py, tests/unit/test_chart_frame.py
 added: 2026-09-14
 closed: 2026-09-22

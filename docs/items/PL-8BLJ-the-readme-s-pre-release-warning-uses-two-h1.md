@@ -8,7 +8,7 @@ classes: docs, ux
 feature: project-introduction
 touches: README.md
 added: 2026-09-06
-verify: python3 tools/doc_check.py check && ! grep -q '^> # ' README.md
+verify: ! grep -q '^> # ' README.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** `#394` added a pre-release banner above the README's title:

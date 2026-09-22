@@ -8,7 +8,7 @@ classes: defect, test
 feature: dev-tooling
 touches: tests/unit/test_tools_portability.py, Makefile
 added: 2026-09-12
-verify: uv run pytest -q tests/unit/test_tools_portability.py && grep -q 'PYTHONDONTWRITEBYTECODE' tests/unit/test_tools_portability.py
+verify: grep -q 'PYTHONDONTWRITEBYTECODE' tests/unit/test_tools_portability.py && uv run pytest -q tests/unit/test_tools_portability.py
 ---
 
 **Problem.** PL-01GD shipped as one exported Makefile variable with no test: PYTHONDONTWRITEBYTECODE appears only at Makefile:21, its declared touches names tests/unit/test_tools_portability.py which never changed, and its verify: passes against an untouched suite

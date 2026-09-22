@@ -1,14 +1,14 @@
 ---
 id: PL-5N7T
 title: Nothing checks a prose enumeration of quality.yml's bare-interpreter commands against the workflow, so it has drifted silently twice in one day
-status: ready
 priority: P3
 effort: S
+status: ready
 classes: docs
 feature: project-introduction
 touches: docs/ARCHITECTURE.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_marked_enumeration_missing_a_run_step_fails' tests/unit/test_doc_check.py
+verify: grep -q 'def test_a_marked_enumeration_missing_a_run_step_fails' tests/unit/test_doc_check.py && uv run pytest tests/unit/test_doc_check.py
 ---
 
 **Problem.** Two documents hand-enumerate what `.github/workflows/quality.yml`'s

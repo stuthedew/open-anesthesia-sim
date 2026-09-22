@@ -8,9 +8,8 @@ classes: docs, defect
 feature: release-process
 touches: subprojects/docket/src/docket/cli.py
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_docket_digest_hook.py && ! grep -q 'Gated on the offer rather than run for every digest' subprojects/docket/src/docket/cli.py
+verify: ! grep -q 'Gated on the offer rather than run for every digest' subprojects/docket/src/docket/cli.py && uv run pytest tests/unit/test_docket_digest_hook.py
 ---
-
 
 **Problem.** cli._cuts's docstring says the unlanded-ref walk is gated on the release offer, where it is gated on Readiness.is_worth_cutting - and the two now diverge routinely
 

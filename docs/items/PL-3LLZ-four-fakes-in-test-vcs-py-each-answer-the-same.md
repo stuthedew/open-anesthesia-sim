@@ -1,14 +1,14 @@
 ---
 id: PL-3LLZ
 title: Four fakes in test_vcs.py each answer the same commit-paths question, and each new git read has to be taught to all of them
-status: ready
 priority: P3
 effort: M
+status: ready
 classes: refactor
 feature: dev-tooling
 touches: subprojects/docket/tests/test_vcs.py
-verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def _default_run' subprojects/docket/tests/test_vcs.py
 added: 2026-09-13
+verify: grep -q 'def _default_run' subprojects/docket/tests/test_vcs.py && uv run pytest subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** Four fakes in test_vcs.py each answer the same commit-paths question, and each new git read has to be taught to all of them

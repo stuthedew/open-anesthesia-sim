@@ -8,7 +8,7 @@ classes: docs, session-cost
 feature: dev-tooling
 touches: docs/resident-instructions.md
 added: 2026-09-13
-verify: python3 tools/doc_check.py check && head -12 docs/resident-instructions.md | grep -q 'expert-review'
+verify: head -12 docs/resident-instructions.md | grep -q 'expert-review' && python3 tools/doc_check.py check
 ---
 
 **Problem.** docs/resident-instructions.md opens by naming two resident files when there are three, in the document that governs resident cost

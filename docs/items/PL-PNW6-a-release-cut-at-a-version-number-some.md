@@ -8,7 +8,7 @@ classes: defect, infra
 feature: release-process
 touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/release.py
 added: 2026-09-07
-verify: python3 tools/doc_check.py check && grep -rqF 'a version number a tag has previously named' .claude/skills/docket/
+verify: grep -rqF 'a version number a tag has previously named' .claude/skills/docket/ && python3 tools/doc_check.py check
 ---
 
 **Problem.** A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently

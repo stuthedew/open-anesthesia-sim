@@ -5,10 +5,10 @@ priority: P2
 effort: S
 status: ready
 classes: defect, infra
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
-verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_flight_fetches_by_default' subprojects/docket/tests/test_cli.py
 feature: refresh-before-reporting
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
+verify: grep -q 'def test_flight_fetches_by_default' subprojects/docket/tests/test_cli.py && uv run pytest subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket flight never fetches, unlike stranded and branch, so it reports refs as old as the clone - the one command whose whole job is reading other sessions' branches

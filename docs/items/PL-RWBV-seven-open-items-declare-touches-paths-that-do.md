@@ -8,7 +8,7 @@ classes: defect, infra
 feature: queue-hygiene
 touches: docs/items
 added: 2026-09-14
-verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_touches_path_that_neither_exists_nor_is_named_as_new_is_reported' subprojects/docket/tests/test_checks.py
+verify: grep -q 'def test_a_touches_path_that_neither_exists_nor_is_named_as_new_is_reported' subprojects/docket/tests/test_checks.py && uv run pytest subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** Seven open items declare touches paths that do not exist, three of them naming core/run_score.py which PL-ZX12 renamed to run_definition.py

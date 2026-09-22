@@ -9,7 +9,7 @@ feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, tests/integration/test_controller.py
 added: 2026-09-20
 payoff: makes a mark set behind the clock something a learner can return to, which is the act the owner described the feature for
-verify: uv run pytest tests/integration/test_controller.py -k returning_to_a_mark && grep -q 'def test_a_mark_set_behind_the_clock_can_be_returned_to' tests/integration/test_controller.py
+verify: grep -q 'def test_a_mark_set_behind_the_clock_can_be_returned_to' tests/integration/test_controller.py && uv run pytest tests/integration/test_controller.py -k returning_to_a_mark
 recurrences: 2026-09-21 PL-54V0
 ---
 
@@ -83,3 +83,13 @@ use.
 return to it, or is told at the moment of marking that they cannot and why; and
 `docs/MODEL.md` states what returning to a marked instant reproduces and what it
 does not.
+
+**Its `verify:` cannot pass as written** (noted 2026-09-22 by `PL-0HPV`'s
+reorder pass). `-k returning_to_a_mark` does not select
+`test_a_mark_set_behind_the_clock_can_be_returned_to`, the test its `grep`
+names, so once the work exists the command exits 5 unless another test carrying
+that substring is added too. The pass moved the `grep` to the front, so before
+the work the command now exits 1 and the replay no longer reports it as
+selecting no test - which is why this line is here. Record the `grep` alone
+when starting it: that is what `.claude/skills/docket/modes/triage.md` asks of
+both a grandfathered `-k` and a health check beside a `grep`.

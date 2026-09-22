@@ -8,7 +8,7 @@ classes: docs
 feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-13
-verify: python3 tools/doc_check.py check && ! grep -q 'PL-J786 (a green .checks. run required before merge) and PL-S4M2' ROADMAP.md
+verify: ! grep -q 'PL-J786 (a green .checks. run required before merge) and PL-S4M2' ROADMAP.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** ROADMAP.md v0.2.8's definition of done says PL-J786 and PL-S4M2 are both confirmed in effect on a real pull request, but PL-J786 is dropped

@@ -8,7 +8,7 @@ classes: planning
 feature: queue-hygiene
 touches: docs/items
 added: 2026-09-13
-verify: bin/docket check && grep -q '^## The count' docs/items/PL-YVV4-run-the-suppression-count-expert-review-md.md
+verify: grep -q '^## The count' docs/items/PL-YVV4-run-the-suppression-count-expert-review-md.md && bin/docket check
 ---
 
 **Problem.** `.claude/rules/expert-review.md` requires that before proposing to

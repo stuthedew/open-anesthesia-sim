@@ -8,7 +8,7 @@ classes: docs, infra
 feature: worker-instructions
 touches: CLAUDE.md, .claude/rules/expert-review.md, .claude/rules/apparatus-standard.md, tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py
 added: 2026-09-13
-verify: uv run pytest tests/unit/test_rules_paths_check.py && grep -q '"/docs/maintainer.md"' .claude/rules/apparatus-standard.md && grep -q 'docs/maintainer.md' .claude/rules/expert-review.md
+verify: grep -q '"/docs/maintainer.md"' .claude/rules/apparatus-standard.md && grep -q 'docs/maintainer.md' .claude/rules/expert-review.md && uv run pytest tests/unit/test_rules_paths_check.py
 ---
 
 **Problem.** docs/maintainer.md is apparatus in docket.toml's workflow_paths but is named in none of the three places that list the apparatus set, and apparatus-standard.md's paths: glob does not load for it

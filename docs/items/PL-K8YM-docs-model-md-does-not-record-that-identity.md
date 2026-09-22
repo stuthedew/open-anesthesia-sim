@@ -8,7 +8,7 @@ classes: docs, ux
 feature: presentation-safety
 touches: docs/MODEL.md
 added: 2026-09-07
-verify: python3 tools/doc_check.py check && grep -q '_running_agent_display' docs/MODEL.md
+verify: grep -q '_running_agent_display' docs/MODEL.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** docs/MODEL.md does not record that identity-carrying controls are never rendered disabled, nor the running-agent chip beside the selector and header

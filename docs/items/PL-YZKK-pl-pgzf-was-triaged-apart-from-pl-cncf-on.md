@@ -8,7 +8,7 @@ classes: docs
 feature: queue-hygiene
 touches: docs/items
 added: 2026-09-16
-verify: bin/docket check && grep -qF 'the same cost one call level up' docs/items/PL-PGZF-pl-gs3r-made-the-chart-s-column-budget-follow.md
+verify: grep -qF 'the same cost one call level up' docs/items/PL-PGZF-pl-gs3r-made-the-chart-s-column-budget-follow.md && bin/docket check
 ---
 
 **Problem.** PL-PGZF was triaged apart from PL-CNCF on 'different functions, different modules', but assemble_chart_frame reaches PL-CNCF's cost through drawn_window, so the two tables are one curve and nothing in either item says so
