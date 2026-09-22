@@ -1300,10 +1300,14 @@ version has passed with no release of that number in the version table, and a
 section no row bears — and `wave` prints those under their own heading and
 exits non-zero, the digest's plan line flags them, and the release hand-off
 states a reached-or-passed number beside the table row it already asks for
-(`PL-Y1L0`). `wave` adds the one statement the train cannot make because it
-needs the store: a row the table *does* record as released, whose section's own
+(`PL-Y1L0`). `wave` adds the two statements the train cannot make because they
+need the store: a row the table *does* record as released, whose section's own
 `Required scope` still has open ids, which is that same reversal one run later,
-after the cut has written the row the hand-off asked for (`PL-LN3T`). The gate
+after the cut has written the row the hand-off asked for (`PL-LN3T`); and the
+same row whose section's frozen list still holds an open entry that no section
+ahead places, which is the reversal in the list's own subsection. An entry
+deferred to a later gate on `ROADMAP.md` § "The cadence" beat 3's terms is never
+that, because the later gate holds it (`PL-SZJ2`). The gate
 block splits the entries it cannot clear into those the
 plan sequences ahead of the gate, named with the row they wait for, and those
 waiting on work placed later or nowhere (`PL-7CSP`).

@@ -1673,7 +1673,7 @@ def test_a_section_no_row_bears_is_reported_rather_than_placed_by_guess() -> Non
 
 
 def test_the_digest_does_not_call_a_rowless_section_a_numbering_lag() -> None:
-    """`PL-DK8Y`: the digest's one sentence stands over all four kinds of
+    """`PL-DK8Y`: the digest's one sentence stands over all five kinds of
     statement `Wave.stale` carries, and this is the kind it used to misname.
     Nothing here is behind anything - the timeline places the section nowhere,
     so a reader sent to the timeline's numbers is sent to the wrong file."""
@@ -1724,3 +1724,49 @@ def test_a_released_milestone_whose_scope_has_closed_says_nothing() -> None:
 
     assert plan.stale == ()
     assert "The plan and the project disagree" not in format_wave(plan)
+
+
+#: `SHIPPED_PORT_ROADMAP` with the port's `Required scope` replaced by a frozen
+#: list holding the same one entry - v0.2.8's shape, where the list is the
+#: milestone's whole content - so the released row's only placing structure is
+#: the one `stale_scopes` does not read.
+GATE_ONLY_SHIPPED_ROADMAP = SHIPPED_PORT_ROADMAP.replace(
+    "### Required scope\n\nThe chart (queue item PL-PRT7).",
+    "### Debt gate: the frozen list\n\n- PL-PRT7 (M) The chart",
+)
+
+
+def test_a_released_milestone_row_with_its_frozen_list_still_open_is_reported() -> None:
+    """`PL-SZJ2`: `PL-LN3T`'s case in a section's other placing structure. The
+    released section leaves `ahead`, so no gate counts its list, and an open
+    entry no later section places has dropped out of the plan - which, before
+    this, `wave` printed nowhere at all."""
+    plan = _wave("0.3.6", frozenset(GATE_IDS), roadmap=GATE_ONLY_SHIPPED_ROADMAP, known=PORT_KNOWN)
+
+    assert plan.gate is not None and plan.gate.milestone.label == "v0.4.0 — the teachable case"
+    (statement,) = plan.stale
+    assert statement.startswith("v0.3.5 — the interface port (timeline line ")
+    assert "which the version table records as released" in statement
+    assert "1 of 1 entries on its frozen list are still open and placed by no" in statement
+    assert "section ahead (PL-PRT7)" in statement
+    assert "the row owes a number the project has not reached if it was not" in statement
+    assert "The plan and the project disagree" in format_wave(plan)
+
+
+def test_a_released_frozen_list_entry_deferred_to_a_later_gate_says_nothing() -> None:
+    """A deferral on `ROADMAP.md` § "The cadence" beat 3's terms leaves the entry
+    open on the list it was frozen on and names the later gate that now holds
+    it, which is Gate 1's `PL-WZVZ` on this repository's own file. Counting
+    every open entry would call that stale, and `wave` would exit non-zero on a
+    deferral done exactly as the cadence asks."""
+    deferred = GATE_ONLY_SHIPPED_ROADMAP.replace(
+        "- PL-KLMN (S)", "- PL-PRT7 (M) The chart, deferred from the port\n- PL-KLMN (S)"
+    )
+    plan = _wave("0.3.6", frozenset(GATE_IDS), roadmap=deferred, known=PORT_KNOWN)
+
+    assert plan.gate is not None and "PL-PRT7" in plan.gate.ids
+    assert plan.stale == ()
+    cleared = _wave(
+        "0.3.6", GATE_IDS | {"PL-PRT7"}, roadmap=GATE_ONLY_SHIPPED_ROADMAP, known=PORT_KNOWN
+    )
+    assert cleared.stale == ()

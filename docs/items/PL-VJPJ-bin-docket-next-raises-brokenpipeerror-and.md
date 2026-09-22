@@ -43,3 +43,8 @@ the several `print` calls that can hit it.
 **Done when.** `bin/docket next | head -3` prints the first three lines and
 exits without a traceback, and a test drives a closed stdout against the
 command.
+
+**Not `next` alone (seen 2026-09-22).** `bin/docket show PL-WZVZ | head -3`
+raised the same `BrokenPipeError` from `cmd_show`'s `print`, so the fix belongs
+where every command's output passes - `main()` in `cli.py` - rather than in
+`cmd_next`.
