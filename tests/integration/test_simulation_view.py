@@ -4298,19 +4298,28 @@ def test_the_comparison_lock_names_the_run_whose_reset_ends_it(application: QApp
     _take_fork(view, 60.0)
 
     lock = view._fork_panel.lock_text.text()
-    trunk = view.runs[TRUNK_RUN_INDEX]
-    branch = view.runs[BRANCH_RUN_INDEX]
 
     assert lock == comparing_fork_lock_text()
 
-    for run, index in ((trunk, TRUNK_RUN_INDEX), (branch, BRANCH_RUN_INDEX)):
+    for index, run in enumerate(view.runs):
         assert run._run_name_text.text() == run_label(index)
         assert run._run_name_text.isHidden() is False
         assert run._run_name_text.text() in lock
         assert run._reset_button.text() == RESET_LABEL
         assert run._reset_button.isHidden() is False
 
-    trunk._reset_button.click()
+    # The run the way out is about, read off the sentence the way a learner
+    # reads it rather than looked up by position: a lock naming both runs
+    # correctly and pairing them with each other's outcomes would pass every
+    # assertion above and still send the reader to the button that keeps the
+    # mode.
+    way_out, _, _ = lock.partition(";")
+    named = [run for run in view.runs if run._run_name_text.text() in way_out]
+
+    assert len(named) == 1
+    assert named[0] is view.runs[TRUNK_RUN_INDEX]
+
+    named[0]._reset_button.click()
     _settle(application)
 
     assert len(view.runs) == 1

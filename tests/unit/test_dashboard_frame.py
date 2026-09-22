@@ -2334,18 +2334,29 @@ def test_the_comparison_lock_names_a_control_the_learner_can_press() -> None:
     can act on is a run's name and the word on its transport button, so both
     named controls are asserted as the pair the screen draws them as.
 
-    The branch's Reset is named for what it does *instead*, because it is the
-    one a learner reaches for - it belongs to the run they are trying to end,
-    and pressing it discards what that run has simulated since its fork while
-    leaving the lock exactly where it was.
+    **Each clause is asserted against the run it is about, rather than the
+    sentence against both names.** Naming both controls correctly and pairing
+    them with each other's outcomes would send the learner to the same wrong
+    button as the sentence this replaced, and a test reading the whole string
+    cannot tell the two apart. So the way out is read on its own: it names the
+    trunk's Reset, it does not mention the branch at all, and what it says
+    that press costs is the case starting over.
+
+    The clause after it is the branch's, named for what it does *instead*,
+    because that is the Reset a learner reaches for - it belongs to the run
+    they are trying to end, and pressing it discards what that run has
+    simulated since its fork while leaving the lock exactly where it was.
     """
 
-    text = comparing_fork_lock_text()
+    way_out, _, instead = comparing_fork_lock_text().partition(";")
 
-    assert f"{run_label(TRUNK_RUN_INDEX)}'s {RESET_LABEL}" in text
-    assert f"{run_label(BRANCH_RUN_INDEX)}'s {RESET_LABEL}" in text
-    assert "starts the case over" in text
-    assert "where it branched" in text
+    assert f"{run_label(TRUNK_RUN_INDEX)}'s {RESET_LABEL}" in way_out
+    assert run_label(BRANCH_RUN_INDEX) not in way_out
+    assert "starts the case over" in way_out
+
+    assert f"{run_label(BRANCH_RUN_INDEX)}'s {RESET_LABEL}" in instead
+    assert run_label(TRUNK_RUN_INDEX) not in instead
+    assert "where it branched" in instead
 
 
 def test_fork_offer_offers_no_halt_fork_while_the_trunk_stands_on_no_halt() -> None:
