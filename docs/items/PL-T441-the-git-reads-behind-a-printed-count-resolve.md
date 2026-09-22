@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli
 added: 2026-09-20
 payoff: docket check --items pointed at a store elsewhere stops reporting a clean provenance record for a store it never read
 verify: grep -q 'def test_counts_resolve_the_store_from_the_tracked_directory' subprojects/docket/tests/test_cli.py
+recurrences: 2026-09-22 PL-WF3X
 ---
 
 **Problem.** `cli._complete_report` hands `closures_on_base` and
