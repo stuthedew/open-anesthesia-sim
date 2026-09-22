@@ -1,10 +1,15 @@
 ---
 id: PL-NVT4
 title: The native scroll bar's handle is ~1.9:1 against its own groove, a style-derived shade no requirement measures
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: ux, docs
 feature: chrome-colour-audit
 touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_dark_appearance.py, docs/MODEL.md
 added: 2026-09-22
+payoff: docs/MODEL.md's claim to hold SC 1.4.11 is true of the scroll bar, or says why the scroll bar is outside it
+not-delegable: the done state forks on what WCAG's Understanding text for SC 1.4.11 says, read at source, and one branch is a route choice the brief reserves for the project owner, so no command can state it in advance
 ---
 
 **Problem.** The native scroll bar's handle is ~1.9:1 against its own groove, a style-derived shade no requirement measures
@@ -49,3 +54,11 @@ native chrome is outside the measured set with the reason, or - if it is inside
 it - the scroll bar is styled to a declared, measured pair and the requirement
 table gains the entry. The second route costs the native bar, so it is a
 decision rather than a fix.
+
+**Why it matters.** `docs/MODEL.md` § "Color contrast, and the standard this
+interface is held to" states SC 1.4.11 as held. A scroll bar is how a reader
+reaches everything below the fold. If the criterion reaches a handle against its
+groove, the section claims a conformance the interface does not have, which is a
+false statement in the authoritative specification. If the criterion does not
+reach it, the section should say so. Otherwise a reader who measures the bar
+finds 1.9:1 under a claim that reads as covering it.

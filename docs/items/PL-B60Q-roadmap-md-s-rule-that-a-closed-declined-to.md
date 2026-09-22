@@ -1,9 +1,15 @@
 ---
 id: PL-B60Q
 title: ROADMAP.md's rule that a closed Declined-to-Gate entry carries the release that took it is stated only inside v0.5.0's own subsection, so the release mode never reads it and v0.6.0's first closed deferral will go unmarked exactly as PL-0VFF's three did
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
 feature: gate-list-integrity
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-09-22
+payoff: a Declined-to-Gate entry that has shipped stops reading as outstanding debt, so v0.6.0's deferral list stays true as its entries close
+verify: grep -q 'def test_a_closed_declined_entry_without_its_release_is_reported' tests/unit/test_doc_check.py
 ---
 
 **Problem.** ROADMAP.md's rule that a closed Declined-to-Gate entry carries the release that took it is stated only inside v0.5.0's own subsection, so the release mode never reads it and v0.6.0's first closed deferral will go unmarked exactly as PL-0VFF's three did
@@ -41,3 +47,12 @@ close-out is one answer; a `doc_check` advisory naming deferral entries whose
 ids are closed and unmarked is the deterministic one, and it is decidable -
 the ids are in the subsection, their statuses are in the store, and the mark
 is a literal. Whichever lands, `PL-Z891` is the entry waiting for it.
+
+**Premise re-read 2026-09-22 (`PL-14QR`, triage).** `PL-Z891` is `done`. Its entry at
+`ROADMAP.md` line 5704 still reads `**deferred 2026-09-21.**` with no release
+beside it. `release.md` matches none of `Declined`, `deferr`, `closed in v` or
+`snapshot`. **Triage chose the `doc_check` route** for the `verify:` below. The
+brief shows the rule is decidable, and `CLAUDE.md` gives deterministic tooling
+standing approval over a prose line a release session would have to remember.
+`PL-Z891` carries no `milestone:` yet, so it ships in the next release, and the
+check's first finding will probably exist before this is worked.

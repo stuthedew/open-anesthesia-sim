@@ -5707,6 +5707,60 @@ have implemented and closed it.
   gate carries no such heading, and the subsection you are reading was written
   to match the pattern deliberately.
 
+### Declined to Gate 2, captured after the freeze and classed by the 2026-09-22 triage pass
+
+The rule is the same as in the subsection above, and nothing else decides it.
+Every entry below was created after the cut (`e6cdfd93`, 07:04 on 2026-09-21),
+so none was in the store the snapshot was taken from. None is classed `safety`
+or `science`, so the unconditional re-entry does not reach any of them. They are
+recorded here by the triage pass that classed them (`PL-14QR`), because that is
+the first moment any of them could be read as debt. Six are debt by class.
+`PL-W5WX` and `PL-05M4` are debt by status, being at `needs-decision`.
+`PL-54V0`, captured the same day, is absent: its file was being edited on
+another branch, so this pass left it untriaged.
+
+- PL-YKSD (S) - **deferred 2026-09-22.** `tools/doc_check.py`'s `check_tags`
+  reads tag names and never what a tag points at. So `v0.5.3`, pushed before
+  `#888` merged, read as tagged at a commit whose `pyproject.toml` said `0.5.2`.
+  `defect`. A tag move repaired the instance; what is deferred is the check.
+
+- PL-9RFP (S) - **deferred 2026-09-22.** `verify.changed_paths` discards git's
+  exit status. An unresolvable base comes back as git's three-line error, read
+  as three changed paths, and the commission audit then reads none of the
+  branch's committed edits. `defect`.
+
+- PL-B60Q (S) - **deferred 2026-09-22.** The rule that a closed entry here
+  carries the release that took it is stated only in v0.5.0's subsection, and
+  nothing reads or writes the mark. So `PL-Z891`, the first entry in the
+  subsection above to close, is unmarked. `defect`, `infra`.
+
+- PL-19T3 (S) - **deferred 2026-09-22.** Outside a git repository,
+  `vcs.changed_items` answers that no item changed where `vcs.tags` declines,
+  because `git diff` exits 1 there and `_run_git` reads 1 as an answer.
+  `defect`. Latent: nothing runs it outside a checkout.
+
+- PL-75P5 (S) - **deferred 2026-09-22.** On a one-run dashboard, a refused
+  branch's banner survives the Reset that answers it, because
+  `_handle_case_restarted` returns before it clears `_fork_refusal`. `defect`,
+  `ux`. This is stale interface state rather than a wrong clinical value, so it
+  is not `safety`.
+
+- PL-2TZT (M) - **deferred 2026-09-22.** Five guard names in `core/` are passed
+  unqualified by several classes, and `TissueGroup`'s guards are ambiguous
+  across its three tissues, so a refusal banner cannot say which object refused.
+  `defect`, `ux`.
+
+- PL-W5WX (S) - **deferred 2026-09-22.** The trunk's Reset drops a branch and
+  everything it simulated with no statement and no confirmation, and
+  `docs/MODEL.md` does not say whether Reset's exemption reaches a run the press
+  was not on. `ux`, `docs`. At `needs-decision`: the call is the project
+  owner's, and the brief records a recommendation.
+
+- PL-05M4 (S) - **deferred 2026-09-22.** On a dark host the disabled splitter
+  handles keep the host's surface colour, because the `Disabled` colour group is
+  deliberately left to the platform. `ux`. At `needs-decision`, and its brief
+  recommends waiting for planned-milestone item 34.
+
 ### Required scope
 
 1. **The layout model** (queue items `PL-1FT6` and `PL-HJPY`). Pure Python,

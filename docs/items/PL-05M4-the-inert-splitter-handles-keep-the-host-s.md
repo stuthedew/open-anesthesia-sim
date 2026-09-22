@@ -1,7 +1,10 @@
 ---
 id: PL-05M4
 title: The inert splitter handles keep the host's surface under a dark appearance, because a disabled widget draws from the Disabled colour group this project leaves to the platform
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: ux
 feature: chrome-colour-audit
 touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_dark_appearance.py, docs/MODEL.md
 added: 2026-09-22
@@ -25,7 +28,7 @@ it - which is what `.claude/rules/ui-color.md` requires and what
 host-coloured by the rule that keeps the rest of the interface honest, not by
 an omission in `PL-KRZW`.
 
-**What it costs.** On a machine set to Dark, the dashboard's section handles
+**Why it matters, and what it costs.** On a machine set to Dark, the dashboard's section handles
 are dark bars in an otherwise light window. They carry no text and no clinical
 value, so this is an appearance defect rather than a legibility or safety one
 - which is why it was filed rather than fixed inside `PL-KRZW`.
@@ -56,3 +59,10 @@ buys a handle colour at the price of a rule that is load-bearing elsewhere.
 `test_dark_appearance.py`'s handle assertion is inverted to hold the fix;
 `docs/MODEL.md` § "Color contrast, and the standard this interface is held to"
 is updated either way, since it currently records this as a known limit.
+
+**Decision needed.** Which of the three routes above, and when. Triaged
+2026-09-22 (`PL-14QR`, triage) to `needs-decision` rather than answered, because the choice is
+between a colour a learner sees on a dark host and a rule that holds elsewhere
+in the interface. The recommendation above - route 3 now, route 2 inside
+planned-milestone item 34 - is this brief's, and still waits on the project
+owner.

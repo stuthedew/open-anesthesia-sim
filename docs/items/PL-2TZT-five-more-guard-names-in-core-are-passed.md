@@ -1,8 +1,15 @@
 ---
 id: PL-2TZT
 title: Five more guard names in core/ are passed unqualified by several classes, so most refusals still cannot say which object refused
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, ux
+feature: core-guard-coverage
+touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/governing_equations.py, tests/unit/test_alveolar.py, tests/unit/test_blood.py, tests/unit/test_tissue.py, tests/unit/test_circuit.py, tests/unit/test_uptake_system_failure.py, tests/unit/test_governing_equations.py
 added: 2026-09-22
+payoff: a refusal a learner sees in the banner names the tissue or compartment that refused, not a parameter three objects hold
+verify: ! grep -rqE 'require_[a-z_]+\("(agent_amount_l|blood_flow_l_min|volume_l|simulation_step_s|blood_gas_partition_coefficient|perfusion_fraction|tissue_gas_partition_coefficient|arterial_partial_pressure_fraction)"' src/anesthesia_sim/core/
 ---
 
 **Problem.** Five more guard names in core/ are passed unqualified by several classes, so most refusals still cannot say which object refused
@@ -31,7 +38,7 @@ ambiguous across `vessel_rich`, `muscle` and `fat`** — including
 `TissueGroupEquationSettings` already qualifies its own three with
 `f"{self.name} ..."`, so the twin class of the same object disagrees with it.
 
-**Why it is not just tidiness, and why it is nevertheless not `PL-SPN6`.**
+**Why it matters - it is not just tidiness - and why it is nevertheless not `PL-SPN6`.**
 The reason is the same one: `app/dashboard_frame.py`'s `refused_setting_notice`
 renders a `SimulationConfigurationError` verbatim into a banner, so the reader
 of these messages has no traceback. `blood_flow_l_min` and
@@ -55,3 +62,8 @@ but the combined message is worth thinking about once, not twice.
 **Done when.** Every guard call site in `core/` that more than one object can
 reach names its owner, on the convention `core/validation.py` states, and the
 tests pin an owner rather than a bare parameter name.
+
+**Reproduced 2026-09-22 (`PL-14QR`, triage).** `grep -rnE 'require_[a-z_]+\("(agent_amount_l|volume_l|blood_flow_l_min)"' src/anesthesia_sim/core/`
+finds ten bare call sites across `alveolar.py`, `blood.py`, `circuit.py` and
+`tissue.py`, as the table says. The `verify:` extends that pattern to all eight
+names above, so it passes only when none is left bare.
