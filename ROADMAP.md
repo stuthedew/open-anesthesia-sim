@@ -364,6 +364,14 @@ the ten oldest open items against the tree, dropping three. And `PL-4KSZ`, the
 cut of v0.5.4, closes here for the structural reason every cut does: a cut
 cannot stamp itself.
 
+**Two closing pull requests merged after this cut was taken and before it
+landed**: `#920` (`PL-0HPV`) and `#921` (`PL-WFFX`). The cut ships as taken, on
+`PL-V065`'s precedent (project owner, 2026-09-21, ratified, over holding the
+release while sibling sessions merge and re-running `make release` under the
+same number): both sit inside the v0.5.5 tag without being named in its notes,
+are cited under the next release, and give v0.5.5's notes the `### also inside
+this tag's span` pointer described under **Tags** once that release exists.
+
 ## The plan
 
 One timeline. Debt clearing and feature milestones are steps on the same

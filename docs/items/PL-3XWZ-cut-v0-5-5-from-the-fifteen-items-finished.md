@@ -86,6 +86,11 @@ three layout constants (`PL-FPY2`). Every `format_*` function in `app/` and
 `_hover_value` are identical, and the numeric literals differ only by two `1`s
 in `chart_frame.py` and `PL-FPY2`'s layout values.
 
+`#920` (`PL-0HPV`) and `#921` (`PL-WFFX`) closed items after the cut was taken,
+and `#919` merged between them closing nothing; `origin/main` was merged into
+the branch before its pull request opened, so no CI result was discarded and
+the local `make check` proved the tree CI tests.
+
 The cut ships as taken, on `PL-V065`'s ratified precedent (project owner,
 2026-09-21): anything merging between this cut and the tag sits inside the
 `v0.5.5` tag without being named in its notes, and takes the `### also inside
