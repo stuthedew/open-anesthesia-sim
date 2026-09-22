@@ -91,7 +91,7 @@ class VenousBloodCompartment:
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         """Set venous state from an equilibrium fraction."""
 
-        require_fraction("partial_pressure_fraction", partial_pressure_fraction)
+        require_fraction("venous partial_pressure_fraction", partial_pressure_fraction)
         self.agent_amount_l = self.capacity_l * partial_pressure_fraction
 
     def advance(

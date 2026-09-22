@@ -101,7 +101,7 @@ class AlveolarCompartment:
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         """Set alveolar state from a partial-pressure-equivalent fraction."""
 
-        require_fraction("partial_pressure_fraction", partial_pressure_fraction)
+        require_fraction("alveolar partial_pressure_fraction", partial_pressure_fraction)
         self.agent_amount_l = self.gas_volume_l * partial_pressure_fraction
 
     def capture_state(self) -> AlveolarCompartmentState:
