@@ -54,6 +54,17 @@ compute the facts, never the verdict.
   before writing code, read the brief against the tree with those facts.
   Still true: work it. Changed shape: rewrite the brief first. Gone: drop it,
   with the reason recorded. A dropped item clears it as surely as fixing it.
+  **A touched path that no longer exists is a question, not the answer**
+  (added 2026-09-22 from the literature check; it says what "gone" in the
+  ratified step means, and changes nothing else). A problem can move with the
+  code rather than leave with it. Zampetti, Serebrenik and Di Penta found
+  20-50% of self-admitted-debt removals were accidental: the comment was
+  deleted along with the class or method that held it ("Was self-admitted
+  technical debt removal a real removal?", MSR 2018,
+  doi:10.1145/3196398.3196423). So the step asks whether the *problem* is
+  gone, not the file. `PL-027` (confirm the slider write-back on a live Flet
+  client) is the case to try it on. The Flet client is gone, and whether its
+  question went with it or moved to the Qt view is exactly what the step asks.
 - **Shares a helper with `PL-8JY7`** (a `touches` path is never checked
   against the tree). That item decided an advisory in `docket check` for
   paths that do not resolve. The path-existence test is the same, so
