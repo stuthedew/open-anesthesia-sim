@@ -1536,13 +1536,38 @@ def test_a_repository_with_no_makefile_is_left_alone(tmp_path: Path) -> None:
 UNTAGGED_CLAIM = "\n\n**One version is untagged**: v0.2.4.\n"
 
 
-def _tagged(tmp_path: Path, *names: str, roadmap: str = VERSIONED_ROADMAP) -> Path:
-    """A versioned repository that is a git checkout holding the tags given."""
+def _commit_version_file(root: Path, text: str, subject: str) -> None:
+    """Commit `pyproject.toml` holding `text`, even where that changes nothing."""
+    (root / "pyproject.toml").write_text(text, encoding="utf-8")
+    for command in (("add", "-A"), ("commit", "-qm", subject, "--allow-empty")):
+        subprocess.run(("git", *command), cwd=root, check=True, capture_output=True)
+
+
+def _tagged(
+    tmp_path: Path,
+    *names: str,
+    roadmap: str = VERSIONED_ROADMAP,
+    declaring: Mapping[str, str] | None = None,
+) -> Path:
+    """A versioned repository that is a git checkout holding the tags given.
+
+    Each tag goes on a commit of its own whose `pyproject.toml` declares that
+    tag's version, as a release cut leaves it, and the tree then returns to the
+    version the roadmap names current. Stacking every tag on one commit was
+    enough until a tag's own tree was read, and is now the finding itself
+    (`PL-YKSD`). `declaring` gives a tag's commit another version instead.
+    """
     root = _versioned(tmp_path, roadmap=roadmap)
+    current = (root / "pyproject.toml").read_text(encoding="utf-8")
     _git_init(root)
     for name in names:
+        version = (declaring or {}).get(name, name.removeprefix("v"))
+        _commit_version_file(
+            root, f'[project]\nname = "demo"\nversion = "{version}"\n', f"cut {name}"
+        )
         # Real tags, made with real git - see `_git_init` above.
         subprocess.run(("git", "tag", name), cwd=root, check=True, capture_output=True)
+    _commit_version_file(root, current, "the current baseline")
     return root
 
 
@@ -1729,6 +1754,109 @@ def test_a_roadmap_with_no_completed_release_is_left_alone(tmp_path: Path) -> No
     roadmap = VERSIONED_ROADMAP.replace("Completed", "Planned")
 
     assert _errors(_tagged(tmp_path, "v0.2.4", roadmap=roadmap)) == []
+
+
+# PL-YKSD: a tag's name says which release it is for, and only its own tree says
+# whether it sits on that release's commit.
+
+STALE_CLAIM = "\n\n**One version shipped with a stale version file**: v0.2.4.\n"
+
+
+def _short(root: Path, revision: str) -> str:
+    shown = subprocess.run(
+        ("git", "rev-parse", "--short", revision),
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return shown.stdout.strip()
+
+
+def test_a_tag_whose_pyproject_version_disagrees_is_refused(tmp_path: Path) -> None:
+    """v0.5.3's instance: pushed before its release merged, onto the commit before it.
+
+    Every check read that tag as right because every check read only its name.
+    Annotated, as this project's tags are, so the commit the message has to name
+    is the one the tag peels to rather than the tag object's own hash.
+    """
+    root = _tagged(tmp_path, "v0.2.4")
+    subprocess.run(
+        ("git", "tag", "-a", "v0.2.5", "-m", "v0.2.5", "v0.2.4^{commit}"),
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    commit = _short(root, "v0.2.5^{commit}")
+    assert commit != _short(root, "v0.2.5"), "the fixture must be an annotated tag"
+
+    errors = _errors(root)
+
+    # The same reading is what a clone still holding a tag the remote deleted
+    # sees, where moving the tag is the wrong repair (`PL-LT77`).
+    assert any(
+        f"v0.2.5 points at {commit}" in message
+        and "declares 0.2.4" in message
+        and "git tag -d v0.2.5" in message
+        for message in errors
+    ), errors
+
+
+def test_a_version_named_as_shipping_with_a_stale_version_file_is_excused(tmp_path: Path) -> None:
+    """v0.2.0's case: the tag is on the commit that shipped, which never bumped.
+
+    Moving that tag onto the later bump would claim the bump shipped in the
+    release it corrected, so the exception is written down instead - and it
+    excuses only the version the sentence names.
+    """
+    roadmap = VERSIONED_ROADMAP.replace("tag.\n", "tag." + STALE_CLAIM, 1)
+    root = _tagged(tmp_path, "v0.2.4", "v0.2.5", roadmap=roadmap, declaring={"v0.2.4": "0.2.3"})
+
+    assert _errors(root) == []
+
+
+def test_a_stale_version_file_claim_the_tag_contradicts_is_an_error(tmp_path: Path) -> None:
+    """An exception left standing after its tag is repaired excuses the next mistake."""
+    roadmap = VERSIONED_ROADMAP.replace("tag.\n", "tag." + STALE_CLAIM, 1)
+    errors = _errors(_tagged(tmp_path, "v0.2.4", "v0.2.5", roadmap=roadmap))
+
+    assert any(
+        "v0.2.4 is named as shipping with a stale version file, but" in message
+        for message in errors
+    ), errors
+
+
+def test_a_stale_version_file_count_is_held_to_its_names(tmp_path: Path) -> None:
+    claim = STALE_CLAIM.replace("One version", "Two versions")
+    roadmap = VERSIONED_ROADMAP.replace("tag.\n", "tag." + claim, 1)
+    errors = _errors(_versioned(tmp_path, roadmap=roadmap))
+
+    assert any(
+        "says Two shipped with a stale version file, but names 1" in message for message in errors
+    ), errors
+
+
+def test_a_tag_whose_tree_yields_no_version_is_declined_rather_than_refused(tmp_path: Path) -> None:
+    """A tree with no version to read is a question unanswered, not a wrong answer.
+
+    An empty read cannot say whether the file is absent at that commit or
+    merely absent from this clone, so it is reported as not checked rather
+    than as a tag on the wrong commit.
+    """
+    root = _tagged(tmp_path, "v0.2.5")
+    current = (root / "pyproject.toml").read_text(encoding="utf-8")
+    for command in (
+        ("rm", "-q", "pyproject.toml"),
+        ("commit", "-qm", "no version file"),
+        ("tag", "v0.2.4"),
+    ):
+        subprocess.run(("git", *command), cwd=root, check=True, capture_output=True)
+    _commit_version_file(root, current, "the current baseline")
+
+    report = doc_check.analyze(root)
+
+    assert report.errors == []
+    assert any("v0.2.4" in message for message in report.declined), report.declined
 
 
 # PL-W5LG: a workflow step names repository scripts by path exactly as the
