@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: release-process
+milestone: v0.5.5
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-09-22
 closed: 2026-09-22

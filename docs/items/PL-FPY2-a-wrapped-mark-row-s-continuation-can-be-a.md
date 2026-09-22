@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: two-run-attribution
+milestone: v0.5.5
 touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/theme.py, tests/integration/test_simulation_view.py, tools/glyph_check.py
 added: 2026-09-20
 closed: 2026-09-22
