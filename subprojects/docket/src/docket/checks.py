@@ -2943,8 +2943,8 @@ def _check_shared_verify(report: Report) -> None:
 
     It used to be reached only by running something. `already_passing` computed
     the same count, but over the subset that had just passed, so the finding
-    needed the replay to produce it - which is CI only, since `make check` runs
-    `docket check` bare. Three items triaged with one command on 2026-09-20
+    needed the replay to produce it - which was CI only then, since `make check`
+    ran `docket check` bare. Three items triaged with one command on 2026-09-20
     passed every local gate and turned CI red after review had started, and the
     two sentences CI printed that day are the two rules that now run here
     (`PL-J3WK`, `PL-4W2L`).

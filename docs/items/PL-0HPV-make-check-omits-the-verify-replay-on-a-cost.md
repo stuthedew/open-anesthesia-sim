@@ -3,11 +3,12 @@ id: PL-0HPV
 title: make check omits the verify replay on a cost measured before --verify-base narrowed it, so a PR-only failure class is only ever found from CI
 priority: P3
 effort: M
-status: ready
+status: done
 classes: session-cost, infra
 feature: ci-cost
-touches: Makefile, .github/workflows/quality.yml, docs/items, .claude/skills/docket/modes/triage.md
+touches: Makefile, .github/workflows/quality.yml, docs/items, .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/checks.py, subprojects/docket/README.md
 added: 2026-09-14
+closed: 2026-09-22
 verify: grep -qF 'bin/docket check --verify --verify-base origin/main' Makefile
 root-cause-of: PL-J3BB, PL-J3WK, PL-PBP5
 generator: live - make check and quality.yml are separate lists and make check omits the scoped verify replay, so a failure class reaches CI only; #915 went red this way on 2026-09-22, after a local make check exit 0 (PL-KVDK)
@@ -306,3 +307,33 @@ front matter canonically on the way past - key order, one quoted title
 unquoted, blank lines after the fence - which is what it does on any field
 write. Parsed before and after, every other field and every body is identical.
 No branch in flight had edited any of the 96 files at the time of the pass.
+
+**Step 3, re-timed after the pass** on four cores: `bin/docket check --verify
+--verify-base` against each file set, committed on a throwaway detached commit
+so this branch's own item edits stayed out of the scope, two runs each.
+
+| merge | files | scope | before | after |
+| --- | ---: | ---: | ---: | ---: |
+| `462a34c7` | 21 | 32 | 14.1 s | 1.3-1.4 s |
+| `172f93e1` (widest of the last 80) | 19 | 55 | 41-46 s | 5.0-5.3 s |
+| `c128173a` | 6 | 11 | 52.0 s | 1.3-1.4 s |
+| `9070d8a0` | 5 | 22 | 67.5 s | 5.3-5.4 s |
+| no item, no file a command reads | - | 0 | 1.3 s | 1.1-1.2 s |
+| this branch, 99 item files | - | 99 | - | 1.4 s |
+
+The two sets near 5 s are the two that touch `tests/unit`, which puts
+`PL-LWMS`'s single-clause `uv run pytest tests/unit -k commit_msg` in scope at
+4 s; it has no cheap clause to lead with, so it is the new floor for such a
+branch rather than something the pass could move. That is under the 20 s bar
+this brief set on the widest scope, so the replay went into `make check`
+unconditionally rather than behind an opt-in target. An unreadable base was
+re-checked the same day: `--verify-base origin/no-such-branch` exits 0 with one
+"Not checked" line, so the `Makefile` needs no conditional.
+
+**The docs sweep changed two sentences the new line made untrue or
+incomplete**, which is why `touches` grew by two files: `checks.py`'s
+`_check_shared_verify` docstring said the replay "is CI only, since `make
+check` runs `docket check` bare", and `subprojects/docket/README.md` described
+the scoped replay as CI's alone. `docs/pr-bodies/`, the release notes, the
+`ROADMAP.md` release rows and the closed items' briefs were left as they
+stand, being records.

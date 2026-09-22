@@ -290,6 +290,16 @@ jobs:
       # discriminating" - are kept; the rest of the store is not a pull
       # request's question.
       #
+      # **`make check` runs this scoped form too, since `PL-0HPV`**, against
+      # `origin/main`, so what this step finds reaches a session before it
+      # pushes rather than as a red run here. It was the commonest failing
+      # step: 20 of the 56 failed `pull_request` runs from 2026-09-10 to
+      # 2026-09-22, a median of 8 minutes each before a fix was green. It stays,
+      # because a branch pushed without a local `make check` is still gated
+      # here - the reason the two lists are reconciled rather than merged
+      # (`PL-PBP5`). The whole-store step below does not join it, for the
+      # reason the Makefile gives beside the same command.
+      #
       # The whole-store sweep still runs on every push to the default branch,
       # which is where it is a fact about `main` rather than about a branch. A
       # scoped run says what it was scoped to on `docket check`'s own cost
