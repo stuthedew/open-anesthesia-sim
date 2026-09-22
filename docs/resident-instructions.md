@@ -419,6 +419,40 @@ which is what `PL-H7XN` built and what this file is the first application of.
 `PL-BKQW`'s second advisory catches the shape the total cannot see: text added
 and other text trimmed to pay for it, which sums to nothing.
 
+**Two more payloads joined the total on 2026-09-21, and the basis changed with
+them (`PL-44DG`).** Both reach every session at launch and are resent on every
+turn, and neither was counted by anything:
+
+| Payload | Characters, 2026-09-21 | What it is |
+| --- | --- | --- |
+| SessionStart digest (`.claude/hooks/docket-digest.sh`) | 4,169 | the hook's *output*, measured by running it |
+| `docket` skill description frontmatter | 625 | what the skill listing shows before the skill is invoked |
+
+Against a reported 66,773 that is a 7.2% undercount, and the digest is the half
+that **grows on its own**: it carries the dead-ends list and scales with the
+store, so it is the one component of resident cost that can rise with no edit
+to any instruction file — precisely what a size gauge is for. The skill
+description is the other end of `PL-JQVB`: routing a rule into a skill moves
+its body out of the resident total and leaves its description in, and until
+now neither half of that was visible.
+
+**So a figure printed before that date and one printed after are not
+comparable.** The series in `CLAUDE.md` § "A behavior change takes effect in
+the session that asks for it" — 8,903 at inception, 49,991 on 2026-09-13,
+60,199 on 2026-09-19 — is the instruction files alone. `doc_check` still
+reports that quantity, as `ResidentInstructions.comparable_total`, and it is
+what the growth advisory compares; the printed total is now that plus the
+runtime payload. Read a jump across this date as a change of basis, not as
+growth.
+
+The digest is deliberately left out of every comparison. `git show <ref>:<path>`
+returns a hook's source and never its output, so there is no baseline for it:
+compared, it would read as growth of its whole size once and then forever. It
+is counted in the total, which is true, and excluded from the delta, which
+keeps the advisory meaning what it says. Where the hook will not run, the
+measurement declines and says so rather than reporting a total short by four
+thousand characters in silence.
+
 ## Rule 14's refresh bullet, added 2026-09-19
 
 **The carrier test.** No check can read a reply, so disposition 1 cannot hold

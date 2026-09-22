@@ -186,6 +186,17 @@ WORKER_DOC = "docs/worker.md"
 # property it was built for, so no session loads it at all.
 ON_DEMAND_ROOTS = (SKILLS_DIR, RULES_DIR, WORKER_DOC)
 
+# The SessionStart hook, whose output is placed in every session's context
+# before the conversation starts and resent on every turn - resident by every
+# property that matters, and counted by nothing until `PL-44DG`. Run rather
+# than read; `measure_digest` carries why, and what it costs.
+DIGEST_HOOK = ".claude/hooks/docket-digest.sh"
+# Generous, because what is being bounded is a hung remote rather than the
+# hook's own work: it measured 4.2 s here, of which about 2 s is a fetch. The
+# hook bounds its own `--unshallow` at 60 s, so anything past this is a
+# failure rather than a slow container, and the measurement declines.
+DIGEST_TIMEOUT = 120
+
 # A top-level `paths` key inside the YAML frontmatter block. Read this way
 # rather than with a YAML parser because this tool is standard library only,
 # and because the question is only ever "is the key there".
@@ -574,16 +585,30 @@ class ResidentInstructions:
     files: tuple[ResidentFile, ...]
     baseline_ref: str | None = None
     baseline_files: tuple[ResidentFile, ...] | None = None
+    #: Payload measured by running something rather than by reading a file:
+    #: today, the SessionStart hook's output. Counted in `total`, because a
+    #: session carries it, and left out of every comparison, because no git
+    #: ref can reproduce it - `git show <ref>:<path>` returns a hook's source,
+    #: never its output, so there is no baseline to compare against and a row
+    #: present on one side only would read as growth of its whole size, once,
+    #: and then forever. Keeping it apart is what lets the printed total be
+    #: true without making the advisory fire on a store that grew.
+    runtime: tuple[ResidentFile, ...] = ()
 
     @property
     def total(self) -> int:
-        """Characters loaded at launch: the number every comparison reads."""
+        """Characters a session actually carries, static payload and dynamic."""
+        return self.comparable_total + sum(row.characters for row in self.runtime)
+
+    @property
+    def comparable_total(self) -> int:
+        """The half a git ref can reproduce: the number every comparison reads."""
         return sum(row.characters for row in self.files)
 
     @property
     def total_lines(self) -> int:
         """Printed beside the total, never compared against it."""
-        return sum(row.lines for row in self.files)
+        return sum(row.lines for row in (*self.files, *self.runtime))
 
     @property
     def baseline_total(self) -> int | None:
@@ -593,8 +618,9 @@ class ResidentInstructions:
 
     @property
     def growth(self) -> int | None:
+        """Movement in the comparable half alone. See `runtime`."""
         baseline = self.baseline_total
-        return None if baseline is None else self.total - baseline
+        return None if baseline is None else self.comparable_total - baseline
 
     def deltas(self) -> list[tuple[str, int]]:
         """Per-file character change against the baseline, largest growth first."""
@@ -3805,8 +3831,53 @@ def is_path_scoped(text: str) -> bool:
     return block is not None and any(PATHS_KEY_RE.match(line) for line in block)
 
 
+def _skill_description(name: str, text: str) -> ResidentFile | None:
+    """A skill's frontmatter block, which is resident even though its body is not.
+
+    Claude Code lists every available skill by name and description before a
+    session has invoked any of them, so that block is loaded at launch and
+    resent on every turn exactly as `CLAUDE.md` is. The rest of the file loads
+    only when the skill fires, and `measure_on_demand` is what counts that.
+    `PL-JQVB` established that a skill's resident cost was invisible here;
+    this is the half of it that a size gauge can see.
+
+    Measured rather than the whole file: the `docket` skill's frontmatter is
+    625 characters against 5,097 for the file, so counting the file would
+    overstate what a session loads at launch by eight times and counting
+    nothing understates it by all of it.
+
+    The two counts overlap by these characters, deliberately. Invoking a skill
+    loads the whole file, frontmatter included, so `measure_on_demand` is
+    right to count it; and the description reaches a session that never
+    invokes it, so this is right to count it too. They answer different
+    questions and are printed on different lines, which is the split `PL-JQVB`
+    asked for rather than a double count.
+    """
+    if not name.endswith("/SKILL.md"):
+        return None
+    block = _frontmatter(text)
+    if block is None:
+        return None
+    described = "\n".join(block)
+    return ResidentFile(f"{name} (description)", len(described), len(block))
+
+
 def _measure(name: str, text: str) -> ResidentFile | None:
-    """One resident file measured, or `None` when it defers itself to a path."""
+    """One resident file measured, or `None` when it defers itself to a path.
+
+    Three kinds, and the second and third are what `PL-44DG` added. A rules
+    file carrying `paths:` is not resident and drops out. A file under
+    `SKILLS_DIR` contributes its frontmatter and nothing else. Everything else
+    - `CLAUDE.md` and the unscoped rules - is resident in full.
+
+    One function rather than two, because `_baseline` runs it over the default
+    branch's copies of the same files: a second reader for the working tree
+    would be free to drift from this one, and then a stored baseline and a
+    fresh measurement would be measuring different things while reporting one
+    number.
+    """
+    if name.startswith(f"{SKILLS_DIR}/"):
+        return _skill_description(name, text)
     if name.startswith(f"{RULES_DIR}/") and is_path_scoped(text):
         return None
     return ResidentFile(name, len(text), len(text.splitlines()))
@@ -3827,19 +3898,87 @@ def _measure_on_demand(name: str, text: str) -> ResidentFile | None:
 
 
 def measure_resident(root: Path) -> list[ResidentFile]:
-    """Which instruction files load at launch in this working tree, and how big."""
+    """Which instruction files load at launch in this working tree, and how big.
+
+    `SKILLS_DIR` is walked beside the rules, and contributes each skill's
+    frontmatter rather than its file - see `_skill_description`. The dynamic
+    half of the payload is not here but in `measure_digest`, because it is
+    produced by running something rather than by reading a file, and nothing
+    that reads a git ref can reproduce it.
+    """
     measured: list[ResidentFile] = []
     names = [name for name in RESIDENT_ROOTS if (root / name).is_file()]
-    rules = root / RULES_DIR
-    if rules.is_dir():
-        names += sorted(
-            path.relative_to(root).as_posix() for path in rules.rglob("*.md") if path.is_file()
-        )
+    for directory in (RULES_DIR, SKILLS_DIR):
+        found = root / directory
+        if found.is_dir():
+            names += sorted(
+                path.relative_to(root).as_posix() for path in found.rglob("*.md") if path.is_file()
+            )
     for name in names:
         row = _measure(name, (root / name).read_text(encoding="utf-8"))
         if row is not None:
             measured.append(row)
     return measured
+
+
+def measure_digest(root: Path) -> ResidentFile | None:
+    """What the SessionStart hook emits into every session, by running it.
+
+    The hook's output is instruction text by every property that matters here:
+    it is placed in the context before the conversation starts and resent on
+    every turn, exactly as `CLAUDE.md` is. Nothing counted it, and it is the
+    half of the resident payload that **grows on its own** - it carries the
+    dead-ends list and scales with the store, so it is the one component that
+    can rise without any edit to an instruction file. That makes it precisely
+    the part a size gauge most needs to see. Measured 2026-09-21, it was 4,169
+    characters against a reported resident total of 66,773, so the gauge the
+    project consults about resident size was 7.2% low (`PL-44DG`).
+
+    **Run rather than read, and the alternative was drift.** The hook is six
+    commands, two of them producing a line only in an exception case, and its
+    output is not derivable from its source. Listing the ones worth counting
+    here would put the hook's line list in a second place, which is how
+    `workflow_paths` went nine entries short and how `gate_paths` acquired two
+    hand-maintained entries - silent both times, and silent in the direction
+    that hurts. Running the file itself cannot drift from the file itself.
+
+    **What it costs, counted rather than guessed.** About 4.2 s on a `make
+    check` measured at 2 m 24 s, so roughly 3%, and no hook runs `doc_check`
+    on an edit - `make check`, `make doc-check` and CI are the only callers.
+    Two of the hook's lines reach the network: `docket branch --brief`
+    fetches, and `main_ci_status.py` reads a check verdict. That is a real
+    change to what `make check` does and is the reason this is worth a
+    paragraph rather than a line. It does not reach the growth advisory: the
+    row this returns is carried in `ResidentInstructions.runtime`, which is
+    left out of every comparison, so a measurement that varies with the store
+    or with an offline container moves the printed total and no verdict.
+
+    **It declines rather than guesses.** No hook, no `bash`, a non-zero exit
+    or a timeout all return `None`, and the caller turns that into a
+    `Report.declined` line - a total short by 4,000 characters with nothing
+    saying so is the partial reading handed over as a complete one that
+    `.claude/rules/apparatus-standard.md` makes the floor.
+    """
+    hook = root / DIGEST_HOOK
+    if not hook.is_file():
+        return None
+    try:
+        result = subprocess.run(
+            ("bash", str(hook)),
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=DIGEST_TIMEOUT,
+            check=False,
+            env={**os.environ, "CLAUDE_PROJECT_DIR": str(root)},
+        )
+    except GIT_UNAVAILABLE:
+        return None
+    if result.returncode:
+        return None
+    return ResidentFile(
+        f"{DIGEST_HOOK} (output)", len(result.stdout), len(result.stdout.splitlines())
+    )
 
 
 def _markdown_under(root: Path, roots: Sequence[str]) -> list[str]:
@@ -3909,7 +4048,7 @@ def _resident_baseline(root: Path) -> tuple[str, tuple[ResidentFile, ...]] | Non
     on-demand set needs the same comparison against the same ref, and a second
     copy of this walk would be free to drift from this one.
     """
-    return _baseline(root, (*RESIDENT_ROOTS, RULES_DIR), _measure)
+    return _baseline(root, (*RESIDENT_ROOTS, RULES_DIR, SKILLS_DIR), _measure)
 
 
 def _baseline(
@@ -3979,10 +4118,18 @@ def check_resident_instructions(root: Path, report: Report) -> None:
     if not files:
         return
     baseline = _resident_baseline(root)
+    digest = measure_digest(root)
+    if digest is None and (root / DIGEST_HOOK).is_file():
+        report.declined.append(
+            f"what {DIGEST_HOOK} adds to every session: it would not run here, so the "
+            "resident total below counts the instruction files alone and is short by "
+            "whatever the digest emits"
+        )
     report.resident = ResidentInstructions(
         files=tuple(files),
         baseline_ref=None if baseline is None else baseline[0],
         baseline_files=None if baseline is None else baseline[1],
+        runtime=() if digest is None else (digest,),
     )
     deltas = report.resident.deltas()
     if not deltas:
@@ -4120,7 +4267,9 @@ def _plural(count: int, singular: str, plural: str) -> str:
 
 def _format_measured(label: str, when: str, measured: ResidentInstructions) -> str:
     """One line: how much instruction text a set holds, and how it moved against the base."""
-    breakdown = ", ".join(f"{row.name} {row.characters}/{row.lines}" for row in measured.files)
+    breakdown = ", ".join(
+        f"{row.name} {row.characters}/{row.lines}" for row in (*measured.files, *measured.runtime)
+    )
     growth = measured.growth
     if growth is None:
         against = "no default branch here to compare against"
