@@ -8,6 +8,7 @@ classes: defect, test
 touches: subprojects/docket/tests/test_verify.py
 added: 2026-09-20
 closed: 2026-09-22
+pr: 893
 payoff: the next author calling _commission with unchanged fields reads what happened instead of a CalledProcessError four frames inside subprocess
 verify: grep -qE 'allow-empty|nothing changed' subprojects/docket/tests/test_verify.py
 ---

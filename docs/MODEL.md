@@ -6823,7 +6823,16 @@ Qt's default and is a light theme's opposite on a machine set to Dark. That is
 visible rather than hidden: `tests/integration/test_dark_appearance.py` renders
 the dashboard and both dialogs under the palette such a host supplies and fails
 on any content widget resolving to it, which is what caught six controls that
-had declared nothing (`PL-RKRY`, `PL-7W9N`, `PL-0NVN`). What remains the host's
+had declared nothing (`PL-RKRY`, `PL-7W9N`, `PL-0NVN`). Which controls that
+reaches is not left to a remembered list of widget kinds:
+`tests/integration/test_simulation_view.py` builds the whole dashboard under a
+foreground colour this interface never uses and fails on any control that
+paints its own content and resolves to it, so a control added later is held to
+declaring a colour rather than to being noticed. What it exempts is named there
+against the reason it draws no text, and `tools/contrast_check.py` counts those
+kinds into its report line: a requirement exists only where somebody wrote a
+colour down, so a control that writes none would otherwise be absent from both
+sides of that line's count and read there as covered (`PL-4L49`). What remains the host's
 by decision rather than by omission is the **chrome** - the page's scroll bars,
 the splitter handles, tooltips - and whether the application should declare a
 light colour scheme for those too is an open question recorded in the queue as
