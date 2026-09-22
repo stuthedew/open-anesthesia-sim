@@ -28,6 +28,16 @@ maximum over channels somebody else declared is arithmetic, not judgment. A
 tool that guesses the judgment half is worse than no tool, because its output
 looks authoritative and is not.
 
+**What it cannot decide, and now says so.** Whether anything declared a color
+at all. A requirement exists only where somebody wrote one down, so a control
+that declares none is absent from the numerator *and* the denominator and reads
+here as covered - which is how PL-DHBX's three invisible buttons reached a
+release. That question needs a built widget tree rather than an `ast` walk, so
+it is decided in `CONTROL_COVERAGE_TEST` and only counted here, into the report
+line: `read_undeclared_controls` says how many control kinds nothing measures.
+Those names are the one input here a toolkit does own, and the deciding test is
+what fails on a kind the dashboard has stopped building.
+
 **The arithmetic.** WCAG 2.2's relative-luminance and contrast-ratio
 definitions, https://www.w3.org/TR/WCAG22/#dfn-relative-luminance and
 https://www.w3.org/TR/WCAG22/#dfn-contrast-ratio. Validated against three
@@ -66,7 +76,7 @@ this file replaces. The list cannot rot: a shortfall that starts *passing* is
 an error too, so fixing one forces its entry out.
 
 **What a Qt port costs this check, measured rather than estimated (PL-JRS3).**
-It survives, because its whole input is module-level `NAME = "#RRGGBB"`
+It survives, because its colour input is module-level `NAME = "#RRGGBB"`
 constants and no toolkit owns those. Measured 2026-09-14 by rewriting
 `app/theme.py` and `app/simulation_view.py` on the AST - every Flet property
 assignment replaced by the PySide6 setter call that supplants it - and running
@@ -188,6 +198,19 @@ THEME = APP / "theme.py"
 
 #: A six-digit sRGB hex literal, the only form a color takes in this tree.
 HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+#: Where the other half of the coverage question is decided: whether a control
+#: on the *built* dashboard declares a foreground at all. That needs a built
+#: widget tree - which widget a stylesheet reached is settled by Qt, not by the
+#: source - so it cannot be decided here, and a tool that reported only what it
+#: could measure would read identically either way (PL-4L49).
+CONTROL_COVERAGE_TEST = Path("tests/integration/test_simulation_view.py")
+
+#: The mapping in that module naming every control kind that declares no
+#: foreground, against the reason it may not. Read rather than duplicated: the
+#: judgment of which controls are allowed to draw nothing is the test's, and a
+#: second copy here would be the comment-that-nobody-checks this file replaces.
+CONTROL_EXEMPTION_NAME = "FOREGROUND_NOT_DECLARED"
 
 #: How a requirement description cites the code its pair is drawn in: a bare
 #: symbol from a module under `APP`, in backticks. Bare, so `mount` and
@@ -1039,6 +1062,88 @@ def read_symbols(root: Path) -> frozenset[str]:
     return frozenset(names)
 
 
+def read_undeclared_controls(root: Path) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The control kinds nothing measures, read from where that is judged.
+
+    This tool counts requirements, and a requirement exists only where somebody
+    wrote a color down. A control that writes none is absent from the numerator
+    *and* the denominator, so `24 of 24` reads the same whether the interface is
+    covered or has three invisible controls on it - which is the state PL-DHBX
+    was found in, by the project owner, on his own screen. Saying how many are
+    measured by nothing is the smallest thing that makes the line honest.
+
+    The count is read rather than kept here, and from a test rather than from
+    `app/`, because the question is only decidable against a built widget tree:
+    a stylesheet declares a color for whatever Qt's selector matching says it
+    reached, which an `ast` walk cannot resolve. `CONTROL_COVERAGE_TEST` builds
+    the dashboard and holds every content-painting widget to resolving a color
+    the theme declares; what it exempts is what nothing here can measure.
+
+    Reading a test is a departure - every other input this file has is under
+    `app/` - and it is one-directional: the test decides, this counts. The
+    failure modes are loud rather than silent, which is the property that
+    matters, since a reader that quietly returned zero would restate the defect
+    it exists to report.
+
+    Args:
+        root: Repository root.
+
+    Returns:
+        The exempted kind names, sorted, and one message per reason the
+        mapping could not be read. Exactly one of the two is ever non-empty.
+    """
+    path = root / CONTROL_COVERAGE_TEST
+    unreadable = (
+        f"  {CONTROL_EXEMPTION_NAME} could not be read from {CONTROL_COVERAGE_TEST.as_posix()}"
+    )
+    try:
+        source = path.read_text(encoding="utf-8")
+    except OSError as error:
+        return (), (
+            f"{unreadable}: {error.strerror}. The report line cannot say how "
+            "many controls nothing measures without it.",
+        )
+
+    tree = ast.parse(source, filename=str(path))
+    for statement in tree.body:
+        targets: list[ast.expr] = []
+        value: ast.expr | None = None
+        if isinstance(statement, ast.Assign):
+            targets, value = list(statement.targets), statement.value
+        elif isinstance(statement, ast.AnnAssign) and statement.value is not None:
+            targets, value = [statement.target], statement.value
+        if value is None:
+            continue
+        if not any(
+            isinstance(target, ast.Name) and target.id == CONTROL_EXEMPTION_NAME
+            for target in targets
+        ):
+            continue
+        if not isinstance(value, ast.Dict):
+            return (), (
+                f"{unreadable}: it is not a mapping. Each entry is a control "
+                "kind against the reason it declares no foreground, and a "
+                "count of anything else would not be that.",
+            )
+        names = [
+            key.value
+            for key in value.keys
+            if isinstance(key, ast.Constant) and isinstance(key.value, str)
+        ]
+        if len(names) != len(value.keys):
+            return (), (
+                f"{unreadable}: a key is not a literal class name, so the "
+                "kinds it exempts cannot be counted.",
+            )
+        return tuple(sorted(names)), ()
+
+    return (), (
+        f"{unreadable}: the module defines no such name. It is where a "
+        "control that declares no foreground is named and excused, so "
+        "without it nothing states what this tool cannot measure.",
+    )
+
+
 def check_colors_live_in_the_theme(root: Path) -> tuple[str, ...]:
     """Refuse a color declared in any module under `app/` other than the theme.
 
@@ -1287,6 +1392,12 @@ class Report:
     #: How many modules under `APP` the palette and the symbols came from, so
     #: the report says what it read rather than leaving that to be assumed.
     modules_read: int
+    #: The control kinds on the built dashboard that declare no foreground, so
+    #: the report says what nothing measures and not only what this does.
+    undeclared_controls: tuple[str, ...]
+    #: Why that count could not be read, when it could not. An error rather
+    #: than a zero: a silent zero would restate the defect it reports.
+    undeclared_controls_errors: tuple[str, ...]
 
     @property
     def errors(self) -> bool:
@@ -1297,6 +1408,7 @@ class Report:
             or self.citations
             or self.misplaced_colors
             or self.author_styled_disabled
+            or self.undeclared_controls_errors
             or self.below_trace_floor
         )
 
@@ -1354,6 +1466,7 @@ def analyze(root: Path) -> Report:
         if (ratio := contrast_ratio(as_seen(palette[name], model), palette["PANEL"]))
         and round(ratio, DISPLAY_DECIMALS) < TRACE_FLOOR
     )
+    undeclared_controls, undeclared_controls_errors = read_undeclared_controls(root)
     return Report(
         results=tuple(results),
         missing=tuple(sorted(set(missing))),
@@ -1365,6 +1478,8 @@ def analyze(root: Path) -> Report:
         trace_pairs=trace_pairs,
         below_trace_floor=below_trace_floor,
         modules_read=len(app_modules(root)),
+        undeclared_controls=undeclared_controls,
+        undeclared_controls_errors=undeclared_controls_errors,
     )
 
 
@@ -1378,13 +1493,21 @@ def format_report(report: Report, *, matrix: bool) -> str:
         + len(report.citations)
         + len(report.misplaced_colors)
         + len(report.author_styled_disabled)
+        + len(report.undeclared_controls_errors)
     )
     lines = [
         f"contrast: {met} of {len(report.results)} declared requirements meet WCAG 2.2 AA, "
         f"{report.modules_read} modules read under {APP.as_posix()}/, "
+        f"{len(report.undeclared_controls)} control kinds declare no foreground and are "
+        f"measured by nothing ({CONTROL_COVERAGE_TEST.as_posix()} names each), "
         f"{len(KNOWN_SHORTFALLS)} known shortfalls, "
         f"{error_count} errors"
     ]
+
+    if report.undeclared_controls_errors:
+        lines.append("")
+        lines.append("How many controls nothing measures could not be read:")
+        lines.extend(report.undeclared_controls_errors)
 
     if report.misplaced_colors:
         lines.append("")

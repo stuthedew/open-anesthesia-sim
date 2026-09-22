@@ -79,13 +79,34 @@ class SimulationView:
 '''
 
 
+CONTROLS_SOURCE = '''"""Miniature stand-in for the built-dashboard coverage test."""
+
+FOREGROUND_NOT_DECLARED: dict[str, str] = {
+    "QScrollBar": "chrome, and it draws no text",
+    "QSlider": "a track and a thumb, and no label of its own",
+}
+'''
+
+
 def _repo(
-    tmp_path: Path, *, theme: str = THEME_SOURCE, view: str = VIEW_SOURCE, **modules: str
+    tmp_path: Path,
+    *,
+    theme: str = THEME_SOURCE,
+    view: str = VIEW_SOURCE,
+    controls: str | None = CONTROLS_SOURCE,
+    **modules: str,
 ) -> Path:
     """Build a miniature repository: the theme, the view, and any further `app/` module.
 
-    Keyword arguments beyond the two are written as `app/<name>.py`, which is
-    how a test stands in for the module the decomposed Qt view will add.
+    Keyword arguments beyond the named ones are written as `app/<name>.py`,
+    which is how a test stands in for the module the decomposed Qt view will
+    add.
+
+    `controls` is the one input from outside `app/`: the test module naming
+    every control kind that declares no foreground, which the tool counts into
+    its report line (PL-4L49). It is written by default because a tree without
+    it is an error rather than a count of zero, and `None` is how the test for
+    that says so.
     """
     app = tmp_path / "src" / "anesthesia_sim" / "app"
     app.mkdir(parents=True)
@@ -93,6 +114,10 @@ def _repo(
     (app / "simulation_view.py").write_text(view, encoding="utf-8")
     for name, source in modules.items():
         (app / f"{name}.py").write_text(source, encoding="utf-8")
+    if controls is not None:
+        coverage = tmp_path / contrast_check.CONTROL_COVERAGE_TEST
+        coverage.parent.mkdir(parents=True, exist_ok=True)
+        coverage.write_text(controls, encoding="utf-8")
     return tmp_path
 
 
@@ -383,6 +408,57 @@ def test_a_backticked_path_is_not_read_as_a_symbol(tmp_path: Path, declare, span
     assert contrast_check.check_citations(_repo(tmp_path, view=VIEW_WITH_SYMBOLS)) == ()
 
 
+# --- what nothing measures --------------------------------------------------
+
+
+def test_the_exempted_control_kinds_are_read_from_the_coverage_test(tmp_path: Path) -> None:
+    """`PL-4L49`: the count comes from where the judgment is, sorted for a stable line."""
+    names, errors = contrast_check.read_undeclared_controls(_repo(tmp_path))
+
+    assert names == ("QScrollBar", "QSlider")
+    assert errors == ()
+
+
+def test_a_missing_coverage_test_is_an_error_rather_than_a_count_of_zero(tmp_path: Path) -> None:
+    """A silent zero would restate the defect the count exists to report.
+
+    "Nothing is unmeasured" and "I could not find out" are the two readings a
+    bare `0` has, and they are opposite. So the tool says which.
+    """
+    root = _repo(tmp_path, controls=None)
+    names, errors = contrast_check.read_undeclared_controls(root)
+
+    assert names == ()
+    assert any(contrast_check.CONTROL_EXEMPTION_NAME in message for message in errors)
+    assert contrast_check.analyze(root).errors
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        pytest.param('NOTHING = {"QScrollBar": "chrome"}\n', id="no such name"),
+        pytest.param("FOREGROUND_NOT_DECLARED = ()\n", id="not a mapping"),
+        pytest.param("FOREGROUND_NOT_DECLARED = {QScrollBar: 'chrome'}\n", id="key is a name"),
+    ],
+)
+def test_a_coverage_test_that_cannot_be_counted_is_an_error(tmp_path: Path, source: str) -> None:
+    """Every way of losing the mapping is loud, because the tool cannot see the tree."""
+    names, errors = contrast_check.read_undeclared_controls(_repo(tmp_path, controls=source))
+
+    assert names == ()
+    assert errors != ()
+
+
+def test_the_report_line_says_how_many_controls_nothing_measures(
+    tmp_path: Path, declare, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The headline carries the number, which is the whole of `PL-4L49`'s report half."""
+    declare((_requirement("INK", "PANEL", 4.5),))
+
+    assert contrast_check.main(["--root", str(_repo(tmp_path))]) == 0
+    assert "2 control kinds declare no foreground" in capsys.readouterr().out
+
+
 # --- the real palette -------------------------------------------------------
 
 
@@ -390,6 +466,19 @@ def test_the_shipped_palette_holds(capsys: pytest.CaptureFixture[str]) -> None:
     """The check `make check` runs, run here so a red palette fails the suite too."""
     assert contrast_check.main(["--root", str(REPO_ROOT)]) == 0
     assert "0 errors" in capsys.readouterr().out
+
+
+def test_the_shipped_tree_states_what_nothing_measures() -> None:
+    """The coupling holds against the real tree, not only against a fixture.
+
+    `PL-4L49`: the kinds are named in an integration module this suite does not
+    import - it would pull in the toolkit - so the count is read the way the
+    tool reads it, and checked for a kind that is certainly there.
+    """
+    names, errors = contrast_check.read_undeclared_controls(REPO_ROOT)
+
+    assert errors == ()
+    assert "QScrollBar" in names
 
 
 def test_the_run_status_text_is_checked_against_the_page_background() -> None:
