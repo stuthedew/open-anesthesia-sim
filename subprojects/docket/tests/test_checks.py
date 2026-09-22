@@ -2064,12 +2064,13 @@ def test_a_selects_no_test_advisory_counts_the_queue_it_searched() -> None:
     assert _has(messages, "1 of 2 open item(s) whose command selects nothing, 9 checked")
 
 
-def test_a_selects_no_test_advisory_asks_rather_than_condemns() -> None:
-    # A selector naming a test the work has yet to write is the shape the
-    # docket skill recommends. Only the item's author can tell that from a
-    # selector no work will ever satisfy, so the advisory must not decide it.
+def test_a_selects_no_test_advisory_names_the_repair() -> None:
+    # It once only asked, while a `-k` naming a test the work had yet to write
+    # was the shape the docket skill recommended. `PL-6TP8` retired that shape
+    # and `PL-Q8RQ` refuses it from a cutover, so what this reaches is the
+    # grandfathered set, and the repair for every one of them is the `grep`.
     messages = _selects_nothing(_landed(passing=(), vacuous=("PL-K7QX",)), OFFERED)
-    assert _has(messages, "check that the name each selector matches")
+    assert _has(messages, "replace the selector with a `grep -q`")
 
 
 def test_an_item_that_both_passes_and_selects_nothing_cannot_happen_but_reads_apart() -> None:
@@ -3367,16 +3368,16 @@ def test_the_rule_is_off_where_a_project_names_no_collected_trees() -> None:
 # sessions diagnosed the red `main` that followed inside four minutes
 # (`PL-99YZ`).
 
+SELECTOR_FROM = date(2026, 9, 23)
 SELECTOR = Config(
-    verify_k_selector_refused_from=date(2026, 9, 23),
+    verify_k_selector_refused_from=SELECTOR_FROM,
     collected_test_paths=("tests", "subprojects/docket/tests"),
 )
 NARROWS = "narrows a pytest run with `-k`"
-CUTOVER = date(2026, 9, 23)
 
 
 def _selector_errors(**overrides: object) -> list[str]:
-    overrides.setdefault("added", CUTOVER)
+    overrides.setdefault("added", SELECTOR_FROM)
     return analyze([_item(**overrides)], TODAY, SELECTOR).errors
 
 
@@ -3465,7 +3466,7 @@ def test_a_k_selector_recorded_before_the_cutover_is_left_alone() -> None:
     because a command written away from its work is how every wrong one in the store
     came to exist."""
     command = "uv run pytest subprojects/docket/tests -k custom_prefix"
-    before = CUTOVER - timedelta(days=1)
+    before = SELECTOR_FROM - timedelta(days=1)
 
     assert not _has(_selector_errors(added=before, verify=command), NARROWS)
 
@@ -3476,7 +3477,7 @@ def test_a_closed_item_s_k_selector_is_a_record_and_is_not_refused() -> None:
     work with one that never ran against it."""
     command = "uv run pytest subprojects/docket/tests -k custom_prefix"
 
-    errors = _selector_errors(status="done", closed=CUTOVER, pr="48", verify=command)
+    errors = _selector_errors(status="done", closed=SELECTOR_FROM, pr="48", verify=command)
 
     assert not _has(errors, NARROWS)
 
@@ -3487,9 +3488,9 @@ def test_the_k_selector_rule_is_off_until_a_project_dates_it_and_names_its_trees
     command = "uv run pytest subprojects/docket/tests -k custom_prefix"
     for config in (
         Config(collected_test_paths=("tests", "subprojects/docket/tests")),
-        Config(verify_k_selector_refused_from=CUTOVER),
+        Config(verify_k_selector_refused_from=SELECTOR_FROM),
     ):
-        errors = analyze([_item(added=CUTOVER, verify=command)], TODAY, config).errors
+        errors = analyze([_item(added=SELECTOR_FROM, verify=command)], TODAY, config).errors
 
         assert not _has(errors, NARROWS)
 

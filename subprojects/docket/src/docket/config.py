@@ -115,6 +115,15 @@ class Config:
     #: project has not said", which leaves the rule above off rather than
     #: guessing.
     collected_test_paths: tuple[str, ...] = ()
+    #: The date from which a `verify:` command may no longer narrow a pytest
+    #: run with `-k`. Over a tree `collected_test_paths` names, such a run
+    #: either selects tests `check_command` already proves or selects none
+    #: and exits 5, so it can never be the ordinary failure the field owes -
+    #: and a substring is satisfied by whatever test later comes to carry it.
+    #: A date of its own rather than the prerequisite rule's, because the two
+    #: close different sets. `None` leaves it off, and so does an empty
+    #: `collected_test_paths`.
+    verify_k_selector_refused_from: date | None = None
     #: The date the `payoff:` requirement started applying: an item reaching
     #: `ready` must carry one plain-language line of what closing it buys.
     #: Dated for the reason `verify_required_from` is - a store written before
@@ -354,6 +363,11 @@ def load(root: Path) -> Config:
         ),
         collected_test_paths=_tuple(
             section.get("collected_test_paths"), defaults.collected_test_paths
+        ),
+        verify_k_selector_refused_from=_date(
+            section.get("verify_k_selector_refused_from"),
+            defaults.verify_k_selector_refused_from,
+            "verify_k_selector_refused_from",
         ),
         payoff_required_from=_date(
             section.get("payoff_required_from"),

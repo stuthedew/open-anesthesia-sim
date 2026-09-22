@@ -555,6 +555,27 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
                 "consumer of the field runs it. Record the discriminator alone"
             )
 
+    # The first obligation that contract puts on a command, made mechanical
+    # (`PL-Q8RQ`): its failure before the work is an ordinary exit 1, never
+    # pytest's 5. A `-k` over the collected trees can give only 0 or 5, and a
+    # substring can be satisfied by another item's test; `_k_selector_clause`
+    # has the reasoning and what it leaves alone.
+    if (
+        item.status not in CLOSED_STATUSES
+        and item.verify
+        and _verify_k_selector_refused(item, config)
+    ):
+        selector = _k_selector_clause(item.verify, config.collected_test_paths)
+        if selector is not None:
+            report.errors.append(
+                f"{where}: its `verify:` clause `{selector}` narrows a pytest run with "
+                "`-k`, so it can never fail the ordinary way the field needs - over a "
+                f"tree `{config.check_command}` collects it selects tests that command "
+                "already proves (exit 0) or selects none (exit 5, which reads as a "
+                "correct failure until any test anywhere comes to carry the substring). "
+                "Record a `grep -q` for the `def` of the test the work adds instead"
+            )
+
     # A safety class forces the top band, because that is where work able to
     # reach a wrong clinical value belongs. `blocked` earns a narrow exception:
     # a blocked item is not in the set `next` chooses from, so its band is a
@@ -787,51 +808,54 @@ def _verify_required_at_close(item: Item, config: Config) -> bool:
 
 
 #: Options that make a pytest run select something narrower than the files
-#: named on its command line. Any of them, and the clause is discriminating on
-#: its own account rather than proving a file's suite green, so the rule below
-#: leaves it alone. `--cov` is here because a coverage threshold is the one
-#: shape the `docket` skill prescribes pytest for.
+#: named on its command line. Any of them, and the clause is no longer a whole
+#: file's suite proved twice, so the rule below leaves it alone. `--cov` is
+#: here because a coverage threshold is the one shape the `docket` skill
+#: prescribes pytest for. A `-k` discriminates nothing either, and
+#: `_k_selector_clause` refuses it on its own account.
 _PYTEST_SELECTORS = ("-k", "-m", "--cov", "--deselect", "--lf", "--ff")
 
 #: Options that consume the token after them, so that token is a value rather
-#: than a path to run. Only the ones that can appear *without* a selector need
-#: listing, since a selector returns early; `--x=y` spellings consume nothing
-#: and need none of this.
+#: than a path to run. `--x=y` spellings consume nothing and need none of
+#: this. The selectors among them matter only to `_k_selector_clause`, which
+#: reads the paths past a `-k` where `_pytest_targets` returns at it.
 _PYTEST_VALUE_OPTIONS = frozenset(
-    {"-n", "-p", "-o", "-c", "-r", "--dist", "--maxfail", "--durations", "--rootdir", "--ignore"}
+    {
+        "-k",
+        "-m",
+        "--deselect",
+        "-n",
+        "-p",
+        "-o",
+        "-c",
+        "-r",
+        "--dist",
+        "--maxfail",
+        "--durations",
+        "--rootdir",
+        "--ignore",
+    }
 )
 
+#: Shell operators after which a clause's exit status is no longer the pytest
+#: run's own: a pipeline answers with its last command's, `||` replaces a
+#: failure, and `;` or `&` discards it.
+_STATUS_REPLACED = frozenset({"|", "|&", "||", ";", "&"})
 
-def _pytest_targets(clause: str) -> list[str] | None:
-    """The paths a pytest clause runs, or `None` if it is not one to read.
 
-    `None` covers three cases that are all "this is not a redundant health
-    check": the clause does not invoke pytest at all, its arguments cannot be
-    split (an unbalanced quote, which the format check elsewhere reports), or
-    it carries a selector, which makes the run itself the discriminator rather
-    than a proof that a file's suite is green.
-
-    An empty list is the meaningful answer rather than a missing one: a bare
-    `pytest` with no path runs the whole suite, which is exactly what
-    `check_command` runs.
-    """
-    try:
-        tokens = shlex.split(clause)
-    except ValueError:
-        return None
+def _after_pytest(tokens: Sequence[str]) -> list[str] | None:
+    """The tokens following the pytest executable, or `None` if nothing runs it."""
     for index, token in enumerate(tokens):
         if token == "pytest" or token.endswith("/pytest"):
-            rest = tokens[index + 1 :]
-            break
-    else:
-        return None
-    if any(token.startswith(_PYTEST_SELECTORS) for token in rest) or any(
-        "::" in token for token in rest
-    ):
-        return None
+            return list(tokens[index + 1 :])
+    return None
+
+
+def _run_targets(arguments: Sequence[str]) -> list[str]:
+    """The paths among a pytest run's arguments, past every option and its value."""
     targets: list[str] = []
     skip = False
-    for token in rest:
+    for token in arguments:
         if skip:
             skip = False
             continue
@@ -841,6 +865,37 @@ def _pytest_targets(clause: str) -> list[str] | None:
         if not token.startswith("-"):
             targets.append(token)
     return targets
+
+
+def _inside(target: str, collected: Sequence[str]) -> bool:
+    """Whether a pytest target lies in one of the trees `check_command` collects."""
+    return any(target == root or target.startswith(f"{root}/") for root in collected)
+
+
+def _pytest_targets(clause: str) -> list[str] | None:
+    """The paths a pytest clause runs, or `None` if it is not one to read.
+
+    `None` covers three cases that are all "this is not a redundant health
+    check": the clause does not invoke pytest at all, its arguments cannot be
+    split (an unbalanced quote, which the format check elsewhere reports), or
+    it carries a selector, which makes the run something narrower than a
+    proof that a file's suite is green.
+
+    An empty list is the meaningful answer rather than a missing one: a bare
+    `pytest` with no path runs the whole suite, which is exactly what
+    `check_command` runs.
+    """
+    try:
+        rest = _after_pytest(shlex.split(clause))
+    except ValueError:
+        return None
+    if rest is None:
+        return None
+    if any(token.startswith(_PYTEST_SELECTORS) for token in rest) or any(
+        "::" in token for token in rest
+    ):
+        return None
+    return _run_targets(rest)
 
 
 def _redundant_pytest_clause(command: str, collected: Sequence[str]) -> str | None:
@@ -877,12 +932,92 @@ def _redundant_pytest_clause(command: str, collected: Sequence[str]) -> str | No
         return None
     for clause in pytest_clauses:
         targets = _pytest_targets(clause) or []
-        if all(
-            any(target == root or target.startswith(f"{root}/") for root in collected)
-            for target in targets
-        ):
+        if all(_inside(target, collected) for target in targets):
             return clause
     return None
+
+
+def _shell_tokens(clause: str) -> list[str] | None:
+    """A clause's words with its shell operators split out as words of their own.
+
+    `shlex.split` leaves `x|grep` as one word, so an unspaced pipe would read
+    as part of a pytest argument; this is what lets `_k_selector_clause` see
+    that the status is another command's. `None` for an unbalanced quote.
+    """
+    lexer = shlex.shlex(clause, posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    try:
+        return list(lexer)
+    except ValueError:
+        return None
+
+
+def _k_selector_clause(command: str, collected: Sequence[str]) -> str | None:
+    """The clause that narrows a pytest run with `-k` and answers with its status, if any.
+
+    `PL-6TP8`'s first obligation on a command, made mechanical (`PL-Q8RQ`): its
+    failure before the work is an evaluation - an ordinary exit 1 - and never
+    pytest's 5. Over a tree `check_command` collects, a `-k` run cannot be one.
+    Every test there passes or that command is red, so the run selects tests it
+    already proves (0) or selects none (5, or 4 for a path the work has yet to
+    create). Non-zero, so it reads as a command correctly failing, and it goes
+    on reading that way until any test anywhere comes to carry the substring:
+    `PL-S5YM`'s `-k covered` began passing when an unrelated merge added one,
+    and three sessions diagnosed the red `main` that followed inside four
+    minutes (`PL-99YZ`).
+
+    Refused wherever it stands in the `&&` chain, because position decides only
+    which half of the contract the clause breaks. Ahead of another clause, its
+    5 is the command's answer before the work and nothing behind it runs.
+    Behind one that fails first, it runs only once that clause passes, and
+    then re-proves what `check_command` proves - the prerequisite shape
+    `_redundant_pytest_clause` refuses, which leaves any run carrying `-k` to
+    this rule. `PL-W4XQ` was recorded in the first shape on that rule's first
+    day for exactly that reason.
+
+    Three runs are left alone, each because the reading above stops being true.
+    A run whose status an operator replaces - piped into a `grep` of its
+    output, as `PL-205P`'s was - answers with the other command's status. A run
+    carrying a coverage option can fail on a threshold, which `check_command`
+    does not measure. And a run over a tree `check_command` does not collect
+    may select a test that is failing today, so it can be an evaluation after
+    all; that is the condition that would falsify the rule, and why the trees
+    are declared rather than assumed.
+
+    `-m` narrows the same way and would fail the same way, but no command in
+    this store has ever carried one, so this reads `-k` alone rather than a
+    shape nobody writes. Clauses are split on `&&` as `_redundant_pytest_clause`
+    splits them.
+    """
+    if not collected:
+        return None
+    for clause in (part.strip() for part in command.split("&&")):
+        tokens = _shell_tokens(clause)
+        arguments = _after_pytest(tokens) if tokens is not None else None
+        if arguments is None or _STATUS_REPLACED.intersection(arguments):
+            continue
+        if not any(token.startswith("-k") for token in arguments):
+            continue
+        if any(token.startswith("--cov") for token in arguments):
+            continue
+        if all(_inside(target, collected) for target in _run_targets(arguments)):
+            return clause
+    return None
+
+
+def _verify_k_selector_refused(item: Item, config: Config) -> bool:
+    """Whether the `-k` rule applies to this item: captured on or after its cutover.
+
+    Anchored and grandfathered as `_verify_prerequisite_refused` is, for the
+    same reason - the commands already recorded are a closed set that drains as
+    each item is started - and leaking in the same bounded way. A date of its
+    own because the two rules close different sets: `PL-W4XQ` was captured on
+    the prerequisite rule's first day carrying a `-k`, which that rule does not
+    read, so sharing its date would refuse it the moment this landed.
+    """
+    if config.verify_k_selector_refused_from is None:
+        return False
+    return item.added is not None and item.added >= config.verify_k_selector_refused_from
 
 
 def _verify_prerequisite_refused(item: Item, config: Config) -> bool:
@@ -1345,21 +1480,25 @@ def _check_selects_nothing(
 
     A verdict rather than a candidate, unlike the already-passes advisory,
     because `verify.selects_no_test` reads pytest's own exit code and pytest
-    only returns 5 for the one reason. What the finding does not settle is
-    which repair it wants, and that is why it stays an advisory: a selector
-    naming a test the work has yet to write is the recommended shape here and
-    is behaving as intended, while one naming a test that will never exist is
-    a specification that can never be met. Only the item's author can say
-    which, so the sentence asks rather than tells.
+    only returns 5 for the one reason. It once stopped short of the repair,
+    because a `-k` naming the test the work had yet to write was the shape the
+    `docket` skill recommended, so only the item's author could say whether a
+    selector was behaving as intended. That ended with `PL-6TP8`, whose
+    contract makes the failure before the work an ordinary exit 1, and
+    `_k_selector_clause` now refuses the `-k` itself on anything captured from
+    its cutover. What this reaches is the set that cutover grandfathers, and
+    the repair for each is the same `grep`, so the sentence names it. It stays
+    an advisory because those commands are repaired as their items are
+    started, and an error here would force the one-pass repair that refuses.
 
     Reported against what is about to be offered rather than against the whole
     backlog, for the reason `_groom` states in the same words a few functions
-    below: the recommended shape here is `-k` naming the test the work will
-    add, so every unstarted item using it selects nothing until its work
-    lands, and naming all of them fired on every run against eighteen of
-    thirty-one open items. That is the advisory that cannot reach zero, and
-    its cost is not the items it names but the next advisory, which gets read
-    the same way.
+    below: when this was written the recommended shape was `-k` naming the
+    test the work would add, so every unstarted item using it selected nothing
+    until its work landed, and naming all of them fired on every run against
+    eighteen of thirty-one open items. That is the advisory that cannot reach
+    zero, and its cost is not the items it names but the next advisory, which
+    gets read the same way.
 
     Narrowing rather than softening. The moment an item is offered is the
     first moment its selector can be held against work somebody is about to
@@ -1392,8 +1531,8 @@ def _check_selects_nothing(
         f"whose command selects nothing, {landed.considered} checked): "
         "pytest collected nothing and exited 5, "
         "which is not 0, so the command reads as one that correctly fails and will read "
-        "that way after the work too - check that the name each selector matches is one "
-        "the work will create, and replace the selectors where it is not"
+        "that way after the work too - replace the selector with a `grep -q` for the "
+        "`def` of the test the work adds, as each item is started"
     )
 
 
