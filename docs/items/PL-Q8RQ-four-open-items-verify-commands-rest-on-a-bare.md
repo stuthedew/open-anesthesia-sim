@@ -9,6 +9,7 @@ feature: delegation
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_config.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docket.toml
 added: 2026-09-15
 closed: 2026-09-22
+pr: 907
 payoff: a new verify: command can no longer rest on a pytest -k name, so an open item's check cannot start passing because an unrelated test happens to share the name - the way PL-S5YM turned main red
 verify: grep -q 'def test_a_bare_k_selector_is_refused' subprojects/docket/tests/test_checks.py
 ---

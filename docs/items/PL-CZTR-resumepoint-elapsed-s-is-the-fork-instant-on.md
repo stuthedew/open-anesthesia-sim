@@ -3,11 +3,12 @@ id: PL-CZTR
 title: ResumePoint.elapsed_s is the fork instant on the case's axis and should be named fork_instant_s, now that the definition's own instants are instant_s
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: core-domain-language
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_controller.py, tests/unit/test_chart_frame.py, tests/integration/test_simulation_view.py
 added: 2026-09-14
+closed: 2026-09-22
 payoff: a branch's fork instant is read under one name, fork.instant_s, so no reader meets a duration's name on an instant and _open_at stops reading one value two ways
 verify: ! grep -rqE '(opened_from|resume_point|ResumePoint)\.elapsed_s' src tests && ! grep -q 'def elapsed_s' src/anesthesia_sim/app/controller.py
 ---
@@ -56,3 +57,15 @@ value is unchanged.
 **Done when, as re-verified 2026-09-22.** `ResumePoint` has no `elapsed_s`,
 every reader above reads `fork.instant_s`, and the suite passes unchanged apart
 from those readers.
+
+**Closed 2026-09-22.** Done as decided: the alias is deleted and every reader
+writes `fork.instant_s`. The reader list above was one short - `SimulationView`'s
+`add_run`, whose "opened at N s but belongs to another case" refusal read the
+alias through a local named `opened_at`. mypy found it once the property was
+gone, which is the check to trust over a grep for this kind of list; the local
+is now `opened_from`, as in `chart_frame.py`. `_branch_from`'s local is
+`fork_at_s`, matching the halt fork's. Every refusal renders the text it did
+before. The `elapsed_s` parameters of `resumed_at`, `fork_at`,
+`_resume_point_at` and `_setting_at` carry the same case instant under the
+duration name and are left to their own item, `PL-BT2J`, since renaming a
+public parameter is a decision this one did not take.

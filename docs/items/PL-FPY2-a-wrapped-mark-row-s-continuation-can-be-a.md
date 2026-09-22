@@ -9,6 +9,7 @@ feature: two-run-attribution
 touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/theme.py, tests/integration/test_simulation_view.py, tools/glyph_check.py
 added: 2026-09-20
 closed: 2026-09-22
+pr: 905
 payoff: stops a wrapped standing clause reading as a row of its own and attaching one run's answer to the wrong mark
 verify: grep -q 'def test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it' tests/integration/test_simulation_view.py
 ---
