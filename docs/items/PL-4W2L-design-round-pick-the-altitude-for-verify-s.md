@@ -10,6 +10,8 @@ touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_
 added: 2026-09-20
 payoff: settles the assertion check's altitude once instead of paying a seventh special case, which is what the same decision bought for the suppression check beside it
 verify: grep -q '^## Decision: the assertion check' docs/items/PL-4W2L-design-round-pick-the-altitude-for-verify-s.md
+root-cause-of: PL-5B88, PL-YZJD, PL-2DTK, PL-CNJH, PL-XQGH
+generator: live - PL-G21K's fix reached only the suppression check; the assertion half still infers intent from single diff lines, and PL-5B88, PL-4W2L and PL-YZJD arrived after G21K closed (PL-KVDK)
 ---
 
 **Problem.** design round: pick the altitude for verify's assertion check before the next of its three open items is worked, since six fixes have each uncovered the next and PL-G21K's ratified decision reached only the suppression check beside it

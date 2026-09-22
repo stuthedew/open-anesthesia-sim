@@ -10,6 +10,8 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli
 added: 2026-09-20
 payoff: --no-git either means what its help says or says what it means, so a session reading a digest count under the flag can tell which reads were skipped
 verify: grep -q 'def test_no_git_stops_every_git_read' subprojects/docket/tests/test_cli.py
+root-cause-of: PL-T441, PL-WF3X, PL-N0MH, PL-3T2Q, PL-M6FY, PL-P757
+generator: live - cli.py builds no invocation object, so root, store prefix, config, runner and --no-git are re-derived per call site; each fix centralised one facet and filed the next, PL-WF3X re-entering 23h after PL-P757 (PL-KVDK)
 ---
 
 **Problem.** `_flight`, `_stranded` and `_orphaned` each return an empty

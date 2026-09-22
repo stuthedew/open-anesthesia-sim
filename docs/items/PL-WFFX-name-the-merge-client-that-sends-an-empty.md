@@ -9,6 +9,8 @@ feature: pr-body-integrity
 touches: docs/items, docs/maintainer.md
 added: 2026-09-20
 payoff: turns a 27% silent loss of design reasoning from something detected after the fact into something that stops happening, by naming the one variable only the owner can see
+root-cause-of: PL-843V, PL-M7W1, PL-G7ST, PL-BXNH, PL-F8Q7
+generator: live - squash commits take client-sent commit_title/commit_message that no check reads; 8 bodies lost since #800, 4 unrecovered on 2026-09-22 (PL-KVDK)
 ---
 
 **Problem.** `PL-843V` established the mechanism by which 187 of 683 squash

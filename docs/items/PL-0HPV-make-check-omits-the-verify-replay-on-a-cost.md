@@ -8,8 +8,9 @@ classes: session-cost, infra
 feature: ci-cost
 touches: Makefile, .github/workflows/quality.yml
 added: 2026-09-14
+root-cause-of: PL-J3BB, PL-J3WK, PL-PBP5
+generator: live - make check and quality.yml are separate lists and make check omits the scoped verify replay, so a failure class reaches CI only; #915 went red this way on 2026-09-22, after a local make check exit 0 (PL-KVDK)
 ---
-
 
 **Problem.** make check omits the verify replay on a cost measured before --verify-base narrowed it, so a PR-only failure class is only ever found from CI
 
