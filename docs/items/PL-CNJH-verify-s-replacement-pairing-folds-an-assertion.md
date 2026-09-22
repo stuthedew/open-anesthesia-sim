@@ -3,12 +3,14 @@ id: PL-CNJH
 title: verify's replacement pairing folds an assertion whose inserted argument loosens it - approx(2.05) to approx(2.05, rel=0.5) - reporting the pair without refusing it; 4 of the 56 it folds across 905 commits change what the line asserts
 priority: P2
 effort: M
-status: blocked
+status: dropped
 classes: defect
 feature: verify-assertion-check
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 blocked-by: PL-4W2L
 added: 2026-09-19
+closed: 2026-09-22
+reason: superseded by PL-4W2L's decision (2026-09-22): the check folds nothing on the shape of an edit, so approx(2.05) to approx(2.05, rel=0.5) refuses as a changed existing assertion; the case is a named test in PL-4W2L's done-when
 verify: grep -q 'def test_a_replacement_that_loosens_the_assertion_is_not_folded_away' subprojects/docket/tests/test_verify.py
 ---
 

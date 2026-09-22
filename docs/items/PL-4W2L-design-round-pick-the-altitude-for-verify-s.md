@@ -1,15 +1,15 @@
 ---
 id: PL-4W2L
-title: design round: pick the altitude for verify's assertion check before the next of its three open items is worked, since six fixes have each uncovered the next and PL-G21K's ratified decision reached only the suppression check beside it
+title: design round: pick the altitude for verify's assertion check - decided 2026-09-22 as parsed statements compared against the base, so build that, retiring the shape folds behind PL-XQGH, PL-CNJH and PL-2DTK
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
-payoff: settles the assertion check's altitude once instead of paying a seventh special case, which is what the same decision bought for the suppression check beside it
-verify: grep -q '^## Decision: the assertion check' docs/items/PL-4W2L-design-round-pick-the-altitude-for-verify-s.md
+payoff: replaces six line-level special cases with one parsed comparison against the base, which on main's history trades 6 false refusals for 9 real assertion changes the matcher missed or folded, and ends the generator that kept producing the next item
+verify: grep -q 'def test_a_parenthesized_multi_manager_with_is_an_assertion_removed' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_replacement_that_loosens_the_assertion_is_not_folded_away' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_removal_is_not_charged_to_an_id_whose_selection_excludes_the_addition' subprojects/docket/tests/test_verify.py && ! grep -q 'def replacements(' subprojects/docket/src/docket/verify.py
 root-cause-of: PL-5B88, PL-YZJD, PL-2DTK, PL-CNJH, PL-XQGH
 generator: live - PL-G21K's fix reached only the suppression check; the assertion half still infers intent from single diff lines, and PL-5B88, PL-4W2L and PL-YZJD arrived after G21K closed (PL-KVDK)
 ---
@@ -35,7 +35,7 @@ and no such decision.
 next: `PL-7TYC` (shape and file suffix), `PL-K1WS` (pair a removal with its
 replacement), `PL-K82G` (the `falsifies:` escape hatch), `PL-QJQL`
 (`with pytest.raises(...)`), `PL-XMNC` (replay scope), `PL-K4R5` (name the
-candidates it cannot decide). Three remain open:
+candidates it cannot decide). Three remained open when this round began:
 
 | item | what it names |
 | --- | --- |
@@ -74,16 +74,15 @@ heading, so the round's outcome is written here under that exact heading.
 A design round's deliverable is prose, and prose is the only thing a command
 can discriminate on: `true` would pass on a branch that held no round at all.
 
-## Recommendation: the assertion check (session, 2026-09-22, awaiting the project owner)
+## Recommendation: the assertion check (session, 2026-09-22; ratified the same day, below)
 
-**Decision needed.** Which altitude the assertion check works at: (i) statements, compared against the base, with every undeclared change or removal of an existing assertion refused; (ii) statements, refusing only an assertion that left its test and reporting one changed in place; or (iii) today's lines, with the three items patched one at a time.
+**Decided 2026-09-22, under `## Decision: the assertion check` below.** The question was which altitude the assertion check works at: (i) statements, compared against the base, with every undeclared change or removal of an existing assertion refused; (ii) statements, refusing only an assertion that left its test and reporting one changed in place; or (iii) today's lines, with the three items patched one at a time.
 
 **Recommendation: (i) - read assertions as statements rather than lines,
 compare them against the base, and fold nothing on the shape of an edit.**
 Chosen over (ii), refusing only an assertion that left its test and reporting
 one changed in place, and over (iii), patching the three items at the line
-altitude. Not yet a decision: the `## Decision: the assertion check` heading
-this item's `verify:` greps for is written only once the owner answers.
+altitude.
 
 **What the check would be for.** One decidable fact: an assertion that existed
 on the base - an `assert` statement (its test, not its message), a call whose
@@ -181,12 +180,67 @@ decision rather than patched:
   change - a form the base's copy does not hold is not charged - and its
   `PL-C4RS`-shaped case becomes a test.
 - One implementation item is filed, touching the same three paths as this one.
-  It retires `ASSERTION_RE`, `NOT_AN_ASSERTION_RE`, `TOKEN_RE`,
-  `tokens_at_depth`, `_inserts_into`, `replacements`, `_one_string_differs` and
-  `literal_swaps`, keeping `is_assertion_line` only as the named fallback.
+  It retires `TOKEN_RE`, `tokens_at_depth`, `_inserts_into`, `replacements`,
+  `_one_string_differs` and `literal_swaps`, keeping `is_assertion_line` and
+  its two patterns only as the named fallback.
   Nothing outside `verify.py` calls any of them. It rewrites the matcher's
   tests in `test_verify.py` and the README's integrity-check section. It is
   reversible: one module, its tests, one README section.
 
 **If refused**, (ii) or (iii) is recorded under the decision heading instead
 and the three are worked against that.
+
+## Decision: the assertion check
+
+**Decision (project owner, 2026-09-22, ratified, over (ii), refusing only an
+assertion that left its test, and over (iii), patching the three items at the
+line altitude).** Option (i) of the recommendation above.
+
+**What the check is for.** One decidable fact: an assertion present in the
+base's copy of a file - an `assert` statement's test (its message excluded), a
+call whose name starts with `assert`, or a `raises`/`warns` context-manager
+item - is absent, as `ast` reads it, after the item's own commits. Existing
+assertions are read-only: every such absence refuses unless `falsifies:` (the
+base's copy, or `PL-ZMGR`'s self-declaration) matches its source text.
+
+**What it deliberately does not decide.** Whether a changed assertion is
+stronger, weaker or restated, which no rule over the shape of an edit can
+answer; whether a new test asserts the right value (`RESIDUAL`); an assertion
+moved to another file, which stays two facts; anything outside `.py`.
+
+**The three, resolved against it.** `PL-XQGH`, `PL-CNJH` and `PL-2DTK` are
+dropped today, each case carried into the done-when below as a named test. That
+meets this round's own done-when above.
+
+**Why the build stays on this item.** This item is the generator head, and a
+head closes when its fix lands (`subprojects/docket/README.md`, on `docket
+generators`). Closing it now would drop the generator ranking while the
+mechanism is still live, so the rewrite is worked here - `PL-G21K`'s shape -
+rather than on a new item that would rank as an ordinary `P2`.
+
+**The build.**
+
+- Parse each `.py` file the item's commits touch, before and after each of
+  those commits, and fold across them by normalized form per file - `PL-VP40`'s
+  fold at statement altitude. Charge a form only where the base's copy of the
+  file holds it (`PL-2DTK`).
+- Match `falsifies:` as a substring of the charged statement's source segment,
+  which keeps every existing declaration matching: a statement's source
+  contains its opening line.
+- Report each refusal under its enclosing function, with that function's
+  assertions before and after, choosing nothing.
+- A file the running interpreter cannot parse is read with `is_assertion_line`
+  and named on the page as read that way.
+- Retire `TOKEN_RE`, `tokens_at_depth`, `_inserts_into`, `replacements`,
+  `_one_string_differs` and `literal_swaps`; rewrite their tests, the README's
+  integrity-check section, and `is_assertion_line`'s docstring, whose
+  multi-manager residual this closes.
+
+**Done when** `subprojects/docket/tests/test_verify.py` holds and passes
+`test_a_parenthesized_multi_manager_with_is_an_assertion_removed` (`PL-XQGH`'s
+case), `test_a_replacement_that_loosens_the_assertion_is_not_folded_away`
+(`approx(2.05)` to `approx(2.05, rel=0.5)` refuses, `PL-CNJH`'s) and
+`test_a_removal_is_not_charged_to_an_id_whose_selection_excludes_the_addition`
+(`PL-C4RS`'s shape, `PL-2DTK`'s); `replacements` is gone from `verify.py`; and
+the replay recorded above, re-run against the new module, refuses the 9
+commits and stops refusing the 6, or the reply explains each difference.
