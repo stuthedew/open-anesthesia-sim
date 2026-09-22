@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: timeline-arrangement
+milestone: v0.5.5
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-22

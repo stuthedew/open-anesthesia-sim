@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning, docs
 feature: generator-identification
+milestone: v0.5.5
 touches: .claude/skills/docket/modes/triage.md, .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-22
 closed: 2026-09-22

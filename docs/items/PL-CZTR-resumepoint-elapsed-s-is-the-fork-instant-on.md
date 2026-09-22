@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: core-domain-language
+milestone: v0.5.5
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_controller.py, tests/unit/test_chart_frame.py, tests/integration/test_simulation_view.py
 added: 2026-09-14
 closed: 2026-09-22
