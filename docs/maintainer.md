@@ -165,3 +165,22 @@ set it when the session opens rather than toggling it.
   a summarization pass and drops the detail this repository's provenance and
   safety requirements depend on. `docs/items/` and `docs/WORKING_NOTES.md`
   exist so a new session can pick up cold.
+
+## Merge from the website, not the GitHub app
+
+Squash-merge, and arm auto-merge, on github.com rather than in the GitHub app
+(project owner, 2026-09-22, ratified, over leaving after-the-fact detection as
+the whole remedy). A pull request's description is this repository's squash
+commit message, so it is where a change's reasoning reaches `main`. The GitHub
+iPhone app submits the squash with an empty message, which GitHub honours over
+the repository's default, and the reasoning is gone from `main` with nothing
+saying so. `#918` confirmed it: merged from the phone, it reached `main` with no
+body. GitHub has acknowledged the defect since 2023, in community discussion
+[#51016](https://github.com/orgs/community/discussions/51016); `PL-WFFX` holds
+the measurements.
+
+- On the website, the commit message box should hold the pull request's
+  description before you confirm. On a phone's browser, check that it does.
+- If the app is the only option, check the message behind its cog icon first.
+- `python3 tools/pr_body_check.py` still reports any body that goes missing,
+  and `--recover` fetches it back from GitHub into `docs/pr-bodies/`.

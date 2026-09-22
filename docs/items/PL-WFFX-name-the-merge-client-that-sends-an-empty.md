@@ -3,12 +3,14 @@ id: PL-WFFX
 title: Name the merge client that sends an empty commit_message, which only the project owner can do: affected merges cluster by sitting at 98.3% and by owner-local hour at p=5e-5, but GitHub records no client identity
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect
 feature: pr-body-integrity
 touches: docs/items, docs/maintainer.md
 added: 2026-09-20
+closed: 2026-09-22
 payoff: turns a 27% silent loss of design reasoning from something detected after the fact into something that stops happening, by naming the one variable only the owner can see
+verify: grep -q 'PL-WFFX' docs/maintainer.md
 root-cause-of: PL-843V, PL-M7W1, PL-G7ST, PL-BXNH, PL-F8Q7
 generator: live - squash commits take client-sent commit_title/commit_message that no check reads; 8 bodies lost since #800, 4 unrecovered on 2026-09-22 (PL-KVDK)
 ---
@@ -124,6 +126,20 @@ lost). In the app, if it is the only option, open the cog and confirm the
 message first. The one-merge test becomes optional confirmation, and
 `tools/pr_body_check.py` stays the backstop because a habit can lapse. Once
 agreed, the habit goes in `docs/maintainer.md` and this item closes.
+
+**The one-merge test ran, and the app is confirmed** (2026-09-22). Asked to
+merge `#918` from the GitHub app, the project owner reported "merged from
+phone"; its squash commit `f1e00087` reached `main` at 18:19 -05:00 with an
+empty body while the pull request's description stands on GitHub. A direct
+merge, so there is no `auto_merge` object to read, but the direct-merge path
+is where 178 of the losses above sit.
+
+**Decided: the habit** (project owner, 2026-09-22, ratified, over leaving
+`tools/pr_body_check.py`'s after-the-fact detection as the whole remedy). The
+owner agreed with the recommendation above. It is written into
+`docs/maintainer.md` § "Merge from the website, not the GitHub app", where the
+person merging reads it; detection stays as the backstop, since a habit can
+lapse.
 
 **Done when** the mobile app is confirmed or exonerated by the one-merge test
 above, and either a habit or a tooling change prevents the next empty body - or
