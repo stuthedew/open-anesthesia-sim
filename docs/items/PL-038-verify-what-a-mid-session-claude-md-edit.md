@@ -10,6 +10,17 @@ touches: CLAUDE.md
 added: 2026-08-24
 ---
 
+> **Groomed 2026-09-22 (`PL-Y4YG`): still owed, unchanged.** The claim is
+> still in `CLAUDE.md` § "Session and tool-use efficiency", the bullet
+> beginning "Edit this file and the core docs in their own session", and the
+> behaviour-change bullet's "despite the cache cost noted above" leans on it,
+> so every session that must edit `CLAUDE.md` mid-session pays, or does not
+> pay, a cost nobody has measured. No later item answers it. The instrument
+> now exists: `tools/context_reading.py` reads the session's own transcript,
+> which carries `cache_read_input_tokens` and `cache_creation_input_tokens`
+> per request, so the **First step** measurement is a read of the requests
+> either side of one edit.
+
 **Problem.** `CLAUDE.md` § "Session and tool-use efficiency" section says to
 edit `CLAUDE.md` and the core docs in their own session, because "they sit in
 the cached prefix of every request, so editing one partway through a session

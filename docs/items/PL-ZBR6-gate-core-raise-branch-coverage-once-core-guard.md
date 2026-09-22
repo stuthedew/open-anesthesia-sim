@@ -3,11 +3,13 @@ id: PL-ZBR6
 title: Gate core/ raise-branch coverage once core-guard-coverage finishes
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: infra, test
 feature: dev-tooling
 touches: pyproject.toml
 added: 2026-08-25
+closed: 2026-09-22
+reason: Superseded by PL-22Z3 (done 2026-09-03, #264): make check and quality.yml both run --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100, so an uncovered raise in core/ - and any other uncovered line or branch there - already fails the build, and that gate was switched on against a green tree. That is this item's done-when, scoped to core/ as it asked rather than to a global threshold (verified 2026-09-22, PL-Y4YG).
 ---
 
 **Problem.** Uncovered `raise`/`except` branches in the scientific core are

@@ -6,9 +6,24 @@ effort: S
 status: ready
 classes: ux, docs
 feature: vaporizer-controls
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/theme.py
 added: 2026-08-24
 ---
+
+> **Groomed 2026-09-22 (`PL-Y4YG`): still owed; the surface has moved to Qt.**
+> Nothing in the interface reads `standard_color_name`,
+> `standard_color_munsell` or `standard_color_pantone` yet;
+> `tests/unit/test_theme.py` is their only reader. The badge's writer is now
+> `RunView._apply_agent_color_scheme` in `app/run_view.py`:
+> `.claude/rules/ui-color.md` makes it the only writer of the ISO 5360
+> identity pair and `tools/agent_identity_check.py` reads it to learn the
+> identity set, so the name and source belong beside that method rather than
+> in a second writer. `touches` names `app/run_view.py` in place of
+> `app/simulation_view.py`. The **First step**'s trade-off is now Qt's:
+> `setToolTip` is still hover-only, so a tooltip fails **Done when** for touch
+> users, and `setAccessibleDescription` is exposed to assistive technology
+> through `QAccessible` without being drawn. Visible text, or something a tap
+> or a key reveals, is what can pass it.
 
 **Problem.** `AgentColorScheme` records `standard_color_name`,
 `standard_color_munsell`, and `standard_color_pantone` for every agent, but

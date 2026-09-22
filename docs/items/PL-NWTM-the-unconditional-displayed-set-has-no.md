@@ -46,3 +46,11 @@ Unchanged, and still `blocked` as its own front matter records. Under clause 2
 the unconditional displayed set becomes a code declaration the document is held
 to, which is the strongest form the convention takes anywhere - a family whose
 members resolve against the tree rather than against a citation.
+
+**Groomed 2026-09-22 (`PL-Y4YG`), while grooming `PL-41YP`:** `PL-036` is
+done, not `ready`, and it closed binding § "Minimum displayed outputs" to a
+named test per bullet in `tools/doc_check.py`, which never imports the
+application package - so the **Done when** clause that has `PL-036`'s check
+read this item's declaration needs re-deciding when this is started: a
+bare-checkout check cannot call a Python declaration under `src/`. `PL-41YP`'s
+half is unaffected.

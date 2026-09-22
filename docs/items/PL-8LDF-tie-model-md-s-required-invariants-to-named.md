@@ -6,9 +6,17 @@ effort: M
 status: ready
 classes: docs, test
 feature: dev-tooling
-touches: docs/MODEL.md
+touches: docs/MODEL.md, tools/doc_check.py
 added: 2026-08-25
 ---
+
+> **Groomed 2026-09-22 (`PL-Y4YG`): still owed; the re-scope below holds.** §
+> "Required invariants" carries 21 bullets now (eighteen when this was filed),
+> none yet naming a test. `PL-036` closed on 2026-09-22 with `BOUND_FAMILIES`
+> holding the hazard table and the minimum displayed outputs, and the comment
+> above it names this item and `PL-2M9N` as the two passes still due. The
+> family entry this pass adds is a `tools/doc_check.py` edit, so `touches` now
+> names that file beside `docs/MODEL.md`.
 
 **Problem.** `docs/MODEL.md`'s eighteen "Required invariants" state what the
 implementation must preserve, with nothing connecting each to the test that
