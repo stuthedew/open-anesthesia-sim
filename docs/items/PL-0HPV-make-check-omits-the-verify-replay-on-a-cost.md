@@ -2,12 +2,13 @@
 id: PL-0HPV
 title: make check omits the verify replay on a cost measured before --verify-base narrowed it, so a PR-only failure class is only ever found from CI
 priority: P3
-effort: S
-status: needs-decision
+effort: M
+status: ready
 classes: session-cost, infra
 feature: ci-cost
-touches: Makefile, .github/workflows/quality.yml
+touches: Makefile, .github/workflows/quality.yml, docs/items, .claude/skills/docket/modes/triage.md
 added: 2026-09-14
+verify: grep -qF 'bin/docket check --verify --verify-base origin/main' Makefile
 root-cause-of: PL-J3BB, PL-J3WK, PL-PBP5
 generator: live - make check and quality.yml are separate lists and make check omits the scoped verify replay, so a failure class reaches CI only; #915 went red this way on 2026-09-22, after a local make check exit 0 (PL-KVDK)
 ---
@@ -225,3 +226,40 @@ of each command and requiring the same exit-zero-ness. Today every one of the
 --verify-base origin/no-such-branch` already exits 0 with one "Not checked"
 line naming the unreadable base (`PL-ZPDM`'s decline), which is the
 bare-checkout behaviour this brief asked for.
+
+## Decided: reorder, then add (project owner, 2026-09-22, ratified)
+
+The owner chose this over three alternatives: adding the replay with the
+commands as they stand, a replay-side parser that runs `grep` clauses first,
+and waiting for the old commands to be fixed as their items start. It reopens
+`PL-FZ58`'s never-in-a-pass for the reorder alone. The pass moves each
+command's deciding clause to the front and removes nothing, so every command
+still loses its health-check clause when its item starts.
+
+**The work, in order.**
+
+1. Reorder every open `verify:` that is a pure `&&` chain and runs an
+   expensive clause (`uv run pytest …`, `python3 tools/doc_check.py check`,
+   `bin/docket check`) before a cheap read-only one (`grep`, `! grep`,
+   `test`). A clause piping read-only commands, such as `PL-WTXB`'s
+   `! bin/docket --help | grep -q milestone`, may move too, by judgment.
+   Leave anything with `||`, `;`, a redirection or a substitution untouched.
+   Write each change with `bin/docket set <id> --verify '…' --overwrite` so
+   the field stays canonical. The 98 is a scratch-script regex count; recount
+   it rather than trusting it.
+2. Prove the pass changed no answer. Run every rewritten command in its old
+   and new form, and require the same exit-zero-ness for each; all 222 exited
+   non-zero on 2026-09-22. Record the count here.
+3. Replace the bare `bin/docket check` in the `Makefile` with
+   `bin/docket check --verify --verify-base origin/main`. Rewrite the comment
+   above it to state the price in force, re-timed after the reorder on a wide
+   file set such as `172f93e1`'s, and the degradation: an unreadable base
+   declines with one "Not checked" line and exit 0, so no shell conditional is
+   needed.
+4. Update the `quality.yml` comment beside the scoped step, which still says
+   `make check` leaves the replay out.
+5. Rewrite `.claude/skills/docket/modes/triage.md`'s "each loses it as its
+   item is started, never in a pass". Say that one reorder pass ran on this
+   item's evidence, and that stripping still happens as each item starts.
+6. Close this item in the commit that adds the `Makefile` line, because its
+   `verify:` passes from that commit on.
