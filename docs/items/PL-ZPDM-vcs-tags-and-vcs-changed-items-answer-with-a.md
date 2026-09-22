@@ -3,12 +3,13 @@ id: PL-ZPDM
 title: vcs.tags and vcs.changed_items answer with a bare frozenset, so a git that does not answer is indistinguishable from a repository with no tags and a branch that changed nothing
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: git-silence-channel
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs_silence.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, tools/doc_check.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
-verify: ! grep -qF 'def tags(root: Path, *, runner: Runner | None = None) -> frozenset[str]:' subprojects/docket/src/docket/vcs.py
+closed: 2026-09-22
+verify: uv run pytest "subprojects/docket/tests/test_vcs_silence.py::test_one_silenced_git_call_never_leaves_a_read_looking_clean[tags]" "subprojects/docket/tests/test_vcs_silence.py::test_one_silenced_git_call_never_leaves_a_read_looking_clean[changed_items]"
 ---
 
 **Problem.** vcs.tags and vcs.changed_items answer with a bare frozenset, so a git that does not answer is indistinguishable from a repository with no tags and a branch that changed nothing
@@ -64,3 +65,47 @@ seen in any answer downstream of it. So closing this item moves two of the three
 entries, and the third needs its `known_gap` re-pointed at `PL-73P0` by whoever
 reaches it first. Left as found rather than corrected here: a triage pass sets
 fields, and re-attributing another item's gap is that item's work.
+
+**Closed 2026-09-22.** `tags` answers with a `TagSet` (`names`, `declined`) and
+`changed_items` with a `ChangedItems` (`identifiers`, `declined`), both wrapping
+their runner in `_Silences` like every other public read in the module. Both are
+in `test_vcs_silence.py`'s sweep now; `default_base`'s entry is re-pointed at
+`PL-73P0`, which the paragraph above had already disowned it to.
+
+**The brief had the `tags` caller's direction backwards, and the real direction
+is the permissive one.** It read the silence as refusing the cut - "the safe
+direction" - on the reasoning that an empty set makes every version untagged.
+`release.is_untagged` returns `False` for an empty set and has since the gate was
+written (`c9285084`, 2026-08-30, `PL-J3ZK`): a project holding no tags is held to
+nothing, because a tool that started refusing releases in a project that never
+tags would be teaching a practice rather than holding one. So a silence was not a
+refusal that named a possibly false fact - it was free passage, on the one gate
+that exists because the gap it guards cannot be repaired afterwards. The claim
+was wrong when written rather than gone stale; nothing about the code moved
+between 2026-09-19 and this close.
+
+**What each of the three callers does now.**
+
+- `cmd_release` refuses on `declined`, through `_unreadable_tags_refusal` rather
+  than `_untagged_warning`: that message names a specific fact - this version
+  carries no tag - which is exactly what has not been established, and sends the
+  operator to push a tag that may already exist. A dry run is still allowed
+  through with the message, as it is for a genuinely untagged release, and
+  `--no-git` remains the escape hatch for a checkout with no git to ask.
+- `cmd_check` declines the `verify:` replay whole - `LandedReport(declined=...)`,
+  so the headline counts it unchecked - instead of scoping it to an empty set and
+  reporting a clean run. The call site's comment had promised "a scoped run then
+  checks nothing and says so"; the saying-so half was the part missing.
+- `doc_check.check_tags` keeps its silence, which its own docstring argues for: a
+  check that fails on how somebody fetched the repository is a check that gets
+  switched off. The behaviour is unchanged and is now a decision the code states
+  rather than the accident of one empty set covering two cases.
+
+**One exit code is worth recording, because it decides which cases this reaches.**
+Inside a repository, `git diff --name-only <base>...HEAD` exits **128** for a base
+that does not resolve, so a shallow CI clone whose base ref was never fetched now
+declines rather than replaying nothing. Outside a repository the same command
+exits **1** - "error: Could not access" - which `_run_git` reads as git answering
+no, so `test_verify_base_narrows_the_replay_to_what_the_branch_changed` still
+drives the narrowing rather than the decline. `git tag --list` outside a
+repository exits 128, which is what the release-refusal test is built on.

@@ -1497,9 +1497,18 @@ comes to look like the normal end of a release.
 
 Tags are outside that check, and inside the project's own. A tag-less clone is
 a normal checkout, so nothing about tags may be concluded from a repository
-that cannot answer — `vcs.tags` collapses no git, no repository and no tags
-alike to an empty set, and a checker reading it says nothing rather than
-reporting every release as untagged.
+that cannot answer — the checker says nothing rather than reporting every
+release as untagged.
+
+`vcs.tags` used to reach that outcome by collapsing no git, no repository and
+no tags alike to an empty set, which made the silence free for its other
+caller: `release.is_untagged` holds a project with no tags to nothing, so a
+`git tag --list` that failed skipped the release gate with nothing said
+(`PL-ZPDM`). It answers with a `TagSet` now — `names`, and `declined` where git
+would not speak. The checker's silence is unchanged and is now a decision it
+takes rather than the accident of one empty set; `docket release` refuses the
+cut on `declined`, naming the question that went unanswered rather than
+asserting an untagged release it has not established.
 
 A **shallow** clone was assumed to collapse the same way and does not: it holds
 the tags reachable within its depth and omits the rest, so every release older

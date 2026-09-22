@@ -3669,23 +3669,53 @@ def _cut_date(ref: str, notes_dir: str, version: str, root: Path, run: Runner) -
         return None
 
 
-def tags(root: Path, *, runner: Runner | None = None) -> frozenset[str]:
-    """Every tag name the repository holds.
+@dataclass(frozen=True)
+class TagSet:
+    """Every tag the repository holds, or why that could not be read.
 
-    Empty for a checkout with no tags, no git, or no repository at all - the
-    same collapse every other read here makes. **A truncated clone does not
-    collapse to empty**: it returns the tags reachable within its depth and
-    silently omits the rest, so a caller reasoning from a tag's absence must
-    ask `is_shallow` first (`PL-J295`). What that emptiness *means* is
-    decided by the caller: `release.is_untagged` reads it as "this project does
-    not tag" rather than as "every release is untagged", because a tool that
-    started refusing releases in a project that never tagged would be teaching
-    a practice rather than holding one.
+    `declined` for the reason `PullRequestHistory` carries one, and the tag
+    read is where an empty set is least safe to guess from. `release.is_untagged`
+    reads an answered emptiness as "this project does not tag" and holds the
+    project to nothing - the right reading, and the one that made a silence
+    free: a `git tag --list` that failed skipped the release gate outright,
+    with nothing said, on the one check that exists because the gap it guards
+    cannot be repaired afterwards (`PL-ZPDM`).
+
+    The direction is what makes it worth a type. A silence read as "no tags"
+    is not a wrong answer a caller can question - it is the right *shape* of
+    answer carrying a fact the caller has no way to doubt.
     """
-    run = runner or _run_git
-    return frozenset(
+
+    names: frozenset[str] = frozenset()
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+
+def tags(root: Path, *, runner: Runner | None = None) -> TagSet:
+    """Every tag name the repository holds, or why git could not say.
+
+    Three answers rather than the two this used to give. `names` empty and
+    `known` is a checkout with no tags; `declined` is git not answering at all -
+    no repository, no git, a `tag --list` that failed. **A truncated clone is
+    neither**: it answers with the tags reachable within its depth and silently
+    omits the rest, so a caller reasoning from a tag's absence must still ask
+    `is_shallow` first (`PL-J295`).
+
+    What an *answered* emptiness means stays the caller's to decide:
+    `release.is_untagged` reads it as "this project does not tag" rather than
+    as "every release is untagged", because a tool that started refusing
+    releases in a project that never tagged would be teaching a practice rather
+    than holding one. That reading is only sound once a silence cannot reach
+    it, which is what the type is for.
+    """
+    run = _Silences(runner or _run_git)
+    names = frozenset(
         line.strip() for line in run(["tag", "--list"], root).splitlines() if line.strip()
     )
+    return TagSet(names=names, declined=run.reason)
 
 
 # A pull request number as it reaches the default branch. GitHub writes one of
@@ -4665,10 +4695,13 @@ def _changed_items(root: Path, base: str, items_dir: str, run: Runner) -> set[st
     every session learns to route around, which is the failure `CLAUDE.md`
     reserves its retirement rule for.
 
-    A `...` with no merge base to resolve returns nothing, because `_run_git`
-    answers a failed command with empty output. That is the safe direction: the
-    caller then under-reports, which leaves the tree exactly as it is today,
-    rather than reporting a rewrite that did not happen.
+    A `...` with no merge base to resolve returns nothing here, because git
+    exits non-zero and `_run_git` answers with an empty string *marked* as one
+    it never gave. Both callers wrap their runner in `_Silences`, so what
+    reaches a reader is a decline rather than "this branch changed no items":
+    `records_on_base` since it was written, `changed_items` since `PL-ZPDM`.
+    The answer itself still under-reports rather than guessing, which is what
+    keeps a partial read from reporting a rewrite that did not happen.
     """
     changed: set[str] = set()
     for revision in (f"{base}...HEAD", "HEAD"):
@@ -4680,10 +4713,32 @@ def _changed_items(root: Path, base: str, items_dir: str, run: Runner) -> set[st
     return changed
 
 
+@dataclass(frozen=True)
+class ChangedItems:
+    """The items a checkout changed against a base, or why that is not known.
+
+    `declined` because of what the one caller does with the set.
+    `docket check --verify --verify-base` scopes the `verify:` replay to these
+    ids, so an empty set that means "git would not say" scopes the replay to
+    nothing and the run reports a clean result it never established - the
+    permissive direction, on the gate CI is holding a pull request to
+    (`PL-ZPDM`). The private form has always had a channel, because
+    `records_on_base` wraps its runner; this is that channel reaching the
+    public read.
+    """
+
+    identifiers: frozenset[str] = frozenset()
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+
 def changed_items(
     root: Path, base: str, *, items_dir: str = "docs/items", runner: Runner | None = None
-) -> frozenset[str]:
-    """The item ids this checkout has changed against `base`.
+) -> ChangedItems:
+    """The item ids this checkout has changed against `base`, or why that is unread.
 
     The public form of `_changed_items`, which `records_on_base` has used
     internally since it was written. `docket check --verify-base` reads it to
@@ -4691,11 +4746,15 @@ def changed_items(
     (`PL-SDHR`), which is a different caller with the same question.
 
     Its one-sidedness is the property both callers rely on and is documented on
-    the private function: where it cannot resolve a merge base it returns
-    nothing rather than guessing. For this caller that means a scoped run
-    checks nothing rather than checking the wrong thing, and says so.
+    the private function: what it cannot read it leaves out rather than
+    guessing at. That makes a scoped run check nothing rather than the wrong
+    thing - correct, and half an answer until the run can also say *why* the
+    scope is empty, which is what `declined` carries.
     """
-    return frozenset(_changed_items(root, base, items_dir, runner or _run_git))
+    run = _Silences(runner or _run_git)
+    return ChangedItems(
+        identifiers=frozenset(_changed_items(root, base, items_dir, run)), declined=run.reason
+    )
 
 
 def records_on_base(

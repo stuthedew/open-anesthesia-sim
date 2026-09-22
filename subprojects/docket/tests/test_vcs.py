@@ -36,6 +36,7 @@ from docket.vcs import (
     behind_remote,
     branch_state,
     branches_in_flight,
+    changed_items,
     closed_by,
     closures_on_base,
     cut_window,
@@ -1765,13 +1766,56 @@ def test_a_ref_that_cannot_prove_what_is_contained_does_not_silence_the_others()
 
 
 def test_tags_are_read_from_the_repository() -> None:
-    assert tags(ROOT, runner=lambda args, root: "v0.1.0\nv0.2.0\n") == frozenset(
-        {"v0.1.0", "v0.2.0"}
-    )
+    read = tags(ROOT, runner=lambda args, root: "v0.1.0\nv0.2.0\n")
+
+    assert read.names == frozenset({"v0.1.0", "v0.2.0"})
+    assert read.known
 
 
-def test_no_git_means_no_tags_rather_than_an_error() -> None:
-    assert tags(ROOT, runner=lambda args, root: "") == frozenset()
+def test_a_repository_holding_no_tags_answers_with_an_empty_set() -> None:
+    """The answered emptiness, which `release.is_untagged` holds to nothing."""
+    read = tags(ROOT, runner=lambda args, root: "")
+
+    assert read.names == frozenset()
+    assert read.known
+
+
+def test_a_git_that_will_not_say_which_tags_exist_declines_rather_than_answering_none() -> None:
+    """The two used to be one value, and the release gate acts on the difference.
+
+    `is_untagged` reads an empty set as "this project does not tag" and holds
+    the project to nothing - correct for a repository that answered, and free
+    passage for one that did not: the cut went ahead with the tag gate skipped
+    and nothing said. `cmd_release` refuses on `declined` now, so the direction
+    turns on this distinction and not on a set that means both (`PL-ZPDM`).
+    """
+    silent = tags(ROOT, runner=lambda args, root: SILENT)
+
+    assert silent.names == frozenset()
+    assert not silent.known
+    assert "tag --list" in silent.declined
+
+
+def test_a_git_that_will_not_diff_declines_rather_than_reporting_no_changed_items() -> None:
+    """The scope of `check --verify-base`, and the same collapse one read along.
+
+    An empty set here scopes the `verify:` replay to nothing, so the run
+    executes no command and reports a clean result - which is what a branch
+    that changed no item also produces. The reason travels with the answer now
+    and `cmd_check` declines the replay whole rather than claiming that scope.
+    """
+    silent = changed_items(ROOT, BASE, runner=lambda args, root: SILENT)
+
+    assert silent.identifiers == frozenset()
+    assert not silent.known
+    assert "did not answer" in silent.declined
+
+    # A git that ran and found nothing is the other case, and still an answer:
+    # this branch changed no item file, which is a fact about the branch.
+    answered = changed_items(ROOT, BASE, runner=lambda args, root: "")
+
+    assert answered.identifiers == frozenset()
+    assert answered.known
 
 
 def _refs(known: dict[str, str]):

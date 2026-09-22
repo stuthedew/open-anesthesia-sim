@@ -558,7 +558,17 @@ def format_digest(
         )
         unparsed = " Timeline does not parse cleanly - check `wave`." if plan.problems else ""
         if plan.stale:
-            unparsed += " The plan's numbering is behind the project - check `wave`."
+            # The short form of `format_wave`'s own heading over the same
+            # statements, and the same words, because `Wave.stale` carries four
+            # kinds and only three are a numbering behind the project: the
+            # fourth is a section no timeline row bears, where the plan places
+            # nothing rather than placing it late (`PL-DK8Y`). A reader told
+            # the numbering is behind goes and reads the timeline's numbers,
+            # which is the wrong file for that one.
+            unparsed += (
+                " The plan and the project disagree, so the beat rests on a"
+                " stale plan - check `wave`."
+            )
         lines.append(
             f"Plan: {plan.version or 'unknown'}, {position} ({plan.step.label}). "
             f"Beat: {_beat_line(plan)}.{unparsed}"

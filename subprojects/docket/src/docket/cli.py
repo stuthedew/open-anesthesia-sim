@@ -562,11 +562,25 @@ def cmd_check(args: argparse.Namespace) -> int:
     # opening its item (`PL-XMNC`). Both read the diff against the same base,
     # and both under-report where that base cannot be resolved rather than
     # guessing - a scoped run then checks nothing and says so.
+    #
+    # Saying so is the half that was missing (`PL-ZPDM`). The read answered a
+    # git that would not speak with an empty set, which is what a branch that
+    # changed no item looks like - so the replay was scoped to nothing, ran
+    # nothing, and the run reported a clean result. `unscoped` carries the
+    # reason instead, and the replay below declines whole rather than claiming
+    # a scope it could not read.
     changed: frozenset[str] = frozenset()
     reading: frozenset[str] = frozenset()
+    unscoped = ""
     if args.verify and args.verify_base:
-        changed = changed_items(root, args.verify_base, items_dir=config.items_dir)
+        edited = changed_items(root, args.verify_base, items_dir=config.items_dir)
+        changed = edited.identifiers
         reading = items_reading(items, changed_paths(root, args.verify_base)) - changed
+        if not edited.known:
+            unscoped = (
+                f"the replay is scoped to what this branch changed against "
+                f"{args.verify_base}, and that could not be read - {edited.declined}"
+            )
     report = _complete_report(
         root,
         items,
@@ -608,7 +622,9 @@ def cmd_check(args: argparse.Namespace) -> int:
         # `pull_request` and sweeps on `push` to the default branch, which is
         # the one event where the answer is a fact about that branch.
         landed=(
-            already_passing(
+            LandedReport(declined=unscoped)
+            if unscoped
+            else already_passing(
                 root,
                 items,
                 scoped_to=changed | reading,
@@ -2142,15 +2158,24 @@ def cmd_release(args: argparse.Namespace) -> int:
     # got as far as its bump: `current` is then the release being finished
     # rather than one that shipped and wants a tag, and refusing on it would
     # block the only run that can write its notes.
-    if (
-        not getattr(args, "no_git", False)
-        and resuming.lstrip("v") != current.strip().lstrip("v")
-        and is_untagged(current, tags(root))
-    ):
-        print(_untagged_warning(current))
-        if not args.dry_run:
-            return 1
-        print()
+    #
+    # A git that will not say refuses too, in its own words (`PL-ZPDM`). This
+    # read answered a silence with an empty set until then, and `is_untagged`
+    # holds a project with no tags to nothing - so the gate skipped itself
+    # whenever git failed, silently, which is the permissive direction on the
+    # one check whose gap cannot be repaired afterwards.
+    if not getattr(args, "no_git", False) and resuming.lstrip("v") != current.strip().lstrip("v"):
+        existing = tags(root)
+        refusal = ""
+        if not existing.known:
+            refusal = _unreadable_tags_refusal(current, existing.declined)
+        elif is_untagged(current, existing.names):
+            refusal = _untagged_warning(current)
+        if refusal:
+            print(refusal)
+            if not args.dry_run:
+                return 1
+            print()
 
     if resuming and args.version and args.version.strip().lstrip("v") != resuming.lstrip("v"):
         print(_unfinished_cut_refusal(resuming, ready, args.version.strip().lstrip("v")))
@@ -2479,6 +2504,43 @@ def _untagged_warning(version: str) -> str:
             f'  git log --oneline --grep="Release {name}"   # find the commit',
             f'  git tag -a {name} RELEASE_COMMIT -m "{name}"   # the commit found above',
             f"  git push origin {name}",
+        ]
+    )
+
+
+def _unreadable_tags_refusal(version: str, declined: str) -> str:
+    """Refuse the cut where git would not say whether the last release is tagged.
+
+    `_untagged_warning` is the wrong message here for the reason it is the
+    right one there: it names a specific fact - this version carries no tag -
+    and sends the operator to run three commands, the first of which may be
+    pushing a tag that already exists. What is true is weaker and worth saying
+    in its own words: nothing was read, so the gate did not run.
+
+    Refusing rather than warning through, because the two costs are not
+    comparable. A false refusal costs one re-run and prints exactly which
+    question went unanswered; proceeding extends a gap `git describe
+    --contains` can never close afterwards, on a cut nobody would think to
+    re-examine. `--no-git` is the escape hatch for a checkout that genuinely
+    has no git to ask, and it is named here rather than left to be found - as
+    a flag rather than a command line, because the version being cut is not
+    resolved until further down and a printed command carrying the wrong one
+    is worse than no command at all.
+    """
+    name = f"v{version.lstrip('v')}"
+    return "\n".join(
+        [
+            f"Cannot tell whether {name} is tagged, so the tag gate did not run:",
+            f"{declined}.",
+            "",
+            f"Cutting on top of an untagged {name} leaves a gap that cannot be closed",
+            "later with any confidence, so this refuses rather than assuming the tag",
+            "is there. Check what git says, then re-run the cut:",
+            "",
+            "  git tag --list",
+            "",
+            "Where this checkout has no git to ask at all, re-run the same cut with",
+            "`--no-git`, which turns this gate off along with the other git reads.",
         ]
     )
 

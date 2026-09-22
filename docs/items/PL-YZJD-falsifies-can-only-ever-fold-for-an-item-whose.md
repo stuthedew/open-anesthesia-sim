@@ -9,6 +9,7 @@ feature: verify-false-reject
 touches: .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-21
 closed: 2026-09-22
+pr: 890
 verify: grep -q 'def test_a_branch_declaration_names_the_window_it_missed' subprojects/docket/tests/test_verify.py && grep -q 'why triage is the only pass that can write it' .claude/skills/docket/modes/triage.md
 ---
 

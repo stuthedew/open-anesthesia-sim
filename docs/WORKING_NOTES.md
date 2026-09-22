@@ -1477,11 +1477,13 @@ its opening paragraphs, because an abandoned session leaves an item marked
 in-progress forever. So the framing was closed rather than answered, and the
 round's finding is one level down.
 
-`_run_git` returns `""` for a non-zero exit, a missing git and a timeout alike,
-so absence-of-evidence and evidence-of-absence are the same value. Every caller
-then adjudicates that silence on its own: eight `known()` properties, 54
-references to `declined`, and 67 lines of prose settling it one read at a time —
-and two calls inside `branches_in_flight` settle it in opposite directions.
+`_run_git` *returned* `""` for a non-zero exit, a missing git and a timeout
+alike, so absence-of-evidence and evidence-of-absence were the same value -
+the diagnosis as it stood on 2026-09-19, before `PL-Q9Z1` gave the runner the
+`GitSilence` marker that `answered()` reads. Every caller then adjudicated that
+silence on its own: eight `known()` properties, 54 references to `declined`, and
+67 lines of prose settling it one read at a time — and two calls inside
+`branches_in_flight` settling it in opposite directions.
 
 **The measurement is the part worth keeping**, because the cost had been argued
 and never counted. Substituting a runner that fails one subcommand and answers
@@ -1553,15 +1555,25 @@ nothing made the last new read answer the question.
 failed evidence and prints that its ordering is partial. Whether the
 2026-09-16 observation had a second cause is still its own item.
 
-**`PL-ZPDM` is what the sweep cannot yet cover**: `tags` and `changed_items`
-answer with a bare collection, so a silence is indistinguishable from a
-repository with no tags and a branch that changed nothing. `default_base` is the
-third of that shape and is `PL-73P0`, above, which is the more specific item and
-keeps it. All three are held by a test asserting the breach rather than by a
-marker excusing them - `bin/docket verify` reads a suppression marker and cannot
-read the reason attached to it, so a recorded breach has to be written as an
-assertion to survive its own audit (`PL-4FD2`, which that audit refused three
-times on its own brief).
+**`PL-ZPDM` closed two of the three reads the sweep could not cover (2026-09-22).**
+`tags` answers with a `TagSet` and `changed_items` with a `ChangedItems`, both
+carrying `declined`, and both are in the sweep now. What the close found is that
+the brief had the release gate's direction backwards: it read the `tags` silence
+as a refusal, and `release.is_untagged` has held a project with no tags to
+nothing since the gate was written on 2026-08-30 - so the empty set a silence
+produced was free passage, and the one gate guarding a gap nothing can repair
+afterwards skipped itself whenever git failed. `cmd_release` refuses on
+`declined` now; `cmd_check` declines the `verify:` replay rather than scoping it
+to nothing; `doc_check.check_tags` keeps its silence, which is now a decision it
+takes rather than the accident of one empty set.
+
+`default_base` is the third of that shape and stays open as `PL-73P0`, which
+carries the wider case: the base is the one input whose wrongness cannot be seen
+in any answer downstream of it. It is still held by a test asserting the breach
+rather than by a marker excusing it - `bin/docket verify` reads a suppression
+marker and cannot read the reason attached to it, so a recorded breach has to be
+written as an assertion to survive its own audit (`PL-4FD2`, which that audit
+refused three times on its own brief).
 
 ## Decided: three silently-wrong checks go ahead of product work - PL-VKGJ, PL-STC4, PL-T83R (2026-09-19)
 
