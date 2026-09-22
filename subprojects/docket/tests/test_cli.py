@@ -1086,6 +1086,29 @@ def test_delegable_lists_only_what_qualifies(
         assert excluded not in out
 
 
+def test_delegable_sends_the_worker_to_the_instructions_that_qualify_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """This one line is the whole delivery path for the decision-section rule.
+
+    `docs/worker.md` carries the rule that a `**Decision needed.**` heading on
+    an offered item is a record of a settled question rather than a live one -
+    the answer is written underneath it, 16 to 46 lines below across the four
+    items that carried the section on 2026-09-22. Without that rule a worker
+    meets the heading, reads it as an unclear brief under "Stop. Do not guess.",
+    and returns the item: the round trip `delegable` exists to remove
+    (`PL-NJ9M`).
+
+    The listing cannot annotate the items themselves, and deliberately does not
+    try. Nothing in the front matter distinguishes an answered decision section
+    from an open one - that reading is prose, which is the judgment half - so
+    the guidance is standing rather than per-item. Which makes this footer the
+    only thing carrying it to a worker, and it was untested.
+    """
+    assert main(["--items", str(_delegable_store(tmp_path)), "--no-git", "delegable"]) == 0
+    assert "docs/worker.md" in capsys.readouterr().out
+
+
 def test_delegable_says_so_when_nothing_qualifies(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
