@@ -1477,11 +1477,13 @@ its opening paragraphs, because an abandoned session leaves an item marked
 in-progress forever. So the framing was closed rather than answered, and the
 round's finding is one level down.
 
-`_run_git` returns `""` for a non-zero exit, a missing git and a timeout alike,
-so absence-of-evidence and evidence-of-absence are the same value. Every caller
-then adjudicates that silence on its own: eight `known()` properties, 54
-references to `declined`, and 67 lines of prose settling it one read at a time —
-and two calls inside `branches_in_flight` settle it in opposite directions.
+`_run_git` *returned* `""` for a non-zero exit, a missing git and a timeout
+alike, so absence-of-evidence and evidence-of-absence were the same value -
+the diagnosis as it stood on 2026-09-19, before `PL-Q9Z1` gave the runner the
+`GitSilence` marker that `answered()` reads. Every caller then adjudicated that
+silence on its own: eight `known()` properties, 54 references to `declined`, and
+67 lines of prose settling it one read at a time — and two calls inside
+`branches_in_flight` settling it in opposite directions.
 
 **The measurement is the part worth keeping**, because the cost had been argued
 and never counted. Substituting a runner that fails one subcommand and answers
