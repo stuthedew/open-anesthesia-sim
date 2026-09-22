@@ -467,6 +467,22 @@ def _complete_report(
     so a session start offline answers exactly as it did before, and the hook
     that prints the digest already spends 1.8 s on a fetch and a CI read.
     """
+    # Where the store sits as git spells it, rather than what the settings call
+    # it. Every read below resolves its paths from the repository root, and
+    # `--items` may point at a store the loaded config does not name - the
+    # config being read from beside the store, deliberately, so the project
+    # that owns a queue is the one whose policy governs it. Handed
+    # `config.items_dir`, each `git show` below then missed, no closure was
+    # `landed`, no `pr` was owed, and the command reported a clean provenance
+    # record for a store it never read: exit zero, a plausible count, and
+    # nothing on the line saying the question went unasked (`PL-T441`). It is
+    # `_tracked` that answers this for `_flight` and `_stranded` already, so
+    # asking it here is one spelling of the question rather than a second.
+    #
+    # A store outside the checkout comes back as the empty prefix, which git
+    # rejects as a pathspec - so these reads decline and say so, which is the
+    # honest answer for a queue git cannot be asked about at all.
+    _, tracked = _tracked(args)
     return analyze(
         items,
         args.today or date.today(),
@@ -485,7 +501,7 @@ def _complete_report(
         closures=closures_on_base(
             root,
             {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path},
-            items_dir=config.items_dir,
+            items_dir=tracked,
         ),
         # The same `git show`, asked of the other half of a closure: not "has
         # this landed" but "does it still record the command that proved it".
@@ -495,13 +511,13 @@ def _complete_report(
         records=records_on_base(
             root,
             {i.identifier: i.path for i in items if i.status == "done" and i.path},
-            items_dir=config.items_dir,
+            items_dir=tracked,
         ),
         # Asked of the branch rather than of the default branch, and that is
         # the whole point: a squash merge makes the branch's commits ancestors
         # of nothing, so the objects proving what it carried stop being
         # reachable. Run here, on a pull request, the evidence is still intact.
-        lost=lost(root, items_dir=config.items_dir),
+        lost=lost(root, items_dir=tracked),
         # Read rather than asked of git: a stamped `milestone:` is judged
         # against the version the project is actually on, and an absent
         # version file leaves the question unasked rather than answered.
@@ -575,7 +591,13 @@ def cmd_check(args: argparse.Namespace) -> int:
     reading: frozenset[str] = frozenset()
     unscoped = ""
     if args.verify and args.verify_base:
-        edited = changed_items(root, args.verify_base, items_dir=config.items_dir)
+        # The same resolution `_complete_report` makes, and for the same
+        # reason: the diff behind the replay's scope is read from the
+        # repository root, so a store the settings do not name scopes the
+        # replay to nothing (`PL-T441`). An unreadable prefix leaves `known`
+        # false, and `unscoped` below says so rather than reporting a clean
+        # replay that never ran.
+        edited = changed_items(root, args.verify_base, items_dir=_tracked(args)[1])
         changed = edited.identifiers
         reading = items_reading(items, changed_paths(root, args.verify_base)) - changed
         if not edited.known:

@@ -3,11 +3,12 @@ id: PL-T441
 title: The git reads behind a printed count resolve the store from config.items_dir rather than the tracked directory, so docket check --items pointed at a store elsewhere silently finds no closures
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: count-input-addressing
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
+closed: 2026-09-22
 payoff: docket check --items pointed at a store elsewhere stops reporting a clean provenance record for a store it never read
 verify: grep -q 'def test_counts_resolve_the_store_from_the_tracked_directory' subprojects/docket/tests/test_cli.py
 recurrences: 2026-09-22 PL-WF3X

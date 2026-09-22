@@ -12,6 +12,7 @@ like it belonged to these helpers rather than to a setting none of them names
 from __future__ import annotations
 
 import argparse
+import ast
 import os
 import re
 import subprocess
@@ -872,10 +873,17 @@ added: 2026-08-01
 
 
 def _reading_repo(tmp_path: Path) -> tuple[Path, str]:
-    """A checkout holding `READING`, and the base its branch is measured against."""
+    """A checkout holding `READING`, and the base its branch is measured against.
+
+    The file is named as the store names one - `<id>-<slug>.md` - because half
+    the replay's scope is read out of a diff, and `vcs.ITEM_FILE_RE` recovers
+    the id from the file name. Under any other name a branch that edits the
+    item is a branch that changed no item, which is not the store's behaviour
+    and would have hidden `PL-WF3X` from the test below.
+    """
     root = tmp_path / "repo"
     (root / "items").mkdir(parents=True)
-    (root / "items" / "reading.md").write_text(READING, encoding="utf-8")
+    (root / "items" / "PL-R34D-reading.md").write_text(READING, encoding="utf-8")
     (root / "README.md").write_text("nothing here yet\n", encoding="utf-8")
     # A real checkout, for the reason `_release_repo` gives: the scope is read
     # from a diff, so a stub would test the stub.
@@ -941,6 +949,38 @@ def test_a_base_a_repository_cannot_resolve_declines_the_replay(
     assert "not checked" in printed
     assert "scoped to what this branch changed against docket-no-such-ref" in printed
     assert "could not be read" in printed
+
+
+def test_the_replay_scope_reads_the_store_the_run_was_pointed_at(tmp_path: Path) -> None:
+    """The other half of the same addressing bug, on the scope rather than a count.
+
+    `cmd_check` took the replay's scope diff against `config.items_dir` while
+    `--items` decided which store was read, so a queue anywhere else had its
+    diff taken against a directory it does not live in: the branch's own item
+    came back unchanged, the replay was scoped to nothing, and a scoped
+    `--verify` run reported a clean result having replayed nothing
+    (`PL-WF3X`). The store here sits at `items/`, which is where the defect is
+    visible and where a store that is not this project's usually sits.
+
+    The marker is the evidence, because it is written by the command itself:
+    the branch edits `PL-R34D`'s own file and nothing else, so the item is in
+    scope through `changed_items` alone - `items_reading`, the other half,
+    matches a command against the paths a branch changed and this command
+    names only `README.md`, which is untouched here. Exit 0 with the command
+    having run is the open item's ordinary state: it greps for a sentinel the
+    README does not carry, so the replay finds nothing already passing.
+    """
+    root, base = _reading_repo(tmp_path)
+    store = root / "items"
+    item = store / "PL-R34D-reading.md"
+    item.write_text(
+        item.read_text(encoding="utf-8").replace("classes: perf", "classes: perf, defect"),
+        encoding="utf-8",
+    )
+
+    assert _run("check", "--verify", "--verify-base", base, "--items", str(store)) == 0
+
+    assert (root / "ran.marker").exists()
 
 
 def test_digest_is_silent_on_an_empty_store(
@@ -4374,18 +4414,22 @@ def test_record_refuses_a_merge_without_the_number_it_is(
     assert _work_pr(work) == ""
 
 
-def _owed_project(tmp_path: Path) -> Path:
+def _owed_project(tmp_path: Path, *, store: str = "docs/items") -> Path:
     """A clone whose `origin/main` holds a closure recording no `pr`, plus work.
 
-    The store sits at the default `items_dir` rather than `_owed_clone`'s
-    `items/`, because the git reads behind the closure advisory resolve their
-    paths from the repository root: a store anywhere else is invisible to them
-    and every count under test agrees at zero for the wrong reason. The open
-    item is what gives `next` a pick, which is the only state in which it
-    prints a count at all.
+    `store` is where the queue sits, and the default is the default setting
+    rather than a constraint. It was a constraint when this was written: the
+    git reads behind the closure advisory took their path from
+    `config.items_dir`, so a store anywhere else was invisible to them and
+    every count under test agreed at zero for the wrong reason. Those reads go
+    through `cli._tracked` since `PL-T441`, which is what lets this take the
+    location as an argument at all.
+
+    The open item is what gives `next` a pick, which is the only state in
+    which it prints a count at all.
     """
     origin = tmp_path / "origin"
-    items = origin / "docs" / "items"
+    items = origin / store
     items.mkdir(parents=True)
     closed = "PL-K7QX-a-closed-item.md"
 
@@ -4414,7 +4458,7 @@ def _owed_project(tmp_path: Path) -> Path:
 
     work = tmp_path / "work"
     subprocess.run(["git", "clone", "-q", str(origin), str(work)], check=True, capture_output=True)
-    return work / "docs" / "items"
+    return work / store
 
 
 def _grooming_counts(store: Path, capsys: pytest.CaptureFixture[str]) -> dict[str, int]:
@@ -4505,6 +4549,71 @@ def test_every_command_that_prints_a_count_asks_the_same_questions(
     } <= asked["check"]
     assert asked["digest"] == asked["check"]
     assert asked["next"] == asked["check"]
+
+
+def test_counts_resolve_the_store_from_the_tracked_directory(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """One project, two queue locations, and the same answer from both.
+
+    `--items` is the documented way to point at a store, and the settings are
+    read from beside the store rather than from the working directory - so a
+    store the loaded config does not name is the ordinary case rather than an
+    exotic one. The git reads behind the printed counts took their path from
+    `config.items_dir` all the same, so every `git show` missed, nothing read
+    as landed, no `pr` was owed, and all three commands reported a clean
+    provenance record for a store they never read (`PL-T441`). Exit zero, a
+    plausible count, and nothing on the line saying the question went unasked.
+
+    Pinned as an equality between the two layouts rather than as a number, so
+    it keeps holding when the advisories themselves change: what must not come
+    back is where the queue sits changing the answer. The advisory naming the
+    closure is asserted too, because that is the finding that went missing and
+    a total can agree for other reasons.
+    """
+    default = _grooming_counts(_owed_project(tmp_path / "default"), capsys)
+    elsewhere = _owed_project(tmp_path / "elsewhere", store="queue")
+
+    main(["check", "--items", str(elsewhere), "--today", "2026-08-24"])
+    out = capsys.readouterr().out
+
+    assert "PL-K7QX" in out and "#148" in out
+    assert default["check"] >= 1
+    assert _grooming_counts(elsewhere, capsys) == default
+
+
+def test_no_git_read_in_the_cli_takes_the_store_from_the_settings() -> None:
+    """`items_dir=` is never handed what the settings call the store.
+
+    The test above holds on the fixture it runs; this holds one level up from
+    it, over every reader in the module - including one added later whose
+    advisory that fixture does not happen to raise. Worth stating because the
+    same surface has now been reached three ways: the root resolved from the
+    store's parent (`PL-P757`), the settings read from `docs/` (`PL-K5PW`),
+    and the reads behind a count resolved from the settings (`PL-T441`).
+
+    The rule is exact, which is what keeps it out of the
+    advisory-nobody-reads category rather than a matter of taste: a keyword
+    `items_dir=` naming the settings' copy is the repository-root path of
+    whatever store the *config* describes, which is the right answer only by
+    coincidence, and `_tracked` is the one spelling that answers for the store
+    the caller was actually pointed at.
+    """
+    tree = ast.parse(Path(cli.__file__).read_text(encoding="utf-8"))
+    from_settings = sorted(
+        keyword.value.lineno
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        for keyword in node.keywords
+        if keyword.arg == "items_dir"
+        and isinstance(keyword.value, ast.Attribute)
+        and keyword.value.attr == "items_dir"
+    )
+
+    assert not from_settings, (
+        f"cli.py line(s) {from_settings} hand a git read the store the settings name, "
+        f"not the one `--items` pointed at; `_tracked` is what resolves it"
+    )
 
 
 def _laned_store(tmp_path: Path) -> Path:
