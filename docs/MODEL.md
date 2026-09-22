@@ -6804,26 +6804,62 @@ their minimum today are listed there against the item that closes each one,
 and a listed shortfall that starts passing is reported as an error, so a fix
 cannot leave its excuse behind.
 
-**A declared colour reaches the screen by one of two mechanisms, and what
-neither reaches is the host's.** Most of this interface is drawn by a
-stylesheet composed from `app/theme.py`'s constants, which is what
-`tools/contrast_check.py` reads. Some widgets cannot be: an entry's fill, a
-spin box's stepper, a list's rows and its scroll bar, a check box's indicator
-and a dialog's own surface are painted from Qt palette roles, and styling them
-as a stylesheet instead costs the native stepper and the check box's tick. For
-those, `qt_widgets.declare_interface_colours` declares the same theme colours
-as palette roles - PANEL and INK as `Base` and `Text`, MUTED as
-`PlaceholderText`, PRIMARY and PANEL as `Highlight` and `HighlightedText` - so
-the pairs on screen are pairs the requirement table already measures. It writes
-the `Active` and `Inactive` colour groups only: a disabled colour stays the
-platform's, with the single declared exception recorded above.
+**A declared colour reaches the screen by one of three mechanisms.** Most of
+this interface is drawn by a stylesheet composed from `app/theme.py`'s
+constants, which is what `tools/contrast_check.py` reads. Some widgets cannot
+be: an entry's fill, a spin box's stepper, a list's rows and its scroll bar, a
+check box's indicator and a dialog's own surface are painted from Qt palette
+roles, and styling them as a stylesheet instead costs the native stepper and
+the check box's tick. For those, `qt_widgets.declare_interface_colours`
+declares the same theme colours as palette roles - PANEL and INK as `Base` and
+`Text`, MUTED as `PlaceholderText`, PRIMARY and PANEL as `Highlight` and
+`HighlightedText` - so the pairs on screen are pairs the requirement table
+already measures. It writes the `Active` and `Inactive` colour groups only: a
+disabled colour stays the platform's, with the single declared exception
+recorded above.
 
-Whatever neither mechanism reaches follows the **host appearance**, which is
-Qt's default and is a light theme's opposite on a machine set to Dark. That is
-visible rather than hidden: `tests/integration/test_dark_appearance.py` renders
-the dashboard and both dialogs under the palette such a host supplies and fails
-on any content widget resolving to it, which is what caught six controls that
-had declared nothing (`PL-RKRY`, `PL-7W9N`, `PL-0NVN`). Which controls that
+The third is the same role set written on the `QApplication` itself, by
+`qt_widgets.declare_application_colours`, and it is the fallback the other two
+cannot be. Qt's application palette follows the **host appearance**, so on a
+machine set to Dark everything this interface never names arrived in a dark
+theme's surfaces around a light window - including what no per-widget
+declaration can reach, since a stylesheet makes every widget beneath it resolve
+from the application palette rather than from the styled ancestor. **This
+interface declares its light theme there rather than following the host**
+(project owner, 2026-09-20, ratified - chosen over leaving the host appearance
+alone, and over growing a second palette for dark appearance). The reason is
+this table: all 24 requirements, and the dichromacy floors the six compartment
+traces were re-picked against, are measured on PANEL and BACKGROUND, so an
+interface that rendered anything else would be measuring surfaces that are not
+on screen. The cost is recorded rather than hidden - a reader whose machine is
+set to Dark gets a light-appearing window - and supporting dark appearance
+properly means re-measuring every requirement here against a second pair of
+surfaces and re-picking all six traces under four vision models, which is
+interface work rather than a setting.
+
+**It is a palette and not a colour-scheme hint.** Qt 6.8's
+`styleHints().setColorScheme` documents itself as a hint that "overriding the
+color scheme is not supported on all platforms", and it was observed being
+ignored outright on 2026-09-20, still reporting `Unknown` after being set, so
+nothing here rests on it. A palette is authoritative at any depth. Measured
+against the dark host palette `tests/integration/test_dark_appearance.py`
+supplies, the page's scroll bar goes from 94.3% of its pixels darker than
+mid-grey to none.
+
+Two things still follow the host, both by the rule rather than by omission. A
+**disabled** widget draws from the `Disabled` colour group all three mechanisms
+leave to the platform, so the inert splitter handles keep the host's surface
+(`PL-05M4`); declaring a disabled colour is a decision under
+`.claude/rules/ui-color.md` and this interface has exactly one, measured above.
+And a **tooltip** draws from `ToolTipBase` and `ToolTipText`, which are outside
+the declared role set; this interface uses no tooltip today.
+
+All of this is visible rather than asserted:
+`tests/integration/test_dark_appearance.py` renders the dashboard and both
+dialogs under the palette a dark host supplies and fails on any content widget
+resolving to it - which is what caught six controls that had declared nothing
+(`PL-RKRY`, `PL-7W9N`, `PL-0NVN`) - and holds the chrome and the untouched
+`Disabled` group against the same host. Which controls that
 reaches is not left to a remembered list of widget kinds:
 `tests/integration/test_simulation_view.py` builds the whole dashboard under a
 foreground colour this interface never uses and fails on any control that
@@ -6832,11 +6868,7 @@ declaring a colour rather than to being noticed. What it exempts is named there
 against the reason it draws no text, and `tools/contrast_check.py` counts those
 kinds into its report line: a requirement exists only where somebody wrote a
 colour down, so a control that writes none would otherwise be absent from both
-sides of that line's count and read there as covered (`PL-4L49`). What remains the host's
-by decision rather than by omission is the **chrome** - the page's scroll bars,
-the splitter handles, tooltips - and whether the application should declare a
-light colour scheme for those too is an open question recorded in the queue as
-`PL-KRZW`.
+sides of that line's count and read there as covered (`PL-4L49`).
 
 ### The six compartment traces: what separates them
 

@@ -22,14 +22,20 @@ test module in this tree shares one `QApplication`.
 **Every test carries a vacuity guard**, in the shape `PL-DHBX`'s does: the
 same kind of control, undeclared, is built under the same host and shown to
 come out *differently*. Without it a platform plugin that ignored the palette
-would leave every assertion here passing while measuring nothing.
+would leave every assertion here passing while measuring nothing. The chrome
+tests take the one shape that has no undeclared counterpart to build - there
+is only one application - so their guard is the same control measured *before*
+the declaration and shown to come out differently after it.
 
-**What is deliberately not asserted: the chrome.** The page's own scroll bars,
-the splitter handles and the tooltips still follow the host. Whether the
-application should declare a light colour scheme so they do not is `PL-KRZW`,
-which is the project owner's decision and open. This module holds the widgets
-that carry *content*: what a reader types, what a list states, what a box says
-is drawn.
+**The chrome is asserted too, since `PL-KRZW`.** The project owner chose to
+declare this interface's colours on the `QApplication` itself (2026-09-20,
+ratified), so the page's scroll bars - which no stylesheet and no widget
+palette reaches - resolve to the theme rather than to the host. Two things
+still do not, both by the rule rather than by omission: a *disabled* widget
+draws from the `Disabled` colour group this project leaves to the platform,
+which is why the inert splitter handles stay the host's (`PL-05M4`), and a
+tooltip draws from `ToolTipBase` and `ToolTipText`, which are outside the
+declared role set and which this interface uses nowhere today.
 """
 
 from collections.abc import Iterator
@@ -43,7 +49,10 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QFrame,
+    QLabel,
     QLineEdit,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -55,7 +64,9 @@ from anesthesia_sim.app.qt_widgets import (
     _DECLARED_ROLES,
     BookmarkDialog,
     NewCaseDialog,
+    declare_application_colours,
     declare_interface_colours,
+    inert_splitter,
 )
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, INK, MUTED, PANEL, PRIMARY
@@ -203,6 +214,51 @@ def _commonest(colours: list[str]) -> str:
     return max(set(colours), key=colours.count)
 
 
+def _dark_share(widget: QWidget, application: QApplication) -> float:
+    """The fraction of a rendered widget's pixels darker than mid-grey.
+
+    The chrome is *shaded* from the palette rather than painted in it: Fusion
+    derives a scroll bar's groove, handle and both its edges from `Button`, so
+    no pixel of it is ever exactly PANEL and naming a colour to assert would
+    be asserting one style's arithmetic. What separates a light host from a
+    dark one survives that derivation, which is why it is what is measured
+    here.
+
+    Args:
+        widget: The widget to render.
+        application: The application, whose pending events are processed
+            first so that a palette just assigned has reached the widget.
+
+    Returns:
+        A fraction in [0, 1]. HSL lightness is the measure, so the midpoint
+        is 128 of 255.
+    """
+
+    application.processEvents()
+    image: QImage = widget.grab().toImage()
+    pixels = [image.pixelColor(x, y) for y in range(image.height()) for x in range(image.width())]
+
+    return sum(pixel.lightness() < 128 for pixel in pixels) / len(pixels)
+
+
+def _page_scroll_area() -> QScrollArea:
+    """A scroll area built as `SimulationView` builds the page's, with a bar to draw.
+
+    The content is made taller than any layout will give it so that the
+    vertical bar is live: a scroll bar with nothing to scroll is hidden, and
+    a hidden widget renders as nothing at all.
+    """
+
+    area = QScrollArea()
+    area.setWidgetResizable(True)
+    area.setFrameShape(QFrame.Shape.NoFrame)
+    inner = QWidget()
+    inner.setMinimumHeight(4000)
+    area.setWidget(inner)
+
+    return area
+
+
 def test_declaring_a_widget_leaves_its_disabled_colours_to_the_platform(
     dark_host: QApplication,
 ) -> None:
@@ -231,6 +287,82 @@ def test_declaring_a_widget_leaves_its_disabled_colours_to_the_platform(
         assert entry.palette().color(QPalette.ColorGroup.Disabled, role) == supplied.color(
             QPalette.ColorGroup.Disabled, role
         ), role
+
+
+# ------------------------------------ the application, and the chrome it reaches
+
+
+def test_the_chrome_draws_the_theme_rather_than_the_host_palette(dark_host: QApplication) -> None:
+    """The page's scroll bars, which no stylesheet and no widget palette reaches.
+
+    `PL-KRZW`'s regression test. A scroll bar inside a stylesheet ancestor
+    resolves from the *application* palette however the ancestor was declared,
+    so under a dark host the page's bars were dark rails down a light window -
+    and no per-widget declaration could have reached them. The fix is the
+    application palette, which is authoritative at any depth where
+    `styleHints().setColorScheme` is a hint Qt documents as unsupported on
+    some platforms and which was observed reporting `Unknown` after being set.
+
+    The bar is built *before* the declaration deliberately: a widget already
+    laid out is the case that would fail if the application palette did not
+    propagate, and it is also the vacuity guard, since there is no second,
+    undeclared application to build. That ordering is the reason for the
+    `processEvents` below - Qt reaches an existing widget by posting
+    `ApplicationPaletteChange` rather than by re-resolving in the call, so
+    without it this reads the palette the bar still had. `main()` declares
+    before the first widget exists and so never depends on it.
+
+    The measure is the share of pixels darker than mid-grey rather than a
+    named colour, for the reason `_dark_share` gives.
+    """
+
+    bar = _shown(_page_scroll_area(), dark_host).verticalScrollBar()
+
+    assert bar.palette().color(QPalette.ColorRole.Button).name().upper() != PANEL.upper()
+    assert _dark_share(bar, dark_host) > 0.5
+
+    declare_application_colours(dark_host)
+    dark_host.processEvents()
+
+    assert bar.palette().color(QPalette.ColorRole.Button).name().upper() == PANEL.upper()
+    assert _dark_share(bar, dark_host) == 0.0
+
+
+def test_declaring_the_application_leaves_its_disabled_colours_to_the_platform(
+    dark_host: QApplication,
+) -> None:
+    """The application declaration takes no disabled colour off the platform style.
+
+    The same guarantee
+    `test_declaring_a_widget_leaves_its_disabled_colours_to_the_platform`
+    holds for one widget, held for the palette every widget falls back to -
+    where it binds harder, because a `Disabled` group written here would be a
+    second authored disabled colour for every role in the interface at once,
+    which `.claude/rules/ui-color.md` makes a decision rather than a style
+    choice and `tools/contrast_check.py` refuses.
+
+    Its visible consequence is asserted rather than left as a claim: a
+    splitter handle is disabled by `freeze_splitter_handles`, so it draws from
+    the group left to the platform and keeps the host's surface after the
+    declaration. That is the rule working rather than the declaration
+    failing - `PL-05M4` is where whether the handles should be declared too
+    is decided.
+    """
+
+    handle = _shown(
+        inert_splitter(Qt.Orientation.Horizontal, (QLabel("left"), QLabel("right"))), dark_host
+    ).handle(1)
+    supplied = QPalette(dark_host.palette())
+
+    declare_application_colours(dark_host)
+
+    for role, _ in _DECLARED_ROLES:
+        assert dark_host.palette().color(QPalette.ColorGroup.Disabled, role) == supplied.color(
+            QPalette.ColorGroup.Disabled, role
+        ), role
+
+    assert not handle.isEnabled()
+    assert _commonest(_colours(handle, dark_host)) == _HOST_DARK[QPalette.ColorRole.Window].upper()
 
 
 # ------------------------------------------------------- the bookmark editor
@@ -438,9 +570,12 @@ def test_no_content_widget_in_the_interface_paints_from_the_host_palette(
     palette role and does not resolve to this interface's.
 
     A control that declares its own `background-color` is exempt, which is how
-    the agent selector's ISO 5360 fill passes. Chrome is out of scope by
-    construction: a scroll bar and a splitter handle are neither in
-    `_PALETTE_PAINTED` nor content, and `PL-KRZW` decides them.
+    the agent selector's ISO 5360 fill passes. Chrome is out of scope here by
+    construction - a scroll bar and a splitter handle are neither in
+    `_PALETTE_PAINTED` nor content - and is held by
+    `test_the_chrome_draws_the_theme_rather_than_the_host_palette` instead,
+    against the application palette `PL-KRZW` added, which is the only thing
+    that reaches it.
     """
 
     controller = SimulationController(agent_id=_AGENT_ID)
