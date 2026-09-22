@@ -3,11 +3,13 @@ id: PL-YZJD
 title: falsifies: can only ever fold for an item whose declaration reached the base before the working session started, so an untriaged item triaged and worked in one session structurally cannot use it - which is most of why it stands at 0 of 1,324
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, docs
 feature: verify-false-reject
-touches: .claude/skills/docket/modes/close-out.md, subprojects/docket/src/docket/verify.py
+touches: .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-21
+closed: 2026-09-22
+verify: grep -q 'def test_a_branch_declaration_names_the_window_it_missed' subprojects/docket/tests/test_verify.py && grep -q 'why triage is the only pass that can write it' .claude/skills/docket/modes/triage.md
 ---
 
 **Problem.** `.claude/skills/docket/modes/close-out.md` records that `falsifies:`
@@ -74,3 +76,56 @@ run - which at 0 of 1,324 is not evidence either way.
 field worth anything - "the whole worth of the field is that a reviewer wrote it
 first". The finding is that the prescription beside it names a case the
 prescribed workflow cannot reach.
+
+**Decision of record (session, 2026-09-22): the first ending, routed.** State
+the precondition — and state it at all three moments a session could meet it,
+rather than only in the close-out mode. The check is unchanged: reading the
+base's copy is the property the field exists for, and moving the read to the
+branch point would let a session triage its own item and declare what its own
+work falsifies, which is the self-certification the base was chosen to prevent.
+
+**What the two options between them missed.** `falsifies` appeared in exactly
+one file under `.claude/` — `close-out.md` — and nowhere in `triage.md`. So the
+instruction "write it at triage" was addressed to a triage pass and stored in a
+file only a close-out session reads, at the one moment it is certainly too late.
+That is a routing failure in `CLAUDE.md`'s own terms ("ask at what moment a
+session needs the rule"), and it explains the 0-of-1,503 more completely than
+the precondition does: no triage pass has ever been told the field exists.
+
+**The premise in "Why it matters." above is measurably too strong.** The
+triage-then-work-in-one-session path is not the ordinary path. Measured
+2026-09-22 over 80 recent `done` items, 53 had their file on the base before
+the commit that closed them and 27 were created and closed in one commit — a
+third, not the norm. `bin/docket next` ranks on band, so an untriaged item is
+outside the ranking altogether and the prescribed pickup path is an item some
+earlier, merged pass triaged. The precondition is therefore satisfiable for
+roughly two thirds of items; it was simply never delivered to anyone who could
+satisfy it.
+
+**And the reachable population is small enough that it settles option 2 on the
+numbers, not only on the principle.** Of 502 single-id close-outs, 57 would
+refuse the check and 20 are the changed-output-string shape; the brief quotes
+the string in 3 of the 20; about two thirds of those sit inside the window.
+That is roughly **2 folds in 502 close-outs**, and what a miss costs is an
+advisory `REJECT` reported instead of folded — never a wrong gate result. A
+change to the integrity semantics of `docket verify` cannot be bought for that.
+
+**Still open to the project owner**, if they want it: the second ending
+(`verify.py` reading the declaration from the item's state before the branch's
+first commit). It is recorded here as declined on the reasoning above rather
+than as unavailable.
+
+**Landed.**
+
+- `.claude/skills/docket/modes/triage.md` — new section "`falsifies:`, and why
+  triage is the only pass that can write it", opening with the skip condition
+  so an ordinary item pays nothing for it, and closing with the rarity so no
+  later session re-opens this expecting a win.
+- `.claude/skills/docket/modes/close-out.md` — the prescription now states the
+  precondition and points at the triage mode; the stale `0 of 1,324` is recounted
+  to `0 of 1,503` and dated.
+- `subprojects/docket/src/docket/verify.py` — the branch-declared advisory gains
+  the actionable half: the line had to reach the base before this branch's first
+  commit, so triage is the only pass that can write it. Previously the message
+  named the rule and left the reader with no move, which reads as a step this
+  session skipped when there was none to take.

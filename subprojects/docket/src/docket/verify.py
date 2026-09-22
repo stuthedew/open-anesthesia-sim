@@ -1848,11 +1848,19 @@ def verify_item(
             "so nothing was folded"
         )
     elif item.falsifies and not declared:
+        # The second sentence is the actionable half, and it was missing
+        # (`PL-YZJD`). The first says the declaration did not count and why the
+        # rule exists; a session reading only that concludes it made an
+        # avoidable procedural slip and looks for the step it skipped. There is
+        # none: by the time this branch exists the window has shut, so the
+        # sentence has to name the pass that could still have written the line.
         claim = (
             f"`{item.falsifies}` is declared on this branch and not in {base}'s copy of the "
             "item, so nothing was folded: the declaration is the commission's, written "
             "before the work, and one added beside the deletion it excuses is the worker's "
-            "own word for it"
+            f"own word for it. Nothing on this branch could have changed that - the line had "
+            f"to reach {base} before this branch's first commit, so triage is the only pass "
+            "that can write it"
         )
     elif declared and not folded:
         source = "this closure declares" if self_declared else f"{base} declares"
