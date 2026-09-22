@@ -6,9 +6,25 @@ effort: M
 status: ready
 classes: ux, feature
 feature: chart-readout
-touches: src/anesthesia_sim/app/simulation_view.py
+touches: src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/simulation_view.py
 added: 2026-08-25
 ---
+
+> **Groomed 2026-09-22 (`PL-Y4YG`): still owed; its precondition landed and
+> one reason under Notes is gone.** `PL-SSBP` (done 2026-09-05) shipped the
+> time-base selector, so the narrower-than-the-run case exists, and
+> `following_window` in `app/chart_time_base.py` still says "Panning away from
+> the right edge, and saying unmistakably that it has happened, is a separate
+> item" - this one. The `flet-charts` reason is obsolete: the chart is
+> pyqtgraph now, which does offer drag and wheel, and `_plot` in
+> `app/qt_chart.py` turns both off deliberately, because "a plot a reader
+> could drag off its labelled range would show a slope that meant something
+> different from the one beside it". The explicit-offset design stands on that
+> and on its other two reasons, keyboard and touch use and testability. Since
+> v0.5.0 two runs can share the axis, so the transitions to test gain two: a
+> branch taken mid-pan, and panning with a second run on the chart. `touches`
+> names `app/chart_time_base.py` beside `app/simulation_view.py`, which builds
+> the time-base control.
 
 **Problem.** Once a selected time base is narrower than the run (PL-SSBP),
 the user needs to move the window across the run the way they would scroll a

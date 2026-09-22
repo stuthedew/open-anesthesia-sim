@@ -1,6 +1,6 @@
 ---
 id: PL-NC2P
-title: `app/main.py` sits at 47% coverage with no item covering it
+title: `main()`'s no-primary-screen guard is the one testable line `app/main.py` leaves uncovered after the Qt port
 status: ready
 priority: P3
 effort: S
@@ -10,10 +10,20 @@ touches: tests/unit/test_bootstrap.py, src/anesthesia_sim/app/main.py
 added: 2026-08-25
 ---
 
-> **The Qt port moots or transforms this.** `ROADMAP.md` § "Completed: v0.4.26 -
-> the interface moves to Qt" names this item under "Items this port moots or
-> transforms". Read that entry before starting: the work may be thrown away by
-> the port, or may be a different question after it. Found 2026-09-10.
+> **Groomed 2026-09-22 (`PL-Y4YG`): the Qt port transformed this, and one line
+> is left worth a test.** Retitled from "`app/main.py` sits at 47% coverage
+> with no item covering it". Measured over the whole suite: `app/main.py` is
+> at 92%, 24 statements with 2 missed, because `tests/unit/test_bootstrap.py`
+> now drives `main()` end to end against recording fakes (`PL-005`). The two
+> misses are the `raise RuntimeError("no primary screen is available to open
+> the window on")` guard, which a fake application returning no screen
+> reaches, and `main()` under `if __name__ == "__main__":`, which pytest
+> imports rather than runs - the uncovered-by-construction case recorded
+> below, at its new line. So **Done when** now reads: the guard has a test,
+> and the `__main__` line is either kept with its reason recorded or removed,
+> since `uv run anesthesia-sim` enters through the console script that
+> `test_bootstrap.py` already pins. The **Problem** paragraph and the line
+> numbers below describe the Flet-era file.
 
 **Problem.** `src/anesthesia_sim/app/main.py` has 10 of 19 statements
 uncovered (lines 16-29 and 39), and no queue item mentions it. It is the
