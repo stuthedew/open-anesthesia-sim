@@ -44,6 +44,11 @@ tools/
 #: it in a suite of its own, so a fixture repository resolves its own citation
 #: and `check_named_tests` has nothing to decline.
 FAMILY_TEST = "test_the_demo_says_it_is_a_demo"
+#: The list-shaped family's test, deliberately a second name: `_family_model`
+#: rewrites every occurrence of `FAMILY_TEST`, so a fixture sharing one name
+#: between the two families would rewrite both and make each hazard-table
+#: test assert about a second error it never meant to raise.
+LIST_FAMILY_TEST = "test_the_demo_shows_the_time_it_is_at"
 
 FAT_KEY = "tissue_gas_partition_coefficients.fat"
 ROW = "| {} | {} | dimensionless | `data/agents/demo.json` · `{}` |"
@@ -80,6 +85,20 @@ MODEL = "\n".join(
         "| A reader could be misled into | What stops it | Held by |",
         "| --- | --- | --- |",
         f"| reading a demo value as a real one | it says so | `{FAMILY_TEST}` |",
+        "",
+        # The second shape, for the same reason: `BOUND_FAMILIES` holds a
+        # list-shaped family too, and it errors on a heading it cannot find,
+        # so a fixture without one would fail every test asserting that a
+        # clean repository stays clean. The second entry wraps, because that
+        # is the shape `_list_members` has to fold and the real section is
+        # full of it.
+        "## Minimum displayed outputs",
+        "",
+        "The interface must show:",
+        "",
+        f"- the demo value (`{LIST_FAMILY_TEST}`);",
+        "- the time the demo value was read at",
+        f"  (`{LIST_FAMILY_TEST}`).",
         "",
     ]
 )
@@ -191,7 +210,9 @@ def _repo(
         suite = root / "tests" / "unit"
         suite.mkdir(parents=True, exist_ok=True)
         (suite / "test_family.py").write_text(
-            f"def {FAMILY_TEST}() -> None:\n    pass\n", encoding="utf-8"
+            f"def {FAMILY_TEST}() -> None:\n    pass\n\n\n"
+            f"def {LIST_FAMILY_TEST}() -> None:\n    pass\n",
+            encoding="utf-8",
         )
     return root
 

@@ -1938,12 +1938,24 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
             return
 
 
-# Every family bound by clause 2 today. **One entry, and that is the design
-# rather than a start.** The check is introduced over the hazard table, which
-# conforms already, so it lands green; each annotation pass - `PL-8LDF` for the
-# required invariants, `PL-2M9N` for the required tests, `PL-036` for the
-# minimum displayed outputs - adds its family here as it lands, so the check
-# never holds `make check` red for work nobody has done yet.
+# Every family bound by clause 2 today. **An entry arrives with the annotation
+# pass that makes its family conform, never in anticipation of one**, so the
+# check never holds `make check` red for work nobody has done yet. The check was
+# introduced over the hazard table, which conformed already, so it landed green;
+# `PL-036` added the minimum displayed outputs, and `PL-8LDF` (required
+# invariants) and `PL-2M9N` (required tests) are the two passes still due.
+#
+# Both entries name `TEST_ENTITY`, and for the displayed outputs that was a
+# decision rather than an inheritance (`PL-036`, project owner, 2026-09-22,
+# ratified, over naming the `SimulationSnapshot` field behind each bullet).
+# Three of that list's entries have no snapshot field to name - the playback
+# rate and the chart's time base are view settings, and F_A/F_I is derived at
+# the point of drawing - so a field-kinded family could only have declared an
+# absence that nothing owed, which is the permanent hole clause 3's form exists
+# to make impossible. A field would also have checked the wrong half of the
+# chain: it proves the value still travels, never that a widget still draws it,
+# and a value travelling to a display that no longer shows it is the failure
+# that section's own subsection calls silent.
 BOUND_FAMILIES = (
     BoundFamily(
         document=MODEL,
@@ -1952,6 +1964,14 @@ BOUND_FAMILIES = (
         kind=TEST_ENTITY,
         members=_table_members,
         promise="every row names the test that holds it, or says plainly that it has none",
+    ),
+    BoundFamily(
+        document=MODEL,
+        heading="Minimum displayed outputs",
+        level=2,
+        kind=TEST_ENTITY,
+        members=_list_members,
+        promise="every entry names the test that holds it",
     ),
 )
 

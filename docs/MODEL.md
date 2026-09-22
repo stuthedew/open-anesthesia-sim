@@ -5652,46 +5652,88 @@ recorded run, rather than mutable compartment objects.
 
 ## Minimum displayed outputs
 
-The interface must show:
+The interface must show the following, each entry naming the test that holds
+it - a bound family under § "How this document is held to the tree", clause 2.
+The test names say the value reaches the *display*, which is the link that
+matters here: a required output can go on travelling in `SimulationSnapshot`
+long after the widget drawing it has gone, and three of these entries have no
+snapshot field at all - the playback rate and the chart's time base are view
+settings, and $`F_A/F_I`$ is derived at the point of drawing.
 
-- simulated time;
+- simulated time (`test_refresh_view_formats_every_concentration_metric`,
+  `test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour`);
 - the rate simulated time is advancing at, as a multiple of real time, drawn
-  wherever simulated time is drawn and at every rate including real time. See
+  wherever simulated time is drawn and at every rate including real time
+  (`test_the_playback_rate_is_drawn_under_the_clock_it_governs`). See
   "Interface boundary" for what the rate is and is not a statement about;
 - how much simulated time the chart is showing, and whether that width was
-  chosen or fits the whole run so far. See "The chart's time base";
+  chosen or fits the whole run so far
+  (`test_the_axis_caption_states_the_span_the_chart_is_showing`,
+  `test_the_caption_says_when_the_span_was_chosen_by_the_run_rather_than_the_reader`).
+  See "The chart's time base";
 - run state, with running, paused, and halted-by-failure distinguishable
-  from one another;
-- why a run halted, whenever one has;
-- which agent is running;
-- delivered concentration of that agent;
-- circuit or inspired concentration;
-- alveolar or end-tidal-equivalent concentration;
-- mixed-venous concentration;
-- vessel-rich concentration;
-- muscle concentration;
-- fat concentration;
-- cumulative delivered amount;
-- cumulative exhausted amount;
-- total stored amount;
-- mass-balance residual or status; and
+  from one another (`test_refresh_view_reflects_running_state`,
+  `test_the_transport_is_enabled_by_state_in_all_four_states`);
+- why a run halted, whenever one has
+  (`test_refresh_view_reports_a_failed_run_as_stopped_not_paused`,
+  `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`);
+- which agent is running
+  (`test_the_readout_row_names_the_substance_its_numbers_belong_to`);
+- delivered concentration of that agent
+  (`test_refresh_view_formats_every_concentration_metric`,
+  `test_refresh_view_updates_delivered_concentration_label_for_current_agent`);
+- circuit or inspired concentration
+  (`test_refresh_view_formats_every_concentration_metric`,
+  `test_the_alveolar_readout_is_labelled_end_tidal_equivalent`);
+- alveolar or end-tidal-equivalent concentration
+  (`test_the_alveolar_readout_is_labelled_end_tidal_equivalent`);
+- mixed-venous concentration
+  (`test_refresh_view_formats_every_concentration_metric`);
+- vessel-rich concentration
+  (`test_refresh_view_formats_every_concentration_metric`);
+- muscle concentration
+  (`test_refresh_view_formats_every_concentration_metric`);
+- fat concentration (`test_refresh_view_formats_every_concentration_metric`,
+  `test_a_real_run_displays_a_filling_compartment_as_below_resolution`);
+- cumulative delivered amount
+  (`test_the_accounting_panel_prints_amounts_at_one_decimal_of_a_litre`);
+- cumulative exhausted amount
+  (`test_the_accounting_panel_prints_amounts_at_one_decimal_of_a_litre`);
+- total stored amount
+  (`test_the_accounting_panel_prints_amounts_at_one_decimal_of_a_litre`);
+- mass-balance residual or status
+  (`test_refresh_view_reports_valid_agent_accounting`,
+  `test_refresh_view_reports_failed_agent_accounting`); and
 - every concentration above, and the delivered concentration, additionally as
   a multiple of the running agent's 1 MAC, with that agent's 1 MAC in percent
-  stated on the display. See "MAC multiples as a display unit" for what the
+  stated on the display (`test_every_compartment_is_readable_in_mac_multiples`,
+  `test_the_dial_is_readable_in_the_unit_its_compartments_are`,
+  `test_the_display_names_the_mac_the_readouts_were_divided_by`). See
+  "MAC multiples as a display unit" for what the
   multiple asserts and for why both units are shown rather than selected; and
 - the running agent's population MAC-awake on the chart, as a band labelled
   with the fraction and the divisor it was drawn from and with the trace it is
   to be read against, alongside that agent's nominal 1 MAC as a visually
-  distinct line. See "MAC-awake as a chart reference" for what the band
+  distinct line
+  (`test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from`,
+  `test_the_interface_says_which_trace_the_band_is_read_against`,
+  `test_no_trace_dash_is_as_wide_as_the_one_mac_reference_line`). See
+  "MAC-awake as a chart reference" for what the band
   asserts, what it does not, and why no time-to-wake-up figure is displayed
   anywhere in the interface; and
 - every setting changed during the current run, each with the simulated time
   it took effect, the control it changed and the values it moved between, and
-  marked on the chart at that time. See "The control-input timeline"; and
+  marked on the chart at that time
+  (`test_the_list_states_what_was_changed_and_to_what`,
+  `test_a_recorded_change_is_marked_on_the_chart_at_its_own_time`). See
+  "The control-input timeline"; and
 - $`F_A/F_I`$ over the run, on a dimensionless axis of its own, labelled as a
   ratio against the modelled inspired concentration rather than against the
   vaporizer dial, carrying the control marks above, ruled at the equilibrium
-  the curve approaches, and stating where it is not defined. See "F_A/F_I as a displayed ratio" for the domain it is drawn over
+  the curve approaches, and stating where it is not defined
+  (`test_the_wash_in_axis_is_ruled_at_quarters_and_the_window_is_the_chart_s`,
+  `test_the_wash_in_plot_says_what_its_denominator_is`,
+  `test_the_wash_in_trace_draws_nothing_before_agent_reaches_the_circuit`). See "F_A/F_I as a displayed ratio" for the domain it is drawn over
   and for what the curve does and does not assert.
 
 The six compartment concentrations above are requirements on the **numeric
