@@ -335,6 +335,52 @@ without one. Where an item is genuinely not done, reopen it and the field is
 writable again; which tree the command passed on is recoverable from the item's
 `pr` (`PL-JZ1D`).
 
+### `falsifies:`, and why triage is the only pass that can write it
+
+**Skip this unless the item's brief already quotes a string its work will
+delete.** The field is rare by construction, and the closing paragraph says how
+rare; nothing is owed on an ordinary item. It is here at all because the
+instruction to write it used to live in
+`.claude/skills/docket/modes/close-out.md` alone, which is read at close-out -
+the one moment it is certainly too late (`PL-YZJD`).
+
+**What it is for.** Where an item's deliverable *is* a changed output string,
+the test pinning the old string has to change, and the old string is then simply
+gone. Nothing in the diff separates the commissioned rewrite from an
+expectation quietly dropped, so the close-out's `no existing assertion removed`
+check refuses - correctly, and every time. `falsifies:` holds enough of the one
+assertion the work makes untrue for that removal to be folded and printed
+rather than counted.
+
+**Why this pass and no other.** `docket verify` reads the declaration from **the
+base's copy of the item**, never from the branch, because the whole worth of
+the field is that a reviewer wrote it before the work. So the line counts only
+once it has *merged*: a session that triages an item and works it in the same
+session declares on its branch alone, folds nothing, and is told the
+declaration is its own word for it. The window shuts at the working branch's
+first commit, and triage is the last pass inside it - which is also why a
+session meeting that refusal has nothing to do about it, and the advisory now
+says so.
+
+**Write it only from what the brief already quotes**, as `PL-FCM3`'s title did -
+then `bin/docket set <id> --falsifies '<the quoted string>'`, twelve characters
+or more, one subject rather than a list. Do not go looking for the string, and
+do not guess at it: a declaration naming an assertion the work turns out not to
+remove is reported as the item describing work the branch did not do, which is
+a worse record than no declaration at all. Where the brief does not quote it,
+there is nothing to write.
+
+**How rare, stated so nobody re-opens this expecting a win.** Over 502 single-id
+close-outs, 57 would refuse this check and 20 are the changed-output-string
+shape; the brief quotes the string in 3 of the 20. Of 80 recent `done` items,
+53 had their file on the base before the commit that closed them, so roughly
+two thirds of that 3 sit inside the window - about **2 folds in 502
+close-outs**, against 0 of 1,503 items carrying the field on 2026-09-22. The
+field is worth writing when the case lands in front of you and is worth no
+search at all, and that is the whole reason the check stayed as it is rather
+than being moved to read the branch point (`PL-YZJD`, project owner decision
+recorded there).
+
 ### What the reply says, and what it must not
 
 **Triage is a queue pass, not a work session, and its reply is a summary rather

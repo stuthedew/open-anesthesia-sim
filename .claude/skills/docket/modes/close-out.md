@@ -190,14 +190,22 @@ page and decides which file a session reads.
    than one candidate and `PL-FCM3` has six; keying the fold to the
    commission's own `verify:` string explains 1 of 20; and having triage copy
    the old string out of the brief reaches 3 of 20, because the string is
-   usually not in the item. `falsifies:` itself stands at **0 of 1,324**
-   items - written once into the tool in `v0.4.27` and never onto an item.
+   usually not in the item. `falsifies:` itself stands at **0 of 1,503**
+   items on 2026-09-22 - written once into the tool in `v0.4.27` and never onto
+   an item.
 
-   So write it at triage only in the case that actually works: the item's own
-   brief already quotes the old string, as `PL-FCM3`'s title did. Then
-   `bin/docket set <id> --falsifies '<the quoted string>'` before the work,
-   and the close-out folds. Everywhere else the `REJECT` is expected, and
-   reporting it is the whole of what is owed.
+   **Nothing in that is this session's to repair, and the one case that works
+   is not reachable from here** (`PL-YZJD`). The case is real - the item's own
+   brief already quotes the old string, as `PL-FCM3`'s title did, and then
+   `bin/docket set <id> --falsifies '<the quoted string>'` makes the close-out
+   fold. But "at triage" is a precondition rather than a turn of phrase: the
+   check reads the base's copy, so the declaration counts only once it has
+   *merged*, and the window shuts at this branch's first commit. Writing the
+   line now folds nothing and is reported as your own word for it, whatever
+   the brief says. So the prescription lives where the pass that can act on it
+   reads it - `.claude/skills/docket/modes/triage.md` § "`falsifies:`, and why
+   triage is the only pass that can write it" - and here the `REJECT` is
+   expected, with reporting it the whole of what is owed.
 
    Run the bare `bin/docket verify <id>` only when reviewing a branch somebody
    else was commissioned to write.

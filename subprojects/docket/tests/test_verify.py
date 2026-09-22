@@ -2683,6 +2683,28 @@ def test_a_declaration_added_on_the_branch_folds_nothing(tmp_path: Path) -> None
     assert "declared on this branch and not in" in note.detail
 
 
+def test_a_branch_declaration_names_the_window_it_missed(tmp_path: Path) -> None:
+    """Refusing is half an answer; the advisory owes the pass that could have written it.
+
+    `PL-YZJD`: the refusal above names the rule and leaves the reader with no
+    move, because on this branch there is none. The window shut at the first
+    commit, so the only session that could have declared the line is the triage
+    pass - and a message that does not say so reads as a step this session
+    skipped.
+    """
+    root = _repo(tmp_path)
+    (root / "tests" / "test_thing.py").write_text(PINNED)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: the assertion that pins the string")
+    _work(root, "PL-K7QX delete it and say I meant to", "tests/test_thing.py", KEPT)
+
+    report = verify(root, _item(falsifies=FALSIFIES), _config(), "HEAD~1", self_audit=True)
+
+    note = _check(report, "the `falsifies:` declaration holds")
+    assert "before this branch's first commit" in note.detail
+    assert "triage is the only pass that can write it" in note.detail
+
+
 def test_an_unreadable_commission_says_so_rather_than_folding_nothing_silently(
     tmp_path: Path,
 ) -> None:
