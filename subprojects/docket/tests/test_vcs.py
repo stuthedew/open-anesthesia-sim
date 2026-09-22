@@ -957,6 +957,21 @@ def test_a_branch_that_annotated_and_then_implemented_is_in_flight() -> None:
     assert [branch.item_id for branch in found] == ["PL-K7QX"]
 
 
+def test_an_empty_commit_leading_with_an_id_claims_the_item_before_any_work() -> None:
+    """The claim a session pushes the moment it starts, before it has any work.
+
+    `.claude/skills/docket/modes/start.md` tells a session to push
+    `git commit --allow-empty -m "PL-K7QX: start"` first, because a claim that
+    waits for real work waits for as long as the work takes: `PL-0HPV`'s session
+    ran twenty minutes unseen on 2026-09-22 while another reported the item
+    unstarted (`PL-7TVT`). That instruction is only true while `_annotates_only`
+    reads an empty diff as a claim rather than as annotation, so this pins it.
+    """
+    found = _in_flight([HARNESS], commits={HARNESS: [("2026-09-22", "PL-K7QX: start", "c1")]})
+
+    assert [branch.item_id for branch in found] == ["PL-K7QX"]
+
+
 def test_the_queue_directory_is_read_from_the_project_setting() -> None:
     """A project keeping its queue elsewhere gets the same reading, not a default.
 
