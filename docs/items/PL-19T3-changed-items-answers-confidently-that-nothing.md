@@ -1,8 +1,15 @@
 ---
 id: PL-19T3
 title: changed_items answers confidently that nothing changed when run outside a git repository, because git diff exits 1 there and _run_git reads exit 1 as an answer, where git tag --list exits 128 and declines
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
+feature: evidence-declines
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-22
+payoff: a docket read taken outside a checkout says it could not answer, instead of telling the verify replay that the branch changed no item
+verify: grep -q 'def test_changed_items_declines_outside_a_repository' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** changed_items answers confidently that nothing changed when run outside a git repository, because git diff exits 1 there and _run_git reads exit 1 as an answer, where git tag --list exits 128 and declines
@@ -34,3 +41,20 @@ rather than a wrong decision taken from it. Two candidate routes, and the item
 is which: classify `git diff`'s exit 1 by whether the command was a diff of
 revisions (where git exits 1 only on error, `--exit-code` not being passed) or
 probe the repository once per read and decline everything on the answer.
+
+**Reproduced 2026-09-22 (`PL-14QR`, triage)**, from an empty directory outside any
+repository. `vcs.changed_items(<dir>, "origin/main")` returned
+`ChangedItems(identifiers=frozenset(), declined='')`, which is an answer. On the
+same directory, `vcs.tags(<dir>)` declined, naming `git tag --list` as the
+question git did not answer.
+
+**Why it matters.** An empty, undeclined `ChangedItems` says the branch changed
+no item. That set is what `docket check --verify-base` narrows its replay by,
+so a read that could not be taken reaches the replay as a confident "nothing".
+Reach is low today, since nothing runs it outside a checkout. But two reads
+beside each other disagree about the same environment, and the next caller
+inherits whichever one it happens to pick.
+
+**Done when.** `changed_items` declines outside a repository, by either route
+above, and a test in `subprojects/docket/tests/test_vcs.py` holds it from a
+directory that is in no repository at all.

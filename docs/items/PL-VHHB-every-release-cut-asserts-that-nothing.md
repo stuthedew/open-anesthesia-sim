@@ -1,14 +1,20 @@
 ---
 id: PL-VHHB
 title: Every release cut asserts that nothing computational moved, and the only evidence is tree identity - which v0.5.2 did not have, so the claim was proved by an ad-hoc AST comparison that no later cut can re-run
-status: untriaged
-touches: tools/, Makefile, tests/unit/, .claude/skills/docket/modes/release.md
+priority: P3
+effort: M
+status: ready
+classes: infra
+feature: release-process
+touches: tools/ast_identity.py, tests/unit/test_ast_identity.py, .claude/skills/docket/modes/release.md
 added: 2026-09-21
+payoff: a release cut proves 'nothing computational moved' with a command a later cut can re-run, not by a reader judging each changed line of src/ to be a comment
+verify: grep -q 'def test_a_docstring_only_change_reads_identical' tests/unit/test_ast_identity.py
 ---
 
 **Problem.** Every release cut asserts that nothing computational moved, and the only evidence is tree identity - which v0.5.2 did not have, so the claim was proved by an ad-hoc AST comparison that no later cut can re-run
 
-## Why tree identity stopped being enough
+**Why it matters: tree identity stopped being enough.**
 
 Every release since the MVP has stated "nothing computational moved" from four
 tree hashes resolving to the same objects at both ends. That evidence is exact
@@ -47,3 +53,11 @@ deterministic, and no linter does it. What it must not become is a claim that
 a docstring-only change *cannot* matter: a docstring is where a unit, a model
 version or a provenance note is recorded, so `PL-JYTJ`'s own reading of the
 diff stays owed alongside the script's verdict.
+
+**Done when.** `tools/ast_identity.py OLD NEW PATH...` exists as the Shape
+above describes, using the standard library only. A test in
+`tests/unit/test_ast_identity.py` holds that a docstring-only change reads as
+identical and a changed statement does not. `.claude/skills/docket/modes/release.md`
+names it as the step a cut runs when a simulator tree object has moved, beside
+the reading of the diff that it does not replace. Checked 2026-09-22 (`PL-14QR`, triage): no
+such tool exists yet.

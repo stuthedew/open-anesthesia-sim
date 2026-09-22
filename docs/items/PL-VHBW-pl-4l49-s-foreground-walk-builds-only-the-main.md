@@ -1,8 +1,15 @@
 ---
 id: PL-VHBW
 title: PL-4L49's foreground walk builds only the main dashboard, so a control added to NewCaseDialog or BookmarkDialog declares nothing and is still measured by nothing
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: test
+feature: chrome-colour-audit
+touches: tests/integration/test_simulation_view.py, tests/integration/test_dark_appearance.py
 added: 2026-09-22
+payoff: a control added to either dialog without a declared foreground fails a test the day it is added, as one on the dashboard already does
+verify: grep -q 'def test_every_control_in_both_dialogs_declares_a_foreground' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** PL-4L49's foreground walk builds only the main dashboard, so a control added to NewCaseDialog or BookmarkDialog declares nothing and is still measured by nothing
@@ -32,3 +39,14 @@ reader a path change.
 **Done when** every control a reader can reach - the dashboard and both
 dialogs - is held to declaring a foreground by one walk, and the report line's
 count covers all of them.
+
+**Why it matters.** `PL-4L49`'s walk exists so that a control added without a
+declared foreground fails the moment it is added, whatever its kind. The dialogs
+are where that promise quietly stops. `test_dark_appearance.py` names the widget
+kinds it checks, so a new control of an unnamed kind in either dialog passes both
+tests while painting with the host's text colour. That is the shape of the six
+controls `PL-RKRY`, `PL-7W9N` and `PL-0NVN` found by hand.
+
+**Premise re-read 2026-09-22 (`PL-14QR`, triage).** The walk at
+`tests/integration/test_simulation_view.py:2952` calls `_content_painters(view)`
+on the `SimulationView` alone.

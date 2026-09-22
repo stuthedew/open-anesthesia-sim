@@ -1,7 +1,10 @@
 ---
 id: PL-W5WX
 title: The trunk's Reset drops the branch and everything it simulated with no statement and no confirmation, and docs/MODEL.md does not say whether the exemption it grants Reset reaches a run the learner did not aim at
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: ux, docs
 feature: reset-aftermath
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md, tests/integration/test_simulation_view.py
 added: 2026-09-22
@@ -34,7 +37,7 @@ anywhere on the path, and `SimulationView._handle_case_restarted` then drops
 every branch: one press on Run 1 destroys Run 2's elapsed time and recorded
 control changes, which the learner did not ask for and cannot recover.
 
-**So the question is which way it resolves, and it is the project owner's.**
+**Decision needed: which way it resolves, and it is the project owner's.**
 Either the interface states and confirms before a Reset takes a *second* run
 with it - the existing discard-warning path is the precedent and the wording
 already exists - or `docs/MODEL.md` says why the exemption reaches a run the
@@ -70,3 +73,13 @@ answered by the same exemption the section already grants: a run holding
 nothing is exempt, so the trunk's Reset would confirm only when a branch is
 drawn *and* that branch holds something - which is precisely the case where
 something is lost, and is never the ordinary start-over.
+
+**Done when.** The project owner has chosen, and `docs/MODEL.md` § "Agent-change
+behavior" says whether Reset's exemption reaches a run the press was not on. If
+the answer is to confirm, the trunk's Reset states and confirms before it takes
+a branch holding elapsed time or recorded control changes, and a test in
+`tests/integration/test_simulation_view.py` holds it.
+
+**Premise re-read 2026-09-22 (`PL-14QR`, triage).** `RunView._handle_reset` still goes straight
+from `self.controller.reset()` to `self.case_restarted.emit()`, with nothing
+between them.

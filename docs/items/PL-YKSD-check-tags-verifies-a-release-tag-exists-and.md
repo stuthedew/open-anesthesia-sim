@@ -1,8 +1,15 @@
 ---
 id: PL-YKSD
 title: check_tags verifies a release tag exists and never that it points at that release's own commit, so a tag pushed before the release merged reads as tagged to every check and lets bin/docket release cut the next version on a false premise
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+feature: release-process
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-22
+payoff: a release tag pushed at the wrong commit fails make check, instead of reading as tagged to every check and letting the next version be cut on top of it
+verify: grep -q 'def test_a_tag_whose_pyproject_version_disagrees_is_refused' tests/unit/test_doc_check.py
 ---
 
 **Problem.** check_tags verifies a release tag exists and never that it points at that release's own commit, so a tag pushed before the release merged reads as tagged to every check and lets bin/docket release cut the next version on a false premise
@@ -40,3 +47,9 @@ shared vocabulary; they are worth reading together and should not be merged.
 checkout whose `pyproject.toml` version disagrees with the tag name, a test pins
 it with a synthetic tag at the wrong commit, and the message says which commit
 the tag points at and what version it holds.
+
+**Premise re-read 2026-09-22 (`PL-14QR`, triage).** `v0.5.3` now resolves to `c2bb1266`,
+whose `pyproject.toml` reads `0.5.3`, so the instance is repaired. `check_tags`
+(`tools/doc_check.py` line 2719) contains no `rev-parse`, `rev-list`,
+`^{commit}` or `pyproject` read, so nothing in it would have seen the wrong
+target.

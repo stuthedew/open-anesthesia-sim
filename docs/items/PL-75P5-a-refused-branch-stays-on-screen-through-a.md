@@ -1,10 +1,15 @@
 ---
 id: PL-75P5
 title: A refused branch stays on screen through a trunk Reset on a one-run dashboard, because _handle_case_restarted returns before it clears _fork_refusal: the banner names an instant the reset run no longer holds
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, ux
 feature: reset-aftermath
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md, tests/integration/test_simulation_view.py
 added: 2026-09-22
+payoff: a learner who resets after a refused branch stops seeing a refusal that names an instant the restarted case no longer holds
+verify: grep -q 'def test_a_refused_branch_does_not_survive_a_one_run_reset' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** A refused branch stays on screen through a trunk Reset on a one-run dashboard, because _handle_case_restarted returns before it clears _fork_refusal: the banner names an instant the reset run no longer holds
@@ -44,3 +49,7 @@ precedent to read.
 **Done when.** A refused branch does not survive the Reset that follows it on a
 one-run dashboard, and a test in `tests/integration/test_simulation_view.py`
 holds it.
+
+**Premise re-read 2026-09-22 (`PL-14QR`, triage).** `_handle_case_restarted` still returns at
+`if self._case is None or len(self._runs) == 1:`, which comes before its
+`self._fork_refusal = None`. The order the brief describes stands.
