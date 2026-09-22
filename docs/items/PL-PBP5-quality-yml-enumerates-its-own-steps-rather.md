@@ -1,11 +1,15 @@
 ---
 id: PL-PBP5
 title: quality.yml enumerates its own steps rather than running make check, so dead_ends.py, ignore_check.py and possessive_section_check.py have no CI backstop and a branch pushed without a local make check lands green on a tree make check would refuse
-status: untriaged
-classes: infra
-touches: .github/, Makefile, tools/, docs/items/
+priority: P2
+effort: M
+status: done
+classes: defect, infra
+touches: .github/workflows/quality.yml, Makefile, tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md, docs/items/
 added: 2026-09-21
+closed: 2026-09-21
 payoff: a check wired into make check is enforced by CI too, so the convention it holds does not depend on a session remembering to run the local gate
+verify: grep -q 'def check_gate_parity' tools/doc_check.py && grep -q 'tools/dead_ends.py check' .github/workflows/quality.yml
 ---
 
 **Problem.** quality.yml enumerates its own steps rather than running make check, so dead_ends.py, ignore_check.py and possessive_section_check.py have no CI backstop and a branch pushed without a local make check lands green on a tree make check would refuse
@@ -57,3 +61,66 @@ this question once, in the direction of covering it.
 **Done when.** The three are either covered by CI or recorded as deliberately
 local with the reason, and whatever decides it is written where the next tool
 added to `make check` will meet the question rather than re-derive it.
+
+## Answered 2026-09-21
+
+**`PL-J3WK` decided it, as this brief said it should, and the answer is that
+the two gates stay two.** That item took the *statically decidable* half of
+`--verify` into the bare `bin/docket check` and left the replay where it was,
+on the argument that the expensive tier has nothing to add to a question the
+store already answers. The same argument rules out making CI run `make check`
+here, and for a reason this brief did not have: `quality.yml`'s floor section
+runs the standard-library tools under the 3.11 floor **before** `uv` exists,
+which is what proves they need no virtualenv, and `make check` opens by
+creating one. The local gate is also legitimately stricter in a place nobody
+had noticed - `uv run ruff check --no-cache .` against CI's plain `ruff check`,
+which `check_ruff_cache` already holds it to deliberately.
+
+So the two lists are not merged. What changes is that **the difference stops
+being invisible**: `check_gate_parity` in `tools/doc_check.py` reconciles the
+set of this project's own scripts each gate runs, in both directions, and
+refuses every asymmetry not recorded in `GATE_ONLY` with its reason. Scripts
+rather than command strings, because how a script is invoked differs by
+construction - `python3 tools/x.py` at the floor, `uv run python tools/x.py`
+after the sync - so comparing strings would report every line as a drift. Only
+workflows triggered by `pull_request` count as the merge gate, which is what
+makes `tools/pr_title_check.py` the worked counter-example this brief named
+rather than a fourth finding: it is `make check`-only within `quality.yml` and
+has `pr-title.yml` of its own.
+
+**The three, decided one at a time on what they cost.** All three are covered;
+none is recorded as deliberately local.
+
+| script | where | measured |
+| --- | --- | --- |
+| `tools/dead_ends.py check` | floor section | 0.07 s, standard library, reads two files |
+| `tools/possessive_section_check.py` | floor section, beside `doc_check` | 1.6 s, standard library, reads Markdown |
+| `tools/ignore_check.py` | after `uv run mypy` | 9.2 s there against 27.3 s cold |
+
+`ignore_check.py` is the one genuine split this brief predicted: it shells out
+to mypy, so it cannot go in the floor section. Placing it immediately after the
+`uv run mypy` step is what makes it affordable - that run has already put
+everything the excluded trees import into `.mypy_cache`, and the difference is
+27.3 s against 9.2 s measured on this tree. `GATE_ONLY` ends up holding exactly
+one entry, `tools/required_checks_check.py`, whose answer is not in the tree at
+all.
+
+**The count this brief asked for, and it came back a real rate.** Over the 100
+most recent completed `pull_request` runs of `quality.yml` - 2026-09-21 01:06Z
+to 20:57Z, 74 green, 15 cancelled by the workflow's own concurrency, 11 red -
+**5 of the 11 failures were at a step `make check` also runs**, and 6 were the
+`--verify` replay, which is `PL-J3WK`'s territory. Read strictly the figure is
+4 rather than 5: one of the five is `doc_check.py` crashing on an absolute path
+outside the repository, which is `PL-H0CF` rather than a tree the local gate
+would have refused. Either way branches do reach CI carrying trees `make check`
+would refuse, at roughly one pull-request run in twenty, so the backstop is
+worth its 11 s. Not one of the five was `ruff`, `mypy` or `pytest`: the
+code-quality half of the local gate caught everything before CI in that window
+and the documentation and store half did not, which is the half the three
+uncovered scripts belong to.
+
+**Done when** is met: the three are covered, the one deliberate asymmetry is
+recorded with its reason, and the decision is enforced by a check that fires
+the moment a line is added to `check:` - with a note beside the target's first
+`tools/` line saying so, for the session that has not run the gate yet.
+

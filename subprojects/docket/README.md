@@ -1897,6 +1897,27 @@ run is told not to ask, so `docket check && grep -q ...`, the shape the older
 commands record, is bounded at one level. Since `PL-6TP8` the `grep` is
 written alone, and `docket check` is not put ahead of it.
 
+Two ways of recording a command that proves nothing are refused by a bare
+`check`, with no command run at all. **A command that cannot fail** — `true`,
+`:`, `exit 0`, and the path spellings of the first — specifies nothing whatever
+the tree holds, so `verify` would ACCEPT a branch that did none of the work.
+**One command recorded against two or more open items** is the same conclusion
+reached by counting rather than by reading: whichever item is worked first makes
+the command pass, so from then on it accepts a branch that did none of the
+other's. Both are answerable from the store, which is why they are here and not
+behind `--verify`: that flag is the expensive tier, it is CI-only in the project
+this grew in, and three items triaged with one placeholder command on 2026-09-20
+passed every local gate and turned CI red after review had started (`PL-J3WK`).
+
+The rules are exact and stop where the judgment starts. A command whose
+*effect* is a no-op — a `grep` for a string that is not in the file it reads,
+say — is only answerable by running it, and that question stays with the
+replay. Sharing is exact string equality too: collapsing whitespace would be
+right for the words of a shell line and wrong inside a quoted argument, where
+`grep -q 'a  b'` and `grep -q 'a b'` read different files. An item whose command
+cannot fail is told that and is not also told about the sharing, which is a
+consequence of the placeholder rather than a second defect.
+
 What `check` does say about that command is an advisory, and only for the one
 shape that can pass without meaning anything: a `docket check` whose *output*
 is piped or captured, rather than whose exit status is read. A nested run is

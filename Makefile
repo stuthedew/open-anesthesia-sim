@@ -94,6 +94,17 @@ check: sync
 # Under `uv run`, unlike `doc_check.py` below: this one shells out to mypy, so
 # it needs the virtualenv the gate above runs in. It reads `warn_unused_ignores`
 # over the two test trees `files` excludes, which nothing else evaluates.
+#
+# **A script added to this target is added to `.github/workflows/quality.yml`
+# too, or recorded as deliberately one-sided.** The two gates are separate
+# lists and neither knew what the other ran, so this one, `dead_ends.py` and
+# `possessive_section_check.py` were all local-only - two of them for weeks -
+# and a branch pushed without a local `make check` merged green on a tree this
+# target would refuse. `tools/doc_check.py`'s `check_gate_parity` now
+# reconciles the two sets in both directions and names `GATE_ONLY` as where a
+# reason goes, so the question arrives at the moment a line is added here
+# rather than whenever somebody next notices (`PL-PBP5`). It is placed beside
+# this line because this is the first `tools/` script the target runs.
 	uv run python tools/ignore_check.py
 # `--cov=` takes the dotted module, never a path, and the run is the whole
 # suite: coverage of `core/` is the union of everything that exercises it, so

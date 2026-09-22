@@ -1147,8 +1147,13 @@ gate rather than an older parser, and the wrong interpreter's
 `sys.stdlib_module_names`. The floor section of
 `.github/workflows/quality.yml`'s `checks` job performs the run they stand in
 for: `actions/setup-python` at the declared floor, then
-`python3 tools/doc_check.py check`, `python3 tools/branch_id_check.py`,
-`python3 tools/rules_paths_check.py` and `bin/docket check` under it. It runs ahead of the uv install rather than in a
+`python3 tools/doc_check.py check`, `python3 tools/possessive_section_check.py`,
+`python3 tools/branch_id_check.py`, `python3 tools/rules_paths_check.py`,
+`python3 tools/dead_ends.py check` and `bin/docket check` under it. The last
+two joined it under `PL-PBP5`, which found them enforced by `make check`
+alone; `tools/doc_check.py`'s `check_gate_parity` now refuses that asymmetry
+in both directions, so this list cannot fall behind the Makefile's again
+without the gate saying so. It runs ahead of the uv install rather than in a
 job of its own (`PL-D551`), which is what keeps the no-virtualenv claim true:
 at that point none exists. `contrast_check.py` was there too until `PL-L17Q`
 and is deliberately not now, for the input-versus-dependency reason above.
@@ -1156,7 +1161,7 @@ That decides syntax, imports and runtime behavior at once, with no list to keep
 current. A fourth test holds that section's pinned version to `requires-python`, so
 raising the floor cannot leave CI exercising an interpreter the project no
 longer supports. The approximations stay because they name the offending file
-and import, run before a push, and reach what those five commands never do.
+and import, run before a push, and reach what those six commands never do.
 
 ## Wired hooks (`.claude/hooks/`)
 

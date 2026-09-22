@@ -3506,6 +3506,226 @@ def _without_code(text: str) -> list[str]:
     return lines
 
 
+#: A script one gate runs and the other deliberately does not, and why. The
+#: value is the side it is allowed to be alone on and the reason it is there,
+#: and `check_gate_parity` below refuses every asymmetry that is not written
+#: here. It is the answer to the question a session meets when it wires a new
+#: script into `make check`: cover it in CI too, or say in one line why the
+#: merge gate cannot ask it (`PL-PBP5`).
+GATE_ONLY: dict[str, tuple[str, str]] = {
+    "tools/required_checks_check.py": (
+        "ci",
+        "its answer is not in the tree: it reads the repository's required status "
+        "checks off the GitHub API and reconciles them against the jobs that report "
+        "them, so a checkout with no network and no token has nothing to compare",
+    )
+}
+
+#: Where a gate script may be named. `.py` is every check this project has
+#: written; `bin/docket` is the one that is not a `.py` path, being the store's
+#: own entry point.
+GATE_SCRIPT_SUFFIX = ".py"
+GATE_SCRIPT_NAMES = ("bin/docket",)
+
+#: The workflow trigger that makes a job part of the merge gate. A workflow
+#: that runs only on a schedule - `drift.yml` here - is not one: a branch can
+#: be merged without it ever having looked.
+PULL_REQUEST_TRIGGER_RE = re.compile(r"^\s+pull_request:?\s*$")
+#: Both spellings of the trigger list. The block form opens with a bare `on:`
+#: and the events follow indented; the flow form writes them inline, as
+#: `on: [push, pull_request]`. Reading only the first would have reported a
+#: workflow written the second way as gating nothing, which is a wrong answer
+#: rather than a missing one - the failure `.claude/rules/apparatus-standard.md`
+#: puts a floor under.
+ON_BLOCK_RE = re.compile(r"^on:(?P<inline>.*)$")
+
+
+def _target_recipes(text: str) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    """Every Makefile target's own recipe lines and its prerequisites.
+
+    `_recipe_commands` above reads recipe lines without asking which target
+    they belong to, which is right for a check that selects on a mark in the
+    command. This one has to know, because the question is what one *target*
+    runs.
+
+    Blank lines and comment lines do not end a recipe, which is a rule of Make
+    rather than a convenience: a recipe line is one beginning with a tab, and
+    this Makefile carries a paragraph of reasoning above almost every command.
+    Reading a comment as the end of the target would have found one command
+    under `check` where there are twenty.
+    """
+    recipes: dict[str, list[str]] = {}
+    prerequisites: dict[str, list[str]] = {}
+    current: str | None = None
+    for line in text.splitlines():
+        if line.startswith("\t"):
+            if current is not None and line.strip():
+                recipes.setdefault(current, []).append(line.strip())
+            continue
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        match = MAKE_TARGET_RE.match(line)
+        if match is None:
+            current = None
+            continue
+        current = match.group("name")
+        recipes.setdefault(current, [])
+        prerequisites[current] = line.split(":", 1)[1].split()
+    return recipes, prerequisites
+
+
+def _target_commands(
+    recipes: dict[str, list[str]],
+    prerequisites: dict[str, list[str]],
+    target: str,
+    seen: set[str] | None = None,
+) -> list[str]:
+    """What `make <target>` runs, prerequisites first, each target once."""
+    seen = set() if seen is None else seen
+    if target in seen or target not in recipes:
+        return []
+    seen.add(target)
+    commands: list[str] = []
+    for prerequisite in prerequisites.get(target, []):
+        commands += _target_commands(recipes, prerequisites, prerequisite, seen)
+    return commands + recipes[target]
+
+
+def _gate_scripts(root: Path, command: str) -> Iterator[str]:
+    """Every repository script a shell line names, as a repository-relative path.
+
+    The rule is deliberately about *this project's own* scripts and not about
+    the commands around them. `ruff`, `mypy`, `pytest` and `uv` are third-party
+    programs whose two invocations are already reconciled one by one, where
+    that is worth doing, by `check_coverage_gate` and `check_ruff_cache` above;
+    `sudo apt-get install` is an OS package rather than a gate. What recurs -
+    and what `PL-PBP5` was filed about - is a check written here, wired into
+    one gate, and never added to the other.
+
+    A token counts when it ends in `.py` or is `bin/docket`, *and* names a file
+    that exists. The second half is what keeps a `.py` written in prose, or a
+    path a step creates, out of the comparison.
+    """
+    for raw in COMMAND_SPLIT_RE.split(command):
+        token = raw.strip("\"'`,").removeprefix("./")
+        if "=" in token:
+            token = token.rpartition("=")[2].strip("\"'")
+        if not token.endswith(GATE_SCRIPT_SUFFIX) and token not in GATE_SCRIPT_NAMES:
+            continue
+        if any(mark in token for mark in UNRESOLVABLE):
+            continue
+        if (root / token).is_file():
+            yield token
+
+
+def _gates_pull_requests(text: str) -> bool:
+    """Whether this workflow runs on `pull_request`, read from its `on:` block."""
+    inside = False
+    for line in text.splitlines():
+        opening = ON_BLOCK_RE.match(line)
+        if opening is not None:
+            inline = opening.group("inline").strip()
+            if inline:
+                return "pull_request" in inline
+            inside = True
+            continue
+        if not inside:
+            continue
+        if line.strip() and not line.startswith((" ", "\t", "#")):
+            return False
+        if PULL_REQUEST_TRIGGER_RE.match(line):
+            return True
+    return False
+
+
+def check_gate_parity(root: Path, report: Report) -> None:
+    """Hold the scripts `make check` runs and the scripts the merge gate runs to one set.
+
+    `make check` is the gate a session runs before it commits and CI's job is
+    the gate a branch has to pass to merge, and they are two independently
+    maintained lists of commands. Nothing compared them, so a script wired into
+    one was silently absent from the other - and the asymmetry is invisible in
+    both directions. `tools/dead_ends.py`, `tools/ignore_check.py` and
+    `tools/possessive_section_check.py` were all `make check`-only, two of them
+    for weeks, which means a branch pushed without a local `make check` landed
+    green on a tree `make check` would have refused. `PL-PBP5`.
+
+    **The two gates are not made one, and that is the finding rather than a
+    compromise.** CI cannot run `make check`: its floor section runs the
+    standard-library tools under the 3.11 floor *before* `uv` exists, which is
+    what proves they need no virtualenv, and `make check` begins by creating
+    one. The local gate is also legitimately stricter in places - `ruff check
+    --no-cache`, which CI needs no equivalent of - and the merge gate
+    legitimately asks one question a checkout cannot. So what is enforced here
+    is that every difference is *recorded*, in `GATE_ONLY` above, with the
+    reason it exists. A session adding a check meets the question at the moment
+    it would otherwise be decided by not thinking about it.
+
+    **Scripts, not commands.** How a script is invoked differs by construction -
+    `python3 tools/x.py` at the floor, `uv run python tools/x.py` after the
+    sync - so comparing command strings would report every line as a drift. The
+    set compared is which of this project's own scripts each gate runs at all,
+    which is exactly the question "is this check enforced on the merge".
+
+    **Only workflows that run on `pull_request` count as the merge gate.** A
+    branch can merge without a scheduled workflow ever having looked, so
+    counting `drift.yml` would report a script as covered that gates nothing.
+    `pr-title.yml` does count, which is what makes `tools/pr_title_check.py`
+    the worked example rather than a fourth finding: it is `make check`-only
+    within `quality.yml` and has a workflow of its own.
+
+    Silent where either file is missing, so a partial checkout is not failed
+    for what it does not carry.
+    """
+    makefile = root / "Makefile"
+    workflows = sorted(
+        path for pattern in WORKFLOW_GLOBS for path in root.glob(pattern) if path.is_file()
+    )
+    if not makefile.is_file() or not workflows:
+        return
+    recipes, prerequisites = _target_recipes(makefile.read_text(encoding="utf-8"))
+    if "check" not in recipes:
+        return
+    local = {
+        script
+        for command in _target_commands(recipes, prerequisites, "check")
+        for script in _gate_scripts(root, command)
+    }
+    merge: set[str] = set()
+    for path in workflows:
+        text = path.read_text(encoding="utf-8")
+        if not _gates_pull_requests(text):
+            continue
+        merge |= {
+            script
+            for command, _ in workflow_commands(text)
+            for script in _gate_scripts(root, command)
+        }
+    if not local or not merge:
+        return
+    for script in sorted(local - merge):
+        if GATE_ONLY.get(script, ("", ""))[0] == "local":
+            continue
+        report.errors.append(
+            f"`make check` runs {script} and no workflow triggered by a pull request "
+            "does, so a branch pushed without a local `make check` merges green on a "
+            "tree `make check` would refuse. Add a step for it to "
+            "`.github/workflows/quality.yml` - the floor section where it needs no "
+            "virtualenv, under `uv run` where it does - or record it in "
+            "`tools/doc_check.py`'s `GATE_ONLY` with the reason the merge gate "
+            "cannot ask it"
+        )
+    for script in sorted(merge - local):
+        if GATE_ONLY.get(script, ("", ""))[0] == "ci":
+            continue
+        report.errors.append(
+            f"a pull-request workflow runs {script} and `make check` does not, so the "
+            "first place a session can learn the answer is a red CI run after review "
+            "has started. Add it to the `check:` target, or record it in "
+            "`tools/doc_check.py`'s `GATE_ONLY` with the reason a checkout cannot ask it"
+        )
+
+
 def check_math_delimiters(root: Path, report: Report) -> None:
     """Hold every markdown file to the math syntax GitHub actually renders.
 
@@ -3886,6 +4106,7 @@ def analyze(root: Path) -> Report:
     check_workflow_paths(root, report)
     check_coverage_gate(root, report)
     check_ruff_cache(root, report)
+    check_gate_parity(root, report)
     check_math_delimiters(root, report)
     check_resident_instructions(root, report)
     check_on_demand_instructions(root, report)

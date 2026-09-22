@@ -2046,6 +2046,296 @@ def test_this_repository_runs_every_ruff_check_cache_free() -> None:
     assert report.errors == []
 
 
+# --- gate parity ------------------------------------------------------------
+
+
+GATING_WORKFLOW = """name: quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+{steps}"""
+
+SCHEDULED_WORKFLOW = """name: drift
+
+on:
+  schedule:
+    - cron: '0 6 1 * *'
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+{steps}"""
+
+
+def _parity_repo(
+    root: Path, *, local: list[str], workflows: dict[str, tuple[str, list[str]]]
+) -> Path:
+    """A repository whose `check:` target and workflows run the given scripts."""
+    for command in local + [step for _, steps in workflows.values() for step in steps]:
+        for token in command.split():
+            if token.endswith(".py"):
+                (root / token).parent.mkdir(parents=True, exist_ok=True)
+                (root / token).write_text("", encoding="utf-8")
+    recipe = "".join(f"\t{command}\n" for command in local)
+    (root / "Makefile").write_text(f".PHONY: check\ncheck:\n{recipe}", encoding="utf-8")
+    directory = root / ".github" / "workflows"
+    directory.mkdir(parents=True, exist_ok=True)
+    for name, (template, steps) in workflows.items():
+        body = "".join(f"      - run: {step}\n" for step in steps)
+        (directory / name).write_text(template.format(steps=body), encoding="utf-8")
+    return root
+
+
+def _parity(root: Path) -> list[str]:
+    report = doc_check.Report()
+    doc_check.check_gate_parity(root, report)
+    return report.errors
+
+
+def test_the_two_gates_running_one_set_of_scripts_is_quiet(tmp_path: Path) -> None:
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py", "uv run python tools/b_check.py"],
+        workflows={
+            "quality.yml": (
+                GATING_WORKFLOW,
+                ["python3 tools/a_check.py", "uv run python tools/b_check.py"],
+            )
+        },
+    )
+
+    assert _parity(root) == []
+
+
+def test_how_a_script_is_invoked_is_not_a_drift(tmp_path: Path) -> None:
+    """The floor section runs a tool bare and the sync'd half runs it under `uv`.
+
+    Comparing command strings would report every such line as a divergence,
+    which is why the set compared is which scripts each gate runs at all.
+    """
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["uv run python tools/a_check.py"],
+        workflows={"quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py"])},
+    )
+
+    assert _parity(root) == []
+
+
+def test_a_script_only_the_local_gate_runs_is_an_error(tmp_path: Path) -> None:
+    # The failure this exists for: a branch pushed without a local `make check`
+    # merges green on a tree `make check` would refuse.
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py", "python3 tools/b_check.py"],
+        workflows={"quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py"])},
+    )
+
+    assert any("tools/b_check.py and no workflow" in m for m in _parity(root))
+
+
+def test_a_script_only_ci_runs_is_an_error_too(tmp_path: Path) -> None:
+    # The other direction, and it costs a red CI run after review has started
+    # rather than a silent pass.
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py"],
+        workflows={
+            "quality.yml": (
+                GATING_WORKFLOW,
+                ["python3 tools/a_check.py", "python3 tools/b_check.py"],
+            )
+        },
+    )
+
+    assert any("runs tools/b_check.py and `make check` does not" in m for m in _parity(root))
+
+
+def test_a_recorded_asymmetry_is_accepted(tmp_path: Path) -> None:
+    """`GATE_ONLY` is where the reason lives, and writing one is the whole ask."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py"],
+        workflows={
+            "quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py", "python3 tools/only.py"])
+        },
+    )
+    doc_check.GATE_ONLY["tools/only.py"] = ("ci", "reads the API")
+    try:
+        assert _parity(root) == []
+    finally:
+        del doc_check.GATE_ONLY["tools/only.py"]
+
+
+def test_a_recorded_asymmetry_is_accepted_on_its_own_side_only(tmp_path: Path) -> None:
+    """A script recorded as CI-only that turns up missing from CI still fails."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py", "python3 tools/only.py"],
+        workflows={"quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py"])},
+    )
+    doc_check.GATE_ONLY["tools/only.py"] = ("ci", "reads the API")
+    try:
+        assert any("tools/only.py and no workflow" in m for m in _parity(root))
+    finally:
+        del doc_check.GATE_ONLY["tools/only.py"]
+
+
+def test_a_scheduled_workflow_is_not_the_merge_gate(tmp_path: Path) -> None:
+    """A branch can merge without a monthly run ever having looked at it."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py", "python3 tools/b_check.py"],
+        workflows={
+            "quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py"]),
+            "drift.yml": (SCHEDULED_WORKFLOW, ["python3 tools/b_check.py"]),
+        },
+    )
+
+    assert any("tools/b_check.py and no workflow" in m for m in _parity(root))
+
+
+def test_a_second_pull_request_workflow_does_count(tmp_path: Path) -> None:
+    """`pr-title.yml` is why: one script's whole coverage is a workflow of its own."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py", "python3 tools/title_check.py"],
+        workflows={
+            "quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py"]),
+            "pr-title.yml": (GATING_WORKFLOW, ["python3 tools/title_check.py"]),
+        },
+    )
+
+    assert _parity(root) == []
+
+
+def test_the_inline_trigger_list_is_read_too(tmp_path: Path) -> None:
+    """`on: [push, pull_request]` gates merges exactly as the block form does.
+
+    Reading only the block form would have reported a workflow written this way
+    as gating nothing, which is a wrong answer rather than a missing one.
+    """
+    inline = GATING_WORKFLOW.replace(
+        "on:\n  push:\n    branches: [main]\n  pull_request:\n", "on: [push, pull_request]\n"
+    )
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py"],
+        workflows={
+            "quality.yml": (inline, ["python3 tools/a_check.py", "python3 tools/b_check.py"])
+        },
+    )
+
+    assert any("runs tools/b_check.py and `make check` does not" in m for m in _parity(root))
+
+
+def test_a_path_that_does_not_exist_is_not_a_gate(tmp_path: Path) -> None:
+    """The rule reads the tree, so a `.py` written as an argument is not swept in."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py"],
+        workflows={"quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py"])},
+    )
+    (root / "Makefile").write_text(
+        ".PHONY: check\ncheck:\n\tpython3 tools/a_check.py\n\techo deleted/gone.py\n",
+        encoding="utf-8",
+    )
+
+    assert _parity(root) == []
+
+
+def test_third_party_programs_are_left_to_the_checks_that_compare_them(tmp_path: Path) -> None:
+    """`ruff`, `mypy`, `pytest` and `uv` are reconciled line by line or not at all.
+
+    `check_coverage_gate` holds the pytest line to CI's and `check_ruff_cache`
+    holds the Makefile's `ruff check` to its flag. Sweeping them in here would
+    report `uv sync` and `sudo apt-get install` as gates.
+    """
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["uv run mypy", "uv run ruff check --no-cache .", "python3 tools/a_check.py"],
+        workflows={
+            "quality.yml": (
+                GATING_WORKFLOW,
+                ["sudo apt-get install -y libegl1", "python3 tools/a_check.py"],
+            )
+        },
+    )
+
+    assert _parity(root) == []
+
+
+def test_a_recipe_comment_does_not_end_the_target(tmp_path: Path) -> None:
+    """This Makefile carries a paragraph of reasoning above almost every command.
+
+    Reading a comment line as the end of the recipe would have found one script
+    under `check` where there are fifteen, and reported the rest as CI-only.
+    """
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py", "python3 tools/b_check.py"],
+        workflows={
+            "quality.yml": (
+                GATING_WORKFLOW,
+                ["python3 tools/a_check.py", "python3 tools/b_check.py"],
+            )
+        },
+    )
+    (root / "Makefile").write_text(
+        ".PHONY: check\ncheck:\n\tpython3 tools/a_check.py\n"
+        "# Why the next line is here, at length.\n#\n# And a second paragraph.\n"
+        "\tpython3 tools/b_check.py\n",
+        encoding="utf-8",
+    )
+
+    assert _parity(root) == []
+
+
+def test_a_prerequisite_target_counts_as_part_of_the_gate(tmp_path: Path) -> None:
+    """`check: sync` here, and what `sync` runs is part of what `make check` runs."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py"],
+        workflows={
+            "quality.yml": (
+                GATING_WORKFLOW,
+                ["python3 tools/a_check.py", "python3 tools/b_check.py"],
+            )
+        },
+    )
+    (root / "Makefile").write_text(
+        ".PHONY: sync check\nsync:\n\tpython3 tools/b_check.py\n"
+        "check: sync\n\tpython3 tools/a_check.py\n",
+        encoding="utf-8",
+    )
+
+    assert _parity(root) == []
+
+
+def test_a_checkout_with_no_workflows_is_left_alone(tmp_path: Path) -> None:
+    root = _parity_repo(_repo(tmp_path), local=["python3 tools/a_check.py"], workflows={})
+
+    assert _parity(root) == []
+
+
+def test_this_repository_runs_one_set_of_scripts_on_both_gates() -> None:
+    # The rule against the real tree rather than a fixture: this is the one that
+    # catches a check wired into `make check` and never added to CI, which three
+    # of them were (`PL-PBP5`).
+    report = doc_check.Report()
+    doc_check.check_gate_parity(Path(__file__).resolve().parents[2], report)
+
+    assert report.errors == []
+
+
 # --- resident instructions --------------------------------------------------
 
 
