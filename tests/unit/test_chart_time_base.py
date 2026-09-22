@@ -89,14 +89,14 @@ def test_fitting_a_run_always_contains_it() -> None:
     widest rung rather than at a convenient length.
     """
 
-    lengths = [0.0, 0.1, 59.9, 60.0, 60.1, 899.9, 900.0, 900.1, 43_200.0, 43_200.1, 500_000.0]
+    instants = [0.0, 0.1, 59.9, 60.0, 60.1, 899.9, 900.0, 900.1, 43_200.0, 43_200.1, 500_000.0]
 
-    for run_length_s in lengths:
-        time_base = fit_to_run(run_length_s)
+    for newest_sample_s in instants:
+        time_base = fit_to_run(newest_sample_s)
         window_start_s, window_stop_s = fitted_window(time_base)
 
         assert window_start_s == 0.0
-        assert window_stop_s >= run_length_s
+        assert window_stop_s >= newest_sample_s
 
 
 def test_fitting_takes_the_narrowest_width_that_holds_the_run() -> None:
@@ -200,8 +200,8 @@ def test_ticks_include_a_window_edge_that_falls_exactly_on_one() -> None:
     assert tick_times(180.0, 540.0, 180.0) == (180.0, 360.0, 540.0)
 
 
-@pytest.mark.parametrize("run_length_s", [-1.0, -0.001, math.nan, math.inf])
-def test_fitting_refuses_a_run_length_that_is_not_one(run_length_s: float) -> None:
+@pytest.mark.parametrize("newest_sample_s", [-1.0, -0.001, math.nan, math.inf])
+def test_fitting_refuses_a_sample_time_that_is_not_one(newest_sample_s: float) -> None:
     """An axis drawn against a width nobody can account for is worse than none.
 
     `CLAUDE.md`'s standard prefers an obvious failure to a plausible-looking
@@ -210,7 +210,7 @@ def test_fitting_refuses_a_run_length_that_is_not_one(run_length_s: float) -> No
     """
 
     with pytest.raises(ValueError, match="finite and non-negative"):
-        fit_to_run(run_length_s)
+        fit_to_run(newest_sample_s)
 
 
 @pytest.mark.parametrize("newest_sample_s", [-1.0, math.nan, math.inf])

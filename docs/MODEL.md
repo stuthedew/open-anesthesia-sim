@@ -6254,7 +6254,7 @@ either picks a width from a fixed ladder or leaves the default, which fits the
 whole run so far. The horizontal axis is simulated time under both, and the
 time base decides only how much of it is on the plot and how finely that span
 is ruled. `app/chart_time_base.py` is where this section terminates: it is
-arithmetic over durations that reads no simulation state and imports no toolkit,
+arithmetic over simulated time that reads no simulation state and imports no toolkit,
 so the widths and the rule this section reasons about can be read, cited and
 tested without loading the interface. The section above governs the vertical
 axis; this one governs the horizontal.
