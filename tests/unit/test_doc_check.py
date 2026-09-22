@@ -1792,8 +1792,12 @@ def test_a_tag_whose_pyproject_version_disagrees_is_refused(tmp_path: Path) -> N
 
     errors = _errors(root)
 
+    # The same reading is what a clone still holding a tag the remote deleted
+    # sees, where moving the tag is the wrong repair (`PL-LT77`).
     assert any(
-        f"v0.2.5 points at {commit}" in message and "declares 0.2.4" in message
+        f"v0.2.5 points at {commit}" in message
+        and "declares 0.2.4" in message
+        and "git tag -d v0.2.5" in message
         for message in errors
     ), errors
 

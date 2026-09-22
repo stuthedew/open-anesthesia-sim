@@ -2963,9 +2963,11 @@ def _check_tag_versions(
                     f"{where}: {name} points at "
                     f"{commit.strip() or 'a commit git would not name'}, whose pyproject.toml "
                     f"declares {declared}. A release tag goes on the commit its release shipped "
-                    "from, so move it there - or, if that release really did ship without its "
-                    "version bump, name it in the Tags statement's sentence on versions that "
-                    "shipped with a stale version file"
+                    "from, so move it there - unless `git ls-remote --tags origin` no longer "
+                    "lists it, when this clone is keeping a tag deleted on the remote and "
+                    f"`git tag -d {name}` is the repair. If that release really did "
+                    "ship without its version bump, name it in the Tags statement's sentence on "
+                    "versions that shipped with a stale version file instead"
                 )
     if unread:
         report.declined.append(
