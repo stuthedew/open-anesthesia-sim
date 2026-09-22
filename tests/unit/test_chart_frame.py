@@ -1116,8 +1116,8 @@ def test_a_bookmark_branch_is_marked_at_its_fork_and_not_at_its_definition_s_ope
     fork, so a frame taking the definition's own opening for the branch point
     would draw the line where the trunk was still the only run - the fork at a
     time it did not happen, which is what the assembly's own comment guards
-    against. `opened_from.elapsed_s` is the fork whichever door the branch
-    came through.
+    against. `opened_from.fork.instant_s` is the fork's instant whichever door
+    the branch came through.
     """
 
     trunk = SimulationController()

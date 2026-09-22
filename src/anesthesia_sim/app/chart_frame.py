@@ -809,8 +809,8 @@ def _run_frame(run: RunInput, start_s: float, stop_s: float, columns: int) -> Ru
     # agreeing at a time it did not happen.
     opened_from = run.controller.opened_from
     branch_point_s = (
-        opened_from.elapsed_s
-        if opened_from is not None and start_s <= opened_from.elapsed_s <= stop_s
+        opened_from.fork.instant_s
+        if opened_from is not None and start_s <= opened_from.fork.instant_s <= stop_s
         else None
     )
 

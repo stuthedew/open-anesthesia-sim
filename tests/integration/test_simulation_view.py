@@ -3742,7 +3742,7 @@ def test_a_mark_the_branch_cannot_reach_is_not_drawn_as_the_trunk_left_it(
 
     An instant the branch inherited but opened after read as the trunk's
     `passed`, so the screen asserted of the displayed branch something the
-    model decides is false from `ResumePoint.elapsed_s` alone.
+    model decides is false from `ResumePoint.fork.instant_s` alone.
     `MarkStanding.BEFORE_THIS_BRANCH` exists so that is not said, and no
     screen could reach it: the reference run is the trunk, and no instant
     stands before a trunk.

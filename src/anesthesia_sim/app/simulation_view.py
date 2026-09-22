@@ -626,14 +626,14 @@ class SimulationView(QWidget):
             )
 
         if controller not in self._case.branches:
-            opened_at = controller.opened_from
+            opened_from = controller.opened_from
 
             raise ValueError(
                 "a displayed run must be a branch of the case on the dashboard, because two "
                 "curves on one axis assert one patient under two managements; this run "
                 + (
-                    f"opened at {opened_at.elapsed_s} s but belongs to another case"
-                    if opened_at is not None
+                    f"opened at {opened_from.fork.instant_s} s but belongs to another case"
+                    if opened_from is not None
                     else "is a trunk of its own and was never branched from this case"
                 )
             )
