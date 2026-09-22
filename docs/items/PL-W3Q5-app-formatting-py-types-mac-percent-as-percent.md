@@ -8,9 +8,8 @@ classes: defect
 feature: presentation-safety
 touches: src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_formatting.py && ! grep -q 'mac_percent: float' src/anesthesia_sim/app/formatting.py
+verify: ! grep -q 'mac_percent: float' src/anesthesia_sim/app/formatting.py && uv run pytest tests/unit/test_formatting.py
 ---
-
 
 **Problem.** app/formatting.py types mac_percent as Percent in two signatures and as a bare float in five others, so one parameter carries two types in one module
 

@@ -8,7 +8,7 @@ classes: defect, ux
 feature: qt-port
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_chart.py
 added: 2026-09-15
-verify: uv run pytest tests/integration/test_qt_chart.py && grep -q 'def test_the_hover_answers_the_point_under_the_pointer' tests/integration/test_qt_chart.py
+verify: grep -q 'def test_the_hover_answers_the_point_under_the_pointer' tests/integration/test_qt_chart.py && uv run pytest tests/integration/test_qt_chart.py
 ---
 
 **Problem.** The chart hover answers the pointer's previous position and never re-answers a resting pointer while paused, because the direct sigMouseMoved slot reads the position the rate-limited proxy stored one event earlier

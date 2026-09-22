@@ -8,7 +8,7 @@ classes: docs
 feature: numerical-domain
 touches: docs/MODEL.md
 added: 2026-09-05
-verify: python3 tools/doc_check.py check && grep -qF 'Modal time constants' docs/MODEL.md
+verify: grep -qF 'Modal time constants' docs/MODEL.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** `docs/MODEL.md` states two single-mechanism time constants under

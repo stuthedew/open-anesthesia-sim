@@ -8,9 +8,8 @@ classes: defect
 feature: numerical-domain
 touches: src/anesthesia_sim/core/simulation.py, tests/unit/test_simulation.py
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_simulation.py && grep -q 'def test_a_state_past_the_supported_run_length_is_refused_at_construction' tests/unit/test_simulation.py
+verify: grep -q 'def test_a_state_past_the_supported_run_length_is_refused_at_construction' tests/unit/test_simulation.py && uv run pytest tests/unit/test_simulation.py
 ---
-
 
 **Problem.** SimulationState can be constructed already past the supported run length, and only the next advance refuses it
 

@@ -8,7 +8,7 @@ classes: defect
 feature: verify-command-health
 touches: docs/items
 added: 2026-09-17
-verify: bin/docket check && grep -q '^touches:.*subprojects/docket/tests/test_cli.py' docs/items/PL-L4YG-*.md
+verify: grep -q '^touches:.*subprojects/docket/tests/test_cli.py' docs/items/PL-L4YG-*.md && bin/docket check
 ---
 
 **Problem.** Five open items' verify: commands grep a file their own touches does not declare, so bin/docket concurrent gives a wrong answer for work that will certainly edit it

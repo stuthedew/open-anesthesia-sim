@@ -1,14 +1,14 @@
 ---
 id: PL-1FT6
 title: Build the LayoutModel: a pure-Python tree of Splits and Areas with split, join, resize, swap and set_view, a borders() collinear-chain query, and versioned JSON serialization over a root that holds one or more windows from v1
-status: ready
-feature: interface-areas
-added: 2026-09-16
 priority: P2
 effort: L
+status: ready
 classes: feature
+feature: interface-areas
 touches: src/anesthesia_sim/layout/, tests/unit
-verify: uv run pytest tests/unit/test_layout_model.py && grep -q 'def test_a_join_the_tree_cannot_express_is_refused' tests/unit/test_layout_model.py
+added: 2026-09-16
+verify: grep -q 'def test_a_join_the_tree_cannot_express_is_refused' tests/unit/test_layout_model.py && uv run pytest tests/unit/test_layout_model.py
 ---
 
 **Problem.** Build the LayoutModel: a pure-Python tree of Splits and Areas with split, join, resize, swap and set_view, a borders() collinear-chain query, and versioned JSON serialization over a root that holds one or more windows from v1

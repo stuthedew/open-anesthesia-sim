@@ -8,7 +8,7 @@ classes: refactor
 feature: interface-areas
 touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/simulation_view.py, tests/integration
 added: 2026-09-16
-verify: uv run pytest tests/integration/test_simulation_view.py && grep -q 'def test_the_compartment_selection_outlives_the_legend_that_renders_it' tests/integration/test_simulation_view.py
+verify: grep -q 'def test_the_compartment_selection_outlives_the_legend_that_renders_it' tests/integration/test_simulation_view.py && uv run pytest tests/integration/test_simulation_view.py
 ---
 
 **Problem.** Which compartments are drawn is held in `TraceLegend`'s own

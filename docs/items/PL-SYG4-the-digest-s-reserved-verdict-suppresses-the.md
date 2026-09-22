@@ -8,7 +8,7 @@ classes: defect, infra
 feature: release-roadmap-seam
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py
 added: 2026-09-15
-verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_the_reserved_refusal_names_the_way_out' subprojects/docket/tests/test_release.py
+verify: grep -q 'def test_the_reserved_refusal_names_the_way_out' subprojects/docket/tests/test_release.py && uv run pytest subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** The digest's RESERVED verdict suppresses the release offer entirely rather than naming the next free patch number, so on the v0.4.x track with v0.5.0 reserved a session never offers a cut the plan actually wants

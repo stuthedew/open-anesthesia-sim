@@ -8,9 +8,8 @@ classes: docs, defect
 feature: provenance
 touches: src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
 added: 2026-09-13
-verify: python3 tools/doc_check.py check && ! grep -q 'test_published_wash_in.py' src/anesthesia_sim/data/agents/desflurane.json
+verify: ! grep -q 'test_published_wash_in.py' src/anesthesia_sim/data/agents/desflurane.json && python3 tools/doc_check.py check
 ---
-
 
 **Problem.** desflurane.json points at 'the five other candidates ruled out' in a MODEL.md table that now has nine rows, and names tests/reference/test_published_wash_in.py, which does not exist
 

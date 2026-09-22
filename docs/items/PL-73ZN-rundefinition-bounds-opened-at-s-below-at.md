@@ -8,9 +8,8 @@ classes: defect
 feature: numerical-domain
 touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_run_definition.py && grep -q 'def test_opening_past_the_supported_envelope_is_refused' tests/unit/test_run_definition.py
+verify: grep -q 'def test_opening_past_the_supported_envelope_is_refused' tests/unit/test_run_definition.py && uv run pytest tests/unit/test_run_definition.py
 ---
-
 
 **Problem.** RunDefinition bounds opened_at_s below at induction but not above, so a definition may declare an opening past the 24 h envelope the model is claimed over
 

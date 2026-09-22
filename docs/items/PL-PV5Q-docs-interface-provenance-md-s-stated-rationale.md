@@ -8,7 +8,7 @@ classes: docs
 feature: interface-areas
 touches: docs/interface-provenance.md
 added: 2026-09-16
-verify: python3 tools/doc_check.py check && grep -qF 'read against the primary pages rather than search summaries' docs/interface-provenance.md
+verify: grep -qF 'read against the primary pages rather than search summaries' docs/interface-provenance.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** docs/interface-provenance.md's stated-rationale section rests on search-engine summaries because every blender.org host and web.archive.org are egress-blocked, so a session that can reach the HIG and Developer Docs should re-read it against the pages themselves
