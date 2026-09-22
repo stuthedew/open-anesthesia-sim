@@ -8,9 +8,8 @@ classes: defect
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, tests/unit/test_docket_branch_guard.py
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_docket_branch_guard.py && grep -q 'def test_a_later_merge_touching_the_file_is_not_work_left_behind' tests/unit/test_docket_branch_guard.py
+verify: grep -q 'def test_a_later_merge_touching_the_file_is_not_work_left_behind' tests/unit/test_docket_branch_guard.py && uv run pytest tests/unit/test_docket_branch_guard.py
 ---
-
 
 **Problem.** bin/docket stranded reports a one-path commit as work left behind whenever a later merge edits that file, and its recovery recipe would revert the newer work
 

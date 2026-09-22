@@ -8,7 +8,7 @@ classes: docs, infra
 feature: dev-tooling
 touches: .claude/skills, docs/WORKING_NOTES.md
 added: 2026-09-02
-verify: python3 tools/doc_check.py check && grep -rqF 'FLET_WEB_NO_CDN' .claude/skills/
+verify: grep -rqF 'FLET_WEB_NO_CDN' .claude/skills/ && python3 tools/doc_check.py check
 ---
 
 **Problem.** PL-010 was gated on confirming that a live Flet client repaints

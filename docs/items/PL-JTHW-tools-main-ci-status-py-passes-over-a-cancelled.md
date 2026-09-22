@@ -8,7 +8,7 @@ classes: defect, infra
 feature: ci-cost
 touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py
 added: 2026-09-16
-verify: uv run pytest tests/unit/test_main_ci_status.py && grep -q 'def test_a_cancelled_main_run_is_reported' tests/unit/test_main_ci_status.py
+verify: grep -q 'def test_a_cancelled_main_run_is_reported' tests/unit/test_main_ci_status.py && uv run pytest tests/unit/test_main_ci_status.py
 ---
 
 **Problem.** tools/main_ci_status.py passes over a cancelled main run in silence, so after PL-SMN4 a commit with no whole-store verdict is indistinguishable from one nobody asked about

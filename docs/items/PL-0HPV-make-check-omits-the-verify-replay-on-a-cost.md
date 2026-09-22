@@ -263,3 +263,46 @@ still loses its health-check clause when its item starts.
    item's evidence, and that stripping still happens as each item starts.
 6. Close this item in the commit that adds the `Makefile` line, because its
    `verify:` passes from that commit on.
+
+## Worked 2026-09-22: the reorder pass, and the proof it changed no answer
+
+**Recounted with a quote-aware split rather than the regex: 96 commands
+rewritten.** 94 meet step 1's test exactly - a pure `&&` chain running
+`uv run pytest`, `python3 tools/doc_check.py check` or `bin/docket check`
+ahead of a `grep`, `! grep` or `test`. Two more moved by the judgment step 1
+allows, each a read-only pipe: `PL-T9XJ`
+(`head -12 docs/resident-instructions.md | grep -q 'expert-review'`) and
+`PL-WTXB` (`! bin/docket --help | grep -q milestone`). The 98 was a scratch
+regex's count and was not reused.
+
+**Left as they are, and why.** `PL-LSTW` carries a redirection and `PL-RBMK`
+an `||`, both excluded by step 1. Three put an expensive clause ahead of a
+`grep` that step 1's list does not name - `PL-M3YJ` (`uv run mypy`),
+`PL-TMSN` (`uv run python tools/glyph_check.py`) and `PL-Y5ZB`
+(`uv run python tools/agent_identity_check.py`) - and each ran in 0.4-0.5 s on
+the warm cache `make check` leaves behind it, so moving them would buy nothing
+the replay would notice.
+
+**The proof, step 2.** Every rewritten command was run in its old and its new
+form the way `verify.already_passing` runs one - `sh -c` from the repository
+root, both docket guards set, a coverage file per run - with a 900 s limit so
+that nothing was killed and every run reached a real exit status. **96 of 96
+exit non-zero in both forms; none exits 0 in either.** Serial time fell from
+1,396 s to 1 s, because none of the 96 cheap clauses passes today, so every new
+form stops at its first clause.
+
+**Two exit codes changed category, both still non-zero.** `PL-1FT6` went from
+4 to 2: its test file does not exist yet, so pytest's usage error became
+`grep`'s missing-file error, and the replay reads neither. `PL-W4XQ` went from
+5 to 1, and that one changes what the replay reports: 5 is what
+`verify.selects_no_test` reads as "selected no test", so that advisory no
+longer fires on it before its work. It also showed the command cannot pass as
+written in either order - `-k returning_to_a_mark` does not select the test its
+`grep` names - so a line in `PL-W4XQ`'s brief now says to record the `grep`
+alone when it starts.
+
+**Only `verify:` changed in value.** `docket set` rendered 28 of the 96 files'
+front matter canonically on the way past - key order, one quoted title
+unquoted, blank lines after the fence - which is what it does on any field
+write. Parsed before and after, every other field and every body is identical.
+No branch in flight had edited any of the 96 files at the time of the pass.

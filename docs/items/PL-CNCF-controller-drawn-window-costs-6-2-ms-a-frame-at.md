@@ -8,7 +8,7 @@ classes: perf
 feature: chart-readout
 touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
 added: 2026-09-08
-verify: python3 tools/doc_check.py check && grep -qF 'drawn_window costs' docs/MODEL.md
+verify: grep -qF 'drawn_window costs' docs/MODEL.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x

@@ -7,7 +7,7 @@ status: ready
 classes: docs, infra
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, docs/items/PL-WB0X-split-simulation-view-py-formatting-and-chart.md
 added: 2026-09-01
-verify: bin/docket check && grep -qF 'def check_sequencing_placement' subprojects/docket/src/docket/checks.py
+verify: grep -qF 'def check_sequencing_placement' subprojects/docket/src/docket/checks.py && bin/docket check
 ---
 
 **Problem.** An item's brief can state placements for its own work that

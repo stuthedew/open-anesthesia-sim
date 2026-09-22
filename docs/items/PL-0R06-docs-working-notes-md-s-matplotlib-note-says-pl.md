@@ -8,7 +8,7 @@ classes: docs
 feature: queue-hygiene
 touches: docs/WORKING_NOTES.md
 added: 2026-09-14
-verify: python3 tools/doc_check.py check && ! grep -qF 'would both be rebuilt against it' docs/WORKING_NOTES.md
+verify: ! grep -qF 'would both be rebuilt against it' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** docs/WORKING_NOTES.md's matplotlib note says PL-KP7H and PL-YLKR would both be rebuilt against a WebAgg canvas, but PL-YLKR closed as design-only on 2026-09-14 and its build is PL-YVHK

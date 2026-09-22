@@ -8,7 +8,7 @@ classes: defect, ux
 feature: qt-port
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_rendering.py
 added: 2026-09-14
-verify: uv run pytest tests/integration/test_qt_rendering.py && grep -q 'def test_the_hover_box_stays_inside_the_plot_at_every_edge' tests/integration/test_qt_rendering.py
+verify: grep -q 'def test_the_hover_box_stays_inside_the_plot_at_every_edge' tests/integration/test_qt_rendering.py && uv run pytest tests/integration/test_qt_rendering.py
 ---
 
 **Problem.** The Qt chart's hover box was never looked at rendered: its placement flips near the window's right edge and the axis top, and nothing has confirmed the flip lands the box inside the plot or that INK on PANEL in a pg.TextItem is what is painted

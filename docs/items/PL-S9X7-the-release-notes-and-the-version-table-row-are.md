@@ -8,9 +8,8 @@ classes: infra
 feature: release-process
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-13
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def check_release_row_item_count' tools/doc_check.py
+verify: grep -q 'def check_release_row_item_count' tools/doc_check.py && uv run pytest tests/unit/test_doc_check.py
 ---
-
 
 **Problem.** The release notes and the version-table row are written from the same 21 items but by different hands, so nothing checks that the row's item count matches the notes' line count
 

@@ -1,14 +1,14 @@
 ---
 id: PL-NDKC
 title: PySide6 6.11.2 segfaults on QDataStream over a temporary QByteArray, which the layout persistence work will meet the first time it decodes a saved blob
-status: ready
-feature: interface-areas
-added: 2026-09-16
 priority: P3
 effort: S
+status: ready
 classes: defect, infra
+feature: interface-areas
 touches: docs/WORKING_NOTES.md
-verify: python3 tools/doc_check.py check && grep -qF 'QBuffer::readData' docs/WORKING_NOTES.md
+added: 2026-09-16
+verify: grep -qF 'QBuffer::readData' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** PySide6 6.11.2 segfaults on QDataStream over a temporary QByteArray, which the layout persistence work will meet the first time it decodes a saved blob

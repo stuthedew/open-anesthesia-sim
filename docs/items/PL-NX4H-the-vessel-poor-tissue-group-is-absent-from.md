@@ -8,7 +8,7 @@ classes: docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-01
-verify: python3 tools/doc_check.py check && grep -qi 'vessel-poor' docs/MODEL.md
+verify: grep -qi 'vessel-poor' docs/MODEL.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** The reference adult carries three tissue groups — vessel-rich

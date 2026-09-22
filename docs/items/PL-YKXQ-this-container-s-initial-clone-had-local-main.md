@@ -8,7 +8,7 @@ classes: defect, infra
 feature: dev-tooling
 touches: .claude/hooks/docket-digest.sh, tests/unit/test_docket_digest_hook.py, docs/worker.md
 added: 2026-09-06
-verify: uv run pytest tests/unit/test_docket_digest_hook.py && grep -q 'rev-list --count main' .claude/hooks/docket-digest.sh
+verify: grep -q 'rev-list --count main' .claude/hooks/docket-digest.sh && uv run pytest tests/unit/test_docket_digest_hook.py
 ---
 
 **Problem.** Measured 2026-09-06 at the end of `PL-6Q8N`, in a session started

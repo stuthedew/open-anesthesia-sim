@@ -8,7 +8,7 @@ classes: session-cost, infra
 feature: dev-tooling
 touches: .claude/hooks/no-habit-merge-guard.sh, .claude/settings.json, CLAUDE.md, docket.toml, tests/unit/test_no_habit_merge_guard.py
 added: 2026-09-16
-verify: uv run pytest tests/unit/test_no_prune_guard.py && grep -q 'no-habit-merge-guard' .claude/settings.json && test -f tests/unit/test_no_habit_merge_guard.py
+verify: grep -q 'no-habit-merge-guard' .claude/settings.json && test -f tests/unit/test_no_habit_merge_guard.py && uv run pytest tests/unit/test_no_prune_guard.py
 ---
 
 **Problem.** `CLAUDE.md` § "The queue" spends 11 resident lines on "Do not

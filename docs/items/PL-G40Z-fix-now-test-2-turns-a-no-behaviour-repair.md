@@ -9,6 +9,7 @@ feature: generator-identification
 touches: CLAUDE.md, .claude/rules/citation-drift.md
 added: 2026-09-22
 closed: 2026-09-22
+pr: 916
 payoff: a one-line repair to another item's brief rides the current commit instead of becoming an item to triage, rank and work
 verify: grep -qF 'is not a fix-now use at all' CLAUDE.md
 ---

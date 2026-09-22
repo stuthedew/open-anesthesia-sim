@@ -1,13 +1,13 @@
 ---
 id: PL-QNMM
 title: Sweep the decisions already attributed to the project owner and mark which were ratified recommendations rather than specified behavior, since the distinction was only introduced on 2026-09-16
-status: ready
-added: 2026-09-16
 priority: P3
 effort: M
+status: ready
 classes: docs
 touches: ROADMAP.md, docs/MODEL.md, docs/items
-verify: python3 tools/doc_check.py check && grep -qF 'swept for ratified-versus-specified' ROADMAP.md
+added: 2026-09-16
+verify: grep -qF 'swept for ratified-versus-specified' ROADMAP.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** Sweep the decisions already attributed to the project owner and mark which were ratified recommendations rather than specified behavior, since the distinction was only introduced on 2026-09-16

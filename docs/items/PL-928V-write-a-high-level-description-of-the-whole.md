@@ -8,7 +8,7 @@ classes: docs
 feature: project-introduction
 touches: docs/workflow.md, README.md, docs/consultant-brief.md
 added: 2026-09-13
-verify: python3 tools/doc_check.py check && test -f docs/workflow.md && grep -q 'workflow.md' README.md
+verify: test -f docs/workflow.md && grep -q 'workflow.md' README.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** No document describes the working method end to end. The rules are

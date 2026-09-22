@@ -8,7 +8,7 @@ classes: defect, docs
 feature: release-process
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-07
-verify: python3 tools/doc_check.py check && grep -rq 'git tag -a' .claude/skills/docket/ && ! grep -rq 'git tag -a v0.3.0 origin/main' .claude/skills/docket/
+verify: grep -rq 'git tag -a' .claude/skills/docket/ && ! grep -rq 'git tag -a v0.3.0 origin/main' .claude/skills/docket/ && python3 tools/doc_check.py check
 ---
 
 **Problem.** The docket skill's release handover tags at origin/main rather than at the cut's own merge commit, so a re-run of the three commands tags whatever merged next

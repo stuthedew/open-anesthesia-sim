@@ -8,7 +8,7 @@ classes: docs
 feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-15
-verify: python3 tools/doc_check.py check && ! grep -qF 'names that mode yet' ROADMAP.md
+verify: ! grep -qF 'names that mode yet' ROADMAP.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** ROADMAP.md's v0.4.14 row still says nothing on the documented close-out path names verify --self, which PL-7XTS made false

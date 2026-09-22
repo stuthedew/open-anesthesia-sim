@@ -8,7 +8,7 @@ classes: test
 feature: numerical-domain
 touches: tests/reference/test_coupled_dynamics.py
 added: 2026-09-03
-verify: uv run pytest 'tests/reference/test_coupled_dynamics.py::test_lockstep_oracle_step_matches_the_pinned_one' && grep -q 'def test_a_randomised_trajectory_stays_conservative_and_in_range' tests/reference/test_coupled_dynamics.py
+verify: grep -q 'def test_a_randomised_trajectory_stays_conservative_and_in_range' tests/reference/test_coupled_dynamics.py && uv run pytest 'tests/reference/test_coupled_dynamics.py::test_lockstep_oracle_step_matches_the_pinned_one'
 ---
 
 **Problem.** Every gate in `tests/reference/` drives a fixed script. The

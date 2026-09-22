@@ -8,7 +8,7 @@ classes: docs
 feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-08
-verify: python3 tools/doc_check.py check && grep -qF 'controller.py holds no numeric defaults' ROADMAP.md
+verify: grep -qF 'controller.py holds no numeric defaults' ROADMAP.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** ROADMAP item 24 names a core/controller default duplication that does not exist: controller.py holds two module-level assignments, both non-numeric, and its docstring disclaims holding defaults
