@@ -9,6 +9,7 @@ feature: instruction-staleness-audit
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests, docket.toml
 added: 2026-09-21
 closed: 2026-09-21
+pr: 883
 payoff: the assertion that quietly goes wrong at month eighteen reaches a reader instead of being obeyed
 verify: uv run pytest subprojects/docket/tests/test_instructions.py subprojects/docket/tests/test_checks.py -k 'instruction or staleness or dated_assertion or re_dating or oldest_first' -q
 ---

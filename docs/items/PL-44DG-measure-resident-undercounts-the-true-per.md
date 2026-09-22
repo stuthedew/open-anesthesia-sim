@@ -9,6 +9,7 @@ feature: instruction-staleness-audit
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/resident-instructions.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 885
 payoff: the one gauge the project consults about resident size stops being 7.2% low
 verify: uv run pytest tests/unit/test_doc_check.py -k 'digest or skill or hook' -q
 ---
