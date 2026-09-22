@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs
 feature: project-introduction
+milestone: v0.5.3
 touches: docs/ARCHITECTURE.md
 added: 2026-09-19
 closed: 2026-09-22
+pr: 887
 verify: ! grep -q 'The five scripts' docs/ARCHITECTURE.md
 ---
 

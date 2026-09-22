@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: instruction-staleness-audit
+milestone: v0.5.3
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/resident-instructions.md
 added: 2026-09-21
 closed: 2026-09-21

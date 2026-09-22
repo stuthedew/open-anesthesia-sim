@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: commit-provenance
+milestone: v0.5.3
 touches: docs/items
 added: 2026-09-21
 closed: 2026-09-21

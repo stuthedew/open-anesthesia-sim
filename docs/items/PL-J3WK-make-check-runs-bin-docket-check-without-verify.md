@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, infra
+milestone: v0.5.3
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
 closed: 2026-09-21

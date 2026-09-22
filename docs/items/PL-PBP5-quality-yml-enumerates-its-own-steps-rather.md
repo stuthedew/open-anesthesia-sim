@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect, infra
+milestone: v0.5.3
 touches: .github/workflows/quality.yml, Makefile, tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md, docs/items/
 added: 2026-09-21
 closed: 2026-09-21
