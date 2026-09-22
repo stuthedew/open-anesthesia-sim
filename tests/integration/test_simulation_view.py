@@ -61,8 +61,8 @@ from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     BRANCH_AGENT_LOCK_TEXT,
+    BRANCH_RUN_INDEX,
     COMPARING_AGENT_LOCK_TEXT,
-    COMPARING_FORK_LOCK_TEXT,
     CONTROL_TIMELINE_HEADING,
     FORK_NOTHING_SELECTED_TEXT,
     HALT_FORK_LABEL_TEMPLATE,
@@ -79,11 +79,14 @@ from anesthesia_sim.app.dashboard_frame import (
     NO_TRACES_SHOWN_TEXT,
     READOUT_PANELS,
     REMOVE_NOTHING_SELECTED_TEXT,
+    RESET_LABEL,
     RUNNING_AGENT_LOCK_TEXT,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_NEW_CASE_TEMPLATE,
     STATUS_FAILED_TEXT,
+    TRUNK_RUN_INDEX,
+    comparing_fork_lock_text,
     run_label,
     slider_position,
 )
@@ -3933,7 +3936,7 @@ def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplica
     assert panel.take_button.isEnabled() is False
     assert panel.point_selector.isHidden() is True
     assert panel.point_selector.isEnabled() is False
-    assert panel.lock_text.text() == COMPARING_FORK_LOCK_TEXT
+    assert panel.lock_text.text() == comparing_fork_lock_text()
     assert panel.lock_text.isHidden() is False
     # The mode is not a warning: this interface has one alarm colour and a
     # comparison in progress is the dashboard working as intended.
@@ -3943,7 +3946,7 @@ def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplica
 
     assert len(view.runs) == 2
     assert len(case.branches) == 1
-    assert panel.lock_text.text() == COMPARING_FORK_LOCK_TEXT
+    assert panel.lock_text.text() == comparing_fork_lock_text()
 
 
 def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on(application: QApplication) -> None:
@@ -4110,7 +4113,7 @@ def test_the_halt_fork_is_refused_with_the_rest_while_two_runs_are_shown(
 
     assert len(view.runs) == 2
     assert len(case.branches) == 1
-    assert view._fork_panel.lock_text.text() == COMPARING_FORK_LOCK_TEXT
+    assert view._fork_panel.lock_text.text() == comparing_fork_lock_text()
 
 
 def test_a_halt_fork_the_case_refuses_is_reported_and_adds_no_run(
@@ -4254,12 +4257,18 @@ def test_resetting_the_trunk_ends_the_comparison(application: QApplication) -> N
 
 
 def test_resetting_a_branch_leaves_the_comparison_standing(application: QApplication) -> None:
-    """A branch's Reset returns it to its fork; only the trunk's is a new case."""
+    """A branch's Reset returns it to its fork; only the trunk's is a new case.
+
+    The lock is asserted to be still there because that is the half a learner
+    is surprised by (`PL-WG73`): the run they were trying to end has lost
+    four steps of simulated case and the control they were sent to press is
+    still refused, under the same sentence.
+    """
 
     case = _branched_case()
     view = _case_view(application, case)
     _take_fork(view, 60.0)
-    branch = view.runs[1]
+    branch = view.runs[BRANCH_RUN_INDEX]
     branch._start_button.click()
     _steps(branch, 4)
     branch._reset_button.click()
@@ -4269,6 +4278,44 @@ def test_resetting_a_branch_leaves_the_comparison_standing(application: QApplica
     assert view.case is case
     assert len(case.branches) == 1
     assert branch.snapshot().elapsed_s == pytest.approx(60.0)
+    assert view._fork_panel.lock_text.isHidden() is False
+    assert view._fork_panel.take_button.isHidden() is True
+
+
+def test_the_comparison_lock_names_the_run_whose_reset_ends_it(application: QApplication) -> None:
+    """`PL-WG73` end to end: the words in the lock are on screen, on the button that works.
+
+    `test_the_comparison_lock_names_a_control_the_learner_can_press` holds
+    the sentence to what `run_label` and `RESET_LABEL` say; this holds that
+    the runs those names address are the ones drawn, that each carries its
+    name where a reader meets its Reset, and that the Reset the sentence
+    sends them to is the one that lifts the lock. Neither half is worth
+    anything alone - a name attributes a control only if the reader can find
+    what it refers to.
+    """
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+
+    lock = view._fork_panel.lock_text.text()
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    branch = view.runs[BRANCH_RUN_INDEX]
+
+    assert lock == comparing_fork_lock_text()
+
+    for run, index in ((trunk, TRUNK_RUN_INDEX), (branch, BRANCH_RUN_INDEX)):
+        assert run._run_name_text.text() == run_label(index)
+        assert run._run_name_text.isHidden() is False
+        assert run._run_name_text.text() in lock
+        assert run._reset_button.text() == RESET_LABEL
+        assert run._reset_button.isHidden() is False
+
+    trunk._reset_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 1
+    assert view._fork_panel.lock_text.isHidden() is True
+    assert view._fork_panel.take_button.isHidden() is False
 
 
 def test_a_branch_added_while_the_dashboard_runs_gets_its_own_step_timer(

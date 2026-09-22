@@ -59,7 +59,6 @@ from anesthesia_sim.app.chart_time_base import (
 from anesthesia_sim.app.controller import BranchedCase, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     CHART_HEADING,
-    COMPARING_FORK_LOCK_TEXT,
     FIT_RUN_LABEL,
     FORK_NOTHING_SELECTED_TEXT,
     MAX_DISPLAYED_RUNS,
@@ -73,6 +72,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WASH_IN_MODELLED_TEXT,
     RunMarks,
     bookmark_panel,
+    comparing_fork_lock_text,
     compartment_cap_notice,
     fork_offer,
     mac_awake_caption,
@@ -766,7 +766,7 @@ class SimulationView(QWidget):
             return
 
         if len(self._runs) >= MAX_DISPLAYED_RUNS:
-            self._fork_refusal = COMPARING_FORK_LOCK_TEXT
+            self._fork_refusal = comparing_fork_lock_text()
             self.present(False)
 
             return
@@ -817,7 +817,7 @@ class SimulationView(QWidget):
             return
 
         if len(self._runs) >= MAX_DISPLAYED_RUNS:
-            self._fork_refusal = COMPARING_FORK_LOCK_TEXT
+            self._fork_refusal = comparing_fork_lock_text()
             self.present(False)
 
             return

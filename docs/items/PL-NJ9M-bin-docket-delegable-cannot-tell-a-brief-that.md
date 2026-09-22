@@ -9,6 +9,7 @@ feature: delegation
 touches: subprojects/docket, docs/worker.md
 added: 2026-09-08
 closed: 2026-09-22
+pr: 895
 verify: uv run pytest subprojects/docket/tests/test_cli.py -q && grep -rq 'def test_delegable_sends_the_worker_to_the_instructions' subprojects/docket/tests/ && grep -q 'reads as unclear and is not' docs/worker.md
 ---
 
