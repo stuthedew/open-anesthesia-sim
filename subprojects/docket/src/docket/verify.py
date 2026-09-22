@@ -65,16 +65,39 @@ from .store import ID_PATTERN
 # silence an error the work itself introduced - and this check did not police
 # it either, having flagged all 56 alike when 56 were legitimate.
 #
-# The four that remain cost nothing at that zero rate, so they stay: a count
-# of zero cannot tell deterrence from absence, which is why retiring the check
-# outright was refused. What that zero does not mean is coverage of the
+# The four that remained cost nothing at that zero rate, so they stayed: a
+# count of zero cannot tell deterrence from absence, which is why retiring the
+# check outright was refused. What that zero did not mean was coverage of the
 # hazard. `@pytest.mark.skip` and `@pytest.mark.skipif` - the two commonest
-# ways a pytest test is disabled - match neither `@skip`, whose `@` must sit
-# against the name, nor `pytest.skip`, whose halves `.mark.` separates, and
-# `@unittest.skip` matches nothing here either. Measured on this module either
-# side of the edit above, so it is a standing gap rather than one that edit
-# made, and it is `PL-5B88` rather than a widening taken on the way past.
-SUPPRESSIONS = ("typing.no_type_check", "xfail", "pytest.skip", "@skip")
+# ways a pytest test is disabled - matched neither `@skip`, whose `@` must sit
+# against the name, nor `pytest.skip`, whose halves `.mark.` separates, so the
+# check reported `none` with a disabled test in the diff (`PL-5B88`).
+#
+# `mark.skip` closes that, written without its `pytest.` so that `@mark.skip`
+# after `from pytest import mark` is read too - the reason the assertion check
+# matches a bare `raises`. `unittest.skip` reads the standard library's
+# decorators, `skipIf` and `skipUnless` included. A widening owes the count a
+# narrowing does, in the other direction. Replayed on 2026-09-22 over `main`'s
+# 1,115 non-merge commits, of 1,232, the list before these two matched no
+# added line at all, and the two add exactly one: the `@pytest.mark.skipif`
+# that `tests/unit/test_stop_hook_patch.py` puts on a test needing `bash`. It
+# is real - an environment guard rather than a test silenced to reach green,
+# which is a reviewer's call and is now put in front of one. No prose line
+# matched in any suffix the check reads, `.toml`, `.cfg` and `.ini` included.
+#
+# Still unread, and absent from that history too: `pytest.importorskip`,
+# `unittest.expectedFailure`, `self.skipTest`, a raised `unittest.SkipTest` and
+# `collect_ignore` in a `conftest.py` (`PL-DNZ0`). A deselection in `addopts`
+# is configuration: in `pyproject.toml`, one of `gate_paths`' defaults, the
+# gate check reads it, and in a `.cfg` or `.ini` file nothing does.
+SUPPRESSIONS = (
+    "typing.no_type_check",
+    "xfail",
+    "pytest.skip",
+    "@skip",
+    "mark.skip",
+    "unittest.skip",
+)
 
 #: The same list as something a line can be matched against, anchored on the
 #: left where the entry begins with a word character. Every entry names a
@@ -86,8 +109,9 @@ SUPPRESSIONS = ("typing.no_type_check", "xfail", "pytest.skip", "@skip")
 #: wanted and would match only where a word character precedes it.
 #:
 #: Left only. The right-hand side is deliberately open, so `@skip` still finds
-#: `@skipif` and `pytest.skip` still finds `pytest.skip_module`, both of which
-#: are the thing this looks for rather than a collision with it.
+#: `@skipif`, `mark.skip` finds `mark.skipif` and `unittest.skip` finds
+#: `skipIf` and `skipUnless`, each of which is the thing this looks for rather
+#: than a collision with it.
 _SUPPRESSION_RE = re.compile(
     "|".join(
         (r"\b" if text[0].isalnum() or text[0] == "_" else "") + re.escape(text)

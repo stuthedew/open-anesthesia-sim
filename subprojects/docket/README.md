@@ -2920,9 +2920,28 @@ directive - 56 of them, all carrying an explicit error code, and none of them a
 disabled test - and whether an ignore is load-bearing is a question for mypy,
 which `warn_unused_ignores` asks of every directive in the repository:
 `strict = true` over `[tool.mypy] files`, and `tools/ignore_check.py` over the
-two test trees that list excludes. The four markers that remain have matched a
-real directive zero times; they stay at that price because a count of zero
+two test trees that list excludes. The four markers that remained had matched a
+real directive zero times, and stayed at that price because a count of zero
 cannot tell deterrence from absence (`PL-G21K`, `PL-J5NN`).
+
+`none` means none of the markers, so the markers are listed rather than
+implied. `xfail` reads the mark, the call and `xfail_strict`; `pytest.skip`
+the imperative call; `mark.skip` reads `@pytest.mark.skip` and
+`@pytest.mark.skipif`, and leaves off `pytest.` so that `@mark.skip` after
+`from pytest import mark` is read too; `unittest.skip` reads the standard
+library's `skip`, `skipIf` and `skipUnless`, and `@skip` their bare imported
+form; `typing.no_type_check` the decorator that switches a function's type
+checking off. The two pytest decorators - the commonest ways a test is
+disabled - had no entry until `PL-5B88`, so the check reported `none` with
+one in the diff. The widening owed the count a narrowing does: replayed over
+`main`'s 1,115 non-merge commits, it flags one added line, a
+`@pytest.mark.skipif` on a test that needs `bash` - a real directive, which a
+reviewer should see - and no prose in any suffix the check reads. Not read,
+and absent from that history too: `pytest.importorskip`,
+`unittest.expectedFailure`, `self.skipTest`, a raised `unittest.SkipTest`, and
+`collect_ignore` in a `conftest.py` (`PL-DNZ0`). A deselection in `addopts` is
+configuration: in `pyproject.toml`, one of `gate_paths`' defaults, the gate
+check reads it, and in a `.cfg` or `.ini` file nothing does.
 
 What counts as a *removed assertion* is decided by shape rather than by the
 word: a line in a file Python executes, opening an `assert` statement, calling
