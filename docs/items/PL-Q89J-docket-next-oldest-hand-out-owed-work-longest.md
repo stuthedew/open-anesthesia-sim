@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: debt-aging
+milestone: v0.5.5
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/SKILL.md, .claude/skills/docket/modes/picking.md, docket.toml
 added: 2026-09-22
 closed: 2026-09-22
