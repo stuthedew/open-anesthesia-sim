@@ -287,9 +287,9 @@ def test_a_pytest_mark_skip_is_a_suppression(tmp_path: Path, shape: str, marker:
     """The commonest ways a test is disabled, which the check reported as `none`.
 
     `@skip` wants its `@` against the name and `pytest.skip` wants its halves
-    adjacent, and `.mark.` separates both (`PL-5B88`). `imported` is `from
-    pytest import mark`, which is why the entry is `mark.skip` rather than
-    `pytest.mark.skip` - the reason the assertion check matches a bare
+    adjacent, and `.mark.` separates both (`PL-5B88`). `imported` is
+    `from pytest import mark`, which is why the entry is `mark.skip` rather
+    than `pytest.mark.skip` - the reason the assertion check matches a bare
     `raises`. `module` carries no `@` and disables a whole file, so it is what
     fails if the entry is ever anchored on the decorator.
     """
@@ -501,12 +501,6 @@ def test_a_suppression_beside_a_string_is_still_found(tmp_path: Path) -> None:
     A real marker holds its arguments in strings and can carry a trailing
     comment, which is every span the strip removes, on the line that is exactly
     what the check exists to report.
-
-    `@pytest.mark.xfail` rather than `@pytest.mark.skipif` because the second
-    is not a form this check detects at all - `@skip` wants its `@` against the
-    name and `pytest.skip` wants its halves adjacent, and `.mark.` separates
-    both. That is `PL-5B88`, found while writing this test and left to it: a
-    widening is not what `PL-G21K` was ratified for.
     """
     root = _repo(tmp_path)
     _work(
