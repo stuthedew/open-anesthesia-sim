@@ -273,6 +273,40 @@ def test_a_suppression_is_still_found_after_a_word_character(tmp_path: Path) -> 
     assert not _check(report, "no suppression added").passed
 
 
+@pytest.mark.parametrize(
+    ("shape", "marker"),
+    [
+        ("skip", '@pytest.mark.skip(reason="broken")'),
+        ("skipif", '@pytest.mark.skipif(sys.platform == "win32", reason="no fork")'),
+        ("imported", "@mark.skip"),
+        ("module", 'pytestmark = pytest.mark.skip(reason="flaky")'),
+        ("unittest", '@unittest.skip("broken")'),
+    ],
+)
+def test_a_pytest_mark_skip_is_a_suppression(tmp_path: Path, shape: str, marker: str) -> None:
+    """The commonest ways a test is disabled, which the check reported as `none`.
+
+    `@skip` wants its `@` against the name and `pytest.skip` wants its halves
+    adjacent, and `.mark.` separates both (`PL-5B88`). `imported` is `from
+    pytest import mark`, which is why the entry is `mark.skip` rather than
+    `pytest.mark.skip` - the reason the assertion check matches a bare
+    `raises`. `module` carries no `@` and disables a whole file, so it is what
+    fails if the entry is ever anchored on the decorator.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        f"PL-K7QX silence it with {shape}",
+        "tests/test_thing.py",
+        KEPT + f"\n\n{marker}\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    suppression = _check(report, "no suppression added")
+    assert not suppression.passed
+    assert suppression.lines == (marker,)
+
+
 def test_suppression_ignores_prose(tmp_path: Path) -> None:
     """A release cut re-adds whole prose rows, and the check read them as code.
 
