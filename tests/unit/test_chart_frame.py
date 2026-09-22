@@ -205,6 +205,39 @@ def test_the_window_fits_the_longer_of_two_runs_and_both_draw_into_it() -> None:
     assert frame.runs[1].times_s[-1] == pytest.approx(500.0)
 
 
+def test_the_fitted_window_reaches_a_branch_s_newest_instant_rather_than_its_length() -> None:
+    """ "Fit run" is fitted to where the case stands, and a branch stands past its length.
+
+    A branch opens at its fork on the case's own axis, so it stands at the
+    fork plus what it has run since: here 150 s, against 30 s of its own. The
+    fitted window is pinned at induction, so its width has to reach that
+    instant. Fitted to the runs' lengths instead, it would end at the trunk's
+    120 s and draw the branch's whole half-minute as one point at its fork
+    (`PL-59WB`).
+    """
+
+    trunk = _run(120.0)
+    trunk.begin_control_adjustment()
+    trunk.set_fresh_gas_flow(3.0)
+    branch = BranchedCase(trunk).fork_at(120.0)
+    branch.start()
+    _advance(branch, 30.0)
+    newest_s = branch.snapshot().elapsed_s
+    frame = assemble_chart_frame(
+        (_input(trunk), _input(branch, run_index=1)),
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+
+    assert (branch.began_at_s, newest_s) == pytest.approx((120.0, 150.0))
+    assert frame.start_s == 0.0
+    # The narrowest rung that reaches the instant, so not a coarser one either.
+    assert frame.time_base == next(base for base in TIME_BASE_LADDER if base.span_s >= newest_s)
+    assert frame.runs[1].times_s[0] == pytest.approx(120.0)
+    assert frame.runs[1].times_s[-1] == pytest.approx(newest_s)
+
+
 def test_a_chosen_width_is_held_exactly_and_follows_the_run() -> None:
     controller = _run(1200.0)
     base = time_base_for_span(900.0)

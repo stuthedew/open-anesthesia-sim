@@ -2064,12 +2064,13 @@ def test_a_selects_no_test_advisory_counts_the_queue_it_searched() -> None:
     assert _has(messages, "1 of 2 open item(s) whose command selects nothing, 9 checked")
 
 
-def test_a_selects_no_test_advisory_asks_rather_than_condemns() -> None:
-    # A selector naming a test the work has yet to write is the shape the
-    # docket skill recommends. Only the item's author can tell that from a
-    # selector no work will ever satisfy, so the advisory must not decide it.
+def test_a_selects_no_test_advisory_names_the_repair() -> None:
+    # It once only asked, while a `-k` naming a test the work had yet to write
+    # was the shape the docket skill recommended. `PL-6TP8` retired that shape
+    # and `PL-Q8RQ` refuses it from a cutover, so what this reaches is the
+    # grandfathered set, and the repair for every one of them is the `grep`.
     messages = _selects_nothing(_landed(passing=(), vacuous=("PL-K7QX",)), OFFERED)
-    assert _has(messages, "check that the name each selector matches")
+    assert _has(messages, "replace the selector with a `grep -q`")
 
 
 def test_an_item_that_both_passes_and_selects_nothing_cannot_happen_but_reads_apart() -> None:
@@ -3282,7 +3283,10 @@ def test_a_command_whose_only_clause_is_the_pytest_run_is_left_alone() -> None:
 
 def test_a_run_carrying_its_own_selector_is_left_alone() -> None:
     """`-k`, `-m`, `--cov` and `::` each make the run select something narrower than
-    the file, so it is discriminating rather than proving a suite green."""
+    the file, so it is not a whole suite proved twice. A `-k` is no discriminator
+    either - `PL-Q8RQ`'s rule below refuses it on its own account, with its own
+    date - but that is a different sentence to this rule's, so this one leaves it
+    alone rather than telling its author to keep the clause that cannot fail."""
     for command in (
         "uv run pytest tests/unit -k commit_msg && grep -q 'x' a.py",
         "uv run pytest 'tests/reference/test_coupled.py::test_oracle' && grep -q 'x' a.py",
@@ -3351,6 +3355,144 @@ def test_the_rule_is_off_where_a_project_names_no_collected_trees() -> None:
     command = "uv run pytest tests/unit/test_alveolar.py && grep -q 'def test_x' a.py"
 
     assert not _has(analyze([_item(added=AFTER, verify=command)], TODAY, off).errors, TWICE)
+
+
+# --- a `-k` selector, which can never be the failure a command owes ----------
+#
+# `PL-Q8RQ`: the first obligation `PL-6TP8` put on a command, made mechanical -
+# its failure before the work is an evaluation, an ordinary exit 1, and never
+# pytest's 5. Over a tree `check_command` collects, a run narrowed by `-k` either
+# selects tests that command already proves or selects none, and a substring is
+# matched by whatever test later comes to carry it: `PL-S5YM`'s `-k covered`
+# began passing when an unrelated merge added a test so named, and three
+# sessions diagnosed the red `main` that followed inside four minutes
+# (`PL-99YZ`).
+
+SELECTOR_FROM = date(2026, 9, 23)
+SELECTOR = Config(
+    verify_k_selector_refused_from=SELECTOR_FROM,
+    collected_test_paths=("tests", "subprojects/docket/tests"),
+)
+NARROWS = "narrows a pytest run with `-k`"
+
+
+def _selector_errors(**overrides: object) -> list[str]:
+    overrides.setdefault("added", SELECTOR_FROM)
+    return analyze([_item(**overrides)], TODAY, SELECTOR).errors
+
+
+def test_a_bare_k_selector_is_refused() -> None:
+    """The shape four open items carried when the rule landed, and `PL-S5YM`'s.
+
+    Before the work no test carries the name, so pytest selects nothing and
+    exits 5 - non-zero, so it reads as a command correctly failing, and it goes
+    on reading that way after the work too unless some test, anywhere, comes to
+    carry the substring. The three spellings pin that the selector's value is
+    never read as a path to run: read as one, `advance_over` would be a target
+    outside the collected trees and silence the rule.
+    """
+    for command in (
+        "uv run pytest subprojects/docket/tests -k custom_prefix",
+        "uv run pytest -k advance_over",
+        "uv run pytest tests/unit -kcommit_msg",
+    ):
+        errors = _selector_errors(verify=command)
+
+        assert _has(errors, NARROWS), command
+        assert _has(errors, f"`{command}`"), command
+
+
+def test_a_k_selector_is_refused_whatever_stands_beside_it() -> None:
+    """Position decides only which half of the contract the clause breaks.
+
+    Ahead of another clause it exits 5 before the work and the other clause never
+    runs; behind one it runs only once that clause passes, and then proves what
+    `check_command` already proves. `PL-W4XQ` recorded the first shape on
+    2026-09-20, after the prerequisite rule's cutover, because that rule reads any
+    run carrying `-k` as a discriminator and leaves it alone.
+    """
+    for command in (
+        "uv run pytest tests/integration/test_controller.py -k returning_to_a_mark && "
+        "grep -q 'def test_a_mark_is_returned_to' tests/integration/test_controller.py",
+        "grep -q 'def test_x' subprojects/docket/tests/test_vcs.py && "
+        "uv run pytest subprojects/docket/tests/test_vcs.py -q -k attribut",
+        'uv run pytest subprojects/docket/tests -k "touches and stale" && bin/docket check',
+    ):
+        assert _has(_selector_errors(verify=command), NARROWS), command
+
+
+def test_a_k_selector_whose_status_another_command_replaces_is_left_alone() -> None:
+    """Bare means pytest's own exit status is the command's. Piped into a `grep` of
+    its output, the status is the `grep`'s, which fails as an ordinary 1
+    (`PL-205P`), so the exit 5 this rule exists for cannot reach the reader."""
+    command = (
+        "uv run pytest subprojects/docket/tests/test_verify.py -q -k 'outside_the_tree' "
+        "| grep -q '8 passed'"
+    )
+
+    assert not _has(_selector_errors(verify=command), NARROWS)
+
+
+def test_a_k_selector_carrying_a_coverage_option_is_left_alone() -> None:
+    """A coverage threshold is something `check_command` does not measure, so the
+    run's status is no longer known from which tests it selects. Narrowing a
+    coverage run is wrong for another reason - coverage is the union of the whole
+    suite - and that one is not this rule's to state."""
+    command = "uv run pytest --cov=anesthesia_sim.core --cov-fail-under=100 -k tissue"
+
+    assert not _has(_selector_errors(verify=command), NARROWS)
+
+
+def test_a_k_selector_over_a_tree_the_project_check_does_not_collect_is_left_alone() -> None:
+    """The falsifying case: a test nothing else runs can be failing before the work,
+    so a `-k` over one can be an evaluation after all."""
+    assert not _has(_selector_errors(verify="uv run pytest spikes/test_probe.py -k probe"), NARROWS)
+
+
+def test_a_command_without_a_k_selector_is_not_this_rule_s() -> None:
+    """A `pytest` token inside a `grep` pattern is a string being searched for, and
+    `--keep-duplicates` is not `-k`."""
+    for command in (
+        "grep -q 'uv run pytest -k' docs/items/PL-K7QX-x.md",
+        "uv run pytest --keep-duplicates tests/unit/test_alveolar.py",
+    ):
+        assert not _has(_selector_errors(verify=command), NARROWS), command
+
+
+def test_a_k_selector_recorded_before_the_cutover_is_left_alone() -> None:
+    """The grandfathering is load-bearing rather than politeness. Without it the open
+    instances fail `make check` the moment the rule lands, which forces the one-pass
+    repair the `docket` skill refuses: each is repaired as its item is started,
+    because a command written away from its work is how every wrong one in the store
+    came to exist."""
+    command = "uv run pytest subprojects/docket/tests -k custom_prefix"
+    before = SELECTOR_FROM - timedelta(days=1)
+
+    assert not _has(_selector_errors(added=before, verify=command), NARROWS)
+
+
+def test_a_closed_item_s_k_selector_is_a_record_and_is_not_refused() -> None:
+    """`PL-JZ1D`, as for the prerequisite rule: a closed command says what was run on a
+    tree that no longer exists, and rewriting it replaces the command that proved the
+    work with one that never ran against it."""
+    command = "uv run pytest subprojects/docket/tests -k custom_prefix"
+
+    errors = _selector_errors(status="done", closed=SELECTOR_FROM, pr="48", verify=command)
+
+    assert not _has(errors, NARROWS)
+
+
+def test_the_k_selector_rule_is_off_until_a_project_dates_it_and_names_its_trees() -> None:
+    """Both halves are needed: the date closes the grandfathered set, and the trees are
+    what make "tests `check_command` already proves" a claim rather than a guess."""
+    command = "uv run pytest subprojects/docket/tests -k custom_prefix"
+    for config in (
+        Config(collected_test_paths=("tests", "subprojects/docket/tests")),
+        Config(verify_k_selector_refused_from=SELECTOR_FROM),
+    ):
+        errors = analyze([_item(added=SELECTOR_FROM, verify=command)], TODAY, config).errors
+
+        assert not _has(errors, NARROWS)
 
 
 def test_a_passing_command_that_reads_the_remote_is_an_advisory_not_an_error() -> None:

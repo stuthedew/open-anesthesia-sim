@@ -36,9 +36,9 @@ lists, and `app/qt_chart.py` draws its curves and its legend from this one
 rather than keeping a second copy (`PL-2CS8`).
 
 **The window is a viewport and the run fills it.** The axis a frame draws
-is decided here from the selected time base and the longest run on the
-chart - fitted to the run under "Fit run", or held at the chosen width and
-following the newest instant - and every run draws into that one window.
+is decided here from the selected time base and the newest instant any run on
+the chart has reached - fitted to it under "Fit run", or held at the chosen
+width and following it - and every run draws into that one window.
 `app/chart_time_base.py` carries both rules and why they are not one.
 """
 
@@ -734,18 +734,18 @@ def assemble_chart_frame(
         )
 
     reference = runs[0].snapshot
-    elapsed_s = max(run.snapshot.elapsed_s for run in runs)
+    newest_sample_s = max(run.snapshot.elapsed_s for run in runs)
 
     # The visible window, and the two modes it can be in. "Fit run" derives
-    # the width from the run so the whole of it is drawn, pinned at zero; a
-    # chosen width is held exactly and follows the newest instant, so a
+    # the width from the newest instant so the whole case is drawn, pinned at
+    # zero; a chosen width is held exactly and follows that instant, so a
     # trace's slope on the plot means the same thing at every moment.
     if time_base is None:
-        base = fit_to_run(elapsed_s)
+        base = fit_to_run(newest_sample_s)
         start_s, stop_s = fitted_window(base)
     else:
         base = time_base
-        start_s, stop_s = following_window(base, elapsed_s)
+        start_s, stop_s = following_window(base, newest_sample_s)
 
     columns = chart_columns(plot_width_px)
     # The cap is applied here rather than where a reader clicks, so that what

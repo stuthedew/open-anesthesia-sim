@@ -1,10 +1,10 @@
 """How wide the chart's visible window is, and how that window is ruled.
 
-Pure arithmetic over durations, independent of any toolkit and of the
+Pure arithmetic over simulated time, independent of any toolkit and of the
 scientific core. Nothing here reads simulation state, builds a control, or
-formats a string: given a run length and a choice, it answers with a width, a
-pair of axis bounds and a list of tick positions, and `app/qt_chart.py` draws
-them.
+formats a string: given the newest instant on the chart and a choice, it
+answers with a width, a pair of axis bounds and a list of tick positions, and
+`app/qt_chart.py` draws them.
 
 **It is a view control and reaches no model state.** Choosing a time base
 changes which part of the recorded run is drawn and nothing else - no step is
@@ -34,10 +34,11 @@ because choosing one would be zooming into a span with nothing in it.
 
 **Nothing here assumes twelve hours is the end of the list.** The ladder is
 data, and `fit_to_run` continues past its widest rung by doubling rather than
-by refusing, so a run longer than any declared width still shows whole. That
-matters for the mode's honesty as much as for its reach: "Fit run" that
-silently showed the most recent twelve hours of a fourteen-hour case would be
-a display asserting something false about what the reader is looking at.
+by refusing, so a case that has run past any declared width still shows
+whole. That matters for the mode's honesty as much as for its reach: "Fit run"
+that silently showed the most recent twelve hours of a fourteen-hour case
+would be a display asserting something false about what the reader is looking
+at.
 """
 
 from __future__ import annotations
@@ -136,13 +137,20 @@ SELECTABLE_TIME_BASES: Final = tuple(
 )
 
 
-def fit_to_run(run_length_s: float) -> ChartTimeBase:
-    """The narrowest width that shows a run of this length whole.
+def fit_to_run(newest_sample_s: float) -> ChartTimeBase:
+    """The narrowest width that shows the case whole, from induction to its newest sample.
 
     Half of the "Fit run" mode, which is the default; `fitted_window` is the
-    other half. `min_x` stays pinned at zero under it, so the width returned
-    here is what decides whether the whole run is on the plot, and it is
-    always wide enough that it is.
+    other half. `min_x` stays pinned at the case's zero under it, so the
+    width returned here is what decides whether the whole case is on the
+    plot, and it is always wide enough that it is.
+
+    **It is given an instant, not a length.** The window starts at induction
+    rather than at any one run's opening, so its width has to reach the
+    newest sample's instant on the case's axis. On a trunk that is also the
+    run's length; on a branch it is not. One forked at 900 s and advanced
+    60 s stands at 960 s, and a width fitted to its 60 s would end the axis
+    before the branch began (`PL-59WB`).
 
     Past the widest declared rung the ladder is continued by doubling both
     the width and its interval, rather than by returning the widest rung and
@@ -151,32 +159,35 @@ def fit_to_run(run_length_s: float) -> ChartTimeBase:
     ruled like a twelve-hour one.
 
     Args:
-        run_length_s: How much simulated time the run has recorded, in
-            seconds.
+        newest_sample_s: Simulated time of the newest recorded sample on the
+            chart, in seconds on the case's axis: where the furthest-advanced
+            run stands, the value `following_window` is given.
 
     Returns:
-        The rung to draw the run against.
+        The rung to draw the case against.
 
     Raises:
-        ValueError: If `run_length_s` is negative or not finite. A run
-            length is elapsed simulated time and neither is a length; the
-            alternative to raising is an axis drawn against a width nobody
-            can account for, which `CLAUDE.md`'s standard prefers a failure
-            to.
+        ValueError: If `newest_sample_s` is negative or not finite. The
+            case's axis begins at induction, so neither is an instant on it;
+            the alternative to raising is an axis drawn against a width
+            nobody can account for, which `CLAUDE.md`'s standard prefers a
+            failure to.
     """
 
-    if not math.isfinite(run_length_s) or run_length_s < 0.0:
-        raise ValueError(f"run length must be finite and non-negative, got {run_length_s!r}")
+    if not math.isfinite(newest_sample_s) or newest_sample_s < 0.0:
+        raise ValueError(
+            f"newest sample time must be finite and non-negative, got {newest_sample_s!r}"
+        )
 
     for time_base in TIME_BASE_LADDER:
-        if time_base.span_s >= run_length_s:
+        if time_base.span_s >= newest_sample_s:
             return time_base
 
     widest = TIME_BASE_LADDER[-1]
     span_s = widest.span_s
     tick_interval_s = widest.tick_interval_s
 
-    while span_s < run_length_s:
+    while span_s < newest_sample_s:
         span_s *= 2.0
         tick_interval_s *= 2.0
 

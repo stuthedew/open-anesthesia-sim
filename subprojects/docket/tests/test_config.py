@@ -114,6 +114,18 @@ def test_the_command_shape_rule_is_off_until_a_project_adopts_it(tmp_path: Path)
     assert load(tmp_path).collected_test_paths == ()
 
 
+def test_the_k_selector_rule_reads_its_own_cutover(tmp_path: Path) -> None:
+    """A date of its own rather than the prerequisite rule's, because the two close
+    different sets: `PL-W4XQ` was captured on the prerequisite rule's first day
+    carrying a `-k`, so sharing that date would refuse it the moment this landed."""
+    (tmp_path / "docket.toml").write_text(
+        "[docket]\nverify_k_selector_refused_from = 2026-09-23\n", encoding="utf-8"
+    )
+
+    assert load(tmp_path).verify_k_selector_refused_from == date(2026, 9, 23)
+    assert Config().verify_k_selector_refused_from is None
+
+
 def test_the_instruction_staleness_threshold_defaults_to_ninety(tmp_path: Path) -> None:
     """90 rather than 180, and the number is the decision (`PL-PHK4`).
 

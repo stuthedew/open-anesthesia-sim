@@ -1300,10 +1300,14 @@ version has passed with no release of that number in the version table, and a
 section no row bears — and `wave` prints those under their own heading and
 exits non-zero, the digest's plan line flags them, and the release hand-off
 states a reached-or-passed number beside the table row it already asks for
-(`PL-Y1L0`). `wave` adds the one statement the train cannot make because it
-needs the store: a row the table *does* record as released, whose section's own
+(`PL-Y1L0`). `wave` adds the two statements the train cannot make because they
+need the store: a row the table *does* record as released, whose section's own
 `Required scope` still has open ids, which is that same reversal one run later,
-after the cut has written the row the hand-off asked for (`PL-LN3T`). The gate
+after the cut has written the row the hand-off asked for (`PL-LN3T`); and the
+same row whose section's frozen list still holds an open entry that no section
+ahead places, which is the reversal in the list's own subsection. An entry
+deferred to a later gate on `ROADMAP.md` § "The cadence" beat 3's terms is never
+that, because the later gate holds it (`PL-SZJ2`). The gate
 block splits the entries it cannot clear into those the
 plan sequences ahead of the gate, named with the row they wait for, and those
 waiting on work placed later or nowhere (`PL-7CSP`).
@@ -2025,8 +2029,8 @@ the moment of writing and no exit status can decide afterwards:
    is an evaluation - an ordinary exit 1, never pytest's 5 - and it goes green
    only for what *this* item's work creates. A clause a neighbouring item's
    work satisfies makes the replay accuse the wrong item the day the neighbour
-   lands (`PL-3DXV`); a bare `-k` is a bet on a name no test may ever carry
-   (`PL-Q8RQ`).
+   lands (`PL-3DXV`); a bare `-k` is a bet on a name no test may ever carry,
+   and `docket check` refuses one at the field (`PL-Q8RQ`, below).
 2. **It reads the tree the item touches.** The paths its discriminating clause
    reads are declared in `touches`, so `docket concurrent` and the pull
    request's replay scope both see them (`PL-LBW5`); a `pytest` clause naming
@@ -2058,7 +2062,8 @@ stands beside it. The separate clause is what makes it decidable: the author
 has already said which clause discriminates, so the `pytest` run is not it,
 whatever the item turns out to be about. A command whose only clause is the
 `pytest` run says the opposite and is untouched, as is one whose run carries
-`-k`, `-m`, `--cov` or a `::`, and as is a target outside the declared trees -
+`-k`, `-m`, `--cov` or a `::` (a `-k` is refused by the rule below instead), and
+as is a target outside the declared trees -
 that one is running something no other consumer does, which is the condition
 that would falsify the rule and the reason the trees are declared rather than
 assumed. Measured 2026-09-19: 0 of the 82 open commands of this shape name
@@ -2079,6 +2084,24 @@ it. It leaks in the same bounded way `verify_required_from` does: an item
 captured before the cutover can still have a command written after it. Because
 `docket set` refuses any write `docket check` would then fail, the rule is met
 at the moment the command is typed rather than at the next run.
+
+**A `-k` is refused on its own account** (`PL-Q8RQ`), which is the contract's
+first obligation made mechanical. `verify_k_selector_refused_from` refuses a
+command whose `&&` chain narrows a `pytest` run over the collected trees with
+`-k`. Every test in those trees passes or `make check` is red, so such a run can
+only select tests the check already proves (exit 0) or select none (exit 5, or
+4 for a path the work has yet to write), and a substring is satisfied by
+whatever test later comes to carry it: `PL-S5YM`'s `-k covered` began passing
+when an unrelated merge added one, and three sessions diagnosed the red `main`
+that followed (`PL-99YZ`). It is refused wherever the clause stands, since
+position decides only which half of the contract it breaks - ahead of a `grep`
+its 5 is the command's answer before the work, behind one it re-proves the
+tree. Three runs are left alone, each because that reading stops being true:
+one whose status a pipe or `||` replaces, one carrying `--cov`, and one over a
+tree outside `collected_test_paths`. The date is its own rather than the
+prerequisite rule's, because that rule leaves any `-k` alone and `PL-W4XQ` was
+captured on its first day carrying one; the five open commands of this shape
+on 2026-09-22 are grandfathered and repaired as each item is started.
 
 ### A closed item's command is a record, and it is not rewritten
 
@@ -2639,9 +2662,13 @@ forever.
 The transient case — a session that ran the work before editing its item —
 resolves in the commit the close-out procedure already requires, since `status:
 done` travels with the work. `_check_selects_nothing` stays an *advisory* beside
-it, deliberately: a selector matching no test is the recommended shape for an
-item whose work has yet to write the test, so only the item's author can say
-which repair it wants.
+it, deliberately, though no longer because the repair is in doubt. A selector
+matching no test was once the recommended shape for an item whose work had yet
+to write the test; since `PL-6TP8` the repair is always a `grep` for the test
+the work adds, and since `PL-Q8RQ` a `-k` is refused outright on a command
+captured from `verify_k_selector_refused_from`. What the advisory still reaches
+is that rule's grandfathered set, repaired as each item is started - an error
+would force the one-pass repair instead.
 
 One part of that *is* decidable. A command recorded against more than one open
 item cannot be proving any single one of them done, whatever it returns, so
@@ -3060,6 +3087,8 @@ verify_required_from = 2026-08-30   # omit to leave the `verify:` rule off
 verify_prerequisite_refused_from = 2026-09-20   # when a command may no longer
                                    # re-run a tree `check_command` collects
 collected_test_paths = ["tests"]   # the trees it does collect; empty = rule off
+verify_k_selector_refused_from = 2026-09-23   # when a command may no longer
+                                   # narrow a run over those trees with `-k`
 payoff_required_from = 2026-09-20  # omit to leave the `payoff:` rule off
 recommendation_required_from = 2026-09-21   # a `needs-decision` brief
                                    # marks a recommendation; omit for off

@@ -139,3 +139,10 @@ never cut - a real fault in the remote. `PL-LT77` is a tag deleted on the
 remote that a warm checkout keeps, because `git fetch --tags` does not prune -
 a fault in local state only. The two demand opposite actions from the reader,
 and today the error cannot tell them apart. The group closes when it can.
+
+**Half of the message side landed with `PL-YKSD`, 2026-09-22.** A tag pushed
+ahead of its cut and later deleted on origin - this item's instance - now also
+trips `_check_tag_versions`, and that error names this cause and its repair:
+`git ls-remote --tags origin` to tell, `git tag -d` for the tag it names. The
+version-table error ("git holds vX, but no row of the version table marks vX
+completed") still names neither, and is what is left here.

@@ -113,3 +113,17 @@ about.
 **Probable duplicate of `PL-KFWL`** (the v0.4.8 tag pushed onto a commit where
 no release was cut), which reaches the same guard from the instance rather than
 the rule. Read both before starting either.
+
+**Clause (b) landed with `PL-YKSD`, 2026-09-22.** `tools/doc_check.py`'s
+`_check_tag_versions` reads every release tag's own `pyproject.toml` and fails
+on one declaring another version, naming the tag, the commit it peels to and
+the version that tree declares, so a tag pushed ahead of its cut is now
+reported across all release tags. What is left is (a), the refusal in
+`bin/docket release`, and (c), the tag block. The strongest form of (c) is a
+guard in the command itself rather than a sentence beside it: the block's
+`git tag -a vX.Y.Z origin/main` tags whatever `origin/main` is when it runs,
+which before the merge lands is the commit before the release - `v0.5.3`'s
+instance - so the block should run the tag only after `git show
+origin/main:pyproject.toml` declares that version. Refused before the push
+rather than reported by `doc_check` after it. Captured on `PL-YKSD`'s branch
+and folded in here rather than filed apart, since it is this clause.

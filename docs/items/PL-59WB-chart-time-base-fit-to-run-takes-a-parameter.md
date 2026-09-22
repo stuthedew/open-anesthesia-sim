@@ -3,14 +3,15 @@ id: PL-59WB
 title: chart_time_base.fit_to_run takes a parameter called run_length_s but is passed a case instant, which is the duration_s-was-not-a-duration defect one module over
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: core-domain-language
-touches: src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_chart_time_base.py
+touches: src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/chart_frame.py, tests/unit/test_chart_time_base.py, tests/unit/test_chart_frame.py
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_chart_time_base.py && ! grep -q 'def fit_to_run(run_length_s' src/anesthesia_sim/app/chart_time_base.py
+closed: 2026-09-22
+payoff: the fitted axis's input is named for what it is, the newest case instant, so a reader who believes the name cannot 'correct' the caller into drawing a branch as one point at its fork
+verify: grep -q 'def test_the_fitted_window_reaches_a_branch_s_newest_instant_rather_than_its_length' tests/unit/test_chart_frame.py && ! grep -q 'run_length_s' src/anesthesia_sim/app/chart_time_base.py
 ---
-
 
 **Problem.** chart_time_base.fit_to_run takes a parameter called run_length_s but is passed a case instant, which is the duration_s-was-not-a-duration defect one module over
 
@@ -52,7 +53,43 @@ wrong quantity. That is a displayed-value correctness question rather than a
 naming preference, which is why it is `defect` rather than `refactor` - and it
 becomes reachable with `PL-8PSW`, not later.
 
+**Re-verified 2026-09-22, on `053fd744`, with a branch drawable since `PL-8PSW`
+(v0.4.26): the first claim holds and the second does not.** The caller has
+moved: `app/chart_frame.py`'s `assemble_chart_frame` passes
+`max(run.snapshot.elapsed_s for run in runs)`, the newest case instant any run
+on the chart has reached. Measured with the reference adult on sevoflurane,
+trunk advanced to 900 s, forked there, branch advanced 60 s:
+
+| Fitted to | Rung | Window | Trunk drawn | Branch drawn |
+| --- | --- | --- | --- | --- |
+| the newest instant, as today (960 s) | 1800 s | 0-1800 s | 0-900 s | 900-960 s, 31 points |
+| each run's own length (max 900 s) | 900 s | 0-900 s | 0-900 s | one point, at 900 s |
+
+So 1800 s is not coarser than the data needs. It is the narrowest rung that
+holds the case from induction, because `fitted_window` pins the left edge at
+the case's zero, `tick_times` rules from the same zero, `docs/MODEL.md`
+§ "One simulated-time frame" makes the chart's axis the case's, and the view
+keeps the trunk as run 0 whenever a branch is drawn. The span is coarser only
+against a window pinned at the branch's own opening, which would be a different
+"Fit run" rule rather than a fix to this one. The edit the brief warns against,
+fitting to lengths, reduces the branch's whole minute to one point at its fork.
+
+**What that changes here.** The value passed is right, so the rename is the
+whole fix: the caller keeps its value under a name that says what it is, and
+the "rather than `elapsed_s`" below, written on the second claim, is
+superseded. The class stays `defect`, on a different ground from the one given
+above: "How much simulated time the run has recorded" is false for an input
+reachable since v0.4.26, and it points a reader at the one edit that draws a
+branch as a point. The test pins today's behaviour rather than changing it, and
+is checked against that edit.
+
 **Done when.** `fit_to_run` names the quantity it actually needs, its caller
 passes that quantity rather than `elapsed_s`, and a test covers a branch whose
 opening instant is greater than its recorded length. `PL-CZTR` is the same
 defect on `ResumePoint`; do them together.
+
+**Done when, as re-verified 2026-09-22.** `fit_to_run`'s parameter names the
+newest case instant rather than a length, `assemble_chart_frame` passes the
+same value under that name, and `tests/unit/test_chart_frame.py` holds a branch
+whose opening instant exceeds its own length drawn whole in the narrowest
+fitted rung, failing if the caller is changed to pass lengths.

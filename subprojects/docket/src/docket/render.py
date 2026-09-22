@@ -559,9 +559,9 @@ def format_digest(
         unparsed = " Timeline does not parse cleanly - check `wave`." if plan.problems else ""
         if plan.stale:
             # The short form of `format_wave`'s own heading over the same
-            # statements, and the same words, because `Wave.stale` carries four
-            # kinds and only three are a numbering behind the project: the
-            # fourth is a section no timeline row bears, where the plan places
+            # statements, and the same words, because `Wave.stale` carries five
+            # kinds and only four are a numbering behind the project: the
+            # fifth is a section no timeline row bears, where the plan places
             # nothing rather than placing it late (`PL-DK8Y`). A reader told
             # the numbering is behind goes and reads the timeline's numbers,
             # which is the wrong file for that one.

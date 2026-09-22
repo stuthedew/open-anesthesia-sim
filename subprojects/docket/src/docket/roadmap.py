@@ -1284,9 +1284,10 @@ class Wave:
     release_name: str = ""
     #: Statements the plan and the project disagree on - a milestone row the
     #: version has passed with no release of that number recorded, a section no
-    #: row places - from `ReleaseTrain.stale`, plus the one the store answers and
+    #: row places - from `ReleaseTrain.stale`, plus the two the store answers and
     #: the train cannot: a row recorded as released whose section's own scope is
-    #: still open (`stale_scopes`). Distinct from `problems`, which are breaches
+    #: still open (`stale_scopes`), or whose frozen list holds an open entry no
+    #: section ahead places (`stale_gates`). Distinct from `problems`, which are breaches
     #: of the table's grammar: these rows parse, and the beat above them is
     #: computed from an arrangement one of the files has made stale.
     stale: tuple[str, ...] = ()
@@ -1338,8 +1339,8 @@ class ReleaseTrain:
     #: The versions the version table records as shipped. `current` is where the
     #: project stands; this is what it has released, which is the other half of
     #: every statement in `stale` - carried rather than re-parsed because
-    #: `stale_scopes` needs the same reading and `release_train` has already
-    #: made it.
+    #: `stale_scopes` and `stale_gates` need the same reading and
+    #: `release_train` has already made it.
     released: frozenset[str]
     #: The index of the row the project stands on: the one after the last
     #: milestone row it has released (`_current_step`). `None` when the
@@ -1493,6 +1494,26 @@ def stale_milestones(
     return statements
 
 
+def _released_rows(train: ReleaseTrain) -> Iterator[tuple[TimelineStep, str, MilestoneSection]]:
+    """Each milestone row the version table records as released, with its number
+    and the section it bears - the rows `stale_scopes` and `stale_gates` read.
+
+    Numbered at or below the version the project is on *and* written into the
+    version table: a number the project has passed with no row there is
+    `stale_milestones`' statement instead. A row bearing no section has no
+    placing structure to be stale in, so it is passed over here.
+    """
+    if train.current is None:
+        return
+    for step in train.steps:
+        if step.kind != "milestone" or step.version is None or step.version > train.current:
+            continue
+        number = "{}.{}.{}".format(*step.version)
+        section = train.section(step)
+        if number in train.released and section is not None:
+            yield step, number, section
+
+
 def stale_scopes(
     train: ReleaseTrain, closed_ids: frozenset[str], known_ids: frozenset[str]
 ) -> list[str]:
@@ -1510,9 +1531,9 @@ def stale_scopes(
     its own fix (`PL-LN3T`).
 
     Only the store separates the port shipped from the port skipped, because
-    both leave the same table row. So this is the one statement in `Wave.stale`
-    that is not a fact about two files, and the reason it is computed in `wave`
-    rather than in `release_train`, which reads no store.
+    both leave the same table row. So this and `stale_gates` are the statements
+    in `Wave.stale` that are not a fact about two files, and the reason they are
+    computed in `wave` rather than in `release_train`, which reads no store.
 
     Open is `ScopeStatus.outstanding`: an id the store holds and has not closed.
     An id the store does not hold is `unknown_ids` and is passed over, for the
@@ -1522,16 +1543,8 @@ def stale_scopes(
     nothing here either, which is v0.3.0's shape: its whole content is the gate
     recorded under the milestone after it.
     """
-    if train.current is None:
-        return []
     statements: list[str] = []
-    for step in train.steps:
-        if step.kind != "milestone" or step.version is None or step.version > train.current:
-            continue
-        number = "{}.{}.{}".format(*step.version)
-        section = train.section(step)
-        if number not in train.released or section is None:
-            continue
+    for step, number, section in _released_rows(train):
         scope = scope_status(section, closed_ids, known_ids)
         if not scope.outstanding:
             continue
@@ -1542,6 +1555,67 @@ def stale_scopes(
             f" open ({', '.join(scope.outstanding)}): the scope owes those closures if this release"
             " was that milestone, and the row owes a number the project has not reached if it"
             " was not"
+        )
+    return statements
+
+
+def stale_gates(
+    train: ReleaseTrain, closed_ids: frozenset[str], known_ids: frozenset[str]
+) -> list[str]:
+    """The milestone rows the version table records as released whose section's
+    own frozen list still holds open entries no section ahead places, each as a
+    statement.
+
+    `stale_scopes` in a section's other placing structure (`PL-SZJ2`). A
+    released section leaves `ReleaseTrain.ahead`, and `wave` counts only the
+    first gate recorded there, so a list shipped with entries open is counted by
+    nothing and printed nowhere. v0.2.8 is the shape that makes it more than
+    bookkeeping: its whole content is its list, so releasing it with an entry
+    open is `PL-Y1L0`'s reversal with no `Required scope` for `stale_scopes` to
+    catch it in.
+
+    Open is narrower than `GateStatus.outstanding`, and is not `clearable`
+    either. `ROADMAP.md` § "The cadence" beat 3 lets an entry be *deferred to a
+    later gate* rather than cleared, on terms of which one is decidable: the
+    deferral names the later gate the entry lands in. So an open entry a
+    section ahead places - `ReleaseTrain.places`, the two structures `Scope`
+    reads - has been carried rather than dropped, which is Gate 1's `PL-WZVZ`
+    on Gate 2's list, and counting it would call every such deferral stale.
+    `clearable` would excuse something else: an entry waiting on work off the
+    list, which with nothing ahead holding it is the entry *deferred to
+    nowhere* that the cadence names as the illegitimate case.
+
+    Two kinds of id are passed over. One the section's own `Required scope`
+    also names is `stale_scopes`' statement already, and printing it twice
+    would read as two problems. One the store does not hold is unknown rather
+    than open, for the reason `ScopeStatus.unknown_ids` records.
+    """
+    statements: list[str] = []
+    for step, number, section in _released_rows(train):
+        own_scope = frozenset(section.own_scope_ids)
+        dropped = 0
+        unplaced: list[str] = []
+        for entry in section.gate_entries:
+            open_here = [
+                identifier
+                for identifier in entry.ids
+                if identifier in known_ids
+                and identifier not in closed_ids
+                and identifier not in own_scope
+                and train.places(identifier) is None
+            ]
+            if open_here:
+                dropped += 1
+                unplaced.extend(open_here)
+        if not dropped:
+            continue
+        statements.append(
+            f"{step.label} (timeline line {step.line}, section line {section.line}) is numbered"
+            f" v{number}, which the version table records as released while {dropped} of"
+            f" {len(section.gate_entries)} entries on its frozen list are still open and placed"
+            f" by no section ahead ({', '.join(unplaced)}): the list owes those closures, or a"
+            " deferral to a later gate that holds them, if this release was that milestone,"
+            " and the row owes a number the project has not reached if it was not"
         )
     return statements
 
@@ -2095,5 +2169,9 @@ def wave(
         release_version=due.version if due is not None else None,
         release_name=due.name if due is not None else "",
         problems=train.problems,
-        stale=train.stale + tuple(stale_scopes(train, closed_ids, known_ids)),
+        stale=(
+            train.stale
+            + tuple(stale_scopes(train, closed_ids, known_ids))
+            + tuple(stale_gates(train, closed_ids, known_ids))
+        ),
     )
