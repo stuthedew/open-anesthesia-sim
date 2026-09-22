@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: gate-list-integrity
+milestone: v0.5.4
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-09-21
 closed: 2026-09-22
