@@ -71,7 +71,7 @@ alone.
 
 **Sibling: `PL-3W3P`**, in which a branch editing a queue-only item's file
 for another item's reason claims that item. It was captured on `#920`'s
-branch `claude/kind-cerf-mizfzd` and was not on main at this writing. It is
+branch `claude/kind-cerf-mizfzd` and landed on main with `#920`. It is
 the mirror defect in the same block. The `PL-7790` promotion
 (`_queue_only_work`) is fed from `edited`, meaning any edit, so `PL-0HPV`'s
 `verify:` reorder claimed `PL-LBW5`, `PL-RWBV`, `PL-YVV4` and `PL-YZKK`
@@ -80,7 +80,7 @@ leads with the id and the commit wrote the id's own file) fixes that. All
 three promotions then share one shape and differ only in the item-level
 test: its deliverable is the queue (`PL-7790`), it is at `needs-decision`
 (`PL-VYSP`), or this branch closes it while the base holds it open (this
-item). Take `PL-3W3P` into the same change once `#920` lands it on main.
+item). Take `PL-3W3P` into the same change.
 
 **Tests to add in `subprojects/docket/tests/test_vcs.py`:**
 
