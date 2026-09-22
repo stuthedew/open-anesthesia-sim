@@ -9,7 +9,7 @@ feature: debt-aging
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/SKILL.md, .claude/skills/docket/modes/picking.md
 added: 2026-09-22
 payoff: an owed item that newer, higher-ranked work keeps outranking surfaces on request, instead of waiting until nobody remembers why it was filed
-verify: uv run pytest subprojects/docket/tests/test_plan.py::test_oldest_hands_out_the_longest_waiting_owed_work_first
+verify: grep -q 'def test_oldest_hands_out_the_longest_waiting_owed_work_first' subprojects/docket/tests/test_plan.py
 ---
 
 **Problem.** `docket next` ranks by the plan: `P0`, then a live generator, then

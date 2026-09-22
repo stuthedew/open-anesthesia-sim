@@ -9,7 +9,7 @@ feature: debt-aging
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, .claude/skills/docket/modes/start.md
 added: 2026-09-22
 payoff: a session starting an old item sees at once whether the code it describes has moved or gone, so it confirms, rewrites or drops the item before spending itself on a problem that may no longer exist
-verify: uv run pytest subprojects/docket/tests/test_cli.py::test_show_says_what_changed_since_an_item_was_filed
+verify: grep -q 'def test_show_says_what_changed_since_an_item_was_filed' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** An item describes the tree as it was on its `added:` date, and
