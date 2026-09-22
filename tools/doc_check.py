@@ -101,7 +101,8 @@ try:
     # borrowed rather than reimplemented. `roadmap` carries the release-train
     # grammar and the frozen-list reader; `config`, `model` and `store` carry
     # the queue, which `check_gate_reentries` reads an item's `classes` and
-    # `status` from; `release` carries where a cut writes its notes, which
+    # `status` from; `release` carries the notes format - where a cut writes
+    # them, and the heading below which a bullet stops being a claim - which
     # `check_tag_span_covers_its_notes` reads and must not spell a second time.
     # A second copy of either grammar would drift from the one
     # `bin/docket check` enforces, and the drift would be in the documents that
@@ -109,7 +110,7 @@ try:
     from docket.config import Config
     from docket.config import load as load_docket_config
     from docket.model import CLOSED_STATUSES, Item
-    from docket.release import NOTES_DIR
+    from docket.release import NOTES_DIR, SPAN_HEADING
     from docket.roadmap import (
         BASELINE_MARK,
         DECLARATION_RE,
@@ -2821,13 +2822,6 @@ def check_tags(root: Path, report: Report) -> None:
 # --- what a tag's span covers -----------------------------------------------
 
 
-#: The heading a release's notes carry when its tag's span reaches work the cut
-#: did not stamp. A section of its own rather than another bullet under `###
-#: defect` or `### docs`, because the whole content of the line is that this
-#: release did *not* claim the work: filing it among what the cut stamped would
-#: repair the navigation by falsifying the record being navigated to.
-SPAN_HEADING = "### also inside this tag's span"
-
 #: A squash merge's subject ends with the pull request it closed, which is how
 #: `bin/docket record` recovers a closure's number and how `docket check` holds
 #: a recorded one to the default branch. Read the same way here rather than
@@ -2979,6 +2973,12 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     held = tags(root)
     if not held.known or not held.names:
         return
+    # A repository that writes no release notes has nothing for this rule to
+    # hold, and is told so by silence rather than by a decline - the reasoning
+    # `release.is_untagged` gives for the tag read, one document along:
+    # adopting the practice is the project's decision and not this tool's.
+    if not (root / NOTES_DIR).is_dir():
+        return
     store = _read_store(root)
     if store is None:
         report.declined.append(
@@ -3042,7 +3042,7 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
             + ("is", "are")[len(numbers) > 1]
             + " named nowhere in its notes ("
             + ", ".join(f"#{number}" for number in numbers)
-            + f'), so `git describe --contains` resolves {("it", "them")[len(numbers) > 1]} to a '
+            + f"), so `git describe --contains` resolves {('it', 'them')[len(numbers) > 1]} to a "
             "release whose own account does not reach the work. Add "
             + ("it", "them")[len(numbers) > 1]
             + f' under a "{SPAN_HEADING}" heading - '
