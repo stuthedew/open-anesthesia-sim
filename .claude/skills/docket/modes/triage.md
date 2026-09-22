@@ -241,6 +241,15 @@ the store are in the same state, which is context rather than a backlog to
 clear in one pass — a command written away from its work is how every wrong one
 here came to exist, so each is repaired as its item is started.
 
+**From 2026-09-23 a `-k` is refused rather than remembered.** `docket check`
+errors on, and `docket set` will not write, a command captured from that date
+whose `&&` chain narrows a `pytest` run over `tests/` or
+`subprojects/docket/tests/` with `-k` - wherever the clause stands, since ahead
+of the `grep` it answers 5 and behind it it re-proves `make check` (`PL-Q8RQ`).
+A run piped into another command, one carrying `--cov`, and one over any other
+tree are left alone. The five open commands of the shape on 2026-09-22 are
+grandfathered, and lose it as their items are started.
+
 **What the exit status is read to mean once the command is recorded** is one
 contract - `subprojects/docket/README.md` § "What a `verify:` exit status
 proves, and to whom" - and two of its consequences fall on the author. Exit 0
