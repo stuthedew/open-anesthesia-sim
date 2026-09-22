@@ -3,11 +3,12 @@ id: PL-1K9G
 title: Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, ux
 feature: compartment-trace-legibility
 touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py
 added: 2026-09-20
+closed: 2026-09-22
 payoff: two compartments of one run stop being labelled with two different instants in one hover box, so a reader comparing them is comparing one moment
 verify: grep -q 'def test_every_compartment_of_one_run_answers_at_one_instant' tests/unit/test_chart_frame.py
 ---
@@ -203,3 +204,52 @@ hung on a value the reader is nowhere near, presented as the one under the
 pointer. The chosen rule keeps the invariant that every value reported is
 within the radius of the pointer *and* at the instant it names, at the price
 of the steep-segment area above.
+
+## Landed 2026-09-22
+
+`nearest_trace_point` finds each run's drawn column nearest the pointer in time
+once (`_nearest_column`, one bisection, a tie to the earlier column) and asks of
+every visible compartment only whether its point there is inside the radius.
+`nearest_wash_in_point` does the same over a run's stretches taken together
+(`_nearest_wash_in_point`, a tie to the earlier stretch, which is also where a
+column drawn twice as two stretches' shared end is read from). `_keep_nearest`
+and `_columns_within` went with the rule they served. The readout's forms are
+unchanged: every line still states its instant, because two runs can still
+differ - each draws its own control-event columns and a branch draws nothing
+before its fork - and within one run the lines now always agree.
+
+The scan was re-run against the shipped functions after the change: the time
+rule's selection matched `nearest_trace_point` at 400 random pointer positions
+in every case and `nearest_wash_in_point` at 300 per run, with no mismatch.
+
+**The wash-in plot is in this change although the item's payoff names only the
+compartment chart.** It measured its distance in the same two dimensions, so
+the title's mechanism - a vertical move changing the instant a value is
+labelled with - was live there too, on 23.9-44.4% of movements; leaving it
+would have given the two plots different hover rules for one gesture.
+
+Tests: `test_every_compartment_of_one_run_answers_at_one_instant` (the geometry
+reduced to a flat and a steep trace, held against the retired rule's split),
+`test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports` (real
+one- and two-run frames swept across the dial change and the live end),
+`test_a_trace_answers_only_where_its_point_at_the_named_instant_is_in_reach`
+(the radius measured at the named instant, which is what refuses the
+alternative above), `test_the_wash_in_hover_answers_at_the_instant_the_pointer_names`
+and `test_a_run_that_draws_no_instant_answers_no_hover_and_silences_no_other`
+(the empty-run branch the bisection needs). All five of the first failed
+against the shipped rule on the instant itself before the change.
+
+**Documentation swept:** `docs/MODEL.md` - § "Where more than one trace
+answers" (the instant rule, its measurement and its cost, replacing the
+paragraph that called per-line instants required because compartments did not
+share one), the implementation paragraph's provenance line, the hazard table
+(the compartment row's wording, and a new row for reading one run's readings as
+one moment), and one sentence in § "The hover and the run it belongs to" that
+still described the pre-`PL-JVHL` rule in the present tense;
+`src/anesthesia_sim/app/chart_frame.py` docstrings (`HoverReading.time_s`,
+`nearest_trace_point`, `nearest_wash_in_point`, `format_compared_trace_hover`).
+Checked and left as they stand: `README.md`'s hover bullet, `docs/ARCHITECTURE.md`'s
+`chart_frame` entries and `src/anesthesia_sim/app/qt_chart.py`'s hover
+docstrings, all of which describe what answers without describing how the
+point is chosen; and `ROADMAP.md`'s v0.5.0 deferral of this item, which records
+what had been measured then.

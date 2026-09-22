@@ -764,7 +764,11 @@ def test_a_contended_hover_names_no_run_while_only_one_is_drawn() -> None:
 
 
 def _retired_nearest_instant(
-    run: RunFrame, quantity: RecordedQuantity, time_s: float, percent: float, reach: dict[str, float]
+    run: RunFrame,
+    quantity: RecordedQuantity,
+    time_s: float,
+    percent: float,
+    reach: dict[str, float],
 ) -> float | None:
     """The instant the retired rule answered one trace at: its drawn point nearest in pixels.
 
@@ -1000,6 +1004,26 @@ def test_the_wash_in_hover_answers_at_the_instant_the_pointer_names() -> None:
 
     assert in_gap is not None
     assert (in_gap.anchor.time_s, in_gap.anchor.value) == (100.0, 0.80)
+
+
+def test_a_run_that_draws_no_instant_answers_no_hover_and_silences_no_other() -> None:
+    """A run with nothing drawn has no instant to name, so it answers nothing; the rest still do.
+
+    `SimulationController.drawn_window` always draws both ends of the range a
+    run covers, so no assembled frame holds such a run; it is held here
+    because the bisection that names the instant would otherwise read one
+    before the first column of an empty run, on both plots.
+    """
+
+    drawn = _run_frame((1208.0,), alveolar=(0.0143,))
+    empty = replace(drawn, label=run_label(1), times_s=(), wash_in=(WashInStretch((), (), False),))
+    frame = replace(_frame(drawn), runs=(empty, drawn))
+
+    target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, 0.0167, 12.0)
+    wash_in = nearest_wash_in_point(frame, 1208.0, 0.71, 4.0, 0.00575, 12.0)
+
+    assert target is not None and tuple(reading.run for reading in target.readings) == (1,)
+    assert wash_in is not None and tuple(reading.run for reading in wash_in.readings) == (1,)
 
 
 def test_the_hover_keeps_the_below_resolution_forms_and_the_readout_row_s_glosses() -> None:
