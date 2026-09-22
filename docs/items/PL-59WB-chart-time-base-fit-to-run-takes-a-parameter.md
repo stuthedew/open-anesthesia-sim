@@ -3,11 +3,12 @@ id: PL-59WB
 title: chart_time_base.fit_to_run takes a parameter called run_length_s but is passed a case instant, which is the duration_s-was-not-a-duration defect one module over
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: core-domain-language
 touches: src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/chart_frame.py, tests/unit/test_chart_time_base.py, tests/unit/test_chart_frame.py
 added: 2026-09-14
+closed: 2026-09-22
 payoff: the fitted axis's input is named for what it is, the newest case instant, so a reader who believes the name cannot 'correct' the caller into drawing a branch as one point at its fork
 verify: grep -q 'def test_the_fitted_window_reaches_a_branch_s_newest_instant_rather_than_its_length' tests/unit/test_chart_frame.py && ! grep -q 'run_length_s' src/anesthesia_sim/app/chart_time_base.py
 ---
