@@ -9,6 +9,7 @@ feature: commit-provenance
 touches: docs/items
 added: 2026-09-21
 closed: 2026-09-21
+pr: 884
 payoff: PL-M7W1 stops overstating how often the squash-subject freeze actually lands, and gains the auto-merge-only boundary that decides what direction 1 would have to cover
 verify: grep -q 'a near miss, and a narrower hazard' docs/items/PL-M7W1-arming-auto-merge-freezes-the-squash-subject-at.md
 ---

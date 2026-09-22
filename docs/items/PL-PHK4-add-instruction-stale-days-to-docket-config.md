@@ -9,6 +9,7 @@ feature: instruction-staleness-audit
 touches: subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/README.md, subprojects/docket/tests, docket.toml
 added: 2026-09-21
 closed: 2026-09-21
+pr: 883
 payoff: the advisory is proven working 69 days before it first fires, not discovered broken when it does
 verify: uv run pytest subprojects/docket/tests/test_config.py -k instruction -q && uv run pytest subprojects/docket/tests/test_checks.py -k 'threshold or re_dating' -q
 ---

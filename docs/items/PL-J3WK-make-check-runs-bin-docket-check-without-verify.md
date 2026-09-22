@@ -8,6 +8,7 @@ classes: defect, infra
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
 closed: 2026-09-21
+pr: 882
 payoff: closes the gap that let three non-discriminating verify: commands pass every local gate and turn CI red after review had started
 verify: grep -q 'def test_a_no_op_verify_command_is_an_error' subprojects/docket/tests/test_checks.py
 ---
