@@ -8,7 +8,7 @@ classes: perf
 feature: chart-readout
 touches: src/anesthesia_sim/app/chart_frame.py, docs/WORKING_NOTES.md
 added: 2026-09-16
-verify: python3 tools/doc_check.py check && grep -qF 'measured at the window-following budget' docs/WORKING_NOTES.md
+verify: grep -qF 'measured at the window-following budget' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** PL-GS3R made the chart's column budget follow the window width, so assemble_chart_frame costs 8.4 ms at 150 columns and 15.4 ms at 1601 - PL-CNCF measured only the fixed 150-column budget, and 15.4 ms is essentially a whole 60 fps frame

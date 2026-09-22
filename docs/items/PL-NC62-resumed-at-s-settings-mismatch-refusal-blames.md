@@ -8,9 +8,8 @@ classes: defect, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 added: 2026-09-14
-verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_settings_mismatch_names_the_setting_that_differs' tests/integration/test_controller.py
+verify: grep -q 'def test_a_settings_mismatch_names_the_setting_that_differs' tests/integration/test_controller.py && uv run pytest tests/integration/test_controller.py
 ---
-
 
 **Problem.** resumed_at's settings-mismatch refusal blames the control timeline whatever the cause, so a patient or agent mismatch would be misdiagnosed
 

@@ -8,7 +8,7 @@ classes: defect, infra
 feature: parallel-sessions
 touches: .claude/hooks/no-prune-guard.sh, tests/unit/test_no_prune_guard.py, .claude/skills/docket/SKILL.md
 added: 2026-09-06
-verify: uv run pytest tests/unit/test_no_prune_guard.py && grep -q 'def test_a_generated_list_of_refs_is_refused_as_a_prune' tests/unit/test_no_prune_guard.py
+verify: grep -q 'def test_a_generated_list_of_refs_is_refused_as_a_prune' tests/unit/test_no_prune_guard.py && uv run pytest tests/unit/test_no_prune_guard.py
 ---
 
 **Problem.** `.claude/hooks/no-prune-guard.sh` refuses four shapes, all of

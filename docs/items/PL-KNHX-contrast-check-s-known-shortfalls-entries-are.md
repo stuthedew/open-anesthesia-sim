@@ -8,7 +8,7 @@ classes: defect, infra
 feature: dev-tooling
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-06
-verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_shortfall_naming_no_declared_requirement_is_an_error' tests/unit/test_contrast_check.py
+verify: grep -q 'def test_a_shortfall_naming_no_declared_requirement_is_an_error' tests/unit/test_contrast_check.py && uv run pytest tests/unit/test_contrast_check.py
 ---
 
 **Problem.** `KNOWN_SHORTFALLS` is keyed by a requirement's identity, but

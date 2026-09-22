@@ -8,7 +8,7 @@ classes: docs
 feature: worker-instructions
 touches: docs/maintainer.md
 added: 2026-09-16
-verify: python3 tools/doc_check.py check && grep -qF 'permissions.defaultMode' docs/maintainer.md
+verify: grep -qF 'permissions.defaultMode' docs/maintainer.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** Record in docs/maintainer.md that permissions.defaultMode auto is user/managed scope only and a cloud session takes its mode from the dropdown, so no repo-side setting can carry it

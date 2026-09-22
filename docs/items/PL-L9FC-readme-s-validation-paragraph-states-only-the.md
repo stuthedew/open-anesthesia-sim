@@ -8,7 +8,7 @@ classes: docs
 feature: project-introduction
 touches: README.md
 added: 2026-09-07
-verify: python3 tools/doc_check.py check && grep -qF 'F_{A0}' README.md
+verify: grep -qF 'F_{A0}' README.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** README's validation paragraph states only the wash-in half, so a reader takes a passing validation for the whole of what the Yasuda comparison found

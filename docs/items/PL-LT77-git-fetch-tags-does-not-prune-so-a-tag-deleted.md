@@ -8,7 +8,7 @@ classes: defect, infra
 feature: tag-error-names-its-cause
 touches: tools/doc_check.py, .claude/hooks
 added: 2026-09-07
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_stale_local_tag_names_its_own_remedy' tests/unit/test_doc_check.py
+verify: grep -q 'def test_a_stale_local_tag_names_its_own_remedy' tests/unit/test_doc_check.py && uv run pytest tests/unit/test_doc_check.py
 ---
 
 **Problem.** `doc_check`'s release-tag rule reads **local** tags. `git fetch

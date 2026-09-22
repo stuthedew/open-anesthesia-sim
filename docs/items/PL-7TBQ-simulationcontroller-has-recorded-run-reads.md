@@ -8,9 +8,8 @@ classes: defect, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 added: 2026-09-14
-verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_fresh_branch_holds_nothing_to_destroy' tests/integration/test_controller.py
+verify: grep -q 'def test_a_fresh_branch_holds_nothing_to_destroy' tests/integration/test_controller.py && uv run pytest tests/integration/test_controller.py
 ---
-
 
 **Problem.** SimulationController.has_recorded_run reads elapsed_s > 0.0, so it is True the instant a branch is made and before the learner has touched it
 

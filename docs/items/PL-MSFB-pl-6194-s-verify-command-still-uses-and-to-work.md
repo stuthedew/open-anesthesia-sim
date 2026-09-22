@@ -8,7 +8,7 @@ classes: defect, docs
 feature: dev-tooling
 touches: docs/items/, docs/WORKING_NOTES.md
 added: 2026-09-13
-verify: python3 tools/doc_check.py check && grep -qF '"~88-256 B each" above' docs/WORKING_NOTES.md
+verify: grep -qF '"~88-256 B each" above' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** PL-6194's verify: command still uses [(] and [)] to work around the math check that PL-WTQ1 fixed, and WORKING_NOTES.md:504 still uses backticks to work around PL-KJ63

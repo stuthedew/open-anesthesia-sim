@@ -8,7 +8,7 @@ classes: refactor
 feature: docket-store
 touches: subprojects/docket, tools
 added: 2026-09-13
-verify: uv run pytest subprojects/docket/tests/test_checks.py && ! grep -q '"done", "dropped"' subprojects/docket/src/docket/checks.py
+verify: ! grep -q '"done", "dropped"' subprojects/docket/src/docket/checks.py && uv run pytest subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** Centralize the closed-item filter now duplicated across twelve call sites

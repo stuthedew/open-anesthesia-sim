@@ -8,7 +8,7 @@ classes: docs
 feature: provenance
 touches: docs/references/README.md
 added: 2026-09-04
-verify: python3 tools/doc_check.py check && grep -q 'PubMed MCP' docs/references/README.md
+verify: grep -q 'PubMed MCP' docs/references/README.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** `docs/references/README.md`'s Jugel et al. entry explains why it

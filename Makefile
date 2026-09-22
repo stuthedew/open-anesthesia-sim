@@ -156,19 +156,41 @@ check: sync
 # Make's `$$` first, so the escape below is not read as a drift (`PL-D3M2`,
 # `PL-VZ8P`).
 	uv run pytest -n $$(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
-# Bare, deliberately: no `--verify`. That flag replays every open item's own
-# `verify:` command, which was half this target's wall clock and is the wrong
-# question to ask here - it finds work that *merged* without its item being
-# closed, and a pre-commit gate on a feature branch cannot have changed that.
-# `.github/workflows/quality.yml` passes it on both the events it ran on
-# before (`PL-P3B6`), and since `PL-SDHR` it narrows the pull-request one with
-# `--verify-base` to the items that branch changed - the same argument as this
-# comment's, applied to the event that inherited the bill. The whole-store
-# sweep runs on every push to `main`, where its answer is a fact about `main`.
-# What is left on this line is the store validation, measured at 0.28 s.
-# Measured 2026-09-05, four cores: this target 60.0 s with the replay against
-# 29.5 s without.
-	bin/docket check
+# The store validation, and since `PL-0HPV` the replay of the `verify:`
+# commands this branch can have changed: the items it edited, and the open
+# items whose command reads a file it edited (`PL-XMNC`). That is the step
+# `.github/workflows/quality.yml` runs on a pull request, and until this line
+# a session could not see its finding before pushing. That finding - an open
+# item whose `verify:` command already passes - is what 20 of the 56 red
+# `pull_request` runs from 2026-09-10 to 2026-09-22 failed on, the commonest
+# failing step there, each a round trip for an answer this line gives in
+# seconds.
+#
+# Scoped, and never the whole-store sweep. That one finds work that *merged*
+# without its item being closed, which a pre-commit gate on a feature branch
+# cannot have changed (`PL-P3B6`), so it runs on every push to `main`, where
+# its answer is a fact about `main`. The scoped form asks whether this
+# branch's own store edit, or a file it touched, has just made an open item's
+# command pass - and that this branch can have changed.
+#
+# The price, re-timed 2026-09-22 on four cores after `PL-0HPV` moved each
+# legacy command's `grep` ahead of the test file it ran first: `172f93e1`'s
+# file set, the widest of the last 80 merges with 55 items in scope, 5.0-5.3 s
+# against 41-46 s before; three more real merges' sets 1.3-5.4 s where they
+# cost 14.1-67.5 s; and 1.1-1.2 s on a branch that changes no item and no
+# file an open command reads, which is the validation alone. The slowest
+# command in scope sets it rather than how many run - `PL-LWMS`'s
+# `pytest tests/unit -k`, 4 s, on any branch touching `tests/unit` - and
+# `docket check` prints that reading on its own cost line every run, which is
+# the one to trust once these figures have aged.
+#
+# No shell conditional guards it. A base that cannot be read - no `origin`
+# remote, or a bare copy - declines with one "Not checked" line and exits 0
+# (`PL-ZPDM`), so the gate stays green offline and says what it skipped. The
+# ref is read without a fetch, so the gate needs no network, and a stale one
+# can only widen the scope, never hide this branch's own changes: the diff is
+# taken from the merge base, which a stale ref moves earlier and no later.
+	bin/docket check --verify --verify-base origin/main
 # Bare `python3` for the reason the next line uses it, and placed with the
 # provenance checks rather than earlier because that is what it is: `docket
 # check` asks whether the store is sound, this asks whether this branch's work

@@ -8,9 +8,8 @@ classes: defect, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 added: 2026-09-14
-verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_one_decimal_fork_instant_is_accepted' tests/integration/test_controller.py
+verify: grep -q 'def test_a_one_decimal_fork_instant_is_accepted' tests/integration/test_controller.py && uv run pytest tests/integration/test_controller.py
 ---
-
 
 **Problem.** The whole-step guard on a fork instant refuses 35.5% of the one-decimal times a user could type
 

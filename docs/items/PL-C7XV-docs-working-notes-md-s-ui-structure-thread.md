@@ -8,7 +8,7 @@ classes: docs
 feature: interface-pass-narrative
 touches: docs/WORKING_NOTES.md
 added: 2026-09-16
-verify: python3 tools/doc_check.py check && ! grep -qF 'the placement above' docs/WORKING_NOTES.md
+verify: ! grep -qF 'the placement above' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** docs/WORKING_NOTES.md's UI-structure thread says 'What was decided that day: the placement above' where the sentence above now carries two placements, so the 2026-09-16 v0.7.x move reads as a 2026-09-08 decision

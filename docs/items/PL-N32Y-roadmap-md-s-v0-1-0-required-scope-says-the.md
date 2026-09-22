@@ -8,7 +8,7 @@ classes: docs
 feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-13
-verify: python3 tools/doc_check.py check && grep -qF 'tissue_gas_partition_coefficients' ROADMAP.md
+verify: grep -qF 'tissue_gas_partition_coefficients' ROADMAP.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** ROADMAP.md's v0.1.0 Required scope says the release added tissue:blood partition data, where the agent data files store tissue:gas

@@ -8,7 +8,7 @@ classes: docs, test
 feature: project-introduction
 touches: README.md, tests/unit/test_playback.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/chart_time_base.py, tools/doc_check.py
 added: 2026-09-06
-verify: uv run pytest tests/unit/test_playback.py && grep -q 'README.md' tests/unit/test_playback.py
+verify: grep -q 'README.md' tests/unit/test_playback.py && uv run pytest tests/unit/test_playback.py
 ---
 
 **Problem.** `README.md` § "What it simulates" states three capability facts
