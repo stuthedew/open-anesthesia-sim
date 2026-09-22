@@ -167,11 +167,13 @@ apply to every reply of any kind. Never mention these rules, "phases," or
       state anywhere in a reply, not only in this block; the block is merely
       where a stale claim is acted on. Say what the check showed when it
       changes the answer, rather than quietly dropping the item.
-    - Before recommending repository work that carries no item id, check
-      whether another session has already asked for it. A release cut, a tag,
-      a merge, a branch deletion: every in-flight guard this project has
-      matches a `PL-` id, and this is the work that has none until somebody
-      starts it, so this block is the only place it is ever visible. Two
+    - Before recommending repository work - an item to start, or work that
+      carries no item id - check whether another session is already on it or
+      has asked for it. Every in-flight guard this project has matches a `PL-`
+      id on a *pushed* ref, so an item is invisible to all of them until its
+      session pushes (`PL-0HPV` was reported unstarted twenty minutes into
+      another session's run, `PL-7TVT`), and a release cut, a tag, a merge or a
+      branch deletion has no id until somebody starts it. Two
       sessions cut v0.3.7 within the hour that way and the second was
       discarded at the merge (`PL-66FP`, two sessions cut the same release
       independently). One call answers it — `list_sessions` from the

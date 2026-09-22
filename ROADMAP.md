@@ -5769,6 +5769,13 @@ another branch, so this pass left it untriaged.
   deliberately left to the platform. `ux`. At `needs-decision`, and its brief
   recommends waiting for planned-milestone item 34.
 
+- PL-8YXJ (M) - **deferred 2026-09-22.** A status or blocker change rewrites an
+  item's front matter and leaves its brief narrating the old state, and nothing
+  reports it: `_check_prose_dependencies` skips closed prerequisites and nothing
+  reads a brief's claims about its own status. `defect`, `infra`. Classed at
+  capture by the session that measured it rather than by `PL-14QR`; as a live
+  generator it ranks on that tier whatever this gate records.
+
 ### Required scope
 
 1. **The layout model** (queue items `PL-1FT6` and `PL-HJPY`). Pure Python,
