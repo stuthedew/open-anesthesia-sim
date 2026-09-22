@@ -7,13 +7,16 @@ starting something new of equal priority.
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from datetime import date
 
 from docket.model import Item
 from docket.plan import (
+    Waiting,
     effort_total,
     features,
     gate,
+    longest_waiting,
     placement_clause,
     placement_line,
     placement_mark,
@@ -41,6 +44,7 @@ def _item(
     payoff: str = "",
     blocked_by: tuple[str, ...] = (),
     recurrences: tuple[str, ...] = (),
+    added: date = date(2026, 8, 1),
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -53,7 +57,7 @@ def _item(
         blocked_by=blocked_by,
         feature=feature,
         milestone="",
-        added=date(2026, 8, 1),
+        added=added,
         closed=None,
         commit="abc1234" if status == "done" else "",
         reason="",
@@ -1390,3 +1394,155 @@ def test_the_report_is_ordered_so_two_readers_see_one_answer() -> None:
     second = _item("PL-3333", status="blocked", blocked_by=("PL-1111",))
 
     assert [i.identifier for i in promotable([second, closed, first])] == ["PL-2222", "PL-3333"]
+
+
+# --- `docket next --oldest`: owed work in the order it has waited ------------
+
+TODAY = date(2026, 9, 22)
+NEW_WORK = ("feature", "planning")
+DEBT = ("defect", "safety", "science", "refactor", "perf")
+
+
+def _waiting(
+    items: list[Item],
+    in_flight: Collection[str] | None = None,
+    *,
+    effort: str | None = None,
+    limit: int = 3,
+    scope: Scope | None = None,
+    lane: str | None = None,
+    workflow_paths: tuple[str, ...] = (),
+) -> Waiting:
+    return longest_waiting(
+        items,
+        in_flight,
+        today=TODAY,
+        new_work_classes=NEW_WORK,
+        debt_classes=DEBT,
+        effort=effort,
+        limit=limit,
+        scope=scope,
+        lane=lane,
+        workflow_paths=workflow_paths,
+    )
+
+
+def test_oldest_hands_out_the_longest_waiting_owed_work_first() -> None:
+    """Age decides rather than band: the starvation `PL-Q89J` exists to end.
+
+    Under the plan's order a `P3` filed first waits behind every newer `P1`
+    and `P2`, for good if new work keeps arriving above it. Here it leads.
+    """
+    items = [
+        _item("PL-1111", priority="P1", added=date(2026, 9, 20)),
+        _item("PL-2222", priority="P3", classes=("docs",), added=date(2026, 8, 24)),
+        _item("PL-3333", priority="P2", classes=("test",), added=date(2026, 9, 1)),
+    ]
+    picks = _waiting(items).picks
+
+    assert [pick.item.identifier for pick in picks] == ["PL-2222", "PL-3333", "PL-1111"]
+    assert picks[0].reason.startswith("Added 2026-08-24, 29 days waiting.")
+    assert picks[2].reason.startswith("Added 2026-09-20, 2 days waiting.")
+    # The plan's order is the reverse, which is the reason to ask for this one.
+    assert recommend(items)[0].item.identifier == "PL-1111"
+
+
+def test_oldest_keeps_p0_on_top_whatever_its_age() -> None:
+    """A hotfix never waits behind an old doc fix."""
+    items = [
+        _item("PL-1111", priority="P3", added=date(2026, 8, 24)),
+        _item("PL-2222", priority="P0", added=TODAY),
+    ]
+    picks = _waiting(items).picks
+
+    assert [pick.item.identifier for pick in picks] == ["PL-2222", "PL-1111"]
+    assert picks[0].reason.startswith("P0: this comes before feature work, whatever its age.")
+    assert picks[0].reason.endswith("Added 2026-09-22, 0 days waiting.")
+
+
+def test_oldest_breaks_a_tie_in_age_by_band_then_by_id() -> None:
+    same = date(2026, 8, 24)
+    items = [
+        _item("PL-3333", priority="P3", added=same),
+        _item("PL-2222", priority="P2", added=same),
+        _item("PL-1111", priority="P2", added=same),
+    ]
+
+    assert [pick.item.identifier for pick in _waiting(items).picks] == [
+        "PL-1111",
+        "PL-2222",
+        "PL-3333",
+    ]
+
+
+def test_oldest_leaves_out_new_work_and_work_in_flight() -> None:
+    """`feature` and `planning` are the work the gate protects, not work owed.
+
+    A debt class beside one keeps the item owed, which is `is_debt`'s own rule:
+    the two commands disagreeing about one item would be the hazard the flag's
+    name was chosen to avoid.
+    """
+    items = [
+        _item("PL-1111", classes=("feature",), added=date(2026, 8, 1)),
+        _item("PL-2222", classes=("planning",), added=date(2026, 8, 2)),
+        _item("PL-3333", added=date(2026, 8, 3)),
+        _item("PL-4444", classes=("feature", "defect"), added=date(2026, 8, 4)),
+        _item("PL-5555", classes=("ux",), added=date(2026, 8, 5)),
+    ]
+    waiting = _waiting(items, in_flight={"PL-3333"}, limit=10)
+
+    assert [pick.item.identifier for pick in waiting.picks] == ["PL-4444", "PL-5555"]
+    assert waiting.new_work == 2
+
+
+def test_oldest_lists_decisions_apart_rather_than_ranking_them() -> None:
+    """An unanswered decision waits on the project owner, not on a session.
+
+    Ranked by age, the oldest one would hold the top of the list for good.
+    It is owed whatever its classes, so a `feature` at `needs-decision` is
+    listed here rather than left out as new work.
+    """
+    items = [
+        _item("PL-1111", status="needs-decision", classes=("feature",), added=date(2026, 8, 2)),
+        _item("PL-2222", status="needs-decision", added=date(2026, 8, 1)),
+        _item("PL-3333", added=date(2026, 9, 1)),
+    ]
+    waiting = _waiting(items, limit=10)
+
+    assert [pick.item.identifier for pick in waiting.picks] == ["PL-3333"]
+    assert [item.identifier for item in waiting.decisions] == ["PL-2222", "PL-1111"]
+    assert waiting.new_work == 0
+
+
+def test_oldest_narrows_to_a_lane_and_an_effort_before_it_orders() -> None:
+    items = [
+        _item("PL-1111", touches=("tools/x.py",), added=date(2026, 8, 1)),
+        _item("PL-2222", touches=("src/y.py",), effort="M", added=date(2026, 8, 2)),
+        _item("PL-3333", touches=("src/z.py",), added=date(2026, 8, 3)),
+    ]
+    picks = _waiting(items, lane="product", workflow_paths=("tools",), effort="S").picks
+
+    assert [pick.item.identifier for pick in picks] == ["PL-3333"]
+
+
+def test_oldest_says_where_the_plan_places_its_pick() -> None:
+    """The placement sentence `recommend` writes, so an off-gate pick says so."""
+    scope = _scope(current=("PL-1111",), clearing=True)
+    (on_gate,) = _waiting([_item("PL-1111")], scope=scope).picks
+    (off_gate,) = _waiting([_item("PL-2222")], scope=scope).picks
+
+    assert on_gate.reason.startswith(f"On the debt gate recorded under {STEP}")
+    assert f"Placed by no section of {STEP}" in off_gate.reason
+
+
+def test_oldest_never_claims_the_band_ranked_its_pick() -> None:
+    """`recommend`'s unplaced sentence says the item "ranks on its band alone".
+
+    Under `--oldest` that is false - age ranked it - and two claims about one
+    ranking in one reason line is the apparatus floor broken where a reader
+    can see both.
+    """
+    (pick,) = _waiting([_item("PL-1111")], scope=_scope(current=("PL-2222",))).picks
+
+    assert "Placed by no section" in pick.reason
+    assert "band" not in pick.reason

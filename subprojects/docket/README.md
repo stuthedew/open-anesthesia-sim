@@ -24,6 +24,7 @@ from shared state. There is no lock, because there is nothing to lock.
 docket new "The induction curve looks wrong" "Colour-blind palette check"
 docket next --effort S       # what to work on, and why
 docket next workflow         # ...confined to one half of the project, for a second session
+docket next --oldest         # owed work longest-waiting first, so what newer work outranks surfaces
 docket wave                  # which beat of the plan's cadence is due
 docket list                  # the queue, one line per item
 docket triage                # what is untriaged, and the rules the answers must satisfy
@@ -973,6 +974,40 @@ below it — "the same priority as a generator" is what was asked for, so where
 both are startable the ordinary terms below settle the order rather than a
 sub-order nobody decided. Its reason line quotes the declared prose instead of
 naming items, because that prose is the only evidence the claim has.
+
+### What newer work keeps outranking: `docket next --oldest`
+
+Every term `next` ranks on favours work that is newer, more urgent or more
+central, so an owed item that is none of those waits while new work keeps
+arriving above it. Priority scheduling calls that *starvation*, and its
+standard remedy is *aging*: a request's priority rises the longer it waits
+(Silberschatz, Galvin and Gagne, *Operating System Concepts*, 10th ed., the
+CPU-scheduling chapter's section on priority scheduling). `--oldest` is aging's
+extreme form, pure age order, and the simplest to audit. It answers the
+question "what have we forgotten" beside the plan rather than changing it: a
+bare `docket next` prints exactly what it printed before the flag existed.
+
+- **Order.** Longest-waiting first by `added:`, ties by band and then id, `P0`
+  on top whatever its age. Age is `--today` minus `added`, so no git read is
+  needed and a bare checkout answers.
+- **Population.** What `next` could start, narrowed by a lane and `--effort`
+  exactly as `next` narrows it, less *new work*: items classed in
+  `new_work_classes` (`feature` and `planning` by default), which are the work
+  a gate protects rather than work owed. Everything else is owed, including the
+  `docs`, `infra` and `test` work the debt gate never counts, which is the half
+  at risk of being forgotten. A debt class or `needs-decision` keeps an item
+  owed whatever else it carries, so `docket gate` and this cannot disagree about
+  one item.
+- **Decisions apart.** Owed work at `needs-decision` is listed on a line of its
+  own, oldest first, never ranked: its next step is the project owner's answer,
+  and ranked by age the oldest unanswered decision would hold the top for good.
+- **Never silent about the plan.** Each pick carries the placement sentence
+  `next` writes, so an off-gate pick says so, and the last line names the plan's
+  own pick for the same lane and effort, with the command that explains it.
+
+The flag is `--oldest` rather than `--debt` because `docket gate` and the
+roadmap already use *debt* for the narrower class list a gate holds, and one
+word meaning two sets would make two commands disagree about what debt is.
 
 ### Two sessions, one queue: the lanes
 
@@ -3096,6 +3131,7 @@ items_dir = "docs/items"
 safety_classes = ["safety", "science"]
 process_classes = ["session-cost", "docs", "infra"]
 debt_classes = ["defect", "safety", "science", "refactor", "perf"]
+new_work_classes = ["feature", "planning"]   # what `next --oldest` leaves out
 top_band_limit = 5
 untriaged_stale_days = 14
 instruction_stale_days = 90        # a dated assertion goes this long

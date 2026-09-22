@@ -36,6 +36,15 @@ process_classes = ["session-cost", "docs", "infra", "housekeeping"]
 # reads this.
 debt_classes = ["defect", "safety", "science", "refactor", "perf"]
 
+# What `bin/docket next --oldest` leaves out as new work rather than work owed
+# (`PL-Q89J`): the line "What counts" draws, where an item classed `feature` or
+# `planning` "is **not** debt". Everything else startable is owed, which reaches
+# the `docs`, `infra`, `test` and `ux` items no gate will hold - the half of the
+# owed work at risk of being forgotten. A debt class or `needs-decision` keeps
+# an item owed whatever else it carries, so the gate and `--oldest` cannot
+# disagree about one item.
+new_work_classes = ["feature", "planning"]
+
 # Past this, the top band stops answering "what next?" at a glance.
 #
 # Raised from the package default of 5 on 2026-08-30, deliberately and not as

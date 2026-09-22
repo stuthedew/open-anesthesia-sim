@@ -45,6 +45,13 @@ class Config:
     #: starting a milestone needs to know which is which, and the class labels
     #: are where it is written down.
     debt_classes: tuple[str, ...] = ("defect", "safety", "science", "refactor", "perf")
+    #: Classes that make an open item new work - what a project is building,
+    #: as against something it marked as wanting doing and set aside. `docket
+    #: next --oldest` leaves these out and treats every other startable item as
+    #: owed, which reaches the `docs`, `infra` and `test` work `debt_classes`
+    #: never counts. A debt class or `needs-decision` overrides it
+    #: (`plan.is_new_work`), so the two lists cannot disagree about one item.
+    new_work_classes: tuple[str, ...] = ("feature", "planning")
     #: Past this, the top band is too large to choose from at a glance.
     top_band_limit: int = 5
     #: Past this, an untriaged capture has become a second queue nobody reads.
@@ -167,7 +174,7 @@ class Config:
     #: Classes that make a release a minor version bump rather than a patch.
     minor_classes: tuple[str, ...] = ("feature",)
     #: Every class an item may carry. Empty means "derive it", and the derived
-    #: value is the union of the four lists above - every class this tool
+    #: value is the union of the five lists above - every class this tool
     #: actually branches on. That default is the useful one: a class outside
     #: it changes no decision the tool makes, so a project that has declared
     #: nothing still gets the check that matters, which is that a class the
@@ -177,7 +184,7 @@ class Config:
     #: not in `safety_classes`, so the pin refusing to seat safety-critical
     #: work below the top band does not fire and nothing says so - a typo is
     #: enough to leave such an item in the bottom band (`PL-MVC2`). A project
-    #: using descriptive classes beyond the four lists declares the whole
+    #: using descriptive classes beyond the five lists declares the whole
     #: vocabulary here; declaring some does not extend the derived set.
     known_classes: tuple[str, ...] = ()
     #: Paths holding the checks themselves. A delegated diff that edits one
@@ -292,6 +299,7 @@ class Config:
             self.safety_classes
             + self.process_classes
             + self.debt_classes
+            + self.new_work_classes
             + self.minor_classes
             + BRANCHED_ON
         )
@@ -340,6 +348,7 @@ def load(root: Path) -> Config:
         safety_classes=_tuple(section.get("safety_classes"), defaults.safety_classes),
         process_classes=_tuple(section.get("process_classes"), defaults.process_classes),
         debt_classes=_tuple(section.get("debt_classes"), defaults.debt_classes),
+        new_work_classes=_tuple(section.get("new_work_classes"), defaults.new_work_classes),
         top_band_limit=int(section.get("top_band_limit", defaults.top_band_limit)),
         untriaged_stale_days=int(
             section.get("untriaged_stale_days", defaults.untriaged_stale_days)
