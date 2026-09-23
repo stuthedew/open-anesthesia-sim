@@ -3,11 +3,12 @@ id: PL-LF2C
 title: PL-VV4D's exact left-behind check rests on refs/pull/<n>/head being permanent, and GitHub is about to unreference 90 of them, so the check needs a third decline condition and one of its two test vectors dies
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: parallel-sessions
 touches: docs/items/PL-R808-build-the-exact-left-behind-check-as-a-tools.md, subprojects/docket/src/docket/vcs.py
 added: 2026-09-12
+closed: 2026-09-23
 verify: grep -qF 'not a superset' subprojects/docket/src/docket/vcs.py && python3 tools/doc_check.py check
 recurrences: 2026-09-23 PL-P3GV
 ---
@@ -114,3 +115,12 @@ being deletable, so the consequence lives only in item files.
 
 **Restate the argument as fact, which strengthens it:** these refs are not
 merely deletable on request, they have been deleted here.
+
+**Closed 2026-09-23.** The last clause landed in `vcs.orphaned`'s docstring,
+as the paragraph "Beside the exact check, never replaced by it". One refinement
+on the way: `PL-P3GV` found that the pull-request record keeps the head after
+the ref goes, so "cannot answer at all" is true of the shipped check rather
+than of every possible one. The not-a-superset conclusion does not rest on
+that. It rests on the exact check's evidence being GitHub's to withhold -
+offline, no token, a deleted ref - where `orphaned` needs only the checkout,
+and the docstring argues it that way.

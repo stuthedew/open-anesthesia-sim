@@ -5829,6 +5829,23 @@ def orphaned(
     prose the base had edited under it - and the check fired falsely on it. The
     population a measurement covered is part of what it measured.
 
+    **Beside the exact check, never replaced by it** (`PL-BHVM`, `PL-LF2C`).
+    `tools/left_behind_check.py` asks the same question from the pull-request
+    side - does the branch's tip descend from the head its merged pull request
+    froze - and where both answer and disagree, that one wins and says so. It
+    is not a superset of this one even in principle, because its evidence is
+    GitHub's and this one's is the checkout's. It answers only where GitHub
+    does, since git keeps no record of which pull request came from which
+    branch. And GitHub can take the evidence away: pull refs survive branch
+    deletion, as measured above, but not a request to delete them, which this
+    repository made for `#297`-`#386` (`PL-0SCG`). All 90 were gone by
+    2026-09-23, so for a branch whose merged pull request is among them that
+    check declines with `no such ref` even online. Reading the head the
+    pull-request record kept (`PL-P3GV`, left unbuilt) would narrow the gap
+    without closing it, since that record is GitHub's too. Wherever that check
+    declines, this one is all that stands between a commit pushed after the
+    merge and its loss.
+
     **The rule, in three parts, and only the first was got right first time.**
     A branch whose introduced content is partly on the base and partly not,
     *and* which carries a commit none of whose paths reached the base at all,
