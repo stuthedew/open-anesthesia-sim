@@ -67,7 +67,7 @@ list on 2026-09-23. Two questions, both wanted.
 **Not the `Required scope` test either, costed.** `cmd_gate` would have to read
 `ROADMAP.md` and name a milestone section, which `--feature` cannot do - a new
 flag, under the generator pause. The two would still disagree: `wave` carves
-out blocked entries first, and 11 of the 14 `gate` listed read as blocked
+out blocked entries first, and 12 of the 14 `gate` listed read as blocked
 outside the gate. It also reads deferrals - `PL-Y04W` is deferred to Gate 3 -
 and a store-wide split knows neither. So the rewording is needed under either
 route. Nothing is stored downstream of it, so it is cheap to redo when
