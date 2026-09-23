@@ -3,10 +3,11 @@ id: PL-WVJ0
 title: The docket skill says bin/docket show prints no placement at all, but PL-J790 added the plan: line to show in v0.4.18, so a session is sent to look up what the command already prints
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, defect
-touches: .claude/skills/docket/SKILL.md
+touches: .claude/skills/docket/modes/picking.md
 added: 2026-09-19
+closed: 2026-09-23
 verify: ! grep -rqF 'prints no placement at all' .claude/skills/docket/
 ---
 
@@ -39,3 +40,13 @@ session acts on.
 `plan:` line is the item's placement, and `bin/docket wave` is still what
 settles gate *membership*, which placement is not - and nothing else in
 `.claude/skills/docket/SKILL.md` claims `show` is silent about placement.
+
+**Closed 2026-09-23, by `PL-TQN2`'s session.** The sentence had moved to
+`.claude/skills/docket/modes/picking.md` when the skill split into mode files,
+so `touches` is corrected from `SKILL.md` to where the sentence was. It was
+repaired as drift riding `PL-TQN2`'s commit, which `docket check --verify`
+then caught as this item's work: its command passed with the item still open.
+The sentence was then tightened to meet the Done-when: `show`'s `plan:` line is
+the item's placement, and `bin/docket wave` still settles gate membership,
+which placement is not. Nothing else under `.claude/skills/docket/` claims
+`show` is silent about placement.

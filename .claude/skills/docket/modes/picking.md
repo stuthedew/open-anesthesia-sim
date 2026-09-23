@@ -209,10 +209,12 @@ example: `docket next` gives it no gate sentence, while `ROADMAP.md`'s
 "placed nowhere" is a fact about those structures and never a claim that the
 roadmap is silent — read the row for the step before saying either.
 
-`bin/docket wave` prints the gate's open entries by id and settles membership;
-`bin/docket show` prints the same relation on its `plan:` line (`PL-J790`), so
-an item reached by name — the way the owner usually starts one — carries it
-too, and "placed nowhere" there is the same fact about the same structures.
+`bin/docket show` prints the item's placement on its `plan:` line (`PL-J790`),
+so an item reached by name — the way the owner usually starts one — carries
+its relation to the plan without a lookup, and "placed nowhere" there is the
+same fact about the same structures. Placement is not gate membership:
+`bin/docket wave` prints the gate's open entries by id and is still what
+settles membership.
 
 **Say what the work buys, in consequence terms, before naming what it does**
 (project owner, 2026-09-19). An item's title is written for the session that
