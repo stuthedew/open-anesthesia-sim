@@ -30,7 +30,13 @@ compartment's `agent_amount_l`:
 | Desflurane | 13% / 20% / 33% | 4.7 h | 5.8 h | 7.0 h |
 
 Muscle is the largest store throughout the first hours (34-56% of the stored
-agent from 30 min to 3 h on every agent), which is the classical account too.
+agent from 30 min to 3 h on every agent). Whether that is also the classical
+account needs a primary source before item 27 says so. The nearest
+confirmation found is Gas Man's own, a simulation rather than a measurement:
+"Fat levels of anesthetic remained less than 0.15 MAC for all drugs up to the
+6 hours tested" (Leeson S, Roberson RS, Philip JH. *Anesth Analg*
+2014;119(4):829-835, https://doi.org/10.1213/ANE.0000000000000384, retrieved
+from PubMed, PMID 25099926, and verified against the abstract 2026-09-23).
 Fat's lesson is still real: it holds a large and steadily growing share at a
 partial pressure the chart draws within a few pixels of zero, and it is the
 largest store at equilibrium (capacity 493 L gas-equivalent against muscle's

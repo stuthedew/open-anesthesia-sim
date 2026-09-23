@@ -176,11 +176,68 @@ invisible filling, is a question about amount, which planned item 27 exists to
 answer. The option most worth having instead is 3, as a reader-selected log
 scale. It is the only option that keeps one shared axis, the compartments'
 order and a fixed ruler while separating fat. But it should be built only after
-`PL-TH35`, and only if a lesson is named that needs fat's partial-pressure
-shape rather than its amount or its value. None is named in `ROADMAP.md` today.
+`PL-TH35`, and only for a named lesson that needs a partial pressure's
+*shape* rather than an amount or a value. `ROADMAP.md` names none today. The
+strongest candidate is not fat itself but the washout tail. Bailey found that
+"the major differences in the rates at which desflurane, sevoflurane,
+isoflurane, and enflurane are eliminated occur in the final 20% of the
+elimination process". From a 1 MAC case, that final 20% lies in roughly the
+bottom 20 px of today's axis. Carpenter et al. found that "slowly
+equilibrating compartments could only be identified during washout". Those
+two point at a semilog washout View for item 36's catalogue, not at a mode on
+this chart.
 Options 2 and 4 are not recommended: 2 is the misleading two-scale encoding
 this item already names, and 4 is a new surface that item 36's catalogue can
 take if it is ever wanted.
+
+**Sources the recommendation rests on, and how deeply each was read.** Three
+were retrieved from PubMed by this session and verified against their
+abstracts on 2026-09-23: Eger and Saidman, Leeson et al., and Romano et al.
+This session's research agent read four more from their abstracts, through
+PubMed or Crossref: Bailey, Carpenter et al., Menge et al. and Isenberg et al.
+Cockburn et al. comes from the authors' preprint. No full text was read.
+- Eger EI II, Saidman LJ. *Anesth Analg* 2005;100(4):1020-1033,
+  https://doi.org/10.1213/01.ANE.0000146961.70058.A1 - "Capacity to hold (take
+  up) anesthetic is depicted by areas representing specific tissues"; "the
+  increased anesthetic in fat occurs at a lower partial pressure and thus might
+  not influence emergence materially". Capacity is the established teaching
+  encoding for fat, which is item 27.
+- Leeson S, Roberson RS, Philip JH. *Anesth Analg* 2014;119(4):829-835,
+  https://doi.org/10.1213/ANE.0000000000000384 - a Gas Man simulation study,
+  so the reference implementation's behaviour rather than a measurement: "Fat
+  levels of anesthetic remained less than 0.15 MAC for all drugs up to the 6
+  hours tested"; "muscle is a source of anesthetic and predisposes to
+  reanesthetization while fat is a sink for anesthetic and fosters continued
+  emergence". The emergence lesson runs through muscle, which today's axis
+  draws.
+- Bailey JM. *Anesth Analg* 1997;85(3):681-6,
+  https://doi.org/10.1097/00000539-199709000-00036 (PMID 9296431); and Carpenter
+  RL et al. *Anesth Analg* 1986;65(6):575-82,
+  https://doi.org/10.1213/00000539-198606000-00004 (PMID 3706798). Both are
+  quoted above; they are the case for a washout View.
+- Romano A, Sotis C, Dominioni G, Guidi S. *Health Econ* 2020;29(11):1482-94,
+  https://doi.org/10.1002/hec.4143 - a randomised study of the general public:
+  deaths shown on a log scale gave "a less accurate understanding" than a
+  linear one, and the authors recommend linear "at least as a default option".
+  Menge DNL et al. (*Nat Ecol Evol* 2018;2(9):1393-1402,
+  https://doi.org/10.1038/s41559-018-0610-7) found 93% correct readings on
+  linear axes against 56% on log-log, among ecologists. Neither population is
+  residents, who are taught semilog plots in pharmacokinetics. Both are
+  reasons for linear as the default, not against a log option.
+- Isenberg P, Bezerianos A, Dragicevic P, Fekete JD. *IEEE Trans Vis Comput
+  Graph* 2011;17(12):2469-78, https://doi.org/10.1109/TVCG.2011.160 -
+  "superimposed charts in which focus and context overlap on top of each other
+  should be avoided". This is the case against option 2; reading option 2 as
+  their "superimposed" chart is this session's inference.
+- Cockburn A, Karlson A, Bederson BB. *ACM Comput Surv* 2009;41(1),
+  https://doi.org/10.1145/1456650.1456652 - overview+detail costs "additional
+  use of screen real estate" and "the mental effort and time required to
+  integrate the distinct views". This is option 4's cost.
+
+Not verified, so not relied on: whether Gas Man's graph offers a logarithmic
+or reader-set vertical scale, and whether its Picture draws compartments to
+capacity (item 27 asserts the second). gasmanweb.com was refused at the proxy;
+the private reference corpus's *Workbook for Gas Man* would answer both.
 
 **If option 1 is chosen**, the closing work is small. Record the decision and
 its reasons in `docs/MODEL.md` § "Where more than one trace answers", whose
