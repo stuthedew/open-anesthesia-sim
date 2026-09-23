@@ -1328,10 +1328,11 @@ def cmd_set(args: argparse.Namespace) -> int:
       all arrive from `checks.py` in its own words.
 
     A file the rewrite could not keep faithful is refused too: one spelling a
-    key twice would be collapsed to the parser's pick, and one carrying a
-    field the format does not know would lose it. Both are what `check`
-    already reports, and a writer repairing them on its way past would be
-    choosing a value on nobody's behalf.
+    key twice would be collapsed to the parser's pick, one carrying a field
+    the format does not know would lose it, and one holding a line no field
+    reads would lose that line - usually the tail of a wrapped value
+    (`PL-JD4L`). All are what `check` already reports, and a writer repairing
+    them on its way past would be choosing a value on nobody's behalf.
 
     The file keeps its name. A rename arriving as a side effect of a field
     write is `PL-LBR6`, and bringing a drifted name back is `PL-YTDN`'s pass.
@@ -1342,7 +1343,12 @@ def cmd_set(args: argparse.Namespace) -> int:
     if item is None:
         print(f"no item matching '{args.item}'")
         return 1
-    unsafe = item.duplicate_fields + item.unknown_fields + item.block_list_fields
+    unsafe = (
+        *item.duplicate_fields,
+        *item.unknown_fields,
+        *item.block_list_fields,
+        *(repr(line) for line in item.unread_lines),
+    )
     if unsafe:
         print(
             f"{item.identifier}: its file spells "
