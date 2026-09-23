@@ -8,6 +8,7 @@ classes: docs
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-21
 closed: 2026-09-23
+pr: 930
 payoff: the next caller written against _tracked's docstring gets the behaviour the docstring describes rather than the opposite one
 verify: grep -q 'def test_a_store_at_the_repository_root_is_the_empty_prefix' subprojects/docket/tests/test_cli.py
 ---

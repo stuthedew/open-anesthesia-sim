@@ -3409,17 +3409,22 @@ nothing it exists to protect, while the thirteen with a product-lane half are
 admitted above precisely because they can. Where the two standards compete,
 the simulator wins; this is that rule applied to the gate's own membership.
 
-**A closed entry carries the release that took it, and the open count is not
-recorded here** (`PL-0VFF`). No entry is ever removed from this list — that
-permanence is what "the gate is a snapshot" means, and deleting one would
-destroy the record of what was declined and why — so without a mark, nothing
-separated an entry still outstanding from one that shipped. The heading's total
-was then the only number a reader could take from the section, and it overstates
-the deferral by however many have closed since. A release name is a record fact
-and cannot go stale, so each closed entry now carries one, and an entry dropped
-rather than shipped carries the date it was dropped. How many are *still open*
-is deliberately not written down: that number changes every time one closes, and
-`bin/docket wave` answers it.
+**Whether an entry has closed, and the release that took it, is read from the
+store rather than written here** (`PL-0VFF`, then `PL-B60Q`). No entry is ever
+removed from this list — that permanence is what "the gate is a snapshot"
+means, and deleting one would destroy the record of what was declined and why —
+so something has to separate an entry still outstanding from one that shipped.
+That was a release name written beside each closed entry, or the date for one
+dropped, and it copied what the store already holds: all 48 marks written
+matched the item's `milestone:` or `closed:` field, and 36 of the 84 closed
+entries across this list and v0.6.0's deferrals had none (counted 2026-09-23,
+`PL-J6HP`). So `bin/docket wave` prints every deferral of the current gate with
+its state from the store — an open entry's status, a shipped one's release, a
+dropped one's date — and for an entry of a gate that is no longer current,
+`bin/docket show` prints its status and, once shipped, its `milestone:`. The
+marks already written stay, since a release name is a record fact and cannot go
+stale; none is added. How many are *still open* is not written down either:
+that number changes every time one closes, and `bin/docket wave` answers it.
 
 **The thirtieth arrived after the audit, on the same ground** (`PL-33WM`,
 2026-09-08). `PL-HX5C` was captured hours after this subsection was written and
@@ -5403,8 +5408,12 @@ feature. The two differ in both directions: on 2026-09-23 `PL-NDKC` and
 `PL-Y04W` carried the feature without being named, and `PL-CNCF` and `PL-PGZF`
 were named without carrying it, as they have been since `PL-YVP7`. So this
 group is `bin/docket wave`'s to report and not `bin/docket gate`'s, which splits
-the whole store by feature (`PL-RFHH`). The second is the single entry
-deferred to Gate 3, below. The rest clears before implementation of this
+the whole store by feature (`PL-RFHH`). `PL-CNCF` and `PL-PGZF` sat in the
+product-lane and neither-lane groups until 2026-09-23, because `#862` declared
+them in Required scope after `#850` had grouped this list. They moved into the
+first group when `tools/doc_check.py` began holding it to Required scope
+(`PL-J6HP`), and the three group counts moved with them. The second is the
+single entry deferred to Gate 3, below. The rest clears before implementation of this
 milestone begins, and is recorded in three groups rather than one because that
 is how it is meant to be worked: `docket.toml` computes a lane from each item's
 `touches`, the product and workflow lanes share no files and so run
@@ -5455,16 +5464,18 @@ filed as its own item under `feature: gate-staleness-sweep` and runs against
 this list before implementation of this milestone begins; no standing item is
 named here, for the reason beat 3 gives.
 
-**Cleared by v0.6.0 itself - 12 entries**
+**Cleared by v0.6.0 itself - 14 entries**
 
 - PL-9LNF (L) Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
 - PL-NWTM (L) The unconditional displayed set has no structural home in the code, so the guarantee docs/MODEL.md states as structural - a region outside the area system - exists only as prose
 - PL-50PZ (M) Build the View chooser and the registry's required-reachable flag, which is what makes docs/MODEL.md's accounting tier reachable from every Workspace and not removable from the application
 - PL-7Z84 (M) A run has no identity a workspace can pin to - the dashboard addresses runs by their position in its own drawing order, and ROADMAP item 34 commits a workspace to pinning which run it shows
 - PL-904Y (M) Split the whole-interface visibility predicate out of PL-W54S: interface_strings answers is-this-string-in-this-widget-subtree, which stops meaning can-the-reader-see-it once a layout can close an area or move it to another window
+- PL-CNCF (M) controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
 - PL-G5SX (M) Headless tests that drive every layout operation and assert after each that the unconditional display set is still on screen, that the accounting tier is still reachable, and that a required value never left with the surface that drew it
 - PL-K285 (M) An Area that cannot be given the size its View needs says so rather than collapsing it, which is the second of the three properties docs/interface-provenance.md records Blender not supplying
 - PL-L8RN (M) Nothing enforces the one-adapter QSplitter confinement PL-C842 decided, because import_boundary_check.py confines root packages and PySide6 is one root package
+- PL-PGZF (M) PL-GS3R made the chart's column budget follow the window width, so assemble_chart_frame costs 8.4 ms at 150 columns and 15.4 ms at 1601 - PL-CNCF measured only the fixed 150-column budget, and 15.4 ms is essentially a whole 60 fps frame
 - PL-TH35 (M) Define the common View contract every app/ view implements so any view is interchangeable in any area
 - PL-VN6M (M) TraceLegend owns the compartment-visibility state inside a widget, which an area system will have to move out
 - PL-W54S (M) Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
@@ -5474,14 +5485,13 @@ named here, for the reason beat 3 gives.
 
 - PL-Y04W (L) Build break-out: an Area taken into its own top-level window, the window lifetime that keeps the main window unclosable while break-outs exist, and the test that every window the application can be left showing carries the invariant display tier
 
-**Cleared before v0.6.0 begins, the product lane - 45 entries**
+**Cleared before v0.6.0 begins, the product lane - 44 entries**
 
 - PL-0S0V (M) AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
 - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
 - PL-2MD9 (M) "The propagator's constant state row drifts and the squarings amplify it: 2.28e+222 at an alveolar volume of 1e-19 L, where governing_equations.UNIT_STATE promises no step can perturb it"
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
 - PL-7TXJ (M) RunDefinition.record_change rebuilds the whole segment tuple per change, and each segment carries a keyframe, so it is the larger of the two unbounded records
-- PL-CNCF (M) controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
 - PL-FPY2 (M) A wrapped mark row's continuation can be a whole clause naming a run, so it reads as a row of its own and binds to the wrong mark
 - PL-HNWX (M) SUPPORTED_SCHEMA_VERSION is one global constant across agents, patients and machines, so a machine-only schema bump drags three agent files and the patient file with it
 - PL-KRZW (M) Decide what the interface does under a dark system appearance, now that every colour it declares is a light-theme value
@@ -5640,7 +5650,7 @@ named here, for the reason beat 3 gives.
 - PL-Z9K5 (S) bin/docket record normalizes an item's whole front matter as well as inserting pr:, so PL-ZYQC's 'pr, not counted' exemption misses and the close-out audit reports files the skill told the session to touch
 - PL-ZM48 (S) docs/worker.md records remote-branch deletion as exit status 0, and PL-3V6C as two incompatible causes, but one 2026-09-20 transcript carries the 403 and the Everything up-to-date line together at exit 1
 
-**Cleared before v0.6.0 begins, in neither lane - 12 entries**
+**Cleared before v0.6.0 begins, in neither lane - 11 entries**
 
 - PL-1RTM (M) doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked
 - PL-316G (M) Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
@@ -5648,7 +5658,6 @@ named here, for the reason beat 3 gives.
 - PL-65HT (M) A core/ dataclass numeric field default other than 0 or 1 that appears in no provenance-table value is an unsourced scientific constant, and nothing checks for one
 - PL-B396 (M) Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
 - PL-KKRP (M) Re-examine the debt gate's freeze trigger: scoping a milestone has not frozen its gate for the last two milestones scoped, so the cadence's beat 1 no longer describes what the project does
-- PL-PGZF (M) PL-GS3R made the chart's column budget follow the window width, so assemble_chart_frame costs 8.4 ms at 150 columns and 15.4 ms at 1601 - PL-CNCF measured only the fixed 150-column budget, and 15.4 ms is essentially a whole 60 fps frame
 - PL-0MLZ (S) uv run pytest writes bytecode that survives a source restore, so a mutation test can silently keep running the mutated build
 - PL-73G8 (S) The recovery file header claims the body verbatim, but it is the body as GitHub serves it today rather than at merge time, and its commit: sha silently dangles after a history rewrite with nothing checking it
 - PL-7K2C (S) quality.yml runs six to eleven tool checks after the whole-store verify replay, so a replay failure skips contrast, import-boundary, core-vocabulary and glyph checks on that main commit entirely - moving the replay to the end of the job would cost nothing and close the gap
@@ -5748,7 +5757,10 @@ another branch, so this pass left it untriaged.
 - PL-B60Q (S) - **deferred 2026-09-22.** The rule that a closed entry here
   carries the release that took it is stated only in v0.5.0's subsection, and
   nothing reads or writes the mark. So `PL-Z891`, the first entry in the
-  subsection above to close, is unmarked. `defect`, `infra`.
+  subsection above to close, is unmarked. `defect`, `infra`. Re-scoped by
+  `PL-J6HP`'s decision and closed with it on 2026-09-23: the mark is no longer
+  written, and `bin/docket wave` prints each deferral's state and release from
+  the store instead.
 
 - PL-19T3 (S) - **deferred 2026-09-22.** Outside a git repository,
   `vcs.changed_items` answers that no item changed where `vcs.tags` declines,
@@ -5790,7 +5802,10 @@ another branch, so this pass left it untriaged.
   `plan.py`, `roadmap.py` and `tools/doc_check.py`. `defect`, `infra`. At
   `needs-decision`: one reader or structured records. Filed by `PL-RFHH`'s
   session to carry the generator that item headed, not by `PL-14QR`; as a live
-  generator it ranks on that tier whatever this gate records.
+  generator it ranks on that tier whatever this gate records. Decided for one
+  reader the same day, and closed with it: `docket.roadmap` parses deferrals
+  beside the frozen list and `Required scope`, and one function names the
+  current gate for `bin/docket wave` and `tools/doc_check.py` alike.
 
 ### Declined to Gate 2, captured after the freeze and classed by the 2026-09-23 triage pass
 
@@ -6580,11 +6595,19 @@ for — the three this roadmap has written are `### Declined to Gate 2, because
 this milestone's own work created them`, `### Deferred to v0.4.26, because the
 port dissolves the defect` and `### Sequenced past v0.5.0, so not clearable
 before it begins`. The verb list is closed because it is what reads the
-subsection: `tools/doc_check.py` builds `check_gate_dispositions`' heading
-pattern out of `DEFERRAL_VERBS`, so a deferral written under a fourth verb is
-not read at all — its items come back named as debt the gate owes, under an
-error telling you to write the subsection you have already written. A deferral that wants a verb of its own adds it to that tuple in the
-same change (`PL-Z891`).
+subsection: `parse_milestones` in `subprojects/docket/src/docket/roadmap.py`
+builds its heading pattern out of `DEFERRAL_VERBS`, and both
+`tools/doc_check.py`'s `check_gate_dispositions` and `bin/docket wave` read
+what it parses (`PL-J6HP`). So a deferral written under a fourth verb is not
+read at all — its items come back named as debt the gate owes, under an error
+telling you to write the subsection you have already written, and `bin/docket
+wave` does not list them. A deferral that wants a verb of its own adds it to
+that tuple in the same change (`PL-Z891`).
+
+**Do not write a closed entry's release beside it.** `bin/docket wave` prints
+each deferral of the current gate with its state and release from the store
+(`PL-B60Q`), so a mark written by hand would only copy a field the store
+already holds.
 
 ## Development pathway
 

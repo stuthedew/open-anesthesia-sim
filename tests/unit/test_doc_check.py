@@ -3464,6 +3464,87 @@ def test_a_gate_subsection_stating_its_count_in_prose_is_left_alone(tmp_path: Pa
     assert _gate_errors(tmp_path, roadmap) == []
 
 
+# --- the self-cleared group, held to Required scope -------------------------
+
+#: The fixture's gate with a self-cleared group holding one entry, and its
+#: `Required scope` declaring exactly that entry - the arrangement the rule asks
+#: for, which the two tests after the quiet one each break in one direction.
+SELF_CLEARED_ROADMAP = VERSIONED_GATE_ROADMAP.replace(
+    "- PL-HHHH (S) The fifth thing\n",
+    "- PL-HHHH (S) The fifth thing\n\n"
+    "**Cleared by v0.4.0 itself — one entry**\n\n"
+    "- PL-JJJJ (S) The milestone's own debt\n",
+).replace(
+    "### Required scope\n\n- Something.", "### Required scope\n\n- Something (queue item PL-JJJJ)."
+)
+
+
+def _self_cleared(tmp_path: Path, roadmap: str) -> list[str]:
+    return [e for e in _errors(_repo(tmp_path, roadmap=roadmap)) if "Cleared by v0.4.0 itself" in e]
+
+
+def test_a_self_cleared_group_holding_what_required_scope_declares_is_quiet(tmp_path: Path) -> None:
+    assert _self_cleared(tmp_path, SELF_CLEARED_ROADMAP) == []
+
+
+def test_a_required_scope_entry_outside_the_self_cleared_group_is_reported(tmp_path: Path) -> None:
+    """`PL-J6HP`: v0.6.0 filed `PL-CNCF` and `PL-PGZF` under "Cleared before".
+
+    `#862` declared both in `Required scope` after `#850` had grouped the list,
+    so the list told a reader the milestone did not clear two entries that the
+    rule - and `bin/docket wave` - said it did. Every count agreed, because
+    each group heading counted the entries under it correctly.
+    """
+    roadmap = SELF_CLEARED_ROADMAP.replace(
+        "(queue item PL-JJJJ).", "(queue items PL-JJJJ and PL-DDDD)."
+    )
+
+    errors = _self_cleared(tmp_path, roadmap)
+
+    assert len(errors) == 1
+    assert "PL-DDDD is declared in v0.4.0's Required scope" in errors[0]
+    assert 'under "Stops new debt being introduced — three entries:"' in errors[0]
+
+
+def test_an_entry_under_the_self_cleared_group_that_scope_does_not_declare_is_reported(
+    tmp_path: Path,
+) -> None:
+    """The other direction: the group claiming an entry the rule does not give it."""
+    roadmap = SELF_CLEARED_ROADMAP.replace(" (queue item PL-JJJJ).", ".")
+
+    errors = _self_cleared(tmp_path, roadmap)
+
+    assert len(errors) == 1
+    assert "PL-JJJJ sits under" in errors[0]
+    assert "Required scope does not declare it" in errors[0]
+
+
+def test_the_gate_rules_read_the_gate_wave_reads(tmp_path: Path) -> None:
+    """`PL-J6HP`: one function names the current gate, for `wave` and here alike.
+
+    They used to find it apart - `wave` in the release train's order, the gate
+    rules in version order - and the two orders differ once a section recording
+    a gate has no timeline row. v0.3.5's has none here, so the train puts it
+    after v0.4.0, and both readers must hold the queue to v0.4.0's list: read in
+    version order, `PL-QQQQ` looked placed by a list `wave` never reports.
+    """
+    from docket.roadmap import wave
+
+    roadmap = VERSIONED_GATE_ROADMAP.replace(
+        "## Next milestone: v0.4.0",
+        "## v0.3.5 - a gate the timeline never placed\n\n"
+        "### Debt gate: the frozen list\n\n"
+        "- PL-QQQQ (S) On this list and no other\n\n"
+        "## Next milestone: v0.4.0",
+    )
+
+    plan = wave(roadmap, "0.2.5", frozenset(), frozenset(), {})
+    errors = _dispositions(tmp_path, {"PL-QQQQ": DEBT}, roadmap)
+
+    assert plan.gate is not None and plan.gate.milestone.version == (0, 4, 0)
+    assert any("v0.4.0's gate records no disposition" in e and "PL-QQQQ" in e for e in errors)
+
+
 # --- gate re-entries, the queue read against the frozen list -----------------
 #
 # `check_gate_counts` above holds a frozen list's arithmetic to itself. These

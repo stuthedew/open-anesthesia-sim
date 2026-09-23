@@ -468,6 +468,20 @@ class MilestoneSection:
     #: declares nothing. Empty for a section recording no scope subsection, and
     #: for one whose scope is a paragraph rather than a list.
     scope_entries: tuple[ScopeEntry, ...] = ()
+    #: Every entry of the section's deferral subsections - those headed by one
+    #: of `DEFERRAL_VERBS` - that opens with an id, read by its leading ids
+    #: exactly as a frozen entry is. What `bin/docket wave` joins against the
+    #: store to print each deferral's state and the release that took it, so
+    #: nothing has to be written beside an entry when it closes (`PL-B60Q`).
+    deferral_entries: tuple[GateEntry, ...] = ()
+    #: Every id those subsections name, prose included: `_declined_ids`'
+    #: reading, which is what the gate's disposition rule in
+    #: `tools/doc_check.py` counts as disposed. Wider than `deferral_entries`
+    #: on purpose - a group deferral states its ground and then enumerates the
+    #: ids it covers in a paragraph, which disposes of them as surely as an
+    #: entry line does. Neither half is a placement, so neither is in
+    #: `scope_ids`.
+    deferred_ids: frozenset[str] = frozenset()
 
     @property
     def label(self) -> str:
@@ -659,6 +673,174 @@ def _scope_entries(lines: Sequence[str], start: int) -> tuple[ScopeEntry, ...]:
     )
 
 
+# --- deferrals: what a milestone's section declines to its gate -------------
+#
+# Read here, beside the frozen list and `Required scope`, since `PL-J6HP`.
+# The four names below started in `tools/doc_check.py`, where the gate's
+# disposition rule was the only reader - so no `bin/docket` command could see a
+# deferral, and the one fact a reader of the list most needed about each entry,
+# whether it had shipped and in which release, was left to a mark written by
+# hand beside it (`PL-B60Q`). They moved with their names, which this
+# project's record cites.
+
+# The verbs a gate's own section has actually used to head a deferral:
+# `### Declined to Gate 2, because ...`, `### Deferred to v0.4.26, because ...`,
+# `### Sequenced past v0.5.0, so ...`. Everything after the verb is free prose,
+# because the ground for the deferral is what the heading is for, and no two
+# grounds are worded alike. Adding a fourth verb is an edit here and a line in
+# `ROADMAP.md` § "Recording it", which names this tuple as what it is checked
+# against.
+DEFERRAL_VERBS = ("Declined", "Deferred", "Sequenced")
+
+# Both names here predate the other two verbs and are kept deliberately: this
+# project's record cites them, and a record is about what was true when it was
+# written. `_declined_ids` below is named in seven `ROADMAP.md` lines, in
+# `docs/releases/v0.4.35.md` and `docs/releases/v0.5.1.md`, and in three pull
+# request bodies; `DECLINED_HEADING_RE` in v0.6.0's own deferral entry for
+# `PL-Z891`. Renaming either would leave a dozen true sentences naming a symbol
+# that no longer exists, which buys less than the docstring below costs.
+DECLINED_HEADING_RE = re.compile(rf"^###\s+(?:{'|'.join(DEFERRAL_VERBS)})\b", re.IGNORECASE)
+
+
+def _section_end(lines: Sequence[str], start: int) -> int:
+    """Where a milestone's own `##` section stops.
+
+    `list_entries` above stops at the next `###` too, which is what one
+    subsection's own extent wants and the wrong bound for a sweep across the
+    sibling subsections beside it.
+    """
+    for index in range(start, len(lines)):
+        heading = HEADING_RE.match(lines[index])
+        if heading is not None and len(heading.group("hashes")) <= 2:
+            return index
+    return len(lines)
+
+
+def _deferral_subsections(lines: Sequence[str], start: int) -> Iterator[tuple[int, int]]:
+    """Each deferral subsection of the section opening at `start`, as (heading, stop).
+
+    Both are indices into `lines`: the heading's own line, and the first line
+    past what it holds - the next heading of any depth, or the section's end.
+    One bound for both readings of a deferral, so an entry `bin/docket wave`
+    prints is always one the disposition rule has read.
+    """
+    end = _section_end(lines, start)
+    for index in range(start, end):
+        if not DECLINED_HEADING_RE.match(lines[index]):
+            continue
+        stop = next(
+            (later for later in range(index + 1, end) if HEADING_RE.match(lines[later])), end
+        )
+        yield index, stop
+
+
+def _declined_ids(lines: Sequence[str], start: int) -> frozenset[str]:
+    """The ids a milestone's section defers with a reason written down.
+
+    `start` is the section's `##` heading line, as `MilestoneSection.line`
+    holds it. `MilestoneSection.scope_ids` deliberately names only what a
+    section *places* - its frozen list, then `Required scope`. A deferral is the
+    opposite disposition and must not read as a placement, so it lives in a
+    subsection of its own and is read here instead. Its ids are excluded from
+    the gate's counts for the same reason: they are not entries the gate has to
+    clear.
+
+    **Every verb a gate has used to head a deferral is read, not the first one
+    written** (`PL-Z891`). The pattern was `### Declined to Gate` exactly, and
+    the roadmap has headed a deferral three ways: v0.5.0 alone carries `###
+    Declined to Gate 2, because this milestone's own work created them`, `###
+    Deferred to v0.4.26, because the port dissolves the defect` and `###
+    Sequenced past v0.5.0, so not clearable before it begins`. Two of the three
+    read as no disposition at all, and the last of those names 40 ids (measured
+    2026-09-22) - `PL-TH35` and `PL-WZVZ` among them still open debt.
+
+    The failure is loud and points the wrong way, which is what made it worth
+    fixing before it fired: the ids come back as dispositions the gate owes, and
+    the error told the reader to write the subsection they had already written.
+    v0.6.0's author took the other way out - its deferral subsection says in
+    its own entry for this item that it "was written to match the pattern
+    deliberately" - so the constraint was being routed around by the one person
+    it was constraining, which is `CLAUDE.md`'s second test for friction that
+    compounds.
+
+    What follows the verb is deliberately unconstrained. The ground for a
+    deferral is what the heading carries, and holding that to a form would be
+    the narrow rule arriving again one word to the right; the vocabulary that
+    *is* fixed is three verbs long, stated in `ROADMAP.md` § "Recording it",
+    and named by the error when the disposition check fires so that a fourth
+    verb diagnoses itself in one read.
+
+    **Every such subsection of the section is read, not the first**
+    (`PL-82B0`). Nothing says one subsection is where a deferral goes, and a
+    deferral is written by whoever takes it: a second subsection - recording a
+    later round, or a different ground - made the first one's ids stop being
+    read at all, so items the gate had explicitly deferred came back as
+    dispositions it owed. Nothing announced that, because writing the second
+    heading is what caused it.
+
+    The sweep stops at the next `##`, which the single-subsection reader did
+    not: unbounded, it would take the *next* milestone's deferrals for this
+    gate's on any roadmap where this one defers nothing.
+
+    **Every id the subsection names is read, its prose included, and that is
+    the measured answer rather than the loose one** (`PL-H6VQ`). Narrowing
+    this to the `- PL-XXXX` entry lines was proposed on the ground that a
+    deferral's prose cites items it does not dispose of, so an item named in
+    another item's reasoning reads as disposed. Counted 2026-09-21 against
+    v0.5.0's two subsections - the last pair this project has written, 1,577
+    lines - the narrowing breaks 97 dispositions and catches none. They name
+    433 distinct ids, of which 169 are open debt; 67 of those have an entry
+    line, 5 lead a paragraph of their own, and the remaining 97 are named
+    *only* inside a paragraph's body - every one of them in a group deferral
+    that states a ground and then enumerates the ids it covers ("**16 sit
+    wholly in the workflow lane**: ..."). A prose paragraph is this section's
+    form for deferring a group exactly as an entry line is its form for
+    deferring one item, so reading only the entries would have turned all 97
+    recorded dispositions into hard errors.
+
+    The citation half of the claim is real and measures zero. 42 distinct ids
+    are cited inside another entry's own line, which is where "another item's
+    reasoning" actually sits, and not one of them is an open debt item without
+    a disposition: 37 are closed, 3 carry no debt class, and the two that are
+    open debt - `PL-G8TR` and `PL-QV5Y` - each carry an entry of their own.
+    That is structural rather than lucky, which is why it is recorded here
+    instead of left to be re-measured: a citation points at a *cause* - the
+    pass that filed the group, the item whose work built the mechanism - and a
+    cause is historical, so it is usually closed by the time it is cited.
+
+    What is left is a silent pass nobody has yet observed: an open debt id
+    cited here and disposed of nowhere. No read of this file can separate that
+    from a citation, because telling one from the other is the judgment half
+    `CLAUDE.md` declines to script. It is accepted on the count above rather
+    than overlooked.
+    """
+    return frozenset(
+        identifier
+        for index, stop in _deferral_subsections(lines, start)
+        for identifier in re.findall(ID_PATTERN, "\n".join(lines[index:stop]))
+    )
+
+
+def _deferral_entries(lines: Sequence[str], start: int) -> tuple[GateEntry, ...]:
+    """The entries of the section's deferral subsections, read as frozen entries are.
+
+    The narrow half of what a deferral holds, beside `_declined_ids`' wide one:
+    only a list entry that opens with an id, by that entry's leading ids. It is
+    what can carry a state per entry - an id a group deferral enumerates in a
+    paragraph has no entry of its own to print one beside - and in v0.6.0 it
+    drops nothing the wide reading keeps that is still owed a disposition:
+    16 entries, and of the 8 ids cited only in their prose four are closed, one
+    is on the frozen list and three carry no debt class (counted 2026-09-23).
+    The slice at `stop` holds `list_entries` to the same bound `_declined_ids`
+    reads to.
+    """
+    return tuple(
+        entry
+        for index, stop in _deferral_subsections(lines, start)
+        for entry in _gate_entries(lines[:stop], index + 1)
+    )
+
+
 def parse_milestones(text: str) -> list[MilestoneSection]:
     """Read every milestone section of the roadmap, in version order."""
     lines = text.splitlines()
@@ -694,6 +876,8 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
                 own_scope_ids=own_scope,
                 excluded_ids=_deduped(_subsection_ids(lines, excluded)) if excluded else (),
                 scope_entries=scope_entries,
+                deferral_entries=_deferral_entries(lines, line_number),
+                deferred_ids=_declined_ids(lines, line_number),
             )
         )
 
@@ -1443,6 +1627,22 @@ def release_train(roadmap: str, version: str) -> ReleaseTrain:
     )
 
 
+def current_gate(train: ReleaseTrain) -> MilestoneSection | None:
+    """The section recording the gate the project is clearing now, or `None`.
+
+    The first unreleased section, in the train's order, that records a frozen
+    list. One function, because `wave` and `tools/doc_check.py`'s gate rules
+    are all asking which list is current, and they used to answer it apart:
+    `wave` over the train's order and the two rules over version order, each
+    with its own copy of the same `next(...)` (`PL-J6HP`). The two orders agree
+    while every section has a timeline row and the rows run in version order,
+    and `stale` and `problems` report each way they can come apart - but a gate
+    one reader holds open while another has moved past it is the disagreement
+    this function exists to make impossible rather than to report.
+    """
+    return next((section for section in train.ahead if section.records_a_gate), None)
+
+
 def stale_milestones(
     steps: Sequence[TimelineStep],
     sections: Sequence[MilestoneSection],
@@ -1763,7 +1963,10 @@ def gate_status(
     while all three appear in v0.5.0's `Required scope`. All three had closed,
     so nothing rode on it; the rule is followed rather than the heading because
     the rule is what `ROADMAP.md` states as the test, and because `_gate_entries`
-    deliberately does not parse a person's summary of the same facts.
+    deliberately does not parse a person's summary of the same facts. The
+    heading is held to the rule from the other side instead: `tools/doc_check.py`
+    fails the current gate's "Cleared by vX.Y.Z itself" group wherever it and
+    `Required scope` disagree (`PL-J6HP`).
     """
     cleared: list[GateEntry] = []
     outstanding: list[GateEntry] = []
@@ -2076,7 +2279,7 @@ def wave(
     train = release_train(roadmap, version)
     step = train.step
 
-    recorded = next((section for section in train.ahead if section.records_a_gate), None)
+    recorded = current_gate(train)
     gate = (
         gate_status(recorded, closed_ids, known_ids, blockers, train=train)
         if recorded is not None

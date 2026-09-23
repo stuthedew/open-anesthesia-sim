@@ -40,6 +40,11 @@ checked here, and never left to a session to remember:
   number reached six places in `ROADMAP.md` once, and admitting four entries
   meant correcting nine numbers by hand. Prose counts are deliberately not
   read; see `check_gate_counts` for why.
+- **The self-cleared group.** Where the current gate's frozen list groups its
+  entries, its "Cleared by vX.Y.Z itself" group holds exactly the entries the
+  milestone's `Required scope` declares - the rule the roadmap states for what
+  a milestone clears itself, written a second time by hand. See
+  `check_self_cleared_group`.
 - **Current baseline.** `ROADMAP.md`'s version table names each released
   version once, marks exactly one of them the current baseline, and its
   "Current baseline:" heading names that same version - which is the version
@@ -116,6 +121,7 @@ try:
     from docket.roadmap import (
         BASELINE_MARK,
         DECLARATION_RE,
+        DEFERRAL_VERBS,
         EXCLUDED_SUBSECTION,
         HEADING_RE,
         SCOPE_SUBSECTION,
@@ -124,11 +130,14 @@ try:
         VERSION_TABLE_HEADING,
         GateEntry,
         MilestoneSection,
+        _section_end,
         baseline_heading,
+        current_gate,
         list_entries,
         parse_milestones,
         parse_timeline,
         parse_version_table,
+        release_train,
         table_rows,
         version_tuple,
     )
@@ -1469,18 +1478,28 @@ def _subsection_end(lines: Sequence[str], start: int) -> int:
     return len(lines)
 
 
-def _gate_groups(
-    lines: Sequence[str], section: MilestoneSection
-) -> Iterator[tuple[int, int, int | None, int, int]]:
+@dataclass(frozen=True)
+class _GateGroup:
+    """One count-carrying group heading of a frozen list, and the entries under it."""
+
+    line: int
+    #: The heading's own line, emphasis and all.
+    heading: str
+    stated: int
+    stated_ids: int | None
+    entries: tuple[GateEntry, ...]
+
+
+def _gate_groups(lines: Sequence[str], section: MilestoneSection) -> Iterator[_GateGroup]:
     """Each count-carrying group heading of a frozen list, and what follows it.
 
-    Yields the heading's line, the counts it states, and the counts of the
-    entries between it and the next such heading. A heading stating no
-    readable count is not one of these and is passed over: it groups the list
-    without claiming a size, which is a shape the file already uses.
+    Yields the heading's line and text, the counts it states, and the entries
+    between it and the next such heading. A heading stating no readable count
+    is not one of these and is passed over: it groups the list without
+    claiming a size, which is a shape the file already uses.
     """
     end = _subsection_end(lines, section.gate_line)
-    headings: list[tuple[int, int, int | None]] = []
+    headings: list[tuple[int, str, int, int | None]] = []
     for index in range(section.gate_line, end):
         match = GATE_GROUP_RE.match(lines[index])
         if match is None:
@@ -1489,12 +1508,12 @@ def _gate_groups(
         if stated is None:
             continue
         ids = match.group("ids")
-        headings.append((index + 1, stated, _count_word(ids) if ids else None))
+        headings.append((index + 1, lines[index], stated, _count_word(ids) if ids else None))
 
-    for position, (line, stated, stated_ids) in enumerate(headings):
+    for position, (line, heading, stated, stated_ids) in enumerate(headings):
         following = headings[position + 1][0] if position + 1 < len(headings) else end + 1
-        covered = [entry for entry in section.gate_entries if line < entry.line < following]
-        yield line, stated, stated_ids, len(covered), sum(len(entry.ids) for entry in covered)
+        covered = tuple(entry for entry in section.gate_entries if line < entry.line < following)
+        yield _GateGroup(line, heading, stated, stated_ids, covered)
 
 
 def _uncheckable_heading_counts(
@@ -1699,19 +1718,21 @@ def check_gate_counts(root: Path, report: Report) -> None:
         total = len(section.gate_entries)
         groups = list(_gate_groups(lines, section))
 
-        for line, stated, stated_ids, entries, ids in groups:
-            if stated != entries:
+        for group in groups:
+            entries = len(group.entries)
+            ids = sum(len(entry.ids) for entry in group.entries)
+            if group.stated != entries:
                 report.errors.append(
-                    f"{ROADMAP}:{line}: this group heading of {rendered}'s frozen list "
-                    f"says {stated} entries, but {entries} follow it"
+                    f"{ROADMAP}:{group.line}: this group heading of {rendered}'s frozen list "
+                    f"says {group.stated} entries, but {entries} follow it"
                 )
-            if stated_ids is not None and stated_ids != ids:
+            if group.stated_ids is not None and group.stated_ids != ids:
                 report.errors.append(
-                    f"{ROADMAP}:{line}: this group heading of {rendered}'s frozen list "
-                    f"says {stated_ids} item ids, but the entries under it hold {ids}"
+                    f"{ROADMAP}:{group.line}: this group heading of {rendered}'s frozen list "
+                    f"says {group.stated_ids} item ids, but the entries under it hold {ids}"
                 )
 
-        summed = sum(stated for _, stated, _, _, _ in groups)
+        summed = sum(group.stated for group in groups)
         if groups and summed != total:
             report.errors.append(
                 f"{ROADMAP}:{section.gate_line}: the group headings of {rendered}'s frozen "
@@ -1750,6 +1771,90 @@ def check_gate_counts(root: Path, report: Report) -> None:
                     f"entries are marked `not-delegable`, but {len(withheld)} of them hold "
                     "an item carrying that field"
                 )
+
+
+# The group a frozen list writes for the entries its milestone clears itself:
+# `**Cleared by v0.6.0 itself - 12 entries**`. Only a count-carrying group
+# heading is read, so this matches the label `GATE_GROUP_RE` has already found,
+# and the version has to be the section's own - a list naming another
+# milestone's self-clearing would be a different claim, and not one this file
+# has made.
+SELF_CLEARED_GROUP_RE = re.compile(r"^\*{1,2}Cleared by (?P<version>v\d+\.\d+\.\d+) itself\b")
+
+
+def check_self_cleared_group(root: Path, report: Report) -> None:
+    """Hold the current gate's "Cleared by vX.Y.Z itself" group to its `Required scope`.
+
+    `ROADMAP.md` § "Debt inside the milestone's own scope" states the test for
+    which frozen entries a milestone clears itself - whether its `Required
+    scope` names the id - and the frozen list then writes the answer again by
+    hand, as a group. The two disagreed on v0.6.0: `PL-CNCF` and `PL-PGZF` were
+    declared in `Required scope` by `#862` after `#850` had grouped the list,
+    so they sat under "Cleared before v0.6.0 begins" while `bin/docket wave`,
+    reading the rule, said the milestone cleared them itself. The group
+    heading's own count agreed with the entries under it, so `check_gate_counts`
+    was satisfied by a list telling a reader the wrong thing about two entries
+    (`PL-J6HP`).
+
+    So the group is held to the parse rather than trusted beside it, in both
+    directions: an entry under the group that `Required scope` does not name,
+    and an entry it names that sits anywhere else. An entry is the milestone's
+    own when every id it holds is declared there, which is what `gate_status`
+    asks of every id still open - a list's grouping cannot know which those
+    are, so it is asked of them all. A list that groups nothing makes no claim,
+    and is left alone.
+
+    **The current gate only**, read by the function every gate rule shares
+    (`_current_gate`). A released milestone's list is a record, and v0.5.0's
+    keeps `PL-YDKJ` in its self-cleared group on purpose, with the paragraph
+    beneath the group saying why: a consequence of an entry beside it rather
+    than a nineteenth `Required scope` entry. Rewriting that to fit a rule
+    written afterwards would be the renegotiation "The gate is a snapshot"
+    forbids, one level down.
+    """
+    roadmap = root / ROADMAP
+    if not roadmap.is_file():
+        return
+    text = roadmap.read_text(encoding="utf-8")
+    gate = _current_gate(text)
+    if gate is None:
+        return
+    groups = list(_gate_groups(text.splitlines(), gate))
+    if not groups:
+        return
+
+    rendered = "v{}.{}.{}".format(*gate.version)
+    label = f'"Cleared by {rendered} itself"'
+    own = frozenset(gate.own_scope_ids)
+    home: dict[GateEntry, _GateGroup] = {}
+    for group in groups:
+        for entry in group.entries:
+            home[entry] = group
+
+    for entry in gate.gate_entries:
+        holder = home.get(entry)
+        matched = SELF_CLEARED_GROUP_RE.match(holder.heading) if holder is not None else None
+        inside = matched is not None and matched.group("version") == rendered
+        named = all(identifier in own for identifier in entry.ids)
+        ids = " and ".join(entry.ids)
+        if inside and not named:
+            report.errors.append(
+                f"{ROADMAP}:{entry.line}: {ids} sits under {label}, but {rendered}'s "
+                "Required scope does not declare it, so by the rule the group stands for "
+                "the milestone does not clear it - move the entry to the group that does, "
+                "or declare it in Required scope"
+            )
+        elif named and not inside:
+            where = (
+                f'under "{holder.heading.strip("* ")}"'
+                if holder is not None
+                else "under no group heading"
+            )
+            report.errors.append(
+                f"{ROADMAP}:{entry.line}: {ids} is declared in {rendered}'s Required scope, "
+                f"so the milestone clears it itself, but its frozen entry sits {where} - "
+                f"move it under {label} and correct both groups' counts"
+            )
 
 
 #: Phrases that turn a `Required scope` bullet into an exclusion. Matched
@@ -2261,6 +2366,28 @@ ANTICIPATED_CLASS = "anticipated"
 BLOCKED_STATUS = "blocked"
 
 
+def _current_gate(text: str) -> MilestoneSection | None:
+    """The gate the project is clearing now, read by `docket.roadmap.current_gate`.
+
+    The one answer `bin/docket wave` and the three gate rules below share
+    (`PL-J6HP`); each rule used to find the section with a `next(...)` of its
+    own. The version is the version table's baseline row rather than
+    `pyproject.toml`, which `check_baseline` holds equal to it, so a checkout
+    carrying the roadmap alone can still be checked.
+
+    `None` where no single row is marked current. Which gate is current cannot
+    then be read, so nothing is checked - and this is the one place where
+    silence is safe rather than a check reported as passing. `check_baseline`
+    makes exactly this condition a hard error and names the rows, so the run
+    cannot be green while it holds; a decline here would be a second voice on
+    one fault.
+    """
+    baseline = [row for row in parse_version_table(text) if row.is_baseline]
+    if len(baseline) != 1:
+        return None
+    return current_gate(release_train(text, baseline[0].version))
+
+
 def check_gate_reentries(root: Path, report: Report) -> None:
     """Name every open `safety`/`science` item the current gate does not place.
 
@@ -2365,33 +2492,17 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     this rule agreeing with a disposition the project already took, rather than
     a rule borrowed from the checker.
 
-    The gate it reads is the one `docket.roadmap` reads: the first *unreleased*
-    section recording a gate, rather than the newest recorded one, so that an
-    open item is never measured against a shipped milestone's closed list.
+    The gate it reads is the one `bin/docket wave` reads, through the same
+    function (`_current_gate`): the first *unreleased* section recording a
+    gate, rather than the newest recorded one, so that an open item is never
+    measured against a shipped milestone's closed list.
     """
     roadmap = root / ROADMAP
     if not roadmap.is_file():
         return
     text = roadmap.read_text(encoding="utf-8")
 
-    baseline = [row for row in parse_version_table(text) if row.is_baseline]
-    if len(baseline) != 1:
-        # Which gate is current cannot be read, so nothing is checked - and
-        # this is the one place where silence is safe rather than a check
-        # reported as passing. `check_baseline` makes exactly this condition a
-        # hard error and names the rows, so the run cannot be green while it
-        # holds; a decline here would be a second voice on one fault.
-        return
-
-    current = version_tuple(baseline[0].version)
-    gate = next(
-        (
-            section
-            for section in parse_milestones(text)
-            if (current is None or section.version > current) and section.records_a_gate
-        ),
-        None,
-    )
+    gate = _current_gate(text)
     if gate is None:
         return
 
@@ -2434,23 +2545,13 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     )
 
 
-# The verbs a gate's own section has actually used to head a deferral:
-# `### Declined to Gate 2, because ...`, `### Deferred to v0.4.26, because ...`,
-# `### Sequenced past v0.5.0, so ...`. Everything after the verb is free prose,
-# because the ground for the deferral is what the heading is for, and no two
-# grounds are worded alike. Adding a fourth verb is an edit here and a line in
-# `ROADMAP.md` § "Recording it", which names this tuple as what it is checked
-# against.
-DEFERRAL_VERBS = ("Declined", "Deferred", "Sequenced")
-
-# Both names here predate the other two verbs and are kept deliberately: this
-# project's record cites them, and a record is about what was true when it was
-# written. `_declined_ids` below is named in seven `ROADMAP.md` lines, in
-# `docs/releases/v0.4.35.md` and `docs/releases/v0.5.1.md`, and in three pull
-# request bodies; `DECLINED_HEADING_RE` in v0.6.0's own deferral entry for
-# `PL-Z891`. Renaming either would leave a dozen true sentences naming a symbol
-# that no longer exists, which buys less than the docstring below costs.
-DECLINED_HEADING_RE = re.compile(rf"^###\s+(?:{'|'.join(DEFERRAL_VERBS)})\b", re.IGNORECASE)
+# The deferral grammar - `DEFERRAL_VERBS`, `DECLINED_HEADING_RE`, `_section_end`
+# and `_declined_ids` - lived here until `PL-J6HP` moved it into
+# `docket.roadmap`, where `parse_milestones` reads it beside the frozen list and
+# `Required scope` and hands the result to every reader as
+# `MilestoneSection.deferred_ids`. The names moved unchanged, because this
+# project's record cites them; the reasoning moved with them, in
+# `_declined_ids`' docstring.
 
 
 def _deferral_headings() -> str:
@@ -2462,112 +2563,6 @@ def _deferral_headings() -> str:
     """
     forms = [f"`### {verb} ...`" for verb in DEFERRAL_VERBS]
     return f"{', '.join(forms[:-1])} or {forms[-1]}"
-
-
-def _section_end(lines: Sequence[str], start: int) -> int:
-    """Where a milestone's own `##` section stops.
-
-    `_subsection_end` above stops at the next `###` too, which is what a frozen
-    list's own extent wants and the wrong bound for a sweep across the sibling
-    subsections beside it.
-    """
-    for index in range(start, len(lines)):
-        heading = HEADING_RE.match(lines[index])
-        if heading is not None and len(heading.group("hashes")) <= 2:
-            return index
-    return len(lines)
-
-
-def _declined_ids(text: str, gate: MilestoneSection) -> frozenset[str]:
-    """The ids the current gate's section defers with a reason written down.
-
-    `MilestoneSection.scope_ids` deliberately names only what a section
-    *places* - its frozen list, then `Required scope`. A deferral is the
-    opposite disposition and must not read as a placement, so it lives in a
-    subsection of its own and is read here instead. Its ids are excluded from
-    the gate's counts for the same reason: they are not entries the gate has to
-    clear.
-
-    **Every verb a gate has used to head a deferral is read, not the first one
-    written** (`PL-Z891`). The pattern was `### Declined to Gate` exactly, and
-    the roadmap has headed a deferral three ways: v0.5.0 alone carries `###
-    Declined to Gate 2, because this milestone's own work created them`, `###
-    Deferred to v0.4.26, because the port dissolves the defect` and `###
-    Sequenced past v0.5.0, so not clearable before it begins`. Two of the three
-    read as no disposition at all, and the last of those names 40 ids (measured
-    2026-09-22) - `PL-TH35` and `PL-WZVZ` among them still open debt.
-
-    The failure is loud and points the wrong way, which is what made it worth
-    fixing before it fired: the ids come back as dispositions the gate owes, and
-    the error told the reader to write the subsection they had already written.
-    v0.6.0's author took the other way out - its deferral subsection says in
-    its own entry for this item that it "was written to match the pattern
-    deliberately" - so the constraint was being routed around by the one person
-    it was constraining, which is `CLAUDE.md`'s second test for friction that
-    compounds.
-
-    What follows the verb is deliberately unconstrained. The ground for a
-    deferral is what the heading carries, and holding that to a form would be
-    the narrow rule arriving again one word to the right; the vocabulary that
-    *is* fixed is three verbs long, stated in `ROADMAP.md` § "Recording it",
-    and named by the error when this check fires so that a fourth verb
-    diagnoses itself in one read.
-
-    **Every such subsection of the gate's own section is read, not the first**
-    (`PL-82B0`). Nothing says one subsection is where a deferral goes, and a
-    deferral is written by whoever takes it: a second subsection - recording a
-    later round, or a different ground - made the first one's ids stop being
-    read at all, so items the gate had explicitly deferred came back as
-    dispositions it owed. Nothing announced that, because writing the second
-    heading is what caused it.
-
-    The sweep stops at the next `##`, which the single-subsection reader did
-    not: unbounded, it would take the *next* milestone's deferrals for this
-    gate's on any roadmap where this one defers nothing.
-
-    **Every id the subsection names is read, its prose included, and that is
-    the measured answer rather than the loose one** (`PL-H6VQ`). Narrowing
-    this to the `- PL-XXXX` entry lines was proposed on the ground that a
-    deferral's prose cites items it does not dispose of, so an item named in
-    another item's reasoning reads as disposed. Counted 2026-09-21 against
-    v0.5.0's two subsections - the last pair this project has written, 1,577
-    lines - the narrowing breaks 97 dispositions and catches none. They name
-    433 distinct ids, of which 169 are open debt; 67 of those have an entry
-    line, 5 lead a paragraph of their own, and the remaining 97 are named
-    *only* inside a paragraph's body - every one of them in a group deferral
-    that states a ground and then enumerates the ids it covers ("**16 sit
-    wholly in the workflow lane**: ..."). A prose paragraph is this section's
-    form for deferring a group exactly as an entry line is its form for
-    deferring one item, so reading only the entries would have turned all 97
-    recorded dispositions into hard errors.
-
-    The citation half of the claim is real and measures zero. 42 distinct ids
-    are cited inside another entry's own line, which is where "another item's
-    reasoning" actually sits, and not one of them is an open debt item without
-    a disposition: 37 are closed, 3 carry no debt class, and the two that are
-    open debt - `PL-G8TR` and `PL-QV5Y` - each carry an entry of their own.
-    That is structural rather than lucky, which is why it is recorded here
-    instead of left to be re-measured: a citation points at a *cause* - the
-    pass that filed the group, the item whose work built the mechanism - and a
-    cause is historical, so it is usually closed by the time it is cited.
-
-    What is left is a silent pass nobody has yet observed: an open debt id
-    cited here and disposed of nowhere. No read of this file can separate that
-    from a citation, because telling one from the other is the judgment half
-    `CLAUDE.md` declines to script. It is accepted on the count above rather
-    than overlooked.
-    """
-    lines = text.splitlines()
-    end = _section_end(lines, gate.line)
-    identifiers: set[str] = set()
-    for start in range(gate.line, end):
-        if not DECLINED_HEADING_RE.match(lines[start]):
-            continue
-        stop = next(
-            (index for index in range(start + 1, end) if HEADING_RE.match(lines[index])), end
-        )
-        identifiers.update(re.findall(ID_PATTERN, "\n".join(lines[start:stop])))
-    return frozenset(identifiers)
 
 
 def check_gate_dispositions(root: Path, report: Report) -> None:
@@ -2614,21 +2609,7 @@ def check_gate_dispositions(root: Path, report: Report) -> None:
         return
     text = roadmap.read_text(encoding="utf-8")
 
-    baseline = [row for row in parse_version_table(text) if row.is_baseline]
-    if len(baseline) != 1:
-        # `check_baseline` already fails hard on this and names the rows; a
-        # second voice on one fault would not help a reader.
-        return
-
-    current = version_tuple(baseline[0].version)
-    gate = next(
-        (
-            section
-            for section in parse_milestones(text)
-            if (current is None or section.version > current) and section.records_a_gate
-        ),
-        None,
-    )
+    gate = _current_gate(text)
     if gate is None:
         return
 
@@ -2637,7 +2618,7 @@ def check_gate_dispositions(root: Path, report: Report) -> None:
         return
     config = store.config
 
-    disposed = set(gate.scope_ids) | _declined_ids(text, gate)
+    disposed = set(gate.scope_ids) | gate.deferred_ids
     owed = [
         item
         for item in store.items.values()
@@ -4726,6 +4707,7 @@ def analyze(root: Path) -> Report:
     check_timeline(root, report)
     check_baseline(root, report)
     check_gate_counts(root, report)
+    check_self_cleared_group(root, report)
     check_scope_exclusions(root, report)
     check_scope_declarations(root, report)
     check_named_tests(root, report)

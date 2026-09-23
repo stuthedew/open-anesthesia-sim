@@ -3,13 +3,15 @@ id: PL-B60Q
 title: ROADMAP.md's rule that a closed Declined-to-Gate entry carries the release that took it is stated only inside v0.5.0's own subsection, so the release mode never reads it and v0.6.0's first closed deferral will go unmarked exactly as PL-0VFF's three did
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: gate-list-integrity
-touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/README.md, ROADMAP.md
+blocked-by: PL-J6HP
 added: 2026-09-22
+closed: 2026-09-23
 payoff: a Declined-to-Gate entry that has shipped stops reading as outstanding debt, so v0.6.0's deferral list stays true as its entries close
-verify: grep -q 'def test_a_closed_declined_entry_without_its_release_is_reported' tests/unit/test_doc_check.py
+verify: grep -q 'def test_wave_prints_each_deferral_with_its_state_and_release' subprojects/docket/tests/test_roadmap.py
 ---
 
 **Problem.** ROADMAP.md's rule that a closed Declined-to-Gate entry carries the release that took it is stated only inside v0.5.0's own subsection, so the release mode never reads it and v0.6.0's first closed deferral will go unmarked exactly as PL-0VFF's three did
@@ -56,3 +58,36 @@ brief shows the rule is decidable, and `CLAUDE.md` gives deterministic tooling
 standing approval over a prose line a release session would have to remember.
 `PL-Z891` then shipped in v0.5.4 (`#903`, merged while this pass was open).
 Its entry is still unmarked, so the check's first finding already exists.
+
+**Blocked 2026-09-23 on `PL-J6HP`'s decision, which re-scopes this item.** The
+mark this item asks a check to enforce copies a field the store already holds.
+Across v0.5.0's refilling-queue list and v0.6.0's two deferral subsections, 82
+entries have closed. The 48 that carry a mark all equal the item's `milestone:`
+field, and 34 carry none. The re-scope recommended there is to have `bin/docket
+wave` print each deferral's state and release from the store, and to drop the
+rule that asks for a hand-written mark. The check as filed would instead demand
+34 hand edits at once, and more on every release after. It is blocked rather
+than left `ready` so that no session builds the filed form while the decision
+is open. The re-scope is the same under either route `PL-J6HP` weighs.
+
+**Re-scoped 2026-09-23 by `PL-J6HP`'s decision** (project owner, ratified, over
+the doc_check advisory triage chose). This item is built on `PL-J6HP`'s branch
+and closes with it. `bin/docket wave` prints each current-gate deferral's state
+and release from the store, and v0.5.0's marking rule becomes a pointer to that
+output. No check that demands a hand-written mark is built. The `verify:` above
+belongs to the filed form, and that build rewrites it. The item stays blocked on
+`PL-J6HP`, so that no session starts it on its own.
+
+
+**Built and closed 2026-09-23 with `PL-J6HP`, in the re-scoped form.**
+`bin/docket wave` prints a `Deferred` block for the current gate: each deferral
+entry's leading ids, grouped as open (with the item's status), shipped (with
+its `milestone:`), done but not yet released, dropped (with its `closed:` date)
+and not in the store. v0.5.0's marking rule is now a pointer to that output,
+and `ROADMAP.md` § "Recording it" says not to write the mark. Re-counted before
+retiring it: all 48 marks written equal a store field (38 a `milestone:`, 10 a
+drop date equal to `closed:`), and 36 of the 84 closed entries carried none.
+The `verify:` now names
+`test_wave_prints_each_deferral_with_its_state_and_release`, which the filed
+form's `test_a_closed_declined_entry_without_its_release_is_reported` replaced,
+since no check demanding a hand-written mark was built.
