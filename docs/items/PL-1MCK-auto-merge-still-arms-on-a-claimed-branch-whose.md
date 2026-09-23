@@ -1,8 +1,15 @@
 ---
 id: PL-1MCK
 title: Auto-merge still arms on a claimed branch whose claim is a queue-only commit or rode an earlier push, because PL-QP9Z's exception names only a start claim riding the first push
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
+touches: CLAUDE.md
 added: 2026-09-23
+closed: 2026-09-23
+payoff: a session keeps its claim on a pushed branch whatever kind of claim it pushed and whichever push carried it, instead of a needs-decision design round, or a claim pushed before the branch's first item files, arming auto-merge and erasing the claim
+verify: grep -q "whichever push carried it" CLAUDE.md
 ---
 
 **Problem.** Auto-merge still arms on a claimed branch whose claim is a queue-only commit or rode an earlier push, because PL-QP9Z's exception names only a start claim riding the first push
@@ -63,3 +70,29 @@ repairs a rule that exists rather than adding a mechanism, and it costs about
 claim, naming the queue-only claim and a claim pushed before the branch's first
 item files. Alternatively, the owner declines, and this brief records the
 operative clause's letter as the accepted reading.
+
+**Decided 2026-09-23: yes** (project owner, 2026-09-23, ratified, over reading
+only a start claim riding the first push). `CLAUDE.md`'s commit-and-push bullet
+now says a claim on the branch leaves the pull request unarmed, whichever push
+carried it: the empty start commit, or a queue-only commit start mode reads as
+one, such as a `needs-decision` design round. A push bringing a claim or
+anything but item files disarms it first. That replaces `PL-QP9Z`'s "a start
+claim riding that push" and its "a start claim included".
+
+**What it leaves.** Queue-only work a session claims, such as a triage pass
+under a housekeeping item or a stranded recovery, now waits for a hand merge
+even when it closes its item in the same push. `PL-QP9Z` already gave the
+default claim path that cost, and this extends it to the exception claims.
+`PL-KWCY` records the narrower condition that would let such a branch arm once
+its claimed items are closed.
+
+**Resident cost: 173 characters net**, whitespace-normalised, where the
+recommendation estimated about 100. The decision record and the named example
+make the difference. Nothing else can move: the arming rule is stated only in
+this bullet, and the exception has to be read at the same push. Built under the
+new-mechanism pause as a defect in a rule that exists, and at the owner's
+request, which lifts the pause for it (`PL-6Q9L`).
+
+`PL-QP9Z`'s own `verify:` greps for the clause this replaces, so it no longer
+passes on the new tree. A closed item's fields are its record of what was true
+when it closed, so it is left as it stands.
