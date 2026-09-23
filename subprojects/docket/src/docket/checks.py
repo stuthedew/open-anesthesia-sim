@@ -53,6 +53,7 @@ from .vcs import (
     LostReport,
     PullRequestHistory,
     RecordReport,
+    WrittenReport,
 )
 from .verify import LandedReport, never_fails, reads_check_output, reenters_verify
 
@@ -577,6 +578,20 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
                 "Record a `grep -q` for the `def` of the test the work adds instead"
             )
 
+    # The rules above refuse one shape each; this refuses every shape nobody has
+    # argued for (`PL-1P5V`). `not-delegable` is the way out, as it is at `ready`:
+    # an item whose proof cannot be one of the admitted shapes says why, and is
+    # then not handed to a worker whose `docket verify` would trust the command.
+    if (
+        item.status not in CLOSED_STATUSES
+        and item.verify
+        and not item.not_delegable
+        and _verify_allowlist_applies(item, config)
+    ):
+        refusal = verify_shape_refusal(item.verify)
+        if refusal is not None:
+            report.errors.append(_allowlist_error(where, refusal, config))
+
     # A safety class forces the top band, because that is where work able to
     # reach a wrong clinical value belongs. `blocked` earns a narrow exception:
     # a blocked item is not in the set `next` chooses from, so its band is a
@@ -1040,6 +1055,349 @@ def _verify_prerequisite_refused(item: Item, config: Config) -> bool:
     if config.verify_prerequisite_refused_from is None:
         return False
     return item.added is not None and item.added >= config.verify_prerequisite_refused_from
+
+
+# --- the admitted shapes of a `verify:` command -------------------------------
+#
+# `PL-1P5V`: every rule above refuses one shape, and each was written after its
+# shape had failed - a red `main`, a dead command, a finished item read as
+# absent. Seven arrived in the four days after `PL-6TP8` closed. A list of
+# refused shapes never closes, so this inverts it: a command is one of a few
+# shapes whose exit status is known to mean what the field needs, or it is
+# refused when it is written (project owner, 2026-09-23, ratified, over a
+# structured `verify:` field). A shape joins the list by an argument recorded
+# beside it, not by failing first.
+
+#: The `grep` options an admitted clause may carry. Each changes only *what*
+#: matches - a fixed string, an extended pattern, a whole tree, either case -
+#: and `q` is required, so the clause answers with its exit status and prints
+#: nothing into the replay. The rest change what the status means: `-v` passes
+#: on nearly any file, `-c`, `-l`, `-L` and `-o` report something other than
+#: whether the line is there, and `-e` and `-f` put the pattern where this does
+#: not read it.
+_GREP_FLAGS = frozenset("qFEri")
+
+#: What a word may hold outside quotes with the shell doing nothing to it. `*`
+#: and `?` are the exception, admitted in a path to read, where they choose
+#: files - item files are named after a title that can change, so
+#: `docs/items/PL-K7QX-*.md` outlives a retitle that the full name would not.
+_PLAIN = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_./-+=@%,:")
+_GLOB = frozenset("*?")
+_SHELL_OPERATORS = frozenset("|&;<>()")
+_DOTTED_MODULE_RE = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
+_PERCENT_RE = re.compile(r"(?:100|[1-9]?[0-9])(?:\.[0-9]+)?")
+_COVERAGE_RUN = ("uv", "run", "pytest")
+
+
+@dataclass(frozen=True)
+class _Word:
+    """One shell word: its text once quotes are removed, and what the shell does to it."""
+
+    text: str
+    #: Some character of it stood inside quotes or after a backslash.
+    quoted: bool = False
+    #: An unquoted `*` or `?` stood in it, so the shell may replace it with file names.
+    globbed: bool = False
+    #: An unquoted `!` stood in it - the negation when it is the whole word.
+    bang: bool = False
+
+
+def _shell_words(command: str) -> list[_Word | str] | str:
+    """The command's words and `&&` separators, or what in it the admitted shapes never use.
+
+    A lexer rather than `shlex`, because `shlex` drops the one fact this needs:
+    whether a character was quoted. `grep -q '$x' f` searches for a dollar sign,
+    and `grep -q $x f` searches for whatever the shell has in `x`. Every
+    operator but `&&` is refused as it is met: a pipe answers with another
+    command's status, `||` and `;` replace or discard a failure, a redirection
+    or a subshell is a shape nobody has argued for.
+    """
+    tokens: list[_Word | str] = []
+    text: list[str] = []
+    started = quoted = globbed = bang = False
+    index, length = 0, len(command)
+
+    def finish() -> None:
+        nonlocal started, quoted, globbed, bang
+        if started:
+            tokens.append(_Word("".join(text), quoted, globbed, bang))
+        text.clear()
+        started = quoted = globbed = bang = False
+
+    while index < length:
+        char = command[index]
+        if char in " \t":
+            finish()
+            index += 1
+        elif char == "'":
+            end = command.find("'", index + 1)
+            if end < 0:
+                return "has an unbalanced quote"
+            text.append(command[index + 1 : end])
+            started = quoted = True
+            index = end + 1
+        elif char == '"':
+            index += 1
+            while True:
+                if index >= length:
+                    return "has an unbalanced quote"
+                inner = command[index]
+                if inner == '"':
+                    index += 1
+                    break
+                if inner in "$`":
+                    return f"has a `{inner}` inside double quotes, where the shell expands it"
+                if inner == "\\" and index + 1 < length and command[index + 1] in '"\\$`':
+                    index += 1
+                    inner = command[index]
+                text.append(inner)
+                index += 1
+            started = quoted = True
+        elif char == "\\":
+            if index + 1 >= length:
+                return "ends in a backslash"
+            text.append(command[index + 1])
+            started = quoted = True
+            index += 2
+        elif char in _SHELL_OPERATORS:
+            if not command.startswith("&&", index):
+                return f"carries `{char}`, which no admitted shape uses"
+            finish()
+            tokens.append("&&")
+            index += 2
+        else:
+            if char in _GLOB:
+                globbed = True
+            elif char == "!":
+                bang = True
+            elif char not in _PLAIN:
+                shown = repr(char) if char.isspace() else f"`{char}`"
+                return f"carries an unquoted {shown}, which no admitted shape uses"
+            text.append(char)
+            started = True
+            index += 1
+    finish()
+    return tokens
+
+
+def _coverage_refusal(words: Sequence[_Word]) -> str | None:
+    """Why a `uv run pytest` clause is not the whole-suite coverage run, if it is not.
+
+    The one `pytest` shape with an exit status of its own to give. A run of
+    tests `make check` collects re-proves that check, so it passes or selects
+    nothing (`PL-6TP8`, `PL-Q8RQ`); a coverage threshold is something that check
+    does not measure, so its failure is an evaluation. It takes the dotted
+    module, never the path, and no test path, because coverage of a module is
+    the union of everything that exercises it - the two ways all six commands
+    written here before the table existed were wrong.
+    """
+    options = [word.text for word in words[len(_COVERAGE_RUN) :]]
+    modules = [option for option in options if option.startswith("--cov=")]
+    thresholds = [option for option in options if option.startswith("--cov-fail-under=")]
+    for option in options:
+        if option not in modules and option not in thresholds and option != "-q":
+            return (
+                f"runs `pytest` with `{option}`, where the one admitted `pytest` shape is "
+                "the whole-suite coverage run: `--cov=`, `--cov-fail-under=` and `-q` "
+                "alone, and no test path, because coverage of a module is the union of "
+                "the whole suite"
+            )
+    if not modules:
+        return (
+            "runs `pytest` measuring no coverage, which re-proves what the project's "
+            "check proves: it passes, or selects nothing"
+        )
+    for option in modules:
+        module = option.split("=", 1)[1]
+        if not _DOTTED_MODULE_RE.fullmatch(module):
+            return f"gives `{option}`, where `--cov=` takes the dotted module, never a path"
+    if len(thresholds) != 1 or not _PERCENT_RE.fullmatch(thresholds[0].split("=", 1)[1]):
+        return (
+            "gives the coverage run no single `--cov-fail-under=` percentage, so it "
+            "passes whenever the suite does"
+        )
+    return None
+
+
+def _grep_refusal(words: Sequence[_Word]) -> str | None:
+    """Why a clause is not a `grep -q` or `! grep -q` for a pattern in named files, if it is not.
+
+    `! grep` is admitted, and the reason is the direction it fails in. A
+    `grep -q` for what the work adds fails quietly when it is wrong - a typo,
+    a phrase the document wraps (`PL-RR1N`), a file that moved (`PL-CWD4`) -
+    because "never passes" reads as work not started. A `! grep -q` for what
+    the work removes passes when it is wrong: a typo, a line another branch
+    reworded, a file another branch deleted (grep's 2 negated to 0). A passing
+    open command is already an error, and the changed-path replay runs on the
+    branch that edits the file it reads - so every way `! grep` goes wrong is
+    reported loudly, on the branch that caused it. 25 open commands asserted an
+    absence on 2026-09-23, most of them a stale sentence a fix removes, and a
+    `grep` for its replacement would dictate the fix's wording.
+    """
+    clause = " ".join(word.text for word in words)
+    if words[0].bang:
+        if words[0].text != "!" or words[0].quoted or len(words) < 2:
+            return f"carries `!` in `{clause}`, where only `! grep` admits one"
+        words = words[1:]
+    if any(word.bang for word in words):
+        return f"carries `!` in `{clause}`, where only `! grep` admits one"
+    if words[0].text != "grep":
+        return f"runs `{clause}`, which is neither a `grep` clause nor the whole-suite coverage run"
+    letters: set[str] = set()
+    recursive_only = False
+    index = 1
+    while index < len(words) and words[index].text.startswith("-"):
+        option = words[index].text
+        if words[index].quoted and not option.startswith(("--include=", "--exclude=")):
+            return f"gives a pattern grep reads as an option: `{option}` wants `--` ahead of it"
+        index += 1
+        if option == "--":
+            break
+        if option.startswith(("--include=", "--exclude=")) and option.split("=", 1)[1]:
+            recursive_only = True
+            continue
+        refused = (
+            option
+            if option.startswith("--")
+            else next((f"-{letter}" for letter in option[1:] if letter not in _GREP_FLAGS), "")
+        )
+        if refused or option == "-":
+            return f"gives `grep` the option `{refused or option}`, which no admitted shape uses"
+        letters.update(option[1:])
+    if "q" not in letters:
+        return f"runs `{clause}` without `-q`, so it answers in output as well as status"
+    if {"F", "E"} <= letters:
+        return "gives `grep` both `-F` and `-E`, which it refuses with exit 2"
+    if recursive_only and "r" not in letters:
+        return "gives `--include` or `--exclude` to a `grep` that does not recurse"
+    operands = words[index:]
+    if len(operands) < 2:
+        return f"runs `{clause}`, which names no file to read"
+    pattern, paths = operands[0], operands[1:]
+    if pattern.globbed:
+        return f"leaves the pattern in `{clause}` unquoted, where the shell may expand it"
+    if not pattern.text:
+        return "gives `grep` an empty pattern, which matches every line"
+    for path in paths:
+        if path.text.startswith("-"):
+            return f"puts `{path.text}` after the pattern, where grep reads it as an option"
+        if path.text.startswith("/") or ".." in path.text.split("/"):
+            return f"reads `{path.text}`, which is outside the repository"
+    return None
+
+
+def verify_shape_refusal(command: str) -> str | None:
+    """Why a `verify:` command is not one of the admitted shapes, or `None` when it is one.
+
+    The shapes are the ones the `docket` skill's triage table has prescribed
+    since `PL-6TP8`, and each is admitted for a reason its exit status carries:
+
+    - `grep -q '<pattern>' <file>...` for what the work adds - a test's `def`,
+      a sentence - which fails with an ordinary 1 until the work exists and
+      which nothing unrelated satisfies;
+    - `! grep -q '<pattern>' <file>...` for what the work removes, admitted for
+      the reason `_grep_refusal` gives;
+    - several of those joined by `&&`;
+    - `uv run pytest --cov=<module> --cov-fail-under=<N>`, alone, the one run
+      whose threshold the project's own check does not already prove.
+
+    The answer is a predicate for the sentence "its `verify:` ...", naming the
+    first thing found that no admitted shape uses. Every shape the rules above
+    refuse one at a time is outside the list, so the list refuses them too, as
+    it will refuse the next one - `-m`, which `_k_selector_clause` names as
+    unread, among them.
+    """
+    tokens = _shell_words(command)
+    if isinstance(tokens, str):
+        return tokens
+    clauses: list[list[_Word]] = [[]]
+    for token in tokens:
+        if isinstance(token, str):
+            clauses.append([])
+        else:
+            clauses[-1].append(token)
+    if any(not clause for clause in clauses):
+        return "has an `&&` with no clause on one side of it"
+    for clause in clauses:
+        if tuple(word.text for word in clause[: len(_COVERAGE_RUN)]) == _COVERAGE_RUN:
+            if len(clauses) > 1:
+                return (
+                    f"runs `{' '.join(word.text for word in clause)}` beside another clause, "
+                    "where the one admitted `pytest` shape - the whole-suite coverage run - "
+                    "stands alone"
+                )
+            return _coverage_refusal(clause)
+        refusal = _grep_refusal(clause)
+        if refusal is not None:
+            return refusal
+    return None
+
+
+def _verify_allowlist_applies(item: Item, config: Config) -> bool:
+    """Whether the admitted shapes bind this item by its capture date.
+
+    Grandfathered as the rules above are - the commands already recorded are a
+    closed set, repaired as each item is started - with one difference, which is
+    what the rest of `PL-1P5V` is for. Those rules leak an item captured before
+    their date that has its command written after it, and most commands written
+    in the weeks after a cutover are that case: the items waiting for triage,
+    and the legacy commands rewritten as their items start. `_check_written`
+    holds those to the list on the branch that writes them, and `docket set`
+    at the moment it does.
+    """
+    if config.verify_allowlist_from is None:
+        return False
+    return item.added is not None and item.added >= config.verify_allowlist_from
+
+
+def _allowlist_error(where: str, refusal: str, config: Config, written: bool = False) -> str:
+    subject = "its `verify:`, written on this branch," if written else "its `verify:`"
+    return (
+        f"{where}: {subject} {refusal}. Since {config.verify_allowlist_from} a new command "
+        "is one of the admitted shapes: a `grep -q` for what the work adds, a `! grep -q` "
+        "for what it removes, several of those joined by `&&`, or `uv run pytest "
+        "--cov=<dotted.module> --cov-fail-under=<N>` alone. Record one of them, or say in "
+        "`not-delegable` why none can prove this item"
+    )
+
+
+def _check_written(
+    report: Report, written: WrittenReport | None, config: Config, today: date
+) -> None:
+    """Hold a command written on this branch to the admitted shapes, whatever its item's age.
+
+    The capture date cannot say when a command was written; the branch that
+    changes it can. So an open item captured before `verify_allowlist_from`
+    whose command this branch wrote or rewrote is held to the list from that
+    date on, which reaches the triage of old items and the repair of legacy
+    commands as each item is started - the writes the capture date leaks. A
+    command the branch left as the base had it stays grandfathered, so a
+    session editing an old item for any other reason is asked for nothing.
+
+    One-sided, as `_check_records` is: a base that cannot be read declines, and
+    no branch is accused of a write it did not make.
+    """
+    if written is None or config.verify_allowlist_from is None:
+        return
+    if today < config.verify_allowlist_from:
+        return
+    if not written.known:
+        report.declined.append(
+            f"whether a `verify:` written here is one of the admitted shapes: {written.declined}"
+        )
+        return
+    for item in report.items:
+        if (
+            item.identifier not in written.identifiers
+            or item.status in CLOSED_STATUSES
+            or not item.verify
+            or item.not_delegable
+            or _verify_allowlist_applies(item, config)  # `_check_item` has already judged it
+        ):
+            continue
+        refusal = verify_shape_refusal(item.verify)
+        if refusal is not None:
+            report.errors.append(_allowlist_error(_where(item), refusal, config, written=True))
 
 
 def _check_milestones(report: Report, version: str | None) -> None:
@@ -3328,6 +3686,7 @@ def analyze(
     threads: tuple[Thread, ...] | None = None,
     assertions: tuple[Assertion, ...] | None = None,
     settings_source: SettingsSource | None = None,
+    written: WrittenReport | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -3375,6 +3734,12 @@ def analyze(
     that names no instruction paths, leaves the staleness advisory unraised
     rather than reporting that nothing has aged.
 
+    `written` is which open items' `verify:` this branch wrote rather than
+    inherited from the default base - the authoring moment the capture date
+    cannot give, read from git by `check` and supplied by `set` for the command
+    it is writing. A caller that does not supply it leaves a command written for
+    an item older than `verify_allowlist_from` unjudged, as before `PL-1P5V`.
+
     `settings_source` is which `docket.toml` the caller resolved `config` from,
     and whether it was there. It is the one input that says nothing about the
     store and everything about the reading of it, which is why it cannot be
@@ -3404,6 +3769,7 @@ def analyze(
     _note_cost(report, landed)
     _check_closures(report, closures)
     _check_records(report, records)
+    _check_written(report, written, settings, today)
     _check_lost(report, lost)
     _groom(report, today, settings, ids, milestones, threads, assertions)
     # Said once, for both advisories above that read `offered`, and said even
