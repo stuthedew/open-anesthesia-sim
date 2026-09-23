@@ -163,6 +163,26 @@ def _asks_for_a_blob(args: list[str]) -> bool:
     return len(args) == 2 and args[0] in {"show", "rev-parse"} and ":" in args[1]
 
 
+def _asks_for_a_diff(args: list[str]) -> bool:
+    """Whether the call is a `git diff`, the one subcommand whose exit 1 is not a no.
+
+    Inside a repository every diff this module asks exits 0, or 128 for a bad
+    revision, for `A...B` with no merge base, for a root commit's parent and for
+    a pathspec outside the tree - never 1, measured against git 2.43.0 on
+    2026-09-23. Outside one, git runs a different command under the same name:
+    it compares two paths on the filesystem, and git-diff(1) says that form
+    "implies `--exit-code`". So `diff --name-only origin/main...HEAD --
+    docs/items` from a directory in no repository exits 1 with `error: Could not
+    access 'origin/main...HEAD'`, and `changed_items` read that as the branch
+    having changed no item (`PL-19T3`).
+
+    No caller loses a real 1 to this. None passes `--exit-code` or `--quiet`,
+    and `_run_git` would have discarded what either said: the 1 comes back as
+    `""` and carries no status.
+    """
+    return _subcommand(tuple(args)) == "diff"
+
+
 def _run_git(args: list[str], root: Path) -> str:
     """Run git, returning its answer, or `SILENT` where it did not answer.
 
@@ -183,12 +203,15 @@ def _run_git(args: list[str], root: Path) -> str:
     | `merge-base` on unrelated histories | 1 | "no merge base" - an answer |
     | `show <rev>:<path the rev lacks>` | 128 | "not there" - an answer |
     | `diff`/`log`/`ls-tree`/`rev-list` on a bad revision | 128 | **silence** |
+    | `diff` outside a repository | 1 | **silence** |
     | a mistyped option | 129 | **silence** |
     | git missing, or the ten-second timeout | - | **silence** |
 
-    So exit 1 is git saying no and exit 128 is git not saying anything, with
-    `_asks_for_a_blob` carrying the single exception and the reason for it. A
-    silence still returns the empty string, so nothing downstream changes shape.
+    So exit 1 is git saying no and exit 128 is git not saying anything, with one
+    exception each way and the reason for each on the predicate that carries it:
+    `_asks_for_a_blob` for the 128 that answers, `_asks_for_a_diff` for the 1
+    that does not. A silence still returns the empty string, so nothing
+    downstream changes shape.
 
     `git` is named rather than given an absolute path on purpose: the path
     differs across the environments this runs in, and resolving it through
@@ -204,7 +227,7 @@ def _run_git(args: list[str], root: Path) -> str:
         return SILENT
     if result.returncode == 0:
         return result.stdout
-    if result.returncode == 1 or _asks_for_a_blob(args):
+    if (result.returncode == 1 and not _asks_for_a_diff(args)) or _asks_for_a_blob(args):
         return ""
     return SILENT
 
