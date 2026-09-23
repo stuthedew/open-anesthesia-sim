@@ -985,7 +985,10 @@ def test_a_changed_file_list_git_does_not_answer_declines_the_replay(
 
     monkeypatch.setattr(cli, "changed_paths", unanswered)
 
-    assert _run("check", "--verify", "--verify-base", base, "--items", str(root / "items")) == 0
+    assert (
+        _run_with_git("check", "--verify", "--verify-base", base, "--items", str(root / "items"))
+        == 0
+    )
     printed = capsys.readouterr().out
     assert not (root / "ran.marker").exists()
     assert "not checked" in printed
