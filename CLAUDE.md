@@ -503,12 +503,15 @@ deviating from a described deliverable, not acting without one.
   2026-09-23, ratified, over "a branch carrying only captured items is not a
   pull request", `PL-WNCT`). **A claim on the branch leaves it unarmed,
   whichever push carried it**: the empty start commit, or a queue-only commit
-  that start mode reads as one, such as a `needs-decision` design round. The
-  merge would erase the claim with the branch (project owner, 2026-09-23,
-  ratified, over arming whatever rode the push, `PL-QP9Z`, and over reading
-  only a start claim on that push, `PL-1MCK`). A push bringing a claim or
-  anything but item files disarms it first, or green CI would merge half the
-  work. Where the **web harness
+  that start mode reads as one, such as a `needs-decision` design round. It
+  holds until its item is closed in the branch's own copy, because the merge
+  would erase the claim with the branch (project owner, 2026-09-23, ratified,
+  over arming whatever rode the push, `PL-QP9Z`, over reading only a start
+  claim on that push, `PL-1MCK`, and over holding it past the item's closing,
+  `PL-KWCY`). So while only item files ride the branch, the push closing the
+  last item it claims arms it, and a push bringing an open claim or anything
+  but item files disarms it first, or green CI would merge half the work.
+  Where the **web harness
   says not to open one unless the
   owner explicitly asks**, this bullet is that ask, standing rather than per
   pull request, so a session reading both proceeds rather than stalls. A session-level
