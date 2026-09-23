@@ -384,10 +384,17 @@ def check(root: Path, *, run: Runner | None = None, lookup: Lookup | None = None
 
 
 def orphaned_branches(root: Path) -> frozenset[str] | None:
-    """The branches `vcs.orphaned` reports, or None where it could not answer."""
+    """The branches `vcs.orphaned` reports, or None where it could not answer.
+
+    A failure here costs only the agreement clause. The findings above it are
+    this check's own and are printed either way.
+    """
     from docket.vcs import orphaned
 
-    report = orphaned(root)
+    try:
+        report = orphaned(root)
+    except Exception:  # the comparison is a courtesy; it must not take the findings down
+        return None
     if not report.known:
         return None
     return frozenset(branch.ref.removeprefix("origin/") for branch in report.branches)

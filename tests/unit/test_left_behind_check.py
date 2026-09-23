@@ -381,3 +381,16 @@ def test_a_crash_in_the_check_declines_rather_than_going_quiet(
     assert capsys.readouterr().out.startswith(
         "left-behind: not checked - the check itself failed (RuntimeError: boom)"
     )
+
+
+def test_a_crash_in_vcs_orphaned_costs_only_the_agreement_clause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import docket.vcs
+
+    def broken(root: Path) -> object:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(docket.vcs, "orphaned", broken)
+
+    assert left_behind_check.orphaned_branches(Path(".")) is None
