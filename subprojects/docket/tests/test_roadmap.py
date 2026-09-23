@@ -369,7 +369,10 @@ def test_the_wave_block_names_what_the_milestone_clears_itself() -> None:
     printed = format_wave(_wave("0.2.5", frozenset(), roadmap=SELF_CLEARING, known=SELF_KNOWN))
 
     assert "3 this gate can clear, 1 the milestone clears itself" in printed
-    assert "cleared by the milestone itself: PL-SLF9" in printed
+    # Which test put it there, and which list it was read from, because
+    # `bin/docket gate` splits the whole store by feature instead (`PL-RFHH`).
+    assert "named in its Required scope, so cleared by the milestone itself: PL-SLF9" in printed
+    assert 'frozen list recorded under "' in printed
     assert "clear the gate - 3 entries of 4 still open here, 1 the milestone clears itself" in (
         printed
     )

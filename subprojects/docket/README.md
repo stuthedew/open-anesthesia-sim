@@ -32,7 +32,7 @@ docket set PL-K7QX --priority P2 --effort S --classes defect   # write triage's 
 docket withdraw PL-K7QX PL-B2B2 --because PL-34BG   # disown a recorded filing whose match was wrong
 docket concurrent PL-K7QX    # what can be worked alongside it, and what a live branch is already changing
 docket feature halted-step   # progress on one feature
-docket gate --feature x      # the open debt a milestone has to clear
+docket gate --feature x      # every open debt item, split by feature: a freeze's first cut
 docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
@@ -1321,8 +1321,13 @@ A project that clears recorded debt before starting a milestone has to produce
 the list of what is owed, and doing that by hand means reading every open
 item's classes and status, applying the rule, and splitting the result by
 whether the milestone clears the item itself. `docket gate --feature <name>`
-does that pass: open debt on one side, the items carrying that feature on the
-other, with effort totals for each.
+does the decidable part of that pass: every open debt item in the store, the
+items carrying that feature on one side and the rest on the other, with effort
+totals for each. The feature is a first cut and not the rule. Which debt a
+milestone clears itself is whether its `Required scope` names the id, the two
+differ in both directions, and so the output names its split for the feature
+and never for the rule; once a list is frozen, `docket wave` reads it against
+the rule (`PL-RFHH`).
 
 Debt is an open item classed `defect`, `safety`, `science`, `refactor` or
 `perf` — `debt_classes`, configurable — or one at `needs-decision`, since a
@@ -3029,29 +3034,45 @@ and absent from that history too: `pytest.importorskip`,
 configuration: in `pyproject.toml`, one of `gate_paths`' defaults, the gate
 check reads it, and in a `.cfg` or `.ini` file nothing does.
 
-What counts as a *removed assertion* is decided by shape rather than by the
-word: a line in a file Python executes, opening an `assert` statement, calling
-a name that begins `assert` — `assertEqual`, `assert_called_once_with`,
-`assert_allclose` — or opening a `with pytest.raises(...)` or
-`with pytest.warns(...)` block, which asserts by expectation and carries the
-word nowhere. That last shape is how this project pins the guards that *reject*
-an input, so while it was unmatched the assertions the check could not see were
-disproportionately the safety ones (`PL-QJQL`). A comment, a docstring, a
-release note or an item's brief carrying the word is not one, and neither is
-the code that looks for assertions. The check still errs toward reporting where it cannot tell, which
-is the direction that is safe; what it no longer does is refuse a correct
-close-out for rewording its own item's brief (`PL-7TYC`).
+What counts as a *removed assertion* is decided by the parser rather than by a
+line (`PL-4W2L`): an assertion the base's copy of a `.py` file holds - an
+`assert` statement's test, its message excluded; a call whose name begins
+`assert`, such as `assertEqual`, `assert_called_once_with` or
+`assert_allclose`; or a `raises` or `warns` item of a `with`, which asserts by
+expectation and is how this project pins the guards that *reject* an input
+(`PL-QJQL`) - that is absent, as `ast` reads it, after the item's own commits.
+Existing assertions are read-only, so every such absence refuses unless
+`falsifies:` declares it. A reflow, a wrap, a new message and a move within the
+file change nothing the parser reads, so none of them is a removal; an edit to
+what an assertion asserts is one, on whichever line of a wrapped statement it
+falls. A comment, a docstring, a release note or an item's brief carrying the
+word never is (`PL-7TYC`).
 
-Nor does it refuse a call site updated to a new signature. A removed assertion
-is paired with an added line in the same file that is it with tokens inserted,
-all of them inside a bracket: `f(a, b)` to `f(a, b, c)` is a replacement, where
-`approx(2.05)` to `approx(1.05)` is not - the literal is gone - and neither is
-`x == 1` to `x == 1 or True`, appended outside every bracket. Measured over 907
-commits it folds 57 of 1,715 removed assertions, and **none of the 57 is an
-assertion that left the suite**. Five of them do change what the line asserts -
-including a `with pytest.raises(...)` gaining a `match=`, which `PL-QJQL` made
-visible here - so a pair is printed beside its replacement rather than dropped:
-what is withdrawn is the refusal and not the report (`PL-K1WS`).
+What the check deliberately does not decide is whether a changed assertion is
+stronger, weaker or merely restated, and every rule over the shape of an edit
+had been a guess at it: the insertion fold that paired `f(a, b)` with
+`f(a, b, c)` (`PL-K1WS`) also folded `approx(2.05)` into `approx(2.05,
+rel=0.5)` (`PL-CNJH`), and the listing of one-string candidates (`PL-K4R5`)
+printed up to six because it could not choose. So the report groups each
+refusal under its test function - what left the function and what arrived in
+it, the unchanged ones counted rather than printed - and pairs nothing.
+Replayed over `main`'s 1,127 non-merge commits at the decision, it refuses 124
+where the line matcher refused 121: it stops refusing six, none of which
+changed an assertion, and starts refusing nine, every one of which did
+(project owner, 2026-09-22, ratified, over refusing only an assertion that left
+its test and over patching the line matcher).
+
+Three details keep that fact about the item. Its commits are folded per file,
+so an assertion cut in one and restored in the next is no change, and a form is
+charged only where the base holds it, so an assertion a sibling commit added on
+the same branch is never this item's to lose (`PL-2DTK`). A renamed file is
+followed as `git show` follows it, and a merge commit is read against every
+parent, as git reads one. And a file the running interpreter cannot parse -
+`bin/docket` runs on the bare `python3`, which can be older than the project's
+own - is read line by line with the predicate the parser replaced, and named on
+the page as read that way. Not decided, as before: whether a new test asserts
+the right value, an assertion moved to another file, which stays two facts, and
+anything outside `.py`.
 
 Two of the four take a **declared** exemption, which is what lets them stay
 absolute rather than a softening of them. Both were checks a correct close-out
@@ -3062,17 +3083,16 @@ exists to prevent.
 - **`falsifies:`** names enough of an assertion to identify the one subject
   the item's work makes untrue. Not weakened — *falsified*: the string the
   assertion pins is what the item was commissioned to delete, so no
-  arrangement of the tests keeps it. A removed assertion containing that
-  substring folds out of "no existing assertion removed" and is printed
+  arrangement of the tests keeps it. An absent assertion whose source contains
+  that substring folds out of "no existing assertion removed" and is printed
   beside it, so the removal stays on the page and reads as a commissioned act
   rather than an unexplained one (`PL-K82G`). **One class of removal cannot be
   folded by anything**: where the item's deliverable *is* a changed output
   string, the old string is simply gone, and the diff holds nothing separating
-  the commissioned rewrite from an expectation dropped. The refusal stands, and
-  the check names every same-file line differing from the removal by exactly one
-  string, with the true count and none chosen - 15 of the 20 such close-outs in
-  this history carry more than one candidate, so choosing would print a guess as
-  fact (`PL-K4R5`). **One commission cannot write the field in advance**, and
+  the commissioned rewrite from an expectation dropped. The refusal stands,
+  printed under its test function beside every assertion that arrived there,
+  and none is chosen - 15 of the 20 such close-outs in this history had more
+  than one candidate, so choosing would print a guess as fact (`PL-K4R5`). **One commission cannot write the field in advance**, and
   takes it from the branch instead. A `needs-decision` item's answer is the
   session's to make, so which assertions it falsifies is not known until it is
   made: `PL-G6J5` asked whether an advisory should be re-based on a different
