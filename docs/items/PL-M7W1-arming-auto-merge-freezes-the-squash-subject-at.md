@@ -181,3 +181,22 @@ One detail worth keeping for direction 1: the failed and passing `pr-title`
 runs both persist on the head commit's check list (20:58:00 failure, 21:00:44
 success), so a reader of history sees a red run beside a green one, exactly as
 `PL-X1S4` describes for closures pushed under a stale title.
+
+**Evidence 2026-09-23, from `PL-TH9K`'s audit of `PL-WFFX`.** This comes from
+the pull-request API. The client's own verification was not possible.
+
+- The subject freezes only when the arming client sends message text. All 7
+  auto-merges since `#800` that were armed with text landed exactly that title
+  and message. All 59 armed with a null message landed the live title and
+  body.
+  - `#868` was armed with text and then renamed. It landed its arm-time title
+    and body.
+  - `#880` was armed with null, renamed, and auto-merged. It landed the new
+    title.
+- `enable_pr_auto_merge`, which sessions use, sends no message. Every one of
+  the 21 arms after `#921` was null.
+- The live exposure is arming on the Mac, which `docs/maintainer.md` still
+  allows and which sends the text.
+
+The **Problem** above predates this evidence and describes the freeze as
+unconditional.

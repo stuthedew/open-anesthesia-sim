@@ -14,7 +14,7 @@ pr: 921
 payoff: turns a 27% silent loss of design reasoning from something detected after the fact into something that stops happening, by naming the one variable only the owner can see
 verify: grep -q 'PL-WFFX' docs/maintainer.md
 root-cause-of: PL-843V, PL-M7W1, PL-G7ST, PL-BXNH, PL-F8Q7
-generator: live - squash commits take client-sent commit_title/commit_message that no check reads; 8 bodies lost since #800, 4 unrecovered on 2026-09-22 (PL-KVDK)
+generator: spent - the empty commit_message came from the GitHub iPhone app, which the owner stopped merging in on 2026-09-22 (docs/maintainer.md), and sessions arm auto-merge with a tool that sends no title or message, so none of the 47 squash merges since #918 lost its body; a new empty body reopens it
 ---
 
 **Problem.** `PL-843V` established the mechanism by which 187 of 683 squash

@@ -13,7 +13,7 @@ closed: 2026-09-23
 pr: 932
 verify: grep -q 'tests/unit/test_left_behind_check.py' docket.toml && uv run pytest -q tests/unit/test_tools_portability.py
 root-cause-of: PL-8JQQ, PL-X5PK, PL-CZR6, PL-NPWP, PL-BYMX, PL-B78T, PL-1X2C
-generator: spent - the exact landing test it lacked is now built in tools/left_behind_check.py and read at every session start, so a member no longer needs another content, date or subject heuristic in vcs.py to answer whether a merged pull request left work behind
+generator: spent - for what it built: the exact landing test is in tools/left_behind_check.py and read at every session start; the landed-elsewhere half, a change that merged through another pull request read as unmerged because a check compares commits or whole files rather than the change, kept producing (PL-PXZ3 and PL-GHHW, filed after this closed) and is recorded from 2026-09-23 on PL-GHHW, which ranks it live
 ---
 
 **Problem.** Build the exact left-behind check as a tools/ script comparing a branch tip against refs/pull/<n>/head, declining where those refs are not fetched

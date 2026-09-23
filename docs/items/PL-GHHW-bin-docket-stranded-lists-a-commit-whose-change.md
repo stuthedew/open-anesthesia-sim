@@ -10,6 +10,8 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/ren
 added: 2026-09-23
 payoff: stranded stops handing out a recovery command that would silently revert newer work on main whenever a ported fix also landed through another pull request
 verify: grep -q 'def test_a_change_the_base_took_inside_a_larger_commit_is_not_left_behind' subprojects/docket/tests/test_vcs.py
+root-cause-of: PL-XLQ5, PL-MBTZ, PL-PXZ3
+generator: live - a change that merged through another pull request is read as unmerged because each check compares commits or whole files rather than the change; PL-PXZ3 and this item were filed after PL-R808 closed spent, in two tools with no shared function, after PL-XLQ5 and PL-MBTZ in a third
 ---
 
 **Problem.** bin/docket stranded lists a commit whose change already reached main through another pull request as work that never landed, and its recover line would overwrite the newer file: #938's test port f1bf1528 arrived on main via #934, and the printed git checkout of test_cli.py would drop 97 lines main added since
@@ -60,9 +62,24 @@ reverse-apply succeeds only at reduced context (`-C1`), so patch identity has to
 be matched against the other pull request's own head commits, as `PL-PXZ3`'s
 finding was, or content compared at line level.
 
-**Generator check.** Shares its mechanism with `PL-PXZ3` - a change that merged
+[superseded 2026-09-23: recorded as the head below] **Generator check.** Shares its mechanism with `PL-PXZ3` - a change that merged
 through another pull request, read as unmerged because the check compares
 commits or whole files rather than the change - and the two are grouped under
 `landed-elsewhere`. Two items in two tools with no shared function, so not a
 generator; the drive-to-green rules make the shape routine, so a third would
 make it one.
+
+**Recorded as the head, 2026-09-23, under `PL-TH9K`.** `PL-T7Y1`'s audit
+verified that landed-elsewhere is a generator by count: `PL-XLQ5`, `PL-MBTZ`,
+this item and `PL-PXZ3`. `PL-R808` and `PL-BHVM` each recorded it, and both
+are closed. `PL-R808` closed `spent`, and this item and `PL-PXZ3` were filed
+after it, so the mechanism is live and nothing ranked it. This item states the
+mechanism at the right altitude, so it carries the record.
+
+**Recommended.** Fix the mechanism rather than the one reader. Build one
+landing test that works at the level of the change, such as a patch-id
+compared against the base, and have three readers use it: `stranded`,
+`tools/left_behind_check.py` and the orphaned report. `PL-PXZ3` then closes
+with this item. If the working session keeps this item to `stranded` alone, it
+should say so here, and move the record to an item that does fix the
+mechanism.

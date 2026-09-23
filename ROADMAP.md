@@ -5936,6 +5936,16 @@ same rule. None is classed `safety` or `science`.
   have come from it. `defect`, `needs-decision`. It carries `generator: live`,
   so it ranks on that tier whatever this gate records.
 
+`PL-MB2W` was captured the same day, as an unverified candidate, by the
+`PL-02C4` sweep that captured `PL-WD5Z`. The session that settled `PL-TH9K`'s closed `live` verdicts then
+triaged it into this position.
+
+- PL-MB2W (M) - **deferred 2026-09-23.** Every reader derives who holds an
+  item from commit shape, and none records it. `PL-T7Y1`'s audit verified
+  twenty items that come from that, and three of them are open. `defect`, and
+  counted as debt because it is at `needs-decision`. It carries `generator:
+  live`, so it ranks on that tier whatever this gate records.
+
 ### Required scope
 
 1. **The layout model** (queue items `PL-1FT6` and `PL-HJPY`). Pure Python,

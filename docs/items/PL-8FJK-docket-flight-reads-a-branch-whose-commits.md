@@ -14,7 +14,7 @@ pr: 926
 payoff: docket next stops offering an item a grooming branch is already dropping, so no second session starts work another has decided against
 verify: grep -q 'def test_a_branch_closing_an_item_the_base_holds_open_is_in_flight' subprojects/docket/tests/test_vcs.py
 root-cause-of: PL-3W3P, PL-7790, PL-8GV1, PL-VYSP
-generator: live - _annotates_only reads where a commit wrote and never what it did to the item, so each shape of queue-only work a pass does without claiming the item is recovered by its own test, one incident at a time; PL-8GV1, a pass blocking an item it never claimed, was filed the day this closed
+generator: spent - this record takes no later member: its mechanism, a claim read from where a commit wrote rather than what it did to the item, is recorded from 2026-09-23 on PL-MB2W, which ranks it live and holds the four instances filed since this closed
 recurrences: 2026-09-22 PL-8GV1
 ---
 
