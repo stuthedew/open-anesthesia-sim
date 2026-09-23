@@ -5393,7 +5393,11 @@ waiting understates itself by however many of them turn out to be debt.
 debt inside this milestone's own Required scope, cleared *by* it per § "Debt
 inside the milestone's own scope" - the test is whether `Required scope` below
 names the id, rather than whether the item carries the `interface-areas`
-feature, and the two disagree on two entries. The second is the single entry
+feature. The two differ in both directions: on 2026-09-23 `PL-NDKC` and
+`PL-Y04W` carried the feature without being named, and `PL-CNCF` and `PL-PGZF`
+were named without carrying it, as they have been since `PL-YVP7`. So this
+group is `bin/docket wave`'s to report and not `bin/docket gate`'s, which splits
+the whole store by feature (`PL-RFHH`). The second is the single entry
 deferred to Gate 3, below. The rest clears before implementation of this
 milestone begins, and is recorded in three groups rather than one because that
 is how it is meant to be worked: `docket.toml` computes a lane from each item's
@@ -5693,8 +5697,8 @@ have implemented and closed it.
   store by `feature` where `roadmap.GateStatus.self_cleared` reads the frozen
   list, and both phrases answer "cleared by the milestone itself", so
   `bin/docket gate` and `bin/docket wave` can report different membership for
-  one milestone. `defect`, `infra`. At `needs-decision`: whether the fix is
-  wording or unification is costed before either is chosen.
+  one milestone. `defect`, `infra`. Closed 2026-09-23 on wording rather than
+  unification, and the live generator it headed moved to `PL-J6HP`, below.
 
 - PL-YZJD (S) - **deferred 2026-09-21.** `falsifies:` is read from the base's
   copy of an item, so a capture triaged and worked in one session can never
@@ -5772,6 +5776,14 @@ another branch, so this pass left it untriaged.
   reports it: `_check_prose_dependencies` skips closed prerequisites and nothing
   reads a brief's claims about its own status. `defect`, `infra`. Classed at
   capture by the session that measured it rather than by `PL-14QR`; as a live
+  generator it ranks on that tier whatever this gate records.
+
+- PL-J6HP (M) - **deferred 2026-09-23.** A gate's facts - what the milestone
+  clears itself, what is deferred, how many a heading holds, the release a
+  closed deferral carries - are written here as prose and parsed separately by
+  `plan.py`, `roadmap.py` and `tools/doc_check.py`. `defect`, `infra`. At
+  `needs-decision`: one reader or structured records. Filed by `PL-RFHH`'s
+  session to carry the generator that item headed, not by `PL-14QR`; as a live
   generator it ranks on that tier whatever this gate records.
 
 ### Required scope

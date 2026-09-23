@@ -45,6 +45,7 @@ ALLOWED_IMPORTS = {
     "tomllib",
     "typing",
     "unicodedata",
+    "warnings",
     "__future__",
     "docket",
 }

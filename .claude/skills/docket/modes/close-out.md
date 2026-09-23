@@ -177,12 +177,14 @@ page and decides which file a session reads.
    settled - do not re-derive it** (`PL-K4R5`). Where the deliverable *is* a
    changed output string, the test pinning the old one must change, and the
    old string is then simply gone: nothing in the diff separates the
-   commissioned rewrite from an expectation quietly dropped. The check now
-   prints the same-file lines differing from the removal by exactly one
-   string, with the true count, and folds none of them. Report the `REJECT`
-   with those lines and say which candidate is the rewrite - that is the
-   reading the tool refuses to guess at, and it is one line rather than a
-   reconstruction.
+   commissioned rewrite from an expectation quietly dropped. The check prints
+   the removed assertion under its test function, beside every assertion that
+   arrived there, and pairs none of them. Report the `REJECT` with those lines
+   and say which arrival is the rewrite - that is the reading the tool refuses
+   to guess at, and it is one line rather than a reconstruction. Since
+   `PL-4W2L` the same holds for any existing assertion changed in place, a call
+   site gaining an argument included: the check reads statements, refuses the
+   change and prints both sides, where it used to fold an insertion unasked.
 
    Three ways out were measured over 502 single-id close-outs, in which 57
    would `REJECT` this check and 20 are this shape, and all three failed:
