@@ -101,7 +101,8 @@ capability-boundary rule above governs.
 | v0.5.2 | Completed | **The release where "nothing computational moved" stopped being readable off a tree hash and had to be proved instead.** Fifteen items, all apparatus and documentation, and a patch because no capability boundary is crossed. Three of the four trees the safety-critical standard cares about are byte-identical at v0.5.1 and at this cut - `src/anesthesia_sim/data/` (`ab3499f`), `app/` (`01bc2d9`) and `tests/reference/` (`a184830`) - and **`core/` is not**, moving `ca5a354` to `061714b`, the object it had held since v0.5.0. The move is two files, +6/-6, and every changed line sits inside a docstring: `PL-316G`'s conversion of 150 possessive document citations to the section-mark form, the only form `tools/doc_check.py` can hold without reading ordinary prose as a citation. Rather than assert that from the diff, both files were parsed at each revision with every docstring constant replaced by a sentinel and the resulting ASTs compared - comments never reach an AST at all - and both are identical, so **no executable statement moves in `core/`** and, with `data/` resolving to the same object, **no equation, parameter, constant, numerical method, solver step or displayed clinical value moves** either. Two features complete. **`one-id-grammar`** ends the disagreement about what an item id *is*: three tools each restated the grammar more loosely than `store.ID_PATTERN`, so a tool and `docket check` could reach opposite verdicts on the same token (`PL-KYW3`); `fixture_id_check.py` could not see an id spelled with underscores as a keyword argument, which is how an out-of-alphabet fixture name reached the `doc_check` fixtures (`PL-L609`); its reach stopped at `subprojects/docket/tests`, leaving the apparatus fixtures under `tests/unit` held to no grammar at all (`PL-7922`); and `PL-3BZS` retires `PL-A1B2` from the documented placeholder set for sitting outside `store.ID_ALPHABET` - Crockford base32 minus the vowels - so the one document a session reads to learn what a placeholder *is* stopped teaching a grammar the store does not have. **`remote-ref-deletion`** closes on `PL-ZM48` and `PL-X9WZ`, which between them replace `docs/worker.md`'s single recorded shape for deleting a remote branch with the three actually observed: exit 0, the 403 carried alongside `Everything up-to-date` at exit 1, and `git ls-remote --heads` exiting 0 with empty output while a force-with-lease push fails `stale info`. The standing-machinery half is `PL-D1NT`, `PL-ZM8P` and `PL-0GMC`: `doc_check`'s path-citation resolver crashed the whole run on one unstattable token where the glob branch beside it was already guarded; `check_quoted_sources` read every item file while `check_line_citations` read only live ones, so a closed brief quoting the `Current baseline` heading would have failed `make check` at this very cut, the release that renames it; and the durable-versus-cheap trade, which had reached a session only when the project owner typed it into the chat, is resident in `.claude/rules/expert-review.md` as a forcing question, so a design round held without them no longer picks the cheap route unopposed. | 15 items |
 | v0.5.3 | Completed | **The release where the project's own gates stopped reporting a result they had not established.** Eleven items, all apparatus and documentation, and a patch on § "Versioning decision"'s test because no capability boundary is crossed. **Nothing in the simulator moved, and this cut says so by tree identity alone**: `src/` resolves to `422b27e1` at v0.5.2 and here, so `core/` (`061714b`), `data/` (`ab3499f`) and `app/` (`01bc2d9`) are byte-identical and `tests/reference/` (`a184830`) with them - the sentence v0.5.2 had to prove by comparing ASTs, because its `core/` tree had moved on a docstring. The eleven items' own work is 35 files, +2,818/-113, of which 14 are item files, and `.github/` is the one shipped tree that moves (`6f63412` to `da3c951`), for the release's own reason. **Four defects, one shape at four altitudes.** `PL-D0W8`: a session running `make check 2>&1 | tail` reads `tail`'s exit status, always 0, so a red tree is reported as green - it happened on `PL-2JRC`, also in this release, and the false claim reached both the commit message and the pull request body. The rule is a `PreToolUse` deny hook rather than resident prose because it has to fire when a command is *written*, which no read precedes, and inside exploration subagents, which carry no resident context but do run hooks; it recommends `set -o pipefail`, one token, so a session keeping a passing gate's output out of its context has no reason to route around it. It refused its own author on its first firing, right about the separator and wrong about the command, so reading `$?` in the segment immediately after the separator is now accepted. `PL-J3WK` and `PL-PBP5` are one seam from opposite sides: `make check` ran `bin/docket check` bare while CI ran it `--verify`, so a `verify:` command that can prove nothing - a literal `true`, or one recorded against three open items - passed every local gate and turned CI red after review had started; and `quality.yml` enumerated its own steps, leaving `dead_ends.py`, `ignore_check.py` and `possessive_section_check.py` with no CI backstop. Both halves were live: of 11 red runs in the 100 most recent `pull_request` runs, **6 were the `--verify` replay and 5 were at a step `make check` also runs**. The two statically decidable questions moved into the bare check and the replay stayed where it is, on a count that came back **zero and zero** against 220 open commands, so the rule catches the regression `PL-4W2L` had already produced rather than a backlog; and the gate lists are deliberately *not* merged - the floor section runs the standard-library tools before `uv` exists, which is what proves they need none - so `check_gate_parity` reconciles them in both directions instead, refusing any asymmetry not in `GATE_ONLY`, which holds exactly one entry. `PL-44DG`: the gauge the project consults about its own resident cost was **7.2% low**, counting neither the SessionStart digest nor the `docket` skill description, both resent every turn - and the digest is the half that grows with no edit to any instruction file, carrying the dead-ends list. **`instruction-staleness-audit` completes, 3 of 3**, against the failure that outlives a size problem: a rule that is long costs attention, while one that was true when written and is false two years later gets *obeyed*. `PL-T5K1` reports the dated lines past a threshold as a grooming advisory on `make docket`, dated by the newest date on each line so re-verify-and-re-date discharges an entry and the report can reach zero; `PL-PHK4` makes the threshold `instruction_stale_days`, defaulting to 90 (project owner, 2026-09-21, ratified, over 180), tested against synthetic dates because it cannot fire on this tree - all 74 dated assertions across 17 files are under 30 days old, the project being 30 days old. Age is a proxy for staleness, and the brief records that rather than smoothing it. **The rest is the record telling a reader something untrue.** `PL-K4BN` backfills the eight `pr:` numbers `origin/main` was owed, each verified against the squash subject naming its id - 8 of the 13 advisories that morning, 5 now - and records why they accumulated: "let it ride the commit you are already making" is right while commits are flowing and silently wrong once nobody has one in hand, which is the routed-around test rather than tidiness. `PL-R5HK` corrects `docs/ARCHITECTURE.md`'s wired-hook count, five where `.claude/settings.json` wires six, wrong since `item_read_log.py` landed and found twice independently. `PL-G7ST` removes a false provenance claim from inside the item about provenance: `PL-M7W1` said #880's squash subject was frozen at arm time and the commit carrying the sentence is its own disproof, the renamed title having landed, which narrows the hazard to auto-merge performing the merge itself - a hand merge composes from the live title, and is the ordinary case here. `PL-2JRC` is the triage pass, and `PL-JYTJ`, the cut of v0.5.2, closes here because a cut cannot stamp itself. | 11 items |
 | v0.5.4 | Completed | **The release where the window stopped drawing the host's colours, and the two sentences a learner meets at a refusal started naming what refused and the control that ends it.** Sixteen items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed - every change corrects what an existing control renders or says - and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **It is the first release since the MVP to move `src/anesthesia_sim/app/`**, off the object it had held since v0.5.0 (`01bc2d9` to `50d13b3`, four files, +149/-8), **and nothing computational moved with it, measured rather than asserted**: `src/anesthesia_sim/data/` (`ab3499f`) and `tests/reference/` (`a184830`) are byte-identical, so no stored parameter and no published-reference expected value changed; `core/` moves (`061714b` to `d9e3ca9`), but with docstrings stripped its syntax tree differs at exactly three call sites, each the name a `require_fraction` guard reports, and it holds 133 numeric literals at both ends with none differing. **`platform-palette` completes, 6 of 6.** `PL-KRZW` declares the interface's light palette on the `QApplication` before the first widget exists (project owner, 2026-09-20, ratified, over leaving the host appearance alone and over a second palette for dark support), so the chrome no stylesheet reaches stops drawing a dark host around a light window - the page's scroll bar went from 94.3% of its pixels darker than mid-grey to 0% under the test suite's dark host palette - and it is a palette rather than `styleHints().setColorScheme` because that hint was observed being ignored outright. `PL-4L49` makes the contrast report count what nothing measures - 7 control kinds, each named by the test that admits it - and holds every text-bearing control in the built dashboard to declaring its own foreground, because a report counting only declared pairs read identically whether the interface was covered or had three illegible buttons on it. **`PL-WG73` is the one a learner would have paid for**: the comparison lock read "Reset the case to end this one", a phrase no control carries, while two Resets are drawn and the one a learner reaches for - the branch's - discards everything simulated since the fork and leaves the lock standing. It now reads "Run 1's Reset ends it and starts the case over; Run 2's Reset only returns Run 2 to where it branched", filled from the labels the screen carries so the instruction and the control cannot drift apart again. `PL-SPN6` names the compartment in a refused fraction - five compartments were raising one string, so a halted run could not say which had refused. `PL-036` binds each of `docs/MODEL.md`'s 21 minimum displayed outputs to the display test that holds it (project owner, 2026-09-22, ratified, over the `SimulationSnapshot`-field mechanism, which three of the entries have no field for). **The tooling half is one shape: a git that did not answer, read as an answer.** `git-silence-channel` completes, 2 of 2, with `PL-ZPDM` - on silence `vcs.tags` returned an empty set, and an empty set is a project the untagged-release gate holds to nothing, so the one gate guarding a gap that cannot be repaired afterwards waved the cut through; `PL-73P0` stops `bin/docket verify` certifying a branch's scope against a `main` nothing established; `PL-T441` and `PL-WF3X` make a git read address the store the command actually read. **Ten of the sixteen are Gate 2 entries**, which stands at 22 of 185 cleared at this cut, and `PL-CY4F`, the v0.5.3 cut, closes here because a cut cannot stamp itself. | 16 items |
-| v0.5.5 | Completed / current baseline | **The release where one hover box stopped holding two moments, and four checks stopped passing on what they could not see.** Fifteen items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed - the two changes a learner can see correct which instant an existing hover reports and how an existing panel lays out its rows - and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing computational moved, read off tree identity for every tree but one**: `src/anesthesia_sim/core/` (`d9e3ca9`), `src/anesthesia_sim/data/` (`ab3499f`), `tests/reference/` (`a184830`) and `.github/` (`da3c951`) resolve to the same objects at v0.5.4 and here, so no equation, parameter, constant, numerical method, solver step or published-reference expected value changed. `app/` moves (`50d13b3` to `f3c6e26`, eight files, +304/-187), and compared by syntax tree with docstrings stripped its whole move is four items, with `_hover_value` and every `format_*` function in it identical. **`PL-1K9G` is `safety` at `P1`, and it changes what a hover reports on purpose.** Each trace answered at its drawn point nearest the pointer in two dimensions, so the pointer's height decided which instant it answered at: one box could label one run's compartments with instants 72 s apart on a 60-minute chart and 912 s apart on the 12-hour one, and a purely vertical 2 px movement moved the instant on 44.9% of pairs and the printed value on 35.1%. Now the pointer names the instant - each run answers at its drawn instant nearest the pointer in time, and a trace answers there only if its point is inside the 12 px radius - so one run's readings share an instant and a vertical movement moves neither; the cost, measured and stated, is that a steep trace answers over less area, down to 45-54% for the four fast compartments on the 12-hour axis. **`two-run-attribution` completes, 7 of 8** (`PL-GHMB` dropped), with `PL-FPY2` drawing each mark as a row of its own so a wrapped standing that names a run continues under its own mark rather than reading as the next one's. `PL-59WB` and `PL-CZTR` name an instant as an instant - `fit_to_run`'s input is the newest case instant rather than a run length, and a branch's fork instant is read only as `fork.instant_s` - with every value and every refusal's text unchanged. **The tooling half is one shape, a check passing on what it could not see**: `PL-5B88` (verify's suppression check could not see `@pytest.mark.skip` or `skipif`), `PL-Q8RQ` (`docket check` refuses a `verify:` narrowed with `pytest -k`, which an unrelated test's name can satisfy), `PL-YKSD` (a release tag is held to its own release's version file, since `v0.5.3`'s was pushed onto the commit before its own) and `PL-SZJ2` (`wave` reports a released milestone whose frozen list holds an entry no later gate places). **`PL-6Q9L` pauses new workflow mechanisms while any item carries `generator: live`** (project owner, 2026-09-22, ratified), on `PL-KVDK`'s first pass over the 161 non-product items filed 2026-09-20 to 09-22; `PL-G40Z` lets a no-behaviour repair ride the commit already being made; `PL-Q89J` adds `docket next --oldest`. **Seven of the fifteen are Gate 2 entries**, which stands at 29 of 185 cleared at this cut, and `PL-4KSZ`, the v0.5.4 cut, closes here because a cut cannot stamp itself. | 15 items |
+| v0.5.5 | Completed | **The release where one hover box stopped holding two moments, and four checks stopped passing on what they could not see.** Fifteen items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed - the two changes a learner can see correct which instant an existing hover reports and how an existing panel lays out its rows - and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing computational moved, read off tree identity for every tree but one**: `src/anesthesia_sim/core/` (`d9e3ca9`), `src/anesthesia_sim/data/` (`ab3499f`), `tests/reference/` (`a184830`) and `.github/` (`da3c951`) resolve to the same objects at v0.5.4 and here, so no equation, parameter, constant, numerical method, solver step or published-reference expected value changed. `app/` moves (`50d13b3` to `f3c6e26`, eight files, +304/-187), and compared by syntax tree with docstrings stripped its whole move is four items, with `_hover_value` and every `format_*` function in it identical. **`PL-1K9G` is `safety` at `P1`, and it changes what a hover reports on purpose.** Each trace answered at its drawn point nearest the pointer in two dimensions, so the pointer's height decided which instant it answered at: one box could label one run's compartments with instants 72 s apart on a 60-minute chart and 912 s apart on the 12-hour one, and a purely vertical 2 px movement moved the instant on 44.9% of pairs and the printed value on 35.1%. Now the pointer names the instant - each run answers at its drawn instant nearest the pointer in time, and a trace answers there only if its point is inside the 12 px radius - so one run's readings share an instant and a vertical movement moves neither; the cost, measured and stated, is that a steep trace answers over less area, down to 45-54% for the four fast compartments on the 12-hour axis. **`two-run-attribution` completes, 7 of 8** (`PL-GHMB` dropped), with `PL-FPY2` drawing each mark as a row of its own so a wrapped standing that names a run continues under its own mark rather than reading as the next one's. `PL-59WB` and `PL-CZTR` name an instant as an instant - `fit_to_run`'s input is the newest case instant rather than a run length, and a branch's fork instant is read only as `fork.instant_s` - with every value and every refusal's text unchanged. **The tooling half is one shape, a check passing on what it could not see**: `PL-5B88` (verify's suppression check could not see `@pytest.mark.skip` or `skipif`), `PL-Q8RQ` (`docket check` refuses a `verify:` narrowed with `pytest -k`, which an unrelated test's name can satisfy), `PL-YKSD` (a release tag is held to its own release's version file, since `v0.5.3`'s was pushed onto the commit before its own) and `PL-SZJ2` (`wave` reports a released milestone whose frozen list holds an entry no later gate places). **`PL-6Q9L` pauses new workflow mechanisms while any item carries `generator: live`** (project owner, 2026-09-22, ratified), on `PL-KVDK`'s first pass over the 161 non-product items filed 2026-09-20 to 09-22; `PL-G40Z` lets a no-behaviour repair ride the commit already being made; `PL-Q89J` adds `docket next --oldest`. **Seven of the fifteen are Gate 2 entries**, which stands at 29 of 185 cleared at this cut, and `PL-4KSZ`, the v0.5.4 cut, closes here because a cut cannot stamp itself. | 15 items |
+| v0.5.6 | Completed / current baseline | **The release where the in-flight guards stopped guessing who holds an item, and verify's assertion check started reading statements rather than lines.** Twelve items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved, and this cut says so by tree identity alone**: `src/` resolves to `37b0a4c` at v0.5.5 and here, so `core/` (`d9e3ca9`), `data/` (`ab3499f`) and `app/` (`f3c6e26`) are byte-identical, and `tests/reference/` (`a184830`), `docs/MODEL.md` and `README.md` with them. **Six items are one question - who holds an item - answered wrongly six ways.** `PL-3QM9` and `PL-7TVT`: `bin/docket flight` subtracted calendar dates, so a branch committed 55 minutes earlier read "last commit 1 day ago" across midnight, and the digest and `bin/docket show` told every reader "do not start these again" on evidence that cannot separate a live session from an abandoned branch in its first hour; `flight` now reports ages to the minute and, wherever the forge answers, whether a pull request is open on each live row's branch, and says what those can and cannot establish rather than what to conclude. The generator `PL-7TVT` headed is recorded spent (project owner, 2026-09-23, ratified, over keeping it live until something can read session state), its one remaining shape - a session ending mid-work before opening a pull request reads as a young branch with none open for about an hour - printed by `flight` as its own limit. `PL-N2PP` and `PL-HX5C`, work nobody had pushed reading as startable, close on a start rule rather than code: an empty commit leading with the id, pushed the moment an item is picked up, is a claim every guard already reads. `PL-8FJK` and `PL-3W3P` are one reading from opposite sides - a grooming branch closing items read as triage, so what it was dropping stayed offerable, and a pass editing a queue-only item's file for another item's reason claimed it - and one helper, `vcs._own_edit_claims`, now reads both: a queue-only commit claims an item only when it leads with that item's id and writes that item's file. **`PL-4W2L` rebuilds verify's assertion check at the statement altitude** (project owner, 2026-09-22, ratified, over refusing only an assertion that left its test and over patching three items at the line altitude): each `.py` file an item's commits touch is parsed before and after each commit, and a removed assertion is charged only where the base's copy holds it, so six line-shape helpers are retired and `PL-XQGH`, `PL-CNJH` and `PL-2DTK` are dropped as resolved, each carried as a named test; replayed over 1,127 commits of `main`, 121 were refused before and 124 after, identically under Python 3.11 and 3.14. `PL-0HPV` puts the scoped verify replay into `make check` (project owner, 2026-09-22, ratified, over adding it with the commands as they stood) after reordering 96 open `verify:` commands cheap-clause-first, which changed no command's pass-or-fail verdict and cut the widest recent scope from 41-46 s to about 5 s. `PL-RFHH` makes `bin/docket gate` and `bin/docket wave` each name the test it ran, where both said "cleared by the milestone itself" about different questions and disagreed on four v0.6.0 entries; `PL-WFFX` confirms by one merge that the GitHub app drops a squash body, and the habit is to merge on the Mac or by auto-merge (project owner, 2026-09-22, ratified); `PL-BYN2` carries an owner ratification off a branch nobody would merge. `PL-0HPV` and `PL-WFFX` merged inside v0.5.5's tag, whose notes now point here. **Seven of the twelve are Gate 2 entries**, which stands at 39 of 185 cleared at this cut, and `PL-3XWZ`, the v0.5.5 cut, closes here because a cut cannot stamp itself. | 12 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -201,177 +202,177 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.5
+## Current baseline: v0.5.6
 
-v0.5.5 is the release where one hover box stopped holding two moments, and four
-of the project's checks stopped passing on what they could not see. Fifteen
-items, and a patch on both halves of § "Versioning decision"'s test: no
-capability boundary is crossed, because the two changes a learner can see
-correct which instant an existing hover reports and how an existing panel lays
-out its rows, and every number above it is spent,
-v0.6.0 through v0.9.0 being given to milestone sections. Seven of the fifteen
-are entries in Gate 2, the debt gate frozen under v0.6.0, which stands at 29 of
-its 185 entries cleared at this cut.
+v0.5.6 is the release where the in-flight guards stopped guessing who holds an
+item, and `bin/docket verify`'s assertion check started reading statements
+rather than lines. Twelve items, all apparatus and documentation, and a patch
+on both halves of § "Versioning decision"'s test: no capability boundary is
+crossed, because nothing a learner can reach changed at all, and every number
+above it is spent, v0.6.0 through v0.9.0 being given to milestone sections.
+Seven of the twelve are entries in Gate 2, the debt gate frozen under v0.6.0,
+which stands at 39 of its 185 entries cleared at this cut: 29 at v0.5.5, the
+seven here, and three dropped by `PL-4W2L`'s decision.
 
-**Nothing computational moved, and for every tree but one that is read off
-tree identity rather than a diff:**
+**Nothing in the simulator moved, and this cut says so by tree identity
+alone:**
 
-| Tree | v0.5.4 | This cut | What moved |
+| Tree | v0.5.5 | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/anesthesia_sim/core/` | `d9e3ca9` | `d9e3ca9` | nothing - every equation, constant and numerical method is byte-identical |
-| `src/anesthesia_sim/data/` | `ab3499f` | `ab3499f` | nothing - every stored parameter is byte-identical |
+| `src/` | `37b0a4c` | `37b0a4c` | nothing - `core/` (`d9e3ca9`), `data/` (`ab3499f`) and `app/` (`f3c6e26`) are byte-identical, so no equation, parameter, constant, numerical method, solver step or displayed value moves |
 | `tests/reference/` | `a184830` | `a184830` | nothing - every published-reference case, expected value and tolerance is byte-identical |
-| `src/anesthesia_sim/app/` | `50d13b3` | `f3c6e26` | eight files, +304/-187: which point a hover reports, the marks panel's rows, and two renames |
-| `.github/` | `da3c951` | `da3c951` | nothing |
+| `docs/MODEL.md` | `148686b` | `148686b` | nothing |
+| `README.md` | `9938368` | `9938368` | nothing |
+| `.github/` | `27c67f3` | `27c67f3` | nothing |
 
-`app/` is the one tree that moved, so its move was read rather than taken on
-trust. Compared by syntax tree with module, class and function docstrings
-stripped, its code changes in four places and nowhere else. `PL-1K9G` rewrites
-`nearest_trace_point` and `nearest_wash_in_point` and replaces the two helpers
-they used, adding two numeric literals, both `1`. `PL-FPY2` adds `MarkRow` and
-three layout constants in `theme.py` - a bullet, 6 px and 2 px. `PL-59WB`
-renames one parameter, one local and one error message. `PL-CZTR` rewrites every
-read of a deleted alias to the field the alias returned. **`_hover_value` and
-every `format_*` function in `app/` are identical**, so no value is formatted, rounded or
-computed differently. What a hover reports at a given pointer position does
-move, and on purpose: that is `PL-1K9G`, below. `docs/MODEL.md` moves in §
-"Reasonably foreseeable misuse, and the hazards the presentation carries", §
-"The chart's time base", § "The hover and the run it belongs to", § "Where more
-than one trace answers" and § "When it answers"; none of them states an
-equation, a parameter or a method.
+`.github/` reads `27c67f3` at the v0.5.5 tag rather than the `da3c951` that
+release's row names: `#920` (`PL-0HPV`) rewrote two comments in `quality.yml`
+after v0.5.5's cut was taken and before its tag, and changed no step. What this
+release moves is the queue tool, its tests and its instructions:
+`subprojects/docket/`, `tools/open_pull_requests.py` and its test, three of the
+`docket` skill's mode files, `docket.toml`, `docs/ARCHITECTURE.md` and this
+file.
 
-### One hover box, one moment
+### Who holds an item, answered wrongly six ways
 
-`PL-1K9G` is `safety` at `P1`, and it is the one change in this release that
-alters what a displayed value is labelled with. The hover chose, for each run and compartment, the drawn point nearest
-the pointer in two dimensions - time and percent together - so where two drawn
-columns were near-equidistant in time, the pointer's *height* decided which
-instant a trace answered at. One box could label one run's compartments with
-different instants, and a purely vertical hand movement could change a printed
-concentration with nothing else in the box moving but the instant. It had been
-triaged `defect` at `P2`, on the premise that adjacent drawn columns usually
-print the same value. The count it asked for was run before anything changed,
-and the premise held for fat and mostly for muscle - the pair it had been
-observed on - and was false for the other four compartments, whose adjacent
-columns print differently on 24-93% of pairs depending on the chart. That
-reclassified it.
+Six items are one question - the one every in-flight guard exists to answer -
+and each had been answered wrongly in its own way.
 
-Measured before the change, on the branched sevoflurane case and on a two-hour
-single run drawn on two axes: on a one-run 60-minute chart, 31.7% of hovers carried two or more
-readings of one run, 70.1% of those carried mixed instants, and the spread
-reached 72 s, 18 grid columns; on the 12-hour axis it reached 912 s - fifteen
-minutes between two values one box presented together. A purely vertical 2 px
-movement moved the instant on 44.9% of pairs and the printed value on 35.1%, on
-the one-run 60-minute chart.
+**An age that was a date, and an order resting on it.** `PL-3QM9`: `bin/docket
+flight` subtracted one calendar date from another, so a branch committed 55
+minutes earlier read "last commit 1 day ago" across midnight - wrong in the
+direction that reads a live session as abandoned, and worst for the freshest
+branches. `PL-7TVT`: the age was also the only evidence separating a live
+session from an abandoned branch, which it cannot do in the first hour - `#757`
+sat green and unclaimed 25 minutes after its session was archived, while the
+digest and `bin/docket show` still told every reader "do not start these
+again". `flight` now reports ages to the minute, and every live row says,
+wherever the forge answers, whether a pull request is open on its branch and
+which; the order is gone from the digest and from `show`, and `flight`'s closing
+lines say what an age and a pull request can and cannot establish rather than
+what to conclude. The pull-request read costs about half a second a run, 1.15 s
+median against 0.65 s without it. The generator `PL-7TVT` headed is recorded
+spent (project owner, 2026-09-23, ratified, over keeping it live until something
+can read session state), with its one remaining shape printed as `flight`'s own
+limit: a session that ends mid-work before opening a pull request reads, for
+about its first hour, as a young branch with none open. That shape only ever
+withholds an item, and the session-list read in rule 14 and in the start mode
+is the backstop where the difference matters.
 
-**Now the pointer names the instant.** Each run answers at its drawn instant
-nearest the pointer in time, a tie going to the earlier, and each of its traces
-answers there if its point is inside the 12 px radius. The wash-in plot follows
-the same rule, because it measured its distance the same way. On the same
-cases, one run's readings never carry mixed instants, and a vertical movement
-moves no instant and no printed value, on either plot; the hover answers nowhere
-the old rule did not; and no drawn instant becomes unreachable. **The cost is
-stated rather than hidden**: a pointer beside a steep segment no longer answers
-from a point level with it, so the area a fast compartment answers over shrinks
-to 84-98.5% on the 60-minute and 2-hour axes and to 45-54% on the 12-hour axis.
-Keeping the old reach while reporting the point at the named instant was
-measured and refused, because it would have hung the box on a point a median
-13.5 px and up to 146 px from the pointer, presented as the one under it. Every
-value a hover reports is now within the radius of the pointer *and* at the
-instant it names. Each line still states its instant, because two runs can still
-differ: each draws its own control-event columns, and a branch draws nothing
-before its fork.
+**Work nobody had pushed.** `PL-N2PP` (a rider item worked inside another
+item's session) and `PL-HX5C` (a second session implementing `PL-W8XP` on a
+branch named for a different item) were invisible to every guard until their
+first push. Both close on a start rule rather than on code: an empty commit
+leading with the id, pushed the moment an item is picked up, is a claim every
+guard already reads, and `.claude/skills/docket/modes/start.md` says so at the
+start and again when a second item is picked up. The soft claim `PL-N2PP`'s
+brief recommended - reading a capture commit's id as a claim - was not built,
+because reading a capture commit as a claim is what took startable items out of
+`bin/docket next` under `PL-X3WZ`, and building it would have reversed that
+fix. What stays open is compliance: a session that skips the claim is still
+invisible until it pushes.
 
-### What a mark's answer is written under, and what an instant is called
+**Where a commit wrote, read as what it did.** `PL-8FJK` and `PL-3W3P` are one
+reading seen from opposite sides. A grooming branch whose commits touch only
+item files read as capture or triage even while it closed items - `#914`
+dropping `PL-027`, `PL-043` and `PL-ZBR6` - so what it was dropping stayed
+offerable to the next session, and `bin/docket next --oldest` hands out exactly
+the items a grooming pass targets. And a pass that edited a queue-only item's
+file for another item's reason claimed that item: `PL-0HPV`'s `verify:` reorder
+hid `PL-LBW5`, `PL-RWBV`, `PL-YVV4` and `PL-YZKK` from `bin/docket next` until
+its pull request merged. One helper, `vcs._own_edit_claims`, now feeds all three
+queue-only promotions: a queue-only commit claims an item only when it leads
+with that item's own id and writes that item's own file, and a closure claims
+it only where the branch's tip holds the item closed and the base holds it open.
+`bin/docket show` prints its in-flight mark through the same helper, which it
+had not read before, so no promotion of this kind had ever marked an item
+there. The generator `PL-8FJK` heads stays live: `PL-8GV1`, a pass blocking an
+item it never claimed, arrived the same day.
 
-**`two-run-attribution` completes, 7 of 8**, with `PL-GHMB` dropped, and
-`PL-FPY2` is its last. The marks panel drew every mark's row into one wrapped
-label, so a row that wrapped continued at column zero with no bullet and no
-indent. Once `PL-LHBY` made a standing name the run it belongs to, a
-continuation could be a whole clause - one run's answer reading as a row of its
-own, bound to the mark below it. Each mark is now a row of its own, a bullet in
-its own column and the text beside it, so a continuation starts under its own
-text. A cap on the length of a mark's name was decided against: the hanging
-indent removes the misreading at any length, and the sidebar scrolls, so a long
-name costs height rather than a wrong reading.
+### The assertion check, at the altitude it was decided at
 
-`PL-59WB` and `PL-CZTR` name an instant as an instant. `chart_time_base.fit_to_run`
-took a parameter called `run_length_s` and was passed the newest case instant,
-which is not a length for a branch that opened partway through the case: a
-reader believing the name and "correcting" the caller would have fitted a
-branch's axis short by its whole fork instant. The value was right, so the
-rename is the whole fix, and a test now pins a branch whose opening instant
-exceeds its own length drawn whole in the narrowest fitted rung. `ResumePoint`'s
-`elapsed_s`, an alias carrying the fork instant under a duration's name, is
-deleted, and every reader takes `fork.instant_s`; every refusal renders the text
-it did before. The same instant under the duration's name in four
-parameters is `PL-BT2J`'s.
+`no existing assertion removed` is one of the four integrity checks `bin/docket
+verify --self` may never relax, and it had been fixed six times, each fix
+uncovering the next, because it inferred what an edit did to an assertion from
+the shape of the diff's lines. `PL-4W2L` put the altitude to a decision
+(project owner, 2026-09-22, ratified, over refusing only an assertion that left
+its test, and over patching the three open items at the line altitude), and
+this release builds it. Each `.py` file an item's commits touch is parsed
+before and after each commit, the assertion forms each commit removed and added
+are folded per file, and a removed form is charged only where the base's copy
+of the file holds it, and only as many copies as are gone afterwards. An
+assertion is an `assert` statement's test, a call whose name starts with
+`assert`, or a `raises` or `warns` context manager, as `ast` reads them. The six
+line-shape helpers are gone, and `PL-XQGH`, `PL-CNJH` and `PL-2DTK`, the three
+open defects in them, are dropped as resolved, each carried as a named test. It
+deliberately does not decide whether a changed assertion is stronger or weaker,
+which no rule over the shape of an edit can answer, so a changed assertion is
+refused with both sides printed. Replayed over the 1,127 non-merge commits of
+`main`, each against its parent: 121 refused before and 124 after, identical
+under Python 3.11 and 3.14 - it stops refusing the six the round predicted and
+starts refusing the nine, with no difference left to explain. The decision and
+the three drops merged as `#922`, inside v0.5.5's tag; the build is `#929`.
 
-### A check passing on what it could not see
-
-The tooling half is one shape at four call sites. `PL-5B88`: `bin/docket
-verify`'s suppression check, which stops a branch silencing a test to reach
-green, could not see `@pytest.mark.skip` or `@pytest.mark.skipif` - the two
-commonest ways a pytest test is disabled - and reported none while a disabled
-test sat in the diff. It now reads both, the imported `@mark.skip`, a
-module-level `pytestmark` and `@unittest.skip`. Replayed over 1,115 commits it
-refuses one line, a genuine environment guard a reviewer should see. The rest of
-the family - `importorskip`, `expectedFailure`, `skipTest`, a raised `SkipTest`
-and `collect_ignore` - is `PL-DNZ0`'s, and the docket README names them as
-unread.
-
-`PL-Q8RQ`: a `verify:` command resting on `pytest -k SUBSTRING` passes whenever
-any test's name contains the substring, so it can start passing because an
-unrelated test was added, which is how `PL-S5YM` turned `main` red. `bin/docket
-check` now refuses a `-k` wherever it stands in a `verify:` command, from a date
-of its own, so the five commands already standing are grandfathered and repaired
-as each item is started.
-
-`PL-YKSD`: `check_tags` verified that a release's tag existed and never where it
-pointed, so `v0.5.3`'s tag, pushed before its release merged and onto the commit
-before its own, read as tagged to every check. `tools/doc_check.py` now reads
-each release tag's own `pyproject.toml` and fails on one declaring another
-version. The one historical case, v0.2.0, whose release commit still read 0.1.0,
-stays where it shipped and is named under **Tags** above: moving the tag would
-make the bump read as shipped in v0.2.0, and would take a force-push of a
-published tag.
-
-`PL-SZJ2`: `bin/docket wave` reported nothing for a released milestone whose own
-frozen list still had open entries, so gate work a release had stepped past
-dropped out of every report with nothing saying so. It now reports a released section whose frozen
-list holds an open entry that no section ahead places, and stays silent on an
-entry deferred correctly onto a later gate - `PL-WZVZ`, deferred from v0.5.0
-onto Gate 2, is the live case of the second.
+`PL-0HPV` moves a failure class from CI to the session that causes it. An open
+item whose `verify:` already passes is a finding only the scoped replay can
+make, and `make check` had left the replay out on a whole-store price taken
+2026-09-05, so a session learned of it from a red run - the commonest failing
+step in `quality.yml`, 20 of the 56 failed `pull_request` runs from 2026-09-10
+to 2026-09-22. The route was the project owner's (2026-09-22, ratified, over
+adding the replay with the commands as they stood, a replay-side parser, and
+waiting for each command to be fixed as its item started): 96 open `verify:`
+commands were reordered so the cheap clause that decides each runs first, every
+one was run in both forms to prove the pass changed no pass-or-fail verdict -
+96 of 96 exit non-zero both ways - and `make check` then took `bin/docket check
+--verify --verify-base origin/main`. The widest recent scope fell from 41-46 s
+to about 5 s, and an unreadable base declines with one "Not checked" line
+rather than failing. It merged as `#920`, inside v0.5.5's tag.
 
 ### The rest
 
-**`PL-6Q9L` pauses new workflow mechanisms while any open item carries
-`generator: live`** (project owner, 2026-09-22, ratified, over adding them under
-standing approval and ratified recommendations while six closed generator heads
-were still producing), so the
-live generators are worked before more apparatus is added; the pause ends when
-`bin/docket next` shows the generator tier empty. It rests on `PL-KVDK`'s first
-pass over the 161 non-product items filed 2026-09-20 to 09-22, which found six
-of fourteen closed generator heads still producing, recorded seven more
-generators on the open items closest to their fixes, and made asking every new
-workflow-lane item where it came from a triage step. `PL-G40Z` lets a
-no-behaviour repair to another item's file ride the commit already being made,
-where eleven such repairs had become items in three days. `PL-Q89J` adds
-`bin/docket next --oldest`, which hands out owed work longest-waiting first, so
-low-priority items that newer work keeps outranking stop starving. `PL-14QR`
-triaged the 20 captures standing untriaged on 2026-09-22, and `PL-Y4YG` groomed
-the ten oldest open items against the tree, dropping three. And `PL-4KSZ`, the
-cut of v0.5.4, closes here for the structural reason every cut does: a cut
-cannot stamp itself.
+`PL-RFHH`: `bin/docket gate` and `bin/docket wave` both said "cleared by the
+milestone itself" and answered different questions - `gate` splits every open
+debt item in the store by whether it carries the milestone's feature, `wave`
+reads the frozen list against what `Required scope` names - so on v0.6.0 they
+disagreed on four entries in both directions (`PL-NDKC` and `PL-Y04W` carry the
+feature unnamed; `PL-CNCF` and `PL-PGZF` are named without it), with nothing
+saying which was authoritative. Each now names the test it ran, and `gate`'s
+footer names `wave` and `Required scope` as the rule. Reworded rather than
+unified, decided by the session on the project owner's delegation, over making
+`gate` read the frozen list - it is what a freeze is computed with, and after
+one the only view of debt filed since - and over making it split by `Required
+scope`, which would have needed a new flag under the generator pause and would
+still have disagreed. The generator it headed moved to `PL-J6HP`, where how
+gate facts are read is still open.
 
-**Closing pull requests kept merging after this cut was taken** - `#920`
-(`PL-0HPV`), `#921` (`PL-WFFX`) and `#922` (`PL-4W2L`) among them. The cut ships
-as taken, on `PL-V065`'s precedent (project owner, 2026-09-21, ratified, over
-holding the release while sibling sessions merge and re-running `make release`
-under the same number): each sits inside the v0.5.5 tag without being named in
-its notes, is cited under the next release, and is named in the `### also
-inside this tag's span` pointer that v0.5.5's notes take, as described under
-**Tags**, once that release exists.
+`PL-WFFX` names the client that strips a squash body. 187 of 683 squash commits
+had reached `main` with none because the merge was submitted with an explicitly
+empty message, and the merges that lost one clustered by sitting and by the
+owner's away-from-desk hours. The one-merge test ran: `#918`, merged from the
+GitHub app, reached `main` as `f1e00087` with an empty body while its
+description stands on GitHub, which matches a defect GitHub's own community
+forum has carried since 2023. The remedy is a habit (project owner, 2026-09-22,
+ratified, over leaving `tools/pr_body_check.py`'s after-the-fact detection as
+the whole remedy): merge on the Mac or by auto-merge, never in the GitHub app,
+written into `docs/maintainer.md` where the person merging reads it, with the
+detection kept as the backstop. It merged as `#921`, inside v0.5.5's tag.
+
+`PL-BYN2` carries the project owner's ratification of `PL-54V0`'s class off
+`claude/upbeat-rubin-v1dktv` - committed eight minutes after that branch's pull
+request merged, and taken by nothing since - onto `main` verbatim, with
+`PL-4CPP` dropped as its duplicate. And `PL-3XWZ`, the cut of v0.5.5, closes
+here for the structural reason every cut does: a cut cannot stamp itself.
+
+**Two of the twelve shipped whole inside v0.5.5's tag, and parts of two more.**
+`#920` (`PL-0HPV`) and `#921` (`PL-WFFX`) closed their items after v0.5.5's cut
+was taken and before its tag, and `#919` (`PL-7TVT`'s start rule) and `#922`
+(`PL-4W2L`'s decision) merged in the same window. Each is described here rather
+than in v0.5.5's notes, which now carry the `### also inside this tag's span`
+pointer to this release for the two closures, as described under **Tags**.
+Whatever merges between this cut and its tag is handled the same way, on
+`PL-V065`'s precedent (project owner, 2026-09-21, ratified, over holding the
+release while sibling sessions merge and re-running `make release` under the
+same number).
 
 ## The plan
 
