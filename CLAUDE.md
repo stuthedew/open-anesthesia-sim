@@ -499,11 +499,14 @@ deviating from a described deliverable, not acting without one.
   that work is finished and its checks are green — do not ask first, because the
   approval *was* the invitation. **A branch carrying only item files opens its
   pull request at its first push and arms auto-merge**, so a capture reaches
-  `main` even when its session ends before any work does; the first push
-  carrying anything else disarms it first, or green CI would merge half the
-  work (project owner, 2026-09-23, ratified, over "a branch carrying only
-  captured items is not a pull request", which cost 21 recovery items,
-  `PL-WNCT`). Where the **web harness says not to open one unless the
+  `main` even when its session ends before any work does (project owner,
+  2026-09-23, ratified, over "a branch carrying only captured items is not a
+  pull request", `PL-WNCT`). **A start claim riding that push leaves it
+  unarmed**, because the merge would erase the claim with the branch (project
+  owner, 2026-09-23, ratified, over arming whatever rode the push, `PL-QP9Z`);
+  and the first push carrying anything else, a start claim included, disarms
+  it first, or green CI would merge half the work. Where the **web harness
+  says not to open one unless the
   owner explicitly asks**, this bullet is that ask, standing rather than per
   pull request, so a session reading both proceeds rather than stalls. A session-level
   auto-pull-request switch set *off* is that same case and not a third: it

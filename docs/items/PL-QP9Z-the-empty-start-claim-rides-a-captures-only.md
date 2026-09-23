@@ -1,9 +1,15 @@
 ---
 id: PL-QP9Z
 title: The empty start claim rides a captures-only first push, so auto-merge lands the capture within minutes, deletes the branch, and erases the claim while the work goes on
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
 touches: CLAUDE.md
 added: 2026-09-23
+closed: 2026-09-23
+payoff: a session that files its own item and claims it keeps its claim on a pushed branch while it works, instead of every in-flight guard reading the item as free for the minutes after its capture auto-merges
+verify: grep -q "A start claim riding that push" CLAUDE.md
 ---
 
 **Problem.** The empty start claim rides a captures-only first push, so auto-merge lands the capture within minutes, deletes the branch, and erases the claim while the work goes on
@@ -41,3 +47,19 @@ without auto-merge meets that, and keeps the branch and its claim alive. The
 change is one clause in `CLAUDE.md`'s commit-and-push bullet. The cost is that
 a session which claims and then dies leaves an open pull request to be merged
 by hand, which is the state `PL-WNCT` accepted as done.
+
+**Decided 2026-09-23: yes** (project owner, 2026-09-23, ratified, over arming
+auto-merge whatever rode the first push). `CLAUDE.md`'s commit-and-push bullet
+now says a start claim riding a captures-only branch's first push leaves its
+pull request unarmed, and that the first push carrying anything else - a start
+claim included - disarms auto-merge. A branch whose captures were pushed and
+armed before the session picked an item up is the second case: the claim push
+carries no file, so it would not otherwise have read as "anything else". The
+pull request still opens at the first push, which meets `PL-WNCT`'s done-when.
+
+Resident cost: 201 characters net, after `which cost 21 recovery items` was
+cut from `PL-WNCT`'s parenthetical to pay for part of it, since that count is in
+`PL-WNCT`'s own brief. The rest cannot move: the arming rule is stated only in
+this bullet, and the exception has to be read at the same push. Built under the
+new-mechanism pause as a defect in a rule that exists, and at the owner's
+request, which lifts the pause for it (`PL-6Q9L`).
