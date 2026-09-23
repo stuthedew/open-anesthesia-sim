@@ -3,12 +3,13 @@ id: PL-J6HP
 title: Gate facts - which entries a milestone clears itself, which are deferred, which closed entries carry the release that took them, how many a heading holds - live in ROADMAP.md prose that plan.py, roadmap.py and tools/doc_check.py each read on their own, so every new phrasing or fact arrives as a new item
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: gate-list-integrity
-touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/plan.py, tools/doc_check.py, ROADMAP.md
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-09-23
 payoff: each gate fact is read once, so a new way of writing one changes a parser instead of arriving in the queue as an item
+verify: grep -q 'def test_parse_milestones_reads_every_deferral_subsection' subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_required_scope_entry_outside_the_self_cleared_group_is_reported' tests/unit/test_doc_check.py
 root-cause-of: PL-H6VQ, PL-Z891, PL-YVP7, PL-B60Q, PL-JN3F, PL-RFHH
 generator: live - gate membership, deferrals, marks and counts live in ROADMAP.md prose read by several functions; seven instances after PL-HWW1 closed, v0.6.0 gained 14 deferrals in 1.5 days (PL-KVDK), and PL-RFHH's rewording left every reader in place
 ---
@@ -50,8 +51,8 @@ phrasing of one changes that reader instead of arriving as an item.
 Parse deferrals in `docket.roadmap` beside the frozen list and `Required
 scope`, derive the current gate once, and stop `ROADMAP.md` carrying hand
 copies of facts the store or the parse already holds. Do not move deferrals
-into structured records unless the falsifier below fires. Put to the project
-owner 2026-09-23; awaiting the answer.
+into structured records unless the falsifier below fires. Decided the same day;
+see the next section.
 
 **The count**, read against the tree on 2026-09-23. Eight kinds of gate fact,
 and the two routes carry the same thing on seven of them:
@@ -149,3 +150,19 @@ route touches them. The lane groups and v0.6.0's one-entry "Deferred to Gate 3"
 group are a person's organisation of the list. They agree with the store
 today, nothing has been filed on them, and the list's own text names `bin/docket
 wave` as the authority.
+
+## Decided 2026-09-23: one reader
+
+**One reader in `docket.roadmap`, and derived gate facts are no longer written
+into `ROADMAP.md`** (project owner, 2026-09-23, ratified, over moving deferrals
+into an item field). The owner agreed with the recommendation above as put,
+including what one reader carries. That covers `PL-B60Q`, which is folded into
+this build and closes with it. Because this is ratified, the falsifier above
+reopens it on ordinary evidence: another item filed about reading deferrals
+after this lands.
+
+`touches` now lists the decided route's footprint. `plan.py` is off it, since
+it reads no gate fact. `render.py` and `cli.py` are on it, for `bin/docket
+wave` printing each deferral's state and release. The tests and the docket
+README are on it too.
+

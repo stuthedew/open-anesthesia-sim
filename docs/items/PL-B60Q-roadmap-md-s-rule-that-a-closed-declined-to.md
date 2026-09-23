@@ -68,3 +68,12 @@ rule that asks for a hand-written mark. The check as filed would instead demand
 34 hand edits at once, and more on every release after. It is blocked rather
 than left `ready` so that no session builds the filed form while the decision
 is open. The re-scope is the same under either route `PL-J6HP` weighs.
+
+**Re-scoped 2026-09-23 by `PL-J6HP`'s decision** (project owner, ratified, over
+the doc_check advisory triage chose). This item is built on `PL-J6HP`'s branch
+and closes with it. `bin/docket wave` prints each current-gate deferral's state
+and release from the store, and v0.5.0's marking rule becomes a pointer to that
+output. No check that demands a hand-written mark is built. The `verify:` above
+belongs to the filed form, and that build rewrites it. The item stays blocked on
+`PL-J6HP`, so that no session starts it on its own.
+
