@@ -3,10 +3,11 @@ id: PL-TQN2
 title: An item filed more than 14 days ago is re-confirmed before it is worked: docket show prints what changed since it was filed, and the start mode drops or rewrites it when the problem is gone
 priority: P2
 effort: M
-status: ready
+status: blocked
 classes: infra
 feature: debt-aging
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, .claude/skills/docket/modes/start.md
+blocked-by: PL-1P5V
 added: 2026-09-22
 payoff: a session starting an old item sees at once whether the code it describes has moved or gone, so it confirms, rewrites or drops the item before spending itself on a problem that may no longer exist
 verify: grep -q 'def test_show_says_what_changed_since_an_item_was_filed' subprojects/docket/tests/test_cli.py
@@ -84,3 +85,5 @@ mechanism, and `CLAUDE.md` § "What this project is" pauses those while any open
 item carries `generator: live`. Start it once `bin/docket generators` marks no
 head "still generating" (`next` leaves out one in flight, `PL-CT07`), or on the
 project owner's explicit request, which lifts the pause for that request.
+`blocked-by` names `PL-1P5V`, the live head open on 2026-09-23, so that `next`
+stops offering this item while the pause holds.
