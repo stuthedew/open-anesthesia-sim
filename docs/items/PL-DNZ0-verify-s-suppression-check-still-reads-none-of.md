@@ -1,9 +1,15 @@
 ---
 id: PL-DNZ0
 title: verify's suppression check still reads none of pytest.importorskip, unittest.expectedFailure, self.skipTest, a raised unittest.SkipTest or a conftest collect_ignore, so 'no suppression added' reports none with any of them in the diff
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-22
+payoff: a session that silences a test with self.skipTest, a raised SkipTest, expectedFailure, importorskip, or a conftest collect_ignore or pytest_ignore_collect gets it put in front of a reviewer, instead of the clean 'no suppression added: none' an integrity check --self may never relax now prints
+verify: grep -q 'importorskip' subprojects/docket/tests/test_verify.py && grep -q 'expectedFailure' subprojects/docket/tests/test_verify.py && grep -q 'skipTest' subprojects/docket/tests/test_verify.py && grep -q 'SkipTest' subprojects/docket/tests/test_verify.py && grep -q 'collect_ignore' subprojects/docket/tests/test_verify.py && grep -q 'pytest_ignore_collect' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** After `PL-5B88`, `SUPPRESSIONS` in
@@ -53,5 +59,42 @@ and `-m` are too generic to match as text. If a remedy is wanted, it is adding
 those files to the defaults, which is a different file and a different decision
 from this item. This project has neither file.
 
-**Done when** each of the five forms is reported, a test pins each, and the
-replay count beside `SUPPRESSIONS` is updated.
+**Done when** each of the five forms, and the `pytest_ignore_collect` hook
+below, is reported, a test pins each, and the replay count beside
+`SUPPRESSIONS` is updated. The approach puts the cases in
+`test_a_pytest_mark_skip_is_a_suppression`'s parametrize list.
+
+**A sixth form, found at triage 2026-09-23.** `pytest_ignore_collect` is the
+hook form of `collect_ignore`: a `conftest.py` function that returns `True` to
+drop a path from collection. The docstring in the installed pytest 9.1.1 reads
+"Return ``True`` to ignore this path for collection." `collect_ignore` does not
+match it, because the words run in the other order, so the five entries above
+would still report `none` with it in the diff. It is distinctive, it appears
+nowhere on `origin/main`, and it is on no added line in the history. One more
+entry and one more case finish the family at the same size, and leaving it out
+would make it the next capture.
+
+**Reproduced 2026-09-23.** A scratch script called `is_suppression_line` from
+the shipped `verify.py` on one line of each form. It returned `False` for all
+five: `pytest.importorskip("numpy")`, `@unittest.expectedFailure`,
+`self.skipTest("why")`, `raise unittest.SkipTest("why")`, and
+`collect_ignore = [...]` in a `conftest.py`. The `@pytest.mark.skip` control
+returned `True`. `SUPPRESSIONS` holds six entries and none of the five. The
+history claim above holds: on `origin/main`, the names occur in `.py`, `.toml`,
+`.cfg` and `.ini` files only on the three comment lines `#910` put above
+`SUPPRESSIONS`, which `strip_non_code` blanks. None of the six names appears in
+`subprojects/docket/tests/test_verify.py` yet. `strip_non_code` also blanks
+quoted and backtick spans, so the new cases' strings are not read as
+suppressions on this item's own close-out. That holds only while a docstring
+names each form inside backticks, as the existing test's already does.
+
+**Generator check.** This is the unfinished tail of `PL-5B88`, a defect in what
+exists, and not an instance of `PL-G21K`'s mechanism filed after that head
+closed. It was split off in `PL-5B88`'s own close-out (`#910`, 917ecfaa), and
+`docket new` recorded it there as a recurrence. `PL-G21K`'s mechanism is false
+positives: intent read into diff text, so each fix uncovered the next
+misreading. Its ratified resolution kept a marker list on purpose. These forms
+are that list's known remainder, drawn from the frameworks' documented ways to
+skip, fail or ignore a test. That set is small and fixed, so the tail is
+bounded, not generating. It widens an existing list and an existing test, so
+the pause on new mechanisms does not reach it.

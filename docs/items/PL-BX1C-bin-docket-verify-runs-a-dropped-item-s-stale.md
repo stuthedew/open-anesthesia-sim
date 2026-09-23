@@ -104,3 +104,11 @@ of 170. That is a workaround applied by hand at each close-out, which is what
 this item exists to remove: the tool should read `status: dropped` and say so,
 rather than every session learning the same thing from a `REJECT`.
 
+
+**Recurred 2026-09-22 (`#922`, captured as `PL-23C7` and dropped into this
+item at triage 2026-09-23).** Dropping `PL-XQGH`, `PL-CNJH` and `PL-2DTK`
+REJECTed each on its own test-name `grep`, with every integrity check and
+`make check` green. Since `#929` added those three test names, the same audit
+would ACCEPT them, so a dropped item's command flips with unrelated work and
+proves nothing either way. 38 of 191 dropped items carried a `verify:` on
+2026-09-23, up from 29 of 170 on 2026-09-21.
