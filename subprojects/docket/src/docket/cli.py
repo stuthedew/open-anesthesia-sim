@@ -2928,7 +2928,7 @@ def cmd_wave(args: argparse.Namespace) -> int:
         frozenset(item.identifier for item in items),
         {item.identifier: item.blocked_by for item in items},
     )
-    print(render.format_wave(plan))
+    print(render.format_wave(plan, {item.identifier: item for item in items}))
     if (
         plan.step is None
         or plan.problems

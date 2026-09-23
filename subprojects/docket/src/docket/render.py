@@ -2188,13 +2188,16 @@ def _plan_header(scope: Scope | None, used: tuple[str, ...]) -> list[str]:
     return [f"Plan: {beat}.", f"      {'; '.join(glosses)}.", ""]
 
 
-def format_wave(plan: Wave) -> str:
+def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
     """Where the project stands on the cadence, and nothing about whether it should.
 
     A labelled line per fact and no more, because this is read at the top of a
     session beside the digest, not studied. Each one states a fact with the
     file it came from behind it; none of them says whether the plan is still
     the right plan.
+
+    `items` is the store by id, which the deferral lines join against; without
+    it every deferral reads as not in the store, which is what was given.
     """
     lines = [f"Version   {plan.version or 'unknown'}"]
     if plan.reserved:
@@ -2287,6 +2290,7 @@ def format_wave(plan: Wave) -> str:
                 f"          not in the store, so not countable: {', '.join(gate.unknown_ids)}"
             )
 
+    lines.extend(_deferral_lines(plan, items or {}))
     lines.extend(_scope_lines(plan))
     lines.append(f"Beat      {_beat_line(plan)}")
     if plan.problems:
@@ -2298,6 +2302,65 @@ def format_wave(plan: Wave) -> str:
         lines.append("The plan and the project disagree, so the beat above rests on a stale plan:")
         lines.extend(f"  {statement}" for statement in plan.stale)
     return "\n".join(lines)
+
+
+def _deferral_lines(plan: Wave, items: Mapping[str, Item]) -> list[str]:
+    """Each deferral the gate's section records, with its state and release from the store.
+
+    A deferral entry is never removed - that permanence is what "the gate is a
+    snapshot" means - so the list alone cannot say which of its entries are
+    still outstanding and which shipped. `ROADMAP.md` used to answer that with
+    a release name written by hand beside each closed entry, which copied the
+    `milestone:` field `docket release` stamps and was missed on 36 of 84
+    closed entries (`PL-B60Q`). The store already holds both halves, so they
+    are printed from it: an open entry's status, a shipped entry's release, a
+    dropped entry's date, and an entry done but not yet cut says so rather than
+    naming a release it has not had.
+
+    Only the entries' leading ids are listed (`MilestoneSection.deferral_entries`).
+    An id a group deferral names only in its prose is still read as disposed by
+    `tools/doc_check.py`, which reads the wider `deferred_ids`, but it has no
+    entry to carry a state beside.
+    """
+    gate = plan.gate
+    if gate is None or not gate.milestone.deferral_entries:
+        return []
+    entries = gate.milestone.deferral_entries
+    ids = list(dict.fromkeys(identifier for entry in entries for identifier in entry.ids))
+    still_open: list[str] = []
+    shipped: list[str] = []
+    unreleased: list[str] = []
+    dropped: list[str] = []
+    missing: list[str] = []
+    for identifier in ids:
+        item = items.get(identifier)
+        if item is None:
+            missing.append(identifier)
+        elif item.is_open:
+            still_open.append(f"{identifier} {item.status}")
+        elif item.status == "done" and item.milestone:
+            shipped.append(f"{identifier} in {item.milestone}")
+        elif item.status == "done":
+            unreleased.append(identifier)
+        else:
+            dropped.append(f"{identifier} on {item.closed}" if item.closed else identifier)
+
+    closed = len(shipped) + len(unreleased) + len(dropped)
+    lines = [
+        f"Deferred  the deferral subsections of {gate.milestone.label}, off the frozen list "
+        f"({_plural(len(entries), 'entry', 'entries')}, {_plural(len(ids), 'id', 'ids')})",
+        f"          {closed} closed, {len(still_open)} open",
+    ]
+    for label, named in (
+        ("open", still_open),
+        ("shipped", shipped),
+        ("done, not yet released", unreleased),
+        ("dropped", dropped),
+        ("not in the store, so no state to give", missing),
+    ):
+        if named:
+            lines.append(f"          {label}: {', '.join(named)}")
+    return lines
 
 
 def _scope_lines(plan: Wave) -> list[str]:
