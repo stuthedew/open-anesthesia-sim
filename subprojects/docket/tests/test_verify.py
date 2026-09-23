@@ -3274,6 +3274,88 @@ def test_a_done_item_with_no_command_and_no_reason_still_fails_hard(tmp_path: Pa
     assert not report.passed
 
 
+# A dropped item that still carries a command (`PL-BX1C`). The command names
+# work the drop says will not be done, so running it measured unrelated work:
+# three drops were REJECTed on test-name greps that another branch's tests
+# went on to satisfy. This one fails, and leaves a file behind if it runs at
+# all, so "not run" is observed rather than inferred from the verdict.
+LEAVES_A_MARK = "touch ran && false"
+
+
+def test_a_dropped_items_verify_command_is_not_run(tmp_path: Path) -> None:
+    """Printed and not run, so a failing one refuses nothing."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX drop it",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(
+        root, _item(status="dropped", verify=LEAVES_A_MARK), _config(), "HEAD~1", self_audit=True
+    )
+
+    command = _check(report, "`verify:` command passes")
+    assert command.advisory and not command.blocks
+    assert command.detail == LEAVES_A_MARK
+    assert command.lines == ("not run: a dropped item built nothing, so no command can prove it",)
+    assert not (root / "ran").exists()
+    # The other checks ran, the project's own included.
+    assert not report.stopped_early
+    assert _check(report, "no existing assertion removed").passed
+    assert _check(report, "the project's own checks pass").passed
+    assert report.passed
+
+
+def test_the_same_command_on_a_done_item_still_runs_and_refuses(tmp_path: Path) -> None:
+    """The skip is keyed on the drop, not on the command: closed `done`, it runs."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX do it",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(
+        root, _item(status="done", verify=LEAVES_A_MARK), _config(), "HEAD~1", self_audit=True
+    )
+
+    assert _check(report, "`verify:` command passes").blocks
+    assert (root / "ran").exists()
+    assert not report.passed
+
+
+def test_a_worker_dropping_its_own_item_is_still_refused_in_a_delegated_audit(
+    tmp_path: Path,
+) -> None:
+    """The skip grants a worker nothing, because the drop itself is refused.
+
+    The drop is read off the branch, since the close-out is what writes it, so
+    what stops a delegated worker dropping its way past a command it could not
+    make pass is `front_matter_check`, which refuses any edit above the fence
+    outside `--self`.
+    """
+    root = _repo(tmp_path)
+    item_file = "docs/items/PL-K7QX-do-the-thing.md"
+    _work(root, "commission", item_file, _stored("PL-K7QX", "Do the thing", verify=LEAVES_A_MARK))
+    _work(
+        root,
+        "PL-K7QX give up",
+        item_file,
+        _stored("PL-K7QX", "Do the thing", status="dropped", verify=LEAVES_A_MARK),
+    )
+
+    report = verify(root, _item(status="dropped", verify=LEAVES_A_MARK), _config(), "HEAD~1")
+
+    front_matter = _check(report, FRONT_MATTER)
+    assert front_matter.blocks
+    assert front_matter.detail == "status"
+    assert not (root / "ran").exists()
+    assert not report.passed
+
+
 # `verify:` commands that read past the tree (`PL-205P`). The two recorded
 # shapes are kept verbatim from the store, because the point of these is that
 # they are what was actually written rather than what a test author would

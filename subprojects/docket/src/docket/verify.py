@@ -2004,13 +2004,13 @@ def verify_item(
     the thing that measures it, and it may not skip the test.
 
     Two of the four have a **declared** exemption, which is not a relaxation
-    of that line but the reason it can stay absolute. Each turns on the item
-    as the *base* holds it - the commission - rather than on the branch, so
-    neither is anything a session can grant itself mid-work:
+    of that line but the reason it can stay absolute:
 
     - `falsifies:` names an assertion the item was commissioned to make
       untrue, and a matching removal folds out of the assertion check and is
-      printed beside it (`PL-K82G`). One commission cannot write the field in
+      printed beside it (`PL-K82G`). It turns on the item as the *base* holds
+      it - the commission - rather than on the branch, so it is nothing a
+      session can grant itself mid-work. One commission cannot write the field in
       advance and takes it from the branch instead: a `needs-decision` item's
       answer is the session's to make, so which assertions it falsifies is not
       known until it is made. There the *base's status* is the gate, which a
@@ -2019,7 +2019,14 @@ def verify_item(
       did (`PL-ZMGR`).
     - A `dropped` item, or one carrying `not-delegable:`, has no command to
       run by construction, and the command check reports which applies
-      (`PL-L4KX`).
+      (`PL-L4KX`). A dropped item that still carries one has it printed and
+      not run, since it names work the drop says will not be done
+      (`PL-BX1C`). Both are read off the *branch's* copy, and the drop has to
+      be: it is what the close-out writes. A delegated audit refuses either
+      written by the worker, through the front-matter check. `--self` only
+      reports it, which grants nothing for a drop - it claims no work - and
+      lets a `not-delegable:` line written beside a deleted command excuse it,
+      which `PL-KSV2` holds.
 
     Without them the absolute checks had no passing route on close-outs the
     project's own instructions prescribe, and a session meeting one could only
@@ -2093,7 +2100,9 @@ def _check_item(
     # Read off the store rather than taken on the session's word, and neither
     # state is free to reach for: a drop is a closure that owes a `reason` and a
     # `closed` date, and a `not-delegable` line is the thing that withholds the
-    # item from delegation in the first place.
+    # item from delegation in the first place. The store read is the branch's,
+    # though, so at close-out that second cost is nothing - which `PL-KSV2`
+    # holds.
     #
     # Advisory unconditionally rather than under `self_audit`, because what
     # excuses the command is a fact about the item and not about who is asking.
@@ -2292,6 +2301,32 @@ def _check_item(
     # An exempt item reached here with no command; the advisory above already
     # said which exemption applied, and there is nothing left to run.
     if not item.verify:
+        return report
+
+    # A dropped item that still carries a command has it printed and not run
+    # (`PL-BX1C`). The command names work the drop says will not be done, so
+    # its exit status measures unrelated work rather than this closure: the
+    # test-name greps `PL-23C7` met REJECTed three drops on 2026-09-22, and
+    # would have ACCEPTed them once `#929` added those names. Deleting the
+    # field at close-out was the workaround, applied by hand and not every
+    # time - 38 of 191 dropped items still carried one on 2026-09-23.
+    #
+    # Read off the branch's copy, like the exemption above, and it has to be:
+    # the drop is what the close-out writes, so the base still holds the item
+    # open. That grants a session nothing. A drop claims no work for a command
+    # to prove, the integrity checks above have already run over the diff, and
+    # a delegated audit refuses a worker who drops its own item, through the
+    # front-matter check.
+    if item.status == "dropped":
+        report.checks.append(
+            Check(
+                "`verify:` command passes",
+                False,
+                item.verify,
+                (f"not run: {exemption}",),
+                advisory=True,
+            )
+        )
         return report
 
     if os.environ.get(VERIFY_GUARD):
