@@ -3210,8 +3210,9 @@ roadmap_file = "ROADMAP.md"
 ### Where the settings are resolved from, and why the run says so
 
 From the root of the repository the store belongs to, walked up from the store
-itself — `_root` in `cli.py`, which `_load` and fifteen other derivations call.
-Not from wherever the command was run, and not from the store's parent: with no
+itself — `_root` in `cli.py`, run once per command by `_invocation`, whose
+`Invocation` every read then shares (`PL-NGBM`). Not from wherever the command
+was run, and not from the store's parent: with no
 `--items` those three are the same place, and with `--items docs/items` they are
 three different ones. A store in no checkout at all keeps the parent, there
 being no repository to walk up to.

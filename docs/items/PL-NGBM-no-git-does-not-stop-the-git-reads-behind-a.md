@@ -3,15 +3,16 @@ id: PL-NGBM
 title: --no-git does not stop the git reads behind a printed count, so docket digest --no-git shells out to git despite the flag saying branch detection is off
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: count-input-addressing
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-09-20
+closed: 2026-09-23
 payoff: --no-git either means what its help says or says what it means, so a session reading a digest count under the flag can tell which reads were skipped
 verify: grep -q 'def test_no_git_stops_every_git_read' subprojects/docket/tests/test_cli.py && grep -q 'def test_every_git_read_in_the_cli_takes_the_invocations_runner' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-T441, PL-WF3X, PL-N0MH, PL-3T2Q, PL-M6FY, PL-P757
-generator: live - cli.py builds no invocation object, so root, store prefix, config, runner and --no-git are re-derived per call site; each fix centralised one facet and filed the next, PL-WF3X re-entering 23h after PL-P757 (PL-KVDK)
+generator: spent - cli.py resolves one Invocation per command, the one place root, store, settings, the store's git prefix and the runner are derived; test_no_git_stops_every_git_read and test_every_git_read_in_the_cli_takes_the_invocations_runner fail any call site that goes round it
 ---
 
 **Problem.** `_flight`, `_stranded` and `_orphaned` each return an empty
@@ -131,3 +132,17 @@ it.
 liveness work, running on 2026-09-23) has changed `cli.py` and
 `test_cli.py`, `cmd_flight` among them. If its pull request has merged,
 bring the base in first. If not, proceed and expect to resolve against it.
+
+**Built, 2026-09-23 - where the design and the code differed.** `PL-7TVT`
+merged first (#924), and it added a third read to `cmd_flight`
+(`open_pull_requests`), so 23 sites built their own runner rather than 22.
+Five existing tests reached git through `_run`, which passes `--no-git`, and
+passed only because the flag was ignored; they moved to `_run_with_git`, and
+four `fetch_remote` stand-ins now take the `runner` keyword. `PL-3T2Q` was not
+proven by either of the two tests, so
+`test_a_store_at_the_repository_root_takes_the_empty_prefix` pins it. The
+behavioural test watches `Popen` alone, since `subprocess.run` constructs one.
+The runner test also refuses a site that constructs a runner of its own, which
+presence of `runner=` alone would have passed. `stranded` on a store git
+cannot address used to blame `--no-git`, and now says the store is not below
+the root.
