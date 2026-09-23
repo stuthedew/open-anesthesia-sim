@@ -56,6 +56,3 @@ brief shows the rule is decidable, and `CLAUDE.md` gives deterministic tooling
 standing approval over a prose line a release session would have to remember.
 `PL-Z891` then shipped in v0.5.4 (`#903`, merged while this pass was open).
 Its entry is still unmarked, so the check's first finding already exists.
-
-**A second instance, 2026-09-23.** `PL-8YXJ` closes on v0.6.0's deferral list
-(`deferred 2026-09-22`); its entry wants the release that ships it, at that cut.
