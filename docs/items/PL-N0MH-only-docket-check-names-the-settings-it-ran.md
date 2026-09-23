@@ -27,7 +27,14 @@ visible. These are not.
 
 **Where.** `cli._settings_source` already computes the answer and
 `checks.Report.settings` already carries it; only `render.format_check` prints
-it. The question is which of the other renderers should, and whether a line on
+it.
+
+**Since `PL-NGBM` (2026-09-23), the settings reach every command.** Each
+command resolves one `cli.Invocation`, whose `settings` field is the
+`SettingsSource` that `_settings_source` computes, so `next`, `digest`,
+`status`, `list` and `trend` already hold the answer and nothing is left to
+thread. What remains is the print decision in the paragraph above: which of
+those renderers says it, and whether a line on every `digest` earns its place. The question is which of the other renderers should, and whether a line on
 every `digest` — which the session-start hook prints — earns its place, or
 whether these commands should say it only when no config was found.
 
