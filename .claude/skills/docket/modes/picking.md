@@ -210,8 +210,9 @@ example: `docket next` gives it no gate sentence, while `ROADMAP.md`'s
 roadmap is silent — read the row for the step before saying either.
 
 `bin/docket wave` prints the gate's open entries by id and settles membership;
-`bin/docket show` prints no placement at all, so an item reached by name — the
-way the owner usually starts one — carries no relation until you go and look.
+`bin/docket show` prints the same relation on its `plan:` line (`PL-J790`), so
+an item reached by name — the way the owner usually starts one — carries it
+too, and "placed nowhere" there is the same fact about the same structures.
 
 **Say what the work buys, in consequence terms, before naming what it does**
 (project owner, 2026-09-19). An item's title is written for the session that

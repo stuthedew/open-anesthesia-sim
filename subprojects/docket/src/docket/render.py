@@ -69,7 +69,9 @@ from .vcs import (
     QueueEdit,
     RewriteReport,
     SettledReport,
+    SinceFiled,
     StrandedReport,
+    TouchedPath,
 )
 
 
@@ -1439,6 +1441,56 @@ def format_queue_edit(edit: QueueEdit, now: datetime) -> str:
         f"  Not work in flight - {edit.item_id} is startable - but a second edit to the\n"
         "  same file collides at merge, so land the smaller change first."
     )
+
+
+def format_since_filed(report: SinceFiled, today: date, recheck_after_days: int) -> str:
+    """How long an open item has waited, what its declared paths went through, and what now.
+
+    Facts, never a verdict (`PL-TQN2`). Each path says whether it is in the
+    tree and how many commits changed it since filing; whether the problem
+    went with a deleted file or only moved is the start mode's to decide,
+    because a script that guessed would print its guess as authoritatively as
+    its facts. The one instruction is the re-confirm line, and it fires on the
+    item being opened rather than as an advisory over the whole store: 79 open
+    items were past the line on 2026-09-23, and a list that long on every
+    `check` is one sessions learn to skim.
+    """
+    age = (today - report.filed).days
+    when = (
+        "today" if age == 0 else f"{_plural(age, 'day', 'days')} ago" if age > 0 else "after today"
+    )
+    head = f"  filed {report.filed.isoformat()}, {when}"
+    if not report.paths:
+        lines = [f"{head} - it declares no touches, so there is no path to compare"]
+    elif report.known:
+        lines = [f"{head} - since then, counting commits on or after that date (UTC):"]
+    else:
+        lines = [f"{head} - commits since then not read: {report.declined}"]
+    lines.extend(f"    {entry.path} - {_touched(entry)}" for entry in report.paths)
+    if age > recheck_after_days:
+        lines.append(
+            f"  RE-CONFIRM before starting: filed more than {recheck_after_days} days ago, so check"
+            " the brief below still holds against the tree - work it, rewrite it, or drop it"
+            " with the reason"
+        )
+    return "\n".join(lines)
+
+
+def _touched(entry: TouchedPath) -> str:
+    """One declared path's facts, worded so a missing file reads as a question."""
+    if entry.commits is None:
+        return "in the tree" if entry.exists else "not in the tree"
+    if entry.exists:
+        return (
+            f"changed by {_plural(entry.commits, 'commit', 'commits')}"
+            if entry.commits
+            else "unchanged"
+        )
+    if entry.deleted:
+        return "gone - a commit since then deleted it"
+    if entry.commits:
+        return f"not in the tree, after {_plural(entry.commits, 'commit', 'commits')} since then"
+    return "not in the tree, and untouched since - a file the work creates, or one gone before"
 
 
 def _staked(carrier: Carrier, now: datetime) -> str:

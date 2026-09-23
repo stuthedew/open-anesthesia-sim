@@ -5744,6 +5744,119 @@ def test_show_says_nothing_where_the_item_carries_no_payoff(
     assert "payoff" not in capsys.readouterr().out
 
 
+def test_show_says_what_changed_since_an_item_was_filed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An old item describes the tree it was filed against, so `show` says how that tree moved.
+
+    Real git, dated commits on both sides of `added:`, because the date
+    boundary and the deletion are what git has to be asked correctly for: a
+    change made before filing is not a change since, and a deleted path is
+    reported as gone rather than as unchanged (`PL-TQN2`).
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-B1B1-ready.md").write_text(
+        READY.replace(
+            "touches: a.py", "touches: kept.py, changed.py, gone.py, planned.py, é.py"
+        ).replace("added: 2026-08-01", "added: 2026-08-05")
+    )
+
+    def commit(when: str, message: str) -> None:
+        dated = os.environ | {"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when}
+        for args in (["add", "-A"], ["commit", "-qm", message]):
+            subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
+
+    subprocess.run(["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)], check=True)
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", name, value], cwd=root, check=True)
+    for name in ("kept.py", "changed.py", "gone.py", "é.py"):
+        (root / name).write_text("one\n")
+    commit("2026-08-01T12:00:00+00:00", "base")
+    (root / "changed.py").write_text("two\n")
+    commit("2026-08-02T12:00:00+00:00", "a change before the item was filed")
+    (root / "changed.py").write_text("three\n")
+    (root / "é.py").write_text("two\n")
+    commit("2026-08-15T12:00:00+00:00", "a change after it")
+    (root / "gone.py").unlink()
+    commit("2026-08-16T12:00:00+00:00", "delete a path the item names")
+
+    assert _run_with_git("show", "PL-B1B1", "--items", str(root / "items")) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert (
+        "  filed 2026-08-05, 19 days ago - since then,"
+        " counting commits on or after that date (UTC):" in lines
+    )
+    assert "    kept.py - unchanged" in lines
+    assert "    changed.py - changed by 1 commit" in lines
+    # git quotes this name unless asked for its bytes, and a quoted name matches nothing.
+    assert "    é.py - changed by 1 commit" in lines
+    assert "    gone.py - gone - a commit since then deleted it" in lines
+    assert (
+        "    planned.py - not in the tree, and untouched since -"
+        " a file the work creates, or one gone before" in lines
+    )
+    assert any(
+        line.startswith("  RE-CONFIRM before starting: filed more than 14 days ago")
+        for line in lines
+    )
+
+
+def test_show_asks_for_re_confirmation_only_past_the_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Day 14 is inside the line and day 15 past it, and the setting moves it."""
+    store = _store(tmp_path, READY.replace("added: 2026-08-01", "added: 2026-08-10"))
+
+    for today, fires in (("2026-08-24", False), ("2026-08-25", True)):
+        assert main(["show", "PL-B1B1", "--items", str(store), "--no-git", "--today", today]) == 0
+        assert ("RE-CONFIRM before starting" in capsys.readouterr().out) is fires
+
+    (tmp_path / "docket.toml").write_text("[docket]\nrecheck_after_days = 30\n", encoding="utf-8")
+    assert (
+        main(["show", "PL-B1B1", "--items", str(store), "--no-git", "--today", "2026-08-25"]) == 0
+    )
+    assert "RE-CONFIRM" not in capsys.readouterr().out
+
+
+def test_show_says_the_commits_were_not_read_rather_than_that_nothing_changed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Under `--no-git` the tree still answers whether a path is there; the history answers nothing.
+
+    "Unchanged" there would be a claim about a read that was never made, and
+    it is the one reading that tells a session the old brief is still safe.
+    """
+    store = _store(tmp_path, READY.replace("touches: a.py", "touches: a.py, b.py"))
+    (tmp_path / "a.py").write_text("here\n")
+
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert (
+        "  filed 2026-08-01, 23 days ago - commits since then not read: `--no-git` asks git nothing"
+        in lines
+    )
+    assert "    a.py - in the tree" in lines
+    assert "    b.py - not in the tree" in lines
+    assert not any("unchanged" in line or "0 commits" in line for line in lines)
+
+
+def test_show_says_an_undated_item_has_no_known_age_and_a_closed_one_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """No re-confirm line has to mean "young", so an undated item says its age is unknown."""
+    store = _store(tmp_path, READY.replace("added: 2026-08-01\n", ""))
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+    assert "filed: no `added:` date, so its age is not known" in capsys.readouterr().out
+
+    (tmp_path / "closed").mkdir()
+    closed = _store(tmp_path / "closed", DONE)
+    assert _run("show", "PL-D1D1", "--items", str(closed)) == 0
+    assert "filed" not in capsys.readouterr().out
+
+
 def test_set_writes_a_payoff(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """The field is written by command, like every other field triage answers."""
     store = _store(tmp_path, READY)

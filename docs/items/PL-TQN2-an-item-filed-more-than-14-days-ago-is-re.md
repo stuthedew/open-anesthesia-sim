@@ -3,12 +3,13 @@ id: PL-TQN2
 title: An item filed more than 14 days ago is re-confirmed before it is worked: docket show prints what changed since it was filed, and the start mode drops or rewrites it when the problem is gone
 priority: P2
 effort: M
-status: blocked
+status: done
 classes: infra
 feature: debt-aging
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, .claude/skills/docket/modes/start.md
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, .claude/skills/docket/modes/start.md, .claude/skills/docket/modes/picking.md
 blocked-by: PL-1P5V
 added: 2026-09-22
+closed: 2026-09-23
 payoff: a session starting an old item sees at once whether the code it describes has moved or gone, so it confirms, rewrites or drops the item before spending itself on a problem that may no longer exist
 verify: grep -q 'def test_show_says_what_changed_since_an_item_was_filed' subprojects/docket/tests/test_cli.py
 ---
@@ -87,3 +88,32 @@ head "still generating" (`next` leaves out one in flight, `PL-CT07`), or on the
 project owner's explicit request, which lifts the pause for that request.
 `blocked-by` names `PL-1P5V`, the live head open on 2026-09-23, so that `next`
 stops offering this item while the pause holds.
+
+**Started on the project owner's request (2026-09-23), which lifted the pause
+for this item alone.** The owner named the item to a session while
+`bin/docket generators` still marked `PL-MB2W`, `PL-B8HZ`, `PL-HMZZ` and
+`PL-QHCW` "still generating"; `PL-1P5V` itself had closed. Nothing else the
+pause holds was built with it (`PL-6Q9L`).
+
+**What landed.** `vcs.since_filed` is the one read: `git log --since` from
+`HEAD` over the declared paths, without merges or rename detection, from the
+first instant of `added:` in UTC. `vcs.in_tree` is the existence test, read
+from the filesystem so it answers under `--no-git`; `PL-8JY7` reuses it.
+`SinceFiled` carries `declined`, so a count nobody read prints as "not read"
+(under `--no-git`, in a shallow clone, or on any git silence) and never as
+"unchanged". `render.format_since_filed` prints the block last before the
+brief, and `recheck_after_days` (default 14) adds the `RE-CONFIRM` line on
+"more than 14 days": day 14 is inside the line, day 15 past it. An item with
+no `added:` says its age is unknown, because an absent re-confirm line reads as
+"young". The judgment half is in `.claude/skills/docket/modes/start.md`, and
+the README's § "An old item is re-confirmed before it is worked" documents
+both halves.
+
+**`PL-027` closed before this landed.** It was dropped on 2026-09-22 as mooted
+by the Qt port, after a check that its question had not moved to the Qt view.
+That is the step this item writes down, done by hand the day this was filed,
+and its reason is the model for a drop's recorded evidence. The case run
+instead was `PL-024` (document what the venous pool does to early mixed-venous
+readings), the oldest open item at 30 days: `docs/MODEL.md` changed by 152
+commits since filing and `src/anesthesia_sim/app/dashboard_frame.py` by 16, with the
+re-confirm line firing. 79 open items were past the line on 2026-09-23.

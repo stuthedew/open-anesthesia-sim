@@ -3695,6 +3695,154 @@ def is_shallow(root: Path, *, runner: Runner | None = None) -> bool | None:
     return None
 
 
+def in_tree(root: Path, path: str) -> bool:
+    """Whether a declared `touches` path is in the working tree now, as a file or a directory.
+
+    Read from the filesystem rather than from git, so it answers under
+    `--no-git` and in a checkout with no history: the tree on disk is what a
+    session is about to work against. `PL-8JY7` asks the same question of every
+    open item's `touches` in `docket check`, and reuses this rather than
+    spelling the test again.
+    """
+    return (root / path).exists()
+
+
+@dataclass(frozen=True)
+class TouchedPath:
+    """One declared `touches` path, and what it has been through since its item was filed."""
+
+    path: str
+    #: In the working tree now, from `in_tree`.
+    exists: bool
+    #: Commits on or after the filing date that changed it, or `None` where the
+    #: history was not read - never `0` for a question nobody asked.
+    commits: int | None = None
+    #: Gone from the tree, and one of those commits is what deleted it.
+    deleted: bool = False
+
+
+@dataclass(frozen=True)
+class SinceFiled:
+    """What an open item's declared paths went through after it was filed, or why that is unread.
+
+    The facts half of re-confirming an old item before it is worked
+    (`PL-TQN2`), and only the facts. Whether the problem the brief describes
+    still exists is a reading of the brief against the tree, which is the start
+    mode's judgment: a deleted file can take its problem with it or only move
+    it, and 20-50% of self-admitted-debt removals turned out to be the comment
+    leaving with its code rather than the debt being paid (Zampetti,
+    Serebrenik and Di Penta, MSR 2018, doi:10.1145/3196398.3196423).
+
+    A type rather than the tuple because `declined` has to travel with it: a
+    count of zero and a count nobody read would otherwise print alike, and the
+    first tells a session the code has not moved.
+    """
+
+    filed: date
+    paths: tuple[TouchedPath, ...] = ()
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+    @classmethod
+    def unread(cls, root: Path, touches: Sequence[str], filed: date, reason: str) -> SinceFiled:
+        """What the tree alone answers - whether each path is there - and why git was not asked."""
+        return cls(filed, tuple(TouchedPath(p, in_tree(root, p)) for p in touches), declined=reason)
+
+
+def since_filed(
+    root: Path, touches: Sequence[str], filed: date, *, runner: Runner | None = None
+) -> SinceFiled:
+    """How many commits on or after `filed` changed each declared path, in one `git log` read.
+
+    Counted from `HEAD`, the tree the session is about to work in, and from
+    the first instant of the filing date in UTC - the date `docket new` writes
+    carries no time, so a commit made earlier on the filing day counts as
+    after it. That errs towards "this has moved", which costs one look; the
+    other way would hide a same-day change from the reader it exists for.
+
+    Each flag is there for one misreading. `--no-merges` keeps a merge from
+    counting the work it brought in a second time. `--no-renames` reports a
+    renamed path as deleted under its old name, which is what it is to a brief
+    that names the old one. `--literal-pathspecs` keeps a path from being read
+    as a glob, so git and `in_tree` answer about the same path. `-z` returns
+    each path as its bytes: without it git quotes a name it thinks unusual,
+    `é.py` arriving as `"\\303\\251.py"` (measured 2026-09-23), which matches no
+    declared path and would print "unchanged" over a file changed every day.
+
+    **A shallow clone declines rather than counting**, for the reason
+    `merged_pull_requests` gives: the commits it is missing are the oldest, and
+    this read is about the oldest items. So would a git that cannot say whether
+    the history is complete, and any question git did not answer.
+    """
+    if not touches:
+        return SinceFiled(filed)
+    run = _Silences(runner or _run_git)
+    shallow = is_shallow(root, runner=run)
+    if shallow is True:
+        return SinceFiled.unread(
+            root,
+            touches,
+            filed,
+            "this clone is shallow, so the commits it is missing may be the ones since filing",
+        )
+    if shallow is None:
+        return SinceFiled.unread(
+            root, touches, filed, "git cannot say whether this checkout's history is complete"
+        )
+    text = run(
+        [
+            "--literal-pathspecs",
+            "log",
+            "--no-merges",
+            "--no-renames",
+            f"--since={filed.isoformat()} 00:00:00 +0000",
+            "--format=%x1f%H",
+            "-z",
+            "--name-status",
+            "HEAD",
+            "--",
+            *touches,
+        ],
+        root,
+    )
+    if run.unanswered:
+        return SinceFiled.unread(root, touches, filed, run.reason)
+    bare = {path: path.rstrip("/") for path in touches}
+    counts: Counter[str] = Counter()
+    deleted: set[str] = set()
+    in_commit: set[str] = set()
+    status = ""
+    # NUL-separated: `\x1f<hash>`, then status and path in turn, the first
+    # status carrying the newline that ended the commit's own line.
+    for token in text.split("\0"):
+        if token.startswith("\x1f"):
+            # The commit before is complete. Counted once per commit, however
+            # many files beneath one declared directory it changed.
+            counts.update(in_commit)
+            in_commit, status = set(), ""
+        elif not status:
+            status = token.lstrip("\n")
+        else:
+            for path, prefix in bare.items():
+                if token == prefix or token.startswith(prefix + "/"):
+                    in_commit.add(path)
+                    if status == "D":
+                        deleted.add(path)
+            status = ""
+    counts.update(in_commit)
+    present = {path: in_tree(root, path) for path in touches}
+    return SinceFiled(
+        filed,
+        tuple(
+            TouchedPath(path, present[path], counts[path], path in deleted and not present[path])
+            for path in touches
+        ),
+    )
+
+
 @dataclass(frozen=True)
 class BaseRelease:
     """What the default branch already records as shipped, or that it is unread.

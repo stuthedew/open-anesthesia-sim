@@ -193,6 +193,37 @@ nothing at all about a file this item touches without having declared it —
 which is why filling `touches` in as work begins, below, is what makes the next
 session's answer true.
 
+**Then, where `show` printed `RE-CONFIRM`, re-confirm the item before writing
+any code** (`PL-TQN2`). An item describes the tree as it stood on its `added:`
+date, and this tree moves fast. The interface moved from Flet to Qt at
+v0.4.26, and an item filed before that can describe code that is gone. `show`
+has already printed the facts: for each declared path, whether it is in the
+tree and how many commits changed it since filing. Read the brief against the
+tree as it is now, and take one of three outcomes:
+
+- **Still true.** Work it as written.
+- **Changed shape.** The problem is real, but the brief places it wrongly: a
+  moved file, a renamed function, a narrower or wider scope. Rewrite the brief
+  first, `touches` included, in a commit leading with the id, then work it.
+- **Gone.** Drop it with the evidence as the reason: `bin/docket set <id>
+  --status dropped --reason "..." --closed DATE`, where the reason says what
+  was checked and what showed the problem no longer exists. A dropped item
+  clears as surely as a fixed one; `ROADMAP.md` § "What counts" counts both.
+
+**A touched path that is no longer there is a question, not the answer.** A
+problem can move with its code rather than leave with it. In five Java
+projects, 20-50% of self-admitted-debt removals turned out to be the comment
+deleted along with its class or method, not the debt paid (Zampetti,
+Serebrenik and Di Penta, MSR 2018, doi:10.1145/3196398.3196423). So ask whether
+the *problem* is gone, not the file: follow the code first, with `git log
+--follow` on the old path or a search for the function the brief names. A path
+reading `not in the tree, and untouched since` is most often a file the work
+will create, and says nothing either way.
+
+The session starting the item decides this and says what it decided in the
+reply. An item's disposition is the session's call under
+`.claude/rules/instruction-writing.md` rule 14, not a question for the owner.
+
 Then decide where the work happens and act on it — do not ask. Continue here when
 this session's context is an asset (short, already about this item, just
 diagnosed it). Start fresh when it is a liability (already completed
