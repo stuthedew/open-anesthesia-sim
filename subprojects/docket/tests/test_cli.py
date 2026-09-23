@@ -985,7 +985,12 @@ def test_a_changed_file_list_git_does_not_answer_declines_the_replay(
 
     monkeypatch.setattr(cli, "changed_paths", unanswered)
 
-    assert _run("check", "--verify", "--verify-base", base, "--items", str(root / "items")) == 0
+    # With git, because the read being failed is a git read: `_run`'s
+    # `--no-git` declines the scoped replay before `changed_paths` is asked
+    # (`PL-NGBM`), which prints its own decline and passes the first two
+    # assertions below having exercised nothing (`PL-KH3Q`).
+    store = str(root / "items")
+    assert _run_with_git("check", "--verify", "--verify-base", base, "--items", store) == 0
     printed = capsys.readouterr().out
     assert not (root / "ran.marker").exists()
     assert "not checked" in printed
