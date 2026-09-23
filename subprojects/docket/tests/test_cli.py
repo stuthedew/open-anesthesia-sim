@@ -17,6 +17,7 @@ import inspect
 import os
 import re
 import subprocess
+import sys
 from collections.abc import Callable
 from dataclasses import replace as with_fields
 from pathlib import Path
@@ -1118,6 +1119,44 @@ def test_the_flight_cache_does_not_outlive_one_invocation(
     main([*ran, "next"])
 
     assert len(calls) == 2
+
+
+@pytest.mark.parametrize("unbuffered", [True, False], ids=["unbuffered", "buffered"])
+def test_a_reader_that_stops_early_ends_the_command_quietly(
+    tmp_path: Path, unbuffered: bool
+) -> None:
+    """`bin/docket next | head -3` must not end in a traceback (`PL-VJPJ`).
+
+    Driven as a real process on a real pipe, because each half of the defect
+    lived where no in-process call reaches. Unbuffered, which is how these
+    sessions run Python, the first `print` after the reader went raised a
+    traceback. Buffered, as in a terminal, nothing raised until the
+    interpreter's own flush at exit, which printed "Exception ignored" and
+    changed the status to 120. The read end is closed before the command
+    starts, so the first write fails on every run rather than whenever `head`
+    happens to exit, and the status proves that write was attempted at all.
+    """
+    argv = ["next", "--items", str(_store(tmp_path, READY)), "--no-git", "--today", "2026-08-24"]
+    env = {name: value for name, value in os.environ.items() if name != "PYTHONUNBUFFERED"}
+    env["PYTHONPATH"] = str(Path(cli.__file__).resolve().parents[1])
+    if unbuffered:
+        env["PYTHONUNBUFFERED"] = "1"
+    read_end, write_end = os.pipe()
+    os.close(read_end)
+    try:
+        done = subprocess.run(
+            [sys.executable, "-m", "docket", *argv],
+            stdout=write_end,
+            stderr=subprocess.PIPE,
+            env=env,
+            text=True,
+            check=False,
+        )
+    finally:
+        os.close(write_end)
+
+    assert done.stderr == ""
+    assert done.returncode == cli.READER_CLOSED
 
 
 def test_concurrent_never_certifies_a_pair_as_safe(

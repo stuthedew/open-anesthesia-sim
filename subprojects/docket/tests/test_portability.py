@@ -40,6 +40,7 @@ ALLOWED_IMPORTS = {
     "shlex",
     "statistics",
     "subprocess",
+    "sys",
     "tempfile",
     "time",
     "tomllib",
