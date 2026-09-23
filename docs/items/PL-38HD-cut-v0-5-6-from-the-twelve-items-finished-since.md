@@ -81,6 +81,15 @@ its release commit `c903f738`, and `bin/docket release` fetched and did not
 refuse. The mechanical half was pushed first, as `39235c6e`, so a second cut
 from any session is refused from that push on.
 
+**`#930` merged after the cut** (`PL-NGBM`, `PL-M6FY`, `PL-3T2Q`: one
+`Invocation` per `bin/docket` command, so `--no-git` asks git nothing), touching
+only `subprojects/docket/` and item files, so every tree-identity claim above
+holds at the tag. `origin/main` was merged into this branch at the project
+owner's request on 2026-09-23 ("refresh main"), cleanly. It ships as cut: the
+three are described in the next release, and v0.5.6's notes take the
+`### also inside this tag's span` pointer at that cut, which nothing prompts
+until the next tag is pushed (`PL-JLYG`).
+
 Anything merging between this cut and the tag sits inside the `v0.5.6` tag
 without being named in its notes and takes the pointer under the next release,
 on `PL-V065`'s ratified precedent (project owner, 2026-09-21). This item

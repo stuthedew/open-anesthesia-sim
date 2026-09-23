@@ -369,10 +369,15 @@ was taken and before its tag, and `#919` (`PL-7TVT`'s start rule) and `#922`
 (`PL-4W2L`'s decision) merged in the same window. Each is described here rather
 than in v0.5.5's notes, which now carry the `### also inside this tag's span`
 pointer to this release for the two closures, as described under **Tags**.
-Whatever merges between this cut and its tag is handled the same way, on
-`PL-V065`'s precedent (project owner, 2026-09-21, ratified, over holding the
-release while sibling sessions merge and re-running `make release` under the
-same number).
+This cut is handled the same way, on `PL-V065`'s precedent (project owner,
+2026-09-21, ratified, over holding the release while sibling sessions merge and
+re-running `make release` under the same number): `#930` (`PL-NGBM`, `PL-M6FY`
+and `PL-3T2Q`, one `Invocation` per `bin/docket` command so `--no-git` asks git
+nothing) merged after it was taken, touching only `subprojects/docket/` and item
+files. It ships inside the v0.5.6 tag, with anything else merging before that
+tag, is described in the next release, and takes a pointer in v0.5.6's notes at
+that release's cut - which nothing prompts until the next tag exists
+(`PL-JLYG`).
 
 ## The plan
 
