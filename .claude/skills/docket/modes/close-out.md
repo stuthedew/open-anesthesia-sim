@@ -153,9 +153,10 @@ page and decides which file a session reads.
      (`PL-L4KX`). A dropped item that still carries a `verify:` has it printed
      and not run, so there is no need to delete one when dropping (`PL-BX1C`).
      This exemption is read off your branch, since the drop is what the
-     close-out writes, so under `--self` a `not-delegable:` line added beside
-     a deleted command would excuse it. That is the defect `PL-KSV2` holds,
-     and the paragraph below applies to it.
+     close-out writes - but a `not-delegable:` reason excuses only a command
+     the base never commissioned. Deleting the base's `verify:` and writing a
+     reason beside it is refused (`PL-KSV2`), and the paragraph below applies:
+     restore the command, or give the one that proves the work.
 
    **So a `REJECT` here is still a `REJECT`.** Meeting one on work you believe
    correct means the commission did not anticipate it: say so to the project

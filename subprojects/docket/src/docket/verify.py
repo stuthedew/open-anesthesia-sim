@@ -1737,24 +1737,27 @@ def _recurrences_grew(added: list[str], removed: list[str]) -> bool:
 class Commission:
     """What the *base* holds for an item - the work as it was commissioned.
 
-    Two readings and a reason neither could be taken. `falsifies` is the
+    Three readings and a reason none could be taken. `falsifies` is the
     declared exemption to "no existing assertion removed"; `status` rides
     beside it because it is what says whose the decision was, and it is read
     from the same place for the same reason - a session can set its own item's
-    status on its branch, and cannot set the base's (`PL-ZMGR`).
+    status on its branch, and cannot set the base's (`PL-ZMGR`). `verify` is
+    the command the base commissioned, which a `not-delegable:` reason on the
+    branch cannot excuse (`PL-KSV2`).
     """
 
     falsifies: str = ""
     status: str = ""
-    #: Why nothing could be read. Non-empty only where the two above are empty
-    #: *because nothing was looked at*, which is the distinction a caller
+    verify: str = ""
+    #: Why nothing could be read. Non-empty only where the three above are
+    #: empty *because nothing was looked at*, which is the distinction a caller
     #: needs: an empty `falsifies` otherwise means "read it, it declares
     #: nothing".
     unread: str = ""
 
 
 def commissioned_falsification(root: Path, base: str, items_dir: str, item: Item) -> Commission:
-    """The `falsifies:` declaration the *base* holds for this item, and the status beside it.
+    """The `falsifies:` declaration the *base* holds for this item, and the status and command too.
 
     `unread` is non-empty only where nothing could be looked at, so an empty
     `Commission` carrying no `unread` means the commission was read and
@@ -1781,7 +1784,9 @@ def commissioned_falsification(root: Path, base: str, items_dir: str, item: Item
     Its `status` comes back empty for the same reason, which is also what stops
     an item captured *and* closed on one branch from reaching the exemption
     `self_declared_falsification` grants: there is no base copy to have left
-    the decision to it.
+    the decision to it. Its `verify` comes back empty too, and there the
+    emptiness is what lets that same item close on a `not-delegable:` reason:
+    no command was commissioned for the branch to have removed.
     """
     if not item.path:
         return Commission(unread="the item names no file, so no commission could be read")
@@ -1796,7 +1801,9 @@ def commissioned_falsification(root: Path, base: str, items_dir: str, item: Item
         return Commission(unread=f"{base}:{items_dir}/{was} could not be read")
     fields, _ = parse_front_matter(before)
     return Commission(
-        falsifies=fields.get("falsifies", "").strip(), status=fields.get("status", "").strip()
+        falsifies=fields.get("falsifies", "").strip(),
+        status=fields.get("status", "").strip(),
+        verify=fields.get("verify", "").strip(),
     )
 
 
@@ -2023,10 +2030,11 @@ def verify_item(
       not run, since it names work the drop says will not be done
       (`PL-BX1C`). Both are read off the *branch's* copy, and the drop has to
       be: it is what the close-out writes. A delegated audit refuses either
-      written by the worker, through the front-matter check. `--self` only
-      reports it, which grants nothing for a drop - it claims no work - and
-      lets a `not-delegable:` line written beside a deleted command excuse it,
-      which `PL-KSV2` holds.
+      written by the worker, through the front-matter check; `--self` only
+      reports that, which grants nothing for a drop - it claims no work. The
+      reason is held to the base's copy as well: it excuses a command the
+      base never commissioned, never one the branch deleted, so it cannot be
+      written beside the deletion to skip the test (`PL-KSV2`).
 
     Without them the absolute checks had no passing route on close-outs the
     project's own instructions prescribe, and a session meeting one could only
@@ -2100,23 +2108,47 @@ def _check_item(
     # Read off the store rather than taken on the session's word, and neither
     # state is free to reach for: a drop is a closure that owes a `reason` and a
     # `closed` date, and a `not-delegable` line is the thing that withholds the
-    # item from delegation in the first place. The store read is the branch's,
-    # though, so at close-out that second cost is nothing - which `PL-KSV2`
-    # holds.
+    # item from delegation in the first place. Both are read off the branch's
+    # copy, since the close-out is what writes them, so the reason is also held
+    # to the base's: it excuses a command the commission never held, and never
+    # one the branch removed. Read off the branch alone, it let a close-out
+    # delete its failing command, write a reason beside the deletion and ACCEPT
+    # with the command never run - and a reason can say who should do the work
+    # rather than that nothing can prove it (`PL-KSV2`). A base that cannot be
+    # read excuses nothing, since the exemption turns on what it holds. The
+    # drop needs no such hold: it claims no work for a command to prove.
     #
     # Advisory unconditionally rather than under `self_audit`, because what
     # excuses the command is a fact about the item and not about who is asking.
     # And it does not stop early: that no command was recorded says nothing
     # about whether the diff stayed inside `touches` or whether an assertion
     # went missing, which is the half a hard stop was throwing away.
-    exemption = ""
+    commission = commissioned_falsification(root, base, config.items_dir, item)
+    exemption, missing = "", "none recorded"
+    unexcused: tuple[str, ...] = ()
     if item.status == "dropped":
         exemption = "a dropped item built nothing, so no command can prove it"
+    elif item.not_delegable and commission.unread:
+        missing += (
+            f": the `not-delegable:` reason excuses a command only where {base} "
+            f"commissioned none, and {commission.unread}"
+        )
+    elif item.not_delegable and commission.verify:
+        missing += (
+            f": this branch deleted the command {base} commissions, so the "
+            "`not-delegable:` reason beside the deletion is the branch's own word "
+            "for skipping it"
+        )
+        unexcused = (
+            f"{base} commissions: {commission.verify}",
+            "restore it, or give the command that proves the work; where none can, "
+            f"that is {base}'s copy to say, not this branch's",
+        )
     elif item.not_delegable:
         exemption = f"the item records why no command can prove it - {item.not_delegable}"
     if not item.verify:
         if not exemption:
-            report.checks.append(Check("has a `verify:` command", False, "none recorded"))
+            report.checks.append(Check("has a `verify:` command", False, missing, unexcused))
             report.stopped_early = True
             return report
         report.checks.append(
@@ -2245,7 +2277,6 @@ def _check_item(
     # assertion the item was commissioned to *falsify* is declared, in the
     # item, before the work (`PL-K82G`).
     audit = removed_assertions(root, base, commits, removed)
-    commission = commissioned_falsification(root, base, config.items_dir, item)
     unread = commission.unread
     # The one declaration read from the branch rather than from the base, and
     # only where the base's own copy left the answer to this session
