@@ -524,31 +524,40 @@ were open, startable, and hidden from every session for it. So the paths are
 read alongside the subject, from the same `git log` rather than a `git show`
 per commit, and a commit that only wrote to the queue stakes no claim.
 
-**An item whose own work *is* a queue edit is the exception, and it is read
-from the item rather than from the commit.** A release tag item, a triage pass
-and a stranded recovery all deliver nothing but a write to `docs/items/`, so
-the path test excludes the very work it was built to find. `_queue_only_work`
-asks the default branch what each edited item declares in `touches` and
-promotes the ones that never leave the queue; an item the base does not hold at
-all is a capture creating its own file, and is not promoted. Measured against
-the eight false marks above, not one declares `touches` inside the queue alone,
-so the fix costs none of them back. Measured live on 2026-09-14, `PL-XR8K` was
-being closed on a branch and appeared in no reading of the report.
+**Three exceptions, each read from the item rather than from the commit, and
+all three from one shape of commit.** The walk records a queue-only commit that
+leads with an id *and* changes that id's own file, and `_own_edit_claims`
+promotes it where the item says the queue edit is the work. The conjunction is
+what keeps out the other items a pass writes: until 2026-09-22 the first
+exception below was read off any edit to an item's file, so `PL-0HPV`'s
+`verify:` reorder, led by `PL-0HPV`, claimed four queue-only items it merely
+passed through, none of them named by any subject, until its pull request
+merged (`PL-3W3P`). `flight` and `precedence` read the same three through the
+same helper, so the verdict `show` prints names every carrier the mark does.
 
-**An item at `needs-decision` is the second exception, read the same way.**
-Its next step is a decision, and a decision is recorded into the item file, so
-a design round can run its whole course without a diff outside the queue — and
-on this project it often does, because implementing the decision is separate
-work. Observed 2026-09-19: `PL-BHVM`, the top of the whole queue, had three
-commits pushed with every subject led by the id and a live session on the
-branch, and `show` called it startable; the mark appeared only when the round
-happened to edit `ROADMAP.md`. So the walk records a queue-only commit that
-leads with an id *and* changes that id's own file, and `_deciding_on_base`
-promotes it where the default branch holds the item at `needs-decision`
-(`PL-VYSP`). The conjunction is deliberate: a round re-points its cluster,
-writing a dozen other items' files, and those stay file edits rather than
-becoming claims on items other sessions may be working. Counted before it was
-adopted, over the 1,006 commits then on `origin/main`: the rule the item itself
+**An item whose own work *is* a queue edit is the first.** A release tag item,
+a triage pass and a stranded recovery all deliver nothing but a write to
+`docs/items/`, so the path test excludes the very work it was built to find.
+`_queue_only_work` asks the default branch what the item declares in `touches`
+and promotes it where that never leaves the queue; an item the base does not
+hold at all is a capture creating its own file, and is not promoted. Measured
+against the eight false marks above, not one declares `touches` inside the
+queue alone, so the fix costs none of them back. Measured live on 2026-09-14,
+`PL-XR8K` was being closed on a branch and appeared in no reading of the report.
+
+**An item at `needs-decision` is the second.** Its next step is a decision,
+and a decision is recorded into the item file, so a design round can run its
+whole course without a diff outside the queue — and on this project it often
+does, because implementing the decision is separate work. Observed 2026-09-19:
+`PL-BHVM`, the top of the whole queue, had three commits pushed with every
+subject led by the id and a live session on the branch, and `show` called it
+startable; the mark appeared only when the round happened to edit
+`ROADMAP.md`. So `_deciding_on_base` promotes the shape where the default
+branch holds the item at `needs-decision` (`PL-VYSP`). The conjunction is
+deliberate: a round re-points its cluster, writing a dozen other items' files,
+and those stay file edits rather than becoming claims on items other sessions
+may be working. Counted before it was adopted, over the 1,006 commits then on
+`origin/main`: the rule the item itself
 proposed — any queue-only commit changing the leading id's own file — would
 have marked 316 (commit, id) pairs, 81 of them captures creating the file and
 120 more triage passes; the status test left 23, of which 21 were the item's
@@ -558,11 +567,24 @@ route and was triaged to `needs-decision` there leaves a branch that also leads
 with the id and changes its own file, so the commit's own parent is asked
 whether it held the file — a round writes into a file that exists, a capture
 creates one. Three such branches, all eleven days old, were promoted the first
-time the status test ran live. `precedence` reads the same commits under the
-same two tests, so two design rounds on one item get a verdict.
+time the status test ran live. Two design rounds on one item therefore get a
+verdict.
+
+**An item the branch closes while the default branch holds it open is the
+third.** A grooming pass disposes of items it never claimed: `#914` dropped
+`PL-027`, `PL-043` and `PL-ZBR6` in queue-only commits leading with each id,
+and `docket next` went on offering all three, to sessions that would have
+started work another had already decided to drop (`PL-8FJK`). The branch's
+*tip* is read rather than the commit, so a branch that dropped an item and then
+reopened it claims nothing, and a closure the base already records - after the
+squash, or by another route - is not open to be closed. The one thing it cannot
+see is a closure under a subject that does not lead with the closed id: that
+stays a file edit, because reading a closure off any edit is `PL-3W3P` again,
+and `CLAUDE.md` already requires a closing commit to lead with every id it
+closes.
 
 **A claim on an item the default branch has no copy of is kept, and worded
-differently.** This is the opposite direction from the two exceptions above,
+differently.** This is the opposite direction from the three exceptions above,
 and the only one measurement refused outright. A capture commit that also
 reaches past the queue claims the ids it merely filed — `CLAUDE.md` requires
 the leading id and requires the capture, so the collision comes of keeping the

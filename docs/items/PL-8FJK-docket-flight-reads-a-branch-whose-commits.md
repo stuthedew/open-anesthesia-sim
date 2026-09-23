@@ -1,9 +1,19 @@
 ---
 id: PL-8FJK
 title: docket flight reads a branch whose commits touch only item files as capture or triage, so items a grooming branch is closing stay offerable: #914 drops PL-027, PL-043 and PL-ZBR6 and none reads as in flight
-status: untriaged
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md, .claude/skills/docket/modes/start.md
+priority: P2
+effort: S
+status: done
+classes: defect
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md, .claude/skills/docket/modes/start.md, subprojects/docket/src/docket/checks.py
 added: 2026-09-22
+closed: 2026-09-22
+payoff: docket next stops offering an item a grooming branch is already dropping, so no second session starts work another has decided against
+verify: grep -q 'def test_a_branch_closing_an_item_the_base_holds_open_is_in_flight' subprojects/docket/tests/test_vcs.py
+root-cause-of: PL-3W3P, PL-7790, PL-8GV1, PL-VYSP
+generator: live - _annotates_only reads where a commit wrote and never what it did to the item, so each shape of queue-only work a pass does without claiming the item is recovered by its own test, one incident at a time; PL-8GV1, a pass blocking an item it never claimed, was filed the day this closed
+recurrences: 2026-09-22 PL-8GV1
 ---
 
 **Problem.** `vcs._annotates_only` reads any commit whose whole diff sits in
@@ -43,7 +53,7 @@ so what follows is the whole of its work.
 - `#919`'s empty-commit claim does not cover this case. The grooming
   session claims its own item (`PL-Y4YG`), not the items it disposes of.
 
-**Recommended design, not yet built.** Add a third promotion in
+**Recommended design, as handed off.** Add a third promotion in
 `branches_in_flight`, after the `PL-VYSP` block and fed from the same `own`
 map. For an id not already promoted, walk its carriers in rank order,
 skipping any whose own-file edit `_superseded` found spent. Promote the
@@ -98,3 +108,56 @@ item). Take `PL-3W3P` into the same change.
 - `subprojects/docket/README.md` at its `PL-VYSP` and `PL-7790` paragraphs;
 - the "Two exceptions" paragraph in `.claude/skills/docket/modes/start.md`,
   which becomes three.
+
+**As built, 2026-09-22.** The design above, with three departures, each for a
+reason the handoff could not see:
+
+- **The three promotions share one helper, `vcs._own_edit_claims`,** fed from
+  the subject-led own-file map and narrowed by the same `_superseded` test,
+  rather than a third block beside two. That is what makes `PL-3W3P`'s fix and
+  this one a single change, and it is what `precedence` now calls.
+- **`precedence` reads all three, not only the closure,** and applies the
+  supersession test too. `show` prints the in-flight mark *through* the
+  verdict, so a promotion read by `branches_in_flight` and not by `precedence`
+  printed no mark at all - true of every `PL-7790` promotion before this. A
+  landed design round's ref was likewise still a carrier in the verdict while
+  the mark had dropped it.
+- **The tip is read at the paths the round wrote,** through `_closed_at_ref`,
+  rather than through `_items_at(ref)`. That costs one batched `git show` per
+  carrier where `_items_at` costs an `ls-tree -r` of about 1,500 entries per
+  ref, on the hot path of `next`, `list` and the digest. What it gives up is a
+  later rename of the file by a commit leading with some other id, which then
+  reads as "open" and leaves the item offered.
+
+`_modified_by` is not applied to the closure: a capture files its item open, so
+the tip test already excludes it, and `git log --name-only` lists only a
+rename's destination, so the parent test would refuse a closure that also
+retitled its file (`PL-J16N` has that gap in the `PL-VYSP` promotion).
+Checked against real git on a throwaway branch dropping `PL-024` in one
+queue-only commit led by its id: `branches_in_flight` and `precedence` both
+name the branch. `bin/docket flight` on this clone's fifteen remote branches
+reads identically before and after, in 0.64 s against 0.68 s.
+
+**Reproduced 2026-09-22 against the pre-change `vcs.py`:**
+`test_a_branch_closing_an_item_the_base_holds_open_is_in_flight` fails - the
+closing branch is absent from `branches` - and so do
+`test_precedence_names_the_carrier_every_own_edit_promotion_marks` and
+`test_precedence_does_not_make_a_carrier_of_a_round_the_base_already_holds`.
+Reading the closing commit's copy instead of the tip fails
+`test_a_branch_that_closed_an_item_and_reopened_it_claims_nothing`.
+
+**Done when.** A queue-only commit that leads with an item's id and writes its
+own file claims the item where the branch's tip holds it closed and the base
+holds it open, and not where the base already records it closed, where the tip
+has reopened it, or where the subject leads with another id. `docket show`
+prints the claim through `precedence`, which reads the same helper.
+
+**Generator check.** One mechanism with `PL-7790`, `PL-VYSP`, `PL-3W3P` and
+`PL-8GV1`, and no head named it, so this item carries it: `_annotates_only`
+reads where a commit wrote and never what it did to the item, so each shape of
+queue-only work a pass does without claiming the item has been recovered by its
+own promotion, one incident at a time, each fed its own way. This change gives
+the three one feed and one helper, which retires the divergence half
+(`PL-3W3P`, and `precedence` missing two of the three). It does not retire the
+per-shape half: `PL-8GV1`, a pass blocking an item it never claimed, was filed
+the same day, so the verdict is `live`.
