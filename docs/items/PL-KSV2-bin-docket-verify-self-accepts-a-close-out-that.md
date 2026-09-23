@@ -65,6 +65,14 @@ removes it and adds `not-delegable:` - and leaves an item filed and closed on
 one branch alone. Which of the two, or leaving the `NOTE` to carry it, is the
 decision.
 
+**Recommended: the narrow route** (2026-09-23, by the session that filed this).
+It refuses exactly the self-grant and nothing else, so the item filed and closed
+on one branch - the case `PL-L4KX` was built for - keeps its passing route.
+Reading the base's copy wholesale would take that route from every closure the
+base holds no copy of, and `PL-TKFD`'s count puts those at about half. Either
+route narrows an existing exemption rather than adding a mechanism, so the
+generator pause holds neither.
+
 **Done when.** A `--self` close-out that deletes the base's `verify:` and adds
 `not-delegable:` on the branch no longer reaches `ACCEPT` on the exemption
 alone; the close-out of an item filed and closed on one branch with
