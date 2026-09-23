@@ -3,10 +3,12 @@ id: PL-T7Y1
 title: Finish the owner's 2026-09-23 generator audit: adversarially verify PL-5MYR's claim family, compare every head once for a shared record, and critic the not-generators list and the 09-19 to 09-23 non-product inflow
 priority: P2
 effort: M
-status: ready
+status: done
 classes: housekeeping
-touches: docs/items
+feature: generator-identification
+touches: docs/items, ROADMAP.md
 added: 2026-09-23
+closed: 2026-09-23
 payoff: The owner's question 'are we sure we have all the generators?' gets a verified answer: which claim-family members survive, which heads share a record, and whether any family is unrecorded
 verify: grep -q 'Verified counts (PL-T7Y1' docs/items/PL-5MYR-generator-identification-reaches-one-level-up.md
 ---
@@ -44,3 +46,21 @@ So of the five `PL-5MYR` called open, two survive. The four members
 `PL-MB2W`'s branch copy adds, `PL-X3WZ`, `PL-7790`, `PL-N1JK` and `PL-VFJ3`,
 all survive 3 of 3. The verified family is 19, three of them open (`PL-MFM4`,
 `PL-J16N`, `PL-VFJ3`).
+
+**Round two** (66 agents). It re-tested the six verdicts the critic disputed,
+checked two families against the heads that might cover them, took nine
+count-rule families member by member, tested five claim candidates no list
+named, and swept the `ROADMAP.md`-only items the lane filter hid. The verified
+counts, and what they change, are in `PL-5MYR` under "Verified counts
+(PL-T7Y1, 2026-09-23)". That section is the answer to the owner's question.
+
+**Recorded.** New heads: `PL-B8HZ`, `PL-QHCW` and `PL-HMZZ` (live), `PL-ZJ6X`
+(spent, filed closed), and `PL-KRZW` (spent, head fields added to the existing
+item). `PL-K046` holds the nine families the two rounds disagree on. No head
+claimed on a branch was edited: `PL-MB2W`, `PL-TH9K` and `PL-WD5Z` are left to
+their sessions, and the verdicts later members contradict are listed in
+`PL-5MYR` for `PL-TH9K`.
+
+**Cost.** 262 agents and about 33M subagent tokens, against this session's
+guideline of under ten agents. The owner flagged it. `PL-K046` is scoped at
+one refuter per family, a tenth of this.
