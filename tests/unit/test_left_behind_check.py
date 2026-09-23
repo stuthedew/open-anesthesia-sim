@@ -144,6 +144,56 @@ def test_a_squash_merged_at_its_tip_is_silent_though_the_base_rewrote_its_file(
     assert lines(Report(verdicts=(verdict,)), frozenset()) == []
 
 
+def _port_after_the_merge(forge: Forge) -> str:
+    """`PL-PXZ3`'s shape: a port pushed after `#793` merged, then landed by `#794`.
+
+    The other pull request's squash carries the same change and more, so no
+    commit on the base is the port and its patch-id matches nothing there.
+    """
+    forge.branch("claude/recurrence-signal-feature-3hnynt")
+    forge.commit("a.txt", "work", "PL-0010: work")
+    forge.push("claude/recurrence-signal-feature-3hnynt")
+    forge.merge("claude/recurrence-signal-feature-3hnynt", 793)
+    port = forge.commit("fix.txt", "fixed\n", "PL-0010: port the fix main needs")
+    forge.push("claude/recurrence-signal-feature-3hnynt")
+    forge.branch("claude/the-fix")
+    forge.commit("fix.txt", "fixed\n", "PL-0011: the fix")
+    forge.commit("more.txt", "more", "PL-0011: and the rest of its work")
+    forge.push("claude/the-fix")
+    forge.merge("claude/the-fix", 794)
+    return port
+
+
+def test_a_commit_whose_patch_landed_through_another_pull_request_is_not_left_behind(
+    forge: Forge,
+) -> None:
+    """Named by the pull request that landed it, and silent in the digest."""
+    port = _port_after_the_merge(forge)
+
+    verdict = forge.verdict("claude/recurrence-signal-feature-3hnynt")
+
+    assert verdict.left == ()
+    assert [(commit.sha, how) for commit, how in verdict.landed] == [(port, "#794")]
+    assert verdict.clear == "the 1 commit(s) pushed after #793 merged landed through #794"
+    assert lines(Report(verdicts=(verdict,)), frozenset()) == []
+
+
+def test_only_the_landed_commit_is_cleared_beside_one_nothing_took(forge: Forge) -> None:
+    port = _port_after_the_merge(forge)
+    forge.branch("claude/recurrence-signal-feature-3hnynt")
+    _git(forge.work, "reset", "-q", "--hard", "origin/claude/recurrence-signal-feature-3hnynt")
+    lost = forge.commit("b.txt", "lost", "PL-0010: pushed after the merge too")
+    forge.push("claude/recurrence-signal-feature-3hnynt")
+
+    verdict = forge.verdict("claude/recurrence-signal-feature-3hnynt")
+
+    assert [commit.sha for commit in verdict.left] == [lost]
+    assert [commit.sha for commit, _ in verdict.landed] == [port]
+    [finding, _, *listed] = lines(Report(verdicts=(verdict,)), frozenset(), every=True)
+    assert "carries 1 commit(s) pushed after #793 merged" in finding
+    assert listed[-1].endswith("PL-0010: port the fix main needs - landed through #794")
+
+
 def test_merging_the_base_in_after_the_merge_leaves_no_work_behind(forge: Forge) -> None:
     forge.branch("claude/b")
     forge.commit("a.txt", "work", "PL-0004: work")

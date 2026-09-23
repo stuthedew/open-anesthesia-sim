@@ -774,7 +774,13 @@ def format_orphaned(report: OrphanedReport) -> str:
             lines.append(f"  {commit.commit[:9]}  {commit.subject}")
             for path in commit.paths:
                 lines.append(f"    {path}")
-        lines.append(f"  recover: git checkout {branch.ref} -- {branch.outstanding[0]}")
+        # The commits, replayed, rather than a checkout of their files: a
+        # checkout writes the branch's whole copy over whatever the base has
+        # changed in that file since, which is a silent revert (`PL-GHHW`).
+        # A cherry-pick applies only the change, and stops on a conflict.
+        # Oldest first, since they are listed newest first.
+        picks = " ".join(commit.commit[:9] for commit in reversed(branch.commits))
+        lines.append(f"  recover: git cherry-pick {picks}")
         lines.append("")
     lines.append(
         "A pull request merges the head it was opened against; a commit pushed to the "

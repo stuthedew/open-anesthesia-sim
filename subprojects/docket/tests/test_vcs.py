@@ -8,6 +8,7 @@ in a way git accepts is proved against a real checkout in `test_cli.py`.
 from __future__ import annotations
 
 import hashlib
+import subprocess
 from collections.abc import Mapping
 from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
@@ -35,11 +36,13 @@ from docket.vcs import (
     StrandedItem,
     StrandedReport,
     _pathspec_chunks,
+    _run_git,
     _standing,
     _superseded,
     behind_remote,
     branch_state,
     branches_in_flight,
+    change_landed,
     changed_items,
     closed_by,
     closures_on_base,
@@ -6065,3 +6068,187 @@ def test_unread_remotes_decline_rather_than_reading_every_branch_as_none_open() 
 
     assert not found.asked
     assert found.declined
+
+
+# `change_landed`, the one test of whether the base already holds a change
+# (`PL-GHHW`). Real repositories rather than `_runner`, because the whole
+# question is what git's three-way merge makes of two histories, and a fake
+# would only restate the answer the test exists to check. Every test builds
+# the same shape: a branch ports a one-line fix, and the base takes the same
+# fix through another pull request whose squash also carries more.
+_LINES = "".join(f"{n}\n" for n in range(1, 31))
+
+
+class _Repo:
+    """A scratch repository on `main`, committing whole files."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        root.mkdir()
+        self.git("init", "-q", "-b", "main")
+        self.git("config", "user.email", "t@example.com")
+        self.git("config", "user.name", "T")
+
+    def git(self, *args: str) -> str:
+        return subprocess.run(
+            ["git", *args], cwd=self.root, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+    def commit(self, message: str, **files: str) -> str:
+        for name, text in files.items():
+            (self.root / name.replace("_", ".")).write_text(text, encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-qm", message)
+        return self.git("rev-parse", "HEAD")
+
+    def read(self, name: str) -> str:
+        return (self.root / name).read_text(encoding="utf-8")
+
+
+def _edit(text: str, **replace: str) -> str:
+    """`text` with each whole line named by its number replaced."""
+    swapped = {f"{number[1:]}\n": f"{line}\n" for number, line in replace.items()}
+    return "".join(swapped.get(line, line) for line in text.splitlines(keepends=True))
+
+
+def _ported(tmp_path: Path) -> tuple[_Repo, str]:
+    """A branch whose one commit ports line 10's fix, forked before the base took it."""
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", f_txt=_LINES)
+    repo.git("checkout", "-qb", "port")
+    port = repo.commit("PL-0001: port the fix", f_txt=_edit(_LINES, n10="ten"))
+    repo.git("checkout", "-q", "main")
+    return repo, port
+
+
+def test_a_port_the_base_took_with_more_is_found_and_named(tmp_path: Path) -> None:
+    """`PL-GHHW` itself: the squash carries the fix, another edit and 97 lines.
+
+    Patch identity cannot see this, since the squash's diff is not the port's,
+    and `_superseded` cannot either, since the base's copy is ahead of the
+    branch's rather than a superset of it. The three-way replay can.
+    """
+    repo, port = _ported(tmp_path)
+    more = "".join(f"{n}\n" for n in range(100, 197))
+    landing = repo.commit(
+        "PL-0002: the other fix, carrying the same line (#934)",
+        f_txt=_edit(_LINES, n10="ten", n12="twelve") + more,
+    )
+
+    found = change_landed(port, "main", repo.root)
+
+    assert found is not None
+    assert found.commit == landing
+    assert found.pull_request == 934
+
+
+def test_a_change_the_base_took_and_then_rewrote_has_still_landed(tmp_path: Path) -> None:
+    """Held once is held: the recovery would revert the rewrite, not restore work."""
+    repo, port = _ported(tmp_path)
+    took = repo.commit("PL-0002: the same fix (#934)", f_txt=_edit(_LINES, n10="ten"))
+    repo.commit("PL-0003: rewrite the line (#935)", f_txt=_edit(_LINES, n10="TEN"))
+
+    found = change_landed(port, "main", repo.root)
+
+    assert found is not None
+    assert found.commit == took
+
+
+def test_a_silenced_replay_never_names_a_later_landing(tmp_path: Path) -> None:
+    """Git not answering for the first holder is not the second one being first.
+
+    Both base commits hold the change, so falling through to the second would
+    still say "landed" - and name the wrong pull request.
+    """
+    repo, port = _ported(tmp_path)
+    repo.commit("PL-0002: the same fix (#934)", f_txt=_edit(_LINES, n10="ten"))
+    repo.commit("PL-0003: another line (#935)", f_txt=_edit(_LINES, n10="ten", n20="twenty"))
+    replays = 0
+
+    def first_replay_unanswered(args: list[str], root: Path) -> str:
+        nonlocal replays
+        if args[0] == "merge-tree":
+            replays += 1
+            if replays == 1:
+                return SILENT
+        return _run_git(args, root)
+
+    found = change_landed(port, "main", repo.root)
+    assert found is not None and found.pull_request == 934
+    assert change_landed(port, "main", repo.root, runner=first_replay_unanswered) is None
+
+
+def test_a_change_the_base_never_took_has_not_landed(tmp_path: Path) -> None:
+    repo, port = _ported(tmp_path)
+    repo.commit("PL-0002: something else (#934)", f_txt=_edit(_LINES, n20="twenty"))
+
+    assert change_landed(port, "main", repo.root) is None
+
+
+def test_a_conflict_reads_as_not_landed(tmp_path: Path) -> None:
+    """The base changed the same line another way: git answers exit 1, never a tree."""
+    repo, port = _ported(tmp_path)
+    repo.commit("PL-0002: a different fix (#934)", f_txt=_edit(_LINES, n10="10.0"))
+
+    assert change_landed(port, "main", repo.root) is None
+
+
+def test_a_git_without_merge_base_reads_as_not_landed(tmp_path: Path) -> None:
+    """Git before 2.40 has no `--merge-base`, so it answers nothing - never "landed"."""
+    repo, port = _ported(tmp_path)
+    repo.commit("PL-0002: the same fix (#934)", f_txt=_edit(_LINES, n10="ten"))
+
+    def old_git(args: list[str], root: Path) -> str:
+        return SILENT if args[0] == "merge-tree" else _run_git(args, root)
+
+    assert change_landed(port, "main", repo.root) is not None
+    assert change_landed(port, "main", repo.root, runner=old_git) is None
+
+
+def _merged_with_a_port(tmp_path: Path) -> tuple[_Repo, str]:
+    """`#938`'s shape: a branch's own work plus a port another pull request landed first.
+
+    The branch commits its work and a port of a fix. The fix lands on the base
+    through `#934`, which also carries more, and then the branch squash-merges
+    as `#938` - which had nothing to carry for the ported file, so the base's
+    copy of it is ahead of the branch's.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", f_txt=_LINES, g_txt="old\n")
+    repo.git("checkout", "-qb", "claude/laughing")
+    repo.commit("PL-0001: the work", g_txt="new\n")
+    port = repo.commit("PL-0001: port the fix", f_txt=_edit(_LINES, n10="ten"))
+    repo.git("checkout", "-q", "main")
+    repo.commit(
+        "PL-0002: the fix (#934)",
+        f_txt=_edit(_LINES, n10="ten", n12="twelve") + "".join(f"{n}\n" for n in range(100, 197)),
+    )
+    repo.git("merge", "-q", "--squash", "claude/laughing")
+    repo.git("commit", "-qm", "PL-0001: the work (#938)")
+    return repo, port
+
+
+def test_a_change_the_base_took_inside_a_larger_commit_is_not_left_behind(tmp_path: Path) -> None:
+    """The finding `PL-GHHW` was filed on, with the checkout it would have printed."""
+    repo, _ = _merged_with_a_port(tmp_path)
+
+    report = orphaned(repo.root)
+
+    assert report.known, report.declined
+    assert report.branches == ()
+
+
+def test_orphaned_still_reports_work_pushed_after_the_merge_beside_such_a_port(
+    tmp_path: Path,
+) -> None:
+    """Only the port is cleared; a commit nothing took is still the finding."""
+    repo, port = _merged_with_a_port(tmp_path)
+    repo.git("checkout", "-q", "claude/laughing")
+    lost = repo.commit("PL-0001: pushed after the merge", h_txt="lost\n")
+    repo.git("checkout", "-q", "main")
+
+    report = orphaned(repo.root)
+
+    [branch] = report.branches
+    assert [commit.commit for commit in branch.commits] == [lost]
+    assert port not in {commit.commit for commit in branch.commits}

@@ -130,9 +130,10 @@ python3 "$root/tools/pr_body_check.py" 2>/dev/null || true
 # The exact half of "did a merged pull request leave work on its branch"
 # (`PL-R808`). The digest's own "Left on a branch after its pull request merged"
 # line is `vcs.orphaned`, which compares content and so answers from a bare
-# checkout, and is fooled by a squash against a moving base, by two branches
-# writing identical lines, and by a change that landed through another pull
-# request. This one compares the branch tip against the `refs/pull/<n>/head`
+# checkout, and is fooled by a squash against a moving base and by two branches
+# writing identical lines. A change that landed through another pull request
+# fools neither: both read `vcs.change_landed` (`PL-GHHW`). This one compares
+# the branch tip against the `refs/pull/<n>/head`
 # its newest pull request merged, and names the commits past it. It needs a
 # network and a token, and says so rather than going quiet when either is
 # missing: silence is its all-clear, so every decline prints. Where the two
