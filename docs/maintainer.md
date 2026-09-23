@@ -200,22 +200,41 @@ update re-runs CI in full, two to five minutes, and one made before you merge
 goes stale as soon as another pull request lands. So the update is yours, once,
 when you come to merge:
 
-1. On the pull request page in the Mac's browser, click **Update branch**. Use
-   the button itself, which merges `main` in, and not **Update with rebase**
-   from its dropdown, which rewrites the session's branch under it.
-2. Click **Enable auto-merge**, check that the message box holds the pull
-   request's description, and confirm.
-3. Leave it. It merges when CI goes green. If another pull request lands first,
-   it goes back to behind and waits; click **Update branch** again.
+1. Open the pull request in the Mac's browser and scroll to the merge box at
+   the bottom of the Conversation tab. If it offers **Update branch**, click
+   it: the button itself merges `main` in. Do not use **Update with rebase**
+   from its dropdown, which rewrites the branch's history under any session
+   still working on it. A "Merge branch 'main' into ..." commit appears and
+   the checks restart. If it offers **Squash and merge** and no Update branch,
+   the branch is already current: merge it as the section above says, and
+   stop.
+2. If the merge box already says auto-merge is enabled, as it does on a
+   captures-only pull request a session armed, skip this step: your update
+   leaves it armed. Otherwise click **Enable auto-merge**, check that the
+   message box holds the pull request's description, and click **Confirm
+   auto-merge**. Leave **Merge without waiting for requirements to be met
+   (bypass branch protections)** unticked. It is offered because `main`'s
+   required checks bind non-admins only, and ticking it merges on the stale
+   base, the merge skew the setting exists to stop. It stays as your escape
+   hatch for a broken CI, not a route for ordinary merges.
+3. Come back in about five minutes. Success is the pull request marked
+   **Merged**. If the merge box offers **Update branch** again, another pull
+   request landed first: click it again and come back in another five.
 
-If GitHub offers to merge anyway by bypassing branch protections, decline. That
-merges on the stale base, which is the merge skew the setting exists to stop.
-The offer is there because `main`'s required checks are enforced for non-admins
-only, and it is left that way as your escape hatch for a broken CI, not as a
-route for ordinary merges.
+With several ready at once, arm auto-merge on each, but update one at a time,
+and the next only once the previous has merged. Updating them together runs CI
+on every one, and each merge sends the rest behind again.
 
-Or ask the session that opened the pull request to merge it: it arms auto-merge
-and brings the base in itself, with the same merge the button makes. GitHub
-never updates an armed pull request that falls behind, so one whose session has
-ended waits for you. A captures-only pull request is the usual case, and
-`PL-S5MF` holds the question of what should pick it up instead.
+If a check fails after the update, the branch and the new `main` do not work
+together. That is the merge skew the setting now stops at the pull request
+instead of on `main`. Leave auto-merge armed and ask a session to fix the
+branch; auto-merge lands it once the fix is green. If the merge box shows
+conflicts and no Update branch, do not use **Resolve conflicts**. Ask a
+session to merge `main` in and resolve them.
+
+Instead of steps 1 to 3, you can ask the session that opened the pull request
+to merge it: it arms auto-merge and brings the base in itself, with the same
+merge the button makes. GitHub never updates an armed pull request that falls
+behind, so one whose session has ended waits for you. A captures-only pull
+request is the usual case, and `PL-S5MF` holds the question of what should
+pick it up instead.
