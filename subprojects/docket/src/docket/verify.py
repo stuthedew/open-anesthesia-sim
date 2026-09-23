@@ -25,12 +25,15 @@ project, and that separation is what keeps a bare checkout able to use it.
 
 from __future__ import annotations
 
+import ast
 import os
 import re
 import shlex
 import subprocess
+import sys
 import tempfile
 import time
+import warnings
 from collections import Counter
 from collections.abc import Collection, Sequence
 from concurrent.futures import ThreadPoolExecutor
@@ -276,7 +279,15 @@ NOT_AN_ASSERTION_RE = re.compile(r"^\s*(?:#|@|def\s|async\s+def\s|import\s|from\
 
 
 def is_assertion_line(path: str, line: str) -> bool:
-    """Whether a removed line was an assertion, for `no existing assertion removed`.
+    """Whether a removed line was an assertion, in a file this interpreter cannot parse.
+
+    **The fallback, no longer the check.** `no existing assertion removed`
+    reads statements with `ast` (`removed_assertions`, `PL-4W2L`). This reads
+    only a file some version of which the running interpreter cannot parse -
+    `bin/docket` runs on the bare `python3`, which can be older than the
+    project's own - and the file is named on the page as read this way. What
+    follows is the history of the predicate as it was when it was the check,
+    kept because the counts are what its shape rests on.
 
     The check used to ask `"assert" in line`, which is true of a comment, a
     docstring, a release note, an item's brief, a variable called
@@ -314,12 +325,12 @@ def is_assertion_line(path: str, line: str) -> bool:
     `with raises/warns(...)` statement, so the widening refuses no work this
     repository has ever done.
 
-    One shape is still missed, deliberately rather than by oversight: the
-    parenthesized multi-manager form, where `with (` opens the statement and
-    the `pytest.raises(...)` item sits on a line of its own carrying no `with`.
-    This tree holds no multi-manager `with` at all, so covering it would be the
-    widest rule the hazard could motivate rather than the narrowest that
-    removes it. It is one alternative away should one ever be written.
+    Two shapes a line cannot carry are left to the parser, which reads both:
+    the parenthesized multi-manager form, where `with (` opens the statement
+    and the `pytest.raises(...)` item sits on a line of its own with no `with`
+    on it (`PL-XQGH`), and an edit on a continuation line of a wrapped
+    assertion, which carries none of the three shapes at all. In a file read
+    this way both are still missed, and the page says the file was read so.
     """
     if path and not path.endswith(ASSERTION_BEARING_SUFFIX):
         return False
@@ -328,189 +339,553 @@ def is_assertion_line(path: str, line: str) -> bool:
     return bool(ASSERTION_RE.search(line))
 
 
-#: How a line breaks into the pieces the comparison below aligns. Strings and
-#: numbers stay whole, so that a changed literal is a changed *token* rather
-#: than a run of characters that happens to differ; every other non-space
-#: character is a token of its own. That is all the resolution needed here,
-#: and it keeps a second idea of Python's grammar from growing in this file.
-TOKEN_RE = re.compile(
-    r'"""(?:[^"\\]|\\.|"(?!""))*"""'  # a triple-quoted span opening and closing on one line
-    r"|'''(?:[^'\\]|\\.|'(?!''))*'''"
-    r'|"(?:[^"\\\n]|\\.)*"'
-    r"|'(?:[^'\\\n]|\\.)*'"
-    r"|[A-Za-z_][A-Za-z0-9_]*"  # a name, which is also the `f` of an f-string
-    r"|\d[\d_]*\.?[\d_]*(?:[eE][-+]?\d+)?"  # a number, kept whole
-    r"|\S"
-)
+#: The context managers that assert by expectation, matched on the name they
+#: are called by - `pytest.raises`, or `raises` after `from pytest import
+#: raises` - which is the spelling the line predicate above has always read.
+EXPECTING = ("raises", "warns")
 
-OPENERS, CLOSERS = "([{", ")]}"
+#: How the parser splits source into lines, which is not `str.splitlines`: a
+#: form feed or a line separator inside a string is one line to the parser and
+#: two to `splitlines`, and a column offset read against the wrong split points
+#: into the wrong text.
+PARSER_LINE_RE = re.compile(r"[^\r\n]*(?:\r\n|\r|\n)|[^\r\n]+\Z")
 
 
-def tokens_at_depth(line: str) -> list[tuple[str, int]]:
-    """Each token of `line`, with the bracket depth it sits at.
+@dataclass(frozen=True)
+class Assertion:
+    """One assertion as `ast` reads it, which is the unit the check compares.
 
-    Unbalanced by construction: these are single lines out of a diff, so a
-    wrapped statement arrives carrying its opening bracket and not its close.
-    Depth relative to the start of the line is the right frame anyway - what
-    the comparison asks is whether an inserted token sits inside a bracket,
-    and a bracket this line opened is one of those.
+    `form` is what makes it that assertion: its kind and the `ast.dump` of the
+    expression that asserts. A dump carries no position, spacing, quoting,
+    wrapping or comment, so reformatting an assertion, wrapping it or moving it
+    within its file leaves the form as it was - and any edit to what it
+    asserts changes it, on whichever line of a wrapped statement the edit
+    falls. An `assert`'s message is left out, because the message asserts
+    nothing.
     """
-    depth = 0
-    out: list[tuple[str, int]] = []
-    for match in TOKEN_RE.finditer(line):
-        text = match.group(0)
-        if text in CLOSERS:
-            depth = max(0, depth - 1)
-        out.append((text, depth))
-        if text in OPENERS:
-            depth += 1
-    return out
+
+    form: str
+    #: The classes and functions around it, joined as pytest joins a node id -
+    #: `TestX::test_y` - or "" at module level. Context for the report only:
+    #: moving an assertion between functions is not a change.
+    where: str
+    #: Its source as written: the whole statement for an `assert`, the call
+    #: for the other two kinds. `falsifies:` is matched against this.
+    source: str
+    #: The same on one line, as the report prints it.
+    shown: str
 
 
-def _inserts_into(old: Sequence[str], new: Sequence[tuple[str, int]]) -> bool:
-    """Whether `new` is `old` with tokens inserted, all of them inside a bracket.
+@dataclass(frozen=True)
+class AssertionReading:
+    """What one version of one file asserts, and the classes and functions it defines."""
 
-    Every token of the original survives, in order, and everything added sits
-    at depth 1 or deeper - which is to say inside an argument list, a
-    subscript, or a literal the line already had. `f(a, b)` to `f(a, b, c)`
-    passes. `approx(2.05)` to `approx(1.05)` does not, because `2.05` is gone.
-    `x == 1` to `x == 1 or True` does not, because `or True` is at depth 0.
+    assertions: tuple[Assertion, ...] = ()
+    defines: frozenset[str] = frozenset()
 
-    Every alignment is carried rather than the leftmost one, which a greedy
-    scan cannot do and which is not a refinement: `f(a, index)` to `f(a,
-    index, len(runs))` ends in two closing brackets, and a greedy walk spends
-    the original's own `)` on the inner one, then meets the outer at depth 0
-    and refuses. That is 3 of the 11 lines this exists for, so the set of
-    surviving positions is the cheapest implementation that answers the
-    question asked rather than a nearby one.
+    def forms(self) -> Counter[str]:
+        return Counter(assertion.form for assertion in self.assertions)
+
+
+def _called(func: ast.expr) -> str:
+    """The name a call is made by: `f` for `f(...)`, `m` for `x.y.m(...)`."""
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return ""
+
+
+def _segment(lines: Sequence[str], node: ast.expr | ast.stmt) -> str:
+    """`ast.get_source_segment`, over lines split once rather than once per call.
+
+    The standard library's re-splits the whole source on every call, character
+    by character, which is quadratic in a test file's assertions: a 3,000-line
+    test module holds a thousand of them. Column offsets are UTF-8 byte
+    offsets, which is why each line is encoded before it is cut.
     """
-    if not old:
-        return False
-    reached = {0}
-    for text, depth in new:
-        moved = {index + 1 for index in reached if index < len(old) and old[index] == text}
-        if depth >= 1:
-            moved |= reached
-        if not moved:
-            return False
-        reached = moved
-    return len(old) in reached
+    first, last = node.lineno - 1, (node.end_lineno or node.lineno) - 1
+    start, end = node.col_offset, node.end_col_offset or 0
+    if first == last:
+        return lines[first].encode()[start:end].decode(errors="replace")
+    head = lines[first].encode()[start:].decode(errors="replace")
+    tail = lines[last].encode()[:end].decode(errors="replace")
+    return "".join([head, *lines[first + 1 : last], tail])
 
 
-def replacements(removed: Sequence[tuple[str, str]], added: Sequence[tuple[str, str]]) -> list[str]:
-    """For each removed line, the added line that replaced it in place, or "".
+def read_assertions(source: str) -> AssertionReading:
+    """Every assertion `source` holds, as `ast` reads it.
 
-    A required parameter added to a function updates every call site that
-    passes it inside an `assert`. Nothing is weakened and nothing is deleted,
-    but each rewritten line reaches `no existing assertion removed` as a
-    removal, because `_net_line_changes` folds only lines that cancel
-    *exactly*. `PL-MN4J` hit this eleven times on one close-out - eleven lines
-    to read past on a green diff, which is how a session learns to skim the
-    block where a real weakening would print (`PL-K1WS`).
+    Three kinds, which are the three shapes the line predicate above matched:
+    an `assert` statement, a call whose name begins `assert` - `assertEqual`,
+    `assert_called_once_with`, `assert_allclose` - and a `raises` or `warns`
+    item of a `with`, which asserts by expectation and carries the word
+    nowhere. The third is read wherever the formatter puts it, which a line
+    could not do: in the parenthesized multi-manager form the item sits on a
+    line of its own with no `with` on it (`PL-XQGH`).
 
-    **Not the wider normalisation `PL-K1WS` proposed**, which was to erase
-    argument lists and compare what is left. Measured over 907 commits, that
-    folds 180 of the 1,715 removed assertions and the pairs are not
-    replacements: it reads `format_trace_hover(run, MIXED_VENOUS,
-    0).splitlines()[1]` as replaced by `format_trace_hover(first, ALVEOLAR, 0,
-    1).splitlines()[0]`, and `state_at(case_s - fork_s)` as replaced by
-    `state_at(case_s)`. Arguments are what one assertion differs from another
-    by, so erasing them erases the comparison, and what is left matches the
-    first line of similar shape rather than the rewrite. Requiring every
-    original token to survive folds 57, and pairs each of those two removals
-    with its own rewrite.
-
-    **Nor the tighter rule in the other direction**, which would refuse an
-    inserted *literal* on the argument that a changed constant is a changed
-    expectation. It folds 33 - but only 3 of the 11 lines this exists for,
-    whose inserted argument is the literal `1`. It was measured and rejected
-    rather than assumed.
-
-    **The number that decides it**: of the 57, **none** is an assertion that
-    left the suite, which is what this check is for. Five change what the line
-    asserts - a comprehension gaining an `if`, an expected `2` becoming `2 *
-    len(RULE_LINE)`, `vacuous=()` becoming `vacuous=("PL-K7QX",)`, and one
-    `pytest.raises` gaining a `match=` that tightens it. That residual is why
-    a fold here is not a deletion: the pair is **printed** beside its
-    replacement and only the refusal is withdrawn, so a reader sees all five
-    rather than being told none.
-
-    Per file, never across, on the same reasoning as the exact fold above it.
+    Raises what `ast.parse` raises - `SyntaxError`, or `ValueError` for a null
+    byte - and `RecursionError` for an expression too deep to dump, so that the
+    caller can read the file another way and say that it did.
     """
-    by_file: dict[str, list[tuple[str, list[tuple[str, int]]]]] = {}
-    for where, line in added:
-        by_file.setdefault(where, []).append((line.strip(), tokens_at_depth(line)))
-    found: list[str] = []
-    for where, line in removed:
-        old = [text for text, _ in tokens_at_depth(line)]
+    with warnings.catch_warnings():
+        # Compiling warns on an invalid escape sequence. That is the file's
+        # linter's to report, and a verify report is the wrong page for it.
+        warnings.simplefilter("ignore")
+        tree = ast.parse(source)
+    lines = PARSER_LINE_RE.findall(source)
+    found: list[Assertion] = []
+    defines: set[str] = set()
+
+    def keep(
+        kind: str, asserting: ast.AST, written: ast.expr | ast.stmt, where: str, prefix: str = ""
+    ) -> None:
+        text = _segment(lines, written)
         found.append(
-            next(
-                (text for text, tokens in by_file.get(where, ()) if _inserts_into(old, tokens)), ""
-            )
+            Assertion(f"{kind}:{ast.dump(asserting)}", where, text, prefix + " ".join(text.split()))
         )
+
+    # An explicit stack rather than recursion, and children pushed reversed so
+    # they come off in source order: the report lists what it found in the
+    # order a reader meets it in the file.
+    stack: list[tuple[ast.AST, str]] = [(tree, "")]
+    while stack:
+        node, where = stack.pop()
+        if isinstance(node, ast.Assert):
+            keep("assert", node.test, node, where)
+        elif isinstance(node, ast.Call) and _called(node.func).startswith("assert"):
+            keep("call", node, node, where)
+        elif isinstance(node, (ast.With, ast.AsyncWith)):
+            for item in node.items:
+                expr = item.context_expr
+                if isinstance(expr, ast.Call) and _called(expr.func) in EXPECTING:
+                    keep("with", expr, expr, where, "with ")
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            where = f"{where}::{node.name}" if where else node.name
+            defines.add(where)
+        stack.extend((child, where) for child in reversed(list(ast.iter_child_nodes(node))))
+    return AssertionReading(tuple(found), frozenset(defines))
+
+
+@dataclass(frozen=True)
+class FileAbsence:
+    """The existing assertions one file lost to the item's own commits."""
+
+    #: The file as the base names it. A commit that renamed it is followed, as
+    #: `git show` follows it for every other check here, so a renamed test
+    #: module is compared with its old self rather than charged in full.
+    path: str
+    #: Its name after the item's commits, where one of them renamed it.
+    renamed_to: str
+    #: Each form gone, and how many of the base's copies of it went, in the
+    #: order the base's copy of the file holds them.
+    charged: tuple[tuple[str, int], ...]
+    #: The base's copy, and the copy after the last of the item's commits to
+    #: touch the file - what the report pairs nothing between.
+    before: AssertionReading
+    after: AssertionReading
+
+
+@dataclass(frozen=True)
+class AssertionAudit:
+    """What the item's own commits did to the assertions the base holds."""
+
+    absent: tuple[FileAbsence, ...] = ()
+    #: Files a version of which this interpreter could not parse, and why.
+    #: Each is read line by line instead, and named on the page as read so.
+    unparsed: tuple[tuple[str, str], ...] = ()
+    #: The removed lines from those files that `is_assertion_line` flags and
+    #: that the base's copy holds, as `(path, line)`.
+    lines: tuple[tuple[str, str], ...] = ()
+    #: Why nothing could be read, where that is the answer. The check refuses
+    #: on it: "could not look" is not "looked, found nothing".
+    unread: str = ""
+
+
+def _short(spec: str) -> str:
+    """The revision half of a `<rev>:<path>` spec, a full object id abbreviated."""
+    revision = spec.partition(":")[0]
+    return revision[:12] if re.fullmatch(r"[0-9a-f]{40,64}", revision) else revision
+
+
+def _blobs(root: Path, specs: Collection[str]) -> dict[str, tuple[str, bytes] | None] | None:
+    """Each `<rev>:<path>` as git holds it - its object id and bytes - or `None`
+    where that revision holds no file there; `None` overall where git could not
+    be asked, which the caller reports rather than reading as "no file".
+
+    One `git cat-file --batch` for the lot, where a `git show` each would be a
+    process per version of every file an item touches - `vcs.GitRunner`'s blob
+    batch removed the same fan-out from session start (`PL-0J9K`).
+    """
+    ordered = sorted(specs)
+    if not ordered:
+        return {}
+    if any("\n" in spec for spec in ordered):  # the protocol's own delimiter
+        return None
+    try:
+        result = subprocess.run(
+            ["git", "cat-file", "--batch"],
+            cwd=root,
+            input="".join(f"{spec}\n" for spec in ordered).encode(),
+            capture_output=True,
+            timeout=600,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    out, at = result.stdout, 0
+    found: dict[str, tuple[str, bytes] | None] = {}
+    for spec in ordered:
+        end = out.find(b"\n", at)
+        if end < 0:
+            return None
+        fields = out[at:end].split()
+        at = end + 1
+        if fields[-1:] in ([b"missing"], [b"ambiguous"]):
+            found[spec] = None
+            continue
+        if len(fields) != 3 or not fields[2].isdigit():
+            return None
+        size = int(fields[2])
+        body = out[at : at + size]
+        at += size + 1  # git ends every object with a newline
+        # A tree or a submodule at the path is not a file an assertion lives in.
+        found[spec] = (fields[0].decode(), body) if fields[1] == b"blob" else None
     return found
 
 
-def _one_string_differs(old: Sequence[str], new: Sequence[str]) -> bool:
-    """Whether `new` is `old` with exactly one token changed, and that token a string."""
-    if len(old) != len(new):
-        return False
-    differ = [(was, now) for was, now in zip(old, new, strict=True) if was != now]
-    return len(differ) == 1 and all(text[:1] in "\"'" for text in differ[0])
+@dataclass(frozen=True)
+class _FileStep:
+    """One commit's change to one file, as the fold reads it."""
+
+    key: str
+    #: The file in each parent, as a blob spec, or "" where that parent has none.
+    before: tuple[str, ...]
+    #: The file after the commit, or "" where the commit deleted it.
+    after: str
 
 
-def literal_swaps(
-    removed: Sequence[tuple[str, str]], added: Sequence[tuple[str, str]]
-) -> list[tuple[str, ...]]:
-    """For each removed line, every same-file added line differing from it by one string.
+def _changed_python(listing: str, statuses: bool) -> list[tuple[str, str]]:
+    """`(old, new)` for each `.py` file in a `-z` listing, "" for a side that is not one."""
+    fields = listing.split("\0")
+    pairs: list[tuple[str, str]] = []
+    at = 0
+    while at < len(fields):
+        if not fields[at]:
+            at += 1
+            continue
+        if not statuses:
+            old = new = fields[at]
+            at += 1
+        else:
+            status = fields[at]
+            if status[:1] in "RC":  # a rename or copy names both sides
+                old, new = fields[at + 1 : at + 3] if at + 2 < len(fields) else ("", "")
+                old = "" if status[:1] == "C" else old
+                at += 3
+            else:
+                path = fields[at + 1] if at + 1 < len(fields) else ""
+                old = "" if status[:1] == "A" else path
+                new = "" if status[:1] == "D" else path
+                at += 2
+        pair = (old if old.endswith(".py") else "", new if new.endswith(".py") else "")
+        if any(pair):
+            pairs.append(pair)
+    return pairs
 
-    Reported, never folded, and the distinction is the whole of this function.
-    `replacements` above folds because an insertion proves the original
-    survived; here the original string is *gone*, which is indistinguishable
-    from an expectation that was simply dropped. So this names the candidates
-    and leaves the pairing to a reader, which is the judgment half `CLAUDE.md`
-    refuses to script.
 
-    **Why it may not fold, counted rather than argued** (`PL-K4R5`). Over 502
-    single-id squash close-outs, 57 would REJECT `no existing assertion
-    removed` and 20 reach this shape. Of those 20, **15 have more than one
-    candidate**, so a fold would have to guess - and `PL-FCM3`, the item that
-    raised this, is the worked example: one removed line, `assert "1 this gate
-    can clear, 1 sequenced ahead of it, 1 waiting on work outside it" in
-    printed`, and **six** candidates. The real rewrite is the fifth of them by
-    diff order, so folding on the first would have recorded `assert "what they
-    wait on: PL-ZZZZ" in printed` as its replacement and printed a guess as
-    fact. Folding at all would also have folded `PL-6580`, whose seven
-    disclaimer assertions genuinely left the suite when the prose they read
-    was deleted - the hazard this check exists for.
+def _file_steps(
+    root: Path, base: str, commits: tuple[str, ...]
+) -> tuple[list[_FileStep], dict[str, str], str]:
+    """The item's changes to `.py` files, oldest first, and what each file is keyed by.
 
-    **Two narrower anchors were measured and rejected.** Keying the fold to
-    the commission's own `verify:` command - the new string it greps for, a
-    reviewer's, written before the work - explains **1 of the 20**. Having
-    triage copy the old string out of the brief it is already reading reaches
-    **3 of 20**: the string is in the item for `PL-026`, `PL-6580` and
-    `PL-1J0P` and nowhere else, so the objection `PL-K4R5` rests on holds.
+    Returns the steps, every path they name mapped to its file's key - the
+    name the file had before the item's first commit touched it - and a
+    reason where the commits could not be read at all.
 
-    Strings only, deliberately. A changed *number* - `approx(2.05)` to
-    `approx(1.05)` - keeps its subject and changes what is expected of it,
-    which `PL-K1WS` already identified as a weakened assertion and which no
-    item here has asked to change as a deliverable. Widening to numbers is one
-    alternative away should one ever be filed.
-
-    Per file, never across, on the same reasoning as the two folds above it.
+    A merge commit is read against every parent at once, as `git show` reads
+    one: what it removed is what every parent held and it does not, and what
+    it added is what no parent held. Against its first parent alone, merging
+    the base in would charge the item with every removal the base had taken
+    since the branch forked.
     """
-    by_file: dict[str, list[tuple[str, list[str]]]] = {}
-    for where, line in added:
-        by_file.setdefault(where, []).append(
-            (line.strip(), [text for text, _ in tokens_at_depth(line)])
+    if commits:
+        status, listing = _run(["git", "show", "-s", "--format=%H %P", *commits], root)
+        if status != 0:
+            return [], {}, f"the parents of {len(commits)} commit(s) could not be read"
+        parents_of = {
+            fields[0]: tuple(fields[1:])
+            for fields in (line.split() for line in listing.splitlines())
+            if fields
+        }
+        revisions = [(commit, parents_of.get(commit, ())) for commit in reversed(commits)]
+    else:
+        status, fork = _run(["git", "merge-base", base, "HEAD"], root)
+        if status != 0:
+            return [], {}, f"{base} and HEAD share no commit to compare from"
+        revisions = [("HEAD", (fork.strip(),))]
+    steps: list[_FileStep] = []
+    keys: dict[str, str] = {}
+    for revision, parents in revisions:
+        if revision == "HEAD":
+            args = ["git", "diff", "-z", "-M", "--name-status", parents[0], "HEAD"]
+        elif len(parents) > 1:
+            args = ["git", "diff-tree", "-z", "-r", "-c", "--name-only", "--no-commit-id", revision]
+        else:
+            args = ["git", "diff-tree", "-z", "-r", "-M", "--name-status", "--root"]
+            args += ["--no-commit-id", revision]
+        status, listing = _run(args, root)
+        if status != 0:
+            return [], {}, f"the files {revision[:12]} changed could not be listed"
+        for old, new in _changed_python(listing, statuses="--name-status" in args):
+            key = keys.get(old or new, old or new)
+            keys.update({path: key for path in (old, new) if path})
+            steps.append(
+                _FileStep(
+                    key,
+                    tuple(f"{parent}:{old}" if old else "" for parent in parents) or ("",),
+                    f"{revision}:{new}" if new else "",
+                )
+            )
+    return steps, keys, ""
+
+
+def removed_assertions(
+    root: Path, base: str, commits: tuple[str, ...], removed_lines: Sequence[tuple[str, str]]
+) -> AssertionAudit:
+    """The assertions the base holds that the item's own commits leave absent.
+
+    What `no existing assertion removed` decides, and all it decides: an
+    assertion present in the base's copy of a `.py` file - an `assert`
+    statement's test, a call whose name begins `assert`, or a `raises` or
+    `warns` item of a `with` - is absent, as `ast` reads it, after the item's
+    commits (project owner, 2026-09-22, ratified, over refusing only an
+    assertion that left its test and over patching the line matcher that came
+    before this, `PL-4W2L`). Whether a changed assertion is stronger, weaker or
+    restated is the judgment half, and every rule over the shape of an edit
+    has been a guess at it; `falsifies:` is how a commission declares one.
+
+    Each file is parsed before and after each of the item's commits, and the
+    forms each commit removed and added are folded per file across them -
+    `PL-VP40`'s fold at statement altitude, so an assertion cut in one commit
+    and restored in the next is no change. A form is then charged only where
+    the base's copy of the file holds it, and only as many copies as are gone
+    after the item's commits: an assertion a sibling commit added on the same
+    branch was never an existing one, however the commits naming this id
+    treat it (`PL-2DTK`).
+
+    `removed_lines` is `_net_line_changes`' removed half, read only for a file
+    this interpreter cannot parse - `bin/docket` runs on the bare `python3`,
+    which can be older than the project's own. There the line predicate reads
+    it, the base's copy still decides what existed, and the file is named.
+    """
+    steps, keys, unread = _file_steps(root, base, commits)
+    if unread:
+        return AssertionAudit(unread=unread)
+    status, _ = _run(["git", "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}"], root)
+    if status != 0:
+        return AssertionAudit(
+            unread=f"{base} does not name a commit to read the base's copies from"
         )
-    out: list[tuple[str, ...]] = []
-    for where, line in removed:
-        old = [text for text, _ in tokens_at_depth(line)]
-        out.append(
-            tuple(text for text, new in by_file.get(where, ()) if _one_string_differs(old, new))
+    order = list(dict.fromkeys(step.key for step in steps))
+    blobs = _blobs(
+        root,
+        {spec for step in steps for spec in (*step.before, step.after) if spec}
+        | {f"{base}:{key}" for key in order},
+    )
+    if blobs is None:
+        return AssertionAudit(unread="git could not be asked for the files' contents")
+
+    parsed: dict[str, AssertionReading] = {}  # by object id: one version, one parse
+    unparsed: dict[str, str] = {}
+
+    def reading(key: str, spec: str) -> AssertionReading:
+        held = blobs.get(spec) if spec else None
+        if held is None:
+            return AssertionReading()
+        oid, body = held
+        if oid not in parsed:
+            try:
+                parsed[oid] = read_assertions(body.decode("utf-8-sig"))
+            except UnicodeDecodeError:
+                unparsed.setdefault(key, f"its copy at {_short(spec)} is not UTF-8")
+                parsed[oid] = AssertionReading()
+            except (SyntaxError, ValueError, RecursionError) as error:
+                where = f", line {error.lineno}" if isinstance(error, SyntaxError) else ""
+                unparsed.setdefault(
+                    key,
+                    f"Python {sys.version_info.major}.{sys.version_info.minor} cannot parse its "
+                    f"copy at {_short(spec)} ({getattr(error, 'msg', None) or type(error).__name__}"
+                    f"{where})",
+                )
+                parsed[oid] = AssertionReading()
+        return parsed[oid]
+
+    removed: dict[str, Counter[str]] = {key: Counter() for key in order}
+    added: dict[str, Counter[str]] = {key: Counter() for key in order}
+    last: dict[str, str] = {}
+    for step in steps:
+        parents = [reading(step.key, spec).forms() for spec in step.before]
+        now = reading(step.key, step.after).forms()
+        for form in set(now).union(*parents):
+            removed[step.key][form] += max(0, min(p[form] for p in parents) - now[form])
+            added[step.key][form] += max(0, now[form] - max(p[form] for p in parents))
+        last[step.key] = step.after
+
+    absent: list[FileAbsence] = []
+    for key in order:
+        before, after = reading(key, f"{base}:{key}"), reading(key, last[key])
+        if key in unparsed:
+            continue
+        held, kept, net = before.forms(), after.forms(), removed[key] - added[key]
+        charged = tuple(
+            (form, min(net[form], held[form] - kept[form]))
+            for form in dict.fromkeys(a.form for a in before.assertions)
+            if net[form] and held[form] > kept[form]
         )
+        if charged:
+            renamed = last[key].partition(":")[2]
+            absent.append(
+                FileAbsence(
+                    key, renamed if renamed not in ("", key) else "", charged, before, after
+                )
+            )
+
+    lines: list[tuple[str, str]] = []
+    for key in unparsed:
+        held_lines = blobs.get(f"{base}:{key}")
+        existing = Counter(
+            held_lines[1].decode("utf-8", errors="replace").splitlines() if held_lines else ()
+        )
+        for path, line in removed_lines:
+            if keys.get(path, path) == key and is_assertion_line(path, line) and existing[line]:
+                existing[line] -= 1
+                lines.append((path, line))
+    return AssertionAudit(tuple(absent), tuple(unparsed.items()), tuple(lines))
+
+
+#: How many functions the report prints, and how many assertions on each side
+#: of one. The counts on the check's own line are never capped.
+SHOWN_FUNCTIONS, SHOWN_PER_SIDE, SHOWN_WIDTH = 5, 5, 140
+
+
+def _clip(text: str) -> str:
+    return text if len(text) <= SHOWN_WIDTH else text[: SHOWN_WIDTH - 3] + "..."
+
+
+def _absence_lines(absence: FileAbsence, counted: Collection[str]) -> list[tuple[str, list[str]]]:
+    """Each function an absence reaches, with what left it and what arrived.
+
+    Grouped by function and paired by nobody: the check names what left each
+    function and what arrived in it, and a reader who can tell a restatement
+    from a weakening matches them up. `PL-K4R5` measured why the pairing is not
+    the check's to make - 15 of 20 changed strings had more than one candidate.
+    What stayed is counted rather than printed, since it pairs with itself.
+    """
+    was = Counter((a.where, a.form) for a in absence.before.assertions)
+    now = Counter((a.where, a.form) for a in absence.after.assertions)
+    groups: dict[str, list[str]] = {}
+    for where, form in was:
+        if form in counted and was[where, form] > now[where, form]:
+            groups.setdefault(where, [])
+    out: list[tuple[str, list[str]]] = []
+    for where in groups:
+        left = [
+            a.shown
+            for a in absence.before.assertions
+            if a.where == where and a.form in counted and was[where, a.form] > now[where, a.form]
+        ]
+        arrived = [
+            a.shown
+            for a in absence.after.assertions
+            if a.where == where and now[where, a.form] > was[where, a.form]
+        ]
+        stayed = sum(min(count, now[place]) for place, count in was.items() if place[0] == where)
+        body = [f"    was  {_clip(text)}" for text in left[:SHOWN_PER_SIDE]]
+        if len(left) > SHOWN_PER_SIDE:
+            body.append(f"    and {len(left) - SHOWN_PER_SIDE} more that left")
+        if where and where not in absence.after.defines:
+            body.append(f"    now  no `{where}` in the file")
+        else:
+            body += [f"    now  {_clip(text)}" for text in arrived[:SHOWN_PER_SIDE]]
+            if len(arrived) > SHOWN_PER_SIDE:
+                body.append(f"    and {len(arrived) - SHOWN_PER_SIDE} more that arrived")
+            if not arrived:
+                body.append("    now  nothing in its place")
+        if stayed:
+            body.append(f"    ({stayed} unchanged)")
+        label = f"{absence.path}::{where}" if where else f"{absence.path} (module level)"
+        if absence.renamed_to:
+            label += f", now {absence.renamed_to}"
+        out.append((label, body))
     return out
+
+
+def assertion_check(
+    audit: AssertionAudit, declared: str, self_declared: str, base: str
+) -> tuple[Check, int]:
+    """`no existing assertion removed`, from an audit - and how many `falsifies:` folded.
+
+    A charged form folds where the declaration is a substring of a base copy's
+    source, which keeps every declaration written against the line matcher
+    matching: a statement's source holds its opening line. It stays on the
+    page as declared rather than counted, so the removal reads as a
+    commissioned act and not an unexplained one (`PL-K82G`).
+    """
+    name = "no existing assertion removed"
+    if audit.unread:
+        return Check(name, False, f"not read: {audit.unread}"), 0
+    counted = folded = 0
+    shown: list[str] = []
+    declared_lines: list[str] = []
+    groups: list[tuple[str, list[str]]] = []
+    for absence in audit.absent:
+        kept: set[str] = set()
+        for form, count in absence.charged:
+            copies = [a for a in absence.before.assertions if a.form == form]
+            if declared and any(declared in a.source or declared in a.shown for a in copies):
+                folded += count
+                declared_lines.append(f"declared falsified, not counted: {_clip(copies[0].shown)}")
+            else:
+                counted += count
+                kept.add(form)
+        groups += _absence_lines(absence, kept) if kept else []
+    for label, body in groups[:SHOWN_FUNCTIONS]:
+        shown += [label, *body]
+    if len(groups) > SHOWN_FUNCTIONS:
+        shown.append(f"and {len(groups) - SHOWN_FUNCTIONS} more function(s)")
+    by_line = 0
+    for path, line in audit.lines:
+        if declared and declared in line:
+            folded += 1
+            declared_lines.append(f"declared falsified, not counted: {line.strip()}")
+        else:
+            by_line += 1
+            if by_line <= SHOWN_FUNCTIONS:
+                shown.append(f"{path}: {line.strip()}")
+    shown += [f"read line by line, not parsed: {path} - {why}" for path, why in audit.unparsed]
+    parts = [f"{counted} assertion(s)"] if counted else []
+    parts += [f"{by_line} line(s) in a file read line by line"] if by_line else []
+    detail = ", ".join(parts) or "none"
+    if folded:
+        detail += f", {folded} declared falsified" + (" by this closure" if self_declared else "")
+    if counted:
+        shown.append(
+            "which of these restates, tightens or loosens what it asserted is not decided "
+            "here, so nothing is paired; `falsifies:` on the base's copy is what declares one"
+        )
+    if self_declared and folded:
+        # The whole worth of `falsifies:` is that the base declared it, so the
+        # one case where the branch's own line is honoured names itself on the
+        # page it is honoured on (`PL-ZMGR`).
+        declared_lines.append(
+            f"the declaration above is this closure's own: {base} holds the item at "
+            "`status: needs-decision`, so which assertions the answer falsifies was "
+            "this branch's to say"
+        )
+    return Check(name, not (counted or by_line), detail, tuple(shown + declared_lines)), folded
 
 
 RESIDUAL = (
@@ -1118,13 +1493,15 @@ def _net_line_changes(
     and so the worker cannot argue with it (`PL-VP40`).
 
     Cancelling an added line against an identical removed line within the same
-    file is exactly as precise as the two checks consuming this, which read a
-    line's text rather than the tree it parses to, and it costs no extra git
-    call. Counting rather than de-duplicating is what keeps it
-    safe: a file whose patches remove one `# type: ignore` and add two still
-    reports one added. A line merely *moved* within a file cancels too, which is
-    the right answer to both questions - the suppression was already there, and
-    the assertion still is.
+    file is exactly as precise as what consumes this - the suppression check,
+    and the assertion check's fallback for a file it cannot parse, both of
+    which read a line's text rather than the tree it parses to - and it costs
+    no extra git call. The assertion check proper makes the same fold over
+    parsed statements instead (`removed_assertions`). Counting rather than
+    de-duplicating is what keeps it safe: a file whose patches remove one
+    `# type: ignore` and add two still reports one added. A line merely *moved*
+    within a file cancels too, which is the right answer to both questions -
+    the suppression was already there, and the assertion still is.
 
     Per file, never across: an assertion deleted from one file and an identical
     one added to another is two facts, not a move, and is reported as both.
@@ -1752,37 +2129,15 @@ def verify_item(
         )
     )
 
-    # An assertion the item was commissioned to *falsify* is the one shape this
-    # check has never had a passing route for, and it is not the hazard the
-    # check exists for. Three cases reach one reading of the removed lines as
-    # one: an assertion weakened to let bad work through, an assertion moved
-    # or reworded with its subject intact, and an assertion whose subject the
-    # item was asked to delete. `PL-VP40`'s fold separated the second. This
-    # separates the third, and it cannot be folded the same way, because
-    # nothing identical comes back - so it is declared instead, in the item,
-    # before the work (`PL-K82G`).
-    #
-    # A fourth case never belonged here at all: a line that merely contains the
-    # word. `is_assertion_line` is what removes it, and it is the only one of
-    # the four settled by looking at the line rather than at the item
-    # (`PL-7TYC`).
-    #
-    # And a fifth is the second case again, at the resolution the exact fold
-    # gave up: an assertion *edited in place* - a call site updated to a new
-    # signature - whose replacement is in the same diff and differs by an
-    # argument. `replacements` pairs the two (`PL-K1WS`).
-    #
-    # A sixth is reported and never folded, which is why it is last: an
-    # assertion whose *string* changed, because the output the item was asked
-    # to change is the thing that string pinned. The original string is gone,
-    # so nothing in the diff separates it from an expectation quietly dropped,
-    # and `PL-FCM3` offers six candidate replacements for one removal.
-    # `literal_swaps` names them and refuses to choose (`PL-K4R5`).
-    #
-    # The removal stays on the page in every one of them: what changes is that
-    # it reads as a commissioned or an answered act rather than an unexplained
-    # one, which is the property the check was defending.
-    removed_assertions = [pair for pair in removed if is_assertion_line(*pair)]
+    # Read at statement altitude rather than line by line (`PL-4W2L`). An
+    # assertion the base holds that the item's commits leave absent is the one
+    # fact decided; everything a line matcher used to guess from the shape of
+    # an edit - a reflow, a call site gaining an argument, a changed string -
+    # is either no change at all to the parser or a change put in front of the
+    # reader unpaired. What the check still cannot decide is intent, so an
+    # assertion the item was commissioned to *falsify* is declared, in the
+    # item, before the work (`PL-K82G`).
+    audit = removed_assertions(root, base, commits, removed)
     commission = commissioned_falsification(root, base, config.items_dir, item)
     unread = commission.unread
     # The one declaration read from the branch rather than from the base, and
@@ -1791,75 +2146,8 @@ def verify_item(
     # word in the ordinary case exactly as before.
     self_declared = self_declared_falsification(commission, item)
     declared = commission.falsifies or self_declared
-    folded = [line.strip() for _, line in removed_assertions if declared and declared in line]
-    rest = [pair for pair in removed_assertions if not (declared and declared in pair[1])]
-    paired = list(zip(rest, replacements(rest, added), strict=True))
-    replaced = [(line.strip(), hit) for (_, line), hit in paired if hit]
-    unpaired = [pair for pair, hit in paired if not hit]
-    dropped = [line.strip() for _, line in unpaired]
-    swapped = [
-        (line.strip(), candidates)
-        for (_, line), candidates in zip(unpaired, literal_swaps(unpaired, added), strict=True)
-        if candidates
-    ]
-    detail = f"{len(dropped)} line(s)" if dropped else "none"
-    if folded:
-        detail += f", {len(folded)} declared falsified"
-        if self_declared:
-            detail += " by this closure"
-    if replaced:
-        detail += f", {len(replaced)} replaced in place"
-    if swapped:
-        detail += f", {len(swapped)} differing by one string"
-    # A line with candidates is printed under them rather than twice: the
-    # refusal is unchanged either way, and the evidence reads as one item.
-    named = {was for was, _ in swapped}
-    report.checks.append(
-        Check(
-            "no existing assertion removed",
-            not dropped,
-            detail,
-            tuple(line for line in dropped if line not in named)[:5]
-            + tuple(f"declared falsified, not counted: {line}" for line in folded[:5])
-            + tuple(
-                text
-                for was, now in replaced[:3]
-                for text in (f"replaced, not counted: {was}", f"                   by: {now}")
-            )
-            + tuple(
-                text
-                for was, candidates in swapped[:3]
-                for text in (
-                    f"one string differs, still counted: {was}",
-                    *(
-                        f"      candidate {n} of {len(candidates)}: {now}"
-                        for n, now in enumerate(candidates[:3], 1)
-                    ),
-                )
-            )
-            + (
-                (
-                    "which candidate replaced it is not decidable from the diff, so none is "
-                    "folded; `falsifies:` on the base's copy is what declares this shape",
-                )
-                if swapped
-                else ()
-            )
-            # Said rather than folded silently: the whole worth of `falsifies:`
-            # is that the base declared it, so the one case where the branch's
-            # own line is honoured has to name itself on the page it is
-            # honoured on.
-            + (
-                (
-                    f"the declaration above is this closure's own: {base} holds the item at "
-                    "`status: needs-decision`, so which assertions the answer falsifies was "
-                    "this branch's to say",
-                )
-                if self_declared and folded
-                else ()
-            ),
-        )
-    )
+    check, folded = assertion_check(audit, declared, self_declared, base)
+    report.checks.append(check)
 
     # Said only where there is something to say, so an ordinary branch - which
     # declares nothing and has nothing to declare - sees no extra line. Each
