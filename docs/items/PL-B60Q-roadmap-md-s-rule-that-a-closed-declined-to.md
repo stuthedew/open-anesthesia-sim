@@ -6,10 +6,12 @@ effort: S
 status: done
 classes: defect, infra
 feature: gate-list-integrity
+milestone: v0.5.7
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/README.md, ROADMAP.md
 blocked-by: PL-J6HP
 added: 2026-09-22
 closed: 2026-09-23
+pr: 937
 payoff: a Declined-to-Gate entry that has shipped stops reading as outstanding debt, so v0.6.0's deferral list stays true as its entries close
 verify: grep -q 'def test_wave_prints_each_deferral_with_its_state_and_release' subprojects/docket/tests/test_roadmap.py
 ---

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: evidence-declines
+milestone: v0.5.7
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/README.md, docs/items/PL-19T3-changed-items-answers-confidently-that-nothing.md
 added: 2026-09-22
 closed: 2026-09-23

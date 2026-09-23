@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: parallel-sessions
+milestone: v0.5.7
 touches: tools, tests/unit/test_left_behind_check.py, docket.toml, .claude/hooks/docket-digest.sh, docs/ARCHITECTURE.md
 added: 2026-09-12
 closed: 2026-09-23

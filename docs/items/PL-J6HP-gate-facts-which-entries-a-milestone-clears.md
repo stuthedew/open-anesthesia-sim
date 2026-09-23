@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: defect, infra
 feature: gate-list-integrity
+milestone: v0.5.7
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md, docs/ARCHITECTURE.md
 added: 2026-09-23
 closed: 2026-09-23
+pr: 937
 payoff: each gate fact is read once, so a new way of writing one changes a parser instead of arriving in the queue as an item
 verify: grep -q 'def test_parse_milestones_reads_every_deferral_subsection' subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_required_scope_entry_outside_the_self_cleared_group_is_reported' tests/unit/test_doc_check.py
 root-cause-of: PL-H6VQ, PL-Z891, PL-YVP7, PL-B60Q, PL-JN3F, PL-RFHH
