@@ -2644,7 +2644,7 @@ def test_a_removal_is_not_charged_to_an_id_whose_selection_excludes_the_addition
     root = _repo(tmp_path)
     fixture = "\ndef test_fixture() -> None:\n    assert fixture_id == '{}'\n"
     _work(
-        root, "PL-B2B2 pin the fixture id", "tests/test_thing.py", KEPT + fixture.format("PL-STUV")
+        root, "PL-B2B2 pin the fixture id", "tests/test_thing.py", KEPT + fixture.format("PL-STVW")
     )
     _work(
         root,
@@ -2658,7 +2658,7 @@ def test_a_removal_is_not_charged_to_an_id_whose_selection_excludes_the_addition
     assert check.blocks
     assert check.detail == "1 assertion(s)"
     assert "    was  assert 1 == 1" in check.lines
-    assert not any("PL-STUV" in line for line in check.lines)
+    assert not any("PL-STVW" in line for line in check.lines)
 
 
 def test_a_renamed_test_module_is_compared_with_its_old_self(tmp_path: Path) -> None:
@@ -2756,7 +2756,9 @@ def test_a_file_this_interpreter_cannot_parse_is_read_line_by_line_and_named(
     assert check.detail == "1 line(s) in a file read line by line"
     assert "tests/test_thing.py: assert value == 1" in check.lines
     assert any(
-        line.startswith("read line by line, not parsed: tests/test_thing.py - Python ")
+        line.startswith(
+            "read line by line, not parsed: tests/test_thing.py - this interpreter cannot parse"
+        )
         for line in check.lines
     )
 

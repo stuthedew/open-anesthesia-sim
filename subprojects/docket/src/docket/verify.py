@@ -30,7 +30,6 @@ import os
 import re
 import shlex
 import subprocess
-import sys
 import tempfile
 import time
 import warnings
@@ -716,9 +715,8 @@ def removed_assertions(
                 where = f", line {error.lineno}" if isinstance(error, SyntaxError) else ""
                 unparsed.setdefault(
                     key,
-                    f"Python {sys.version_info.major}.{sys.version_info.minor} cannot parse its "
-                    f"copy at {_short(spec)} ({getattr(error, 'msg', None) or type(error).__name__}"
-                    f"{where})",
+                    f"this interpreter cannot parse its copy at {_short(spec)} "
+                    f"({getattr(error, 'msg', None) or type(error).__name__}{where})",
                 )
                 parsed[oid] = AssertionReading()
         return parsed[oid]

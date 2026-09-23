@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: verify-false-reject
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_portability.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 added: 2026-09-20
 closed: 2026-09-23
 payoff: replaces six line-level special cases with one parsed comparison against the base, which on main's history trades 6 false refusals for 9 real assertion changes the matcher missed or folded, and ends the generator that kept producing the next item
