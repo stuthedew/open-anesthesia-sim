@@ -1721,7 +1721,10 @@ whole format:
 - **An indented line continues the value above it**, folded on with a single
   space, exactly as YAML folds a plain scalar. Twelve `reason:` fields here are
   hand-wrapped that way. Indentation is what makes a continuation: a line at
-  column zero that is not `key: value` belongs to no field and is passed over.
+  column zero that is not `key: value` belongs to no field, and nor does an
+  indented line above the first field. Both are *reported* at `docket check`
+  rather than passed over, because what such a line usually holds is the tail
+  of the value above it (`PL-JD4L`).
 - **A value wrapped in matching quotes parses to the unquoted string.**
   Quoting is the correct instinct everywhere else, so `title: "Untested: every
   test reads the controller"` means what it looks like it means. The pair has
@@ -1738,9 +1741,13 @@ no lane (`PL-FX0K`), and quote characters landing inside 56 titles and 3
 127 having run nothing (`PL-V6CR`, `PL-MZH2`). `PL-9HD1` is the cluster.
 
 Where a field cannot be read, it is **reported rather than guessed at** —
-`unknown_fields`, `duplicate_fields` and `block_list_fields` on the parsed
-item, all three named by `docket check`. Guessing is what turns a validation
-failure into a silently wrong queue position.
+`unknown_fields`, `duplicate_fields`, `block_list_fields` and `unread_lines`
+on the parsed item, all four named by `docket check`. Guessing is what turns a
+validation failure into a silently wrong queue position. The writers that edit
+a value in place, `docket new`'s recurrence append and `docket withdraw`'s
+replace, take the lines a value spans from the same function the reader does,
+`model._fold`. When each had its own definition, an append landed on a line
+the reader passed over and a replace deleted one (`PL-JD4L`).
 
 `**Problem.**`, `**Why it matters.**` and `**Done when.**` are required once
 an item leaves `untriaged`; the others are conventions. A heading is matched
