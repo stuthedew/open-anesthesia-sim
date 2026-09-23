@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: feature
 feature: generator-identification
-touches: docs/items
+touches: docs/items, ROADMAP.md
 added: 2026-09-22
 payoff: a closed head recorded as still live is put in front of a session instead of ranking nowhere unnoticed
 not-delegable: its first step counts the closed heads still carrying generator: live, and that count decides between building the narrow check and dropping the item; no command can prove an outcome the count has not chosen yet

@@ -5917,6 +5917,16 @@ it. Owing this entry at all is an instance of the mechanism it records.
   `needs-decision`. It carries `generator: live`, so it ranks on that tier
   whatever this gate records.
 
+`PL-MB2W` was captured the same day, by the same sweep, as an unverified
+candidate. The session that settled `PL-TH9K`'s closed `live` verdicts then
+triaged it into this position.
+
+- PL-MB2W (M) - **deferred 2026-09-23.** Seven readers each derive who holds
+  an item from commit shape, and none records it. Twenty items filed between
+  2026-09-19 and 09-23 come from that. `defect`, and counted as debt because it
+  is at `needs-decision`. It carries `generator: live`, so it ranks on that
+  tier whatever this gate records.
+
 ### Required scope
 
 1. **The layout model** (queue items `PL-1FT6` and `PL-HJPY`). Pure Python,

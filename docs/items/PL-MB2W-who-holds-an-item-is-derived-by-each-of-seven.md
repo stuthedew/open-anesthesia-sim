@@ -102,6 +102,11 @@ What reopening costs:
 What declining costs: the derivation stands, and the next shape is found by an
 incident, as the last twenty were.
 
+**Answered 2026-09-23 under `PL-TH9K`: yes** (project owner, 2026-09-23,
+ratified, over keeping claims derived under `PL-BHVM`'s refusal). The design
+round may record claims under a lease. Landing stays derived. Choosing between
+the two routes above is still the round's decision.
+
 **Then the session's decision, once the owner has answered:** which route, and
 how the arming rule reads the answer from code instead of restating start
 mode's catalog. `PL-VFJ3`'s false claim is answered on either route by leading
