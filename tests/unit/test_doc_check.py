@@ -1140,8 +1140,34 @@ def test_candidates_mode_is_quiet_when_nothing_changed(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     root = _repo(tmp_path)
+    _git_init(root)
     assert doc_check.main(["candidates", "--root", str(root), "--base", "HEAD"]) == 0
     assert "nothing to sweep" in capsys.readouterr().out
+
+
+def test_candidates_mode_says_it_could_not_read_the_diff(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A diff git would not produce is not an empty one (`PL-9RFP`).
+
+    `_git` answered a failure with an empty list, and every caller reads that
+    as nothing changed. A base that did not resolve, or a checkout that is not
+    a repository at all, printed "nothing to sweep", and the close-out sweep
+    was skipped over a diff nobody had read. The test above this one pinned
+    that answer for a checkout with no repository in it, until it was given
+    one.
+    """
+    root = _repo(tmp_path)
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "HEAD"]) == 1
+    outside = capsys.readouterr().out
+    assert "Cannot sweep" in outside
+    assert "nothing to sweep" not in outside
+
+    _git_init(root)
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "no-such-base-ref"]) == 1
+    unresolved = capsys.readouterr().out
+    assert "no-such-base-ref" in unresolved
+    assert "nothing to sweep" not in unresolved
 
 
 # --- which terms enter the candidate search, and how they are matched -------

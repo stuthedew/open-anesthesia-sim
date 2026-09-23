@@ -30,7 +30,7 @@ from docket.cli import build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
 from docket.vcs import FlightReport, lost, records_on_base
-from docket.verify import LANDED_GUARD
+from docket.verify import LANDED_GUARD, GitUnanswered
 
 READY = """---
 id: PL-B1B1
@@ -796,21 +796,19 @@ def test_check_replays_verify_commands_when_asked(tmp_path: Path) -> None:
     assert (tmp_path / "ran.marker").exists()
 
 
-def test_verify_base_narrows_the_replay_to_what_the_branch_changed(tmp_path: Path) -> None:
+def test_verify_base_outside_a_repository_declines_the_replay(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     """`--verify-base` is the flag CI passes on a pull request (`PL-SDHR`).
 
-    The sweep costs 87 s of the quality job's 152 s and answers about the
-    store, which a pull request cannot have changed - `PL-P3B6`'s argument for
-    taking it off `make check`, one step on. Here the base resolves to no
-    changed item, so the marking command must not run: that is the flag
-    narrowing rather than being ignored.
-
-    An unresolvable base lands in the same place *here*, and for a reason this
-    store's shape supplies: outside a repository `git diff` exits 1 rather than
-    128, which `_run_git` reads as git answering no. So this drives the
-    narrowing alone, and `docket check`'s cost line says the scope was empty.
-    The same base inside a repository is the other case entirely - git exits
-    128, the read declines, and the test below holds it to that.
+    Outside a repository the replay's two halves disagreed. `changed_items`
+    still reads git's exit 1 there as git answering no (`PL-19T3`), so on its
+    own it scopes the replay to nothing. This test asserted that as the flag
+    narrowing. `changed_paths` exits 129 on the same read and declines it now
+    (`PL-9RFP`), so the replay declines whole and says why, rather than
+    running nothing and reporting clean. Narrowing proper, a base that
+    resolves with nothing changed, is the first half of
+    `test_a_branch_that_invalidates_another_item_s_command_replays_it`.
     """
     store = _store(tmp_path, MARKING)
 
@@ -820,7 +818,10 @@ def test_verify_base_narrows_the_replay_to_what_the_branch_changed(tmp_path: Pat
         )
         == 0
     )
+    printed = capsys.readouterr().out
     assert not (tmp_path / "ran.marker").exists()
+    assert "not checked" in printed
+    assert "could not be read" in printed
 
 
 def test_verify_refuses_a_base_no_candidate_resolved(
@@ -962,6 +963,33 @@ def test_a_base_a_repository_cannot_resolve_declines_the_replay(
     assert "not checked" in printed
     assert "scoped to what this branch changed against docket-no-such-ref" in printed
     assert "could not be read" in printed
+
+
+def test_a_changed_file_list_git_does_not_answer_declines_the_replay(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The replay's second half declines on its own read, not only on the first's.
+
+    `changed_items` can answer where `changed_paths` cannot, for example a
+    `git status` refused by a damaged index. The second half is the one that
+    replays a command the branch *invalidates*. Until `PL-9RFP` its failure
+    came back as git's complaint read as paths, which matched no command. That
+    scoped the half to nothing on exactly the branch below, which edits the
+    file `PL-R34D`'s command reads.
+    """
+    root, base = _reading_repo(tmp_path)
+    (root / "README.md").write_text("sentinel\n", encoding="utf-8")
+
+    def unanswered(*_: object) -> tuple[str, ...]:
+        raise GitUnanswered("`git status` exited 128: fatal: index file corrupt")
+
+    monkeypatch.setattr(cli, "changed_paths", unanswered)
+
+    assert _run("check", "--verify", "--verify-base", base, "--items", str(root / "items")) == 0
+    printed = capsys.readouterr().out
+    assert not (root / "ran.marker").exists()
+    assert "not checked" in printed
+    assert "index file corrupt" in printed
 
 
 def test_the_replay_scope_reads_the_store_the_run_was_pointed_at(tmp_path: Path) -> None:

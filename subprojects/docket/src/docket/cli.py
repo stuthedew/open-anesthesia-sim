@@ -140,7 +140,14 @@ from .vcs import (
     tags,
     working_paths,
 )
-from .verify import LandedReport, already_passing, changed_paths, items_reading, verify_batch
+from .verify import (
+    GitUnanswered,
+    LandedReport,
+    already_passing,
+    changed_paths,
+    items_reading,
+    verify_batch,
+)
 
 # The one thing that is true at capture, and nothing else. Empty headings for a
 # session to write over were indistinguishable from headings a session had left
@@ -672,11 +679,19 @@ def cmd_check(args: argparse.Namespace) -> int:
         # replay that never ran.
         edited = changed_items(root, args.verify_base, items_dir=inv.tracked, runner=inv.git)
         changed = edited.identifiers
-        reading = items_reading(items, changed_paths(root, args.verify_base)) - changed
-        if not edited.known:
+        declined = edited.declined
+        try:
+            reading = items_reading(items, changed_paths(root, args.verify_base)) - changed
+        except GitUnanswered as silence:
+            # The other half of the scope, and the same answer. Until
+            # `PL-9RFP` git's complaint came back as the changed paths, matched
+            # no command, and left the half that catches a branch breaking
+            # another item's `verify:` scoped to nothing.
+            declined = declined or str(silence)
+        if declined:
             unscoped = (
                 f"the replay is scoped to what this branch changed against "
-                f"{args.verify_base}, and that could not be read - {edited.declined}"
+                f"{args.verify_base}, and that could not be read - {declined}"
             )
     report = _complete_report(
         root,
@@ -2798,13 +2813,19 @@ def _guessed_base_refusal() -> str:
 
     The commission audit is a claim about what a branch changed *against a
     base*, so a base nobody established makes every one of its findings
-    unfounded - and not visibly so. `changed_paths` asks git for
-    `diff --name-only <base>...HEAD`, git exits non-zero for a ref that is not
-    there, and what comes back is not an empty diff but git's own three-line
-    fatal message, which the caller then reads as three changed paths. Measured
-    2026-09-22 on a checkout with no default branch: the audit reported
-    `fatal: ambiguous argument 'main...HEAD'...` as a path outside the
-    commission and missed both files the branch had actually changed.
+    unfounded - and not visibly so. Measured 2026-09-22 on a checkout with no
+    default branch: the audit reported `fatal: ambiguous argument
+    'main...HEAD'...` as a path outside the commission and missed both files
+    the branch had actually changed, because `changed_paths` read git's error
+    text as paths.
+
+    `changed_paths` now declines a base git cannot resolve (`PL-9RFP`), so
+    without this refusal the audit would say it could not read the diff. The
+    refusal still covers what that decline cannot. The first case is a guess
+    that *resolves*: the local `main`, reached because `origin/main` went
+    unread. Git answers that without complaint, against the wrong base. The
+    second is a guess that does not resolve, where this names the one flag
+    that fixes it.
 
     Refusing rather than reporting, because the direction is the one that
     cannot be recovered from. A refusal costs one re-run and says which ref to
