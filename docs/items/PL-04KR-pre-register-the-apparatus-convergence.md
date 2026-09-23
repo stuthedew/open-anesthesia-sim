@@ -9,6 +9,7 @@ feature: convergence-visibility
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_trend.py, docs/items
 added: 2026-09-19
 verify: grep -q 'def test_the_re_entry_rate' subprojects/docket/tests/test_trend.py
+recurrences: 2026-09-23 PL-02C4 withdrawn 2026-09-23 PL-02C4
 ---
 
 **Problem.** The project owner stated an expectation on 2026-09-19: with the
@@ -109,6 +110,27 @@ and four weeks of flat share neither confirms nor refutes it, because share is
 not the claim. Both signals that are the claim remain unmeasurable while this
 item is open, so the expectation is still in the unfalsifiable state
 § "Why it matters" below names.
+
+**A first reading of signal 1, taken by hand on 2026-09-23.** The command
+this item asks for still does not exist. Since `PL-KVDK` (2026-09-22), though,
+triage writes a `**Generator check.**` line into every workflow-lane item, and
+that line records re-entry directly. Of the 37 workflow- and crossing-lane
+filings from 2026-09-22 and 09-23 that carry one, 14 name a closed item whose
+fix did not reach them, either as a post-close instance of a head or as a
+re-entry within 30 days: `PL-1P5V`, `PL-3W3P`, `PL-6SV4`, `PL-8GV1`, `PL-BBT8`,
+`PL-DNZ0`, `PL-DSPM`, `PL-J16N`, `PL-1PBV`, `PL-59QW`, `PL-9VPH`, `PL-FD5Q`,
+`PL-JD4L` and `PL-JLYG`. Two of the four captures still untriaged that day are
+the same kind (`PL-58JD`, `PL-PZ6T`). Three of the heads closed on 2026-09-23
+as `spent` (`PL-9RFP`, `PL-8YXJ`, `PL-J6HP`) each drew one such item the same
+day, and `PL-1PBV` was filed ten minutes after `PL-9RFP` merged. One reading
+cannot show a trend, and the trend is what the prediction is about. As a level,
+though, it means more than a third of new workflow items are fixes that did not
+hold, which is the case the prediction above says points at a fragile area. The
+same pass found a cluster with no head, now recorded as `PL-WD5Z`, so signal 2
+moved as well. Deliberately not counted as a signal: gross non-product filings
+by day since the campaign read 97, 75, 69, 44 and 32 (the last is a partial
+day). That series is falling, but it is gross inflow, which this brief rejects
+as a signal.
 
 **Staleness caveat on every number above.** `PL-LKGL` measured 32% of the
 workflow lane dead or partly overtaken on 2026-09-12. The 151, the cluster sizes

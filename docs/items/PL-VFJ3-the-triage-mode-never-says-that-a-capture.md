@@ -15,3 +15,10 @@ ids, so `bin/docket flight` then showed `PL-JD4L` - the top of `bin/docket
 next` - in flight on the triage branch with no work on it. The three passes
 before it filed an item for the pass (`PL-2JRC`, `PL-14QR`) and led with that,
 which is the convention the mode would need to state.
+
+**Generator check.** Two mechanisms. The first half, a debt capture made
+during a freeze owing a `ROADMAP.md` entry the triage mode never mentions, is a
+member of `PL-WD5Z`: the entry is owed only because the disposition lives in a
+second store. The second half, the fix commit's leading ids marking the triaged
+items in flight, belongs to the claim-from-commit-shape candidate that
+`PL-MB2W` records unverified.
