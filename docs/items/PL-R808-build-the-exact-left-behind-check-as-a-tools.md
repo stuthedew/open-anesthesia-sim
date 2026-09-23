@@ -3,14 +3,15 @@ id: PL-R808
 title: Build the exact left-behind check as a tools/ script comparing a branch tip against refs/pull/<n>/head, declining where those refs are not fetched
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
 feature: parallel-sessions
-touches: tools, tests/unit/test_left_behind_check.py, docket.toml
+touches: tools, tests/unit/test_left_behind_check.py, docket.toml, .claude/hooks/docket-digest.sh, docs/ARCHITECTURE.md
 added: 2026-09-12
+closed: 2026-09-23
 verify: grep -q 'tests/unit/test_left_behind_check.py' docket.toml && uv run pytest -q tests/unit/test_tools_portability.py
 root-cause-of: PL-8JQQ, PL-X5PK, PL-CZR6, PL-NPWP, PL-BYMX, PL-B78T, PL-1X2C
-generator: live - PL-BHVM closed with this exact landing test unbuilt; all seven members were filed after it closed, each adding another content, date or subject heuristic to vcs.py (PL-KVDK)
+generator: spent - the exact landing test it lacked is now built in tools/left_behind_check.py and read at every session start, so a member no longer needs another content, date or subject heuristic in vcs.py to answer whether a merged pull request left work behind
 ---
 
 **Problem.** Build the exact left-behind check as a tools/ script comparing a branch tip against refs/pull/<n>/head, declining where those refs are not fetched
@@ -119,3 +120,50 @@ test is **not a superset** of the portable one even in principle — so `orphane
 is never retired. Where the two disagree, the exact test wins and the
 disagreement is printed rather than resolved silently, which answers the
 question `PL-R808` leaves open.
+
+## Built, 2026-09-23
+
+`tools/left_behind_check.py`. For every branch on `origin` except the default
+one, it asks GitHub for the newest pull request from that branch into the
+default branch and reads that pull request's `refs/pull/<n>/head` with one
+`ls-remote`. It then names the non-merge commits between that head and the tip
+that the base does not hold. The three conditions decline under their own
+prefixes: `no network`, `no permission` and `no such ref`. A shallow clone, a
+remote that is not GitHub's, and a tip newer than this checkout's fetch also
+decline, and never read as clear. `vcs.orphaned` is untouched. The `#284` and
+`#499` shapes are rebuilt as real git fixtures in
+`tests/unit/test_left_behind_check.py`, with `#499`'s base rewriting the
+squashed file afterwards, which is the confound that fooled `orphaned` on `#312`.
+
+**The two questions this brief left open.**
+
+- **Wired into the session-start digest** (`.claude/hooks/docket-digest.sh`),
+  last, as an exception line. Not CI: nothing CI runs on sees a push to a
+  merged branch, and a red check on an unrelated pull request would be wrong.
+  Not `make check`: that must answer offline. It prints nothing when every
+  branch is clear, so every decline prints.
+- **Disagreement with `vcs.orphaned`** is printed and the ref comparison wins,
+  as `PL-BHVM` ratified. A finding says `vcs.orphaned agrees` or
+  `vcs.orphaned does not report it`. A branch `orphaned` reports but this check
+  clears gets its own line saying why: merged at its tip, open, closed unmerged,
+  no pull request, or restarted.
+
+**What the build found that the brief did not carry.**
+
+- **The mapping needs a token.** Git records no link from a branch to its pull
+  request, so `PL-VV4D`'s "git rather than an API - no token" holds for the
+  frozen head only. The mapping comes from GitHub's listing, which is why `no
+  permission` includes "no token". `orphaned` answering where this cannot is
+  exactly the "beside, not instead" arrangement, so no decision changes.
+- **GitHub's pull-request record keeps the frozen head after the ref is
+  deleted.** `#312`'s API `head.sha` is `7d1615f5`, the value `PL-VV4D` recorded
+  for `refs/pull/312/head` before `PL-0SCG` deleted it, and `ls-remote` now
+  returns nothing for it. So `no such ref` could become an answer instead of a
+  decline. It was built as specified, because none of the nine branches on
+  `origin` today has its newest pull request inside `#297`-`#386`.
+- **Its first live run found one:** `claude/recurrence-signal-feature-3hnynt`
+  carries `52c6d698` (PL-DGP0), pushed after `#793` merged at `46620e20`.
+  `orphaned` does not report it. `#794`, from `claude/practical-cerf-nx84jg`,
+  landed PL-DGP0 under the same subject. The commit does not cherry-pick
+  cleanly onto today's `main`, though, so whether every line of it landed is a
+  look at `#794` before the branch is deleted, not a certainty.
