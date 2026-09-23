@@ -46,6 +46,14 @@ drive-to-green rules prescribe for a red base, and four branches did it on
 such branch will read as having unlanded work once it merges, with a recovery
 line that clobbers the file.
 
+**The owner's direction, 2026-09-23.** In their words: "I'd rather fix it right once, then fix it twice" (project owner, 2026-09-23). Read against
+this item: one test of whether the base already holds a change, called by both
+`vcs.orphaned` and `tools/left_behind_check.py`, rather than one more heuristic
+in each. `PL-PXZ3` is the same question in the second tool. A lead, not a
+finding: test the change hunk by hunk against the base. That holds where the
+base carries the change plus more, which is the case the reproduction below
+shows both whole-patch and plain comparisons missing.
+
 **Done when.** `stranded` recognises a commit whose change the base already
 holds, by patch identity or by content, and does not offer a checkout that
 would overwrite newer content on the base.

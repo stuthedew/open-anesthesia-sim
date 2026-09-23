@@ -119,6 +119,23 @@ start mode's catalog. On either route, `PL-VFJ3`'s false claim is answered by
 leading a pass's commits with the pass's own id (`CLAUDE.md` § "Housekeeping
 you are about to do yourself is filed before you do it").
 
+**The owner's direction, 2026-09-23.** In their words: "I'd rather fix it right once, then fix it twice" (project owner, 2026-09-23). Of the two
+routes above, this reading favours the claim recorded under a lease. The
+derived route reads what the branch did to the item, which is still an
+inference from the branch, and inference is what produced twenty members. The
+round still chooses. Its first question is a carrier the dead ends allow.
+Two leads, not findings:
+
+- a field on the item's own copy on the branch;
+- one ref per claim.
+
+`docs/worker.md` § "Ref operations a session cannot perform" constrains the
+second. A session cannot delete a remote branch or push a tag, and nothing
+records whether it can push a ref outside `refs/heads/`. So a ref carrier
+could never be removed, and its lease would have to expire on the read side.
+Reading the direction this way is this session's call, so ordinary evidence
+reopens it.
+
 **Done when.**
 
 - One reader decides who holds an item for `branches_in_flight`, `release`'s

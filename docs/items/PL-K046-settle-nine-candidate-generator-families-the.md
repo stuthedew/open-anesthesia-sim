@@ -52,9 +52,16 @@ The full member lists and each skeptic's reason are in the workflow journal
 for run `wf_5c419b9f-f8c`. That journal is session-local, so these lists are
 the durable copy.
 
-**Scale.** One refuter per family, and a second only where the first does not
-refute: nine to eighteen agents, against the 262 the audit spent. The owner
-said so on 2026-09-23 ("That's a lot of agents").
+**Scale.** Two refuters per family, working independently, and a third only
+where they split: eighteen to twenty-seven agents, against the 262 the audit
+spent. The owner flagged the audit's size on 2026-09-23 ("That's a lot of
+agents"). Later that day they asked for each question to be settled once:
+"I'd rather fix it right once, then fix it twice" (project owner, 2026-09-23). One refuter, as first scoped, would let a single agent's verdict decide
+whether a generator is recorded.
+
+**Order.** Run this before the design rounds on the live heads, because it
+decides how many heads the pause holds. That is this session's reading of the
+owner's "get things in order now" (2026-09-23).
 
 **Done when.** Each of the nine is recorded as a head, live or spent, with its
 members, or is refuted with the reason written here.

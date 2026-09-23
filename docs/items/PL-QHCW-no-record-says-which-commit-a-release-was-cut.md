@@ -39,6 +39,12 @@ the tag for the cut:
 
 **Decision needed.** Record the cut commit when the cut merges (the squash sha, read back by the cut's own close-out), or keep the hand-placed tag and close this head spent? Recommendation: record it, because three members are open and every one re-derives the same missing fact.
 
+**The owner's direction, 2026-09-23.** In their words: "I'd rather fix it right once, then fix it twice" (project owner, 2026-09-23). Against this
+decision it rules out keeping the hand-placed tag and closing this head spent.
+The design round decides where the cut commit is recorded, then makes the tag
+and every reader of it use that record. Reading the direction this way is this
+session's call, so ordinary evidence reopens it.
+
 **Done when.** The commit a release was cut on is recorded when the cut
 merges, and the tag and its readers use it. Or the owner decides the hand-placed
 tag stays, and this head is closed spent with that recorded. It is a design
