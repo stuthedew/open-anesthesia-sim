@@ -675,6 +675,13 @@ def test_a_bare_and_not_following_a_matched_id_is_ordinary_prose() -> None:
     assert _compound("Blocked on the port. The advisory and `PL-0003` agree.") == []
 
 
+def test_a_list_does_not_run_on_into_the_next_paragraph() -> None:
+    advisories = _compound(
+        "Blocked on `PL-0002`,\n\n`PL-0003` is unrelated.", blocked_by=("PL-0002",)
+    )
+    assert advisories == []
+
+
 def test_an_and_on_with_no_cue_in_its_paragraph_is_ordinary_prose() -> None:
     """The reason "and on" is not simply another cue. Unanchored it reads a
     sentence that reports on two items as declaring a prerequisite on the

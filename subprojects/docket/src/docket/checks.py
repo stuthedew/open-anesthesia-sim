@@ -2426,7 +2426,8 @@ def _prerequisite_matches(body: str, cue: re.Pattern[str]) -> list[re.Match[str]
     listed: list[re.Match[str]] = []
     for match in matches:
         tail = PROSE_DEPENDENCY_LIST.match(body, match.end())
-        while tail is not None:
+        # A list does not run on past its paragraph, which `\s` alone would let it.
+        while tail is not None and "\n\n" not in tail.group(0):
             listed.append(tail)
             tail = PROSE_DEPENDENCY_LIST.match(body, tail.end())
     standing = [match for match in matches + listed if _standing(body, match.start())]
