@@ -3,14 +3,15 @@ id: PL-XYQW
 title: Collapse the nine identical docket record advisories that fire on every healthy run
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: queue-hygiene
 touches: subprojects/docket
 added: 2026-09-13
-verify: grep -q 'def test_the_record_advisory_names_every_owed_item_once' subprojects/docket/tests/test_checks.py && uv run pytest subprojects/docket/tests/test_checks.py
+closed: 2026-09-23
+verify: grep -q 'def test_a_closure_the_next_cut_will_number_is_not_owed_yet' subprojects/docket/tests/test_checks.py && grep -q 'def test_the_record_advisory_names_every_owed_item_once' subprojects/docket/tests/test_checks.py && uv run pytest subprojects/docket/tests/test_checks.py
 root-cause-of: PL-W7WL, PL-3HMQ, PL-K4BN, PL-66X4, PL-2M5T, PL-WXX8
-generator: live - pr: is stored though closures_on_base derives it, so every writer and reader of the lag breeds a defect; PL-K4BN on 09-22 is the latest (PL-KVDK)
+generator: spent - the lag is no longer reported before the cut, which writes pr: before the notes render and so is the one writer the one reader waits on (PL-W7WL); check now advises only a closure that shipped without its number
 ---
 
 **Problem.** Collapse the nine identical docket record advisories that fire on every healthy run
@@ -30,3 +31,22 @@ number in a single line with the remedy stated once; a test in
 `subprojects/docket/tests/test_checks.py` pins the multi-item case; and the
 advisory total `bin/docket check` reports counts it as one finding rather than
 one per item.
+
+**Built 2026-09-23: the collapse.** One line names every closure owed a
+number, pinned by `test_the_record_advisory_names_every_owed_item_once`;
+`check` went from eleven advisories to six on the day.
+
+**Decided 2026-09-23: owed only once shipped** (project owner, 2026-09-23,
+ratified, over collapsing the per-item lines alone and over deriving `pr` on
+every read instead of storing it). All six closures the collapsed line named
+that day were unshipped - `done`, no `milestone:` - and the cut writes `pr:`
+for exactly those before it renders the notes (`_numbers_before_notes`,
+`PL-W7WL`); none of the 1,030 done items had shipped without its number. So
+`check` now advises a recoverable number only for a closure that shipped
+without it - the cut that could not read the merge, most often from a shallow
+clone - naming its release, and `docket record` repairs the field and the notes
+together. The error where a complete history names no number still covers
+every landed closure, because the cut cannot supply one either. `check` went
+from eleven advisories to five on the day. Deriving `pr` everywhere was
+declined: it would rewrite 1,030 item files and need whole history for every
+read, to give the release notes a number the cut already writes.
