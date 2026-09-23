@@ -801,13 +801,12 @@ def test_verify_base_outside_a_repository_declines_the_replay(
 ) -> None:
     """`--verify-base` is the flag CI passes on a pull request (`PL-SDHR`).
 
-    Outside a repository the replay's two halves disagreed. `changed_items`
-    still reads git's exit 1 there as git answering no (`PL-19T3`), so on its
-    own it scopes the replay to nothing. This test asserted that as the flag
-    narrowing. `changed_paths` exits 129 on the same read and declines it now
-    (`PL-9RFP`), so the replay declines whole and says why, rather than
-    running nothing and reporting clean. Narrowing proper, a base that
-    resolves with nothing changed, is the first half of
+    Outside a repository both of the replay's halves decline now, so it
+    declines whole and says why, rather than running nothing and reporting
+    clean. This test once asserted that as the flag narrowing, because
+    `changed_items` read `git diff`'s exit 1 there as git answering no. It
+    declines since `PL-19T3`, and `changed_paths` since `PL-9RFP`. Narrowing
+    proper, a base that resolves with nothing changed, is the first half of
     `test_a_branch_that_invalidates_another_item_s_command_replays_it`.
     """
     store = _store(tmp_path, MARKING)
@@ -985,12 +984,10 @@ def test_a_changed_file_list_git_does_not_answer_declines_the_replay(
 
     monkeypatch.setattr(cli, "changed_paths", unanswered)
 
-    # With git, because the read being failed is a git read: `_run`'s
-    # `--no-git` declines the scoped replay before `changed_paths` is asked
-    # (`PL-NGBM`), which prints its own decline and passes the first two
-    # assertions below having exercised nothing (`PL-KH3Q`).
-    store = str(root / "items")
-    assert _run_with_git("check", "--verify", "--verify-base", base, "--items", store) == 0
+    assert (
+        _run_with_git("check", "--verify", "--verify-base", base, "--items", str(root / "items"))
+        == 0
+    )
     printed = capsys.readouterr().out
     assert not (root / "ran.marker").exists()
     assert "not checked" in printed
