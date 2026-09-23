@@ -3,11 +3,12 @@ id: PL-BBT8
 title: bin/docket show reports a dropped head marked generator: live as ranked on the generator tier, because cli.cmd_show skips the status test render._verdict_phrase applies (PL-LN69)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: generator-identification
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-22
+closed: 2026-09-23
 payoff: show stops telling a reader that a closed head is ranked, so a mechanism its own verdict calls live gets recorded where it can rank instead of being taken as handled
 verify: grep -q 'def test_show_on_a_closed_head_says_it_ranks_on_no_tier' subprojects/docket/tests/test_cli.py
 impairs-generators: cli.cmd_show reports rank from model.ranks_as_generator and model.impairs_generators_soundly, which test no status, so a done or dropped item carrying generator: live or a sound impairs-generators: is shown as ranked on the generator tier while plan.recommend ranks only startable items - a still-live mechanism on a closed head reads as ranked and is ranked by nothing
@@ -54,3 +55,21 @@ record from rank put the closed-head test in `render._verdict_phrase` and not in
 ranked one, at a sibling site. The design fact is that "a closed head is on no
 tier" is restated by each reader instead of living in the predicate they share.
 No other open item stands on it.
+
+**Worked 2026-09-23.** The status test moved into the rank predicates instead
+of being added to `cmd_show` as a third restatement, because the brief's own
+generator check names the restating as the design fact. `model.ranks_as_generator`
+now refuses a closed item, and `model.ranks_as_generator_defect` is the same
+question for the `impairs-generators:` entrance, beside the soundness predicate
+`show` had been asking. `recommend` passes only startable items, so it is
+unchanged. `show` still names "closed" in its own lines, because it has to say
+why an item is on no tier, and `placement_line` takes `closed` so the plan line
+stops claiming any rank for a closed item. That was also false of every
+ordinary closed item ("it ranks on its band alone").
+
+A third reader had the same fault and was worked here rather than filed, under
+the capture rule's clause for a finding that completes an in-progress item.
+`bin/docket generators` said "3 items rank on the generator tier by
+`impairs-generators:`" and listed `PL-LSR0 (done)` among them. It now lists the
+closed defect on its own line, as ranking on no tier.
+

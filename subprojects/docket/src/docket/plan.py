@@ -589,7 +589,9 @@ def recurring(items: list[Item], in_flight: Collection[str] | None = None) -> li
     )
 
 
-def placement_line(scope: Scope | None, identifier: str, *, ranks_above_bands: bool = False) -> str:
+def placement_line(
+    scope: Scope | None, identifier: str, *, ranks_above_bands: bool = False, closed: bool = False
+) -> str:
     """One short phrase saying where the plan places an id, or `""`.
 
     `docket next` states the relation inside a ranked item's reason, which
@@ -611,6 +613,12 @@ def placement_line(scope: Scope | None, identifier: str, *, ranks_above_bands: b
     show` asserted it on every generator in the store - on the path the project
     owner usually starts work on, where `next`'s corrected wording never
     reaches. The relation itself is unchanged, so the two still agree.
+
+    `closed` drops the rank clause's claim altogether, and wins over
+    `ranks_above_bands`: a closed item ranks on no band and no tier, so either
+    sentence would be false of it. `docket show` printed "it ranks above every
+    band but P0" under closed generator heads, and "it ranks on its band alone"
+    under every other closed item (`PL-BBT8`).
     """
 
     if scope is None or not scope.anchor:
@@ -635,6 +643,8 @@ def placement_line(scope: Scope | None, identifier: str, *, ranks_above_bands: b
         return f"outside what {scope.anchor} names; placed by {placed_by}"
     if where == EXCLUDED:
         return f"explicitly out of scope for {scope.anchor}"
+    if closed:
+        return f"placed by no section of {scope.anchor} - it is closed, so it ranks nowhere"
     if ranks_above_bands:
         return f"placed by no section of {scope.anchor} - it ranks above every band but P0"
     return f"placed by no section of {scope.anchor} - it ranks on its band alone"

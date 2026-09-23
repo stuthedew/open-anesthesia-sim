@@ -1926,7 +1926,8 @@ store's are — and one number would have to pick a reading and print it as
 fact. What a sound claim leaves uncounted is named rather than omitted: an
 unsound `root-cause-of:`, which nothing ranks and nothing counts, and an
 `impairs-generators:` item, which ranks on the same tier while naming no
-members to drain.
+members to drain - named apart once closed, since a closed item ranks on no
+tier whatever its fields say.
 
 Nothing infers it. A ratio over a `touches` path measures how busy a file is,
 and citation is not causation — 33 items in this store are cited by more than
