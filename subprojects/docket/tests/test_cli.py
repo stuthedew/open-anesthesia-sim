@@ -61,6 +61,11 @@ def _run(*args: str) -> int:
     return main([*args, "--no-git", "--today", "2026-08-24"])
 
 
+def _run_with_git(*args: str) -> int:
+    """`_run` for a test of a git read itself, which `--no-git` stops (`PL-NGBM`)."""
+    return main([*args, "--today", "2026-08-24"])
+
+
 @pytest.fixture(autouse=True)
 def _no_inherited_guard(monkeypatch: pytest.MonkeyPatch) -> None:
     """Clear the re-entry guard this suite may have inherited.
@@ -810,7 +815,10 @@ def test_verify_base_narrows_the_replay_to_what_the_branch_changed(tmp_path: Pat
     store = _store(tmp_path, MARKING)
 
     assert (
-        _run("check", "--verify", "--verify-base", "docket-no-such-ref", "--items", str(store)) == 0
+        _run_with_git(
+            "check", "--verify", "--verify-base", "docket-no-such-ref", "--items", str(store)
+        )
+        == 0
     )
     assert not (tmp_path / "ran.marker").exists()
 
@@ -842,7 +850,7 @@ def test_verify_refuses_a_base_no_candidate_resolved(
     subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
     subprocess.run(["git", "commit", "--quiet", "-m", "PL-M4RK Seed"], cwd=tmp_path, check=True)
 
-    assert _run("verify", "PL-M4RK", "--items", str(store)) == 1
+    assert _run_with_git("verify", "PL-M4RK", "--items", str(store)) == 1
     out = capsys.readouterr().out
     assert "no candidate default branch resolved" in out
     assert "--base <ref>" in out
@@ -914,12 +922,12 @@ def test_a_branch_that_invalidates_another_item_s_command_replays_it(
     store = str(root / "items")
 
     # Nothing changed yet, so the command is out of scope and does not run.
-    assert _run("check", "--verify", "--verify-base", base, "--items", store) == 0
+    assert _run_with_git("check", "--verify", "--verify-base", base, "--items", store) == 0
     assert not (root / "ran.marker").exists()
 
     (root / "README.md").write_text("sentinel\n", encoding="utf-8")
 
-    assert _run("check", "--verify", "--verify-base", base, "--items", store) == 1
+    assert _run_with_git("check", "--verify", "--verify-base", base, "--items", store) == 1
     assert (root / "ran.marker").exists()
     printed = capsys.readouterr().out
     assert "PL-R34D" in printed
@@ -944,7 +952,10 @@ def test_a_base_a_repository_cannot_resolve_declines_the_replay(
     root, _ = _reading_repo(tmp_path)
     store = str(root / "items")
 
-    assert _run("check", "--verify", "--verify-base", "docket-no-such-ref", "--items", store) == 0
+    assert (
+        _run_with_git("check", "--verify", "--verify-base", "docket-no-such-ref", "--items", store)
+        == 0
+    )
 
     printed = capsys.readouterr().out
     assert not (root / "ran.marker").exists()
@@ -980,7 +991,7 @@ def test_the_replay_scope_reads_the_store_the_run_was_pointed_at(tmp_path: Path)
         encoding="utf-8",
     )
 
-    assert _run("check", "--verify", "--verify-base", base, "--items", str(store)) == 0
+    assert _run_with_git("check", "--verify", "--verify-base", base, "--items", str(store)) == 0
 
     assert (root / "ran.marker").exists()
 
@@ -1681,7 +1692,7 @@ def test_a_release_refreshes_the_refs_before_deciding(
     """
     root = _release_repo(tmp_path, "v0.2.5")
     fetched: list[Path] = []
-    monkeypatch.setattr("docket.cli.fetch_remote", lambda where: fetched.append(where))
+    monkeypatch.setattr("docket.cli.fetch_remote", lambda where, runner: fetched.append(where))
 
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
     assert fetched == [root]
@@ -1692,7 +1703,7 @@ def test_no_fetch_is_honored_for_a_caller_that_refreshed_or_cannot(
 ) -> None:
     root = _release_repo(tmp_path, "v0.2.5")
     fetched: list[Path] = []
-    monkeypatch.setattr("docket.cli.fetch_remote", lambda where: fetched.append(where))
+    monkeypatch.setattr("docket.cli.fetch_remote", lambda where, runner: fetched.append(where))
 
     assert main(["release", "0.2.6", "--no-fetch", "--items", str(root / "items")]) == 0
     assert fetched == []
@@ -2408,7 +2419,7 @@ def test_stranded_refreshes_the_base_before_deciding_anything_is_lost(
     """
     root = _branched_repo(tmp_path)
     fetched: list[Path] = []
-    monkeypatch.setattr("docket.cli.fetch_remote", lambda where: fetched.append(where))
+    monkeypatch.setattr("docket.cli.fetch_remote", lambda where, runner: fetched.append(where))
 
     assert main(["--items", str(root / "items"), "stranded"]) == 0
 
@@ -2422,7 +2433,7 @@ def test_stranded_says_so_when_told_not_to_refresh(
     """A checkout with no network still gets an answer, and is told what it rests on."""
     root = _branched_repo(tmp_path)
     fetched: list[Path] = []
-    monkeypatch.setattr("docket.cli.fetch_remote", lambda where: fetched.append(where))
+    monkeypatch.setattr("docket.cli.fetch_remote", lambda where, runner: fetched.append(where))
 
     assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
 
@@ -4517,7 +4528,7 @@ def _owed_project(tmp_path: Path, *, store: str = "docs/items") -> Path:
     git reads behind the closure advisory took their path from
     `config.items_dir`, so a store anywhere else was invisible to them and
     every count under test agreed at zero for the wrong reason. Those reads go
-    through `cli._tracked` since `PL-T441`, which is what lets this take the
+    through the invocation's `tracked` since `PL-T441`, which is what lets this take the
     location as an argument at all.
 
     The open item is what gives `next` a pick, which is the only state in
@@ -4887,7 +4898,9 @@ def test_no_git_stops_every_git_read(
     git("commit", "-qm", "PL-B1B1: the work")
 
     subcommands = next(
-        action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)
+        action
+        for action in build_parser()._actions
+        if isinstance(action, argparse._SubParsersAction)
     )
     assert {argv[0] for argv in NO_GIT_ARGV} == set(subcommands.choices)
 
