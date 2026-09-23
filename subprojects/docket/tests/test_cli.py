@@ -13,16 +13,18 @@ from __future__ import annotations
 
 import argparse
 import ast
+import inspect
 import os
 import re
 import subprocess
 from collections.abc import Callable
 from dataclasses import replace as with_fields
 from pathlib import Path
+from typing import Any
 
 import pytest
 
-from docket import cli
+from docket import cli, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.cli import build_parser, main, merge_shared
 from docket.config import Config
@@ -4706,6 +4708,207 @@ def test_no_git_read_in_the_cli_takes_the_store_from_the_settings() -> None:
     assert not from_settings, (
         f"cli.py line(s) {from_settings} hand a git read the store the settings name, "
         f"not the one `--items` pointed at; `_tracked` is what resolves it"
+    )
+
+
+def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
+    """Every read `cli.py` asks of `vcs` is handed the one runner the command holds.
+
+    The runner facet of `PL-NGBM`'s generator. Every function in `vcs` takes a
+    `runner` and builds a plain one where none is passed, so an omission
+    raises nothing, prints nothing and answers correctly - and costs the
+    command its memo and its `cat-file` batch, which is how `cmd_flight` came
+    to re-ask git what the rest of the invocation already knew (`PL-M6FY`).
+    Twenty-three call sites had drifted that way when this was written.
+
+    The census is the module's own imports rather than a list, so a read added
+    later is held without anybody remembering to add it here, and a runner is
+    anything that is not a call: a site constructing one of its own is the
+    same omission spelled out. `ref_walk` is the one deliberate exception, and
+    it is held to passing its plain runner explicitly - measuring must never
+    land in what it measures, and a bare call would read as the drift this
+    test exists to catch.
+    """
+    tree = ast.parse(Path(cli.__file__).read_text(encoding="utf-8"))
+    imported = {
+        alias.asname or alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.level == 1 and node.module == "vcs"
+        for alias in node.names
+    }
+    reads = {
+        name
+        for name in imported
+        if inspect.isfunction(getattr(vcs, name))
+        and "runner" in inspect.signature(getattr(vcs, name)).parameters
+    }
+    drifted: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if isinstance(node.func, ast.Name):
+            name = node.func.id
+        elif (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "vcs"
+        ):
+            name = node.func.attr
+        else:
+            continue
+        if name not in reads:
+            continue
+        given = next((keyword.value for keyword in node.keywords if keyword.arg == "runner"), None)
+        if given is None or (isinstance(given, ast.Constant) and given.value is None):
+            drifted.append(f"{name} (line {node.lineno}) builds a runner of its own")
+        elif name != "ref_walk" and isinstance(given, ast.Call):
+            drifted.append(f"{name} (line {node.lineno}) is handed a new runner")
+
+    assert "branches_in_flight" in reads, "the census found none of the reads it is holding"
+    assert not drifted, (
+        "cli.py asks git through a runner other than the invocation's: " + "; ".join(drifted)
+    )
+
+
+def test_a_store_at_the_repository_root_takes_the_empty_prefix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The root itself and a store outside the checkout are one case, and take one value.
+
+    `PL-3T2Q`. Resolving the root against itself answers `.`, not the empty
+    string, so a store at the root took the prefix no path git prints can
+    begin with while the docstring promised the empty prefix - which a
+    membership test reads as the opposite answer. Both are now the empty
+    prefix, and the readers that cannot ask git about one skip or refuse on it
+    in the same words for both.
+    """
+    root = tmp_path / "repo"
+    (root / "docs" / "items").mkdir(parents=True)
+    (tmp_path / "elsewhere").mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+
+    def tracked(*argv: str) -> str:
+        args = merge_shared(build_parser().parse_args(["list", *argv]))
+        return cli._invocation(args).tracked
+
+    assert tracked("--items", str(root)) == ""
+    assert tracked("--items", str(root / "docs" / "items")) == "docs/items"
+    (root / "docket.toml").write_text('[docket]\nitems_dir = "../elsewhere"\n', encoding="utf-8")
+    monkeypatch.chdir(root)
+    assert tracked() == ""
+
+
+#: Every command, spelled to reach the reads it has: the scoped replay, the
+#: profile, each command that refreshes before it reads, and both forms of
+#: `record`. The writers come last because they change the store the readers
+#: above them read.
+NO_GIT_ARGV: tuple[tuple[str, ...], ...] = (
+    ("check",),
+    ("check", "--verify"),
+    ("check", "--verify", "--verify-base", "main"),
+    ("list",),
+    ("digest",),
+    ("digest", "--profile"),
+    ("flight",),
+    ("branch",),
+    ("branch", "--brief"),
+    ("branch", "--if-stale"),
+    ("stranded",),
+    ("record", "--dry-run"),
+    ("record", "7", "--dry-run"),
+    ("triage",),
+    ("next",),
+    ("next", "--oldest"),
+    ("next", "workflow"),
+    ("gate",),
+    ("feature",),
+    ("generators",),
+    ("show", "PL-B1B1"),
+    ("concurrent",),
+    ("concurrent", "PL-B1B1"),
+    ("milestone",),
+    ("release", "0.2.6", "--dry-run"),
+    ("delegable",),
+    ("verify", "PL-B1B1"),
+    ("status",),
+    ("wave",),
+    ("trend",),
+    ("withdraw", "PL-B1B1", "PL-D4D4", "--because", "PL-D1D1"),
+    ("set", "PL-B1B1", "--payoff", "a payoff"),
+    ("new", "An idea captured under the flag"),
+)
+
+
+def test_no_git_stops_every_git_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`--no-git` asks git nothing, in every command, whichever read it would have made.
+
+    The flag facet of `PL-NGBM`'s generator. Each command decided for itself
+    whether the flag applied, so it held for branch detection and not for the
+    five reads behind a printed count, `check --verify-base`, `digest
+    --profile`, `flight`, `branch`, `verify`, `record`, and the fetch
+    `stranded` made before looking.
+
+    A real repository, holding a branch with work on it, so that every read
+    the flag failed to stop would succeed and be seen rather than fail early
+    and hide the reads after it. `Popen` is where to watch, because
+    `subprocess.run` constructs one: `vcs._run_git`, the `cat-file` batch and
+    `verify._run` all arrive there. A shell command is the project's own
+    `verify:` and not docket's read, so it is left out - a bare `--verify`
+    still replays under the flag.
+
+    Every command in the parser is run, and the table is held to the parser,
+    so a command added later cannot pass by not being listed.
+    """
+    root = tmp_path / "repo"
+    store = root / "docs" / "items"
+    store.mkdir(parents=True)
+    (root / "docket.toml").write_text('[docket]\nworkflow_paths = ["tools"]\n', encoding="utf-8")
+    (root / "pyproject.toml").write_text('[project]\nversion = "0.2.5"\n', encoding="utf-8")
+    for name, document in (
+        ("PL-B1B1-ready.md", READY),
+        ("PL-D1D1-done.md", DONE),
+        ("PL-D4D4-captured.md", CAPTURED),
+    ):
+        (store / name).write_text(document, encoding="utf-8")
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    git("-c", "init.defaultBranch=main", "init", "-q")
+    for setting, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", setting, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    git("checkout", "-qb", "claude/pl-b1b1-work")
+    (root / "a.py").write_text("work = True\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "PL-B1B1: the work")
+
+    subcommands = next(
+        action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)
+    )
+    assert {argv[0] for argv in NO_GIT_ARGV} == set(subcommands.choices)
+
+    running = [""]
+    spawned: dict[str, list[str]] = {}
+    real = subprocess.Popen
+
+    def watched(argv: Any, *rest: Any, **kwargs: Any) -> Any:
+        words = [argv] if isinstance(argv, str) else [str(word) for word in argv]
+        if not kwargs.get("shell") and words and Path(words[0]).name == "git":
+            spawned.setdefault(running[0], []).append(" ".join(words[1:3]))
+        return real(argv, *rest, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", watched)
+    for argv in NO_GIT_ARGV:
+        running[0] = " ".join(argv)
+        main([*argv, "--items", str(store), "--no-git", "--today", "2026-09-23"])
+    capsys.readouterr()
+
+    assert not spawned, "`--no-git` still asked git: " + "; ".join(
+        f"`{command}` ran {', '.join(sorted(set(calls)))}" for command, calls in spawned.items()
     )
 
 
