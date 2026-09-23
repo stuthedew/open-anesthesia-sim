@@ -6,6 +6,7 @@ effort: S
 status: needs-decision
 classes: infra, docs
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed at capture by PL-6MW8's session, 2026-09-23
 added: 2026-09-23
 payoff: a capture whose session has ended reaches main even when main moved during its one CI run
 ---
