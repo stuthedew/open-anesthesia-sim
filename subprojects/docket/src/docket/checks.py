@@ -1690,7 +1690,7 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
     known_items = {i.identifier: i for i in report.items}
     _outranks_its_blocker(report, known_items)
     _ready_with_an_open_blocker(report, known_items)
-    _check_prose_dependencies(report, known_items)
+    _check_prose_dependencies(report)
 
     duplicates = [
         identifier
@@ -2032,25 +2032,50 @@ def _outranks_its_blocker(report: Report, known_items: dict[str, Item]) -> None:
 # cleared except by rewriting prose that is already correct, which is the
 # advisory-that-cannot-reach-zero this check was required not to become
 # (`PL-H7XN`, `PL-G049`).
-PREREQUISITE_CUES = (
+DECLARING_CUES = (
     r"depend(?:s|ent|ing)?\s+(?:up)?on",
     r"block(?:ed|s|ing)?\s+on",
     r"blocked\s+by",
     r"wait(?:s|ing)?\s+(?:on|for)",
-    r"requires?",
 )
+PREREQUISITE_CUES = (*DECLARING_CUES, r"requires?")
 
-# The cue, then the id within the same clause. `(?:\.?\*\*)?` lets the item
-# format's own `**Depends on.**` heading count as one cue rather than as a cue
-# followed by a sentence break - and the gap still refuses `.`, so
-# `**Depends on.** Nothing. \`PL-2SVR\`` stays silent, which is the answer that
-# item deserves. The other excluded characters are clause boundaries: without
-# them the window jumps a semicolon or a closing bracket into an unrelated
-# mention, which was where the false positives came from.
-PROSE_DEPENDENCY = re.compile(
-    rf"\b(?:{'|'.join(PREREQUISITE_CUES)})\b(?:\.?\*\*)?[^.\n;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?",
-    re.IGNORECASE,
+# Read against a *closed* item, where the question is no longer "is the edge
+# declared" but "does the brief still say this waits": the declaring cues, less
+# `requires`, plus the sequencing phrases a brief uses to tie itself to another
+# item without making it a prerequisite. Counted 2026-09-23 over the open items
+# (`PL-8YXJ`): every closed-item hit of a declaring cue was a wait that had
+# ended and was still worded as current, while both `requires` hits narrated
+# history ("`check_gate_reentries` requires since `PL-ZF2G`"). `landed with`,
+# the past tense, is left out for the same reason - three hits, all history -
+# and bare `alongside` is, because "filed rather than fixed alongside `PL-MM7F`"
+# is correct prose that no marker should have to be written over.
+SEQUENCING_CUES = (
+    r"land(?:s|ing)?\s+(?:it\s+|this\s+)?(?:with|alongside)",
+    r"sequenced\s+(?:after|behind)",
 )
+CLOSED_PREREQUISITE_CUES = (*DECLARING_CUES, *SEQUENCING_CUES)
+
+
+def _cue_pattern(cues: tuple[str, ...]) -> re.Pattern[str]:
+    """The cue, then the id within the same clause.
+
+    The optional bold close lets the item format's own `**Depends on.**`
+    heading count as one cue rather than as a cue followed by a sentence break -
+    and the gap still refuses `.`, so "**Depends on.** Nothing. `PL-2SVR`"
+    stays silent, which is the answer that item deserves. The other excluded
+    characters are clause boundaries: without them the window jumps a semicolon
+    or a closing bracket into an unrelated mention, which was where the false
+    positives came from.
+    """
+    return re.compile(
+        rf"\b(?:{'|'.join(cues)})\b(?:\.?\*\*)?[^.\n;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?",
+        re.IGNORECASE,
+    )
+
+
+PROSE_DEPENDENCY = _cue_pattern(PREREQUISITE_CUES)
+CLOSED_DEPENDENCY = _cue_pattern(CLOSED_PREREQUISITE_CUES)
 
 # A *second* blocker written as a continuation of the first - "blocked on A and
 # on B" - which the cue-then-id form above reads only the first half of. It is a
@@ -2067,6 +2092,51 @@ PROSE_DEPENDENCY_CONTINUATION = re.compile(
     rf"\band\s+(?:(?:up)?on|by)\b(?:\.?\*\*)?[^.\n;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?",
     re.IGNORECASE,
 )
+
+# The same second blocker with no preposition repeated - "**Blocked by `PL-S6WW`
+# and `PL-KZ99`.**", or a comma list - read only where it runs straight on from
+# an id a cue already matched. The anchor is the previous id rather than the
+# paragraph because a bare "and" is commoner still than "and on". An optional
+# parenthetical between them is the gloss every id carries here (`PL-QS9H`'s
+# "**Sequenced after `PL-6580`** (strip ...) and `PL-F9TQ`").
+PROSE_DEPENDENCY_LIST = re.compile(
+    rf"(?:\.?\*\*)?(?:\s*\([^()]{{0,160}}\))?(?:\s*,\s*(?:and\s+)?|\s+and\s+)`?({ID_PATTERN})`?",
+    re.IGNORECASE,
+)
+
+# The one greppable token that says a passage records a state the item has
+# left, so the check stops reading it without the history being deleted. The
+# date is when the passage stopped being true; anything after it, up to the
+# bracket, is free text saying what replaced it.
+SUPERSEDED = re.compile(r"\[superseded \d{4}-\d{2}-\d{2}\b[^\]]{0,300}\]")
+
+# A brief naming its own status: "Left at `needs-decision`", "it stays
+# `blocked`". The coined statuses are read bare as well, since no English uses
+# them - `PL-X5PK`'s "**Left untriaged deliberately.**" under `status: ready`
+# has no backticks - while `ready`, `blocked`, `done` and `dropped` are English
+# words, and count only in the backticks the store spells a status in. Present
+# tense only: "it stayed `blocked` for a week" is history, not a claim.
+OWN_STATUS_PHRASES = (
+    r"left(?:\s+at)?",
+    r"kept\s+at",
+    r"stays?(?:\s+at)?",
+    r"held\s+at",
+    r"remains?(?:\s+at)?",
+    r"parked\s+at",
+)
+_STATUS_WORDS = "|".join(re.escape(status) for status in STATUSES)
+OWN_STATUS = re.compile(
+    rf"\b(?:{'|'.join(OWN_STATUS_PHRASES)})\s+"
+    rf"(?:`({_STATUS_WORDS})`|(needs-decision|untriaged))(?![\w-])",
+    re.IGNORECASE,
+)
+
+# A new passage starts at a blank line, and at a list item or table row within
+# a paragraph: one bullet marked superseded says nothing about its siblings.
+_PASSAGE_START = re.compile(r"^[ \t]*(?:[-*+][ \t]|\d+\.[ \t]|\|)", re.MULTILINE)
+_CODE_SPAN = re.compile(r"`[^`\n]*`")
+_SENTENCE_BREAK = re.compile(r"[.!?][*`)\]]*\s")
+_ANY_ID = re.compile(ID_PATTERN)
 
 
 def _ready_with_an_open_blocker(report: Report, known_items: dict[str, Item]) -> None:
@@ -2123,7 +2193,57 @@ def _ready_with_an_open_blocker(report: Report, known_items: dict[str, Item]) ->
         )
 
 
-def _check_prose_dependencies(report: Report, known_items: dict[str, Item]) -> None:
+def _check_prose_dependencies(report: Report) -> None:
+    report.advisories.extend(brief_contradictions(report.items))
+
+
+def brief_contradictions(items: Sequence[Item]) -> list[str]:
+    """Every passage of an open brief that the front matter says is no longer so.
+
+    Queue state is stored twice. The front matter holds it, `docket set` writes
+    it and every command reads it; the brief narrates it - "Left at
+    `needs-decision`", "**Blocked on `PL-XJ5P`**", "Land it with `PL-D8KW`" -
+    and a transition moves only the first copy. The convention that keeps an
+    answered decision readable, leaving the question standing with the dated
+    answer beneath it, keeps the second standing on purpose. So a session
+    deciding whether it may start reads a wait the store says has ended, and
+    the cheap reading stops at the first claim it meets (`PL-8YXJ`, which
+    counted nine such passages in one pass on 2026-09-22 and found `PL-7G5M`
+    had been the same failure a week before).
+
+    Three readings, each reported where the passage sits:
+
+    - an open prerequisite the front matter never declares
+      (`_undeclared_prerequisites`);
+    - a closed item the prose still waits on or lands with (`_ended_waits`);
+    - a status the brief says the item is at, other than the one it is at
+      (`_left_statuses`).
+
+    Two things are never read, because neither is the brief's own current
+    claim: a quotation, and a passage carrying `SUPERSEDED`. The marker is how
+    a passage that is history stops being reported without being deleted,
+    which is what lets this reach zero on a store that keeps its history.
+
+    Open briefs only: a closed item's brief is a record, and nothing starts
+    from it. `cli.cmd_set` prints what one write adds to this list, so the
+    session holding the context repairs the passage in the same commit rather
+    than a later one finding it here.
+    """
+    known = {item.identifier: item for item in items}
+    found: list[str] = []
+    for item in items:
+        if not item.is_open:
+            continue
+        passages = (
+            _undeclared_prerequisites(item, known)
+            + _ended_waits(item, known)
+            + _left_statuses(item)
+        )
+        found.extend(message for _position, message in sorted(passages))
+    return found
+
+
+def _undeclared_prerequisites(item: Item, known: dict[str, Item]) -> list[tuple[int, str]]:
     """An item that states a prerequisite in prose and never declares it.
 
     `blocked-by` is what the ranking reads; the body is what a person reads.
@@ -2135,9 +2255,12 @@ def _check_prose_dependencies(report: Report, known_items: dict[str, Item]) -> N
     Every instance so far cost a person to find it (`PL-9K7K`, `PL-THVN`,
     `PL-5WFS`, `PL-SN2C`), which is the recurring cost this replaces.
 
-    Only *open* blockers fire. Most in-body mentions name work that has since
-    closed, which is history rather than a defect, and firing on those would
-    make the advisory unreadable inside a week.
+    Only *open* blockers fire here, since a closed one is no edge to declare.
+    This used to be the whole of the closed case, on the prediction that
+    closed-item mentions were history and would make the advisory unreadable
+    inside a week. Counted with this matcher on 2026-09-22 they fired 7 times
+    across the store, 5 of them live waits worded as current (`PL-8YXJ`), so
+    `_ended_waits` reads them for the question that does apply.
 
     An advisory and never an error, because only half of this is decidable.
     Whether the id is declared is a fact; whether the sentence really states a
@@ -2164,59 +2287,154 @@ def _check_prose_dependencies(report: Report, known_items: dict[str, Item]) -> N
     - **A sentence about some third item's dependency.** "then `PL-SN2C`,
       which depends on `PL-VM40`" is a true sentence in a brief that owns
       neither edge; the subject of the verb is not something a regex settles.
+    - **A cue ending one line with its id on the next.** Letting the window
+      cross one line break was measured on 2026-09-23 and added four passages,
+      two of them a negation ("nothing waiting on") and a third item's edge,
+      so the window stays on one line and the wrapped case goes unread.
 
-    A fourth used to belong here and no longer does: a second blocker written
-    as "and on B" after the cue that introduced A. `PROSE_DEPENDENCY` stops at
-    the first id, so the compound form - the natural way to state two
-    prerequisites - was the one shape the check could not see, and it reported
-    clean over a real open edge (`PL-GGCN`). `PROSE_DEPENDENCY_CONTINUATION`
-    covers it, anchored to a paragraph that already carries a cue.
+    Two more used to belong here and no longer do: a second blocker written as
+    "and on B" after the cue that introduced A, and the same with no
+    preposition, "blocked by A and B". `PROSE_DEPENDENCY` stops at the first
+    id, so the compound form - the natural way to state two prerequisites - was
+    the shape the check could not see, and it reported clean over a real open
+    edge twice (`PL-GGCN`, then `PL-B396`'s `PL-KZ99` in `PL-8YXJ`).
+    `PROSE_DEPENDENCY_CONTINUATION` and `PROSE_DEPENDENCY_LIST` cover them.
 
     So this reports what it matched and claims nothing about what it did not.
     """
-    for item in report.items:
-        if not item.is_open:
+    found: list[tuple[int, str]] = []
+    seen: set[str] = set()
+    for match in _prerequisite_matches(item.body, PROSE_DEPENDENCY):
+        other = match.group(1)
+        blocker = known.get(other)
+        if blocker is None or other == item.identifier or not blocker.is_open:
             continue
-        seen: set[str] = set()
-        for match in _prerequisite_matches(item.body):
-            other = match.group(1)
-            blocker = known_items.get(other)
-            if blocker is None or other == item.identifier or not blocker.is_open:
-                continue
-            if other in item.blocking_items or other in seen:
-                continue
-            seen.add(other)
-            report.advisories.append(
+        if other in item.blocking_items or other in seen:
+            continue
+        seen.add(other)
+        found.append(
+            (
+                match.start(),
                 f"{_where(item)}: names {other} as a prerequisite in prose and does not list "
                 f'it in `blocked-by` - "{_sentence(item.body, match)}". Declare the edge and '
                 "set `status: blocked`, which is the half `docket next` reads, or reword the "
-                "sentence if it is not a prerequisite"
+                "sentence if it is not a prerequisite - or, if it records a wait that no "
+                "longer holds, open its passage with `[superseded YYYY-MM-DD]`",
             )
+        )
+    return found
 
 
-def _prerequisite_matches(body: str) -> list[re.Match[str]]:
+def _ended_waits(item: Item, known: dict[str, Item]) -> list[tuple[int, str]]:
+    """A brief still waiting, or landing, on an item that has closed.
+
+    The half `_undeclared_prerequisites` leaves out. There the question is
+    whether an edge is declared; here it is whether the brief tells a reader
+    this cannot start yet when the thing it names is finished. "**Blocked on
+    `PL-XJ5P`**" under `status: ready`, with `PL-XJ5P` done, reads as a live
+    block to anybody who stops there - and the answer beneath it, which is
+    where the convention puts it, is further down than the cheap reading goes.
+
+    Read with `CLOSED_DEPENDENCY`, whose cue list says what it leaves out and
+    why. One advisory per passage, since each passage is its own repair.
+    """
+    found: list[tuple[int, str]] = []
+    seen: set[tuple[str, int]] = set()
+    for match in _prerequisite_matches(item.body, CLOSED_DEPENDENCY):
+        other = match.group(1)
+        finished = known.get(other)
+        if finished is None or other == item.identifier or finished.is_open:
+            continue
+        passage = _passage(item.body, match.start())[0]
+        if (other, passage) in seen:
+            continue
+        seen.add((other, passage))
+        when = finished.closed.isoformat() if finished.closed else "YYYY-MM-DD"
+        found.append(
+            (
+                match.start(),
+                f"{_where(item)}: names {other} as work it waits on or lands with, and "
+                f'{other} is {finished.status} ({when}) - "{_sentence(item.body, match)}". '
+                "Read cold, that is a condition still to meet; reword it as history, or open "
+                f"the passage with `[superseded {when}]`",
+            )
+        )
+    return found
+
+
+def _left_statuses(item: Item) -> list[tuple[int, str]]:
+    """A brief naming its own status as one the front matter says it has left.
+
+    "Left at `needs-decision` rather than triaged to `ready`" under `status:
+    ready` (`PL-SYG4`, `PL-X4RX`) tells the session reading it that the item
+    waits on a question nobody is asking. `OWN_STATUS` names the phrases.
+
+    Whether the phrase is about *this* item is the judgment half, and the rule
+    taken for it is the plainest one that separates the store's instances: a
+    phrase is read as this item's when no other item is named earlier in its
+    sentence. `PL-X4RX`'s title, "PL-SYG4's brief says it is left at
+    needs-decision", is about `PL-SYG4`, and says so before the phrase.
+    """
+    found: list[tuple[int, str]] = []
+    seen: set[tuple[str, int]] = set()
+    for match in OWN_STATUS.finditer(item.body):
+        named = (match.group(1) or match.group(2)).lower()
+        if named == item.status or not _standing(item.body, match.start()):
+            continue
+        if _names_another_item(item, match.start()):
+            continue
+        passage = _passage(item.body, match.start())[0]
+        if (named, passage) in seen:
+            continue
+        seen.add((named, passage))
+        found.append(
+            (
+                match.start(),
+                f"{_where(item)}: its brief says it is at `{named}` and its front matter "
+                f'says `{item.status}` - "{_sentence(item.body, match)}". Every command '
+                "reads the front matter, so the brief is telling a reader something no "
+                "command believes; reword the passage, or open it with "
+                "`[superseded YYYY-MM-DD]` if it records a status the item has left",
+            )
+        )
+    return found
+
+
+def _prerequisite_matches(body: str, cue: re.Pattern[str]) -> list[re.Match[str]]:
     """Every id the body states a prerequisite on, in the order they appear.
 
-    Two patterns, because a brief states the second blocker differently from
-    the first: `PROSE_DEPENDENCY` reads "blocked on A", and
-    `PROSE_DEPENDENCY_CONTINUATION` reads the "and on B" that follows it. The
+    Three patterns, because a brief states the second blocker differently from
+    the first: `cue` reads "blocked on A", `PROSE_DEPENDENCY_CONTINUATION`
+    reads the "and on B" that follows it, and `PROSE_DEPENDENCY_LIST` the bare
+    "and B" or comma list running straight on from an id already matched. The
     continuation is admitted only where a cue already fired in the same
     paragraph, which is what keeps "and on" from matching ordinary prose.
+
+    A match that is not the brief's own current claim - quoted, or in a passage
+    marked superseded - is dropped here, so no reading of it sees one.
 
     Ordered by position so the advisories for one item read in the order a
     person meets them in the file.
     """
-    cued = _cued_paragraphs(body)
-    matches = list(PROSE_DEPENDENCY.finditer(body))
+    cued = _cued_paragraphs(body, cue)
+    matches = list(cue.finditer(body))
     matches += [
         match
         for match in PROSE_DEPENDENCY_CONTINUATION.finditer(body)
         if any(start <= match.start() < end for start, end in cued)
     ]
-    return sorted(matches, key=lambda match: match.start())
+    listed: list[re.Match[str]] = []
+    for match in matches:
+        tail = PROSE_DEPENDENCY_LIST.match(body, match.end())
+        # A list does not run on past its paragraph, which `\s` alone would let it.
+        while tail is not None and "\n\n" not in tail.group(0):
+            listed.append(tail)
+            tail = PROSE_DEPENDENCY_LIST.match(body, tail.end())
+    standing = [match for match in matches + listed if _standing(body, match.start())]
+    return sorted(standing, key=lambda match: match.start())
 
 
-def _cued_paragraphs(body: str) -> list[tuple[int, int]]:
+def _cued_paragraphs(body: str, cue: re.Pattern[str]) -> list[tuple[int, int]]:
     """The blank-line-delimited blocks in which a prerequisite cue fired.
 
     The paragraph rather than the line, because the item format wraps at 80
@@ -2227,12 +2445,58 @@ def _cued_paragraphs(body: str) -> list[tuple[int, int]]:
     in the rest of the file.
     """
     bounds: list[tuple[int, int]] = []
-    for match in PROSE_DEPENDENCY.finditer(body):
+    for match in cue.finditer(body):
         opened = body.rfind("\n\n", 0, match.start())
         start = 0 if opened < 0 else opened + 2
         closed = body.find("\n\n", match.start())
         bounds.append((start, len(body) if closed < 0 else closed))
     return bounds
+
+
+def _passage(body: str, position: int) -> tuple[int, int]:
+    """The paragraph, or the list item or table row within one, holding `position`.
+
+    The unit a superseded marker covers. A paragraph is where a brief's claims
+    sit, and a bullet is narrower because a list is one paragraph whose items
+    are separate claims: marking one instance in a list of them says nothing
+    about the rest.
+    """
+    opened = body.rfind("\n\n", 0, position)
+    start = 0 if opened < 0 else opened + 2
+    closed = body.find("\n\n", position)
+    end = len(body) if closed < 0 else closed
+    for boundary in _PASSAGE_START.finditer(body, start, end):
+        if boundary.start() <= position:
+            start = boundary.start()
+        else:
+            end = boundary.start()
+            break
+    return start, end
+
+
+def _standing(body: str, position: int) -> bool:
+    """Whether the text at `position` is the brief's own current claim.
+
+    Two things make it not. A quotation: `PL-X4RX`'s brief quotes "Left at
+    `needs-decision`" from `PL-SYG4`'s, which is a mention of another brief's
+    words rather than a claim about its own item. And a passage carrying
+    `SUPERSEDED`, which its writer has already marked as a state the item has
+    left. A double quote inside a code span is part of a command, not prose,
+    so code spans are set aside before the quotes are counted.
+    """
+    start, end = _passage(body, position)
+    if SUPERSEDED.search(body, start, end):
+        return False
+    prose = _CODE_SPAN.sub("", body[start:position])
+    return prose.count('"') % 2 == 0 and prose.count("“") <= prose.count("”")
+
+
+def _names_another_item(item: Item, position: int) -> bool:
+    """Whether the sentence holding `position` names another item before it."""
+    start, _end = _passage(item.body, position)
+    for boundary in _SENTENCE_BREAK.finditer(item.body, start, position):
+        start = boundary.end()
+    return any(found != item.identifier for found in _ANY_ID.findall(item.body, start, position))
 
 
 def _sentence(body: str, match: re.Match[str]) -> str:

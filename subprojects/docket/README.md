@@ -983,6 +983,17 @@ into `P1` and onto the debt gate (`PL-6T44`). A `blocked-by` write can make an
 item promotable the instant it lands; that is a different event with a
 different reader and is deliberately left silent.
 
+**A write that moves `status` or `blocked-by` names the passages it leaves
+saying the old state.** `docket set --status ready` is a one-line diff that
+never shows the paragraph further down reading "Left at `needs-decision`", and
+closing an item never shows the briefs that still say they wait on it; nine
+such passages stood unreported on 2026-09-22 (`PL-8YXJ`). So the write prints
+what `docket check`'s brief reading would newly report - its own brief naming a
+status it has left, another brief still waiting on or landing with the item it
+just closed, a prerequisite it no longer declares - to the session holding the
+context, which repairs each in the same commit: reworded, or opened with
+`[superseded YYYY-MM-DD]` where the passage is history worth keeping.
+
 It names, per item, whether a branch already carries that id — and which refs
 it could not read to answer that. Triage is the more exposed of the two entry
 points rather than the less: `show` guards the path where a session has
@@ -1661,8 +1672,15 @@ the current one is untagged.
 
 One file per item, markdown with a small front-matter block. Front matter is
 what the tool reads; the body is what a person reads. Keeping both in one
-file means the machine-readable state and the human-readable brief cannot
-drift apart, and both arrive in a diff for review.
+file puts both in one diff for review; it does not keep them in agreement,
+because a brief narrates the state its front matter records - "**Blocked on
+`PL-XJ5P`**", "Left at `needs-decision`" - and a field write moves only the
+front matter. So `docket check` reads an open brief for a closed item it still
+waits on or lands with, a status it says it is at other than its own, and a
+prerequisite it never declares. A passage that records a state the item has
+since left opens with `[superseded YYYY-MM-DD: what replaced it]`, dated for
+when it stopped holding, and the check skips it: the history stays, and the
+reader meets the marker before the claim (`PL-8YXJ`).
 
 ```markdown
 ---

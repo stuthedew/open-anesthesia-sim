@@ -442,10 +442,153 @@ def test_a_prose_dependency_that_is_declared_is_silent() -> None:
     assert _prose("This depends on `PL-0002`.", blocked_by=("PL-0002",)) == []
 
 
-def test_a_prose_dependency_on_closed_work_is_history_rather_than_a_defect() -> None:
-    """Most in-body mentions name work that has since closed; firing on those
-    would make the advisory unreadable within a week."""
-    assert _prose("This depends on `PL-0002`.", blocker_status="done") == []
+def test_a_brief_naming_a_closed_prerequisite_is_advised() -> None:
+    """`PL-8YXJ`. This used to be silent, on the prediction that closed-item
+    mentions are history and would make the advisory unreadable within a week.
+    Counted, they fired 7 times across the store, 5 of them waits that had
+    ended and were still worded as current - under `status: ready`, a brief
+    telling the session reading it that the item cannot start yet."""
+    advisories = _prose("This depends on `PL-0002`.", blocker_status="done")
+
+    assert _has(advisories, "names PL-0002 as work it waits on or lands with")
+    assert _has(advisories, "PL-0002 is done (2026-08-02)")
+    # Not the open direction's advice: there is no edge left to declare.
+    assert not _has(advisories, "Declare the edge")
+    # The marker comes dated for the closure, ready to paste.
+    assert _has(advisories, "`[superseded 2026-08-02]`")
+
+
+def test_requires_on_a_closed_item_is_read_as_history() -> None:
+    """Both of the closed direction's measured false positives were `requires`
+    narrating history - "`check_gate_reentries` requires since `PL-ZF2G`" - so
+    it is a cue only where an edge could still be declared."""
+    assert (
+        _prose("The rule `check_gate_reentries` requires since `PL-0002`.", blocker_status="done")
+        == []
+    )
+    assert _has(_prose("This requires `PL-0002` first."), "names PL-0002 as a prerequisite")
+
+
+def test_a_sequencing_phrase_on_a_closed_item_is_advised() -> None:
+    """`PL-M3X6`'s "Land it with `PL-D8KW`" and `PL-QS9H`'s "Sequenced after
+    `PL-6580`" state no prerequisite and still tell a reader to wait."""
+    assert _has(
+        _prose("**Land it with `PL-0002`, not separately.**", blocker_status="done"), "lands with"
+    )
+    assert _has(
+        _prose("Cheapest to land alongside `PL-0002`.", blocker_status="dropped"), "is dropped"
+    )
+    assert _has(
+        _prose("**Sequenced after `PL-0002`** (the strip).", blocker_status="done"), "lands with"
+    )
+
+
+def test_a_sequencing_phrase_on_an_open_item_asks_for_no_edge() -> None:
+    """Landing two pieces of work together is not a prerequisite, so an open
+    partner is nothing for `blocked-by` to hold."""
+    assert _prose("Land it with `PL-0002`, not separately.") == []
+
+
+def test_a_landing_already_made_is_history() -> None:
+    """The past tense is left out: all three `landed with` hits narrated it."""
+    assert _prose("Clause (b) landed with `PL-0002`, 2026-09-22.", blocker_status="done") == []
+    assert _prose("Filed rather than fixed alongside `PL-0002`.", blocker_status="done") == []
+
+
+def test_a_passage_marked_superseded_is_not_read() -> None:
+    """The marker is how history stays in the brief and leaves the advisory -
+    for every reading, the open direction's included."""
+    marked = "[superseded 2026-08-02: PL-0002 closed] This depends on `PL-0002`."
+    assert _prose(marked, blocker_status="done") == []
+    assert _prose(marked) == []
+
+
+def test_a_marker_covers_its_own_passage_and_no_other() -> None:
+    """A later paragraph, or a sibling bullet, is a separate claim, and marking
+    one instance must not silence the next."""
+    body = (
+        "**Problem.** x\n\n[superseded 2026-08-02] Depends on `PL-0002`.\n\n"
+        "It still depends on `PL-0002` here.\n\n"
+        "- [superseded 2026-08-02] Blocked on `PL-0002`.\n- Blocked on `PL-0002` too.\n\n"
+        "**Why it matters.** y\n**Done when.** z\n"
+    )
+    subject = _item("PL-0001", body=body)
+    done = _item("PL-0002", status="done", closed=date(2026, 8, 2))
+    advisories = analyze([subject, done], TODAY).advisories
+
+    assert _has(advisories, "It still depends on `PL-0002` here.")
+    assert _has(advisories, "- Blocked on `PL-0002` too.")
+    assert len([a for a in advisories if "lands with" in a]) == 2
+
+
+def test_a_marker_needs_its_date() -> None:
+    """One greppable token, and the date is part of it: it is what tells a
+    reader when the passage stopped being true."""
+    assert _has(
+        _prose("[superseded] This depends on `PL-0002`.", blocker_status="done"), "lands with"
+    )
+
+
+def test_a_quoted_claim_is_a_mention_rather_than_a_claim() -> None:
+    """`PL-X4RX` and `PL-8YXJ` quote the stale passages they are about; neither
+    brief is waiting on anything it quotes."""
+    assert (
+        _prose('It opens "**Blocked on `PL-0002`**" and says no more.', blocker_status="done") == []
+    )
+
+
+def test_a_quote_inside_a_code_span_opens_no_quotation() -> None:
+    """A lone `"` in a code span is a command's character, not an open quote."""
+    assert _has(
+        _prose('The `"` opens nothing - it depends on `PL-0002`.', blocker_status="done"),
+        "lands with",
+    )
+
+
+def _status_advisories(status: str, text: str) -> list[str]:
+    """The own-status readings for one item at `status` whose brief says `text`."""
+    subject = _item("PL-0001", status=status, body=f"{BRIEF}\n{text}\n")
+    return [a for a in analyze([subject], TODAY).advisories if "its brief says it is at" in a]
+
+
+def test_a_brief_narrating_a_status_it_has_left_is_advised() -> None:
+    """`PL-SYG4`'s "Left at `needs-decision` rather than triaged to `ready`",
+    under `status: ready`: the brief tells a session the item waits on a
+    question the front matter says was answered."""
+    advisories = _status_advisories("ready", "Left at `needs-decision` rather than `ready`.")
+
+    assert _has(advisories, "its brief says it is at `needs-decision`")
+    assert _has(advisories, "its front matter says `ready`")
+    assert _has(advisories, "`[superseded YYYY-MM-DD]`")
+
+
+def test_a_brief_naming_its_current_status_is_silent() -> None:
+    assert _status_advisories("blocked", "The item stays `blocked` until the port lands.") == []
+
+
+def test_every_phrase_is_read() -> None:
+    for phrase in ("It is left", "Kept at", "It stays", "Held at", "It remains", "Parked at"):
+        assert _status_advisories("ready", f"{phrase} `blocked` on purpose."), phrase
+
+
+def test_a_coined_status_is_read_bare_and_an_english_one_is_not() -> None:
+    """`PL-X5PK`'s "**Left untriaged deliberately.**" under `status: ready` has
+    no backticks, and no English uses the word; "left ready work untouched" is
+    English, and says nothing about a status."""
+    assert _status_advisories("ready", "**Left untriaged deliberately.** Its class waits.")
+    assert _status_advisories("blocked", "The fix left ready work untouched.") == []
+
+
+def test_a_status_phrase_about_another_item_is_not_this_items() -> None:
+    """`PL-X4RX`'s title: the phrase is about `PL-SYG4`, which the sentence
+    names before it."""
+    assert _status_advisories("ready", "PL-0002's brief says it is left at `needs-decision`.") == []
+    # A sentence boundary ends that reading: the next sentence is this item's again.
+    assert _status_advisories("ready", "See PL-0002. It is left at `needs-decision`.")
+
+
+def test_a_past_status_is_history() -> None:
+    assert _status_advisories("ready", "It stayed `blocked` for a week.") == []
 
 
 def test_the_heading_form_fires_despite_the_period_inside_it() -> None:
@@ -512,6 +655,31 @@ def test_both_halves_of_a_compound_sentence_are_reported_when_neither_is_declare
     advisories = _compound("Blocked on `PL-0002` and on `PL-0003`.")
     assert _has(advisories, "names PL-0002 as a prerequisite in prose")
     assert _has(advisories, "names PL-0003 as a prerequisite in prose")
+
+
+def test_a_second_blocker_joined_by_a_bare_and_is_reported() -> None:
+    """`PL-B396`'s "**Blocked by `PL-S6WW` and `PL-KZ99`.**" left the open
+    `PL-KZ99` unreported: the continuation needed "and on" or "and by"."""
+    advisories = _compound("**Blocked by `PL-0002` and `PL-0003`.**", blocked_by=("PL-0002",))
+    assert _has(advisories, "names PL-0003 as a prerequisite in prose")
+
+
+def test_a_listed_blocker_is_read_through_its_gloss() -> None:
+    """Every id carries a gloss here, so the list runs on through one."""
+    advisories = _compound("Blocked on `PL-0002` (the unit), and `PL-0003` (the check).")
+    assert _has(advisories, "names PL-0002 as a prerequisite in prose")
+    assert _has(advisories, "names PL-0003 as a prerequisite in prose")
+
+
+def test_a_bare_and_not_following_a_matched_id_is_ordinary_prose() -> None:
+    assert _compound("Blocked on the port. The advisory and `PL-0003` agree.") == []
+
+
+def test_a_list_does_not_run_on_into_the_next_paragraph() -> None:
+    advisories = _compound(
+        "Blocked on `PL-0002`,\n\n`PL-0003` is unrelated.", blocked_by=("PL-0002",)
+    )
+    assert advisories == []
 
 
 def test_an_and_on_with_no_cue_in_its_paragraph_is_ordinary_prose() -> None:

@@ -88,6 +88,7 @@ assert.
 `PL-0GTC`, when a fetch that reported no changes left `doc_check` red on a tag
 `origin` no longer had.
 
+[superseded 2026-09-19: answered below under `PL-4Q9B`; the item is `ready`]
 **Triage note, 2026-09-07.** Left at `needs-decision` rather than `ready`
 because the item's three shapes are a live choice and it declines a `verify:`
 command for that reason - any command written now would presume one of them.

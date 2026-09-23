@@ -143,6 +143,7 @@ answer: `PL-GLBF` in this same batch is decided on its cheap half and gated on a
 question, and the general shape — a decision recorded against a trigger nobody
 is tracking — is what `bin/docket` has no representation for.
 
+[superseded 2026-09-14: answered in the next section; the item is `blocked`]
 It is left `needs-decision` rather than moved, deliberately: choosing what the
 store should represent is a store-design call, and picking `ready` to clear the
 gate count would put unworkable work in front of `bin/docket next`, which is the

@@ -3,11 +3,12 @@ id: PL-X4RX
 title: PL-SYG4's brief says it is left at needs-decision while its front matter reads ready, and nothing checks a brief's prose against its own status field
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: brief-state-agreement
 touches: docs/items/PL-SYG4-the-digest-s-reserved-verdict-suppresses-the.md
 added: 2026-09-22
+closed: 2026-09-23
 payoff: PL-SYG4's brief stops telling a session it waits on a decision that its own front matter and later paragraphs say was taken
 verify: ! grep -q '^Left at .needs-decision. rather than triaged' docs/items/PL-SYG4-*.md
 ---

@@ -3,11 +3,12 @@ id: PL-RWJD
 title: The convention that keeps an answered decision section readable - leave the question, write the dated answer underneath - is written down nowhere a triaging session reads, so the practice holding delegable's open-brief count at zero is an accident
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: brief-state-agreement
 touches: .claude/skills/docket/modes/triage.md
 added: 2026-09-22
+closed: 2026-09-23
 payoff: a session recording an owner's answer keeps the question and dates the answer because its own mode says to, not because it happened to read docs/worker.md
 verify: grep -qiE 'answer[^.]*underneath' .claude/skills/docket/modes/triage.md
 ---

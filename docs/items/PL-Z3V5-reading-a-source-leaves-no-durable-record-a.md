@@ -84,6 +84,7 @@ worked example — Yasuda et al. 1991, whose five-minute elimination vectors
 `tests/reference/test_published_wash_in_and_elimination.py` already asserts
 without a holdable source behind them.
 
+[superseded 2026-09-13: `PL-XJ5P` closed, settling the file; swept below]
 **Blocked on `PL-XJ5P`** (citing-sources says there is always a route, but a
 pre-abstract subscription paper has none), which holds both candidate files in
 flight and is deciding the surrounding question. The owner approved this
@@ -107,6 +108,7 @@ one file, `README.md`, and no Yasuda et al. 1991 section - while
 `tests/reference/test_published_wash_in_and_elimination.py:18-21` already
 depends on that paper's vectors with no holdable record behind them.
 
+[superseded 2026-09-20: promoted to `ready` in the next section]
 **On promoting it:** `bin/docket set PL-Z3V5 --status ready` is refused, because
 a `ready` item must name the command that proves it done and this one carries
 none. That command is written when the item is started, having been run - not

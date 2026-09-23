@@ -6170,6 +6170,97 @@ def test_dropping_a_blocker_releases_what_it_held(
     )
 
 
+WAITING_IN_PROSE = """---
+id: PL-H4H4
+title: Waits on the blocker, and says so
+priority: P2
+effort: S
+status: blocked
+classes: perf
+touches: d.py
+blocked-by: PL-C1C1
+added: 2026-08-01
+---
+
+**Problem.** x
+
+**Blocked on `PL-C1C1`** for the unit.
+
+**Why it matters.** y
+**Done when.** z
+"""
+
+DECIDING = """---
+id: PL-F5F5
+title: Waits on a question, and says so
+priority: P2
+effort: S
+status: needs-decision
+classes: perf
+touches: e.py
+added: 2026-08-01
+payoff: settles the question
+verify: grep -q x e.py
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+
+Left at `needs-decision` until the owner answers.
+
+**Decision needed.** Which? **Recommendation:** the first.
+"""
+
+
+def test_closing_an_item_names_the_briefs_still_waiting_on_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-8YXJ`: closing a blocker never showed the brief saying it still waits.
+
+    The session closing it is the one that knows it closed, so the passage is
+    named to it, with the marker dated for the closure, rather than left for
+    whoever runs `check` next.
+    """
+    store = _store(tmp_path, READY, BLOCKER, WAITING_IN_PROSE)
+
+    assert (
+        _run("set", "PL-C1C1", "--status", "done", "--closed", "2026-08-24", "--items", str(store))
+        == 0
+    )
+
+    out = capsys.readouterr().out
+    assert "1 passage(s) now say what this write changed" in out
+    assert "names PL-C1C1 as work it waits on or lands with" in out
+    assert "[superseded 2026-08-24]" in out
+
+
+def test_moving_a_status_names_the_passage_narrating_the_old_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`docket set --status ready` is a one-line diff that never shows the
+    paragraph saying "Left at `needs-decision`" - `PL-SYG4`'s, which stood
+    unreported until `PL-X4RX` found it by reading."""
+    store = _store(tmp_path, DECIDING)
+
+    assert _run("set", "PL-F5F5", "--status", "ready", "--items", str(store)) == 0
+
+    out = capsys.readouterr().out
+    assert "its brief says it is at `needs-decision` and its front matter says `ready`" in out
+
+
+def test_a_write_that_moves_no_state_names_no_passage(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The trigger is a `status` or `blocked-by` write. The passage above
+    already contradicts nothing, and a payoff edit could not make it."""
+    store = _store(tmp_path, DECIDING)
+
+    assert _run("set", "PL-F5F5", "--payoff", "y", "--overwrite", "--items", str(store)) == 0
+
+    assert "passage(s) now say" not in capsys.readouterr().out
+
+
 def _drained_cluster(tmp_path: Path, *members: str, **head_fields: str) -> Path:
     """A cluster whose head is closed over members at the statuses given.
 

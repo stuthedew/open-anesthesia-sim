@@ -196,10 +196,11 @@ as intent. The fifth candidate - offer the reserved number itself, naming the
 renumber as its cost - is the one the answer removes, since it was available
 only if a patch still took that number.
 
-Left at `needs-decision` rather than triaged to `ready` because the owner
-ratified the `PL-KQHN` recommendation, not this one, and the two were put
-separately. What is outstanding is a confirmation rather than an open question:
-the four other candidates are spent.
+[superseded 2026-09-17: question 2 is answered below; the item is `ready`] Left
+at `needs-decision` rather than triaged to `ready` because the owner ratified
+the `PL-KQHN` recommendation, not this one, and the two were put separately.
+What is outstanding is a confirmation rather than an open question: the four
+other candidates are spent.
 
 **The last clause of this item's `Done when.` is already satisfied.** "The
 answer to question 1 is written into `ROADMAP.md` § 'the interface moves to Qt'

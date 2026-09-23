@@ -54,6 +54,7 @@ existing advisories, using the same standard-library-only path handling as
 tests cover a resolving path, a stale one, and an item declaring no `touches`
 at all (which stays the separate advisory it already is).
 
+[superseded 2026-09-02: `PL-ZQ9C` is done and `PL-68XK` dropped; neither waits]
 **Cheapest to land alongside `PL-68XK`** (check that every recorded commit
 hash resolves) **or `PL-ZQ9C`** (record an item's pull request). All three edit
 `subprojects/docket/src/docket/checks.py`, so `docket concurrent` will flag

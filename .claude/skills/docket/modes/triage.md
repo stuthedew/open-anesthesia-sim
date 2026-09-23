@@ -167,6 +167,21 @@ because silence cannot be told apart from an omission. Marking the
 declination also satisfies the check, which is deliberate: the advisory is
 asking the brief to be explicit, not to hold an opinion.
 
+**Record an owner's answer underneath the question, and leave the question
+standing** - dated, and with its kind: `(project owner, DATE, ratified)` and
+what it was chosen over, or the plain form where the owner specified it
+(`CLAUDE.md`). `**Answered 2026-09-19 under PL-4Q9B**` is the shape.
+Overwriting the question loses what was weighed, and an undated answer cannot
+be told from the question it answers (`PL-RWJD`).
+
+**Then mark every passage above it that the answer ended.** A paragraph saying
+the item is "Left at `needs-decision`", or that it waits on work since closed,
+opens with `[superseded YYYY-MM-DD: what replaced it]`, dated for when it
+stopped holding. The marker keeps the history and reaches the reader before the
+claim does. `bin/docket set` prints the passages its status or `blocked-by`
+write leaves standing, and `bin/docket check` reports any still unmarked, so
+the repair rides the commit that moved the state (`PL-8YXJ`, `PL-X4RX`).
+
 ### Ask every workflow-lane item where it came from
 
 **Each item triaged into the workflow lane is scrutinized for an unresolved
