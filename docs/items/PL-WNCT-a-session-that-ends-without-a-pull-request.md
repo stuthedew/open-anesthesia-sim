@@ -14,7 +14,7 @@ pr: 941
 payoff: captures and ratified decisions stop living only on branches nobody will merge, and the recovery items that carry them across - twelve in three days - stop being filed
 verify: grep -qF 'pull request at its first push and arms auto-merge' CLAUDE.md
 root-cause-of: PL-DN5K, PL-JF5Z, PL-T2YR, PL-QNQJ, PL-V3QB, PL-HZ1B, PL-Q0W8, PL-BYN2, PL-DZM1, PL-K13H, PL-F8Q7, PL-GL3Z, PL-4CPP, PL-H3LC, PL-VSJZ, PL-KT7C, PL-CPLD, PL-1VFK, PL-JYR4, PL-ZGK2, PL-YMKV
-generator: live - a branch carrying only captures opens no pull request by rule and nothing at turn end names what a branch holds, so each session that ends that way hands the next a recovery: fourteen recovery items 09-19 to 09-22, and on 09-23 two branches with no pull request hold four items main lacks
+generator: spent - since #941 a branch carrying only item files opens its pull request at its first push and arms auto-merge, so a captures-only session no longer ends holding its captures by rule; a push after a merge is PL-3D2M's mechanism, which bin/docket branch and tools/left_behind_check.py report, a work branch ending before its pull request is the remainder this brief accepted, and the arming patches since are PL-MB2W's
 ---
 
 **Problem.** A session that ends without a pull request strands its captures on its branch and nothing at session end names them: ten recovery items were filed 09-19 to 09-21, against nine in 09-05 to 09-15
