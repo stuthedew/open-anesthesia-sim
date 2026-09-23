@@ -3279,7 +3279,7 @@ def test_a_not_delegable_item_close_out_is_not_a_missing_command(tmp_path: Path,
 
     command = _check(report, "has a `verify:` command")
     assert command.advisory and not command.blocks
-    assert reason in command.detail
+    assert "proving it means cutting a release" in command.detail
     assert not report.stopped_early
     assert report.passed
 
