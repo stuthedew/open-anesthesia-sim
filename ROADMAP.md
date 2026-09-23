@@ -5858,7 +5858,9 @@ classed it, the first moment it could be read as debt. `PL-FD5Q`, captured
   request strands its captures on its branch, and twenty-one recovery items
   trace to it. `defect`, `infra`. At `needs-decision`: whether a captures-only
   branch opens its pull request, which reverses a rule in `CLAUDE.md`. As a
-  live generator it ranks on that tier whatever this gate records.
+  live generator it ranks on that tier whatever this gate records. Decided the
+  same day, and closed with it in `#941`: a branch carrying only item files opens
+  its pull request at its first push and arms auto-merge.
 
 - PL-DNZ0 (S) - **deferred 2026-09-23.** `verify`'s suppression check reads
   none of six standard ways to skip or ignore a test, so `no suppression added`
