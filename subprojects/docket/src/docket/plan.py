@@ -200,20 +200,23 @@ def generator_defects(items: list[Item], generator_paths: tuple[str, ...]) -> li
 
 @dataclass(frozen=True)
 class Gate:
-    """The debt owed before a milestone begins, split by who clears it.
+    """Every open debt item in the store, split by the `feature` it carries.
 
-    The split is the whole of the answer. Debt inside the milestone's own
-    scope is cleared *by* it - requiring otherwise is a rule with no
-    satisfying order, since the milestone exists to clear those items - while
-    everything else is cleared first. Which side an item falls on is decided
-    by the `feature` it carries, which is a fact in the file rather than a
-    reading of the milestone's prose.
+    What a freeze starts from, and not the rule it ends with. `ROADMAP.md` §
+    "Debt inside the milestone's own scope" decides which debt a milestone
+    clears *itself* by whether its `Required scope` names the id, and
+    `roadmap.gate_status` applies that test to the frozen list. A feature is a
+    fact in the file and a reasonable first cut, but the two sets differ in
+    both directions: an item can carry the feature without being named, and
+    be named without carrying it. So nothing reading this calls `inside` what
+    the milestone clears itself - `PL-YVP7` was filed on that reading, and
+    `PL-RFHH` is why the output stopped offering it.
     """
 
     feature: str
-    #: Cleared by the milestone itself: open debt carrying its feature.
+    #: Open debt carrying the feature.
     inside: list[Item]
-    #: Cleared before it begins: everything else that is open debt.
+    #: Every other open debt item.
     outside: list[Item]
 
     @property
@@ -269,7 +272,7 @@ def is_new_work(
 
 
 def gate(items: list[Item], feature: str, debt_classes: tuple[str, ...]) -> Gate:
-    """Compute a milestone's debt gate: the open debt, split by feature.
+    """Every open debt item in the store, split by whether it carries `feature`.
 
     It computes the list and nothing else. Whether an item is *really* debt,
     whether the gate should open, and what is written into the plan are

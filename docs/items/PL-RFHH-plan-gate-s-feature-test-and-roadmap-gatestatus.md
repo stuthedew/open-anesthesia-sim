@@ -3,13 +3,13 @@ id: PL-RFHH
 title: plan.gate()'s feature test and roadmap.GateStatus.self_cleared's Required-scope test both answer 'cleared by the milestone itself' and disagree, so bin/docket gate and bin/docket wave can report different membership for the same milestone with nothing saying which is authoritative
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: gate-list-integrity
-touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/, subprojects/docket/README.md, .claude/skills/docket/modes/release.md, ROADMAP.md
 added: 2026-09-21
-root-cause-of: PL-H6VQ, PL-Z891, PL-YVP7, PL-B60Q, PL-JN3F
-generator: live - gate membership, deferrals, marks and counts live in ROADMAP.md prose read by several functions; seven instances after PL-HWW1 closed, v0.6.0 gained 14 deferrals in 1.5 days (PL-KVDK)
+closed: 2026-09-23
+verify: bin/docket gate --no-git --feature interface-areas 2>/dev/null | grep -q 'in the store, split by whether each carries' && bin/docket wave --no-git 2>/dev/null | grep -q 'named in its Required scope, so cleared by the milestone itself:'
 ---
 
 **Problem.** plan.gate()'s feature test and roadmap.GateStatus.self_cleared's Required-scope test both answer 'cleared by the milestone itself' and disagree, so bin/docket gate and bin/docket wave can report different membership for the same milestone with nothing saying which is authoritative
@@ -52,3 +52,46 @@ partitions the store by feature, and `format_wave` saying it reads the frozen
 list and Required scope - and that should be costed against actually making
 `plan.gate()` read the frozen list before either is chosen. Do not assume
 unification is right: the two may deserve to stay separate.
+
+## Resolved 2026-09-23: reworded, not unified
+
+**Decided by this session, on the project owner's delegation** - chosen over
+making `plan.gate()` read the frozen list, and over making it split by
+`Required scope`.
+
+**Not the frozen list.** `bin/docket gate` is what a freeze is computed with,
+so it cannot read the list it exists to produce; and after a freeze it is the
+only view of debt filed since - 12 of the 163 open debt items were on no frozen
+list on 2026-09-23. Two questions, both wanted.
+
+**Not the `Required scope` test either, costed.** `cmd_gate` would have to read
+`ROADMAP.md` and name a milestone section, which `--feature` cannot do - a new
+flag, under the generator pause. The two would still disagree: `wave` carves
+out blocked entries first, and 12 of the 14 `gate` listed read as blocked
+outside the gate. It also reads deferrals - `PL-Y04W` is deferred to Gate 3 -
+and a store-wide split knows neither. So the rewording is needed under either
+route. Nothing is stored downstream of it, so it is cheap to redo when
+`PL-J6HP` settles how gate facts are read.
+
+**Measured, v0.6.0, 2026-09-23.** `gate --feature interface-areas` listed 14
+carrying the feature against `wave`'s 3 cleared by the milestone itself. On the
+test alone they differed on four entries, both ways: `PL-NDKC` and `PL-Y04W`
+carry the feature unnamed, and `PL-CNCF` and `PL-PGZF` are named without it.
+`ROADMAP.md` said "two entries". `#850` wrote that six hours before `#862`
+named the second pair. The sentence now gives the dated ids instead of a count.
+
+**What changed.** `format_gate` says it reads the whole store, headed
+`Not carrying` / `Carrying` the feature, and its footer names `bin/docket wave`
+and `Required scope` as the rule. Its empty-store message no longer implies
+debt without the feature. `format_wave` says `frozen list recorded under` and
+`named in its Required scope, so cleared by the milestone itself:`, which keeps
+`PL-YVP7`'s `verify:` matching. The same correction went into the `plan.Gate`
+docstrings, the `gate` help text, the docket README, the release mode's freeze
+pass (which had equated the milestone's own debt with the items carrying its
+feature) and `ROADMAP.md`'s v0.6.0 gate paragraph.
+
+**The generator moved to `PL-J6HP`.** This item carried `generator: live` for
+gate facts in `ROADMAP.md` prose, a mechanism the rewording does not touch. A
+closed head is never asked for a verdict, so closing with the claim here would
+have dropped a live generator from the tier with nothing saying so. `PL-J6HP`
+holds it now, `PL-RFHH` among its members.
