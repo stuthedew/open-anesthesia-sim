@@ -13,7 +13,7 @@ closed: 2026-09-23
 pr: 927
 verify: grep -q 'def test_a_branch_minutes_old_carries_its_pull_request_rather_than_a_verdict' subprojects/docket/tests/test_cli.py && uv run pytest -q subprojects/docket/tests/test_cli.py -k a_branch_minutes_old_carries_its_pull_request
 root-cause-of: PL-N2PP, PL-HX5C, PL-99YZ, PL-X3NY, PL-Q664
-generator: spent - the project owner accepted on 2026-09-23 the one shape left as its documented limit: a session that ends mid-work before opening a pull request leaves a branch that reads as young with none open for about its first hour. flight says so in those words, the minute age exposes it within the hour, it only ever withholds an item, and the session-list read in start.md and rule 14 is the backstop; PL-SK88 keeps docket from reading session state. Every other shape of an ended session reads as what it is
+generator: spent - the project owner accepted on 2026-09-23 the one shape left as its documented limit: a session that ends mid-work before opening a pull request reads as young with none open for about its first hour, which flight says in those words; PL-QP9Z, filed after this closed, is the same who-holds-an-item mechanism at the auto-merge arming reader, which is recorded from 2026-09-23 on PL-MB2W, which ranks it live and takes every later instance
 ---
 
 **Problem.** bin/docket flight separates a live session from an abandoned branch only by commit age, which cannot fire in the first hour: PR #757 sat green and unclaimed 25 minutes after its session was archived, with its three items still reading 'do not start these again'

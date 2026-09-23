@@ -14,7 +14,7 @@ pr: 937
 payoff: each gate fact is read once, so a new way of writing one changes a parser instead of arriving in the queue as an item
 verify: grep -q 'def test_parse_milestones_reads_every_deferral_subsection' subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_required_scope_entry_outside_the_self_cleared_group_is_reported' tests/unit/test_doc_check.py
 root-cause-of: PL-H6VQ, PL-Z891, PL-YVP7, PL-B60Q, PL-JN3F, PL-RFHH
-generator: spent - every gate fact its six members re-derived now has one reader: deferrals and the current gate are parsed once in docket.roadmap and read by bin/docket wave and tools/doc_check.py alike, the self-cleared group is held to Required scope by one doc_check rule, counts by check_gate_counts, and the release mark is printed from the store rather than written; a new phrasing changes one parser, and another item about reading deferrals reopens it (the brief's falsifier)
+generator: spent - for the readers: every gate fact its six members re-derived now has one reader in docket.roadmap, read by bin/docket wave and tools/doc_check.py alike; the record itself stayed prose, and PL-59QW and PL-58JD, filed after this closed, are that record's, which PL-WD5Z carries live from 2026-09-23
 ---
 
 **Problem.** `ROADMAP.md` records a debt gate's facts as prose, and each reader

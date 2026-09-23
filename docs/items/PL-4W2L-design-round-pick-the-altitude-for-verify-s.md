@@ -14,7 +14,7 @@ pr: 929
 payoff: replaces six line-level special cases with one parsed comparison against the base, which on main's history trades 6 false refusals for 9 real assertion changes the matcher missed or folded, and ends the generator that kept producing the next item
 verify: grep -q 'def test_a_parenthesized_multi_manager_with_is_an_assertion_removed' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_replacement_that_loosens_the_assertion_is_not_folded_away' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_removal_is_not_charged_to_an_id_whose_selection_excludes_the_addition' subprojects/docket/tests/test_verify.py && ! grep -q 'def replacements(' subprojects/docket/src/docket/verify.py
 root-cause-of: PL-5B88, PL-YZJD, PL-2DTK, PL-CNJH, PL-XQGH
-generator: spent - the line matcher that inferred intent from single diff lines is retired: the check reads parsed statements against the base and folds nothing on the shape of an edit, so no rule remains for a next shape to slip past
+generator: spent - for the assertion half: the line matcher that inferred intent from single diff lines is retired, and the check reads parsed statements against the base; the suppression half keeps its marker list by PL-G21K's ratified resolution, and its open remainder PL-DNZ0 is a small fixed set of documented skip, fail and ignore forms rather than a mechanism still producing
 ---
 
 **Problem.** design round: pick the altitude for verify's assertion check before the next of its three open items is worked, since six fixes have each uncovered the next and PL-G21K's ratified decision reached only the suppression check beside it
