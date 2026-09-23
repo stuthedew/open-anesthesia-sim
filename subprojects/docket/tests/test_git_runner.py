@@ -145,6 +145,27 @@ def test_the_batch_process_does_not_outlive_the_runner(tmp_path: Path) -> None:
     runner.close()  # idempotent: `main` closes whether or not the command did
 
 
+def test_a_batch_that_dies_mid_command_is_replaced_rather_than_raising(tmp_path: Path) -> None:
+    """A dead `cat-file --batch` costs the batch, never the command.
+
+    `main` reads any `BrokenPipeError` that reaches it as stdout's reader having
+    closed, and ends the command quietly (`PL-VJPJ`). That is sound only while
+    this pipe cannot raise one: the next spec written to a batch that has died
+    fails with EPIPE, and `git show` has to answer instead. Were it to escape,
+    git dying mid-command would end docket with no message and half an answer.
+    """
+    root = _repo(tmp_path)
+    (root / "second.md").write_text("three\n", encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "second")
+    with GitRunner() as runner:
+        runner(["show", "HEAD:kept.md"], root)
+        (batch,) = runner._batch.values()
+        batch.kill()
+        batch.wait()
+        assert runner(["show", "HEAD:second.md"], root) == "three\n"
+
+
 def test_a_runner_with_both_behaviours_off_still_answers_identically(tmp_path: Path) -> None:
     """The memo and the batch are optimisations, so switching them off changes nothing.
 

@@ -3,10 +3,12 @@ id: PL-VJPJ
 title: bin/docket next raises BrokenPipeError and prints a traceback when its output is piped into a command that closes early, so next | head looks like a crash to every session that pipes it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
+feature: dev-tooling
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_git_runner.py, subprojects/docket/tests/test_portability.py, subprojects/docket/README.md
 added: 2026-09-19
+closed: 2026-09-23
 payoff: stops bin/docket next printing a Python traceback that reads as the queue tool crashing whenever a session pipes it into head
 verify: grep -q 'BrokenPipeError' subprojects/docket/src/docket/cli.py
 recurrences: 2026-09-22 PL-QC0Y
