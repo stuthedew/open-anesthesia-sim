@@ -5792,6 +5792,71 @@ another branch, so this pass left it untriaged.
   session to carry the generator that item headed, not by `PL-14QR`; as a live
   generator it ranks on that tier whatever this gate records.
 
+### Declined to Gate 2, captured after the freeze and classed by the 2026-09-23 triage pass
+
+The rule is the same as in the two subsections above. Every entry below was
+created on 2026-09-22 or 2026-09-23, after the cut (`e6cdfd93`, 07:04 on
+2026-09-21), and none is classed `safety` or `science`, so the unconditional
+re-entry reaches none of them. Each is recorded here by the triage pass that
+classed it, the first moment it could be read as debt. `PL-FD5Q`, captured
+2026-09-22, is absent: this pass left it untriaged to the session working
+`PL-J6HP`'s gate facts, which is the same mechanism.
+
+- PL-BBT8 (S) - **deferred 2026-09-23.** `bin/docket show` reports a closed
+  head marked `generator: live` as ranked, because `cli.cmd_show` skips the
+  status test `render._verdict_phrase` applies. `defect`. It carries
+  `impairs-generators:`, so it ranks on that tier whatever this gate records.
+
+- PL-DSPM (S) - **deferred 2026-09-23.** `model._front_matter_pairs` drops a
+  column-zero key `model.FIELD_RE` cannot match, so a `root_cause_of:` line
+  vanishes at exit 0 where a misspelling inside the grammar is refused.
+  `defect`. It carries `impairs-generators:`, so it ranks on that tier whatever
+  this gate records.
+
+- PL-1P5V (M) - **deferred 2026-09-23.** A `verify:` command is one opaque
+  shell string, so each non-discriminating shape gets its own rule only after
+  it fails: seven since `PL-6TP8` closed. `defect`, `infra`. At
+  `needs-decision`: an allowlist of the prescribed shapes, or a structured
+  field. As a live generator it ranks on that tier whatever this gate records.
+
+- PL-WNCT (M) - **deferred 2026-09-23.** A session that ends without a pull
+  request strands its captures on its branch, and twenty-one recovery items
+  trace to it. `defect`, `infra`. At `needs-decision`: whether a captures-only
+  branch opens its pull request, which reverses a rule in `CLAUDE.md`. As a
+  live generator it ranks on that tier whatever this gate records.
+
+- PL-DNZ0 (S) - **deferred 2026-09-23.** `verify`'s suppression check reads
+  none of six standard ways to skip or ignore a test, so `no suppression added`
+  reports none with any of them in the diff. `defect`, `infra`. The unfinished
+  tail of `PL-5B88`.
+
+- PL-JLYG (S) - **deferred 2026-09-23.** `check_tag_span_covers_its_notes`
+  lifts the newest span's exemption at the next tag rather than the next cut,
+  so a cut is never told the previous notes owe a pointer, and `main` turns red
+  once the tag is pushed. `defect`, `infra`.
+
+- PL-X229 (S) - **deferred 2026-09-23.** `tools/doc_check.py candidates` diffs
+  `--base` against the working tree rather than from the merge base, so once
+  `main` moves the close-out sweep is handed other branches' documentation.
+  `defect`, `infra`.
+
+- PL-J16N (S) - **deferred 2026-09-23.** `vcs._modified_by` misses a design
+  round that renames its item's file, because `git log --name-only` reports
+  only a rename's destination, and the test fake lists both paths. `defect`.
+
+- PL-9VPH (S) - **deferred 2026-09-23.** `capture.md`'s housekeeping recipe
+  runs `bin/docket new` before it sets `touches`, so the near-duplicate search
+  has no paths and never runs. `defect`, `docs`.
+
+- PL-RMN8 (S) - **deferred 2026-09-23.** `bin/docket next --limit 0` says
+  nothing is ready while work is startable, and a negative limit slices from
+  the end. `defect`, `infra`.
+
+- PL-BT2J (S) - **deferred 2026-09-23.** Four branching methods in
+  `app/controller.py` take a case instant under the clock's name `elapsed_s`,
+  one call above the `Keyframe.instant_s` it is matched against. `refactor`.
+  At `needs-decision`, recommending the rename.
+
 ### Required scope
 
 1. **The layout model** (queue items `PL-1FT6` and `PL-HJPY`). Pure Python,

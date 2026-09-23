@@ -32,9 +32,8 @@ instant - rather than a clock reading, and that `PL-ZMRT` and `PL-CZTR` moved
 every other such point to that name. `resumed_at` and `fork_at` are public, so
 the rename reaches every caller in `app/` and `tests/`.
 
-**Measured 2026-09-23: the rename reaches no caller.** `grep -rnE
-'(resumed_at|fork_at|_resume_point_at|_setting_at)\([^)]*elapsed_s='` over
-`src/` and `tests/` finds nothing. All 49 calls to `resumed_at` and `fork_at`
+**Measured 2026-09-23: the rename reaches no caller.** A search of `src/` and `tests/` for any of the four names called with
+`elapsed_s=` finds nothing. All 49 calls to `resumed_at` and `fork_at`
 pass the instant positionally, so renaming the parameter changes four
 signatures and their docstrings and no call site. The cost the paragraph above
 weighs against it is not there.
