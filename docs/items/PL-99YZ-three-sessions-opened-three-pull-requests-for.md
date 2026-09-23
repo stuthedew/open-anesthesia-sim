@@ -141,3 +141,23 @@ evidence proves a **ref is done**, and this asks how a session's **claim**
 becomes visible before any ref carries it. Bundling the two is what made the
 cluster look uniform. Nothing here is answered by `PL-BHVM`'s decision, and
 nothing here waits on it — `feature: parallel-sessions` is where this belongs.
+
+**A fifth instance, 2026-09-23: main red on `a65b440c` (`PL-KH3Q`), fixed three
+times.**
+
+- `795ebbf6`, under `PL-XYQW`'s id, at 01:17:41 UTC. `PL-KH3Q` had been
+  captured 39 seconds earlier on a different branch (`37d3d1e0`).
+- #934 (`PL-19T3`) ported that commit and merged at 01:35:56. This is the copy
+  that landed.
+- `6e8331f5`, on `claude/affectionate-fermat-dp9uu8`, at 01:33. That branch had
+  claimed `PL-KH3Q` at 01:29 with the empty commit `modes/start.md` prescribes.
+  The fix was dropped when the branch merged the base.
+
+The claim worked as designed. `bin/docket show` names that branch as the holder,
+and `PL-XYQW`'s later claim (`2b52e486`, 01:31) yields to it. What no claim can
+see is a fix already written under another id before the item existed. That is
+this item's mechanism exactly: every guard matches the id, and the first fix
+carried a different one. All three edited one line of
+`subprojects/docket/tests/test_cli.py`. Whether `795ebbf6` had been pushed by
+01:29 is not recorded, so it is unknown whether a file-level read such as
+`bin/docket concurrent` could have seen it.
