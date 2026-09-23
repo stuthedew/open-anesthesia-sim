@@ -3235,9 +3235,13 @@ The command exemption is read the other way, off the **branch's** copy, and
 the drop has to be: it is what the close-out writes, while the base still holds
 the item open. A delegated audit refuses either state written by the worker,
 through `front_matter_check`; `--self` only reports it. For a drop that grants
-nothing, since a drop claims no work for a command to prove. For a
-`not-delegable:` line written beside a deleted command it excuses the command,
-which `PL-KSV2` holds.
+nothing, since a drop claims no work for a command to prove. A `not-delegable:`
+reason is held to the base's copy as well: it excuses a command the base never
+commissioned - an item filed and closed on one branch, or one the base holds
+without a command - and never one the branch deleted, so a reason written
+beside the deletion is refused rather than skipping the test (`PL-KSV2`). A
+base whose copy cannot be read excuses nothing, since the exemption turns on
+what it holds.
 
 `--self` also adds one line when the audited commits name other items' ids.
 `item_commits` selects by id so a batch can be judged per item, and a commit

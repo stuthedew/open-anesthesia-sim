@@ -1,9 +1,16 @@
 ---
 id: PL-KSV2
 title: bin/docket verify --self ACCEPTs a close-out that deletes its failing verify: and writes not-delegable: on the branch, though its docstring, the README and the close-out skill say that exemption is read from the base's copy
-status: untriaged
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+priority: P2
+effort: S
+status: done
+classes: defect
+feature: verify-close-out
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 added: 2026-09-23
+closed: 2026-09-23
+payoff: A close-out can no longer skip its own failing verify: command by deleting it and writing a not-delegable: reason beside the deletion, so an ACCEPT from verify --self again means the commissioned command ran and passed, or there never was one
+verify: grep -q 'def test_a_not_delegable_line_does_not_excuse_a_command_the_base_holds' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** bin/docket verify --self ACCEPTs a close-out that deletes its failing verify: and writes not-delegable: on the branch, though its docstring, the README and the close-out skill say that exemption is read from the base's copy
@@ -82,3 +89,25 @@ alone; the close-out of an item filed and closed on one branch with
 two shared paths: that item is a false `REJECT` on a dropped item's command,
 this one a false `ACCEPT` on a `not-delegable:` line, and fixing either leaves
 the other standing.
+
+**Worked 2026-09-23.** The narrow route, one notch wider than recommended:
+`not-delegable:` now excuses a missing command only where the base's copy
+commissions none. Deleting a command the base holds is refused whether the
+reason is the branch's own or one the base already carried beside the command,
+because a reason can say who should do the work rather than that nothing can
+prove it - `wants the strongest model` is that shape, and an item carrying a
+reason *beside* a command is where one lives. A base whose copy cannot be read
+excuses nothing. `Commission` gains `verify`, read with `falsifies` and
+`status`, and `_check_item` reads the commission once, ahead of the command
+check. `test_a_not_delegable_item_close_out_is_not_a_missing_command` had been
+closing an item whose base held `verify: true` - the self-grant itself - so it
+now drives the two shapes that keep the exemption: filed and closed on one
+branch, and held by the base with no command.
+
+Counted before tightening: of the 12 first-parent commits on `main` that
+removed an item's `verify:` line without adding one, 10 dropped the item, 1
+deleted the file and 1 moved it to `needs-decision`; none wrote
+`not-delegable:`. So none of the 83 items now carrying a reason and no command
+reached that state by removing one, and the refusal takes away no route any
+close-out in this history used. Every one of those 83 reasons is about
+provability, which is why the field's other meaning is not filed as a finding.
