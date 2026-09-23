@@ -164,17 +164,17 @@ def _asks_for_a_blob(args: list[str]) -> bool:
 
 
 def _asks_for_a_diff(args: list[str]) -> bool:
-    """Whether the call is a `git diff`, the one subcommand whose exit 1 is not a no.
+    """Whether the call is a `git diff`, the one read here whose exit 1 is not a no.
 
-    Inside a repository every diff this module asks exits 0, or 128 for a bad
-    revision, for `A...B` with no merge base, for a root commit's parent and for
-    a pathspec outside the tree - never 1, measured against git 2.43.0 on
-    2026-09-23. Outside one, git runs a different command under the same name:
-    it compares two paths on the filesystem, and git-diff(1) says that form
-    "implies `--exit-code`". So `diff --name-only origin/main...HEAD --
-    docs/items` from a directory in no repository exits 1 with `error: Could not
-    access 'origin/main...HEAD'`, and `changed_items` read that as the branch
-    having changed no item (`PL-19T3`).
+    Inside a repository every diff this module asks exits 0, 128 or 129 - 128
+    for a bad revision, for `A...B` with no merge base, for a root commit's
+    parent and for a pathspec outside the tree - and never 1, measured against
+    git 2.43.0 on 2026-09-23. Outside one, git runs a different command under
+    the same name: it compares two paths on the filesystem, and git-diff(1)
+    says that form "implies `--exit-code`". So `diff --name-only
+    origin/main...HEAD -- docs/items` from a directory in no repository exits 1
+    with `error: Could not access 'origin/main...HEAD'`, and `changed_items`
+    read that as the branch having changed no item (`PL-19T3`).
 
     No caller loses a real 1 to this. None passes `--exit-code` or `--quiet`,
     and `_run_git` would have discarded what either said: the 1 comes back as

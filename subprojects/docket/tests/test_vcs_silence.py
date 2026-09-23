@@ -520,7 +520,7 @@ def test_the_sweep_covers_every_public_read_that_takes_a_runner() -> None:
 #
 # Half of the channel is the classification: exit 1 is git saying no, exit 128
 # is git not saying anything, `<rev>:<path>` is the one shape where the fatal
-# exit is an answer, and `diff` the one subcommand whose exit 1 is not. Driven
+# exit is an answer, and `diff` the one read whose exit 1 is not. Driven
 # against real git rather than asserted from the table in the docstring, because
 # a table is what `_superseded` already had.
 
