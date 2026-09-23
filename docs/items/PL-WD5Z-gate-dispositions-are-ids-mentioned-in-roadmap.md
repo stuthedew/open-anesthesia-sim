@@ -2,14 +2,16 @@
 id: PL-WD5Z
 title: Gate dispositions are ids mentioned in ROADMAP.md prose rather than a field on the item, a second store of queue state that four items filed 2026-09-22 and 09-23 each disagree with (PL-58JD, PL-59QW, PL-FD5Q, PL-VFJ3), after three heads each fixed a reader of it
 priority: P2
-effort: L
-status: needs-decision
+effort: M
+status: ready
 classes: refactor, infra
 feature: gate-disposition-store
-touches: ROADMAP.md, subprojects/docket/src/docket/roadmap.py, tools/doc_check.py, .claude/skills/docket/modes/triage.md, docs/items
+touches: ROADMAP.md, subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py, .claude/skills/docket/modes/triage.md, docs/items
 added: 2026-09-23
-root-cause-of: PL-58JD, PL-59QW, PL-FD5Q, PL-VFJ3
-generator: live - every debt capture made while a gate is frozen owes a new prose entry in ROADMAP.md, so each capture adds text that can narrate stale status, be mis-parsed or be forgotten; four members arrived 2026-09-22 and 09-23, three within a day of PL-J6HP's spent verdict on a reader of the same record
+payoff: a debt item captured during a frozen gate carries its own disposition, so triage stops going red in CI over a ROADMAP.md entry and the gate's deferral list can no longer disagree with the store
+verify: grep -q 'def test_an_open_debt_item_the_gate_neither_places_nor_defers_is_an_error' subprojects/docket/tests/test_checks.py
+root-cause-of: PL-58JD, PL-59QW, PL-VFJ3
+generator: live - every debt capture made while a gate is frozen owes a new prose entry in ROADMAP.md, so each capture adds text that can narrate stale status, be mis-parsed or be forgotten; three members arrived 2026-09-22 and 09-23, two within a day of PL-J6HP's spent verdict on a reader of the same record
 ---
 
 **Problem.** A debt item's gate disposition (declined to a later gate,
@@ -82,9 +84,84 @@ every other kind of queue state. Route 2 is the fallback if the gate should
 stay readable in `ROADMAP.md` itself. It costs a second store held together by
 checks, which is where the current members came from.
 
-**Done when.** The owner has chosen a route, and the choice is recorded here
-with its kind (ratified or specified). Under route 1 or 2, the four members
-close through the change, and a debt capture made during a frozen gate cannot
-land without a disposition, enforced by a check rather than by instruction.
-Under route 3, the four close as instances, and this verdict is re-read at the
-next member.
+**Decided: route 1, the disposition on the item** (project owner, 2026-09-23,
+ratified, over route 2's structured lines in `ROADMAP.md` and route 3's four
+instance fixes). The decision round checked the case against the tree first,
+and four findings changed it:
+
+- **The migration is 39 entries, not 97.** v0.6.0's five deferral subsections
+  hold 39 entry ids, 24 open and 15 closed, and their 10 prose-only ids
+  dispose of nothing still owed. `PL-H6VQ`'s 97 counted v0.5.0's gate, which
+  shipped. `check_gate_dispositions` reads only the current gate
+  (`_current_gate`), and `bin/docket wave` does the same.
+- **Route 1 closes both halves of `PL-VFJ3`.** The second half is the fix
+  commit that marked its leading ids in flight. That happened because the
+  commit wrote `ROADMAP.md`. A commit whose whole diff is under `docs/items/`
+  is annotation, not a claim (`vcs._annotates_only`). So a triage pass that
+  records a disposition on the item cannot mark anything in flight, whatever
+  ids lead its commit.
+- **The prose had already drifted where nothing reads it.** All four of
+  v0.6.0's post-freeze subsections are headed "Declined to Gate 2". v0.6.0's
+  gate *is* Gate 2 ("The timeline", row 6), so the target should be Gate 3.
+  The heading grammar reads only the verb, so four triage passes copied the
+  error forward.
+- **`PL-FD5Q` is not this mechanism, so it is off `root-cause-of:`.**
+  `GateStatus.outside_items` never subtracts Required scope. That is a reader
+  defect, and moving the disposition onto the item does not fix it. It is
+  fixed in this item's branch as its own commit, because both changes rewrite
+  `docket.roadmap`'s gate readers. The other three members still make this a
+  generator.
+
+**Build plan.** This was written for the session that builds it, because the
+decision round stopped for length.
+
+1. **The field.** `deferred-from: vX.Y.Z - <why>`, one line on the item. The
+   version names the gate the item is excused from, not the gate it goes to.
+   A target is what "Declined to Gate 2" got wrong, and the next freeze takes
+   every open debt item anyway. Add `Item.deferred_from`, put it in
+   `FIELD_ORDER` after `blocked-by`, and add it to `_front_matter_values` and
+   the parse. `bin/docket set <id> --deferred-from "..."` writes it. That is
+   a new flag beside `--payoff`, and it writes through
+   `with_front_matter_field`, which does not reorder keys. Document it in the
+   item format in `subprojects/docket/README.md`.
+2. **The rule moves into `bin/docket check`** (`checks.py`), the `make docket`
+   the triage mode already runs. Port `check_gate_dispositions` and its tests,
+   including `test_this_repository_records_a_disposition_for_every_open_debt_item`.
+   While a current gate exists (`roadmap.current_gate`), an open item that is
+   debt must be placed (`MilestoneSection.scope_ids`) or carry `deferred-from:`
+   naming that gate's version. Debt means a debt class or `needs-decision`.
+   The error prints `bin/docket set <id> --deferred-from "vX.Y.Z - <why>"`. Also
+   refuse a malformed value: an unparsable version, a version whose section
+   records no gate, or an empty reason. Refuse an item the current gate both
+   places and defers. With no readable roadmap, decline the way `checks.py`'s
+   milestone blockers already do. Delete the rule from `tools/doc_check.py`,
+   together with `_deferral_headings` and the comment block above it.
+3. **The prose parse goes.** Delete `DEFERRAL_VERBS`, `DECLINED_HEADING_RE`,
+   `_deferral_subsections`, `_declined_ids`, `_deferral_entries`, and
+   `MilestoneSection.deferral_entries` and `.deferred_ids`, along with their
+   tests. The `Declined`, `Deferred` and `Sequenced` subsections in released
+   sections stay as history that nothing parses.
+4. **`bin/docket wave`**. `render._deferral_lines` lists the items whose
+   `deferred_from` names the gate's version, with the same open, shipped,
+   unreleased and dropped split it prints now.
+5. **Migration.** A throwaway script writes `deferred-from: v0.6.0 - <ground>`
+   on each of the 39 ids, open and closed alike, so `wave`'s count is
+   unchanged. It takes each ground from its subsection's opening paragraph,
+   compressed to a clause. Diff `wave` before and after.
+6. **`ROADMAP.md`.** Replace v0.6.0's five deferral subsections with one short
+   subsection that states the post-freeze ground once and points at
+   `bin/docket wave`. Rewrite § "The debt gate" → "Recording it" so a deferral
+   is recorded on the item and `bin/docket check` requires it. Remove every
+   sentence that names a deleted symbol from the current and future sections.
+   Leave completed sections and `docs/releases/` alone, since those record
+   what was true at the time.
+7. **The `PL-FD5Q` rider.** Its own commit, led by `PL-FD5Q`, to its own
+   Done-when and `verify:`.
+
+**Done when.** `bin/docket check` fails an open debt item that the current
+gate neither places nor defers through `deferred-from:`, and a test over the
+real tree pins that. `bin/docket wave` lists the deferrals from the field. The
+prose parse is deleted, and v0.6.0's deferrals are one pointer subsection. The
+closing commit leads with `PL-58JD`, `PL-59QW` and `PL-VFJ3`, which close
+through the change, and with this item. `PL-FD5Q` is closed by its own commit.
+`make check` is green.

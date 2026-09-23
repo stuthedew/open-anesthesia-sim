@@ -34,3 +34,11 @@ milestone clears itself - is answered from Required scope for the gate's entries
 and not asked for what those entries wait on. Filed at 19:19 on 2026-09-22
 (-0500), before the head closed at 20:40, so not a post-close instance; but the
 head's `spent` verdict does not hold at this site.
+
+**Not `PL-WD5Z`'s mechanism (2026-09-23), so it is off that head's
+`root-cause-of:`.** `PL-WD5Z`'s decision round found this is a reader defect:
+`outside_items` never subtracts Required scope, which is already a structured
+slot. It does not come from a disposition written into prose, and moving
+dispositions onto the item leaves it standing. It is fixed in `PL-WD5Z`'s
+branch as its own commit led by this id, because both changes rewrite
+`docket.roadmap`'s gate readers and landing them apart would conflict.
