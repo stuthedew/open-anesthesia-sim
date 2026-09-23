@@ -2891,7 +2891,8 @@ commands cost 25.1 s -> 8.6 s and 30.9 s -> 10.0 s measured on 4 cores the same
 way. Across the 28 open items whose commands name them, and the 3 naming the
 whole tree, that is about 573 s off a whole-store replay - roughly 39% of the
 1458 s above, none of it from changing a test. `tests/unit/test_doc_check.py`,
-the third file, builds no repositories and is untouched by it. The
+the third file, builds a repository only in the tests that read git rather
+than in every test, and was not re-measured. The
 `conftest.py` sits at the repository root rather than in this tree, so the
 repository's own `tests/` gets the same isolation from the same two lines.
 
@@ -3155,7 +3156,10 @@ The diff is scoped to the commits whose subject names the item, which is what
 one-commit-per-item buys: a batch branch carries several items' work, and each
 is judged on its own. Uncommitted changes are attributed to whatever is being
 verified rather than excused, and a base with nothing between it and `HEAD` is
-a failure rather than a vacuous pass.
+a failure rather than a vacuous pass. A read git does not answer ends the
+audit and is never read as a diff: a `--base` that does not resolve, or a
+commit git cannot find, reports `the diff could be read` as failed with git's
+own reason, keeps the checks that ran before it, and stops.
 
 What it does not decide is whether the work is *right*. A new test can
 exercise the intended line and assert the wrong value, and nothing here can
