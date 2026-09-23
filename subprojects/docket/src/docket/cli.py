@@ -8,8 +8,10 @@ whole store into a person's attention when a summary would do.
 from __future__ import annotations
 
 import argparse
+import os
 import shlex
 import subprocess
+import sys
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from dataclasses import replace as with_fields
@@ -3857,16 +3859,59 @@ def merge_shared(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 
+#: What a command exits with when its reader stopped reading before it finished:
+#: 128 + SIGPIPE, which a shell reports for `yes | head -1` and git exits with
+#: for the same event, so `set -o pipefail` reads docket the way it reads them.
+#: Not 1, which `check` and `verify` return to mean the answer was no, and never
+#: 0: the command did not finish, so it cannot report that it passed.
+READER_CLOSED = 141
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = merge_shared(build_parser().parse_args(argv))
     try:
-        return int(args.func(args))
+        status = int(args.func(args))
+        # Here rather than at interpreter exit, where a reader that closed
+        # before the last buffered chunk would be reported as an ignored
+        # exception and the exit status changed to 120.
+        sys.stdout.flush()
+        return status
+    except BrokenPipeError:
+        return _reader_closed()
     finally:
         # The one thing a `cat-file --batch` must not do is outlive the command
         # that opened it, and a command that raised opened one just the same.
         invocation: Invocation | None = getattr(args, _INVOCATION_ATTR, None)
         if invocation is not None and invocation.git is not None:
             invocation.git.close()
+
+
+def _reader_closed() -> int:
+    """End the command quietly: whoever was reading its output has stopped.
+
+    `bin/docket next | head -3` is the cheap way to read a pick, and `head`
+    closes the pipe after three lines, so the next write fails. That is the
+    reader's choice rather than a fault, and a traceback there reads as the
+    queue tool crashing at the moment a session decides whether to trust it
+    (`PL-VJPJ`). The recipe is Python's own, from "Note on SIGPIPE" in the
+    `signal` documentation: catch the error at the entry point, then point
+    stdout at the null device so the interpreter's flush at exit cannot fail a
+    second time on the bytes still buffered.
+
+    Every `BrokenPipeError` that reaches `main` is stdout's. The only other
+    pipes docket writes to are its own to git, and `GitRunner` answers a dead
+    `cat-file --batch` with `git show` instead of raising, which
+    `test_a_batch_that_dies_mid_command_is_replaced_rather_than_raising` pins.
+
+    Not by restoring SIGPIPE's default disposition, which that same note warns
+    against, and which would cost something specific here: a batch process
+    that died mid-command would then kill docket outright, where today it is
+    replaced and the command still answers.
+    """
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull, sys.stdout.fileno())
+    os.close(devnull)
+    return READER_CLOSED
 
 
 if __name__ == "__main__":  # pragma: no cover - exercised via __main__.py

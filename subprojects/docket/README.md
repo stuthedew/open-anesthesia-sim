@@ -48,6 +48,12 @@ docket check --verify        # ...and replay every open item's `verify:` command
 docket check --verify --verify-base origin/main   # ...only the ones this branch could have changed
 ```
 
+Any of them can be piped into a reader that stops early: `docket next | head
+-3` prints its three lines and ends quietly. A command cut off that way exits
+141, the status a shell gives `yes | head -1`, so under `set -o pipefail` it
+reads as cut short rather than as passed or failed. One that finished writing
+before its reader closed keeps its own status.
+
 ### Capture costs nothing
 
 `docket new` takes a title and nothing else. No priority, no estimate, no
