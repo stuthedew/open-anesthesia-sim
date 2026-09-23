@@ -79,6 +79,10 @@ above names it as a reader, which was true before that merge.
   release` stamps. The other 34 carry none, and 30 of those sit in the list
   that states the marking rule. So the rule copies a field the store already
   holds, and it has missed 41% of the time.
+  Re-read after the v0.5.6 cut (`#931`), the same day: that release shipped
+  `PL-RFHH`, a v0.6.0 deferral entry, and left the entry unmarked, as
+  `PL-B60Q` predicted. The count is now 84 closed, 48 marked, 36 unmarked, and
+  every mark still equals `milestone:`.
 - *The self-clear copy is wrong today.* v0.6.0's frozen list groups 12 entries
   under "Cleared by v0.6.0 itself - 12 entries". The rule gives 14: `PL-CNCF`
   and `PL-PGZF` are named in `Required scope` but sit under the "Cleared before
