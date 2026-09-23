@@ -67,15 +67,16 @@ DONE_WHEN = "**Done when.**"
 #: The exemption is the whole point and the id is not part of it. Two
 #: mechanisms need the id and neither is bookkeeping: `tools/branch_id_check.py`
 #: refuses a branch in the agent namespace that no id names, and a diff
-#: confined to `docs/items/` raises the in-flight mark only through an item
-#: whose own `touches` stays inside it (`PL-7790`), a queue-only commit being
-#: deliberately unreadable as work (`PL-X3WZ`). What the category cannot
-#: justify is making each pass restate why housekeeping is worth doing:
-#: measured 2026-09-19 over the 22 items titled "Triage ...", 1,127 lines of
-#: brief, 12 repeating the same rationale and 2 carrying a finding a later
-#: session needs (`PL-TQFB`, project owner, 2026-09-19, ratified, over
-#: pointing the requirement at a standing rationale and over dropping the
-#: item altogether).
+#: confined to `docs/items/` raises the in-flight mark only under a subject
+#: leading with the item's own id - for a housekeeping item, because its own
+#: `touches` stays inside the queue (`PL-7790`, `PL-3W3P`) - a queue-only
+#: commit being otherwise deliberately unreadable as work (`PL-X3WZ`). What
+#: the category cannot justify is making each pass restate why housekeeping is
+#: worth doing: measured 2026-09-19 over the 22 items titled "Triage ...",
+#: 1,127 lines of brief, 12 repeating the same rationale and 2 carrying a
+#: finding a later session needs (`PL-TQFB`, project owner, 2026-09-19,
+#: ratified, over pointing the requirement at a standing rationale and over
+#: dropping the item altogether).
 #:
 #: It may not sit beside a debt class, which is what stops it becoming the way
 #: to file a defect without a brief; `_check_item` refuses that pairing.
