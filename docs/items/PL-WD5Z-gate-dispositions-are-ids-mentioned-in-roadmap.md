@@ -6,7 +6,8 @@ effort: M
 status: ready
 classes: refactor, infra
 feature: gate-disposition-store
-touches: ROADMAP.md, subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py, .claude/skills/docket/modes/triage.md, docs/items
+touches: ROADMAP.md, subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py, tests/unit/test_docket_gate.py, .claude/skills/docket/modes/triage.md, docs/items
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
 payoff: a debt item captured during a frozen gate carries its own disposition, so triage stops going red in CI over a ROADMAP.md entry and the gate's deferral list can no longer disagree with the store
 verify: grep -q 'def test_an_open_debt_item_the_gate_neither_places_nor_defers_is_an_error' subprojects/docket/tests/test_checks.py

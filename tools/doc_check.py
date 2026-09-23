@@ -121,7 +121,6 @@ try:
     from docket.roadmap import (
         BASELINE_MARK,
         DECLARATION_RE,
-        DEFERRAL_VERBS,
         EXCLUDED_SUBSECTION,
         HEADING_RE,
         SCOPE_SUBSECTION,
@@ -131,13 +130,12 @@ try:
         GateEntry,
         MilestoneSection,
         _section_end,
+        baseline_gate,
         baseline_heading,
-        current_gate,
         list_entries,
         parse_milestones,
         parse_timeline,
         parse_version_table,
-        release_train,
         table_rows,
         version_tuple,
     )
@@ -1593,7 +1591,8 @@ def _read_store(root: Path) -> _Store | None:
     not there, so the directory is asked about rather than inferred from the
     result, and every caller turns the `None` into a `declined` line naming
     what went unchecked in its own terms - `_store_or_decline` below writes
-    that line for the two gate rules, which want the same one.
+    that line for the gate's re-entry rule, and wrote the same one for the
+    disposition rule until `PL-WD5Z` moved that into `bin/docket check`.
 
     **It is the only spelling of this read, since `PL-R0P3`.** The gate's
     re-entry and disposition rules each spelled it inline, and the two that
@@ -2367,13 +2366,13 @@ BLOCKED_STATUS = "blocked"
 
 
 def _current_gate(text: str) -> MilestoneSection | None:
-    """The gate the project is clearing now, read by `docket.roadmap.current_gate`.
+    """The gate the project is clearing now, read by `docket.roadmap.baseline_gate`.
 
-    The one answer `bin/docket wave` and the three gate rules below share
-    (`PL-J6HP`); each rule used to find the section with a `next(...)` of its
-    own. The version is the version table's baseline row rather than
-    `pyproject.toml`, which `check_baseline` holds equal to it, so a checkout
-    carrying the roadmap alone can still be checked.
+    The one answer `bin/docket wave`, `bin/docket check`'s disposition rule and
+    the gate rules below share (`PL-J6HP`); each rule used to find the section
+    with a `next(...)` of its own. The version is the version table's baseline
+    row rather than `pyproject.toml`, which `check_baseline` holds equal to it,
+    so a checkout carrying the roadmap alone can still be checked.
 
     `None` where no single row is marked current. Which gate is current cannot
     then be read, so nothing is checked - and this is the one place where
@@ -2382,10 +2381,7 @@ def _current_gate(text: str) -> MilestoneSection | None:
     cannot be green while it holds; a decline here would be a second voice on
     one fault.
     """
-    baseline = [row for row in parse_version_table(text) if row.is_baseline]
-    if len(baseline) != 1:
-        return None
-    return current_gate(release_train(text, baseline[0].version))
+    return baseline_gate(text)
 
 
 def check_gate_reentries(root: Path, report: Report) -> None:
@@ -2420,9 +2416,11 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     "Debt inside the milestone's own scope". So this reports and does not
     decide, which is why it is an advisory rather than an error.
 
-    **It does not read `### Declined to Gate ...`, and that is the whole of what
-    distinguishes it from `check_gate_dispositions` below.** A deferral is a
-    recorded disposition, so it silences that check; it is not a disposition
+    **It does not read `deferred-from:`, and that is the whole of what
+    distinguishes it from `bin/docket check`'s disposition rule**
+    (`_check_gate_dispositions` in `subprojects/docket/src/docket/checks.py`,
+    which lived in this file until `PL-WD5Z`). A deferral is a recorded
+    disposition, so it silences that rule; it is not a disposition
     *this* rule offers, because "The gate is a snapshot" closes by saying these
     two classes "are not deferrable by this project's own standard". So the two
     advisories disagree about a deferred `safety` item deliberately, and this
@@ -2539,109 +2537,9 @@ def check_gate_reentries(root: Path, report: Report) -> None:
         "date and the reason it re-entered, or place it in Required scope so the "
         "milestone clears it. Deferring is not a third option here as it is for "
         'the other debt classes: "The gate is a snapshot" ends by making these '
-        "two not deferrable, so a deferral subsection answers the disposition "
+        "two not deferrable, so a `deferred-from:` answers the disposition "
         "error and leaves this one standing - which is the disagreement to "
         "resolve, not a fault in either check"
-    )
-
-
-# The deferral grammar - `DEFERRAL_VERBS`, `DECLINED_HEADING_RE`, `_section_end`
-# and `_declined_ids` - lived here until `PL-J6HP` moved it into
-# `docket.roadmap`, where `parse_milestones` reads it beside the frozen list and
-# `Required scope` and hands the result to every reader as
-# `MilestoneSection.deferred_ids`. The names moved unchanged, because this
-# project's record cites them; the reasoning moved with them, in
-# `_declined_ids`' docstring.
-
-
-def _deferral_headings() -> str:
-    """The recognized heading forms, for an error that has to name them.
-
-    Rendered from `DEFERRAL_VERBS` rather than written out, so the message
-    cannot come to describe a vocabulary the pattern no longer has - which is
-    the defect this whole block exists to answer, one level up.
-    """
-    forms = [f"`### {verb} ...`" for verb in DEFERRAL_VERBS]
-    return f"{', '.join(forms[:-1])} or {forms[-1]}"
-
-
-def check_gate_dispositions(root: Path, report: Report) -> None:
-    """Name every open debt item the current gate neither places nor defers.
-
-    `ROADMAP.md` § "The gate is a snapshot, not a moving target" allows either
-    answer for a presence-qualifying finding - pull it into this gate, or defer
-    it to the next - and forbids only the third thing, which is neither: "Either
-    way it must say so and say why: silently reinterpreting which gate a finding
-    belongs to is the renegotiation freezing the list exists to prevent."
-
-    `check_gate_reentries` above covers the half of the rule that needs no
-    judgment, and says so: `safety`, `science` and `P0` re-enter unconditionally.
-    Its docstring is explicit that every other class "defers to the next gate
-    unless its problem predates the freeze, which is a judgment call", and
-    declines to make it. That is right, and it left nobody being *asked* for the
-    judgment - so on 2026-09-08 forty-two items had gone without one
-    (`PL-36R4`).
-
-    So this reports the silence and decides nothing about *which* disposition
-    is right. Whether a given item's problem predates the freeze is not
-    decidable here and must not be scripted; whether *some* disposition has
-    been recorded is, and is all this asks.
-
-    **That second question is exact, so it is an error** (`PL-HJZW`). It was
-    printed as an advisory while
-    `tests/unit/test_doc_check.py::test_this_repository_records_a_disposition_for_every_open_debt_item`
-    ran the same read over the real tree and asserted it clean - so `make
-    check` failed hard on a line this file labelled "judgment needed", and a
-    session that read the label and deferred the judgment had followed the
-    documentation exactly and pushed a red branch. `CLAUDE.md` reserves hard
-    failure for exact rules, which is what settles it in this direction: the
-    test was right about the severity and the label was wrong. Both now say
-    error.
-
-    It is quiet once every item carries one, which is what keeps it worth
-    running. An advisory that named the same backlog every run would be the
-    check `CLAUDE.md` calls a defect - one that "fires every run without
-    changing a decision" - so the deferrals are written into the roadmap where
-    this can read them, rather than held as a list somebody re-judges.
-    """
-    roadmap = root / ROADMAP
-    if not roadmap.is_file():
-        return
-    text = roadmap.read_text(encoding="utf-8")
-
-    gate = _current_gate(text)
-    if gate is None:
-        return
-
-    store = _store_or_decline(root, report, "the gate's disposition rule")
-    if store is None:
-        return
-    config = store.config
-
-    disposed = set(gate.scope_ids) | gate.deferred_ids
-    owed = [
-        item
-        for item in store.items.values()
-        if item.status not in CLOSED_STATUSES
-        and item.identifier not in disposed
-        and (
-            item.status == "needs-decision"
-            or any(name in config.debt_classes for name in item.classes)
-        )
-    ]
-    if not owed:
-        return
-
-    rendered = "v{}.{}.{}".format(*gate.version)
-    listed = ", ".join(item.identifier for item in owed)
-    report.errors.append(
-        f"{ROADMAP}:{gate.gate_line}: {rendered}'s gate records no disposition for "
-        f"{_plural(len(owed), 'open debt item', 'open debt items')} - neither placed on "
-        f"the frozen list or in Required scope, nor deferred with a reason: {listed}. "
-        "The presence rule allows either answer and forbids neither being written "
-        "down; add each to the list, or to a deferral subsection saying why. "
-        f"{_deferral_headings()} are the headings read as one, so a disposition "
-        "written under any other is not being read"
     )
 
 
@@ -4713,7 +4611,6 @@ def analyze(root: Path) -> Report:
     check_named_tests(root, report)
     check_bound_families(root, report)
     check_gate_reentries(root, report)
-    check_gate_dispositions(root, report)
     check_tags(root, report)
     check_tag_span_covers_its_notes(root, report)
     check_make_targets(root, documents, report)

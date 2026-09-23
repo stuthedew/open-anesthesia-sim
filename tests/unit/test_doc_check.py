@@ -3525,10 +3525,14 @@ def test_the_gate_rules_read_the_gate_wave_reads(tmp_path: Path) -> None:
     They used to find it apart - `wave` in the release train's order, the gate
     rules in version order - and the two orders differ once a section recording
     a gate has no timeline row. v0.3.5's has none here, so the train puts it
-    after v0.4.0, and both readers must hold the queue to v0.4.0's list: read in
+    after v0.4.0, and every reader must hold the queue to v0.4.0's list: read in
     version order, `PL-QQQQ` looked placed by a list `wave` never reports.
+
+    The re-entry rule is the reader held here, since the disposition rule moved
+    into `bin/docket check` (`PL-WD5Z`), and that one reads the same
+    `baseline_gate` through `MilestoneStates.gate`.
     """
-    from docket.roadmap import wave
+    from docket.roadmap import milestone_states, wave
 
     roadmap = VERSIONED_GATE_ROADMAP.replace(
         "## Next milestone: v0.4.0",
@@ -3537,12 +3541,16 @@ def test_the_gate_rules_read_the_gate_wave_reads(tmp_path: Path) -> None:
         "- PL-QQQQ (S) On this list and no other\n\n"
         "## Next milestone: v0.4.0",
     )
+    root = _repo(tmp_path, roadmap=roadmap)
+    _queue_item(root, "PL-QQQQ", classes="safety")
 
     plan = wave(roadmap, "0.2.5", frozenset(), frozenset(), {})
-    errors = _dispositions(tmp_path, {"PL-QQQQ": DEBT}, roadmap)
+    states = milestone_states(roadmap)
+    advisories = _reentry_advisories(root)
 
     assert plan.gate is not None and plan.gate.milestone.version == (0, 4, 0)
-    assert any("v0.4.0's gate records no disposition" in e and "PL-QQQQ" in e for e in errors)
+    assert states.gate is not None and states.gate.version == (0, 4, 0)
+    assert any("v0.4.0's frozen list" in a and "PL-QQQQ" in a for a in advisories)
 
 
 # --- gate re-entries, the queue read against the frozen list -----------------
@@ -3555,12 +3563,19 @@ def test_the_gate_rules_read_the_gate_wave_reads(tmp_path: Path) -> None:
 
 
 def _queue_item(
-    root: Path, identifier: str, *, classes: str, status: str = "ready", not_delegable: str = ""
+    root: Path,
+    identifier: str,
+    *,
+    classes: str,
+    status: str = "ready",
+    not_delegable: str = "",
+    deferred_from: str = "",
 ) -> None:
     """Write one item into the fixture repository's store."""
     store = root / "docs" / "items"
     store.mkdir(parents=True, exist_ok=True)
     withheld = f"not-delegable: {not_delegable}\n" if not_delegable else ""
+    withheld += f"deferred-from: {deferred_from}\n" if deferred_from else ""
     (store / f"{identifier}-demo.md").write_text(
         "---\n"
         f"id: {identifier}\n"
@@ -3619,7 +3634,7 @@ def test_a_safety_item_in_required_scope_is_quiet(tmp_path: Path) -> None:
 
 
 def test_a_deferred_safety_item_still_re_enters_the_gate(tmp_path: Path) -> None:
-    """A written deferral answers `check_gate_dispositions` and not this check.
+    """A recorded deferral answers `bin/docket check`'s disposition rule and not this check.
 
     `PL-R0Q0`: the advisory offered a deferral as a third remedy and then
     refused it, so `PL-MN4J` and four `anticipated` area-model findings - each
@@ -3635,15 +3650,13 @@ def test_a_deferred_safety_item_still_re_enters_the_gate(tmp_path: Path) -> None
     that - and `PL-R7XK` placed `PL-MN4J` in `Required scope`. Neither touches
     what this test holds: a deferral, on its own, still leaves the item named.
     """
-    roadmap = VERSIONED_GATE_ROADMAP.replace(
-        "### Definition of done",
-        "### Declined to Gate 2 on the refilling-queue ground\n\n"
-        "Deferred because the milestone creates the display it is about.\n\n"
-        "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
-        1,
+    root = _repo(tmp_path, roadmap=VERSIONED_GATE_ROADMAP)
+    _queue_item(
+        root,
+        "PL-ZZZZ",
+        classes="safety, ux",
+        deferred_from="v0.4.0 - the milestone creates the display it is about",
     )
-    root = _repo(tmp_path, roadmap=roadmap)
-    _queue_item(root, "PL-ZZZZ", classes="safety, ux")
 
     advisories = _reentry_advisories(root)
 
@@ -3765,303 +3778,6 @@ def test_the_advisory_names_every_unplaced_item_in_one_line(tmp_path: Path) -> N
     assert "PL-ZZZZ (safety)" in advisories[0]
     assert "PL-YYYY (science)" in advisories[0]
     assert "2 open items" in advisories[0]
-
-
-# --- gate dispositions ------------------------------------------------------
-#
-# `check_gate_reentries`, the sibling this sits beside, is covered by the seven
-# tests directly above - they reach it through `analyze` rather than by name,
-# which is why an audit grepping for the function found only this comment and
-# concluded it was untested (`PL-PDP6`, dropped 2026-09-12 after mutating the
-# function and watching two of the six then present fail). These cover the half
-# of the rule that needs a judgment, so they exercise both dispositions the rule
-# allows and the silence it forbids.
-
-
-def _disposition_repo(
-    tmp_path: Path, items: dict[str, str], roadmap: str = VERSIONED_GATE_ROADMAP
-) -> Path:
-    """A repository carrying a gate, a version baseline and an item store."""
-    root = _repo(tmp_path, roadmap=roadmap)
-    (root / "pyproject.toml").write_text(
-        '[project]\nname = "demo"\nversion = "0.2.5"\n', encoding="utf-8"
-    )
-    (root / "docket.toml").write_text(
-        'items_dir = "docs/items"\n'
-        'debt_classes = ["defect", "safety", "science", "refactor", "perf"]\n',
-        encoding="utf-8",
-    )
-    store = root / "docs" / "items"
-    store.mkdir(parents=True, exist_ok=True)
-    for identifier, front in items.items():
-        (store / f"{identifier}-demo.md").write_text(
-            f"---\nid: {identifier}\ntitle: Demo\n{front}added: 2026-09-06\n---\n\n"
-            "**Problem.** A thing.\n**Why it matters.** It does.\n**Done when.** Fixed.\n",
-            encoding="utf-8",
-        )
-    return root
-
-
-def _dispositions(tmp_path: Path, items: dict[str, str], roadmap: str | None = None) -> list[str]:
-    """The missing-disposition findings, read from `errors` since `PL-HJZW`."""
-    root = _disposition_repo(
-        tmp_path, items, **({"roadmap": roadmap} if roadmap is not None else {})
-    )
-    return [e for e in doc_check.analyze(root).errors if "records no disposition" in e]
-
-
-DEBT = "priority: P2\neffort: S\nstatus: ready\nclasses: defect\n"
-
-
-def test_a_placed_debt_item_needs_no_further_disposition(tmp_path: Path) -> None:
-    """PL-BBBB is on the fixture's frozen list, so the gate has answered for it."""
-    assert _dispositions(tmp_path, {"PL-BBBB": DEBT}) == []
-
-
-def test_an_open_debt_item_the_gate_neither_places_nor_defers_is_reported(tmp_path: Path) -> None:
-    """The silence the presence rule forbids by name, and the check exists for."""
-    advisories = _dispositions(tmp_path, {"PL-ZZZZ": DEBT})
-
-    assert any("PL-ZZZZ" in advisory for advisory in advisories)
-
-
-def test_an_item_deferred_with_a_recorded_reason_is_not_reported(tmp_path: Path) -> None:
-    """Deferring is one of the two answers the rule allows, so it must silence this.
-
-    The subsection is what carries the reason, and reading it is the whole
-    difference between a check that can be satisfied and one that names the
-    same backlog every run.
-    """
-    roadmap = VERSIONED_GATE_ROADMAP.replace(
-        "### Definition of done",
-        "### Declined to Gate 2 on the refilling-queue ground\n\n"
-        "Deferred because pulling it in would refill the gate.\n\n"
-        "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
-        1,
-    )
-
-    assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT}, roadmap) == []
-
-
-def test_a_second_declined_subsection_is_read(tmp_path: Path) -> None:
-    """`PL-82B0`: a second subsection must not orphan the first one's ids.
-
-    `_declined_ids` took the *first* `### Declined to Gate ...` heading and
-    stopped, so writing a second one - a later round, or a different ground -
-    silently stopped every id in the first being read as deferred. They came
-    back as dispositions the gate owed, and nothing said why, because writing
-    the new heading is what caused it.
-
-    Both ids are asserted, not only the orphaned one: reading the second alone
-    would be the same defect pointing the other way.
-    """
-    roadmap = VERSIONED_GATE_ROADMAP.replace(
-        "### Definition of done",
-        "### Declined to Gate 2 on the refilling-queue ground\n\n"
-        "Deferred because pulling it in would refill the gate.\n\n"
-        "- PL-ZZZZ (S) The deferred thing\n\n"
-        "### Declined to Gate 2 on the predates-the-freeze ground\n\n"
-        "Deferred because the problem postdates the freeze.\n\n"
-        "- PL-YYYY (S) The other deferred thing\n\n### Definition of done",
-        1,
-    )
-
-    assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT, "PL-YYYY": DEBT}, roadmap) == []
-
-
-def test_a_group_deferral_naming_its_ids_only_in_prose_is_read(tmp_path: Path) -> None:
-    """`PL-H6VQ`: a paragraph is how this section defers a *group*, not an aside.
-
-    Narrowing `_declined_ids` to the `- PL-XXXX` entry lines was proposed on
-    the ground that a deferral's prose cites items it does not dispose of.
-    Counted against v0.5.0's two subsections on 2026-09-21, that narrowing
-    breaks 97 recorded dispositions and catches none of the citations it was
-    aimed at - the reasoning is in `_declined_ids`' own docstring. This pins
-    the half the count settled, because the tree cannot: the current gate
-    carries no `### Declined to Gate ...` subsection at all, so the narrowing
-    would pass `make check` on the day it landed and only break when the next
-    gate wrote its first group deferral.
-
-    The fixture is the shape that would break: a ground stated once, the ids
-    it covers enumerated in the same paragraph, and no entry line anywhere.
-    """
-    roadmap = VERSIONED_GATE_ROADMAP.replace(
-        "### Definition of done",
-        "### Declined to Gate 2 on the refilling-queue ground\n\n"
-        "**Two sit wholly in the workflow lane** and are deferred on that "
-        "ground, where admitting them would refill a gate that is not "
-        "draining: `PL-ZZZZ`, `PL-YYYY`.\n\n### Definition of done",
-        1,
-    )
-
-    assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT, "PL-YYYY": DEBT}, roadmap) == []
-
-
-def test_a_deferred_to_heading_is_read_as_a_disposition(tmp_path: Path) -> None:
-    """`PL-Z891`: `### Deferred to vX.Y.Z ...` is a form the roadmap writes.
-
-    The pattern was `### Declined to Gate` exactly, so v0.5.0's `### Deferred
-    to v0.4.26, because the port dissolves the defect` recorded a disposition
-    that counted for nothing. Wording a deferral after the milestone it goes
-    to, rather than after the gate it leaves, is the natural way to write one
-    and is not a variant anybody announced.
-    """
-    roadmap = VERSIONED_GATE_ROADMAP.replace(
-        "### Definition of done",
-        "### Deferred to v0.9.9, because that milestone dissolves the defect\n\n"
-        "Deferred because the port removes the code this describes.\n\n"
-        "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
-        1,
-    )
-
-    assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT}, roadmap) == []
-
-
-def test_a_sequenced_past_heading_is_read_as_a_disposition(tmp_path: Path) -> None:
-    """`PL-Z891`: `### Sequenced past vX.Y.Z ...` is the third form, and the widest.
-
-    v0.5.0's `### Sequenced past v0.5.0, so not clearable before it begins`
-    names 40 ids - `PL-TH35` and `PL-WZVZ` among them still open debt, measured
-    2026-09-22 - which is 40 of the 41 the narrow pattern left unread across the
-    whole roadmap. The other form, `### Deferred to ...`, carries the remaining
-    one, so the two are pinned separately rather than by whichever fixture
-    happens to exercise the regex.
-    """
-    roadmap = VERSIONED_GATE_ROADMAP.replace(
-        "### Definition of done",
-        "### Sequenced past v0.4.0, so not clearable before it begins\n\n"
-        "Deferred because this milestone is what makes them reachable.\n\n"
-        "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
-        1,
-    )
-
-    assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT}, roadmap) == []
-
-
-def test_a_subsection_headed_by_no_deferral_verb_defers_nothing(tmp_path: Path) -> None:
-    """The widening must not turn every sibling subsection into a disposition.
-
-    `PL-Z891` widened the pattern from one heading form to three verbs, and the
-    failure that widening can introduce is the opposite of the one it fixed:
-    silence on an item nobody disposed of, because some other subsection of the
-    same section happens to name it. `### Explicitly out of scope ...` is the
-    case that would bite - it names ids, sits in the gate's own section, and is
-    a statement about the milestone's scope rather than a disposition of the
-    gate's debt.
-    """
-    roadmap = VERSIONED_GATE_ROADMAP.replace(
-        "### Definition of done",
-        "### Explicitly out of scope for v0.4.0\n\n"
-        "- PL-ZZZZ (S) Not this milestone's subject\n\n### Definition of done",
-        1,
-    )
-
-    advisories = _dispositions(tmp_path, {"PL-ZZZZ": DEBT}, roadmap)
-
-    assert any("PL-ZZZZ" in advisory for advisory in advisories)
-
-
-def test_the_disposition_error_names_every_heading_form_it_reads(tmp_path: Path) -> None:
-    """`PL-Z891`: the remedy has to name the vocabulary, or a fourth verb repeats this.
-
-    The error used to prescribe `### Declined to Gate ...` alone, which is how
-    a session with a written-but-unread deferral was told to write the
-    subsection it had already written. Naming all three forms is what makes the
-    next unrecognized verb diagnose itself in one read, and is the whole reason
-    the pattern is rendered from a tuple rather than spelled out twice.
-    """
-    (error,) = _dispositions(tmp_path, {"PL-ZZZZ": DEBT})
-
-    assert "`### Declined ...`" in error
-    assert "`### Deferred ...`" in error
-    assert "`### Sequenced ...`" in error
-
-
-def test_a_declined_subsection_of_the_next_milestone_is_not_this_gate_s(tmp_path: Path) -> None:
-    """The sweep stops at the next `##`, which the single-subsection reader did not.
-
-    Unbounded, the old reader searched to the end of the file, so a gate
-    deferring nothing would have taken a later milestone's deferrals for its
-    own. Nothing exercised it, because this roadmap has one such subsection.
-    """
-    roadmap = VERSIONED_GATE_ROADMAP + (
-        "\n## v9.9.9 - a later milestone\n\n"
-        "### Declined to Gate 3 on some ground — 1 entry\n\n"
-        "Deferred by a milestone that is not the current gate.\n\n"
-        "- PL-ZZZZ (S) The deferred thing\n"
-    )
-
-    advisories = _dispositions(tmp_path, {"PL-ZZZZ": DEBT}, roadmap)
-
-    assert any("PL-ZZZZ" in advisory for advisory in advisories)
-
-
-def test_a_needs_decision_item_is_owed_a_disposition_whatever_its_classes(tmp_path: Path) -> None:
-    """The gate takes `needs-decision` regardless of class, so this must too."""
-    front = "priority: P2\neffort: S\nstatus: needs-decision\nclasses: docs\n"
-
-    advisories = _dispositions(tmp_path, {"PL-ZZZZ": front})
-
-    assert any("PL-ZZZZ" in advisory for advisory in advisories)
-
-
-def test_an_item_that_is_neither_debt_nor_needs_decision_is_left_alone(tmp_path: Path) -> None:
-    front = "priority: P3\neffort: S\nstatus: ready\nclasses: docs\n"
-
-    assert _dispositions(tmp_path, {"PL-ZZZZ": front}) == []
-
-
-def test_a_closed_item_is_owed_nothing(tmp_path: Path) -> None:
-    """A gate is about open work; a done item needs no placement."""
-    front = "priority: P2\neffort: S\nstatus: done\nclasses: defect\nclosed: 2026-09-07\n"
-
-    assert _dispositions(tmp_path, {"PL-ZZZZ": front}) == []
-
-
-def test_this_repository_records_a_disposition_for_every_open_debt_item() -> None:
-    """The real tree, not only a fixture - which is what `PL-36R4` was about.
-
-    This asserts the tree is *clean*, not merely that the advisory is well
-    formed, and the strictness is deliberate. `ROADMAP.md`'s presence rule
-    leaves *which* disposition an item gets to judgment, but *that* one is
-    recorded is exact and decidable, which is the line `CLAUDE.md` draws for
-    when a check may fail hard.
-
-    It does not penalise capture, which was the reason briefly given for
-    weakening it and is wrong: `bin/docket new` writes `status: untriaged` with
-    no `classes`, and neither satisfies this check's filter. Only a *triaged*
-    debt item trips it, and triage is the deliberate act where the disposition
-    belongs. `PL-33WM` is the evidence that the strictness earns its place - it
-    caught a real gap within forty minutes of the check landing, when `#477`
-    merged an undispositioned item on a base predating the check.
-    """
-    root = Path(doc_check.__file__).resolve().parent.parent
-
-    assert [e for e in doc_check.analyze(root).errors if "records no disposition" in e] == []
-
-
-def test_a_missing_disposition_is_reported_as_an_error(tmp_path: Path) -> None:
-    """`PL-HJZW`: the printed severity and `make check`'s severity are one.
-
-    The test above has always made this a hard failure, while
-    `check_gate_dispositions` printed the same finding under "Advisories
-    (judgment needed)". A session that triaged a debt item, ran
-    `python3 tools/doc_check.py check`, read one advisory and left the
-    judgment for later had followed this project's own convention - `CLAUDE.md`
-    reserves hard failure for exact rules - and pushed a branch that failed CI
-    on an assertion it never saw.
-
-    Whether *some* disposition is recorded is exact, so this pins the error
-    side and the absence of an advisory together: naming one severity is the
-    whole of the fix, and either half alone would leave the two disagreeing
-    again.
-    """
-    root = _disposition_repo(tmp_path, {"PL-ZZZZ": DEBT})
-
-    report = doc_check.analyze(root)
-
-    assert any("records no disposition" in e and "PL-ZZZZ" in e for e in report.errors)
-    assert not any("records no disposition" in a for a in report.advisories)
 
 
 # --- reading the right table, and surviving a token glob cannot parse --------
@@ -4791,25 +4507,6 @@ def test_a_family_member_may_declare_no_test_yet_against_a_historical_id(tmp_pat
     root = _family_repo(tmp_path, "no test yet (`PL-001`)", items={"PL-001": "ready"})
 
     assert _family_errors(root) == []
-
-
-def test_a_deferral_naming_a_historical_id_disposes_of_it(tmp_path: Path) -> None:
-    """`_declined_ids` read the same restated grammar, in the safer direction.
-
-    An id the gate has deferred but the reader cannot see is reported as having
-    no disposition - a false hard error rather than a silent pass, and still an
-    answer that is wrong about the document in front of it (`PL-KYW3`).
-    """
-    roadmap = VERSIONED_GATE_ROADMAP.replace(
-        "### Definition of done",
-        "### Declined to Gate 2 on the refilling-queue ground\n\n"
-        "**Deferred on the workflow-lane ground**, where admitting them would "
-        "refill a gate that is not draining: `PL-001`, `PL-ZZZZ`.\n\n"
-        "### Definition of done",
-        1,
-    )
-
-    assert _dispositions(tmp_path, {"PL-001": DEBT, "PL-ZZZZ": DEBT}, roadmap) == []
 
 
 # --- what a tag's span covers -----------------------------------------------

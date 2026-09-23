@@ -7,6 +7,7 @@ status: ready
 classes: defect
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22
 payoff: a design round that retitles its needs-decision item in its last commit stays withheld from docket next, and the rename test stops passing against a git that does not exist
 verify: grep -q 'def test_flight_claims_a_round_that_renames_its_item_file' subprojects/docket/tests/test_cli.py

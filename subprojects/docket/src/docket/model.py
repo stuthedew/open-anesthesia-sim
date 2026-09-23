@@ -577,6 +577,23 @@ class Item:
     #: and `plan.py`, so the checker and the ranking cannot disagree about
     #: what a claim is - the same arrangement `root_cause_faults` already has.
     impairs_generators: str = ""
+    #: The gate this item is excused from, and why, as `vX.Y.Z - why`: the
+    #: version of the milestone whose frozen list the item is not on, never a
+    #: gate it goes to. A target is what v0.6.0's prose headings got wrong four
+    #: times ("Declined to Gate 2" under Gate 2 itself), and the next freeze
+    #: takes every open debt item anyway, so naming one would record a promise
+    #: nothing reads.
+    #:
+    #: On the item rather than in `ROADMAP.md` because a disposition written
+    #: as an id *mentioned* in a subsection's prose was a second store of queue
+    #: state: a second place every debt capture during a freeze had to write,
+    #: status narrated beside it that nothing re-read, and a regex that took a
+    #: sentence saying an item was absent for its disposition (`PL-WD5Z`, route
+    #: 1, over structured lines in `ROADMAP.md`). `checks.py` requires it of an
+    #: open debt item the current gate does not place - see
+    #: `_check_gate_dispositions` - and `bin/docket wave` lists the gate's
+    #: deferrals from it.
+    deferred_from: str = ""
     #: The item file's name inside the store directory - `PL-K7QX-do-it.md`,
     #: never `docs/items/PL-K7QX-do-it.md`. A repository path is that name
     #: joined to the store directory, which is what `verify.front_matter_check`
@@ -854,6 +871,25 @@ def split_generator_verdict(value: str) -> tuple[str, str]:
             break
         verdict += char
     return verdict.lower(), text[len(verdict) :].strip(" -\u2013\u2014:,;").strip()
+
+
+def split_deferred_from(value: str) -> tuple[str, str]:
+    """A `deferred-from:` value as its gate's version and its reason, neither judged.
+
+    The version is the leading word and counts only when it is a milestone
+    written as `MILESTONE_BLOCKER_RE` writes one, so `0.6.0 - why` and `Gate 2 -
+    why` come back with no version rather than a guessed one. Whatever separator
+    follows it is stripped off the reason, as `split_generator_verdict` strips
+    one: the version is the decidable half and the sentence after it is the
+    judgment, and a colon where the README wrote a dash is no mistake worth an
+    error. `checks.py` holds both halves to what they must be.
+    """
+    text = value.strip()
+    word = text.split(maxsplit=1)[0] if text else ""
+    word = word.rstrip("-\u2013\u2014:,;")
+    if MILESTONE_BLOCKER_RE.match(word) is None:
+        return "", text
+    return word, text[len(word) :].strip(" -\u2013\u2014:,;").strip()
 
 
 def generator_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
@@ -1294,6 +1330,7 @@ def parse_item(text: str, path: str = "") -> Item:
         "classes",
         "touches",
         "blocked-by",
+        "deferred-from",
         "feature",
         "milestone",
         "added",
@@ -1334,6 +1371,7 @@ def parse_item(text: str, path: str = "") -> Item:
         generator=fields.get("generator", ""),
         impairs_generators=fields.get("impairs-generators", ""),
         recurrences=_split_list(fields.get("recurrences", "")),
+        deferred_from=fields.get("deferred-from", ""),
         body=body,
         path=path,
         unknown_fields=tuple(sorted(set(fields) - known)),
@@ -1361,6 +1399,7 @@ FIELD_ORDER = (
     "milestone",
     "touches",
     "blocked-by",
+    "deferred-from",
     "added",
     "closed",
     "commit",
@@ -1395,6 +1434,7 @@ def _front_matter_values(item: Item) -> dict[str, str]:
         "milestone": item.milestone,
         "touches": ", ".join(item.touches),
         "blocked-by": ", ".join(item.blocked_by),
+        "deferred-from": item.deferred_from,
         "added": item.added.isoformat() if item.added else "",
         "closed": item.closed.isoformat() if item.closed else "",
         "commit": item.commit,

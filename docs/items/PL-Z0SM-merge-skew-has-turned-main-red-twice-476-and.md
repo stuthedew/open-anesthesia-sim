@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 touches: CLAUDE.md, ROADMAP.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
 closed: 2026-09-23
 verify: grep -qF '**Answered 2026-09-23: hold**' docs/items/PL-Z0SM-*.md

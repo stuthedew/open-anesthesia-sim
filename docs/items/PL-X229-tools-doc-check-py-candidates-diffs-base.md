@@ -7,6 +7,7 @@ status: ready
 classes: defect, infra
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22
 payoff: the close-out docs sweep lists only the documentation this branch's own change could have made stale - 13 lines rather than 184 in the reproduction - so a session reads it instead of skimming past other branches' work
 verify: grep -q 'def test_candidates_ignores_what_the_base_gained_after_the_fork' tests/unit/test_doc_check.py

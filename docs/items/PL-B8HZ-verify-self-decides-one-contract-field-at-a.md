@@ -7,6 +7,7 @@ status: needs-decision
 classes: defect
 feature: verify-close-out
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
 payoff: One stated rule for which copy each contract field is read from, so a new field stops costing an item per wrong direction
 root-cause-of: PL-KSV2, PL-PZ6T, PL-TKFD, PL-ZMGR, PL-K4R5, PL-YZJD

@@ -7,6 +7,7 @@ status: needs-decision
 classes: defect, infra
 feature: commit-provenance
 touches: tools/pr_title_check.py, .github/workflows/pr-title.yml, docs/worker.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-2JRC's triage pass
 added: 2026-09-21
 payoff: the pr-title gate stops reporting green on a subject that will never reach main, so the provenance it exists to protect is actually protected rather than left to the fallback
 ---

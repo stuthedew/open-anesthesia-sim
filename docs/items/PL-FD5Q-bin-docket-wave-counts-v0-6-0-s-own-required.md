@@ -6,6 +6,7 @@ effort: S
 status: ready
 classes: defect
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
 payoff: the session-start Beat line reports how much the gate really waits on outside the milestone - five items today, not ten
 verify: grep -q 'def test_outside_items_leave_out_what_required_scope_names' subprojects/docket/tests/test_roadmap.py

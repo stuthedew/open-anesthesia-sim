@@ -7,6 +7,7 @@ status: needs-decision
 classes: refactor
 feature: core-domain-language
 touches: src/anesthesia_sim/app/controller.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22
 payoff: the case instant a branch opens at is read under one name from the public door to the keyframe, so no reader meets a clock reading's name on a point in case time
 ---

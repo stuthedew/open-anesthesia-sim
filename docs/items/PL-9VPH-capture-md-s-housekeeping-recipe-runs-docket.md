@@ -7,6 +7,7 @@ status: ready
 classes: defect, docs
 feature: recurrence-signal
 touches: .claude/skills/docket/modes/capture.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-23
 payoff: an item filed by the housekeeping recipe meets the near-duplicate search, so a second filing of open work is caught at capture instead of by a later session reading both briefs
 verify: grep -qF 'bin/docket new --touches docs/items' .claude/skills/docket/modes/capture.md

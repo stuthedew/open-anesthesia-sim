@@ -7,6 +7,7 @@ status: ready
 classes: defect
 feature: brief-state-agreement
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_checks.py, ROADMAP.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
 payoff: the gate's deferral list stops telling a reader that a closed item still waits on a decision
 verify: grep -q 'def test_a_deferral_entry_narrating_a_status_its_item_left_is_reported' subprojects/docket/tests/test_checks.py

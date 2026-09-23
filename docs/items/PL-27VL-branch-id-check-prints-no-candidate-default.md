@@ -7,6 +7,7 @@ status: ready
 classes: defect
 feature: evidence-declines
 touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
 payoff: a branch-id or verify decline names what actually went wrong with the base, so the reader tries the remedy that fits
 verify: grep -q 'def test_a_base_resolved_past_an_unanswered_candidate_says_so' tests/unit/test_branch_id_check.py && grep -q 'def test_verify_refusal_says_a_base_resolved_past_an_unanswered_candidate' subprojects/docket/tests/test_cli.py

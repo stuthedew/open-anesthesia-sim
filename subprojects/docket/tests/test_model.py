@@ -33,6 +33,7 @@ from docket.model import (
     render_item,
     repeated_front_matter_keys,
     root_cause_faults,
+    split_deferred_from,
     split_generator_verdict,
     unread_front_matter_lines,
     with_front_matter_field,
@@ -1051,6 +1052,33 @@ def test_the_verdict_is_read_off_whatever_separator_follows_it() -> None:
     assert split_generator_verdict("spent, why") == ("spent", "why")
     assert split_generator_verdict("  LIVE why  ") == ("live", "why")
     assert split_generator_verdict("") == ("", "")
+
+
+def test_a_deferral_is_read_as_its_gate_s_version_and_its_reason() -> None:
+    """Exact about the version, forgiving about the separator after it (`PL-WD5Z`).
+
+    A version that is not written `vX.Y.Z` comes back as none at all rather than
+    a guess, so `checks.py` can say the value names no gate.
+    """
+    assert split_deferred_from("v0.6.0 - after the freeze") == ("v0.6.0", "after the freeze")
+    assert split_deferred_from("v0.6.0: after it") == ("v0.6.0", "after it")
+    assert split_deferred_from("v0.6.0") == ("v0.6.0", "")
+    assert split_deferred_from("0.6.0 - after it") == ("", "0.6.0 - after it")
+    assert split_deferred_from("Gate 2 - after it") == ("", "Gate 2 - after it")
+    assert split_deferred_from("") == ("", "")
+
+
+def test_a_deferral_round_trips_after_blocked_by() -> None:
+    """Read, then written back in the place `FIELD_ORDER` gives it."""
+    text = (
+        "---\nid: PL-K7QX\ntitle: T\nstatus: ready\nblocked-by: PL-B1B1\n"
+        "deferred-from: v0.6.0 - captured after the freeze\nadded: 2026-09-23\n---\n\nBody\n"
+    )
+
+    item = parse_item(text)
+
+    assert item.deferred_from == "v0.6.0 - captured after the freeze"
+    assert render_item(item) == text
 
 
 def test_a_live_verdict_ranks_and_a_spent_one_only_records() -> None:

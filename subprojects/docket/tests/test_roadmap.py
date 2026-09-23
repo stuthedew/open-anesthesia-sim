@@ -215,94 +215,59 @@ def test_a_gate_records_entries_not_every_id_in_its_prose() -> None:
     assert "PL-MNPQ" not in {identifier for entry in gate.gate_entries for identifier in entry.ids}
 
 
-#: The fixture with two deferral subsections under v0.4.0, each headed by a
-#: different verb, and one under v0.3.0 that must stay that section's. The
-#: second of v0.4.0's is the group form: a ground, then ids named only in a
-#: paragraph, which dispose of them exactly as an entry line would.
-DEFERRING = ROADMAP.replace(
-    "### Required scope\n\nA displayed clinical unit",
-    "### Declined to Gate 1, because it was captured after the freeze\n\n"
-    "- PL-DCL1 (S) - **deferred 2026-09-21.** Found after the freeze, and\n"
-    "  prose citing PL-CTD9 as its cause.\n\n"
-    "### Sequenced past v0.4.0, so not clearable before it begins\n\n"
-    "**Two sit wholly in the workflow lane**: PL-GRP1 and PL-GRP2.\n\n"
-    "- PL-SQN1 **and PL-SQN2** (M) - one problem under two ids.\n\n"
-    "### Required scope\n\nA displayed clinical unit",
-).replace(
-    "### Explicitly out of scope for v0.3.0",
-    "### Deferred to v0.4.0, because the port dissolves it\n\n"
-    "- PL-RLY1 (S) An earlier milestone's deferral.\n\n"
-    "### Explicitly out of scope for v0.3.0",
-)
-
-
-def test_parse_milestones_reads_every_deferral_subsection() -> None:
-    """`PL-J6HP`: deferrals are read once, here, beside the list and the scope.
-
-    Every verb in `DEFERRAL_VERBS` and every such subsection of the section,
-    bounded by the section: two readings off one bound, the entries' leading
-    ids for `wave` to print a state beside, and every id beneath for the
-    disposition rule - which is why the group's prose ids and the cited cause
-    are in the second and not the first. Neither is a placement.
-    """
-    sections = {section.version: section for section in parse_milestones(DEFERRING)}
-    gate = sections[(0, 4, 0)]
-
-    assert [entry.ids for entry in gate.deferral_entries] == [("PL-DCL1",), ("PL-SQN1", "PL-SQN2")]
-    assert gate.deferred_ids == frozenset(
-        {"PL-DCL1", "PL-CTD9", "PL-GRP1", "PL-GRP2", "PL-SQN1", "PL-SQN2"}
-    )
-    assert not gate.deferred_ids & set(gate.scope_ids)
-    assert "PL-MNPQ" not in gate.deferred_ids
-    assert [entry.ids for entry in sections[(0, 3, 0)].deferral_entries] == [("PL-RLY1",)]
-    assert sections[(0, 3, 0)].deferred_ids == frozenset({"PL-RLY1"})
-    assert not sections[(0, 2, 0)].deferral_entries
-
-
 def test_wave_prints_each_deferral_with_its_state_and_release() -> None:
     """`PL-B60Q`: the release beside a closed deferral comes from the store.
 
     A hand-written mark copied `milestone:` and was missed on 36 of 84 closed
     entries, so every state is read rather than written: an open item's status,
-    a shipped one's release, a dropped one's date, done-but-uncut said as such,
-    and an id the store does not hold named rather than dropped from the count.
+    a shipped one's release, a dropped one's date, and done-but-uncut said as
+    such. Since `PL-WD5Z` the deferrals themselves are read from the store too -
+    the items whose `deferred-from:` names this gate's version - so an item
+    deferred from another gate, or carrying a value that names none, is not one
+    of them, and `ROADMAP.md` prose names nothing at all.
     """
 
-    def item(identifier: str, fields: str) -> tuple[str, Item]:
+    def item(identifier: str, fields: str, added: str = "2026-09-01") -> tuple[str, Item]:
         return identifier, parse_item(
             f"---\nid: {identifier}\ntitle: t\npriority: P2\neffort: S\n{fields}"
-            "added: 2026-09-01\n---\n\nbody\n"
+            f"added: {added}\n---\n\nbody\n"
         )
 
+    gate = "deferred-from: v0.4.0 - captured after the freeze\n"
     items = dict(
         [
-            item("PL-DCL1", "status: ready\n"),
-            item("PL-SQN1", "status: done\nmilestone: v0.3.2\nclosed: 2026-09-22\n"),
-            item("PL-SQN2", "status: dropped\nclosed: 2026-09-20\n"),
+            item("PL-DCL1", f"status: ready\n{gate}", added="2026-09-02"),
+            item("PL-SQN1", f"status: done\nmilestone: v0.3.2\nclosed: 2026-09-22\n{gate}"),
+            item("PL-SQN2", f"status: dropped\nclosed: 2026-09-20\n{gate}"),
+            item("PL-RLY1", "status: ready\ndeferred-from: v0.3.0 - an earlier gate\n"),
+            item("PL-BDV1", "status: ready\ndeferred-from: Gate 1 - names no version\n"),
         ]
     )
-    plan = _wave("0.2.5", roadmap=DEFERRING)
+    plan = _wave("0.2.5", roadmap=ROADMAP)
     printed = format_wave(plan, items)
 
     assert (
-        "Deferred  the deferral subsections of v0.4.0 — the teachable case, off the frozen "
-        "list (2 entries, 3 ids)"
+        "Deferred  by `deferred-from: v0.4.0`, off the frozen list of v0.4.0 — the "
+        "teachable case (3 items)"
     ) in printed
     assert "          2 closed, 1 open" in printed
     assert "          open: PL-DCL1 ready" in printed
     assert "          shipped: PL-SQN1 in v0.3.2" in printed
     assert "          dropped: PL-SQN2 on 2026-09-20" in printed
-    # Named only in a group deferral's prose: disposed of, with no entry to
-    # carry a state beside.
-    assert "PL-GRP1" not in printed
+    assert "PL-RLY1" not in printed
+    assert "PL-BDV1" not in printed
 
-    items.update([item("PL-SQN2", "status: done\nclosed: 2026-09-22\n")])
+    items.update([item("PL-SQN2", f"status: done\nclosed: 2026-09-22\n{gate}")])
     del items["PL-DCL1"]
     printed = format_wave(plan, items)
 
     assert "          done, not yet released: PL-SQN2" in printed
-    assert "          not in the store, so no state to give: PL-DCL1" in printed
     assert "open:" not in printed
+
+
+def test_wave_prints_no_deferral_block_where_nothing_is_deferred() -> None:
+    """Silence rather than a zero count, which would print on every gate."""
+    assert "Deferred" not in format_wave(_wave("0.2.5", roadmap=ROADMAP), {})
 
 
 # --- the four beats, plus the release the gate exception adds ----------------

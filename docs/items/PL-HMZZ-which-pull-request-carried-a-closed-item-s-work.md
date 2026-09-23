@@ -6,6 +6,7 @@ effort: M
 status: needs-decision
 classes: defect
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
 payoff: Which pull request carried an item becomes one recorded fact, so a new shape of history stops costing an item
 root-cause-of: PL-2XTF, PL-GW37, PL-YDL6, PL-S5LB, PL-KX9N, PL-YFXG, PL-LPWK, PL-QNYF, PL-GJPD, PL-WG7Q

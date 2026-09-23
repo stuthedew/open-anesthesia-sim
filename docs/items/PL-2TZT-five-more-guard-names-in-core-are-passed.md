@@ -7,6 +7,7 @@ status: ready
 classes: defect, ux
 feature: core-guard-coverage
 touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/governing_equations.py, tests/unit/test_alveolar.py, tests/unit/test_blood.py, tests/unit/test_tissue.py, tests/unit/test_circuit.py, tests/unit/test_uptake_system_failure.py, tests/unit/test_governing_equations.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22
 payoff: a refusal a learner sees in the banner names the tissue or compartment that refused, not a parameter three objects hold
 verify: ! grep -rqE 'require_[a-z_]+\("(agent_amount_l|blood_flow_l_min|volume_l|simulation_step_s|blood_gas_partition_coefficient|perfusion_fraction|tissue_gas_partition_coefficient|arterial_partial_pressure_fraction)"' src/anesthesia_sim/core/
