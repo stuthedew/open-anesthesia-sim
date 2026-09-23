@@ -3,11 +3,12 @@ id: PL-8YXJ
 title: A status or blocker change rewrites the front matter and leaves the brief's prose narrating the old state, and nothing reports it: the prose-dependency advisory skips closed prerequisites and nothing reads a brief's claims about its own status
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: brief-state-agreement
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/worker.md, docs/items
 added: 2026-09-22
+closed: 2026-09-23
 payoff: a brief can no longer tell a session its item waits on a decision or blocker the front matter says has cleared, and the next such passage is reported when the status moves
 verify: grep -q 'def test_a_brief_naming_a_closed_prerequisite_is_advised' subprojects/docket/tests/test_checks.py && grep -q 'def test_a_brief_narrating_a_status_it_has_left_is_advised' subprojects/docket/tests/test_checks.py
 root-cause-of: PL-X4RX, PL-7G5M, PL-9K7K
@@ -97,3 +98,27 @@ change across 341 open briefs and a rewrite on every update. What would reopen
 it: brief-versus-tree staleness - the `PL-HH52`, `PL-3M3K`, `PL-5F26` and
 `PL-T7PY` shape, which no matcher reaches - still arriving at more than about
 one item a week after this lands.
+
+**Worked 2026-09-23.** Built as the Done-when lists, with four departures a
+measurement over the store decided, each recorded beside its pattern in
+`checks.py`:
+
+- **Bare `alongside` is not a cue; `land(s) alongside` is.** Bare, it fired on
+  `PL-28HG`'s "filed rather than fixed alongside `PL-MM7F`", correct prose that
+  no marker should have to be written over. `landed with` is left out as past
+  tense (three hits, all history); `sequenced behind` joins `sequenced after`.
+- **The own-status phrases are wider than listed** - `stays`, `remains` and
+  `parked at` beside the five named - since `PL-Y4YX` and `PL-162Y` use them
+  today and would be missed the day their status moves. A phrase counts as the
+  item's own only when no other item is named earlier in its sentence
+  (`PL-X4RX`'s title is about `PL-SYG4`). `ready`, `blocked`, `done` and
+  `dropped` count only in backticks; `untriaged` and `needs-decision` bare too,
+  which is what found `PL-X5PK`, an instance the 2026-09-22 pass missed.
+- **Quotations are not read**, in any direction: this brief and `PL-X4RX`
+  quote the passages they are about.
+- **The marker is `[superseded YYYY-MM-DD: ...]`**, dated for when the passage
+  stopped holding, covering its paragraph or its own list item.
+
+Fourteen passages in twelve items were marked or reworded, and the advisory
+reports zero. A cue ending one line with its id on the next stays unread:
+letting the window cross a line break added four passages, two of them wrong.

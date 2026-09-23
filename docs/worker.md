@@ -363,11 +363,21 @@ ratified convention**`, `**Question 2 is answered (project owner, 2026-09-17,
 ratified).**` — so that the brief carries what was weighed as well as what was
 chosen, and a later reader can tell a settled question from one nobody asked.
 
+**A passage that has stopped holding is marked where it stands.** It opens with
+`[superseded YYYY-MM-DD: what replaced it]`, the date being when it stopped
+holding, and what is current is the front matter and the dated answer beneath
+it — read past the marker, not into it. `bin/docket check` reports a passage
+with no marker that still waits on a closed item or names a status the front
+matter has left, and `bin/docket set` prints any its own write leaves standing,
+so when a status or `blocked-by` you set leaves one, mark or reword it in the
+same commit (`PL-8YXJ`).
+
 **So read to the end of the brief before blocking on one.** The answer can sit
 a long way below the question: measured 2026-09-22 across the four items
 `bin/docket delegable` offered that carry the section, the gap ran 16 to 46
-lines, and `PL-SYG4` (the digest's reserved verdict) puts the sentence "Left at
-`needs-decision` rather than triaged to `ready`" in between. An item whose
+lines, and `PL-SYG4` (the digest's reserved verdict) put the sentence "Left at
+`needs-decision` rather than triaged to `ready`" in between, unmarked until
+2026-09-23. An item whose
 question is *genuinely* still open is held at `status: needs-decision`, which
 `bin/docket delegable` withholds and the front matter states at the top of the
 file — so a decision section on an item you were handed has almost always been
