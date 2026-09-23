@@ -99,7 +99,10 @@ and four findings changed it:
   commit wrote `ROADMAP.md`. A commit whose whole diff is under `docs/items/`
   is annotation, not a claim (`vcs._annotates_only`). So a triage pass that
   records a disposition on the item cannot mark anything in flight, whatever
-  ids lead its commit.
+  ids lead its commit. That removes what set off this instance. It does not
+  remove the general mechanism, a claim read from a commit's shape. That
+  mechanism belongs to `PL-MB2W`, re-filed as a head in `#967`, which also
+  lists `PL-VFJ3`, so closing it here counts toward both heads.
 - **The prose had already drifted where nothing reads it.** All four of
   v0.6.0's post-freeze subsections are headed "Declined to Gate 2". v0.6.0's
   gate *is* Gate 2 ("The timeline", row 6), so the target should be Gate 3.
