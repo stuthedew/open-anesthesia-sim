@@ -3,13 +3,14 @@ id: PL-BX1C
 title: bin/docket verify runs a dropped item's stale verify: command and REJECTs the close-out on it, though the skill says a dropped item has no command to run
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: verify-false-reject
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 added: 2026-09-19
+closed: 2026-09-23
 verify: grep -q 'def test_a_dropped_items_verify_command_is_not_run' subprojects/docket/tests/test_verify.py
-recurrences: 2026-09-22 PL-23C7
+recurrences: 2026-09-22 PL-23C7, 2026-09-23 PL-KSV2 withdrawn 2026-09-23 PL-KSV2
 ---
 
 **Problem.** bin/docket verify runs a dropped item's stale verify: command and REJECTs the close-out on it, though the skill says a dropped item has no command to run
@@ -112,3 +113,32 @@ REJECTed each on its own test-name `grep`, with every integrity check and
 would ACCEPT them, so a dropped item's command flips with unrelated work and
 proves nothing either way. 38 of 191 dropped items carried a `verify:` on
 2026-09-23, up from 29 of 170 on 2026-09-21.
+
+**Worked 2026-09-23.** Took the first shape. `verify` reads `status: dropped`
+and does not run the command. It prints it as a `NOTE`: `not run: a dropped
+item built nothing, so no command can prove it`, the same words the no-command
+half of `PL-L4KX`'s exemption already used. The second shape, `docket check`
+refusing the combination, was not built. It is a new check, which the generator
+pause refuses while `PL-1P5V` is live, and it would have needed a dated cutover
+for the 38 dropped items already carrying a command.
+
+The drop is read off the branch's copy, like the rest of that exemption, and it
+has to be: the drop is what the close-out writes. That grants nothing. A drop
+claims no work for a command to prove, the integrity checks still run over the
+diff, and a delegated audit refuses a worker who drops its own item, through
+`front_matter_check`.
+
+Writing that down found the docs claiming the opposite. `verify_item`'s
+docstring, `subprojects/docket/README.md` and the close-out skill all said both
+exemptions are read from the base, which is true of `falsifies:` alone. For the
+`not-delegable:` half it is a real self-grant under `--self`, reproduced and
+filed as `PL-KSV2`. The three documents now say what is read where and point
+there.
+
+Three tests. `test_a_dropped_items_verify_command_is_not_run` uses a command
+that leaves a file if it runs, so "not run" is observed rather than inferred.
+`test_the_same_command_on_a_done_item_still_runs_and_refuses` pins that the skip
+is keyed on the drop. `test_a_worker_dropping_its_own_item_is_still_refused_in_a_delegated_audit`
+pins the guard the reasoning above rests on. The first and third fail with the
+fix reverted; the second passes either way, by design. The 38 dropped items
+still carrying a command are left as they are.

@@ -3161,10 +3161,14 @@ exists to prevent.
   and the remaining checks still run, where a missing command used to stop the
   audit dead. `docket check` and `docket verify` had disagreed about every
   such item, so the close-out the `docket` skill prescribes had no passing
-  state (`PL-L4KX`).
+  state (`PL-L4KX`). A dropped item that still carries a command has it
+  printed and not run: the command names work the drop says will not be done,
+  so its exit status follows unrelated work — three drops `REJECT`ed on
+  2026-09-22 on test-name `grep`s that would have passed once another branch
+  added those names (`PL-BX1C`).
 
-Neither is anything a session can grant itself, because each turns on the item
-as the **base** holds it — the commission — rather than on the branch. A
+`falsifies:` is nothing a session can grant itself, because it turns on the
+item as the **base** holds it — the commission — rather than on the branch. A
 `falsifies:` line added beside the deletion it excuses folds nothing and is
 reported as the worker's own word for it, and the one declaration that is read
 from the branch is gated on a base `status: needs-decision`, which a session
@@ -3175,7 +3179,15 @@ guard. Where the base's copy cannot be read at all, the report says so rather
 than folding nothing silently. Where the base holds no copy — an item captured
 on this branch, which is also the one route by which a session could write both
 halves of the `needs-decision` gate itself — the commission declares nothing
-and carries no status, so neither exemption is reached.
+and carries no status, so the fold is not reached.
+
+The command exemption is read the other way, off the **branch's** copy, and
+the drop has to be: it is what the close-out writes, while the base still holds
+the item open. A delegated audit refuses either state written by the worker,
+through `front_matter_check`; `--self` only reports it. For a drop that grants
+nothing, since a drop claims no work for a command to prove. For a
+`not-delegable:` line written beside a deleted command it excuses the command,
+which `PL-KSV2` holds.
 
 `--self` also adds one line when the audited commits name other items' ids.
 `item_commits` selects by id so a batch can be judged per item, and a commit

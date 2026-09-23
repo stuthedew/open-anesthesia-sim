@@ -137,10 +137,10 @@ page and decides which file a session reads.
    commission; it may not weaken what measures it, and it may not skip the
    test.
 
-   **Two of the four take an exemption the *item* declares, and a session
-   cannot declare one for itself mid-work.** Both turn on the base's copy of
-   the item rather than on your branch, so adding either beside the work it
-   would excuse folds nothing and is reported as your own word for it.
+   **Two of the four take an exemption the *item* declares.** `falsifies:`
+   turns on the base's copy of the item rather than on your branch, so adding
+   it beside the work it would excuse folds nothing and is reported as your own
+   word for it.
 
    - `falsifies:` names enough of an assertion to identify the one subject the
      item's work makes untrue - the string it pins is what the item was asked
@@ -150,7 +150,12 @@ page and decides which file a session reads.
      `needs-decision` exception below (`PL-ZMGR`).
    - A `dropped` item, or one carrying `not-delegable:`, has no command to run,
      and the check says which applies rather than stopping the audit dead
-     (`PL-L4KX`).
+     (`PL-L4KX`). A dropped item that still carries a `verify:` has it printed
+     and not run, so there is no need to delete one when dropping (`PL-BX1C`).
+     This exemption is read off your branch, since the drop is what the
+     close-out writes, so under `--self` a `not-delegable:` line added beside
+     a deleted command would excuse it. That is the defect `PL-KSV2` holds,
+     and the paragraph below applies to it.
 
    **So a `REJECT` here is still a `REJECT`.** Meeting one on work you believe
    correct means the commission did not anticipate it: say so to the project
