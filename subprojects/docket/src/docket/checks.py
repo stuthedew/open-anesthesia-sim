@@ -2151,10 +2151,10 @@ def _check_gate_dispositions(
         return
 
     for item in report.items:
-        version = deferring.get(item.identifier)
-        if version is not None and version not in milestones.gated:
+        named = deferring.get(item.identifier)
+        if named is not None and named not in milestones.gated:
             report.errors.append(
-                f"{_where(item)}: `deferred-from:` names {version}, whose section in "
+                f"{_where(item)}: `deferred-from:` names {named}, whose section in "
                 f"{config.roadmap_file} records no frozen list, so there is no gate to be "
                 "excused from"
             )

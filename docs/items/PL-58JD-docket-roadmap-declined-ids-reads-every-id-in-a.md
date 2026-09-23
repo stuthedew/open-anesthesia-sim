@@ -1,8 +1,11 @@
 ---
 id: PL-58JD
 title: docket.roadmap._declined_ids reads every id in a deferral subsection's prose as disposed, and on 2026-09-23 that disposed PL-FD5Q through a sentence saying it was absent from the list: the first counterexample to PL-H6VQ's measured finding that the narrowing would catch none
-status: untriaged
+status: done
 added: 2026-09-23
+closed: 2026-09-23
+reason: Closed through PL-WD5Z's route 1: a gate disposition is the item's deferred-from: field, and the prose parse is deleted with _declined_ids, so no sentence in ROADMAP.md can dispose of an item. test_a_roadmap_sentence_naming_an_item_disposes_of_nothing pins this instance.
+verify: grep -q 'def test_a_roadmap_sentence_naming_an_item_disposes_of_nothing' subprojects/docket/tests/test_checks.py && ! grep -q '_declined_ids' subprojects/docket/src/docket/roadmap.py
 ---
 
 **Problem.** docket.roadmap._declined_ids reads every id in a deferral subsection's prose as disposed, and on 2026-09-23 that disposed PL-FD5Q through a sentence saying it was absent from the list: the first counterexample to PL-H6VQ's measured finding that the narrowing would catch none

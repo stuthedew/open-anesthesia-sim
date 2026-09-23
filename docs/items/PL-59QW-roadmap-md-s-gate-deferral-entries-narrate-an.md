@@ -3,14 +3,16 @@ id: PL-59QW
 title: ROADMAP.md's gate deferral entries narrate an item's status ('At needs-decision') and nothing re-reads them when the item closes - PL-WNCT's still said needs-decision after #941 merged; PL-8YXJ's brief-contradiction check reads briefs only, so this is its mechanism at a sibling site
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: brief-state-agreement
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_checks.py, ROADMAP.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
+closed: 2026-09-23
+reason: Closed through PL-WD5Z's route 1: v0.6.0's deferral entries are gone, and bin/docket wave reads each deferral's state from the store, so no narrated status is left for the check this item's Done-when describes. PL-YZJD's stale entry went with the rest. The verify command was replaced to prove that, because the commissioned one named a test route 1 made moot.
 payoff: the gate's deferral list stops telling a reader that a closed item still waits on a decision
-verify: grep -q 'def test_a_deferral_entry_narrating_a_status_its_item_left_is_reported' subprojects/docket/tests/test_checks.py
+verify: ! grep -q '^### Declined to Gate 2, captured after the freeze' ROADMAP.md && grep -q 'def test_wave_prints_each_deferral_with_its_state_and_release' subprojects/docket/tests/test_roadmap.py
 ---
 
 **Problem.** ROADMAP.md's gate deferral entries narrate an item's status ('At needs-decision') and nothing re-reads them when the item closes - PL-WNCT's still said needs-decision after #941 merged; PL-8YXJ's brief-contradiction check reads briefs only, so this is its mechanism at a sibling site

@@ -4220,7 +4220,7 @@ def test_an_item_the_gate_places_needs_no_disposition() -> None:
     assert _gate_errors(_item("PL-GGGG"), _item("PL-SSSS")) == []
 
 
-def test_open_debt_the_gate_neither_places_nor_defers_is_an_error_naming_the_command() -> None:
+def test_an_open_debt_item_the_gate_neither_places_nor_defers_is_an_error() -> None:
     """The silence `ROADMAP.md`'s presence rule forbids, and the one line that ends it.
 
     The command is printed whole, because a session answering this should not

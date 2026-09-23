@@ -3,16 +3,17 @@ id: PL-WD5Z
 title: Gate dispositions are ids mentioned in ROADMAP.md prose rather than a field on the item, a second store of queue state that four items filed 2026-09-22 and 09-23 each disagree with (PL-58JD, PL-59QW, PL-FD5Q, PL-VFJ3), after three heads each fixed a reader of it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: refactor, infra
 feature: gate-disposition-store
-touches: ROADMAP.md, subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py, tests/unit/test_docket_gate.py, .claude/skills/docket/modes/triage.md, docs/items
+touches: ROADMAP.md, subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py, tests/unit/test_docket_gate.py, docket.toml, .claude/skills/docket/modes/triage.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
+closed: 2026-09-23
 payoff: a debt item captured during a frozen gate carries its own disposition, so triage stops going red in CI over a ROADMAP.md entry and the gate's deferral list can no longer disagree with the store
 verify: grep -q 'def test_an_open_debt_item_the_gate_neither_places_nor_defers_is_an_error' subprojects/docket/tests/test_checks.py
 root-cause-of: PL-58JD, PL-59QW, PL-VFJ3
-generator: live - every debt capture made while a gate is frozen owes a new prose entry in ROADMAP.md, so each capture adds text that can narrate stale status, be mis-parsed or be forgotten; three members arrived 2026-09-22 and 09-23, two within a day of PL-J6HP's spent verdict on a reader of the same record
+generator: spent - route 1 moved the disposition onto the item, so a debt capture during a freeze owes its own deferred-from: field, which bin/docket check requires, and nothing reads ROADMAP.md prose for one; the second store the three members came from no longer exists
 ---
 
 **Problem.** A debt item's gate disposition (declined to a later gate,
