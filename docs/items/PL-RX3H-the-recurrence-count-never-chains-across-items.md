@@ -40,9 +40,10 @@ items. Chaining would be new behaviour in the generator machinery.
 
 **Pause.** `PL-6Q9L`'s pause holds this. While any open item carries
 `generator: live`, no new check or re-specification of the generator rule is
-built. `blocked-by` names the three open items that carried one on 2026-09-23.
-When they close, confirm that `bin/docket next` shows the generator tier empty
-before unblocking, because any new `live` head keeps the pause in force.
+built. `blocked-by` names each item that has carried one since 2026-09-23.
+When they close, confirm that `bin/docket generators` marks no head "still
+generating" before unblocking, because any new `live` head keeps the pause in
+force, and `next` leaves out one that is in flight (`PL-CT07`).
 
 **Done when.** The chain count is re-run first. Then one of two outcomes:
 either recurrence evidence follows a closed anchor to the open item that

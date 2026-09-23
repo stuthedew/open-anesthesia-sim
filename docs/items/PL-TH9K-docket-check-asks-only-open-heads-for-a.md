@@ -43,9 +43,10 @@ re-specify the generator rule's "asked for nothing".
 
 **Pause.** `PL-6Q9L`'s pause holds this. While any open item carries
 `generator: live`, no re-specification of the generator rule is built.
-`blocked-by` names the three open items that carried one on 2026-09-23. When
-they close, confirm that `bin/docket next` shows the generator tier empty before
-unblocking, because any new `live` head keeps the pause in force.
+`blocked-by` names each item that has carried one since 2026-09-23. When they
+close, confirm that `bin/docket generators` marks no head "still generating"
+before unblocking, because any new `live` head keeps the pause in force, and
+`next` leaves out one that is in flight (`PL-CT07`).
 
 **Done when.** One of two outcomes. Either `docket check` names a closed head
 that carries `generator: live` and asks for its mechanism to be recorded on an
