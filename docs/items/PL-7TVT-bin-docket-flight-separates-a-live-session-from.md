@@ -3,13 +3,15 @@ id: PL-7TVT
 title: bin/docket flight separates a live session from an abandoned branch only by commit age, which cannot fire in the first hour: PR #757 sat green and unclaimed 25 minutes after its session was archived, with its three items still reading 'do not start these again'
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: carrier-detection
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, tools/open_pull_requests.py, tests/unit/test_open_pull_requests.py, docket.toml, docs/ARCHITECTURE.md, .claude/skills/docket/modes/start.md, .claude/rules/instruction-writing.md
 added: 2026-09-20
+closed: 2026-09-23
+verify: grep -q 'def test_a_branch_minutes_old_carries_its_pull_request_rather_than_a_verdict' subprojects/docket/tests/test_cli.py && uv run pytest -q subprojects/docket/tests/test_cli.py -k a_branch_minutes_old_carries_its_pull_request
 root-cause-of: PL-N2PP, PL-HX5C, PL-99YZ, PL-X3NY, PL-Q664
-generator: live - one shape is left: a session that ends mid-work before opening a pull request leaves a branch that, for about its first hour, reads in flight as a young branch with none open, which is usually a live session; only the harness's session list separates the two, and PL-SK88 keeps docket from reading it. Every other shape of an ended session now reads as what it is
+generator: spent - the project owner accepted on 2026-09-23 the one shape left as its documented limit: a session that ends mid-work before opening a pull request leaves a branch that reads as young with none open for about its first hour. flight says so in those words, the minute age exposes it within the hour, it only ever withholds an item, and the session-list read in start.md and rule 14 is the backstop; PL-SK88 keeps docket from reading session state. Every other shape of an ended session reads as what it is
 ---
 
 **Problem.** bin/docket flight separates a live session from an abandoned branch only by commit age, which cannot fire in the first hour: PR #757 sat green and unclaimed 25 minutes after its session was archived, with its three items still reading 'do not start these again'
@@ -146,3 +148,17 @@ model. While the verdict stays `live`, `CLAUDE.md` keeps every new workflow
 mechanism paused on this one shape. If the answer is yes, the change is
 `bin/docket set PL-7TVT --generator "spent - ..."` plus closing this item, one
 commit.
+
+**Verdict: spent, and closed** (project owner, 2026-09-23, ratified, over
+keeping the generator live until something can read session state). The
+remaining shape is recorded as this generator's documented limit rather than as
+a mechanism still producing members. That shape is a session that ends mid-work
+before opening a pull request: for about its first hour, its branch reads as
+young with none open. `flight` states that limit in its own closing lines. The
+age exposes the shape within the hour. It only ever withholds an item. The
+session-list read in `.claude/skills/docket/modes/start.md` and rule 14 is the
+reading that separates it at the moment it matters. The **Done when.** was met
+by `#924`, and the `verify:` above drives the 7-minute-old branch that
+demonstrates it. **Reopen this on ordinary evidence:** a new finding in which an
+ended session's branch misled a reader in some way `flight` does not already
+say, or a way to read session state that stays outside `docket` per `PL-SK88`.
