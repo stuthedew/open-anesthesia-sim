@@ -2270,7 +2270,12 @@ def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
             aside.append(f"{len(gate.sequenced_ahead)} sequenced ahead of it")
         if gate.waiting_outside:
             cost = _outside_cost(gate)
-            aside.append(f"{len(gate.waiting_outside)} waiting on {cost or 'work'} outside it")
+            waiting = [f"{cost} outside it"] if cost else []
+            waiting += [_scope_cost(gate)] if gate.scope_items else []
+            aside.append(
+                f"{len(gate.waiting_outside)} waiting on "
+                + (", and on ".join(waiting) or "work outside it")
+            )
         if aside:
             counted += f" - {len(gate.clearable)} this gate can clear, " + ", ".join(aside)
         lines.append(f"          {counted}")
@@ -2301,6 +2306,9 @@ def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
             # a version is not a file anybody can open (`PL-FCM3`).
             if gate.outside_items:
                 lines.append(f"          what they wait on: {', '.join(gate.outside_items)}")
+            if gate.scope_items:
+                scope = ", ".join(gate.scope_items)
+                lines.append(f"          and in the milestone's Required scope: {scope}")
         if gate.unknown_ids:
             lines.append(
                 f"          not in the store, so not countable: {', '.join(gate.unknown_ids)}"
@@ -2467,6 +2475,17 @@ def _outside_cost(gate: GateStatus) -> str:
     return " and ".join(parts)
 
 
+def _scope_cost(gate: GateStatus) -> str:
+    """The open items those entries wait on that the milestone's own scope names.
+
+    Said apart from `_outside_cost`, because that work is the milestone's and
+    implementing it clears it: folded into the outside count, it doubled what
+    v0.6.0's gate waited on outside the milestone (`PL-FD5Q`).
+    """
+    count = _plural(len(gate.scope_items), "open item", "open items")
+    return f"{count} the milestone's Required scope names"
+
+
 def _beat_line(plan: Wave) -> str:
     """The beat, said as an instruction, with the count that makes it checkable."""
     if plan.beat == CLEAR and plan.gate is not None:
@@ -2483,8 +2502,10 @@ def _beat_line(plan: Wave) -> str:
             # it put the whole cost of the milestone at the open-entry count
             # and nothing said otherwise (`PL-FCM3`).
             blocked = f"{len(plan.gate.waiting_outside)} blocked outside it"
-            cost = _outside_cost(plan.gate)
-            aside.append(f"{blocked} by {cost}" if cost else blocked)
+            by = [_outside_cost(plan.gate)]
+            by += [_scope_cost(plan.gate)] if plan.gate.scope_items else []
+            joined = ", and by ".join(cost for cost in by if cost)
+            aside.append(f"{blocked} by {joined}" if joined else blocked)
         if aside:
             line += " here, " + ", ".join(aside)
         return line

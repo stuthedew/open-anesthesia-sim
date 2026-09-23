@@ -1392,6 +1392,10 @@ scope had named them (`PL-J6HP`). The two carve-outs
 are disjoint and `blocked_outside` is computed first: an entry that is
 milestone work *and* waits on work off the list is not something the milestone
 can simply clear, and the three counts add back up to the open one either way.
+The same test splits what the blocked entries wait on: an item the milestone's
+`Required scope` names is counted as that scope's work, not as work outside the
+milestone. Before this, v0.6.0's gate reported ten open items outside it where
+five were its own Required scope (`PL-FD5Q`).
 Without this the beat kept asking a gate to clear work that implementing the
 milestone is what closes, which is a target the roadmap forbids.
 

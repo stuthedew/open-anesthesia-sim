@@ -1582,6 +1582,48 @@ def test_the_gate_sizes_the_work_its_entries_wait_on_outside_it() -> None:
     ) in printed
 
 
+def test_outside_items_leave_out_what_required_scope_names() -> None:
+    """`PL-FD5Q`: work the milestone's own `Required scope` names is not outside it.
+
+    v0.6.0's gate reported ten open items outside it where five were its own
+    Required scope. The split is by `own_scope_ids`, the reading `self_cleared`
+    applies to the gate's own entries, and both halves are printed: an entry
+    waiting on scope work is still not clearable before the milestone begins,
+    so the scope half is counted apart rather than dropped.
+    """
+    blockers = {"PL-KLMN": ("PL-8888", "PL-MNPQ"), "PL-001": ("PL-MNPQ",)}
+    plan = _wave("0.3.0", blockers=blockers, known=KNOWN | {"PL-8888", "PL-MNPQ"})
+    gate = plan.gate
+
+    assert gate is not None and gate.milestone.own_scope_ids == ("PL-MNPQ",)
+    assert [entry.ids for entry in gate.waiting_outside] == [("PL-001",), ("PL-KLMN",)]
+    assert gate.outside_items == ("PL-8888",)
+    assert gate.scope_items == ("PL-MNPQ",)
+
+    printed = format_wave(plan)
+
+    assert (
+        "2 waiting on 1 open item outside it, and on 1 open item the milestone's "
+        "Required scope names"
+    ) in printed
+    assert "          what they wait on: PL-8888\n" in printed
+    assert "          and in the milestone's Required scope: PL-MNPQ" in printed
+    assert (
+        "2 blocked outside it by 1 open item, and by 1 open item the milestone's "
+        "Required scope names"
+    ) in printed
+
+
+def test_an_entry_waiting_only_on_required_scope_is_not_said_to_wait_outside() -> None:
+    """With nothing outside left, the count names the scope alone."""
+    plan = _wave("0.3.0", blockers={"PL-KLMN": ("PL-MNPQ",)}, known=KNOWN | {"PL-MNPQ"})
+
+    assert plan.gate is not None and plan.gate.outside_items == ()
+    printed = format_wave(plan)
+    assert "1 waiting on 1 open item the milestone's Required scope names" in printed
+    assert "open item outside it" not in printed and "what they wait on" not in printed
+
+
 def test_a_prerequisite_standing_behind_another_prerequisite_is_counted() -> None:
     """The half a frontier cannot answer. `_blockers_outside` stops where the
     walk first leaves the list, which is the right answer to *where* the work

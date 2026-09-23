@@ -973,8 +973,32 @@ class GateStatus:
         understated. Sorted for a stable line rather than by any ranking - the
         queue ranks work, and a report that quietly invented a second order
         would be read as one.
+
+        **Less what the milestone's own `Required scope` names** (`PL-FD5Q`).
+        That work is the milestone's, cleared by implementing it, so counting it
+        here put v0.6.0's gate at ten items of outside work where five were its
+        own Required scope. It is the reading `self_cleared` already applies to
+        the gate's own entries - `own_scope_ids`, the subsection alone - asked
+        of what those entries wait on, and `scope_items` counts it apart so the
+        split is reported rather than dropped.
         """
-        return tuple(sorted(i for i in self._outside if MILESTONE_BLOCKER_RE.match(i) is None))
+        own = frozenset(self.milestone.own_scope_ids)
+        return tuple(
+            sorted(
+                i for i in self._outside if MILESTONE_BLOCKER_RE.match(i) is None and i not in own
+            )
+        )
+
+    @property
+    def scope_items(self) -> tuple[str, ...]:
+        """The open items those entries wait on that the milestone's `Required scope` names.
+
+        The half `outside_items` leaves out, counted rather than hidden: an entry
+        waiting on one of these is still not clearable before the milestone
+        begins, but the work it waits on is the milestone's own (`PL-FD5Q`).
+        """
+        own = frozenset(self.milestone.own_scope_ids)
+        return tuple(sorted(i for i in self._outside if i in own))
 
     @property
     def outside_milestones(self) -> tuple[str, ...]:
