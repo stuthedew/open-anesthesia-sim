@@ -6172,7 +6172,7 @@ def test_dropping_a_blocker_releases_what_it_held(
 
 
 WAITING_IN_PROSE = """---
-id: PL-E4E4
+id: PL-H4H4
 title: Waits on the blocker, and says so
 priority: P2
 effort: S

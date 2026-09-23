@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: brief-state-agreement
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/worker.md, docs/items
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/worker.md, docs/items
 added: 2026-09-22
 closed: 2026-09-23
 payoff: a brief can no longer tell a session its item waits on a decision or blocker the front matter says has cleared, and the next such passage is reported when the status moves
