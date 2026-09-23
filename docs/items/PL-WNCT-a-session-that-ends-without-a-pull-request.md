@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: defect, infra
 feature: generator-identification
+milestone: v0.5.7
 touches: CLAUDE.md
 added: 2026-09-22
 closed: 2026-09-23
+pr: 941
 payoff: captures and ratified decisions stop living only on branches nobody will merge, and the recovery items that carry them across - twelve in three days - stop being filed
 verify: grep -qF 'pull request at its first push and arms auto-merge' CLAUDE.md
 root-cause-of: PL-DN5K, PL-JF5Z, PL-T2YR, PL-QNQJ, PL-V3QB, PL-HZ1B, PL-Q0W8, PL-BYN2, PL-DZM1, PL-K13H, PL-F8Q7, PL-GL3Z, PL-4CPP, PL-H3LC, PL-VSJZ, PL-KT7C, PL-CPLD, PL-1VFK, PL-JYR4, PL-ZGK2, PL-YMKV

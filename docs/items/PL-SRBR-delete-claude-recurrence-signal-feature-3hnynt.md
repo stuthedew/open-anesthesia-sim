@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: housekeeping
 feature: parallel-sessions
+milestone: v0.5.7
 touches: docs/items
 added: 2026-09-23
 closed: 2026-09-23
+pr: 941
 payoff: the session-start digest's left-behind line goes quiet, so the next line it prints is a new finding and not one every session has learned to skip
 verify: test "$(git ls-remote origin refs/heads/main refs/heads/claude/recurrence-signal-feature-3hnynt | wc -l)" -eq 1
 not-delegable: The work is deleting a remote branch, and no session here can do that: the push is refused with HTTP 403 (docs/worker.md § "Ref operations a session cannot perform", PL-ZM48). The project owner runs the command in the brief, and a session then closes the item.
