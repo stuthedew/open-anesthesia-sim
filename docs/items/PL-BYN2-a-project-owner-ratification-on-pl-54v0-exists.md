@@ -5,9 +5,11 @@ priority: P2
 effort: S
 status: done
 classes: housekeeping
+milestone: v0.5.6
 touches: docs/items/PL-54V0-resumed-at-refuses-an-unkeyframed-instant-with.md
 added: 2026-09-21
 closed: 2026-09-22
+pr: 925
 payoff: the owner's ratification stops depending on one unmerged branch surviving, and the gate question it settles stays settled
 verify: grep -qF 'project owner, 2026-09-21, ratified' docs/items/PL-54V0-resumed-at-refuses-an-unkeyframed-instant-with.md
 ---

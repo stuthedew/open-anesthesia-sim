@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: defect, infra
 feature: verify-false-reject
+milestone: v0.5.6
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_portability.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 added: 2026-09-20
 closed: 2026-09-23
+pr: 929
 payoff: replaces six line-level special cases with one parsed comparison against the base, which on main's history trades 6 false refusals for 9 real assertion changes the matcher missed or folded, and ends the generator that kept producing the next item
 verify: grep -q 'def test_a_parenthesized_multi_manager_with_is_an_assertion_removed' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_replacement_that_loosens_the_assertion_is_not_folded_away' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_removal_is_not_charged_to_an_id_whose_selection_excludes_the_addition' subprojects/docket/tests/test_verify.py && ! grep -q 'def replacements(' subprojects/docket/src/docket/verify.py
 root-cause-of: PL-5B88, PL-YZJD, PL-2DTK, PL-CNJH, PL-XQGH

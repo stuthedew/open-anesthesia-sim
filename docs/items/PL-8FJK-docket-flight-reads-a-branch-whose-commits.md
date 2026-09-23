@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect
 feature: parallel-sessions
+milestone: v0.5.6
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md, .claude/skills/docket/modes/start.md, subprojects/docket/src/docket/checks.py
 added: 2026-09-22
 closed: 2026-09-22
+pr: 926
 payoff: docket next stops offering an item a grooming branch is already dropping, so no second session starts work another has decided against
 verify: grep -q 'def test_a_branch_closing_an_item_the_base_holds_open_is_in_flight' subprojects/docket/tests/test_vcs.py
 root-cause-of: PL-3W3P, PL-7790, PL-8GV1, PL-VYSP
