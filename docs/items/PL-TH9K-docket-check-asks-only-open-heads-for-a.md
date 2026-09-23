@@ -3,11 +3,13 @@ id: PL-TH9K
 title: docket check asks only open heads for a generator verdict, so a closed head whose mechanism keeps producing is never re-asked: six of the fourteen closed heads were still live on 2026-09-22
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: feature
 feature: generator-identification
 touches: docs/items, ROADMAP.md
 added: 2026-09-22
+closed: 2026-09-23
+reason: Settled by the non-mechanism route: every closed head marked live was corrected to spent or re-homed on PL-MB2W, so no closed head carries live and the narrow check is not built
 payoff: a closed head recorded as still live is put in front of a session instead of ranking nowhere unnoticed
 not-delegable: its first step counts the closed heads still carrying generator: live, and that count decides between building the narrow check and dropping the item; no command can prove an outcome the count has not chosen yet
 ---
@@ -86,7 +88,7 @@ counts and `PL-6Q9L` pauses.
   its pull request at its first push. The three arming patches since belong to
   `PL-MB2W`.
 
-Two heads were still open when this session stopped for length:
+[superseded 2026-09-23: both settled below] Two heads were still open when this session stopped for length:
 
 - **`PL-0HPV`.** Its second clause stopped holding once `#920` put the scoped
   verify replay into `make check`. Before calling it `spent`, check the first
@@ -100,3 +102,19 @@ Two heads were still open when this session stopped for length:
 
 Close this item as `dropped` when no closed head carries `live`, which is the
 second outcome under **Done when.**
+
+**Closed 2026-09-23.** The last two heads were settled in the same session.
+No closed head now carries `live`.
+
+- **`PL-0HPV`, `spent`.** `#920` put the verify replay into `make check`, and
+  `check_gate_parity` holds the two gates' scripts in step. `PL-MB3F` records
+  the one remaining gap, which is the interpreter.
+- **`PL-WFFX`, `spent`.** The empty bodies came from the GitHub iPhone app,
+  which the owner stopped merging in on 2026-09-22. None of the 47 merges since
+  `#918` lost its body. `PL-M7W1` carries the evidence that the subject freezes
+  only on a text arm. `PL-25JP` and `PL-Y1W0` record the unrecovered and the
+  altered bodies.
+
+This is the second outcome under **Done when.**, so the narrow check is not
+built. If a head closes with `live` again, that is the evidence this item's
+recommendation asked for.
