@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect, docs
 feature: release-process
-touches: .claude/skills/docket/SKILL.md
+touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/cli.py
 added: 2026-09-07
 verify: grep -rq 'git tag -a' .claude/skills/docket/ && ! grep -rq 'git tag -a v0.3.0 origin/main' .claude/skills/docket/ && python3 tools/doc_check.py check
 ---
@@ -60,3 +60,18 @@ they are run rather than whatever merged most recently. Where the session
 writing the handover cannot yet know the hash, because the pull request has not
 merged, the block says which merge commit is meant beside the placeholder it
 prints, so a reader coming to it late can still resolve it correctly.
+
+**Folded in from `PL-6SV4` at triage 2026-09-23**, which re-filed this item from
+the v0.5.5 cut. `#919` to `#922` merged within about twenty minutes of the
+cut's pull request (`#923`), `#922` seven seconds after it opened, and
+`tools/doc_check.py`'s version test accepts a later commit because it still
+declares the released version. `origin/main` stood two merges past the v0.5.6
+cut on 2026-09-23 and still declared 0.5.6. Three additions to the scope:
+`cli._hand_off` prints `MERGE_COMMIT` for the owner to fill, so the recipe
+names no commit; the `--grep="Release vX"` line in `cli._untagged_warning`
+matches no v0.4 or v0.5 cut, because release subjects changed after v0.3.x;
+and `bin/docket release` prints before the pull request exists, so a `(#N)`
+lookup cannot resolve there. `git log --reverse -S'version = "X.Y.Z"' --
+pyproject.toml` finds the cut from the version alone, and was checked for
+v0.5.4 to v0.5.6. `touches` moved from `SKILL.md` to the release mode's own
+file when the skill was split.

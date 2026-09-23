@@ -7,7 +7,7 @@ status: blocked
 classes: feature
 feature: generator-identification
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
-blocked-by: PL-8YXJ, PL-J6HP, PL-XYQW
+blocked-by: PL-8YXJ, PL-J6HP, PL-XYQW, PL-1P5V, PL-WNCT
 added: 2026-09-22
 payoff: a closed head recorded as still live is put in front of a session instead of ranking nowhere unnoticed
 ---

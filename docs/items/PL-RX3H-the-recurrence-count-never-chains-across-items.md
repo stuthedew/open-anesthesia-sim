@@ -7,7 +7,7 @@ status: blocked
 classes: feature
 feature: generator-identification
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/duplicates.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_duplicates.py
-blocked-by: PL-8YXJ, PL-J6HP, PL-XYQW
+blocked-by: PL-8YXJ, PL-J6HP, PL-XYQW, PL-1P5V, PL-WNCT
 added: 2026-09-22
 payoff: a mechanism re-filed at sibling sites is counted as one cluster even after the item it first matched closes, instead of restarting at one filing per item
 ---
