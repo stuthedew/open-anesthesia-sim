@@ -6,9 +6,10 @@ effort: S
 status: needs-decision
 classes: defect
 feature: generator-identification
-touches: .claude/skills/docket/modes/triage.md, docs/items
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, .claude/skills/docket/modes/triage.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a gap in how generators are found, held for the owner's decision on lifting the pause
 added: 2026-09-23
+impairs-generators: the triage mode's generator check and bin/docket generators (cli.cmd_generators, render) compare each new item with one head at a time and never compare heads with each other, so one record read by several readers gets a head per reader and its generator is found only by a sweep the owner asks for
 ---
 
 **Problem.** Generator identification reaches one level up and never clusters the heads: triage asks each item whether a head explains it, so one record read by several readers gets a head per reader, and both such generators found so far - PL-WD5Z's gate prose after three heads, and the claim family PL-MB2W names after four - surfaced only in a sweep the owner asked for
@@ -147,6 +148,19 @@ cheaper route and redoing it later would mean a second pass over every head
 recorded in between. Waiting costs more again. Until the five live heads
 close, the only way to find the next record read by several readers is
 another sweep the owner asks for.
+
+**Answered 2026-09-23: no lift is needed** (project owner, 2026-09-23). In the
+owner's words: "The pause is on apparatus work unrelated to fixing these
+generators (new features, housekeeping). 5MYR is exactly the type of thing that
+should be in the pause". That is, it is work the pause exists for. The question
+above asked for a lift because `CLAUDE.md`'s pause paragraph read as barring
+any new field. The wording was wrong, not the rule, and `PL-8L9S` corrected
+it. The durable version above is what gets built.
+
+**Then the session's decision:** the field's name and the rule for its
+wording, the format of the record listing and the overlap flag, and a rewrite
+of the Done-when below to match. Check each seeded record against its head
+before writing it.
 
 **Generator check.** A one-off gap in the identification step itself, and not
 an instance of a closed head. `PL-KVDK` built the per-item step. `PL-RX3H`

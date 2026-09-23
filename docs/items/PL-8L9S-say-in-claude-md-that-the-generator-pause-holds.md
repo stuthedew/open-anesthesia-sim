@@ -3,11 +3,12 @@ id: PL-8L9S
 title: Say in CLAUDE.md that the generator pause holds apparatus work unrelated to the generators, not work on them or on the machinery that finds and ranks them (project owner, 2026-09-23)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: generator-identification
 touches: CLAUDE.md, docs/items
 added: 2026-09-23
+closed: 2026-09-23
 payoff: Sessions stop treating work on the generators, or on the machinery that finds them, as new apparatus needing the owner to lift the pause
 verify: grep -q 'machinery that finds and ranks generators' CLAUDE.md
 ---
