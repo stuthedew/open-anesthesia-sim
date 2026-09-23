@@ -7,6 +7,7 @@ status: needs-decision
 classes: defect
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md, .claude/skills/docket/modes/start.md, CLAUDE.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged to needs-decision as a generator head by PL-TH9K's session
 added: 2026-09-23
 payoff: a claim is one fact every reader reads, so a new shape of work stops costing an item per reader
 root-cause-of: PL-X3WZ, PL-7790, PL-N1JK, PL-3CTW, PL-VYSP, PL-2BZY, PL-61MD, PL-MFM4, PL-7TVT, PL-N2PP, PL-3QM9, PL-3W3P, PL-8FJK, PL-8GV1, PL-J16N, PL-QP9Z, PL-1MCK, PL-KWCY, PL-VFJ3, PL-8JQQ
@@ -118,6 +119,23 @@ take, and how the arming rule reads the answer from code instead of restating
 start mode's catalog. On either route, `PL-VFJ3`'s false claim is answered by
 leading a pass's commits with the pass's own id (`CLAUDE.md` § "Housekeeping
 you are about to do yourself is filed before you do it").
+
+**The owner's direction, 2026-09-23.** In their words: "I'd rather fix it right once, then fix it twice" (project owner, 2026-09-23). Of the two
+routes above, this reading favours the claim recorded under a lease. The
+derived route reads what the branch did to the item, which is still an
+inference from the branch, and inference is what produced twenty members. The
+round still chooses. Its first question is a carrier the dead ends allow.
+Two leads, not findings:
+
+- a field on the item's own copy on the branch;
+- one ref per claim.
+
+`docs/worker.md` § "Ref operations a session cannot perform" constrains the
+second. A session cannot delete a remote branch or push a tag, and nothing
+records whether it can push a ref outside `refs/heads/`. So a ref carrier
+could never be removed, and its lease would have to expire on the read side.
+Reading the direction this way is this session's call, so ordinary evidence
+reopens it.
 
 **Done when.**
 

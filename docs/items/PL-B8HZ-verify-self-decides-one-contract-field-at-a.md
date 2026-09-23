@@ -46,6 +46,12 @@ decided.
 
 **Decision needed.** Should every contract field `verify --self` reads come from one copy, the base's with a named exception for fields whose deciding is the work, or should the per-field choice stay and this head close spent? Recommendation: one rule, stated in `verify.py` beside `Commission`, because `PL-PZ6T` and `PL-TKFD` are the same question asked from opposite directions.
 
+**The owner's direction, 2026-09-23.** In their words: "I'd rather fix it right once, then fix it twice" (project owner, 2026-09-23). Against this
+decision it rules out keeping the per-field choice and closing this head spent:
+that is the quick fix that gets done again with the next contract field. The
+design round builds the one rule. Reading the direction this way is this
+session's call, so ordinary evidence reopens it.
+
 **Done when.** One rule says which copy each contract field is read from, and
 why. Either it is stated once where every field reader applies it, or the
 owner decides the per-field choice stays and this head is closed spent with

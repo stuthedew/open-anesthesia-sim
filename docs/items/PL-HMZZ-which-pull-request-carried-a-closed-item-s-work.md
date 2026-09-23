@@ -42,6 +42,15 @@ pull request landed an item is a fact the merge authors.
 
 **Decision needed.** Where can the carrying pull request be recorded as a fact, given that a merge-time CI write cannot land? One option is the session that opened the pull request writing it on the branch before the merge. The other is keeping inference and closing this head spent. Recommendation: settle it inside `PL-LPWK`, which already holds the open design question.
 
+**The owner's direction, 2026-09-23.** In their words: "I'd rather fix it right once, then fix it twice" (project owner, 2026-09-23). Against this
+decision it rules out keeping the inference and closing this head spent. The
+durable shape is a pull request number written as a fact before the merge,
+not recovered from history afterwards. One candidate, a lead rather than a
+finding: the session writes `pr:` once the pull request exists, and the pull
+request's own CI checks it, since CI knows its own number. Settle it inside
+`PL-LPWK`. Reading the direction this way is this session's call, so ordinary
+evidence reopens it.
+
 **Done when.** The pull request that carried an item is recorded as a fact at
 a point that can record it, and the readers use that record. Or the owner
 decides inference stays, and this head is closed spent with that recorded.

@@ -1,8 +1,13 @@
 ---
 id: PL-5MYR
 title: Generator identification reaches one level up and never clusters the heads: triage asks each item whether a head explains it, so one record read by several readers gets a head per reader, and both such generators found so far - PL-WD5Z's gate prose after three heads, and the claim family PL-MB2W names after four - surfaced only in a sweep the owner asked for
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect
 feature: generator-identification
+touches: .claude/skills/docket/modes/triage.md, docs/items
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a gap in how generators are found, held for the owner's decision on lifting the pause
 added: 2026-09-23
 ---
 
@@ -98,6 +103,20 @@ the owner-requested sweep stays the mechanism, and this item is dropped with
 that decision recorded. Comparing heads is judgment, so the remedy is a
 question a session asks, not a script (`CLAUDE.md` § "Prefer deterministic
 tooling", "Do not script the judgment").
+
+**The owner's direction, 2026-09-23.** In their words: "I'd rather fix it right once, then fix it twice" (project owner, 2026-09-23). Of the two
+outcomes above, that reads as the first: a pass that compares the heads every
+time, rather than the owner asking "are we sure?". Building it is new workflow
+mechanism, so it waits for the pause unless the owner lifts the pause for it.
+
+**Decision needed - the project owner's.** Should the pause be lifted for this
+item alone? `CLAUDE.md` § "What this project is" allows it: "A request from
+the project owner lifts it for that request". **Recommendation: yes.** The
+remedy is one question added to the generator check and the grooming pass in
+`.claude/skills/docket/modes/triage.md`, not a script, so it adds little of
+the sprawl the pause guards against. Waiting costs more. Until the five live
+heads close, the only way to find the next record read by several readers is
+another sweep the owner asks for, and the last one took 262 agents.
 
 **Generator check.** A one-off gap in the identification step itself, and not
 an instance of a closed head. `PL-KVDK` built the per-item step. `PL-RX3H`
