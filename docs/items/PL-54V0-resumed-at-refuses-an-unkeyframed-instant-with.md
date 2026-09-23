@@ -1,11 +1,15 @@
 ---
 id: PL-54V0
 title: resumed_at refuses an unkeyframed instant with a reason resumed_at_halt disproves
-status: untriaged
+priority: P2
+effort: S
+status: ready
 classes: docs
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 added: 2026-09-21
+payoff: a reader meeting the fork refusal learns which door takes which instant, instead of an arithmetic limit the code beside it disproves - which would steer them into recording a keyframe at the fork and so changing the parent run
+verify: ! grep -qF 'two propagations where the run took one' src/anesthesia_sim/app/controller.py
 ---
 
 **Problem.** `SimulationController._resume_point_at` refuses a fork at an
@@ -50,3 +54,33 @@ it a wrong statement in a place a reader learns from, which is `docs`. Overrule
 this if a refusal a learner can see counts as a warning the safety standard
 reaches - it then needs a `### Declined to Gate` entry or a place in v0.5.0's
 Required scope, and neither is a session's to write into a frozen list.
+
+**Reproduced 2026-09-23, and the replacement above is itself wrong.** The
+stale reason stands in three places in `src/anesthesia_sim/app/controller.py`:
+the refusal in `_resume_point_at`, the `resumed_at` docstring's "It opens at a
+keyframe or not at all" paragraph ("So an instant between two keyframes is
+refused rather than approximated"), and `BranchedCase.fork_points_s`'s
+docstring ("a fork taken anywhere else would restart from two propagations
+where the run took one"). `test_an_instant_between_keyframes_is_refused_rather_than_approximated`
+in `tests/integration/test_controller.py` carries it in its name and docstring.
+But the wording proposed under **What the message should say instead** teaches
+a second false constraint. `_resume_point_at_halt` seeds the fork from
+`RunDefinition.state_at`, one propagation from the segment's opening keyframe,
+never from the live state, and `state_at` answers any instant the run has
+reached. `resumed_at` also opens at *past* keyframes, where the run is not
+standing either. So neither "no live state to seed a branch from" nor "no step
+count to continue" is why an unkeyframed instant is refused, since
+`_resume_point` derives the step count from the instant. The true reason is the
+door's scope. `resumed_at` opens at a recorded control event, `resumed_at_halt`
+at a bookmark crossing the run stands on, and v0.5.0's definition of done asks
+for exactly those two. An instant that is neither is not offered, and nothing
+arithmetic makes it so.
+
+**Done when.** The refusal says what it refuses: `resumed_at` opens at a
+recorded control event, this run recorded none at that instant, here are the
+ones it holds, and a fork at a mark is taken with `resumed_at_halt`. The
+`resumed_at` and `fork_points_s` docstrings give the same reason, and the test
+pins the new message under a name and docstring that no longer claim an
+approximation. Whether `resumed_at` should *accept* any whole-step instant it
+could now reproduce is a scope question for the branching milestone, not this
+item.
