@@ -81,6 +81,6 @@ threshold's edge; the `--no-git` wording.
 **Held (project owner, 2026-09-22, ratified, over starting it now).** It adds
 output to `docket show` and a rule to the start mode, which is a new workflow
 mechanism, and `CLAUDE.md` § "What this project is" pauses those while any open
-item carries `generator: live`. Start it once `bin/docket next` shows the
-generator tier empty, or on the project owner's explicit request, which lifts
-the pause for that request.
+item carries `generator: live`. Start it once `bin/docket generators` marks no
+head "still generating" (`next` leaves out one in flight, `PL-CT07`), or on the
+project owner's explicit request, which lifts the pause for that request.

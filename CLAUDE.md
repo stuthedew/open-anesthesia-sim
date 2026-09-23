@@ -57,9 +57,12 @@ still producing, which is how at least nine mechanisms and their tails arrived
 on 09-20 and 09-21, `PL-KVDK`). A new command, check, field or rule, or a
 re-specification of the generator rule, is captured and not built, nor offered
 as the answer to a finding. Fixing a live generator, or a defect in what exists,
-is not new. The pause ends when `bin/docket next` shows the generator tier
-empty. A request from the project owner lifts it for that request, and the
-session says so (`PL-6Q9L`).
+is not new. The pause ends when no open item carries `generator: live` — no
+head that `bin/docket generators` marks "still generating". Not `next`'s
+generator tier, which leaves out whatever is in flight, blocked or untriaged,
+and counts `impairs-generators:` items the rule does not name (`PL-CT07`). A
+request from the project owner lifts it for that request, and the session says
+so (`PL-6Q9L`).
 
 ## Working with the project owner
 
