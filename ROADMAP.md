@@ -5785,7 +5785,8 @@ created on 2026-09-22 or 2026-09-23, after the cut (`e6cdfd93`, 07:04 on
 re-entry reaches none of them. Each is recorded here by the triage pass that
 classed it, the first moment it could be read as debt. `PL-FD5Q`, captured
 2026-09-22, is absent: this pass left it untriaged to the session working
-`PL-J6HP`'s gate facts, which is the same mechanism.
+`PL-J6HP`'s gate facts, which is the same mechanism. It was classed by the second
+2026-09-23 pass, in the subsection below.
 
 - PL-BBT8 (S) - **deferred 2026-09-23.** `bin/docket show` reports a closed
   head marked `generator: live` as ranked, because `cli.cmd_show` skips the
@@ -5846,6 +5847,61 @@ classed it, the first moment it could be read as debt. `PL-FD5Q`, captured
   `app/controller.py` take a case instant under the clock's name `elapsed_s`,
   one call above the `Keyframe.instant_s` it is matched against. `refactor`.
   At `needs-decision`, recommending the rename.
+
+### Declined to Gate 2, captured after the freeze and classed by the second 2026-09-23 triage pass
+
+The rule is the same as in the three subsections above. Every entry below was
+created on 2026-09-22 or 2026-09-23, after the cut (`e6cdfd93`, 07:04 on
+2026-09-21), and none is classed `safety` or `science`, so the unconditional
+re-entry reaches none of them. Each is recorded by the triage pass that classed
+it, the first moment it could be read as debt. Ten are debt by class; `PL-Z0SM`
+was debt by status when this pass left it at `needs-decision` on 2026-09-23.
+
+- PL-JD4L (M) - **deferred 2026-09-23.** `model._front_matter_pairs` passes over
+  a front-matter line that is neither a field nor a continuation, so a value
+  wrapped at column zero loses its tail at exit 0. `defect`. It carries
+  `impairs-generators:`, so it ranks on that tier whatever this gate records.
+
+- PL-GHHW (M) - **deferred 2026-09-23.** `bin/docket stranded` lists a commit
+  whose change already reached `main` through another pull request as work left
+  behind, and its recover line would overwrite the newer file. `defect`.
+
+- PL-PXZ3 (M) - **deferred 2026-09-23.** `tools/left_behind_check.py` reports a
+  commit whose identical patch landed through another pull request, so the
+  reader proves the branch stale by hand. `defect`.
+
+- PL-1SFZ (S) - **deferred 2026-09-23.** `gate-status-guard.sh` does not count a
+  `set -o pipefail` that opens a `{ }` or `( )` group, so it refuses commands
+  that keep pytest's status. `defect`.
+
+- PL-GVFC (S) - **deferred 2026-09-23.** `floor-interpreter-guard.sh` refuses a
+  bare `python3` aimed at `subprojects/docket/src/`, the 3.11 floor code it
+  exists to protect. `defect`.
+
+- PL-27VL (S) - **deferred 2026-09-23.** `tools/branch_id_check.py` and
+  `bin/docket verify` say no candidate default branch resolved where one did,
+  past a preferred candidate git did not answer. `defect`.
+
+- PL-59QW (S) - **deferred 2026-09-23.** This roadmap's gate deferral entries
+  narrate an item's status, and nothing re-reads them when the item closes.
+  `defect`.
+
+- PL-F5NV (S) - **deferred 2026-09-23.** `bin/docket trend --no-git` says git
+  could not be read where it was not asked, and anchors its windows at the first
+  closure rather than the first commit. `defect`.
+
+- PL-FD5Q (S) - **deferred 2026-09-23.** `bin/docket wave` counts v0.6.0's own
+  Required-scope items among the open items outside the gate that its blocked
+  entries wait on. `defect`.
+
+- PL-WM46 (S) - **deferred 2026-09-23.** `verify`'s batch note reads any id a
+  commit subject mentions as a batch claim, and counts every audited commit as
+  naming it. `defect`.
+
+- PL-Z0SM (S) - **deferred 2026-09-23.** Merge skew has turned `main` red twice,
+  because parallel sessions merge minutes apart on pull requests whose CI ran on
+  a base without the other. `infra`. Its brief puts the remedy to the project
+  owner with a recommendation.
 
 ### Required scope
 
