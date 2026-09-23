@@ -499,9 +499,9 @@ deviating from a described deliverable, not acting without one.
   that work is finished and its checks are green — do not ask first, because the
   approval *was* the invitation. **A branch carrying only item files opens its
   pull request at its first push and arms auto-merge**, so a capture reaches
-  `main` even when its session ends before any work does (project owner,
-  2026-09-23, ratified, over "a branch carrying only captured items is not a
-  pull request", `PL-WNCT`). **A claim on the branch leaves it unarmed,
+  `main` even when its session ends before any work does, unless `main` moves
+  during its CI run (`PL-S5MF`) (project owner, 2026-09-23, ratified, over "a
+  branch carrying only captured items is not a pull request", `PL-WNCT`). **A claim on the branch leaves it unarmed,
   whichever push carried it**: the empty start commit, or a queue-only commit
   that start mode reads as one, such as a `needs-decision` design round. It
   holds until its item is closed in the branch's own copy, because the merge
@@ -524,16 +524,18 @@ deviating from a described deliverable, not acting without one.
   angle-bracket placeholder — `<branch>`, `<id>` — is taken for an HTML tag and
   vanishes with no error, code span or not. `#132` shipped `git branch -dr
   origin/` that way (`PL-1DN9`).
-- **Do not merge `origin/main` into an open pull request out of habit.** Bring
-  the base in when the branch is genuinely conflicted, or when a base-recovery
-  notice says the base is green again; otherwise leave it. A merge commit
-  pushed to the head branch is a `synchronize` like any other, so it re-runs
-  the whole of `quality.yml` and discards a green result the branch had already
-  earned — on content `main`'s own run proved minutes earlier. A stale base
-  costs nothing that CI proves: it matters only when it conflicts, which is the
-  first case. Restarting a branch that carries nothing of its own is a reset
-  rather than a merge, and is unaffected (`PL-WC72`, project owner,
-  2026-09-06).
+- **Bring `origin/main` into an open pull request once, when `behind` is all
+  that stops it merging.** `main` refuses a branch that is not up to date
+  (project owner, 2026-09-23, ratified, over a merge queue, which a user-owned
+  repository cannot have), and every base merge re-runs `quality.yml` in full,
+  so one taken while the pull request waits on review goes stale at the next
+  merge to `main` and is paid again. Behind while waiting on review is neither
+  red nor conflicted, and is not work. At merge time the owner's *Update
+  branch* brings it in (`docs/maintainer.md`); an armed pull request that is
+  green with nothing else open is brought in by the session that armed it
+  (`update_pull_request_branch`), since auto-merge never updates a branch.
+  Sooner only on a genuine conflict, a base-recovery notice, or a push being
+  made anyway (`PL-6MW8`, revising `PL-WC72`).
 - **Capture intent, and route it by how ready it is.** A **specific change** is
   a queue item, written now. A **feature wanted but not yet ready to build** is
   one unscoped line of intent in `ROADMAP.md` § "Planned milestones" — filing it

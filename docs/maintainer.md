@@ -190,3 +190,32 @@ the measurements.
 - If the app is the only option, check the message behind its cog icon first.
 - `python3 tools/pr_body_check.py` still reports any body that goes missing,
   and `--recover` fetches it back from GitHub into `docs/pr-bodies/`.
+
+## Bring a stale base in when you merge, with Update branch
+
+Since 2026-09-23 `main` requires a pull request's branch to be up to date
+before it merges (`PL-6MW8`, after the third merge-skew instance). Sessions
+leave a pull request behind `main` while it waits on you, deliberately: each
+update re-runs CI in full, two to five minutes, and one made before you merge
+goes stale as soon as another pull request lands. So the update is yours, once,
+when you come to merge:
+
+1. On the pull request page in the Mac's browser, click **Update branch**. Use
+   the button itself, which merges `main` in, and not **Update with rebase**
+   from its dropdown, which rewrites the session's branch under it.
+2. Click **Enable auto-merge**, check that the message box holds the pull
+   request's description, and confirm.
+3. Leave it. It merges when CI goes green. If another pull request lands first,
+   it goes back to behind and waits; click **Update branch** again.
+
+If GitHub offers to merge anyway by bypassing branch protections, decline. That
+merges on the stale base, which is the merge skew the setting exists to stop.
+The offer is there because `main`'s required checks are enforced for non-admins
+only, and it is left that way as your escape hatch for a broken CI, not as a
+route for ordinary merges.
+
+Or ask the session that opened the pull request to merge it: it arms auto-merge
+and brings the base in itself, with the same merge the button makes. GitHub
+never updates an armed pull request that falls behind, so one whose session has
+ended waits for you. A captures-only pull request is the usual case, and
+`PL-S5MF` holds the question of what should pick it up instead.
