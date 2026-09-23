@@ -6125,12 +6125,15 @@ def test_set_refuses_a_file_it_could_not_rewrite_faithfully(
 ) -> None:
     """A doubled key would be collapsed to the parser's pick; an unknown one would be dropped.
 
-    Both are what `check` reports, and a writer repairing either on its way
-    past would be choosing a value on nobody's behalf (`PL-BR4G`).
+    So would a line no field reads, and with it the tail of the value it
+    wraps (`PL-JD4L`). All are what `check` reports, and a writer repairing
+    one on its way past would be choosing a value on nobody's behalf
+    (`PL-BR4G`).
     """
     doubled = READY.replace("effort: S\n", "effort: S\neffort: M\n")
     unknown = READY.replace("touches: a.py\n", "touches: a.py\ncolour: red\n")
-    for name, document in (("a", doubled), ("b", unknown)):
+    unread = READY.replace("touches: a.py\n", "touches: a.py\nb.py\n")
+    for name, document in (("a", doubled), ("b", unknown), ("c", unread)):
         (tmp_path / name).mkdir()
         store = _store(tmp_path / name, document)
 

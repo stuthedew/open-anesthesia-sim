@@ -44,9 +44,9 @@ FIELD_RE = re.compile(r"^([^\s#:][^:]*):[ \t]*(.*)$")
 
 # An indented line under a field: YAML's continuation of the value above it.
 # Indentation is required rather than assumed, so a line at column zero that is
-# not a `key: value` line stays what it has always been - a line belonging to no
-# field, passed over. All 67 continuation lines in this store are indented
-# (measured 2026-09-21).
+# not a `key: value` line belongs to no field - and is reported, where it used to
+# be passed over (`PL-JD4L`). All 67 continuation lines in this store are
+# indented (measured 2026-09-21).
 CONTINUATION_RE = re.compile(r"^[ \t]+\S")
 
 # A continuation spelling a YAML block-sequence entry, `  - value`. The space
@@ -201,7 +201,44 @@ def _unquote(value: str) -> str:
     return value
 
 
-def _front_matter_pairs(text: str) -> tuple[list[tuple[str, str]], tuple[str, ...], str] | None:
+def _fold(lines: list[str]) -> tuple[list[tuple[str, str, int, list[int]]], list[int]]:
+    """Which front-matter lines each field is read from, and which lines no field reads.
+
+    The one definition of a value's extent, shared by the reader and by both
+    writers that edit a value in place. They used to carry one each - the
+    reader folded indented lines, the writers walked "non-blank and not a
+    field" - and the two disagreed on exactly the line neither had been written
+    for. `docket new` appended a recurrence onto a line the reader then passed
+    over, and `docket withdraw` replaced through one and deleted it, both at
+    exit 0 (`PL-JD4L`). Deriving all three from here makes their agreement a
+    property of the code rather than of two walks kept in step by hand.
+
+    Each field is its key, the value on its own line, that line's index, and
+    the indices of the indented lines folded into it. A blank line or a `#`
+    comment belongs to nothing and holds nothing. Every other line is *unread*:
+    a column-zero line that is not `key: value`, or an indented one above the
+    first field. Its index is returned rather than dropped, because what such a
+    line usually holds is the tail of the value above it, and a reader that
+    passes over it hands on that value shortened with nothing to say so.
+    """
+    fields: list[tuple[str, str, int, list[int]]] = []
+    unread: list[int] = []
+    for index, line in enumerate(lines):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        field_match = FIELD_RE.match(line)
+        if field_match is not None:
+            fields.append((field_match.group(1), field_match.group(2).strip(), index, []))
+        elif fields and CONTINUATION_RE.match(line):
+            fields[-1][3].append(index)
+        else:
+            unread.append(index)
+    return fields, unread
+
+
+def _front_matter_pairs(
+    text: str,
+) -> tuple[list[tuple[str, str]], tuple[str, ...], tuple[str, ...], str] | None:
     """Every field of the front matter, in file order, with the body.
 
     Pairs rather than a dict, because a dict is exactly where a repeated key
@@ -221,9 +258,15 @@ def _front_matter_pairs(text: str) -> tuple[list[tuple[str, str]], tuple[str, ..
     **A key is recognised by its shape, never by its spelling** (`FIELD_RE`), so
     a misspelt one arrives here under the name it was written with and
     `parse_item` reports it. It used to be passed over, and its continuation
-    lines folded into the field above it (`PL-DSPM`). The one line still passed
-    over is a column-zero line with no colon at all, which is no field's own and
-    continues nothing, because indentation is what makes a continuation.
+    lines folded into the field above it (`PL-DSPM`).
+
+    **A line continuing nothing is returned, not passed over** - the third
+    element. A column-zero line with no colon is no field's own and continues
+    nothing, because indentation is what makes a continuation; an indented
+    line above the first field has nothing to continue. Both were skipped with
+    nothing reporting them, so `reason:` wrapped at column zero read as its
+    first line at `docket check` exit 0 (`PL-JD4L`). They are returned as
+    written, for `checks.py` to quote.
 
     Continuations are folded into the value with a single space, which is what
     YAML does to a plain scalar and what the 12 hand-wrapped `reason:` fields
@@ -231,7 +274,7 @@ def _front_matter_pairs(text: str) -> tuple[list[tuple[str, str]], tuple[str, ..
     is what makes `render_item` safe on them: the value comes back on one line,
     where it used to come back 9 lines shorter.
 
-    The middle element names the *list* fields written as a block list, which
+    The second element names the *list* fields written as a block list, which
     are refused instead. A list has one spelling here - one comma-separated
     line - and teaching the reader a second is a second thing every reader of
     an item has to know (`PL-FX0K`). Refused only for `LIST_FIELDS`, because
@@ -242,26 +285,22 @@ def _front_matter_pairs(text: str) -> tuple[list[tuple[str, str]], tuple[str, ..
     if match is None:
         return None
 
-    collected: list[tuple[str, str, list[str]]] = []
-    for line in match.group(1).splitlines():
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        field_match = FIELD_RE.match(line)
-        if field_match is not None:
-            collected.append((field_match.group(1), field_match.group(2).strip(), []))
-        elif collected and CONTINUATION_RE.match(line):
-            collected[-1][2].append(line)
-
+    # `split("\n")`, as the writers split, so the reader and both writers hand
+    # `_fold` the same lines. `splitlines()` also breaks on `\x0b`, `\x85` and
+    # ` `; no front matter in this store carries one (measured 2026-09-23).
+    lines = match.group(1).split("\n")
+    fields, unread = _fold(lines)
     pairs: list[tuple[str, str]] = []
     block_lists: list[str] = []
-    for key, head, continuations in collected:
+    for key, head, _index, folded in fields:
+        continuations = [lines[i] for i in folded]
         if key in LIST_FIELDS and any(BLOCK_ENTRY_RE.match(line) for line in continuations):
             block_lists.append(key)
             pairs.append((key, ""))
             continue
         parts = [part for part in (head, *(line.strip() for line in continuations)) if part]
         pairs.append((key, _unquote(" ".join(parts))))
-    return pairs, tuple(sorted(set(block_lists))), match.group(2)
+    return (pairs, tuple(sorted(set(block_lists))), tuple(lines[i] for i in unread), match.group(2))
 
 
 def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
@@ -281,7 +320,7 @@ def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
     parsed = _front_matter_pairs(text)
     if parsed is None:
         return {}, text
-    pairs, _block_lists, body = parsed
+    pairs, _block_lists, _unread, body = parsed
     return dict(pairs), body
 
 
@@ -298,7 +337,7 @@ def repeated_front_matter_keys(text: str) -> tuple[str, ...]:
     parsed = _front_matter_pairs(text)
     if parsed is None:
         return ()
-    pairs, _block_lists, _body = parsed
+    pairs, _block_lists, _unread, _body = parsed
     seen: set[str] = set()
     repeated: set[str] = set()
     for key, _value in pairs:
@@ -329,8 +368,25 @@ def block_list_keys(text: str) -> tuple[str, ...]:
     parsed = _front_matter_pairs(text)
     if parsed is None:
         return ()
-    _pairs, block_lists, _body = parsed
+    _pairs, block_lists, _unread, _body = parsed
     return block_lists
+
+
+def unread_front_matter_lines(text: str) -> tuple[str, ...]:
+    """Front-matter lines no field reads, as written and in file order.
+
+    The fourth channel beside unknown, repeated and block-list keys, and the
+    one those three could not carry: it is not a key at all, so none of them
+    ever named it, and `docket check` exited 0 on a value shortened by a line
+    wrapped at column zero (`PL-JD4L`). Recorded rather than read, for the
+    reason `block_list_keys` gives: guessing which field a stray line belongs
+    to would be inventing the value the reader is meant to report.
+    """
+    parsed = _front_matter_pairs(text)
+    if parsed is None:
+        return ()
+    _pairs, _block_lists, unread, _body = parsed
+    return unread
 
 
 def _split_list(value: str) -> tuple[str, ...]:
@@ -536,6 +592,11 @@ class Item:
     #: here must not invent, because an empty `classes:` is what defeats the
     #: safety pin (`PL-FX0K`).
     block_list_fields: tuple[str, ...] = field(default_factory=tuple)
+    #: Front-matter lines belonging to no field, as written: a column-zero
+    #: line that is not `key: value`, or an indented one above the first
+    #: field. Usually the tail of the value above, which every reader otherwise
+    #: receives shortened at exit 0 (`PL-JD4L`).
+    unread_lines: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def is_open(self) -> bool:
@@ -1278,6 +1339,7 @@ def parse_item(text: str, path: str = "") -> Item:
         unknown_fields=tuple(sorted(set(fields) - known)),
         duplicate_fields=repeated_front_matter_keys(text),
         block_list_fields=block_list_keys(text),
+        unread_lines=unread_front_matter_lines(text),
     )
 
 
@@ -1435,27 +1497,20 @@ def with_front_matter_field(text: str, name: str, value: str, *, append: bool = 
     # other than where the line index says - and the whole worth of this
     # function is that every other byte is left where it was.
     lines = match.group(1).split("\n")
-    present = [
-        index
-        for index, line in enumerate(lines)
-        if (field := FIELD_RE.match(line)) and field.group(1) == name
-    ]
+    fields, _unread = _fold(lines)
+    present = [(index, folded) for key, _head, index, folded in fields if key == name]
     if present and not append:
         raise ValueError(f"the item already records `{name}`")
     if len(present) > 1:
         raise ValueError(f"the item spells `{name}` {len(present)} times")
     if present:
-        # Past the continuation lines of the existing value, so a field spread
-        # over several lines grows at its end rather than in the middle of
-        # itself. 12 item files in this store carry a multi-line value.
-        last = present[0]
-        while (
-            last + 1 < len(lines)
-            and lines[last + 1].strip()
-            and FIELD_RE.match(lines[last + 1]) is None
-        ):
-            last += 1
-        head = "\n".join(lines[: last + 1])
+        # At the end of the last line the reader folds into the value, so a
+        # field spread over several lines grows at its end rather than in the
+        # middle of itself - and never onto a line the reader passes over,
+        # where the entry was written and then not read (`PL-JD4L`). 12 item
+        # files in this store carry a multi-line value.
+        index, folded = present[0]
+        head = "\n".join(lines[: (folded[-1] if folded else index) + 1])
         return (
             text[: match.start(1) + len(head)] + f", {value}" + text[match.start(1) + len(head) :]
         )
@@ -1510,27 +1565,25 @@ def with_front_matter_value(text: str, name: str, value: str) -> str:
     # `split("\n")` for the reason `with_front_matter_field` splits that way:
     # it is the exact inverse of the join the offsets below assume.
     lines = match.group(1).split("\n")
-    present = [
-        index
-        for index, line in enumerate(lines)
-        if (field := FIELD_RE.match(line)) and field.group(1) == name
-    ]
+    fields, _unread = _fold(lines)
+    present = [(index, folded) for key, _head, index, folded in fields if key == name]
     if not present:
         raise ValueError(f"the item records no `{name}` to change")
     if len(present) > 1:
         raise ValueError(f"the item spells `{name}` {len(present)} times")
-    # Through the continuation lines of the existing value, so a field spread
-    # over several lines is replaced whole rather than left with an orphaned
-    # tail. Collapsing it onto one line is a removal in the diff, and an
+    # The value's own lines and no others: its line, and the indented lines the
+    # reader folds into it, so a field spread over several lines is replaced
+    # whole rather than left with an orphaned tail. A blank line, a comment or
+    # a line no field reads can sit among them, and stays where it is:
+    # replacing through a line the reader passes over deleted it, which is how
+    # a hand-wrapped tail was lost to `docket withdraw` at exit 0 (`PL-JD4L`).
+    # Collapsing the value onto one line is a removal in the diff, and an
     # honest one: the value really did change.
-    first = last = present[0]
-    while (
-        last + 1 < len(lines)
-        and lines[last + 1].strip()
-        and FIELD_RE.match(lines[last + 1]) is None
-    ):
-        last += 1
+    first, folded = present[0]
+    last = folded[-1] if folded else first
+    kept = [lines[i] for i in range(first + 1, last + 1) if i not in folded]
     before = "\n".join(lines[:first])
     through = "\n".join(lines[: last + 1])
     start = match.start(1) + (len(before) + 1 if first else 0)
-    return text[:start] + f"{name}: {value}" + text[match.start(1) + len(through) :]
+    replacement = "\n".join([f"{name}: {value}", *kept])
+    return text[:start] + replacement + text[match.start(1) + len(through) :]

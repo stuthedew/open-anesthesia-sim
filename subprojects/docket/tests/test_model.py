@@ -34,6 +34,7 @@ from docket.model import (
     repeated_front_matter_keys,
     root_cause_faults,
     split_generator_verdict,
+    unread_front_matter_lines,
     with_front_matter_field,
     with_front_matter_value,
 )
@@ -645,11 +646,46 @@ def test_a_wrapped_list_field_keeps_every_entry() -> None:
 
 
 def test_a_line_at_column_zero_continues_nothing_as_it_continues_nothing_in_yaml() -> None:
-    """Indentation is what makes a line a continuation, so an outdented one is not."""
+    """Indentation is what makes a line a continuation, so an outdented one is not.
+
+    Nor is it a field, unknown or otherwise; it is a line no field reads, and
+    reported as that (`PL-JD4L`).
+    """
     item = parse_item("---\nid: PL-K7QX\ntitle: t\nstray text\n---\nBody\n")
 
     assert item.title == "t"
     assert item.unknown_fields == ()
+    assert item.unread_lines == ("stray text",)
+
+
+@pytest.mark.parametrize(
+    ("block", "field", "read", "stray"),
+    [
+        (
+            "id: PL-K7QX\ntitle: t\nreason: first half\nsecond half\n",
+            "reason",
+            "first half",
+            "second half",
+        ),
+        ("  status: done\nid: PL-K7QX\ntitle: t\n", "status", "", "  status: done"),
+    ],
+    ids=["wrapped at column zero", "indented above the first field"],
+)
+def test_a_line_no_field_reads_is_recorded_rather_than_passed_over(
+    block: str, field: str, read: str, stray: str
+) -> None:
+    """`PL-JD4L`: both line classes were skipped with nothing reporting them.
+
+    The value still reads short - nothing here guesses which field a stray line
+    belongs to - but it arrives with the line it could not read, which is what
+    `checks.py` quotes.
+    """
+    text = f"---\n{block}---\nBody\n"
+
+    assert parse_front_matter(text)[0].get(field, "") == read
+    assert unread_front_matter_lines(text) == (stray,)
+    assert parse_item(text).unread_lines == (stray,)
+    assert parse_item(text).unknown_fields == ()
 
 
 @pytest.mark.parametrize(
@@ -690,6 +726,44 @@ def test_a_replaced_value_stops_at_a_misspelt_key_rather_than_absorbing_it() -> 
     )
 
     assert "\nRoot-cause-of: PL-D4D4\n" in withdrawn
+
+
+@pytest.mark.parametrize(
+    ("under", "entries", "kept"),
+    [
+        ("2026-09-20 PL-B2B2\n", ("2026-09-19 PL-4141",), "2026-09-20 PL-B2B2"),
+        ("stray\n  2026-09-20 PL-B2B2\n", ("2026-09-19 PL-4141", "2026-09-20 PL-B2B2"), "stray"),
+        ("# a note\n", ("2026-09-19 PL-4141",), "# a note"),
+        ("\n  2026-09-20 PL-B2B2\n", ("2026-09-19 PL-4141", "2026-09-20 PL-B2B2"), ""),
+    ],
+    ids=["wrapped at column zero", "unread line mid-value", "comment", "blank line mid-value"],
+)
+def test_the_writers_continue_only_through_indented_lines(
+    under: str, entries: tuple[str, ...], kept: str
+) -> None:
+    """`PL-JD4L`: the writers walked "non-blank and not a field", the reader folded indentation.
+
+    So they disagreed about which lines a value spans. An append landed on a
+    line the reader passes over and was never read, or on a comment; a replace
+    deleted such a line, or stopped at a blank one and left a tail the reader
+    then folded into the new value. Each shape here broke at least one writer.
+    Now all three read one definition, so a write moves the value it targets
+    and nothing else a reader sees.
+    """
+    text = SCRAMBLED.replace(
+        "closed: 2026-09-01\n", f"recurrences: 2026-09-19 PL-4141,\n{under}closed: 2026-09-01\n"
+    )
+    assert parse_item(text).recurrences == entries
+
+    appended = with_front_matter_field(text, "recurrences", "2026-09-21 PL-D4D4", append=True)
+    replaced = with_front_matter_value(text, "recurrences", "2026-09-21 PL-D4D4")
+
+    assert parse_item(appended).recurrences == (*entries, "2026-09-21 PL-D4D4")
+    assert parse_item(replaced).recurrences == ("2026-09-21 PL-D4D4",)
+    for written in (appended, replaced):
+        assert kept in written.split("\n")
+        assert unread_front_matter_lines(written) == unread_front_matter_lines(text)
+        assert parse_item(written).reason == parse_item(text).reason
 
 
 def test_a_list_field_written_as_a_block_list_is_refused_rather_than_read() -> None:
