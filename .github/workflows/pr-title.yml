@@ -69,10 +69,12 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      # `fetch-depth: 0` because the script computes what this branch closes
-      # from the `PR_BASE..HEAD` range, which needs history on both sides of it.
-      # A depth-1 clone has neither and the range would be empty, which reads as
-      # "closes nothing" and passes any title at all.
+      # `fetch-depth: 0` because the script compares the items closed at
+      # `PR_BASE` with those closed at `HEAD`, and a depth-1 clone holds no base
+      # tree to read. Without it every run fails as not checked: the script
+      # will not read a missing tree as an empty one, which made every closed
+      # item this branch's for a missing base and passed any title for a
+      # missing head (`PL-1PBV`).
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0

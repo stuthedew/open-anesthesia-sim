@@ -39,7 +39,9 @@ it; where the leading ids are the new item's own, the commit is a plain capture
 and the item has no parent. Only a child that also declares the same `touches`
 path is counted, because a session closing an item captures whatever else it
 noticed and those captures attribute to the item it was working - counting all
-of them rates any heavily-worked file a generator.
+of them rates any heavily-worked file a generator. Where git will not give that
+history, the column reads `r unmeasured` rather than zero and the run says so
+before anything else (`PL-1PBV`).
 
 **What it can and cannot see.** A cluster is one declared `touches` path, so a
 family whose members share a *kind of claim* rather than a file is visible only
@@ -111,6 +113,10 @@ ID_RE = re.compile(ID_PATTERN)
 LEADING_IDS_RE = re.compile(rf"^((?:{ID_PATTERN})(?:\s*,\s*(?:{ID_PATTERN}))*)\s*:")
 
 
+class GitUnanswered(Exception):
+    """The item history spawn attribution rests on, which git did not give, and why."""
+
+
 @dataclass(frozen=True)
 class Cluster:
     """One `touches` path, with every signal measured about it and no verdict.
@@ -125,8 +131,9 @@ class Cluster:
     path: str
     open_ids: list[str]
     closed: int
-    #: Children of this cluster's closed items that landed back in it.
-    produced: int
+    #: Children of this cluster's closed items that landed back in it, or
+    #: `None` where the history that attributes them could not be read.
+    produced: int | None
     #: The most common `feature` among the open items, and how many carry it.
     feature: str
     feature_count: int
@@ -158,14 +165,18 @@ class Cluster:
 
     @property
     def ratio(self) -> float | None:
-        """Children per closure, or `None` where nothing has closed yet.
+        """Children per closure, or `None` where it was not measured.
 
         `None` rather than `0.0`: a cluster with no closures has not been
         measured, and printing a zero would say it was measured and came back
         clean. That is the apparatus floor - an answer is true or says it could
-        not answer - on one column of one advisory.
+        not answer - on one column of one advisory. The same holds where the
+        history was never read, which printed `r = 0.00` on every cluster that
+        had closed anything until `PL-1PBV`.
         """
-        return self.produced / self.closed if self.closed else None
+        if self.produced is None or not self.closed:
+            return None
+        return self.produced / self.closed
 
 
 def read_front_matter(path: Path) -> dict[str, str]:
@@ -191,13 +202,37 @@ def read_front_matter(path: Path) -> dict[str, str]:
 
 
 def creation_parents(repo: Path) -> dict[str, set[str]]:
-    """Map each item id to the ids of the items whose work created its file."""
-    out = subprocess.run(
-        ["git", "log", "--diff-filter=A", "--name-only", "--format=\x01%s", "--", str(ITEM_DIR)],
-        capture_output=True,
-        text=True,
-        cwd=repo,
-    ).stdout
+    """Map each item id to the ids of the items whose work created its file.
+
+    Raises `GitUnanswered` where git will not give the history - no repository,
+    no git, a log that failed. An empty map would say the history was read and
+    no item had a parent, and every cluster's spawn count would then print as
+    measured and zero (`PL-1PBV`).
+    """
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "log",
+                "--diff-filter=A",
+                "--name-only",
+                "--format=\x01%s",
+                "--",
+                str(ITEM_DIR),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=repo,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise GitUnanswered(f"`git log` could not run: {error}") from error
+    if result.returncode != 0:
+        said = next((line.strip() for line in result.stderr.splitlines() if line.strip()), "")
+        raise GitUnanswered(
+            f"`git log` exited {result.returncode}: {said or 'with nothing on stderr'}"
+        )
+    out = result.stdout
     parents: dict[str, set[str]] = {}
     for block in out.split("\x01")[1:]:
         subject, _, body = block.partition("\n")
@@ -243,15 +278,21 @@ def citations(repo: Path, open_ids: set[str]) -> Counter[str]:
     return counts
 
 
-def clusters(repo: Path) -> list[Cluster]:
-    """Every `touches` path with at least `MIN_OPEN` open items, best-signalled first."""
+def clusters(repo: Path, *, attributed: bool = True) -> list[Cluster]:
+    """Every `touches` path with at least `MIN_OPEN` open items, best-signalled first.
+
+    Raises `GitUnanswered` where the history `creation_parents` reads cannot be
+    read. `attributed=False` does without it: every spawn count is then
+    unmeasured and signals nothing, which is how `main` still reports the two
+    signals that need no history.
+    """
     items: dict[str, dict[str, str]] = {}
     for path in sorted((repo / ITEM_DIR).glob("PL-*.md")):
         fields = read_front_matter(path)
         if fields.get("id"):
             items[fields["id"]] = fields
 
-    parents = creation_parents(repo)
+    parents = creation_parents(repo) if attributed else {}
     open_ids = {i for i, f in items.items() if f.get("status") in OPEN_STATUSES}
     cited = citations(repo, open_ids)
 
@@ -302,7 +343,7 @@ def clusters(repo: Path) -> list[Cluster]:
                 path=touch,
                 open_ids=here,
                 closed=len(closed),
-                produced=sum(spawned[i][touch] for i in closed),
+                produced=sum(spawned[i][touch] for i in closed) if attributed else None,
                 feature=name,
                 feature_count=count,
                 cited=[i for i in here if cited[i] >= CITED_BY],
@@ -326,7 +367,12 @@ def clusters(repo: Path) -> list[Cluster]:
 
 
 def _line(cluster: Cluster) -> str:
-    ratio = "no closures yet" if cluster.ratio is None else f"r = {cluster.ratio:.2f}"
+    if cluster.produced is None:
+        ratio = "r unmeasured"
+    elif cluster.ratio is None:
+        ratio = "no closures yet"
+    else:
+        ratio = f"r = {cluster.ratio:.2f}"
     parts = [f"{len(cluster.open_ids)} open", f"{ratio} over {cluster.closed} closed"]
     parts.extend(cluster.signals)
     if cluster.recorded:
@@ -339,7 +385,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo", type=Path, default=Path("."))
     args = parser.parse_args(argv)
 
-    found = clusters(args.repo)
+    try:
+        found = clusters(args.repo)
+    except GitUnanswered as silence:
+        # Said first, and whatever follows it: with no ratio measured, a
+        # cluster only `r` would have surfaced is missing below, so an empty
+        # list here is not a clean one (`PL-1PBV`).
+        print(f"generator candidates: the item history could not be read - {silence}")
+        print("  No cluster's r was measured, so none can signal on it, and a cluster only")
+        print("  r would have surfaced is not shown.")
+        print()
+        found = clusters(args.repo, attributed=False)
     if not found:
         print("generator candidates: no cluster shows concentration worth a look.")
         return 0

@@ -83,6 +83,8 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.vcs import (  # noqa: E402
     BRANCH_ID_RE,
     DEFAULT_BRANCHES,
+    SILENT,
+    answered,
     default_base,
     leading_ids,
     resolved,
@@ -105,18 +107,28 @@ COMMIT_FORMAT = "--format=%p\x1f%s"
 
 
 def _git(args: list[str]) -> str:
-    """Run git, returning empty output rather than raising.
+    """Run git, returning its answer, or `SILENT` where it gave none.
 
-    Every failure mode collapses to "nothing known", which this tool reads as
-    a checkout it cannot answer about rather than as a branch that failed.
+    The classification is `docket.vcs._run_git`'s, because `default_base` reads
+    it: `rev-parse --verify` exits 1 to say a candidate is not there, which is
+    an answer, and anything else that is not 0 is git saying nothing. The walk
+    has no "no" to give - `git log` exits 128 on a revision it cannot read - so
+    `_subjects` asks `answered` rather than taking the empty string for a
+    branch with nothing on it.
+
+    Every failure used to collapse to the empty string here, and a base that
+    resolved followed by a walk that did not printed "nothing ahead of <base>;
+    no id is owed" and exited 0. `--base no-such-ref` was enough (`PL-1PBV`).
     """
     try:
         result = subprocess.run(
             ["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=30, check=False
         )
     except (OSError, subprocess.SubprocessError):
-        return ""
-    return result.stdout if result.returncode == 0 else ""
+        return SILENT
+    if result.returncode == 0:
+        return result.stdout
+    return "" if result.returncode == 1 else SILENT
 
 
 def branch_name() -> str:
@@ -133,8 +145,11 @@ def branch_name() -> str:
     return _git(["rev-parse", "--abbrev-ref", "HEAD"]).strip()
 
 
-def _subjects(base: str) -> tuple[list[str], bool]:
+def _subjects(base: str) -> tuple[list[str], bool] | None:
     """The subjects this branch adds to `base`, and whether the walk was sound.
+
+    `None` where git did not answer the walk at all, which is not a branch
+    with nothing ahead of `base`.
 
     A walk must stop because `base` accounted for what came next, never because
     the checkout ran out of history. In a truncated clone `base`'s own history
@@ -142,9 +157,12 @@ def _subjects(base: str) -> tuple[list[str], bool]:
     default branch's commits are reported as this branch's work - which would
     pass this check on ids that belong to somebody else's merged items.
     """
+    log = _git(["log", COMMIT_FORMAT, f"{base}..HEAD", "--"])
+    if not answered(log):
+        return None
     sound = True
     subjects: list[str] = []
-    for line in _git(["log", COMMIT_FORMAT, f"{base}..HEAD", "--"]).splitlines():
+    for line in log.splitlines():
         parents, _, subject = line.partition("\x1f")
         if not parents.strip():
             sound = False
@@ -192,17 +210,28 @@ def main() -> int:
 
     base = args.base or default_base(ROOT, runner=lambda argv, _root: _git(argv))
     if not resolved(base):
-        # `_git` collapses a failed walk to the empty string, so a base that is
-        # not there yields no subjects and this would have printed "no id is
-        # owed" and exited 0 - the gate passing every branch in a checkout it
-        # could not read (`PL-73P0`). Say what happened instead of certifying.
+        # A guessed base is not walked. Where nothing resolved, the walk against
+        # it used to fail into "no id is owed" - the gate passing every branch
+        # in a checkout it could not read (`PL-73P0`); where a later candidate
+        # resolved past an unanswered one, it would walk the wrong ref. Say
+        # what happened instead of certifying.
         print(
             f"branch-id: no candidate default branch resolved here "
             f"(tried {', '.join(DEFAULT_BRANCHES)}), so there is nothing to walk from; "
             f"not checked. `git fetch origin`, or pass --base <ref>."
         )
         return 0
-    subjects, sound = _subjects(base)
+    walk = _subjects(base)
+    if walk is None:
+        # The same route, reached past a base that did resolve, or was named:
+        # `--base` with no such ref, a ref deleted between the probe and the
+        # walk, or the walk timing out (`PL-1PBV`).
+        print(
+            f"branch-id: git did not answer the walk of {base}..HEAD, so what this branch "
+            f"adds is unknown; not checked. Name a base git can resolve, or `git fetch origin`."
+        )
+        return 0
+    subjects, sound = walk
     if not subjects:
         print(f"branch-id: nothing ahead of {base}; no id is owed")
         return 0
