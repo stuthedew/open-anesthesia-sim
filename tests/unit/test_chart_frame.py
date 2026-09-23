@@ -573,8 +573,8 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
     forked at 10 min with the vaporizer turned off, a 60-minute axis 900 px
     wide and `theme.CHART_HEIGHT` tall, so 4.00 s/px and 0.0167 %/px: at
     3492 s the run still carrying agent reads 0.03% and the one 48 minutes
-    into emergence reads 0.01%, which the percent axis - scaled by the
-    alveolar peak - puts 1.2 px apart. Both points are inside the 12 px
+    into emergence reads 0.01%, which the percent axis - fixed at 3 MAC
+    (`CHART_AXIS_TOP_MAC`) - puts 1.2 px apart. Both points are inside the 12 px
     radius across the whole hoverable band, and the rule that kept the
     single globally nearest point flipped which run answered on 75.4-99.9%
     of the fat axis.
@@ -648,7 +648,7 @@ def _contended_muscle_and_fat() -> tuple[ChartFrame, dict[str, float]]:
     Reference adult on sevoflurane, a 60-minute axis 900 px wide and
     `theme.CHART_HEIGHT` tall, so 4.00 s/px and 0.0167 %/px: at 20 minutes on
     the branched case the trunk's muscle reads 0.19% and its fat 0.01%, which
-    the percent axis - scaled by the alveolar peak - puts 10.7 px apart, well
+    the percent axis - fixed at 3 MAC (`CHART_AXIS_TOP_MAC`) - puts 10.7 px apart, well
     inside the 12 px radius. Muscle and fat are the pair a reader comparing
     two runs picks most often, and the pair whose values differ most: a median
     17.1-17.9x across the measured cases, every flip twofold or more.
