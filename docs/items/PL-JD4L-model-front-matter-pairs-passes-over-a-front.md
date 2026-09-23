@@ -70,6 +70,15 @@ field nor a continuation, and the writers' continuation walks consume only
 indented lines, so an append or a replace never reaches a line the reader does
 not fold.
 
+**Triage, 2026-09-23.** Both inputs above reproduce on the current parser:
+`reason` reads `first half` with `unknown_fields` empty, and the indented
+`status` reads empty. The `PL-6Q9L` pause has ended - no open item carries
+`generator: live` - so both halves are buildable as one item. It carries
+`impairs-generators:`, as `PL-DSPM` did for the sibling line class: a
+`root-cause-of:` value wrapped at column zero loses its tail the same way, so a
+head's member list reads short and one at three members drops below the count
+that ranks it.
+
 **Closed 2026-09-23.** Both halves, on one mechanism rather than two. The
 root cause was two definitions of a value's extent, so `model._fold` is now
 the only one: each field's own line, the indented lines folded into it, and
@@ -93,7 +102,5 @@ the lines no field reads. The reader and both writers derive from it.
   a rewrite that cannot keep the file faithful. The aligned append now keeps
   it faithful, so refusing would discard a recurrence and protect nothing.
 
-Fields match the triage on `#953` except `touches`, which adds the three
-files the work reached. Whichever of `#953` and this closure merges second
-resolves one front-matter hunk: keep `status: done` and `closed:`, and both
-closing paragraphs.
+Fields match the triage that landed in `#953`, except `touches`, which adds
+the three files the work reached.

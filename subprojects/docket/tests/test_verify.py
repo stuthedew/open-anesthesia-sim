@@ -3226,21 +3226,54 @@ def test_dropped_close_out_is_not_a_missing_command(tmp_path: Path) -> None:
     assert report.passed
 
 
-def test_a_not_delegable_item_close_out_is_not_a_missing_command(tmp_path: Path) -> None:
-    """`docket check` accepts a recorded reason *instead of* a command, in those words."""
+def _without_command(text: str) -> str:
+    """An item file as `_stored` writes it, less its `verify:` line."""
+    return "".join(
+        line for line in text.splitlines(keepends=True) if not line.startswith("verify:")
+    )
+
+
+@pytest.mark.parametrize("held", ["no copy", "a copy with no command"])
+def test_a_not_delegable_item_close_out_is_not_a_missing_command(tmp_path: Path, held: str) -> None:
+    """`docket check` accepts a recorded reason *instead of* a command, in those words.
+
+    Both shapes leave the branch no command to have removed: an item filed and
+    closed on one branch, which is `PL-L4KX`'s case and about half of every
+    closure, and one the base holds without a command - grandfathered past
+    `verify_required_from`, and asked for one only as it closes. This test used
+    to close an item whose base held `verify: true`, which is the self-grant
+    `PL-KSV2` refuses below.
+    """
     root = _repo(tmp_path)
+    reason = "proving it means cutting a release"
+    if held == "no copy":
+        identifier, title = "PL-N3W1", "A new one"
+    else:
+        identifier, title = "PL-K7QX", "Do the thing"
+    item_file = f"docs/items/{identifier}-{title.lower().replace(' ', '-')}.md"
+    if held != "no copy":
+        _work(root, "commission", item_file, _without_command(_stored(identifier, title)))
     _work(
         root,
-        "PL-K7QX do it by hand",
+        f"{identifier} do it by hand",
         "tests/test_thing.py",
         KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
     )
+    closed = _stored(identifier, title, status="done", **{"not-delegable": reason})
+    _work(root, f"{identifier} close it", item_file, _without_command(closed))
 
     report = verify(
         root,
-        _item(verify="", not_delegable="proving it means cutting a release"),
+        _item(
+            identifier=identifier,
+            title=title,
+            path=Path(item_file).name,
+            status="done",
+            verify="",
+            not_delegable=reason,
+        ),
         _config(),
-        "HEAD~1",
+        "HEAD~2",
         self_audit=True,
     )
 
@@ -3353,6 +3386,98 @@ def test_a_worker_dropping_its_own_item_is_still_refused_in_a_delegated_audit(
     assert front_matter.blocks
     assert front_matter.detail == "status"
     assert not (root / "ran").exists()
+    assert not report.passed
+
+
+# A `not-delegable:` reason written beside a deleted command (`PL-KSV2`). The
+# reason is read off the branch, since the close-out is what writes it, so on
+# its own it let a session delete the failing command its base commissioned,
+# give a reason of its own, and ACCEPT with the command never run.
+
+
+@pytest.mark.parametrize(
+    "held_reason",
+    ["", "wants the strongest model"],
+    ids=["reason-written-on-the-branch", "reason-the-base-already-held"],
+)
+def test_a_not_delegable_line_does_not_excuse_a_command_the_base_holds(
+    tmp_path: Path, held_reason: str
+) -> None:
+    """A reason beside the deletion is the branch's own word for skipping the test.
+
+    Refused whether the branch wrote the reason or the base already held one:
+    a command the base holds is the commission's either way, and a reason for
+    withholding an item from delegation can be about who should do the work
+    rather than whether anything can prove it.
+    """
+    root = _repo(tmp_path)
+    item_file = "docs/items/PL-K7QX-do-the-thing.md"
+    held = {"not-delegable": held_reason} if held_reason else {}
+    _work(
+        root,
+        "commission",
+        item_file,
+        _stored("PL-K7QX", "Do the thing", verify=LEAVES_A_MARK, **held),
+    )
+    _work(
+        root,
+        "PL-K7QX do it",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    reason = held_reason or "proving it means cutting a release"
+    closed = _stored("PL-K7QX", "Do the thing", status="done", **{"not-delegable": reason})
+    _work(root, "PL-K7QX close it", item_file, _without_command(closed))
+
+    report = verify(
+        root,
+        _item(status="done", verify="", not_delegable=reason),
+        _config(),
+        "HEAD~2",
+        self_audit=True,
+    )
+
+    command = _check(report, "has a `verify:` command")
+    assert command.blocks
+    assert "the branch's own word for skipping it" in command.detail
+    assert f"HEAD~2 commissions: {LEAVES_A_MARK}" in command.lines
+    assert report.stopped_early
+    assert not report.passed
+
+
+def test_a_not_delegable_line_excuses_nothing_where_the_base_cannot_be_read(tmp_path: Path) -> None:
+    """Whether the base commissioned a command is what the reason turns on.
+
+    So a base whose store cannot be read grants nothing: an ACCEPT there would
+    rest on a comparison that was never made.
+    """
+    root = _repo(tmp_path)
+    reason = "proving it means cutting a release"
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    closed = _stored("PL-K7QX", "Do the thing", status="done", **{"not-delegable": reason})
+    _work(
+        root,
+        "PL-K7QX move the store",
+        "docs/queue/PL-K7QX-do-the-thing.md",
+        _without_command(closed),
+    )
+
+    report = verify(
+        root,
+        _item(status="done", verify="", not_delegable=reason),
+        _config(items_dir="docs/queue"),
+        "HEAD~2",
+        self_audit=True,
+    )
+
+    command = _check(report, "has a `verify:` command")
+    assert command.blocks
+    assert "no item store at HEAD~2:docs/queue" in command.detail
     assert not report.passed
 
 
