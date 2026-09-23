@@ -652,6 +652,46 @@ def test_a_line_at_column_zero_continues_nothing_as_it_continues_nothing_in_yaml
     assert item.unknown_fields == ()
 
 
+@pytest.mark.parametrize(
+    "written",
+    ["root_cause_of", "Root-cause-of", "impairs_generators", "Impairs-Generators", "generator "],
+)
+def test_a_field_spelt_outside_the_key_grammar_is_reported_as_unknown(written: str) -> None:
+    """`PL-DSPM`: an underscore or a capital put a generator claim beyond every reader.
+
+    `FIELD_RE` recognised only the keys this format writes, so the line was
+    passed over rather than reported and `docket check` exited 0 on a claim
+    the session believed it had recorded. Its continuation line went into
+    `reason:` on the way past, which read `kept short PL-C3C3`.
+    """
+    item = parse_item(
+        "---\nid: PL-K7QX\ntitle: t\nreason: kept short\n"
+        f"{written}: PL-4141, PL-B2B2,\n  PL-C3C3\n---\nBody\n"
+    )
+
+    assert item.unknown_fields == (written,)
+    assert item.reason == "kept short"
+    assert (item.root_cause_of, item.impairs_generators, item.generator) == ((), "", "")
+
+
+def test_a_replaced_value_stops_at_a_misspelt_key_rather_than_absorbing_it() -> None:
+    """The writers read `FIELD_RE` too, and took the line for a continuation.
+
+    `docket withdraw` rewrites `recurrences:` through its continuation lines
+    and has no unknown-field guard, so a misspelt claim below it was deleted
+    with the old value, at exit 0 (`PL-DSPM`).
+    """
+    text = SCRAMBLED.replace(
+        "status: done\n", "status: done\nrecurrences: 2026-09-19 PL-4141\nRoot-cause-of: PL-D4D4\n"
+    )
+
+    withdrawn = with_front_matter_value(
+        text, "recurrences", "2026-09-19 PL-4141 withdrawn 2026-09-21 PL-B2B2"
+    )
+
+    assert "\nRoot-cause-of: PL-D4D4\n" in withdrawn
+
+
 def test_a_list_field_written_as_a_block_list_is_refused_rather_than_read() -> None:
     """`PL-FX0K`: it parsed to an empty tuple, so the item reached no lane."""
     text = "---\nid: PL-K7QX\ntitle: t\ntouches:\n  - a/b.py\n  - c/d.py\n---\nBody\n"

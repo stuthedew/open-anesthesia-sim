@@ -30,7 +30,17 @@ from pathlib import PurePosixPath
 # subset that is actually wanted here - scalars and comma-separated lists - is
 # a dozen lines of parsing that cannot surprise anyone.
 FRONT_MATTER_RE = re.compile(r"\A---\n(.*?)\n---\n?(.*)\Z", re.DOTALL)
-FIELD_RE = re.compile(r"^([a-z][a-z0-9-]*):[ \t]*(.*)$")
+
+# A field is recognised by its shape and never by its spelling: text at column
+# zero, then a colon. Whether the key is one this format knows is `parse_item`'s
+# question, and `unknown_fields` is how it answers. Recognising only the
+# `[a-z][a-z0-9-]*` keys this format writes passed over `root_cause_of:` and
+# `Root-cause-of:`, the two misspellings a hand-typed key is likeliest to carry,
+# so a generator claim vanished at `docket check` exit 0 and its continuation
+# lines folded into the field above it (`PL-DSPM`). The key still ends at the
+# first colon, so every line the narrow grammar read splits the same way here,
+# and a line it refused spells no key this format knows.
+FIELD_RE = re.compile(r"^([^\s#:][^:]*):[ \t]*(.*)$")
 
 # An indented line under a field: YAML's continuation of the value above it.
 # Indentation is required rather than assumed, so a line at column zero that is
@@ -207,6 +217,13 @@ def _front_matter_pairs(text: str) -> tuple[list[tuple[str, str]], tuple[str, ..
     (`PL-5B39`), a `touches:` written as a YAML block list parsing to empty so
     the item reached no lane (`PL-FX0K`), and a value quoted the way YAML
     requires keeping its quote characters (`PL-V6CR`).
+
+    **A key is recognised by its shape, never by its spelling** (`FIELD_RE`), so
+    a misspelt one arrives here under the name it was written with and
+    `parse_item` reports it. It used to be passed over, and its continuation
+    lines folded into the field above it (`PL-DSPM`). The one line still passed
+    over is a column-zero line with no colon at all, which is no field's own and
+    continues nothing, because indentation is what makes a continuation.
 
     Continuations are folded into the value with a single space, which is what
     YAML does to a plain scalar and what the 12 hand-wrapped `reason:` fields

@@ -3,14 +3,16 @@ id: PL-DSPM
 title: model._front_matter_pairs drops a column-zero root_cause_of: or Root-cause-of: line with no unknown-field report, so a hand-written generator head is lost at exit 0
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: generator-identification
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_model.py
 added: 2026-09-22
+closed: 2026-09-23
 payoff: a generator claim typed with an underscore or a capital is refused by name instead of vanishing at exit 0, so a session that believes it recorded a generator is told when nothing ranks it
 verify: grep -q 'def test_a_field_spelt_outside_the_key_grammar_is_reported_as_unknown' subprojects/docket/tests/test_model.py
 impairs-generators: model._front_matter_pairs passes over a column-zero line whose key model.FIELD_RE cannot match, so root_cause_of: or Root-cause-of: (and the same spellings of impairs-generators:) never reach unknown_fields - a hand-written generator claim vanishes at docket check exit 0 and nothing ranks or reports it
+recurrences: 2026-09-23 PL-JD4L withdrawn 2026-09-23 PL-JD4L
 ---
 
 **Problem.** model._front_matter_pairs drops a column-zero root_cause_of: or Root-cause-of: line with no unknown-field report, so a hand-written generator head is lost at exit 0
