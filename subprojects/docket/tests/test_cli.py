@@ -29,7 +29,7 @@ from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.cli import build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
-from docket.vcs import FlightReport, lost, records_on_base
+from docket.vcs import FlightReport, commands_written_here, lost, records_on_base
 from docket.verify import LANDED_GUARD, GitUnanswered
 
 READY = """---
@@ -5422,6 +5422,80 @@ def test_a_retitled_item_is_still_found_in_a_real_checkout(tmp_path: Path) -> No
     }
 
 
+# --- which open items' commands a branch wrote (`PL-1P5V`) --------------------
+#
+# The capture date says when an item arrived, never when its command was
+# written, so a rule dated by capture misses every command written afterwards
+# for an older item. The branch that changes the command is where it was
+# written, and these read that from a real checkout.
+
+LEGACY_COMMAND = "uv run pytest tests/unit/test_a.py"
+OPEN_ITEM = (
+    RECORDED_ITEM.replace("status: done", "status: ready")
+    .replace("closed: 2026-08-02\npr: 148\n", "")
+    .replace("verify: pytest recorded", f"verify: {LEGACY_COMMAND}")
+)
+
+
+def _written_repo(tmp_path: Path) -> Path:
+    """A checkout whose base holds one open item with a legacy command, and a branch."""
+    root = tmp_path / "repo"
+    (root / "docs" / "items").mkdir(parents=True)
+    (root / "docs" / "items" / "PL-K7QX-a.md").write_text(OPEN_ITEM, encoding="utf-8")
+    (root / "docket.toml").write_text(
+        '[docket]\nverify_allowlist_from = "2026-09-24"\n', encoding="utf-8"
+    )
+    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "checkout", "-qb", "work"], cwd=root, check=True, capture_output=True)
+    return root
+
+
+def _edit_item(root: Path, old: str, new: str) -> None:
+    path = root / "docs" / "items" / "PL-K7QX-a.md"
+    path.write_text(path.read_text(encoding="utf-8").replace(old, new), encoding="utf-8")
+
+
+def test_a_command_the_branch_left_alone_is_not_written_here(tmp_path: Path) -> None:
+    # Editing an old item for any other reason asks nothing of its command.
+    root = _written_repo(tmp_path)
+    _edit_item(root, "effort: S", "effort: M")
+
+    report = commands_written_here(root, {"PL-K7QX": LEGACY_COMMAND})
+
+    assert report.known
+    assert report.identifiers == frozenset()
+
+
+def test_a_rewritten_command_is_written_here_committed_or_not(tmp_path: Path) -> None:
+    root = _written_repo(tmp_path)
+    _edit_item(root, LEGACY_COMMAND, "bin/docket check")
+
+    assert commands_written_here(root, {"PL-K7QX": "bin/docket check"}).identifiers == {"PL-K7QX"}
+    subprocess.run(["git", "commit", "-qam", "rewrite"], cwd=root, check=True, capture_output=True)
+    assert commands_written_here(root, {"PL-K7QX": "bin/docket check"}).identifiers == {"PL-K7QX"}
+
+
+def test_check_holds_a_command_written_for_an_old_item_to_the_admitted_shapes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """End to end: the item predates the cutover, so only the branch dates its command."""
+    root = _written_repo(tmp_path)
+    store = str(root / "docs" / "items")
+    check = ["check", "--items", store, "--today", "2026-09-24"]
+    assert main(check) == 0
+    capsys.readouterr()
+
+    _edit_item(root, LEGACY_COMMAND, "bin/docket check")
+
+    assert main(check) == 1
+    out = capsys.readouterr().out
+    assert "its `verify:`, written on this branch, runs `bin/docket check`" in out
+
+
 def _trend_store(tmp_path: Path, *, lanes: bool = True) -> Path:
     """A store with closures on both sides of the boundary, a week apart."""
     items = tmp_path / "docs" / "items"
@@ -6007,6 +6081,43 @@ def test_set_refuses_a_write_the_checker_would_fail_and_says_why(
     assert _run("set", "PL-D4D4", *fields, "--items", str(store)) == 1
     assert "safety-critical work starts at P0 or P1" in capsys.readouterr().out
     assert _item_text(store) == CAPTURED
+
+
+def test_set_holds_a_command_it_writes_to_the_admitted_shapes_whatever_the_item_s_age(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`check` dates a command by its item's capture; `set` is the moment it is written.
+
+    The item predates `verify_allowlist_from`, so its legacy command stands and
+    another field can be written beside it. A command `set` writes onto it is
+    held to the list all the same - the triage of old items and the repair of
+    legacy commands, which a rule dated by capture alone never reaches
+    (`PL-1P5V`).
+    """
+    old = OPEN_ITEM.replace("id: PL-K7QX", "id: PL-F6F6")
+    store = _store(tmp_path, old)
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nverify_allowlist_from = "2026-09-24"\n', encoding="utf-8"
+    )
+
+    def write(*fields: str) -> int:
+        return main(
+            ["set", "PL-F6F6", *fields, "--overwrite", "--items", str(store)]
+            + ["--no-git", "--today", "2026-09-24"]
+        )
+
+    assert write("--effort", "M") == 0
+    assert f"verify: {LEGACY_COMMAND}\n" in _item_text(store)
+    capsys.readouterr()
+
+    assert write("--verify", "bin/docket check") == 1
+    out = capsys.readouterr().out
+    assert "nothing was written" in out
+    assert "runs `bin/docket check`, which is neither a `grep` clause" in out
+    assert f"verify: {LEGACY_COMMAND}\n" in _item_text(store)
+
+    assert write("--verify", "grep -q 'def test_a' tests/unit/test_a.py") == 0
+    assert "verify: grep -q 'def test_a' tests/unit/test_a.py\n" in _item_text(store)
 
 
 def test_set_refuses_a_file_it_could_not_rewrite_faithfully(

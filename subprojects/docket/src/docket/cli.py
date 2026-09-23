@@ -114,12 +114,14 @@ from .vcs import (
     GitRunner,
     OrphanedReport,
     StrandedReport,
+    WrittenReport,
     branch_state,
     branches_in_flight,
     changed_items,
     churn,
     closed_by,
     closures_on_base,
+    commands_written_here,
     cut_window,
     cuts_in_flight,
     default_base,
@@ -578,6 +580,23 @@ def _complete_report(
             else records_on_base(
                 root,
                 {i.identifier: i.path for i in items if i.status == "done" and i.path},
+                items_dir=tracked,
+                runner=git,
+            )
+        ),
+        # The same diff read for the open items: which commands this branch
+        # wrote, so the admitted shapes reach a command written for an item
+        # older than their cutover (`PL-1P5V`).
+        written=(
+            None
+            if git is None or config.verify_allowlist_from is None
+            else commands_written_here(
+                root,
+                {
+                    i.identifier: i.verify
+                    for i in items
+                    if i.status not in CLOSED_STATUSES and i.verify
+                },
                 items_dir=tracked,
                 runner=git,
             )
@@ -1362,7 +1381,12 @@ def cmd_set(args: argparse.Namespace) -> int:
     updated = with_fields(item, **changes)
     after = [updated if i is item else i for i in items]
     today = args.today or date.today()
-    introduced = analyze(after, today, config).errors
+    # A command written here is written now, whatever the item's age, which is
+    # the one fact `check` has to ask git for (`PL-1P5V`).
+    written = (
+        WrittenReport(identifiers=frozenset({item.identifier})) if "verify" in changes else None
+    )
+    introduced = analyze(after, today, config, written=written).errors
     if introduced:
         # Only what this write adds counts against it. An error the store
         # already carries is somebody else's, and blocking every write until

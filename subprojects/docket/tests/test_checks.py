@@ -29,6 +29,7 @@ from docket.vcs import (
     LostReport,
     PullRequestHistory,
     RecordReport,
+    WrittenReport,
 )
 from docket.verify import LandedReport, SlowCommand
 
@@ -3695,6 +3696,210 @@ def test_the_k_selector_rule_is_off_until_a_project_dates_it_and_names_its_trees
         errors = analyze([_item(added=SELECTOR_FROM, verify=command)], TODAY, config).errors
 
         assert not _has(errors, NARROWS)
+
+
+# --- the admitted shapes, which refuse a shape nobody has argued for ---------
+#
+# `PL-1P5V`: the rules above each refuse one shape after it failed, and seven
+# arrived in the four days after `PL-6TP8` closed. The list inverts that: a
+# command captured from the cutover is one of the shapes the triage table
+# prescribes, or it says in `not-delegable` why none can prove its item.
+
+ALLOWLIST_FROM = date(2026, 9, 24)
+ALLOWLIST = Config(verify_allowlist_from=ALLOWLIST_FROM)
+ADMITTED = "is one of the admitted shapes"
+
+
+def _allowlist_errors(**overrides: object) -> list[str]:
+    overrides.setdefault("added", ALLOWLIST_FROM)
+    return analyze([_item(**overrides)], TODAY, ALLOWLIST).errors
+
+
+def test_a_verify_command_outside_the_prescribed_shapes_is_refused() -> None:
+    """Every member of `PL-1P5V`'s cluster, refused by one rule and none of its own.
+
+    Each shape here once cost a red `main`, a dead command or a misread before a
+    rule of its own refused it: a count (`PL-0QRP`), a command's output read
+    through a pipe (`PL-CWD4`'s instance), a `pytest` run beside the
+    discriminator (`PL-09G9`), the remote (`PL-205P`), a literal `true`
+    (`PL-J3WK`), a node id (`PL-R812`), a `-k` (`PL-Q8RQ`) - and `-m`, which the
+    `-k` rule names as the next one and does not read.
+    """
+    for command in (
+        'test "$(grep -c helper src/a.py)" -ge 3',
+        "bin/docket wave | grep -q 'next wave'",
+        "uv run pytest tests/unit/test_a.py && grep -q 'def test_x' tests/unit/test_a.py",
+        "git ls-remote --tags origin v0.4.30",
+        "true",
+        "uv run pytest 'tests/unit/test_a.py::test_x'",
+        "uv run pytest tests/unit -k covered",
+        "uv run pytest tests/unit -m slow",
+        "python3 tools/doc_check.py check",
+        "grep -q 'x' a.py || true",
+        "grep -q 'x' a.py; true",
+        "grep -qv 'x' a.py",
+        "grep -c 'x' a.py",
+        "grep 'def test_x' tests/unit/test_a.py",
+        "grep -q $pattern a.py",
+        "grep -q 'x'",
+        "! { grep -q 'a' a.py && grep -q 'b' a.py; }",
+        "! test -e tools/old.py",
+    ):
+        errors = _allowlist_errors(verify=command)
+
+        assert _has(errors, ADMITTED), command
+
+
+def test_the_prescribed_shapes_are_admitted() -> None:
+    """The triage table's shapes, and the spellings of them the store already uses.
+
+    A glob in a path to read is admitted because an item file is named after a
+    title that can change, and `--` because a phrase can begin with a dash.
+    """
+    for command in (
+        "grep -q 'def test_halted' tests/unit/test_simulation_view.py",
+        "grep -qF 'the sentence the item adds' docs/MODEL.md",
+        "grep -q 'def test_a' tests/unit/test_a.py && grep -qF 'a phrase' docs/MODEL.md",
+        "grep -rqF 'nothing unrelated can drive it there' .claude/skills/docket/",
+        "grep -rqF --include='*.md' --exclude=README.md '1994760' docs/references/",
+        "grep -qiE '^\\| \\(b11\\).*uptake' docs/machine-abstraction.md",
+        "grep -q '^touches:.*test_cli.py' docs/items/PL-L4YG-*.md",
+        "grep -qF -- '--overwrite' subprojects/docket/README.md",
+        "grep -q x\\ y a.py",
+        'grep -qF "a \\"quoted\\" phrase" a.md',
+        "uv run pytest --cov=anesthesia_sim.core.tissue --cov-fail-under=100",
+        "uv run pytest -q --cov=anesthesia_sim.core --cov=anesthesia_sim.app --cov-fail-under=97.5",
+    ):
+        assert not _has(_allowlist_errors(verify=command), ADMITTED), command
+
+
+def test_an_absence_is_admitted_because_every_way_it_goes_wrong_passes() -> None:
+    """`! grep` fails loud: a typo, a reworded line or a deleted file make it pass.
+
+    A passing open command is already an error the changed-path replay reports
+    on the branch that caused it, so the settlement `PL-1P5V` left to the work
+    is to admit the shape. The stale sentence a fix removes is most of what the
+    25 open absence commands asserted on 2026-09-23, and a `grep` for its
+    replacement would dictate the fix's wording.
+    """
+    for command in (
+        "! grep -qF 'would both be rebuilt against it' docs/WORKING_NOTES.md",
+        "! grep -rq 'git tag -a v0.3.0 origin/main' .claude/skills/docket/",
+        "grep -q 'PL-694Q' ROADMAP.md && ! grep -qF 'still prints all thirteen as' ROADMAP.md",
+    ):
+        assert not _has(_allowlist_errors(verify=command), ADMITTED), command
+
+
+def test_the_refusal_names_what_the_admitted_shapes_never_use() -> None:
+    """The reason is the first thing found, so a session can repair the command."""
+    for command, reason in (
+        ("bin/docket wave | grep -q 'x'", "carries `|`"),
+        ("grep -qF 'x' a.md 'b.md", "unbalanced quote"),
+        ('grep -q "$(date)" a.md', "inside double quotes"),
+        ("grep -qFE 'x' a.md", "both `-F` and `-E`"),
+        ("grep -qF '' a.md", "empty pattern"),
+        ("grep -qF '-x' a.md", "wants `--` ahead of it"),
+        ("grep -rqF 'x' docs/ --include='*.md'", "after the pattern"),
+        ("grep -qF --include='*.md' 'x' docs/", "does not recurse"),
+        ("grep -qF 'x' /etc/hosts", "outside the repository"),
+        ("grep -qF 'x' ../other/a.md", "outside the repository"),
+        ("grep -q def_test* a.py", "unquoted"),
+        ("grep -q 'x' a.py &&", "no clause on one side"),
+        ("uv run pytest --cov=src/anesthesia_sim/core/tissue.py --cov-fail-under=100", "dotted"),
+        ("uv run pytest --cov=anesthesia_sim.core", "`--cov-fail-under=`"),
+        ("uv run pytest --cov=anesthesia_sim.core --cov-fail-under=0", "above zero"),
+        ("uv run pytest --cov=anesthesia_sim.core --cov-fail-under=100 tests/unit", "no test path"),
+        ("grep -q 'def test_x' a.py && uv run pytest --cov=a --cov-fail-under=100", "stands alone"),
+    ):
+        errors = _allowlist_errors(verify=command)
+
+        assert _has(errors, reason), (command, errors)
+
+
+def test_a_not_delegable_reason_admits_a_command_outside_the_shapes() -> None:
+    """The way out the owner chose: an item whose proof cannot be one of the shapes
+    says why, and is then not handed to a worker who would trust the command."""
+    errors = _allowlist_errors(
+        verify="bin/docket vitals --base v0.2.8",
+        not_delegable="the proof is the vitals report itself, read against the release",
+    )
+
+    assert not _has(errors, ADMITTED)
+
+
+def test_a_command_captured_before_the_allowlist_is_left_alone() -> None:
+    """Grandfathered by capture date as the rules above are, and repaired as each item
+    is started - when `_check_written` holds the rewrite to the list."""
+    before = ALLOWLIST_FROM - timedelta(days=1)
+
+    assert not _has(_allowlist_errors(added=before, verify="bin/docket check"), ADMITTED)
+
+
+def test_a_closed_item_s_command_is_a_record_the_allowlist_does_not_read() -> None:
+    """`PL-JZ1D`: a closed command says what was run, on a tree that no longer exists."""
+    errors = _allowlist_errors(
+        status="done", closed=ALLOWLIST_FROM, pr="48", verify="bin/docket check"
+    )
+
+    assert not _has(errors, ADMITTED)
+
+
+def test_the_allowlist_is_off_until_a_project_dates_it() -> None:
+    errors = analyze([_item(added=ALLOWLIST_FROM, verify="bin/docket check")], TODAY).errors
+
+    assert not _has(errors, ADMITTED)
+
+
+def _written_report(
+    written: WrittenReport, today: date = ALLOWLIST_FROM, **fields: object
+) -> Report:
+    fields.setdefault("added", ALLOWLIST_FROM - timedelta(days=30))
+    return analyze([_item(**fields)], today, ALLOWLIST, written=written)
+
+
+def test_a_command_written_here_is_held_to_the_shapes_whatever_its_item_s_age() -> None:
+    """The capture date cannot say when a command was written; the branch can.
+
+    Without this the list never reaches the commands written for items captured
+    before it - the triage of old items, and the legacy commands rewritten as
+    their items start - which is most of what is written in the weeks after a
+    cutover.
+    """
+    report = _written_report(
+        WrittenReport(identifiers=frozenset({"PL-K7QX"})), verify="bin/docket check"
+    )
+
+    assert _has(report.errors, "written on this branch")
+    assert _has(report.errors, ADMITTED)
+
+
+def test_a_command_the_branch_left_as_the_base_had_it_stays_grandfathered() -> None:
+    """Editing an old item for any other reason asks nothing of its command."""
+    report = _written_report(WrittenReport(identifiers=frozenset()), verify="bin/docket check")
+
+    assert not _has(report.errors, ADMITTED)
+
+
+def test_a_command_written_here_before_the_cutover_day_is_left_alone() -> None:
+    report = _written_report(
+        WrittenReport(identifiers=frozenset({"PL-K7QX"})),
+        today=ALLOWLIST_FROM - timedelta(days=1),
+        verify="bin/docket check",
+    )
+
+    assert not _has(report.errors, ADMITTED)
+
+
+def test_an_unreadable_base_declines_rather_than_refusing_a_write_it_cannot_see() -> None:
+    """One-sided, as the closed-record reading is: no branch is accused of a write
+    it did not make, and the reader is told what went unread."""
+    report = _written_report(
+        WrittenReport(declined="no default branch this checkout can read"),
+        verify="bin/docket check",
+    )
+
+    assert not _has(report.errors, ADMITTED)
+    assert _has(report.declined, "is one of the admitted shapes: no default branch")
 
 
 def test_a_passing_command_that_reads_the_remote_is_an_advisory_not_an_error() -> None:
