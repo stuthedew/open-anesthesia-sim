@@ -7128,7 +7128,13 @@ specified.
     circuit, lungs and tissue groups are drawn to scale and fill as agent
     enters them. This teaches something the graph structurally cannot: the
     graph plots partial pressure, so fat reads near zero for hours while
-    holding more agent than every other compartment combined. Where the drug
+    holding a large and growing share of the agent. Measured in this model at
+    a 1 MAC dial, fat holds a fifth of the stored agent at one hour and a
+    third at three, and overtakes muscle only after about five to seven and a
+    half hours (`PL-H5DV`). The compartment chart keeps its one linear axis on
+    that ground and leaves this lesson to this view (project owner,
+    2026-09-23, ratified, over a reader-selected logarithmic scale on the
+    chart, `PL-QYBW`). Where the drug
     *is*, in millilitres, and where the *tension* is are different questions,
     and confusing them is a standard novice error. Needs per-compartment agent
     amounts exposed on the snapshot, which the core already computes and the

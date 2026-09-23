@@ -7841,12 +7841,26 @@ leaves the radius because the reader moved deliberately, and the box says so by
 losing its line. That event is visible where the silent swap it replaces was
 not.
 
-**The root cause is elsewhere and is not fixed here.** The slow compartments
-are compressed near zero because the percent axis is fixed at 3 MAC for every
-agent (`CHART_AXIS_TOP_MAC`), which is what puts two runs' fat points 0.2–1.4 px
-apart and makes them contend almost everywhere. Separating the compartments' scales would remove the
-contention at its source; it also changes every reading of this chart, so it is
-a roadmap question rather than a targeting one (`PL-QYBW`).
+**The root cause is the axis, and the axis stays** (project owner, 2026-09-23,
+ratified, over a reader-selected logarithmic scale, `PL-QYBW`). The slow
+compartments are compressed near zero because the percent axis is fixed at
+3 MAC for every agent (`CHART_AXIS_TOP_MAC`), which is what puts two runs' fat
+points 0.2–1.4 px apart and makes them contend almost everywhere. Only fat
+stays compressed for long. At a 1 MAC dial on the three shipped agents, muscle
+spans 25–48 px of the 360 px plot at one hour and fat 1.5–3.7 px. Fat's trace
+near zero is its true partial pressure, and partial pressure is what drives
+effect. So the chart keeps one linear axis for all six compartments, and the
+rule above answers the contention rather than a change of scale. What the trace
+cannot show is how much agent fat holds: a fifth of the stored agent at one
+hour and a third at three. That is a question of amount, and planned-milestone
+item 27's schematic is the view that answers it. A logarithmic scale was the
+alternative weighed. Fixed from 0.001 to 3 MAC, it would put the two runs' fat
+23–75 px apart, but it has three costs. It draws below the 0.01-point
+resolution of § "Displayed precision". It is a display mode on a chart of
+clinical values. And it would arrive ahead of the v0.6.0 View contract that
+decides where a View's own settings live. Its strongest use, the washout tail,
+is a candidate for item 36's catalogue of views rather than a mode on this
+chart.
 
 `chart_frame.format_compared_trace_hover` and
 `chart_frame.format_compared_wash_in_hover` produce both forms above — through

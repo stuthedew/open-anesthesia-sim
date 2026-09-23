@@ -3,12 +3,14 @@ id: PL-QYBW
 title: The chart's percent axis is scaled by the alveolar peak, so the slow compartments are compressed into 1-2 px and two runs' fat curves cannot be told apart by pointing
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: ux, defect
 feature: compartment-trace-legibility
-touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py, tests/integration/test_qt_chart.py
+touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py, tests/integration/test_qt_chart.py, ROADMAP.md
 added: 2026-09-19
+closed: 2026-09-23
 payoff: makes the slow compartments this simulator exists to teach visible on the chart that teaches them, instead of a flat line under 2 px
+verify: grep -qF 'The root cause is the axis, and the axis stays' docs/MODEL.md && ! grep -qF 'scaled by the alveolar peak' docs/MODEL.md
 ---
 
 **Problem.** The chart's percent axis is scaled by the alveolar peak, so the slow compartments are compressed into 1-2 px and two runs' fat curves cannot be told apart by pointing
@@ -239,10 +241,18 @@ or reader-set vertical scale, and whether its Picture draws compartments to
 capacity (item 27 asserts the second). gasmanweb.com was refused at the proxy;
 the private reference corpus's *Workbook for Gas Man* would answer both.
 
-**If option 1 is chosen**, the closing work is small. Record the decision and
-its reasons in `docs/MODEL.md` § "Where more than one trace answers", whose
-"The root cause is elsewhere and is not fixed here" paragraph still describes
-this as open. Point item 27 at it. Close this item.
+**Decided 2026-09-23: option 1** (project owner, 2026-09-23, ratified, over
+a reader-selected logarithmic scale). The chart keeps one linear percent axis,
+topped at 3 MAC, for all six compartments. The reader is told nothing new,
+because nothing about the scale changes. The decision and its reasons are
+recorded in `docs/MODEL.md` § "Where more than one trace answers", in the
+paragraph that opens "The root cause is the axis, and the axis stays". It
+replaces the one that called this an open roadmap question. `ROADMAP.md`
+planned-milestone item 27 now says the chart leaves fat's amount lesson to
+that view, and states fat's share as measured, which closes `PL-H5DV` in the
+same commit. A semilog washout View stays a candidate for item 36's
+catalogue. It is recorded here and in `docs/MODEL.md`, and not filed, because
+nothing may build it before `PL-TH35` ships.
 
 **This is the project owner's** rather than a session's: it changes what a
 learner sees, and every option is defensible, which is the test rule 14 of
