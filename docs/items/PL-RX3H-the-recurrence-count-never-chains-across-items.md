@@ -3,13 +3,13 @@ id: PL-RX3H
 title: The recurrence count never chains across items, so one mechanism re-filed as three different items (PL-X9NB on PL-P757, PL-T441 on PL-K5PW, PL-WF3X on PL-T441) is never summed toward the generator tier
 priority: P3
 effort: M
-status: blocked
+status: ready
 classes: feature
 feature: generator-identification
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/duplicates.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_duplicates.py
-blocked-by: PL-DSPM
 added: 2026-09-22
 payoff: a mechanism re-filed at sibling sites is counted as one cluster even after the item it first matched closes, instead of restarting at one filing per item
+not-delegable: its first step re-runs the chain count, and that count decides between building the chaining and dropping the item with the count recorded; no command can prove an outcome the count has not chosen yet
 ---
 
 **Problem.** The recurrence count never chains across items, so one mechanism re-filed as three different items (PL-X9NB on PL-P757, PL-T441 on PL-K5PW, PL-WF3X on PL-T441) is never summed toward the generator tier
@@ -44,11 +44,10 @@ built. `blocked-by` names the three open items that carried one on 2026-09-23.
 When they close, confirm that `bin/docket next` shows the generator tier empty
 before unblocking, because any new `live` head keeps the pause in force.
 
-**Re-pointed 2026-09-23, when `PL-1P5V` closed the last `live` head.** No open
-item carries `generator: live` now, but the tier still holds a defect in the
-generator machinery, `PL-DSPM`, in flight (`PL-BBT8`, the other, merged the
-same hour) - so `blocked-by` names it, and this waits for the tier to empty
-as above.
+**Unblocked 2026-09-23 by `PL-1P5V`, the last open item on the generator
+tier.** `PL-BBT8` and `PL-DSPM`, the two machinery defects that shared it, merged
+the same hour, so the tier is empty once `PL-1P5V`'s pull request lands and the
+pause above has ended.
 
 **Done when.** The chain count is re-run first. Then one of two outcomes:
 either recurrence evidence follows a closed anchor to the open item that
