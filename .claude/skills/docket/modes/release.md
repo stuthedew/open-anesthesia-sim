@@ -25,10 +25,15 @@ itself should be reworded is `PL-KKRP`'s; do not reword it here.
 bin/docket gate --feature teachable-case
 ```
 
-That is the whole pass: the open debt, split into what the milestone clears
-itself (the items carrying its feature) and what clears before it begins, with
-effort totals for each. Recording Gate 0 by hand meant reading 48 items and
-applying the rule to each; do not repeat that.
+That is the whole decidable pass: every open debt item in the store, split by
+whether it carries the milestone's feature, with effort totals for each.
+Recording Gate 0 by hand meant reading 48 items and applying the rule to each;
+do not repeat that. **The feature is a first cut, not the rule.** What the
+milestone clears itself is what its `Required scope` names (`ROADMAP.md` §
+"Debt inside the milestone's own scope"), and the two differ in both
+directions - Gate 2's list did on four entries on 2026-09-23 - so write that
+group's heading from `Required scope`. `bin/docket wave` reads the frozen list
+against the same rule afterwards (`PL-RFHH`).
 
 **Sweep the frozen list for staleness before clearing it.** That is beat 3 of
 `ROADMAP.md`'s cadence and the first thing to happen once the list exists. A

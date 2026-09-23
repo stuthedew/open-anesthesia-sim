@@ -2254,7 +2254,7 @@ added: 2026-08-01
 """
 
 
-def test_gate_splits_the_debt_the_milestone_clears_from_the_debt_before_it(
+def test_gate_splits_the_store_s_open_debt_by_the_feature_it_carries(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Recording Gate 0 by hand was a full pass over 48 items; this is that pass."""
@@ -2263,10 +2263,39 @@ def test_gate_splits_the_debt_the_milestone_clears_from_the_debt_before_it(
     assert _run("gate", "--feature", "teachable-case", "--items", str(store)) == 0
 
     output = capsys.readouterr().out
-    before, _, after = output.partition("Cleared by the milestone itself")
+    before, _, after = output.partition("Carrying `teachable-case`")
     assert "PL-B1B1" in before and "PL-G1G1" not in before
     assert "PL-G1G1" in after
     assert "1 M" in after
+
+
+def test_gate_names_its_split_for_the_feature_and_never_for_the_roadmap_rule(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-RFHH`. `bin/docket wave` prints "cleared by the milestone itself" for
+    the roadmap's test - `Required scope` names the id - and this printed the
+    same phrase over a feature split that differs from it in both directions,
+    so `PL-YVP7` was filed on the wrong one of the two. Each command now names
+    the test it ran, and this one says where the other answer is."""
+    store = _store(tmp_path, READY, DEBT)
+
+    assert _run("gate", "--feature", "teachable-case", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "milestone itself" not in output
+    assert "2 open debt items in the store, split by whether each carries" in output
+    assert "bin/docket wave" in output and "Required scope" in output
+
+
+def test_gate_over_a_store_with_no_debt_does_not_imply_debt_without_the_feature() -> None:
+    """The list is every open debt item, so an empty one means the store holds
+    none; naming the feature in that message said there was debt without it."""
+    from docket.plan import Gate
+    from docket.render import format_gate
+
+    printed = format_gate(Gate(feature="teachable-case", inside=[], outside=[]), ("defect",))
+
+    assert printed == "No open debt in the store. Nothing to clear."
 
 
 def test_gate_writes_nothing_and_reaches_no_verdict(

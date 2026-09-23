@@ -32,7 +32,7 @@ docket set PL-K7QX --priority P2 --effort S --classes defect   # write triage's 
 docket withdraw PL-K7QX PL-B2B2 --because PL-34BG   # disown a recorded filing whose match was wrong
 docket concurrent PL-K7QX    # what can be worked alongside it, and what a live branch is already changing
 docket feature halted-step   # progress on one feature
-docket gate --feature x      # the open debt a milestone has to clear
+docket gate --feature x      # every open debt item, split by feature: a freeze's first cut
 docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
@@ -1273,8 +1273,13 @@ A project that clears recorded debt before starting a milestone has to produce
 the list of what is owed, and doing that by hand means reading every open
 item's classes and status, applying the rule, and splitting the result by
 whether the milestone clears the item itself. `docket gate --feature <name>`
-does that pass: open debt on one side, the items carrying that feature on the
-other, with effort totals for each.
+does the decidable part of that pass: every open debt item in the store, the
+items carrying that feature on one side and the rest on the other, with effort
+totals for each. The feature is a first cut and not the rule. Which debt a
+milestone clears itself is whether its `Required scope` names the id, the two
+differ in both directions, and so the output names its split for the feature
+and never for the rule; once a list is frozen, `docket wave` reads it against
+the rule (`PL-RFHH`).
 
 Debt is an open item classed `defect`, `safety`, `science`, `refactor` or
 `perf` — `debt_classes`, configurable — or one at `needs-decision`, since a

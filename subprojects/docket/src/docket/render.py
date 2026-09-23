@@ -1787,7 +1787,7 @@ def progress_mark(item: Item) -> str:
 
 
 def format_gate(gate: Gate, debt_classes: tuple[str, ...]) -> str:
-    """The debt owed before a milestone, as the two lists a gate record holds.
+    """Every open debt item in the store, as the two lists a freeze starts from.
 
     Recording Gate 0 by hand meant reading every open item's classes and
     status, applying the rule, splitting the result by scope and typing the
@@ -1795,19 +1795,28 @@ def format_gate(gate: Gate, debt_classes: tuple[str, ...]) -> str:
     milestone. All of that is in the front matter, and none of it needs
     judgment. What still does is whether each item is really debt and whether
     the gate should open, which is why this prints two lists and no verdict.
+
+    Each list is named for what it tests - whether an item carries the feature -
+    and never for what the roadmap's rule decides. Which debt a milestone clears
+    itself is whether its `Required scope` names the id, which `format_wave`
+    reports over the frozen list, and the two sets differ in both directions.
+    This printed its feature split as "Cleared by the milestone itself" until
+    `PL-RFHH`, the phrase `format_wave` prints for the rule, so a reader of
+    either took one answer for both and `PL-YVP7` was filed on the wrong one.
     """
     if not gate.items:
-        subject = f" carrying `{gate.feature}`" if gate.feature else ""
-        return f"No open debt{subject}. Nothing to clear."
+        # Every open debt item, so an empty store is the only way to get here:
+        # naming the feature would say there is debt that does not carry it.
+        return "No open debt in the store. Nothing to clear."
 
     lines = [
-        f"{_plural(len(gate.items), 'open debt item', 'open debt items')}"
-        + (f", against the `{gate.feature}` milestone." if gate.feature else ".")
+        f"{_plural(len(gate.items), 'open debt item', 'open debt items')} in the store"
+        + (f", split by whether each carries `{gate.feature}`." if gate.feature else ".")
     ]
 
     lines.append("")
     lines.append(
-        f"Cleared before it begins - {len(gate.outside)} ({effort_total(gate.outside)}):"
+        f"Not carrying `{gate.feature}` - {len(gate.outside)} ({effort_total(gate.outside)}):"
         if gate.feature
         else f"Open debt - {len(gate.outside)} ({effort_total(gate.outside)}):"
     )
@@ -1816,7 +1825,7 @@ def format_gate(gate: Gate, debt_classes: tuple[str, ...]) -> str:
     if gate.feature:
         lines.append("")
         lines.append(
-            f"Cleared by the milestone itself - {len(gate.inside)} ({effort_total(gate.inside)}):"
+            f"Carrying `{gate.feature}` - {len(gate.inside)} ({effort_total(gate.inside)}):"
         )
         lines.extend(_gate_lines(gate.inside))
         if not gate.inside:
@@ -1824,6 +1833,9 @@ def format_gate(gate: Gate, debt_classes: tuple[str, ...]) -> str:
 
     lines.append("")
     lines.append(f"Debt is an open item classed {', '.join(debt_classes)}, or at needs-decision.")
+    lines.append("This reads the whole store, on a frozen list or not. `bin/docket wave` reads the")
+    lines.append("frozen list, and counts as the milestone's own what its Required scope names -")
+    lines.append("the roadmap's rule, which is not the feature: the two can differ both ways.")
     lines.append("Whether each of these is really debt, whether the gate should open, and")
     lines.append("what goes into the plan are not decided here. Recording it is a deliberate act.")
     return "\n".join(lines)
@@ -2092,7 +2104,9 @@ def format_wave(plan: Wave) -> str:
     if gate is not None:
         entries = _plural(len(gate.entries), "entry", "entries")
         ids = _plural(len(gate.ids), "id", "ids")
-        lines.append(f'Gate      recorded under "{gate.milestone.title}" ({entries}, {ids})')
+        lines.append(
+            f'Gate      frozen list recorded under "{gate.milestone.title}" ({entries}, {ids})'
+        )
         counted = f"{len(gate.cleared)} cleared, {len(gate.outstanding)} open"
         # The three sets are disjoint by construction, so the split adds back up
         # to the open count and a reader can check it without being told to.
@@ -2117,7 +2131,12 @@ def format_wave(plan: Wave) -> str:
             lines.append(f"          {', '.join(open_ids)}")
         if gate.self_cleared:
             own = [identifier for entry in gate.self_cleared for identifier in entry.ids]
-            lines.append(f"          cleared by the milestone itself: {', '.join(own)}")
+            # The test named beside the answer, because `format_gate` splits by
+            # `feature` and the two differ in both directions (`PL-RFHH`).
+            lines.append(
+                "          named in its Required scope, so cleared by the milestone itself: "
+                + ", ".join(own)
+            )
         by_row: dict[str, list[str]] = {}
         for sequenced in gate.sequenced_ahead:
             by_row.setdefault(sequenced.row, []).extend(sequenced.entry.ids)

@@ -2094,7 +2094,7 @@ def _say_answer_lane(
 
 
 def cmd_gate(args: argparse.Namespace) -> int:
-    """The debt a milestone has to clear, computed from the store.
+    """Every open debt item in the store, split by feature: what a freeze starts from.
 
     `ROADMAP.md` records the frozen list by hand, and doing that means reading
     every open item's classes and status and splitting the result by scope.
@@ -3491,9 +3491,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     nxt.set_defaults(func=cmd_next)
 
-    gate_cmd = add("gate", "the open debt a milestone has to clear")
+    gate_cmd = add("gate", "every open debt item in the store, a freeze's starting list")
     gate_cmd.add_argument(
-        "--feature", default=None, help="the milestone's feature; its items clear with it"
+        "--feature",
+        default=None,
+        help="split by this feature; Required scope, read by wave, is what a milestone clears",
     )
     gate_cmd.set_defaults(func=cmd_gate)
 
