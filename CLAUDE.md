@@ -494,11 +494,15 @@ deviating from a described deliverable, not acting without one.
   thought is one interruption from gone and an unpushed commit dies with it.
   Once the owner has approved a piece of work, the pull request opens as soon as
   that work is finished and its checks are green — do not ask first, because the
-  approval *was* the invitation. Two limits: it is **approved work, not any
-  commits**, so a branch carrying only captured items is not a pull request; and
-  where the **web harness says not to open one unless the owner explicitly
-  asks**, this bullet is that ask, standing rather than per pull request, so a
-  session reading both proceeds rather than stalls. A session-level
+  approval *was* the invitation. **A branch carrying only item files opens its
+  pull request at its first push and arms auto-merge**, so a capture reaches
+  `main` even when its session ends before any work does; the first push
+  carrying anything else disarms it first, or green CI would merge half the
+  work (project owner, 2026-09-23, ratified, over "a branch carrying only
+  captured items is not a pull request", which cost 21 recovery items,
+  `PL-WNCT`). Where the **web harness says not to open one unless the
+  owner explicitly asks**, this bullet is that ask, standing rather than per
+  pull request, so a session reading both proceeds rather than stalls. A session-level
   auto-pull-request switch set *off* is that same case and not a third: it
   stops the harness opening one unasked and does not withdraw this ask
   (project owner, 2026-09-19, ratified, over treating the switch as a
