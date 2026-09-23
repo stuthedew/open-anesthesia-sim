@@ -1,8 +1,14 @@
 ---
 id: PL-WM46
 title: verify's batch NOTE reads any id a commit subject mentions as a batch claim, and prints every audited commit as naming it, so a closure whose one subject cited PL-9RFP mid-sentence read as 4 commits also naming PL-9RFP
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-23
+payoff: verify's batch note fires only on a real batch, so readers keep reading it
+verify: grep -q 'def test_a_subject_citing_another_item_is_not_a_batch' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** verify's batch NOTE reads any id a commit subject mentions as a batch claim, and prints every audited commit as naming it, so a closure whose one subject cited PL-9RFP mid-sentence read as 4 commits also naming PL-9RFP
@@ -28,3 +34,20 @@ false about the diff, and a NOTE that fires on a plain citation is one that
 readers learn to skip. The likely route is to read each subject's leading ids
 and count the commits that carry one. That is `PL-4LT9`'s own case, a commit
 closing several items leading with all of them, and it stays covered.
+
+**Reproduced at triage, 2026-09-23**, in a scratch repository of four commits
+all led by `PL-AAAA`, one citing `PL-BBBB` mid-sentence:
+`verify.other_items_named` returned `('PL-BBBB',)`, and the note printed "4
+commit(s) also name PL-BBBB" where no commit leads with it.
+
+**Why it matters.** The note is advisory, but it states something false about
+the audited diff - that its paths are a batch's - and a note that fires on an
+ordinary citation trains readers to skip it, including the time it is true.
+
+**Done when.** `other_items_named` reads each subject's leading ids through
+`vcs.leading_ids` rather than any id in the text, and the note counts the
+commits that carry the other id; a batch closure led by every id, `PL-4LT9`'s
+case, is still reported.
+
+**Generator check.** One-off: `vcs.leading_ids` is already the single reading of
+which ids a subject claims, and this function predates using it.
