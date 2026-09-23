@@ -13,12 +13,27 @@ payoff: makes the slow compartments this simulator exists to teach visible on th
 
 **Problem.** The chart's percent axis is scaled by the alveolar peak, so the slow compartments are compressed into 1-2 px and two runs' fat curves cannot be told apart by pointing
 
+**Corrected 2026-09-23: the axis is not scaled by the alveolar peak.** The
+title and the line above say it is, and it was not when this was filed. Since
+`PL-CC23` (2026-09-04), `chart_axis_top_percent` in
+`src/anesthesia_sim/app/formatting.py` tops the axis at `CHART_AXIS_TOP_MAC`, three times the running agent's 1 MAC, fixed
+for the whole session and blind to every trace. The 6.00% measured below is
+3 x sevoflurane's 2.00%, and at 1 MAC the alveolar trace reaches a third of the
+way up. The compression and both consequences stand. What changes is the option
+space: the ceiling is a decided ruler, not a fitted one, with two properties an
+answer keeps or knowingly reopens. It is one ruler for every agent, which
+`PL-CC23` bought because a dial-maximum ceiling had drawn the agents at scales
+up to 1.39x apart; and it is fixed rather than fitted, for the reason the
+constant's comment carries over from the `docs/MODEL.md` paragraph that opens
+"Why the axis is fixed rather than fitted". The title is left as filed because
+`ROADMAP.md`'s two frozen lists quote it.
+
 **Found 2026-09-19 while measuring `PL-JVHL`** (the hover answering for
 whichever run is marginally nearer). That item is the symptom; this is the
 mechanism underneath it.
 
-`chart_axis_top_percent` scales the percent axis so the alveolar trace fills
-it - `axis_top_percent` came out 6.00% on every case measured, against a fat
+`chart_axis_top_percent` tops the percent axis at a fixed 3 MAC -
+`axis_top_percent` came out 6.00% on every case measured, against a fat
 trace whose whole excursion is under 0.04%. At `theme.CHART_HEIGHT` (360 px)
 that is 0.0167 %/px, so the six compartments the chart draws are not equally
 readable: alveolar spans ~90 px and fat spans **under 2 px**.
@@ -83,13 +98,32 @@ free:
    honest and unchanged. Cost: the comparison across compartments moves to the
    reader's memory between two views, which is the thing option 1 exists to
    avoid, and it is the largest build of the four.
+5. **Show what the slow compartments hold, beside what they read** (added
+   2026-09-23). Options 1-4 each re-scale one quantity, partial pressure. But
+   fat's trace near zero an hour in is its true partial pressure: its capacity
+   is large and its blood supply small, so it fills slowly while it goes on
+   taking agent up. Eger and Saidman teach uptake by drawing each tissue
+   depot's capacity, set by its volume and solubility, as an area (Eger EI II,
+   Saidman LJ. Illustrations of inhaled anesthetic uptake, including
+   intertissue diffusion to and from fat. *Anesth Analg*
+   2005;100(4):1020-1033, https://doi.org/10.1213/01.ANE.0000146961.70058.A1,
+   reached through PubMed, PMID 15781517). A tissue compartment's partial
+   pressure is already its `agent_amount_l` over its `capacity_l`
+   (`src/anesthesia_sim/core/tissue.py`), so an amount view needs no new model state, and it is
+   one shared axis on which fat is large rather than small. Cost: a second
+   quantity needs its own unit and label and must never be read as a partial
+   pressure, which is what drives effect; its unit is `PL-B396`'s open
+   question (litres of vapour against liquid millilitres); and where it is
+   drawn is a layout decision in its own right.
 
 **This is the project owner's** rather than a session's: it changes what a
 learner sees, and every option is defensible, which is the test rule 14 of
 `.claude/rules/instruction-writing.md` sets. What is *not* theirs, and should be
-in hand before they are asked, is the measurement `PL-0RZ0` owes - how much of
+in hand before they are asked, is the measurement `PL-0RZ0` owed - how much of
 the chart's hoverable area has two compartments inside one hover radius - since
-it sizes the cost of option 1.
+it sizes the cost of option 1. It is in hand: `PL-0RZ0` closed on it
+2026-09-20, with two or more compartments in reach over 37.0% of the one-run
+chart and 12.7% of 2 px moves there changing which one answers.
 
 **Done when.** The roadmap or this item records which axis treatment the chart
 takes and what the reader is told about it, and either the chart implements it
