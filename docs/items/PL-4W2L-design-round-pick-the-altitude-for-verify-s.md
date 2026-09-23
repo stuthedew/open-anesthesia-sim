@@ -3,15 +3,16 @@ id: PL-4W2L
 title: design round: pick the altitude for verify's assertion check - decided 2026-09-22 as parsed statements compared against the base, so build that, retiring the shape folds behind PL-XQGH, PL-CNJH and PL-2DTK
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: verify-false-reject
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 added: 2026-09-20
+closed: 2026-09-23
 payoff: replaces six line-level special cases with one parsed comparison against the base, which on main's history trades 6 false refusals for 9 real assertion changes the matcher missed or folded, and ends the generator that kept producing the next item
 verify: grep -q 'def test_a_parenthesized_multi_manager_with_is_an_assertion_removed' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_replacement_that_loosens_the_assertion_is_not_folded_away' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_removal_is_not_charged_to_an_id_whose_selection_excludes_the_addition' subprojects/docket/tests/test_verify.py && ! grep -q 'def replacements(' subprojects/docket/src/docket/verify.py
 root-cause-of: PL-5B88, PL-YZJD, PL-2DTK, PL-CNJH, PL-XQGH
-generator: live - PL-G21K's fix reached only the suppression check; the assertion half still infers intent from single diff lines, and PL-5B88, PL-4W2L and PL-YZJD arrived after G21K closed (PL-KVDK)
+generator: spent - the line matcher that inferred intent from single diff lines is retired: the check reads parsed statements against the base and folds nothing on the shape of an edit, so no rule remains for a next shape to slip past
 ---
 
 **Problem.** design round: pick the altitude for verify's assertion check before the next of its three open items is worked, since six fixes have each uncovered the next and PL-G21K's ratified decision reached only the suppression check beside it
@@ -244,3 +245,38 @@ case), `test_a_replacement_that_loosens_the_assertion_is_not_folded_away`
 (`PL-C4RS`'s shape, `PL-2DTK`'s); `replacements` is gone from `verify.py`; and
 the replay recorded above, re-run against the new module, refuses the 9
 commits and stops refusing the 6, or the reply explains each difference.
+
+## Built (2026-09-23)
+
+`removed_assertions` and `assertion_check` in `verify.py` are the decision as
+written: each `.py` file an item's commits touch is parsed before and after
+each commit, the forms each removed and added are folded per file, and a form
+is charged only where the base's copy holds it and only as many copies as are
+gone afterwards. The six shape helpers are gone; `is_assertion_line` reads a
+file the running interpreter cannot parse, applies the same base test to its
+lines, and the file is named on the page.
+
+**Three choices the decision left open, taken here:**
+
+- **A rename is followed**, as `git show` follows it for every other check:
+  keyed by path alone, `git mv` of a test module would charge every assertion
+  in it, a false refusal of the kind this round retired. Three test-module
+  renames sit in `main`'s history.
+- **A merge commit naming the item is read against every parent** - removed
+  is what every parent held and it does not - because against its first parent
+  alone, merging the base in charges the item with every removal the base took
+  since the fork.
+- **The report prints, per function, what left and what arrived**, and counts
+  what stayed rather than printing it. An unchanged assertion pairs with
+  itself, and a 40-assertion test would otherwise bury the one change.
+
+**The replay, re-run** over the 1,127 non-merge commits of `origin/main` at
+`e7120e23`, each against its parent, the old module imported from
+`origin/main` and the new one from this branch: **121 refused before, 124
+after, identical under Python 3.11 and 3.14.** It stops refusing the six the
+round predicted - `9123d386`, `9ab8f283`, `be403fc7`, `dfc39bfd`, `eb160b54`,
+`f5e3794f` - and starts refusing the nine - `2242daf6`, `417491fe`, `721d2088`
+(11 of `PL-MN4J`'s call sites), `74783be6`, `834eb58d`, `91f2699f`, `aff76644`,
+`ec66c397`, `efd3598c`. No difference from the recorded count to explain.
+Under 3.11, 32 of the commits read at least one file line by line, and none
+of them changed the verdict.
