@@ -6,10 +6,10 @@ effort: M
 status: needs-decision
 classes: defect, infra
 feature: carrier-detection
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, .claude/skills/docket/modes/start.md, .claude/rules/instruction-writing.md
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, tools/open_pull_requests.py, tests/unit/test_open_pull_requests.py, docket.toml, docs/ARCHITECTURE.md, .claude/skills/docket/modes/start.md, .claude/rules/instruction-writing.md
 added: 2026-09-20
 root-cause-of: PL-N2PP, PL-HX5C, PL-99YZ, PL-X3NY, PL-Q664
-generator: live - in-flight state is read only from pushed refs, so a session that has not pushed yet is invisible to flight, show, next, concurrent and the digest, and a ref whose session has ended still reads as live; on 2026-09-22 a session reported PL-0HPV unstarted while another was running it, 20 minutes before that session's first push (PL-KVDK)
+generator: live - one shape is left: a session that ends mid-work before opening a pull request leaves a branch that, for about its first hour, reads in flight as a young branch with none open, which is usually a live session; only the harness's session list separates the two, and PL-SK88 keeps docket from reading it. Every other shape of an ended session now reads as what it is
 ---
 
 **Problem.** bin/docket flight separates a live session from an abandoned branch only by commit age, which cannot fire in the first hour: PR #757 sat green and unclaimed 25 minutes after its session was archived, with its three items still reading 'do not start these again'
@@ -88,3 +88,61 @@ generator has two faces, and they want different fixes.
 - `PL-N2PP` and `PL-HX5C` meet their **Done when.** through the start rule
   above, and close out next session. `PL-99YZ` (fresh ids for one subject) is
   out of reach of any claim keyed on an id, and keeps its own count-first brief.
+
+**Second half, 2026-09-22.** Landed on `claude/clever-thompson-1sdll0`,
+leaving the verdict to decide.
+
+- Ages are elapsed time to the minute (`PL-3QM9`, closed with it). The full
+  `%cI` timestamp now reaches `Branch.last_commit` and `render._since`.
+- Every live `flight` row says whether a pull request is open on its branch,
+  and which: `pull request #757 open`, `no pull request open`, or no clause at
+  all where the forge could not be asked. `vcs.open_pull_requests` does the
+  matching and shares one request with `settled_branches`, and
+  `tools/open_pull_requests.py` now prints the number after the branch name.
+  It costs +0.50 s a run (1.15 s median against 0.65 s with `--no-remote`,
+  measured 2026-09-22).
+- "Do not start these again" is gone, from the digest and from `show`. The
+  digest line gives each in-flight item's age and says a branch outlives its
+  session. `show` says the branch already carries the item's work, so starting
+  it elsewhere redoes it, which is true of a live session, a pull request and
+  an abandoned branch alike. `flight`'s closing lines say what an age and a
+  pull request can and cannot establish, and no longer tell the reader what to
+  conclude from an age. That meets the **Done when.** above, and
+  `test_a_branch_minutes_old_carries_its_pull_request_rather_than_a_verdict`
+  drives a branch 7 minutes old.
+
+**The verdict, against the owner's test: "spent only if a ref whose session
+has ended can no longer read as someone working it."** Shape by shape:
+
+- **The session ended with a pull request open** (this item's own `#757`).
+  The row reads `pull request #757 open`, and the work waits on review. Met.
+- **It ended with every claimed item closed and no pull request** (`PL-Q664`).
+  The row moves to the settled section, which says nothing there is being
+  worked. Met.
+- **It ended mid-work days ago.** The digest and `flight` show the age, such
+  as "3 days", where the line used to be an undated order. Met.
+- **It ended mid-work before opening a pull request, under about an hour
+  ago.** The row reads as a young branch with none open, and `flight` itself
+  says that is usually a live session and that an ended one reads the same.
+  **Not met.** Nothing a checkout can read separates the two: only the
+  harness's session list can, and `PL-SK88` keeps `docket` from reading it.
+  The session-list read in rule 14 and in `start.md` is the backstop at the
+  point where the difference matters, which is starting or recommending an
+  item.
+
+So the verdict stays `live`, and the item stays open for one decision.
+
+**Decision needed.** Should that last shape count as the generator's
+documented limit, making it `spent` and closing this item? Or should the
+generator stay live until something can read session state?
+
+**Recommended: accept it as spent.** The shape is bounded in time: within
+about an hour the age exposes it. It is also bounded in direction: it withholds
+an item and never puts two sessions on one. A new finding about it would repeat
+a limit `flight` now prints about itself, not report a new defect. The only way
+to close it is a session-state read. That would be a new mechanism that no
+script can build today, because the session list is reachable only by the
+model. While the verdict stays `live`, `CLAUDE.md` keeps every new workflow
+mechanism paused on this one shape. If the answer is yes, the change is
+`bin/docket set PL-7TVT --generator "spent - ..."` plus closing this item, one
+commit.

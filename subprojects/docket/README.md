@@ -524,31 +524,40 @@ were open, startable, and hidden from every session for it. So the paths are
 read alongside the subject, from the same `git log` rather than a `git show`
 per commit, and a commit that only wrote to the queue stakes no claim.
 
-**An item whose own work *is* a queue edit is the exception, and it is read
-from the item rather than from the commit.** A release tag item, a triage pass
-and a stranded recovery all deliver nothing but a write to `docs/items/`, so
-the path test excludes the very work it was built to find. `_queue_only_work`
-asks the default branch what each edited item declares in `touches` and
-promotes the ones that never leave the queue; an item the base does not hold at
-all is a capture creating its own file, and is not promoted. Measured against
-the eight false marks above, not one declares `touches` inside the queue alone,
-so the fix costs none of them back. Measured live on 2026-09-14, `PL-XR8K` was
-being closed on a branch and appeared in no reading of the report.
+**Three exceptions, each read from the item rather than from the commit, and
+all three from one shape of commit.** The walk records a queue-only commit that
+leads with an id *and* changes that id's own file, and `_own_edit_claims`
+promotes it where the item says the queue edit is the work. The conjunction is
+what keeps out the other items a pass writes: until 2026-09-22 the first
+exception below was read off any edit to an item's file, so `PL-0HPV`'s
+`verify:` reorder, led by `PL-0HPV`, claimed four queue-only items it merely
+passed through, none of them named by any subject, until its pull request
+merged (`PL-3W3P`). `flight` and `precedence` read the same three through the
+same helper, so the verdict `show` prints names every carrier the mark does.
 
-**An item at `needs-decision` is the second exception, read the same way.**
-Its next step is a decision, and a decision is recorded into the item file, so
-a design round can run its whole course without a diff outside the queue — and
-on this project it often does, because implementing the decision is separate
-work. Observed 2026-09-19: `PL-BHVM`, the top of the whole queue, had three
-commits pushed with every subject led by the id and a live session on the
-branch, and `show` called it startable; the mark appeared only when the round
-happened to edit `ROADMAP.md`. So the walk records a queue-only commit that
-leads with an id *and* changes that id's own file, and `_deciding_on_base`
-promotes it where the default branch holds the item at `needs-decision`
-(`PL-VYSP`). The conjunction is deliberate: a round re-points its cluster,
-writing a dozen other items' files, and those stay file edits rather than
-becoming claims on items other sessions may be working. Counted before it was
-adopted, over the 1,006 commits then on `origin/main`: the rule the item itself
+**An item whose own work *is* a queue edit is the first.** A release tag item,
+a triage pass and a stranded recovery all deliver nothing but a write to
+`docs/items/`, so the path test excludes the very work it was built to find.
+`_queue_only_work` asks the default branch what the item declares in `touches`
+and promotes it where that never leaves the queue; an item the base does not
+hold at all is a capture creating its own file, and is not promoted. Measured
+against the eight false marks above, not one declares `touches` inside the
+queue alone, so the fix costs none of them back. Measured live on 2026-09-14,
+`PL-XR8K` was being closed on a branch and appeared in no reading of the report.
+
+**An item at `needs-decision` is the second.** Its next step is a decision,
+and a decision is recorded into the item file, so a design round can run its
+whole course without a diff outside the queue — and on this project it often
+does, because implementing the decision is separate work. Observed 2026-09-19:
+`PL-BHVM`, the top of the whole queue, had three commits pushed with every
+subject led by the id and a live session on the branch, and `show` called it
+startable; the mark appeared only when the round happened to edit
+`ROADMAP.md`. So `_deciding_on_base` promotes the shape where the default
+branch holds the item at `needs-decision` (`PL-VYSP`). The conjunction is
+deliberate: a round re-points its cluster, writing a dozen other items' files,
+and those stay file edits rather than becoming claims on items other sessions
+may be working. Counted before it was adopted, over the 1,006 commits then on
+`origin/main`: the rule the item itself
 proposed — any queue-only commit changing the leading id's own file — would
 have marked 316 (commit, id) pairs, 81 of them captures creating the file and
 120 more triage passes; the status test left 23, of which 21 were the item's
@@ -558,11 +567,24 @@ route and was triaged to `needs-decision` there leaves a branch that also leads
 with the id and changes its own file, so the commit's own parent is asked
 whether it held the file — a round writes into a file that exists, a capture
 creates one. Three such branches, all eleven days old, were promoted the first
-time the status test ran live. `precedence` reads the same commits under the
-same two tests, so two design rounds on one item get a verdict.
+time the status test ran live. Two design rounds on one item therefore get a
+verdict.
+
+**An item the branch closes while the default branch holds it open is the
+third.** A grooming pass disposes of items it never claimed: `#914` dropped
+`PL-027`, `PL-043` and `PL-ZBR6` in queue-only commits leading with each id,
+and `docket next` went on offering all three, to sessions that would have
+started work another had already decided to drop (`PL-8FJK`). The branch's
+*tip* is read rather than the commit, so a branch that dropped an item and then
+reopened it claims nothing, and a closure the base already records - after the
+squash, or by another route - is not open to be closed. The one thing it cannot
+see is a closure under a subject that does not lead with the closed id: that
+stays a file edit, because reading a closure off any edit is `PL-3W3P` again,
+and `CLAUDE.md` already requires a closing commit to lead with every id it
+closes.
 
 **A claim on an item the default branch has no copy of is kept, and worded
-differently.** This is the opposite direction from the two exceptions above,
+differently.** This is the opposite direction from the three exceptions above,
 and the only one measurement refused outright. A capture commit that also
 reaches past the queue claims the ids it merely filed — `CLAUDE.md` requires
 the leading id and requires the capture, so the collision comes of keeping the
@@ -637,9 +659,32 @@ the whole read exists to prevent.
 **The age is reported, not thresholded.** "Has an unmerged branch" and "is being
 worked right now" are different claims and no timeout separates them: a branch
 touched an hour ago is a live session, and the same branch three weeks later is
-work nobody will merge. So each line carries the date of the branch's last
-unmerged commit and the reader decides, the way `stranded` reports rather than
-decides.
+work nobody will merge. So each line carries how long ago the branch's last
+unmerged commit was made and the reader decides, the way `stranded` reports
+rather than decides.
+
+**It is elapsed time, told to the minute.** The age used to be the difference of
+two calendar dates, which counts midnights rather than time: a branch committed
+55 minutes before a read at 00:29 reported "last commit 1 day ago", reading a
+live session as abandoned work (`PL-3QM9`). It is now the commit's full
+timestamp subtracted from the clock, in minutes under an hour, hours under a
+day and days beyond, each rounded down so a branch never reads older than it
+is. `--now` fixes the clock for a test; `--today` alone is read as the last
+instant of that day, which ages every earlier commit by the whole days it
+always did.
+
+**And each line says whether a pull request is open on the branch**, because a
+branch outlives its session and an age alone cannot fire in the first hour. PR
+`#757` sat green for 25 minutes after its session was archived while its three
+items read as somebody's work (`PL-7TVT`). With a pull request open the work is
+written and waits on review, whatever became of the session; with none, a
+young branch is usually a live session, and one whose session ended reads the
+same until its age grows - the report says so in those words rather than
+telling the reader what an age means. Nothing a checkout can read closes that
+last gap. The session-start digest carries each in-flight item's age too, and
+no longer ends "do not start these again", which presumed a session behind
+every branch; `show` says the branch already carries the item's work, which is
+true of a live session, a pull request and an abandoned branch alike.
 
 **Except for one case the age does not decide.** A branch whose every claimed
 item is closed *in its own copy* and which nobody has a pull request open on is
@@ -656,15 +701,16 @@ session still working — which is why neither is read on its own.
 It changes what a reader is told and never what is in flight. The ids stay
 excluded from `docket next`, because the work exists on a branch and offering
 it again would have a second session redo what is already written. What moves
-is the row: out of the list whose closing line says the age is what separates a
-live session from abandoned work, and into one that says plainly that nothing
+is the row: out of the list whose closing lines say what an age and a pull
+request can and cannot establish, and into one that says plainly that nothing
 there is being worked.
 
 **The package does not ask the forge, and will not learn how.** It answers from
 a bare checkout with no network and knows nothing about GitHub; which forge a
 project uses is not a fact about its queue. So the caller passes a way to ask —
 `open_pull_requests_command` in `docket.toml`, a command printing one branch
-name per line — and the contract is its exit status: zero means it looked, and
+name per line, optionally followed by the pull request's number — and the
+contract is its exit status: zero means it looked, and
 non-zero with nothing on stdout means it could not. The two must never arrive
 as the same empty answer, because "could not look" read as "nothing is open"
 would announce that finished work has stalled on every branch waiting on
@@ -674,12 +720,14 @@ item closed, and no pull request is open for it" when the forge answered,
 A project configuring no command gets the second reading, and `flight
 --no-remote` asks for it.
 
-**The cheap half decides whether the expensive one runs.** The command is a
-callable rather than an answer, and it is invoked only where reading the
-branches' own item files found something to ask about — which on a normal day
-is nothing, so `docket flight` reaches the network on no run at all until a
-branch actually finishes. Measured on this repository 2026-09-21: 0.70 s with
-the lookup configured and 0.70 s with `--no-remote`.
+**The forge is asked once per run, wherever a branch carries anything.** It was
+asked only where a branch had finished, which kept `docket flight` off the
+network on a normal day; the pull-request clause on every live row (`PL-7TVT`)
+needs the answer on every run with a row in it, and the settled reading and the
+rows share the one request. Measured on this repository 2026-09-22: 1.15 s
+median with the lookup configured and 0.65 s with `--no-remote`. A report with
+no row asks nothing, and every way the request fails is a row printed without
+the clause, under a line saying it could not be read.
 
 Every silence fails toward the live reading. A ref whose commits went unread,
 an item whose file the ref does not hold, a `git show` that came back empty:

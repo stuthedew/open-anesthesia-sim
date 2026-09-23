@@ -410,7 +410,8 @@ workflow_paths = [
 #
 # The script exits non-zero and prints nothing when it could not look, which is
 # what lets `flight` say "every item closed" alone rather than claiming nothing
-# is open. `flight --no-remote` skips it outright.
+# is open, and print a row without its pull-request clause rather than "none
+# open". `flight --no-remote` skips it outright.
 open_pull_requests_command = "python3 tools/open_pull_requests.py"
 
 version_file = "pyproject.toml"

@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Mapping
-from datetime import date
+from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
+
+import pytest
 
 from docket.checks import Report
 from docket.vcs import (
@@ -23,9 +25,11 @@ from docket.vcs import (
     BranchState,
     FlightFiles,
     FlightReport,
+    OpenPullRequests,
     OrphanedBranch,
     OrphanedReport,
     RewriteReport,
+    Runner,
     SettledBranch,
     SettledReport,
     StrandedItem,
@@ -46,6 +50,7 @@ from docket.vcs import (
     files_in_flight,
     lost,
     merged_pull_requests,
+    open_pull_requests,
     orphaned,
     precedence,
     records_on_base,
@@ -134,6 +139,7 @@ def _runner(
     same_as_base: tuple[str | tuple[str, str], ...] = (),
     statuses: dict[str, str] | None = None,
     created: tuple[str | tuple[str, str], ...] = (),
+    tip_statuses: dict[str, dict[str, str]] | None = None,
 ):
     """A git that holds `refs`, with `commits` mapping a ref to (day, subject).
 
@@ -188,6 +194,11 @@ def _runner(
     `(commit, id)` rather than `id` pins that to one commit, which is what
     tells a stale capture on a bystander branch from a live round on the same
     item (`PL-61MD`).
+
+    `tip_statuses` maps a ref to the `status` its own tip's copy of an item
+    carries, for the reading that promotes a branch closing an item the base
+    holds open (`PL-8FJK`). A ref or id left out answers with the base's copy,
+    which is what every test written before that reading meant by a ref's copy.
 
     `took` names the ids the base's own commit subjects lead with since the
     fork point - each as the id alone, or as `(identifier, day)` for a test
@@ -275,10 +286,18 @@ def _runner(
         if args[0] == "show":
             # `git show <base>:<path>`, which is how the closure is read off the
             # base rather than off this checkout.
-            wanted = args[-1].split(":", 1)[-1]
+            revision, _, wanted = args[-1].partition(":")
             # The id is the first two dash-separated pieces of the basename
             # (`PL-GVXP-shipped.md`), not the first one.
             identifier = "-".join(wanted.rsplit("/", 1)[-1].split("-")[:2])
+            tip = (tip_statuses or {}).get(revision, {})
+            if identifier in tip:
+                # `git show <ref>:<path>`, the branch's own copy, which is what
+                # a closure is read from rather than the commit that made it.
+                return (
+                    f"---\nid: {identifier}\ntitle: groomed\nstatus: {tip[identifier]}\n"
+                    "---\n\nOn the branch.\n"
+                )
             declared = (base_items or {}).get(identifier)
             status = (statuses or {}).get(identifier, "done" if identifier in closed else "ready")
             if declared is not None or identifier in (statuses or {}):
@@ -405,6 +424,7 @@ def _report(
     same_as_base: tuple[str | tuple[str, str], ...] = (),
     statuses: dict[str, str] | None = None,
     created: tuple[str | tuple[str, str], ...] = (),
+    tip_statuses: dict[str, dict[str, str]] | None = None,
 ) -> FlightReport:
     """The whole report, for the tests reading the file edits beside the work.
 
@@ -429,6 +449,7 @@ def _report(
         same_as_base=same_as_base,
         statuses=statuses,
         created=created,
+        tip_statuses=tip_statuses,
     )
     return branches_in_flight(ROOT, runner=runner)
 
@@ -674,11 +695,12 @@ def test_an_item_whose_whole_deliverable_is_a_queue_edit_is_work_after_all() -> 
     the work rather than a note about it. Observed live on 2026-09-14:
     `origin/claude/loving-ride-mo6njm` held one commit closing `PL-XR8K`, whose
     `touches` is `docs/items/`, and `flight` reported the branch not at all
-    while a session was working it.
+    while a session was working it. The subject leads with the item it wrote,
+    which the promotion asks for since `PL-3W3P`.
     """
     report = _report(
         [HARNESS],
-        commits={HARNESS: [("2026-09-14", "PL-XR8K: close the tag item", "c1", QUEUE_ONLY)]},
+        commits={HARNESS: [("2026-09-14", "PL-K7QX: close the tag item", "c1", QUEUE_ONLY)]},
         base_items={"PL-K7QX": "docs/items/"},
     )
 
@@ -878,6 +900,112 @@ def test_a_round_that_renames_the_item_file_still_claims_it() -> None:
     )
 
     assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
+
+
+def test_a_queue_only_item_s_file_edited_under_another_id_is_not_claimed() -> None:
+    """The first promotion reads the subject-led shape the others do (`PL-3W3P`).
+
+    `PL-0HPV`'s `verify:` reorder, led by `PL-0HPV`, rewrote 96 item files, and
+    `flight` reported `PL-LBW5`, `PL-RWBV`, `PL-YVV4` and `PL-YZKK` in flight
+    until its pull request merged: each declares `touches: docs/items` and no
+    subject named any of them. The promotion was fed from every edit to an
+    item's file; the edit is still a file edit, which is all it ever was.
+    """
+    subject = "PL-0HPV: reorder 96 verify: commands cheap-clause-first"
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-22", subject, "c1", QUEUE_ONLY)]},
+        base_items={"PL-K7QX": "docs/items/"},
+    )
+
+    assert report.branches == ()
+    assert [edit.item_id for edit in report.editing] == ["PL-K7QX"]
+
+
+GROOMING = "origin/claude/oldest-items-relevance-a0awgl"
+
+
+def test_a_branch_closing_an_item_the_base_holds_open_is_in_flight() -> None:
+    """The third shape of queue-only work, recovered (`PL-8FJK`).
+
+    A grooming pass closes items it never claimed. `#914` dropped `PL-027`,
+    `PL-043` and `PL-ZBR6` in queue-only commits leading with each id, and
+    `docket next` went on offering all three - `docket next --oldest` hands the
+    oldest items out first, and those are the ones such a pass targets. The
+    branch's copy closed while the base's is open is what tells it from a note.
+    """
+    subject = "PL-9Z9Z, PL-K7QX: groom the ten oldest open items against the tree"
+    report = _report(
+        [GROOMING],
+        commits={GROOMING: [("2026-09-22", subject, "c1", QUEUE_ONLY)]},
+        statuses={"PL-K7QX": "ready"},
+        tip_statuses={GROOMING: {"PL-K7QX": "dropped"}},
+    )
+
+    assert [(b.item_id, b.name) for b in report.branches] == [("PL-K7QX", GROOMING)]
+    assert report.editing == (), "promoted to the stronger mark, never reported as both"
+
+
+def test_a_closure_under_another_id_s_subject_stays_a_file_edit() -> None:
+    """The limit the promotion states: the subject has to lead with the closed id.
+
+    `CLAUDE.md` requires a closing commit to lead with every id it closes, so
+    this is that rule not being kept - and reading a closure off any edit to
+    the file instead is `PL-3W3P`'s false claim arriving by the other door.
+    """
+    report = _report(
+        [GROOMING],
+        commits={GROOMING: [("2026-09-22", "PL-9Z9Z: groom the oldest", "c1", QUEUE_ONLY)]},
+        statuses={"PL-K7QX": "ready"},
+        tip_statuses={GROOMING: {"PL-K7QX": "dropped"}},
+    )
+
+    assert report.branches == ()
+    assert [edit.item_id for edit in report.editing] == ["PL-K7QX"]
+
+
+def test_a_closure_the_base_already_holds_is_not_a_claim() -> None:
+    """Once the pass merges, nothing is in flight however long its ref survives.
+
+    After the squash the two tips agree and `_superseded` clears the edit
+    before any promotion is asked. Where the base closed the item some other
+    way and the two copies still differ, its own status answers: an item the
+    base already records closed is not open to be closed.
+    """
+    commits = {GROOMING: [("2026-09-22", "PL-K7QX: drop it", "c1", QUEUE_ONLY)]}
+    closing = {GROOMING: {"PL-K7QX": "dropped"}}
+    squashed = _report(
+        [GROOMING], commits=commits, closed=("PL-K7QX",), tip_statuses=closing, tips={GROOMING: {}}
+    )
+    elsewhere = _report([GROOMING], commits=commits, closed=("PL-K7QX",), tip_statuses=closing)
+
+    assert squashed.branches == ()
+    assert squashed.editing == ()
+    assert elsewhere.branches == ()
+
+
+def test_a_branch_that_closed_an_item_and_reopened_it_claims_nothing() -> None:
+    """The tip is read rather than the commit, so a change of mind is not a claim.
+
+    The reopening commit leads with another id, so the closing commit is still
+    the newest one the promotion's shape records - and its own copy says
+    `dropped`. Only the tip says what the branch would land.
+    """
+    reopen = "PL-9Z9Z: reopen PL-K7QX, whose premise holds after all"
+    report = _report(
+        [GROOMING],
+        commits={
+            GROOMING: [
+                ("2026-09-22T11:00:00+00:00", reopen, "c2", QUEUE_ONLY),
+                ("2026-09-22T10:00:00+00:00", "PL-K7QX: drop it", "c1", QUEUE_ONLY),
+            ]
+        },
+        statuses={"PL-K7QX": "ready"},
+        tip_statuses={GROOMING: {"PL-K7QX": "ready"}, "c1": {"PL-K7QX": "dropped"}},
+    )
+
+    assert report.branches == ()
+    assert [edit.item_id for edit in report.editing] == ["PL-K7QX"]
 
 
 def test_a_commit_reaching_past_the_queue_is_work() -> None:
@@ -1666,7 +1794,7 @@ def test_a_file_edit_carries_the_date_the_branch_last_moved() -> None:
         [HARNESS], commits={HARNESS: [("2026-09-03", "PL-K7QX: triage it", "c1", QUEUE_ONLY)]}
     )
 
-    assert report.editing[0].last_commit == date(2026, 9, 3)
+    assert report.editing[0].last_commit == datetime(2026, 9, 3, tzinfo=UTC)
 
 
 def test_a_ref_whose_walk_ran_off_the_end_contributes_no_file_edits() -> None:
@@ -1724,7 +1852,7 @@ def test_the_last_commit_is_dated_so_a_stale_branch_can_be_told_apart() -> None:
         },
     )
 
-    assert [b.last_commit for b in found] == [date(2026, 8, 30)]
+    assert [b.last_commit for b in found] == [datetime(2026, 8, 30, tzinfo=UTC)]
 
 
 def test_a_branch_with_no_commits_of_its_own_is_dated_not_guessed() -> None:
@@ -2530,7 +2658,7 @@ def test_flight_names_a_ref_that_contributes_by_name_in_both_halves() -> None:
     report = branches_in_flight(
         ROOT, runner=_runner([NAMED_UNREADABLE], unrelated=(NAMED_UNREADABLE,))
     )
-    printed = format_flight(report, date(2026, 8, 31))
+    printed = format_flight(report, datetime(2026, 8, 31, tzinfo=UTC))
 
     assert f"PL-K7QX  {NAMED_UNREADABLE}" in printed
     assert "no commit of its own this checkout can read" in printed
@@ -2615,7 +2743,7 @@ def test_flight_names_an_unattributed_ref_and_says_no_guard_can_see_it() -> None
     from docket.render import format_flight
 
     report = _report([UNNAMED], commits={UNNAMED: [("1", "Added review articles on math models")]})
-    printed = format_flight(report, date(2026, 8, 31))
+    printed = format_flight(report, datetime(2026, 8, 31, tzinfo=UTC))
 
     assert "1 ref carries no item id" in printed
     assert "no guard in this repository can see it" in printed
@@ -3963,9 +4091,20 @@ def _precedence(
     ran_out: tuple[str, ...] = (),
     statuses: dict[str, str] | None = None,
     created: tuple[str | tuple[str, str], ...] = (),
+    base_items: dict[str, str] | None = None,
+    tip_statuses: dict[str, dict[str, str]] | None = None,
+    tips: dict[str, dict[str, tuple[str, str]]] | None = None,
 ):
     runner = _runner(
-        refs, commits=commits, head=head, ran_out=ran_out, statuses=statuses, created=created
+        refs,
+        commits=commits,
+        head=head,
+        ran_out=ran_out,
+        statuses=statuses,
+        created=created,
+        base_items=base_items,
+        tip_statuses=tip_statuses,
+        tips=tips,
     )
     return precedence(ROOT, item, runner=runner)
 
@@ -4052,6 +4191,48 @@ def test_precedence_still_ignores_a_queue_only_commit_on_a_ready_item() -> None:
         [annotating],
         {annotating: [("2026-09-19T04:05:00+00:00", "PL-K7QX: triage", "ccc3333", QUEUE_ONLY)]},
         statuses={"PL-K7QX": "ready"},
+    )
+
+    assert order.carriers == ()
+
+
+def test_precedence_names_the_carrier_every_own_edit_promotion_marks() -> None:
+    """`show` prints the in-flight mark through this verdict, so the two reads must agree.
+
+    All three promotions go through `_own_edit_claims` in both readers. Before
+    they did, an item promoted for its queue-only `touches` (`PL-7790`) had no
+    carrier here, and `show` printed its mark as nothing at all; a branch
+    closing an item (`PL-8FJK`) would have gone the same way.
+    """
+    commit = ("2026-09-22T10:00:00+00:00", "PL-K7QX: groom it", "eee5555", QUEUE_ONLY)
+    shapes = {
+        "its work is the queue": _runner(
+            [GROOMING], commits={GROOMING: [commit]}, base_items={"PL-K7QX": "docs/items/"}
+        ),
+        "a design round": _runner(
+            [GROOMING], commits={GROOMING: [commit]}, statuses={"PL-K7QX": "needs-decision"}
+        ),
+        "a closure": _runner(
+            [GROOMING],
+            commits={GROOMING: [commit]},
+            statuses={"PL-K7QX": "ready"},
+            tip_statuses={GROOMING: {"PL-K7QX": "dropped"}},
+        ),
+    }
+    for shape, runner in shapes.items():
+        flight = branches_in_flight(ROOT, runner=runner)
+        order = precedence(ROOT, "PL-K7QX", runner=runner)
+
+        assert [branch.name for branch in flight.branches] == [GROOMING], shape
+        assert [carrier.ref for carrier in order.carriers] == [GROOMING], shape
+
+
+def test_precedence_does_not_make_a_carrier_of_a_round_the_base_already_holds() -> None:
+    """The supersession test the mark applies, so a landed round is nobody's rival."""
+    landed = "origin/claude/round-one-abcdef"
+    round_ = ("2026-09-19T04:05:00+00:00", "PL-K7QX: record the round", "aaa1111", QUEUE_ONLY)
+    order = _precedence(
+        [landed], {landed: [round_]}, statuses={"PL-K7QX": "needs-decision"}, tips={landed: {}}
     )
 
     assert order.carriers == ()
@@ -5459,15 +5640,16 @@ def test_the_digest_sends_an_unlanded_claim_to_stranded_rather_than_refusing_it(
 
     lines = _digest(flight=flight).splitlines()
 
-    refused = [line for line in lines if "do not start these again" in line]
-    assert len(refused) == 1
-    assert "PL-K7QX" in refused[0]
-    assert "PL-3CTW" not in refused[0]
+    carried = [line for line in lines if "In flight on a branch" in line]
+    assert len(carried) == 1
+    assert "PL-K7QX" in carried[0]
+    assert "PL-3CTW" not in carried[0]
 
     named = [line for line in lines if "PL-3CTW" in line]
     assert named
-    assert all("do not start" not in line for line in named)
+    assert all("In flight on a branch" not in line for line in named)
     assert any("bin/docket stranded" in line for line in named)
+    assert not any("do not start" in line for line in lines)
 
 
 def test_flight_marks_a_claim_whose_item_the_base_does_not_hold() -> None:
@@ -5482,7 +5664,7 @@ def test_flight_marks_a_claim_whose_item_the_base_does_not_hold() -> None:
         base="origin/main",
     )
 
-    lines = format_flight(report, date(2026, 9, 19)).splitlines()
+    lines = format_flight(report, datetime(2026, 9, 19, tzinfo=UTC)).splitlines()
 
     assert "filed there" in next(line for line in lines if "PL-3CTW" in line)
     assert "filed there" not in next(line for line in lines if "PL-K7QX" in line)
@@ -5532,7 +5714,9 @@ def _carrying(*branches: Branch, unreadable: tuple[str, ...] = ()) -> FlightRepo
 
 
 def test_a_branch_whose_items_are_all_closed_is_not_live_work() -> None:
-    report = _carrying(Branch("origin/claude/finished", "PL-NB35", date(2026, 9, 13)))
+    report = _carrying(
+        Branch("origin/claude/finished", "PL-NB35", datetime(2026, 9, 13, tzinfo=UTC))
+    )
     settled = settled_branches(
         ROOT,
         report,
@@ -5542,7 +5726,7 @@ def test_a_branch_whose_items_are_all_closed_is_not_live_work() -> None:
     )
     assert [entry.name for entry in settled.branches] == ["origin/claude/finished"]
     assert settled.branches[0].item_ids == ("PL-NB35",)
-    assert settled.branches[0].last_commit == date(2026, 9, 13)
+    assert settled.branches[0].last_commit == datetime(2026, 9, 13, tzinfo=UTC)
     assert settled.asked
     # The item stays in flight: the work exists on a branch, and offering it
     # again would have a second session redo what is already written.
@@ -5681,13 +5865,17 @@ def test_a_settled_branch_is_named_apart_from_the_live_ones() -> None:
     from docket.render import format_flight
 
     report = _carrying(
-        Branch("origin/claude/finished", "PL-NB35", date(2026, 9, 13)),
-        Branch("origin/claude/working", "PL-VV16", date(2026, 9, 21)),
+        Branch("origin/claude/finished", "PL-NB35", datetime(2026, 9, 13, tzinfo=UTC)),
+        Branch("origin/claude/working", "PL-VV16", datetime(2026, 9, 21, tzinfo=UTC)),
     )
     settled = SettledReport(
-        branches=(SettledBranch("origin/claude/finished", ("PL-NB35",), date(2026, 9, 13)),)
+        branches=(
+            SettledBranch(
+                "origin/claude/finished", ("PL-NB35",), datetime(2026, 9, 13, tzinfo=UTC)
+            ),
+        )
     )
-    printed = format_flight(report, date(2026, 9, 21), settled)
+    printed = format_flight(report, datetime(2026, 9, 21, tzinfo=UTC), settled)
     live, _, finished = printed.partition("On 1 branch every item it carries is already closed")
     assert "origin/claude/working" in live
     assert "origin/claude/finished" not in live
@@ -5703,10 +5891,14 @@ def test_an_unasked_reading_says_a_pull_request_may_be_open() -> None:
     from docket.render import format_flight
 
     printed = format_flight(
-        _carrying(Branch("origin/claude/finished", "PL-NB35", date(2026, 9, 13))),
-        date(2026, 9, 21),
+        _carrying(Branch("origin/claude/finished", "PL-NB35", datetime(2026, 9, 13, tzinfo=UTC))),
+        datetime(2026, 9, 21, tzinfo=UTC),
         SettledReport(
-            branches=(SettledBranch("origin/claude/finished", ("PL-NB35",), date(2026, 9, 13)),),
+            branches=(
+                SettledBranch(
+                    "origin/claude/finished", ("PL-NB35",), datetime(2026, 9, 13, tzinfo=UTC)
+                ),
+            ),
             asked=False,
         ),
     )
@@ -5720,11 +5912,156 @@ def test_a_report_whose_every_branch_has_finished_says_so_rather_than_nothing() 
     from docket.render import format_flight
 
     printed = format_flight(
-        _carrying(Branch("origin/claude/finished", "PL-NB35", date(2026, 9, 13))),
-        date(2026, 9, 21),
+        _carrying(Branch("origin/claude/finished", "PL-NB35", datetime(2026, 9, 13, tzinfo=UTC))),
+        datetime(2026, 9, 21, tzinfo=UTC),
         SettledReport(
-            branches=(SettledBranch("origin/claude/finished", ("PL-NB35",), date(2026, 9, 13)),)
+            branches=(
+                SettledBranch(
+                    "origin/claude/finished", ("PL-NB35",), datetime(2026, 9, 13, tzinfo=UTC)
+                ),
+            )
         ),
     )
     assert "No branch claims an item" not in printed
     assert "No branch is carrying an item anybody is still working." in printed
+
+
+#: The instant `PL-3QM9` was observed at, which every age below is read from.
+READ_AT = datetime(2026, 9, 21, 0, 29, tzinfo=UTC)
+
+
+def _row_aged(last_commit: datetime | None, reviews: OpenPullRequests | None = None) -> str:
+    """The one row `flight` prints for a branch whose last commit is `last_commit`."""
+    from docket.render import format_flight
+
+    report = _carrying(Branch("origin/claude/working", "PL-VV16", last_commit))
+    return format_flight(report, READ_AT, None, reviews).splitlines()[2]
+
+
+@pytest.mark.parametrize(
+    ("elapsed", "said"),
+    [
+        (timedelta(seconds=30), "last commit under a minute ago"),
+        # Two clocks disagree by seconds, and a session's own commit read back a
+        # moment later is not a clock fault.
+        (timedelta(seconds=-30), "last commit under a minute ago"),
+        (timedelta(minutes=1), "last commit 1 minute ago"),
+        (timedelta(minutes=59, seconds=59), "last commit 59 minutes ago"),
+        (timedelta(hours=1), "last commit 1 hour ago"),
+        (timedelta(hours=23, minutes=59), "last commit 23 hours ago"),
+        (timedelta(hours=24), "last commit 1 day ago"),
+        (timedelta(days=3, hours=23), "last commit 3 days ago"),
+    ],
+)
+def test_an_age_is_elapsed_time_in_the_unit_its_size_calls_for(
+    elapsed: timedelta, said: str
+) -> None:
+    """Rounded down at every boundary, which reads a branch younger rather than older."""
+    assert _row_aged(READ_AT - elapsed).endswith(said)
+
+
+def test_a_commit_across_midnight_is_aged_by_the_clock_not_the_calendar() -> None:
+    """`PL-3QM9`: 54 minutes before the read, and the day before it."""
+    row = _row_aged(datetime(2026, 9, 20, 23, 34, 46, tzinfo=UTC))
+    assert row.endswith("last commit 54 minutes ago")
+
+
+def test_an_age_is_measured_across_offsets_as_one_instant() -> None:
+    """Two sessions can be in two zones; the subtraction must not care."""
+    minus_five = timezone(timedelta(hours=-5))
+    row = _row_aged(datetime(2026, 9, 20, 19, 19, tzinfo=minus_five))
+    assert row.endswith("last commit 10 minutes ago")
+
+
+def test_a_commit_dated_after_now_says_a_clock_is_wrong_rather_than_giving_an_age() -> None:
+    row = _row_aged(READ_AT + timedelta(minutes=5))
+    assert row.endswith("last commit dated later than now - one of the two clocks is wrong")
+
+
+def test_a_row_says_which_pull_request_is_open_on_its_branch() -> None:
+    minutes_old = READ_AT - timedelta(minutes=7)
+    asked = OpenPullRequests(numbers={"origin/claude/working": 757}, asked=True)
+    unnumbered = OpenPullRequests(numbers={"origin/claude/working": None}, asked=True)
+    none_open = OpenPullRequests(asked=True)
+
+    assert _row_aged(minutes_old, asked).endswith(
+        "last commit 7 minutes ago  pull request #757 open"
+    )
+    assert _row_aged(minutes_old, unnumbered).endswith("pull request open")
+    assert _row_aged(minutes_old, none_open).endswith("no pull request open")
+    # Not asked is not "none open": the row carries no clause at all.
+    assert _row_aged(minutes_old, OpenPullRequests()).endswith("last commit 7 minutes ago")
+
+
+def test_the_digest_says_how_long_each_branch_has_sat_rather_than_forbidding_it() -> None:
+    """`PL-7TVT`: "do not start these again" presumed a session behind every branch."""
+    from docket.render import format_digest
+
+    flight = FlightReport(
+        branches=(
+            Branch("origin/claude/old", "PL-3CTW", READ_AT - timedelta(days=3, hours=2)),
+            Branch("origin/claude/new", "PL-K7QX", READ_AT - timedelta(minutes=7)),
+        ),
+        base=BASE,
+    )
+
+    lines = format_digest(_store(), flight, now=READ_AT).splitlines()
+
+    line = next(line for line in lines if "In flight on a branch" in line)
+    assert "by time since its last commit: PL-3CTW 3 days, PL-K7QX 7 minutes." in line
+    assert "not proof anybody is on it" in line
+    assert "`bin/docket flight` adds each one's pull request" in line
+    assert not any("do not start" in line for line in lines)
+
+
+def _remotes_only(*remotes: str) -> Runner:
+    """A git that knows these remotes and nothing else, which is all the match reads."""
+
+    def run(args: list[str], root: Path) -> str:
+        return "\n".join(remotes) if args[:1] == ["remote"] else ""
+
+    return run
+
+
+def test_a_tracking_ref_is_matched_to_the_branch_its_pull_request_names() -> None:
+    report = _carrying(
+        Branch("origin/claude/reviewing", "PL-NB35"), Branch("origin/claude/typing", "PL-VV16")
+    )
+
+    found = open_pull_requests(
+        ROOT, report, opened=lambda: {"claude/reviewing": 757}, runner=_remotes_only("origin")
+    )
+
+    assert found.asked
+    assert found.known
+    assert dict(found.numbers) == {"origin/claude/reviewing": 757}
+
+
+def test_a_forge_that_could_not_be_asked_is_not_read_as_none_open() -> None:
+    report = _carrying(Branch("origin/claude/typing", "PL-VV16"))
+
+    unasked = open_pull_requests(ROOT, report, runner=_remotes_only("origin"))
+    refused = open_pull_requests(ROOT, report, opened=lambda: None, runner=_remotes_only("origin"))
+
+    for reading in (unasked, refused):
+        assert not reading.asked
+        assert not reading.known
+
+
+def test_the_forge_is_not_asked_when_no_branch_is_carrying_anything() -> None:
+    def opened() -> dict[str, int | None]:
+        raise AssertionError("asked the forge about nothing")
+
+    assert not open_pull_requests(ROOT, _carrying(), opened=opened).asked
+
+
+def test_unread_remotes_decline_rather_than_reading_every_branch_as_none_open() -> None:
+    report = _carrying(Branch("origin/claude/reviewing", "PL-NB35"))
+
+    def silent(args: list[str], root: Path) -> str:
+        return SILENT
+
+    found = open_pull_requests(ROOT, report, opened=lambda: {"claude/reviewing": 1}, runner=silent)
+
+    assert not found.asked
+    assert found.declined

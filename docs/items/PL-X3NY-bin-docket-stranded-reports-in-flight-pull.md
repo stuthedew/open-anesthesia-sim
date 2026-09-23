@@ -3,10 +3,11 @@ id: PL-X3NY
 title: bin/docket stranded reports in-flight pull-request work and abandoned-branch work identically because it reasons from refs alone, where the GitHub API can classify the two - so the reader re-derives every session what one API read would settle
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect, infra
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-19
+verify: grep -q 'def test_stranded_names_a_branch_with_a_pull_request_open_apart_from_one_behind' subprojects/docket/tests/test_cli.py && uv run pytest -q subprojects/docket/tests/test_cli.py -k stranded_names_a_branch_with_a_pull_request_open
 ---
 
 **Problem.** `cmd_stranded` states its own limit deliberately, and the limit is
@@ -140,3 +141,26 @@ it could not classify rather than by guessing; the recovery advice is printed
 only for the category it is safe for; and `cmd_orphaned`, which has the same
 two-category problem for non-item files, is either covered in the same pass or
 recorded as out of scope with the reason.
+
+**Decided 2026-09-22, at the project owner's request, by `PL-7TVT`'s
+second-half session: route 1, through the command `flight` already runs.** The
+premise that moved this to `needs-decision` - that the API would make
+`bin/docket` a network client for the first time - stopped holding when
+`PL-Q664` added `open_pull_requests_command`: the package still knows nothing
+about GitHub and asks a command `docket.toml` names, and since `PL-7TVT` `flight`
+asks it on every run that has a row, printing each branch's pull request by
+number. So the cost route 1 was priced at is already paid, and routes 2 and 3
+now buy less for more.
+
+What to build: `bin/docket stranded` asks the same command once and splits its
+branches - **pull request open** (named with its number, left out of the
+recovery advice, because recovering in-flight work is `PL-XLQ5`'s overwrite),
+**none open** (the recovery advice, as today), and **unasked** (no command, no
+token, `--no-fetch`, or a failure: one bucket saying it could not classify,
+never read as "none open"). Reuse `vcs.open_pull_requests` and
+`cli._open_pull_requests` rather than a second lookup. `cmd_orphaned` takes the
+same split in the same pass. The session-start digest stays offline and keeps
+pointing at the command: it is resident in every session, and rule 14 already
+runs `stranded` before every closing block, which is where the split is acted
+on. A merged pull request needs no category of its own here: its items are on
+the base, so `stranded` does not list them.

@@ -9,6 +9,7 @@ feature: pr-body-integrity
 touches: docs/items, docs/maintainer.md
 added: 2026-09-20
 closed: 2026-09-22
+pr: 921
 payoff: turns a 27% silent loss of design reasoning from something detected after the fact into something that stops happening, by naming the one variable only the owner can see
 verify: grep -q 'PL-WFFX' docs/maintainer.md
 root-cause-of: PL-843V, PL-M7W1, PL-G7ST, PL-BXNH, PL-F8Q7

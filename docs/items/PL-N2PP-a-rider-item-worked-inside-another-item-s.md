@@ -3,11 +3,13 @@ id: PL-N2PP
 title: A rider item worked inside another item's session is invisible to every in-flight guard the project has
 priority: P3
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: carrier-detection
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py
 added: 2026-09-20
+closed: 2026-09-22
+verify: grep -q 'Do the same the moment you pick up a second item' .claude/skills/docket/modes/start.md && grep -q 'def test_an_empty_commit_leading_with_an_id_claims_the_item_before_any_work' subprojects/docket/tests/test_vcs.py && uv run pytest -q subprojects/docket/tests/test_vcs.py -k an_empty_commit_leading_with_an_id_claims_the_item
 ---
 
 **Problem.** A rider item worked inside another item's session is invisible to every in-flight guard the project has
@@ -75,3 +77,18 @@ guard firing wrongly costs.
 session without its id reaching the remote first. One instance is recorded; if
 that is the only shape, the soft claim closes the whole gap and nothing else is
 needed.
+
+**Closed 2026-09-22 by the start rule, not by the soft claim recommended
+above.** `PL-7TVT`'s design round took the explicit route instead: an empty
+commit leading with the id, pushed the moment an item is picked up, is a claim
+every guard already reads - `_annotates_only` treats a commit with no diff as
+work - and `.claude/skills/docket/modes/start.md` now says to push one "the
+moment you pick up a second item - a rider filed as housekeeping". That makes a
+rider's id visible to `show` and `flight` from the moment its work starts, which
+is the **Done when.**, and it needed no code;
+`test_an_empty_commit_leading_with_an_id_claims_the_item_before_any_work` pins
+what it rests on. The soft claim was not built because it reverses `PL-X3WZ`:
+reading a capture commit as a claim is what took startable items out of `docket
+next`. What stays open is compliance - a session that skips the claim is still
+invisible until its first push - and the session-list read in rule 14 is the
+backstop for that.

@@ -3,11 +3,12 @@ id: PL-3QM9
 title: bin/docket flight reports a branch's age by calendar-date subtraction, so a branch committed 55 minutes ago reads 'last commit 1 day ago' across midnight and a running session looks abandoned
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: carrier-detection
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-21
+closed: 2026-09-22
 payoff: a branch pushed to an hour ago stops reading as a day-old abandoned one, so a reader of flight does not start an item another session is holding
 verify: grep -q 'def test_a_branch_committed_an_hour_ago_is_not_reported_a_day_old' subprojects/docket/tests/test_cli.py
 ---
@@ -52,3 +53,13 @@ answer does not fix it and it does not need `PL-7TVT` to be answered first.
 calendar date, so a branch committed within the last 24 hours never reports a
 day or more, and a test under `subprojects/docket/tests/` drives a commit
 timestamped shortly before midnight read shortly after it.
+
+**Closed 2026-09-22, in `PL-7TVT`'s second half.** `_Walk.last`,
+`Branch.last_commit`, `QueueEdit`, `Carrier` and `SettledBranch` carry the full
+`%cI` timestamp, and `render._since` subtracts it from an instant rather than
+one date from another: minutes under an hour, hours under a day, days beyond,
+each rounded down. `--now` fixes the instant for a test, and `--today` alone is
+read as the last instant of that day, so every age pinned under it before still
+reads the same. `test_a_branch_committed_an_hour_ago_is_not_reported_a_day_old`
+drives the observed case - committed 23:34:46, read 00:29 the next day - and
+reads "last commit 54 minutes ago".

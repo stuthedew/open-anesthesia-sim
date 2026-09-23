@@ -58,18 +58,24 @@ harness before the session starts and cannot be renamed (none of the eleven
 unlanded refs carried an id in its name, measured 2026-09-14), which is why the
 empty commit is the claim rather than the branch name.
 
-**Two exceptions, and neither needs anything from you.** An item whose own
-`touches` never leaves `docs/items/` — a release tag item, a triage pass, a
-stranded recovery — for those the queue edit *is* the work, and
-`branches_in_flight` reads that off the item rather than off the commit, so the
-first push claims the item whatever the branch is called (`PL-7790`). And an
-item at `needs-decision`, whose next step is a decision and whose deliverable
-is therefore the item file: a queue-only commit that leads with its id and
-writes its own file is the design round, and the mark is read off the item's
-status (`PL-VYSP`) — `PL-BHVM` sat at the top of `docket next` with three such
-commits pushed and a live session on them before this was so. Both are read
-from the default branch's copy, so an item you have only just captured is not
-covered: the base has no copy of it to declare anything.
+**Three exceptions, and none needs anything from you that `CLAUDE.md` does not
+already ask.** Each is a queue-only commit that leads with the item's id and
+writes the item's own file, and each is read off the item rather than off the
+commit, so the push claims the item whatever the branch is called. An item
+whose own `touches` never leaves `docs/items/` — a release tag item, a triage
+pass, a stranded recovery — for those the queue edit *is* the work
+(`PL-7790`). An item at `needs-decision`, whose next step is a decision and
+whose deliverable is therefore the item file: the commit is the design round,
+and the mark is read off the item's status (`PL-VYSP`) — `PL-BHVM` sat at the
+top of `docket next` with three such commits pushed and a live session on them
+before this was so. And an item your branch closes while the default branch
+holds it open — a grooming pass dropping items it never claimed, which `docket
+next` otherwise goes on offering until the pass merges (`PL-8FJK`). The leading
+id is what each of them reads, so a commit leading with another id claims none
+of the items whose files it passes through (`PL-3W3P`), and a closure has to
+lead with every id it closes, as `CLAUDE.md` already requires. All three are
+read from the default branch's copy, so an item you have only just captured is
+not covered: the base has no copy of it to declare anything.
 
 That is a weaker cover rather than none, since `PL-N1JK`. `bin/docket show`
 prints `Its file is already edited on <branch>` underneath the in-flight mark,
@@ -78,9 +84,12 @@ that file - though not that anybody has claimed the item, which is the thing
 only the branch name or a commit outside the queue can say. Name the branch
 where you can.
 
-The cost is that an abandoned branch and a live session look alike in `flight`,
-which says so and separates them by age; `bin/docket stranded` recovers what
-one strands. That trade is worth taking - a session picking a different item
+The cost is that an abandoned branch and a live session look alike in `flight`
+for as long as neither has aged or opened a pull request. It says so, and gives
+each branch's age to the minute and whether a pull request is open on it
+(`PL-3QM9`, `PL-7TVT`); `bin/docket stranded` recovers what one strands. Where a
+young branch with none open is the question, the session list below is the one
+reading that can answer it. That trade is worth taking - a session picking a different item
 because one looked busy costs almost nothing against a queue this size, while
 two sessions on one item costs a session and a merge conflict (`PL-PRHN`).
 

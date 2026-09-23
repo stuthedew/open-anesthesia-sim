@@ -39,7 +39,8 @@ in the same commit, which is the close-out shape `PL-K4R5` describes.
 **Where.** `src/anesthesia_sim/app/controller.py` (`_resume_point_at`), and
 `tests/integration/test_controller.py`, which pins the current string.
 **Classed `docs` rather than `safety`, and the call is worth stating because it
-decides a gate disposition** (session, 2026-09-21). Filed `safety` first, which
+decides a gate disposition** (project owner, 2026-09-21, ratified, over classing
+it `safety` and owing v0.5.0's gate a disposition for it). Filed `safety` first, which
 made v0.5.0's gate owe it one - a `safety`-classed item re-enters the current
 gate regardless of when it was captured. Read against the standard, `safety` is
 the wrong class: nothing here can produce a wrong or misleading *clinical

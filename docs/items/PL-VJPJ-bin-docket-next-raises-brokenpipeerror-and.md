@@ -9,6 +9,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli
 added: 2026-09-19
 payoff: stops bin/docket next printing a Python traceback that reads as the queue tool crashing whenever a session pipes it into head
 verify: grep -q 'BrokenPipeError' subprojects/docket/src/docket/cli.py
+recurrences: 2026-09-22 PL-QC0Y
 ---
 
 **Problem.** bin/docket next raises BrokenPipeError and prints a traceback when its output is piped into a command that closes early, so next | head looks like a crash to every session that pipes it
