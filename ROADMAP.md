@@ -5903,6 +5903,19 @@ was debt by status when this pass left it at `needs-decision` on 2026-09-23.
   a base without the other. `infra`. Its brief puts the remedy to the project
   owner with a recommendation.
 
+### Declined to Gate 2, captured after the freeze as a generator head
+
+`PL-WD5Z` was captured on 2026-09-23, after the cut (`e6cdfd93`), by the
+session that swept that week's workflow inflow for unrecorded generators. It is
+not classed `safety` or `science`, so the unconditional re-entry does not reach
+it. Owing this entry at all is an instance of the mechanism it records.
+
+- PL-WD5Z (L) - **deferred 2026-09-23.** Gate dispositions are ids mentioned in
+  this roadmap's prose rather than a field on the item, and four items filed
+  2026-09-22 and 09-23 come from that. `refactor`, and debt by status at
+  `needs-decision`. It carries `generator: live`, so it ranks on that tier
+  whatever this gate records.
+
 ### Required scope
 
 1. **The layout model** (queue items `PL-1FT6` and `PL-HJPY`). Pure Python,

@@ -16,3 +16,10 @@ subsection, so that sentence read as its disposition. `#953` gave it a real
 entry, so the instance is gone from the tree. The mechanism is not:
 `PL-H6VQ`'s count on 2026-09-21 was 97 prose-only dispositions a narrowing would
 break, against none it would catch, and this is the first it would have caught.
+
+**Generator check.** A member of `PL-WD5Z` (gate dispositions are ids
+mentioned in `ROADMAP.md` prose). The regex reads prose as dispositions because
+prose is where dispositions are recorded. It is the `_declined_ids` shape
+`PL-H6VQ` measured in `tools/doc_check.py`, carried into `docket.roadmap` when
+`PL-J6HP` gathered the gate readers, and it was filed the day `PL-J6HP` closed
+as `spent`.
