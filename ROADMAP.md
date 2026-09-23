@@ -5645,20 +5645,10 @@ that classes it. `bin/docket check` fails an open debt item that this section
 neither places nor defers, and `bin/docket wave` lists the deferrals with each
 one's state and the release that took it (`PL-WD5Z`).
 
-The first 42 were recorded here in five prose subsections, one per triage pass
-from `PL-2JRC`'s to `PL-T7Y1`'s generator heads. They moved onto their items on
-2026-09-23 and the subsections were removed, and this file's history before
-that change holds their text.
-
-`PL-MB2W` was captured the same day, as an unverified candidate, by the
-`PL-02C4` sweep that captured `PL-WD5Z`. The session that settled `PL-TH9K`'s closed `live` verdicts then
-triaged it into this position.
-
-- PL-MB2W (M) - **deferred 2026-09-23.** Every reader derives who holds an
-  item from commit shape, and none records it. `PL-T7Y1`'s audit verified
-  twenty items that come from that, and three of them are open. `defect`, and
-  counted as debt because it is at `needs-decision`. It carries `generator:
-  live`, so it ranks on that tier whatever this gate records.
+The first 43 were recorded here in prose subsections, one per triage pass from
+`PL-2JRC`'s to the generator heads `PL-T7Y1`'s audit and `PL-TH9K`'s session
+filed. They moved onto their items on 2026-09-23 and the subsections were
+removed, and this file's history before that change holds their text.
 
 ### Required scope
 
