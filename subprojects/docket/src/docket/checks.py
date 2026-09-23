@@ -2279,8 +2279,8 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
     window above - cannot carry it, and every merge would land red. Where the
     merge commit's own subject names the number, nothing is lost: it is the
     same parse this module already trusts for the provenance history, and the
-    way back exists in git. That is a transcription still owed, which is an
-    advisory naming the number to write.
+    way back exists in git. That is a transcription still owed - once the
+    closure has shipped, below - which is an advisory naming the number to write.
 
     That advisory names a command rather than a line to type, and the
     difference is the whole of `PL-N5WZ`. `docket record` writes every number
@@ -2296,6 +2296,21 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
     `check` printed on 2026-09-23 - which is the disease `PL-CW14` names: an
     advisory printed often enough to train a session to skim the block a real
     finding also lands in (`PL-XYQW`).
+
+    **And the transcription is owed only once a cut has shipped the closure**
+    (project owner, 2026-09-23, ratified, over collapsing the per-item lines
+    alone and over deriving `pr` on every read instead of storing it). Until
+    then the cut is the writer: `_numbers_before_notes` writes every shipping
+    closure's number before it renders the notes, the one place the number is
+    read, so an unshipped closure without one is the expected state, as a
+    closure done only on its branch already is. Reported anyway, the line fired
+    on every healthy run: all six it named on 2026-09-23 were unshipped, and
+    none of the 1,030 done items had shipped without its number. What is left
+    is the cut that could not read the merge, most often from a shallow clone,
+    whose notes bullet then cites no pull request - which `docket record`
+    repairs in the field and the notes together. The error below is not
+    narrowed: a complete history naming no number is provenance lost before
+    the cut as after it, and the cut cannot supply one either.
 
     Where no commit on the base names one, the answer depends on whether the
     checkout could have seen it. Only a complete history makes "no commit
@@ -2315,14 +2330,16 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
         report.declined.append(f"closures recording no `pr`: {closures.declined}")
         return
     derived = closures.numbers
-    recoverable: list[tuple[str, int]] = []
+    recoverable: list[tuple[Item, int]] = []
     unreadable: list[str] = []
     for item in report.items:
         if item.status != "done" or item.pr or item.identifier not in closures.landed:
             continue
         number = derived.get(item.identifier)
         if number is not None:
-            recoverable.append((item.identifier, number))
+            # Owed once a cut has shipped it. Until then the cut is the writer.
+            if item.milestone:
+                recoverable.append((item, number))
         elif closures.shallow is False:
             report.errors.append(
                 f"{_where(item)}: marked done on `{closures.base}` but records no `pr`; "
@@ -2333,13 +2350,18 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
 
     if recoverable:
         one = len(recoverable) == 1
-        owed = ", ".join(f"{identifier} #{number}" for identifier, number in sorted(recoverable))
+        owed = ", ".join(
+            f"{item.identifier} #{number} in {item.milestone}"
+            for item, number in sorted(recoverable, key=lambda pair: pair[0].identifier)
+        )
         report.advisories.append(
-            f"{len(recoverable)} closure{'' if one else 's'} marked done on `{closures.base}` "
-            f"record{'s' if one else ''} no `pr`, but "
+            f"{len(recoverable)} closure{'' if one else 's'} shipped without "
+            f"{'its' if one else 'their'} `pr`, though "
             f"{'the number is' if one else 'each number is'} recoverable from its merge "
-            f"commit ({owed}); `docket record` writes {'it' if one else 'them all'} in one "
-            "pass. Let it ride the commit you are already making rather than composing one"
+            f"commit ({owed}), so {'its notes bullet cites' if one else 'their bullets cite'} "
+            f"no pull request; `docket record` writes {'it' if one else 'them all'} and "
+            f"restates the notes in one pass. Let it ride the commit you are already making "
+            "rather than composing one"
         )
 
     if unreadable:

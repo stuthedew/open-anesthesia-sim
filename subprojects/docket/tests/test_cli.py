@@ -4581,7 +4581,10 @@ def test_record_refuses_a_merge_without_the_number_it_is(
 
 
 def _owed_project(tmp_path: Path, *, store: str = "docs/items") -> Path:
-    """A clone whose `origin/main` holds a closure recording no `pr`, plus work.
+    """A clone whose `origin/main` holds a shipped closure recording no `pr`, plus work.
+
+    Shipped, because a closure no cut has stamped is not owed its number yet:
+    the cut writes it before it renders the notes (`PL-XYQW`).
 
     `store` is where the queue sits, and the default is the default setting
     rather than a constraint. It was a constraint when this was written: the
@@ -4616,7 +4619,9 @@ def _owed_project(tmp_path: Path, *, store: str = "docs/items") -> Path:
     git("add", "-A")
     git("commit", "-qm", "PL-K7QX: capture it")
     (items / closed).write_text(
-        RECORD_ITEM.format(id="PL-K7QX", status="done", extra="closed: 2026-08-10\n"),
+        RECORD_ITEM.format(
+            id="PL-K7QX", status="done", extra="closed: 2026-08-10\nmilestone: v0.1.0\n"
+        ),
         encoding="utf-8",
     )
     git("add", "-A")

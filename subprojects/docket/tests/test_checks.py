@@ -2164,15 +2164,27 @@ def test_a_closure_on_the_base_without_a_pr_is_an_error() -> None:
     assert any("marked done on `origin/main` but records no `pr`" in e for e in report.errors)
 
 
-def test_a_closure_whose_merge_commit_names_its_number_is_an_advisory_not_an_error() -> None:
+def test_a_closure_the_next_cut_will_number_is_not_owed_yet() -> None:
     # The normal shape of a successful merge. The closure travels in the same
     # commit as its work, so it cannot carry a number that does not yet exist,
-    # and erroring here turned `main` red on the completion of every item.
+    # and erroring here turned `main` red on the completion of every item. Nor
+    # is it an advisory: the cut writes the number before it renders the notes,
+    # and reporting it anyway fired on every healthy run (`PL-XYQW`).
     item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),)))
+
+    assert report.errors == [] and report.advisories == [] and report.declined == []
+
+
+def test_a_shipped_closure_whose_merge_commit_names_its_number_is_an_advisory() -> None:
+    # The cut that could not read the merge - a shallow clone - shipped a bullet
+    # citing no pull request. The number is recoverable, so it is owed, not lost.
+    item = _item(status="done", closed=TODAY, milestone="v0.4.2")
     report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),)))
 
     assert report.errors == []
     assert _has(report.advisories, "recoverable from its merge commit")
+    assert _has(report.advisories, "PL-K7QX #148 in v0.4.2")
 
 
 def test_the_advisory_names_the_number_and_the_command_that_writes_it() -> None:
@@ -2180,7 +2192,7 @@ def test_the_advisory_names_the_number_and_the_command_that_writes_it() -> None:
     # they defer, so the exact remedy is in the sentence. It is a command
     # rather than a line to type: retyping a number by hand is what put two
     # sessions on `#229` and `#230` for one identical insertion (`PL-QTSB`).
-    item = _item(status="done", closed=TODAY)
+    item = _item(status="done", closed=TODAY, milestone="v0.4.2")
     report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),)))
 
     assert _has(report.advisories, "#148")
@@ -2191,7 +2203,7 @@ def test_the_advisory_says_to_let_the_write_ride_the_next_commit() -> None:
     # The cost this removed was never the typing; it was the commit the typing
     # needed, and often a pull request with it. An advisory that named the line
     # to write instead of the command would put that cost straight back.
-    item = _item(status="done", closed=TODAY)
+    item = _item(status="done", closed=TODAY, milestone="v0.4.2")
     report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),)))
 
     assert _has(report.advisories, "ride the commit you are already making")
@@ -2203,7 +2215,7 @@ def test_the_record_advisory_names_every_owed_item_once() -> None:
     # session to skim the block a real finding also lands in (`PL-XYQW`). The
     # remedy is one command whatever the count, so it is one finding.
     items = [
-        _item(identifier, status="done", closed=TODAY)
+        _item(identifier, status="done", closed=TODAY, milestone="v0.4.2")
         for identifier in ("PL-K7QX", "PL-B1C2", "PL-D3F4")
     ]
     derived = (("PL-K7QX", 148), ("PL-B1C2", 150), ("PL-D3F4", 150))
@@ -2213,8 +2225,8 @@ def test_the_record_advisory_names_every_owed_item_once() -> None:
 
     assert report.errors == []
     [advisory] = report.advisories
-    assert advisory.startswith("3 closures marked done on `origin/main` record no `pr`")
-    assert "(PL-B1C2 #150, PL-D3F4 #150, PL-K7QX #148)" in advisory
+    assert advisory.startswith("3 closures shipped without their `pr`")
+    assert "(PL-B1C2 #150 in v0.4.2, PL-D3F4 #150 in v0.4.2, PL-K7QX #148 in v0.4.2)" in advisory
     assert advisory.count("docket record") == 1
     assert ", 1 advisory" in format_check(report)
 
@@ -2300,7 +2312,7 @@ def test_a_shallow_clone_still_advises_where_the_number_was_found() -> None:
     make it less true - and suppressing it would take the one line that says
     which number is owed and how to write it.
     """
-    item = _item(status="done", closed=TODAY)
+    item = _item(status="done", closed=TODAY, milestone="v0.4.2")
     report = analyze(
         [item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),), shallow=True)
     )

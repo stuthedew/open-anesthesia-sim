@@ -2533,10 +2533,14 @@ cleared it, because the bare `record` writes only what the base can supply.
 Measured across the 927 closed items on this project's `main`, the reading
 changes 29 answers and every one matches the `pr` already recorded there.
 
-- **The number is recoverable** → an advisory naming it, and the command that
-  writes it. Nothing is lost; the way back exists in git, and the field is a
-  transcription still owed so the item file carries it too. This should be a
-  rare sight rather than a routine one — see below.
+- **The number is recoverable** → nothing until a cut has shipped the closure,
+  then one advisory naming every such closure, its number and its release, and
+  the command that writes them. Nothing is lost; the way back exists in git.
+  Before the cut, the cut is the writer: it writes each shipping closure's
+  number before it renders the notes, so reporting it earlier fired on every
+  healthy run for work the cut already does (`PL-XYQW`). After it, the notes
+  bullet cites no pull request, which `docket record` restates along with the
+  field.
 - **The commit that would name it has no parent in this checkout** → a decline,
   like the truncated case below. Finding a commit that names a number was once
   taken as proof it was the closure, at any depth. It is not: the closure is
