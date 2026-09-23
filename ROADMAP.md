@@ -5917,15 +5917,34 @@ it. Owing this entry at all is an instance of the mechanism it records.
   `needs-decision`. It carries `generator: live`, so it ranks on that tier
   whatever this gate records.
 
-`PL-MB2W` was captured the same day, by the same sweep, as an unverified
-candidate. The session that settled `PL-TH9K`'s closed `live` verdicts then
+`PL-B8HZ`, `PL-QHCW` and `PL-HMZZ` were captured on 2026-09-23, after the cut,
+by `PL-T7Y1`'s audit of the generator heads, and they are recorded here by the
+same rule. None is classed `safety` or `science`.
+
+- PL-B8HZ (M) - **deferred 2026-09-23.** `verify --self` decides one contract
+  field at a time whether to read the base's or the branch's copy of the item,
+  and six items have come from it. `defect`, `needs-decision`. It carries
+  `generator: live`, so it ranks on that tier whatever this gate records.
+
+- PL-QHCW (M) - **deferred 2026-09-23.** No record says which commit a release
+  was cut on, so the hand-placed tag is read as the cut. Six items have come
+  from it. `defect`, `needs-decision`. It carries `generator: live`, so it
+  ranks on that tier whatever this gate records.
+
+- PL-HMZZ (M) - **deferred 2026-09-23.** Which pull request carried a closed
+  item's work is inferred from commit history after the merge, and ten items
+  have come from it. `defect`, `needs-decision`. It carries `generator: live`,
+  so it ranks on that tier whatever this gate records.
+
+`PL-MB2W` was captured the same day, as an unverified candidate, by the
+`PL-02C4` sweep that captured `PL-WD5Z`. The session that settled `PL-TH9K`'s closed `live` verdicts then
 triaged it into this position.
 
 - PL-MB2W (M) - **deferred 2026-09-23.** Every reader derives who holds an
   item from commit shape, and none records it. `PL-T7Y1`'s audit verified
-  twenty items that come from that, and three of them are open. `defect`, and counted as debt because it
-  is at `needs-decision`. It carries `generator: live`, so it ranks on that
-  tier whatever this gate records.
+  twenty items that come from that, and three of them are open. `defect`, and
+  counted as debt because it is at `needs-decision`. It carries `generator:
+  live`, so it ranks on that tier whatever this gate records.
 
 ### Required scope
 

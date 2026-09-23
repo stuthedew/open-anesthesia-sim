@@ -13,6 +13,8 @@ closed: 2026-09-22
 pr: 898
 payoff: the window stops mixing a light interface with the host's dark scroll bars and splitter handles, and a widget added later inherits the theme rather than the host
 verify: grep -q 'def test_the_chrome_draws_the_theme_rather_than_the_host_palette' tests/integration/test_dark_appearance.py
+root-cause-of: PL-RKRY, PL-DHBX, PL-0NVN, PL-7W9N
+generator: spent - its fix, 67923625 (#898), declares every palette role at application start (src/anesthesia_sim/app/main.py:51, declare_application_colours), so no widget inherits a role from the host platform palette any more; recorded 2026-09-23 by PL-T7Y1's audit
 ---
 
 **Problem.** Decide what the interface does under a dark system appearance, now
@@ -196,3 +198,11 @@ asserted.
 **`theme.py` needs no change**, despite being in `touches` from before this
 decision: the ten roles map onto constants that already exist, and no new
 colour or pair is introduced.
+
+**Recorded as a generator head, 2026-09-23** (`PL-T7Y1`). Every Qt widget draws
+any palette role it does not declare from the host platform's palette, and
+`tools/contrast_check.py` measures only declared pairs. `PL-RKRY`, `PL-DHBX`,
+`PL-0NVN` and `PL-7W9N` were each one widget's undeclared role, and together
+they are feature `platform-palette`. `PL-KVDK` named the family and called it
+spent, but no `root-cause-of:` carried it. Three skeptics agreed it is spent,
+because this item's fix removed the mechanism.
