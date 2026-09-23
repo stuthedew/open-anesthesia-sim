@@ -2290,6 +2290,13 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
     every merge that closed anything, and what let two sessions open `#229` and
     `#230` for one identical insertion (`PL-QTSB`).
 
+    It names every such closure in one line rather than one per item, since the
+    remedy is one command whatever the count. A paragraph each repeated one
+    sentence with a different id in front of it - six of the eleven advisories
+    `check` printed on 2026-09-23 - which is the disease `PL-CW14` names: an
+    advisory printed often enough to train a session to skim the block a real
+    finding also lands in (`PL-XYQW`).
+
     Where no commit on the base names one, the answer depends on whether the
     checkout could have seen it. Only a complete history makes "no commit
     names a number" mean the way back is gone; a truncated one makes it mean
@@ -2308,18 +2315,14 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
         report.declined.append(f"closures recording no `pr`: {closures.declined}")
         return
     derived = closures.numbers
+    recoverable: list[tuple[str, int]] = []
     unreadable: list[str] = []
     for item in report.items:
         if item.status != "done" or item.pr or item.identifier not in closures.landed:
             continue
         number = derived.get(item.identifier)
         if number is not None:
-            report.advisories.append(
-                f"{item.identifier}: marked done on `{closures.base}` and records no `pr`, "
-                f"but #{number} is recoverable from its merge commit; `docket record` "
-                f"writes it - and every other number the base is owed - in one pass. Let "
-                f"it ride the commit you are already making rather than composing one"
-            )
+            recoverable.append((item.identifier, number))
         elif closures.shallow is False:
             report.errors.append(
                 f"{_where(item)}: marked done on `{closures.base}` but records no `pr`; "
@@ -2327,6 +2330,17 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
             )
         else:
             unreadable.append(item.identifier)
+
+    if recoverable:
+        one = len(recoverable) == 1
+        owed = ", ".join(f"{identifier} #{number}" for identifier, number in sorted(recoverable))
+        report.advisories.append(
+            f"{len(recoverable)} closure{'' if one else 's'} marked done on `{closures.base}` "
+            f"record{'s' if one else ''} no `pr`, but "
+            f"{'the number is' if one else 'each number is'} recoverable from its merge "
+            f"commit ({owed}); `docket record` writes {'it' if one else 'them all'} in one "
+            "pass. Let it ride the commit you are already making rather than composing one"
+        )
 
     if unreadable:
         depth = (

@@ -2197,6 +2197,28 @@ def test_the_advisory_says_to_let_the_write_ride_the_next_commit() -> None:
     assert _has(report.advisories, "ride the commit you are already making")
 
 
+def test_the_record_advisory_names_every_owed_item_once() -> None:
+    # One paragraph per closure repeated one sentence with a different id in
+    # front of it - six of eleven advisories on 2026-09-23 - and trained a
+    # session to skim the block a real finding also lands in (`PL-XYQW`). The
+    # remedy is one command whatever the count, so it is one finding.
+    items = [
+        _item(identifier, status="done", closed=TODAY)
+        for identifier in ("PL-K7QX", "PL-B1C2", "PL-D3F4")
+    ]
+    derived = (("PL-K7QX", 148), ("PL-B1C2", 150), ("PL-D3F4", 150))
+    report = analyze(
+        items, TODAY, closures=_closures(*(i.identifier for i in items), derived=derived)
+    )
+
+    assert report.errors == []
+    [advisory] = report.advisories
+    assert advisory.startswith("3 closures marked done on `origin/main` record no `pr`")
+    assert "(PL-B1C2 #150, PL-D3F4 #150, PL-K7QX #148)" in advisory
+    assert advisory.count("docket record") == 1
+    assert ", 1 advisory" in format_check(report)
+
+
 def test_a_derived_number_for_another_item_does_not_excuse_this_one() -> None:
     # The mapping is per item; borrowing a neighbour's number would record
     # provenance that leads to the wrong work, which is worse than none.

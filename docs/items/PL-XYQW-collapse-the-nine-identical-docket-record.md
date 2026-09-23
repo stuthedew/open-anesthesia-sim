@@ -30,3 +30,24 @@ number in a single line with the remedy stated once; a test in
 `subprojects/docket/tests/test_checks.py` pins the multi-item case; and the
 advisory total `bin/docket check` reports counts it as one finding rather than
 one per item.
+
+**Built 2026-09-23: the collapse.** One line names every closure owed a
+number, pinned by `test_the_record_advisory_names_every_owed_item_once`;
+`check` went from eleven advisories to six on the day.
+
+**Decision needed.** Should a closure the next cut will number count as owed
+at all? All six the line named on 2026-09-23 were unshipped - `done`, no
+`milestone:` - and the cut writes `pr:` for exactly those before it renders
+the notes (`_numbers_before_notes`, `PL-W7WL`). None of the 1,030 closed items
+has shipped without its number. So the line fires on every healthy run for
+work the cut already does: the routine firing this item exists to stop, cut
+from six lines to one rather than removed, and why `generator:` cannot yet
+read `spent`. **Recommended:** report a recoverable number only for a closure
+that shipped without it - a `milestone:` and no `pr:`, the cut on a shallow
+clone that could not read the merge - which `docket record` repairs in the
+field and the notes together. The error where a complete history names no
+number stays for every landed closure, because the cut cannot supply one
+either; so does the decline on a shallow clone. Cost: an unshipped closure's
+`pr:` stays empty until its cut, and nothing reads it before then - the notes
+are rendered after the write, and `_check_provenance` and `doc_check`'s notes
+coverage both skip an empty field.
