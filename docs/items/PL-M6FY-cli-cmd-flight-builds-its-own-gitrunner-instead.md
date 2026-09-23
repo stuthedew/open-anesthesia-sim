@@ -8,6 +8,7 @@ classes: perf
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-21
 closed: 2026-09-23
+pr: 930
 payoff: flight costs what every other branch-walking command costs, rather than re-asking git what the invocation already knows
 verify: grep -q 'def test_flight_shares_the_invocations_git_runner' subprojects/docket/tests/test_cli.py
 ---

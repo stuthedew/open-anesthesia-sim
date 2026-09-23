@@ -3,15 +3,16 @@ id: PL-J6HP
 title: Gate facts - which entries a milestone clears itself, which are deferred, which closed entries carry the release that took them, how many a heading holds - live in ROADMAP.md prose that plan.py, roadmap.py and tools/doc_check.py each read on their own, so every new phrasing or fact arrives as a new item
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: gate-list-integrity
-touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md, docs/ARCHITECTURE.md
 added: 2026-09-23
+closed: 2026-09-23
 payoff: each gate fact is read once, so a new way of writing one changes a parser instead of arriving in the queue as an item
 verify: grep -q 'def test_parse_milestones_reads_every_deferral_subsection' subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_required_scope_entry_outside_the_self_cleared_group_is_reported' tests/unit/test_doc_check.py
 root-cause-of: PL-H6VQ, PL-Z891, PL-YVP7, PL-B60Q, PL-JN3F, PL-RFHH
-generator: live - gate membership, deferrals, marks and counts live in ROADMAP.md prose read by several functions; seven instances after PL-HWW1 closed, v0.6.0 gained 14 deferrals in 1.5 days (PL-KVDK), and PL-RFHH's rewording left every reader in place
+generator: spent - every gate fact its six members re-derived now has one reader: deferrals and the current gate are parsed once in docket.roadmap and read by bin/docket wave and tools/doc_check.py alike, the self-cleared group is held to Required scope by one doc_check rule, counts by check_gate_counts, and the release mark is printed from the store rather than written; a new phrasing changes one parser, and another item about reading deferrals reopens it (the brief's falsifier)
 ---
 
 **Problem.** `ROADMAP.md` records a debt gate's facts as prose, and each reader
@@ -166,3 +167,33 @@ it reads no gate fact. `render.py` and `cli.py` are on it, for `bin/docket
 wave` printing each deferral's state and release. The tests and the docket
 README are on it too.
 
+
+## Built 2026-09-23
+
+As decided, with no departure from "What one reader carries":
+
+- `parse_milestones` carries each section's `deferral_entries` (the entries'
+  leading ids) and `deferred_ids` (every id beneath a deferral heading, prose
+  included - `_declined_ids`' reading, unchanged). `DEFERRAL_VERBS`,
+  `DECLINED_HEADING_RE`, `_section_end` and `_declined_ids` moved from
+  `tools/doc_check.py` with their names; both readings share one bound
+  (`_deferral_subsections`). v0.6.0 parses to 16 entries; of the 8 ids named
+  only in prose, four are closed, one is on the frozen list and three carry no
+  debt class, so the entry reading drops nothing still owed a disposition.
+- `current_gate(train)` is the one answer; `wave` calls it, and
+  `tools/doc_check.py`'s re-entry, disposition and self-cleared rules call it
+  through `_current_gate`, at the version table's baseline row, which
+  `check_baseline` holds equal to `pyproject.toml`.
+  `test_the_gate_rules_read_the_gate_wave_reads` fails under the old
+  version-order pick (mutation run by hand).
+- `check_self_cleared_group` holds the current gate's "Cleared by vX.Y.Z
+  itself" group to the entries `Required scope` declares, in both directions.
+  The current gate only: v0.5.0's released list keeps `PL-YDKJ` in that group
+  on purpose, with a paragraph saying why. It fired on exactly `PL-CNCF` and
+  `PL-PGZF` before the move; the three counts are now 14, 44 and 11.
+- The mark is `PL-B60Q`, closed in the same commit.
+
+**Generator: spent.** Every fact its six members re-derived now has one reader
+or none to drift from, as the front matter says. The falsifier stated above
+still stands: another item filed about reading deferrals reopens the choice of
+records over one reader, on ordinary evidence, since the decision was ratified.

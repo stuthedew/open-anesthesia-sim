@@ -1359,7 +1359,10 @@ debt the gated milestone's own `Required scope` names is cleared *by* that
 milestone rather than before it, so the gate is open once everything outside
 that scope is clear. Membership in `Required scope` is the whole test, because
 that is how the rule states it — the group heading a frozen list writes the
-same split under is a person's summary and is not parsed. The two carve-outs
+same split under is not parsed here. `tools/doc_check.py` holds that heading to
+`Required scope` instead, for the current gate, so the two cannot come apart
+the way v0.6.0's did, where two entries sat under "Cleared before" after the
+scope had named them (`PL-J6HP`). The two carve-outs
 are disjoint and `blocked_outside` is computed first: an entry that is
 milestone work *and* waits on work off the list is not something the milestone
 can simply clear, and the three counts add back up to the open one either way.
@@ -1376,6 +1379,20 @@ count is strict where the gate's is not: a scope id waiting on work outside the
 milestone still holds the milestone, because it ships when its scope is done and
 not when the remainder is somebody else's fault, and an id the store does not
 hold withholds completeness rather than being guessed either way.
+
+It also lists what the gate's section defers: every entry under a `### Declined
+...`, `### Deferred ...` or `### Sequenced ...` subsection, with its state read
+from the store — an open item's status, the release a shipped one went out in
+(its `milestone:`), the date a dropped one closed, and "done, not yet released"
+for work no cut has taken yet. A deferral entry is never removed, since the
+gate is a snapshot, so this is what separates one still outstanding from one
+that shipped. The roadmap used to carry that as a release name written beside
+each closed entry, which copied the field and was missing from 36 of 84 closed
+entries when it was retired (`PL-B60Q`). The deferral subsections are parsed in
+`roadmap.parse_milestones`, beside the frozen list and `Required scope`, and
+`tools/doc_check.py`'s disposition rule reads the same parse (`PL-J6HP`): the
+entries' leading ids are what this prints, and every id beneath a deferral
+heading, prose included, is what that rule counts as disposed.
 
 Every arrangement question in that composition — which row the project stands
 on, what comes before what, which section places a blocker — is put to one

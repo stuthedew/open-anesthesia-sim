@@ -9,6 +9,7 @@ feature: count-input-addressing
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-09-20
 closed: 2026-09-23
+pr: 930
 payoff: --no-git either means what its help says or says what it means, so a session reading a digest count under the flag can tell which reads were skipped
 verify: grep -q 'def test_no_git_stops_every_git_read' subprojects/docket/tests/test_cli.py && grep -q 'def test_every_git_read_in_the_cli_takes_the_invocations_runner' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-T441, PL-WF3X, PL-N0MH, PL-3T2Q, PL-M6FY, PL-P757

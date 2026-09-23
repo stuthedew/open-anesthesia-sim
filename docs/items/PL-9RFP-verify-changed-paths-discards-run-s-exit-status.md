@@ -9,6 +9,7 @@ feature: evidence-declines
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/README.md, docs/items/PL-19T3-changed-items-answers-confidently-that-nothing.md
 added: 2026-09-22
 closed: 2026-09-23
+pr: 933
 payoff: the commission audit says it could not read the diff when the base does not resolve, instead of auditing git's error text as three edits and missing the real ones
 verify: grep -q 'def test_changed_paths_declines_an_unresolvable_base' subprojects/docket/tests/test_verify.py
 root-cause-of: PL-19T3, PL-ZPDM, PL-73P0, PL-MM7F

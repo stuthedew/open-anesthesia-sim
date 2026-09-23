@@ -1963,7 +1963,10 @@ def gate_status(
     while all three appear in v0.5.0's `Required scope`. All three had closed,
     so nothing rode on it; the rule is followed rather than the heading because
     the rule is what `ROADMAP.md` states as the test, and because `_gate_entries`
-    deliberately does not parse a person's summary of the same facts.
+    deliberately does not parse a person's summary of the same facts. The
+    heading is held to the rule from the other side instead: `tools/doc_check.py`
+    fails the current gate's "Cleared by vX.Y.Z itself" group wherever it and
+    `Required scope` disagree (`PL-J6HP`).
     """
     cleared: list[GateEntry] = []
     outstanding: list[GateEntry] = []

@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: tools, tests/unit/test_left_behind_check.py, docket.toml, .claude/hooks/docket-digest.sh, docs/ARCHITECTURE.md
 added: 2026-09-12
 closed: 2026-09-23
+pr: 932
 verify: grep -q 'tests/unit/test_left_behind_check.py' docket.toml && uv run pytest -q tests/unit/test_tools_portability.py
 root-cause-of: PL-8JQQ, PL-X5PK, PL-CZR6, PL-NPWP, PL-BYMX, PL-B78T, PL-1X2C
 generator: spent - the exact landing test it lacked is now built in tools/left_behind_check.py and read at every session start, so a member no longer needs another content, date or subject heuristic in vcs.py to answer whether a merged pull request left work behind

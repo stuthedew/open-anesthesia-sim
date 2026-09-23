@@ -3420,11 +3420,11 @@ matched the item's `milestone:` or `closed:` field, and 36 of the 84 closed
 entries across this list and v0.6.0's deferrals had none (counted 2026-09-23,
 `PL-J6HP`). So `bin/docket wave` prints every deferral of the current gate with
 its state from the store — an open entry's status, a shipped one's release, a
-dropped one's date — and `bin/docket show` answers the same for an entry of a
-gate that is no longer current. The marks already written stay, since a
-release name is a record fact and cannot go stale; none is added. How many are
-*still open* is not written down either: that number changes every time one
-closes, and `bin/docket wave` answers it.
+dropped one's date — and for an entry of a gate that is no longer current,
+`bin/docket show` prints its status and, once shipped, its `milestone:`. The
+marks already written stay, since a release name is a record fact and cannot go
+stale; none is added. How many are *still open* is not written down either:
+that number changes every time one closes, and `bin/docket wave` answers it.
 
 **The thirtieth arrived after the audit, on the same ground** (`PL-33WM`,
 2026-09-08). `PL-HX5C` was captured hours after this subsection was written and
