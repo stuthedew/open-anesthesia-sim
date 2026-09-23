@@ -1244,6 +1244,20 @@ def test_the_plan_line_does_not_tell_a_tier_item_it_ranks_on_its_band() -> None:
     assert "ranks above every band but P0" in above
 
 
+def test_the_plan_line_says_a_closed_item_ranks_nowhere() -> None:
+    """Neither rank clause is true of a closed item, and `closed` wins over the tier.
+
+    `docket show` printed "it ranks above every band but P0" under closed
+    generator heads and "it ranks on its band alone" under every other closed
+    item (`PL-BBT8`).
+    """
+    unplaced = _scope(current=("PL-2222",))
+
+    for above in (False, True):
+        line = placement_line(unplaced, "PL-1111", ranks_above_bands=above, closed=True)
+        assert line.endswith("it is closed, so it ranks nowhere")
+
+
 # --- placement_clause: the relation in the fewest plain words ---------------
 #
 # `PL-Z27P`. The two lines that name an item with no room for a sentence -

@@ -6472,6 +6472,89 @@ def test_show_on_a_head_with_no_verdict_says_the_field_is_missing(
     assert "ranked on the generator tier" not in output
 
 
+def test_show_on_a_closed_head_says_it_ranks_on_no_tier(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A dropped head whose own verdict says `live` is ranked by nothing.
+
+    `show` asked the rank predicates, which tested no status, and told the
+    reader five closed heads were on the tier - so a mechanism its own verdict
+    calls live read as handled, when only an open item's claim can rank it
+    (`PL-BBT8`). The plan line made the same claim from the same answer.
+    """
+    store = _cluster(
+        tmp_path, names=_MEMBERS, generator=_LIVE, status="dropped", closed="2026-08-20"
+    )
+    (tmp_path / "pyproject.toml").write_text('version = "0.2.5"\n', encoding="utf-8")
+    (tmp_path / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+
+    assert _run("show", "PL-4040", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert f"generator: {_LIVE}" in output
+    assert "closed, so on no tier whatever the verdict says" in output
+    assert "it is closed, so it ranks nowhere" in output
+    assert "ranked on the generator tier" not in output
+    assert "above every band" not in output
+
+
+def _machinery_defect(tmp_path: Path, status: str) -> Path:
+    """One `impairs-generators:` item whose claim is sound, at the status given."""
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\ngenerator_paths = ["a.py"]\n', encoding="utf-8"
+    )
+    extra = {"closed": "2026-08-20"} if status in ("done", "dropped") else {}
+    return _store(
+        tmp_path,
+        _clustered(
+            "PL-5050",
+            "The ranking never reads the claim",
+            status=status,
+            **{"impairs-generators": "recommend never calls the soundness test"},
+            **extra,
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("status", "said"),
+    [
+        ("ready", "ranked on the generator tier - above every band but P0"),
+        ("done", "closed, so on no tier - only an open item's claim ranks there"),
+    ],
+)
+def test_show_says_a_machinery_defect_ranks_only_while_open(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], status: str, said: str
+) -> None:
+    """The tier's other entrance, which `show` answered from the claim alone (`PL-BBT8`)."""
+    store = _machinery_defect(tmp_path, status)
+
+    assert _run("show", "PL-5050", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert said in output
+    assert "UNSOUND" not in output
+
+
+def test_generators_does_not_say_a_closed_machinery_defect_ranks(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Still named, as a drained cluster is, and no longer called ranked.
+
+    The line said every sound claim "ranks on the generator tier" and printed
+    `(done)` beside one of them (`PL-BBT8`).
+    """
+    store = _machinery_defect(tmp_path, "done")
+
+    assert _run("generators", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "1 closed item carries a sound `impairs-generators:` and ranks on no tier" in output
+    assert "PL-5050 (done)" in output
+    assert "rank on the generator tier" not in output
+    assert "ranks on the generator tier" not in output
+
+
 def test_generators_marks_an_open_head_that_no_longer_ranks(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

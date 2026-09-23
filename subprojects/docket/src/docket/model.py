@@ -857,8 +857,20 @@ def ranks_as_generator(item: Item, known: Collection[str]) -> bool:
     until the checker is run, which is recoverable and loud. The cost the
     other way is a spent cluster outranking a `safety`-classed `P1`, which is
     the outcome the ratified decision exists to remove.
+
+    **A closed item earns nothing, whatever its verdict says.** `recommend`
+    ranks from the startable set, so a closed head is on no tier - and the
+    README's "a closed head is asked for nothing" is the same rule. It is
+    decided here rather than by each reader because it was not: the test lived
+    in `render._verdict_phrase` alone, and `docket show`, which asks this about
+    any item it is given, reported five closed heads as ranked on the tier
+    (`PL-BBT8`). `recommend` passes only open items, so for it this is a no-op.
     """
-    return is_generator(item, known) and split_generator_verdict(item.generator)[0] == "live"
+    return (
+        item.status not in CLOSED_STATUSES
+        and is_generator(item, known)
+        and split_generator_verdict(item.generator)[0] == "live"
+    )
 
 
 def generators_explaining(identifier: str, items: Collection[Item]) -> tuple[Item, ...]:
@@ -964,6 +976,20 @@ def impairs_generators_soundly(item: Item, generator_paths: tuple[str, ...]) -> 
     item, and `docket check` is what tells somebody it was unsound.
     """
     return bool(item.impairs_generators) and not generator_defect_faults(item, generator_paths)
+
+
+def ranks_as_generator_defect(item: Item, generator_paths: tuple[str, ...]) -> bool:
+    """Whether this item ranks on the generator tier by `impairs-generators:`.
+
+    `impairs_generators_soundly` answers for the claim and this for the item,
+    which is the split `ranks_as_generator` draws at the tier's other entrance
+    and for the same reason: a closed item is on no tier whatever its claim
+    says. The claim stays sound once the item closes, and `docket generators`
+    still counts it for the audit; what the item loses is the rank. Asking the
+    soundness predicate the rank question is how `docket show` came to report
+    a done defect as ranked (`PL-BBT8`).
+    """
+    return item.status not in CLOSED_STATUSES and impairs_generators_soundly(item, generator_paths)
 
 
 def covers(one: str, other: str) -> bool:
