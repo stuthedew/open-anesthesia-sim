@@ -80,11 +80,13 @@ free:
 
 1. **Keep the shared axis.** The comparison it buys - alveolar above mixed
    venous above muscle above fat, all on one scale - is a real teaching point
-   and the ordering is itself the lesson. Cost: fat and muscle stay under 2 px
-   and the slow filling this simulator exists to teach is invisible on the
-   chart that teaches it; `PL-0RZ0` (the hover flipping which compartment
-   answers) has no fix at all, because no targeting rule can separate traces
-   0.2-1.4 px apart.
+   and the ordering is itself the lesson. Cost: fat stays within a few pixels
+   of zero for the first hours, so its slow filling, and the difference
+   between two runs' fat, cannot be seen on this chart. (As filed this said
+   fat *and muscle* stay under 2 px, and that `PL-0RZ0` could not be fixed.
+   Both are corrected by the design round below: muscle is legible from about
+   twenty minutes, and `PL-0RZ0` closed by making every compartment in reach
+   answer rather than by separating the traces.)
 2. **A second axis for the slow compartments.** Recovers the detail. Cost: two
    curves on one plot at different scales is the misleading visual encoding
    `CLAUDE.md`'s safety-critical standard names, unless the change of scale is
@@ -115,6 +117,75 @@ free:
    pressure, which is what drives effect; its unit is `PL-B396`'s open
    question (litres of vapour against liquid millilitres); and where it is
    drawn is a layout decision in its own right.
+
+**Design round, 2026-09-23: what was measured, and what it changes.** Current
+tree, reference adult, vaporizer dial held at 1 MAC, 0.1 s steps, the 360 px
+plot under `CHART_AXIS_TOP_MAC` = 3. Height above zero of each trace, and fat's
+share of the stored agent (from each compartment's `agent_amount_l`):
+
+| Agent | 30 min: muscle / fat | 60 min | 180 min | Fat's share of stored agent, 30 / 60 / 180 min |
+| --- | --- | --- | --- | --- |
+| Sevoflurane | 14.9 / 0.9 px | 29.9 / 1.9 px | 69.9 / 6.4 px | 14% / 20% / 30% |
+| Isoflurane | 12.0 / 0.6 px | 24.8 / 1.5 px | 60.2 / 5.1 px | 16% / 21% / 32% |
+| Desflurane | 25.9 / 1.7 px | 48.4 / 3.7 px | 93.7 / 11.7 px | 13% / 20% / 33% |
+
+The branched case re-measured (trunk at 1 MAC, branch's vaporizer off at
+10 min), trunk against branch: fat 0.0088% / 0.0053% at 20 min, 0.0311% /
+0.0059% at 58 min, 0.21 px and 1.51 px apart; muscle 3.8 px apart at 20 min,
+24.3 px at 58 min. That is within a few percent of the 2026-09-19 table above.
+
+Five findings follow, and together they narrow the question:
+
+1. **Only fat is compressed.** Muscle is legible from about twenty minutes on
+   every agent. `ROADMAP.md` v0.4.0's teaching goal, the reservoirs behind
+   context-sensitive emergence with "the muscle and fat curves visibly
+   diverging from the alveolar one", is carried by muscle on today's axis.
+   Fat's line near zero is its true partial pressure, and the lag it shows is
+   the lesson.
+2. **The pointing half is already answered.** `PL-JVHL` and `PL-0RZ0` made
+   every run and every compartment inside the hover radius answer under its
+   own name, so both runs' fat values are read even 0.2 px apart. What
+   remains is only that the drawing cannot show the difference.
+3. **What the flat line hides is how much fat holds, and that is planned item
+   27's lesson.** Item 27 (Gas Man's "Picture", compartments drawn to their
+   capacity) exists to teach it, so option 5 is item 27. Its stated rationale
+   is wrong in one clause, though: in this model fat overtakes muscle only at
+   4.7-7.5 h and all other compartments combined at 7.0-9.5 h. `PL-H5DV` holds
+   the correction.
+4. **Options 4 and 5 are new display surfaces.** The standing rule in
+   `ROADMAP.md` (planned item 34, project owner 2026-09-17, ratified) holds
+   every new surface until the View contract (`PL-TH35`) and view registry
+   (`PL-R1WQ`) ship. A surface wanted before then is filed against item 36's
+   catalogue, not built.
+5. **Option 3, measured.** A fixed log axis from 0.001 to 3 MAC (3.48 decades,
+   104 px a decade) puts the two runs' fat curves 23 px apart at 20 min and
+   75 px apart at 58 min, so it would work. The cost is that it has to draw
+   below the 0.01-point resolution the readouts claim (§ "Displayed precision"
+   in `docs/MODEL.md`). Floored at that resolution instead (0.005 MAC for
+   sevoflurane), the branch's fat stays below the floor for the whole case.
+   Offered as a reader's choice beside the linear axis, it is a display mode on
+   a chart of clinical values. v0.6.0's View contract (`PL-TH35`) is about to
+   decide where a View's own settings live, so a mode built now would be built
+   twice.
+
+**Recommendation (session, 2026-09-23 - not yet the project owner's
+decision): option 1. Keep the one shared linear axis, and record why.** It is
+the truthful drawing of the quantity that drives effect. It keeps every
+property `PL-CC23` and the fixed-axis argument bought. Its one real cost, fat's
+invisible filling, is a question about amount, which planned item 27 exists to
+answer. The option most worth having instead is 3, as a reader-selected log
+scale. It is the only option that keeps one shared axis, the compartments'
+order and a fixed ruler while separating fat. But it should be built only after
+`PL-TH35`, and only if a lesson is named that needs fat's partial-pressure
+shape rather than its amount or its value. None is named in `ROADMAP.md` today.
+Options 2 and 4 are not recommended: 2 is the misleading two-scale encoding
+this item already names, and 4 is a new surface that item 36's catalogue can
+take if it is ever wanted.
+
+**If option 1 is chosen**, the closing work is small. Record the decision and
+its reasons in `docs/MODEL.md` § "Where more than one trace answers", whose
+"The root cause is elsewhere and is not fixed here" paragraph still describes
+this as open. Point item 27 at it. Close this item.
 
 **This is the project owner's** rather than a session's: it changes what a
 learner sees, and every option is defensible, which is the test rule 14 of
