@@ -287,7 +287,7 @@ def _front_matter_pairs(
 
     # `split("\n")`, as the writers split, so the reader and both writers hand
     # `_fold` the same lines. `splitlines()` also breaks on `\x0b`, `\x85` and
-    # ` `; no front matter in this store carries one (measured 2026-09-23).
+    # `\u2028`; no front matter in this store carries one (measured 2026-09-23).
     lines = match.group(1).split("\n")
     fields, unread = _fold(lines)
     pairs: list[tuple[str, str]] = []
