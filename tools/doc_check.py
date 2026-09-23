@@ -1832,8 +1832,8 @@ def check_self_cleared_group(root: Path, report: Report) -> None:
             home[entry] = group
 
     for entry in gate.gate_entries:
-        group = home.get(entry)
-        matched = SELF_CLEARED_GROUP_RE.match(group.heading) if group is not None else None
+        holder = home.get(entry)
+        matched = SELF_CLEARED_GROUP_RE.match(holder.heading) if holder is not None else None
         inside = matched is not None and matched.group("version") == rendered
         named = all(identifier in own for identifier in entry.ids)
         ids = " and ".join(entry.ids)
@@ -1846,8 +1846,8 @@ def check_self_cleared_group(root: Path, report: Report) -> None:
             )
         elif named and not inside:
             where = (
-                f'under "{group.heading.strip("* ")}"'
-                if group is not None
+                f'under "{holder.heading.strip("* ")}"'
+                if holder is not None
                 else "under no group heading"
             )
             report.errors.append(
