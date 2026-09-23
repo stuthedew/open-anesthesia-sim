@@ -3,12 +3,14 @@ id: PL-WNCT
 title: A session that ends without a pull request strands its captures on its branch and nothing at session end names them: ten recovery items were filed 09-19 to 09-21, against nine in 09-05 to 09-15
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: generator-identification
-touches: CLAUDE.md, .claude/skills/docket/modes/capture.md, docs/items
+touches: CLAUDE.md
 added: 2026-09-22
+closed: 2026-09-23
 payoff: captures and ratified decisions stop living only on branches nobody will merge, and the recovery items that carry them across - twelve in three days - stop being filed
+verify: grep -qF 'pull request at its first push and arms auto-merge' CLAUDE.md
 root-cause-of: PL-DN5K, PL-JF5Z, PL-T2YR, PL-QNQJ, PL-V3QB, PL-HZ1B, PL-Q0W8, PL-BYN2, PL-DZM1, PL-K13H, PL-F8Q7, PL-GL3Z, PL-4CPP, PL-H3LC, PL-VSJZ, PL-KT7C, PL-CPLD, PL-1VFK, PL-JYR4, PL-ZGK2, PL-YMKV
 generator: live - a branch carrying only captures opens no pull request by rule and nothing at turn end names what a branch holds, so each session that ends that way hands the next a recovery: fourteen recovery items 09-19 to 09-22, and on 09-23 two branches with no pull request hold four items main lacks
 ---
@@ -103,3 +105,13 @@ decisions stop living only on refs a prune can take.
 an open pull request without a later session filing an item to recover it. Or
 the owner has declined the change, and this brief records the recovery route
 as the generator's accepted cost.
+
+**Decided 2026-09-23: yes** (project owner, 2026-09-23, ratified, over keeping
+"a branch carrying only captured items is not a pull request"). `CLAUDE.md` §
+"The queue, and how the project owner works" now says a branch carrying only
+item files opens its pull request at its first push and arms auto-merge. The
+first push carrying anything else disarms it first, because otherwise green CI
+would merge half-finished work. The recommendation above did not name that
+hazard. The repository setting was already on: the owner armed auto-merge on
+`#936`, which GitHub refuses where a repository disallows it. `capture.md`
+needed nothing, since `CLAUDE.md` was the only place the old rule was stated.

@@ -3,12 +3,13 @@ id: PL-1P5V
 title: verify: is an opaque shell string, so each non-discriminating shape is refused by its own rule after it fails: PL-6TP8's contract did not stop the mechanism, and PL-09G9, PL-205P, PL-J3WK, PL-RR1N and PL-R812 arrived after it closed
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: generator-identification
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, docket.toml, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/items
 added: 2026-09-22
 payoff: a new way for a verify: command to prove nothing is refused when it is written, instead of costing a red main, a dead command or a misread before it earns a rule of its own
+verify: grep -q 'def test_a_verify_command_outside_the_prescribed_shapes_is_refused' subprojects/docket/tests/test_checks.py
 root-cause-of: PL-0QRP, PL-CWD4, PL-09G9, PL-RR1N, PL-205P, PL-J3WK, PL-R812
 generator: live - the field still admits any shell line and each rule refuses one shape only after it fails: seven new shapes since PL-6TP8 closed on 2026-09-19, the latest PL-R812 on 09-22, and the -k rule's own docstring leaves -m as the next
 ---
@@ -99,3 +100,9 @@ in its pattern.
 written rather than found after it misreports, and the open members -
 `PL-0QRP`, `PL-CWD4`, `PL-RR1N` - are re-pointed at the fix or dropped against
 it.
+
+**Decided 2026-09-23: the allowlist** (project owner, 2026-09-23, ratified,
+over a structured `verify:` field). Build the parser that accepts the shapes
+the triage table prescribes and refuses any other shape at write time unless
+`not-delegable:` says why none fits. Settle `! grep` as part of that work, as
+the recommendation says.
