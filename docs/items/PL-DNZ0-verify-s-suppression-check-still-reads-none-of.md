@@ -7,6 +7,7 @@ status: ready
 classes: defect, infra
 feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22
 payoff: a session that silences a test with self.skipTest, a raised SkipTest, expectedFailure, importorskip, or a conftest collect_ignore or pytest_ignore_collect gets it put in front of a reviewer, instead of the clean 'no suppression added: none' an integrity check --self may never relax now prints
 verify: grep -q 'importorskip' subprojects/docket/tests/test_verify.py && grep -q 'expectedFailure' subprojects/docket/tests/test_verify.py && grep -q 'skipTest' subprojects/docket/tests/test_verify.py && grep -q 'SkipTest' subprojects/docket/tests/test_verify.py && grep -q 'collect_ignore' subprojects/docket/tests/test_verify.py && grep -q 'pytest_ignore_collect' subprojects/docket/tests/test_verify.py

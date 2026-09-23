@@ -3,10 +3,12 @@ id: PL-FD5Q
 title: bin/docket wave counts v0.6.0's own Required-scope items among the open items outside the gate that its blocked entries wait on: 5 of the 10 it names (PL-1FT6, PL-2KXB, PL-R1WQ, PL-W9P6, PL-WV9K) are work the milestone itself clears, so the beat overstates what the gate waits on outside the milestone
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
-touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/README.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
+closed: 2026-09-23
 payoff: the session-start Beat line reports how much the gate really waits on outside the milestone - five items today, not ten
 verify: grep -q 'def test_outside_items_leave_out_what_required_scope_names' subprojects/docket/tests/test_roadmap.py
 ---

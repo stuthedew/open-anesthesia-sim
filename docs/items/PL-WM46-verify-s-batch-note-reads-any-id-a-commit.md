@@ -6,6 +6,7 @@ effort: S
 status: ready
 classes: defect
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
 payoff: verify's batch note fires only on a real batch, so readers keep reading it
 verify: grep -q 'def test_a_subject_citing_another_item_is_not_a_batch' subprojects/docket/tests/test_verify.py

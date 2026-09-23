@@ -7,6 +7,7 @@ status: ready
 classes: defect, infra
 feature: release-process
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, .claude/skills/docket/modes/release.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-23
 payoff: a release cut is told on its own branch that the previous notes owe a tag-span pointer, instead of make check turning red on main for every session once the owner pushes the new tag
 verify: grep -q 'def test_the_newest_spans_strangers_are_reported_once_the_next_release_has_notes' tests/unit/test_doc_check.py

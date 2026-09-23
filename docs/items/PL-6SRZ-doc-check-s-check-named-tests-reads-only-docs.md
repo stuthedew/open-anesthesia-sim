@@ -7,6 +7,7 @@ status: ready
 classes: defect, infra
 feature: doc-consistency-checks
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-2JRC's triage pass
 added: 2026-09-21
 payoff: make check's claim that documentation citations resolve becomes true for test names outside docs/MODEL.md, and a backticked name broken by a line wrap stops being invisible to the check everywhere.
 verify: grep -q 'def test_a_test_name_cited_in_working_notes_is_resolved' tests/unit/test_doc_check.py

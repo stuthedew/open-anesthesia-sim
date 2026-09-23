@@ -8,6 +8,7 @@ classes: defect
 feature: evidence-declines
 milestone: v0.5.7
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22
 closed: 2026-09-23
 pr: 934

@@ -8,6 +8,7 @@ classes: defect, infra
 feature: gate-list-integrity
 milestone: v0.5.4
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-2JRC's triage pass
 added: 2026-09-21
 closed: 2026-09-22
 pr: 891

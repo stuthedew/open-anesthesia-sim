@@ -40,6 +40,7 @@ from .model import (
     generator_faults,
     recurrence_faults,
     root_cause_faults,
+    split_deferred_from,
 )
 from .notes import Thread
 from .plan import OfferedReport, promotable
@@ -2071,6 +2072,125 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
         report.errors.append(f"{identifier}: used by more than one file ({paths})")
 
 
+def _check_gate_dispositions(
+    report: Report, config: Config, milestones: MilestoneStates | None
+) -> None:
+    """Hold every open debt item to a disposition by the gate the project is clearing.
+
+    `ROADMAP.md` § "The gate is a snapshot, not a moving target" allows either
+    answer for a finding made after a freeze - pull it into this gate, or defer
+    it - and forbids only the third thing, which is neither: "silently
+    reinterpreting which gate a finding belongs to is the renegotiation freezing
+    the list exists to prevent." So an open item that is debt - a debt class,
+    or `needs-decision` - is placed by the current gate's section
+    (`MilestoneSection.scope_ids`: its frozen list, then `Required scope`) or
+    carries a `deferred-from:` naming that gate's version. Which answer is
+    right is judgment and is not asked; whether one is written down is exact,
+    so this is an error rather than an advisory (`PL-36R4`, `PL-HJZW`).
+
+    **The disposition is read off the item, not out of `ROADMAP.md`**
+    (`PL-WD5Z`, project owner 2026-09-23, ratified, over structured lines in
+    `ROADMAP.md`). This rule was `tools/doc_check.py`'s
+    `check_gate_dispositions`, and it counted an item disposed wherever its id
+    appeared in a deferral subsection's prose. Three items came of that: a
+    second place every debt capture during a freeze had to write, which the
+    triage mode never named (`PL-VFJ3`); status narrated beside each entry that
+    nothing re-read when the item moved (`PL-59QW`); and a regex that took a
+    sentence saying an item was *absent* for its disposition (`PL-58JD`). A
+    field has none of the three. The error below names the one command that
+    writes it, there is nothing beside it to narrate or to mis-parse, and a
+    triage pass recording one writes only under `docs/items/`, which
+    `vcs._annotates_only` reads as annotation, so it claims nothing in flight.
+
+    Three refusals ride with it, each exact:
+
+    - a value that is not `vX.Y.Z - why`, with no version or no reason. The
+      version is what this rule reads and the reason is what a reader of the
+      gate is owed, so a value missing either is a mark without a disposition.
+      Neither half needs the roadmap, so `docket set` refuses both at the
+      moment of writing.
+    - a version whose own section records no frozen list, which excuses the
+      item from a gate nobody recorded.
+    - an item the current gate both places and defers: two answers to the one
+      question the gate asks of it.
+
+    Without a readable roadmap the gate half declines, as the milestone
+    blockers in `analyze` do: refusing an item for a gate no file was read to
+    find would fail a bare checkout for the roadmap's absence.
+    """
+    deferring: dict[str, str] = {}
+    for item in report.items:
+        if not item.deferred_from:
+            continue
+        version, why = split_deferred_from(item.deferred_from)
+        if not version:
+            report.errors.append(
+                f"{_where(item)}: `deferred-from: {item.deferred_from}` names no gate; it is "
+                "written `vX.Y.Z - why`, the version of the milestone whose frozen list the "
+                "item is excused from"
+            )
+        elif not why:
+            report.errors.append(
+                f"{_where(item)}: `deferred-from: {version}` gives no reason; a deferral "
+                "is written with its ground, `vX.Y.Z - why`, because the reason is what a "
+                "reader of the gate is owed"
+            )
+        else:
+            deferring[item.identifier] = version
+    if milestones is None:
+        # Said only where the store makes a claim the roadmap would settle, as
+        # the milestone blockers' decline is: a project recording no gate has
+        # nothing to be excused from, and a line on every run there would say
+        # nothing (`PL-ZBJ0`).
+        if deferring:
+            report.declined.append(
+                f"whether the gates the `deferred-from:` of {_named(sorted(deferring))} "
+                "names are recorded, and whether every open debt item has a disposition: "
+                "no roadmap was read"
+            )
+        return
+
+    for item in report.items:
+        named = deferring.get(item.identifier)
+        if named is not None and named not in milestones.gated:
+            report.errors.append(
+                f"{_where(item)}: `deferred-from:` names {named}, whose section in "
+                f"{config.roadmap_file} records no frozen list, so there is no gate to be "
+                "excused from"
+            )
+
+    gate = milestones.gate
+    if gate is None:
+        return
+    current = "v{}.{}.{}".format(*gate.version)
+    placed = frozenset(gate.scope_ids)
+    for item in report.items:
+        deferred = deferring.get(item.identifier) == current
+        if deferred and item.identifier in placed:
+            report.errors.append(
+                f"{_where(item)}: {current}'s section places it and its `deferred-from:` "
+                "excuses it from the same gate; keep the one that is true - remove the "
+                "field (`--deferred-from ''`), or take the id off the frozen list or "
+                "Required scope"
+            )
+        if deferred or item.identifier in placed or item.status in CLOSED_STATUSES:
+            continue
+        debt = [name for name in item.classes if name in config.debt_classes]
+        if item.status == "needs-decision":
+            why = "at needs-decision"
+        elif debt:
+            why = f"classed {', '.join(debt)}"
+        else:
+            continue
+        overwrite = " --overwrite" if item.deferred_from else ""
+        report.errors.append(
+            f"{_where(item)}: open debt ({why}) that {current}'s gate neither places nor "
+            "defers. The gate may take it or defer it and must say which: `bin/docket set "
+            f'{item.identifier} --deferred-from "{current} - <why>"{overwrite}`, or add it '
+            f"to the frozen list or Required scope in {config.roadmap_file}"
+        )
+
+
 def _check_root_causes(report: Report, known: set[str]) -> None:
     """Hold a `root-cause-of:` to naming real items, and enough of them.
 
@@ -3762,6 +3882,7 @@ def analyze(
     for item in report.items:
         _check_item(item, report, settings)
     _check_references(report, milestones)
+    _check_gate_dispositions(report, settings, milestones)
     _check_generator_defects(report, settings)
     _check_feature_spellings(report)
     _check_shared_verify(report)

@@ -8,6 +8,7 @@ classes: defect
 feature: release-process
 milestone: v0.5.5
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22
 closed: 2026-09-22
 pr: 909

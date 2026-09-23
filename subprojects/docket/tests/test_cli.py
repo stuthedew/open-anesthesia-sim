@@ -5755,6 +5755,25 @@ def test_set_writes_a_payoff(tmp_path: Path, capsys: pytest.CaptureFixture[str])
     assert f"PL-B1B1: payoff: {line}" in capsys.readouterr().out
 
 
+def test_set_writes_a_deferral_and_refuses_one_with_no_reason(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The one command a gate's disposition error prints (`PL-WD5Z`).
+
+    A value naming no reason is refused at the write, in `docket check`'s own
+    words, because that half of the rule needs no roadmap to decide.
+    """
+    store = _store(tmp_path, READY)
+
+    assert _run("set", "PL-B1B1", "--deferred-from", "v0.6.0", "--items", str(store)) == 1
+    assert "gives no reason" in capsys.readouterr().out
+    assert _item_text(store) == READY
+
+    value = "v0.6.0 - captured after the freeze"
+    assert _run("set", "PL-B1B1", "--deferred-from", value, "--items", str(store)) == 0
+    assert f"touches: a.py\ndeferred-from: {value}\nadded:" in _item_text(store)
+
+
 def test_show_says_nothing_when_no_thread_names_the_item(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

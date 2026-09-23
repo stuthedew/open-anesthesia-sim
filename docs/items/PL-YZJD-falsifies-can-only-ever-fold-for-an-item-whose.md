@@ -8,6 +8,7 @@ classes: defect, docs
 feature: verify-false-reject
 milestone: v0.5.4
 touches: .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-2JRC's triage pass
 added: 2026-09-21
 closed: 2026-09-22
 pr: 890

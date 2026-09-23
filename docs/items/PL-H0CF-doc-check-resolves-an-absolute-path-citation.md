@@ -7,6 +7,7 @@ status: ready
 classes: defect, infra
 feature: doc-consistency-checks
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-2JRC's triage pass
 added: 2026-09-21
 payoff: A path citation's verdict depends on the repository alone, so root and the CI runner agree on the same commit - which is what PL-1RTM needs before it hands the queue's 22 absolute tokens to check_citations.
 verify: grep -q 'def test_an_absolute_citation_is_repository_anchored' tests/unit/test_doc_check.py

@@ -1392,6 +1392,10 @@ scope had named them (`PL-J6HP`). The two carve-outs
 are disjoint and `blocked_outside` is computed first: an entry that is
 milestone work *and* waits on work off the list is not something the milestone
 can simply clear, and the three counts add back up to the open one either way.
+The same test splits what the blocked entries wait on: an item the milestone's
+`Required scope` names is counted as that scope's work, not as work outside the
+milestone. Before this, v0.6.0's gate reported ten open items outside it where
+five were its own Required scope (`PL-FD5Q`).
 Without this the beat kept asking a gate to clear work that implementing the
 milestone is what closes, which is a target the roadmap forbids.
 
@@ -1406,19 +1410,17 @@ milestone still holds the milestone, because it ships when its scope is done and
 not when the remainder is somebody else's fault, and an id the store does not
 hold withholds completeness rather than being guessed either way.
 
-It also lists what the gate's section defers: every entry under a `### Declined
-...`, `### Deferred ...` or `### Sequenced ...` subsection, with its state read
-from the store — an open item's status, the release a shipped one went out in
-(its `milestone:`), the date a dropped one closed, and "done, not yet released"
-for work no cut has taken yet. A deferral entry is never removed, since the
-gate is a snapshot, so this is what separates one still outstanding from one
-that shipped. The roadmap used to carry that as a release name written beside
-each closed entry, which copied the field and was missing from 36 of 84 closed
-entries when it was retired (`PL-B60Q`). The deferral subsections are parsed in
-`roadmap.parse_milestones`, beside the frozen list and `Required scope`, and
-`tools/doc_check.py`'s disposition rule reads the same parse (`PL-J6HP`): the
-entries' leading ids are what this prints, and every id beneath a deferral
-heading, prose included, is what that rule counts as disposed.
+It also lists what the gate defers: every item whose `deferred-from:` names the
+gate's version, open and closed alike, with its state read from the store - an
+open item's status, the release a shipped one went out in (its `milestone:`),
+the date a dropped one closed, and "done, not yet released" for work no cut has
+taken yet. A deferral is never withdrawn, since the gate is a snapshot, so this
+is what separates one still outstanding from one that shipped. The roadmap used
+to carry that as a release name written beside each closed entry, which copied
+the field and was missing from 36 of 84 closed entries when it was retired
+(`PL-B60Q`). The deferrals themselves were `ROADMAP.md` prose until `PL-WD5Z`
+moved them onto the item, so the list `wave` prints and the dispositions `docket
+check` counts are read from one field.
 
 Every arrangement question in that composition — which row the project stands
 on, what comes before what, which section places a blocker — is put to one
@@ -2453,6 +2455,38 @@ than the first. A clean run therefore means the explicit declarations agree
 with the front matter — never that the dependency graph is complete. The
 dependency that cost the most to find, `PL-011` → `PL-W3DD`, is named in
 neither brief, and nothing mechanical reaches it.
+
+### `deferred-from:` records which gate excused an item, and why
+
+```yaml
+deferred-from: v0.6.0 - captured after the freeze, and not safety or science
+```
+
+A frozen debt gate is a snapshot, so a debt item captured after the freeze is
+either taken onto the current gate or deferred from it, and the roadmap forbids
+only the third answer, neither. The deferral is this field: the version of the
+milestone whose frozen list the item is excused from, then a separator, then
+the ground. The version names the gate the item leaves, never one it goes to,
+because the next freeze takes every open debt item anyway. `docket set <id>
+--deferred-from "vX.Y.Z - why"` writes it.
+
+`docket check` holds it both ways. While the roadmap records a current gate, an
+open item that is debt - a debt class, or `needs-decision` - is placed by that
+gate's section (its frozen list, or `Required scope`) or carries this field
+naming the gate's version, or it is an error that prints the command above. A
+value with no `vX.Y.Z` or no reason is refused, as is a version whose section
+records no frozen list, and so is an item one gate both places and defers.
+Without a readable roadmap the gate half is declined rather than guessed.
+`docket wave` lists the gate's deferrals from the field, each with its state
+and the release that took it.
+
+It was prose until `PL-WD5Z`: an id named in a `ROADMAP.md` subsection headed
+`Declined`, `Deferred` or `Sequenced`, parsed back out by a regex. That was a
+second store of queue state. Every debt capture during a freeze owed it an entry
+(`PL-VFJ3`), the status narrated beside each entry went stale when the item
+moved (`PL-59QW`), and a sentence saying an item was *absent* read as its
+disposition (`PL-58JD`). The field stays on an item after it closes, so the
+gate's deferral count does not shrink as its deferrals ship.
 
 ### `milestone:` records where work went out, never where it is planned
 

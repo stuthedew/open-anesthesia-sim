@@ -4139,3 +4139,217 @@ def test_the_missing_recommendation_is_never_an_error() -> None:
     report = analyze([_decision(added=date(2026, 8, 2))], TODAY, RECOMMEND)
 
     assert not _has(report.errors, "recommendation")
+
+
+# --- gate dispositions, read off the item ------------------------------------
+#
+# The rule `tools/doc_check.py` held as `check_gate_dispositions` until
+# `PL-WD5Z`: an open debt item is placed by the current gate's section or
+# excused from it by `deferred-from:`. The disposition used to be an id
+# mentioned in a `ROADMAP.md` subsection, and the tests of that parse went with
+# it; these hold the field. The real tree is pinned from the repository that
+# carries this package, in `tests/unit/test_docket_gate.py`, since nothing here
+# reads the tree around it.
+
+# A gate recorded by v0.5.0's section: one id on the frozen list, one declared
+# by Required scope, and v0.6.0 named with no gate of its own.
+GATED_ROADMAP = """# Plan
+
+## Versioning decision
+
+| Version | Status | Milestone |
+| --- | --- | --- |
+| v0.4.0 | Completed / current baseline | The teachable case |
+
+## The plan
+
+### The timeline
+
+| # | Step | Notes | Effort |
+| --- | --- | --- | --- |
+| 1 | **v0.5.0 — the case you can branch** | scoped below | - |
+| 2 | **v0.6.0 — the machine** | not scoped yet | - |
+
+## v0.5.0 - the case you can branch
+
+### Goal
+
+Make the comparison possible.
+
+### Debt gate: the frozen list
+
+- PL-GGGG (S) On the list
+
+### Required scope
+
+1. **The branch** (queue item `PL-SSSS`).
+
+### Definition of done
+
+Both branches read.
+
+### Explicitly out of scope for v0.5.0
+
+Three branches.
+
+## v0.6.0 - the machine
+
+Named on the timeline, and nothing under it yet.
+"""
+
+OWED = "neither places nor defers"
+
+
+def _gate_errors(*items: Item, roadmap: str | None = GATED_ROADMAP) -> list[str]:
+    milestones = milestone_states(roadmap) if roadmap is not None else None
+    report = analyze(list(items), TODAY, milestones=milestones)
+    return [error for error in report.errors if "deferred-from" in error or OWED in error]
+
+
+def test_the_gated_fixture_records_the_gate_this_rule_reads() -> None:
+    """What every test below rests on, stated once rather than assumed."""
+    states = milestone_states(GATED_ROADMAP)
+
+    assert states.gate is not None and states.gate.version == (0, 5, 0)
+    assert states.gate.scope_ids == ("PL-GGGG", "PL-SSSS")
+    assert states.gated == frozenset({"v0.5.0"})
+
+
+def test_an_item_the_gate_places_needs_no_disposition() -> None:
+    """The frozen list and Required scope are both a placement."""
+    assert _gate_errors(_item("PL-GGGG"), _item("PL-SSSS")) == []
+
+
+def test_an_open_debt_item_the_gate_neither_places_nor_defers_is_an_error() -> None:
+    """The silence `ROADMAP.md`'s presence rule forbids, and the one line that ends it.
+
+    The command is printed whole, because a session answering this should not
+    have to reconstruct the field's grammar from the README - the step the
+    triage mode never named is what `PL-VFJ3` was.
+    """
+    (error,) = _gate_errors(_item("PL-ZZZZ"))
+
+    assert OWED in error and "classed perf" in error
+    assert 'bin/docket set PL-ZZZZ --deferred-from "v0.5.0 - <why>"' in error
+
+
+def test_a_deferred_from_naming_the_current_gate_disposes_of_the_item() -> None:
+    item = _item("PL-ZZZZ", deferred_from="v0.5.0 - captured after the freeze")
+
+    assert _gate_errors(item) == []
+
+
+def test_a_deferral_from_another_gate_leaves_the_item_owed_to_this_one() -> None:
+    """Excused from v0.4.0's list is not excused from v0.5.0's.
+
+    v0.4.0 records no gate here either, so the value is refused on its own
+    account too - and the command it is owed says `--overwrite`, which `docket
+    set` needs to replace a value the item already records.
+    """
+    errors = _gate_errors(_item("PL-ZZZZ", deferred_from="v0.4.0 - an older round"))
+
+    assert _has(errors, "names v0.4.0, whose section in ROADMAP.md records no frozen list")
+    assert _has(errors, '--deferred-from "v0.5.0 - <why>" --overwrite')
+
+
+def test_a_needs_decision_item_is_owed_a_disposition_whatever_its_classes() -> None:
+    """The gate takes `needs-decision` regardless of class, so this must too."""
+    (error,) = _gate_errors(_item("PL-ZZZZ", status="needs-decision", classes=("docs",)))
+
+    assert "(at needs-decision)" in error
+
+
+def test_an_item_that_is_neither_debt_nor_needs_decision_is_left_alone() -> None:
+    assert _gate_errors(_item("PL-ZZZZ", classes=("docs",))) == []
+
+
+def test_a_closed_item_is_owed_nothing() -> None:
+    """A gate is about open work; a done item needs no placement."""
+    done = _item("PL-ZZZZ", status="done", closed=date(2026, 8, 20), classes=("defect",))
+
+    assert _gate_errors(done) == []
+
+
+def test_a_closed_item_keeps_the_deferral_it_was_given() -> None:
+    """A deferral outlives the item's closing, which is what lets `wave` count it."""
+    done = _item(
+        "PL-ZZZZ",
+        status="done",
+        closed=date(2026, 8, 20),
+        deferred_from="v0.5.0 - captured after the freeze",
+    )
+
+    assert _gate_errors(done) == []
+
+
+def test_a_deferred_from_with_no_version_or_no_reason_is_refused_without_a_roadmap() -> None:
+    """The syntax half needs no roadmap, so `docket set` refuses it at the write."""
+    errors = _gate_errors(
+        _item("PL-ZZZZ", deferred_from="Gate 2 - after the freeze"),
+        _item("PL-YYYY", deferred_from="v0.5.0"),
+        roadmap=None,
+    )
+
+    assert _has(errors, "`deferred-from: Gate 2 - after the freeze` names no gate")
+    assert _has(errors, "`deferred-from: v0.5.0` gives no reason")
+
+
+def test_an_item_the_gate_both_places_and_defers_is_refused() -> None:
+    """Two answers to the one question the gate asks of an item."""
+    (error,) = _gate_errors(_item("PL-GGGG", deferred_from="v0.5.0 - and yet"))
+
+    assert "places it and its `deferred-from:` excuses it from the same gate" in error
+
+
+def test_without_a_roadmap_a_deferral_is_declined_and_nothing_is_owed() -> None:
+    """Declined where the store makes a claim a roadmap would settle, and only there.
+
+    A project recording no gate has nothing to excuse an item from, so a line
+    on every run of it would change no decision.
+    """
+    deferred = analyze([_item("PL-ZZZZ", deferred_from="v0.5.0 - after it")], TODAY)
+    plain = analyze([_item("PL-ZZZZ")], TODAY)
+
+    assert _has(deferred.declined, "the `deferred-from:` of PL-ZZZZ names")
+    assert not _has(deferred.errors + plain.errors, OWED)
+    assert not _has(plain.declined, "deferred-from")
+
+
+def test_no_current_gate_owes_nothing_but_still_holds_the_version_to_a_recorded_gate() -> None:
+    """A shipped gate is a record: once the baseline passes it, nothing is owed to it."""
+    shipped = GATED_ROADMAP.replace(
+        "| v0.4.0 | Completed / current baseline | The teachable case |",
+        "| v0.4.0 | Completed | The teachable case |\n"
+        "| v0.5.0 | Completed / current baseline | The case you can branch |",
+    )
+
+    errors = _gate_errors(
+        _item("PL-ZZZZ"), _item("PL-YYYY", deferred_from="v0.6.0 - no gate"), roadmap=shipped
+    )
+
+    assert errors == [
+        "PL-YYYY: `deferred-from:` names v0.6.0, whose section in ROADMAP.md records no "
+        "frozen list, so there is no gate to be excused from"
+    ]
+
+
+def test_a_roadmap_sentence_naming_an_item_disposes_of_nothing() -> None:
+    """`PL-58JD`, the instance that closed the prose parse.
+
+    A triage pass wrote that `PL-FD5Q` "is absent: this pass left it
+    untriaged" inside a v0.6.0 deferral subsection, and `_declined_ids`, reading
+    every id there, took the sentence for its disposition. A deferral is the
+    item's own field now, so whatever `ROADMAP.md` says about an id - in a
+    subsection headed the old way or any other - leaves it owed.
+    """
+    roadmap = GATED_ROADMAP.replace(
+        "### Required scope",
+        "### Declined to Gate 1, captured after the freeze\n\n"
+        "`PL-ZZZZ` is absent: this pass left it untriaged.\n\n"
+        "- PL-ZZZZ (S) - **deferred 2026-09-23.** Written the old way.\n\n"
+        "### Required scope",
+    )
+
+    (error,) = _gate_errors(_item("PL-ZZZZ"), roadmap=roadmap)
+
+    assert OWED in error

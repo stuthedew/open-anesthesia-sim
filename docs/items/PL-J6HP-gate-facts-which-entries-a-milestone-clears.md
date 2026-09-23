@@ -8,6 +8,7 @@ classes: defect, infra
 feature: gate-list-integrity
 milestone: v0.5.7
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md, docs/ARCHITECTURE.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-23
 closed: 2026-09-23
 pr: 937

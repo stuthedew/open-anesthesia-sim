@@ -7,6 +7,7 @@ status: ready
 classes: defect
 feature: landed-elsewhere
 touches: tools/left_behind_check.py, tests/unit/test_left_behind_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
 payoff: the digest's left-behind line stops naming commits that already merged through another pull request, so a finding there is one worth acting on
 verify: grep -q 'def test_a_commit_whose_patch_landed_through_another_pull_request_is_not_left_behind' tests/unit/test_left_behind_check.py

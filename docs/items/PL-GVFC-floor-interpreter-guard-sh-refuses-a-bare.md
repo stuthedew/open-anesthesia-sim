@@ -6,6 +6,7 @@ effort: S
 status: ready
 classes: defect
 touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpreter_guard.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
 payoff: the interpreter guard stops refusing the 3.11 floor code it exists to protect, so its refusals stay worth obeying
 verify: grep -q 'def test_the_docket_subproject_is_floor_code_and_is_admitted' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_a_path_after_a_semicolon_is_another_commands' tests/unit/test_floor_interpreter_guard.py

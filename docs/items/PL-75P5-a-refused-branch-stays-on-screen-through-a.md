@@ -7,6 +7,7 @@ status: ready
 classes: defect, ux
 feature: reset-aftermath
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md, tests/integration/test_simulation_view.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-14QR's 2026-09-22 triage pass
 added: 2026-09-22
 payoff: a learner who resets after a refused branch stops seeing a refusal that names an instant the restarted case no longer holds
 verify: grep -q 'def test_a_refused_branch_does_not_survive_a_one_run_reset' tests/integration/test_simulation_view.py

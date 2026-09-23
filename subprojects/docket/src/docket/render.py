@@ -12,7 +12,7 @@ here and the one that compounds.
 from __future__ import annotations
 
 from collections.abc import Collection, Mapping, Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from .checks import DONE_WHEN, HOUSEKEEPING, REQUIRED_BRIEF, STATUS_REQUIREMENTS, Report, brief_gaps
 from .concurrency import undeclared
@@ -31,6 +31,7 @@ from .model import (
     live_recurrences,
     recurrence_count,
     recurrences_of,
+    split_deferred_from,
     split_generator_verdict,
 )
 from .notes import Thread
@@ -2269,7 +2270,12 @@ def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
             aside.append(f"{len(gate.sequenced_ahead)} sequenced ahead of it")
         if gate.waiting_outside:
             cost = _outside_cost(gate)
-            aside.append(f"{len(gate.waiting_outside)} waiting on {cost or 'work'} outside it")
+            waiting = [f"{cost} outside it"] if cost else []
+            waiting += [_scope_cost(gate)] if gate.scope_items else []
+            aside.append(
+                f"{len(gate.waiting_outside)} waiting on "
+                + (", and on ".join(waiting) or "work outside it")
+            )
         if aside:
             counted += f" - {len(gate.clearable)} this gate can clear, " + ", ".join(aside)
         lines.append(f"          {counted}")
@@ -2300,6 +2306,9 @@ def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
             # a version is not a file anybody can open (`PL-FCM3`).
             if gate.outside_items:
                 lines.append(f"          what they wait on: {', '.join(gate.outside_items)}")
+            if gate.scope_items:
+                scope = ", ".join(gate.scope_items)
+                lines.append(f"          and in the milestone's Required scope: {scope}")
         if gate.unknown_ids:
             lines.append(
                 f"          not in the store, so not countable: {', '.join(gate.unknown_ids)}"
@@ -2320,50 +2329,55 @@ def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
 
 
 def _deferral_lines(plan: Wave, items: Mapping[str, Item]) -> list[str]:
-    """Each deferral the gate's section records, with its state and release from the store.
+    """Each item the gate defers, with its state and release from the store.
 
-    A deferral entry is never removed - that permanence is what "the gate is a
-    snapshot" means - so the list alone cannot say which of its entries are
-    still outstanding and which shipped. `ROADMAP.md` used to answer that with
-    a release name written by hand beside each closed entry, which copied the
-    `milestone:` field `docket release` stamps and was missed on 36 of 84
-    closed entries (`PL-B60Q`). The store already holds both halves, so they
-    are printed from it: an open entry's status, a shipped entry's release, a
-    dropped entry's date, and an entry done but not yet cut says so rather than
+    A deferral is never withdrawn once written - that permanence is what "the
+    gate is a snapshot" means - so the list alone cannot say which deferred
+    items are still outstanding and which shipped. `ROADMAP.md` used to answer
+    that with a release name written by hand beside each closed entry, which
+    copied the `milestone:` field `docket release` stamps and was missed on 36
+    of 84 closed entries (`PL-B60Q`). The store already holds both halves, so
+    they are printed from it: an open item's status, a shipped item's release,
+    a dropped item's date, and an item done but not yet cut says so rather than
     naming a release it has not had.
 
-    Only the entries' leading ids are listed (`MilestoneSection.deferral_entries`).
-    An id a group deferral names only in its prose is still read as disposed by
-    `tools/doc_check.py`, which reads the wider `deferred_ids`, but it has no
-    entry to carry a state beside.
+    The deferrals are the items whose `deferred-from:` names this gate's
+    version, open and closed alike (`PL-WD5Z`). They were the leading ids of
+    entries under a `ROADMAP.md` subsection headed `Declined`, `Deferred` or
+    `Sequenced` until the disposition moved onto the item, so nothing here can
+    now disagree with what `docket check` counts as disposed. Oldest capture
+    first, which is the order the subsections recorded them in.
     """
     gate = plan.gate
-    if gate is None or not gate.milestone.deferral_entries:
+    if gate is None:
         return []
-    entries = gate.milestone.deferral_entries
-    ids = list(dict.fromkeys(identifier for entry in entries for identifier in entry.ids))
+    version = "v{}.{}.{}".format(*gate.milestone.version)
+    deferred = sorted(
+        (item for item in items.values() if split_deferred_from(item.deferred_from)[0] == version),
+        key=lambda item: (item.added or date.min, item.identifier),
+    )
+    if not deferred:
+        return []
     still_open: list[str] = []
     shipped: list[str] = []
     unreleased: list[str] = []
     dropped: list[str] = []
-    missing: list[str] = []
-    for identifier in ids:
-        item = items.get(identifier)
-        if item is None:
-            missing.append(identifier)
-        elif item.is_open:
-            still_open.append(f"{identifier} {item.status}")
+    for item in deferred:
+        if item.is_open:
+            still_open.append(f"{item.identifier} {item.status}")
         elif item.status == "done" and item.milestone:
-            shipped.append(f"{identifier} in {item.milestone}")
+            shipped.append(f"{item.identifier} in {item.milestone}")
         elif item.status == "done":
-            unreleased.append(identifier)
+            unreleased.append(item.identifier)
         else:
-            dropped.append(f"{identifier} on {item.closed}" if item.closed else identifier)
+            dropped.append(
+                f"{item.identifier} on {item.closed}" if item.closed else item.identifier
+            )
 
     closed = len(shipped) + len(unreleased) + len(dropped)
     lines = [
-        f"Deferred  the deferral subsections of {gate.milestone.label}, off the frozen list "
-        f"({_plural(len(entries), 'entry', 'entries')}, {_plural(len(ids), 'id', 'ids')})",
+        f"Deferred  by `deferred-from: {version}`, off the frozen list of "
+        f"{gate.milestone.label} ({_plural(len(deferred), 'item', 'items')})",
         f"          {closed} closed, {len(still_open)} open",
     ]
     for label, named in (
@@ -2371,7 +2385,6 @@ def _deferral_lines(plan: Wave, items: Mapping[str, Item]) -> list[str]:
         ("shipped", shipped),
         ("done, not yet released", unreleased),
         ("dropped", dropped),
-        ("not in the store, so no state to give", missing),
     ):
         if named:
             lines.append(f"          {label}: {', '.join(named)}")
@@ -2462,6 +2475,17 @@ def _outside_cost(gate: GateStatus) -> str:
     return " and ".join(parts)
 
 
+def _scope_cost(gate: GateStatus) -> str:
+    """The open items those entries wait on that the milestone's own scope names.
+
+    Said apart from `_outside_cost`, because that work is the milestone's and
+    implementing it clears it: folded into the outside count, it doubled what
+    v0.6.0's gate waited on outside the milestone (`PL-FD5Q`).
+    """
+    count = _plural(len(gate.scope_items), "open item", "open items")
+    return f"{count} the milestone's Required scope names"
+
+
 def _beat_line(plan: Wave) -> str:
     """The beat, said as an instruction, with the count that makes it checkable."""
     if plan.beat == CLEAR and plan.gate is not None:
@@ -2478,8 +2502,10 @@ def _beat_line(plan: Wave) -> str:
             # it put the whole cost of the milestone at the open-entry count
             # and nothing said otherwise (`PL-FCM3`).
             blocked = f"{len(plan.gate.waiting_outside)} blocked outside it"
-            cost = _outside_cost(plan.gate)
-            aside.append(f"{blocked} by {cost}" if cost else blocked)
+            by = [_outside_cost(plan.gate)]
+            by += [_scope_cost(plan.gate)] if plan.gate.scope_items else []
+            joined = ", and by ".join(cost for cost in by if cost)
+            aside.append(f"{blocked} by {joined}" if joined else blocked)
         if aside:
             line += " here, " + ", ".join(aside)
         return line

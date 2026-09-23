@@ -5634,307 +5634,21 @@ named here, for the reason beat 3 gives.
 - PL-HKTB (S) The chart gridline and divider grey measures 1.31:1 on the panel and carries no contrast requirement; decide whether it should be darkened or recorded as exempt furniture
 - PL-VZYS (S) A hand-run 'uv run ruff check .' still reads the stale .ruff_cache that PL-QSJM's --no-cache removes from make check and make fix, so the guard sits at the entry point rather than where the tool reads it - the same shape as PL-0MLZ's finding about PYTHONDONTWRITEBYTECODE
 
-### Declined to Gate 2, because every one was captured after this list was frozen
+### Deferred from this gate
 
-**The rule decides this, not a judgment about severity.** § "Debt gate: the
-frozen list" above opens by saying this list holds every open debt item "as the
-store held it on the day of the cut", and § "The debt gate" closes by making the
-gate a snapshot rather than a moving target. The cut is `e6cdfd93`, 07:04 on
-2026-09-21. All six below were created by commits later the same day, so none was
-in the store the snapshot was taken from. None is classed `safety` or
-`science` either, so the unconditional re-entry that makes those two
-non-deferrable does not reach any of them, and the presence test they are then
-held to answers no.
+An open debt item captured after the cut (`e6cdfd93`, 07:04 on 2026-09-21)
+defers to the next gate unless it is classed `safety` or `science`. It was not
+in the store the snapshot was taken from, and § "The gate is a snapshot, not a
+moving target" then holds it to the presence test, which answers no. Each such
+item records it as `deferred-from: v0.6.0 - <why>`, written by the triage pass
+that classes it. `bin/docket check` fails an open debt item that this section
+neither places nor defers, and `bin/docket wave` lists the deferrals with each
+one's state and the release that took it (`PL-WD5Z`).
 
-They were recorded here by the triage pass that classed them (`PL-2JRC`), which
-is the first moment any of them could be read as debt at all: each was an
-untriaged capture until that pass, and an untriaged capture carries no class, so
-`bin/docket gate` could not see one as debt however old its problem. That is the
-same mechanism § "Debt gate: the frozen list" describes for the thirteen entries
-that were untriaged when the list was frozen - the difference being that those
-thirteen were open in the store at the cut and these seven were not yet filed.
-
-**All six are apparatus.** Three items the same pass triaged are absent
-because none of them is debt: `PL-P55F` is classed `docs` and `PL-M3X6`
-`planning`, neither of which is a debt class, and `PL-PBP5` was reverted to the
-base's untriaged copy once `origin/claude/trusting-hawking-wlh7vg` was found to
-have implemented and closed it.
-
-- PL-H0CF (S) - **deferred 2026-09-21.** `tools/doc_check.py`'s `_resolves`
-  joins an absolute citation token onto the repository root, which in Python
-  yields the token itself, so a token naming the agent-proxy README under the
-  container's root home is asked of the container rather than of the tree, and
-  root and the CI runner can disagree on one commit. The token is named in
-  prose rather than in a code span deliberately: writing it as a citation is
-  what made this entry fail CI on #880, which is the defect demonstrating
-  itself.
-  `defect`, `infra`. It is the prerequisite for `PL-1RTM`, which is on this
-  list - so the gate still reaches it, through the entry it blocks.
-
-- PL-M7W1 (S) - **deferred 2026-09-21.** GitHub's auto-merge captures the squash
-  subject when auto-merge is armed, while `tools/pr_title_check.py` reads the
-  live title, so a rename after arming goes green on a subject that never lands.
-  `defect`, `infra`. Observed on `#868` the same day; the damage was bounded by
-  `PL-2XTF`'s fallback to the item's own file history, which is also why it can
-  recur unseen.
-
-- PL-RFHH (S) - **deferred 2026-09-21.** `plan.gate()` partitions the whole
-  store by `feature` where `roadmap.GateStatus.self_cleared` reads the frozen
-  list, and both phrases answer "cleared by the milestone itself", so
-  `bin/docket gate` and `bin/docket wave` can report different membership for
-  one milestone. `defect`, `infra`. Closed 2026-09-23 on wording rather than
-  unification, and the live generator it headed moved to `PL-J6HP`, below.
-
-- PL-YZJD (S) - **deferred 2026-09-21.** `falsifies:` is read from the base's
-  copy of an item, so a capture triaged and worked in one session can never
-  declare one - which is most of why the field stands at 0 of 1,324.
-  `defect`, `docs`. At `needs-decision`.
-
-- PL-6SRZ (S) - **deferred 2026-09-21.** `check_named_tests` reads
-  `docs/MODEL.md` alone and its regex cannot match a backticked test name a line
-  wrap has broken. `defect`, `infra`. Its own brief counts the exposure at six
-  citations outside `docs/MODEL.md` and one firing in the tree's history, which
-  is why it is `P3`.
-
-- PL-Z891 (S) - **deferred 2026-09-21.** `DECLINED_HEADING_RE` matches only
-  `### Declined to Gate`, so a disposition recorded under `### Sequenced past
-  ...` or `### Deferred to ...` is not read. `defect`, `infra`. Latent: this
-  gate carries no such heading, and the subsection you are reading was written
-  to match the pattern deliberately.
-
-### Declined to Gate 2, captured after the freeze and classed by the 2026-09-22 triage pass
-
-The rule is the same as in the subsection above, and nothing else decides it.
-Every entry below was created after the cut (`e6cdfd93`, 07:04 on 2026-09-21),
-so none was in the store the snapshot was taken from. None is classed `safety`
-or `science`, so the unconditional re-entry does not reach any of them. They are
-recorded here by the triage pass that classed them (`PL-14QR`), because that is
-the first moment any of them could be read as debt. Six are debt by class.
-`PL-W5WX` and `PL-05M4` are debt by status, being at `needs-decision`.
-`PL-54V0`, captured the same day, is absent: its file was being edited on
-another branch, so this pass left it untriaged.
-
-- PL-YKSD (S) - **deferred 2026-09-22.** `tools/doc_check.py`'s `check_tags`
-  reads tag names and never what a tag points at. So `v0.5.3`, pushed before
-  `#888` merged, read as tagged at a commit whose `pyproject.toml` said `0.5.2`.
-  `defect`. A tag move repaired the instance; what is deferred is the check.
-
-- PL-9RFP (S) - **deferred 2026-09-22.** `verify.changed_paths` discards git's
-  exit status. An unresolvable base comes back as git's three-line error, read
-  as three changed paths, and the commission audit then reads none of the
-  branch's committed edits. `defect`.
-
-- PL-B60Q (S) - **deferred 2026-09-22.** The rule that a closed entry here
-  carries the release that took it is stated only in v0.5.0's subsection, and
-  nothing reads or writes the mark. So `PL-Z891`, the first entry in the
-  subsection above to close, is unmarked. `defect`, `infra`. Re-scoped by
-  `PL-J6HP`'s decision and closed with it on 2026-09-23: the mark is no longer
-  written, and `bin/docket wave` prints each deferral's state and release from
-  the store instead.
-
-- PL-19T3 (S) - **deferred 2026-09-22.** Outside a git repository,
-  `vcs.changed_items` answers that no item changed where `vcs.tags` declines,
-  because `git diff` exits 1 there and `_run_git` reads 1 as an answer.
-  `defect`. Latent: nothing runs it outside a checkout.
-
-- PL-75P5 (S) - **deferred 2026-09-22.** On a one-run dashboard, a refused
-  branch's banner survives the Reset that answers it, because
-  `_handle_case_restarted` returns before it clears `_fork_refusal`. `defect`,
-  `ux`. This is stale interface state rather than a wrong clinical value, so it
-  is not `safety`.
-
-- PL-2TZT (M) - **deferred 2026-09-22.** Five guard names in `core/` are passed
-  unqualified by several classes, and `TissueGroup`'s guards are ambiguous
-  across its three tissues, so a refusal banner cannot say which object refused.
-  `defect`, `ux`.
-
-- PL-W5WX (S) - **deferred 2026-09-22.** The trunk's Reset drops a branch and
-  everything it simulated with no statement and no confirmation, and
-  `docs/MODEL.md` does not say whether Reset's exemption reaches a run the press
-  was not on. `ux`, `docs`. At `needs-decision`: the call is the project
-  owner's, and the brief records a recommendation.
-
-- PL-05M4 (S) - **deferred 2026-09-22.** On a dark host the disabled splitter
-  handles keep the host's surface colour, because the `Disabled` colour group is
-  deliberately left to the platform. `ux`. At `needs-decision`, and its brief
-  recommends waiting for planned-milestone item 34.
-
-- PL-8YXJ (M) - **deferred 2026-09-22.** A status or blocker change rewrites an
-  item's front matter and leaves its brief narrating the old state, and nothing
-  reports it: `_check_prose_dependencies` skips closed prerequisites and nothing
-  reads a brief's claims about its own status. `defect`, `infra`. Classed at
-  capture by the session that measured it rather than by `PL-14QR`; as a live
-  generator it ranks on that tier whatever this gate records.
-
-- PL-J6HP (M) - **deferred 2026-09-23.** A gate's facts - what the milestone
-  clears itself, what is deferred, how many a heading holds, the release a
-  closed deferral carries - are written here as prose and parsed separately by
-  `plan.py`, `roadmap.py` and `tools/doc_check.py`. `defect`, `infra`. At
-  `needs-decision`: one reader or structured records. Filed by `PL-RFHH`'s
-  session to carry the generator that item headed, not by `PL-14QR`; as a live
-  generator it ranks on that tier whatever this gate records. Decided for one
-  reader the same day, and closed with it: `docket.roadmap` parses deferrals
-  beside the frozen list and `Required scope`, and one function names the
-  current gate for `bin/docket wave` and `tools/doc_check.py` alike.
-
-### Declined to Gate 2, captured after the freeze and classed by the 2026-09-23 triage pass
-
-The rule is the same as in the two subsections above. Every entry below was
-created on 2026-09-22 or 2026-09-23, after the cut (`e6cdfd93`, 07:04 on
-2026-09-21), and none is classed `safety` or `science`, so the unconditional
-re-entry reaches none of them. Each is recorded here by the triage pass that
-classed it, the first moment it could be read as debt. `PL-FD5Q`, captured
-2026-09-22, is absent: this pass left it untriaged to the session working
-`PL-J6HP`'s gate facts, which is the same mechanism. It was classed by the second
-2026-09-23 pass, in the subsection below.
-
-- PL-BBT8 (S) - **deferred 2026-09-23.** `bin/docket show` reports a closed
-  head marked `generator: live` as ranked, because `cli.cmd_show` skips the
-  status test `render._verdict_phrase` applies. `defect`. It carries
-  `impairs-generators:`, so it ranks on that tier whatever this gate records.
-
-- PL-DSPM (S) - **deferred 2026-09-23.** `model._front_matter_pairs` drops a
-  column-zero key `model.FIELD_RE` cannot match, so a `root_cause_of:` line
-  vanishes at exit 0 where a misspelling inside the grammar is refused.
-  `defect`. It carries `impairs-generators:`, so it ranks on that tier whatever
-  this gate records.
-
-- PL-1P5V (M) - **deferred 2026-09-23.** A `verify:` command is one opaque
-  shell string, so each non-discriminating shape gets its own rule only after
-  it fails: seven since `PL-6TP8` closed. `defect`, `infra`. At
-  `needs-decision`: an allowlist of the prescribed shapes, or a structured
-  field. As a live generator it ranks on that tier whatever this gate records.
-  Decided for the allowlist the same day, and closed with it: a command written
-  from 2026-09-24 is a `grep -q`, a `! grep -q`, several joined by `&&`, or the
-  whole-suite coverage run, or it is refused on the branch that writes it.
-
-- PL-WNCT (M) - **deferred 2026-09-23.** A session that ends without a pull
-  request strands its captures on its branch, and twenty-one recovery items
-  trace to it. `defect`, `infra`. At `needs-decision`: whether a captures-only
-  branch opens its pull request, which reverses a rule in `CLAUDE.md`. As a
-  live generator it ranks on that tier whatever this gate records. Decided the
-  same day, and closed with it in `#941`: a branch carrying only item files opens
-  its pull request at its first push and arms auto-merge.
-
-- PL-DNZ0 (S) - **deferred 2026-09-23.** `verify`'s suppression check reads
-  none of six standard ways to skip or ignore a test, so `no suppression added`
-  reports none with any of them in the diff. `defect`, `infra`. The unfinished
-  tail of `PL-5B88`.
-
-- PL-JLYG (S) - **deferred 2026-09-23.** `check_tag_span_covers_its_notes`
-  lifts the newest span's exemption at the next tag rather than the next cut,
-  so a cut is never told the previous notes owe a pointer, and `main` turns red
-  once the tag is pushed. `defect`, `infra`.
-
-- PL-X229 (S) - **deferred 2026-09-23.** `tools/doc_check.py candidates` diffs
-  `--base` against the working tree rather than from the merge base, so once
-  `main` moves the close-out sweep is handed other branches' documentation.
-  `defect`, `infra`.
-
-- PL-J16N (S) - **deferred 2026-09-23.** `vcs._modified_by` misses a design
-  round that renames its item's file, because `git log --name-only` reports
-  only a rename's destination, and the test fake lists both paths. `defect`.
-
-- PL-9VPH (S) - **deferred 2026-09-23.** `capture.md`'s housekeeping recipe
-  runs `bin/docket new` before it sets `touches`, so the near-duplicate search
-  has no paths and never runs. `defect`, `docs`.
-
-- PL-RMN8 (S) - **deferred 2026-09-23.** `bin/docket next --limit 0` says
-  nothing is ready while work is startable, and a negative limit slices from
-  the end. `defect`, `infra`.
-
-- PL-BT2J (S) - **deferred 2026-09-23.** Four branching methods in
-  `app/controller.py` take a case instant under the clock's name `elapsed_s`,
-  one call above the `Keyframe.instant_s` it is matched against. `refactor`.
-  At `needs-decision`, recommending the rename.
-
-### Declined to Gate 2, captured after the freeze and classed by the second 2026-09-23 triage pass
-
-The rule is the same as in the three subsections above. Every entry below was
-created on 2026-09-22 or 2026-09-23, after the cut (`e6cdfd93`, 07:04 on
-2026-09-21), and none is classed `safety` or `science`, so the unconditional
-re-entry reaches none of them. Each is recorded by the triage pass that classed
-it, the first moment it could be read as debt. Ten are debt by class; `PL-Z0SM`
-was debt by status when this pass left it at `needs-decision` on 2026-09-23.
-
-- PL-JD4L (M) - **deferred 2026-09-23.** `model._front_matter_pairs` passes over
-  a front-matter line that is neither a field nor a continuation, so a value
-  wrapped at column zero loses its tail at exit 0. `defect`. It carries
-  `impairs-generators:`, so it ranks on that tier whatever this gate records.
-
-- PL-GHHW (M) - **deferred 2026-09-23.** `bin/docket stranded` lists a commit
-  whose change already reached `main` through another pull request as work left
-  behind, and its recover line would overwrite the newer file. `defect`.
-
-- PL-PXZ3 (M) - **deferred 2026-09-23.** `tools/left_behind_check.py` reports a
-  commit whose identical patch landed through another pull request, so the
-  reader proves the branch stale by hand. `defect`.
-
-- PL-1SFZ (S) - **deferred 2026-09-23.** `gate-status-guard.sh` does not count a
-  `set -o pipefail` that opens a `{ }` or `( )` group, so it refuses commands
-  that keep pytest's status. `defect`.
-
-- PL-GVFC (S) - **deferred 2026-09-23.** `floor-interpreter-guard.sh` refuses a
-  bare `python3` aimed at `subprojects/docket/src/`, the 3.11 floor code it
-  exists to protect. `defect`.
-
-- PL-27VL (S) - **deferred 2026-09-23.** `tools/branch_id_check.py` and
-  `bin/docket verify` say no candidate default branch resolved where one did,
-  past a preferred candidate git did not answer. `defect`.
-
-- PL-59QW (S) - **deferred 2026-09-23.** This roadmap's gate deferral entries
-  narrate an item's status, and nothing re-reads them when the item closes.
-  `defect`.
-
-- PL-F5NV (S) - **deferred 2026-09-23.** `bin/docket trend --no-git` says git
-  could not be read where it was not asked, and anchors its windows at the first
-  closure rather than the first commit. `defect`.
-
-- PL-FD5Q (S) - **deferred 2026-09-23.** `bin/docket wave` counts v0.6.0's own
-  Required-scope items among the open items outside the gate that its blocked
-  entries wait on. `defect`.
-
-- PL-WM46 (S) - **deferred 2026-09-23.** `verify`'s batch note reads any id a
-  commit subject mentions as a batch claim, and counts every audited commit as
-  naming it. `defect`.
-
-- PL-Z0SM (S) - **deferred 2026-09-23.** Merge skew has turned `main` red twice,
-  because parallel sessions merge minutes apart on pull requests whose CI ran on
-  a base without the other. `infra`. Its brief puts the remedy to the project
-  owner with a recommendation. Decided the same day and closed: hold, adopting
-  strict up-to-date checks at a third instance within 30 days.
-
-### Declined to Gate 2, captured after the freeze as a generator head
-
-`PL-WD5Z` was captured on 2026-09-23, after the cut (`e6cdfd93`), by the
-session that swept that week's workflow inflow for unrecorded generators. It is
-not classed `safety` or `science`, so the unconditional re-entry does not reach
-it. Owing this entry at all is an instance of the mechanism it records.
-
-- PL-WD5Z (L) - **deferred 2026-09-23.** Gate dispositions are ids mentioned in
-  this roadmap's prose rather than a field on the item, and four items filed
-  2026-09-22 and 09-23 come from that. `refactor`, and debt by status at
-  `needs-decision`. It carries `generator: live`, so it ranks on that tier
-  whatever this gate records.
-
-`PL-B8HZ`, `PL-QHCW` and `PL-HMZZ` were captured on 2026-09-23, after the cut,
-by `PL-T7Y1`'s audit of the generator heads, and they are recorded here by the
-same rule. None is classed `safety` or `science`.
-
-- PL-B8HZ (M) - **deferred 2026-09-23.** `verify --self` decides one contract
-  field at a time whether to read the base's or the branch's copy of the item,
-  and six items have come from it. `defect`, `needs-decision`. It carries
-  `generator: live`, so it ranks on that tier whatever this gate records.
-
-- PL-QHCW (M) - **deferred 2026-09-23.** No record says which commit a release
-  was cut on, so the hand-placed tag is read as the cut. Six items have come
-  from it. `defect`, `needs-decision`. It carries `generator: live`, so it
-  ranks on that tier whatever this gate records.
-
-- PL-HMZZ (M) - **deferred 2026-09-23.** Which pull request carried a closed
-  item's work is inferred from commit history after the merge, and ten items
-  have come from it. `defect`, `needs-decision`. It carries `generator: live`,
-  so it ranks on that tier whatever this gate records.
+The first 42 were recorded here in five prose subsections, one per triage pass
+from `PL-2JRC`'s to `PL-T7Y1`'s generator heads. They moved onto their items on
+2026-09-23 and the subsections were removed, and this file's history before
+that change holds their text.
 
 `PL-MB2W` was captured the same day, as an unverified candidate, by the
 `PL-02C4` sweep that captured `PL-WD5Z`. The session that settled `PL-TH9K`'s closed `live` verdicts then
@@ -6662,26 +6376,23 @@ Record the frozen list in the milestone's own section here, as the item ids it
 had to clear. A gate nobody wrote down is a gate that gets renegotiated, and
 the point of freezing the list is that it cannot be.
 
-**Record a deferral in a `###` subsection of the same milestone section, headed
-by one of three verbs: `Declined`, `Deferred` or `Sequenced`.** What follows the
-verb is free prose and should carry the ground, which is what the heading is
-for — the three this roadmap has written are `### Declined to Gate 2, because
-this milestone's own work created them`, `### Deferred to v0.4.26, because the
-port dissolves the defect` and `### Sequenced past v0.5.0, so not clearable
-before it begins`. The verb list is closed because it is what reads the
-subsection: `parse_milestones` in `subprojects/docket/src/docket/roadmap.py`
-builds its heading pattern out of `DEFERRAL_VERBS`, and both
-`tools/doc_check.py`'s `check_gate_dispositions` and `bin/docket wave` read
-what it parses (`PL-J6HP`). So a deferral written under a fourth verb is not
-read at all — its items come back named as debt the gate owes, under an error
-telling you to write the subsection you have already written, and `bin/docket
-wave` does not list them. A deferral that wants a verb of its own adds it to
-that tuple in the same change (`PL-Z891`).
+**Record a deferral on the item, not here.** A debt item the current gate
+neither places nor takes carries `deferred-from: vX.Y.Z - <why>`. The version
+is the milestone whose frozen list excuses the item, and never the gate it goes
+to, because the next freeze takes every open debt item anyway. The reason is
+the ground, which is what a reader of the gate is owed. `bin/docket set <id>
+--deferred-from "..."` writes it. `bin/docket check` fails an open debt item
+the current gate neither places nor defers, and the error prints that command
+(`PL-WD5Z`). A section may state the ground its deferrals share, as v0.6.0's
+does, but nothing reads that prose. Until `PL-WD5Z` a deferral was an id named
+in a `###` subsection headed `Declined`, `Deferred` or `Sequenced`, and each
+way that second store disagreed with the items became an item of its own.
+Completed sections keep those subsections as the record they are.
 
-**Do not write a closed entry's release beside it.** `bin/docket wave` prints
-each deferral of the current gate with its state and release from the store
-(`PL-B60Q`), so a mark written by hand would only copy a field the store
-already holds.
+**Do not write a deferred item's state or release beside it.** `bin/docket
+wave` prints each deferral of the current gate with its state and release from
+the store (`PL-B60Q`), so a mark written by hand would only copy a field the
+store already holds.
 
 ## Development pathway
 

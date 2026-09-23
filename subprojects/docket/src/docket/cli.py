@@ -1288,6 +1288,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("feature", "feature"),
     ("touches", "touches"),
     ("blocked-by", "blocked_by"),
+    ("deferred-from", "deferred_from"),
     ("closed", "closed"),
     ("reason", "reason"),
     ("payoff", "payoff"),
@@ -3728,6 +3729,7 @@ def build_parser() -> argparse.ArgumentParser:
     setter.add_argument("--closed", type=_closing_date, metavar="YYYY-MM-DD")
     setter.add_argument("--reason")
     setter.add_argument("--payoff", metavar="LINE")
+    setter.add_argument("--deferred-from", metavar="vX.Y.Z - WHY")
     setter.add_argument("--verify", metavar="COMMAND")
     setter.add_argument("--not-delegable", metavar="WHY")
     setter.add_argument("--falsifies", metavar="FRAGMENT")

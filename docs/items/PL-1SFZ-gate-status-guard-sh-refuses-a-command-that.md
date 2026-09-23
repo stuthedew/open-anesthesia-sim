@@ -7,6 +7,7 @@ status: ready
 classes: defect
 feature: gate-status-guard
 touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
 payoff: a pipefail command spelt correctly inside a group runs first time, and the guard's refusals stay ones a session obeys rather than learns to doubt
 verify: grep -q 'def test_pipefail_set_inside_a_group_keeps_the_status' tests/unit/test_gate_status_guard.py

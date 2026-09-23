@@ -6,6 +6,7 @@ effort: M
 status: needs-decision
 classes: defect
 touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/cli.py, tools/doc_check.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
 payoff: The commit a release was cut on becomes a recorded fact, so the tag and its readers stop disagreeing
 root-cause-of: PL-VYK1, PL-6YYR, PL-KFWL, PL-BKDP, PL-YKSD, PL-6SV4
