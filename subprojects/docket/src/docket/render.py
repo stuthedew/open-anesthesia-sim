@@ -12,7 +12,7 @@ here and the one that compounds.
 from __future__ import annotations
 
 from collections.abc import Collection, Mapping, Sequence
-from datetime import UTC, date
+from datetime import UTC, datetime, timedelta
 
 from .checks import DONE_WHEN, HOUSEKEEPING, REQUIRED_BRIEF, STATUS_REQUIREMENTS, Report, brief_gaps
 from .concurrency import undeclared
@@ -62,6 +62,7 @@ from .vcs import (
     FilingReport,
     FlightReport,
     GitProfile,
+    OpenPullRequests,
     OrphanedReport,
     Precedence,
     QueueEdit,
@@ -345,6 +346,7 @@ def format_digest(
     generator_paths: tuple[str, ...] = (),
     protected_paths: tuple[str, ...] = (),
     gate_paths: tuple[str, ...] = (),
+    now: datetime | None = None,
 ) -> str:
     """The few lines injected into session context at startup.
 
@@ -460,12 +462,36 @@ def format_digest(
         # directly below is telling the reader to recover it from. Neither
         # claim is withdrawn: that was measured at three widths and refused at
         # every one, per `Branch.on_base`.
-        landed = sorted(branch.item_id for branch in flight.branches if branch.on_base)
+        landed = sorted(
+            (branch for branch in flight.branches if branch.on_base),
+            key=lambda branch: branch.item_id,
+        )
         filed = sorted(branch.item_id for branch in flight.branches if not branch.on_base)
         if landed:
-            lines.append(
-                f"  In flight on a branch: {', '.join(landed)} - do not start these again."
-            )
+            # **What the branches hold and how long each has sat, not an order**
+            # (`PL-7TVT`). This line ended "do not start these again", which
+            # presumes a session behind every branch, and a branch outlives its
+            # session: PR `#757`'s three items read that way for 25 minutes
+            # after its session was archived. An age is what the refs can back,
+            # so the line carries one per item, and names the command that adds
+            # the pull request - which the digest does not ask the forge for,
+            # because it runs on every session start and must answer offline.
+            if now is None:
+                named = ", ".join(branch.item_id for branch in landed)
+                lines.append(
+                    f"  In flight on a branch: {named}. A branch outlives its session, so this "
+                    "is not proof anybody is on one; `bin/docket flight` has each one's age "
+                    "and pull request."
+                )
+            else:
+                named = ", ".join(
+                    f"{branch.item_id} {_digest_age(branch.last_commit, now)}" for branch in landed
+                )
+                lines.append(
+                    f"  In flight on a branch, by time since its last commit: {named}. A branch "
+                    "outlives its session, so an age is not proof anybody is on it; "
+                    "`bin/docket flight` adds each one's pull request."
+                )
         if filed:
             lines.append(
                 f"  Filed on a branch, not yet on {flight.base or 'the default branch'}: "
@@ -784,24 +810,97 @@ def _rewritten_lines(report: OrphanedReport) -> list[str]:
     ]
 
 
-def _since(last_commit: date | None, today: date) -> str:
+#: How far a commit may be dated past this clock's "now" and still read as
+#: just made. Two machines' clocks disagree by seconds, and a session's own
+#: commit read back a moment later should not be reported as a clock fault.
+_CLOCK_SLACK = timedelta(minutes=1)
+
+
+def _age(last_commit: datetime, now: datetime) -> str | None:
+    """How long ago a commit was made, in the one unit its size calls for.
+
+    **Elapsed time, not calendar days** (`PL-3QM9`). Subtracting two dates
+    counted the midnights crossed rather than the time passed, so a branch
+    committed 55 minutes ago read "1 day ago" from 00:00 onward - wrong in the
+    direction that reads a live session as abandoned, and worst for the
+    freshest branches, which are the ones a reader most needs to place.
+
+    The unit grows with the age because the question changes with it: in the
+    first hour a session is live or it is not and minutes are what separate
+    the two, while nobody deciding about a week-old branch needs its hours.
+    Each is rounded down, which reports a branch as younger than it is rather
+    than older - the direction every reading here fails in, since a live
+    session taken for abandoned work is the costly mistake.
+
+    `None` for a commit dated after `now` by more than two clocks disagree,
+    which no age describes.
+    """
+    elapsed = now - last_commit
+    if elapsed < -_CLOCK_SLACK:
+        return None
+    minutes = max(elapsed, timedelta(0)) // timedelta(minutes=1)
+    if minutes < 1:
+        return "under a minute"
+    if minutes < 60:
+        return _plural(minutes, "minute", "minutes")
+    if minutes < 24 * 60:
+        return _plural(minutes // 60, "hour", "hours")
+    return _plural(minutes // (24 * 60), "day", "days")
+
+
+def _since(last_commit: datetime | None, now: datetime) -> str:
     """How long a branch has been sitting, in the words the reader judges with."""
     if last_commit is None:
         return "no commit of its own this checkout can read"
-    days = (today - last_commit).days
-    if days <= 0:
-        return "last commit today"
-    return f"last commit {_plural(days, 'day', 'days')} ago"
+    age = _age(last_commit, now)
+    if age is None:
+        return "last commit dated later than now - one of the two clocks is wrong"
+    return f"last commit {age} ago"
 
 
-def format_flight(report: FlightReport, today: date, settled: SettledReport | None = None) -> str:
-    """Which items are on a branch, how stale each branch is, and what went unread.
+def _review(name: str, reviews: OpenPullRequests | None) -> str:
+    """A row's pull-request clause, or nothing where the forge was not asked."""
+    if reviews is None or not reviews.asked:
+        return ""
+    if name not in reviews.numbers:
+        return "  no pull request open"
+    number = reviews.numbers[name]
+    return "  pull request open" if number is None else f"  pull request #{number} open"
+
+
+def _digest_age(last_commit: datetime | None, now: datetime) -> str:
+    """An age short enough to sit beside an id in the digest's one line."""
+    if last_commit is None:
+        return "(no commit read)"
+    return _age(last_commit, now) or "(dated ahead of this clock)"
+
+
+def format_flight(
+    report: FlightReport,
+    now: datetime,
+    settled: SettledReport | None = None,
+    reviews: OpenPullRequests | None = None,
+) -> str:
+    """Which items are on a branch, how long each has sat, and what went unread.
 
     The age is reported rather than thresholded, because "has an unmerged
     branch" and "is being worked right now" are different claims and no
     timeout tells them apart: a branch touched an hour ago is a live session,
     and the same branch three weeks on is work nobody will merge. Only the
-    reader knows which, so both get the same line and the date decides it.
+    reader knows which, so both get the same line and the age decides it.
+
+    **So the age is elapsed time, and the row carries the one fact that
+    separates part of what the age cannot** (`PL-3QM9`, `PL-7TVT`). An age cut
+    to the day read a branch committed 55 minutes ago as a day old across
+    midnight, and even measured to the minute it cannot fire in the first hour,
+    because a branch outlives its session: PR `#757` sat green for 25 minutes
+    after its session was archived while its items read as somebody's work.
+    `reviews` adds whether a pull request is open on each row's branch, which
+    says the work is written and waiting on review whatever became of the
+    session. What it cannot say - whether a young branch with none open still
+    has a session behind it - is said in those words, and the closing line no
+    longer tells the reader what to conclude from an age, which is the
+    instruction the evidence never supported.
 
     **Except where the branch itself has answered it** (`PL-Q664`). A ref whose
     every claimed item is closed in its own copy, with no pull request open on
@@ -845,20 +944,35 @@ def format_flight(report: FlightReport, today: date, settled: SettledReport | No
         )
         lines.append("")
         width = max(len(branch.name) for branch in live)
+        ages = {branch.name: _since(branch.last_commit, now) for branch in live}
+        age_width = max(len(age) for age in ages.values())
         for branch in live:
             # `filed there` rather than a second table: the fact belongs to the
             # row it qualifies, and a reader scanning for their own id meets it
             # without being sent anywhere (`PL-3CTW`).
             mark = "" if branch.on_base else "  filed there"
-            lines.append(
+            row = (
                 f"{branch.item_id}  {branch.name:<{width}}  "
-                f"{_since(branch.last_commit, today)}{mark}"
+                f"{ages[branch.name]:<{age_width}}{_review(branch.name, reviews)}{mark}"
             )
+            lines.append(row.rstrip())
         lines.append("")
         lines.append(
-            "A live session and a branch nobody will merge look the same here; "
-            "the age is what separates them."
+            "A branch outlives its session, so no row here says anybody is still on it: "
+            "the age is how long it has sat."
         )
+        if reviews is not None and reviews.asked:
+            lines.append(
+                "With a pull request open, the work is written and waits on review. With "
+                "none, a branch minutes old is usually a session still working - but one "
+                "whose session has ended reads the same until its age grows, and nothing "
+                "a checkout can read tells the two apart sooner."
+            )
+        else:
+            lines.append(
+                "Whether a pull request is open for any of them could not be read here, so "
+                "work waiting on review reads the same as work still being written."
+            )
         if any(not branch.on_base for branch in live):
             lines.append(
                 "An item marked `filed there` is not in this checkout's queue at all: that "
@@ -881,7 +995,7 @@ def format_flight(report: FlightReport, today: date, settled: SettledReport | No
 
     if settled and settled.branches:
         lines.append("")
-        lines.extend(_format_settled(settled, today))
+        lines.extend(_format_settled(settled, now))
 
     if report.unattributed:
         lines.append("")
@@ -907,7 +1021,7 @@ def format_flight(report: FlightReport, today: date, settled: SettledReport | No
     return "\n".join(lines)
 
 
-def _format_settled(settled: SettledReport, today: date) -> list[str]:
+def _format_settled(settled: SettledReport, now: datetime) -> list[str]:
     """The branches nothing is left on, and exactly how much that claim covers.
 
     Two headings rather than one, because the two readings prove different
@@ -934,7 +1048,7 @@ def _format_settled(settled: SettledReport, today: date) -> list[str]:
     for entry in settled.branches:
         lines.append(
             f"  {entry.name:<{width}}  {', '.join(entry.item_ids)}  "
-            f"{_since(entry.last_commit, today)}"
+            f"{_since(entry.last_commit, now)}"
         )
     lines.append("")
     lines.append(f"Nothing here is being worked: every item {carries} is closed in {whose}.")
@@ -1287,7 +1401,7 @@ def format_notes_threads(threads: Sequence[Thread], identifier: str, notes_path:
     return "\n".join(lines)
 
 
-def format_queue_edit(edit: QueueEdit, today: date) -> str:
+def format_queue_edit(edit: QueueEdit, now: datetime) -> str:
     """That an item's file has already been edited, which is not that it is in flight.
 
     **The line exists to be different from `IN FLIGHT`, so it does not open
@@ -1305,13 +1419,13 @@ def format_queue_edit(edit: QueueEdit, today: date) -> str:
     nobody is working left unstarted because a capture commit touched its file.
     """
     return (
-        f"  Its file is already edited on {edit.name} ({_since(edit.last_commit, today)}).\n"
+        f"  Its file is already edited on {edit.name} ({_since(edit.last_commit, now)}).\n"
         f"  Not work in flight - {edit.item_id} is startable - but a second edit to the\n"
         "  same file collides at merge, so land the smaller change first."
     )
 
 
-def _staked(carrier: Carrier, today: date) -> str:
+def _staked(carrier: Carrier, now: datetime) -> str:
     """When a branch claimed the item, on one clock, and how long since it moved.
 
     Normalized to UTC rather than printed as git wrote it. Two sessions can be
@@ -1324,10 +1438,10 @@ def _staked(carrier: Carrier, today: date) -> str:
         if carrier.staked is None
         else f"named it {carrier.staked.when.astimezone(UTC):%Y-%m-%d %H:%M} UTC"
     )
-    return f"{when}; {_since(carrier.last_commit, today)}"
+    return f"{when}; {_since(carrier.last_commit, now)}"
 
 
-def format_precedence(order: Precedence, today: date) -> str:
+def format_precedence(order: Precedence, now: datetime) -> str:
     """Who is carrying an item, and - where more than one is - which session yields.
 
     **The verdict is printed rather than left to be worked out, and that is the
@@ -1342,6 +1456,14 @@ def format_precedence(order: Precedence, today: date) -> str:
     The one worth the change is a carrier that is *this* branch: `show` used to
     tell a session re-reading its own item not to start it again, which is a
     false alarm at exactly the moment a session is most likely to look.
+
+    **It says what the branch holds, not that somebody is holding it**
+    (`PL-7TVT`). "Do not start it again" presumed a live session, and a branch
+    outlives its session: PR `#757`'s items read that way for 25 minutes after
+    its session was archived. What a carrier proves is that the item's work is
+    written on that branch, so starting it elsewhere redoes it - which is true
+    of a live session, of a pull request waiting on review and of an abandoned
+    branch alike, and is the one instruction the evidence supports.
     """
     if not order.carriers:
         return ""
@@ -1350,9 +1472,13 @@ def format_precedence(order: Precedence, today: date) -> str:
         only = order.carriers[0]
         if only.mine:
             return f"  IN FLIGHT on this branch ({only.ref}) - {item} is this session's own work."
+        # The ref on a line of its own: a harness-named ref runs to fifty
+        # characters, and the sentences after it should not wrap around it.
         return (
-            f"  IN FLIGHT on {only.ref} ({_since(only.last_commit, today)}) "
-            f"- do not start {item} again."
+            f"  IN FLIGHT on {only.ref} ({_since(only.last_commit, now)}).\n"
+            f"  That branch already carries {item}'s work, so starting it here would redo it.\n"
+            "  A branch outlives its session, so this does not say anybody is still on it;\n"
+            "  `bin/docket flight` adds whether a pull request is open."
         )
 
     lines = [
@@ -1366,14 +1492,17 @@ def format_precedence(order: Precedence, today: date) -> str:
         verdict = "holds it" if position == 0 else "yields  "
         here = " (this branch)" if carrier.mine else ""
         lines.append(f"    {verdict}  {carrier.ref}{here}")
-        lines.append(f"                {_staked(carrier, today)}")
+        lines.append(f"                {_staked(carrier, now)}")
     lines.append("")
     if order.yields:
         lines.append("  This branch yields: stop, and hand over what you have already found.")
     elif order.mine is not None:
         lines.append(f"  This branch holds {item}; the others are the ones that yield.")
     else:
-        lines.append(f"  This branch carries none of them - do not start {item} again.")
+        lines.append(
+            f"  This branch carries none of them, and {item}'s work is on theirs - starting it "
+            "here would redo it."
+        )
     if order.declined:
         # Louder than the unreadable line below, because this one breaks the
         # guarantee the order rests on: two sessions can only compute the same

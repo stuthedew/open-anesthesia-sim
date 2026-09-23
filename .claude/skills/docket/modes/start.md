@@ -78,9 +78,12 @@ that file - though not that anybody has claimed the item, which is the thing
 only the branch name or a commit outside the queue can say. Name the branch
 where you can.
 
-The cost is that an abandoned branch and a live session look alike in `flight`,
-which says so and separates them by age; `bin/docket stranded` recovers what
-one strands. That trade is worth taking - a session picking a different item
+The cost is that an abandoned branch and a live session look alike in `flight`
+for as long as neither has aged or opened a pull request. It says so, and gives
+each branch's age to the minute and whether a pull request is open on it
+(`PL-3QM9`, `PL-7TVT`); `bin/docket stranded` recovers what one strands. Where a
+young branch with none open is the question, the session list below is the one
+reading that can answer it. That trade is worth taking - a session picking a different item
 because one looked busy costs almost nothing against a queue this size, while
 two sessions on one item costs a session and a merge conflict (`PL-PRHN`).
 

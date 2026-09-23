@@ -2690,7 +2690,11 @@ BRANCH = "roadmap-release-write-failure-nhsjwo"
 
 
 def _flight_repo(
-    tmp_path: Path, subject: str, wrote: str = "src/scratch.txt", store: str = "items"
+    tmp_path: Path,
+    subject: str,
+    wrote: str = "src/scratch.txt",
+    store: str = "items",
+    when: str = "2026-08-20T12:00:00+00:00",
 ) -> Path:
     """A repository whose one live branch is named the way the harness names one.
 
@@ -2708,14 +2712,14 @@ def _flight_repo(
     `store` is where the queue sits under the root, and defaults to the one
     level down every other test here happened to use - which is why `PL-P757`
     went unseen for as long as it did. The nested form is this project's own.
+
+    `when` dates both commits, so a test can place the branch's last commit
+    minutes before the instant it reads the age at (`PL-3QM9`).
     """
     root = tmp_path / "repo"
     (root / store).mkdir(parents=True)
     (root / store / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
-    dated = os.environ | {
-        "GIT_AUTHOR_DATE": "2026-08-20T12:00:00+00:00",
-        "GIT_COMMITTER_DATE": "2026-08-20T12:00:00+00:00",
-    }
+    dated = os.environ | {"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when}
 
     def git(*args: str, env: dict[str, str] | None = None) -> None:
         subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=env)
@@ -2750,6 +2754,91 @@ def test_flight_finds_work_on_a_branch_whose_name_carries_no_id(
     out = capsys.readouterr().out
     assert "PL-K7QX  roadmap-release-write-failure-nhsjwo" in out
     assert "last commit 3 days ago" in out
+
+
+def test_a_branch_committed_an_hour_ago_is_not_reported_a_day_old(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-3QM9 as it was observed: a commit at 23:34, read at 00:29.
+
+    Subtracting calendar dates counted the midnight between them, so a session
+    that had committed under an hour before read "last commit 1 day ago" - the
+    direction that reads a live session as abandoned work.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing", when="2026-09-20T23:34:46+00:00")
+    argv = ["--items", str(root / "items"), "--now", "2026-09-21T00:29:00+00:00", "flight"]
+
+    assert main([*argv, "--no-remote"]) == 0
+
+    row = next(line for line in capsys.readouterr().out.splitlines() if line.startswith("PL-0001"))
+    assert row.endswith("last commit 54 minutes ago")
+    assert "day" not in row
+
+
+def _forge(root: Path, command: str) -> None:
+    """Point the repository's `open_pull_requests_command` at `command`."""
+    (root / "docket.toml").write_text(f"[docket]\nopen_pull_requests_command = '{command}'\n")
+
+
+def test_a_branch_minutes_old_carries_its_pull_request_rather_than_a_verdict(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-7TVT: in its first hour an age cannot tell a live session from an ended one.
+
+    PR #757 sat green for 25 minutes after its session was archived, and every
+    row said only how old the branch was, under a closing line telling the
+    reader the age was what separated the two. The pull request is the fact
+    that separates part of it, so the row carries it, and the closing line
+    says what an age cannot say instead of what to conclude from one.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing", when="2026-09-22T10:00:00+00:00")
+    _forge(root, f'printf "{BRANCH} 757\\n"')
+
+    argv = ["--items", str(root / "items"), "--now", "2026-09-22T10:07:30+00:00", "flight"]
+    assert main(argv) == 0
+
+    out = capsys.readouterr().out
+    row = next(line for line in out.splitlines() if line.startswith("PL-0001"))
+    assert "last commit 7 minutes ago" in row
+    assert row.endswith("pull request #757 open")
+    assert "A branch outlives its session, so no row here says anybody is still on it" in out
+    assert "the work is written and waits on review" in out
+    assert "the age is what separates them" not in out
+    assert "do not start" not in out
+
+
+def test_a_forge_that_answered_with_nothing_open_says_so_on_the_row(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ "None open" and "could not look" are opposite answers, and each row says which."""
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing", when="2026-09-22T10:00:00+00:00")
+    _forge(root, "true")
+    argv = ["--items", str(root / "items"), "--now", "2026-09-22T10:07:30+00:00", "flight"]
+
+    assert main(argv) == 0
+    answered = capsys.readouterr().out
+    _forge(root, "false")
+    assert main(argv) == 0
+    unanswered = capsys.readouterr().out
+
+    assert next(line for line in answered.splitlines() if line.startswith("PL-0001")).endswith(
+        "no pull request open"
+    )
+    assert "could not be read here" not in answered
+    assert next(line for line in unanswered.splitlines() if line.startswith("PL-0001")).endswith(
+        "last commit 7 minutes ago"
+    )
+    assert "pull request open" not in unanswered
+    assert "Whether a pull request is open for any of them could not be read here" in unanswered
+
+
+def test_now_without_an_offset_is_refused_rather_than_guessed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An age is a subtraction, and a reference meaning two instants is PL-3QM9 again."""
+    with pytest.raises(SystemExit):
+        main(["--items", str(tmp_path), "--now", "2026-09-21T00:29:00", "flight"])
+    assert "carries no UTC offset" in capsys.readouterr().err
 
 
 def test_flight_ignores_a_branch_that_only_wrote_to_the_queue(
@@ -2815,7 +2904,11 @@ def test_show_marks_an_item_a_branch_has_in_flight(
 
     out = capsys.readouterr().out
     assert f"IN FLIGHT on {BRANCH}" in out
-    assert "do not start PL-0001 again." in out
+    # What the branch holds, not that somebody holds it: a branch outlives its
+    # session, so the line may not presume one (`PL-7TVT`).
+    assert "That branch already carries PL-0001's work, so starting it here would redo it." in out
+    assert "does not say anybody is still on it" in out
+    assert "do not start" not in out
     assert "PL-0001" in out.splitlines()[0]
 
 
@@ -5528,7 +5621,16 @@ def test_every_set_flag_is_a_field_set_writes() -> None:
     """A flag the parser accepts and the table does not name is written nowhere, silently."""
     args = merge_shared(build_parser().parse_args(["set", "PL-0000"]))
 
-    flags = set(vars(args)) - {"command", "item", "overwrite", "func", "items", "today", "no_git"}
+    flags = set(vars(args)) - {
+        "command",
+        "item",
+        "overwrite",
+        "func",
+        "items",
+        "today",
+        "now",
+        "no_git",
+    }
     assert flags == {attribute for _key, attribute in cli.SET_FIELDS}
 
 
@@ -6047,6 +6149,15 @@ class TestAskingTheForgeWhichBranchesAreOpen:
         ask = cli._open_pull_requests(self._args(), tmp_path, config)
         assert ask is not None
         assert list(ask()) == ["claude/one", "claude/two"]
+
+    def test_a_number_after_the_name_is_read_as_its_pull_request(self, tmp_path: Path) -> None:
+        """The number is optional, so a project's own command owes only the name."""
+        config = with_fields(
+            Config(), open_pull_requests_command="printf 'claude/one 841\nclaude/two\n'"
+        )
+        ask = cli._open_pull_requests(self._args(), tmp_path, config)
+        assert ask is not None
+        assert ask() == {"claude/one": 841, "claude/two": None}
 
     def test_a_command_that_could_not_look_answers_none(self, tmp_path: Path) -> None:
         """Exit non-zero is the contract `tools/open_pull_requests.py` holds to."""
