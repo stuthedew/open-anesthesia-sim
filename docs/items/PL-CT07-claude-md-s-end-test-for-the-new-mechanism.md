@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs
 feature: generator-identification
+milestone: v0.5.8
 touches: CLAUDE.md, docs/items/PL-RX3H-the-recurrence-count-never-chains-across-items.md, docs/items/PL-TH9K-docket-check-asks-only-open-heads-for-a.md, docs/items/PL-TQN2-an-item-filed-more-than-14-days-ago-is-re.md
 added: 2026-09-23
 closed: 2026-09-23
+pr: 943
 payoff: a session checking whether the new-mechanism pause has lifted gets the rule's own answer, instead of being told it is over while live generators are still open
 verify: ! grep -qF 'The pause ends when `bin/docket next` shows' CLAUDE.md
 ---
