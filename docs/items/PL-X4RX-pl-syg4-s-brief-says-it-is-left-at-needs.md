@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs
 feature: brief-state-agreement
+milestone: v0.5.7
 touches: docs/items/PL-SYG4-the-digest-s-reserved-verdict-suppresses-the.md
 added: 2026-09-22
 closed: 2026-09-23
+pr: 935
 payoff: PL-SYG4's brief stops telling a session it waits on a decision that its own front matter and later paragraphs say was taken
 verify: ! grep -q '^Left at .needs-decision. rather than triaged' docs/items/PL-SYG4-*.md
 ---

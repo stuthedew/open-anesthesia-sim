@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs
 feature: brief-state-agreement
+milestone: v0.5.7
 touches: .claude/skills/docket/modes/triage.md
 added: 2026-09-22
 closed: 2026-09-23
+pr: 935
 payoff: a session recording an owner's answer keeps the question and dates the answer because its own mode says to, not because it happened to read docs/worker.md
 verify: grep -qiE 'answer[^.]*underneath' .claude/skills/docket/modes/triage.md
 ---

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: count-input-addressing
+milestone: v0.5.7
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-09-20
 closed: 2026-09-23

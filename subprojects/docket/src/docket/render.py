@@ -1254,12 +1254,27 @@ def _outside_clusters(unsound: Sequence[Item], defects: Sequence[Item]) -> list[
             f"not a sound claim, so it is ranked and counted as an ordinary item: {named}"
         )
         lines.append("      `docket check` says what is wrong with each.")
-    if defects:
-        named = ", ".join(f"{i.identifier} ({i.status})" for i in defects)
+    # Split by status because only the open ones rank: a closed item is on no
+    # tier whatever its claim says, and this line called a done one ranked
+    # while printing `(done)` beside it (`PL-BBT8`). The closed ones stay
+    # named, as a drained cluster does above, since they are the half of "are
+    # the generators dealt with?" that is.
+    ranking = [i for i in defects if i.status not in CLOSED_STATUSES]
+    closed = [i for i in defects if i.status in CLOSED_STATUSES]
+    if ranking:
+        named = ", ".join(f"{i.identifier} ({i.status})" for i in ranking)
         lines.append("")
         lines.append(
-            f"  {_plural(len(defects), 'item ranks', 'items rank')} on the generator tier by "
-            f"`impairs-generators:` and names no members, so none is a cluster above: {named}"
+            f"  {_plural(len(ranking), 'item ranks', 'items rank')} on the generator tier by "
+            f"`impairs-generators:` and {'names' if len(ranking) == 1 else 'name'} no members, "
+            f"so none is a cluster above: {named}"
+        )
+    if closed:
+        named = ", ".join(f"{i.identifier} ({i.status})" for i in closed)
+        lines.append("")
+        lines.append(
+            f"  {_plural(len(closed), 'closed item carries', 'closed items carry')} a sound "
+            f"`impairs-generators:` and ranks on no tier, being closed: {named}"
         )
     return lines
 

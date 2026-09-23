@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: perf
+milestone: v0.5.7
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-21
 closed: 2026-09-23

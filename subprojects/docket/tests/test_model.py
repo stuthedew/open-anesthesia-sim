@@ -26,6 +26,7 @@ from docket.model import (
     parse_front_matter,
     parse_item,
     ranks_as_generator,
+    ranks_as_generator_defect,
     recurrence_count,
     recurrence_faults,
     recurrences_of,
@@ -949,6 +950,20 @@ def test_a_live_verdict_ranks_and_a_spent_one_only_records() -> None:
     assert not ranks_as_generator(spent, KNOWN)
 
 
+@pytest.mark.parametrize("status", ["done", "dropped"])
+def test_a_closed_head_ranks_on_no_tier_whatever_its_verdict_says(status: str) -> None:
+    """Still recorded, never ranked: the status test lives in the rank predicate.
+
+    It lived in `render._verdict_phrase` alone, so `docket show` - which asks
+    this predicate about any item it is given - reported five closed heads as
+    ranked on the tier while `recommend` ranked none of them (`PL-BBT8`).
+    """
+    item = _item(root_cause_of=EXPLAINS, generator=LIVE, status=status)
+
+    assert is_generator(item, KNOWN)
+    assert not ranks_as_generator(item, KNOWN)
+
+
 def test_an_open_generator_with_no_verdict_is_recorded_unranked_and_reported() -> None:
     """The quiet failure the check exists for, and the safe default beside it.
 
@@ -1025,6 +1040,21 @@ def test_a_claim_touching_the_machinery_is_sound() -> None:
 
     assert generator_defect_faults(item, MACHINERY) == ()
     assert impairs_generators_soundly(item, MACHINERY)
+    assert ranks_as_generator_defect(item, MACHINERY)
+
+
+def test_a_closed_defect_keeps_a_sound_claim_and_loses_the_rank() -> None:
+    """The claim is the audit's and the rank is the item's, as at the other entrance.
+
+    `docket show` asked the soundness predicate whether a done defect ranked,
+    and printed that it did (`PL-BBT8`).
+    """
+    item = _item(
+        touches=("subprojects/docket/src/docket/plan.py",), impairs_generators=WHY, status="done"
+    )
+
+    assert impairs_generators_soundly(item, MACHINERY)
+    assert not ranks_as_generator_defect(item, MACHINERY)
 
 
 def test_a_claim_reaching_the_machinery_by_a_directory_prefix_is_sound() -> None:

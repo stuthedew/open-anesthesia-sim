@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.5.7
 touches: subprojects/docket/tests/test_cli.py, docs/items/PL-99YZ-three-sessions-opened-three-pull-requests-for.md
 added: 2026-09-23
 closed: 2026-09-23
+pr: 939
 verify: uv run pytest -q subprojects/docket/tests/test_cli.py -k test_a_changed_file_list_git_does_not_answer_declines_the_replay
 ---
 

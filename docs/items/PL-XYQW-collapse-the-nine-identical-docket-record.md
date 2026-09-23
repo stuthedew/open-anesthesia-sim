@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: infra
 feature: queue-hygiene
+milestone: v0.5.7
 touches: subprojects/docket
 added: 2026-09-13
 closed: 2026-09-23
+pr: 940
 verify: grep -q 'def test_a_closure_the_next_cut_will_number_is_not_owed_yet' subprojects/docket/tests/test_checks.py && grep -q 'def test_the_record_advisory_names_every_owed_item_once' subprojects/docket/tests/test_checks.py && uv run pytest subprojects/docket/tests/test_checks.py
 root-cause-of: PL-W7WL, PL-3HMQ, PL-K4BN, PL-66X4, PL-2M5T, PL-WXX8
 generator: spent - the lag is no longer reported before the cut, which writes pr: before the notes render and so is the one writer the one reader waits on (PL-W7WL); check now advises only a closure that shipped without its number

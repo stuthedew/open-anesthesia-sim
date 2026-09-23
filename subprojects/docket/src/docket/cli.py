@@ -47,10 +47,10 @@ from .model import (
     generator_defect_faults,
     generator_faults,
     generators_explaining,
-    impairs_generators_soundly,
     is_under,
     live_recurrences,
     ranks_as_generator,
+    ranks_as_generator_defect,
     recurrence_count,
     recurrences_of,
 )
@@ -1597,12 +1597,18 @@ def cmd_show(args: argparse.Namespace) -> int:
     # `ranks_as_generator` rather than `is_generator`, which is the whole of
     # what this line asks: a recorded generator whose mechanism is spent did
     # *not* rank above every band, so "it ranks on its band alone" is true of
-    # it and must not be dropped (`PL-T7QR`).
-    on_the_tier = ranks_as_generator(item, known_ids) or impairs_generators_soundly(
+    # it and must not be dropped (`PL-T7QR`). Both are rank predicates, not
+    # claim predicates, so a closed item is on no tier here whatever its
+    # fields say - which the claim predicates reported otherwise (`PL-BBT8`).
+    on_the_tier = ranks_as_generator(item, known_ids) or ranks_as_generator_defect(
         item, config.generator_paths
     )
+    closed = item.status in CLOSED_STATUSES
     placement = placement_line(
-        plan.scope if plan is not None else None, item.identifier, ranks_above_bands=on_the_tier
+        plan.scope if plan is not None else None,
+        item.identifier,
+        ranks_above_bands=on_the_tier,
+        closed=closed,
     )
     if placement:
         print(f"  plan: {placement}")
@@ -1631,6 +1637,15 @@ def cmd_show(args: argparse.Namespace) -> int:
             print(f"    UNSOUND - {'; '.join(verdict_faults)}; ranks on its band until repaired")
         elif ranks_as_generator(item, known_ids):
             print("    ranked on the generator tier - above every band but P0")
+        elif closed:
+            # Before `spent`, which would say "ranked on its own band" of an
+            # item nothing ranks. A `live` verdict on a closed head is the case
+            # that matters: its mechanism is still producing and only an open
+            # item's claim can rank it, so the line says where rank comes from.
+            print(
+                "    closed, so on no tier whatever the verdict says"
+                " - only an open item's claim ranks there"
+            )
         else:
             print("    spent: recorded for the audit, ranked on its own band")
     elif verdict_faults:
@@ -1652,6 +1667,8 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  impairs generators: {item.impairs_generators}")
         if faults:
             print(f"    UNSOUND - {'; '.join(faults)}; ranks on its band alone until repaired")
+        elif closed:
+            print("    closed, so on no tier - only an open item's claim ranks there")
         else:
             print("    ranked on the generator tier - above every band but P0")
     inv = _invocation(args)
