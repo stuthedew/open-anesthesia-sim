@@ -5917,6 +5917,25 @@ it. Owing this entry at all is an instance of the mechanism it records.
   `needs-decision`. It carries `generator: live`, so it ranks on that tier
   whatever this gate records.
 
+`PL-B8HZ`, `PL-QHCW` and `PL-HMZZ` were captured on 2026-09-23, after the cut,
+by `PL-T7Y1`'s audit of the generator heads, and they are recorded here by the
+same rule. None is classed `safety` or `science`.
+
+- PL-B8HZ (M) - **deferred 2026-09-23.** `verify --self` decides one contract
+  field at a time whether to read the base's or the branch's copy of the item,
+  and six items have come from it. `defect`, `needs-decision`. It carries
+  `generator: live`, so it ranks on that tier whatever this gate records.
+
+- PL-QHCW (M) - **deferred 2026-09-23.** No record says which commit a release
+  was cut on, so the hand-placed tag is read as the cut. Six items have come
+  from it. `defect`, `needs-decision`. It carries `generator: live`, so it
+  ranks on that tier whatever this gate records.
+
+- PL-HMZZ (M) - **deferred 2026-09-23.** Which pull request carried a closed
+  item's work is inferred from commit history after the merge, and ten items
+  have come from it. `defect`, `needs-decision`. It carries `generator: live`,
+  so it ranks on that tier whatever this gate records.
+
 ### Required scope
 
 1. **The layout model** (queue items `PL-1FT6` and `PL-HJPY`). Pure Python,
