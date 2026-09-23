@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: infra, session-cost
 feature: parallel-sessions
+milestone: v0.5.6
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-08
 closed: 2026-09-22
+pr: 924
 verify: grep -q 'Do the same the moment you pick up a second item' .claude/skills/docket/modes/start.md && grep -q 'def test_an_empty_commit_leading_with_an_id_claims_the_item_before_any_work' subprojects/docket/tests/test_vcs.py && uv run pytest -q subprojects/docket/tests/test_vcs.py -k an_empty_commit_leading_with_an_id_claims_the_item
 ---
 

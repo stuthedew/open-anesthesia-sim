@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: gate-list-integrity
+milestone: v0.5.6
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/, subprojects/docket/README.md, .claude/skills/docket/modes/release.md, ROADMAP.md
 added: 2026-09-21
 closed: 2026-09-23
+pr: 928
 verify: bin/docket gate --no-git --feature interface-areas 2>/dev/null | grep -q 'in the store, split by whether each carries' && bin/docket wave --no-git 2>/dev/null | grep -q 'named in its Required scope, so cleared by the milestone itself:'
 ---
 

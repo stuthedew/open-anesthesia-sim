@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect
 feature: parallel-sessions
+milestone: v0.5.6
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md, .claude/skills/docket/modes/start.md, subprojects/docket/src/docket/checks.py
 added: 2026-09-22
 closed: 2026-09-22
+pr: 926
 payoff: a pass rewriting many item files no longer hides the queue-only items it passes through from docket next until it merges
 verify: grep -q 'def test_a_queue_only_item_s_file_edited_under_another_id_is_not_claimed' subprojects/docket/tests/test_vcs.py
 ---
