@@ -62,6 +62,7 @@ nothing is currently misattributing anything. That class is what lets a
 `safety` item wait outside the top band (`PL-P909`), and the band is owed
 again the moment the item is unblocked.
 
+[superseded 2026-09-20: both have closed; what holds it now is re-pointed below]
 **Depends on** PL-4DCG for the rows and PL-FG9D for which parameters are
 per-machine at all. Neither the table nor the labelling can be built before a
 machine exists to select, so this follows planned-milestone item 1; capturing

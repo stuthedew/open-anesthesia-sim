@@ -58,6 +58,8 @@ opposite sides of it and the choice is a fresh derivation. Note also that the
 conversion factor is agent-specific, so one resolution has to hold for all
 three.
 
+[superseded 2026-09-16: the answer below re-pointed `PL-KZ99` at item 28, and
+since 2026-09-20 the edge runs the other way - `PL-KZ99` waits on this item]
 **Blocked by `PL-S6WW` and `PL-KZ99`.** No displayed millilitre figure is
 defined until the gas volumes' reference temperature is on record and the two
 physical constants are stored with theirs.

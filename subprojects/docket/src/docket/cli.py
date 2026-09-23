@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from . import instructions, notes, render
-from .checks import Report, SettingsSource, analyze
+from .checks import Report, SettingsSource, analyze, brief_contradictions
 from .concurrency import (
     ORDERING,
     SAME_AREA,
@@ -1382,7 +1382,39 @@ def cmd_set(args: argparse.Namespace) -> int:
             print(f"{item.identifier}: {key}: {_spelled(value) or '(removed)'}")
     print(f"  {path}")
     _say_unblocked(item, updated, changes, items, after)
+    _say_contradicted(changes, items, after, today)
     return 0
+
+
+def _say_contradicted(
+    changes: dict[str, Any], before: list[Item], after: list[Item], today: date
+) -> None:
+    """Name the passages this write left telling a reader the state it replaced.
+
+    `docket set --status ready` is a one-line diff that never shows the
+    paragraph 180 lines below it saying "Left at `needs-decision`", and closing
+    an item never shows the briefs still saying they wait on it - which is how
+    nine such passages stood unreported on 2026-09-22 (`PL-8YXJ`). `docket
+    check` reports them to whoever runs it next; this reports them to the
+    session holding the context, in the commit that made them.
+
+    Only what this write created or changed, as `_say_unblocked` prints only
+    what it released: `brief_contradictions` before and after, compared as
+    messages, so a passage the store already contradicted stays `check`'s to
+    report unless this write moved the status it contradicts.
+    """
+    if "status" not in changes and "blocked_by" not in changes:
+        return
+    already = set(brief_contradictions(before))
+    added = [found for found in brief_contradictions(after) if found not in already]
+    if not added:
+        return
+    print(
+        f"{len(added)} passage(s) now say what this write changed; repair them in this "
+        f"commit - reword each, or open its passage with `[superseded {today.isoformat()}]`:"
+    )
+    for found in added:
+        print(f"  {found}")
 
 
 def _say_unblocked(

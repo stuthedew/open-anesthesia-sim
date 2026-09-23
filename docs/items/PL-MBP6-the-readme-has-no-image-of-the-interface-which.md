@@ -61,11 +61,13 @@ recorded how it was produced and when it is retaken.
 there: producing a screenshot needs the app rendered, which is `PL-7J96`'s
 open decision, and the item was the document rather than the tooling under it.
 
+[superseded 2026-09-15: `PL-YCWZ` is done; promoted to `ready` below]
 **Blocked on `PL-YCWZ`** (headless rendering tests over the real Qt interface),
 re-pointed 2026-09-13 when `PL-7J96` was dropped as superseded by it. The
 reasoning is unchanged: producing the image needs the app rendered, and growing a
 second screenshot mechanism here is the outcome this brief refuses.
 
+[superseded 2026-09-20: the port has landed; promoted to `ready` below]
 **What the re-point changes, and it is not nothing.** `PL-7J96` would have
 rendered the *shipped* Flet interface, so this item could have been worked before
 the port. `PL-YCWZ` renders Qt, and a README image is - by this brief's own

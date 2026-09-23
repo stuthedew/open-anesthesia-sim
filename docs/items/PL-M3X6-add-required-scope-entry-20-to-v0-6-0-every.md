@@ -63,6 +63,7 @@ transcription rather than a further design round: a session implementing this
 writes what is in the `Done when.` section, and reopens it only on the ordinary
 evidence a ratified decision admits.
 
+[superseded 2026-09-21: `PL-D8KW` landed, so this lands on its own]
 **Land it with `PL-D8KW`, not separately.** Both edit `ROADMAP.md`, and this
 entry inserts roughly thirty lines inside § "Required scope", which moves every
 line below it - including the § "The cadence" beat-3 sentence `PL-D8KW`

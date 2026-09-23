@@ -84,6 +84,7 @@ above. The failure mode to design against is a check that a session answers by
 raising the budget, which is why shape 1 keys on elements and shape 2 probably
 does not clear the bar.
 
+[superseded 2026-09-13: both have closed; unblocked below]
 **Sequenced after `PL-6580`** (strip the concentration chart's explanatory
 prose) and `PL-F9TQ` (the wash-in panel's paragraphs). A ratchet declared
 against the current screen would freeze the prose it exists to prevent.

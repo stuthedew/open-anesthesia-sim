@@ -46,9 +46,9 @@ same spirit as the existing published-reference tests.
 `src/anesthesia_sim/data/agents/`, each with its `sources` entry and its
 measurement temperature; `schema_version` 2 → 3 and the migration that implies
 in `core/parameters.py`; the conversion itself in `core/`, pure and unit-
-explicit, never in a UI callback. Blocked by `PL-S6WW`: the conversion cannot
-be written until the gas volumes' reference temperature is on record, because
-that temperature is one of its two inputs.
+explicit, never in a UI callback. It waited on `PL-S6WW` (done 2026-09-17): the
+conversion cannot be written until the gas volumes' reference temperature is on
+record, because that temperature is one of its two inputs.
 
 **Re-pointed 2026-09-16.** This was filed to serve a liquid-millilitre figure
 on the accounting panel; the project owner has since ruled that panel
@@ -69,6 +69,7 @@ which is what `docs/MODEL.md` § "Source hierarchy" asks of a stored value, and 
 turns Biro 2014 from a source into an independent cross-check in
 `tests/reference/`.
 
+[superseded 2026-09-17: `PL-S6WW` closed; groomed below]
 **Blocked on `PL-S6WW`** (the model's undocumented reference temperature), which
 is now declared in `blocked-by` rather than only in prose: the conversion has two
 inputs and that temperature is one of them, so it cannot be written first.

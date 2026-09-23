@@ -64,6 +64,7 @@ caught in code. If instead the exclusion simply misses this shape, it is a
 narrow fix. Deciding which costs one read of
 `subprojects/docket/src/docket/vcs.py` against a shallow checkout.
 
+[superseded 2026-09-21: triaged to `ready` in `#851`, still with no class]
 **Left untriaged deliberately.** Choosing its debt class is what would make
 v0.5.0's gate owe it a disposition, and that judgment belongs with a session
 that has read the code rather than with this one, which has not.
