@@ -2577,6 +2577,30 @@ def test_no_block_list_error_on_a_clean_item() -> None:
     assert not _has(_errors(_item()), "YAML block list")
 
 
+def test_a_value_wrapped_at_column_zero_is_reported() -> None:
+    """`PL-JD4L`: the reader passed over the tail, so the value arrived short at exit 0.
+
+    End to end, from a real file, and for both line classes that were skipped:
+    a column-zero line with no colon, and an indented line above the first
+    field. The message quotes each line, because what it holds is what a
+    reader never saw.
+    """
+    item = parse_item(
+        "---\n  priority: P1\nid: PL-K7QX\ntitle: t\nstatus: ready\npriority: P2\neffort: S\n"
+        "touches: a.py\nnot-delegable: wants the owner's call on the second\nhalf of it\n"
+        "---\n\n" + BRIEF
+    )
+    errors = [e for e in _errors(item) if "belong to no field" in e]
+
+    assert len(errors) == 1
+    assert "'  priority: P1', 'half of it'" in errors[0]
+    assert "Indent a continuation" in errors[0]
+
+
+def test_no_unread_line_error_on_a_clean_item() -> None:
+    assert not _has(_errors(_item()), "belong to no field")
+
+
 def test_a_class_outside_the_declared_vocabulary_is_an_error() -> None:
     """`PL-MVC2`: `classes` fails open, so an unknown label matches no rule."""
     errors = _errors(_item(classes=("safey",)))
