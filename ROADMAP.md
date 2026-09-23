@@ -5901,7 +5901,8 @@ was debt by status when this pass left it at `needs-decision` on 2026-09-23.
 - PL-Z0SM (S) - **deferred 2026-09-23.** Merge skew has turned `main` red twice,
   because parallel sessions merge minutes apart on pull requests whose CI ran on
   a base without the other. `infra`. Its brief puts the remedy to the project
-  owner with a recommendation.
+  owner with a recommendation. Decided the same day and closed: hold, adopting
+  strict up-to-date checks at a third instance within 30 days.
 
 ### Required scope
 

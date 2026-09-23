@@ -3,10 +3,12 @@ id: PL-Z0SM
 title: Merge skew has turned main red twice - #476 and #477 (PL-33WM), then #930 and #933 on 2026-09-23 - because parallel sessions merge minutes apart on pull requests whose CI ran on a base without the other, so no pull request ever shows the red
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: infra
-touches: CLAUDE.md
+touches: CLAUDE.md, ROADMAP.md
 added: 2026-09-23
+closed: 2026-09-23
+verify: grep -qF '**Answered 2026-09-23: hold**' docs/items/PL-Z0SM-*.md
 ---
 
 **Problem.** Merge skew has turned main red twice - #476 and #477 (PL-33WM), then #930 and #933 on 2026-09-23 - because parallel sessions merge minutes apart on pull requests whose CI ran on a base without the other, so no pull request ever shows the red
@@ -54,6 +56,17 @@ run on every open pull request at every merge. Adopt strict checks at a third
 instance within 30 days of the last (2026-09-23): that rate would mean parallel
 merging has become the norm rather than a burst, and the re-runs would then be
 cheaper than the ports.
+
+**Answered 2026-09-23: hold** (project owner, 2026-09-23, ratified, over
+requiring branches to be up to date before merging now, and over a merge queue).
+Strict up-to-date checks are adopted at a third instance within 30 days of the
+last, so by 2026-10-23. The count is not left to `bin/docket new`'s recurrence
+matching, which needs a capture's paths to overlap this item's. A third instance
+triaged into the workflow lane also reaches this item through that lane's
+generator check, which asks whether a capture re-enters an item closed within 30
+days; one triaged into the product lane, as `PL-33WM`'s `ROADMAP.md` fix would
+be, relies on the session that diagnoses it finding this item. Closed on this
+answer, per **Done when.**
 
 **Generator check.** Not a generator: two instances, and the cause is an
 external behaviour nothing models - CI proves a merge against the base as it
