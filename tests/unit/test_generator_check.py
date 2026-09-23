@@ -371,3 +371,30 @@ def test_a_commit_leading_with_a_three_digit_id_attributes_what_it_created(repo:
 
     assert parents["PL-8888"] == {"PL-001"}
     assert parents["PL-001"] == set()
+
+
+def test_a_history_git_cannot_read_leaves_the_ratio_unmeasured_rather_than_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A store git will not walk is not one where nothing spawned anything.
+
+    `creation_parents` ran `git log` and never read its status, so in a
+    directory with no repository it attributed no item, raised nothing and
+    printed nothing, and every cluster that had closed anything read `r = 0.00`
+    - a measurement nobody took (`PL-1PBV`). The store here is written and
+    never committed, so there is no history to give. The feature signal needs
+    none, so the cluster is still shown, with its ratio unmeasured.
+    """
+    (tmp_path / "docs" / "items").mkdir(parents=True)
+    _write(tmp_path, "PL-C000", touches="src/thing.py", status="done")
+    for identifier in ("PL-8888", "PL-BBBB", "PL-CCCC"):
+        _write(tmp_path, identifier, touches="src/thing.py", status="ready", feature="one-problem")
+
+    assert generator_check.main(["--repo", str(tmp_path)]) == 0
+
+    out = capsys.readouterr().out
+    assert "the item history could not be read" in out
+    assert "r unmeasured over 1 closed" in out
+    assert "r = 0.00" not in out
+    with pytest.raises(generator_check.GitUnanswered):
+        generator_check.creation_parents(tmp_path)

@@ -41,6 +41,17 @@ lookup runs *before* `closes()` deliberately - it is one request against
 several hundred `git show` calls, so a branch with no pull request pays
 milliseconds and this check speaks only when it has something to say.
 
+**A tree git will not read is never compared as an empty one** (`PL-1PBV`).
+What a branch closes is the difference between the items closed at two refs,
+so an unreadable head read as empty closed nothing and passed any title, and
+an unreadable base read as empty made every item the head holds closed this
+branch's. Either way the run now says it was not checked. With the title from
+`PR_TITLE` that exits 1: `pr-title.yml` checks out both trees on purpose, so
+failing to read one there means the gate cannot answer, and it must not go
+green. Under `--discover` it exits 0 like every other way that path can fail,
+but it prints the reason rather than skipping in silence, because by then there
+was a title to check.
+
 Standard library only, like every tool here, so it runs in a bare checkout.
 The request itself is `open_pull_requests.py`'s, which `docket flight` also
 asks; sharing it keeps one spelling of the token, the timeout and the rule that
@@ -66,24 +77,37 @@ from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
 ITEMS_DIR = "docs/items"
 
 
-def _git(args: list[str]) -> str:
-    """Run git, returning empty output rather than raising.
+class GitUnanswered(Exception):
+    """A git read the verdict rests on that git did not answer, and git's reason."""
 
-    Unlike `docket.vcs`, a failure here is not a normal condition - this runs
-    in CI against a full checkout - but the empty answer still reads correctly
-    at every call site: an unreadable tree closes nothing.
+
+def _git(args: list[str]) -> str:
+    """Git's standard output, or `GitUnanswered` where git did not answer.
+
+    Raised rather than returned, because no caller has an answer to give in
+    its place. This used to return the empty string on any failure, on the
+    ground that "an unreadable tree closes nothing" - which is the claim
+    `PL-9RFP` disproved for `verify`, and it was wrong here in both directions
+    (`PL-1PBV`, and the module docstring). Any non-zero exit is a failure:
+    `ls-tree`, `show` and `rev-parse --abbrev-ref` have no "no" to give, and
+    exit 0 whenever they answered at all.
     """
     try:
         result = subprocess.run(
             ["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=30, check=False
         )
-    except (OSError, subprocess.SubprocessError):
-        return ""
-    return result.stdout if result.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError) as error:
+        raise GitUnanswered(f"`git {args[0]}` could not run: {error}") from error
+    if result.returncode != 0:
+        said = next((line.strip() for line in result.stderr.splitlines() if line.strip()), "")
+        raise GitUnanswered(
+            f"`git {args[0]}` exited {result.returncode}: {said or 'with nothing on stderr'}"
+        )
+    return result.stdout
 
 
 def _closed_ids_at(ref: str) -> dict[str, str]:
-    """Every item closed in that tree, as id to file name."""
+    """Every item closed in that tree, as id to file name, or `GitUnanswered`."""
     closed: dict[str, str] = {}
     listing = _git(["ls-tree", "-r", "--name-only", ref, "--", ITEMS_DIR])
     for path in listing.splitlines():
@@ -91,8 +115,6 @@ def _closed_ids_at(ref: str) -> dict[str, str]:
         if not ITEM_FILE_RE.match(name):
             continue
         text = _git(["show", f"{ref}:{path.strip()}"])
-        if not text:
-            continue
         item = parse_item(text, name)
         if item.status in CLOSED_STATUSES and item.identifier:
             closed[item.identifier] = name
@@ -106,13 +128,21 @@ def closes(base: str, head: str) -> list[str]:
     a merge of the base from being read as a closure. An item already closed on
     `base` is somebody else's work arriving through the merge, and a title is
     not owed for it.
+
+    It also means neither end may be missing: raises `GitUnanswered` where git
+    cannot read either tree, rather than comparing against nothing.
     """
     return sorted(set(_closed_ids_at(head)) - set(_closed_ids_at(base)))
 
 
 def _branch() -> str | None:
-    """The current branch name, or None on a detached HEAD."""
-    name = _git(["rev-parse", "--abbrev-ref", "HEAD"]).strip()
+    """The current branch name, or None on a detached HEAD or where git cannot say."""
+    try:
+        name = _git(["rev-parse", "--abbrev-ref", "HEAD"]).strip()
+    except GitUnanswered:
+        # A skip under `--discover`, the only caller, like every other way the
+        # lookup can fail.
+        return None
     return name if name and name != "HEAD" else None
 
 
@@ -152,8 +182,9 @@ def main() -> int:
     # `${{ github.event.pull_request.title }}` pasted into a `run:` line is the
     # standard GitHub Actions script-injection hole.
     title = os.environ.get("PR_TITLE")
+    discovered = title is None and args.discover
     number = None
-    if title is None and args.discover:
+    if discovered:
         # Before `closes()`, which costs a `git show` per item file at both
         # ends of the range. A branch with nothing open pays one request.
         slug, branch = repo_slug(), _branch()
@@ -165,7 +196,19 @@ def main() -> int:
         print("pr-title: PR_TITLE is not set; nothing to check", file=sys.stderr)
         return 0
 
-    closing = closes(args.base, args.head)
+    try:
+        closing = closes(args.base, args.head)
+    except GitUnanswered as silence:
+        print(
+            f"pr-title: git could not read one of the trees at {args.base} and {args.head}, "
+            f"so what this branch closes is unknown; not checked.\n"
+            f"  {silence}\n"
+            f"  Name refs git can resolve - `git fetch origin` where the base is missing.",
+            file=sys.stderr,
+        )
+        # A skip under `--discover`, as the module docstring says; the gate
+        # that was handed a title fails rather than certify it unread.
+        return 0 if discovered else 1
     if not closing:
         print("pr-title: this branch closes no item; no id is owed")
         return 0

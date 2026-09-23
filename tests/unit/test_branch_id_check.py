@@ -28,8 +28,12 @@ test is the reading of subjects and a branch name, not git.
 
 from __future__ import annotations
 
+import subprocess
+from pathlib import Path
+
 import branch_id_check
 import pytest
+from docket.vcs import answered
 
 
 def _install(
@@ -80,7 +84,7 @@ def test_a_checkout_with_no_default_branch_says_so_rather_than_passing(
     """The guard passing every branch in a checkout it could not read (`PL-73P0`).
 
     `default_base` used to hand back the literal `main` when no candidate
-    resolved, and `_git` collapses a failed walk to the empty string - so
+    resolved, and `_git` collapsed a failed walk to the empty string - so
     `git log main..HEAD` against a `main` that is not there yielded no
     subjects, and this printed "nothing ahead of main; no id is owed" and
     exited 0. The unattributed branch in the first test above would have
@@ -235,3 +239,42 @@ def test_the_pull_request_head_ref_is_preferred_to_a_detached_head(
 
     assert branch_id_check.main() == 0
     assert "PL-CP74" in capsys.readouterr().out
+
+
+@pytest.fixture
+def real_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """`_git` as written, pointed at an empty repository rather than this checkout."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
+    monkeypatch.setattr(branch_id_check, "ROOT", tmp_path)
+
+
+@pytest.mark.usefixtures("real_git")
+def test_a_walk_git_did_not_answer_declines_instead_of_owing_nothing(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The route `PL-73P0` closed for a guessed base, reached past a named one.
+
+    `resolved` guards a base `default_base` guessed, and a `--base` given by
+    hand is not a guess, so `no-such-ref` went straight to the walk. `git log`
+    exited 128, `_git` read that as the empty string, and this printed
+    "nothing ahead of no-such-ref; no id is owed" and exited 0 (`PL-1PBV`).
+    Real git rather than the fake, because the exit code is the evidence.
+    """
+    monkeypatch.delenv("GITHUB_HEAD_REF", raising=False)
+    monkeypatch.setattr("sys.argv", ["branch_id_check.py", "--base", "no-such-ref"])
+
+    assert branch_id_check.main() == 0
+    out = capsys.readouterr().out
+    assert "not checked" in out
+    assert "no id is owed" not in out
+
+
+@pytest.mark.usefixtures("real_git")
+def test_git_saying_no_is_an_answer_and_git_failing_is_not() -> None:
+    # `default_base` reads the first half: `rev-parse --verify` exits 1 for a
+    # candidate that is not there, and reading that as a silence would mark
+    # every checkout without `origin/main` as guessed and check nothing.
+    missing = branch_id_check._git(["rev-parse", "--verify", "--quiet", "no-such-ref"])
+    assert missing == ""
+    assert answered(missing)
+    assert not answered(branch_id_check._git(["log", "--format=%s", "no-such-ref..HEAD", "--"]))

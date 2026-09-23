@@ -26,6 +26,8 @@ with the answer.
 
 from __future__ import annotations
 
+import subprocess
+
 import open_pull_requests
 import pr_title_check
 import pytest
@@ -150,6 +152,72 @@ def test_a_dropped_item_is_a_closure_too(monkeypatch: pytest.MonkeyPatch) -> Non
     assert pr_title_check.closes("base", "head") == ["PL-K7QX"]
 
 
+def _git_answering(**refs: dict[str, str]):
+    """`subprocess.run` as git answers `_git`: each ref's tree, exit 128 for any other.
+
+    The fakes above replace `_git` itself, and so cannot say how a failure
+    reaches it. This leaves `_git` as written, so what is under test is the
+    whole path from git's exit status to the verdict (`PL-1PBV`).
+    """
+    tree = _tree(**refs)
+
+    def run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        args = list(argv[1:])
+        if args[0] == "rev-parse":
+            return subprocess.CompletedProcess(argv, 0, "claude/pl-1pbv-slug\n", "")
+        ref = args[3] if args[0] == "ls-tree" else args[1].partition(":")[0]
+        if ref in refs:
+            return subprocess.CompletedProcess(argv, 0, tree(args), "")
+        return subprocess.CompletedProcess(argv, 128, "", f"fatal: Not a valid object name {ref}\n")
+
+    return run
+
+
+def test_a_head_git_cannot_read_is_not_a_branch_that_closes_nothing(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # The silent direction. `_git` answered a failure with the empty string, so
+    # an unreadable head was an empty tree: the branch closed nothing, and any
+    # title passed with exit 0.
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        _git_answering(base={"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX", status="ready")}),
+    )
+    monkeypatch.setenv("PR_TITLE", "no id here")
+    monkeypatch.setattr(
+        "sys.argv", ["pr_title_check.py", "--base", "base", "--head", "no-such-head"]
+    )
+
+    assert pr_title_check.main() == 1
+    captured = capsys.readouterr()
+    assert "not checked" in captured.err
+    assert "no-such-head" in captured.err
+    assert "closes no item" not in captured.out
+
+
+def test_a_base_git_cannot_read_is_not_a_branch_that_closes_everything(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # The loud direction, which failed for the wrong reason: an unreadable base
+    # was an empty tree, so every item the head holds closed was this branch's,
+    # and the refusal named ids nobody on the branch had closed.
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        _git_answering(head={"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX", status="done")}),
+    )
+    monkeypatch.setenv("PR_TITLE", "no id here")
+    monkeypatch.setattr(
+        "sys.argv", ["pr_title_check.py", "--base", "no-such-base", "--head", "head"]
+    )
+
+    assert pr_title_check.main() == 1
+    err = capsys.readouterr().err
+    assert "not checked" in err
+    assert "PL-K7QX" not in err
+
+
 def test_an_unset_title_is_not_a_failure(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -262,6 +330,28 @@ def test_no_pull_request_to_read_is_a_silent_skip_that_never_reads_the_trees(
     assert captured.err == ""
 
 
+def test_under_discover_a_tree_git_cannot_read_is_a_skip_that_says_so(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # `make check` stays green in a checkout without the base, as it does for
+    # every other way `--discover` can fail. But a title was found, so the
+    # skip says why rather than passing in silence.
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        _git_answering(head={"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX", status="done")}),
+    )
+    monkeypatch.delenv("PR_TITLE", raising=False)
+    monkeypatch.setattr(pr_title_check, "repo_slug", lambda: "o/r")
+    monkeypatch.setattr(pr_title_check, "open_pull_request", lambda *_: (366, "no id here"))
+    monkeypatch.setattr(
+        "sys.argv", ["pr_title_check.py", "--discover", "--base", "no-such-base", "--head", "head"]
+    )
+
+    assert pr_title_check.main() == 0
+    assert "not checked" in capsys.readouterr().err
+
+
 def test_an_environment_title_wins_over_the_lookup(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -321,4 +411,15 @@ def test_the_open_pull_request_is_reported_as_its_number_and_title(
 
 def test_a_detached_head_has_no_branch_to_look_up(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(pr_title_check, "_git", lambda _: "HEAD\n")
+    assert pr_title_check._branch() is None
+
+
+def test_a_branch_name_git_cannot_read_is_no_branch_to_look_up(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # `_git` raises now, and `--discover` must still skip rather than crash.
+    def refuse(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(argv, 128, "", "fatal: not a git repository\n")
+
+    monkeypatch.setattr(subprocess, "run", refuse)
     assert pr_title_check._branch() is None

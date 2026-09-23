@@ -1,9 +1,16 @@
 ---
 id: PL-1PBV
 title: Three tools/ scripts still collapse a failed git call to empty output, the convention PL-9RFP removed from verify: pr_title_check passes a head it cannot read as closing no item, generator_check attributes no item when its log fails, and branch_id_check's walk keeps the route PL-73P0 patched only for an unresolved base
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: defect
 feature: evidence-declines
+touches: tools/pr_title_check.py, tools/generator_check.py, tools/branch_id_check.py, tests/unit/test_pr_title_check.py, tests/unit/test_generator_check.py, tests/unit/test_branch_id_check.py, .github/workflows/pr-title.yml, subprojects/docket/tests/test_cli.py
 added: 2026-09-23
+closed: 2026-09-23
+payoff: the last three tools/ git readers say 'not checked' when git fails, instead of passing any pull request title, printing a spawn ratio of 0.00 nobody measured, or telling a branch it owes no id
+verify: grep -q 'def test_a_head_git_cannot_read_is_not_a_branch_that_closes_nothing' tests/unit/test_pr_title_check.py && grep -q 'def test_a_history_git_cannot_read_leaves_the_ratio_unmeasured_rather_than_zero' tests/unit/test_generator_check.py && grep -q 'def test_a_walk_git_did_not_answer_declines_instead_of_owing_nothing' tests/unit/test_branch_id_check.py
 ---
 
 **Problem.** Three tools/ scripts still collapse a failed git call to empty output, the convention PL-9RFP removed from verify: pr_title_check passes a head it cannot read as closing no item, generator_check attributes no item when its log fails, and branch_id_check's walk keeps the route PL-73P0 patched only for an unresolved base
@@ -40,6 +47,13 @@ sites in 15 files. Three still carry the convention.
   `nothing ahead of <base>; no id is owed` and exits 0. Found by reading the
   code, not reproduced.
 
+**Reproduced again at triage, 2026-09-23.** The first two ran as written above.
+The third can be reached by hand, not only through a race:
+`python3 tools/branch_id_check.py --base no-such-ref` prints `branch-id: nothing
+ahead of no-such-ref; no id is owed` and exits 0. `resolved` recognises a base
+`default_base` guessed, and a base named on the command line is not a guess,
+so it goes straight to the walk.
+
 **Why it matters.** Each is a check or report that answers confidently on
 evidence it never read, which is the shape of the whole `evidence-declines`
 feature. All three triggers are narrow. CI checks out with `fetch-depth: 0`,
@@ -73,3 +87,11 @@ tree-wide guard against the convention, extending `PL-9RFP`'s
 be a new check. `CLAUDE.md` holds that back while any item carries
 `generator: live`. The per-script tests are this fix's own regression tests,
 not that guard.
+
+**Generator check.** This is one instance of closed head `PL-9RFP`'s
+mechanism: a git runner that answers a failed call with the empty string. It
+was filed ten minutes after that head merged (`a65b440c` at 00:58 UTC, this
+capture at 01:08). The head's `generator: spent` was true of the two runners it
+named, `verify` and `doc_check`, and its fix did not reach these three. The
+sweep that found them read all 26 subprocess call sites in the tree, so once
+this item and `PL-19T3` close, no site is left to produce another.
