@@ -73,3 +73,13 @@ reaches 41 items, and the argument for the helper has to stand on those.
 
 The defect itself is unchanged and still reproduces - the `PL-FG9D` case is
 dated and recorded above, and nothing about the count touches it.
+
+**Re-pointed 2026-09-23 at `PL-1P5V`'s admitted shapes, which do not fix this
+but change where the fix goes.** A `grep -qF` for a phrase is the shape the list
+prescribes, and wrapping still splits it. What changed is that a command may
+now run nothing outside the list: this brief's first route, a `tools/` helper
+that normalises whitespace, is a new program a command may not call until it
+joins the list with its argument beside it in `checks.py`; the second, a
+write-time warning, reads the parsed clause - pattern and paths - rather than a
+shell line. Either way the fix is a new admitted shape or a check on the
+admitted one, written beside `checks.verify_shape_refusal`.

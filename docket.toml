@@ -178,6 +178,32 @@ collected_test_paths = ["tests", "subprojects/docket/tests"]
 # each repaired as its item is started, never in a pass.
 verify_k_selector_refused_from = 2026-09-23
 
+# What the command may be, stated as a list rather than a growing set of
+# refusals (`PL-1P5V`; project owner, 2026-09-23, ratified, over a structured
+# `verify:` field). The three dates above each refuse one shape, and each was
+# written after its shape had failed: seven more arrived in the four days after
+# `PL-6TP8` closed. From this date a command is one of the shapes the triage
+# table prescribes - a `grep -q` for what the work adds, a `! grep -q` for what
+# it removes, several of those joined by `&&`, or `uv run pytest
+# --cov=<dotted.module> --cov-fail-under=<N>` alone - or the item says in
+# `not-delegable:` why none can prove it. A new shape joins the list in
+# `checks.py`, with its argument beside it, instead of failing first.
+#
+# Read two ways, because the capture date cannot say when a command was written.
+# An item captured on or after this date is held to the list wherever it is
+# checked. An older item's command is held to it on the branch that writes or
+# rewrites it - `docket check` reads that from git, `docket set` knows it as it
+# writes - so the triage of old items and the repair of legacy commands as each
+# is started land in the list too; a command a branch leaves as the base had it
+# stays grandfathered. Measured 2026-09-23 over the 220 open commands: 103 fit
+# as they stand, 93 more once their legacy trailing health clause is stripped,
+# and 24 are other shapes - tool runs, pipes, `-k`, `test -f`.
+#
+# Dated tomorrow, as the three before it were, so no item captured today is
+# bound by its capture date. A branch is judged when it is checked, so one
+# carrying an older item's new command has until the date to land it.
+verify_allowlist_from = 2026-09-24
+
 # The date an item reaching `ready` must carry one plain-language line of what
 # closing it buys (`PL-WYKF`). The project owner asked for the half of "why this
 # item" that `PL-MN0F` and `PL-Z27P` do not answer: those two print the band and

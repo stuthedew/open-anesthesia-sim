@@ -131,6 +131,15 @@ class Config:
     #: close different sets. `None` leaves it off, and so does an empty
     #: `collected_test_paths`.
     verify_k_selector_refused_from: date | None = None
+    #: The date from which a `verify:` command must be one of the admitted
+    #: shapes - a `grep -q` for what the work adds, a `! grep -q` for what it
+    #: removes, several of those joined by `&&`, or the whole-suite coverage
+    #: run - unless the item's `not-delegable` says why none can prove it.
+    #: The rules dated above each refuse one shape after it had failed; this
+    #: one refuses every shape nobody has argued for, when it is written.
+    #: Read against the capture date, and against the branch for a command
+    #: written after it on an item captured before it. `None` leaves it off.
+    verify_allowlist_from: date | None = None
     #: The date the `payoff:` requirement started applying: an item reaching
     #: `ready` must carry one plain-language line of what closing it buys.
     #: Dated for the reason `verify_required_from` is - a store written before
@@ -380,6 +389,11 @@ def load(root: Path) -> Config:
             section.get("verify_k_selector_refused_from"),
             defaults.verify_k_selector_refused_from,
             "verify_k_selector_refused_from",
+        ),
+        verify_allowlist_from=_date(
+            section.get("verify_allowlist_from"),
+            defaults.verify_allowlist_from,
+            "verify_allowlist_from",
         ),
         payoff_required_from=_date(
             section.get("payoff_required_from"),

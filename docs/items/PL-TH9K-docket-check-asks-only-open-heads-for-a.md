@@ -3,13 +3,13 @@ id: PL-TH9K
 title: docket check asks only open heads for a generator verdict, so a closed head whose mechanism keeps producing is never re-asked: six of the fourteen closed heads were still live on 2026-09-22
 priority: P3
 effort: S
-status: blocked
+status: ready
 classes: feature
 feature: generator-identification
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
-blocked-by: PL-8YXJ, PL-J6HP, PL-XYQW, PL-1P5V, PL-WNCT
 added: 2026-09-22
 payoff: a closed head recorded as still live is put in front of a session instead of ranking nowhere unnoticed
+not-delegable: its first step counts the closed heads still carrying generator: live, and that count decides between building the narrow check and dropping the item; no command can prove an outcome the count has not chosen yet
 ---
 
 **Problem.** docket check asks only open heads for a generator verdict, so a closed head whose mechanism keeps producing is never re-asked: six of the fourteen closed heads were still live on 2026-09-22
@@ -47,6 +47,11 @@ re-specify the generator rule's "asked for nothing".
 close, confirm that `bin/docket generators` marks no head "still generating"
 before unblocking, because any new `live` head keeps the pause in force, and
 `next` leaves out one that is in flight (`PL-CT07`).
+
+**Unblocked 2026-09-23 by `PL-1P5V`, the last open item on the generator
+tier.** `PL-BBT8` and `PL-DSPM`, the two machinery defects that shared it, merged
+the same hour, so the tier is empty once `PL-1P5V`'s pull request lands and the
+pause above has ended.
 
 **Done when.** One of two outcomes. Either `docket check` names a closed head
 that carries `generator: live` and asks for its mechanism to be recorded on an

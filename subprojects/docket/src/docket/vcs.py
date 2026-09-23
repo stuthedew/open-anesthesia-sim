@@ -5119,6 +5119,63 @@ def records_on_base(
 
 
 @dataclass(frozen=True)
+class WrittenReport:
+    """Which open items' `verify:` this checkout wrote, rather than inherited from the base.
+
+    The authoring moment of a command, which the store cannot date: `added:`
+    says when an item was captured, not when its command was written, and a
+    rule dated by capture never reaches the commands written for older items -
+    the ones given a command at triage, and the legacy ones rewritten as their
+    items start. The branch that changes a command is where it was written, so
+    a rule about what a command may be is held to it there (`PL-1P5V`).
+
+    One-sided, as `RecordReport` is: an id absent from `identifiers` was not
+    written here or could not be read, and `declined` says which.
+    """
+
+    base: str = ""
+    identifiers: frozenset[str] = frozenset()
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+
+def commands_written_here(
+    root: Path,
+    commands: Mapping[str, str],
+    *,
+    items_dir: str = "docs/items",
+    runner: Runner | None = None,
+) -> WrittenReport:
+    """The open items whose `verify:` this checkout wrote, against the default base.
+
+    `commands` maps each open item carrying a command to that command. An item
+    is written here when the branch changed its file and the base's copy
+    records a different command, or none, or the base has never held the item.
+    Resolved by id, as `records_on_base` is, so a retitle is not read as a new
+    item; and one `git show` per changed open item, which is usually none.
+    """
+    run = _Silences(runner or _run_git)
+    base = default_base(root, runner=run)
+    if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
+        return WrittenReport(declined="no default branch this checkout can read")
+    changed = _changed_items(root, base, items_dir, run) & set(commands)
+    if not changed:
+        return WrittenReport(base=base, declined=run.reason)
+    at_base = _items_at(base, root, items_dir, run)
+    written: set[str] = set()
+    for identifier in sorted(changed):
+        path = at_base.get(identifier)
+        text = run(["show", f"{base}:{path}"], root) if path else ""
+        recorded = parse_item(text, path.rsplit("/", 1)[-1]).verify if path and text else ""
+        if recorded != commands[identifier]:
+            written.add(identifier)
+    return WrittenReport(base=base, identifiers=frozenset(written), declined=run.reason)
+
+
+@dataclass(frozen=True)
 class ClosedByReport:
     """Which items one commit closed, or why that could not be read.
 
