@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: parallel-sessions
-touches: tools, tests/unit/test_left_behind_check.py, docket.toml, .claude/hooks/docket-digest.sh
+touches: tools, tests/unit/test_left_behind_check.py, docket.toml, .claude/hooks/docket-digest.sh, docs/ARCHITECTURE.md
 added: 2026-09-12
 closed: 2026-09-23
 verify: grep -q 'tests/unit/test_left_behind_check.py' docket.toml && uv run pytest -q tests/unit/test_tools_portability.py
