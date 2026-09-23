@@ -5850,6 +5850,9 @@ classed it, the first moment it could be read as debt. `PL-FD5Q`, captured
   it fails: seven since `PL-6TP8` closed. `defect`, `infra`. At
   `needs-decision`: an allowlist of the prescribed shapes, or a structured
   field. As a live generator it ranks on that tier whatever this gate records.
+  Decided for the allowlist the same day, and closed with it: a command written
+  from 2026-09-24 is a `grep -q`, a `! grep -q`, several joined by `&&`, or the
+  whole-suite coverage run, or it is refused on the branch that writes it.
 
 - PL-WNCT (M) - **deferred 2026-09-23.** A session that ends without a pull
   request strands its captures on its branch, and twenty-one recovery items

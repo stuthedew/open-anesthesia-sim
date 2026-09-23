@@ -65,3 +65,21 @@ records instead. Three candidates, none costed:
 The third is the cheapest and is the one to argue against first: `PL-4PC5`'s
 command was live when written and died afterwards, which no authoring rule
 reaches.
+
+**Re-pointed 2026-09-23 at `PL-1P5V`'s admitted shapes, which narrow this
+rather than settle it.** `PL-4PC5`'s command read `wave`'s *output* through a
+pipe, and no command captured from 2026-09-24 can take that shape. What can
+still die is a `grep` whose target moves after the command is written: the file
+renamed, or the line reworded. And the list makes one half of that decidable
+for the first time. Every admitted command is `grep` clauses over named paths,
+so `checks.verify_shape_refusal`'s parse can say which paths a positive clause
+reads - and a path that neither exists in the tree nor falls under the item's
+`touches` can never come to hold the pattern, because the work would have to
+create it and work creating a file declares it. That is candidate 1 at the
+altitude that holds. The pattern half of candidate 1 does not: a pattern
+present nowhere is what every unstarted item's command looks like.
+
+**Recommended:** build the file half as an advisory on the admitted shapes -
+advisory, since `touches` is a prediction a branch can outgrow - and record the
+reworded-line half as undecidable (candidate 3), since a line the work will add
+and a line another change reworded away read the same before the work.

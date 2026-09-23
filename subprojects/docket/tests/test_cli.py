@@ -6094,7 +6094,7 @@ def test_set_holds_a_command_it_writes_to_the_admitted_shapes_whatever_the_item_
     legacy commands, which a rule dated by capture alone never reaches
     (`PL-1P5V`).
     """
-    old = OPEN_ITEM.replace("id: PL-K7QX", "id: PL-E5E5")
+    old = OPEN_ITEM.replace("id: PL-K7QX", "id: PL-F6F6")
     store = _store(tmp_path, old)
     (tmp_path / "docket.toml").write_text(
         '[docket]\nverify_allowlist_from = "2026-09-24"\n', encoding="utf-8"
@@ -6102,7 +6102,7 @@ def test_set_holds_a_command_it_writes_to_the_admitted_shapes_whatever_the_item_
 
     def write(*fields: str) -> int:
         return main(
-            ["set", "PL-E5E5", *fields, "--overwrite", "--items", str(store)]
+            ["set", "PL-F6F6", *fields, "--overwrite", "--items", str(store)]
             + ["--no-git", "--today", "2026-09-24"]
         )
 

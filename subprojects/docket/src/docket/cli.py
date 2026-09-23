@@ -589,7 +589,7 @@ def _complete_report(
         # older than their cutover (`PL-1P5V`).
         written=(
             None
-            if git is None
+            if git is None or config.verify_allowlist_from is None
             else commands_written_here(
                 root,
                 {

@@ -3807,6 +3807,7 @@ def test_the_refusal_names_what_the_admitted_shapes_never_use() -> None:
         ("grep -q 'x' a.py &&", "no clause on one side"),
         ("uv run pytest --cov=src/anesthesia_sim/core/tissue.py --cov-fail-under=100", "dotted"),
         ("uv run pytest --cov=anesthesia_sim.core", "`--cov-fail-under=`"),
+        ("uv run pytest --cov=anesthesia_sim.core --cov-fail-under=0", "above zero"),
         ("uv run pytest --cov=anesthesia_sim.core --cov-fail-under=100 tests/unit", "no test path"),
         ("grep -q 'def test_x' a.py && uv run pytest --cov=a --cov-fail-under=100", "stands alone"),
     ):

@@ -199,8 +199,9 @@ verify_k_selector_refused_from = 2026-09-23
 # as they stand, 93 more once their legacy trailing health clause is stripped,
 # and 24 are other shapes - tool runs, pipes, `-k`, `test -f`.
 #
-# Dated tomorrow, as the three before it were, so no command written today is
-# refused retroactively.
+# Dated tomorrow, as the three before it were, so no item captured today is
+# bound by its capture date. A branch is judged when it is checked, so one
+# carrying an older item's new command has until the date to land it.
 verify_allowlist_from = 2026-09-24
 
 # The date an item reaching `ready` must carry one plain-language line of what

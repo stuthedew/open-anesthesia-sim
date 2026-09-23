@@ -7,7 +7,7 @@ status: blocked
 classes: feature
 feature: generator-identification
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/duplicates.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_duplicates.py
-blocked-by: PL-8YXJ, PL-J6HP, PL-XYQW, PL-1P5V, PL-WNCT
+blocked-by: PL-DSPM
 added: 2026-09-22
 payoff: a mechanism re-filed at sibling sites is counted as one cluster even after the item it first matched closes, instead of restarting at one filing per item
 ---
@@ -43,6 +43,12 @@ items. Chaining would be new behaviour in the generator machinery.
 built. `blocked-by` names the three open items that carried one on 2026-09-23.
 When they close, confirm that `bin/docket next` shows the generator tier empty
 before unblocking, because any new `live` head keeps the pause in force.
+
+**Re-pointed 2026-09-23, when `PL-1P5V` closed the last `live` head.** No open
+item carries `generator: live` now, but the tier still holds a defect in the
+generator machinery, `PL-DSPM`, in flight (`PL-BBT8`, the other, merged the
+same hour) - so `blocked-by` names it, and this waits for the tier to empty
+as above.
 
 **Done when.** The chain count is re-run first. Then one of two outcomes:
 either recurrence evidence follows a closed anchor to the open item that

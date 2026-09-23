@@ -315,13 +315,26 @@ green only for *this* item's work and reads a path the item's `touches`
 declares (`PL-3DXV`, `PL-LBW5`); a neighbour's work satisfying it turns the
 replay red against the wrong item.
 
-Copy one of these shapes rather than inventing one:
+**Only these shapes are admitted** (`PL-1P5V`). From 2026-09-24 `docket set`
+will not write, and `docket check` errors on, any other command - on an item
+captured from that date, and on an older item's command wherever a branch
+writes or rewrites it, which is every command you write at triage or repair as
+an item starts. The error names the first thing no shape uses.
 
 | The item is | The command |
 | --- | --- |
-| Covering a module's untested paths | `uv run pytest --cov=anesthesia_sim.core.tissue --cov-fail-under=100` |
+| Covering a module's untested paths | `uv run pytest --cov=anesthesia_sim.core.tissue --cov-fail-under=100`, alone |
 | A string, label, or single behavior | `grep -q 'def test_halted' tests/unit/test_simulation_view.py` |
 | Documentation only | `grep -qF 'the sentence the item adds' docs/MODEL.md` |
+| Removing a stale line | `! grep -qF 'the sentence the fix deletes' docs/WORKING_NOTES.md` |
+
+Several `grep` clauses may be joined by `&&`. A `grep` may carry `-F`, `-E`,
+`-r` and `-i`, and with `-r` an `--include=` or `--exclude=` *ahead of* the
+pattern; a path may glob, so a command reading an item file can name it by id
+alone and outlive a retitle; and `--` goes ahead of a pattern that starts with
+a dash. Where none of these can
+prove the item, say why in `not-delegable:` - that admits the command, and
+keeps the item from a worker whose `docket verify` would trust it.
 
 The last two are the same shape, and it is the one to reach for: a `grep` for
 what the work adds, alone. It fails until the work exists and nothing else can
@@ -346,12 +359,14 @@ set` will not write, and `docket check` errors on, a command captured from
 2026-09-20 that runs `pytest` over `tests/` or `subprojects/docket/tests/`
 while another clause stands beside it - the shape 82 open commands carried
 when this rule landed, 57 on 2026-09-22, and `PL-FZ58` costed at 59% of a
-whole-store replay. So this paragraph now only has to be remembered for the
-clauses a check cannot judge: `doc_check.py check` and `bin/docket check`,
-where which clause discriminates depends on what the item's work is
-(`PL-09G9`).
+whole-store replay. The rest of it - `doc_check.py check` and `bin/docket
+check`, which that rule left to prose because which clause discriminates
+depends on the item's work (`PL-09G9`) - is refused from 2026-09-24 by the
+list above, which admits neither; an item whose work is making one of them
+pass says so in `not-delegable:`.
 
-The first is the one that goes wrong loudly. `--cov=` takes the **dotted module**
+The coverage run is the one that goes wrong loudly, and the list refuses both
+ways it has. `--cov=` takes the **dotted module**
 (`anesthesia_sim.core.tissue`), never the path, and the run is the **whole
 suite** — no test file argument — because coverage of a module is the union of
 everything that exercises it.

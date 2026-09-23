@@ -2150,7 +2150,7 @@ reads the command and the diff together.
   author's obligations below.
 - **`docket check`** reads the command as text: one line, not re-entering
   `docket verify`, not reading `docket check`'s output, `touches` declared
-  beside it. It executes the command only under `--verify`, and then as the
+  beside it, and one of the admitted shapes below. It executes the command only under `--verify`, and then as the
   replay above.
 - **A closed item's command** is read by nobody as a claim about today's
   tree. It is the record of what ran, and the next section holds it to that.
@@ -2235,6 +2235,56 @@ tree outside `collected_test_paths`. The date is its own rather than the
 prerequisite rule's, because that rule leaves any `-k` alone and `PL-W4XQ` was
 captured on its first day carrying one; the five open commands of this shape
 on 2026-09-22 are grandfathered and repaired as each item is started.
+
+**Since `PL-1P5V` the shapes are a list, and one nobody has argued for is
+refused when it is written.** Each rule above refuses one shape, and each was
+written after its shape had failed - a red `main`, a dead command, a finished
+item read as absent. Seven arrived in the four days after `PL-6TP8` closed,
+because a list of refused shapes never closes. `verify_allowlist_from` inverts
+it (project owner, 2026-09-23, ratified, over a structured `verify:` field): a
+command is one of these, or its item says in `not-delegable` why none can
+prove it, which also keeps it from a worker whose `docket verify` would trust
+the command.
+
+| The work | The command |
+| --- | --- |
+| adds a test, a line, a sentence | `grep -q 'def test_halted' tests/unit/test_simulation_view.py`, or `grep -qF '<phrase>' <file>` |
+| removes one | `! grep -qF '<the stale sentence>' <file>` |
+| does several of those | the clauses joined by `&&` |
+| covers a module | `uv run pytest --cov=<dotted.module> --cov-fail-under=<N>`, alone |
+
+A `grep` may carry `-F`, `-E`, `-r`, `-i` and, with `-r`, `--include=` or
+`--exclude=` ahead of the pattern; a path may glob, since an item file is named
+after a title that can change; `--` goes ahead of a pattern that starts with a
+dash. Everything else - a pipe, `||`, `;`, a redirection, a `$` the shell would
+expand, any other program or `grep` option, a path outside the repository - is
+refused by `verify_shape_refusal` in `checks.py`, which names the first thing
+it found. A new shape joins the list there, with its argument beside it,
+instead of failing first.
+
+**`! grep` is admitted because of the direction it fails in.** A `grep -q` for
+what the work adds fails quietly when it is wrong - a typo, a phrase the
+document wraps (`PL-RR1N`), a file that moved (`PL-CWD4`) - because "never
+passes" reads as work not started. A `! grep -q` passes when it is wrong: a
+typo, a line another branch reworded, a file another branch deleted, whose
+`grep` exit 2 the `!` turns into 0. A passing open command is already an error,
+and the scoped replay runs every command reading a file on the branch that
+edits it, so each way the absence shape goes wrong is reported loudly on the
+branch that caused it. It is also the one shape for the commonest removal, a
+stale sentence a fix deletes, that does not dictate the fix's wording.
+
+**Two anchors, because the capture date cannot say when a command was
+written.** An item captured on or after the date is held to the list wherever
+it is checked. An older item's command is held to it on the branch that writes
+or rewrites it: `check` reads which open items' commands differ from the
+default base's copy (`vcs.commands_written_here`), and `set` knows it is
+writing one. So the triage of old items and the repair of legacy commands as
+each item starts land in the list; a command a branch leaves as the base had it
+stays grandfathered, and a base that cannot be read declines rather than
+accusing the branch. Measured 2026-09-23 over the 220 open commands: 103 fit as
+they stand, 93 more once their legacy trailing health clause is stripped, and
+24 are other shapes. The per-shape rules stay, guarding the grandfathered
+commands until they drain.
 
 ### A closed item's command is a record, and it is not rewritten
 
@@ -3268,6 +3318,8 @@ verify_prerequisite_refused_from = 2026-09-20   # when a command may no longer
 collected_test_paths = ["tests"]   # the trees it does collect; empty = rule off
 verify_k_selector_refused_from = 2026-09-23   # when a command may no longer
                                    # narrow a run over those trees with `-k`
+verify_allowlist_from = 2026-09-24 # when a command must be an admitted shape
+                                   # or its item `not-delegable`; omit for off
 payoff_required_from = 2026-09-20  # omit to leave the `payoff:` rule off
 recommendation_required_from = 2026-09-21   # a `needs-decision` brief
                                    # marks a recommendation; omit for off

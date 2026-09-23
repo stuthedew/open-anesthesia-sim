@@ -1211,10 +1211,11 @@ def _coverage_refusal(words: Sequence[_Word]) -> str | None:
         module = option.split("=", 1)[1]
         if not _DOTTED_MODULE_RE.fullmatch(module):
             return f"gives `{option}`, where `--cov=` takes the dotted module, never a path"
-    if len(thresholds) != 1 or not _PERCENT_RE.fullmatch(thresholds[0].split("=", 1)[1]):
+    percent = thresholds[0].split("=", 1)[1] if len(thresholds) == 1 else ""
+    if not _PERCENT_RE.fullmatch(percent) or float(percent) == 0:
         return (
-            "gives the coverage run no single `--cov-fail-under=` percentage, so it "
-            "passes whenever the suite does"
+            "gives the coverage run no single `--cov-fail-under=` percentage above "
+            "zero, so it passes whenever the suite does"
         )
     return None
 

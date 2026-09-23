@@ -3,11 +3,13 @@ id: PL-0QRP
 title: A verify: clause that counts occurrences of a symbol passes as soon as any unrelated change adds one, so the skill's verify guidance should name counting beside the -k and --cov traps
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: docs
 feature: verify-command-meaning
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-19
+closed: 2026-09-23
+reason: superseded by PL-1P5V: the admitted shapes refuse a counting clause when it is written - test "$(grep -c ...)" -ge N is outside the list - so there is no trap left for the skill to name; the safe half of the asymmetry, a count driven to zero, is the ! grep -q the list admits
 verify: grep -rqF 'nothing unrelated can drive it there' .claude/skills/docket/
 ---
 

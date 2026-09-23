@@ -3,15 +3,16 @@ id: PL-1P5V
 title: verify: is an opaque shell string, so each non-discriminating shape is refused by its own rule after it fails: PL-6TP8's contract did not stop the mechanism, and PL-09G9, PL-205P, PL-J3WK, PL-RR1N and PL-R812 arrived after it closed
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: verify-command-meaning
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, docket.toml, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/items
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, docket.toml, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, ROADMAP.md, docs/items
 added: 2026-09-22
+closed: 2026-09-23
 payoff: a new way for a verify: command to prove nothing is refused when it is written, instead of costing a red main, a dead command or a misread before it earns a rule of its own
 verify: grep -q 'def test_a_verify_command_outside_the_prescribed_shapes_is_refused' subprojects/docket/tests/test_checks.py
 root-cause-of: PL-0QRP, PL-CWD4, PL-09G9, PL-RR1N, PL-205P, PL-J3WK, PL-R812
-generator: live - the field still admits any shell line and each rule refuses one shape only after it fails: seven new shapes since PL-6TP8 closed on 2026-09-19, the latest PL-R812 on 09-22, and the -k rule's own docstring leaves -m as the next
+generator: spent - a verify: written from 2026-09-24 is one of the admitted shapes or is refused when it is written, on the branch that writes it, so a new shape joins the list by an argument in checks.py instead of by failing first; the per-shape rules guard the grandfathered commands until they drain
 ---
 
 **Problem.** verify: is an opaque shell string, so each non-discriminating shape is refused by its own rule after it fails: PL-6TP8's contract did not stop the mechanism, and PL-09G9, PL-205P, PL-J3WK, PL-RR1N and PL-R812 arrived after it closed
@@ -106,3 +107,38 @@ over a structured `verify:` field). Build the parser that accepts the shapes
 the triage table prescribes and refuses any other shape at write time unless
 `not-delegable:` says why none fits. Settle `! grep` as part of that work, as
 the recommendation says.
+
+**Built 2026-09-23.** `checks.verify_shape_refusal` reads the command with a
+quote-aware lexer - `shlex` drops whether a character was quoted, which is the
+difference between searching for `$x` and searching for what the shell holds
+in `x` - and admits `grep -q` clauses, `! grep -q` clauses, several joined by
+`&&`, or `uv run pytest --cov=<dotted.module> --cov-fail-under=<N>` alone. A
+`grep` may carry `-F`, `-E`, `-r`, `-i`, and with `-r` an `--include=` or
+`--exclude=` ahead of the pattern; a path may glob. Anything else is refused,
+with the first thing found named, unless `not-delegable:` says why none fits.
+
+**`! grep` is admitted, on the direction it fails in.** Every way it goes wrong
+- a typo, a line another branch reworded, a file another branch deleted - makes
+it *pass*, and a passing open command is already an error the changed-path
+replay reports on the branch that caused it. The positive shape's failures are
+the quiet ones (`PL-RR1N`, `PL-CWD4`). It is also the one shape for the
+commonest removal, a stale sentence, that does not dictate the fix's wording.
+
+**Two anchors, where the brief named one.** `verify_allowlist_from =
+2026-09-24` binds items captured from that date, as the dated rules before it
+do. But a capture date cannot say when a command was written, and a cutover
+read from it alone leaks the triage of every older item and the repair of every
+legacy command as its item starts - most of what is written in the weeks after
+it. So a command a branch writes or rewrites for an older item is held to the
+list there: `check` reads it from git (`vcs.commands_written_here`), `set`
+knows it as it writes. A command a branch leaves as the base had it stays
+grandfathered.
+
+**Measured 2026-09-23 over the 220 open commands:** 103 fit as they stand, 93
+more once their legacy trailing health clause is stripped, and 24 are other
+shapes - tool runs, pipes, `-k`, `test -f`, one `--include=` after its pattern,
+which BSD `grep` would read as a file.
+
+**Members.** `PL-0QRP` dropped against this: the counting clause is outside the
+list. `PL-CWD4` and `PL-RR1N` re-pointed: the list narrows each and settles
+neither, and each brief now says where its fix goes.
