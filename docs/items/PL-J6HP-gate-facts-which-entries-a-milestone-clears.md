@@ -43,3 +43,105 @@ format, so it is the one to cost first.
 
 **Done when.** Each gate fact the roadmap records has one reader, so a new
 phrasing of one changes that reader instead of arriving as an item.
+
+## Counted 2026-09-23: the two routes differ on one fact of eight
+
+**Recommended: one reader, and the derived facts stop being written down.**
+Parse deferrals in `docket.roadmap` beside the frozen list and `Required
+scope`, derive the current gate once, and stop `ROADMAP.md` carrying hand
+copies of facts the store or the parse already holds. Do not move deferrals
+into structured records unless the falsifier below fires. Put to the project
+owner 2026-09-23; awaiting the answer.
+
+**The count**, read against the tree on 2026-09-23. Eight kinds of gate fact,
+and the two routes carry the same thing on seven of them:
+
+| Fact | Kind | Readers today | One reader carries | Records carry |
+| --- | --- | --- | --- | --- |
+| Frozen-list membership | decided | 1, `roadmap._gate_entries` | nothing | nothing |
+| `Required scope` membership | decided | 1, the declaration slot (`PL-HWW1`) | nothing | nothing |
+| Exclusions | decided | 1, `MilestoneSection.excluded_ids` | nothing | nothing |
+| Deferrals | decided | 1, but in `tools/doc_check.py` (`_declined_ids`), so no `bin/docket` command can see one | move the parse into `docket.roadmap` | an item field, 16 v0.6.0 entries migrated, `PL-HWW1`'s refusal reopened |
+| Which gate is current | derived | 2: `roadmap.wave`, and two identical blocks in `doc_check` | one function | the same |
+| What a milestone clears itself | derived | 1 derivation (`gate_status`), plus a hand copy nothing holds | hold the copy to the parse | the same |
+| The release that took a closed deferral | derived | 0 | print it from the store, stop writing it | the same |
+| Counts | derived | 1 checker (`check_gate_counts`, `PL-4RHP`) | nothing | nothing |
+
+`plan.gate()` reads none of them since `#928`: it reads no roadmap at all, and
+its output says it partitions the store by `feature`. **Decision needed.**
+above names it as a reader, which was true before that merge.
+
+**Two measurements behind the derived rows.**
+
+- *The release mark copies a field.* Across v0.5.0's refilling-queue list and
+  v0.6.0's two deferral subsections, 82 entries have closed. 48 carry a mark,
+  and every one of the 48 equals the item's `milestone:`, which `bin/docket
+  release` stamps. The other 34 carry none, and 30 of those sit in the list
+  that states the marking rule. So the rule copies a field the store already
+  holds, and it has missed 41% of the time.
+- *The self-clear copy is wrong today.* v0.6.0's frozen list groups 12 entries
+  under "Cleared by v0.6.0 itself - 12 entries". The rule gives 14: `PL-CNCF`
+  and `PL-PGZF` are named in `Required scope` but sit under the "Cleared before
+  v0.6.0 begins" groups, because `#862` named them after `#850` had grouped the
+  list. `check_gate_counts` holds only the heading's count, and that agrees
+  (12 entries under it). This is a live instance of the mechanism. It is
+  recorded here rather than filed on its own, because it is part of this
+  item's done-when (`capture.md`: a finding that completes an in-progress item
+  is not a new item).
+
+**The members, sorted by mechanism.** Two are the deferral reader not matching
+the document (`PL-H6VQ`, `PL-Z891`). Two are a derived fact derived a second
+way (`PL-YVP7`, `PL-RFHH`). Two are a derived fact written by hand
+(`PL-JN3F`, `PL-B60Q`). Structured records only reach the first pair. The
+other four need the same fix under either route.
+
+**Why one reader, and not records, for deferrals.**
+
+1. **Nothing measured asks for more.** Both deferral members were `doc_check`'s
+   reader failing to match the document, which one reader plus the existing
+   dispositions error covers. In v0.6.0, reading only the entries' leading ids
+   would drop no disposition: 16 entries, and 8 ids cited in prose, none of
+   them open undisposed debt.
+2. **The churn is modest.** Since the 2026-09-21 freeze, 16 deferral entries
+   landed in 4 commits, out of 81 on `main`.
+3. **Records reopen a refusal.** `PL-HWW1` refused both a per-item membership
+   field and a sidecar file or fenced block (ratified, 2026-09-19), on the
+   ground that two statements drift. That can be reopened on ordinary
+   evidence, and item 2 above is the only candidate: deferrals are made one at
+   a time at triage, not in a single scoping act. It is not enough on its own.
+4. **Reversibility.** One reader changes no stored format, so nothing is
+   downstream of it, and a later move to records is not made any more
+   expensive. Records are the one-way door: every deferral written into item
+   files after they land becomes principal to repay if they are undone.
+
+**What would change it, stated before building.** If a deferral phrasing or
+reading produces another item after one reader lands, move deferrals into an
+item field. The parse in `docket.roadmap` is the one thing that move would
+replace.
+
+**What one reader carries, concretely.**
+
+- Deferrals: `DEFERRAL_VERBS`, `DECLINED_HEADING_RE`, `_section_end` and
+  `_declined_ids` (about 135 lines, mostly docstring) move into
+  `parse_milestones`, as the entries' leading ids plus every id beneath, which
+  is the dispositions check's reading, kept unchanged. `check_gate_dispositions`
+  reads the parse. Neither name is renamed: `ROADMAP.md` and release notes cite
+  both.
+- The current gate: one function over `release_train(...).ahead`, called by
+  `wave` and by both `doc_check` blocks.
+- Self-clear: `doc_check` holds the "Cleared by vX.Y.Z itself" group's
+  membership to the frozen entries `Required scope` names. The build moves
+  `PL-CNCF` and `PL-PGZF` into that group and updates the three group counts
+  (12 to 14, 45 to 44, 12 to 11).
+- The mark: `bin/docket wave` prints each current-gate deferral's state and
+  release from the store. v0.5.0's marking rule becomes a pointer to that
+  output. The existing 48 marks stay, since a release name does not go stale.
+  This is `PL-B60Q` re-scoped: its filed check would demand a hand copy of
+  `milestone:` on 34 entries at once, and again on every release after.
+
+**Left alone deliberately.** Prose counts (`PL-16HD`, `PL-DHJ7`) belong to
+`PL-4FBP`'s stale-statement cluster, where the reader is the check, so neither
+route touches them. The lane groups and v0.6.0's one-entry "Deferred to Gate 3"
+group are a person's organisation of the list. They agree with the store
+today, nothing has been filed on them, and the list's own text names `bin/docket
+wave` as the authority.

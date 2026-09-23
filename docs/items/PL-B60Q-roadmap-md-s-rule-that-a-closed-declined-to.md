@@ -3,9 +3,10 @@ id: PL-B60Q
 title: ROADMAP.md's rule that a closed Declined-to-Gate entry carries the release that took it is stated only inside v0.5.0's own subsection, so the release mode never reads it and v0.6.0's first closed deferral will go unmarked exactly as PL-0VFF's three did
 priority: P2
 effort: S
-status: ready
+status: blocked
 classes: defect, infra
 feature: gate-list-integrity
+blocked-by: PL-J6HP
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 added: 2026-09-22
 payoff: a Declined-to-Gate entry that has shipped stops reading as outstanding debt, so v0.6.0's deferral list stays true as its entries close
@@ -56,3 +57,14 @@ brief shows the rule is decidable, and `CLAUDE.md` gives deterministic tooling
 standing approval over a prose line a release session would have to remember.
 `PL-Z891` then shipped in v0.5.4 (`#903`, merged while this pass was open).
 Its entry is still unmarked, so the check's first finding already exists.
+
+**Blocked 2026-09-23 on `PL-J6HP`'s decision, which re-scopes this item.** The
+mark this item asks a check to enforce copies a field the store already holds.
+Across v0.5.0's refilling-queue list and v0.6.0's two deferral subsections, 82
+entries have closed. The 48 that carry a mark all equal the item's `milestone:`
+field, and 34 carry none. The re-scope recommended there is to have `bin/docket
+wave` print each deferral's state and release from the store, and to drop the
+rule that asks for a hand-written mark. The check as filed would instead demand
+34 hand edits at once, and more on every release after. It is blocked rather
+than left `ready` so that no session builds the filed form while the decision
+is open. The re-scope is the same under either route `PL-J6HP` weighs.
