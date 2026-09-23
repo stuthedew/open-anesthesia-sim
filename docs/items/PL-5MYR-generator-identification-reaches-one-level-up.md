@@ -111,12 +111,42 @@ mechanism, so it waits for the pause unless the owner lifts the pause for it.
 
 **Decision needed - the project owner's.** Should the pause be lifted for this
 item alone? `CLAUDE.md` § "What this project is" allows it: "A request from
-the project owner lifts it for that request". **Recommendation: yes.** The
-remedy is one question added to the generator check and the grooming pass in
-`.claude/skills/docket/modes/triage.md`, not a script, so it adds little of
-the sprawl the pause guards against. Waiting costs more. Until the five live
-heads close, the only way to find the next record read by several readers is
-another sweep the owner asks for, and the last one took 262 agents.
+the project owner lifts it for that request". **Recommendation: yes, and build the durable version rather
+than a prose question alone** (revised 2026-09-23 by `PL-67SX`, under the
+owner's "I'd rather fix it right once, then fix it twice"). The question on
+its own would ask every pass to compare 35 heads by reading their briefs.
+Doing that once took `PL-T7Y1` 262 agents. A question that expensive gets
+skipped, which makes it the quick fix half done. The durable version leaves
+the judgment with the session and makes the reading cheap:
+
+1. **Each head states its record in one line**: the fact its members misread,
+   the thing that, stored once, would have made them impossible. It goes in a
+   front-matter field beside `generator:`, and `bin/docket check` asks any
+   head that lacks one, as it already asks for a verdict. The seed is below.
+2. **`bin/docket generators` prints those lines together, and flags any two
+   heads whose `root-cause-of:` lists share a member.** The overlap is a fact,
+   not a verdict. On 2026-09-23 it named 11 pairs. They include three of the
+   five shared records the audit verified (`PL-G21K` with `PL-4W2L`, and
+   `PL-8FJK` and `PL-7TVT` with `PL-MB2W`). They also include both
+   misattributions the audit found: `PL-YZJD` under `PL-4W2L`, and `PL-8JQQ`
+   under both `PL-MB2W` and `PL-R808`. A set intersection found what took
+   262 agents. It missed `PL-J6HP` with `PL-WD5Z` and `PL-6TP8` with
+   `PL-1P5V`, which is why the record lines, and not the overlap alone,
+   carry the comparison.
+3. **The triage generator check and the grooming pass ask against that
+   one-screen list**: which record did this reader misread, and does a head
+   already state it?
+
+It is a defect in the machinery that finds generators, so it should carry
+`impairs-generators:`, which ranks it with the heads. The work above reaches
+`generator_paths` (`model.py`, the `generators` output, `checks.py`), so
+that claim is sound. **Order:** before `PL-K046`, so the heads it records
+start with a record line. **Cost:** one field on about 35 heads, one check,
+one output change and two prose edits, all apparatus, effort M. Taking the
+cheaper route and redoing it later would mean a second pass over every head
+recorded in between. Waiting costs more again. Until the five live heads
+close, the only way to find the next record read by several readers is
+another sweep the owner asks for.
 
 **Generator check.** A one-off gap in the identification step itself, and not
 an instance of a closed head. `PL-KVDK` built the per-item step. `PL-RX3H`
@@ -210,3 +240,68 @@ for has now run once. The other half of Done-when, a pass that asks the
 question every time, is new workflow mechanism, so it stays captured and
 unbuilt while any open item carries `generator: live`. Four live heads are now
 open: `PL-WD5Z`, `PL-B8HZ`, `PL-QHCW` and `PL-HMZZ`.
+
+**Head records seeded by PL-T7Y1, 2026-09-23.** One line per head, from the
+first round's merged head comparison, with each head's record cut to its first
+sentence. They are a seed, not a verdict: the session that builds the field
+checks each one against its head before writing it.
+
+- `PL-0HPV`: The list of checks the merge gate runs, held twice as hand-kept
+  step lists:
+- `PL-1P5V`: What a verify: command proves about its item: the shape half. The
+  field is an opaque shell string whose exit status is the only meaning stored,
+  so which command shapes ...
+- `PL-2T03`: The release train's arrangement: the row order of ROADMAP.md §
+  'The timeline', a table parse_timeline already parses and grammar-checks.
+  Readers re-derived that order by ...
+- `PL-4FBP`: No single record. Each member restates a different tree fact in a
+  simulator-facing document sentence whose link to the tree lives only in the
+  reader's head: a test name ...
+- `PL-4Q9B`: Two facts, per its own answer: 'this cluster is not one mechanism'
+  (PL-4Q9B:94). Fact 1, the cache half (PL-4Q9B:64): the remote's refs and tags
+  as mirrored by the ...
+- `PL-4W2L`: Whether a branch's diff removed or loosened an existing test
+  assertion, or added a construct that disables a test, relative to the base.
+- `PL-6T44`: Whether all of an item's blockers have closed, derived from
+  blocked-by and each blocker's status.
+- `PL-6TP8`: What a verify: command's exit status proves: the reading half. The
+  field was specified only as a command that fails before the work and passes
+  after, so 'every consumer ...
+- `PL-7TVT`: Who holds an item now, and whether that holder is still live:
+- `PL-8FJK`: Who holds an item, inferred from where a branch's commits wrote
+  rather than from what they did to the item.
+- `PL-8YXJ`: An item's own queue state (status, blocked-by, sequencing) as its
+  front matter holds it, told a second time in the brief's prose, which no
+  status or blocked-by write ...
+- `PL-9HD1`: The item front-matter grammar as model.FIELD_RE reads it, one line
+  at a time.
+- `PL-9RFP`: Whether a git subprocess answered or failed:
+- `PL-BHVM`: Mixed. Six of its eight members read whether a branch's work has
+  reached the base, the fact the merge authors ('"Did this ref's work land" is
+  authored by the merge', ...
+- `PL-G21K`: Whether a branch's diff weakens the tests that measure it, by
+  adding suppression markers or by removing or loosening assertions.
+- `PL-G424`: No single record. It is PL-4FBP's docs-drift mechanism on the
+  apparatus side ('PL-4FBP's adopted scope reaches only docs/MODEL.md and
+  README.md'; 'the same mechanism ...
+- `PL-HWW1`: Which ids a milestone's Required scope holds and which it
+  explicitly excludes.
+- `PL-J6HP`: Mixed, cut at document altitude ('Gate facts ...
+- `PL-L4YG`: An item file's canonical serialized form:
+- `PL-LN69`: Whether each resident instruction changes session behaviour.
+- `PL-NGBM`: A command invocation's resolved context:
+- `PL-R808`: Whether a merged pull request left a branch's work behind, that
+  is, whether the base holds the branch's work.
+- `PL-TZ7T`: Whether an open item already describes the mechanism a new capture
+  names:
+- `PL-WD5Z`: A debt item's gate disposition ('declined to a later gate,
+  deferred, or cleared by the milestone itself', PL-WD5Z:16-17), recorded as
+  the item's id appearing in a ...
+- `PL-WFFX`: The squash commit's subject and body as the merge client sends
+  them (commit_title / commit_message).
+- `PL-WNCT`: Pushed work that no open pull request carries to main when the
+  session ends.
+- `PL-XYQW`: An item's pr: number, meaning the merged pull request that carried
+  it. bin/docket record backfills it only after the merge, but bin/docket
+  release's notes writer and ...
+- `PL-YRYR`: What the docket suite's git-backed test fixtures cost.
