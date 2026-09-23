@@ -476,8 +476,8 @@ def test_the_hover_answers_for_every_run_in_reach_on_a_real_branched_case(
 
     The case the rule was decided from: a trunk held at its dialled setting
     and a branch forked at 10 min with the vaporizer turned off, and the fat
-    traces those two leave - which the percent axis, scaled by the alveolar
-    peak, compresses to within a pixel or two of one another. A pointer on
+    traces those two leave - which the percent axis, fixed at 3 MAC
+    (`CHART_AXIS_TOP_MAC`), compresses to within a pixel or two of one another. A pointer on
     either run's fat point is answered for both, each value under its own
     run's name, and a pointer two pixels away is answered identically.
     """
