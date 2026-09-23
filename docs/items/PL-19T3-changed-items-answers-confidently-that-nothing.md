@@ -3,13 +3,14 @@ id: PL-19T3
 title: changed_items answers confidently that nothing changed when run outside a git repository, because git diff exits 1 there and _run_git reads exit 1 as an answer, where git tag --list exits 128 and declines
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: evidence-declines
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-09-22
+closed: 2026-09-23
 payoff: a docket read taken outside a checkout says it could not answer, instead of telling the verify replay that the branch changed no item
-verify: grep -q 'def test_changed_items_declines_outside_a_repository' subprojects/docket/tests/test_vcs.py
+verify: grep -q 'def test_every_read_declines_from_a_directory_in_no_repository' subprojects/docket/tests/test_vcs_silence.py
 ---
 
 **Problem.** changed_items answers confidently that nothing changed when run outside a git repository, because git diff exits 1 there and _run_git reads exit 1 as an answer, where git tag --list exits 128 and declines
@@ -67,3 +68,43 @@ directory in no repository, in `test_vcs.py`.
 **Done when.** `changed_items` declines outside a repository, by either route
 above, and a test in `subprojects/docket/tests/test_vcs.py` holds it from a
 directory that is in no repository at all.
+
+**Built 2026-09-23, by the first route, with the test moved to the sweep.**
+`_run_git` now reads a `diff`'s exit 1 as a silence (`_asks_for_a_diff`),
+beside `_asks_for_a_blob` carrying the opposite exception. Three measurements
+decided it:
+
+- **Only `diff` answers outside a repository.** Run from a directory in none,
+  24 of the 25 public reads in `vcs` already declined, every one because at
+  least one of its calls exits 128 there. `changed_items` was the only read
+  that answered, because both its calls are `diff`s.
+- **A revision diff never exits 1 inside one.** Every `diff` shape the module
+  issues exits 0, 128 or 129: a bad revision, `A...B` with no merge base, a
+  root commit's parent and a pathspec outside the tree all exit 128 (git
+  2.43.0). The 1 comes only from the filesystem comparison git runs under the
+  same name outside a working tree, which git-diff(1) says "implies
+  `--exit-code`".
+- **Nothing loses a real 1.** No caller passes `--exit-code` or `--quiet`, and
+  `_run_git` returned `""` for a 1 anyway, so a status could never reach one.
+
+The probe route was the weaker one. It adds a process to every read to guard
+24 reads that already decline, and it leaves `_run_git`'s table wrong for the
+next `diff`. Fixing the classification covers every `diff` in the module:
+`_superseded`, `files_in_flight` and `records_on_base` as well as this read.
+
+**The test is in `test_vcs_silence.py`, not `test_vcs.py`.** `test_vcs.py`
+says in its module docstring that git is "injected rather than invoked" and
+that it tests "the filtering rather than the plumbing", while this defect is in
+the plumbing. The sweep is also the file this brief names as blind to it. So
+the test is `test_every_read_declines_from_a_directory_in_no_repository`, run
+over all of `READS`, so any read added later is held to it too. A second
+test, `test_a_diff_outside_a_repository_is_git_not_answering`, pins the new
+table row. `verify:` and `touches` were rewritten to match, and the
+closing session did that, not a reviewer. Against the pre-fix `vcs.py`
+exactly those two fail, on `changed_items` and the classification, and the
+other 24 reads pass.
+
+**What is left is not a defect today.** `show <rev>:<path>` also exits 128
+outside a repository, and `_asks_for_a_blob` reads that as the file being
+absent. No read is made of blob calls alone, so each still declines on another
+call, and the sweep fails on the first read that ever is.

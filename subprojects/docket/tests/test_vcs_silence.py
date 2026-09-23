@@ -20,6 +20,10 @@ unread is the failure.
 Unlike `test_vcs.py`, which injects git rather than invoking it, this needs a
 real repository: the point is the plumbing, and `_run_git`'s classification of
 git's exit codes is half of what is under test.
+
+Silencing one call at a time never reaches a read whose every call git answers
+where there is no repository at all, so each read is run once more from a
+directory in none, where it must decline (`PL-19T3`).
 """
 
 from __future__ import annotations
@@ -417,12 +421,7 @@ def _silencing(recorded: _Recording, nth: int) -> Runner:
 
 
 def _lost_to_a_silence(read: Read, repo: Path) -> list[tuple[int, frozenset[Any]]]:
-    """Every silenced call after which the read lost a finding and said nothing.
-
-    The whole measurement, shared by the sweep and by the record of what the
-    sweep cannot yet cover, so the two cannot drift into asking different
-    questions about the same reads.
-    """
+    """Every silenced call after which the read lost a finding and said nothing."""
     recorded = _Recording()
     whole = read.call(repo, recorded)
     assert not _declined(whole), f"{read.name} declined against a working git"
@@ -467,6 +466,32 @@ def test_one_silenced_git_call_never_leaves_a_read_looking_clean(read: Read, rep
     )
 
 
+@pytest.fixture
+def nowhere(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A directory in no repository, wherever the temporary directory sits.
+
+    `GIT_CEILING_DIRECTORIES` stops git's search at the directory's parent, so a
+    `TMPDIR` inside a checkout cannot lend it one.
+    """
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))
+    path = tmp_path / "no-repository"
+    path.mkdir()
+    return path
+
+
+@pytest.mark.parametrize("read", READS, ids=lambda read: read.name)
+def test_every_read_declines_from_a_directory_in_no_repository(read: Read, nowhere: Path) -> None:
+    """With no repository there is nothing to report on, so every read declines.
+
+    The environment the sweep above cannot reach. It silences one call at a
+    time inside a repository, so a read whose every call git answers outside one
+    passes it. `changed_items` was that read: its two `git diff` calls exit 1
+    there, and it said the branch changed no item where `tags` declined
+    (`PL-19T3`).
+    """
+    assert _declined(read.call(nowhere, _run_git))
+
+
 def test_the_sweep_covers_every_public_read_that_takes_a_runner() -> None:
     """A read added later is covered, or the omission fails here rather than silently.
 
@@ -494,9 +519,10 @@ def test_the_sweep_covers_every_public_read_that_takes_a_runner() -> None:
 # --- what `_run_git` reads git's exit codes as -----------------------------
 #
 # Half of the channel is the classification: exit 1 is git saying no, exit 128
-# is git not saying anything, and `<rev>:<path>` is the one shape where the
-# fatal exit is an answer. Driven against real git rather than asserted from the
-# table in the docstring, because a table is what `_superseded` already had.
+# is git not saying anything, `<rev>:<path>` is the one shape where the fatal
+# exit is an answer, and `diff` the one read whose exit 1 is not. Driven
+# against real git rather than asserted from the table in the docstring, because
+# a table is what `_superseded` already had.
 
 
 def test_a_ref_that_does_not_resolve_is_git_answering_no(repo: Path) -> None:
@@ -541,6 +567,20 @@ def test_a_path_a_revision_does_not_hold_is_git_answering_absent(repo: Path) -> 
 
     assert answer == ""
     assert answered(answer)
+
+
+def test_a_diff_outside_a_repository_is_git_not_answering(nowhere: Path) -> None:
+    """`diff` exits 1 outside a repository, and that 1 is not git saying no.
+
+    There git compares two paths on the filesystem instead, a form that implies
+    `--exit-code`, so the 1 here is `error: Could not access
+    'origin/main...HEAD'`. Read as an answer, it is a branch that changed no
+    item (`PL-19T3`).
+    """
+    answer = _run_git(["diff", "--name-only", "origin/main...HEAD", "--", "docs/items"], nowhere)
+
+    assert answer == ""
+    assert not answered(answer)
 
 
 def test_a_silence_survives_the_memo_rather_than_being_served_as_an_answer(repo: Path) -> None:
