@@ -138,9 +138,11 @@ merged first (#924), and it added a third read to `cmd_flight`
 (`open_pull_requests`), so 23 sites built their own runner rather than 22.
 Five existing tests reached git through `_run`, which passes `--no-git`, and
 passed only because the flag was ignored; they moved to `_run_with_git`, and
-four `fetch_remote` stand-ins now take the `runner` keyword. `PL-3T2Q` was not
-proven by either of the two tests, so
-`test_a_store_at_the_repository_root_takes_the_empty_prefix` pins it. The
+four `fetch_remote` stand-ins now take the `runner` keyword. Neither of the two
+tests proves a member's own `verify:`, which names a test of its own: so
+`test_flight_shares_the_invocations_git_runner` (`PL-M6FY`) and
+`test_a_store_at_the_repository_root_is_the_empty_prefix` (`PL-3T2Q`) were
+written to those names. The
 behavioural test watches `Popen` alone, since `subprocess.run` constructs one.
 The runner test also refuses a site that constructs a runner of its own, which
 presence of `runner=` alone would have passed. `stranded` on a store git

@@ -4781,7 +4781,7 @@ def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
     )
 
 
-def test_a_store_at_the_repository_root_takes_the_empty_prefix(
+def test_a_store_at_the_repository_root_is_the_empty_prefix(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The root itself and a store outside the checkout are one case, and take one value.
@@ -4807,6 +4807,35 @@ def test_a_store_at_the_repository_root_takes_the_empty_prefix(
     (root / "docket.toml").write_text('[docket]\nitems_dir = "../elsewhere"\n', encoding="utf-8")
     monkeypatch.chdir(root)
     assert tracked() == ""
+
+
+def test_flight_shares_the_invocations_git_runner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`flight`'s three reads are handed one runner, and it is the invocation's (`PL-M6FY`).
+
+    `cmd_flight` called `branches_in_flight` with no runner, so the library
+    built one of its own and the memo every other branch-walking command
+    shares was never reached by the command whose whole job is the walk. The
+    reads are wrapped rather than replaced, so each still answers and the
+    command runs to the end.
+    """
+    seen: dict[str, object] = {}
+    for name in ("branches_in_flight", "settled_branches", "open_pull_requests"):
+        real = getattr(cli, name)
+
+        def spy(*args: Any, _name: str = name, _real: Any = real, **kwargs: Any) -> Any:
+            seen[_name] = kwargs.get("runner")
+            return _real(*args, **kwargs)
+
+        monkeypatch.setattr(cli, name, spy)
+
+    assert main(["--items", str(_store(tmp_path, READY)), "--today", "2026-08-24", "flight"]) == 0
+
+    assert set(seen) == {"branches_in_flight", "settled_branches", "open_pull_requests"}
+    runners = list(seen.values())
+    assert isinstance(runners[0], vcs.GitRunner)
+    assert all(runner is runners[0] for runner in runners)
 
 
 #: Every command, spelled to reach the reads it has: the scoped replay, the
