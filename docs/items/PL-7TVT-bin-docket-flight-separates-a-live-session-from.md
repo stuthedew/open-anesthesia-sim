@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: defect, infra
 feature: carrier-detection
+milestone: v0.5.6
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, tools/open_pull_requests.py, tests/unit/test_open_pull_requests.py, docket.toml, docs/ARCHITECTURE.md, .claude/skills/docket/modes/start.md, .claude/rules/instruction-writing.md
 added: 2026-09-20
 closed: 2026-09-23
+pr: 927
 verify: grep -q 'def test_a_branch_minutes_old_carries_its_pull_request_rather_than_a_verdict' subprojects/docket/tests/test_cli.py && uv run pytest -q subprojects/docket/tests/test_cli.py -k a_branch_minutes_old_carries_its_pull_request
 root-cause-of: PL-N2PP, PL-HX5C, PL-99YZ, PL-X3NY, PL-Q664
 generator: spent - the project owner accepted on 2026-09-23 the one shape left as its documented limit: a session that ends mid-work before opening a pull request leaves a branch that reads as young with none open for about its first hour. flight says so in those words, the minute age exposes it within the hour, it only ever withholds an item, and the session-list read in start.md and rule 14 is the backstop; PL-SK88 keeps docket from reading session state. Every other shape of an ended session reads as what it is

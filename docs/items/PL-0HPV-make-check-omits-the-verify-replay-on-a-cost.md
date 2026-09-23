@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost, infra
 feature: ci-cost
+milestone: v0.5.6
 touches: Makefile, .github/workflows/quality.yml, docs/items, .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/checks.py, subprojects/docket/README.md
 added: 2026-09-14
 closed: 2026-09-22

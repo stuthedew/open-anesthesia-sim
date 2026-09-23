@@ -12,6 +12,7 @@ mocked, because what is being tested is largely what git reports.
 
 from __future__ import annotations
 
+import ast
 import subprocess
 import sys
 from datetime import date
@@ -19,6 +20,7 @@ from pathlib import Path
 
 import pytest
 
+import docket.verify as verify_module
 from docket.config import Config
 from docket.model import Item, parse_item
 from docket.store import insert_field, replace_field
@@ -28,6 +30,7 @@ from docket.verify import (
     TIMED_OUT,
     VERIFY_GUARD,
     Check,
+    GitUnanswered,
     Verification,
     already_passing,
     assertion_check,
@@ -707,6 +710,119 @@ def test_the_diff_is_scoped_to_the_item_s_own_commits(tmp_path: Path) -> None:
     assert len(commits) == 1
     assert changed_paths(root, base, commits) == ("tests/test_thing.py",)
     assert verify(root, _item(), _config(), base).passed
+
+
+def test_changed_paths_declines_an_unresolvable_base(tmp_path: Path) -> None:
+    """A base git cannot resolve means the read never happened (`PL-9RFP`).
+
+    `changed_paths` discarded the exit status of a runner that returns stdout
+    and stderr together. So git's three-line complaint about the base came back
+    as three changed paths: the commission audit named them as edits outside
+    `touches`, and missed every file the branch had actually changed. No tuple
+    can say "unread", because the empty one is a branch that changed nothing,
+    so the read raises and names the ref git could not resolve.
+    """
+    root = _repo(tmp_path)
+    with pytest.raises(GitUnanswered, match="no-such-base-ref"):
+        changed_paths(root, "no-such-base-ref")
+    # The other half of the same read. Commits git cannot find are no more a
+    # diff than a base it cannot resolve.
+    with pytest.raises(GitUnanswered, match="exited 128"):
+        changed_paths(root, "HEAD", ("0" * 40,))
+    with pytest.raises(GitUnanswered, match="no-such-base-ref"):
+        item_commits(root, "no-such-base-ref", "PL-K7QX")
+
+
+def test_a_base_git_cannot_resolve_ends_the_audit_instead_of_passing_it(tmp_path: Path) -> None:
+    """The end-to-end shape of `PL-9RFP`, in both modes, self-audit included.
+
+    Measured on this repository before the fix: `item_commits` handed git's
+    complaint on as three commit hashes, and the commission check named
+    `fatal: invalid object name 'fatal'.` as an edit. Both integrity checks
+    PASSed on a diff they never read, so a self-audit whose command passed
+    would ACCEPT having read nothing.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\n\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    for self_audit in (False, True):
+        report = verify(root, _item(), _config(), "no-such-base-ref", self_audit=self_audit)
+        assert not report.passed
+        assert report.stopped_early
+        unread = _check(report, "the diff could be read")
+        assert unread.blocks
+        assert "no-such-base-ref" in unread.lines[0]
+        # Nothing was read, so nothing may be named, found or passed.
+        assert [check.name for check in report.checks] == ["the diff could be read"]
+
+
+def test_a_read_git_does_not_answer_mid_audit_keeps_what_ran_and_refuses(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Caught in one place, whichever check the read belonged to.
+
+    The patch the two integrity checks read comes after every path check has
+    run and passed. So failing that read alone is the case a guard written
+    call by call would most likely miss. An empty patch reads as one that added
+    no suppression and removed no assertion.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\n\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    answered = verify_module._git
+
+    def patch_unanswered(args: list[str], where: Path) -> str:
+        if args[:2] == ["show", "--format="]:
+            raise GitUnanswered("`git show` exited 128: fatal: simulated")
+        return answered(args, where)
+
+    monkeypatch.setattr(verify_module, "_git", patch_unanswered)
+    report = verify(root, _item(), _config(), "HEAD~1", self_audit=True)
+
+    assert not report.passed
+    assert report.stopped_early
+    names = [check.name for check in report.checks]
+    assert names[-1] == "the diff could be read"
+    assert "diff stayed inside `touches`" in names
+    assert "no suppression added" not in names
+
+
+def test_no_run_call_in_verify_discards_its_exit_status() -> None:
+    """`_run` returns stdout and stderr together, so a dropped status turns into data.
+
+    Seven reads bound it to `_`. A base git could not resolve then came back as
+    paths, as commit hashes and as an empty diff (`PL-9RFP`). Those reads go
+    through `_git` now, which raises instead. This holds a read added later to
+    the same rule, since that is how the seven arrived.
+    """
+    tree = ast.parse(Path(verify_module.__file__).read_text(encoding="utf-8"))
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Assign)
+        and isinstance(node.value, ast.Call)
+        and isinstance(node.value.func, ast.Name)
+        and node.value.func.id == "_run"
+        and isinstance(node.targets[0], ast.Tuple)
+    ]
+    # A scan that found nothing to scan would pass whatever the file held.
+    assert calls, "no `_run` call unpacks its result any more; this guard is reading nothing"
+    discarded = [
+        node.lineno
+        for node in calls
+        if isinstance(target := node.targets[0], ast.Tuple)
+        and isinstance(target.elts[0], ast.Name)
+        and target.elts[0].id == "_"
+    ]
+    assert not discarded, f"`_run`'s exit status discarded at verify.py line(s) {discarded}"
 
 
 def test_the_item_s_own_file_is_always_in_scope(tmp_path: Path) -> None:

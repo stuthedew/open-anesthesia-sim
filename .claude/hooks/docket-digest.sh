@@ -126,3 +126,20 @@ python3 "$root/tools/main_ci_status.py" 2>/dev/null || true
 # `docs/pr-bodies/`. Detection reads `git log` and one directory listing, so
 # unlike its neighbour it touches no network at all.
 python3 "$root/tools/pr_body_check.py" 2>/dev/null || true
+
+# The exact half of "did a merged pull request leave work on its branch"
+# (`PL-R808`). The digest's own "Left on a branch after its pull request merged"
+# line is `vcs.orphaned`, which compares content and so answers from a bare
+# checkout, and is fooled by a squash against a moving base, by two branches
+# writing identical lines, and by a change that landed through another pull
+# request. This one compares the branch tip against the `refs/pull/<n>/head`
+# its newest pull request merged, and names the commits past it. It needs a
+# network and a token, and says so rather than going quiet when either is
+# missing: silence is its all-clear, so every decline prints. Where the two
+# disagree it prints the disagreement, and it wins (`PL-BHVM`).
+#
+# Last because it is the other exception line: silent on a normal start. It
+# reads the remote with `ls-remote` rather than the fetch `bin/docket branch`
+# made above, and a tip newer than that fetch declines per branch rather than
+# being compared stale. Measured at 1.8 s against nine branches on 2026-09-23.
+python3 "$root/tools/left_behind_check.py" 2>/dev/null || true

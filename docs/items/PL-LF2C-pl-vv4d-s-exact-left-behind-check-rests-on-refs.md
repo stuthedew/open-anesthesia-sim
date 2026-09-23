@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: docs/items/PL-R808-build-the-exact-left-behind-check-as-a-tools.md, subprojects/docket/src/docket/vcs.py
 added: 2026-09-12
 verify: grep -qF 'not a superset' subprojects/docket/src/docket/vcs.py && python3 tools/doc_check.py check
+recurrences: 2026-09-23 PL-P3GV
 ---
 
 **Problem.** PL-VV4D's exact left-behind check rests on refs/pull/<n>/head being permanent, and GitHub is about to unreference 90 of them, so the check needs a third decline condition and one of its two test vectors dies

@@ -11,6 +11,7 @@ import argparse
 import shlex
 import subprocess
 from collections.abc import Callable, Collection, Mapping, Sequence
+from dataclasses import dataclass
 from dataclasses import replace as with_fields
 from datetime import UTC, date, datetime, time
 from pathlib import Path
@@ -139,7 +140,14 @@ from .vcs import (
     tags,
     working_paths,
 )
-from .verify import LandedReport, already_passing, changed_paths, items_reading, verify_batch
+from .verify import (
+    GitUnanswered,
+    LandedReport,
+    already_passing,
+    changed_paths,
+    items_reading,
+    verify_batch,
+)
 
 # The one thing that is true at capture, and nothing else. Empty headings for a
 # session to write over were indistinguishable from headings a session had left
@@ -163,14 +171,14 @@ def find_root(start: Path | None = None) -> Path:
     return current
 
 
-def _root(args: argparse.Namespace) -> Path:
+def _root(items: Path | None) -> Path:
     """The repository root the store belongs to, walked up from the store itself.
 
-    Not `args.items.parent`, which is the root only where the store sits one
-    level below it. That is the layout every test in `test_cli.py` happened to
-    use and not the one this project ships: `--items docs/items` resolved the
-    root to `docs/`, and everything downstream took its answer from there.
-    Two readings broke and neither said so (`PL-P757`).
+    Not the parent of the store `--items` named, which is the root only where
+    the store sits one level below it. That is the layout every test in
+    `test_cli.py` happened to use and not the one this project ships: `--items
+    docs/items` resolved the root to `docs/`, and everything downstream took
+    its answer from there. Two readings broke and neither said so (`PL-P757`).
 
     The queue prefix handed to `branches_in_flight` became `items/` where `git
     log --name-only` prints `docs/items/...` from the repository root, so no
@@ -191,36 +199,42 @@ def _root(args: argparse.Namespace) -> Path:
     only reader left is `load_config`, whose file sits beside the store rather
     than inside it.
     """
-    if args.items is None:
+    if items is None:
         return find_root()
-    found = find_root(args.items)
+    found = find_root(items)
     # `find_root` falls back to its own starting point, so a returned path with
     # no `.git` in it means the walk found no checkout rather than that the
     # store is one.
-    return found if (found / ".git").exists() else args.items.resolve().parent
+    return found if (found / ".git").exists() else items.resolve().parent
 
 
-def _load(args: argparse.Namespace) -> tuple[Path, list[Item], Config]:
-    """Resolve the store and the settings that govern it.
+def _tracked(root: Path, directory: Path) -> str:
+    """The queue directory beneath the repository root, as git spells it.
 
-    Settings come from the root of the repository holding the store, not from
-    wherever the command was run. Pointing `--items` at another project's
-    queue and silently applying this project's policy to it would be wrong in
-    exactly the way that is hard to notice - the answers look right and are
-    governed by the wrong rules.
+    Taken from the store the invocation resolved - `--items` wins over the
+    setting, because a command pointed at one queue must not be answered about
+    another. `branches_in_flight` decides whether a commit was recording an
+    item or working on it by whether its whole diff sits in this directory, so
+    the wrong directory here reads every commit as work. That is not
+    hypothetical: it is what `--items docs/items` did, from a root taken as the
+    store's parent, until `PL-P757`.
 
-    `_root` is what finds that root, and until `PL-P757` this said "beside the
-    store" and meant it: the root was the store's parent, so `--items
-    docs/items` looked for `docket.toml` in `docs/` and, finding none, ran
-    this project's own queue on the package defaults - no `known_classes`, no
-    `workflow_paths`, no `protected_paths`, `top_band_limit` at 5 rather than
-    12. The rule was always "the project that owns the store decides", and
-    one level down is the only depth at which the store's parent says that.
+    A store git cannot address comes back as the empty prefix, which no path
+    git prints can match, so every commit keeps its claim. Two cases take that
+    one value: a store outside the repository, and the repository root itself,
+    which `relative_to` answers with `.` - a prefix no path begins with, and
+    one a membership test reads as the opposite of the empty prefix
+    (`PL-3T2Q`). Keeping a claim is the direction the flight reading prefers:
+    an item wrongly left marked is picked around, an item wrongly unmarked is
+    two sessions on one piece of work. The readers that cannot ask git about
+    such a store at all - `_stranded`, `_numbers_before_notes` and `record` -
+    test this value rather than deriving their own.
     """
-    root = _root(args)
-    config = load_config(root)
-    directory = args.items or (root / config.items_dir)
-    return directory, read_items(directory), config
+    try:
+        prefix = directory.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return ""
+    return "" if prefix == "." else prefix
 
 
 def _settings_source(root: Path) -> SettingsSource:
@@ -248,32 +262,99 @@ def _settings_source(root: Path) -> SettingsSource:
     return SettingsSource(path=path, found=found)
 
 
-#: Where `_flight` keeps its per-invocation answer. On the namespace rather than
-#: in a module global so that its lifetime is the command's: `argparse` builds a
-#: fresh one per parse, and there is nothing to remember to reset.
-_FLIGHT_ATTR = "_flight_report"
-
-#: Where the command's one git runner is kept, on the namespace beside the
-#: flight report and for the reason `_flight` gives: `argparse` builds a fresh
-#: namespace per parse, so its lifetime is the invocation and nothing has to be
-#: remembered to reset. That lifetime is what makes `GitRunner`'s memo safe -
-#: `cmd_branch` fetches in-process - and what closes its `cat-file` batch.
-_RUNNER_ATTR = "_git_runner"
+#: What a branch-detection command prints under `--no-git`, and the whole of
+#: its answer: nothing was asked, so there is nothing to report.
+NO_GIT = "branch detection is off (`--no-git`), so nothing was read"
 
 
-def _runner(args: argparse.Namespace) -> GitRunner:
-    """The one git runner this invocation asks everything through.
+@dataclass(eq=False)
+class Invocation:
+    """What one command resolved once, and every read beneath it shares.
 
-    Every read in `vcs` already takes a `runner`, so one object threaded from
-    here reaches all of them without a module global - which is what keeps the
-    memo's lifetime the command's rather than the process's.
+    Five facets of one question - which repository, which store, under which
+    settings, as git spells the store, and through which runner if any - were
+    each derived per call site until this existed, and each fix centralised
+    one facet and left the next to drift: the root from the store's parent
+    (`PL-P757`), the reads behind a count from the settings (`PL-T441`,
+    `PL-WF3X`), a second runner losing the memo (`PL-M6FY`), `.` for the empty
+    prefix (`PL-3T2Q`), and a `--no-git` that stopped some reads and not
+    others (`PL-NGBM`). A call site takes the answer from here rather than
+    deriving one, and `test_no_git_stops_every_git_read` and
+    `test_every_git_read_in_the_cli_takes_the_invocations_runner` fail any
+    that goes round it.
+
+    **`--no-git` is `git` being `None`, and nothing else is.** A read site
+    takes `git` and returns its declined or empty form where there is none, so
+    the flag cannot hold at one site and lapse at the next. Every read in `vcs`
+    takes a `runner` and builds a plain one where it is handed none, so the
+    runner has to be threaded rather than trusted to arrive.
+
+    Kept on the namespace, as `FlightReport` was before it (`PL-PMT7`):
+    `argparse` builds a fresh one per parse, so the lifetime is the command's
+    and nothing has to be remembered to reset. That lifetime is what makes the
+    runner's memo safe - `cmd_branch` fetches in-process - and what lets
+    `main` close its `cat-file` batch. `flight` is the one field written after
+    construction, by `_flight`, once.
+
+    The store itself is not held here: `_load` reads it on every call, because
+    `set`, `new` and `withdraw` write between reads.
     """
-    cached: GitRunner | None = getattr(args, _RUNNER_ATTR, None)
+
+    root: Path
+    directory: Path
+    config: Config
+    tracked: str
+    settings: SettingsSource
+    git: GitRunner | None
+    flight: FlightReport | None = None
+
+
+#: Where the command's invocation is kept, for the lifetime `Invocation` gives.
+_INVOCATION_ATTR = "_resolved_invocation"
+
+
+def _invocation(args: argparse.Namespace) -> Invocation:
+    """The command's one invocation, resolved on first use and shared after it."""
+    cached: Invocation | None = getattr(args, _INVOCATION_ATTR, None)
     if cached is not None:
         return cached
-    made = GitRunner()
-    setattr(args, _RUNNER_ATTR, made)
+    root = _root(args.items)
+    config = load_config(root)
+    directory = args.items or (root / config.items_dir)
+    made = Invocation(
+        root=root,
+        directory=directory,
+        config=config,
+        tracked=_tracked(root, directory),
+        settings=_settings_source(root),
+        git=None if args.no_git else GitRunner(),
+    )
+    setattr(args, _INVOCATION_ATTR, made)
     return made
+
+
+def _load(args: argparse.Namespace) -> tuple[Path, list[Item], Config]:
+    """Resolve the store and the settings that govern it.
+
+    Settings come from the root of the repository holding the store, not from
+    wherever the command was run. Pointing `--items` at another project's
+    queue and silently applying this project's policy to it would be wrong in
+    exactly the way that is hard to notice - the answers look right and are
+    governed by the wrong rules.
+
+    `_root` is what finds that root, and until `PL-P757` this said "beside the
+    store" and meant it: the root was the store's parent, so `--items
+    docs/items` looked for `docket.toml` in `docs/` and, finding none, ran
+    this project's own queue on the package defaults - no `known_classes`, no
+    `workflow_paths`, no `protected_paths`, `top_band_limit` at 5 rather than
+    12. The rule was always "the project that owns the store decides", and
+    one level down is the only depth at which the store's parent says that.
+
+    The store is read fresh on every call and everything else is the
+    invocation's, resolved once.
+    """
+    inv = _invocation(args)
+    return inv.directory, read_items(inv.directory), inv.config
 
 
 def _flight(args: argparse.Namespace) -> FlightReport:
@@ -291,57 +372,31 @@ def _flight(args: argparse.Namespace) -> FlightReport:
     `_load` guards against and is harder to see: the branches come back looking
     perfectly plausible.
 
-    **Computed once per invocation, and the cache lives on `args` for that
-    reason** (`PL-PMT7`). `cmd_next` and `cmd_digest` each asked twice - once
-    through `_offered`, once directly - and every ask shells out to git per
-    branch ref. Measured on a four-core container, `next` issued 26 git
-    subprocesses where `flight` and `status` issued 13, and roughly 180 ms of its
-    ~460 ms was the repeated work.
+    **Computed once per invocation, and cached on it for that reason**
+    (`PL-PMT7`). `cmd_next` and `cmd_digest` each asked twice - once through
+    `_offered`, once directly - and every ask shells out to git per branch
+    ref. Measured on a four-core container, `next` issued 26 git subprocesses
+    where `flight` and `status` issued 13, and roughly 180 ms of its ~460 ms
+    was the repeated work.
 
-    Correctness is what keeps the cache on the namespace rather than in a module
-    global or an `lru_cache`. One process must give one answer, and that answer
-    must not outlive the command: a long-running caller ranking against a stale
-    view of what is in flight would hand a session an item another session is
-    holding, which is the collision this whole read exists to prevent.
-    `argparse` builds a fresh namespace per parse, so its lifetime *is* the
-    invocation - nothing has to be remembered to reset, which a global would.
-    `FlightReport` is frozen, so a caller cannot edit what the next one reads.
+    Correctness is what keeps the cache on the invocation rather than in a
+    module global or an `lru_cache`. One process must give one answer, and
+    that answer must not outlive the command: a long-running caller ranking
+    against a stale view of what is in flight would hand a session an item
+    another session is holding, which is the collision this whole read exists
+    to prevent. `FlightReport` is frozen, so a caller cannot edit what the
+    next one reads.
     """
-    cached: FlightReport | None = getattr(args, _FLIGHT_ATTR, None)
-    if cached is not None:
-        return cached
-    if getattr(args, "no_git", False):
-        report = FlightReport()
-    else:
-        root, items_dir = _tracked(args)
-        report = branches_in_flight(root, items_dir=items_dir, runner=_runner(args))
-    setattr(args, _FLIGHT_ATTR, report)
+    inv = _invocation(args)
+    if inv.flight is not None:
+        return inv.flight
+    report = (
+        FlightReport()
+        if inv.git is None
+        else branches_in_flight(inv.root, items_dir=inv.tracked, runner=inv.git)
+    )
+    inv.flight = report
     return report
-
-
-def _tracked(args: argparse.Namespace) -> tuple[Path, str]:
-    """The repository root, and the queue directory beneath it as git spells it.
-
-    Resolved through `_root` exactly as `_load` resolves it - `--items` wins
-    over the setting, because a command pointed at one queue must not be
-    answered about another. `branches_in_flight` decides whether a commit was
-    recording an item or working on it by whether its whole diff sits in this
-    directory, so the wrong directory here reads every commit as work. That is
-    not hypothetical: it is what `--items docs/items` did, from a root taken
-    as the store's parent, until `PL-P757`.
-
-    A store outside the repository comes back as the empty prefix, which no
-    path git prints can match, so every commit keeps its claim. That is the
-    same direction `_stranded` takes on the same question and the same one the
-    reading itself prefers: an item wrongly left marked is picked around, an
-    item wrongly unmarked is two sessions on one piece of work.
-    """
-    root = _root(args)
-    directory = args.items or (root / load_config(root).items_dir)
-    try:
-        return root, directory.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError:
-        return root, ""
 
 
 def _say_unread(flight: FlightReport) -> None:
@@ -357,20 +412,16 @@ def _say_unread(flight: FlightReport) -> None:
 
 
 def _stranded(
-    root: Path,
-    directory: Path,
-    items: Sequence[Item],
-    args: argparse.Namespace,
-    *,
-    fetched: bool = False,
+    items: Sequence[Item], args: argparse.Namespace, *, fetched: bool = False
 ) -> StrandedReport | None:
     """What exists only on a branch, or `None` when the question cannot be asked.
 
     The store is passed in rather than re-read: what this session can already
     see is exactly what must not be reported back to it, and the caller has it.
 
-    A store outside the repository is `None` rather than an answer. Git can
-    only be asked about paths it tracks, and searching the wrong path would
+    A store git cannot address - outside the repository, or the root itself,
+    both the empty prefix (`_tracked`) - is `None` rather than an answer. Git
+    can only be asked about paths it tracks, and searching the wrong path would
     find no items and report every branch as stranding all of its own.
 
     `fetched` is the caller's, because the two callers refresh differently and
@@ -379,22 +430,19 @@ def _stranded(
     second fetch would cost every session start a network round trip for an
     answer it already has.
     """
-    if getattr(args, "no_git", False):
-        return None
-    try:
-        tracked = directory.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError:
+    inv = _invocation(args)
+    if inv.git is None or not inv.tracked:
         return None
     return stranded(
-        root,
+        inv.root,
         {item.identifier for item in items},
-        items_dir=tracked,
+        items_dir=inv.tracked,
         fetched=fetched,
-        runner=_runner(args),
+        runner=inv.git,
     )
 
 
-def _orphaned(root: Path, args: argparse.Namespace) -> OrphanedReport | None:
+def _orphaned(args: argparse.Namespace) -> OrphanedReport | None:
     """Work a branch carries that its own pull request left behind, or `None`.
 
     Unlike `_stranded` this needs no store *content*: the question is about
@@ -402,19 +450,19 @@ def _orphaned(root: Path, args: argparse.Namespace) -> OrphanedReport | None:
     the queue sits, for the two readings that treat an item file differently
     from any other path - a landed commit that only annotates the queue is not
     evidence of a merge, and an item file whose copy here is behind the base's
-    is not work left behind (`PL-MBTZ`). `_tracked` is what says where, so the
-    two commands cannot disagree about it; a store outside the checkout comes
-    back as the empty prefix and leaves both readings at the default path,
-    which is the answer for a queue git cannot be asked about at all. Only
-    `--no-git` turns this off, for the same reason it turns the rest off - a
-    caller that has said not to ask git must not be asked git.
+    is not work left behind (`PL-MBTZ`). The invocation's `tracked` is what
+    says where, so the two commands cannot disagree about it; a store git
+    cannot address comes back as the empty prefix and leaves both readings at
+    the default path, which is the answer for a queue git cannot be asked
+    about at all. Only `--no-git` turns this off, for the same reason it turns
+    the rest off - a caller that has said not to ask git must not be asked git.
     """
-    if getattr(args, "no_git", False):
+    inv = _invocation(args)
+    if inv.git is None:
         return None
-    _, tracked = _tracked(args)
-    if not tracked:
-        return orphaned(root, runner=_runner(args))
-    return orphaned(root, items_dir=tracked, runner=_runner(args))
+    if not inv.tracked:
+        return orphaned(inv.root, runner=inv.git)
+    return orphaned(inv.root, items_dir=inv.tracked, runner=inv.git)
 
 
 def _complete_report(
@@ -479,14 +527,21 @@ def _complete_report(
     # `config.items_dir`, each `git show` below then missed, no closure was
     # `landed`, no `pr` was owed, and the command reported a clean provenance
     # record for a store it never read: exit zero, a plausible count, and
-    # nothing on the line saying the question went unasked (`PL-T441`). It is
-    # `_tracked` that answers this for `_flight` and `_stranded` already, so
-    # asking it here is one spelling of the question rather than a second.
+    # nothing on the line saying the question went unasked (`PL-T441`). The
+    # invocation answers it once for every reader, so asking it here is one
+    # spelling of the question rather than a second.
     #
-    # A store outside the checkout comes back as the empty prefix, which git
+    # A store git cannot address comes back as the empty prefix, which git
     # rejects as a pathspec - so these reads decline and say so, which is the
     # honest answer for a queue git cannot be asked about at all.
-    _, tracked = _tracked(args)
+    #
+    # Under `--no-git` the five git reads below are not asked at all, and
+    # `analyze` reads `None` as a caller that did not ask. `check`, `digest`
+    # and `next` all gather here, so all three skip the same inputs and their
+    # counts still agree (`PL-NGBM`).
+    inv = _invocation(args)
+    git = inv.git
+    tracked = inv.tracked
     return analyze(
         items,
         args.today or date.today(),
@@ -495,33 +550,43 @@ def _complete_report(
         # history to read. `None` comes back from a checkout too shallow to be
         # trusted, and the provenance check is skipped rather than run against
         # a truncated one.
-        history=merged_pull_requests(root),
+        history=None if git is None else merged_pull_requests(root, runner=git),
         offered=_offered(root, items, config, args),
         milestones=_milestones(root, config),
         landed=landed,
         # Only the closures in question are asked about, because each costs a
         # `git show`: an item is judged for a missing `pr` once its closure
         # stands on the default base, and until then it is still in flight.
-        closures=closures_on_base(
-            root,
-            {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path},
-            items_dir=tracked,
+        closures=(
+            None
+            if git is None
+            else closures_on_base(
+                root,
+                {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path},
+                items_dir=tracked,
+                runner=git,
+            )
         ),
         # The same `git show`, asked of the other half of a closure: not "has
         # this landed" but "does it still record the command that proved it".
         # Every closed item is offered and the reader narrows to the ones this
         # checkout changed, which is usually none - a diff rather than a read
         # per item, so it costs what the line above already costs.
-        records=records_on_base(
-            root,
-            {i.identifier: i.path for i in items if i.status == "done" and i.path},
-            items_dir=tracked,
+        records=(
+            None
+            if git is None
+            else records_on_base(
+                root,
+                {i.identifier: i.path for i in items if i.status == "done" and i.path},
+                items_dir=tracked,
+                runner=git,
+            )
         ),
         # Asked of the branch rather than of the default branch, and that is
         # the whole point: a squash merge makes the branch's commits ancestors
         # of nothing, so the objects proving what it carried stop being
         # reachable. Run here, on a pull request, the evidence is still intact.
-        lost=lost(root, items_dir=tracked),
+        lost=None if git is None else lost(root, items_dir=tracked, runner=git),
         # Read rather than asked of git: a stamped `milestone:` is judged
         # against the version the project is actually on, and an absent
         # version file leaves the question unasked rather than answered.
@@ -544,7 +609,7 @@ def _complete_report(
         # only while the cut is unmerged, which is where this runs: on the
         # release branch and on its pull request, where re-running the cut
         # still absorbs the newcomers.
-        window=cut_window(root),
+        window=None if git is None else cut_window(root, runner=git),
         # The running cross-session log, split at its `##` headings - a
         # different file from the release notes two lines up. One read of one
         # file, and only where the project names one: a project configuring no
@@ -567,7 +632,7 @@ def _complete_report(
         # Not read from the store at all, unlike everything above: it is which
         # policy the store was read *under*, which only the caller that
         # resolved it knows.
-        settings_source=_settings_source(root),
+        settings_source=inv.settings,
     )
 
 
@@ -575,7 +640,8 @@ def cmd_check(args: argparse.Namespace) -> int:
     # The repository root, not the store beneath it: `_load` returns the item
     # directory, and the roadmap `_offered` reads sits a level above it.
     _, items, config = _load(args)
-    root = _root(args)
+    inv = _invocation(args)
+    root = inv.root
     # The pull-request replay's scope, in two halves, computed here rather than
     # inside `already_passing` so the cost line can name which half an id came
     # from. The first is the items this branch edited; the second is the open
@@ -594,20 +660,38 @@ def cmd_check(args: argparse.Namespace) -> int:
     changed: frozenset[str] = frozenset()
     reading: frozenset[str] = frozenset()
     unscoped = ""
-    if args.verify and args.verify_base:
+    if args.verify and args.verify_base and inv.git is None:
+        # A scope is a diff, and `--no-git` asks git nothing, so the scoped
+        # replay declines whole and says why - the decline a base that will
+        # not resolve gets, rather than a replay scoped to nothing reporting
+        # clean. A bare `--verify` still replays: the commands it runs are the
+        # project's own, not docket's reads.
+        unscoped = (
+            f"the replay is scoped to what this branch changed against "
+            f"{args.verify_base}, and `--no-git` asks git nothing, so that was not read"
+        )
+    elif args.verify and args.verify_base:
         # The same resolution `_complete_report` makes, and for the same
         # reason: the diff behind the replay's scope is read from the
         # repository root, so a store the settings do not name scopes the
         # replay to nothing (`PL-T441`). An unreadable prefix leaves `known`
         # false, and `unscoped` below says so rather than reporting a clean
         # replay that never ran.
-        edited = changed_items(root, args.verify_base, items_dir=_tracked(args)[1])
+        edited = changed_items(root, args.verify_base, items_dir=inv.tracked, runner=inv.git)
         changed = edited.identifiers
-        reading = items_reading(items, changed_paths(root, args.verify_base)) - changed
-        if not edited.known:
+        declined = edited.declined
+        try:
+            reading = items_reading(items, changed_paths(root, args.verify_base)) - changed
+        except GitUnanswered as silence:
+            # The other half of the scope, and the same answer. Until
+            # `PL-9RFP` git's complaint came back as the changed paths, matched
+            # no command, and left the half that catches a branch breaking
+            # another item's `verify:` scoped to nothing.
+            declined = declined or str(silence)
+        if declined:
             unscoped = (
                 f"the replay is scoped to what this branch changed against "
-                f"{args.verify_base}, and that could not be read - {edited.declined}"
+                f"{args.verify_base}, and that could not be read - {declined}"
             )
     report = _complete_report(
         root,
@@ -703,7 +787,7 @@ def _offered(
 
 def cmd_list(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
-    root = _root(args)
+    root = _invocation(args).root
     report = analyze(
         items, args.today or date.today(), config, milestones=_milestones(root, config)
     )
@@ -755,10 +839,10 @@ def _milestones(root: Path, config: Config) -> MilestoneStates | None:
 
 
 def cmd_digest(args: argparse.Namespace) -> int:
-    directory, items, config = _load(args)
+    _, items, config = _load(args)
     if not items:
         return 0
-    root = _root(args)
+    root = _invocation(args).root
     # Through `_complete_report` rather than a narrower `analyze` of its own,
     # because the two count lines below - errors, and the grooming total - are
     # read as the store's whole answer by a session that has run nothing yet.
@@ -769,9 +853,9 @@ def cmd_digest(args: argparse.Namespace) -> int:
         _flight(args),
         ready,
         _plan(root, items, config),
-        _stranded(root, directory, items, args),
+        _stranded(items, args),
         config.workflow_paths,
-        _orphaned(root, args),
+        _orphaned(args),
         _cuts(root, config, args) if ready.is_worth_cutting else None,
         generator_paths=config.generator_paths,
         protected_paths=config.protected_paths,
@@ -781,10 +865,16 @@ def cmd_digest(args: argparse.Namespace) -> int:
     if rendered:
         print(rendered)
     if getattr(args, "profile", False):
+        git = _invocation(args).git
+        if git is None:
+            print("git profile: nothing to profile - `--no-git` asked git nothing")
+            return 0
         # The walk is asked with a plain runner, so the cost of measuring never
         # lands in what was measured; and it is asked after the digest, so the
         # digest's own output is identical whether or not `--profile` was given.
-        print(render.format_git_profile(_runner(args).profile(ref_walk(root, _tracked(args)[1]))))
+        with GitRunner(memoize=False, batch_blobs=False) as plain:
+            walk = ref_walk(root, _invocation(args).tracked, runner=plain)
+        print(render.format_git_profile(git.profile(walk)))
     return 0
 
 
@@ -797,9 +887,9 @@ def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight 
     digest's hook already did, and this must stay answerable in a checkout with
     no network.
     """
-    if getattr(args, "no_git", False):
+    run = _invocation(args).git
+    if run is None:
         return None
-    run = _runner(args)
     base = released_on_base(root, version_file=config.version_file, notes_dir=NOTES_DIR, runner=run)
     return cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=run)
 
@@ -831,14 +921,14 @@ def _filed(args: argparse.Namespace, untriaged: list[Item]) -> FilingReport:
     which is a question only a triage pass has, and the read is scoped to the
     items that pass is about to print rather than to the store (`PL-SWP3`).
     """
-    if getattr(args, "no_git", False) or not untriaged:
+    inv = _invocation(args)
+    if inv.git is None or not untriaged:
         return FilingReport()
-    root, items_dir = _tracked(args)
     return filed_with_work(
         frozenset(item.identifier for item in untriaged),
-        root,
-        prefix=items_dir,
-        runner=_runner(args),
+        inv.root,
+        prefix=inv.tracked,
+        runner=inv.git,
     )
 
 
@@ -908,10 +998,10 @@ def _inferred_paths(args: argparse.Namespace) -> tuple[str, ...]:
     That is not a title-only fallback, and deliberately so - see
     `duplicates.near_duplicates`.
     """
-    if getattr(args, "no_git", False):
+    inv = _invocation(args)
+    if inv.git is None:
         return ()
-    root, _ = _tracked(args)
-    return working_paths(root, runner=_runner(args)).paths
+    return working_paths(inv.root, runner=inv.git).paths
 
 
 def _record_recurrence(
@@ -1094,7 +1184,7 @@ def _say_undeclared_withdrawal(args: argparse.Namespace, matched: Item, brief: I
     """
     if not matched.path:
         return
-    _, prefix = _tracked(args)
+    prefix = _invocation(args).tracked
     declared = f"{prefix}/{matched.path}" if prefix else matched.path
     if is_under(declared, brief.touches):
         return
@@ -1440,7 +1530,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  touches: {', '.join(item.touches)}")
     if item.milestone:
         print(f"  milestone: {item.milestone}")
-    root = _root(args)
+    root = _invocation(args).root
     plan = _plan(root, items, config)
     # Whether this item is on the generator tier, by either entrance, so the
     # plan line does not tell a session it "ranks on its band alone" about an
@@ -1508,14 +1598,15 @@ def cmd_show(args: argparse.Namespace) -> int:
             print(f"    UNSOUND - {'; '.join(faults)}; ranks on its band alone until repaired")
         else:
             print("    ranked on the generator tier - above every band but P0")
-    if item.identifier in flight.ids:
+    inv = _invocation(args)
+    if item.identifier in flight.ids and inv.git is not None:
         # The whole precedence read only where something is actually carrying
         # the item, which is the rare case. A session starting ordinary work
-        # pays exactly what it paid before.
-        root, items_dir = _tracked(args)
+        # pays exactly what it paid before. Nothing is in flight under
+        # `--no-git`, so the second test is for the type rather than the case.
         print(
             render.format_precedence(
-                precedence(root, item.identifier, items_dir=items_dir), _now(args)
+                precedence(root, item.identifier, items_dir=inv.tracked, runner=inv.git), _now(args)
             )
         )
     elif edit := next((e for e in flight.editing if e.item_id == item.identifier), None):
@@ -1556,10 +1647,16 @@ def _print_observed(args: argparse.Namespace, item: Item, flight: FlightReport) 
     to know which one fired, because only the second says the collision has
     already happened.
     """
-    files = files_in_flight(_root(args), flight)
-    observed = observed_conflicts(item, files)
     print()
     print("  Already changed on a branch in flight (observed, not declared):")
+    inv = _invocation(args)
+    if inv.git is None:
+        # "Nothing has touched these files yet" would be a claim about a read
+        # that was never made.
+        print(f"    {NO_GIT}")
+        return
+    files = files_in_flight(inv.root, flight, runner=inv.git)
+    observed = observed_conflicts(item, files)
     for entry in observed:
         print(f"    {entry.describe()} has changed:")
         for path in entry.paths:
@@ -1683,7 +1780,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     """The project at feature altitude, plus whether a release is worth cutting."""
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
-    root = _root(args)
+    root = _invocation(args).root
     ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
     rendered = render.format_status(report, ready, _flight(args), _plan(root, items, config))
     print(rendered if rendered else "Nothing open.")
@@ -1726,7 +1823,7 @@ def cmd_next(args: argparse.Namespace) -> int:
             "`docket next` without a lane."
         )
         return 1
-    root = _root(args)
+    root = _invocation(args).root
     # The grooming count printed at the foot of a pick is the same claim the
     # digest's is, so it is built from the same inputs (`_complete_report`).
     report = _complete_report(root, items, config, args)
@@ -2234,13 +2331,12 @@ def _numbers_before_notes(
     four separate cuts).
     """
     owed = {i.identifier: i.path for i in ready.shippable if not i.pr and i.path}
-    if not owed:
+    inv = _invocation(args)
+    # Under `--no-git`, or for a store git cannot address, there is no number
+    # to read, and the bullet is left as it was for `docket record` to repair.
+    if not owed or inv.git is None or not inv.tracked:
         return ready
-    try:
-        tracked = directory.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError:  # a store consulted from outside the repository
-        return ready
-    report = closures_on_base(root, owed, items_dir=tracked)
+    report = closures_on_base(root, owed, items_dir=inv.tracked, runner=inv.git)
     if not report.known:
         print(f"Declined to read which pull request each closure merged as: {report.declined}\n")
         return ready
@@ -2283,7 +2379,8 @@ def cmd_release(args: argparse.Namespace) -> int:
     store already knows exactly which finished work has not gone out.
     """
     directory, items, config = _load(args)
-    root = _root(args)
+    root = _invocation(args).root
+    git = _invocation(args).git
     current = read_version(root / config.version_file)
     # An interrupted cut is resumed, never cut around. The stamps go in one
     # file at a time and the notes are written after the whole loop, so a run
@@ -2321,8 +2418,8 @@ def cmd_release(args: argparse.Namespace) -> int:
     # holds a project with no tags to nothing - so the gate skipped itself
     # whenever git failed, silently, which is the permissive direction on the
     # one check whose gap cannot be repaired afterwards.
-    if not getattr(args, "no_git", False) and resuming.lstrip("v") != current.strip().lstrip("v"):
-        existing = tags(root)
+    if git is not None and resuming.lstrip("v") != current.strip().lstrip("v"):
+        existing = tags(root, runner=git)
         refusal = ""
         if not existing.known:
             refusal = _unreadable_tags_refusal(current, existing.declined)
@@ -2370,10 +2467,12 @@ def cmd_release(args: argparse.Namespace) -> int:
     # so every ref it could read was older than the collision it was in. This
     # is the rarest command here and the most expensive to get wrong, which is
     # what makes one network read proportionate where the digest's would not be.
-    if not getattr(args, "no_git", False):
+    if git is not None:
         if not args.no_fetch:
-            fetch_remote(root)
-        base = released_on_base(root, version_file=config.version_file, notes_dir=NOTES_DIR)
+            fetch_remote(root, runner=git)
+        base = released_on_base(
+            root, version_file=config.version_file, notes_dir=NOTES_DIR, runner=git
+        )
         landed = (
             already_released(version, base.notes, base.version, config.version_file)
             if base.known
@@ -2392,7 +2491,7 @@ def cmd_release(args: argparse.Namespace) -> int:
             # collision arriving through the guard built to stop it. This is the
             # rarest command here and the most expensive to get wrong, which is
             # what makes refusing the right side to err on.
-            cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes)
+            cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=git)
             holders = [branch for branch in cuts.branches if not branch.mine]
             unread = "" if base.known else _base_unread(base.base)
             if holders:
@@ -2421,8 +2520,7 @@ def cmd_release(args: argparse.Namespace) -> int:
     # removes nothing, it only asks every future cut to remember. This runs the
     # same reading `record` does, off the fetch the guards above have paid for
     # already, so it costs one history read and cannot be forgotten.
-    if not getattr(args, "no_git", False):
-        ready = _numbers_before_notes(directory, ready, root, args)
+    ready = _numbers_before_notes(directory, ready, root, args)
 
     milestone = milestones(stamp(ready.shippable, name))[name]
     notes = release_notes(milestone, args.today or date.today())
@@ -2715,13 +2813,19 @@ def _guessed_base_refusal() -> str:
 
     The commission audit is a claim about what a branch changed *against a
     base*, so a base nobody established makes every one of its findings
-    unfounded - and not visibly so. `changed_paths` asks git for
-    `diff --name-only <base>...HEAD`, git exits non-zero for a ref that is not
-    there, and what comes back is not an empty diff but git's own three-line
-    fatal message, which the caller then reads as three changed paths. Measured
-    2026-09-22 on a checkout with no default branch: the audit reported
-    `fatal: ambiguous argument 'main...HEAD'...` as a path outside the
-    commission and missed both files the branch had actually changed.
+    unfounded - and not visibly so. Measured 2026-09-22 on a checkout with no
+    default branch: the audit reported `fatal: ambiguous argument
+    'main...HEAD'...` as a path outside the commission and missed both files
+    the branch had actually changed, because `changed_paths` read git's error
+    text as paths.
+
+    `changed_paths` now declines a base git cannot resolve (`PL-9RFP`), so
+    without this refusal the audit would say it could not read the diff. The
+    refusal still covers what that decline cannot. The first case is a guess
+    that *resolves*: the local `main`, reached because `origin/main` went
+    unread. Git answers that without complaint, against the wrong base. The
+    second is a guess that does not resolve, where this names the one flag
+    that fixes it.
 
     Refusing rather than reporting, because the direction is the one that
     cannot be recovered from. A refusal costs one re-run and says which ref to
@@ -2774,8 +2878,14 @@ def cmd_verify(args: argparse.Namespace) -> int:
             print(f"no item matching '{identifier}'")
             return 1
         wanted.append(item)
-    root = _root(args)
-    base = args.base or default_base(root)
+    inv = _invocation(args)
+    if inv.git is None:
+        # A commission audit is a diff against a base, so with git asked
+        # nothing there is no answer - and an audit must not pass unread.
+        print("verify: `--no-git` asks git nothing, and the audit is a diff against a base")
+        return 1
+    root = inv.root
+    base = args.base or default_base(root, runner=inv.git)
     if not resolved(base):
         print(_guessed_base_refusal())
         return 1
@@ -2805,7 +2915,7 @@ def cmd_wave(args: argparse.Namespace) -> int:
     worth less than an obvious failure to produce one.
     """
     _, items, config = _load(args)
-    root = _root(args)
+    root = _invocation(args).root
     roadmap = root / config.roadmap_file
     if not roadmap.is_file():
         print(f"no {config.roadmap_file} to read: there is no plan to report a position on")
@@ -2856,8 +2966,8 @@ def cmd_trend(args: argparse.Namespace) -> int:
             "answerable."
         )
         return 1
-    root = _root(args)
-    history = Churn() if args.no_git else churn(root)
+    inv = _invocation(args)
+    history = Churn() if inv.git is None else churn(inv.root, runner=inv.git)
     report = analyze_trend(items, history, config, by=args.by, today=args.today or date.today())
     if history.declined:
         # A measurement with an unread stretch of history is not the measurement
@@ -2901,16 +3011,24 @@ def cmd_stranded(args: argparse.Namespace) -> int:
     diff to read, and a branch holding a copy the base is ahead of is not
     listed at all (`PL-MBTZ`).
     """
-    directory, items, _ = _load(args)
-    root = _root(args)
+    _, items, _ = _load(args)
+    inv = _invocation(args)
+    # Before the fetch, because the fetch is the network: `stranded --no-git`
+    # went there before it looked at the flag.
+    if inv.git is None:
+        print(NO_GIT)
+        return 0
     if not args.no_fetch:
-        fetch_remote(root)
-    report = _stranded(root, directory, items, args, fetched=not args.no_fetch)
+        fetch_remote(inv.root, runner=inv.git)
+    report = _stranded(items, args, fetched=not args.no_fetch)
     if report is None:
-        print("branch detection is off (`--no-git`), so nothing was read")
+        print(
+            "the store is not below the repository root, so git cannot be asked "
+            "which items exist only on a branch"
+        )
         return 0
     print(render.format_stranded(report))
-    left = _orphaned(root, args)
+    left = _orphaned(args)
     if left is not None:
         print()
         print(render.format_orphaned(left))
@@ -2934,10 +3052,16 @@ def cmd_branch(args: argparse.Namespace) -> int:
     which of the two happened. `--no-fetch` is for the caller that already
     fetched - the hook among them - and for a checkout with no network.
     """
-    root = _root(args)
+    inv = _invocation(args)
+    if inv.git is None:
+        # `--brief` and `--if-stale` print into something a session reads
+        # whether or not it asked, so they say nothing, as for an absent base.
+        if not (args.brief or args.if_stale):
+            print(NO_GIT)
+        return 0
     if not args.no_fetch:
-        fetch_remote(root)
-    state = branch_state(root, fetched=not args.no_fetch)
+        fetch_remote(inv.root, runner=inv.git)
+    state = branch_state(inv.root, fetched=not args.no_fetch, runner=inv.git)
     if state.absent and (args.brief or args.if_stale):
         # Nothing to compare against, and both callers here are printing into
         # something a session reads whether or not it asked: a line explaining
@@ -3025,16 +3149,21 @@ def cmd_flight(args: argparse.Namespace) -> int:
     `show`, `list`, `triage` and the digest, and this one is wanted by the
     command whose whole question it is.
     """
-    root, items_dir = _tracked(args)
-    report = branches_in_flight(root, items_dir=items_dir)
+    inv = _invocation(args)
+    if inv.git is None:
+        print(NO_GIT)
+        return 0
+    report = _flight(args)
     # One question to the forge for both readings, asked wherever a row exists:
     # the settled rows and the pull-request clause on every live row ask it the
     # same thing (`PL-7TVT`), and a report with no row asks nothing.
-    lookup = _open_pull_requests(args, root, load_config(root))
+    lookup = _open_pull_requests(args, inv.root, inv.config)
     answer = lookup() if lookup is not None and report.branches else None
     opened = None if lookup is None else (lambda: answer)
-    settled = settled_branches(root, report, opened=opened, items_dir=items_dir)
-    reviews = open_pull_requests(root, report, opened=opened)
+    settled = settled_branches(
+        inv.root, report, opened=opened, items_dir=inv.tracked, runner=inv.git
+    )
+    reviews = open_pull_requests(inv.root, report, opened=opened, runner=inv.git)
     print(render.format_flight(report, _now(args), settled, reviews))
     return 0
 
@@ -3097,11 +3226,13 @@ def cmd_record(args: argparse.Namespace) -> int:
     confidently is worse than the missing one this exists to supply.
     """
     directory, items, _ = _load(args)
-    root = _root(args)
-    try:
-        tracked = directory.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError:
-        print("record: the store is outside the repository, so git cannot say what closed")
+    inv = _invocation(args)
+    root, tracked = inv.root, inv.tracked
+    if inv.git is None:
+        print("record: `--no-git` asks git nothing, and only git can say what a merge closed")
+        return 2
+    if not tracked:
+        print("record: the store is not below the repository root, so git cannot say what closed")
         return 2
     if args.number is None:
         if args.merge is not None:
@@ -3113,7 +3244,7 @@ def cmd_record(args: argparse.Namespace) -> int:
         return 2
 
     merge = args.merge or "HEAD"
-    report = closed_by(merge, root, items_dir=tracked)
+    report = closed_by(merge, root, items_dir=tracked, runner=inv.git)
     if not report.known:
         print(f"record: declined to read {report.declined}")
         return 2
@@ -3192,7 +3323,7 @@ def _record_owed(
         print("record: every closure already records its pull request")
         _restate_notes(root, known, args.dry_run)
         return 0
-    report = closures_on_base(root, owed, items_dir=tracked)
+    report = closures_on_base(root, owed, items_dir=tracked, runner=_invocation(args).git)
     if not report.known:
         print(f"record: declined to read {report.declined}")
         return 2
@@ -3352,7 +3483,8 @@ def build_parser() -> argparse.ArgumentParser:
             action="store_true",
             default=False,
             dest="no_git" + suffix,
-            help="skip branch detection",
+            help="ask git nothing: no branch detection, and none of the history reads "
+            "behind a count",
         )
 
     common = argparse.ArgumentParser(add_help=False)
@@ -3653,9 +3785,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     finally:
         # The one thing a `cat-file --batch` must not do is outlive the command
         # that opened it, and a command that raised opened one just the same.
-        runner: GitRunner | None = getattr(args, _RUNNER_ATTR, None)
-        if runner is not None:
-            runner.close()
+        invocation: Invocation | None = getattr(args, _INVOCATION_ATTR, None)
+        if invocation is not None and invocation.git is not None:
+            invocation.git.close()
 
 
 if __name__ == "__main__":  # pragma: no cover - exercised via __main__.py

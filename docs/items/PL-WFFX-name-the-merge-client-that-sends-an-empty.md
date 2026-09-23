@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: pr-body-integrity
+milestone: v0.5.6
 touches: docs/items, docs/maintainer.md
 added: 2026-09-20
 closed: 2026-09-22

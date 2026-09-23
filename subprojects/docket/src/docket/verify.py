@@ -1375,7 +1375,7 @@ def _run(
 ) -> tuple[int, str]:
     """Run a command, returning its exit status and combined output.
 
-    Two kinds of command come through here, and both are meant to. Most
+    Two kinds of command come through here, and both are meant to. Some
     callers read history with `git`, named rather than given an absolute
     path for the same reason as `vcs._run_git`: the path differs by
     environment. The other two run a command recorded in the store - an
@@ -1384,6 +1384,15 @@ def _run(
     the entire job. Both were trusted enough to be committed to the
     repository, so there is no untrusted input to guard against here; the
     guard that matters is review of what gets committed.
+
+    **A git read through here has to read the status it gets back**, because
+    the output is stdout and stderr together: discard the status and git's
+    complaint arrives as data. That is how a base that did not resolve came
+    back from `changed_paths` as three changed paths (`PL-9RFP`). The reads
+    left here are the ones with a use for a failure, such as `git show
+    <base>:<path>` exiting 128 for a file the base does not hold. A read with no
+    such use goes through `_git`, which cannot hand its failure back as an
+    answer.
     """
     try:
         result = subprocess.run(
@@ -1406,6 +1415,51 @@ def _run(
     return result.returncode, (result.stdout or "") + (result.stderr or "")
 
 
+class GitUnanswered(Exception):
+    """A git read the audit rests on that git did not answer, and git's reason."""
+
+
+def _git(args: list[str], root: Path) -> str:
+    """Git's standard output for a read the audit rests on, or `GitUnanswered`.
+
+    Raised rather than returned, because every caller of this has the same
+    answer to a failure and none of them has a value it could return instead.
+    An empty list of paths is a branch that changed nothing, and an empty diff
+    is one that added no suppression. Returning either for a read that never
+    happened is how the commission audit came to report git's usage text as
+    three edits, and to pass both integrity checks on a diff it never saw
+    (`PL-9RFP`). Nothing here has to remember to check a status, and a caller
+    that forgets to catch fails loudly instead of answering.
+
+    Any non-zero exit is a failure, which is narrower than `vcs._run_git` on
+    purpose. There, `rev-parse --verify` and `merge-base` exit 1 to say no, and
+    that is an answer. None of the reads here has a no to give: `log`, `diff`,
+    `show` and `status` exit 0 whenever they answered at all.
+
+    The reason is git's first line on stderr, which names the revision it
+    could not read. Only stdout is returned, so none of stderr can reach a
+    caller as output.
+    """
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            # The bound these reads had while they went through `_run`.
+            timeout=1800,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise GitUnanswered(f"`git {args[0]}` could not run: {error}") from error
+    if result.returncode != 0:
+        said = next((line.strip() for line in result.stderr.splitlines() if line.strip()), "")
+        raise GitUnanswered(
+            f"`git {args[0]}` exited {result.returncode}: {said or 'with nothing on stderr'}"
+        )
+    return result.stdout
+
+
 def item_commits(root: Path, base: str, identifier: str) -> tuple[str, ...]:
     """Commits on this branch whose subject carries the item's id.
 
@@ -1415,8 +1469,13 @@ def item_commits(root: Path, base: str, identifier: str) -> tuple[str, ...]:
     and say nothing. Scoped to its own commits, each item is judged on what it
     actually changed - which is also what lets a reviewer take four items and
     reject the fifth.
+
+    Raises `GitUnanswered` where the log cannot be read. Returning nothing
+    would send the audit to the whole branch diff instead. Returning what came
+    back, as this did until `PL-9RFP`, handed git's three-line complaint about
+    the base on as three commit hashes.
     """
-    _, output = _run(["git", "log", "--format=%H", f"--grep={identifier}", f"{base}..HEAD"], root)
+    output = _git(["log", "--format=%H", f"--grep={identifier}", f"{base}..HEAD"], root)
     return tuple(line.strip() for line in output.splitlines() if line.strip())
 
 
@@ -1428,12 +1487,16 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
     would pass a branch with an uncommitted edit to the scientific core
     sitting in it. Uncommitted work belongs to no item in particular, so it is
     attributed to whichever item is being verified rather than excused.
+
+    Raises `GitUnanswered` where either half cannot be read, a base that does
+    not resolve among them. The empty tuple is a branch that changed nothing,
+    so no value this could return would say "unread" (`PL-9RFP`).
     """
     if commits:
-        _, committed = _run(["git", "show", "--name-only", "--format=", *commits], root)
+        committed = _git(["show", "--name-only", "--format=", *commits], root)
     else:
-        _, committed = _run(["git", "diff", "--name-only", f"{base}...HEAD"], root)
-    _, working = _run(["git", "status", "--porcelain"], root)
+        committed = _git(["diff", "--name-only", f"{base}...HEAD"], root)
+    working = _git(["status", "--porcelain"], root)
     paths = {line.strip() for line in committed.splitlines() if line.strip()}
     for line in working.splitlines():
         entry = line[3:].strip() if len(line) > 3 else ""
@@ -1455,11 +1518,11 @@ def _within(path: str, allowed: tuple[str, ...]) -> bool:
 
 
 def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
+    # Through `_git`, so a diff git would not produce raises instead of
+    # reading as one that added no suppression and removed no assertion.
     if commits:
-        _, diff = _run(["git", "show", "--format=", *commits], root)
-        return diff
-    _, diff = _run(["git", "diff", f"{base}...HEAD"], root)
-    return diff
+        return _git(["show", "--format=", *commits], root)
+    return _git(["diff", f"{base}...HEAD"], root)
 
 
 #: The post-image path out of a `diff --git a/x b/x` header. A header this
@@ -1886,10 +1949,14 @@ def other_items_named(root: Path, commits: tuple[str, ...], identifier: str) -> 
     item commissioned which is not recoverable from the diff. Naming the other
     ids is what lets a reader see that the scope being audited is wider than
     the item, which is the whole of what went wrong silently before.
+
+    Raises `GitUnanswered` where the subjects cannot be read. Otherwise git's
+    complaint would be searched for ids, and finding none would read as the
+    commits naming this item alone.
     """
     if not commits:
         return ()
-    _, output = _run(["git", "show", "-s", "--format=%s", *commits], root)
+    output = _git(["show", "-s", "--format=%s", *commits], root)
     found = {match.group(0) for match in re.finditer(ID_PATTERN, output)}
     return tuple(sorted(found - {identifier}))
 
@@ -1975,8 +2042,41 @@ def verify_item(
     thing being asked about, so "could not run it" rejects the work rather than
     abstaining. What exit 0 does not prove is that the work is right;
     `project_check` and the reviewer's reading of the diff carry that.
+
+    **A read git did not answer ends the audit, and never passes it**
+    (`PL-9RFP`). Every check here is a claim about what the branch changed,
+    so an audit that could not read the change has nothing to report. Before
+    this, a base that did not resolve came back as git's error text: the
+    commission check named that text as an edit, and both integrity checks
+    passed on a diff they never saw. So a self-audit whose command passed
+    would ACCEPT having read nothing.
     """
     report = Verification(item=item, base=base, base_note=base_note)
+    try:
+        return _check_item(report, root, item, config, base, self_audit)
+    except GitUnanswered as silence:
+        report.checks.append(
+            Check(
+                "the diff could be read",
+                False,
+                "git did not answer the read below, so no later check ran",
+                (str(silence),),
+            )
+        )
+        report.stopped_early = True
+        return report
+
+
+def _check_item(
+    report: Verification, root: Path, item: Item, config: Config, base: str, self_audit: bool
+) -> Verification:
+    """The checks `verify_item` documents, appended to `report` as each runs.
+
+    Separate so that a git read that did not answer is caught in one place,
+    whichever check it came from, including a check added later. The report
+    is passed in rather than built here because the checks that ran before
+    the failure did run, and the reader is owed them.
+    """
     commits = item_commits(root, base, item.identifier)
     paths = changed_paths(root, base, commits)
 

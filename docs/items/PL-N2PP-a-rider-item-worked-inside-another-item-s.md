@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: defect, infra
 feature: carrier-detection
+milestone: v0.5.6
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py
 added: 2026-09-20
 closed: 2026-09-22
+pr: 924
 verify: grep -q 'Do the same the moment you pick up a second item' .claude/skills/docket/modes/start.md && grep -q 'def test_an_empty_commit_leading_with_an_id_claims_the_item_before_any_work' subprojects/docket/tests/test_vcs.py && uv run pytest -q subprojects/docket/tests/test_vcs.py -k an_empty_commit_leading_with_an_id_claims_the_item
 ---
 

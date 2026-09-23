@@ -49,11 +49,20 @@ same directory, `vcs.tags(<dir>)` declined, naming `git tag --list` as the
 question git did not answer.
 
 **Why it matters.** An empty, undeclined `ChangedItems` says the branch changed
-no item. That set is what `docket check --verify-base` narrows its replay by,
-so a read that could not be taken reaches the replay as a confident "nothing".
-Reach is low today, since nothing runs it outside a checkout. But two reads
-beside each other disagree about the same environment, and the next caller
-inherits whichever one it happens to pick.
+no item. That set is what `docket check --verify-base` narrows its replay by.
+Until `PL-9RFP`, a read that could not be taken reached the replay as a
+confident "nothing". Reach is low today, since nothing runs it outside a
+checkout. But two reads beside each other disagree about the same environment,
+and the next caller inherits whichever one it happens to pick.
+
+**The replay no longer takes this answer on its own (2026-09-23, `PL-9RFP`).**
+`cmd_check` reads `verify.changed_paths` beside `changed_items`. Outside a
+repository that read exits 129 and now declines, so the replay declines whole
+and says why. `test_verify_base_outside_a_repository_declines_the_replay`
+holds that; before, it asserted the narrowing this item describes. What is left
+is `changed_items` itself answering `known=True` where it read nothing, for
+the next caller that takes it alone. That still needs its own test, from a
+directory in no repository, in `test_vcs.py`.
 
 **Done when.** `changed_items` declines outside a repository, by either route
 above, and a test in `subprojects/docket/tests/test_vcs.py` holds it from a

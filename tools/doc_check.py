@@ -67,6 +67,8 @@ Two modes:
 - `candidates`  diff-scoped. Prints the documentation lines that mention
                 anything the working tree changed, so close-out reads a
                 short list instead of grepping five documents by hand.
+                Exits non-zero, having swept nothing, where git cannot
+                read the diff against `--base`.
 
 Standard library only, and no import of the application package, so this
 runs in a bare checkout exactly as it runs in CI. The one exception is
@@ -4819,14 +4821,30 @@ def format_check(report: Report) -> str:
     return "\n".join(lines)
 
 
+class GitUnanswered(Exception):
+    """A git read the candidate list rests on that git did not answer, and why."""
+
+
 def _git(root: Path, *args: str) -> list[str]:
     # `git` is resolved through `PATH` rather than pinned, for the same reason
-    # as docket's `vcs._run_git`: the path differs by environment, and a
-    # checkout that cannot run git is answered with an empty list here rather
-    # than treated as an error.
-    result = subprocess.run(("git", *args), cwd=root, capture_output=True, text=True, check=False)
+    # as docket's `vcs._run_git`: the path differs by environment.
+    #
+    # A failure raises rather than answering with an empty list, because every
+    # caller reads the list as what changed, and an empty one is a diff with
+    # nothing in it. A base that did not resolve, or a checkout that is not a
+    # repository at all, printed "nothing to sweep", and the close-out sweep
+    # was skipped over a diff nobody had read (`PL-9RFP`).
+    try:
+        result = subprocess.run(
+            ("git", *args), cwd=root, capture_output=True, text=True, check=False
+        )
+    except GIT_UNAVAILABLE as error:
+        raise GitUnanswered(f"`git {args[0]}` could not run: {error}") from error
     if result.returncode:
-        return []
+        said = next((line.strip() for line in result.stderr.splitlines() if line.strip()), "")
+        raise GitUnanswered(
+            f"`git {args[0]}` exited {result.returncode}: {said or 'with nothing on stderr'}"
+        )
     return [line for line in result.stdout.splitlines() if line.strip()]
 
 
@@ -4972,7 +4990,11 @@ def _more_specific(candidate: str, incumbent: str, distinctive: bool) -> bool:
 
 
 def format_candidates(root: Path, base: str) -> str:
-    """Print the documentation lines a close-out sweep would grep for."""
+    """Print the documentation lines a close-out sweep would grep for.
+
+    Raises `GitUnanswered` where the diff cannot be read, which `main` reports
+    as a sweep that did not happen rather than one that found nothing.
+    """
     documents = read_docs(root)
     tokens = changed_tokens(root, base, documents)
     if not tokens:
@@ -5046,7 +5068,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     root = (args.root or Path(__file__).resolve().parent.parent).resolve()
 
     if args.mode == "candidates":
-        print(format_candidates(root, args.base))
+        try:
+            print(format_candidates(root, args.base))
+        except GitUnanswered as silence:
+            print(f"Cannot sweep: the diff against {args.base} could not be read.")
+            print(f"  {silence}")
+            print(
+                "Nothing was swept. Name a base git can resolve and re-run - "
+                "`git fetch origin` first where `origin/main` is missing."
+            )
+            return 1
         return 0
 
     report = analyze(root)
