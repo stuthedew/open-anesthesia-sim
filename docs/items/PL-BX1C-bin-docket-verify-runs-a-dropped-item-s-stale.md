@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect
 feature: verify-false-reject
+milestone: v0.5.8
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 added: 2026-09-19
 closed: 2026-09-23
+pr: 952
 verify: grep -q 'def test_a_dropped_items_verify_command_is_not_run' subprojects/docket/tests/test_verify.py
 recurrences: 2026-09-22 PL-23C7, 2026-09-23 PL-KSV2 withdrawn 2026-09-23 PL-KSV2
 ---

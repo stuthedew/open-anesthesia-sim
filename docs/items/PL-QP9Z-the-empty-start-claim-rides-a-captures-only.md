@@ -5,9 +5,11 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.5.8
 touches: CLAUDE.md
 added: 2026-09-23
 closed: 2026-09-23
+pr: 948
 payoff: a session that files its own item and claims it keeps its claim on a pushed branch while it works, instead of every in-flight guard reading the item as free for the minutes after its capture auto-merges
 verify: grep -q "A start claim riding that push" CLAUDE.md
 ---
