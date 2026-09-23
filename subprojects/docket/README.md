@@ -463,14 +463,21 @@ measured rather than recalled:
 | `merge-base` on unrelated histories | 1 | "no merge base" — an answer |
 | `show <rev>:<path the rev lacks>` | 128 | "not there" — an answer |
 | `diff`/`log`/`ls-tree`/`rev-list` on a bad revision | 128 | a silence |
+| `diff` outside a repository | 1 | a silence |
 | a mistyped option | 129 | a silence |
 | git missing, or the ten-second timeout | — | a silence |
 
-The last row but three is the exception and it is forced rather than chosen:
+The `show` row is one exception and it is forced rather than chosen:
 `cat-file --batch`, which the runner serves the same question from when it can,
 prints `missing` and exits 0 for an absent path *and* an absent revision alike,
 so reading the fatal exit as a failure would make the two paths disagree about
 one question.
+
+The `diff` row outside a repository is the other, in the opposite direction.
+There git compares two paths on the filesystem under the same name, a form that
+implies `--exit-code`, so its 1 means a path it could not read, not git saying
+no. Inside a repository a revision diff never exits 1. `changed_items` read
+that 1 as a branch that changed no item until `PL-19T3`.
 
 A public read wraps its runner in `_Silences` rather than threading a flag out
 of every helper, and reports what went unanswered as `declined`. It over-reports
@@ -485,10 +492,12 @@ code inverted two of them. It runs every public read against a real repository,
 then again with its *n*-th git call silenced, once per call, and holds the
 answer to declining or reporting everything the truthful read reported. A read
 the fixture gives nothing to find fails rather than passing, and a read added
-later that takes a runner fails a registry guard until it says which it is. The
-three reads that cannot decline at all are held by a test asserting that they
-still lose a finding, rather than by a marker excusing them: both fail the day
-the gap closes, and only one of them still runs.
+later that takes a runner fails a registry guard until it says which it is.
+Every public read is in it: the last that could not decline, `default_base`,
+closed with `PL-73P0`. Each read also runs once from a directory in no
+repository, where it must decline. Silencing one call at a time cannot reach a
+read whose every call git answers there, which is how `changed_items` came to
+answer with no repository at all (`PL-19T3`).
 
 ### In flight is read from the commits, not from the branch name
 
