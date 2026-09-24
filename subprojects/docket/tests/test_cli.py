@@ -3816,8 +3816,9 @@ def test_flight_reads_below_an_uneven_horizon_by_the_landed_prefix(
     question the clone *can* answer: whether the branch's work up to a commit is
     content the base already holds (`claims._landed_through`). The default
     branch's own commits, reached below the graft, wrote nothing the base lacks,
-    so every claim they carry is spent by landing and the branch's own commit
-    after them is still read. The walk guard is unchanged and stays silent,
+    so every claim they carry is spent by landing, since each claim is its own
+    commit or an ancestor of a landed one, and the branch's own commit after
+    them is still read. The walk guard is unchanged and stays silent,
     since every emitted commit still has a parent; what changed is that the
     wrong ids no longer survive past it. `vcs._unmerged_commits` keeps the limit
     for as long as it has readers.
