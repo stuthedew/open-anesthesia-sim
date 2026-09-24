@@ -17,6 +17,17 @@ here compares file content, so a squash, a rename, two sessions writing the
 same lines, and a base that rewrote the file afterwards cannot confound it. All
 of those have fooled `vcs.orphaned` (`PL-JHJ3`, `PL-5TRV`, `PL-XLQ5`).
 
+**Except a change that landed another way, which ancestry cannot see.** A
+commit pushed after the merge whose change then reached the default branch
+through a *different* pull request - a port of a fix, which the drive-to-green
+rules prescribe for a red base - descends from the frozen head and is merged by
+nothing, yet nothing is lost. So each commit past the head is also put to
+`vcs.change_landed`, which replays it onto the base and asks whether that
+changes anything (`PL-GHHW`, `PL-PXZ3`). One held there is not left behind:
+the branch reads as clear, and the clearance names the pull request that
+landed it. `vcs.orphaned` reads the same test, so the two checks cannot
+disagree about a port.
+
 **What it needs, and what it says when it cannot have it.** Git holds no record
 of which pull request came from which branch, so that mapping comes from
 GitHub's pull-request listing, which needs a token. The frozen head is read from
@@ -39,10 +50,7 @@ check compares content, and it runs in a bare checkout with no network. This
 one runs only where GitHub answers. So each branch gets this check's answer
 where it has one, and `orphaned`'s wherever it does not. Where the two disagree,
 this one wins and the disagreement is printed, because a reader holding both
-answers needs to know which to believe. The common disagreement is benign. A
-commit left behind whose change then landed through *another* pull request
-shows up here, since that commit never merged. `orphaned` stays silent, because
-the content is on the base. That branch is stale and can be deleted.
+answers needs to know which to believe.
 
 Wired into `.claude/hooks/docket-digest.sh`, so each session start reads it. It
 prints nothing when every branch is clear, and otherwise one line per finding,
@@ -266,8 +274,11 @@ class Verdict:
     """What one branch was found to carry.
 
     `left` is the finding, and a verdict with commits in it is the only kind
-    printed as one. `clear` says why nothing was left behind, for `--all` and
-    for the disagreement line. `declined` says why the branch could not be read.
+    printed as one. `landed` holds the commits past the merged head whose
+    change the default branch took another way, each beside the pull request
+    or commit that took it; they are not the finding. `clear` says why nothing
+    was left behind, for `--all` and for the disagreement line. `declined`
+    says why the branch could not be read.
     """
 
     branch: str
@@ -275,10 +286,37 @@ class Verdict:
     left: tuple[Commit, ...] = ()
     clear: str = ""
     declined: str = ""
+    landed: tuple[tuple[Commit, str], ...] = ()
 
 
 def _has_commit(sha: str, run: Runner) -> bool:
     return run(["cat-file", "-e", f"{sha}^{{commit}}"]).code == 0
+
+
+def landed_through(sha: str, base: str, run: Runner) -> str:
+    """How the default branch took `sha`'s change another way, or "" where it has not.
+
+    `vcs.change_landed` is the test, and it is `vcs.orphaned`'s too, so the two
+    checks give one answer about a port (`PL-GHHW`). Every failure reads as not
+    landed - an unimportable `docket`, a conflict, a git older than 2.40 - so the
+    commit stays a finding, which is what this check printed before the test
+    existed. A pull request is named where the landing commit is a squash
+    merge's, and the commit otherwise.
+    """
+    try:
+        from docket.vcs import change_landed
+    except Exception:  # a broken import must cost the clearance, never the finding
+        return ""
+
+    def call(args: list[str], _root: Path) -> str:
+        done = run(args)
+        return done.out if done.code == 0 else ""
+
+    landing = change_landed(sha, base, ROOT, runner=call)
+    if landing is None:
+        return ""
+    number = landing.pull_request
+    return f"#{number}" if number is not None else landing.commit[:9]
 
 
 def examine(
@@ -334,7 +372,19 @@ def examine(
     )
     if not left:
         return Verdict(branch, number, clear=f"only merges of the base since #{number} merged")
-    return Verdict(branch, number, left=left)
+    through = {commit.sha: landed_through(commit.sha, base, run) for commit in left}
+    landed = tuple((commit, through[commit.sha]) for commit in left if through[commit.sha])
+    left = tuple(commit for commit in left if not through[commit.sha])
+    if not left:
+        where = ", ".join(sorted({how for _, how in landed}))
+        return Verdict(
+            branch,
+            number,
+            clear=f"the {len(landed)} commit(s) pushed after #{number} merged landed through "
+            f"{where}",
+            landed=landed,
+        )
+    return Verdict(branch, number, left=left, landed=landed)
 
 
 @dataclass(frozen=True)
@@ -417,10 +467,7 @@ def lines(report: Report, orphaned: frozenset[str] | None, *, every: bool = Fals
             elif verdict.branch in orphaned:
                 agreement = "vcs.orphaned agrees"
             else:
-                agreement = (
-                    "vcs.orphaned does not report it, and this ref comparison wins - if the "
-                    "change landed through another pull request, the branch is stale"
-                )
+                agreement = "vcs.orphaned does not report it, and this ref comparison wins"
             out.append(
                 f"left-behind: {verdict.branch} carries {len(verdict.left)} commit(s) pushed "
                 f"after #{verdict.number} merged, which nothing will merge: {newest.sha[:9]} "
@@ -444,6 +491,10 @@ def lines(report: Report, orphaned: frozenset[str] | None, *, every: bool = Fals
             out.append(f"  {verdict.branch}: {said}")
             out.extend(
                 f"    {commit.sha[:9]} {commit.date} {commit.subject}" for commit in verdict.left
+            )
+            out.extend(
+                f"    {commit.sha[:9]} {commit.date} {commit.subject} - landed through {how}"
+                for commit, how in verdict.landed
             )
     return out
 

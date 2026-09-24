@@ -3,12 +3,13 @@ id: PL-PXZ3
 title: left_behind_check reports a commit whose identical patch already landed through another pull request: its first finding, 52c6d698 on claude/recurrence-signal-feature-3hnynt, matches 98de88c8 in #794 by git patch-id, so the reader had to prove the branch stale by hand
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: landed-elsewhere
 touches: tools/left_behind_check.py, tests/unit/test_left_behind_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
+closed: 2026-09-23
 payoff: the digest's left-behind line stops naming commits that already merged through another pull request, so a finding there is one worth acting on
 verify: grep -q 'def test_a_commit_whose_patch_landed_through_another_pull_request_is_not_left_behind' tests/unit/test_left_behind_check.py
 ---
@@ -48,3 +49,18 @@ test with a fake runner.
 item's check says. The `PL-6Q9L` pause cited above has ended - no open item
 carries `generator: live` - and this is in any case a precision fix to an
 existing check.
+
+**Closed 2026-09-23 with `PL-GHHW`**, the generator head that explains it, as
+the project owner asked (project owner, 2026-09-23). `left_behind_check.examine`
+now asks `vcs.change_landed` of each commit past the merged head, and a commit
+whose change the default branch took through another pull request is
+reported as having landed there, naming its number, rather than as work left
+behind: the branch reads as clear in the digest, and `--all` lists the commit
+beside `landed through #N`. Two departures from the Done-when above, both
+deliberate. The number comes from the landing commit's squash subject rather
+than from a patch-id match against another pull request's head, since that
+match needs `refs/pull/*` in the checkout and fails whenever the other pull
+request's squash carries more than the port. And the tests are real
+repositories (`test_a_commit_whose_patch_landed_through_another_pull_request_is_not_left_behind`
+and the mixed case beside it), not a fake runner, because the question is what
+git's merge makes of two histories.

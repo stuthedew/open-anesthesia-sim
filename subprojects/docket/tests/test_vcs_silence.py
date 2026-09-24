@@ -46,6 +46,7 @@ from docket.vcs import (
     behind_remote,
     branch_state,
     branches_in_flight,
+    change_landed,
     changed_items,
     churn,
     closed_by,
@@ -320,6 +321,14 @@ READS: tuple[Read, ...] = (
     Read("stranded", lambda r, g: stranded(r, set(), runner=g), _findings("items")),
     Read("lost", lambda r, g: lost(r, runner=g), _findings("items")),
     Read("orphaned", lambda r, g: orphaned(r, runner=g), _findings("branches")),
+    # The first commit on `orphaned`'s branch, whose change the base took as
+    # `(#3)`: its finding is that landing, which a silence must not move to a
+    # later candidate or drop without the answer saying so (`PL-GHHW`).
+    Read(
+        "change_landed",
+        lambda r, g: change_landed("claude/pl-0rp1-partly~1", "origin/main", r, runner=g),
+        _findings(),
+    ),
     Read(
         "merged_pull_requests", lambda r, g: merged_pull_requests(r, runner=g), _findings("numbers")
     ),

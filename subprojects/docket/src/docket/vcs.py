@@ -1568,6 +1568,126 @@ def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Ru
     return superseded
 
 
+#: The number GitHub's squash merge writes at the end of the commit it lands,
+#: `Title (#934)`. A merge commit or a direct push carries none.
+_SQUASH_NUMBER = re.compile(r"\(#(\d+)\)\s*$")
+
+
+@dataclass(frozen=True)
+class Landing:
+    """The commit on the default branch whose tree first held another commit's change."""
+
+    commit: str
+    subject: str
+
+    @property
+    def pull_request(self) -> int | None:
+        """The pull request that landed it, where the subject is a squash merge's."""
+        found = _SQUASH_NUMBER.search(self.subject)
+        return int(found.group(1)) if found else None
+
+
+def change_landed(
+    commit: str, base: str, root: Path, *, runner: Runner | None = None
+) -> Landing | None:
+    """Where the default branch took `commit`'s change, or None where it has not.
+
+    **The one landing test that reads the change itself** (`PL-GHHW`). Every
+    other test here reads something coarser - containment reads commits,
+    `_landing_split` reads blobs, `_superseded` reads whole files at the two
+    tips - and each misses a change that reached the base through a pull
+    request other than its own branch's. That pull request's squash carries the
+    change *and more*, so no commit on the base is the commit, no blob on the
+    base is the blob, and the base's copy of the file is ahead of the branch's
+    rather than a superset of it. Porting a fix that is also landing elsewhere
+    is what the drive-to-green rules prescribe for a red base, so the shape is
+    routine, and it had been filed four times against three readers before it
+    was fixed once here (`PL-XLQ5`, `PL-MBTZ`, `PL-PXZ3`, `PL-GHHW`).
+
+    **`git patch-id` was the first candidate and cannot answer it.** It matches
+    a whole diff to a whole diff, and a squash that carries the port plus the
+    rest of its pull request matches nothing; matching against the other pull
+    request's own head commits instead needs `refs/pull/*`, which a checkout
+    does not fetch and `orphaned` must answer without.
+
+    **The test is the cherry-pick git would make.** Replay the commit onto a
+    base commit as a three-way merge whose merge base is the commit's own
+    parent - `git merge-tree --write-tree --merge-base=<commit>^ <base>
+    <commit>` - and ask whether the result is the base commit's own tree. If
+    applying the change to that tree changes nothing, the tree already holds
+    it; that is the condition `git cherry-pick` reports as "now empty". It is
+    hunk by hunk by construction, so a base that edited other lines of the
+    same file does not confound it, which is the case every coarser test
+    misses.
+
+    **Ever held, not held now**, which is `_landing_split`'s rule for the same
+    reason: a base that took the change and then rewrote the line has still
+    taken it, and recovering the commit would revert the rewrite. So the
+    candidates are the default branch's first-parent commits since the fork
+    point that touch the commit's paths, oldest first, and the first that holds
+    the change is the one returned. Its subject is how a reader is told which
+    pull request landed it.
+
+    **Every failure reads as not landed**, which is the direction the readers
+    need: they keep reporting the commit, as they did before this test existed.
+    A conflict (git exits 1, answered as `""`), a git older than 2.40, which
+    has no `--merge-base` and so answers nothing, a root commit and a merge
+    commit, which have no one parent to replay from - none produces a tree to
+    match. The known recall cost is a change the base took together with an
+    edit to the line next to it: git merges adjacent changes as one hunk and
+    calls it a conflict, so that commit is still reported.
+
+    `--write-tree` writes the merged tree into the object store. No ref moves,
+    and gc prunes what nothing reaches; a tree equal to the base's writes
+    nothing new at all.
+
+    One merge per candidate, and a reader asks only of a commit it would
+    otherwise report. Measured 2026-09-23 on this repository: a commit forked
+    300 commits back and touching `vcs.py` and `test_cli.py`, two of its
+    busiest files, met 48 candidates, held at none, in 1.1 s.
+    """
+    run = runner or _run_git
+    changed = run(["diff", "--name-only", "--no-renames", f"{commit}^", commit, "--"], root)
+    paths = tuple(line.strip() for line in changed.splitlines() if line.strip())
+    if not paths:
+        return None
+    fork = run(["merge-base", base, commit], root).strip()
+    if not fork:
+        return None
+    # Path-limited where the pathspec fits one command line, which is every
+    # commit a reader has asked about so far; past that, every first-parent
+    # commit is a candidate, which is slower and gives the same answer.
+    limit = paths if len(list(_pathspec_chunks(paths))) == 1 else ()
+    listed = run(
+        [
+            "log",
+            "--first-parent",
+            "--reverse",
+            "--format=%H%x1f%T%x1f%s",
+            f"{fork}..{base}",
+            "--",
+            *limit,
+        ],
+        root,
+    )
+    for line in listed.splitlines():
+        fields = line.split("\x1f", 2)
+        if len(fields) != 3:
+            continue
+        candidate, tree, subject = (part.strip() for part in fields)
+        merged = run(
+            ["merge-tree", "--write-tree", f"--merge-base={commit}^", candidate, commit], root
+        )
+        if not answered(merged):
+            # Not a conflict, which git answers: git said nothing about this
+            # candidate, so a later one that holds the change cannot be called
+            # the first, and naming it would name the wrong pull request.
+            return None
+        if merged.splitlines()[:1] == [tree]:
+            return Landing(commit=candidate, subject=subject)
+    return None
+
+
 @dataclass(frozen=True)
 class _Refs:
     """Every ref this checkout holds, split by what can be believed about it.
@@ -6007,6 +6127,10 @@ def orphaned(
     `_commits_by_landing` carries both of those halves and the branch that
     taught each.
 
+    **A commit whose change reached the base through another pull request is
+    cleared by `change_landed`**, the one test `tools/left_behind_check.py`
+    reads too (`PL-GHHW`), so the two checks no longer disagree about a port.
+
     **What it can get wrong**, now that agreement alone no longer convicts. Two
     directions, both silence. A commit pushed after the merge that happens to
     leave one file in a state the base has held is not reported; nor is a
@@ -6081,6 +6205,21 @@ def orphaned(
             # leads there and keeps a line of its own (`PL-Y31G`).
             if _duplicated_history(base, root, run, ref=name) is not None:
                 rewritten.append(name)
+                continue
+            # **A commit whose change the base took through another pull
+            # request is not left behind** (`PL-GHHW`), though every path of it
+            # reads as outstanding: that pull request's squash carried the
+            # change and more, so the base never held this commit's blob, and
+            # its copy of the file is ahead of the branch's. The `recover:`
+            # line would have handed a reader a checkout reverting it. Asked
+            # after the rewrite test, because a rewritten ref's commits all
+            # hold changes the base has, and that ref needs its own line.
+            left = tuple(
+                commit
+                for commit in left
+                if change_landed(commit.commit, base, root, runner=run) is None
+            )
+            if not left:
                 continue
             # The branch's outstanding side is narrowed to the paths of the
             # commits actually reported. The wider set includes files a merged

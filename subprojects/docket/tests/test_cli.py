@@ -2601,7 +2601,17 @@ def test_stranded_reports_a_commit_pushed_after_its_pull_request_merged(
     assert "claude/pl-k7qx-do-the-thing  (1 file of its work already landed)" in out
     assert "PL-K7QX: the rule pushed after the merge" in out
     assert "    rule.md" in out
-    assert "git checkout claude/pl-k7qx-do-the-thing -- rule.md" in out
+    # The commit is replayed rather than its file checked out, which would
+    # overwrite whatever the base has changed in that file since (`PL-GHHW`).
+    pushed = subprocess.run(
+        ["git", "rev-parse", "claude/pl-k7qx-do-the-thing"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert f"recover: git cherry-pick {pushed[:9]}\n" in out
+    assert "git checkout claude/pl-k7qx-do-the-thing" not in out
     # The commit the pull request did take is not offered for recovery.
     assert "work.py" not in out
 
