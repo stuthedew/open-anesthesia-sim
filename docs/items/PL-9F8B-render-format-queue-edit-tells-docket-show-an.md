@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - filed after the freeze by the 2026-09-24 triage pass, an
 added: 2026-09-24
 payoff: docket show stops inviting work on an item that is closed or blocked
 verify: grep -q 'def test_show_calls_an_edited_item_startable_only_when_its_status_allows' subprojects/docket/tests/test_cli.py
+recurrences: 2026-09-24 PL-TS8G
 ---
 
 **Problem.** render.format_queue_edit tells docket show an item is startable without reading its status, so a done item (PL-6T44) and a blocked one (PL-MB2W) are both called startable
