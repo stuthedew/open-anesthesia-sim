@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, docs
 feature: parallel-sessions
+milestone: v0.5.9
 touches: docs/items/PL-R808-build-the-exact-left-behind-check-as-a-tools.md, subprojects/docket/src/docket/vcs.py
 added: 2026-09-12
 closed: 2026-09-23
+pr: 962
 verify: grep -qF 'not a superset' subprojects/docket/src/docket/vcs.py && python3 tools/doc_check.py check
 recurrences: 2026-09-23 PL-P3GV
 ---
