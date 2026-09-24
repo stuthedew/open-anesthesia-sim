@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# PreToolUse hook on the first edit of a session: say so if the base has moved.
+# PreToolUse hook on an edit: say so if the base has moved, and, at the first
+# edit that is work, if the branch claims nothing.
 #
 # `PL-1CYR` made the branch-vs-`main` question askable at any moment
 # (`bin/docket branch`) instead of only at session start. This is what asks it,
@@ -21,6 +22,20 @@
 # the very edit this is attached to, which is a security property, not a
 # convenience. The hook's whole job is to say something.
 #
+# **The claim question waits for the first edit outside the queue** (`PL-J9S0`,
+# `PL-MB2W` § "Forgetful session"). Who holds an item is a `Claim:` trailer the
+# session commits, and a session that forgets to write one is invisible to
+# every reader of that record until CI refuses its pull request. So before the
+# first edit that is work, the hook adds "this branch claims nothing:
+# `bin/docket claim <id>`" where that is so. Not at the first edit of any kind:
+# a capture or a triage pass writes only item files and owes no claim, and
+# asking then would spend the session's one question where it had no answer.
+# `tools/branch_id_check.py --hint` decides, from the reader CI's refusal uses,
+# so the hook and the gate cannot disagree: its exit 3 says the path was not
+# work outside the queue and nothing was asked, and anything else spends the
+# question, a failure included, since asking a broken check before every edit
+# would tax each one.
+#
 # Exits 0 in every case, including every failure - a checkout without python3,
 # git, a remote or the store still edits normally.
 set -uo pipefail
@@ -38,21 +53,46 @@ root="${CLAUDE_PROJECT_DIR:-}"
 session=$(printf '%s' "$payload" |
   sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' |
   tr -cd 'A-Za-z0-9_-')
-marker="${TMPDIR:-/tmp}/docket-branch-${session:-unknown}"
-[ -e "$marker" ] && exit 0
-: >"$marker" 2>/dev/null || exit 0
+stale="${TMPDIR:-/tmp}/docket-branch-${session:-unknown}"
+claim="${TMPDIR:-/tmp}/docket-claim-${session:-unknown}"
+[ -e "$stale" ] && [ -e "$claim" ] && exit 0
 
 # `docket` resolves the store from the working directory, so a hook run from
 # somewhere else would answer confidently about the wrong repository.
 cd "$root" 2>/dev/null || exit 0
-line=$("$root/bin/docket" branch --brief --if-stale 2>/dev/null) || exit 0
-[ -n "$line" ] || exit 0
+
+context=""
+if [ ! -e "$stale" ] && : >"$stale" 2>/dev/null; then
+  context=$("$root/bin/docket" branch --brief --if-stale 2>/dev/null) || context=""
+fi
+
+check="$root/tools/branch_id_check.py"
+if [ ! -e "$claim" ] && [ -f "$check" ]; then
+  # The path being edited, from the documented `tool_input` of the four tools
+  # this hook is attached to.
+  target=$(printf '%s' "$payload" | python3 -c 'import json, sys
+
+try:
+    edit = json.load(sys.stdin).get("tool_input") or {}
+    print(edit.get("file_path") or edit.get("notebook_path") or "")
+except (AttributeError, ValueError):
+    pass
+' 2>/dev/null) || target=""
+  if [ -n "$target" ]; then
+    hint=$(python3 "$check" --hint "$target" 2>/dev/null)
+    if [ $? -ne 3 ] && : >"$claim" 2>/dev/null && [ -n "$hint" ]; then
+      context="${context:+$context
+}$hint"
+    fi
+  fi
+fi
+[ -n "$context" ] || exit 0
 
 # Plain stdout from a `PreToolUse` hook reaches the debug log and nowhere the
 # session can read, so the line has to travel as `additionalContext` in the
 # documented JSON form. `json.dumps` does the escaping: the text carries
 # backticks, quotes and newlines.
-CONTEXT="$line" python3 -c 'import json, os, sys
+CONTEXT="$context" python3 -c 'import json, os, sys
 
 sys.stdout.write(
     json.dumps(
