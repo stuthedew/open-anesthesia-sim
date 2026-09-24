@@ -191,7 +191,9 @@ check: sync
 # can only widen the scope, never hide this branch's own changes: the diff is
 # taken from the merge base, which a stale ref moves earlier and no later.
 	bin/docket check --verify --verify-base origin/main
-# Bare `python3` for the reason the next line uses it, and placed with the
+# Bare `python3`, like the three lines after it: none of them reads project
+# source, so the 3.11 floor parser has nothing it cannot read, and a bare run is
+# the no-virtualenv promise `tools/ruff.toml` states. Placed with the
 # provenance checks rather than earlier because that is what it is: `docket
 # check` asks whether the store is sound, this asks whether this branch's work
 # is visible to the guards that read the store. It answers from `git log`
@@ -221,7 +223,17 @@ check: sync
 # so an entry added without a thought for the cap is paid by every session
 # forever. Reads two files, so it costs milliseconds. `PL-NB35`.
 	python3 tools/dead_ends.py check
-	python3 tools/doc_check.py check
+# Under `uv run`, unlike the bare lines above, because it reads project source:
+# the docstrings of every module, for the citations in them, and that source
+# targets 3.14. The 3.11 floor parser cannot read all of it, and this names each
+# file it could not on a "Not checked" line and passes. That is right in the CI
+# floor section, whose bare line is there to prove the tool needs no
+# virtualenv, and wrong here, whose job is to check: under 3.11 it is two files
+# on every run (`app/bookmarks.py`, `app_metadata.py`), so this gate read none
+# of their docstrings and said so every time, which trains a reader to skim
+# past the line (project owner, 2026-09-24, ratified, over reporting the skip
+# and keeping this line bare, `PL-MB3F`).
+	uv run python tools/doc_check.py check
 # Beside `doc_check` because it is the notation half of the same question,
 # and it imports it. `CITATION_CONNECTIVE` admits the possessive since
 # `PL-316G`, so both citation forms are held to the same containment test and
@@ -236,18 +248,19 @@ check: sync
 # prose, which is correct as written, so nothing is said about it - the
 # judgment half `CLAUDE.md` refuses to script is exactly the half left alone.
 #
-# Bare `python3` for the reason the line above it is, and its input raises
-# none of the 3.14 question the `uv run` group below has: it reads markdown,
-# and `doc_check._docstrings` declines a file the floor parser cannot parse
-# rather than failing on it. It could only be wired in after the 29 sites it
-# named were converted, since it hard-fails on the thing it exists to find -
-# and wiring it is the point of the conversion rather than a coda to it. A
+# Under `uv run` for the reason the line above it is: it reads source
+# docstrings through `doc_check._quoting_sources`, not only markdown, so under
+# the floor it could not read `app/bookmarks.py` or `app_metadata.py`, and no
+# gate checked the possessive citations in either (`PL-MB3F`). It could only be
+# wired in after the 29 sites it named were converted, since it hard-fails on
+# the thing it exists to find - and wiring it is the point of the conversion
+# rather than a coda to it. A
 # convention nothing enforces decays, and this is what stops the next session
 # writing a section citation in a form that says nothing to its reader.
-	python3 tools/possessive_section_check.py
-# Under `uv run`, both of them, unlike the bare-`python3` lines above, and for
-# a reason about the *input* rather than about the tool. These two read `app/`
-# and every module under `src/anesthesia_sim/` with `ast`, and that source
+	uv run python tools/possessive_section_check.py
+# Under `uv run`, all seven of them, like the two lines above, and for a reason
+# about the *input* rather than about the tool. These read `app/`, `tests/` and
+# modules under `src/anesthesia_sim/` with `ast`, and that source
 # targets 3.14. PEP 695 (3.12) type parameters in `app/bookmarks.py`
 # are a `SyntaxError` to the 3.11 parser these tools promise to run under, and
 # `ast.parse`'s `feature_version` only ever narrows the accepted syntax - it
@@ -275,9 +288,10 @@ check: sync
 # `core_vocabulary_check.py` joined them under `PL-FZ6T`, and it is the reason
 # its three rules are not in `tools/doc_check.py` beside the other checks that
 # read `docs/MODEL.md`: it parses every module under `src/anesthesia_sim/core/`
-# with `ast` to resolve the Symbols table's Code column, and `doc_check.py` is
-# invoked by a bare `python3` on the line above and again in the CI floor
-# section. Putting a 3.14 parse behind either would break the promise both make.
+# with `ast` to resolve the Symbols table's Code column, and `doc_check.py` also
+# runs bare in the CI floor section. A rule resting on a 3.14 parse could only
+# decline there, file by file wherever 3.12+ syntax sits, which is the noise
+# `PL-MB3F` moved this gate's `doc_check.py` line to `uv run` to stop.
 #
 # `glyph_check.py` joined them under `PL-8XPQ`. It holds every string that can
 # reach a reader to characters somebody has rendered and looked at - `->`
@@ -361,8 +375,9 @@ docket:
 	bin/docket check
 	python3 tools/generator_check.py
 
+# Under `uv run` for the reason its line in `check` is (`PL-MB3F`).
 doc-check:
-	python3 tools/doc_check.py check
+	uv run python tools/doc_check.py check
 
 # The title half of `make check`, on its own, for the moment a session has just
 # closed a rider and wants to know what the pull request has to be renamed to

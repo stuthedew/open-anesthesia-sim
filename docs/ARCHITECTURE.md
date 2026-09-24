@@ -1093,9 +1093,10 @@ release` is the other half, refusing to cut a release while the previous one is
 untagged, at the moment tags are certainly to hand.
 
 Everything here depends on nothing outside the standard library and parses
-under whatever bare `python3` is on PATH: `make check` invokes `python3
-tools/doc_check.py check` directly, CI does the same, and both have to work in
-a checkout with no virtualenv. That is why the floor these tools are held to is
+under whatever bare `python3` is on PATH: `make check` invokes most of them
+that way directly, CI's floor section runs `python3 tools/doc_check.py check`
+before any virtualenv exists, and both have to work in a checkout with no
+virtualenv. That is why the floor these tools are held to is
 **Python 3.11** — not the version `pyproject.toml` requires. The floor is not a
 number chosen here: `doc_check.py` imports `docket.roadmap` for the release
 train and `docket.config`, `docket.model` and `docket.store` for the queue, so
@@ -1110,8 +1111,9 @@ become unparseable by the interpreter that runs it.
 `tests/unit/test_tools_portability.py` covers both directories by path rather
 than by filename, so the guard follows the next hook without being extended.
 
-Eight of them are nonetheless *invoked* under `uv run python`, and the
-distinction is worth keeping straight, because it is about what a tool reads
+Eight of them are nonetheless *invoked* only under `uv run python`, and two
+more both bare and under it (below), and the distinction is worth keeping
+straight, because it is about what a tool reads
 rather than what it needs. `ignore_check.py` is the odd one and the only one
 of the eight with a reason of its own: it shells out to mypy, so it wants the
 virtualenv that gate runs in.
@@ -1123,8 +1125,8 @@ parse repository source
 with `ast`, and that
 source targets 3.14: `app_metadata.py` writes `except OSError,
 subprocess.SubprocessError:` without parentheses, a PEP 758 form added in 3.14
-and so a `SyntaxError` to the 3.11 parser (as the Flet chart module's
-`type PlottedSeries = ...`, PEP 695, was before `PL-25KS` deleted it), and
+and so a `SyntaxError` to the 3.11 parser (as `app/bookmarks.py`'s PEP 695
+type parameters are too), and
 `ast.parse`'s `feature_version` only narrows the syntax it accepts rather
 than extending it. A tool that parses repository source can only run under an
 interpreter that understands that source. All of them still meet the promise
@@ -1140,6 +1142,15 @@ rule the seven are an instance of is stated in
 `tests/unit/test_tools_portability.py`'s module docstring, and a tool joining
 them belongs on the `uv run python` lines in both `Makefile` and
 `.github/workflows/quality.yml`, never in that workflow's floor section.
+
+`doc_check.py` and `possessive_section_check.py` are the exception, run both
+ways. They parse repository source as well - every module's docstrings, for
+the citations in them - and the floor section runs them bare all the same,
+where each names on a "Not checked" line the files the floor parser cannot read
+and passes rather than failing on them. Both gates also run them through `uv
+run python`, which is the run that checks those files. Until `PL-MB3F` the
+floor skipped them without a word, `make check` ran both bare, and no gate
+checked a possessive citation in `app/bookmarks.py` or `app_metadata.py`.
 
 `tools/ruff.toml` is what keeps that true. The repository targets 3.14, where
 PEP 758 makes the parentheses in `except (OSError, TimeoutError):` redundant,

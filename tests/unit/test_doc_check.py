@@ -830,9 +830,9 @@ def test_a_source_file_the_running_interpreter_cannot_parse_is_reported_not_skip
 
     The source is written for 3.14, and both gates also run this under the
     3.11 floor, whose parser stops at a PEP 695 generic. Such a file was
-    skipped with nothing said, and `make check` printed "all resolve" over a
-    broken quotation it had never read (`PL-MB3F`). The syntax here is invalid
-    under every interpreter, so the test holds wherever it runs.
+    skipped with nothing said, and `make check` printed "all resolve" over
+    docstrings it had never read (`PL-MB3F`). The syntax here is invalid under
+    every interpreter, so the test holds wherever it runs.
     """
     root = _repo(tmp_path)
     (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_bytes(source)

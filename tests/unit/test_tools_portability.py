@@ -8,8 +8,9 @@ pinning the formatter to the floor and both are covered here. `PL-W4H9` moved
 the hook out of `tools/`, and covering it by directory rather than by name is
 what keeps the next one from arriving unguarded.
 
-`make check` invokes `python3 tools/doc_check.py check` with whatever bare
-`python3` is on PATH - no virtualenv, no install step - and CI does the same.
+`make check` invokes `python3 tools/branch_id_check.py` and its neighbours with
+whatever bare `python3` is on PATH - no virtualenv, no install step - and CI's
+floor section does the same for `tools/doc_check.py` and more.
 This suite, by contrast, runs under the project virtualenv on the version
 `pyproject.toml` requires, so a tool that has become unparseable by the older
 interpreter passes every test and fails only at the end of `make check`, with a
@@ -58,6 +59,13 @@ are deliberately absent from that workflow's floor section, while staying
 standard-library-only and floor-parseable themselves, which is what keeps them
 in scope here. A tool added to that group belongs on the `uv run python` lines
 in both files and in neither floor section.
+
+`doc_check.py` and `possessive_section_check.py` are the exception, run both
+ways. They parse repository source too - every module's docstrings, for the
+citations in them - and CI's floor section runs them bare all the same, where
+each names on a "Not checked" line the files the floor parser cannot read and
+passes. Both gates also run them through `uv run python`, which is the run that
+checks those files (`PL-MB3F`).
 
 `PL-Y0RZ` established this for `import_boundary_check.py`. `PL-L17Q` found
 `contrast_check.py` still at the floor, green only because `app/theme.py` and
@@ -179,11 +187,11 @@ def _imported_roots(tree: ast.Module) -> Iterator[str]:
 def test_no_tool_imports_outside_the_standard_library() -> None:
     """The no-dependency promise is what lets a bare checkout run these.
 
-    `make check` ends with `python3 tools/doc_check.py check` under whatever
-    interpreter is on PATH, with no virtualenv and no install step, so an
-    import satisfied only by `uv sync` turns that line into a
-    `ModuleNotFoundError` in a file the whole suite has just passed - the
-    import twin of the `SyntaxError` above.
+    CI's floor section runs `python3 tools/doc_check.py check` under the
+    declared floor, with no virtualenv and no install step, so an import
+    satisfied only by `uv sync` turns that step into a `ModuleNotFoundError` in
+    a file this whole suite passes - the import twin of the `SyntaxError`
+    above.
 
     `sys.stdlib_module_names` rather than a hand-written allowlist: it is a
     frozenset the interpreter maintains, so nothing here goes stale as the

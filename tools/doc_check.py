@@ -174,7 +174,7 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 # which is the coverage-shaped hole a split would otherwise open silently
 # (`PL-2XM2`). This widening admits the skills tree and nothing else; the
 # reasoning under `_quoting_sources` for leaving the *queue* out is untouched,
-# since that one turns on handing 687 item files to `check_make_targets`.
+# since that one turns on handing every item file to `check_make_targets`.
 DOC_GLOBS = (
     "README.md",
     "ROADMAP.md",
@@ -3524,7 +3524,7 @@ def _quoting_sources(
     writes its citations: the queue, which is most of its prose, and the
     docstrings, which are where a contributor reading the code is sent
     somewhere else. `DOC_GLOBS` itself is left alone - widening it would hand
-    687 item files to `check_make_targets` and to `candidates`, neither of
+    every item file to `check_make_targets` and to `candidates`, neither of
     which wants them.
 
     **The queue half is the *live* briefs only**, which is `_live_item_briefs`
@@ -3542,9 +3542,10 @@ def _quoting_sources(
     (`PL-MB3F`). The source is written for the project interpreter, and both
     gates also run this under the 3.11 floor, whose parser reads neither PEP 695
     generics nor PEP 758's unparenthesised `except`. Such a file used to be
-    skipped without a word, under the same "all resolve" a clean run prints: a
-    broken quotation in `app/bookmarks.py` passed `make check` and failed CI,
-    and `tools/possessive_section_check.py` read neither that file nor
+    skipped without a word, under the same "all resolve" a clean run prints. A
+    broken quotation in `app/bookmarks.py` would have passed `make check` and
+    failed CI - reproduced, though no run had failed that way - and
+    `tools/possessive_section_check.py` read neither that file nor
     `app_metadata.py` in either gate. Each file is appended to `declined` as
     the walk meets it, so a caller reads `declined` only after exhausting this.
     """
