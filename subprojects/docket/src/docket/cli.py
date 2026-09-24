@@ -61,6 +61,7 @@ from .plan import (
     clusters,
     features,
     gate,
+    generator_blockers,
     generator_defects,
     is_new_work,
     longest_waiting,
@@ -1611,8 +1612,15 @@ def cmd_show(args: argparse.Namespace) -> int:
     # it and must not be dropped (`PL-T7QR`). Both are rank predicates, not
     # claim predicates, so a closed item is on no tier here whatever its
     # fields say - which the claim predicates reported otherwise (`PL-BBT8`).
-    on_the_tier = ranks_as_generator(item, known_ids) or ranks_as_generator_defect(
-        item, config.generator_paths
+    # The third reading is the rank a blocked head hands down to what it waits
+    # on (`PL-QFWF`): without it the plan line told the build item a design
+    # round filed that it ranks on its band alone, while `next` ranked it on
+    # the tier.
+    unblocks = generator_blockers(items).get(item.identifier, ())
+    on_the_tier = (
+        ranks_as_generator(item, known_ids)
+        or ranks_as_generator_defect(item, config.generator_paths)
+        or bool(unblocks)
     )
     closed = item.status in CLOSED_STATUSES
     placement = placement_line(
@@ -1682,6 +1690,17 @@ def cmd_show(args: argparse.Namespace) -> int:
             print("    closed, so on no tier - only an open item's claim ranks there")
         else:
             print("    ranked on the generator tier - above every band but P0")
+    if unblocks:
+        # The line naming the head, because the rank is the head's and nothing
+        # on this item's own face carries it: `blocked-by` is written on the
+        # head alone, as `root-cause-of:` is. It says where the rank comes
+        # from rather than that the item is ranked now, which a blocker that
+        # is blocked itself is not.
+        named = ", ".join(head.identifier for head in unblocks)
+        print(
+            f"  unblocks generator {named}: blocked on this item, so the head's rank passes"
+            " here - the generator tier, above every band but P0"
+        )
     inv = _invocation(args)
     if item.identifier in flight.ids and inv.git is not None:
         # The whole precedence read only where something is actually carrying
