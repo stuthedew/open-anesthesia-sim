@@ -446,3 +446,88 @@ def test_yield_ends_the_claim_and_refuses_one_the_branch_never_made(
     assert _docket(monkeypatch, work, "yield", "PL-C2C2") == claiming.REFUSED
     assert "holds no claim on PL-C2C2" in capsys.readouterr().out
     assert work.head() == yielded
+
+
+def test_running_claim_again_after_a_failed_push_is_the_retry_not_a_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The branch holds the item locally, and a claim no other session sees holds nothing."""
+    remote = _Remote(tmp_path)
+    remote.hook("pre-receive", "exit 1")
+    work = remote.clone("work", BRANCH)
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.LOCAL_ONLY
+    claimed = work.head()
+
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.LOCAL_ONLY
+    (remote.path / "hooks" / "pre-receive").unlink()
+    capsys.readouterr()
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
+
+    assert "and pushed" in capsys.readouterr().out
+    assert work.head() == claimed == remote.tip(BRANCH)
+
+
+def test_a_branch_on_the_remote_without_tracking_is_not_pushed_onto(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The remote's copy is what a pull request is open on, whatever the tracking setting says."""
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    work.commit(
+        "PL-F4F4: capture", when=T0 - HOUR, files={"docs/items/PL-F4F4-new.md": _item("PL-F4F4")}
+    )
+    work.git("push", "-q", "origin", BRANCH)
+    pushed = work.head()
+
+    assert _claim(monkeypatch, work, "PL-F4F4") == claiming.CLAIMED
+
+    assert f"on the remote as origin/{BRANCH}" in capsys.readouterr().out
+    assert remote.tip(BRANCH) == pushed != work.head()
+
+
+def test_a_legacy_claim_shared_by_merging_the_holder_is_continued_not_tied(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An old-rule claim counts for every branch reaching its commit, so after a merge two
+    branches hold it on one commit, and whichever a checkout lists first would win the tie.
+
+    Claiming again then writes nothing more, although the hold still reads as old-rule.
+    """
+    remote = _Remote(tmp_path, marked=False)
+    rival = remote.clone("rival", RIVAL)
+    rival.commit("PL-B1B1: start", when=T0 - HOUR)
+    rival.git("push", "-q", "-u", "origin", RIVAL)
+    landing = remote.clone("landing")
+    landing.commit("the claim writer lands", when=T0 - HOUR, files={CUTOVER_MARKER: "# w\n"})
+    landing.git("push", "-q", "origin", "main")
+    work = remote.clone("work", BRANCH)
+    work.git("merge", "-q", "--no-edit", f"origin/{RIVAL}", when=T0 - MINUTE)
+
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
+
+    assert _trailer(work, "Claim") == f"PL-B1B1 {BRANCH} over {RIVAL}@{rival.head()}"
+    observer = remote.clone("observer")
+    assert [hold.ref for hold in holdings(observer.root, now=T0 + HOUR).order("PL-B1B1")] == [
+        f"origin/{BRANCH}"
+    ]
+    claimed = work.head()
+    capsys.readouterr()
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
+    assert "already holds it first; nothing written" in capsys.readouterr().out
+    assert work.head() == claimed
+
+
+def test_a_claim_on_a_branch_whose_content_has_landed_names_that_as_the_cause(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    work.commit("PL-B1B1: the work", when=T0 - DAY, files={"src/w.py": "w = 1\n"})
+    work.git("push", "-q", "-u", "origin", BRANCH)
+    landing = remote.clone("landing")
+    landing.commit("PL-B1B1: the work (#1)", when=T0 - HOUR, files={"src/w.py": "w = 1\n"})
+    landing.git("push", "-q", "origin", "main")
+
+    assert _claim(monkeypatch, work, "PL-C2C2") == claiming.REFUSED
+
+    assert "the branch reads as landed" in capsys.readouterr().out

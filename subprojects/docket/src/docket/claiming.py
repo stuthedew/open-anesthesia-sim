@@ -52,11 +52,20 @@ from .claims import (
     SESSION_VARIABLE,
     Hold,
     Holdings,
+    _parse_claim,
     holdings,
 )
 from .model import parse_front_matter
 from .store import ID_PATTERN
-from .vcs import Runner, _head_name, _item_paths_on, _remotes, _run_git, default_base
+from .vcs import (
+    Runner,
+    _head_name,
+    _item_paths_on,
+    _remotes,
+    _run_git,
+    _unlanded_refs,
+    default_base,
+)
 
 #: Exit statuses. `USAGE` is argparse's own. `HELD_ELSEWHERE` and `LOCAL_ONLY`
 #: are the two a session has to act on differently from a plain refusal: the
@@ -109,9 +118,9 @@ class _Branch:
     remotes: frozenset[str]
 
 
-#: The read-back a write is judged by, given the fresh read, the ids written, the
-#: branch and the commit: the exit status, and what to add to the report.
-_Check = Callable[[Holdings, list[str], _Branch, str], tuple[int, list[str]]]
+#: The read-back a write is judged by, given the checkout, the fresh read, the ids
+#: written, the branch and the commit: the exit status, and what to add.
+_Check = Callable[[Path, Holdings, list[str], _Branch, str], tuple[int, list[str]]]
 
 
 def claim(
@@ -181,36 +190,62 @@ def claim(
     takeovers: dict[str, Hold] = {}
     reasons: list[str] = [" ".join(reason.split())] if reason.strip() else []
     blocked: list[str] = []
-    already: list[str] = []
+    #: Each item this branch already holds first by a recorded claim, and that claim.
+    already: dict[str, str] = {}
     for key in wanted:
         live = read.order(key)
-        first = live[0] if live else None
-        if first is not None and _branch_of(first, branch) == branch.name:
-            if not first.legacy:
-                already.append(key)
+        mine = [hold for hold in live if _branch_of(hold, branch) == branch.name]
+        others = [hold for hold in live if _branch_of(hold, branch) != branch.name]
+        rival = others[0] if others else None
+        # A hold read by the old rules counts for every branch reaching its
+        # commit, so a branch that merged the holder's can tie with it on that
+        # one commit; a tie is not a lead, and goes the takeover's way.
+        if mine and (
+            rival is None
+            or (live.index(mine[0]) < live.index(rival) and rival.commit != mine[0].commit)
+        ):
+            recorded = _recorded(root, read.base, branch, key) if mine[0].legacy else mine[0].commit
+            if recorded:
+                already[key] = recorded
             continue
         named = _named(read, key, over, branch) if over else None
         if over and named is None:
             notes.append(f"{key}: `--over {over}` names no claim on it, so none is taken over")
-        if first is None:
+        if rival is None:
             if named is not None:
                 takeovers[key] = named
             continue
-        other = _branch_of(first, branch)
+        other = _branch_of(rival, branch)
         if named is not None and _branch_of(named, branch) == other:
             takeovers[key] = named
         elif _continues(root, branch, other):
-            takeovers[key] = first
+            takeovers[key] = rival
             reasons.append(f"{key} continues {other}, whose tip this branch contains.")
         else:
-            blocked.extend(_held_first(first, key, written=False))
+            blocked.extend(_held_first(rival, key, written=False))
     if blocked:
         return Written(HELD_ELSEWHERE, (*notes, *blocked))
     for key in already:
         notes.append(f"{key}: {branch.name} already holds it first; nothing written for it")
     writing = [key for key in wanted if key not in already]
     if not writing:
-        return Written(CLAIMED, tuple(notes))
+        unpushed = [key for key, made in already.items() if not _published(root, branch, made)]
+        if not unpushed:
+            return Written(CLAIMED, tuple(notes))
+        # An earlier run wrote the claim and could not push it; this run is
+        # its retry, and a claim no other session can see is not held.
+        return _publish(
+            root,
+            branch,
+            unpushed,
+            _head(root),
+            made_now=False,
+            command="claim",
+            now=now,
+            items_dir=items_dir,
+            said=notes,
+            check=_claimed,
+        )
 
     token = _session_token()
     lines = []
@@ -485,14 +520,51 @@ def _write(
             REFUSED,
             (*notes, f"{command}: `git commit` failed; nothing was written", *_indented(made.err)),
         )
-    commit = _git(["rev-parse", "HEAD"], root).out.strip()
+    return _publish(
+        root,
+        branch,
+        keys,
+        _head(root),
+        made_now=True,
+        command=command,
+        now=now,
+        items_dir=items_dir,
+        said=notes,
+        check=check,
+    )
+
+
+def _publish(
+    root: Path,
+    branch: _Branch,
+    keys: list[str],
+    commit: str,
+    *,
+    made_now: bool,
+    command: str,
+    now: datetime,
+    items_dir: str,
+    said: list[str],
+    check: _Check,
+) -> Written:
+    """Push where the remote has no copy of the branch, then read the result back.
+
+    **The remote's copy decides, not the tracking setting.** A branch pushed
+    without `-u`, or checked out in a fresh container without tracking, has no
+    upstream configured and can still carry an open, armed pull request, which
+    is the case the refusal to push exists for (`PL-QP9Z`).
+    """
+    said = list(said)
     short = commit[:12]
-    said = list(notes)
-    if branch.upstream:
+    what = f"{', '.join(keys)}: {command} " + (
+        f"written on {branch.name} as {short}" if made_now else f"{short} on {branch.name}"
+    )
+    upstream = branch.upstream or _remote_copy(root, branch.name)
+    if upstream:
         said.append(
-            f"{', '.join(keys)}: {command} written on {branch.name} as {short}, and not pushed: "
-            f"the branch pushes to {branch.upstream}, so a pull request may be open on it and "
-            "armed, and a push could merge it away. Disarm auto-merge if it is armed, then push."
+            f"{what}, and not pushed: the branch is on the remote as {upstream}, so a pull "
+            "request may be open on it and armed, and a push could merge it away. Disarm "
+            "auto-merge if it is armed, then push."
         )
     else:
         pushed = _git(["push", "--quiet", "--set-upstream", REMOTE, branch.name], root)
@@ -501,26 +573,60 @@ def _write(
                 LOCAL_ONLY,
                 (
                     *said,
-                    f"{command}: written as {short}, but `git push` failed, so it is local: "
-                    "no other session can see it.",
+                    f"{what}, but `git push` failed, so it is local: no other session can see it.",
                     *_indented(pushed.err),
-                    f"  Push it with `git push --set-upstream {REMOTE} {branch.name}`.",
+                    f"  Push it with `git push --set-upstream {REMOTE} {branch.name}`, or run "
+                    "this again.",
                 ),
                 commit,
             )
-        said.append(f"{', '.join(keys)}: {command} written on {branch.name} as {short}, and pushed")
+        said.append(f"{what}, and pushed")
         if _git(["fetch", "--quiet", REMOTE], root).code != 0:
             said.append(
                 f"note: `git fetch {REMOTE}` after the push failed, so a claim pushed in the same "
                 "minute cannot be ruled out; `bin/docket show` each id once it answers"
             )
     reread = holdings(root, now=now, items_dir=items_dir, runner=_run_git)
-    code, lines = check(reread, keys, branch, commit)
+    code, lines = check(root, reread, keys, branch, commit)
     return Written(code, (*said, *lines), commit)
 
 
+def _head(root: Path) -> str:
+    return _git(["rev-parse", "HEAD"], root).out.strip()
+
+
+def _remote_copy(root: Path, name: str) -> str:
+    """`origin/<name>` where the remote has the branch, as of the last fetch, else `""`."""
+    found = _git(["rev-parse", "--verify", "--quiet", f"refs/remotes/{REMOTE}/{name}"], root)
+    return f"{REMOTE}/{name}" if found.code == 0 else ""
+
+
+def _published(root: Path, branch: _Branch, commit: str) -> bool:
+    """Whether the remote's copy of the branch already carries `commit`."""
+    remote = f"refs/remotes/{REMOTE}/{branch.name}"
+    return _git(["merge-base", "--is-ancestor", commit, remote], root).code == 0
+
+
+def _recorded(root: Path, base: str, branch: _Branch, key: str) -> str:
+    """The newest recorded claim on `key` this branch made, or `""` where it made none.
+
+    Asked where the branch's hold is read by the old rules: a recorded claim
+    made after that one renews it rather than taking its place, so the hold
+    still reads as old-rule, and without this every run would write another.
+    """
+    fmt = "--format=%H%x1f%(trailers:key=Claim,valueonly,unfold,separator=%x1e)"
+    log = _git(["log", "--no-merges", fmt, f"^{base}", "HEAD", "--"], root)
+    for line in log.out.split("\n"):
+        commit, _, values = line.partition("\x1f")
+        for text in values.split("\x1e"):
+            parsed = _parse_claim(text.strip()) if text.strip() else None
+            if parsed and parsed[0] == key and _head_name(parsed[1], branch.remotes) == branch.name:
+                return commit
+    return ""
+
+
 def _claimed(
-    read: Holdings, keys: list[str], branch: _Branch, commit: str
+    root: Path, read: Holdings, keys: list[str], branch: _Branch, commit: str
 ) -> tuple[int, list[str]]:
     """Whether each claim just written holds first, read the way every other session reads it."""
     if not read.known:
@@ -534,8 +640,8 @@ def _claimed(
         if not mine:
             code = REFUSED if code == CLAIMED else code
             lines.append(
-                f"claim: {key}: written as {commit[:12]}, but the read back finds no live claim by "
-                f"{branch.name}; this is a defect in docket, and the commit is where to start"
+                f"claim: {key}: {commit[:12]} does not read back as a live claim by "
+                f"{branch.name}; {_unread_because(root, read, branch)}"
             )
         elif live[0] is not mine[0]:
             code = HELD_ELSEWHERE
@@ -544,7 +650,7 @@ def _claimed(
 
 
 def _yielded(
-    read: Holdings, keys: list[str], branch: _Branch, commit: str
+    root: Path, read: Holdings, keys: list[str], branch: _Branch, commit: str
 ) -> tuple[int, list[str]]:
     """Whether each claim just yielded now reads as ended by the yield."""
     if not read.known:
@@ -564,6 +670,17 @@ def _yielded(
                 "it; this is a defect in docket, and the commit is where to start"
             )
     return (REFUSED if lines else CLAIMED), lines
+
+
+def _unread_because(root: Path, read: Holdings, branch: _Branch) -> str:
+    """Why a claim just written reads as holding nothing."""
+    refs = _unlanded_refs(read.base, root, _run_git, include_remote=True)
+    if not any(_head_name(name, branch.remotes) == branch.name for name in refs.unlanded):
+        return (
+            "the branch reads as landed - what it carries is already on the default branch - "
+            "and a landed branch holds nothing. Claim from a new branch off the default one"
+        )
+    return "this is a defect in docket, and the commit is where to start"
 
 
 def _git(args: list[str], root: Path) -> _Ran:

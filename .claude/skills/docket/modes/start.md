@@ -37,7 +37,10 @@ upstream it pushes, fetches again and re-reads, so a claim another session
 pushed in the same minute is seen: exit 3 then prints the line to yield by, and
 exit 4 means the push failed and the claim is only in this checkout. Who holds
 an item is that recorded claim, read by `claims.holdings` (`PL-MB2W` § "Design
-round, 2026-09-24"), and not whatever shape the first push happens to take. The
+round, 2026-09-24"), and not whatever shape the first push happens to take -
+though only `claim` and `yield` read it yet: `show`, `flight` and `next` move
+onto it with `PL-N162`, and until then read commit subjects, which know nothing
+of a takeover or a yield. The
 reading side above is as hard as it can get - a fetched `show` still answers
 only for what has been *pushed* - so a claim that waits for the first real
 commit waits as long as that work takes: `PL-0HPV`'s session ran twenty minutes
@@ -56,15 +59,19 @@ titled for other work, and `PL-N2PP`'s rider was seen by no guard until its
 push. On a branch that already has an upstream, `claim` commits and does not
 push, because a pull request may be open and armed and the push would merge the
 claim away with the branch (`PL-QP9Z`); it says so, and the claim rides your
-next push, made after disarming auto-merge if it is armed. Running `claim`
-again on an item the branch already holds writes nothing.
+next push, made after disarming auto-merge if it is armed. The remote's copy of
+the branch decides that, not the tracking setting. Running `claim` again on an
+item the branch already holds writes nothing, and pushes a claim an earlier run
+could not.
 
 **Taking over a dead claim is `bin/docket claim <id> --over <branch> --reason
 "..."`, and only on the owner's word or with `get_session` showing the holding
 session ARCHIVED or failed.** A claim lasts seven days past its branch's last
 commit, so an abandoned one would otherwise hold the item for a week. The
 reason goes into the commit's body, and the claim sorts where the one it names
-stood. The `<session>` token in a claim is `CLAUDE_CODE_REMOTE_SESSION_ID`,
+stood - in `claim`'s read; `show` goes on naming the old branch as the holder
+until `PL-N162`, and `claim`'s exit 0 is the answer there. The `<session>`
+token in a claim is `CLAUDE_CODE_REMOTE_SESSION_ID`,
 which reads `cse_...` where `get_session` wants `session_...`; the part after
 the prefix matched on the one session compared in full, on 2026-09-24. A branch that
 already contains the holder's tip is a continuation, and `claim` writes the
@@ -139,8 +146,9 @@ it over instead:
    lines as the claim, and push your branch. The container is ephemeral, and a
    diagnosis nobody receives is a session spent for nothing. Pushing cannot flip
    the verdict — your claim is the later one, which is what made you the
-   session that yields - and the yield ends your claim, so no reader goes on
-   counting the branch as a second holder.
+   session that yields - and the yield ends your claim in the record
+   `claims.holdings` reads. `show`, `flight` and `next` read the branch from
+   its commit subjects until `PL-N162`, and go on counting it until then.
 3. Say in the reply which branch you yielded to, which branch your findings are
    on, and what they are: the root cause, the failing test, the file and line.
    A yield that discards the work is a session thrown away; one that hands it
