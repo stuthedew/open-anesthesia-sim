@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: claim-record
-touches: subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py, subprojects/docket/src/docket/vcs.py
+touches: subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py, subprojects/docket/src/docket/vcs.py, docs/items/PL-N162-rewire-branches-in-flight-precedence-and.md
 blocked-by: PL-3FYK
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24
