@@ -20,8 +20,10 @@ request. It used four auditors, one adversarial verifier each and a
 completeness critic. One problem survives, and it is not where the brief put
 it. Most of the mechanism was overtaken or is now contradicted. This brief
 replaces the old one. Everything dropped, and why, is recorded under "Dropped"
-below, so that no session proposes it again without the evidence.
-`git log --follow` on this file has the 2026-08-30 text.
+below, so that no session proposes it again without the evidence. The
+2026-08-30 text is at `git show
+a56c86c4:docs/items/PL-LWMS-normalize-commit-messages-and-trailers-with-a.md`;
+the rewrite changed too much for `git log --follow` to pair the two files.
 
 **Problem.** No attribution convention holds across sessions by agreement
 alone, and the one the project owner decided is broken in practice. `PL-B11M`
