@@ -273,9 +273,13 @@ class Holdings:
 
     `holds` is the claims, sorted into the order that decides which branch
     continues: author date, then hash, with a takeover immediately ahead of the
-    claim it names. One order across every item, so `order` is a filter of it
-    and `holder` its first match. `dispositions`, `cuts` and `named` are the
-    other three kinds, kept apart so that no reader wanting claims is handed one.
+    claim it names, and last the branch's name - a claim read by the old rules
+    counts for every branch reaching its commit, so two branches can tie on one
+    commit, and the name keeps the order the same in every checkout rather than
+    leaving it to which refs this one lists first. One order across every item,
+    so `order` is a filter of it and `holder` its first match. `dispositions`,
+    `cuts` and `named` are the other three kinds, kept apart so that no reader
+    wanting claims is handed one.
 
     **What went unread travels with the answer**, as it does on `FlightReport`.
     `unreadable` names refs whose history this checkout cannot compare with the
@@ -305,6 +309,11 @@ class Holdings:
     #: Per `Hold.ref`, when that branch's newest non-merge commit was made.
     last: Mapping[str, datetime] = field(default_factory=dict)
     declined: str = ""
+    #: The `Hold.ref` of the branch `HEAD` is on, or `""` where it is detached or
+    #: that branch is not read. A claim carrying a session token is `mine` by the
+    #: token alone, so this is what says a claim is on this branch although
+    #: another session made it - the case `claim` answers by branch.
+    head: str = ""
 
     @property
     def ids(self) -> frozenset[str]:
@@ -501,7 +510,7 @@ def holdings(
     copies[base] = _item_paths_on(base, items_dir, root, run)
     on_base = set(copies[base])
     landed: dict[str, dict[int, bool]] = {}
-    ranked: list[tuple[tuple[datetime, str, int, datetime, str], str, Hold]] = []
+    ranked: list[tuple[tuple[datetime, str, int, datetime, str], str, str, Hold]] = []
     for (key, branch), (episode, yielded) in episodes.items():
         standing = [claim for claim in episode if claim.identity not in superseded]
         fork = refs.fork.get(tips[branch], "")
@@ -568,8 +577,8 @@ def holdings(
             over=holder.over,
             resource=fields.get("resource", ""),
         )
-        ranked.append((rank(holder), key, hold))
-    ranked.sort(key=lambda entry: (entry[0], entry[1]))
+        ranked.append((rank(holder), key, branch, hold))
+    ranked.sort(key=lambda entry: (entry[0], entry[1], entry[2]))
 
     # A disposition: the branch's copy has moved `status:` away from both the
     # fork's and the base's. Asked only of items a commit on the branch touched,
@@ -610,8 +619,11 @@ def holdings(
     # the branch's newest commit is within the term; an unread ref is live,
     # since nothing dates it and dropping the id offers an item a live session
     # may be holding. An item the base has closed releases it, as it does a
-    # claim; nothing else does, so a branch closing the item in its own copy
-    # keeps it in flight, where `settled_branches` finds it.
+    # claim. A branch that recorded a claim on the item, in any state, holds it
+    # by that record and not by its name, so that its yield, takeover or
+    # close-out ends the hold rather than leaving the name holding for a lease
+    # more (`PL-N162`); a close-out in its own copy is a disposition, and stays
+    # in flight as one.
     named: dict[str, Hold] = {}
     for name in candidates:
         match = BRANCH_ID_RE.search(name)
@@ -619,7 +631,7 @@ def holdings(
             continue
         branch = _head_name(name, remotes)
         key = match.group(1).upper()
-        if f"{key} {branch}" in named:
+        if f"{key} {branch}" in named or (key, branch) in episodes:
             continue
         history = histories.get(branch, [])
         dates = renewals.get(branch, [])
@@ -642,7 +654,7 @@ def holdings(
             released_by=released_by,
         )
 
-    holds = tuple(hold for _, _, hold in ranked)
+    holds = tuple(hold for *_, hold in ranked)
     held = {hold.key for hold in (*holds, *dispositions, *named.values()) if hold.state == LIVE}
     last = {branches[branch][0]: dates[-1] for branch, dates in renewals.items() if dates}
     cuts = _cuts(histories, branches, tips, last, base, notes_dir, root, run, moment)
@@ -665,6 +677,7 @@ def holdings(
         ),
         last=last,
         declined=run.reason,
+        head=branches[here][0] if here in branches else "",
     )
 
 

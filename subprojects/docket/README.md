@@ -559,8 +559,9 @@ what keeps out the other items a pass writes: until 2026-09-22 the first
 exception below was read off any edit to an item's file, so `PL-0HPV`'s
 `verify:` reorder, led by `PL-0HPV`, claimed four queue-only items it merely
 passed through, none of them named by any subject, until its pull request
-merged (`PL-3W3P`). `flight` and `precedence` read the same three through the
-same helper, so the verdict `show` prints names every carrier the mark does.
+merged (`PL-3W3P`). `precedence` reads the same three through the same helper;
+neither `flight` nor `show` reads either any longer, since both answer from
+`claims.holdings` (`PL-N162`), and `PL-FX5Q` deletes them.
 
 **An item whose own work *is* a queue edit is the first.** A release tag item,
 a triage pass and a stranded recovery all deliver nothing but a write to
@@ -900,7 +901,7 @@ the subject clause — on the current list, none. A shallow clone declines rathe
 than reporting nothing filed, since its missing commits are the oldest and an
 old item would read as filed by nobody.
 
-**Detection stops at "somebody is on it"; `precedence` says which one
+**Detection stops at "somebody is on it"; `Holdings.order` says which one
 continues.** Everything above answers whether an item is being worked, and
 nothing said which of two sessions discovering each other was the one to stop.
 Two sessions reasoning in prose from the same evidence can reach the same
@@ -909,24 +910,32 @@ until the merge — and the expensive outcome is not both continuing, which is
 merely the state before any of this, but both standing down, after which the
 item is unstarted and each session believes the other has it.
 
-So it is an order rather than a judgment: the earliest commit naming the item
-holds it, and a tie breaks on that commit's hash. Both halves carry weight. The
-*earliest* commit, so a session that pushes again does not overtake one that
-started before it; a commit rather than a push time, because git records no
-push time and a commit's date is the same fact in both checkouts. Two sessions
-can still both continue, when one has pushed nothing the other can see; what
-cannot happen is both yielding, since that needs each to be ahead of the other
-in one order. `docket show` prints the order whenever more than one branch is
-carrying the item.
+So it is an order rather than a judgment: the earliest live claim on the item
+holds it, a tie breaks on the claim commit's hash, and a takeover stands where
+the claim it names stood (`claims.py` has the rule). Both halves carry weight.
+The *earliest* claim, dated by author date, so a session that claims again does
+not overtake one that started before it; a commit rather than a push time,
+because git records no push time and a commit's date is the same fact in both
+checkouts. Two sessions can still both continue, when one has pushed nothing the
+other can see; what cannot happen is both yielding, since that needs each to be
+ahead of the other in one order. `docket show` prints the order whenever more
+than one branch has claimed the item. Where nothing claims it, `show` names the
+status disposition or branch name holding it instead, each with its kind and
+state, and worded so a triage or grooming pass that moved the item's status is
+not read as somebody working it, and then any lapsed claim on an item the base
+holds open, which holds nothing and which `claim` passes (`PL-N162`). One claim
+commit reached by two branches through a merge - a claim read by the old rules
+counts for each - prints as the one claim it is, with no verdict, and the order
+breaks that tie on the branch's name so it reads the same in every checkout.
 
-**A claim is identified by the commit that staked it, never by the ref that
-reached it.** `git log --source` credits a commit two refs reach to one of
-them, and not reliably the one named first — so a branch a single merge ahead
-of its own tracking ref has its claim reported under `origin/...`, and a check
-on branch names then reads a session's own work as somebody else's and tells it
-to stand down. Asking whether `HEAD` *contains* the staking commit answers it
-for the local branch, its tracking ref, and a branch pushed under a third name
-alike.
+**A claim holds for the branch its token names, and a local branch and its
+tracking ref are one holder.** `git log --source` credits a commit two refs
+reach to one of them, and not reliably the one named first — so a branch a
+single merge ahead of its own tracking ref had its claim reported under
+`origin/...`, and a check on ref names then read a session's own work as
+somebody else's and told it to stand down. `claims.holdings` folds the two refs
+into one branch before reading, and decides `mine` by the claim's session token
+where it carries one and otherwise by whether `HEAD` is on the claiming branch.
 
 Neither half reaches the network. Only `docket branch` calls `fetch_remote`, so
 `flight` and `show` answer from the refs this checkout already holds — which is

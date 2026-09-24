@@ -138,7 +138,6 @@ from .vcs import (
     merged_pull_requests,
     open_pull_requests,
     orphaned,
-    precedence,
     records_on_base,
     ref_walk,
     released_on_base,
@@ -1595,10 +1594,20 @@ def cmd_show(args: argparse.Namespace) -> int:
     **The mark then had to say *whose* branch it was.** "Do not start this
     again" is the right answer to another session's work and a false alarm
     about your own, and re-reading the item you are implementing is the
-    commonest reason to run this twice. `precedence` separates the two, and
-    where more than one branch is carrying the item it also says which of them
+    commonest reason to run this twice. `Holdings.order` separates the two, and
+    where more than one branch has claimed the item it also says which of them
     continues - the one question every other guard in this package leaves
     open (queue item PL-YHD3).
+
+    **And what kind of hold it is** (`PL-N162`). The mark is read from
+    `claims.holdings`, the same read `_flight` makes: the item's live claims in
+    order, and where nothing claims it the status disposition or branch name
+    holding it instead, each with its kind and state. A disposition is a branch
+    that moved the item's status - a triage or grooming pass, or a close-out -
+    and is worded as that rather than as work; before this it printed nothing, as the old
+    precedence read had no carrier for it. A lapsed claim on an item the base
+    holds open prints too where nothing claims it live, as the free claim it
+    is.
 
     **A fourth thing a session cannot learn from the item's own file: that
     something above it explains it.** `root-cause-of:` is written on the head,
@@ -1742,22 +1751,17 @@ def cmd_show(args: argparse.Namespace) -> int:
             f"  unblocks generator {named}: blocked on this item, so the head's rank passes"
             " here - the generator tier, above every band but P0"
         )
-    inv = _invocation(args)
-    if item.identifier in flight.ids and inv.git is not None:
-        # The whole precedence read only where something is actually carrying
-        # the item, which is the rare case. A session starting ordinary work
-        # pays exactly what it paid before. Nothing is in flight under
-        # `--no-git`, so the second test is for the type rather than the case.
-        print(
-            render.format_precedence(
-                precedence(root, item.identifier, items_dir=inv.tracked, runner=inv.git), _now(args)
-            )
-        )
-    elif edit := next((e for e in flight.editing if e.item_id == item.identifier), None):
-        # The weaker mark, and only where the stronger one is silent. A session
-        # that names an item reaches `show` and nothing else, so before this
-        # the one thing it could not learn here was that another branch had
-        # already written to the file it was about to write to (`PL-N1JK`).
+    # The read `_flight` already made, whole: the kind and state of each hold
+    # are what `FlightReport` has no room for. Empty under `--no-git`.
+    if held := render.format_holds(_holdings(args), item.identifier, _now(args)):
+        print(held)
+    edit = next((e for e in flight.editing if e.item_id == item.identifier), None)
+    if edit is not None and item.identifier not in flight.ids:
+        # The weaker mark, and only where no hold is live: a lapsed claim above
+        # holds nothing, so it does not silence this. A session that names an
+        # item reaches `show` and nothing else, so before this the one thing it
+        # could not learn here was that another branch had already written to
+        # the file it was about to write to (`PL-N1JK`).
         print(render.format_queue_edit(edit, _now(args)))
     if threads := _notes_threads(root, config, item.identifier):
         print(render.format_notes_threads(threads, item.identifier, config.notes_file))

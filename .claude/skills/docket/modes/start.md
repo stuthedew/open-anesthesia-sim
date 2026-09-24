@@ -9,8 +9,9 @@ page and decides which file a session reads.
 ## Mode: start an item
 
 **First, ask whether anybody else is already on it: `git fetch origin` and
-then `bin/docket show <id>`, which marks it `IN FLIGHT` and names the refs it
-could not read.** This is the one step with no other guard. `docket next`
+then `bin/docket show <id>`, which marks it `IN FLIGHT` where a branch has
+claimed it or is named for it, `STATUS HELD` where a branch moved its status
+(a triage or grooming pass, or a close-out), and names the refs it could not read.** This is the one step with no other guard. `docket next`
 excludes in-flight work, so a session that got here through `next` is already
 covered — but an item named by the project owner skips `next` entirely, and
 `triage`, `check` and reading the file with `cat` all say nothing. That is
@@ -37,10 +38,9 @@ upstream it pushes, fetches again and re-reads, so a claim another session
 pushed in the same minute is seen: exit 3 then prints the line to yield by, and
 exit 4 means the push failed and the claim is only in this checkout. Who holds
 an item is that recorded claim, read by `claims.holdings` (`PL-MB2W` § "Design
-round, 2026-09-24"), and not whatever shape the first push happens to take -
-though only `claim` and `yield` read it yet: `show`, `flight` and `next` move
-onto it with `PL-N162`, and until then read commit subjects, which know nothing
-of a takeover or a yield. The
+round, 2026-09-24"), and not whatever shape the first push happens to take;
+`show`, `flight` and `next` answer from the same read, so a takeover or a yield
+reaches all of them. The
 reading side above is as hard as it can get - a fetched `show` still answers
 only for what has been *pushed* - so a claim that waits for the first real
 commit waits as long as that work takes: `PL-0HPV`'s session ran twenty minutes
@@ -76,17 +76,20 @@ could not.
 session ARCHIVED or failed.** A claim lasts seven days past its branch's last
 commit, so an abandoned one would otherwise hold the item for a week. The
 reason goes into the commit's body, and the claim sorts where the one it names
-stood - in `claim`'s read; `show` goes on naming the old branch as the holder
-until `PL-N162`, and `claim`'s exit 0 is the answer there. The `<session>`
+stood, in the order `claim` and `show` both read. A claim past its lease is
+not dead in that sense but gone: it holds nothing, `claim` passes it with no
+`--over` and no evidence, and `show` prints it under `LAPSED` - only where
+nothing else claims the item - with `--over` offered for the record it adds
+rather than as a condition. The `<session>`
 token in a claim is `CLAUDE_CODE_REMOTE_SESSION_ID`,
 which reads `cse_...` where `get_session` wants `session_...`; the part after
 the prefix matched on the one session compared in full, on 2026-09-24. A branch that
 already contains the holder's tip is a continuation, and `claim` writes the
 takeover without `--over`.
 
-`bin/docket show` also prints `Its file is already edited on <branch>`
-underneath the in-flight mark (`PL-N1JK`): a branch is in that file, which says
-nothing about whether anybody has claimed the item.
+`bin/docket show` prints `Its file is already edited on <branch>` where no hold
+is live (`PL-N1JK`): a branch is in that file, which says nothing about whether
+anybody has claimed the item.
 
 The cost is that an abandoned branch and a live session look alike in `flight`
 for as long as neither has aged or opened a pull request. It says so, and gives
@@ -130,11 +133,11 @@ read cannot name its own gaps. Finding nothing here means nothing; finding
 something is decisive. It is also this harness only: `docket` knows nothing
 about it and must not (`PL-SK88` records why).
 
-**Where two branches are carrying the item, `bin/docket show <id>` says
+**Where two branches have claimed the item, `bin/docket show <id>` says
 which session yields. Read the verdict; do not reason one out.** It prints
-the carriers in order — whichever commit named the item first holds it, a tie
-breaking on that commit's hash — and both sessions compute that order from the
-same commits, so both read the same answer. Reasoning it out instead is how two
+the live claims in order — whichever branch claimed the item first holds it, a
+tie breaking on the claim commit's hash, and a takeover standing where the claim
+it names stood — and both sessions compute that order from the same commits, so both read the same answer. Reasoning it out instead is how two
 sessions reach *opposite* answers from one set of facts, and the outcome that
 costs most is not both continuing, which is where the project already was, but
 both standing down: the item is then unstarted and each session believes the
@@ -154,8 +157,7 @@ it over instead:
    diagnosis nobody receives is a session spent for nothing. Pushing cannot flip
    the verdict — your claim is the later one, which is what made you the
    session that yields - and the yield ends your claim in the record
-   `claims.holdings` reads. `show`, `flight` and `next` read the branch from
-   its commit subjects until `PL-N162`, and go on counting it until then.
+   `claims.holdings` reads, which `show`, `flight` and `next` all answer from.
 3. Say in the reply which branch you yielded to, which branch your findings are
    on, and what they are: the root cause, the failing test, the file and line.
    A yield that discards the work is a session thrown away; one that hands it

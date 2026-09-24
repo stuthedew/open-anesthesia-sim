@@ -9,6 +9,7 @@ instant the test names and never against the clock.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import subprocess
 from collections.abc import Mapping
@@ -17,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from docket import claiming
+from docket import claiming, render
 from docket.claims import (
     BY_CLOSED,
     BY_LANDING,
@@ -570,6 +571,217 @@ def test_two_claims_in_the_same_second_order_on_the_hash(tmp_path: Path) -> None
     order = holdings(repo.root, now=T0 + HOUR).order("PL-B1B1")
 
     assert [hold.commit for hold in order] == sorted([first, second])
+
+
+def test_a_claim_renewed_inside_its_lease_keeps_its_first_stake(tmp_path: Path) -> None:
+    """A branch claiming again does not overtake a claim made before its renewal.
+
+    Ported from `vcs.precedence`'s earliest-not-newest test (`PL-N162`): the
+    session at it longest would otherwise lose the item each time it claimed
+    again, as a session resuming work is told to.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/first")
+    stake = repo.claim("PL-B1B1", when=T0)
+    repo.branch("claude/second", "main")
+    repo.claim("PL-B1B1", when=T0 + HOUR)
+    repo.git("checkout", "-q", "claude/first")
+    repo.claim("PL-B1B1", when=T0 + 2 * HOUR)
+
+    first, second = holdings(repo.root, now=T0 + 3 * HOUR).order("PL-B1B1")
+
+    assert (first.ref, first.since, first.commit, first.renewed) == (
+        "claude/first",
+        T0,
+        stake,
+        T0 + 2 * HOUR,
+    )
+    assert second.ref == "claude/second"
+
+
+def test_a_rider_claimed_after_the_branch_s_own_item_stakes_from_its_own_claim(
+    tmp_path: Path,
+) -> None:
+    """A branch taking on a second item did not hold it before it claimed it.
+
+    Ported from `vcs.precedence`'s rider test (`PL-N162`): the branch's first
+    claim, on its own item, is older than a rival's claim on the rider, and
+    must not carry the rider ahead of it.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/rider")
+    repo.claim("PL-C2C2", when=T0)
+    repo.branch("claude/other", "main")
+    repo.claim("PL-B1B1", when=T0 + HOUR)
+    repo.git("checkout", "-q", "claude/rider")
+    rider = repo.claim("PL-B1B1", when=T0 + 2 * HOUR)
+
+    first, second = holdings(repo.root, now=T0 + 3 * HOUR).order("PL-B1B1")
+
+    assert first.ref == "claude/other"
+    assert (second.ref, second.since, second.commit) == ("claude/rider", T0 + 2 * HOUR, rider)
+
+
+def test_a_branch_named_for_its_item_is_dated_from_its_first_commit_and_orders_nothing(
+    tmp_path: Path,
+) -> None:
+    """Ported from `vcs.precedence`'s name-dating test (`PL-N162`), as the name hold now reads.
+
+    `precedence` ordered a name as a claim; a name holds only where nothing
+    claims the item, so it is dated for the reader and is in no order.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/pl-b1b1-named")
+    first = repo.commit("tidy", when=T0, files={"src/a.py": "a\n"})
+    repo.commit("more", when=T0 + HOUR, files={"src/b.py": "b\n"})
+
+    read = holdings(repo.root, now=T0 + 2 * HOUR)
+
+    [name] = read.named
+    assert (name.since, name.commit, name.renewed) == (T0, first, T0 + HOUR)
+    assert read.order("PL-B1B1") == ()
+
+
+def test_the_verdict_never_yields_the_first_claim_a_bystander_or_both_sessions(
+    tmp_path: Path,
+) -> None:
+    """`show`'s verdict, read from each of three checkouts of the same two claims.
+
+    Ported from `vcs.precedence`'s three verdict tests (`PL-N162`). The branch
+    claiming first holds it, the later one yields, and a branch carrying no
+    claim is told the work is elsewhere without being told to yield, since it
+    has nothing to hand over. Both sessions read one order, so they cannot
+    both stand down, which is the failure worth more than the one it replaces.
+    A read that is partial, or missing refs, says so beneath the verdict.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/first")
+    repo.claim("PL-B1B1", when=T0)
+    repo.branch("claude/second", "main")
+    repo.claim("PL-B1B1", when=T0 + HOUR)
+    repo.branch("claude/bystander", "main")
+    repo.commit("PL-C2C2: other work", when=T0 + HOUR, files={"src/other.py": "x\n"})
+    now = T0 + 2 * HOUR
+
+    verdicts = {}
+    for branch in ("claude/first", "claude/second", "claude/bystander"):
+        repo.git("checkout", "-q", branch)
+        read = holdings(repo.root, now=now)
+        verdicts[branch] = render.format_holds(read, "PL-B1B1", now)
+        assert [(hold.ref, hold.mine) for hold in read.order("PL-B1B1")] == [
+            ("claude/first", branch == "claude/first"),
+            ("claude/second", branch == "claude/second"),
+        ]
+
+    assert (
+        "This branch holds PL-B1B1; the others are the ones that yield." in verdicts["claude/first"]
+    )
+    assert "This branch yields: stop" in verdicts["claude/second"]
+    assert "This branch claims none of them" in verdicts["claude/bystander"]
+    assert [branch for branch, said in verdicts.items() if "This branch yields" in said] == [
+        "claude/second"
+    ]
+    partial = dataclasses.replace(read, declined="git failed to list refs", unreadable=("x", "y"))
+    said = render.format_holds(partial, "PL-B1B1", now)
+    assert "(This ordering is partial - git failed to list refs" in said
+    assert "Do not stand down on it.)" in said
+    assert "(2 refs went unread, so this order is over what could be read.)" in said
+
+
+def test_one_legacy_claim_reached_through_a_merge_is_one_claim_in_every_checkout(
+    tmp_path: Path,
+) -> None:
+    """`PL-N162`'s review: two clones of one merged handoff each read their own branch first.
+
+    A claim read by the old rules counts for every branch reaching its commit,
+    so a branch that merged another's carries the same claim and the two tie on
+    everything the order ranks. Left to which refs a checkout lists first - its
+    own under `refs/heads`, before `refs/remotes` - each clone was told its
+    branch holds the item. The order now breaks the tie on the branch's name,
+    and `show` prints the one commit as the one claim it is, with no verdict.
+    """
+    origin = _Repo(tmp_path / "origin", marked=False)
+    origin.branch("claude/a")
+    stake = origin.commit("PL-B1B1: work", when=T0, files={"src/a.py": "a\n"})
+    origin.branch("claude/b", "main")
+    origin.commit("tidy", when=T0 + HOUR, files={"src/b.py": "b\n"})
+    origin.git("merge", "-q", "--no-edit", "claude/a", env=_dated(T0 + 2 * HOUR))
+    origin.git("checkout", "-q", "main")
+    now = T0 + 3 * HOUR
+
+    orders, said = {}, {}
+    for branch in ("claude/b", "claude/a"):
+        work = tmp_path / branch.replace("/", "-")
+        for args, cwd in (
+            (["clone", "-q", origin.root.as_uri(), str(work)], None),
+            (["checkout", "-q", branch], work),
+        ):
+            subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+        read = holdings(work, now=now)
+        orders[branch] = [
+            (hold.ref.removeprefix("origin/"), hold.commit) for hold in read.order("PL-B1B1")
+        ]
+        said[branch] = render.format_holds(read, "PL-B1B1", now)
+
+    assert orders["claude/a"] == orders["claude/b"] == [("claude/a", stake), ("claude/b", stake)]
+    for branch, text in said.items():
+        assert f"IN FLIGHT on this branch ({branch}) - PL-B1B1 is this session's own work." in text
+        assert "the same claim commit is on origin/claude/" in text
+        assert "yields" not in text
+
+
+def test_a_claim_on_this_branch_by_another_session_is_this_branch_s_claim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-N162`'s review: a token decides `mine`, and not whether the claim is on this branch.
+
+    Read by another session on the claiming branch, or by the owner with no
+    session at all, `show` told the reader that starting the item "here" would
+    redo that branch's work - about the branch it was standing on, while
+    `claim` there answered that the branch already holds it.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/held")
+    repo.claim("PL-B1B1", when=T0, session="cse_first")
+    now = T0 + HOUR
+
+    for session in ("cse_second", ""):
+        monkeypatch.setenv(SESSION_VARIABLE, session)
+        read = holdings(repo.root, now=now)
+        [hold] = read.order("PL-B1B1")
+        assert (hold.mine, read.head) == (False, "claude/held")
+        said = render.format_holds(read, "PL-B1B1", now)
+        assert (
+            "IN FLIGHT on this branch (claude/held) - claimed by another session, not this one."
+            in said
+        )
+        assert "session cse_first" in said
+        assert "starting it here would redo" not in said
+
+
+def test_a_branch_named_for_its_item_that_yielded_it_holds_it_by_nothing(tmp_path: Path) -> None:
+    """`PL-N162`'s review: a yield ended the claim and left the name holding for a lease more.
+
+    A branch that recorded a claim on its item holds it by that record, so
+    what ends the record ends the hold; `show` had called it a branch that
+    "records no claim", which it had, and `flight` went on listing it.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/pl-b1b1-work")
+    repo.claim("PL-B1B1", when=T0)
+    repo.commit("work", when=T0 + HOUR, files={"src/a.py": "a\n"})
+    repo.commit("PL-B1B1: stop\n\nYield: PL-B1B1 claude/pl-b1b1-work", when=T0 + 2 * HOUR)
+    repo.git("checkout", "-q", "main")
+    now = T0 + 3 * HOUR
+
+    read = holdings(repo.root, now=now)
+
+    assert [(hold.ref, hold.state, hold.released_by) for hold in read.holds] == [
+        ("claude/pl-b1b1-work", RELEASED, BY_YIELD)
+    ]
+    assert read.named == ()
+    assert "PL-B1B1" not in read.ids
+    assert render.format_holds(read, "PL-B1B1", now) == ""
 
 
 def test_a_claim_the_grammar_cannot_read_is_reported_rather_than_dropped(tmp_path: Path) -> None:
