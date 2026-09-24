@@ -1666,7 +1666,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         if verdict_faults:
             print(f"    UNSOUND - {'; '.join(verdict_faults)}; ranks on its band until repaired")
         elif ranks_as_generator(item, known_ids) and blocked:
-            print(_blocked_head_rank(item, items, lifted, flight.ids))
+            print(_blocked_head_rank(item, items, lifted, flight.ids, _milestones(root, config)))
         elif ranks_as_generator(item, known_ids):
             print("    ranked on the generator tier - above every band but P0")
         elif closed:
@@ -2015,7 +2015,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
         _say_promotable(items)
-        _say_unranked_generators(items, flight.ids)
+        _say_unranked_generators(items, flight.ids, _milestones(root, config))
         _say_recurring(items, flight.ids)
         _say_lane_holdouts(items, flight, config, args, lane)
         _say_unread(flight)
@@ -2026,7 +2026,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     if flight.ids:
         print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
     _say_promotable(items)
-    _say_unranked_generators(items, flight.ids)
+    _say_unranked_generators(items, flight.ids, _milestones(root, config))
     _say_recurring(items, flight.ids)
     _say_lane_holdouts(items, flight, config, args, lane)
     _say_answer_lane(items, flight, config, args, plan, lane, picks[0].item)
@@ -2240,15 +2240,31 @@ UNRANKED_REMEDY = (
 )
 
 
-def _waiting_on(found: UnrankedGenerator, items: list[Item]) -> str:
-    """What an unranked head waits on, each entry marked with why it carries nothing."""
+def _waiting_on(
+    found: UnrankedGenerator, items: list[Item], milestones: MilestoneStates | None
+) -> str:
+    """What an unranked head waits on, each entry marked with why it carries nothing.
+
+    A milestone is marked by what the roadmap says of it, and by what could not
+    be read where it could not: `unranked_generators` has already dropped the
+    ones that cleared, so what is left is unscoped, or ships with the head.
+    """
+    head = found.head
     if not found.waiting_on:
-        return "waits on nothing open: every item its `blocked-by` names has closed"
+        if not [entry for entry in head.blocked_by if entry != head.identifier]:
+            return "names no blocker in its `blocked-by` but itself, so nothing can carry its rank"
+        cleared = "has closed or been scoped" if head.blocking_milestones else "has closed"
+        return f"waits on nothing still open: every blocker its `blocked-by` names {cleared}"
     by_id = {item.identifier: item for item in items if item.identifier}
     parts = []
     for entry in found.waiting_on:
-        if entry in found.head.blocking_milestones:
-            parts.append(f"{entry} (a milestone, cleared when it is scoped)")
+        if entry in head.blocking_milestones:
+            if milestones is None:
+                parts.append(f"{entry} (a milestone; the roadmap was not read to say if scoped)")
+            elif milestones.is_cleared(entry):
+                parts.append(f"{entry} (a milestone whose scope names it, so it waits to ship)")
+            else:
+                parts.append(f"{entry} (a milestone not yet scoped)")
         elif entry not in by_id:
             parts.append(f"{entry} (not in the store)")
         else:
@@ -2259,7 +2275,9 @@ def _waiting_on(found: UnrankedGenerator, items: list[Item]) -> str:
     return said
 
 
-def _say_unranked_generators(items: list[Item], in_flight: Collection[str]) -> None:
+def _say_unranked_generators(
+    items: list[Item], in_flight: Collection[str], milestones: MilestoneStates | None
+) -> None:
     """Name the blocked live generator heads whose rank reaches nothing offered.
 
     The generator tier's own silent failure, printed beside `_say_promotable`
@@ -2271,21 +2289,24 @@ def _say_unranked_generators(items: list[Item], in_flight: Collection[str]) -> N
     Takes the flight ids the ranking excluded on: a blocker being worked on a
     branch is paying the head's edge down, so the head is not named for it.
     """
-    found = unranked_generators(items, in_flight)
+    found = unranked_generators(items, in_flight, milestones=milestones)
     if not found:
         return
     heads = "A live generator" if len(found) == 1 else "Live generators"
     print(f"{heads} that nothing ranks - blocked, and no item it waits on can start:")
     for entry in found:
         count = len(entry.head.root_cause_of)
-        print(
-            f"  {entry.head.identifier} (root cause of {count} items) {_waiting_on(entry, items)}"
-        )
+        said = _waiting_on(entry, items, milestones)
+        print(f"  {entry.head.identifier} (root cause of {count} items) {said}")
     print(f"  Not ranked above - {UNRANKED_REMEDY}.")
 
 
 def _blocked_head_rank(
-    head: Item, items: list[Item], lifted: dict[str, tuple[Item, ...]], in_flight: Collection[str]
+    head: Item,
+    items: list[Item],
+    lifted: dict[str, tuple[Item, ...]],
+    in_flight: Collection[str],
+    milestones: MilestoneStates | None,
 ) -> str:
     """Where a blocked live head's rank is now, for the line under its verdict.
 
@@ -2297,12 +2318,16 @@ def _blocked_head_rank(
     offered yet; or in flight, where no open item in this checkout carries it.
     """
     unranked = next(
-        (u for u in unranked_generators(items, in_flight) if u.head.identifier == head.identifier),
+        (
+            u
+            for u in unranked_generators(items, in_flight, milestones=milestones)
+            if u.head.identifier == head.identifier
+        ),
         None,
     )
     if unranked is not None:
         return (
-            f"    blocked, and ranked by nothing: it {_waiting_on(unranked, items)}."
+            f"    blocked, and ranked by nothing: it {_waiting_on(unranked, items, milestones)}."
             f"\n    {UNRANKED_REMEDY[:1].upper()}{UNRANKED_REMEDY[1:]}."
         )
     by_id = {item.identifier: item for item in items if item.identifier}

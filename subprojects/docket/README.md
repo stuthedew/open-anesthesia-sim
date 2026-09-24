@@ -1070,14 +1070,16 @@ Only what the head holds passes, so a spent head's blockers rank on their
 bands, and only one edge down: a chain through a blocked blocker, or a head
 waiting on a milestone alone, ranks nothing. Such a head is named instead of
 ranked (`PL-4RK2`). When no open item it is blocked on can be started or is in
-flight, `docket next` prints it under the list, with what each blocker is
-waiting on and any startable work at the far end of the chain. The chain is
+flight, `docket next` prints it under the list, with each blocker's state -
+a milestone's read from the roadmap, so a scoped one drops out as a closed
+item does - and any startable work at the far end of the chain. The chain is
 not followed automatically. Every edge past the first is a `blocked-by` written
 for sequencing, and nothing checks it for the rank it would now pass. So the
 remedy is a person writing that startable work into the head's own
 `blocked-by`, and the rank then passes there by the rule above. `docket show`
 on a blocked head says it is not ranked itself, and names the open blockers
-carrying its rank, or says that nothing is.
+carrying its rank, or says that nothing is; `docket generators` says it is not
+on the tier itself.
 
 ### What newer work keeps outranking: `docket next --oldest`
 

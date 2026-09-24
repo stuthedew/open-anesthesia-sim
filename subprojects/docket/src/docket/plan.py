@@ -34,7 +34,7 @@ from .model import (
     ranks_as_generator,
     recurrence_count,
 )
-from .roadmap import EXCLUDED, IN_SCOPE, OUT_OF_SCOPE, UNPLACED, Scope
+from .roadmap import EXCLUDED, IN_SCOPE, OUT_OF_SCOPE, UNPLACED, MilestoneStates, Scope
 
 
 @dataclass(frozen=True)
@@ -622,7 +622,8 @@ class UnrankedGenerator:
     head: Item
     #: What the head waits on and cannot start: its open item blockers in the
     #: order `blocked-by` writes them, an id the store cannot place included,
-    #: then its milestones. Empty where every item it names has closed.
+    #: then the milestones that have not cleared for it. Empty where every
+    #: blocker it names has closed or cleared, or where it names none but itself.
     waiting_on: tuple[str, ...]
     #: Startable or in-flight items at the far end of a chain - reached through
     #: blockers that are themselves `blocked`, by id. The work the rank would
@@ -631,7 +632,10 @@ class UnrankedGenerator:
 
 
 def unranked_generators(
-    items: list[Item], in_flight: Collection[str] | None = None
+    items: list[Item],
+    in_flight: Collection[str] | None = None,
+    *,
+    milestones: MilestoneStates | None = None,
 ) -> list[UnrankedGenerator]:
     """Blocked live generator heads whose rank reaches no item `next` could offer.
 
@@ -655,14 +659,21 @@ def unranked_generators(
     **Carried** means some open direct blocker is startable - `recommend`
     ranks it on the tier - or in flight, where a session is paying the edge
     down now. A head in flight is left out for the second reason. A head
-    whose every item blocker has closed is named here as well as by
-    `promotable`: that line says the status is stale, and this one says the
-    item it would restore is a live generator, which is why it matters first.
+    whose every blocker has closed or cleared is named too, with nothing in
+    `waiting_on`: `promotable` or `docket check` says the status is stale, and
+    this says the item it would restore is a live generator.
+
+    A milestone blocker clears as `docket check` reads it - scoped, and not
+    one whose scope names the head, which waits for the release instead - so
+    `milestones` is the roadmap's `MilestoneStates`. `None`, an unread
+    roadmap, clears none of them, and the caller says it could not tell.
 
     The traversal behind a chain passes only through `blocked` items, since
     an untriaged one has not been seated to wait on anything, and is
-    cycle-safe. `in_flight` is the ids the ranking excluded, exactly as in
-    `recommend`; `None` excludes nothing and counts nothing as in flight.
+    cycle-safe. It collects only open items the store holds, since writing a
+    closed or unknown id into `blocked-by` would pass the rank to nothing.
+    `in_flight` is the ids the ranking excluded, exactly as in `recommend`;
+    `None` excludes nothing and counts nothing as in flight.
     """
     flight = set(in_flight or ())
     known = {item.identifier for item in items if item.identifier}
@@ -697,15 +708,23 @@ def unranked_generators(
                 continue
             seen.add(current)
             for upstream in by_id[current].blocking_items:
+                found = by_id.get(upstream)
+                if found is None or not found.is_open:
+                    continue
                 if upstream in offered:
                     behind.add(upstream)
-                elif upstream in by_id and by_id[upstream].status == "blocked":
+                elif found.status == "blocked":
                     frontier.append(upstream)
+        pending = [
+            version
+            for version in dict.fromkeys(head.blocking_milestones)
+            if milestones is None
+            or not milestones.is_cleared(version)
+            or milestones.ships_with(version, head.identifier)
+        ]
         unranked.append(
             UnrankedGenerator(
-                head=head,
-                waiting_on=(*direct, *dict.fromkeys(head.blocking_milestones)),
-                behind=tuple(sorted(behind)),
+                head=head, waiting_on=(*direct, *pending), behind=tuple(sorted(behind))
             )
         )
     return unranked

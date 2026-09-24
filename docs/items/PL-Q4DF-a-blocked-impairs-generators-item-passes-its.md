@@ -18,6 +18,9 @@ therefore ranks nothing, its blockers rank on their bands, and
 alone. `PL-4RK2` fixed only what `docket show` says about it: the line now
 reads "blocked, so ranked nowhere until it can start" instead of "ranked on the
 generator tier".
+`docket generators` still says it ranks: `render._outside_clusters` counts every
+open sound `impairs-generators:` item as "ranks on the generator tier", printing
+`(blocked)` beside the id in the same sentence.
 
 **Not a refiling of `PL-4RK2`.** `docket new` matched this capture to that item
 on shared paths. It is the sibling entrance to the tier, with a decision of its

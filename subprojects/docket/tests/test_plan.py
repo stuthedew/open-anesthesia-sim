@@ -30,7 +30,7 @@ from docket.plan import (
     set_aside,
     unranked_generators,
 )
-from docket.roadmap import Scope, milestone_scope, parse_milestones
+from docket.roadmap import MilestoneStates, Scope, milestone_scope, parse_milestones
 
 
 def _item(
@@ -1464,6 +1464,47 @@ def test_the_chain_behind_an_unranked_head_ends_at_what_is_not_blocked() -> None
     (found,) = unranked_generators(items)
     assert found.waiting_on == ("PL-B1B1", "PL-W1W1")
     assert found.behind == ("PL-C1C1",)
+
+
+def test_the_chain_behind_an_unranked_head_names_only_open_work() -> None:
+    """A closed id still in flight is no remedy: written into `blocked-by`, it lifts nothing."""
+    items = [
+        _blocked_head(LIVE, ("PL-B1B1",)),
+        _item("PL-B1B1", status="blocked", blocked_by=("PL-H1H1",)),
+        _item("PL-H1H1", status="done"),
+        *_explained(),
+    ]
+
+    (found,) = unranked_generators(items, {"PL-H1H1"})
+    assert found.behind == ()
+
+
+@pytest.mark.parametrize(
+    ("milestones", "waiting_on"),
+    [
+        (None, ("v0.7.0",)),
+        (MilestoneStates(known=frozenset({"v0.7.0"}), cleared=frozenset()), ("v0.7.0",)),
+        (MilestoneStates(known=frozenset({"v0.7.0"}), cleared=frozenset({"v0.7.0"})), ()),
+        (
+            MilestoneStates(
+                known=frozenset({"v0.7.0"}),
+                cleared=frozenset({"v0.7.0"}),
+                claimed={"v0.7.0": frozenset({"PL-5555"})},
+            ),
+            ("v0.7.0",),
+        ),
+    ],
+    ids=["roadmap-unread", "unscoped", "scoped", "ships-with-it"],
+)
+def test_a_milestone_that_cleared_drops_out_of_what_an_unranked_head_waits_on(
+    milestones: MilestoneStates | None, waiting_on: tuple[str, ...]
+) -> None:
+    """As `docket check` reads a milestone blocker: scoped clears it, unless it ships with it."""
+    (found,) = unranked_generators(
+        [_blocked_head(LIVE, ("v0.7.0",)), *_explained()], milestones=milestones
+    )
+
+    assert found.waiting_on == waiting_on
 
 
 # --- placement_clause: the relation in the fewest plain words ---------------

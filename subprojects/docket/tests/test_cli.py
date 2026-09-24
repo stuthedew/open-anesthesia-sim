@@ -6938,8 +6938,9 @@ def test_show_on_a_blocked_live_head_nothing_carries_says_it_is_ranked_by_nothin
 
     output = capsys.readouterr().out
     assert (
-        "blocked, and ranked by nothing: it waits on PL-F5F5 (blocked), v0.7.0 (a milestone,"
-        " cleared when it is scoped); startable or in flight behind them: PL-H1H1."
+        "blocked, and ranked by nothing: it waits on PL-F5F5 (blocked), v0.7.0 (a milestone;"
+        " the roadmap was not read to say if scoped); startable or in flight behind them:"
+        " PL-H1H1."
     ) in output
     assert "write that work into the head's `blocked-by`" in output
 
@@ -6966,6 +6967,64 @@ def test_next_is_silent_about_a_blocked_live_head_its_blockers_carry(
     assert _run("next", "--items", str(_blocked_live_head(tmp_path))) == 0
 
     assert "that nothing ranks" not in capsys.readouterr().out
+
+
+def _head_blocked_on(tmp_path: Path, blocked_by: str) -> Path:
+    """A live head whose `blocked-by` is exactly what is given, and its three members."""
+    return _store(
+        tmp_path,
+        _clustered(
+            "PL-4040",
+            "The shared refresh nobody owns",
+            names=_MEMBERS,
+            generator=_LIVE,
+            status="blocked",
+            **{"blocked-by": blocked_by},
+        ),
+        _clustered("PL-B1B1", "A member of the cluster"),
+        _clustered("PL-C2C2", "Another member"),
+        _clustered("PL-D3D3", "A third member"),
+    )
+
+
+def test_next_says_a_scoped_milestone_no_longer_holds_an_unranked_head(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Read from the roadmap, as `docket check` reads it, not assumed unscoped."""
+    store = _head_blocked_on(tmp_path, "v0.4.0")
+    (tmp_path / "pyproject.toml").write_text('version = "0.2.5"\n', encoding="utf-8")
+    (tmp_path / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+
+    assert _run("next", "--items", str(store)) == 0
+
+    out = capsys.readouterr().out
+    assert (
+        "PL-4040 (root cause of 3 items) waits on nothing still open: every blocker its"
+        " `blocked-by` names has closed or been scoped"
+    ) in out
+    assert "not yet scoped" not in out
+
+
+def test_next_does_not_say_the_blockers_closed_of_a_head_naming_only_itself(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`docket check` refuses the shape; until it is repaired, `next` must not misdescribe it."""
+    assert _run("next", "--items", str(_head_blocked_on(tmp_path, "PL-4040"))) == 0
+
+    out = capsys.readouterr().out
+    assert "names no blocker in its `blocked-by` but itself" in out
+    assert "has closed" not in out
+
+
+def test_generators_says_a_blocked_live_head_is_not_on_the_tier_itself(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The same claim `show` stopped making, on the cluster summary (`PL-4RK2`)."""
+    assert _run("generators", "--items", str(_blocked_live_head(tmp_path))) == 0
+
+    out = capsys.readouterr().out
+    assert "still generating, but blocked, so not on the tier itself" in out
+    assert "still generating, so on the tier" not in out
 
 
 def test_generators_does_not_say_a_closed_machinery_defect_ranks(
