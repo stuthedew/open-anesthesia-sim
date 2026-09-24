@@ -508,12 +508,13 @@ deviating from a described deliverable, not acting without one.
   its CI is green (`PL-S5MF`). **A claim on the branch leaves it unarmed,
   whichever push carried it**: the empty start commit, or a queue-only commit
   that start mode reads as one, such as a `needs-decision` design round. It
-  holds until its item is closed in the branch's own copy, because the merge
-  would erase the claim with the branch (project owner, 2026-09-23, ratified,
-  over arming whatever rode the push, `PL-QP9Z`, over reading only a start
-  claim on that push, `PL-1MCK`, and over holding it past the item's closing,
-  `PL-KWCY`). So while only item files ride the branch, the push closing the
-  last item it claims arms it, and a push bringing an open claim or anything
+  holds until its item is closed or blocked in the branch's own copy, because
+  the merge would erase the claim with the branch (project owner, 2026-09-23,
+  ratified, over arming whatever rode the push, `PL-QP9Z`, over reading only a
+  start claim on that push, `PL-1MCK`, and over holding it past the item's
+  closing, `PL-KWCY`; blocked releases it too, 2026-09-24, ratified, over
+  holding it until closed, `PL-3FYK`). So while only item files ride the
+  branch, the push closing or blocking the last item it claims arms it, and a push bringing an open claim or anything
   but item files disarms it first, or green CI would merge half the work.
   Where the **web harness
   says not to open one unless the
