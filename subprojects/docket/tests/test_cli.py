@@ -7293,3 +7293,220 @@ class TestAskingTheForgeWhichBranchesAreOpen:
     def test_no_remote_declines_to_ask_however_it_is_configured(self, tmp_path: Path) -> None:
         config = with_fields(Config(), open_pull_requests_command="printf 'claude/one\n'")
         assert cli._open_pull_requests(self._args(no_remote=True), tmp_path, config) is None
+
+
+# --- arm: whether a pull request may be armed (`PL-DDYD`) ---------------------
+
+#: The branch every `arm` test asks about, and when its claims are made. The
+#: base sits a month earlier, and every read is given `--now` a minute after
+#: `ARM_T0`, so no lease is judged against the clock.
+ARM_BRANCH = "claude/arm-work-q7x2m4"
+ARM_T0 = "2026-09-01T12:00:00+00:00"
+ARM_NOW = "2026-09-01T12:01:00+00:00"
+
+
+def _item_document(identifier: str, status: str = "ready") -> str:
+    return f"---\nid: {identifier}\ntitle: {identifier}\nstatus: {status}\n---\n\n**Problem.** x\n"
+
+
+def _arm_repo(tmp_path: Path) -> tuple[Path, Callable[..., str]]:
+    """A clone of a bare `origin` whose `main` holds two items, checked out on `ARM_BRANCH`.
+
+    `main` carries the claim record's marker, so a `Claim:` trailer on the
+    branch is read as a claim rather than by the old rules. The returned `git`
+    dates every commit it makes at `when`, a month before `ARM_T0` by default.
+    """
+    from docket.claims import CUTOVER_MARKER
+
+    remote = tmp_path / "origin.git"
+    root = tmp_path / "work"
+    for target in (["--bare", str(remote)], [str(root)]):
+        subprocess.run(
+            ["git", "-c", "init.defaultBranch=main", "init", "-q", *target],
+            check=True,
+            capture_output=True,
+        )
+
+    def git(*args: str, when: str = "2026-08-01T12:00:00+00:00") -> str:
+        dated = os.environ | {"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when}
+        done = subprocess.run(
+            ["git", *args], cwd=root, check=True, capture_output=True, text=True, env=dated
+        )
+        return done.stdout
+
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "T")
+    files = {
+        "docs/items/PL-B1B1-held.md": _item_document("PL-B1B1"),
+        "docs/items/PL-C2C2-other.md": _item_document("PL-C2C2"),
+        "docs/PL-D3D3-drafted.md": _item_document("PL-D3D3"),
+        CUTOVER_MARKER: "# the claim writer\n",
+    }
+    for path, text in files.items():
+        (root / path).parent.mkdir(parents=True, exist_ok=True)
+        (root / path).write_text(text, encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    git("remote", "add", "origin", str(remote))
+    git("push", "-q", "-u", "origin", "main")
+    git("checkout", "-qb", ARM_BRANCH)
+    return root, git
+
+
+def _arm(root: Path, *extra: str) -> int:
+    return main(["arm", "--items", str(root / "docs" / "items"), "--now", ARM_NOW, *extra])
+
+
+def _commit_file(git: Callable[..., str], root: Path, path: str, text: str, when: str) -> None:
+    (root / path).write_text(text, encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", f"edit {path}", when=when)
+
+
+def _claim_by_hand(git: Callable[..., str], key: str, branch: str, when: str) -> None:
+    """A claim commit written the way `bin/docket claim` writes one."""
+    git("commit", "-q", "--allow-empty", "-m", f"{key}: start\n\nClaim: {key} {branch}", when=when)
+
+
+def test_arm_arms_a_branch_carrying_only_item_files_whatever_another_branch_claims(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A capture arms, and a live claim bound to another branch holds nothing here.
+
+    The other branch's claim is on the very item this branch edits, so a
+    reader that forgot the claim is bound to its own branch would hold this
+    one.
+    """
+    root, git = _arm_repo(tmp_path)
+    git("checkout", "-qb", "claude/rival-k2m9p4", "main")
+    _claim_by_hand(git, "PL-B1B1", "claude/rival-k2m9p4", ARM_T0)
+    git("push", "-q", "origin", "claude/rival-k2m9p4")
+    git("checkout", "-q", ARM_BRANCH)
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+    _commit_file(
+        git, root, "docs/items/PL-B1B1-held.md", _item_document("PL-B1B1", "needs-decision"), ARM_T0
+    )
+
+    assert _arm(root) == 0
+    out = capsys.readouterr().out
+    assert out.startswith(f"arm - {ARM_BRANCH} changes nothing outside docs/items")
+
+
+@pytest.mark.parametrize(
+    "release", ["done", "blocked", "yield"], ids=["closing-the-item", "blocking-it", "yielding-it"]
+)
+def test_arm_holds_while_a_claim_on_the_branch_is_open_and_arms_once_it_is_released(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], release: str
+) -> None:
+    """The claim holds whichever push carried it, until one of the routes that end it.
+
+    A queue-only branch - the claim and an item edit - is the shape `PL-QP9Z`
+    and `PL-1MCK` each armed while its work went on.
+    """
+    root, git = _arm_repo(tmp_path)
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
+    held = _item_document("PL-B1B1", "needs-decision")
+    _commit_file(git, root, "docs/items/PL-B1B1-held.md", held, "2026-09-01T12:00:30+00:00")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(f"hold - {ARM_BRANCH}: a merge would erase its open claim on PL-B1B1")
+    assert "keep the pull request a draft" in out
+
+    if release == "yield":
+        git("commit", "-q", "--allow-empty", "-m", f"PL-B1B1: yield\n\nYield: PL-B1B1 {ARM_BRANCH}")
+    else:
+        closed = _item_document("PL-B1B1", release)
+        _commit_file(git, root, "docs/items/PL-B1B1-held.md", closed, "2026-09-01T12:00:40+00:00")
+
+    assert _arm(root) == 0
+    assert capsys.readouterr().out.startswith(f"arm - {ARM_BRANCH}")
+
+
+def test_arm_holds_a_lapsed_claim_and_says_how_to_end_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Out of lease is not released: nobody finished the work or handed it back."""
+    root, git = _arm_repo(tmp_path)
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, "2026-08-20T12:00:00+00:00")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert "lapsed with no commit since 2026-08-20" in out
+    assert "`bin/docket yield PL-B1B1` ends it" in out
+
+
+def test_arm_holds_a_branch_changing_paths_outside_the_store_and_names_them(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Work outside the store merges on review, and a move into the store is still a deletion.
+
+    Read with rename detection, the file moved in from `docs/` prints as one
+    path under the store, and the branch would arm with a file gone from
+    outside it.
+    """
+    root, git = _arm_repo(tmp_path)
+    git("mv", "docs/PL-D3D3-drafted.md", "docs/items/PL-D3D3-drafted.md")
+    git("commit", "-qm", "PL-D3D3: file the drafted item", when=ARM_T0)
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(f"hold - {ARM_BRANCH}: it changes 1 path outside docs/items")
+    assert "docs/PL-D3D3-drafted.md" in out
+    assert "keep the pull request a draft" not in out
+
+
+def test_arm_says_behind_when_the_base_has_moved_past_the_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`main` merges only an up-to-date branch, and auto-merge never brings the base in.
+
+    The base moves on the remote after this checkout last looked, so only the
+    fetch `arm` makes first can see it.
+    """
+    root, git = _arm_repo(tmp_path)
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+    other = tmp_path / "other"
+    subprocess.run(
+        ["git", "clone", "-q", str(tmp_path / "origin.git"), str(other)],
+        check=True,
+        capture_output=True,
+    )
+    for args in (
+        ["-c", "user.email=t@example.com", "-c", "user.name=T", "commit", "-q", "--allow-empty"],
+        ["push", "-q", "origin", "main"],
+    ):
+        extra = ["-m", "elsewhere"] if "commit" in args else []
+        subprocess.run(["git", *args, *extra], cwd=other, check=True, capture_output=True)
+
+    assert _arm(root, "--no-fetch") == 0
+    capsys.readouterr()
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith("behind 1 - origin/main has 1 commit")
+    assert "update_pull_request_branch" in out
+
+
+def test_arm_answers_unknown_rather_than_arm_from_a_read_it_could_not_complete(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A fetch that failed leaves `behind` unknown, but not a hold that is reason enough alone."""
+    root, git = _arm_repo(tmp_path)
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+    git("remote", "set-url", "origin", str(tmp_path / "gone.git"))
+
+    assert _arm(root) == 2
+    assert capsys.readouterr().out.startswith("unknown - `git fetch origin` failed")
+    assert _arm(root, "--no-fetch") == 0
+    capsys.readouterr()
+
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(f"hold - {ARM_BRANCH}: a merge would erase its open claim on PL-B1B1")
+    assert "note: `git fetch origin` failed" in out
+
+    git("checkout", "-q", "--detach")
+    assert _arm(root, "--no-fetch") == 2
+    assert capsys.readouterr().out.startswith("unknown - HEAD is on no branch")
