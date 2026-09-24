@@ -1190,10 +1190,20 @@ def _verdict_phrase(head: Item) -> str:
     wholly open with it spent. Only the second decides the rank, so a report
     showing the first alone would let a recorded generator read as a ranked one
     - which is the conflation `PL-T7QR` closed.
+
+    A live head at `blocked` is not on the tier itself: its rank passes to the
+    open items it waits on, or reaches nothing, and `docket show` says which.
+    This line said "so on the tier" of `PL-MB2W` while `show` said it was
+    not ranked (`PL-4RK2`).
     """
     if head.status in CLOSED_STATUSES:
         return ""
     verdict, _ = split_generator_verdict(head.generator)
+    if verdict == "live" and head.status == "blocked":
+        return (
+            "; still generating, but blocked, so not on the tier itself"
+            " - `docket show` says what carries its rank"
+        )
     if verdict == "live":
         return "; still generating, so on the tier"
     if verdict == "spent":
