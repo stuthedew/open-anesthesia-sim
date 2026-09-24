@@ -3304,8 +3304,13 @@ def test_show_leaves_an_item_no_branch_carries_out_of_flight(
 ) -> None:
     """The mark is a claim about this id, not about the branch existing."""
     root = _flight_repo(tmp_path, "PL-K7QX Do the thing")
+    ran = ["--items", str(root / "items"), "--today", "2026-08-23"]
 
-    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+    # Inside the lease, so the other branch is live: read at the wall clock it
+    # lapsed, nothing was in flight, and the absence below proved nothing.
+    assert main([*ran, "flight"]) == 0
+    assert "PL-K7QX" in capsys.readouterr().out
+    assert main([*ran, "show", "PL-0001"]) == 0
 
     assert "IN FLIGHT" not in capsys.readouterr().out
 
