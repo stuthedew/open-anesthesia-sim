@@ -20,17 +20,19 @@ import subprocess
 import sys
 from collections.abc import Callable
 from dataclasses import replace as with_fields
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from docket import cli, vcs
+from docket import claims, cli, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
+from docket.claims import Holdings
 from docket.cli import build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
-from docket.vcs import FlightReport, commands_written_here, lost, records_on_base
+from docket.vcs import commands_written_here, lost, records_on_base
 from docket.verify import LANDED_GUARD, GitUnanswered
 
 READY = """---
@@ -1073,12 +1075,12 @@ def test_next_computes_the_flight_report_once(
     calls: list[str] = []
 
     def counted(
-        root: Path, *, items_dir: str = "docs/items", runner: object = None
-    ) -> FlightReport:
+        root: Path, *, now: datetime, items_dir: str = "docs/items", runner: object = None
+    ) -> Holdings:
         calls.append(items_dir)
-        return FlightReport()
+        return Holdings(now=now)
 
-    monkeypatch.setattr("docket.cli.branches_in_flight", counted)
+    monkeypatch.setattr("docket.cli.holdings", counted)
     store = str(_store(tmp_path, READY))
     # `_run` passes `--no-git`, which short-circuits the read this is about, so
     # the parser is driven directly here.
@@ -1106,12 +1108,12 @@ def test_the_flight_cache_does_not_outlive_one_invocation(
     calls: list[str] = []
 
     def counted(
-        root: Path, *, items_dir: str = "docs/items", runner: object = None
-    ) -> FlightReport:
+        root: Path, *, now: datetime, items_dir: str = "docs/items", runner: object = None
+    ) -> Holdings:
         calls.append(items_dir)
-        return FlightReport()
+        return Holdings(now=now)
 
-    monkeypatch.setattr("docket.cli.branches_in_flight", counted)
+    monkeypatch.setattr("docket.cli.holdings", counted)
     store = str(_store(tmp_path, READY))
     ran = ["--items", store, "--today", "2026-08-24"]
 
@@ -3021,7 +3023,7 @@ def test_show_marks_an_item_a_branch_has_in_flight(
     """
     root = _flight_repo(tmp_path, "PL-0001 Do the thing")
 
-    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
 
     out = capsys.readouterr().out
     assert f"IN FLIGHT on {BRANCH}" in out
@@ -3046,7 +3048,7 @@ def test_show_does_not_tell_a_session_to_stop_working_its_own_branch(
     root = _flight_repo(tmp_path, "PL-0001 Do the thing")
     subprocess.run(["git", "checkout", "-q", BRANCH], cwd=root, check=True, capture_output=True)
 
-    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
 
     out = capsys.readouterr().out
     assert f"IN FLIGHT on this branch ({BRANCH})" in out
@@ -3069,8 +3071,15 @@ def test_show_reads_a_branch_ahead_of_its_tracking_ref_as_this_session(
     remote = tmp_path / "origin.git"
     subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True, capture_output=True)
 
+    # Dated inside the claim's lease: an undated commit takes the wall clock,
+    # and a gap longer than the term would break the chain it renews.
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-21T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-21T12:00:00+00:00",
+    }
+
     def git(*args: str) -> None:
-        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
 
     git("remote", "add", "origin", str(remote))
     git("push", "-q", "origin", "main", BRANCH)
@@ -3079,7 +3088,7 @@ def test_show_reads_a_branch_ahead_of_its_tracking_ref_as_this_session(
     git("add", "-A")
     git("commit", "-qm", "carry on without pushing")
 
-    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
 
     out = capsys.readouterr().out
     assert "IN FLIGHT on this branch" in out
@@ -3137,7 +3146,7 @@ def test_triage_names_an_item_already_in_flight(
     root = _flight_repo(tmp_path, "PL-V1V1 Triage it")
     (root / "items" / "PL-V1V1-untriaged.md").write_text(UNTRIAGED, encoding="utf-8")
 
-    assert main(["--items", str(root / "items"), "triage"]) == 0
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "triage"]) == 0
 
     out = capsys.readouterr().out
     assert f"IN FLIGHT on {BRANCH} - triaging it here as well collides at merge." in out
@@ -3271,13 +3280,17 @@ def test_next_withholds_a_recurrence_cluster_on_an_item_already_in_flight(
     flight" is the ranking working, and only this block's copy is the offer
     nobody can take.
     """
-    root = _flight_repo(tmp_path, "PL-0002 Fix the thing three sessions have filed")
+    root = _flight_repo(
+        tmp_path,
+        "PL-0002 Fix the thing three sessions have filed",
+        when="2026-09-20T12:00:00+00:00",
+    )
     filings = "recurrences: 2026-09-18 PL-8888, 2026-09-19 PL-BBBB, 2026-09-20 PL-CCCC"
     for identifier in ("PL-0002", "PL-0003"):
         body = READY.replace("PL-B1B1", identifier).replace("added:", f"{filings}\nadded:")
         (root / "items" / f"{identifier}-clustered.md").write_text(body, encoding="utf-8")
 
-    assert main(["--items", str(root / "items"), "next"]) == 0
+    assert main(["--items", str(root / "items"), "--today", "2026-09-21", "next"]) == 0
 
     out = capsys.readouterr().out
     offered = out.split("Filed more than once, and never promoted for it:")[1]
@@ -3291,8 +3304,13 @@ def test_show_leaves_an_item_no_branch_carries_out_of_flight(
 ) -> None:
     """The mark is a claim about this id, not about the branch existing."""
     root = _flight_repo(tmp_path, "PL-K7QX Do the thing")
+    ran = ["--items", str(root / "items"), "--today", "2026-08-23"]
 
-    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+    # Inside the lease, so the other branch is live: read at the wall clock it
+    # lapsed, nothing was in flight, and the absence below proved nothing.
+    assert main([*ran, "flight"]) == 0
+    assert "PL-K7QX" in capsys.readouterr().out
+    assert main([*ran, "show", "PL-0001"]) == 0
 
     assert "IN FLIGHT" not in capsys.readouterr().out
 
@@ -3781,30 +3799,28 @@ def test_flight_still_reports_a_branch_pushed_to_after_its_pull_request_squashed
     assert "work" in out
 
 
-def test_flight_reports_below_an_uneven_horizon_which_is_the_accepted_limit(
+def test_flight_reads_below_an_uneven_horizon_by_the_landed_prefix(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The limit `PL-MGNC`'s guard cannot reach, pinned so a change to it is deliberate.
+    """The limit `PL-MGNC`'s guard cannot reach, which the claim record's landed prefix does.
 
-    **This test asserts a known-wrong answer on purpose**, and the decision behind
-    that is `PL-W1LN`'s: the shape is real and reproducible, and no *sound* fix is
-    available inside a truncated checkout. The decisive question is whether an
-    emitted commit is one the base reaches in the **full** history, and the commits
-    that would answer it are exactly the ones the clone does not hold. The three
-    alternatives each cost more than the shape is worth - naming a ref unread
-    whenever the base is truncated silences `flight` in every agent container,
-    fetching to deepen breaks the bare-tree/no-network rule, and distrusting a
-    commit older than the base's newest graft trades an exact guard for one resting
-    on dates a rebase moves (project owner, 2026-09-13).
+    **This test asserted a known-wrong answer on purpose until `PL-N162`**, on
+    `PL-W1LN`'s decision: the shape is real and reproducible, and no *sound* fix
+    to the walk is available inside a truncated checkout. Whether an emitted
+    commit is one the base reaches in the **full** history is a question about
+    exactly the commits the clone does not hold, and naming a ref unread whenever
+    the base is truncated would silence `flight` in every agent container
+    (project owner, 2026-09-13).
 
-    So the limit is accepted and written down here rather than inferred from the
-    absence of a test. What the guard *does* catch is
-    `test_flight_does_not_answer_from_a_walk_the_clone_truncated`, whose default
-    branch is linear; the only difference here is a second, shorter path to the
-    root, and it is enough to remove the parentless commit the guard keys on.
-
-    If a later change makes this pass differently, that is progress and not a
-    regression - but it must be a decision, which is what this test forces.
+    `flight` now answers from `claims.holdings`, and that read asks a different
+    question the clone *can* answer: whether the branch's work up to a commit is
+    content the base already holds (`claims._landed_through`). The default
+    branch's own commits, reached below the graft, wrote nothing the base lacks,
+    so every claim they carry is spent by landing and the branch's own commit
+    after them is still read. The walk guard is unchanged and stays silent,
+    since every emitted commit still has a parent; what changed is that the
+    wrong ids no longer survive past it. `vcs._unmerged_commits` keeps the limit
+    for as long as it has readers.
     """
     work = _unevenly_truncated_pair(tmp_path)
     walk = (
@@ -3826,15 +3842,15 @@ def test_flight_reports_below_an_uneven_horizon_which_is_the_accepted_limit(
     for line in walk:
         assert len(line.split()) >= 3, f"every emitted commit must carry a parent: {line!r}"
 
-    assert main(["--items", str(work / "items"), "flight"]) == 0
+    assert main(["--items", str(work / "items"), "--today", "2026-08-23", "flight"]) == 0
     out = capsys.readouterr().out
 
     # The branch's own work, correctly reported.
     assert "PL-K7QX" in out
-    # A commit of `main`'s own, wrongly reported - the accepted limit.
-    assert "PL-M3NW" in out
-    # And the guard stayed silent, which is the whole point: nothing tells the
-    # reader this answer came from a walk the clone could not bound.
+    # A commit of `main`'s own, spent by the landed prefix rather than reported.
+    assert "PL-M3NW" not in out
+    # And the guard stayed silent: the walk was not refused, its wrong ids were
+    # answered after it.
     assert "cannot be compared with origin/main" not in out
 
 
@@ -4845,8 +4861,9 @@ def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
     to re-ask git what the rest of the invocation already knew (`PL-M6FY`).
     Twenty-three call sites had drifted that way when this was written.
 
-    The census is the module's own imports rather than a list, so a read added
-    later is held without anybody remembering to add it here, and a runner is
+    The census is the module's own imports from `vcs` and `claims` rather than
+    a list - `claims.holdings` is the in-flight walk since `PL-N162` - so a read
+    added later is held without anybody remembering to add it here, and a runner is
     anything that is not a call: a site constructing one of its own is the
     same omission spelled out. `ref_walk` is the one deliberate exception, and
     it is held to passing its plain runner explicitly - measuring must never
@@ -4854,17 +4871,17 @@ def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
     test exists to catch.
     """
     tree = ast.parse(Path(cli.__file__).read_text(encoding="utf-8"))
+    modules = {"vcs": vcs, "claims": claims}
     imported = {
-        alias.asname or alias.name
+        alias.asname or alias.name: getattr(modules[node.module], alias.name)
         for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom) and node.level == 1 and node.module == "vcs"
+        if isinstance(node, ast.ImportFrom) and node.level == 1 and node.module in modules
         for alias in node.names
     }
     reads = {
         name
-        for name in imported
-        if inspect.isfunction(getattr(vcs, name))
-        and "runner" in inspect.signature(getattr(vcs, name)).parameters
+        for name, value in imported.items()
+        if inspect.isfunction(value) and "runner" in inspect.signature(value).parameters
     }
     drifted: list[str] = []
     for node in ast.walk(tree):
@@ -4875,7 +4892,7 @@ def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
         elif (
             isinstance(node.func, ast.Attribute)
             and isinstance(node.func.value, ast.Name)
-            and node.func.value.id == "vcs"
+            and node.func.value.id in modules
         ):
             name = node.func.attr
         else:
@@ -4888,7 +4905,7 @@ def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
         elif name != "ref_walk" and isinstance(given, ast.Call):
             drifted.append(f"{name} (line {node.lineno}) is handed a new runner")
 
-    assert "branches_in_flight" in reads, "the census found none of the reads it is holding"
+    assert {"holdings", "settled_branches"} <= reads, "the census missed the reads it is holding"
     assert not drifted, (
         "cli.py asks git through a runner other than the invocation's: " + "; ".join(drifted)
     )
@@ -4931,10 +4948,10 @@ def test_flight_shares_the_invocations_git_runner(
     built one of its own and the memo every other branch-walking command
     shares was never reached by the command whose whole job is the walk. The
     reads are wrapped rather than replaced, so each still answers and the
-    command runs to the end.
+    command runs to the end. The walk is `claims.holdings` since `PL-N162`.
     """
     seen: dict[str, object] = {}
-    for name in ("branches_in_flight", "settled_branches", "open_pull_requests"):
+    for name in ("holdings", "settled_branches", "open_pull_requests"):
         real = getattr(cli, name)
 
         def spy(*args: Any, _name: str = name, _real: Any = real, **kwargs: Any) -> Any:
@@ -4945,7 +4962,7 @@ def test_flight_shares_the_invocations_git_runner(
 
     assert main(["--items", str(_store(tmp_path, READY)), "--today", "2026-08-24", "flight"]) == 0
 
-    assert set(seen) == {"branches_in_flight", "settled_branches", "open_pull_requests"}
+    assert set(seen) == {"holdings", "settled_branches", "open_pull_requests"}
     runners = list(seen.values())
     assert isinstance(runners[0], vcs.GitRunner)
     assert all(runner is runners[0] for runner in runners)
