@@ -19,10 +19,15 @@ import pytest
 
 from docket import claiming
 from docket.claims import (
+    BY_CLOSED,
+    BY_LANDING,
     BY_OVER,
     BY_STATUS,
     BY_YIELD,
+    CLAIM,
+    CUT,
     CUTOVER_MARKER,
+    DISPOSITION,
     LAPSED,
     LEASE_TERM,
     LIVE,
@@ -48,9 +53,12 @@ def _no_session(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(SESSION_VARIABLE, raising=False)
 
 
-def _item(identifier: str, status: str = "ready") -> str:
-    """An item file carrying what the reader looks at: the id and the status."""
-    return f"---\nid: {identifier}\ntitle: {identifier}\nstatus: {status}\n---\n\n**Problem.** x\n"
+def _item(identifier: str, status: str = "ready", extra: str = "") -> str:
+    """An item file carrying what the reader looks at: the id, the status, and any `extra` lines."""
+    return (
+        f"---\nid: {identifier}\ntitle: {identifier}\nstatus: {status}\n{extra}---\n\n"
+        "**Problem.** x\n"
+    )
 
 
 def _dated(when: datetime) -> dict[str, str]:
@@ -192,9 +200,9 @@ def test_the_lease_holds_through_a_gap_of_exactly_the_term_and_lapses_past_it(
     places a gap is measured - between two commits, and from the last to `now`
     - are pinned at the boundary.
 
-    `lapsed_open` then names the dead claim on the item the base still holds
-    open, and not the one on an item the base has closed since the branch
-    forked - which the branch's own copy still calls ready.
+    The claim on the item the base has closed since the branch forked is spent
+    at both reads, though the branch's own copy still calls it ready - so
+    `lapsed_open` names only the dead claim on the item the base holds open.
 
     The two claims sharing one commit are a regression test of their own: git
     joins them with `\\x1e`, which `str.splitlines()` also breaks at, and read
@@ -215,10 +223,13 @@ def test_the_lease_holds_through_a_gap_of_exactly_the_term_and_lapses_past_it(
     at_term = holdings(repo.root, now=T0 + 10 * DAY + LEASE_TERM)
     past_term = holdings(repo.root, now=T0 + 10 * DAY + LEASE_TERM + timedelta(seconds=1))
 
-    assert {hold.key: hold.state for hold in at_term.holds} == {"PL-B1B1": LIVE, "PL-C2C2": LIVE}
+    assert {hold.key: (hold.state, hold.released_by) for hold in at_term.holds} == {
+        "PL-B1B1": (LIVE, ""),
+        "PL-C2C2": (RELEASED, BY_CLOSED),
+    }
     assert {hold.key: (hold.state, hold.renewed) for hold in past_term.holds} == {
         "PL-B1B1": (LAPSED, T0 + 10 * DAY),
-        "PL-C2C2": (LAPSED, T0 + 10 * DAY),
+        "PL-C2C2": (RELEASED, T0 + 10 * DAY),
     }
     assert past_term.ids == frozenset()
     assert [hold.key for hold in past_term.lapsed_open()] == ["PL-B1B1"]
@@ -510,3 +521,226 @@ def test_a_now_without_an_offset_is_refused(tmp_path: Path) -> None:
     """A naive instant would be judged in the machine's own zone, hours from the real one."""
     with pytest.raises(ValueError, match="aware"):
         holdings(tmp_path, now=datetime(2026, 9, 1, 12, 0))
+
+
+def test_a_capture_absent_at_the_fork_holds_nothing(tmp_path: Path) -> None:
+    """A branch's capture that the base has since triaged is not a disposition.
+
+    Its copy's status differs from the base's, and without the fork test that
+    reads as a branch moving the item: the design round counted eight such
+    false holds among captures alone. It is still an edit to the file, which
+    is the weaker mark.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/capture")
+    repo.commit(
+        "PL-D4D4: capture",
+        when=T0,
+        files={"docs/items/PL-D4D4-new.md": _item("PL-D4D4", "untriaged")},
+    )
+    repo.git("checkout", "-q", "main")
+    repo.commit(
+        "PL-D4D4: triage",
+        when=T0 + HOUR,
+        files={"docs/items/PL-D4D4-new.md": _item("PL-D4D4", "ready")},
+    )
+
+    read = holdings(repo.root, now=T0 + 2 * HOUR)
+
+    assert (read.holds, read.dispositions, read.ids) == ((), (), frozenset())
+    assert [(edit.name, edit.item_id) for edit in read.flight().editing] == [
+        ("claude/capture", "PL-D4D4")
+    ]
+
+
+def test_a_block_is_a_disposition_that_holds_without_ordering_and_lapses_with_the_branch(
+    tmp_path: Path,
+) -> None:
+    """`PL-8GV1`: a grooming pass blocking an item it never claimed keeps `next` off it.
+
+    It never orders against a claim, so another branch's claim on the same
+    item continues first, and it runs on the branch's lease.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/grooming")
+    repo.commit(
+        "PL-B1B1: block on PL-C2C2",
+        when=T0,
+        files={"docs/items/PL-B1B1-held.md": _item("PL-B1B1", "blocked")},
+    )
+    repo.branch("claude/worker", "main")
+    repo.claim("PL-B1B1", when=T0 + HOUR)
+
+    read = holdings(repo.root, now=T0 + 2 * HOUR)
+    later = holdings(repo.root, now=T0 + 8 * DAY + 2 * HOUR)
+
+    [disposition] = read.dispositions
+    assert (disposition.kind, disposition.ref, disposition.state, disposition.status) == (
+        DISPOSITION,
+        "claude/grooming",
+        LIVE,
+        "blocked",
+    )
+    assert [hold.ref for hold in read.order("PL-B1B1")] == ["claude/worker"]
+    assert [(branch.name, branch.item_id) for branch in read.flight().branches] == [
+        ("claude/worker", "PL-B1B1")
+    ]
+    [lapsed] = later.dispositions
+    assert (lapsed.state, later.ids) == (LAPSED, frozenset())
+
+
+def test_a_verify_rewrite_across_many_items_holds_none_of_them(tmp_path: Path) -> None:
+    """`PL-3W3P`: a pass rewriting one field of many items moves no status, so holds nothing.
+
+    Every file it wrote is still an edit the base has not taken, and only the
+    item the branch claimed is held.
+    """
+    repo = _Repo(tmp_path / "repo")
+    keys = ["PL-F6F6", "PL-G7G7", "PL-H8H8", "PL-J9J9"]
+    repo.commit(
+        "more items",
+        when=T0 - 20 * DAY,
+        files={f"docs/items/{key}-x.md": _item(key) for key in keys},
+    )
+    repo.branch("claude/sweep")
+    repo.claim("PL-C2C2", when=T0)
+    repo.commit(
+        "PL-C2C2: reorder every verify: line",
+        when=T0 + HOUR,
+        files={f"docs/items/{key}-x.md": _item(key, extra="verify: true\n") for key in keys},
+    )
+
+    read = holdings(repo.root, now=T0 + 2 * HOUR)
+    report = read.flight()
+
+    assert read.dispositions == ()
+    assert read.ids == {"PL-C2C2"}
+    assert [branch.item_id for branch in report.branches] == ["PL-C2C2"]
+    assert [edit.item_id for edit in report.editing] == keys
+
+
+def test_the_landed_prefix_spends_what_a_partial_squash_took_and_a_new_claim_holds(
+    tmp_path: Path,
+) -> None:
+    """`PL-8JQQ`: the squash took the claim and its first commit; the branch went on.
+
+    The branch is still unlanded - its later commit is not on the base - but
+    the claim the squash took is spent, so continued work claims again, and
+    that claim holds - even where the squash took everything before it, so
+    the branch as of the new claim is all on the base. A commit restoring a file
+    the base once held lands nothing, though every blob it writes is one the
+    base has held.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/long")
+    repo.claim("PL-B1B1", when=T0)
+    repo.commit("PL-B1B1: first", when=T0 + HOUR, files={"src/a.py": "first\n"})
+    repo.git("checkout", "-q", "main")
+    repo.commit("PL-B1B1: first (#1)", when=T0 + 2 * HOUR, files={"src/a.py": "first\n"})
+    repo.git("checkout", "-q", "claude/long")
+    repo.commit("PL-B1B1: second", when=T0 + 3 * HOUR, files={"src/b.py": "second\n"})
+
+    [spent] = holdings(repo.root, now=T0 + 4 * HOUR).holds
+    again = repo.claim("PL-B1B1", when=T0 + 5 * HOUR)
+    [held] = holdings(repo.root, now=T0 + 6 * HOUR).holds
+
+    repo.branch("claude/revert", "main")
+    repo.claim("PL-C2C2", when=T0)
+    repo.commit("PL-C2C2: try", when=T0 + HOUR, files={"src/a.py": "tried\n"})
+    repo.commit("PL-C2C2: undo", when=T0 + 2 * HOUR, files={"src/a.py": "first\n"})
+    [kept] = [
+        hold for hold in holdings(repo.root, now=T0 + 6 * HOUR).holds if hold.key == "PL-C2C2"
+    ]
+
+    repo.branch("claude/whole", "main")
+    repo.claim("PL-D4D4", when=T0)
+    repo.commit("PL-D4D4: all of it", when=T0 + HOUR, files={"src/c.py": "whole\n"})
+    repo.git("checkout", "-q", "main")
+    repo.commit("PL-D4D4: all of it (#2)", when=T0 + 2 * HOUR, files={"src/c.py": "whole\n"})
+    repo.git("checkout", "-q", "claude/whole")
+    resumed = repo.claim("PL-D4D4", when=T0 + 3 * HOUR)
+    repo.commit("PL-D4D4: more", when=T0 + 4 * HOUR, files={"src/d.py": "more\n"})
+    [fresh] = [
+        hold for hold in holdings(repo.root, now=T0 + 6 * HOUR).holds if hold.key == "PL-D4D4"
+    ]
+
+    assert (spent.state, spent.released_by) == (RELEASED, BY_LANDING)
+    assert (held.state, held.commit) == (LIVE, again)
+    assert kept.state == LIVE
+    # The branch as of the new claim is all on the base, but the claim wrote
+    # nothing, so it cannot be where a squash took the branch; read as one, it
+    # would spend the claim the work after it is done under.
+    assert (fresh.state, fresh.commit) == (LIVE, resumed)
+
+
+def test_holder_is_the_first_live_claim_whose_item_names_the_resource(tmp_path: Path) -> None:
+    """Two release items claimed on two branches: the earlier claim holds the train.
+
+    Read from each claiming branch's own copy, so a release item's claim holds
+    it without a flag its session has to remember; once that claim yields, the
+    other branch's does. A claim on an item naming no resource is never it.
+    """
+    train = "resource: release-train\n"
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/first")
+    repo.commit(
+        "PL-R1R1: file the release",
+        when=T0,
+        files={"docs/items/PL-R1R1-cut.md": _item("PL-R1R1", extra=train)},
+    )
+    repo.claim("PL-R1R1", when=T0 + HOUR)
+    repo.branch("claude/second", "main")
+    repo.commit(
+        "PL-R2R2: file the release",
+        when=T0,
+        files={"docs/items/PL-R2R2-cut.md": _item("PL-R2R2", extra=train)},
+    )
+    repo.claim("PL-R2R2", "PL-B1B1", when=T0 + 2 * HOUR)
+
+    first = holdings(repo.root, now=T0 + 3 * HOUR).holder("release-train")
+    repo.git("checkout", "-q", "claude/first")
+    repo.commit("PL-R1R1: stop\n\nYield: PL-R1R1 claude/first", when=T0 + 4 * HOUR)
+    then = holdings(repo.root, now=T0 + 5 * HOUR).holder("release-train")
+
+    assert first is not None and (first.ref, first.key, first.kind) == (
+        "claude/first",
+        "PL-R1R1",
+        CLAIM,
+    )
+    assert then is not None and (then.ref, then.key) == ("claude/second", "PL-R2R2")
+
+
+def test_a_cut_is_a_live_hold_and_mine_where_head_contains_the_branch(tmp_path: Path) -> None:
+    """`cuts_in_flight`'s read: a notes file the base lacks, whatever the branch's age.
+
+    A branch editing notes the base already holds is cutting nothing.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("v0.5.9", when=T0 - 20 * DAY, files={"docs/releases/v0.5.9.md": "# v0.5.9\n"})
+    repo.branch("claude/theirs")
+    repo.commit("cut", when=T0, files={"docs/releases/v0.5.10.md": "# v0.5.10\n"})
+    repo.branch("claude/fix-notes", "main")
+    repo.commit("fix", when=T0, files={"docs/releases/v0.5.9.md": "# v0.5.9, fixed\n"})
+    repo.branch("claude/ours", "main")
+    repo.commit("cut", when=T0 + HOUR, files={"docs/releases/v0.5.11.md": "# v0.5.11\n"})
+
+    cuts = holdings(repo.root, now=T0 + 30 * DAY).cuts
+
+    assert [(hold.ref, hold.key, hold.kind, hold.state, hold.mine) for hold in cuts] == [
+        ("claude/ours", "0.5.11", CUT, LIVE, True),
+        ("claude/theirs", "0.5.10", CUT, LIVE, False),
+    ]
+
+
+def test_flight_names_a_branch_attributed_to_nothing(tmp_path: Path) -> None:
+    """The third outcome beside a hold and an unread ref, kept in `FlightReport`'s shape."""
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/anonymous")
+    repo.commit("tidy", when=T0, files={"src/tidy.py": "x\n"})
+    repo.branch("claude/pl-b1b1-named", "main")
+    repo.commit("tidy", when=T0, files={"src/named.py": "x\n"})
+
+    report = holdings(repo.root, now=T0 + HOUR).flight()
+
+    assert report.unattributed == ("claude/anonymous",)
+    assert (report.branches, report.known) == ((), True)

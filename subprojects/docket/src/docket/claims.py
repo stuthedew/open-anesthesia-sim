@@ -46,12 +46,26 @@ it stood.
 
 **A claim ends in one of five ways**: a `Yield:` on its branch, the branch's
 own copy of the item reaching a status in `RELEASING_STATUSES`, a takeover, a
-lapse, or landing. The first four are decided here. Landing is split: the
-ref-level half - the branch is contained in the base, or its content is -
-arrives with `vcs._unlanded_refs`, which never offers a landed ref, and the
-per-claim half (the landed prefix, an item closed on the base) belongs to
-`PL-NST2`, with disposition holds, cut holds, the `resource:` field and
-`Holdings.flight()`.
+lapse, or landing. Landing is derived, at two levels. A branch the base
+contains, or whose content it holds, is never offered by
+`vcs._unlanded_refs`. Within a branch still offered, a claim on an item the
+base has closed is spent, and so is every claim at or before the branch's
+*landed prefix*: the newest commit that adds content, all of it content the
+base has held, through which the branch's own work is all on the base. That
+is the shape a squash merge leaves on a branch that goes on committing
+(`PL-8JQQ`), and continuing work there claims again.
+
+**Two other kinds of hold ride the same read, and neither is a claim.** A
+*disposition* is a branch whose copy of an item has moved its `status:` away
+from both the fork's copy and the base's - a grooming pass blocking or
+dropping it, a triage pass readying it - which `docket next` must not offer
+over. It needs the item at the fork and on the base, so a capture holds
+nothing; it reads `status:` alone, so a pass rewriting another field of a
+hundred items holds none of them (`PL-3W3P`); it runs on the branch's lease;
+and it never orders against a claim or holds arming. A *cut* is a release's
+notes file on the branch, `vcs.cuts_in_flight`'s read, and it always refuses a
+release. They are kept apart from the claims (`Holdings.dispositions`,
+`Holdings.cuts`) so that a reader wanting claims cannot be handed either.
 
 **A commit made before a session could write a claim is read by the old
 rules** (`CUTOVER_MARKER`): a subject leading with ids claims them where the
@@ -68,23 +82,33 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from .model import CLOSED_STATUSES, parse_front_matter
+from .release import NOTES_DIR
 from .store import ID_PATTERN
 from .vcs import (
+    BRANCH_ID_RE,
+    ITEM_FILE_RE,
+    Branch,
+    FlightReport,
+    QueueEdit,
     Runner,
     _annotates_only,
-    _closed_on_base,
+    _cut_versions,
     _head_name,
     _item_paths_on,
+    _landing_split,
+    _notes_on,
     _remotes,
     _run_git,
     _Silences,
+    _superseded,
     _unlanded_refs,
+    _work_already_on_base,
     answered,
     default_base,
     leading_ids,
@@ -131,8 +155,10 @@ CUTOVER_MARKER = "subprojects/docket/src/docket/claiming.py"
 #: writes the same variable's value as a claim's `<session>` token.
 SESSION_VARIABLE = "CLAUDE_CODE_REMOTE_SESSION_ID"
 
-#: `Hold.kind` for a recorded claim. `PL-NST2` adds the disposition and cut kinds.
+#: `Hold.kind`: a recorded claim, a status disposition, or a release cut.
 CLAIM = "claim"
+DISPOSITION = "disposition"
+CUT = "cut"
 
 #: `Hold.state`: holding the item at `now`, out of lease, or ended.
 LIVE = "live"
@@ -143,6 +169,10 @@ RELEASED = "released"
 BY_YIELD = "yield"
 BY_STATUS = "status"
 BY_OVER = "over"
+#: Spent by the branch's landed prefix.
+BY_LANDING = "landed"
+#: Spent because the base records the item as closed.
+BY_CLOSED = "closed"
 
 # One line per non-merge commit in `base..R`: its hash, both dates, its parents,
 # the values of its `Claim:` and `Yield:` trailers, and its subject. The unit
@@ -151,7 +181,9 @@ BY_OVER = "over"
 # trailer value git has folded onto a continuation line. `%P` is empty for a
 # commit whose parents this checkout lacks, which is how a walk that ran off a
 # truncated history is told from one the base stopped. The subject comes last so
-# a stray separator in it cannot shift the fields before it.
+# a stray separator in it cannot shift the fields before it. `--raw` follows
+# each line with the commit's changes, whose paths say which items and notes it
+# touched and whose new blobs are what the landed prefix is judged on.
 _LOG_FORMAT = (
     "--format=%H%x1f%aI%x1f%cI%x1f%P"
     "%x1f%(trailers:key=Claim,valueonly,unfold,separator=%x1e)"
@@ -188,6 +220,10 @@ class Hold:
     branch has a copy of the item at all: a claim on an item the base lacks is
     still a claim, and only what a reader is told about it differs, as it does
     for `vcs.Branch`.
+
+    A disposition fills the same fields from the commit that last touched the
+    item's file, and is `live` or `lapsed` only; a cut's `key` is the version
+    it cuts, without its `v`, and it is always `live`.
     """
 
     key: str
@@ -209,20 +245,26 @@ class Hold:
     on_base: bool = True
     #: Read by the old rules, from a commit made before a session could write a claim.
     legacy: bool = False
-    #: `BY_YIELD`, `BY_STATUS` or `BY_OVER` for a released hold, and empty
-    #: otherwise.
+    #: `BY_YIELD`, `BY_STATUS`, `BY_OVER`, `BY_LANDING` or `BY_CLOSED` for a
+    #: released hold, and empty otherwise.
     released_by: str = ""
     #: The `<ref>@<hash>` this claim took over, as written.
     over: str = ""
+    #: The `resource:` the item names in the claiming branch's own copy - what
+    #: `Holdings.holder` answers for, so a release item's claim holds the
+    #: release train without a flag its session has to remember.
+    resource: str = ""
 
 
 @dataclass(frozen=True)
 class Holdings:
     """Every hold the readable refs record, and what could not be read to find out.
 
-    `holds` is sorted by item and, within one item, into the order that decides
-    which branch continues: author date, then hash, with a takeover immediately
-    ahead of the claim it names. `order` and `ids` read only the live ones.
+    `holds` is the claims, sorted into the order that decides which branch
+    continues: author date, then hash, with a takeover immediately ahead of the
+    claim it names. One order across every item, so `order` is a filter of it
+    and `holder` its first match. `dispositions` and `cuts` are the other two
+    kinds, kept apart so that no reader wanting claims is handed one.
 
     **What went unread travels with the answer**, as it does on `FlightReport`.
     `unreadable` names refs whose history this checkout cannot compare with the
@@ -235,36 +277,75 @@ class Holdings:
     """
 
     holds: tuple[Hold, ...] = ()
+    dispositions: tuple[Hold, ...] = ()
+    cuts: tuple[Hold, ...] = ()
     unreadable: tuple[str, ...] = ()
     malformed: tuple[str, ...] = ()
     base: str = ""
     #: The one moment every lease in this read was judged at.
     now: datetime | None = None
-    #: The held items whose copy on the base is closed, which `lapsed_open`
-    #: leaves out.
-    closed_on_base: frozenset[str] = frozenset()
+    #: What `flight` reports beside the holds: refs that edited an item's file
+    #: where nothing holds the item and the base has not superseded the edit,
+    #: and readable refs no subject, claim or name attributes to any item.
+    editing: tuple[QueueEdit, ...] = ()
+    unattributed: tuple[str, ...] = ()
+    #: Per `Hold.ref`, when that branch's newest non-merge commit was made.
+    last: Mapping[str, datetime] = field(default_factory=dict)
     declined: str = ""
 
     @property
     def ids(self) -> frozenset[str]:
-        """The items some branch holds live."""
-        return frozenset(hold.key for hold in self.holds if hold.state == LIVE)
+        """The items some branch holds live, by a claim or a disposition."""
+        return frozenset(
+            hold.key for hold in (*self.holds, *self.dispositions) if hold.state == LIVE
+        )
 
     def order(self, key: str) -> tuple[Hold, ...]:
-        """The live holds on one item, the one that continues first."""
+        """The live claims on one item, the one that continues first."""
         wanted = key.upper()
         return tuple(hold for hold in self.holds if hold.key == wanted and hold.state == LIVE)
 
-    def lapsed_open(self) -> tuple[Hold, ...]:
-        """Lapsed holds on items the base still holds open: dead claims worth taking over.
+    def holder(self, resource: str) -> Hold | None:
+        """The live claim holding a resource: the first, in claim order, whose item names it."""
+        return next(
+            (hold for hold in self.holds if hold.state == LIVE and hold.resource == resource), None
+        )
 
-        An item the base has closed, or has no copy of, is no longer anybody's
-        to start, so a dead claim on it is not worth a line.
+    def lapsed_open(self) -> tuple[Hold, ...]:
+        """Lapsed claims on items the base still holds open: dead claims worth taking over.
+
+        An item the base has closed has spent every claim on it, and one the
+        base has no copy of is no longer anybody's to start, so neither is
+        worth a line.
         """
-        return tuple(
-            hold
-            for hold in self.holds
-            if hold.state == LAPSED and hold.on_base and hold.key not in self.closed_on_base
+        return tuple(hold for hold in self.holds if hold.state == LAPSED and hold.on_base)
+
+    def flight(self) -> FlightReport:
+        """The holds in `vcs.branches_in_flight`'s shape, so its callers read them unchanged.
+
+        One `Branch` per item held live: the claim that continues first, and
+        where nothing claims it, the disposition. A name that carries an id is
+        not read as a hold here (`PL-TZ3R`).
+        """
+        held: dict[str, Hold] = {}
+        for hold in (*self.holds, *self.dispositions):
+            if hold.state == LIVE:
+                held.setdefault(hold.key, hold)
+        return FlightReport(
+            branches=tuple(
+                Branch(
+                    name=hold.ref,
+                    item_id=key,
+                    last_commit=self.last.get(hold.ref),
+                    on_base=hold.on_base,
+                )
+                for key, hold in sorted(held.items())
+            ),
+            unreadable=self.unreadable,
+            unattributed=self.unattributed,
+            editing=self.editing,
+            base=self.base,
+            declined=self.declined,
         )
 
     @property
@@ -284,6 +365,8 @@ class _Commit:
     yields: tuple[str, ...]
     subject: str
     paths: tuple[str, ...]
+    #: The blobs the commit wrote: the new side of each change but a deletion.
+    added: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -322,6 +405,7 @@ def holdings(
     *,
     now: datetime,
     items_dir: str = "docs/items",
+    notes_dir: str = NOTES_DIR,
     include_remote: bool = True,
     include_head: bool = True,
     term: timedelta = LEASE_TERM,
@@ -373,14 +457,6 @@ def holdings(
 
     claims, yields, malformed = _events(histories, branches, items_dir, remotes, root, run)
     episodes = _episodes(claims, yields)
-    if not episodes:
-        return Holdings(
-            unreadable=tuple(name for name in candidates if name in unreadable),
-            malformed=malformed,
-            base=base,
-            now=moment,
-            declined=run.reason,
-        )
     successors = _takeovers(claims, remotes)
     superseded = set(successors.values())
     by_identity = {claim.identity: claim for claim in claims}
@@ -395,73 +471,134 @@ def holdings(
 
     session = os.environ.get(SESSION_VARIABLE, "")
     here = _checked_out(root, run, remotes)
-    on_base = set(_item_paths_on(base, items_dir, root, run))
+    prefix = items_dir.strip("/") + "/"
+    copies: dict[str, dict[str, str]] = {}
     renewals = {
         branch: sorted(entry.committed for entry in history)
         for branch, history in histories.items()
     }
-    tips: dict[str, str] = {}
-    copies: dict[str, dict[str, str]] = {}
+    tips = {branch: _newest(branches[branch], root, run) for branch in histories}
+    touched = {branch: _touched(history, prefix) for branch, history in histories.items()}
 
-    ranked: list[tuple[str, tuple[datetime, str, int, datetime, str], Hold]] = []
+    def status(ref: str, key: str) -> str:
+        return _fields_at(ref, key, items_dir, root, run, copies).get("status", "")
+
+    copies[base] = _item_paths_on(base, items_dir, root, run)
+    on_base = set(copies[base])
+    prefixes: dict[str, int] = {}
+    ranked: list[tuple[tuple[datetime, str, int, datetime, str], str, Hold]] = []
     for (key, branch), (episode, yielded) in episodes.items():
         standing = [claim for claim in episode if claim.identity not in superseded]
+        if branch not in prefixes:
+            fork = refs.fork.get(tips[branch], "")
+            prefixes[branch] = _landed_through(histories[branch], fork, refs.base_blobs, root, run)
+        unspent = [claim for claim in standing if claim.position > prefixes[branch]]
         end = moment if yielded is None else yielded
         # The earliest claim whose lease is unbroken holds; any later claim in
         # the same chain is a renewal of it. Where every chain broke, the last
         # claim made stands for the episode, lapsed.
+        pool = unspent or standing or episode
         holder: _Claim | None = None
         unbroken, renewed = False, moment
-        for claim in standing:
+        for claim in pool:
             unbroken, renewed = _chain(claim.committed, renewals[branch], end, term)
             if unbroken:
                 holder = claim
                 break
         if holder is None:
-            holder = (standing or episode)[-1]
+            holder = pool[-1]
             unbroken, renewed = _chain(holder.committed, renewals[branch], end, term)
 
-        names = branches[branch]
-        if branch not in tips:
-            tips[branch] = _newest(names, root, run)
-        status = _status_at(tips[branch], key, items_dir, root, run, copies)
+        fields = _fields_at(tips[branch], key, items_dir, root, run, copies)
+        current = fields.get("status", "")
         if not standing:
             state, released_by = RELEASED, BY_OVER
         elif yielded is not None:
             state, released_by = RELEASED, BY_YIELD
-        elif status in RELEASING_STATUSES:
+        elif current in RELEASING_STATUSES:
             state, released_by = RELEASED, BY_STATUS
+        elif status(base, key) in CLOSED_STATUSES:
+            state, released_by = RELEASED, BY_CLOSED
+        elif not unspent:
+            state, released_by = RELEASED, BY_LANDING
         else:
             state, released_by = (LIVE if unbroken else LAPSED), ""
 
         tokens = {claim.session for claim in episode[episode.index(holder) :] if claim.session}
         hold = Hold(
             key=key,
-            ref=names[0],
+            ref=branches[branch][0],
             kind=CLAIM,
             state=state,
             since=holder.authored,
             renewed=renewed,
             commit=holder.commit,
             session=holder.session,
-            status=status,
+            status=current,
             mine=session in tokens if tokens else bool(here) and branch == here,
             on_base=key in on_base,
             legacy=holder.legacy,
             released_by=released_by,
             over=holder.over,
+            resource=fields.get("resource", ""),
         )
-        ranked.append((key, rank(holder), hold))
-
+        ranked.append((rank(holder), key, hold))
     ranked.sort(key=lambda entry: (entry[0], entry[1]))
-    held = {key for key, _, _ in ranked}
+
+    # A disposition: the branch's copy has moved `status:` away from both the
+    # fork's and the base's. Asked only of items a commit on the branch touched,
+    # and in the order that stops soonest: most edits change no status.
+    dispositions: list[Hold] = []
+    for branch, found in touched.items():
+        fork = refs.fork.get(tips[branch], "")
+        for key, (position, _) in found.items():
+            if not fork or key not in on_base:
+                continue
+            moved = status(tips[branch], key)
+            there = status(base, key)
+            if not moved or moved == there or there in CLOSED_STATUSES:
+                continue
+            forked = status(fork, key)
+            if not forked or moved == forked:
+                continue
+            entry = histories[branch][position]
+            unbroken, renewed = _chain(entry.committed, renewals[branch], moment, term)
+            dispositions.append(
+                Hold(
+                    key=key,
+                    ref=branches[branch][0],
+                    kind=DISPOSITION,
+                    state=LIVE if unbroken else LAPSED,
+                    since=entry.authored,
+                    renewed=renewed,
+                    commit=entry.commit,
+                    status=moved,
+                    mine=bool(here) and branch == here,
+                )
+            )
+    dispositions.sort(key=lambda hold: (hold.since, hold.commit, hold.key))
+
+    holds = tuple(hold for _, _, hold in ranked)
+    held = {hold.key for hold in (*holds, *dispositions) if hold.state == LIVE}
+    last = {branches[branch][0]: dates[-1] for branch, dates in renewals.items() if dates}
+    cuts = _cuts(histories, branches, tips, last, base, notes_dir, root, run, moment)
+    editing = _editing(touched, branches, tips, last, held, base, root, run, copies)
     return Holdings(
-        holds=tuple(hold for _, _, hold in ranked),
+        holds=holds,
+        dispositions=tuple(dispositions),
+        cuts=cuts,
         unreadable=tuple(name for name in candidates if name in unreadable),
         malformed=malformed,
         base=base,
         now=moment,
-        closed_on_base=_closed_on_base(held, items_dir, base, root, run),
+        editing=editing,
+        unattributed=tuple(
+            branches[branch][0]
+            for branch, history in histories.items()
+            if BRANCH_ID_RE.search(branches[branch][0]) is None
+            and not any(entry.claims or leading_ids(entry.subject) for entry in history)
+        ),
+        last=last,
         declined=run.reason,
     )
 
@@ -527,7 +664,9 @@ def _history(names: list[str], base: str, root: Path, run: Runner) -> list[_Comm
             "--no-merges",
             "--author-date-order",
             "--reverse",
-            "--name-only",
+            "--raw",
+            "--no-abbrev",
+            "--no-renames",
             _LOG_FORMAT,
             f"^{base}",
             *names,
@@ -535,20 +674,25 @@ def _history(names: list[str], base: str, root: Path, run: Runner) -> list[_Comm
         ],
         root,
     )
-    entries: list[tuple[list[str], list[str]]] = []
+    entries: list[tuple[list[str], list[str], list[str]]] = []
     # Split on the newline git ends each line with, never `splitlines()`: that
     # also breaks at `\x1e`, the separator between one key's values, and read
     # that way a commit claiming two items lost both claims and itself.
     for line in output.split("\n"):
         fields = line.split("\x1f", _FIELDS - 1)
         if len(fields) == _FIELDS:
-            entries.append((fields, []))
-        elif line.strip() and entries:
-            # Everything else is one of that commit's paths, or the blank line
-            # git writes between a commit and its paths.
-            entries[-1][1].append(line.strip())
+            entries.append((fields, [], []))
+        elif line.startswith(":") and entries:
+            # `:<mode> <mode> <blob> <blob> <status>\t<path>`; the path is
+            # everything after the first tab. Anything else is the blank line
+            # git writes between a commit and its changes.
+            head, _, path = line.partition("\t")
+            parts = head.split()
+            entries[-1][1].append(path)
+            if len(parts) == 5 and set(parts[3]) != {"0"}:
+                entries[-1][2].append(parts[3])
     history: list[_Commit] = []
-    for fields, paths in entries:
+    for fields, paths, added in entries:
         commit, authored, committed, parents, claims, yields, subject = fields
         if not parents.strip():
             return None
@@ -566,6 +710,7 @@ def _history(names: list[str], base: str, root: Path, run: Runner) -> list[_Comm
                 yields=_values(yields),
                 subject=subject,
                 paths=tuple(paths),
+                added=tuple(added),
             )
         )
     return history
@@ -795,10 +940,10 @@ def _newest(names: list[str], root: Path, run: Runner) -> str:
     return newest
 
 
-def _status_at(
+def _fields_at(
     ref: str, key: str, items_dir: str, root: Path, run: Runner, copies: dict[str, dict[str, str]]
-) -> str:
-    """The item's status in one ref's copy, found by its id, or `""` where it has none.
+) -> dict[str, str]:
+    """The front matter of the item's copy on one ref, found by its id, or `{}` where it has none.
 
     Found by the id at the head of the file name rather than by a path, so a
     branch that renamed the file is still read.
@@ -807,6 +952,143 @@ def _status_at(
         copies[ref] = _item_paths_on(ref, items_dir, root, run)
     path = copies[ref].get(key, "")
     if not path:
-        return ""
+        return {}
     fields, _ = parse_front_matter(run(["show", f"{ref}:{path}"], root))
-    return fields.get("status", "").strip()
+    return {name: value.strip() for name, value in fields.items()}
+
+
+def _touched(history: list[_Commit], prefix: str) -> dict[str, tuple[int, str]]:
+    """Each item whose file the branch changed, with the newest such commit's place and path."""
+    found: dict[str, tuple[int, str]] = {}
+    for position, entry in enumerate(history):
+        for path in entry.paths:
+            if not path.startswith(prefix):
+                continue
+            match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
+            if match is not None:
+                found[match.group(1).upper()] = (position, path)
+    return found
+
+
+def _landed_through(
+    history: list[_Commit], fork: str, base_blobs: frozenset[str], root: Path, run: Runner
+) -> int:
+    """The place of the branch's landed prefix in its walk, or -1 where nothing has landed.
+
+    The newest commit that wrote content, all of it content the base has held,
+    and through which the branch's own work - the branch as of that commit,
+    against its fork - is all on the base. That is where a squash merge took
+    the branch, and every claim at or before it has been spent.
+
+    **Both tests, because either alone releases a live claim.** The commit's
+    own blobs are true of an empty commit - the claim commit itself - and of
+    one reverting a file to a version the base once held; the branch-level
+    test is what a squash actually proves. The first is a necessary condition
+    of the second, since a blob the commit writes is either in the branch's
+    net change or is the fork's own copy, so it picks the candidates from the
+    walk already made and only a candidate costs a diff. A branch the squash
+    cannot be proven against - a file the base resolved against its own later
+    edits (`PL-LKFP`) - keeps its claims until a yield or the lease.
+    """
+    if not fork:
+        return -1
+    for position in range(len(history) - 1, -1, -1):
+        entry = history[position]
+        if not entry.added or not all(blob in base_blobs for blob in entry.added):
+            continue
+        if _work_already_on_base(_landing_split(entry.commit, fork, base_blobs, root, run)):
+            return position
+    return -1
+
+
+def _cuts(
+    histories: dict[str, list[_Commit]],
+    branches: dict[str, list[str]],
+    tips: dict[str, str],
+    last: dict[str, datetime],
+    base: str,
+    notes_dir: str,
+    root: Path,
+    run: Runner,
+    moment: datetime,
+) -> tuple[Hold, ...]:
+    """One live hold per release a branch is cutting, `vcs.cuts_in_flight`'s read.
+
+    Asked only of a branch a commit of which touched `notes_dir`, which no
+    branch but a release's does. `mine` is today's rule: `HEAD` contains the
+    branch's tip, so a session's own cut pushed under another name is its own.
+    """
+    prefix = notes_dir.strip("/") + "/"
+    cutting = [
+        branch
+        for branch, history in histories.items()
+        if any(path.startswith(prefix) for entry in history for path in entry.paths)
+    ]
+    if not cutting:
+        return ()
+    released = _notes_on(base, notes_dir, root, run)
+    found: list[Hold] = []
+    for branch in cutting:
+        tip = tips[branch]
+        name = branches[branch][0]
+        head = run(["rev-parse", tip], root).strip()
+        mine = bool(head) and run(["merge-base", head, "HEAD"], root).strip() == head
+        for version in _cut_versions(tip, base, notes_dir, released, root, run):
+            written = run(
+                ["log", "-1", "--format=%H%x1f%aI", tip, "--", f"{prefix}v{version}.md"], root
+            )
+            commit, _, stamp = written.strip().partition("\x1f")
+            try:
+                since = datetime.fromisoformat(stamp)
+            except ValueError:
+                since = last.get(name, moment)
+            found.append(
+                Hold(
+                    key=version,
+                    ref=name,
+                    kind=CUT,
+                    state=LIVE,
+                    since=since,
+                    renewed=last.get(name, since),
+                    commit=commit,
+                    mine=mine,
+                    on_base=False,
+                )
+            )
+    return tuple(sorted(found, key=lambda hold: (hold.ref, hold.key)))
+
+
+def _editing(
+    touched: dict[str, dict[str, tuple[int, str]]],
+    branches: dict[str, list[str]],
+    tips: dict[str, str],
+    last: dict[str, datetime],
+    held: set[str],
+    base: str,
+    root: Path,
+    run: Runner,
+    copies: dict[str, dict[str, str]],
+) -> tuple[QueueEdit, ...]:
+    """Refs that edited an item's file where nothing holds the item: `FlightReport.editing`.
+
+    The weaker mark (`PL-N1JK`): a second edit to the file collides at merge
+    whatever either was for. An edit the base's tip already accounts for is not
+    one (`PL-8MJ3`), which `vcs._superseded` asks once per branch; the first
+    branch, in the order refs were listed, whose edit survives is reported.
+    """
+    edited: dict[str, QueueEdit] = {}
+    for branch, found in touched.items():
+        wanted = {key: path for key, (_, path) in found.items() if key not in held}
+        if not wanted:
+            continue
+        tip = tips[branch]
+        at_tip = copies.get(tip, {})
+        paths = {key: at_tip.get(key, path) for key, path in wanted.items()}
+        spent = _superseded(tip, base, tuple(sorted(set(paths.values()))), root, run)
+        name = branches[branch][0]
+        for key, path in paths.items():
+            if path not in spent:
+                edited.setdefault(
+                    key, QueueEdit(name=name, item_id=key, last_commit=last.get(name))
+                )
+    return tuple(edited[key] for key in sorted(edited))
