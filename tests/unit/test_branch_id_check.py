@@ -24,15 +24,23 @@ branch outside `claude/` passing and one for the ambiguous name that must not.
 
 `_git` is substituted rather than a repository built, because what is under
 test is the reading of subjects and a branch name, not git.
+
+The claim clauses (`PL-J9S0`) are the exception, and are tested against real
+repositories: what they read is trailers and each commit's own tree, which is
+git's reading and `claims.holdings`'s, and a fake would test the fake. The
+fake-git tests above them get an empty claim record, so nothing they assert
+depends on this checkout's own branches.
 """
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
 import branch_id_check
 import pytest
+from docket.claims import CUTOVER_MARKER, Holdings
 from docket.vcs import answered
 
 
@@ -59,6 +67,7 @@ def _install(
 
     monkeypatch.delenv("GITHUB_HEAD_REF", raising=False)
     monkeypatch.setattr(branch_id_check, "_git", fake)
+    monkeypatch.setattr(branch_id_check, "holdings", lambda *_args, **_kwargs: Holdings())
     monkeypatch.setattr("sys.argv", ["branch_id_check.py"])
 
 
@@ -278,3 +287,234 @@ def test_git_saying_no_is_an_answer_and_git_failing_is_not() -> None:
     assert missing == ""
     assert answered(missing)
     assert not answered(branch_id_check._git(["log", "--format=%s", "no-such-ref..HEAD", "--"]))
+
+
+# The claim record (`PL-J9S0`, `PL-MB2W` § "Design round, 2026-09-24").
+#
+# One instant for every lease, and commit dates a few hours before it, so no
+# claim here lapses and nothing depends on the clock the suite runs under.
+NOW = "2026-09-24T12:00:00+00:00"
+ITEM = "---\nid: PL-K7QX\ntitle: The work\nstatus: ready\n---\n"
+WORK = {"src/work.py": "WORK = 1\n"}
+MARKER = '"""Writes the claim record."""\n'
+
+
+def _commit(repo: Path, subject: str, when: str, **kwargs: object) -> None:
+    """One commit at `when`: `files` written first, `claim` as its trailer paragraph."""
+    files = kwargs.get("files") or {}
+    assert isinstance(files, dict)
+    for path, text in files.items():
+        (repo / path).parent.mkdir(parents=True, exist_ok=True)
+        (repo / path).write_text(text, encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+    message = ["-m", subject]
+    if kwargs.get("claim"):
+        message += ["-m", f"Claim: {kwargs['claim']}"]
+    stamp = f"2026-09-24T{when}:00+00:00"
+    subprocess.run(
+        ["git", "commit", "-q", "--allow-empty", *message],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        env={**os.environ, "GIT_AUTHOR_DATE": stamp, "GIT_COMMITTER_DATE": stamp},
+    )
+
+
+def _branch(repo: Path, name: str, start: str = "main") -> None:
+    subprocess.run(["git", "checkout", "-q", "-b", name, start], cwd=repo, check=True)
+
+
+def _repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, recorded: bool = True) -> Path:
+    """A repository whose `main` holds one item, and the record's marker where `recorded`."""
+    repo = tmp_path / "repo"
+    subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True, capture_output=True)
+    for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", key, value], cwd=repo, check=True)
+    files = {
+        "docs/items/PL-K7QX-the-work.md": ITEM,
+        # As this repository's names it: the default is no notes file at all.
+        "docket.toml": '[docket]\nnotes_file = "docs/WORKING_NOTES.md"\n',
+    }
+    if recorded:
+        # Not empty: the reader asks `git show` for the marker and reads an
+        # empty answer as absent, where the real file is a whole module.
+        files[CUTOVER_MARKER] = MARKER
+    _commit(repo, "c0", "09:00", files=files)
+    monkeypatch.setattr(branch_id_check, "ROOT", repo)
+    monkeypatch.delenv("GITHUB_HEAD_REF", raising=False)
+    return repo
+
+
+@pytest.fixture
+def record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    return _repository(tmp_path, monkeypatch)
+
+
+def _run(monkeypatch: pytest.MonkeyPatch, *argv: str) -> int:
+    monkeypatch.setattr("sys.argv", ["branch_id_check.py", "--now", NOW, *argv])
+    return branch_id_check.main()
+
+
+def test_a_work_branch_holding_no_claim_is_refused(
+    record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # The forgetful session: its subject leads with the id, which the id rule
+    # reads, and it never ran `bin/docket claim`, which the record needs.
+    _branch(record, "claude/some-session-a1b2c3")
+    _commit(record, "PL-K7QX: the work", "10:00", files=WORK)
+
+    assert _run(monkeypatch) == 1
+    assert branch_id_check.CLAIMS_NOTHING in capsys.readouterr().err
+
+
+def test_a_claimed_work_branch_passes(
+    record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _branch(record, "claude/some-session-a1b2c3")
+    _commit(record, "PL-K7QX: start", "10:00", claim="PL-K7QX claude/some-session-a1b2c3 cse_x")
+    _commit(record, "PL-K7QX: the work", "10:30", files=WORK)
+
+    assert _run(monkeypatch) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_a_claim_its_own_close_released_still_counts(
+    record: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The normal finished pull request. Closing the item in the branch's own
+    # copy releases the claim, so "no live claim", read as written, refused
+    # every one of these; the clause is about a branch that never claimed.
+    _branch(record, "claude/some-session-a1b2c3")
+    _commit(record, "PL-K7QX: start", "10:00", claim="PL-K7QX claude/some-session-a1b2c3")
+    _commit(record, "PL-K7QX: the work", "10:30", files=WORK)
+    done = {"docs/items/PL-K7QX-the-work.md": ITEM.replace("status: ready", "status: done")}
+    _commit(record, "PL-K7QX: close it out", "11:00", files=done)
+
+    assert _run(monkeypatch) == 0
+
+
+def test_a_queue_only_branch_owes_no_claim(record: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Per branch, not per id: a capture leads with the id it files and is not
+    # working it, so nothing may push that id into a claim (`PL-3CTW`).
+    _branch(record, "claude/some-session-a1b2c3")
+    _commit(record, "PL-BBBB: capture a finding", "10:00", files={"docs/items/PL-BBBB-x.md": ""})
+
+    assert _run(monkeypatch) == 0
+
+
+def test_a_triage_pass_writing_the_gate_owes_no_claim(
+    record: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Triage puts an item on the debt gate's list in the roadmap, and a design
+    # round keeps its thread in the working notes. Neither is work on an item,
+    # and read as the items directory alone, the queue refused both.
+    _branch(record, "claude/some-session-a1b2c3")
+    gate = {
+        "docs/items/PL-BBBB-x.md": "",
+        "ROADMAP.md": "- PL-BBBB (S) the gate entry\n",
+        "docs/WORKING_NOTES.md": "## the thread\n",
+    }
+    _commit(record, "PL-BBBB: triage onto the gate", "10:00", files=gate)
+
+    assert _run(monkeypatch) == 0
+
+
+def test_a_branch_named_for_its_item_owes_no_claim(
+    record: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _branch(record, "claude/pl-k7qx-the-work")
+    _commit(record, "PL-K7QX: the work", "10:00", files=WORK)
+
+    assert _run(monkeypatch) == 0
+
+
+def test_a_legacy_commit_owes_no_claim(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Made before a session could write a claim: its tree has no marker, so the
+    # clauses skip it and the old rule is all that reads it.
+    repo = _repository(tmp_path, monkeypatch, recorded=False)
+    _branch(repo, "claude/some-session-a1b2c3")
+    _commit(repo, "PL-K7QX: the work", "10:00", files=WORK)
+
+    assert _run(monkeypatch) == 0
+
+
+def test_a_claim_ordering_behind_another_live_claim_is_refused(
+    record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _branch(record, "claude/first-session-a1b2c3")
+    _commit(record, "PL-K7QX: start", "10:00", claim="PL-K7QX claude/first-session-a1b2c3")
+    _branch(record, "claude/second-session-d4e5f6")
+    _commit(record, "PL-K7QX: start", "10:30", claim="PL-K7QX claude/second-session-d4e5f6")
+    _commit(record, "PL-K7QX: the work", "10:45", files=WORK)
+
+    assert _run(monkeypatch) == 1
+    err = capsys.readouterr().err
+    assert "PL-K7QX is claimed first on claude/first-session-a1b2c3" in err
+    assert "bin/docket yield PL-K7QX" in err
+
+    # The holder is told nothing: the order is one answer, read the same way
+    # from either branch.
+    subprocess.run(["git", "checkout", "-q", "claude/first-session-a1b2c3"], cwd=record, check=True)
+    assert _run(monkeypatch) == 0
+
+
+def test_an_old_rule_hold_ordering_first_does_not_fence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A subject leading with an id is an old-rule hold - an inference, which
+    # is what the record replaces - so it does not refuse a recorded claim.
+    repo = _repository(tmp_path, monkeypatch, recorded=False)
+    _branch(repo, "claude/old-session-a1b2c3")
+    _commit(repo, "PL-K7QX: work under the old rule", "10:00", files=WORK)
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=repo, check=True)
+    _commit(repo, "c1", "10:15", files={CUTOVER_MARKER: MARKER})
+    _branch(repo, "claude/new-session-d4e5f6")
+    _commit(repo, "PL-K7QX: start", "10:30", claim="PL-K7QX claude/new-session-d4e5f6")
+
+    assert _run(monkeypatch) == 0
+
+
+def test_claims_the_reader_declined_are_not_checked_rather_than_passed(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _install(monkeypatch, ["PL-CP74: file housekeeping before doing it"])
+    declined = Holdings(declined="git 2.20.1 is older than 2.22")
+    monkeypatch.setattr(branch_id_check, "holdings", lambda *_args, **_kwargs: declined)
+
+    assert branch_id_check.main() == 0
+    assert "claims not checked - git 2.20.1 is older than 2.22" in capsys.readouterr().out
+
+
+def test_the_hint_names_the_claim_before_work_outside_the_queue(
+    record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # A fresh session's branch: nothing on it yet, so nothing claims.
+    _branch(record, "claude/some-session-a1b2c3")
+
+    assert _run(monkeypatch, "--hint", str(record / "src" / "work.py")) == 0
+    assert branch_id_check.CLAIMS_NOTHING in capsys.readouterr().out
+
+
+def test_the_hint_asks_nothing_of_an_item_file_or_a_file_elsewhere(
+    record: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Not asked, so the hook keeps its one question for the first edit that is work.
+    _branch(record, "claude/some-session-a1b2c3")
+    item = record / "docs" / "items" / "PL-K7QX-the-work.md"
+
+    assert _run(monkeypatch, "--hint", str(item)) == branch_id_check.NOT_ASKED
+    assert _run(monkeypatch, "--hint", str(tmp_path / "scratch.md")) == branch_id_check.NOT_ASKED
+    assert capsys.readouterr().out == ""
+
+
+def test_the_hint_is_silent_once_the_branch_claims(
+    record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _branch(record, "claude/some-session-a1b2c3")
+    _commit(record, "PL-K7QX: start", "10:00", claim="PL-K7QX claude/some-session-a1b2c3")
+
+    assert _run(monkeypatch, "--hint", str(record / "src" / "work.py")) == 0
+    assert capsys.readouterr().out == ""

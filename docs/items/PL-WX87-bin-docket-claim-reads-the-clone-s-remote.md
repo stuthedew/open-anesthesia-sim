@@ -49,6 +49,15 @@ every other stale tracking ref in the clone. Either wants a real-git test in
 `subprojects/docket/tests/test_claiming.py` whose clone holds a tracking ref
 the remote does not have.
 
+**Second observation, 2026-09-24.** `PL-J9S0`'s session hit it too, on
+`claude/affectionate-feynman-h9m9tv`: the clone's
+`refs/remotes/origin/claude/affectionate-feynman-h9m9tv` was written at
+07:31:46Z, five seconds after the session was created, with an empty reflog
+message and `main`'s commit; `branch.<name>.remote` and `.merge` were
+configured; `claim` said "not pushed: the branch is on the remote"; and the
+push by hand then reported `[new branch]`. Two sessions of two, so the harness
+seeds the ref for every session here.
+
 **Done when.** `bin/docket claim` on a branch the remote does not have
 pushes the claim even where the clone holds a tracking ref for it, and says
 the branch is on the remote only when the remote says so, with a real-git test

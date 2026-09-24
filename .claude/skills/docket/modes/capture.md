@@ -255,6 +255,9 @@ branch of its own.
 check` and CI fail a branch ahead of `main` that carries no id in its name and
 leads no commit subject with one. It decides visibility only, never whether the
 work deserved an item — that judgment is the paragraph above and stays here.
+Since `PL-J9S0` it also fails a branch whose work outside the queue claims
+nothing, so housekeeping filed as an item is claimed like any other work,
+`bin/docket claim <id>` before its first commit; the first-edit hook says so.
 
 It binds the `claude/*` namespace and nothing outside it (`PL-8P6D`), so a
 session that names its branch anything else is unchecked rather than exempt:
