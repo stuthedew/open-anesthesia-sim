@@ -4989,6 +4989,8 @@ NO_GIT_ARGV: tuple[tuple[str, ...], ...] = (
     ("withdraw", "PL-B1B1", "PL-D4D4", "--because", "PL-D1D1"),
     ("set", "PL-B1B1", "--payoff", "a payoff"),
     ("new", "An idea captured under the flag"),
+    ("claim", "PL-B1B1"),
+    ("yield", "PL-B1B1"),
 )
 
 
