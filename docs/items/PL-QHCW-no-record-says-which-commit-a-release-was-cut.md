@@ -11,6 +11,7 @@ added: 2026-09-23
 payoff: The commit a release was cut on becomes a recorded fact, so the tag and its readers stop disagreeing
 root-cause-of: PL-VYK1, PL-6YYR, PL-KFWL, PL-BKDP, PL-YKSD, PL-6SV4
 generator: live - release.md:191 still hands the owner git tag -a from origin/main and cli.py:2694 prints an unfilled MERGE_COMMIT, so no record says which commit a cut was made on; three members are open
+misread: Which commit a release was cut on, if it was cut at all
 ---
 
 **Problem.** No record says which commit a release was cut on: release.md hands the owner a tag placed by hand from a moving ref, and each reader then takes the tag for the cut - six items, three open

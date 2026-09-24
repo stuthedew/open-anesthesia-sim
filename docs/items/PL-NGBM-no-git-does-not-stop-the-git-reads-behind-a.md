@@ -15,6 +15,7 @@ payoff: --no-git either means what its help says or says what it means, so a ses
 verify: grep -q 'def test_no_git_stops_every_git_read' subprojects/docket/tests/test_cli.py && grep -q 'def test_every_git_read_in_the_cli_takes_the_invocations_runner' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-T441, PL-WF3X, PL-N0MH, PL-3T2Q, PL-M6FY, PL-P757
 generator: spent - cli.py resolves one Invocation per command, the one place root, store, settings, the store's git prefix and the runner are derived; test_no_git_stops_every_git_read and test_every_git_read_in_the_cli_takes_the_invocations_runner fail any call site that goes round it
+misread: Where the item store sits relative to the repository root, as the path prefix git prints for it
 ---
 
 **Problem.** `_flight`, `_stranded` and `_orphaned` each return an empty

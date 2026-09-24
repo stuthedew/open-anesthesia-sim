@@ -16,6 +16,7 @@ payoff: the commission audit says it could not read the diff when the base does 
 verify: grep -q 'def test_changed_paths_declines_an_unresolvable_base' subprojects/docket/tests/test_verify.py
 root-cause-of: PL-19T3, PL-ZPDM, PL-73P0, PL-MM7F
 generator: spent - both runners it named now raise rather than answer. verify's seven reads go through _git, verify_item reports anything they raise as the diff could not be read, and test_verify fails any _run status bound to _. doc_check's _git raises, and candidates says it swept nothing. PL-19T3 is left: _run_git has a channel and reads exit 1 outside a repository as an answer
+misread: Whether a git read answered or failed
 ---
 
 **Problem.** verify.changed_paths discards _run's exit status and _run returns combined stdout+stderr, so any base that does not resolve makes git's three-line fatal message come back as three changed paths and the commission audit reports them as findings while missing the real ones

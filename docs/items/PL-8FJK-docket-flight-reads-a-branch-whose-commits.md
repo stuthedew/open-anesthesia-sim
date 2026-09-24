@@ -15,6 +15,7 @@ payoff: docket next stops offering an item a grooming branch is already dropping
 verify: grep -q 'def test_a_branch_closing_an_item_the_base_holds_open_is_in_flight' subprojects/docket/tests/test_vcs.py
 root-cause-of: PL-3W3P, PL-7790, PL-8GV1, PL-VYSP
 generator: spent - this record takes no later member: its mechanism, a claim read from where a commit wrote rather than what it did to the item, is recorded from 2026-09-23 on PL-MB2W, which ranks it live and holds the four instances filed since this closed
+misread: Who holds an item now, and whether that holder is still live
 recurrences: 2026-09-22 PL-8GV1
 ---
 

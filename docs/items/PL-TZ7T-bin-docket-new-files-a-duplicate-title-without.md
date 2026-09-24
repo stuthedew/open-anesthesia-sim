@@ -14,6 +14,7 @@ pr: 793
 payoff: stops one defect being diagnosed three times - it has happened five times now, and each duplicate costs a full brief written by a session that could not know the first existed
 verify: grep -q 'def test_new_names_an_existing_item_with_a_near_identical_title' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-BHBZ, PL-4FD2, PL-5QLP, PL-QMC0
+misread: Whether an open item already describes the mechanism a new capture names
 recurrences: 2026-08-30 PL-TH7P
 ---
 

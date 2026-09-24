@@ -15,6 +15,7 @@ payoff: replaces six line-level special cases with one parsed comparison against
 verify: grep -q 'def test_a_parenthesized_multi_manager_with_is_an_assertion_removed' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_replacement_that_loosens_the_assertion_is_not_folded_away' subprojects/docket/tests/test_verify.py && grep -q 'def test_a_removal_is_not_charged_to_an_id_whose_selection_excludes_the_addition' subprojects/docket/tests/test_verify.py && ! grep -q 'def replacements(' subprojects/docket/src/docket/verify.py
 root-cause-of: PL-5B88, PL-YZJD, PL-2DTK, PL-CNJH, PL-XQGH
 generator: spent - for the assertion half: the line matcher that inferred intent from single diff lines is retired, and the check reads parsed statements against the base; the suppression half keeps its marker list by PL-G21K's ratified resolution, and its open remainder PL-DNZ0 is a small fixed set of documented skip, fail and ignore forms rather than a mechanism still producing
+misread: Whether a branch's diff weakens its tests: a disabled test, or an assertion removed or loosened
 ---
 
 **Problem.** design round: pick the altitude for verify's assertion check before the next of its three open items is worked, since six fixes have each uncovered the next and PL-G21K's ratified decision reached only the suppression check beside it

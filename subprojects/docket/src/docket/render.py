@@ -40,6 +40,7 @@ from .plan import (
     Cluster,
     Feature,
     Gate,
+    Overlap,
     effort_total,
     placement_clause,
     placement_mark,
@@ -1114,6 +1115,12 @@ def format_generators(heads: Sequence[Item]) -> str:
         lines.append(
             f"    {head.identifier} ({head.status}) root cause of {named} - {_gloss(head.title)}"
         )
+        # The fact the member misread, beside the head that states it: the
+        # member is read to be started, and this is the line that says whether
+        # it is one more instance of a record some reader already lacked
+        # (`PL-5MYR`).
+        if head.misread:
+            lines.append(f"      misread: {head.misread}")
     lines.append(f"    {closing}")
     return "\n".join(lines)
 
@@ -1199,7 +1206,10 @@ def format_drain(cluster: Cluster) -> str:
 
 
 def format_clusters(
-    clusters: Mapping[str, Cluster], unsound: Sequence[Item] = (), defects: Sequence[Item] = ()
+    clusters: Mapping[str, Cluster],
+    unsound: Sequence[Item] = (),
+    defects: Sequence[Item] = (),
+    overlaps: Sequence[Overlap] = (),
 ) -> str:
     """Every generator against how much of its cluster is still open.
 
@@ -1228,6 +1238,15 @@ def format_clusters(
     different facts and this is the table where the first is audited. A closed
     head carries none: it is startable by nothing, so its verdict moves no
     ranking and the clause would decide nothing.
+
+    **Under each head, the fact its members misread rather than its title**
+    (`PL-5MYR`). Heads were compared with nothing, so one record read by
+    several readers got a head per reader; the title names the reader and the
+    `misread:` line names the record, which is the half a comparison needs. A
+    head that states none says so and falls back to its title. The pairs of
+    heads whose member lists overlap follow the list - decidable, and a hint
+    rather than a verdict, since two heads can share a record over disjoint
+    members.
     """
     if not clusters:
         lines = ["no item carries a sound `root-cause-of:`, so no generator is recorded"]
@@ -1251,8 +1270,89 @@ def format_clusters(
             f"{_plural(len(cluster.members), 'member', 'members')}, {_drain_phrase(cluster)}"
             f"{_verdict_phrase(cluster.head)}"
         )
-        lines.append(f"      {_gloss(cluster.head.title, 64)}")
+        lines.append(f"      {_misread_or_title(cluster.head)}")
+    lines.extend(_format_overlaps(overlaps))
     lines.extend(_outside_clusters(unsound, defects))
+    return "\n".join(lines)
+
+
+def _misread_or_title(head: Item) -> str:
+    """The fact a head's members misread, or its title marked as the stand-in."""
+    if head.misread:
+        return head.misread
+    return f"[no misread:] {_gloss(head.title, 48)}"
+
+
+def _format_overlaps(overlaps: Sequence[Overlap]) -> list[str]:
+    """The pairs of heads whose clusters touch, as lines under a heading, or none.
+
+    Worded as what it is - two lists sharing an id, or one head naming the
+    other - because the intersection is not the comparison: it missed two of
+    the five shared records `PL-T7Y1`'s audit found, whose members were
+    disjoint (`PL-5MYR`). The heading sends the reader to the two `misread:`
+    lines, which is where the judgment is made.
+    """
+    if not overlaps:
+        return []
+    lines = [
+        "",
+        f"  {_plural(len(overlaps), 'pair of heads overlaps', 'pairs of heads overlap')} - "
+        "a fact about the two lists, not a verdict that they share a record; read both "
+        "`misread:` lines:",
+    ]
+    for pair in overlaps:
+        one, other = pair.first.identifier, pair.second.identifier
+        clauses = []
+        if pair.shared:
+            clauses.append(f"{one} and {other} share {', '.join(pair.shared)}")
+        if pair.first_names_second:
+            clauses.append(f"{one} names {other}")
+        if pair.second_names_first:
+            clauses.append(f"{other} names {one}")
+        lines.append(f"    {'; '.join(clauses)}")
+    return lines
+
+
+def format_misread(
+    clusters: Mapping[str, Cluster], overlaps: Sequence[Overlap] = (), unsound: Sequence[Item] = ()
+) -> str:
+    """What each head's members misread, sorted by the fact - `docket generators --misread`.
+
+    The list triage and grooming compare a capture against, and the one a
+    session reads to compare heads with each other: one line per head, sorted
+    by the stated fact so that two heads naming one record sit together, which
+    is the comparison nobody was making (`PL-5MYR`). Sorted case-insensitively
+    because the order is for a reader's eye, then by id so it is stable.
+
+    A head stating nothing is listed last rather than left out, for the
+    apparatus floor: a head missing from this list is a head a capture is
+    never compared against, and omitting it silently would hand over a partial
+    reading as the whole one. `docket check` names each as an error. An item
+    whose `root-cause-of:` is unsound is on no list here, being no head, and
+    is named after it for the same reason, as `format_clusters` names it.
+    """
+    if not clusters:
+        lines = ["no item carries a sound `root-cause-of:`, so no generator is recorded"]
+        return "\n".join(lines + _outside_clusters(unsound, ()))
+    heads = [cluster.head for cluster in clusters.values()]
+    stated = sorted(
+        (head for head in heads if head.misread),
+        key=lambda head: (head.misread.casefold(), head.identifier),
+    )
+    missing = sorted((head for head in heads if not head.misread), key=lambda h: h.identifier)
+    labels = {head.identifier: f"{head.identifier} ({head.status})" for head in heads}
+    width = max(len(label) for label in labels.values())
+    lines = [
+        f"What the members of each of {_plural(len(heads), 'head', 'heads')} misread, sorted "
+        "by the fact so heads stating one fact sit together:",
+        "",
+    ]
+    for head in stated:
+        lines.append(f"  {labels[head.identifier]:<{width}}  {head.misread}")
+    for head in missing:
+        lines.append(f"  {labels[head.identifier]:<{width}}  [no misread:] - docket check names it")
+    lines.extend(_format_overlaps(overlaps))
+    lines.extend(_outside_clusters(unsound, ()))
     return "\n".join(lines)
 
 
@@ -1287,7 +1387,8 @@ def _outside_clusters(unsound: Sequence[Item], defects: Sequence[Item]) -> list[
         lines.append("")
         lines.append(
             f"  {_plural(len(closed), 'closed item carries', 'closed items carry')} a sound "
-            f"`impairs-generators:` and ranks on no tier, being closed: {named}"
+            f"`impairs-generators:` and {'ranks' if len(closed) == 1 else 'rank'} on no tier, "
+            f"being closed: {named}"
         )
     return lines
 
@@ -1312,8 +1413,10 @@ def format_cluster(cluster: Cluster) -> str:
         f"{_plural(len(cluster.members), 'item', 'items')}: "
         f"{len(cluster.done)}/{len(cluster.members)} done ({left})",
         f"  {_gloss(head.title, 72)}",
-        f"  {_drain_phrase(cluster)}",
     ]
+    if head.misread:
+        lines.append(f"  misread: {head.misread}")
+    lines.append(f"  {_drain_phrase(cluster)}")
     for item in cluster.members:
         lines.append(f"  [{progress_mark(item)}] {item.identifier} {item.title}")
     return "\n".join(lines)
@@ -1397,8 +1500,8 @@ def format_recurrences(item: Item) -> str:
         if recurrence_count(item) >= MIN_RECURRENCES:
             lines.append(
                 "    That is the generator threshold. Read them against this brief: one "
-                "mechanism means `docket set <id> --root-cause-of <ids>`, which is a "
-                "judgment nothing here makes for you."
+                "mechanism means `docket set <id> --root-cause-of <ids> --generator "
+                "<verdict> --misread <fact>`, which is a judgment nothing here makes for you."
             )
     if withdrawn:
         lines.append("  Matched and withdrawn, counting for nothing:")
