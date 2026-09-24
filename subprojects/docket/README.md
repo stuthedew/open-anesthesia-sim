@@ -1055,6 +1055,15 @@ both are startable the ordinary terms below settle the order rather than a
 sub-order nobody decided. Its reason line quotes the declared prose instead of
 naming items, because that prose is the only evidence the claim has.
 
+A live generator head at `blocked` is startable by nothing, so it would leave
+the tier - and that is the shape a design round leaves when it decomposes the
+fix, since `status: ready` may not declare an open blocker. Its rank passes to
+the open items it is blocked on: each ranks on the tier with a reason line
+naming the head it unblocks, and `docket show` on it says the same (`PL-QFWF`).
+Only what the head holds passes, so a spent head's blockers rank on their
+bands, and only one edge down: a chain through a blocked blocker, or a head
+waiting on a milestone alone, still ranks nothing (`PL-4RK2`).
+
 ### What newer work keeps outranking: `docket next --oldest`
 
 Every term `next` ranks on favours work that is newer, more urgent or more
