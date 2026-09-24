@@ -101,6 +101,12 @@ MIN_ROOT_CAUSE_ITEMS = 3
 # exists to undo.
 GENERATOR_VERDICTS = ("live", "spent")
 
+# The longest `misread:` a head may carry, after stripping. The field is one
+# line of a listing read whole - 35 heads print as about 50 lines under
+# `docket generators --misread` - and a line grown into a brief is the reading
+# cost the field exists to remove (`PL-5MYR`).
+MISREAD_LIMIT = 100
+
 # How many recorded recurrences make a cluster the size that floor describes.
 # Derived rather than chosen, because the item is itself the first filing: an
 # item carrying two recurrences has been filed three times, which is the three
@@ -524,6 +530,35 @@ class Item:
     #: verdict is - the arrangement `root_cause_faults` and
     #: `generator_defect_faults` both already have.
     generator: str = ""
+    #: The one fact this head's members misread, in one line: the thing that,
+    #: held once as a record every reader consults, would have made each member
+    #: impossible. Named for the fact and never for its reader - "who holds an
+    #: item now, and whether that holder is still live", not "flight reads
+    #: commit subjects" - so a second head whose members misread the same fact
+    #: writes the same words, and the two sort next to each other.
+    #:
+    #: **It exists because heads were compared with nothing** (`PL-5MYR`).
+    #: Triage compared each new item with one head at a time and never compared
+    #: heads with each other, so one record read by several readers got a head
+    #: per reader: "who holds an item" took four (`PL-4Q9B`, `PL-BHVM`,
+    #: `PL-8FJK`, `PL-7TVT`) before `PL-MB2W` named it, and gate prose took
+    #: three before `PL-WD5Z`. The audit that found them read every brief, at
+    #: 262 agents (`PL-T7Y1`). A set intersection of `root_cause_of` lists
+    #: recovered some of what it found and missed `PL-J6HP` with `PL-WD5Z`,
+    #: two heads over one record whose member lists are disjoint - so the
+    #: overlap is a hint, and the stated fact is what carries the comparison.
+    #:
+    #: **Required on a closed head too, unlike `generator`.** A verdict on a
+    #: closed head moves no ranking; a closed head's stated fact is exactly
+    #: what a later capture is compared against, and "an instance of a closed
+    #: head's mechanism, filed after the head closed" is triage's first
+    #: landing - `PL-7TVT` closed spent with five members filed after it.
+    #:
+    #: Presence, the missing-cluster case and `MISREAD_LIMIT` are decidable and
+    #: live in `misread_faults`. Whether the line names the right fact, and
+    #: whether two heads' lines name one, is judgment and stays a session's;
+    #: `docket generators --misread` makes that reading one screen.
+    misread: str = ""
     #: Every time a session filed a capture that `bin/docket new` matched to
     #: this item, as `DATE PL-XXXX` entries - the date of the filing and the id
     #: of the capture that matched. A re-filing is not only waste: it is
@@ -954,6 +989,61 @@ def generator_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     return tuple(faults)
 
 
+def misread_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
+    """Why a head's `misread:` line is not usable, or `()`.
+
+    Built like `generator_faults` beside it, and read by `checks.py` and by
+    `docket show`, so the error and the line a session reads on the head
+    cannot disagree about what the field owes.
+
+    **Required on every sound head, closed ones included** - which is where
+    this parts from `generator_faults`, and on purpose. A verdict on a closed
+    head moves no ranking, so demanding one would invent a judgment nothing
+    reads. A closed head's stated fact is read: it is exactly what a later
+    capture is compared against, and "an instance of a closed head's
+    mechanism, filed after the head closed" is triage's first landing -
+    `PL-7TVT` closed spent with five members filed after it. Nor does the
+    backfill invent anything: `PL-T7Y1`'s audit compared every head, and
+    `PL-5MYR` wrote each line from it and checked it against its head.
+
+    A line with no cluster under it is faulted from the other end, as a verdict
+    without one is: it states what a cluster misread and records none, so the
+    reader is told which field is missing. An *unsound* `root-cause-of:` owes
+    nothing here - `root_cause_faults` already reports it, and until it is
+    repaired there is no head to compare.
+
+    The decidable half only: presence, a cluster to be about, and
+    `MISREAD_LIMIT`. Whether the line names the right fact - and whether two
+    heads' lines name the same one - is judgment, checked nowhere, and is what
+    `docket generators --misread` puts on one screen.
+    """
+    text = item.misread.strip()
+    if not text:
+        if is_generator(item, known):
+            return (
+                "is absent, so this head cannot be compared with the others; write the one "
+                "fact its members misread - the thing that, held once as a record every "
+                "reader consults, would have made each member impossible - so the next "
+                "capture, or a second head reading the same fact, meets it in "
+                "`docket generators --misread`",
+            )
+        return ()
+
+    faults: list[str] = []
+    if not item.root_cause_of:
+        faults.append(
+            "states what a cluster misread, but this item records no cluster; write the "
+            "`root-cause-of:` naming the items, or drop this field"
+        )
+    if len(text) > MISREAD_LIMIT:
+        faults.append(
+            f"runs to {len(text)} characters, over the {MISREAD_LIMIT} allowed; it is one "
+            "line of a listing read whole, and a line grown into a brief is the reading "
+            "cost this field exists to remove"
+        )
+    return tuple(faults)
+
+
 def ranks_as_generator(item: Item, known: Collection[str]) -> bool:
     """Whether this item's generator claim earns the tier, not merely the record.
 
@@ -1344,6 +1434,7 @@ def parse_item(text: str, path: str = "") -> Item:
         "falsifies",
         "root-cause-of",
         "generator",
+        "misread",
         "impairs-generators",
         "recurrences",
     }
@@ -1369,6 +1460,7 @@ def parse_item(text: str, path: str = "") -> Item:
         falsifies=fields.get("falsifies", ""),
         root_cause_of=_split_list(fields.get("root-cause-of", "")),
         generator=fields.get("generator", ""),
+        misread=fields.get("misread", ""),
         impairs_generators=fields.get("impairs-generators", ""),
         recurrences=_split_list(fields.get("recurrences", "")),
         deferred_from=fields.get("deferred-from", ""),
@@ -1411,6 +1503,7 @@ FIELD_ORDER = (
     "falsifies",
     "root-cause-of",
     "generator",
+    "misread",
     "impairs-generators",
     "recurrences",
 )
@@ -1446,6 +1539,7 @@ def _front_matter_values(item: Item) -> dict[str, str]:
         "falsifies": item.falsifies,
         "root-cause-of": ", ".join(item.root_cause_of),
         "generator": item.generator,
+        "misread": item.misread,
         "impairs-generators": item.impairs_generators,
         "recurrences": ", ".join(item.recurrences),
     }

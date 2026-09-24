@@ -6957,6 +6957,195 @@ def test_show_on_a_head_says_how_much_of_its_cluster_is_open(
     assert "`docket generators PL-4040` lists them" in output
 
 
+# --- misread: the fact a head's members misread (`PL-5MYR`) -----------------
+#
+# Heads were compared with nothing, so one record read by several readers got a
+# head per reader. These pin the surfaces that make the comparison one screen:
+# the line under each head, the pairs whose clusters overlap, the sorted list,
+# and the two `show` paths and the `set` write.
+
+_MISREAD = "Who holds an item now, and whether that holder is still live"
+
+
+def _overlapping_heads(tmp_path: Path, **third: str) -> Path:
+    """Two heads sharing `PL-D3D3` - one stating its misread, one not - and a third apart."""
+    return _store(
+        tmp_path,
+        _clustered(
+            "PL-4040",
+            "The shared refresh nobody owns",
+            names=_MEMBERS,
+            generator=_LIVE,
+            misread=_MISREAD,
+        ),
+        _clustered(
+            "PL-5050",
+            "Another reader of one record",
+            names="PL-D3D3, PL-F5F5, PL-G6G6",
+            generator=_LIVE,
+        ),
+        _clustered(
+            "PL-6060",
+            "A head apart from both",
+            names="PL-H7H7, PL-J8J8, PL-K9K9",
+            status="done",
+            closed="2026-08-20",
+            **third,
+        ),
+        *(
+            _clustered(member, f"Member {member}")
+            for member in (
+                "PL-B1B1",
+                "PL-C2C2",
+                "PL-D3D3",
+                "PL-F5F5",
+                "PL-G6G6",
+                "PL-H7H7",
+                "PL-J8J8",
+                "PL-K9K9",
+            )
+        ),
+    )
+
+
+def test_generators_prints_each_heads_misread_and_the_heads_that_overlap(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The line names the record, the title the reader; the overlap is a hint, not a verdict."""
+    store = _overlapping_heads(tmp_path)
+
+    assert _run("generators", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert f"\n      {_MISREAD}\n" in output
+    assert "\n      [no misread:] Another reader of one record\n" in output
+    assert "The shared refresh nobody owns" not in output
+    assert (
+        "\n\n  1 pair of heads overlaps - a fact about the two lists, not a verdict that they "
+        "share a record; read both `misread:` lines:\n"
+        "    PL-4040 and PL-5050 share PL-D3D3\n"
+    ) in output
+    assert "PL-6060 and" not in output and "and PL-6060" not in output
+
+
+def test_generators_prints_no_overlap_block_where_no_heads_overlap(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store = _cluster(tmp_path, names=_MEMBERS, generator=_LIVE, misread=_MISREAD)
+
+    assert _run("generators", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert _MISREAD in output
+    assert "overlap" not in output
+
+
+def test_generators_misread_sorts_by_the_fact_and_puts_missing_lines_last(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Case-insensitively, so a lower-case fact is not sorted after every capital.
+
+    A plain sort would put `Who ...` ahead of `the ...`; the order is for a
+    reader's eye, so two heads naming one record sit together whatever case
+    each was typed in. A head stating none is listed last, never left out.
+    """
+    store = _overlapping_heads(tmp_path)
+    (store / "item-1.md").write_text(
+        _clustered(
+            "PL-5050",
+            "Another reader of one record",
+            names="PL-D3D3, PL-F5F5, PL-G6G6",
+            generator=_LIVE,
+            misread="the tree fact a document sentence restates",
+        ),
+        encoding="utf-8",
+    )
+
+    assert _run("generators", "--misread", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert output.startswith(
+        "What the members of each of 3 heads misread, sorted by the fact so heads stating "
+        "one fact sit together:\n\n"
+        "  PL-5050 (ready)  the tree fact a document sentence restates\n"
+        f"  PL-4040 (ready)  {_MISREAD}\n"
+        "  PL-6060 (done)   [no misread:] - docket check names it\n"
+    )
+    assert "    PL-4040 and PL-5050 share PL-D3D3" in output
+
+
+def test_generators_on_a_head_prints_its_misread(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store = _overlapping_heads(tmp_path)
+
+    assert _run("generators", "PL-4040", "--items", str(store)) == 0
+
+    assert f"\n  misread: {_MISREAD}\n" in capsys.readouterr().out
+
+
+def test_show_on_a_head_prints_its_misread_beside_the_verdict(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store = _cluster(tmp_path, names=_MEMBERS, generator=_LIVE, misread=_MISREAD)
+
+    assert _run("show", "PL-4040", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert f"  generator: {_LIVE}\n" in output
+    assert f"  misread: {_MISREAD}\n" in output
+    assert "UNSOUND" not in output
+
+
+def test_show_on_a_closed_head_with_no_misread_says_the_field_is_missing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Closed heads owe it too: a closed head's fact is what a capture is compared against."""
+    store = _cluster(tmp_path, names=_MEMBERS, status="done", closed="2026-08-20")
+
+    assert _run("show", "PL-4040", "--items", str(store)) == 0
+
+    assert "  misread: is absent, so this head cannot be compared" in capsys.readouterr().out
+
+
+def test_show_on_a_member_prints_the_misread_of_the_head_explaining_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store = _cluster(tmp_path, names=_MEMBERS, generator=_LIVE, misread=_MISREAD)
+
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert (
+        "    PL-4040 (ready) root cause of 3 items - The shared refresh nobody owns\n"
+        f"      misread: {_MISREAD}\n"
+    ) in output
+
+
+def test_set_writes_a_misread_directly_after_the_verdict(tmp_path: Path) -> None:
+    store = _cluster(tmp_path, names=_MEMBERS, generator=_LIVE)
+
+    assert _run("set", "PL-4040", "--misread", _MISREAD, "--items", str(store)) == 0
+
+    assert (
+        f"root-cause-of: {_MEMBERS}\ngenerator: {_LIVE}\nmisread: {_MISREAD}\n---\n"
+        in _item_text(store)
+    )
+
+
+def test_set_refuses_a_misread_over_the_limit(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Validated at write time the way `generator:` is: by what `check` would then add."""
+    store = _cluster(tmp_path, names=_MEMBERS, generator=_LIVE)
+    before = _item_text(store)
+
+    assert _run("set", "PL-4040", "--misread", "x" * 101, "--items", str(store)) == 1
+
+    assert "runs to 101 characters" in capsys.readouterr().out
+    assert _item_text(store) == before
+
+
 class TestAskingTheForgeWhichBranchesAreOpen:
     """`flight`'s forge half, and the one way it must never fail.
 

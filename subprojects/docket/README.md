@@ -1973,6 +1973,49 @@ the half `CLAUDE.md` refuses to script, while looking authoritative; the
 vocabulary is the decidable half a tool may read, and the sentence beside it is
 what a later reader needs in order to overturn it.
 
+`misread` is a head's third field, and the one that makes it comparable: one
+line naming **the one fact the head's members misread** — the thing that, held
+once as a record every reader consults, would have made each member impossible
+(`PL-5MYR`). Heads used to be compared with nothing. Triage compared each new
+item with one head at a time and never compared heads with each other, so one
+record read by several readers got a head per reader: "who holds an item" took
+four heads (`PL-4Q9B`, `PL-BHVM`, `PL-8FJK`, `PL-7TVT`) before `PL-MB2W` named
+it, and gate prose took three before `PL-WD5Z`. The audit that found them
+(`PL-T7Y1`) compared every head by reading every brief, which took 262 agents.
+
+The line is worded so that a second head reading the same fact would write the
+same words, since that is what puts the two next to each other:
+
+- **The fact, not the reader.** No function, command, file or check that
+  misread it, and no symptom or fix: "Who holds an item now, and whether that
+  holder is still live" — not "flight reads commit subjects", not "record
+  claims as trailers".
+- **A noun phrase, or a who/whether/which/what clause, that begins with the
+  fact's subject**, so heads stating one fact sort together.
+- **The majority's fact** where most members misread one fact and a few
+  another; and where the members share no single stored fact, **the record the
+  readers lacked**, in the same form — the link between a document sentence and
+  the tree fact it restates, for instance.
+
+`docket check` requires it on **every sound head, open or closed** — unlike
+`generator`, which a closed head is not asked for. A verdict on a closed head
+moves no ranking; a closed head's stated fact is exactly what a later capture
+is compared against, and "an instance of a closed head's mechanism, filed after
+the head closed" is triage's first landing — `PL-7TVT` closed spent with five
+members filed after it. Backfilling the closed heads invented nothing:
+`PL-T7Y1` had compared every head, and each line was written from it and
+checked against its head. The line is bounded at **100 characters**, because it
+is one line of a listing read whole — 35 heads print as about 50 lines — and a
+line grown into a brief is the reading cost the field exists to remove. A
+`misread:` on an item recording no `root-cause-of:` is faulted too; an unsound
+`root-cause-of:` owes none until it is repaired, since until then there is no
+head to compare.
+
+Presence, a cluster to be about and the bound are decidable, and are errors.
+Whether the line names the right fact, and whether two heads' lines name the
+same one, is judgment, checked nowhere: `docket generators --misread` is what
+makes that reading one screen.
+
 The edge reads from both ends. `docket show` on an item that some sound claim
 names prints the head, its status and how many items it explains, because the
 field is written on the head alone: a session reaching a *member* by name -
@@ -1989,6 +2032,22 @@ project has recorded is closed while most of what each names is not. Given an
 id the command lists that cluster's members the way `docket feature` lists a
 feature's, and a member's id resolves to the head above it, since that is the
 id a session is usually holding.
+
+Under each head the summary prints its `misread:` line rather than its title —
+the title names a reader, the line names the record, and a comparison needs the
+record — or `[no misread:]` and the title where a head states none. After the
+list come **the pairs of heads whose clusters overlap**: two heads whose member
+lists share an id, or one whose members include the other head. That is a fact
+about two lists, not a verdict that the heads share a record, and it is printed
+as a pointer to both `misread:` lines. It is also the half of the comparison a
+tool can make and no more: on 2026-09-23 it named 11 pairs plus one nesting
+(`PL-BHVM` names `PL-R808`) and recovered three of the five shared records
+`PL-T7Y1` verified, but it missed the other two, whose members were disjoint.
+`docket generators --misread` prints only the lines, one per head, sorted by the
+fact so heads stating one sit together, with the heads that state none last and
+the overlap block after — the list triage and grooming compare a capture
+against. `docket show` prints a head's line beside its verdict, and on a member
+beside each head that explains it.
 
 The report carries a **trend** as well as the present split, measured against
 the head's own `closed:` date, because "unchanged since the cause was fixed" is
