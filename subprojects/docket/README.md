@@ -41,6 +41,8 @@ docket claim PL-K7QX         # record that this branch holds an item: one empty 
                              # pushed where the remote has no copy of the branch yet
 docket claim PL-K7QX --over claude/x --reason "..."   # ...taking it over from a dead claim
 docket yield PL-K7QX         # end this branch's claim without closing the item
+docket arm                   # whether this branch's pull request may be armed:
+                             # arm, hold, behind N or unknown, exiting 0, 1, 1 or 2
 docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
 docket stranded              # work that exists only on a branch

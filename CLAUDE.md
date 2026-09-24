@@ -403,11 +403,11 @@ deviating from a described deliverable, not acting without one.
   work no item names — resolving a merge, clearing a stale ref, a docs sweep, a
   lint fix, recovering a stranded item. Every in-flight guard matches a `PL-`
   id, so unfiled work reads as nobody's to all of them and keeps reading that
-  way after both sessions have pushed. So file the item first, then work under
-  its id. Not for a fix riding inside a commit an id already leads: the line is
-  whether the work takes a commit of its own (`PL-CP74`) — and not for one the
-  fix-now rule admits, whose own commit still leads with the current item's id,
-  so every guard that matches a `PL-` id still sees it.
+  way after both sessions have pushed. So file the item first, then claim it
+  and work under its id. Not for a fix riding inside a commit an id already
+  leads: the line is whether the work takes a commit of its own (`PL-CP74`) —
+  and not for one the fix-now rule admits, which rides the current item's
+  claim.
 - **A root cause of more than two items is pulled, not queued** (project owner,
   2026-09-17). A mechanism a session identifies as the cause of three or more
   items is a *generator*. Record it on the causing item as `root-cause-of:`
@@ -483,12 +483,11 @@ deviating from a described deliverable, not acting without one.
   and `PL-034`'s one-time trim regrew inside a release. Naming the payment is the
   smallest thing that makes the growth a decision instead of a default; it is not
   a ceiling, which this file has already refused.
-- **Name the work after the item.** On starting one, rename the session to lead
-  with its id, and put that id **at the front of every commit subject** and pull
-  request title. This is load-bearing rather than cosmetic: `bin/docket flight`
-  recovers in-flight state by parsing commit subjects, so a session that commits
-  without a leading id makes its own work invisible to every other session's
-  `bin/docket next`. **A commit closing more than one item leads with all of
+- **Name the work after the item.** On starting one, claim it with
+  `bin/docket claim`, rename the session to lead with its id, and put that id
+  **at the front of every commit subject** and pull request title. The claim
+  tells every other session the item is taken; the leading id attributes each
+  commit to it. **A commit closing more than one item leads with all of
   them**, comma-separated: `docket check` recovers a closed item's pull request
   from the newest subject naming it, so a rider whose id never leads one is
   attributed to its own capture commit instead (`PL-GW37`). Name the branch too
@@ -506,20 +505,14 @@ deviating from a described deliverable, not acting without one.
   `main` even when its session ends before any work does (project owner,
   2026-09-23, ratified, over "a branch carrying only captured items is not a
   pull request", `PL-WNCT`), unless `main` has moved past its base by the time
-  its CI is green (`PL-S5MF`). **A claim on the branch leaves it unarmed and a draft, whichever push carried
-  it**: the empty start commit, or a queue-only commit
-  that start mode reads as one, such as a `needs-decision` design round. It
-  holds until its item is closed or blocked in the branch's own copy, because
-  the merge would erase the claim with the branch (project owner, 2026-09-23,
-  ratified, over arming whatever rode the push, `PL-QP9Z`, over reading only a
-  start claim on that push, `PL-1MCK`, and over holding it past the item's
-  closing, `PL-KWCY`; blocked releases it too, 2026-09-24, ratified, over holding it until closed, `PL-3FYK`; the draft, 2026-09-24, ratified, over
-  opening none while a claim rides or titling it as the capture, because `#978`
-  was merged by hand while its claim was open, `PL-H14W`). So while only item
-  files ride the branch, the push closing or blocking the last item it claims
-  marks it ready and arms it, and a push bringing an open claim or anything but
-  item files disarms it first - an open claim making it a draft again - or green
-  CI would merge half the work.
+  its CI is green (`PL-S5MF`). **Whether it arms is `bin/docket arm`'s answer,
+  asked before arming and before every later push while a pull request is
+  open.** `arm`: mark it ready and arm it. `hold`: leave it unarmed, disarming
+  it before the push that brings the hold or green CI merges half the work,
+  and a draft while the hold is a claim. `behind N`: bring `origin/main` in and
+  ask again. `subprojects/docket/src/docket/arming.py` carries the rules and
+  the decisions behind them (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`, `PL-3FYK`,
+  `PL-H14W`).
   Where the **web harness
   says not to open one unless the
   owner explicitly asks**, this bullet is that ask, standing rather than per
