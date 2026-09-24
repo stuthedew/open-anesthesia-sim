@@ -15,6 +15,7 @@ payoff: turns a 27% silent loss of design reasoning from something detected afte
 verify: grep -q 'PL-WFFX' docs/maintainer.md
 root-cause-of: PL-843V, PL-M7W1, PL-G7ST, PL-BXNH, PL-F8Q7
 generator: spent - the empty commit_message came from the GitHub iPhone app, which the owner stopped merging in on 2026-09-22 (docs/maintainer.md), and sessions arm auto-merge with a tool that sends no title or message, so none of the 47 squash merges since #918 lost its body; a new empty body reopens it
+misread: The squash commit's subject and body as the merge sends them, not as the pull request shows them
 ---
 
 **Problem.** `PL-843V` established the mechanism by which 187 of 683 squash

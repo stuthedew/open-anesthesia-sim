@@ -428,7 +428,12 @@ def main(argv: list[str] | None = None) -> int:
         "Recording it does not rank it. Add `generator: live - <why the store is\n"
         "still handing this mechanism members>` and `docket next` ranks it above\n"
         "every band but P0; `generator: spent - <why it can no longer produce one>`\n"
-        "keeps the record for the audit and leaves it on its own band."
+        "keeps the record for the audit and leaves it on its own band.\n"
+        "\n"
+        "Either way, add `misread: <the one fact its members misread>` - one line,\n"
+        "naming the fact rather than the reader. `docket check` requires it on every\n"
+        "head, and `docket generators --misread` lists it beside the other heads'\n"
+        "lines for you to compare."
     )
     return 0
 

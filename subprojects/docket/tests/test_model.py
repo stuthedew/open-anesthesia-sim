@@ -12,10 +12,12 @@ from datetime import date
 import pytest
 
 from docket.model import (
+    FIELD_ORDER,
     LANE_CROSSING,
     LANE_PRODUCT,
     LANE_UNPLACED,
     LANE_WORKFLOW,
+    MISREAD_LIMIT,
     Item,
     block_list_keys,
     generator_defect_faults,
@@ -23,6 +25,7 @@ from docket.model import (
     impairs_generators_soundly,
     is_generator,
     live_recurrences,
+    misread_faults,
     parse_front_matter,
     parse_item,
     ranks_as_generator,
@@ -1165,6 +1168,82 @@ def test_a_verdict_without_a_cluster_is_refused_from_the_other_end() -> None:
     (fault,) = generator_faults(_item(generator=LIVE), KNOWN)
 
     assert "does not record" in fault
+
+
+# `misread:`: the one fact a head's members misread, which is what makes two
+# heads comparable (`PL-5MYR`). Triage compared each capture with one head at a
+# time and never compared heads with each other, so one record read by several
+# readers got a head per reader. What these pin is where the field is owed -
+# every sound head, closed ones included, unlike `generator:` - and the bound
+# that keeps it one line of a listing read whole.
+
+MISREAD = "Who holds an item now, and whether that holder is still live"
+
+
+def test_a_misread_round_trips_directly_after_the_verdict() -> None:
+    """Read, then written back in the place `FIELD_ORDER` gives it."""
+    written = render_item(_item(root_cause_of=EXPLAINS, generator=LIVE, misread=MISREAD))
+
+    assert f"generator: {LIVE}\nmisread: {MISREAD}\n" in written
+    assert parse_item(written).misread == MISREAD
+    assert FIELD_ORDER.index("misread") == FIELD_ORDER.index("generator") + 1
+
+
+def test_a_sound_head_stating_its_misread_has_no_faults() -> None:
+    assert misread_faults(_item(root_cause_of=EXPLAINS, misread=MISREAD), KNOWN) == ()
+
+
+def test_an_open_head_with_no_misread_is_faulted() -> None:
+    (fault,) = misread_faults(_item(root_cause_of=EXPLAINS, generator=LIVE), KNOWN)
+
+    assert "is absent" in fault
+    assert "docket generators --misread" in fault
+
+
+@pytest.mark.parametrize("status", ["done", "dropped"])
+def test_a_closed_head_with_no_misread_is_faulted_too(status: str) -> None:
+    """Where this parts from `generator_faults`, on purpose.
+
+    A verdict on a closed head moves no ranking, so it is not asked for; a
+    closed head's stated fact is what a later capture is compared against -
+    `PL-7TVT` closed spent with five members filed after it.
+    """
+    item = _item(root_cause_of=EXPLAINS, status=status, closed=date(2026, 9, 1))
+
+    assert generator_faults(item, KNOWN) == ()
+    (fault,) = misread_faults(item, KNOWN)
+    assert "is absent" in fault
+
+
+def test_an_unsound_root_cause_owes_no_misread() -> None:
+    """Two ids are not a head, and `root_cause_faults` already says so."""
+    assert misread_faults(_item(root_cause_of=EXPLAINS[:2]), KNOWN) == ()
+    assert misread_faults(_item(), KNOWN) == ()
+
+
+def test_a_misread_without_a_cluster_is_refused_from_the_other_end() -> None:
+    (fault,) = misread_faults(_item(misread=MISREAD), KNOWN)
+
+    assert "records no cluster" in fault
+    assert "`root-cause-of:`" in fault
+
+
+def test_a_misread_is_bounded_at_the_limit_and_not_below_it() -> None:
+    """One line of a listing read whole; a line grown into a brief is the cost removed."""
+    at_limit = "x" * MISREAD_LIMIT
+    over = "x" * (MISREAD_LIMIT + 1)
+
+    assert MISREAD_LIMIT == 100
+    assert misread_faults(_item(root_cause_of=EXPLAINS, misread=at_limit), KNOWN) == ()
+    (fault,) = misread_faults(_item(root_cause_of=EXPLAINS, misread=over), KNOWN)
+    assert "101 characters" in fault and "100" in fault
+
+
+def test_the_bound_is_measured_after_stripping() -> None:
+    """Surrounding space is not the reading cost the bound exists for."""
+    padded = "  " + "x" * MISREAD_LIMIT + "  "
+
+    assert misread_faults(_item(root_cause_of=EXPLAINS, misread=padded), KNOWN) == ()
 
 
 # `generator_defect_faults` is the tier's other entrance and is shared by the

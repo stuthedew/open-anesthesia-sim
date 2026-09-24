@@ -38,6 +38,7 @@ from .model import (
     Item,
     generator_defect_faults,
     generator_faults,
+    misread_faults,
     recurrence_faults,
     root_cause_faults,
     split_deferred_from,
@@ -2053,6 +2054,7 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
 
     _check_root_causes(report, known)
     _check_generator_verdicts(report, known)
+    _check_misread(report, known)
     _check_recurrences(report, known)
 
     known_items = {i.identifier: i for i in report.items}
@@ -2254,6 +2256,44 @@ def _check_generator_verdicts(report: Report, known: set[str]) -> None:
             f"generator is recorded and this decides whether it ranks, so until the field "
             f"is repaired `docket next` offers this on its band like any other item"
         )
+
+
+def _check_misread(report: Report, known: set[str]) -> None:
+    """Hold every generator head to stating the one fact its members misread.
+
+    The two checks above decide whether a head is recorded and whether it
+    ranks. This holds what makes it comparable: triage compared each new item
+    with one head at a time and never compared heads with each other, so one
+    record read by several readers got a head per reader - four for "who holds
+    an item" before `PL-MB2W` named it (`PL-5MYR`). The stated fact is what
+    `docket generators --misread` sorts, so two heads reading one record sit
+    next to each other where a session will see them.
+
+    Closed heads are held too, unlike the verdict check beside this. A closed
+    head's verdict moves no ranking; its stated fact is what a later capture
+    is compared against, and "an instance of a closed head's mechanism, filed
+    after the head closed" is triage's first landing.
+
+    Errors, because every rule here is exact: presence on a sound head, a
+    cluster for the line to be about, and the length bound. Whether the line
+    names the right fact, and whether two heads name the same one, is
+    judgment and is checked nowhere.
+
+    The consequence is stated only where the line is absent, the one fault it
+    is true of: an over-length line is still listed and sorted, and a line on
+    an item with no cluster is not on a head at all.
+    """
+    for item in report.items:
+        faults = misread_faults(item, known)
+        if not faults:
+            continue
+        consequence = (
+            ". The comparison between heads reads this line, so until it is written this "
+            "head is compared with nothing"
+            if not item.misread
+            else ""
+        )
+        report.errors.append(f"{_where(item)}: `misread:` {'; '.join(faults)}{consequence}")
 
 
 def _check_recurrences(report: Report, known: set[str]) -> None:

@@ -16,6 +16,7 @@ payoff: a new way for a verify: command to prove nothing is refused when it is w
 verify: grep -q 'def test_a_verify_command_outside_the_prescribed_shapes_is_refused' subprojects/docket/tests/test_checks.py
 root-cause-of: PL-0QRP, PL-CWD4, PL-09G9, PL-RR1N, PL-205P, PL-J3WK, PL-R812
 generator: spent - a verify: written from 2026-09-24 is one of the admitted shapes or is refused when it is written, on the branch that writes it, so a new shape joins the list by an argument in checks.py instead of by failing first; the per-shape rules guard the grandfathered commands until they drain
+misread: What a verify: command's exit status proves about its own item's work
 ---
 
 **Problem.** verify: is an opaque shell string, so each non-discriminating shape is refused by its own rule after it fails: PL-6TP8's contract did not stop the mechanism, and PL-09G9, PL-205P, PL-J3WK, PL-RR1N and PL-R812 arrived after it closed

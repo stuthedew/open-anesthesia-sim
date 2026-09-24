@@ -3357,6 +3357,53 @@ def test_a_closed_generator_is_not_asked_for_a_verdict() -> None:
     assert not _has(errors, "`generator:`")
 
 
+_MISREAD = "Who holds an item now, and whether that holder is still live"
+
+
+def test_a_head_stating_its_misread_raises_nothing_about_it() -> None:
+    head = _item("PL-K7QX", root_cause_of=_EXPLAINS, generator=_LIVE, misread=_MISREAD)
+
+    assert not _has(_errors(head, *_explained()), "`misread:`")
+
+
+def test_a_head_with_no_misread_is_an_error_open_or_closed() -> None:
+    """The comparison between heads reads this line, so a head without one is compared with nothing.
+
+    Closed heads too, unlike the verdict: a closed head's stated fact is what a
+    later capture is compared against (`PL-5MYR`).
+    """
+    for head in (
+        _item("PL-K7QX", root_cause_of=_EXPLAINS, generator=_LIVE),
+        _item("PL-K7QX", root_cause_of=_EXPLAINS, status="done", closed=date(2026, 8, 20)),
+    ):
+        errors = _errors(head, *_explained())
+
+        assert _has(errors, "PL-K7QX: `misread:` is absent")
+        assert _has(errors, "until it is written this head is compared with nothing")
+
+
+def test_a_misread_over_the_limit_or_without_a_cluster_is_an_error() -> None:
+    long = _item("PL-K7QX", root_cause_of=_EXPLAINS, generator=_LIVE, misread="x" * 101)
+    stray = _item("PL-K7QX", misread=_MISREAD)
+
+    assert _has(_errors(long, *_explained()), "runs to 101 characters")
+    assert _has(_errors(stray), "records no cluster")
+
+
+def test_only_an_absent_misread_is_said_to_leave_its_head_compared_with_nothing() -> None:
+    """An over-length line is still listed and sorted, and one with no cluster is on no head.
+
+    Saying either leaves a head compared with nothing would be a check
+    reporting what is not so.
+    """
+    long = _item("PL-K7QX", root_cause_of=_EXPLAINS, generator=_LIVE, misread="x" * 101)
+    stray = _item("PL-K7QX", misread=_MISREAD)
+
+    for errors in (_errors(long, *_explained()), _errors(stray)):
+        assert _has(errors, "`misread:`")
+        assert not _has(errors, "compared with nothing")
+
+
 def test_a_root_cause_naming_an_unknown_item_is_an_error() -> None:
     errors = _errors(_item("PL-K7QX", root_cause_of=(*_EXPLAINS, "PL-N0P3")), *_explained())
 

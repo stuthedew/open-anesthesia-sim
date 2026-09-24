@@ -13,6 +13,7 @@ pr: 826
 payoff: a hand-typed front-matter value - wrapped over lines, quoted for a colon, or written as a block list - is read whole or refused by name, instead of being truncated, mis-read, or deleted by the next field write with nothing reporting it
 verify: uv run pytest subprojects/docket/tests/test_model.py subprojects/docket/tests/test_checks.py -q -k "block_list or multi_line or quote or verbatim or continues_nothing"
 root-cause-of: PL-5B39, PL-FX0K, PL-V6CR
+misread: The item front-matter value grammar: where a field's value ends and which spellings it may take
 ---
 
 **Problem.** PL-5B39, PL-FX0K and PL-V6CR are one regex - model.FIELD_RE's line-at-a-time front-matter read - and a rewrite_item round trip was measured deleting 9 of PL-9HDH's 10 reason lines with exit 0

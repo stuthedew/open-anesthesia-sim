@@ -14,6 +14,7 @@ pr: 920
 verify: grep -qF 'bin/docket check --verify --verify-base origin/main' Makefile
 root-cause-of: PL-J3BB, PL-J3WK, PL-PBP5
 generator: spent - #920 put the scoped verify replay into make check's check target, and tools/doc_check.py's check_gate_parity refuses a script only one of the two gates runs, so the two lists cannot drift at the script level; no pull-request run of quality.yml since has failed on a step make check skips
+misread: The checks the local gate and the merge gate each run, and where the two sets differ
 ---
 
 **Problem.** make check omits the verify replay on a cost measured before --verify-base narrowed it, so a PR-only failure class is only ever found from CI

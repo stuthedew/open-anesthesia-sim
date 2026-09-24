@@ -13,6 +13,7 @@ closed: 2026-09-19
 pr: 684
 verify: grep -qF 'what the work adds, alone' .claude/skills/docket/SKILL.md
 root-cause-of: PL-T7VS, PL-0M32, PL-Q8RQ, PL-6TN8, PL-D0K3, PL-3DXV, PL-6YWK, PL-2M4X, PL-6YL1, PL-Y4YX, PL-H9GV, PL-LBW5
+misread: What a verify: command's exit status proves about its own item's work
 ---
 
 **Problem.** `verify:` was specified as "a command that fails before the work

@@ -13,10 +13,12 @@ from datetime import date
 from docket.model import Item
 from docket.plan import (
     Waiting,
+    clusters,
     effort_total,
     features,
     gate,
     longest_waiting,
+    overlaps,
     placement_clause,
     placement_line,
     placement_mark,
@@ -1655,3 +1657,108 @@ def test_oldest_never_claims_the_band_ranked_its_pick() -> None:
 
     assert "Placed by no section" in pick.reason
     assert "band" not in pick.reason
+
+
+# --- heads whose clusters overlap (`PL-5MYR`) --------------------------------
+#
+# Triage compared each capture with one head at a time and never compared heads
+# with each other, so one record read by several readers got a head per reader.
+# `overlaps` is the decidable half of that comparison - two member lists
+# sharing an id, or one head naming the other - and a fact about the lists
+# rather than a verdict that the heads share a record.
+
+_Pair = tuple[str, str, tuple[str, ...], bool, bool]
+
+
+def _heads(*heads: tuple[str, tuple[str, ...]]) -> list[Item]:
+    """The heads given, each naming its members, and every member as an item."""
+    ids = {identifier for identifier, _ in heads}
+    named = sorted({member for _, members in heads for member in members} - ids)
+    return [
+        *(_item(identifier, root_cause_of=members) for identifier, members in heads),
+        *(_item(member) for member in named),
+    ]
+
+
+def _pairs(*heads: tuple[str, tuple[str, ...]]) -> list[_Pair]:
+    return [
+        (
+            pair.first.identifier,
+            pair.second.identifier,
+            pair.shared,
+            pair.first_names_second,
+            pair.second_names_first,
+        )
+        for pair in overlaps(clusters(_heads(*heads)))
+    ]
+
+
+def test_two_heads_naming_one_member_overlap_on_it() -> None:
+    pairs = _pairs(
+        ("PL-H1H1", ("PL-M1M1", "PL-M2M2", "PL-M3M3")),
+        ("PL-H2H2", ("PL-M3M3", "PL-M4M4", "PL-M5M5")),
+    )
+
+    assert pairs == [("PL-H1H1", "PL-H2H2", ("PL-M3M3",), False, False)]
+
+
+def test_a_head_naming_another_head_is_a_pair_with_nothing_shared() -> None:
+    """The nesting case: `PL-BHVM` names `PL-R808` over disjoint members."""
+    pairs = _pairs(
+        ("PL-H1H1", ("PL-M1M1", "PL-M2M2", "PL-H2H2")),
+        ("PL-H2H2", ("PL-M3M3", "PL-M4M4", "PL-M5M5")),
+    )
+
+    assert pairs == [("PL-H1H1", "PL-H2H2", (), True, False)]
+
+
+def test_a_shared_member_and_a_nesting_are_one_pair_ordered_by_id() -> None:
+    """`PL-7TVT` and `PL-MB2W` share a member, and the higher id names the lower."""
+    pairs = _pairs(
+        ("PL-H2H2", ("PL-H1H1", "PL-M4M4", "PL-M3M3")),
+        ("PL-H1H1", ("PL-M1M1", "PL-M2M2", "PL-M3M3")),
+    )
+
+    assert pairs == [("PL-H1H1", "PL-H2H2", ("PL-M3M3",), False, True)]
+
+
+def test_shared_members_are_listed_by_id() -> None:
+    pairs = _pairs(
+        ("PL-H1H1", ("PL-M5M5", "PL-M1M1", "PL-M3M3")),
+        ("PL-H2H2", ("PL-M3M3", "PL-M5M5", "PL-M4M4")),
+    )
+
+    assert pairs == [("PL-H1H1", "PL-H2H2", ("PL-M3M3", "PL-M5M5"), False, False)]
+
+
+def test_heads_with_disjoint_members_do_not_overlap() -> None:
+    """Which is exactly what the intersection cannot see, and `misread:` is for."""
+    pairs = _pairs(
+        ("PL-H1H1", ("PL-M1M1", "PL-M2M2", "PL-M3M3")),
+        ("PL-H2H2", ("PL-M4M4", "PL-M5M5", "PL-M6M6")),
+    )
+
+    assert pairs == []
+
+
+def test_an_unsound_claim_is_not_a_head_to_overlap_with() -> None:
+    """Two ids are not a generator, so no pair names one - as `clusters` counts none."""
+    pairs = _pairs(
+        ("PL-H1H1", ("PL-M1M1", "PL-M2M2", "PL-M3M3")), ("PL-H2H2", ("PL-M3M3", "PL-H1H1"))
+    )
+
+    assert pairs == []
+
+
+def test_pairs_are_ordered_by_their_first_then_second_id() -> None:
+    pairs = _pairs(
+        ("PL-H3H3", ("PL-M1M1", "PL-M6M6", "PL-M7M7")),
+        ("PL-H2H2", ("PL-M3M3", "PL-M6M6", "PL-M8M8")),
+        ("PL-H1H1", ("PL-M1M1", "PL-M2M2", "PL-M3M3")),
+    )
+
+    assert [(first, second) for first, second, *_ in pairs] == [
+        ("PL-H1H1", "PL-H2H2"),
+        ("PL-H1H1", "PL-H3H3"),
+        ("PL-H2H2", "PL-H3H3"),
+    ]

@@ -51,6 +51,7 @@ from .model import (
     generators_explaining,
     is_under,
     live_recurrences,
+    misread_faults,
     ranks_as_generator,
     ranks_as_generator_defect,
     recurrence_count,
@@ -65,6 +66,7 @@ from .plan import (
     generator_defects,
     is_new_work,
     longest_waiting,
+    overlaps,
     placement_clause,
     placement_line,
     promotable,
@@ -1300,6 +1302,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("falsifies", "falsifies"),
     ("root-cause-of", "root_cause_of"),
     ("generator", "generator"),
+    ("misread", "misread"),
     ("impairs-generators", "impairs_generators"),
 )
 
@@ -1669,6 +1672,18 @@ def cmd_show(args: argparse.Namespace) -> int:
             print("    spent: recorded for the audit, ranked on its own band")
     elif verdict_faults:
         print(f"  generator: {'; '.join(verdict_faults)}")
+    # The fact the cluster's members misread, beside the verdict, and faulted
+    # the same way. It ranks nothing; it is what a capture and every other head
+    # are compared against, so a head that states none - closed or open - is
+    # one nothing will ever be compared with, and this says so on the surface
+    # the head is read from (`PL-5MYR`).
+    stated_faults = misread_faults(item, known_ids)
+    if item.misread:
+        print(f"  misread: {item.misread}")
+        if stated_faults:
+            print(f"    UNSOUND - {'; '.join(stated_faults)}")
+    elif stated_faults:
+        print(f"  misread: {'; '.join(stated_faults)}")
     if item.recurrences:
         # Where a reader sent here by `next` or the digest actually lands. Naming
         # the count and not the filings would be the partial answer this package
@@ -2190,7 +2205,8 @@ def _say_recurring(items: list[Item], in_flight: Collection[str]) -> None:
     print(
         "  Not ranked above - the count comes from a title match, which may not buy a "
         "promotion. Read them against each other, and where they are one mechanism, "
-        "record it: `docket set <id> --root-cause-of <ids>`."
+        "record it: `docket set <id> --root-cause-of <ids> --generator <verdict> "
+        "--misread <fact>`, the three fields `docket check` asks of a head."
     )
 
 
@@ -2380,15 +2396,28 @@ def cmd_generators(args: argparse.Namespace) -> int:
     An id may be a head or a member. A session usually holds a member's id,
     since that is what `next` hands it, and asking "how is my cluster doing"
     should not require first finding out what sits above it.
+
+    Every head is printed with the one fact its members misread, and the
+    pairs of heads whose member lists overlap follow the list (`PL-5MYR`).
+    Heads were compared with nothing, so one record read by several readers
+    got a head per reader. `--misread` prints only those lines, sorted by the
+    fact so that heads stating one sit together - the list triage and grooming
+    compare a capture against. Whether two lines name one record is judgment;
+    the command makes it one screen, and flags the overlap it can decide.
     """
     _, items, config = _load(args)
     groups = clusters(items)
     if not args.head:
+        pairs = overlaps(groups)
+        if args.misread:
+            print(render.format_misread(groups, pairs, unsound_generator_claims(items)))
+            return 0
         print(
             render.format_clusters(
                 groups,
                 unsound_generator_claims(items),
                 generator_defects(items, config.generator_paths),
+                pairs,
             )
         )
         return 0
@@ -3872,6 +3901,7 @@ def build_parser() -> argparse.ArgumentParser:
     setter.add_argument("--not-delegable", metavar="WHY")
     setter.add_argument("--falsifies", metavar="FRAGMENT")
     setter.add_argument("--generator", metavar="live|spent - WHY")
+    setter.add_argument("--misread", metavar="FACT")
     setter.add_argument("--impairs-generators", metavar="WHY")
     setter.add_argument(
         "--overwrite", action="store_true", help="replace a value the item already records"
@@ -3917,6 +3947,12 @@ def build_parser() -> argparse.ArgumentParser:
     generators = add("generators", "how much of each generator's cluster is still open")
     generators.add_argument(
         "head", nargs="?", help="one cluster's members; a member's id resolves to its head"
+    )
+    generators.add_argument(
+        "--misread",
+        action="store_true",
+        help="print what each head's members misread, sorted by the fact, and the heads whose "
+        "clusters overlap - the list triage and grooming compare a capture against",
     )
     generators.set_defaults(func=cmd_generators)
 

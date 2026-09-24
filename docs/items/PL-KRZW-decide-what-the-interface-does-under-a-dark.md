@@ -15,6 +15,7 @@ payoff: the window stops mixing a light interface with the host's dark scroll ba
 verify: grep -q 'def test_the_chrome_draws_the_theme_rather_than_the_host_palette' tests/integration/test_dark_appearance.py
 root-cause-of: PL-RKRY, PL-DHBX, PL-0NVN, PL-7W9N
 generator: spent - its fix, 67923625 (#898), declares every palette role at application start (src/anesthesia_sim/app/main.py:51, declare_application_colours), so no widget inherits a role from the host platform palette any more; recorded 2026-09-23 by PL-T7Y1's audit
+misread: Which palette roles each widget takes from the declared theme, and which from the host platform
 ---
 
 **Problem.** Decide what the interface does under a dark system appearance, now

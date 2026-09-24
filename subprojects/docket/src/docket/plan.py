@@ -17,7 +17,7 @@ from branch names, so it is checked rather than left to memory.
 
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -168,6 +168,61 @@ def clusters(items: list[Item], known: Collection[str] | None = None) -> dict[st
         )
         for head in sorted(heads, key=lambda i: i.identifier)
     }
+
+
+@dataclass(frozen=True)
+class Overlap:
+    """Two sound generator heads whose clusters touch, and how.
+
+    `first` is the head with the lower id, so a pair reads the same whichever
+    head a reader started from. `shared` is the members both name, by id;
+    `first_names_second` and `second_names_first` say that one head's own
+    members include the other head - the nesting case, which is a pair even
+    where no member is shared.
+    """
+
+    first: Item
+    second: Item
+    shared: tuple[str, ...]
+    first_names_second: bool
+    second_names_first: bool
+
+
+def overlaps(groups: Mapping[str, Cluster]) -> list[Overlap]:
+    """Every pair of sound heads whose member lists share an id, or nest.
+
+    **A fact about two lists, not a verdict that the heads share a record.**
+    Triage compared each new item with one head at a time and never compared
+    heads with each other, so one record read by several readers got a head
+    per reader (`PL-5MYR`). The intersection is the decidable half of that
+    comparison: on 2026-09-23 it named 11 pairs sharing a member, plus one
+    pair that only nests - `PL-BHVM` names `PL-R808` - and recovered three of
+    the five shared records `PL-T7Y1`'s audit verified and both of its
+    misattributions. It cannot see a shared record whose members are
+    disjoint, and it missed two of the audit's five that way (`PL-J6HP` with
+    `PL-WD5Z`, `PL-6TP8` with `PL-1P5V`); that is what each head's `misread:`
+    line is for, and comparing those lines is a session's judgment.
+
+    Only the heads `clusters` accepts, so a pair here is one `docket check`
+    and the ranking both recognise. Ordered by the pair's ids, lower first.
+    """
+    heads = sorted(groups.values(), key=lambda cluster: cluster.head.identifier)
+    members = {
+        cluster.head.identifier: {item.identifier for item in cluster.members} for cluster in heads
+    }
+    found: list[Overlap] = []
+    for index, first in enumerate(heads):
+        one = first.head.identifier
+        for second in heads[index + 1 :]:
+            other = second.head.identifier
+            shared = tuple(sorted(members[one] & members[other]))
+            first_names_second = other in members[one]
+            second_names_first = one in members[other]
+            if shared or first_names_second or second_names_first:
+                found.append(
+                    Overlap(first.head, second.head, shared, first_names_second, second_names_first)
+                )
+    return found
 
 
 def unsound_generator_claims(items: list[Item]) -> list[Item]:
