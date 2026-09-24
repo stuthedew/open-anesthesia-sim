@@ -9,6 +9,7 @@ feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-24
 closed: 2026-09-24
+pr: 980
 payoff: the 27 items finished since v0.5.8 ship under their own number and stop being re-offered in every session digest
 verify: grep -q "^version = \"0.5.9\"" pyproject.toml
 ---

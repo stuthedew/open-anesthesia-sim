@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: claim-record
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/start.md, .claude/skills/docket/modes/picking.md
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/start.md, .claude/skills/docket/modes/picking.md, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py
 blocked-by: PL-3FYK
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24
@@ -29,3 +29,5 @@ recurrences: 2026-09-24 PL-DDYD
 - `start.md` tells a session to run `bin/docket claim` in place of the empty-commit recipe.
 
 **Build order.** After `PL-3FYK`.
+
+**Rider: `PL-SW2K`** (the legacy marker; project owner, 2026-09-24, ratified). Re-point `claims.CUTOVER_MARKER` at a file this item creates, so a commit reads as made before claims were recorded exactly when it predates the `claim` command, and update `test_claims.py`'s legacy test to match. Same pull request; the closing commit leads with both ids.

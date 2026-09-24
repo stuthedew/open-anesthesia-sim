@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_pl
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator-machinery defect
 added: 2026-09-24
 closed: 2026-09-24
+pr: 982
 payoff: a decomposed generator fix keeps the generator tier's rank instead of sinking into its band
 verify: grep -q 'def test_a_blocked_generator_head_ranks_its_open_blockers_in_the_generator_tier' subprojects/docket/tests/test_plan.py
 impairs-generators: the ranking behind docket next (plan.py) drops a blocked generator head from the generator tier and ranks its blockers in their own band, so a live generator whose fix was decomposed is ranked by nothing
