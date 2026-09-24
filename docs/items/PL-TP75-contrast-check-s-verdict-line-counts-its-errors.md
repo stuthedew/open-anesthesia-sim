@@ -3,11 +3,12 @@ id: PL-TP75
 title: contrast_check's verdict line counts its errors from a different list than its exit code, so a chart trace below the floor fails the run under a header reading 0 errors
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-24
+closed: 2026-09-24
 payoff: A reader who stops at the contrast report's first line is never told a failing run has 0 errors
 verify: grep -q 'def test_a_run_failing_on_a_trace_alone_says_so_in_its_header' tests/unit/test_contrast_check.py
 ---

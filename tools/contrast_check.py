@@ -1410,17 +1410,32 @@ class Report:
     undeclared_controls_errors: tuple[str, ...]
 
     @property
-    def errors(self) -> bool:
-        return bool(
-            self.missing
-            or self.unexpected
-            or self.repaired
-            or self.citations
-            or self.misplaced_colors
-            or self.author_styled_disabled
-            or self.undeclared_controls_errors
-            or self.below_trace_floor
+    def error_count(self) -> int:
+        """How many errors this run found, which is the number the verdict line prints.
+
+        The one place the error kinds are listed, so the count and `errors`
+        cannot disagree. Each kind used to be listed twice - here for the exit
+        code, and again in `format_report` for the header - and
+        `below_trace_floor` reached only the first, so a run failing on a chart
+        trace alone exited 1 under a verdict line reading `0 errors` (PL-TP75).
+        """
+        return sum(
+            len(kind)
+            for kind in (
+                self.missing,
+                self.unexpected,
+                self.repaired,
+                self.citations,
+                self.misplaced_colors,
+                self.author_styled_disabled,
+                self.undeclared_controls_errors,
+                self.below_trace_floor,
+            )
         )
+
+    @property
+    def errors(self) -> bool:
+        return self.error_count > 0
 
 
 def analyze(root: Path) -> Report:
@@ -1496,22 +1511,13 @@ def analyze(root: Path) -> Report:
 def format_report(report: Report, *, matrix: bool) -> str:
     """Render a report the way `bin/docket check` renders one: verdict first."""
     met = sum(1 for result in report.results if result.meets)
-    error_count = (
-        len(report.unexpected)
-        + len(report.missing)
-        + len(report.repaired)
-        + len(report.citations)
-        + len(report.misplaced_colors)
-        + len(report.author_styled_disabled)
-        + len(report.undeclared_controls_errors)
-    )
     lines = [
         f"contrast: {met} of {len(report.results)} declared requirements meet WCAG 2.2 AA, "
         f"{report.modules_read} modules read under {APP.as_posix()}/, "
         f"{len(report.undeclared_controls)} control kinds declare no foreground and are "
         f"measured by nothing ({CONTROL_COVERAGE_TEST.as_posix()} names each), "
         f"{len(KNOWN_SHORTFALLS)} known shortfalls, "
-        f"{error_count} errors"
+        f"{report.error_count} errors"
     ]
 
     if report.undeclared_controls_errors:

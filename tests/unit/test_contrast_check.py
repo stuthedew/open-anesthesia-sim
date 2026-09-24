@@ -682,6 +682,27 @@ def test_a_trace_clearing_the_floor_everywhere_is_quiet(
     assert contrast_check.analyze(root).below_trace_floor == ()
 
 
+def test_a_run_failing_on_a_trace_alone_says_so_in_its_header(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, declare
+) -> None:
+    """PL-TP75. The verdict line counts from the list that decides the exit code.
+
+    `below_trace_floor` was added to `Report.errors` and not to the count the
+    header printed, so this run exited 1 under a line reading `0 errors`. The
+    colour is in the theme rather than the view, so the trace is the run's only
+    error and a header counting anything else would read 0.
+    """
+    declare(())
+    root = _repo(tmp_path, theme=THEME_SOURCE + 'MUSCLE_COLOR = "#D97706"\n')
+    monkeypatch.setattr(contrast_check, "TRACES", ("MUSCLE_COLOR",))
+
+    report = contrast_check.analyze(root)
+    header = contrast_check.format_report(report, matrix=False).splitlines()[0]
+
+    assert len(report.below_trace_floor) == report.error_count == 1
+    assert header.endswith(", 1 errors"), header
+
+
 def test_no_two_trace_contrasts_reach_the_non_text_minimum() -> None:
     """The finding the line styles exist for, pinned so it cannot quietly change.
 
