@@ -3,13 +3,12 @@ id: PL-H14W
 title: A claimed captures-only pull request opens at the first push as an ordinary mergeable one titled for the work, so #978 was merged six minutes in while the v0.5.9 cut was being written, erasing the start claim with the branch and leaving a subject on main that names a cut it does not contain
 priority: P2
 effort: S
-status: done
+status: ready
 classes: defect
 feature: parallel-sessions
 touches: CLAUDE.md, docs/maintainer.md, .claude/skills/docket/modes/start.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-24
-closed: 2026-09-24
 payoff: a claimed capture's pull request cannot be merged by hand while its claimed work is unfinished
 verify: grep -qF 'leaves it unarmed and a draft' CLAUDE.md && grep -qF 'is still a draft, leave it' docs/maintainer.md && grep -qF 'open it as a draft' .claude/skills/docket/modes/start.md
 ---
