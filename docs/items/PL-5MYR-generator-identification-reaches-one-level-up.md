@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-23
 payoff: A record read by several readers is found by the next grooming pass reading one screen, not by a sweep the owner has to ask for
 impairs-generators: the triage mode's generator check and bin/docket generators (cli.cmd_generators, render) compare each new item with one head at a time and never compare heads with each other, so one record read by several readers gets a head per reader and its generator is found only by a sweep the owner asks for
+recurrences: 2026-09-24 PL-RJLQ
 ---
 
 **Problem.** Generator identification reaches one level up and never clusters the heads: triage asks each item whether a head explains it, so one record read by several readers gets a head per reader, and both such generators found so far - PL-WD5Z's gate prose after three heads, and the claim family PL-MB2W names after four - surfaced only in a sweep the owner asked for
@@ -343,3 +344,48 @@ checks each one against its head before writing it.
   it. bin/docket record backfills it only after the merge, but bin/docket
   release's notes writer and ...
 - `PL-YRYR`: What the docket suite's git-backed test fixtures cost.
+
+**Built 2026-09-24.** The field is `misread:`, not `record:`: `bin/docket
+record` is a command, and "recorded" already means a head exists. It is
+required on every sound head, open or closed, unlike `generator:`, because a
+closed head's fact is what a later capture is compared against. `bin/docket
+generators` prints it under each head's drain line and flags overlapping
+heads. The flag covers the shared members the brief asked for, and also a head
+naming another head as a member, which adds `PL-BHVM` naming `PL-R808`, one of
+the five pairs the audit verified. `--misread` prints the lines alone, sorted
+by the fact.
+
+**The 35 lines.** Each was drafted by one agent per head against its brief,
+its members and the seed above: 7 kept, 20 revised, 1 replaced, and 7 new where
+no seed existed. A skeptic per head then tried to refute each draft; 6 were
+refuted and corrected. The seeds are superseded by the lines on the heads.
+
+**Head comparison, run once over the list (Done-when 4), 2026-09-24.** Three
+comparers worked blind to the audit, from the one-screen list and the overlap
+block alone. They agreed on 12 pairs, and no pair was proposed by only one of
+them.
+
+- **All five shared facts the audit verified were found**, including the two
+  the set intersection cannot see: `PL-J6HP` with `PL-WD5Z`, and `PL-6TP8`
+  with `PL-1P5V`. **None of its three refuted pairs was proposed.**
+- **The recall is not independent evidence.** 28 of the drafts started from
+  seeds the audit wrote, and the audit knew the pairs. What it does show is
+  that the list is readable: three agents found from one screen what took 262
+  reading briefs.
+- **Three groupings the audit never tested:**
+  - `PL-GHHW` with `PL-BHVM` and `PL-R808`: whether the base already holds a
+    branch commit's change. `PL-BHVM` is the family head and names `PL-R808`,
+    and all three are closed. `PL-R808`'s `spent` verdict is already contested
+    in the list above, for `PL-TH9K`.
+  - `PL-HMZZ` with `PL-XYQW`: which pull request carried an item's work.
+    `PL-XYQW`'s own `generator:` line gives that half to `PL-HMZZ`, which is
+    open and `live`, so the family head exists.
+  - `PL-6T44` with `PL-8YXJ`: an item's current queue state. Both are closed,
+    and no head names the fact at family altitude. Whether it is a live
+    generator needs its post-close filings counted, so it is captured as
+    `PL-RJLQ` rather than recorded here.
+
+  `PL-4FBP` with `PL-G424` is the known split by standard, which
+  `.claude/rules/citation-drift.md` records.
+- **Each confirmed group carries identical words**, so the sorted list prints
+  its heads together.
