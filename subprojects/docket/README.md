@@ -809,8 +809,17 @@ are precisely what the clone lacks. Naming a ref unread whenever the base is
 grafted is sound and silences this read in every agent container; fetching to
 deepen answers exactly and breaks the bare-tree, no-network rule; distrusting a
 commit older than the base's newest graft is cheap and rests on dates a rebase
-moves. So the behaviour is pinned by a test that asserts the wrong answer on
-purpose, which makes changing it a decision rather than an accident.
+moves. So the behaviour was pinned by a test that asserted the wrong answer on
+purpose, which made changing it a decision rather than an accident.
+
+That decision came with the claim record (`PL-N162`). `flight` and every reader
+of in-flight work now answer from `claims.holdings`, which spends a claim at or
+before a branch's *landed prefix*: the newest commit through which the branch's
+work is content the base already holds. The default branch's own commits,
+reached below the graft, wrote nothing the base lacks, so the ids they carry no
+longer survive the walk. That is a question about content, which the truncated
+clone holds, not about history, which it does not; the walk itself is
+unchanged and still emits them.
 
 **And the naming reaches wherever the queue is read**, not only `docket
 flight`. The seven answers that rank or mark against in-flight work — `next`,

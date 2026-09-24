@@ -1115,11 +1115,13 @@ def _unmerged_commits(
     another, a single `--depth` truncates unevenly, and a branch forked from a
     commit below the graft descends through commits `^base` cannot exclude
     before terminating against the fork point the *short* path still reaches.
-    Every commit it emits carries a parent, so this signature stays silent.
+    Every commit it emits carries a parent, so this signature stays silent,
+    and three of the default branch's own commits come back as work a branch
+    is carrying. `flight` no longer reports them since `PL-N162`, because
+    `claims.holdings` spends their claims by the landed prefix, a question
+    about content the clone does hold; the walk here still emits them.
     Reproduced end to end in
-    `subprojects/docket/tests/test_cli.py::test_flight_reports_below_an_uneven_horizon_which_is_the_accepted_limit`,
-    where three of the default branch's own commits are reported as work a
-    branch is carrying.
+    `subprojects/docket/tests/test_cli.py::test_flight_reads_below_an_uneven_horizon_by_the_landed_prefix`.
 
     It is accepted because no *sound* replacement exists inside a truncated
     checkout: the decisive question is whether an emitted commit is one the base

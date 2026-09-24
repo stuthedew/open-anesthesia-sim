@@ -31,6 +31,7 @@ from docket.claims import (
     LAPSED,
     LEASE_TERM,
     LIVE,
+    NAMED,
     RELEASED,
     SESSION_VARIABLE,
     holdings,
@@ -372,19 +373,21 @@ def test_a_git_older_than_2_22_declines_rather_than_reading(tmp_path: Path) -> N
     assert "2.21" in read.declined and "2.22" in read.declined
 
 
+@pytest.mark.parametrize("branch", [BRANCH, "claude/pl-b1b1-shallow"])
 def test_a_walk_that_runs_off_a_truncated_history_is_unread_rather_than_believed(
-    tmp_path: Path,
+    tmp_path: Path, branch: str
 ) -> None:
     """An agent container's shallow clone, in the topology `test_cli.py`'s `_shallow_pair` uses.
 
     The merge-base resolves, so the first guard passes; the walk still reaches
     below the default branch's graft, and a claim read from it would rest on
-    history the base could not exclude.
+    history the base could not exclude. A branch named for its item still
+    proves that id, which needs no history, and stays unread (`PL-TZ3R`).
     """
     origin = _Repo(tmp_path / "origin")
     for number in range(1, 11):
         if number == 7:
-            origin.branch(BRANCH, "main~5")
+            origin.branch(branch, "main~5")
             origin.claim("PL-B1B1", when=T0 + HOUR)
             origin.git("merge", "-q", "--no-edit", "main", env=_dated(T0 + 2 * HOUR))
             origin.git("checkout", "-q", "main")
@@ -394,14 +397,16 @@ def test_a_walk_that_runs_off_a_truncated_history_is_unread_rather_than_believed
     work = tmp_path / "work"
     for args, cwd in (
         (["clone", "-q", "--depth=5", "--branch", "main", origin.root.as_uri(), str(work)], None),
-        (["fetch", "-q", "--depth=3", "origin", f"{BRANCH}:refs/remotes/origin/{BRANCH}"], work),
+        (["fetch", "-q", "--depth=3", "origin", f"{branch}:refs/remotes/origin/{branch}"], work),
     ):
         subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
 
     read = holdings(work, now=T0 + DAY)
 
     assert read.holds == ()
-    assert read.unreadable == (f"origin/{BRANCH}",)
+    assert read.unreadable == (f"origin/{branch}",)
+    named = [(held.name, held.item_id) for held in read.flight().branches]
+    assert named == ([] if branch == BRANCH else [(f"origin/{branch}", "PL-B1B1")])
 
 
 def test_a_legacy_start_commit_still_claims_after_the_branch_merges_main(tmp_path: Path) -> None:
@@ -743,4 +748,41 @@ def test_flight_names_a_branch_attributed_to_nothing(tmp_path: Path) -> None:
     report = holdings(repo.root, now=T0 + HOUR).flight()
 
     assert report.unattributed == ("claude/anonymous",)
-    assert (report.branches, report.known) == ((), True)
+    assert [(branch.name, branch.item_id) for branch in report.branches] == [
+        ("claude/pl-b1b1-named", "PL-B1B1")
+    ]
+    assert report.known
+
+
+def test_a_branch_named_for_its_item_holds_it_behind_any_claim_and_lapses_with_the_branch(
+    tmp_path: Path,
+) -> None:
+    """`PL-TZ3R`: the name is a hold of its own, which `flight` reads where nothing else holds.
+
+    It never orders against a claim, so a claim elsewhere is the branch
+    `flight` names, and it runs on the branch's lease.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/pl-b1b1-named")
+    repo.commit("tidy", when=T0, files={"src/named.py": "x\n"})
+
+    alone = holdings(repo.root, now=T0 + HOUR)
+    later = holdings(repo.root, now=T0 + 8 * DAY)
+    repo.branch("claude/worker", "main")
+    repo.claim("PL-B1B1", when=T0 + HOUR)
+    claimed = holdings(repo.root, now=T0 + 2 * HOUR)
+
+    [name] = alone.named
+    assert (name.kind, name.ref, name.state, alone.order("PL-B1B1")) == (
+        NAMED,
+        "claude/pl-b1b1-named",
+        LIVE,
+        (),
+    )
+    assert [(branch.name, branch.item_id) for branch in alone.flight().branches] == [
+        ("claude/pl-b1b1-named", "PL-B1B1")
+    ]
+    assert (later.named[0].state, later.flight().branches, later.ids) == (LAPSED, (), frozenset())
+    assert [(branch.name, branch.item_id) for branch in claimed.flight().branches] == [
+        ("claude/worker", "PL-B1B1")
+    ]

@@ -21,6 +21,7 @@ from typing import Any
 
 from . import arming, claiming, instructions, notes, render
 from .checks import Report, SettingsSource, analyze, brief_contradictions
+from .claims import Holdings, holdings
 from .concurrency import (
     ORDERING,
     SAME_AREA,
@@ -122,7 +123,6 @@ from .vcs import (
     StrandedReport,
     WrittenReport,
     branch_state,
-    branches_in_flight,
     changed_items,
     churn,
     closed_by,
@@ -189,7 +189,7 @@ def _root(items: Path | None) -> Path:
     docs/items` resolved the root to `docs/`, and everything downstream took
     its answer from there. Two readings broke and neither said so (`PL-P757`).
 
-    The queue prefix handed to `branches_in_flight` became `items/` where `git
+    The queue prefix handed to the in-flight read became `items/` where `git
     log --name-only` prints `docs/items/...` from the repository root, so no
     path matched, `_annotates_only` read every commit as work and
     `_item_file_ids` read none as a file edit - the direction `PL-X3WZ`
@@ -222,7 +222,7 @@ def _tracked(root: Path, directory: Path) -> str:
 
     Taken from the store the invocation resolved - `--items` wins over the
     setting, because a command pointed at one queue must not be answered about
-    another. `branches_in_flight` decides whether a commit was recording an
+    another. The in-flight read decides whether a commit was recording an
     item or working on it by whether its whole diff sits in this directory, so
     the wrong directory here reads every commit as work. That is not
     hypothetical: it is what `--items docs/items` did, from a root taken as the
@@ -302,8 +302,8 @@ class Invocation:
     `argparse` builds a fresh one per parse, so the lifetime is the command's
     and nothing has to be remembered to reset. That lifetime is what makes the
     runner's memo safe - `cmd_branch` fetches in-process - and what lets
-    `main` close its `cat-file` batch. `flight` is the one field written after
-    construction, by `_flight`, once.
+    `main` close its `cat-file` batch. `holdings` and `flight` are the two
+    fields written after construction, by `_holdings` and `_flight`, once each.
 
     The store itself is not held here: `_load` reads it on every call, because
     `set`, `new` and `withdraw` write between reads.
@@ -315,6 +315,7 @@ class Invocation:
     tracked: str
     settings: SettingsSource
     git: GitRunner | None
+    holdings: Holdings | None = None
     flight: FlightReport | None = None
 
 
@@ -375,6 +376,13 @@ def _flight(args: argparse.Namespace) -> FlightReport:
     session told an item is startable when one unread ref might be carrying it
     - which is the collapse `FlightReport` exists to prevent.
 
+    **Answered by `claims.holdings`, not inferred** (`PL-N162`). An item is in
+    flight where a branch holds a live claim on it, a live status disposition,
+    or its name; `Holdings.flight` keeps `vcs.branches_in_flight`'s shape, so
+    no reader below changed. What a commit subject says is attribution and
+    holds nothing, except on a commit made before a session could write a
+    claim, which is read by the old rule without its three promotions.
+
     The root is resolved from the store, exactly as `_load` resolves it. Asking
     git about the repository this command happens to be *run* in, while
     answering about a queue somewhere else, is the same wrong-project error
@@ -399,13 +407,31 @@ def _flight(args: argparse.Namespace) -> FlightReport:
     inv = _invocation(args)
     if inv.flight is not None:
         return inv.flight
-    report = (
-        FlightReport()
-        if inv.git is None
-        else branches_in_flight(inv.root, items_dir=inv.tracked, runner=inv.git)
-    )
+    report = FlightReport() if inv.git is None else _holdings(args).flight()
     inv.flight = report
     return report
+
+
+def _holdings(args: argparse.Namespace) -> Holdings:
+    """Who holds each item, as the claims on the unlanded refs record it (`PL-MB2W`).
+
+    `_flight` is this in `FlightReport`'s shape; `show` and `flight` read it
+    whole, for the kind and state of each hold that shape has no room for.
+    Cached on the invocation for `_flight`'s reason, and judged at `_now`, so
+    `--now` and `--today` date every lease in one run the way they date every
+    age. Under `--no-git` nothing is asked and nothing is held.
+    """
+    inv = _invocation(args)
+    if inv.holdings is not None:
+        return inv.holdings
+    now = _now(args)
+    found = (
+        Holdings(now=now)
+        if inv.git is None
+        else holdings(inv.root, now=now, items_dir=inv.tracked, runner=inv.git)
+    )
+    inv.holdings = found
+    return found
 
 
 def _say_unread(flight: FlightReport) -> None:
@@ -3307,7 +3333,7 @@ def cmd_flight(args: argparse.Namespace) -> int:
     `settled_branches` names the refs whose every claimed item is closed in
     their own copy and which no pull request is open on, and those move out of
     the list the age is meant to separate. It is asked here rather than inside
-    `branches_in_flight` because that read is on the hot path of `next`,
+    `_flight` because that read is on the hot path of `next`,
     `show`, `list`, `triage` and the digest, and this one is wanted by the
     command whose whole question it is.
     """
