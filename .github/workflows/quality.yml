@@ -155,8 +155,8 @@ jobs:
       #
       # `tools/` and `subprojects/docket/` promise to run under a bare `python3`
       # with no virtualenv and no install step; that is why they depend on
-      # nothing outside the standard library, and `make check` runs most of them
-      # exactly that way. This was a separate `floor` job until
+      # nothing outside the standard library, and `make check` runs the ones
+      # that parse no project source exactly that way. This was a separate `floor` job until
       # `PL-D551`, which merged it here: it billed a whole minute for eight
       # seconds of work, and a job is also a slot against the account's
       # concurrent-job cap, which is what throttles parallel sessions once

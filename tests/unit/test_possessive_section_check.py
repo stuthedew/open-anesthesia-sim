@@ -10,6 +10,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
 import possessive_section_check
@@ -56,11 +58,11 @@ def test_an_example_inside_a_fence_is_not_a_citation(tmp_path: Path) -> None:
 
 
 def test_a_source_file_this_run_cannot_parse_is_declined_not_skipped(tmp_path: Path) -> None:
-    """Both gates run this under the 3.11 floor, which cannot parse all of `src/`.
+    """CI's floor section runs this under 3.11, which cannot parse all of `src/`.
 
-    Two files went unread there with nothing said, so no possessive citation in
-    either was ever checked (`PL-MB3F`). The syntax is invalid under every
-    interpreter, so the test holds wherever it runs.
+    Two files went unread there with nothing said, and no gate held a
+    possessive citation in either to the `§` form (`PL-MB3F`). The syntax is
+    invalid under every interpreter, so the test holds wherever it runs.
     """
     root = _repo(tmp_path, "Nothing cited.\n")
     (root / "thing.py").write_text(
@@ -72,3 +74,16 @@ def test_a_source_file_this_run_cannot_parse_is_declined_not_skipped(tmp_path: P
     assert len(declined) == 1
     assert declined[0].startswith("thing.py:3: Python ")
     assert "cannot parse this file" in declined[0]
+
+
+def test_a_decline_is_printed_and_does_not_fail_the_run(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The printed block is the half of the fix a reader sees; a decline is not a finding."""
+    root = _repo(tmp_path, "Nothing cited.\n")
+    (root / "thing.py").write_text("def f(:\n", encoding="utf-8")
+    assert possessive_section_check.main([str(root)]) == 0
+    out = capsys.readouterr().out
+    assert "none names a section" in out
+    assert "Not checked (1;" in out
+    assert "  thing.py:1: Python " in out

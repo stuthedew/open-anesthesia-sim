@@ -3497,8 +3497,7 @@ def _unread_source(relative: Path, error: Exception) -> str:
     same file parses under one and not another, and a reader shown only "could
     not parse" would go looking for a syntax error that is not there.
     """
-    # `UnicodeDecodeError` is a `ValueError`, so the unreadable case is asked first.
-    if isinstance(error, UNREADABLE):
+    if isinstance(error, OSError):
         return (
             f"{relative}: could not be read ({error}), so no citation in its docstrings was checked"
         )
@@ -3506,8 +3505,8 @@ def _unread_source(relative: Path, error: Exception) -> str:
         where = f"{relative}:{error.lineno}" if error.lineno else str(relative)
         return (
             f"{where}: Python {platform.python_version()} cannot parse this file "
-            f"({error.msg}), so no citation in its docstrings was checked; "
-            "`uv run python` runs the interpreter the source is written for"
+            f"({error.msg}), so no citation in its docstrings was checked; run under "
+            "`uv run python` if the project's own interpreter can"
         )
     return (
         f"{relative}: Python {platform.python_version()} cannot parse this file "
@@ -3539,8 +3538,8 @@ def _quoting_sources(
     editing the roadmap to suit a check (`PL-ZM8P`).
 
     **A source file this run cannot read is declined, never skipped**
-    (`PL-MB3F`). The source is written for the project interpreter, and both
-    gates also run this under the 3.11 floor, whose parser reads neither PEP 695
+    (`PL-MB3F`). The source is written for the project interpreter, and CI's
+    floor section also runs this under 3.11, whose parser reads neither PEP 695
     generics nor PEP 758's unparenthesised `except`. Such a file used to be
     skipped without a word, under the same "all resolve" a clean run prints. A
     broken quotation in `app/bookmarks.py` would have passed `make check` and
@@ -3548,6 +3547,9 @@ def _quoting_sources(
     `tools/possessive_section_check.py` read neither that file nor
     `app_metadata.py` in either gate. Each file is appended to `declined` as
     the walk meets it, so a caller reads `declined` only after exhausting this.
+
+    The file is parsed as bytes, as Python reads source, so a byte-order mark
+    or a PEP 263 coding cookie is honoured rather than declined.
     """
     for path, text in documents.items():
         yield path, 1, text
@@ -3558,8 +3560,8 @@ def _quoting_sources(
             continue
         relative = path.relative_to(root)
         try:
-            tree = ast.parse(path.read_text(encoding="utf-8"))
-        except (*UNREADABLE, SyntaxError, ValueError) as error:
+            tree = ast.parse(path.read_bytes())
+        except (OSError, SyntaxError, ValueError) as error:
             declined.append(_unread_source(relative, error))
             continue
         for line, docstring in _docstrings(tree):

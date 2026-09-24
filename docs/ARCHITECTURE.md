@@ -1093,8 +1093,8 @@ release` is the other half, refusing to cut a release while the previous one is
 untagged, at the moment tags are certainly to hand.
 
 Everything here depends on nothing outside the standard library and parses
-under whatever bare `python3` is on PATH: `make check` invokes most of them
-that way directly, CI's floor section runs `python3 tools/doc_check.py check`
+under whatever bare `python3` is on PATH: `make check` invokes the ones that
+parse no repository source that way directly, CI's floor section runs `python3 tools/doc_check.py check`
 before any virtualenv exists, and both have to work in a checkout with no
 virtualenv. That is why the floor these tools are held to is
 **Python 3.11** — not the version `pyproject.toml` requires. The floor is not a
@@ -1149,8 +1149,9 @@ the citations in them - and the floor section runs them bare all the same,
 where each names on a "Not checked" line the files the floor parser cannot read
 and passes rather than failing on them. Both gates also run them through `uv
 run python`, which is the run that checks those files. Until `PL-MB3F` the
-floor skipped them without a word, `make check` ran both bare, and no gate
-checked a possessive citation in `app/bookmarks.py` or `app_metadata.py`.
+floor skipped them without a word, `make check` ran both bare, and the
+possessive check read neither `app/bookmarks.py` nor `app_metadata.py` in
+either gate.
 
 `tools/ruff.toml` is what keeps that true. The repository targets 3.14, where
 PEP 758 makes the parentheses in `except (OSError, TimeoutError):` redundant,

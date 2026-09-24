@@ -100,8 +100,10 @@ alone left the possessive check reading neither file in either gate.
   the line where the parse stopped, the interpreter's version, and the
   parser's message. `_docstrings` now takes a parsed tree. The possessive
   check's `sites` takes the same list and prints it under "Not checked"; a
-  decline does not fail either tool.
-- `make check` and `make doc-check` run both tools under `uv run python`. CI's
+  decline does not fail either tool. Each file is parsed as bytes, as Python
+  reads source, so a byte-order mark or a coding cookie is not declined.
+- `make check` runs both tools under `uv run python`, and `make doc-check`
+  runs `doc_check`, the only one it runs, the same way. CI's
   floor section keeps both bare as the no-virtualenv proof, where they now
   decline by name. CI's `uv run` group adds the possessive check beside
   `doc_check`.

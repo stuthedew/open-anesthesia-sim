@@ -41,8 +41,8 @@ def sites(root: Path, declined: list[str]) -> list[str]:
     """Every possessive citation whose quotation names a section of its target.
 
     A source file this run cannot parse or read is appended to `declined`
-    rather than skipped, for the reason `doc_check._quoting_sources` gives: the
-    gates run this under the 3.11 floor, which cannot parse every file the
+    rather than skipped, for the reason `doc_check._quoting_sources` gives: CI's
+    floor section runs this under 3.11, which cannot parse every file the
     source's own interpreter can, and a skip said nothing (`PL-MB3F`).
     """
     documents = doc_check.read_docs(root)

@@ -819,7 +819,7 @@ def test_citation_in_a_source_docstring_is_held_to_the_document_it_names(tmp_pat
     ("source", "declined"),
     [
         (b'"""See `docs/MODEL.md`, "A thread that was deleted"."""\n\ndef f(:\n', ":3: Python "),
-        (b'"""See `docs/MODEL.md`, "A deleted thread"."""\n# \xff\n', ": could not be read ("),
+        (b'"""See `docs/MODEL.md`, "A deleted caf\xe9"."""\n', ":1: Python "),
     ],
     ids=["unparseable", "undecodable"],
 )
@@ -828,11 +828,11 @@ def test_a_source_file_the_running_interpreter_cannot_parse_is_reported_not_skip
 ) -> None:
     """A source file this run cannot read is named as unread, never passed over.
 
-    The source is written for 3.14, and both gates also run this under the
-    3.11 floor, whose parser stops at a PEP 695 generic. Such a file was
-    skipped with nothing said, and `make check` printed "all resolve" over
-    docstrings it had never read (`PL-MB3F`). The syntax here is invalid under
-    every interpreter, so the test holds wherever it runs.
+    The source is written for 3.14, and CI's floor section also runs this
+    under 3.11, whose parser stops at a PEP 695 generic. Such a file was
+    skipped with nothing said, and `make check`, then bare too, printed "all
+    resolve" over docstrings it had never read (`PL-MB3F`). Both sources here
+    fail to parse under every interpreter, so the test holds wherever it runs.
     """
     root = _repo(tmp_path)
     (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_bytes(source)
@@ -841,6 +841,22 @@ def test_a_source_file_the_running_interpreter_cannot_parse_is_reported_not_skip
     assert len(about) == 1 and f"core/thing.py{declined}" in about[0], report.declined
     assert not any("thing.py" in error for error in report.errors)
     assert "all resolve" not in doc_check.format_check(report)
+
+
+def test_a_source_file_with_a_byte_order_mark_is_read_not_declined(tmp_path: Path) -> None:
+    """Python reads source as bytes and honours the mark, so this has to as well.
+
+    Decoding the text first leaves U+FEFF in front of the module, which the
+    parser rejects, and the file would be declined with advice to run a newer
+    interpreter that would not help.
+    """
+    root = _repo(tmp_path)
+    (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_bytes(
+        b'\xef\xbb\xbf"""See `docs/MODEL.md`, "A thread that was deleted"."""\n'
+    )
+    report = doc_check.analyze(root)
+    assert not any("thing.py" in line for line in report.declined), report.declined
+    assert any("thing.py:1: quotes docs/MODEL.md" in error for error in report.errors)
 
 
 def test_a_docstring_citation_is_reported_on_its_own_line(tmp_path: Path) -> None:

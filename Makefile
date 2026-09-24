@@ -251,11 +251,11 @@ check: sync
 # Under `uv run` for the reason the line above it is: it reads source
 # docstrings through `doc_check._quoting_sources`, not only markdown, so under
 # the floor it could not read `app/bookmarks.py` or `app_metadata.py`, and no
-# gate checked the possessive citations in either (`PL-MB3F`). It could only be
-# wired in after the 29 sites it named were converted, since it hard-fails on
-# the thing it exists to find - and wiring it is the point of the conversion
-# rather than a coda to it. A
-# convention nothing enforces decays, and this is what stops the next session
+# gate held the possessive citations in either to the `§` form (`PL-MB3F`).
+# It could only be wired in after the 29 sites it named were converted, since
+# it hard-fails on the thing it exists to find - and wiring it is the point of
+# the conversion rather than a coda to it. A convention nothing enforces
+# decays, and this is what stops the next session
 # writing a section citation in a form that says nothing to its reader.
 	uv run python tools/possessive_section_check.py
 # Under `uv run`, all seven of them, like the two lines above, and for a reason
