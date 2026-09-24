@@ -1716,6 +1716,11 @@ class _Refs:
     #: same commit to bound its window - asking git for it a second time could
     #: return a different answer about where the branch left from.
     fork: dict[str, str]
+    #: Every blob the base's history holds, which the split above was judged
+    #: against. Kept because `claims.holdings` asks the same per-blob question
+    #: of each commit for its landed prefix, and a second walk of the base's
+    #: objects could answer from a base that had moved in between.
+    base_blobs: frozenset[str] = frozenset()
 
 
 def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) -> _Refs:
@@ -1773,6 +1778,7 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
         unreadable=unreadable,
         landing=landing,
         fork=fork,
+        base_blobs=base_blobs,
     )
 
 
@@ -4026,13 +4032,24 @@ def released_on_base(
     if not declared.strip():
         return BaseRelease(base=ref)
 
-    names = frozenset(
+    return BaseRelease(
+        base=ref,
+        version=version_in(declared),
+        notes=_notes_on(ref, notes_dir, root, run),
+        known=not run.unanswered,
+    )
+
+
+def _notes_on(ref: str, notes_dir: str, root: Path, run: Runner) -> frozenset[str]:
+    """The notes file names a ref holds in `notes_dir` - `v0.3.7.md`, not the path to it.
+
+    Shared by `released_on_base` and `claims.holdings`, whose cut holds leave
+    out a version the base already holds, so that the two agree about which.
+    """
+    return frozenset(
         line.strip().rsplit("/", 1)[-1]
         for line in run(["ls-tree", "--name-only", ref, f"{notes_dir}/"], root).splitlines()
         if line.strip()
-    )
-    return BaseRelease(
-        base=ref, version=version_in(declared), notes=names, known=not run.unanswered
     )
 
 
@@ -4199,19 +4216,7 @@ def cuts_in_flight(
 
     found: list[BranchCut] = []
     for name in refs.unlanded:
-        versions = tuple(
-            sorted(
-                {
-                    version
-                    for line in run(
-                        ["diff", "--name-only", f"{base}...{name}", "--", f"{notes_dir}/"], root
-                    ).splitlines()
-                    if (leaf := line.strip().rsplit("/", 1)[-1])
-                    and leaf not in on_base
-                    and (version := leaf.removesuffix(".md").lstrip("v"))
-                }
-            )
-        )
+        versions = _cut_versions(name, base, notes_dir, on_base, root, run)
         if not versions:
             continue
         tip = run(["rev-parse", name], root).strip()
@@ -4229,6 +4234,30 @@ def cuts_in_flight(
         unreadable=tuple(sorted(refs.unreadable)),
         base=base,
         declined=run.reason,
+    )
+
+
+def _cut_versions(
+    ref: str, base: str, notes_dir: str, on_base: frozenset[str], root: Path, run: Runner
+) -> tuple[str, ...]:
+    """The versions a ref is cutting: notes it changed since its fork that the base lacks.
+
+    Without their `v`, sorted. Shared by `cuts_in_flight` and
+    `claims.holdings`'s cut holds, so the two cannot disagree about what a
+    ref is cutting.
+    """
+    return tuple(
+        sorted(
+            {
+                version
+                for line in run(
+                    ["diff", "--name-only", f"{base}...{ref}", "--", f"{notes_dir}/"], root
+                ).splitlines()
+                if (leaf := line.strip().rsplit("/", 1)[-1])
+                and leaf not in on_base
+                and (version := leaf.removesuffix(".md").lstrip("v"))
+            }
+        )
     )
 
 

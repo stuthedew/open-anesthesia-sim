@@ -26,3 +26,5 @@ payoff: part of the claim record that ends PL-MB2W's generator: one recorded fac
 - `branches_in_flight`, `precedence` and `settled_branches` answer from `claims.holdings`, and the digest, `next`, `flight` and `show` print the same fields as before plus kind and state.
 
 **Build order.** After `PL-NST2`.
+
+**`Holdings.flight()` reads no branch-name id** (`PL-TZ3R`, untriaged): `branches_in_flight` proves an id from a name like `claude/pl-k7qx-slug` even for a ref whose history went unread, so the rewire either carries that reading into the reader or records dropping it.
