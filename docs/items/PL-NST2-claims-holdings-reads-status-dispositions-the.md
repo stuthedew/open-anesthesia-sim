@@ -3,7 +3,7 @@ id: PL-NST2
 title: claims.holdings reads status dispositions, the landed prefix, the item resource field and cut holds, and adapts to FlightReport
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: defect
 feature: claim-record
 touches: subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py, subprojects/docket/src/docket/vcs.py
@@ -11,6 +11,7 @@ blocked-by: PL-3FYK
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24
 payoff: part of the claim record that ends PL-MB2W's generator: one recorded fact decides who holds an item
+verify: grep -q 'def flight' subprojects/docket/src/docket/claims.py && grep -q 'def holder' subprojects/docket/src/docket/claims.py
 ---
 
 **Problem.** claims.holdings reads status dispositions, the landed prefix, the item resource field and cut holds, and adapts to FlightReport
