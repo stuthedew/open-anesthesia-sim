@@ -320,8 +320,20 @@ _ENCODING = locale.getpreferredencoding(False)
 
 
 def _subcommand(argv: tuple[str, ...]) -> str:
-    """The git subcommand an argv names, ignoring the options in front of it."""
-    return next((token for token in argv if not token.startswith("-")), "")
+    """The git subcommand an argv names, ignoring the options in front of it.
+
+    `-c` and `-C` take their value as the next word, which is not the
+    subcommand: `claims.work_under_record` asks `-c core.quotePath=false log`,
+    and read as the subcommand `core.quotePath=false` it was counted under
+    that name and, being no read this module knows, emptied the memo.
+    """
+    words = iter(argv)
+    for token in words:
+        if token in {"-c", "-C"}:
+            next(words, None)
+        elif not token.startswith("-"):
+            return token
+    return ""
 
 
 @dataclass(frozen=True)

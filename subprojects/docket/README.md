@@ -741,6 +741,34 @@ is the row: out of the list whose closing lines say what an age and a pull
 request can and cannot establish, and into one that says plainly that nothing
 there is being worked.
 
+**Each row also says what kind of hold put the item there, and in what
+state** (`PL-N162`). Since the claim record, "in flight" is one of four
+things: a `claim`, a `legacy claim` read by the old rule from a commit made
+before a session could write one, a `status disposition` — a branch that moved
+the item's status, which is a decision about it rather than somebody working
+it — or a `branch name`. Three more readings follow the rows, each from the
+same `claims.holdings` read. Claims that have *lapsed* on items the default
+branch holds open, and that nothing else holds live, are listed apart, since
+they hold nothing and `next` offers the item, and `show` says what taking one
+involves; a lapsed claim on a closed item is spent and not listed, and one
+beside a later live claim or disposition on the same item is not listed
+either, because `next` does not offer that item. `legacy refs: N` counts the
+refs whose live hold is a legacy claim, and prints at zero too, because zero is
+when `PL-CH3Z` deletes the old rule — but only on a whole read: where git
+declined it prints `unknown`, and where a ref went unread it prints the count
+as a floor and names the ref, since an unread ref may still hold by the old
+rule. And an `unclaimed:` row names each `claude/*` branch
+that has a non-merge commit made under the record changing a path outside the
+queue — the items, `roadmap_file` and `notes_file` — no claim of its own in
+any state, and no item id in its name. That is `claims.claims_nothing`, the
+same function `tools/branch_id_check.py` refuses such a branch on in CI
+(`PL-FFR0`), so the count the design's pre-registered 1-in-20 threshold reads
+and the refusal cannot disagree. A claim counts in any state because closing
+an item releases the branch's claim on it, and a finished branch is not a
+forgetful one. The digest's in-flight line and `next`'s exclusion line carry
+the same state and kind beside each id, as `PL-B1B1 (live claim)`, so a
+triage pass's disposition does not read as a session at work there either.
+
 **The package does not ask the forge, and will not learn how.** It answers from
 a bare checkout with no network and knows nothing about GitHub; which forge a
 project uses is not a fact about its queue. So the caller passes a way to ask —

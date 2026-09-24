@@ -261,3 +261,23 @@ def test_a_fault_that_clears_does_not_outlive_itself(tmp_path: Path) -> None:
         assert runner(argv, root).split("\t")[:2] == ["1", "0"], (
             "the memo answered from before the ref existed"
         )
+
+
+def test_a_config_option_in_front_of_the_subcommand_is_not_taken_for_it(tmp_path: Path) -> None:
+    """`-c core.quotePath=false log` is a `log`, counted and memoized as one.
+
+    `claims.work_under_record` asks git that way, and `_subcommand` took the
+    first word not starting with `-` - the option's value - so the call was
+    counted as `core.quotePath=false` and, being no read the memo knows,
+    emptied the memo every other read in the command had built (`PL-N162`).
+    """
+    root = _repo(tmp_path)
+    with GitRunner() as runner:
+        runner(["rev-parse", "HEAD"], root)
+        for _ in range(2):
+            runner(["-c", "core.quotePath=false", "log", "--format=%H", "HEAD"], root)
+        runner(["rev-parse", "HEAD"], root)
+
+        assert _asked_and_ran(runner, "log") == (2, 1)
+        assert _asked_and_ran(runner, "rev-parse") == (2, 1)
+        assert _asked_and_ran(runner, "core.quotePath=false") == (0, 0)

@@ -11,11 +11,11 @@ here and the one that compounds.
 
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from datetime import UTC, date, datetime, timedelta
 
 from .checks import DONE_WHEN, HOUSEKEEPING, REQUIRED_BRIEF, STATUS_REQUIREMENTS, Report, brief_gaps
-from .claims import CLAIM, DISPOSITION, LEASE_TERM, LIVE, NAMED, Hold, Holdings
+from .claims import CLAIM, DISPOSITION, LEASE_TERM, LIVE, NAMED, Hold, Holdings, Unclaimed
 from .concurrency import undeclared
 from .config import Config
 from .duplicates import Candidate
@@ -350,6 +350,7 @@ def format_digest(
     protected_paths: tuple[str, ...] = (),
     gate_paths: tuple[str, ...] = (),
     now: datetime | None = None,
+    read: Holdings | None = None,
 ) -> str:
     """The few lines injected into session context at startup.
 
@@ -409,6 +410,10 @@ def format_digest(
     or neither lane has anything startable. Work spanning both halves is
     counted on the same line: a session that read only the two picks would
     otherwise take them for the whole queue.
+
+    `read` adds each in-flight id's state and kind (`held_as`, `PL-N162`),
+    because five triage passes' status dispositions otherwise read exactly
+    like a session's claim.
     """
     flight = in_flight or FlightReport()
     if not report.items:
@@ -484,7 +489,9 @@ def format_digest(
             # the pull request - which the digest does not ask the forge for,
             # because it runs on every session start and must answer offline.
             if now is None:
-                named = ", ".join(branch.item_id for branch in landed)
+                named = ", ".join(
+                    f"{branch.item_id}{held_as(branch.item_id, read)}" for branch in landed
+                )
                 lines.append(
                     f"  In flight on a branch: {named}. A branch outlives its session, so this "
                     "is not proof anybody is on one; `bin/docket flight` has each one's age "
@@ -492,7 +499,9 @@ def format_digest(
                 )
             else:
                 named = ", ".join(
-                    f"{branch.item_id} {_digest_age(branch.last_commit, now)}" for branch in landed
+                    f"{branch.item_id} {_digest_age(branch.last_commit, now)}"
+                    f"{held_as(branch.item_id, read)}"
+                    for branch in landed
                 )
                 lines.append(
                     f"  In flight on a branch, by time since its last commit: {named}. A branch "
@@ -893,6 +902,8 @@ def format_flight(
     now: datetime,
     settled: SettledReport | None = None,
     reviews: OpenPullRequests | None = None,
+    read: Holdings | None = None,
+    unclaimed: Unclaimed | None = None,
 ) -> str:
     """Which items are on a branch, how long each has sat, and what went unread.
 
@@ -946,10 +957,27 @@ def format_flight(
     run, it is one firing only when something has escaped every guard this
     repository has. That is the reading the whole report is silent about
     otherwise: read perfectly well, and attributable to nothing.
+
+    **`read` adds what the claim record knows and a row has no field for**
+    (`PL-N162`, to `PL-MB2W`'s spec). Each row's state and kind - a claim, an
+    old-rule `legacy claim`, a `status disposition` or a `branch name` - since
+    "held" meant four different things once dispositions and names joined
+    claims, and a status disposition is a decision about an item rather than
+    somebody working it. Then the claims that lapsed on items the base holds
+    open, which hold nothing and which `next` therefore offers: a session
+    about to start one should know whose work it may be continuing. Then
+    `legacy refs: N`, printed at zero too, because zero is the reading
+    `PL-CH3Z` waits for before it deletes the old rule - on a whole read only
+    (`_legacy_line`). `unclaimed` is the
+    `unclaimed:` rows, one per work branch that claims nothing
+    (`claims.claims_nothing`), and the design's pre-registered 1-in-20
+    threshold for a weak hold is counted from them, so they print wherever one
+    exists and nowhere else.
     """
     lines: list[str] = []
     finished = {entry.name for entry in settled.branches} if settled else set()
     live = [branch for branch in report.branches if branch.name not in finished]
+    held = read.holding() if read is not None else {}
     if live:
         lines.append(
             f"{_plural(len(live), 'item is', 'items are')} on a branch "
@@ -959,13 +987,14 @@ def format_flight(
         width = max(len(branch.name) for branch in live)
         ages = {branch.name: _since(branch.last_commit, now) for branch in live}
         age_width = max(len(age) for age in ages.values())
-        for branch in live:
+        kinds = _hold_columns([held.get(branch.item_id) for branch in live], read)
+        for branch, kind in zip(live, kinds, strict=True):
             # `filed there` rather than a second table: the fact belongs to the
             # row it qualifies, and a reader scanning for their own id meets it
             # without being sent anywhere (`PL-3CTW`).
             mark = "" if branch.on_base else "  filed there"
             row = (
-                f"{branch.item_id}  {branch.name:<{width}}  "
+                f"{branch.item_id}  {branch.name:<{width}}  {kind}"
                 f"{ages[branch.name]:<{age_width}}{_review(branch.name, reviews)}{mark}"
             )
             lines.append(row.rstrip())
@@ -995,11 +1024,13 @@ def format_flight(
         # Stated as the conclusion rather than as a fact about subjects
         # (`PL-VYSP`): a capture leads with an id and claims nothing, and a
         # claim the base has since taken or closed is removed above, so "no
-        # commit leads with an id" was false whenever either existed.
+        # commit leads with an id" was false whenever either existed. Since
+        # `PL-N162` a hold is a claim, a status move or a name, and a subject
+        # claims only on a commit made before the record.
         lines.append(
-            "No branch claims an item. No branch carries an item id in its name, and no "
-            "commit subject claims one that the default branch has not already taken or "
-            "closed."
+            "No branch holds an item. No branch carries an item id in its name, records a live "
+            "claim on one or moves one's status, and no commit made before the claim record "
+            "leads with one the default branch has not already taken or closed."
         )
     else:
         # Every claim there was is in the section below, which explains itself.
@@ -1009,6 +1040,13 @@ def format_flight(
     if settled and settled.branches:
         lines.append("")
         lines.extend(_format_settled(settled, now))
+
+    if read is not None:
+        lines.extend(_format_lapsed(read, now))
+        lines.append("")
+        lines.append(_legacy_line(read))
+    if unclaimed is not None:
+        lines.extend(_format_unclaimed(unclaimed, read, now))
 
     if report.unattributed:
         lines.append("")
@@ -1032,6 +1070,159 @@ def format_flight(
         )
         lines.extend(f"  {name}" for name in report.unreadable)
     return "\n".join(lines)
+
+
+def _kind(hold: Hold) -> str:
+    """A hold's kind in the reader's words, `legacy` where the old rule read it."""
+    kind = _HOLD_KINDS.get(hold.kind, hold.kind)
+    return f"legacy {kind}" if hold.legacy else kind
+
+
+def held_as(key: str, read: Holdings | None) -> str:
+    """` (live claim)`: the state and kind of what holds `key`, for a list of ids, or `""`.
+
+    The digest and `next` list held items by id alone, and "held" is four
+    things since dispositions and names joined claims (`PL-N162`): a status
+    disposition is a decision about an item, not somebody working it. Nothing
+    where there is no read or no live hold behind the id, rather than a guess.
+    """
+    hold = read.holding().get(key) if read is not None else None
+    return f" ({hold.state} {_kind(hold)})" if hold is not None else ""
+
+
+def format_excluded(ids: Iterable[str], read: Holdings | None) -> str:
+    """`next`'s line naming the items it left out as in flight, each with its hold."""
+    return "Excluded, already in flight: " + ", ".join(
+        f"{key}{held_as(key, read)}" for key in sorted(ids)
+    )
+
+
+def _hold_columns(holds: Sequence[Hold | None], read: Holdings | None) -> list[str]:
+    """Each row's state and kind columns, padded to one width, or nothing without a read.
+
+    A row with no hold behind it - a report and a read that disagree, which
+    one invocation's cache rules out - gets blank columns rather than a guess.
+    """
+    if read is None:
+        return ["" for _ in holds]
+    states = [hold.state if hold else "" for hold in holds]
+    kinds = [_kind(hold) if hold else "" for hold in holds]
+    state_width = max((len(state) for state in states), default=0)
+    kind_width = max((len(kind) for kind in kinds), default=0)
+    return [
+        f"{state:<{state_width}}  {kind:<{kind_width}}  "
+        for state, kind in zip(states, kinds, strict=True)
+    ]
+
+
+def _format_lapsed(read: Holdings, now: datetime) -> list[str]:
+    """The claims past their lease on items the base holds open, as rows like the live ones.
+
+    Only open items (`Holdings.lapsed_open`): a claim on an item the base has
+    closed is spent, and one on an item the base lacks is nobody's to start.
+    And only items nothing holds live: a lapsed claim stays beside the plain
+    claim a later session makes over it until its branch goes, and there
+    `next` offers nothing.
+    Said to hold nothing, because it does not - `next` offers the item and
+    `claim` passes it without `--over` - and `show` is where what taking it
+    involves is printed.
+    """
+    # An item something else holds live is left out: its row is above, `next`
+    # does not offer it, and `show` prints the live claim rather than this one,
+    # which is the rule slice 3 gave `show` - so the heading stays true.
+    held = read.ids
+    lapsed = tuple(hold for hold in read.lapsed_open() if hold.key not in held)
+    if not lapsed:
+        return []
+    width = max(len(hold.ref) for hold in lapsed)
+    kinds = _hold_columns(lapsed, read)
+    lines = [
+        "",
+        f"{_plural(len(lapsed), 'claim has', 'claims have')} lapsed on "
+        f"{'an item' if len(lapsed) == 1 else 'items'} the default branch holds open. A lapsed "
+        "claim holds nothing, so `next` offers the item; "
+        "`bin/docket show <ID>` says whose work it may continue:",
+        "",
+    ]
+    for hold, kind in zip(lapsed, kinds, strict=True):
+        lines.append(
+            f"{hold.key}  {hold.ref:<{width}}  {kind}{_since(read.last.get(hold.ref), now)}"
+        )
+    return lines
+
+
+def _legacy_line(read: Holdings) -> str:
+    """`legacy refs: N`, the count `PL-CH3Z` waits to read as zero.
+
+    **Zero is a conclusion only on a whole read.** `PL-CH3Z` deletes the old
+    rule once this prints 0, and a read git declined holds nothing, while a
+    ref whose history went unread - any truncated clone - contributes no
+    hold whatever its subjects say. Either would print the go-ahead over refs
+    that may still hold by the old rule, so a partial read prints the count as
+    a floor and names what it could not see, and never the conclusion.
+    """
+    count = len(read.legacy_refs)
+    if not read.known:
+        return (
+            f"legacy refs: unknown - git did not answer ({read.declined}), so whether any ref "
+            "still holds an item by the old rule is not read here, and this is not the reading "
+            "`PL-CH3Z` waits for."
+        )
+    if read.unreadable:
+        unread = len(read.unreadable)
+        return (
+            f"legacy refs: at least {count} - {_plural(unread, 'ref', 'refs')} went unread and "
+            f"may hold by the old rule as well ({', '.join(read.unreadable)}), so this is not "
+            "the reading `PL-CH3Z` waits for; a full clone reads the whole count."
+        )
+    if not count:
+        return (
+            "legacy refs: 0 - no ref holds an item by a commit made before the claim record, "
+            "so nothing here still needs the old rule (`PL-CH3Z` removes it)."
+        )
+    return (
+        f"legacy refs: {count} - {_plural(count, 'ref holds', 'refs hold')} an item by a commit "
+        "made before the claim record, read by the old rule from its subject. `PL-CH3Z` "
+        "removes that rule once this reads 0."
+    )
+
+
+def _format_unclaimed(found: Unclaimed, read: Holdings | None, now: datetime) -> list[str]:
+    """The `unclaimed:` rows: work branches that claim nothing (`claims.claims_nothing`).
+
+    `PL-MB2W`'s third "Forgetful session" catch, and the same question
+    `tools/branch_id_check.py` refuses in CI. The rows are the count the
+    design's pre-registered 1-in-20 threshold reads, so each branch is one row
+    and the heading says what it means rather than what to do about a session
+    this checkout cannot see. A branch git did not answer about is named
+    apart, since it may be either.
+    """
+    lines: list[str] = []
+    if found.branches:
+        count = len(found.branches)
+        last = read.last if read is not None else {}
+        width = max(len(ref) for ref in found.branches)
+        lines.extend(
+            [
+                "",
+                f"{_plural(count, 'work branch claims', 'work branches claim')} nothing: "
+                f"{'it changes' if count == 1 else 'each changes'} files outside the queue in "
+                "commits made under the claim record, and records no claim of its own:",
+                "",
+            ]
+        )
+        lines.extend(
+            f"unclaimed: {ref:<{width}}  {_since(last.get(ref), now)}" for ref in found.branches
+        )
+    if found.unasked:
+        lines.append("")
+        lines.append(
+            f"Whether {_plural(len(found.unasked), 'branch claims', 'branches claim')} nothing "
+            f"is unknown - git did not answer which of "
+            f"{'its' if len(found.unasked) == 1 else 'their'} commits are work: "
+            f"{', '.join(found.unasked)}."
+        )
+    return lines
 
 
 def _format_settled(settled: SettledReport, now: datetime) -> list[str]:
@@ -1619,9 +1810,7 @@ def _hold_detail(hold: Hold, last: datetime | None, now: datetime, *, aged: bool
     was read from a commit subject by the old rule rather than recorded.
     `aged` false leaves the branch's age off, for a caller saying when instead.
     """
-    kind = _HOLD_KINDS.get(hold.kind, hold.kind)
-    if hold.legacy:
-        kind = f"legacy {kind}"
+    kind = _kind(hold)
     if hold.kind == NAMED and not hold.commit:
         made = "its commits went unread here"
     else:

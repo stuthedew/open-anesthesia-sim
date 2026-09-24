@@ -38,10 +38,15 @@ from docket.claims import (
     SESSION_VARIABLE,
     Hold,
     Holdings,
+    Unclaimed,
     holdings,
+    in_queue,
     settled_branches,
+    unclaimed,
+    work_under_record,
 )
-from docket.vcs import _run_git
+from docket.config import Config
+from docket.vcs import SILENT, _run_git
 
 #: When the claims under test are made. Each repository's base sits a month
 #: earlier, outside every lease.
@@ -1440,3 +1445,210 @@ def test_a_ref_whose_commits_went_unread_is_never_settled() -> None:
 
     assert [branch.name for branch in read.flight().branches] == [ref]
     assert settled_branches(Path("."), read, opened=lambda: ()).branches == ()
+
+
+# A work branch that claims nothing (`PL-FFR0`, moved here from
+# `tools/branch_id_check.py`, whose tests still hold its CI refusal).
+
+#: The queue as this repository's settings name it: the default has no notes file.
+QUEUE = Config(notes_file="docs/WORKING_NOTES.md")
+
+
+def test_unclaimed_names_a_work_branch_that_never_claimed_and_no_other(tmp_path: Path) -> None:
+    """The forgetful session, against the branches that owe nothing.
+
+    Its subject leads with an id, which is attribution and claims nothing.
+    The branch that claimed and then closed its item has released its claim,
+    and a claim counts in any state (project owner, 2026-09-24): "no live
+    claim" would call every finished branch forgetful. A triage pass writes
+    the roadmap and the notes as well as items, and all three are the queue.
+    A branch named for its item holds it by the name, and one outside
+    `claude/` is a contributor's, who has nothing to claim with.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/forgetful-a1b2c3")
+    repo.commit("PL-B1B1: the work", when=T0, files={"src/work.py": "WORK = 1\n"})
+    repo.branch("claude/finished-d4e5f6", "main")
+    repo.claim("PL-C2C2", when=T0)
+    repo.commit("PL-C2C2: the work", when=T0, files={"src/done.py": "DONE = 1\n"})
+    repo.commit(
+        "PL-C2C2: close", when=T0, files={"docs/items/PL-C2C2-other.md": _item("PL-C2C2", "done")}
+    )
+    repo.branch("claude/triage-g7h8j9", "main")
+    repo.commit(
+        "PL-B1B1: triage",
+        when=T0,
+        files={"ROADMAP.md": "- PL-B1B1\n", "docs/WORKING_NOTES.md": "## thread\n"},
+    )
+    repo.branch("claude/pl-b1b1-named", "main")
+    repo.commit("the work", when=T0, files={"src/named.py": "NAMED = 1\n"})
+    repo.branch("feature/contributor", "main")
+    repo.commit("a fix", when=T0, files={"src/fix.py": "FIX = 1\n"})
+
+    read = holdings(repo.root, now=T0 + HOUR)
+    found = unclaimed(repo.root, read, QUEUE)
+
+    assert found == Unclaimed(branches=("claude/forgetful-a1b2c3",))
+    assert [(hold.ref, hold.state) for hold in read.holds] == [("claude/finished-d4e5f6", RELEASED)]
+
+
+def test_unclaimed_skips_work_made_before_a_session_could_claim(tmp_path: Path) -> None:
+    """A commit whose own tree lacks the marker is read by the old rule, which this catch skips."""
+    repo = _Repo(tmp_path / "repo", marked=False)
+    repo.branch("claude/old-session-a1b2c3")
+    repo.commit("the work", when=T0, files={"src/work.py": "WORK = 1\n"})
+
+    read = holdings(repo.root, now=T0 + HOUR)
+
+    assert work_under_record(repo.root, "main", "claude/old-session-a1b2c3", QUEUE) is False
+    assert unclaimed(repo.root, read, QUEUE) == Unclaimed()
+
+
+def test_unclaimed_names_a_branch_git_did_not_answer_about_apart(tmp_path: Path) -> None:
+    """A silence is not "claims something": the branch is named as unknown, not dropped."""
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/forgetful-a1b2c3")
+    repo.commit("the work", when=T0, files={"src/work.py": "WORK = 1\n"})
+    read = holdings(repo.root, now=T0 + HOUR)
+
+    def silent_log(args: list[str], root: Path) -> str:
+        return SILENT if "log" in args else _run_git(args, root)
+
+    assert unclaimed(repo.root, read, QUEUE, runner=silent_log) == Unclaimed(
+        unasked=("claude/forgetful-a1b2c3",)
+    )
+    declined = dataclasses.replace(read, declined="git did not answer")
+    assert unclaimed(repo.root, declined, QUEUE) == Unclaimed()
+
+
+def test_the_queue_is_the_items_the_roadmap_and_the_notes() -> None:
+    assert in_queue("docs/items/PL-B1B1-held.md", QUEUE)
+    assert in_queue("ROADMAP.md", QUEUE)
+    assert in_queue("docs/WORKING_NOTES.md", QUEUE)
+    assert not in_queue("docs/items-archive.md", QUEUE)
+    assert not in_queue("src/work.py", QUEUE)
+
+
+def test_flight_s_rows_carry_the_kind_and_state_of_the_hold_behind_each(tmp_path: Path) -> None:
+    """`Holdings.holding` is what `flight` rows are made from, so the columns cannot disagree.
+
+    A claim, a status disposition and a branch name each hold one item here,
+    and the rendered rows name each by its kind; the report without the read
+    prints no columns, as it did before.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/claimed-a1b2c3")
+    repo.claim("PL-B1B1", when=T0)
+    repo.branch("claude/triage-d4e5f6", "main")
+    repo.commit(
+        "PL-C2C2: block",
+        when=T0,
+        files={"docs/items/PL-C2C2-other.md": _item("PL-C2C2", "blocked")},
+    )
+    repo.branch("claude/pl-f5f5-named", "main")
+    repo.commit("the work", when=T0, files={"src/named.py": "NAMED = 1\n"})
+
+    read = holdings(repo.root, now=T0 + HOUR)
+    held = read.holding()
+    printed = render.format_flight(read.flight(), T0 + HOUR, read=read)
+    bare = render.format_flight(read.flight(), T0 + HOUR)
+
+    assert {key: (hold.kind, hold.state) for key, hold in held.items()} == {
+        "PL-B1B1": (CLAIM, LIVE),
+        "PL-C2C2": (DISPOSITION, LIVE),
+        "PL-F5F5": (NAMED, LIVE),
+    }
+    assert [row.key for row in (held[key] for key in sorted(held))] == [
+        branch.item_id for branch in read.flight().branches
+    ]
+    rows = [line for line in printed.splitlines() if line.startswith("PL-")]
+    kinds = ("claim", "status disposition", "branch name")
+    assert len(rows) == len(kinds)
+    for row, kind in zip(rows, kinds, strict=True):
+        assert f"  live  {kind:<18}  last commit" in row
+    assert "  live  " not in bare
+    assert "legacy refs: 0" in printed
+    assert "legacy refs" not in bare
+
+
+def test_a_lapsed_claim_beside_a_later_live_claim_is_no_lapsed_row(tmp_path: Path) -> None:
+    """The ordinary takeover of a dead claim: the heading would say `next` offers a held item.
+
+    `claim` passes a lapsed claim without `--over`, so the first branch's
+    claim stays lapsed beside the second's live one until its ref goes.
+    `next` offers nothing there and `show` prints only the live claim, so
+    `flight` lists the item once, on the live row (review of `PL-N162`'s slice 5).
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/first-a1b2c3")
+    repo.claim("PL-B1B1", when=T0 - LEASE_TERM - 2 * DAY)
+    repo.branch("claude/second-d4e5f6", "main")
+    repo.claim("PL-B1B1", when=T0)
+
+    read = holdings(repo.root, now=T0 + HOUR)
+    printed = render.format_flight(read.flight(), T0 + HOUR, read=read)
+
+    assert [(hold.ref, hold.state) for hold in read.lapsed_open()] == [
+        ("claude/first-a1b2c3", LAPSED)
+    ]
+    assert "PL-B1B1" in read.ids
+    assert "lapsed" not in printed
+    assert "claude/first-a1b2c3" not in printed
+    assert [line.split()[:2] for line in printed.splitlines() if line.startswith("PL-")] == [
+        ["PL-B1B1", "claude/second-d4e5f6"]
+    ]
+
+
+def test_unclaimed_reads_a_remote_tracking_ref_by_its_branch_name(tmp_path: Path) -> None:
+    """On a real clone every ref is `origin/claude/...`, and the prefix test reads the branch.
+
+    Asked of the ref as written, no remote ref would start `claude/`, and the
+    rows would go empty for good on every checkout that matters while a run
+    here still printed none - the silent wrong answer this pins.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.git("remote", "add", "origin", str(tmp_path / "unreachable"))
+    repo.git("update-ref", "refs/remotes/origin/main", "main")
+    repo.branch("claude/forgetful-a1b2c3")
+    repo.commit("the work", when=T0, files={"src/work.py": "WORK = 1\n"})
+    repo.branch("claude/claimed-d4e5f6", "main")
+    repo.claim("PL-B1B1", when=T0)
+    repo.commit("PL-B1B1: the work", when=T0, files={"src/held.py": "HELD = 1\n"})
+    repo.git("checkout", "-q", "main")
+    for name in ("claude/forgetful-a1b2c3", "claude/claimed-d4e5f6"):
+        repo.git("update-ref", f"refs/remotes/origin/{name}", name)
+        repo.git("branch", "-q", "-D", name)
+
+    read = holdings(repo.root, now=T0 + HOUR)
+
+    assert unclaimed(repo.root, read, QUEUE) == Unclaimed(
+        branches=("origin/claude/forgetful-a1b2c3",)
+    )
+
+
+def test_flight_names_the_branches_git_did_not_answer_about_apart() -> None:
+    """A branch whose log git refused is neither an `unclaimed:` row nor silently dropped."""
+    read = Holdings(now=T0)
+    printed = render.format_flight(
+        read.flight(), T0, read=read, unclaimed=Unclaimed(unasked=("origin/claude/quiet-a1b2c3",))
+    )
+
+    assert "unclaimed:" not in printed
+    assert (
+        "Whether 1 branch claims nothing is unknown - git did not answer which of its commits "
+        "are work: origin/claude/quiet-a1b2c3." in printed
+    )
+
+
+def test_legacy_refs_reads_no_conclusion_from_a_read_git_declined() -> None:
+    """`PL-CH3Z` starts on `legacy refs: 0`, and a declined read holds nothing to count.
+
+    `holdings` returns exactly this object when git is below the floor; the
+    zero it would count is the absence of a reading, not a reading of none.
+    """
+    read = Holdings(now=T0, declined="git 2.1 is older than the floor")
+    printed = render.format_flight(read.flight(), T0, read=read)
+
+    assert "legacy refs: unknown - git did not answer (git 2.1 is older than the floor)" in printed
+    assert "legacy refs: 0" not in printed
+    assert "nothing here still needs the old rule" not in printed

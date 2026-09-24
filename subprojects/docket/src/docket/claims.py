@@ -93,6 +93,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from .config import Config
 from .model import CLOSED_STATUSES, parse_front_matter
 from .release import NOTES_DIR
 from .store import ID_PATTERN
@@ -169,6 +170,15 @@ CLAIM = "claim"
 DISPOSITION = "disposition"
 CUT = "cut"
 NAMED = "named"
+
+#: The namespace every agent session's branch sits in: the web harness gives it
+#: to each session it starts, and `CLAUDE.md` asks a session naming its own
+#: branch to use it. The unclaimed-work question binds this namespace and no
+#: other, because a contributor has no queue and no `bin/docket` to claim with
+#: (`PL-8P6D`). Declared here since `flight`'s `unclaimed:` row asks it as well
+#: as `tools/branch_id_check.py`, and the two must read one definition
+#: (`PL-FFR0`).
+AGENT_BRANCH_PREFIX = "claude/"
 
 #: `Hold.state`: holding the item at `now`, out of lease, or ended.
 LIVE = "live"
@@ -346,17 +356,31 @@ class Holdings:
         """
         return tuple(hold for hold in self.holds if hold.state == LAPSED and hold.on_base)
 
-    def flight(self) -> FlightReport:
-        """The holds in `vcs.branches_in_flight`'s shape, so its callers read them unchanged.
+    def holding(self) -> dict[str, Hold]:
+        """The one hold that puts each item in flight, by item.
 
-        One `Branch` per item held live: the claim that continues first, where
-        nothing claims it the disposition, and where neither holds it the
-        branch named for it (`PL-TZ3R`).
+        The claim that continues first, where nothing claims it the
+        disposition, and where neither holds it the branch named for it
+        (`PL-TZ3R`). `flight` is these as rows, and `flight`'s command reads
+        them whole for the kind and state a row has no field for.
         """
         held: dict[str, Hold] = {}
         for hold in (*self.holds, *self.dispositions, *self.named):
             if hold.state == LIVE:
                 held.setdefault(hold.key, hold)
+        return held
+
+    @property
+    def legacy_refs(self) -> frozenset[str]:
+        """The refs holding a live claim read by the old rule: `PL-CH3Z` waits for none."""
+        return frozenset(hold.ref for hold in self.holds if hold.state == LIVE and hold.legacy)
+
+    def flight(self) -> FlightReport:
+        """The holds in `vcs.branches_in_flight`'s shape, so its callers read them unchanged.
+
+        One `Branch` per item held live, from `holding`.
+        """
+        held = self.holding()
         return FlightReport(
             branches=tuple(
                 Branch(
@@ -791,6 +815,171 @@ def _finished_claim(hold: Hold) -> bool:
     if hold.state != RELEASED:
         return False
     return hold.released_by != BY_STATUS or hold.status in CLOSED_STATUSES
+
+
+# A work branch that claims nothing: `PL-MB2W`'s third "Forgetful session"
+# catch, asked by `tools/branch_id_check.py`, which refuses it in CI, and by
+# `flight`'s `unclaimed:` row, which counts it. One definition in this module
+# for both (`PL-FFR0`), because two spellings of one question are two answers
+# waiting to disagree, and the pre-registered 1-in-20 threshold is counted from
+# the row while CI refuses on the check.
+
+
+def in_queue(path: str, config: Config) -> bool:
+    """Whether a repository path is one of the records a queue workflow writes.
+
+    The items, the roadmap and the working notes. A capture, a triage pass or a
+    design round writes these and nothing else - triage puts an item on the debt
+    gate's list in the roadmap, and a design round keeps its thread in the notes
+    - and owes no claim, since the ids it leads with are never pushed into one
+    (`PL-3CTW`). Read as the items directory alone, as the spec's "outside
+    `items_dir`" says, it refused 12 such passes merged in the week to
+    2026-09-24, and would have made each claim the ids it triaged.
+    """
+    return path.startswith(config.items_dir.strip("/") + "/") or path in {
+        config.roadmap_file,
+        config.notes_file,
+    }
+
+
+def work_under_record(
+    root: Path, base: str, head: str, config: Config, *, runner: Runner | None = None
+) -> bool | None:
+    """Whether `head` changes a path outside the queue in a commit made under the record.
+
+    `None` where git did not answer. A merge is how the base arrives rather than
+    the branch's own work, and `holdings` reads none either. A commit whose own
+    tree lacks `CUTOVER_MARKER` was made before a session could write a claim,
+    and the claim clauses skip it, as the design's migration requires. Newest
+    first, so a branch made under the record answers in one `ls-tree`.
+    `core.quotePath` off so a path outside ASCII is compared as written rather
+    than in git's quoted form, which no queue path would match.
+    """
+    run = runner or _run_git
+    log = run(
+        [
+            "-c",
+            "core.quotePath=false",
+            "log",
+            "--no-merges",
+            "--no-renames",
+            "--format=%x1e%H",
+            "--name-only",
+            f"{base}..{head}",
+            "--",
+        ],
+        root,
+    )
+    if not answered(log):
+        return None
+    for record in log.split("\x1e"):
+        lines = [line for line in record.split("\n") if line]
+        if not lines or all(in_queue(path, config) for path in lines[1:]):
+            # Nothing at all, or the queue alone: a claim or a yield, which
+            # are empty, a capture or a triage pass.
+            continue
+        # The tree's own listing, which is the design's test; `holdings` asks
+        # `git show` for the same file, and the two agree on any real tree.
+        tree = run(["ls-tree", "--name-only", lines[0], "--", CUTOVER_MARKER], root)
+        if not answered(tree):
+            return None
+        if tree.strip():
+            return True
+    return False
+
+
+def claims_bound(read: Holdings, branch: str, remotes: frozenset[str]) -> tuple[Hold, ...]:
+    """The claims `branch` wrote under the record, in whatever state each is in now.
+
+    Any state, by the project owner's reading (2026-09-24): a branch releases
+    its claim by closing its item in its own copy, so "no live claim" would call
+    every finished branch forgetful, and the session this catches is the one
+    that never claimed. Old-rule holds are left out, since an inference from a
+    subject is what the record replaces.
+    """
+    return tuple(
+        hold
+        for hold in read.holds
+        if hold.kind == CLAIM and not hold.legacy and _head_name(hold.ref, remotes) == branch
+    )
+
+
+def claims_nothing(
+    read: Holdings,
+    branch: str,
+    *,
+    base: str,
+    head: str,
+    root: Path,
+    config: Config,
+    remotes: frozenset[str],
+    runner: Runner | None = None,
+) -> bool | None:
+    """Whether `branch` is a work branch that claims nothing, or `None` where git did not answer.
+
+    A `claude/` branch with a non-merge commit made under the record that
+    changes a path outside the queue (`work_under_record`, walking
+    `base..head`), no claim of its own in any state (`claims_bound`), and no
+    item id in its name, which holds the item by the name (`PL-TZ3R`). The
+    question is per branch, never per id, so a capture or a triage pass is
+    never pushed into claiming the ids it leads with. A branch `read` did not
+    walk has nothing the base has not taken, and owes nothing.
+    """
+    if (
+        claims_bound(read, branch, remotes)
+        or not branch.lower().startswith(AGENT_BRANCH_PREFIX)
+        or BRANCH_ID_RE.search(branch) is not None
+    ):
+        return False
+    if not any(_head_name(ref, remotes) == branch for ref in read.last):
+        return False
+    return work_under_record(root, base, head, config, runner=runner)
+
+
+@dataclass(frozen=True)
+class Unclaimed:
+    """The work branches that claim nothing, and those git did not answer about.
+
+    `branches` are `Hold.ref` names, as `flight` shows every other row.
+    `unasked` is not "claims something": a branch there may be either.
+    """
+
+    branches: tuple[str, ...] = ()
+    unasked: tuple[str, ...] = ()
+
+
+def unclaimed(
+    root: Path, read: Holdings, config: Config, *, runner: Runner | None = None
+) -> Unclaimed:
+    """Every branch `read` walked that `claims_nothing`, for `flight`'s `unclaimed:` rows.
+
+    Asked of `read`'s own base and of each ref it walked, so a row and the
+    holds beside it are one reading. Nothing is asked where `read` declined:
+    its `last` and `holds` are then incomplete, and a branch missing a claim
+    from a partial read would be named as forgetful.
+    """
+    if not read.known:
+        return Unclaimed()
+    run = runner or _run_git
+    remotes = _remotes(root, run)
+    found: list[str] = []
+    unasked: list[str] = []
+    for ref in sorted(read.last):
+        answer = claims_nothing(
+            read,
+            _head_name(ref, remotes),
+            base=read.base,
+            head=ref,
+            root=root,
+            config=config,
+            remotes=remotes,
+            runner=run,
+        )
+        if answer is None:
+            unasked.append(ref)
+        elif answer:
+            found.append(ref)
+    return Unclaimed(branches=tuple(found), unasked=tuple(unasked))
 
 
 def _utc(now: datetime) -> datetime:

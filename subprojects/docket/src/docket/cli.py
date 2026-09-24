@@ -21,7 +21,7 @@ from typing import Any
 
 from . import arming, claiming, instructions, notes, render
 from .checks import Report, SettingsSource, analyze, brief_contradictions
-from .claims import Holdings, holdings, settled_branches
+from .claims import Holdings, holdings, settled_branches, unclaimed
 from .concurrency import (
     ORDERING,
     SAME_AREA,
@@ -911,6 +911,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         protected_paths=config.protected_paths,
         gate_paths=config.gate_paths,
         now=_now(args),
+        read=_holdings(args),
     )
     if rendered:
         print(rendered)
@@ -2034,7 +2035,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     for index, pick in enumerate(picks, start=1):
         print(f"  {index}. {pick.describe()}\n")
     if flight.ids:
-        print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
+        print(render.format_excluded(flight.ids, _holdings(args)))
     _say_promotable(items)
     _say_recurring(items, flight.ids)
     _say_lane_holdouts(items, flight, config, args, lane)
@@ -2095,7 +2096,7 @@ def _next_oldest(
             f"{waiting.new_work} item(s), which `docket next` still ranks."
         )
     if flight.ids:
-        print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
+        print(render.format_excluded(flight.ids, _holdings(args)))
     _say_promotable(items)
     # The lane's set-aside count is taken over the owed work alone, so it
     # describes the answer above rather than a queue it was never drawn from.
@@ -3340,6 +3341,14 @@ def cmd_flight(args: argparse.Namespace) -> int:
     only the holds still say which ref closed what. It is asked here rather
     than inside `_flight` because it may ask the forge, and that is wanted by
     the command whose whole question it is.
+
+    **And it prints what the claim record adds** (`PL-N162`, `PL-MB2W`'s
+    spec): each row's kind and state, from the `Holdings` rather than the
+    `FlightReport`, which has no field for them; lapsed claims on items the
+    base holds open; how many refs still hold by the old rule; and an
+    `unclaimed:` row per work branch that claims nothing, asked of the same
+    `claims.claims_nothing` CI refuses on. That last walks each branch again,
+    so it is asked here and by no command that only ranks against the report.
     """
     inv = _invocation(args)
     if inv.git is None:
@@ -3354,7 +3363,12 @@ def cmd_flight(args: argparse.Namespace) -> int:
     opened = None if lookup is None else (lambda: answer)
     settled = settled_branches(inv.root, _holdings(args), opened=opened, runner=inv.git)
     reviews = open_pull_requests(inv.root, report, opened=opened, runner=inv.git)
-    print(render.format_flight(report, _now(args), settled, reviews))
+    read = _holdings(args)
+    # The queue as `holdings` read it: the store this command was pointed at,
+    # with the roadmap and the notes the project's settings name.
+    queue = with_fields(inv.config, items_dir=inv.tracked)
+    forgetful = unclaimed(inv.root, read, queue, runner=inv.git)
+    print(render.format_flight(report, _now(args), settled, reviews, read, forgetful))
     return 0
 
 

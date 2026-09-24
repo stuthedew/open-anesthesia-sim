@@ -7848,3 +7848,149 @@ def test_arm_answers_unknown_rather_than_arm_from_a_read_it_could_not_complete(
     git("checkout", "-q", "--detach")
     assert _arm(root, "--no-fetch") == 2
     assert capsys.readouterr().out.startswith("unknown - HEAD is on no branch")
+
+
+def _flight_row(out: str, start: str) -> str:
+    return next(line for line in out.splitlines() if line.startswith(start))
+
+
+def test_flight_prints_each_hold_s_kind_and_state_the_lapsed_claims_and_the_unclaimed_work(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-N162`'s slice 5, against real git under the claim record.
+
+    A live claim prints its state and kind on its row. A claim twelve days
+    old on an open item has lapsed, holds nothing, and prints as its own row
+    under a heading saying so. A `claude/` branch whose commit reaches outside
+    the queue with no claim on it is an `unclaimed:` row, although its subject
+    leads with an id - attribution, which claims nothing - and `legacy refs:`
+    reads 0, because every commit here was made under the record.
+
+    Three branches owe no row, from the review of this slice. The lapsed
+    branch did work outside the queue, and a claim counts in any state
+    (project owner, 2026-09-24). A capture writing an item and the roadmap
+    wrote only the queue. And a capture claimed past its lease names
+    an item the base lacks, which is nobody's to start, so it is no lapsed row.
+    """
+    root, git = _arm_repo(tmp_path)
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
+    _commit_file(git, root, "work.py", "WORK = 1\n", ARM_T0)
+    git("checkout", "-qb", "claude/gone-a1b2c3", "main")
+    _claim_by_hand(git, "PL-C2C2", "claude/gone-a1b2c3", "2026-08-20T12:00:00+00:00")
+    _commit_file(git, root, "gone.py", "GONE = 1\n", "2026-08-20T12:00:00+00:00")
+    git("checkout", "-qb", "claude/forgetful-d4e5f6", "main")
+    _commit_file(git, root, "forgot.py", "FORGOT = 1\n", ARM_T0)
+    git("checkout", "-qb", "claude/capture-g7h8j9", "main")
+    (root / "ROADMAP.md").write_text("- PL-F6F6\n", encoding="utf-8")
+    _commit_file(git, root, "docs/items/PL-F6F6-later.md", _item_document("PL-F6F6"), ARM_T0)
+    git("checkout", "-qb", "claude/capture-k2m9p4", "main")
+    _commit_file(
+        git,
+        root,
+        "docs/items/PL-H5H5-new.md",
+        _item_document("PL-H5H5"),
+        "2026-08-20T12:00:00+00:00",
+    )
+    _claim_by_hand(git, "PL-H5H5", "claude/capture-k2m9p4", "2026-08-20T12:00:00+00:00")
+
+    argv = ["--items", str(root / "docs" / "items"), "--now", ARM_NOW, "flight", "--no-remote"]
+    assert main(argv) == 0
+    out = capsys.readouterr().out
+
+    assert re.fullmatch(
+        rf"PL-B1B1  {ARM_BRANCH}\s+live  claim  last commit 1 minute ago",
+        _flight_row(out, "PL-B1B1"),
+    )
+    assert "1 claim has lapsed on an item the default branch holds open" in out
+    assert re.fullmatch(
+        r"PL-C2C2  claude/gone-a1b2c3  lapsed  claim  last commit 12 days ago",
+        _flight_row(out, "PL-C2C2"),
+    )
+    assert "legacy refs: 0" in out
+    assert "1 work branch claims nothing" in out
+    assert [line for line in out.splitlines() if line.startswith("unclaimed:")] == [
+        "unclaimed: claude/forgetful-d4e5f6  last commit 1 minute ago"
+    ]
+    assert "PL-H5H5" not in out
+
+
+def test_flight_counts_the_refs_still_holding_by_the_old_rule(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Before the record a subject leading with an id claims it, and `PL-CH3Z` waits on the count.
+
+    `_flight_repo`'s commits predate `CUTOVER_MARKER`, so its branch holds by
+    the old rule: the row says `legacy claim`, the ref is counted, and the
+    branch is no `unclaimed:` row - the catch skips what was made before a
+    session could claim, and the harness's name is outside `claude/` anyway.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "flight"]) == 0
+    out = capsys.readouterr().out
+
+    assert re.fullmatch(
+        rf"PL-0001  {BRANCH}  live  legacy claim  last commit 3 days ago",
+        _flight_row(out, "PL-0001"),
+    )
+    assert "legacy refs: 1 - 1 ref holds an item" in out
+    assert "unclaimed:" not in out
+    assert "lapsed" not in out
+
+
+def test_flight_counts_only_legacy_claims_still_live(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A legacy claim past its lease holds nothing, so it no longer needs the old rule either."""
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+
+    assert main(["--items", str(root / "items"), "--today", "2026-09-20", "flight"]) == 0
+    out = capsys.readouterr().out
+
+    assert "legacy refs: 0 - no ref holds an item" in out
+
+
+def test_flight_reads_legacy_refs_as_a_floor_where_a_ref_went_unread(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-CH3Z` starts on `legacy refs: 0`, and a truncated clone must not print it.
+
+    `_shallow_pair` is an agent container in miniature: its branch leads with
+    an id on commits made before the record, and the ref goes unread, so
+    whatever it holds by the old rule is never counted. The zero would be the
+    go-ahead to delete that rule over a ref still holding by it.
+    """
+    work = _shallow_pair(tmp_path)
+
+    assert main(["--items", str(work / "items"), "flight"]) == 0
+    out = capsys.readouterr().out
+
+    assert (
+        "legacy refs: at least 0 - 1 ref went unread and may hold by the old rule as well "
+        f"(origin/{BRANCH})" in out
+    )
+    assert "nothing here still needs the old rule" not in out
+
+
+def test_next_and_the_digest_say_what_holds_each_item_they_leave_out(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-N162`'s done-when: the digest and `next` gain each held id's state and kind.
+
+    A status disposition is a decision about an item and a claim is somebody
+    working it, and the bare id read the two the same.
+    """
+    root, git = _arm_repo(tmp_path)
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
+    store = str(root / "docs" / "items")
+
+    assert main(["--items", store, "--now", ARM_NOW, "next"]) == 0
+    listed = capsys.readouterr().out
+    assert main(["--items", store, "--now", ARM_NOW, "digest"]) == 0
+    digest = capsys.readouterr().out
+
+    assert "Excluded, already in flight: PL-B1B1 (live claim)" in listed
+    assert re.search(
+        r"In flight on a branch, by time since its last commit: PL-B1B1 [^,(]+ \(live claim\)\.",
+        digest,
+    )

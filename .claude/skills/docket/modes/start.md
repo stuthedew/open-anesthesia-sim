@@ -250,9 +250,12 @@ otherwise:
 - **Branch** — `claude/pl-k7qx-short-slug` where the session creates it. A
   branch generated before the session started cannot be renamed; that is
   expected, and the commits carry the id instead. Say so in the reply. Leading
-  every commit subject with the id is what keeps such a branch visible:
-  `docket flight` reads the subjects, and an id buried mid-sentence does not
-  count.
+  every commit subject with the id is what attributes such a branch's work -
+  `tools/branch_id_check.py` and `flight`'s unattributed line read the
+  subjects, and an id buried mid-sentence does not count - but it holds
+  nothing: the `Claim:` trailer `bin/docket claim` wrote does. A `claude/*`
+  branch with work outside the queue and no claim is refused in CI and listed
+  as `unclaimed:` in `flight` (`PL-N162`).
 
 **A `P0` is a hotfix.** Before feature work, on its own branch, with a patch
 version bump and a regression test. It joins no milestone list.
