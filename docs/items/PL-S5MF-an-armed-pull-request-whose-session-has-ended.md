@@ -3,12 +3,13 @@ id: PL-S5MF
 title: An armed pull request whose session has ended stalls at behind: main now requires branches to be up to date and GitHub's auto-merge never updates one, so PL-WNCT's promise that a capture reaches main after its session ends no longer holds
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: infra, docs
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed at capture by PL-6MW8's session, 2026-09-23
 added: 2026-09-23
 payoff: a capture whose session has ended reaches main even when main moved past its base before its CI went green
+verify: grep -q 'def test_flight_names_a_captures_only_pull_request_left_behind_main' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** An armed pull request whose session has ended stalls at behind: main now requires branches to be up to date and GitHub's auto-merge never updates one, so PL-WNCT's promise that a capture reaches main after its session ends no longer holds
@@ -78,6 +79,23 @@ placed in the report every session already reads. It needs no new secret, and it
 keeps `docket`'s rule that it prints and does not act. Take 2 only if the new
 line is seen being skipped. The generator pause holds either one until the
 pause lifts or the owner names this item.
+
+**Answered 2026-09-24: route 1** (project owner, 2026-09-24, ratified, over a
+workflow on push to `main` with a stored token, and over accepting the stall).
+`bin/docket flight` will name a captures-only pull request that is behind
+`main`, together with the `update_pull_request_branch` call that lands it.
+
+**Held by the generator pause until it lifts.** The answer chose the route; it
+did not name the item for building now. So `CLAUDE.md` § "What this project
+is" still holds it as a new feature unrelated to fixing the generators, until
+`bin/docket generators` marks no head "still generating". `ready` records that
+the design is settled. It does not lift the pause. The store has no field for
+the pause, and `blocked` needs a single blocker to name.
+
+**The fault is predicted, not yet observed.** No armed pull request has sat
+behind since the setting went on (checked 2026-09-24 00:35 UTC: none open).
+#976, which was unarmed, shows the mechanism: it was opened on `dd64b712`
+after `main` had moved to `92cfa3c5`, and it reported `behind`.
 
 **Done when.** The chosen route is in place, or "accept it" is recorded with
 its reason, and a captures-only pull request that falls behind after its
