@@ -2,13 +2,14 @@
 id: PL-5MYR
 title: Generator identification reaches one level up and never clusters the heads: triage asks each item whether a head explains it, so one record read by several readers gets a head per reader, and both such generators found so far - PL-WD5Z's gate prose after three heads, and the claim family PL-MB2W names after four - surfaced only in a sweep the owner asked for
 priority: P2
-effort: S
+effort: M
 status: needs-decision
 classes: defect
 feature: generator-identification
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, .claude/skills/docket/modes/triage.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a gap in how generators are found, held for the owner's decision on lifting the pause
 added: 2026-09-23
+payoff: A record read by several readers is found by the next grooming pass reading one screen, not by a sweep the owner has to ask for
 impairs-generators: the triage mode's generator check and bin/docket generators (cli.cmd_generators, render) compare each new item with one head at a time and never compare heads with each other, so one record read by several readers gets a head per reader and its generator is found only by a sweep the owner asks for
 ---
 
@@ -93,11 +94,11 @@ reading (14 of 37 checked filings named a closed fix that had not reached
 them) is what that looks like from the item side. Each such generator has so
 far been found only when the owner asked "are we sure?".
 
-**Pause.** Any remedy that adds a step or a check is a new workflow mechanism.
+[superseded 2026-09-23: the owner's answer below - fixing the generator machinery is what the pause is for, and `PL-8L9S` corrected `CLAUDE.md`'s wording] **Pause.** Any remedy that adds a step or a check is a new workflow mechanism.
 Under `CLAUDE.md` § "What this project is", it is captured and not built while
 an open item carries `generator: live`, which `PL-WD5Z` does.
 
-**Done when.** One of two outcomes. Either one existing pass (grooming, or the
+[superseded 2026-09-24: the rewritten Done-when directly below, matching the durable version the owner chose] **Done when.** One of two outcomes. Either one existing pass (grooming, or the
 generator sweep) asks whether two or more heads share one record, and that
 question has been run once over `bin/docket generators`. Or the owner decides
 the owner-requested sweep stays the mechanism, and this item is dropped with
@@ -105,9 +106,29 @@ that decision recorded. Comparing heads is judgment, so the remedy is a
 question a session asks, not a script (`CLAUDE.md` § "Prefer deterministic
 tooling", "Do not script the judgment").
 
+**Done when (rewritten 2026-09-24).** All four hold. Comparing heads stays
+judgment; what the code does is make the reading one screen and flag the one
+decidable fact.
+
+1. Every sound generator head, open or closed, carries `misread:`: one line of
+   at most 100 characters naming the one fact its members misread. `bin/docket
+   check` errors on a head without one, on a `misread:` on an item recording
+   no cluster, and on a line over the bound.
+2. `bin/docket generators` prints each head's `misread:` under its drain line,
+   and flags every pair of heads whose `root-cause-of:` lists share a member or
+   where one names the other. `bin/docket generators --misread` prints the
+   lines alone, sorted by the fact, with the same overlap block.
+3. The triage generator check and the grooming pass in
+   `.claude/skills/docket/modes/triage.md` ask against that list: which fact
+   did this reader misread and does a head state it, and do any two heads
+   state one fact.
+4. The head comparison has been run once over the new list, and its result is
+   recorded in this brief.
+
 **The owner's direction, 2026-09-23.** In their words: "I'd rather fix it right once, then fix it twice" (project owner, 2026-09-23). Of the two
 outcomes above, that reads as the first: a pass that compares the heads every
-time, rather than the owner asking "are we sure?". Building it is new workflow
+time, rather than the owner asking "are we sure?". [superseded 2026-09-23: the
+owner's answer below, no lift needed] Building it is new workflow
 mechanism, so it waits for the pause unless the owner lifts the pause for it.
 
 **Decision needed - the project owner's.** Should the pause be lifted for this
@@ -165,9 +186,11 @@ before writing it.
 **Generator check.** A one-off gap in the identification step itself, and not
 an instance of a closed head. `PL-KVDK` built the per-item step. `PL-RX3H`
 (recurrences never chain across items) and `PL-J870` (promotion declined on
-severity) are other gaps in identification, but each is at item altitude. It
-cannot carry `impairs-generators:`, because the step is prose in
-`.claude/skills/docket/modes/triage.md`, outside `generator_paths`.
+severity) are other gaps in identification, but each is at item altitude.
+[superseded 2026-09-23: the durable version reaches `generator_paths`, so the
+item carries `impairs-generators:`] It cannot carry `impairs-generators:`,
+because the step is prose in `.claude/skills/docket/modes/triage.md`, outside
+`generator_paths`.
 
 **Verified counts (PL-T7Y1, 2026-09-23).** Adversarial verification ran over
 two rounds: three skeptics per claim, 262 agents in all. `PL-T7Y1` holds the
@@ -250,7 +273,8 @@ differ.
   - `PL-L4YG` records no verdict.
 
 **What this changes here.** The head comparison this item's Done-when asks
-for has now run once. The other half of Done-when, a pass that asks the
+for has now run once. [superseded 2026-09-23: the owner's answer above, no lift
+needed, so the pass is built here] The other half of Done-when, a pass that asks the
 question every time, is new workflow mechanism, so it stays captured and
 unbuilt while any open item carries `generator: live`. Four live heads are now
 open: `PL-WD5Z`, `PL-B8HZ`, `PL-QHCW` and `PL-HMZZ`.

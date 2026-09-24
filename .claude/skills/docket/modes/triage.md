@@ -192,28 +192,67 @@ that knows the lane, because capture leaves `touches` unset. Keep asking *why
 did this exist?* until the answer is a design fact rather than the symptom:
 a representation choice, a missing single source of truth, an invariant no
 code enforces, an external behaviour nothing models, or a rule that forces the
-work. Then grep for whether any one function or check already encodes that
-fact. Land on one of these:
+work.
 
-- **An instance of a closed head's mechanism, filed after the head closed.**
-  `bin/docket generators` gives each head and its close date. The head's fix
-  did not stop the mechanism, and nothing else in the store can record that:
-  every attributed child to date was filed in the commit that closed its parent
-  (`PL-04KR`).
+**Then name the fact this item's reader misread, and read it against every
+head's.** The fact is the thing that, held once as a record every reader
+consults, would have made the item impossible. `bin/docket generators
+--misread` prints each head's `misread:` line on one screen, sorted by the fact,
+followed by the heads whose clusters overlap. Compare at the fact, not at the
+reader: a second reader misreading a fact a head already states belongs to that
+head, even where it shares no function, file or tool with the head's members.
+"Two items in two tools with no shared function, so not a generator" is the
+altitude that gave one record a head per reader, four of them for who holds an
+item before `PL-MB2W` named it (`PL-5MYR`). Then grep for whether any one
+function or check already encodes that fact. Land on one of these:
+
+- **An instance of a head's fact, filed after the head closed.** The head's
+  `misread:` states the fact, and `bin/docket generators` gives the head's
+  close date. The head's fix did not stop the mechanism, and nothing else in
+  the store can record that: every attributed child to date was filed in the
+  commit that closed its parent (`PL-04KR`).
 - **A re-entry**: the same defect, or the same mechanism at a sibling site, as
   an item closed within 30 days whose fix should have covered it.
-- **One mechanism shared with two or more other items that no head names.**
-  That is a generator. Record it under `CLAUDE.md` § "A root cause of more than
-  two items is pulled, not queued", which also sets its two endings. Three
-  post-close instances of one head count the same way, as a generator whose
-  fix did not hold.
+- **One fact misread by two or more other items, and no head's `misread:`
+  states it.** That is a generator. Record it under `CLAUDE.md` § "A root cause
+  of more than two items is pulled, not queued", which also sets its two
+  endings, and write its `misread:` beside the `root-cause-of:` and the
+  `generator:`. `bin/docket check` refuses a head without one. Three post-close
+  instances of one head count the same way, as a generator whose fix did not
+  hold.
 - **A one-off, bookkeeping, or work the owner asked for.** This is the common
   answer, not a failure to find anything.
 
 Sharing a file or a feature is not sharing a mechanism, so prefer the one-off
-over a weak cluster. Write the answer into the brief as one `**Generator
-check.**` line, naming the head or the item where there is one. The reply is
-gone before a later session or `PL-04KR`'s re-entry reading looks for it.
+over a weak cluster. Sharing a misread fact is sharing one, across any number
+of readers. Write the answer into the brief as one `**Generator check.**` line,
+naming the fact, and the head or the item where there is one. The reply is gone
+before a later session or `PL-04KR`'s re-entry reading looks for it.
+
+**On a grooming pass, compare the heads with each other** (`PL-5MYR`). The
+check above asks one item about the heads. Nothing else asks the heads about
+each other, and that gap gave one record a head per reader: four for who holds
+an item, and three for gate dispositions before `PL-WD5Z`. Each was found only
+by a sweep the owner asked for. So read `bin/docket generators --misread` once,
+whole, and ask whether any two lines state one fact. The sort puts lines with
+the same wording side by side; drifted wording puts them apart, so read the
+whole list rather than neighbours only. Treat each overlap pair it prints as a
+lead, not a verdict: a member two heads share is a misattribution, a member
+with two causes, or a sign the heads share a fact. Four outcomes, all yours to
+act on in the pass:
+
+- **Two heads state one fact, and no head names it at family altitude.** The
+  fact is a generator. Record it as above.
+- **Two heads state one fact that a family head already names.** Rewrite each
+  narrower head's `misread:` in the family head's words, so the lines sort
+  together.
+- **A shared member belongs to one head only.** Remove it from the other
+  head's `root-cause-of:`, and say why in that head's brief.
+- **Nothing.** Say so in the pass's reply; it is the common answer.
+
+The judgment stays yours. What changed is the cost of reading: `PL-T7Y1` ran
+this comparison once by reading every brief, with 262 agents, and the list
+makes it one screen.
 
 ### The `verify:` command, and running it before writing it down
 
