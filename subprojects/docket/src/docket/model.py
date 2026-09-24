@@ -552,7 +552,7 @@ class Item:
     #: closed head moves no ranking; a closed head's stated fact is exactly
     #: what a later capture is compared against, and "an instance of a closed
     #: head's mechanism, filed after the head closed" is triage's first
-    #: landing - `PL-7TVT` closed spent with five members filed after it.
+    #: landing - `PL-7TVT` closed spent with four members filed after it.
     #:
     #: Presence, the missing-cluster case and `MISREAD_LIMIT` are decidable and
     #: live in `misread_faults`. Whether the line names the right fact, and
@@ -1002,7 +1002,7 @@ def misread_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     reads. A closed head's stated fact is read: it is exactly what a later
     capture is compared against, and "an instance of a closed head's
     mechanism, filed after the head closed" is triage's first landing -
-    `PL-7TVT` closed spent with five members filed after it. Nor does the
+    `PL-7TVT` closed spent with four members filed after it. Nor does the
     backfill invent anything: `PL-T7Y1`'s audit compared every head, and
     `PL-5MYR` wrote each line from it and checked it against its head.
 
@@ -1018,6 +1018,14 @@ def misread_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     `docket generators --misread` puts on one screen.
     """
     text = item.misread.strip()
+    if item.misread and not text:
+        # Only a write can carry this - the parser strips what it reads - and
+        # read as absent it would pass `docket set` unrefused, the error
+        # being the one the head already carried, while writing a blank line.
+        return (
+            "is blank; write the one fact its members misread, or pass an empty value to "
+            "remove the field",
+        )
     if not text:
         if is_generator(item, known):
             return (

@@ -432,7 +432,8 @@ def main(argv: list[str] | None = None) -> int:
         "\n"
         "Either way, add `misread: <the one fact its members misread>` - one line,\n"
         "naming the fact rather than the reader. `docket check` requires it on every\n"
-        "head, and `docket generators --misread` compares it with the other heads'."
+        "head, and `docket generators --misread` lists it beside the other heads'\n"
+        "lines for you to compare."
     )
     return 0
 

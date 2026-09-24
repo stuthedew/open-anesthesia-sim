@@ -7146,6 +7146,102 @@ def test_set_refuses_a_misread_over_the_limit(
     assert _item_text(store) == before
 
 
+def test_set_refuses_a_blank_misread_rather_than_writing_an_empty_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Read as absent, a blank value added no new error and was written as a success."""
+    store = _cluster(tmp_path, names=_MEMBERS, generator=_LIVE)
+    before = _item_text(store)
+
+    assert _run("set", "PL-4040", "--misread", "   ", "--items", str(store)) == 1
+
+    assert "is blank" in capsys.readouterr().out
+    assert _item_text(store) == before
+
+
+def test_show_on_a_head_prints_what_is_wrong_with_its_misread_under_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store = _cluster(tmp_path, names=_MEMBERS, generator=_LIVE, misread="x" * 101)
+
+    assert _run("show", "PL-4040", "--items", str(store)) == 0
+
+    assert (
+        f"  misread: {'x' * 101}\n    UNSOUND - runs to 101 characters" in capsys.readouterr().out
+    )
+
+
+def test_generators_says_which_head_names_which_where_heads_nest(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The pair is ordered by id, so the clause has to carry which head holds the other.
+
+    `PL-4040` names `PL-5050` (the lower id nesting the higher), and
+    `PL-6060` names `PL-5050` (the higher nesting the lower), which also
+    makes `PL-4040` and `PL-6060` share `PL-5050`. Printed the other way
+    round, a nesting line states the containment backwards.
+    """
+    store = _store(
+        tmp_path,
+        _clustered("PL-4040", "Outer", names="PL-5050, PL-B1B1, PL-C2C2", misread=_MISREAD),
+        _clustered("PL-5050", "Inner", names="PL-D3D3, PL-F5F5, PL-G6G6", misread=_MISREAD),
+        _clustered("PL-6060", "Also outer", names="PL-5050, PL-H7H7, PL-J8J8", misread=_MISREAD),
+        *(
+            _clustered(member, f"Member {member}")
+            for member in ("PL-B1B1", "PL-C2C2", "PL-D3D3", "PL-F5F5", "PL-G6G6")
+            + ("PL-H7H7", "PL-J8J8")
+        ),
+    )
+
+    assert _run("generators", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert (
+        "\n    PL-4040 names PL-5050\n"
+        "    PL-4040 and PL-6060 share PL-5050\n"
+        "    PL-6060 names PL-5050\n"
+    ) in output
+
+
+def test_generators_names_both_directions_where_two_heads_name_each_other(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store = _store(
+        tmp_path,
+        _clustered("PL-4040", "One", names="PL-5050, PL-B1B1, PL-C2C2", misread=_MISREAD),
+        _clustered("PL-5050", "Other", names="PL-4040, PL-D3D3, PL-F5F5", misread=_MISREAD),
+        *(
+            _clustered(member, f"Member {member}")
+            for member in ("PL-B1B1", "PL-C2C2", "PL-D3D3", "PL-F5F5")
+        ),
+    )
+
+    assert _run("generators", "--items", str(store)) == 0
+
+    assert "\n    PL-4040 names PL-5050; PL-5050 names PL-4040\n" in capsys.readouterr().out
+
+
+def test_generators_misread_names_an_unsound_claim_it_could_not_list(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An unsound claim is on no head's line, so leaving it off would pass a part as the whole."""
+    store = _store(
+        tmp_path,
+        _clustered("PL-4040", "A sound head", names=_MEMBERS, generator=_LIVE, misread=_MISREAD),
+        _clustered("PL-G4G4", "A head naming an id nothing carries", names="PL-B1B1, PL-N0P3"),
+        *(_clustered(member, f"Member {member}") for member in ("PL-B1B1", "PL-C2C2", "PL-D3D3")),
+    )
+
+    assert _run("generators", "--misread", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert f"  PL-4040 (ready)  {_MISREAD}\n" in output
+    assert (
+        "1 item carries a `root-cause-of:` that is not a sound claim, so it is ranked and "
+        "counted as an ordinary item: PL-G4G4"
+    ) in output
+
+
 class TestAskingTheForgeWhichBranchesAreOpen:
     """`flight`'s forge half, and the one way it must never fail.
 

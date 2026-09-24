@@ -195,13 +195,13 @@ def overlaps(groups: Mapping[str, Cluster]) -> list[Overlap]:
     Triage compared each new item with one head at a time and never compared
     heads with each other, so one record read by several readers got a head
     per reader (`PL-5MYR`). The intersection is the decidable half of that
-    comparison: on 2026-09-23 it named 11 pairs, plus the nesting case -
-    `PL-BHVM` names `PL-R808` - and recovered three of the five shared records
-    `PL-T7Y1`'s audit verified and both of its misattributions. It cannot see
-    a shared record whose members are disjoint, and it missed two of the
-    audit's five that way (`PL-J6HP` with `PL-WD5Z`, `PL-6TP8` with
-    `PL-1P5V`); that is what each head's `misread:` line is for, and comparing
-    those lines is a session's judgment.
+    comparison: on 2026-09-23 it named 11 pairs sharing a member, plus one
+    pair that only nests - `PL-BHVM` names `PL-R808` - and recovered three of
+    the five shared records `PL-T7Y1`'s audit verified and both of its
+    misattributions. It cannot see a shared record whose members are
+    disjoint, and it missed two of the audit's five that way (`PL-J6HP` with
+    `PL-WD5Z`, `PL-6TP8` with `PL-1P5V`); that is what each head's `misread:`
+    line is for, and comparing those lines is a session's judgment.
 
     Only the heads `clusters` accepts, so a pair here is one `docket check`
     and the ranking both recognise. Ordered by the pair's ids, lower first.

@@ -3390,6 +3390,20 @@ def test_a_misread_over_the_limit_or_without_a_cluster_is_an_error() -> None:
     assert _has(_errors(stray), "records no cluster")
 
 
+def test_only_an_absent_misread_is_said_to_leave_its_head_compared_with_nothing() -> None:
+    """An over-length line is still listed and sorted, and one with no cluster is on no head.
+
+    Saying either leaves a head compared with nothing would be a check
+    reporting what is not so.
+    """
+    long = _item("PL-K7QX", root_cause_of=_EXPLAINS, generator=_LIVE, misread="x" * 101)
+    stray = _item("PL-K7QX", misread=_MISREAD)
+
+    for errors in (_errors(long, *_explained()), _errors(stray)):
+        assert _has(errors, "`misread:`")
+        assert not _has(errors, "compared with nothing")
+
+
 def test_a_root_cause_naming_an_unknown_item_is_an_error() -> None:
     errors = _errors(_item("PL-K7QX", root_cause_of=(*_EXPLAINS, "PL-N0P3")), *_explained())
 

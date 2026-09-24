@@ -1313,7 +1313,9 @@ def _format_overlaps(overlaps: Sequence[Overlap]) -> list[str]:
     return lines
 
 
-def format_misread(clusters: Mapping[str, Cluster], overlaps: Sequence[Overlap] = ()) -> str:
+def format_misread(
+    clusters: Mapping[str, Cluster], overlaps: Sequence[Overlap] = (), unsound: Sequence[Item] = ()
+) -> str:
     """What each head's members misread, sorted by the fact - `docket generators --misread`.
 
     The list triage and grooming compare a capture against, and the one a
@@ -1325,10 +1327,13 @@ def format_misread(clusters: Mapping[str, Cluster], overlaps: Sequence[Overlap] 
     A head stating nothing is listed last rather than left out, for the
     apparatus floor: a head missing from this list is a head a capture is
     never compared against, and omitting it silently would hand over a partial
-    reading as the whole one. `docket check` names each as an error.
+    reading as the whole one. `docket check` names each as an error. An item
+    whose `root-cause-of:` is unsound is on no list here, being no head, and
+    is named after it for the same reason, as `format_clusters` names it.
     """
     if not clusters:
-        return "no item carries a sound `root-cause-of:`, so no generator is recorded"
+        lines = ["no item carries a sound `root-cause-of:`, so no generator is recorded"]
+        return "\n".join(lines + _outside_clusters(unsound, ()))
     heads = [cluster.head for cluster in clusters.values()]
     stated = sorted(
         (head for head in heads if head.misread),
@@ -1347,6 +1352,7 @@ def format_misread(clusters: Mapping[str, Cluster], overlaps: Sequence[Overlap] 
     for head in missing:
         lines.append(f"  {labels[head.identifier]:<{width}}  [no misread:] - docket check names it")
     lines.extend(_format_overlaps(overlaps))
+    lines.extend(_outside_clusters(unsound, ()))
     return "\n".join(lines)
 
 

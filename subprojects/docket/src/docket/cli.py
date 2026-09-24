@@ -2409,7 +2409,7 @@ def cmd_generators(args: argparse.Namespace) -> int:
     if not args.head:
         pairs = overlaps(groups)
         if args.misread:
-            print(render.format_misread(groups, pairs))
+            print(render.format_misread(groups, pairs, unsound_generator_claims(items)))
             return 0
         print(
             render.format_clusters(

@@ -2278,15 +2278,22 @@ def _check_misread(report: Report, known: set[str]) -> None:
     cluster for the line to be about, and the length bound. Whether the line
     names the right fact, and whether two heads name the same one, is
     judgment and is checked nowhere.
+
+    The consequence is stated only where the line is absent, the one fault it
+    is true of: an over-length line is still listed and sorted, and a line on
+    an item with no cluster is not on a head at all.
     """
     for item in report.items:
         faults = misread_faults(item, known)
         if not faults:
             continue
-        report.errors.append(
-            f"{_where(item)}: `misread:` {'; '.join(faults)}. The comparison between heads "
-            f"reads this line, so until it is written this head is compared with nothing"
+        consequence = (
+            ". The comparison between heads reads this line, so until it is written this "
+            "head is compared with nothing"
+            if not item.misread
+            else ""
         )
+        report.errors.append(f"{_where(item)}: `misread:` {'; '.join(faults)}{consequence}")
 
 
 def _check_recurrences(report: Report, known: set[str]) -> None:

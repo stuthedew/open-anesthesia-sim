@@ -2001,7 +2001,7 @@ same words, since that is what puts the two next to each other:
 `generator`, which a closed head is not asked for. A verdict on a closed head
 moves no ranking; a closed head's stated fact is exactly what a later capture
 is compared against, and "an instance of a closed head's mechanism, filed after
-the head closed" is triage's first landing — `PL-7TVT` closed spent with five
+the head closed" is triage's first landing — `PL-7TVT` closed spent with four
 members filed after it. Backfilling the closed heads invented nothing:
 `PL-T7Y1` had compared every head, and each line was written from it and
 checked against its head. The line is bounded at **100 characters**, because it
@@ -2040,9 +2040,10 @@ list come **the pairs of heads whose clusters overlap**: two heads whose member
 lists share an id, or one whose members include the other head. That is a fact
 about two lists, not a verdict that the heads share a record, and it is printed
 as a pointer to both `misread:` lines. It is also the half of the comparison a
-tool can make and no more: on 2026-09-23 it named 11 pairs plus one nesting
-(`PL-BHVM` names `PL-R808`) and recovered three of the five shared records
-`PL-T7Y1` verified, but it missed the other two, whose members were disjoint.
+tool can make and no more: on 2026-09-23 it named 11 pairs sharing a member
+plus one pair that only nests (`PL-BHVM` names `PL-R808`), and recovered three
+of the five shared records `PL-T7Y1` verified, but it missed the other two,
+whose members were disjoint.
 `docket generators --misread` prints only the lines, one per head, sorted by the
 fact so heads stating one sit together, with the heads that state none last and
 the overlap block after — the list triage and grooming compare a capture
