@@ -3,7 +3,7 @@ id: PL-J9S0
 title: branch_id_check fails a work branch that holds no claim and a claim that orders behind another live claim, and the first-edit hook says to claim
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: claim-record
 touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py, .claude/hooks/docket-branch-guard.sh
@@ -11,6 +11,7 @@ blocked-by: PL-0TD9
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24
 payoff: part of the claim record that ends PL-MB2W's generator: one recorded fact decides who holds an item
+verify: grep -qF 'this branch claims nothing' .claude/hooks/docket-branch-guard.sh && grep -q 'def test_a_work_branch_holding_no_claim_is_refused' tests/unit/test_branch_id_check.py && grep -q 'def test_a_claim_ordering_behind_another_live_claim_is_refused' tests/unit/test_branch_id_check.py && grep -q 'def test_a_legacy_commit_owes_no_claim' tests/unit/test_branch_id_check.py
 ---
 
 **Problem.** branch_id_check fails a work branch that holds no claim and a claim that orders behind another live claim, and the first-edit hook says to claim
@@ -26,3 +27,5 @@ First verify that CI's fetch-depth 0 holds every head. Fail a non-legacy branch 
 - `tools/branch_id_check.py` fails the two cases in the brief and skips legacy commits, with tests.
 
 **Build order.** After `PL-3FYK`.
+
+**The fault, reproduced 2026-09-24 on `b1d1b665`.** `tools/branch_id_check.py` never mentions a claim - it reads a branch's name and its leading subject ids alone - and `.claude/hooks/docket-branch-guard.sh` does not say `this branch claims nothing`.
