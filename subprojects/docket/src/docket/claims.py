@@ -55,7 +55,7 @@ base has held, through which the branch's own work is all on the base. That
 is the shape a squash merge leaves on a branch that goes on committing
 (`PL-8JQQ`), and continuing work there claims again.
 
-**Two other kinds of hold ride the same read, and neither is a claim.** A
+**Three other kinds of hold ride the same read, and none is a claim.** A
 *disposition* is a branch whose copy of an item has moved its `status:` away
 from both the fork's copy and the base's - a grooming pass blocking or
 dropping it, a triage pass readying it - which `docket next` must not offer
@@ -64,8 +64,12 @@ nothing; it reads `status:` alone, so a pass rewriting another field of a
 hundred items holds none of them (`PL-3W3P`); it runs on the branch's lease;
 and it never orders against a claim or holds arming. A *cut* is a release's
 notes file on the branch, `vcs.cuts_in_flight`'s read, and it always refuses a
-release. They are kept apart from the claims (`Holdings.dispositions`,
-`Holdings.cuts`) so that a reader wanting claims cannot be handed either.
+release. A *name* is a branch named for its item, `claude/pl-k7qx-slug`, which
+`vcs.branches_in_flight` has always read as carrying it and which needs no
+history to read (`PL-TZ3R`); it runs on the branch's lease and never orders
+against a claim or holds arming. They are kept apart from the claims
+(`Holdings.dispositions`, `Holdings.cuts`, `Holdings.named`) so that a reader
+wanting claims cannot be handed one.
 
 **A commit made before a session could write a claim is read by the old
 rules** (`CUTOVER_MARKER`): a subject leading with ids claims them where the
@@ -155,10 +159,12 @@ CUTOVER_MARKER = "subprojects/docket/src/docket/claiming.py"
 #: writes the same variable's value as a claim's `<session>` token.
 SESSION_VARIABLE = "CLAUDE_CODE_REMOTE_SESSION_ID"
 
-#: `Hold.kind`: a recorded claim, a status disposition, or a release cut.
+#: `Hold.kind`: a recorded claim, a status disposition, a release cut, or a branch
+#: named for its item.
 CLAIM = "claim"
 DISPOSITION = "disposition"
 CUT = "cut"
+NAMED = "named"
 
 #: `Hold.state`: holding the item at `now`, out of lease, or ended.
 LIVE = "live"
@@ -223,7 +229,10 @@ class Hold:
 
     A disposition fills the same fields from the commit that last touched the
     item's file, and is `live` or `lapsed` only; a cut's `key` is the version
-    it cuts, without its `v`, and it is always `live`.
+    it cuts, without its `v`, and it is always `live`. A name's `since` and
+    `commit` are the branch's first commit, and `renewed` its newest; a ref
+    whose commits went unread has neither, so both dates are the read's `now`
+    and `commit` is empty.
     """
 
     key: str
@@ -263,8 +272,8 @@ class Holdings:
     `holds` is the claims, sorted into the order that decides which branch
     continues: author date, then hash, with a takeover immediately ahead of the
     claim it names. One order across every item, so `order` is a filter of it
-    and `holder` its first match. `dispositions` and `cuts` are the other two
-    kinds, kept apart so that no reader wanting claims is handed one.
+    and `holder` its first match. `dispositions`, `cuts` and `named` are the
+    other three kinds, kept apart so that no reader wanting claims is handed one.
 
     **What went unread travels with the answer**, as it does on `FlightReport`.
     `unreadable` names refs whose history this checkout cannot compare with the
@@ -279,6 +288,8 @@ class Holdings:
     holds: tuple[Hold, ...] = ()
     dispositions: tuple[Hold, ...] = ()
     cuts: tuple[Hold, ...] = ()
+    #: One per branch whose name carries an item id, in the order refs were listed.
+    named: tuple[Hold, ...] = ()
     unreadable: tuple[str, ...] = ()
     malformed: tuple[str, ...] = ()
     base: str = ""
@@ -295,9 +306,11 @@ class Holdings:
 
     @property
     def ids(self) -> frozenset[str]:
-        """The items some branch holds live, by a claim or a disposition."""
+        """The items some branch holds live, by a claim, a disposition or its name."""
         return frozenset(
-            hold.key for hold in (*self.holds, *self.dispositions) if hold.state == LIVE
+            hold.key
+            for hold in (*self.holds, *self.dispositions, *self.named)
+            if hold.state == LIVE
         )
 
     def order(self, key: str) -> tuple[Hold, ...]:
@@ -323,12 +336,12 @@ class Holdings:
     def flight(self) -> FlightReport:
         """The holds in `vcs.branches_in_flight`'s shape, so its callers read them unchanged.
 
-        One `Branch` per item held live: the claim that continues first, and
-        where nothing claims it, the disposition. A name that carries an id is
-        not read as a hold here (`PL-TZ3R`).
+        One `Branch` per item held live: the claim that continues first, where
+        nothing claims it the disposition, and where neither holds it the
+        branch named for it (`PL-TZ3R`).
         """
         held: dict[str, Hold] = {}
-        for hold in (*self.holds, *self.dispositions):
+        for hold in (*self.holds, *self.dispositions, *self.named):
             if hold.state == LIVE:
                 held.setdefault(hold.key, hold)
         return FlightReport(
@@ -578,8 +591,46 @@ def holdings(
             )
     dispositions.sort(key=lambda hold: (hold.since, hold.commit, hold.key))
 
+    # A branch named for its item holds it by the name, which needs no history,
+    # so a ref whose commits went unread still proves its id and stays in
+    # `unreadable` for whatever those commits might add (`PL-TZ3R`). Live while
+    # the branch's newest commit is within the term; an unread ref is live,
+    # since nothing dates it and dropping the id offers an item a live session
+    # may be holding. An item the base has closed releases it, as it does a
+    # claim; nothing else does, so a branch closing the item in its own copy
+    # keeps it in flight, where `settled_branches` finds it.
+    named: dict[str, Hold] = {}
+    for name in candidates:
+        match = BRANCH_ID_RE.search(name)
+        if match is None or (name not in unlanded and name not in unreadable):
+            continue
+        branch = _head_name(name, remotes)
+        key = match.group(1).upper()
+        if f"{key} {branch}" in named:
+            continue
+        history = histories.get(branch, [])
+        dates = renewals.get(branch, [])
+        if status(base, key) in CLOSED_STATUSES:
+            state, released_by = RELEASED, BY_CLOSED
+        else:
+            state = LIVE if not dates or moment - dates[-1] <= term else LAPSED
+            released_by = ""
+        named[f"{key} {branch}"] = Hold(
+            key=key,
+            ref=branches[branch][0] if branch in histories else name,
+            kind=NAMED,
+            state=state,
+            since=history[0].authored if history else moment,
+            renewed=dates[-1] if dates else moment,
+            commit=history[0].commit if history else "",
+            status=status(tips[branch], key) if branch in tips else "",
+            mine=bool(here) and branch == here,
+            on_base=key in on_base,
+            released_by=released_by,
+        )
+
     holds = tuple(hold for _, _, hold in ranked)
-    held = {hold.key for hold in (*holds, *dispositions) if hold.state == LIVE}
+    held = {hold.key for hold in (*holds, *dispositions, *named.values()) if hold.state == LIVE}
     last = {branches[branch][0]: dates[-1] for branch, dates in renewals.items() if dates}
     cuts = _cuts(histories, branches, tips, last, base, notes_dir, root, run, moment)
     editing = _editing(touched, branches, tips, last, held, base, root, run, copies)
@@ -587,6 +638,7 @@ def holdings(
         holds=holds,
         dispositions=tuple(dispositions),
         cuts=cuts,
+        named=tuple(named.values()),
         unreadable=tuple(name for name in candidates if name in unreadable),
         malformed=malformed,
         base=base,
