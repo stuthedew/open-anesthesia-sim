@@ -1387,7 +1387,8 @@ def _outside_clusters(unsound: Sequence[Item], defects: Sequence[Item]) -> list[
         lines.append("")
         lines.append(
             f"  {_plural(len(closed), 'closed item carries', 'closed items carry')} a sound "
-            f"`impairs-generators:` and ranks on no tier, being closed: {named}"
+            f"`impairs-generators:` and {'ranks' if len(closed) == 1 else 'rank'} on no tier, "
+            f"being closed: {named}"
         )
     return lines
 
