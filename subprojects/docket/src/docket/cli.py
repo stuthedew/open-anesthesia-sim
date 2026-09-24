@@ -115,6 +115,7 @@ from .vcs import (
     FlightReport,
     GitRunner,
     OrphanedReport,
+    SinceFiled,
     StrandedReport,
     WrittenReport,
     branch_state,
@@ -140,6 +141,7 @@ from .vcs import (
     released_on_base,
     resolved,
     settled_branches,
+    since_filed,
     stranded,
     tags,
     working_paths,
@@ -1699,10 +1701,40 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(render.format_queue_edit(edit, _now(args)))
     if threads := _notes_threads(root, config, item.identifier):
         print(render.format_notes_threads(threads, item.identifier, config.notes_file))
+    # Last before the brief, because the line it ends on past the threshold
+    # asks for the brief to be read against the tree (`PL-TQN2`).
+    if not closed:
+        print(_since_filed(args, item, root, config))
     print()
     print(item.body.strip())
     _say_unread(flight)
     return 0
+
+
+def _since_filed(args: argparse.Namespace, item: Item, root: Path, config: Config) -> str:
+    """How long an open item has waited and what changed under its `touches` meanwhile.
+
+    Here rather than only in the start mode's prose because `show` is what a
+    session runs on every item it is about to start, however the item reached
+    it - `next`, `next --oldest`, or the project owner naming it - so every
+    start sees the facts without anybody remembering to look (`PL-TQN2`).
+
+    An item with no `added:` says its age is unknown rather than printing
+    nothing: an absent re-confirm line reads as "this item is young", which
+    nothing established.
+    """
+    if item.added is None:
+        return (
+            "  filed: no `added:` date, so its age is not known -"
+            " re-confirm the brief below against the tree before starting"
+        )
+    git = _invocation(args).git
+    report = (
+        SinceFiled.unread(root, item.touches, item.added, "`--no-git` asks git nothing")
+        if git is None
+        else since_filed(root, item.touches, item.added, runner=git)
+    )
+    return render.format_since_filed(report, args.today or date.today(), config.recheck_after_days)
 
 
 def _notes_threads(root: Path, config: Config, identifier: str) -> tuple[notes.Thread, ...]:

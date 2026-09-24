@@ -266,7 +266,13 @@ to deletes the ref, and on pre-rewrite history that ref holds the only copy of
 its commits.
 
 The report names the commits nothing took, the paths under each, and the
-`git checkout` line that recovers them.
+`git cherry-pick` line that recovers them. A cherry-pick rather than a
+checkout, because a checkout writes the branch's copy of each file over
+whatever the base has changed in it since (`PL-GHHW`). A commit whose change
+the base already holds - a port that also landed through another pull
+request - is not listed at all: `vcs.change_landed` replays it onto the base
+and finds it changes nothing, and `tools/left_behind_check.py` reads the same
+test.
 
 **The branch ref is the only evidence, and that is worth stating because the
 obvious alternative does not work.** GitHub freezes `refs/pull/<n>/head` when
@@ -1082,6 +1088,50 @@ bare `docket next` prints exactly what it printed before the flag existed.
 The flag is `--oldest` rather than `--debt` because `docket gate` and the
 roadmap already use *debt* for the narrower class list a gate holds, and one
 word meaning two sets would make two commands disagree about what debt is.
+
+### An old item is re-confirmed before it is worked: `docket show`
+
+An item describes the tree as it stood on its `added:` date, and in a tree
+that moves fast an old brief can describe code that has since moved or gone.
+The session that starts it learns that only after re-deriving the problem, or
+never, and then fixes something that is not broken. `next --oldest` hands these
+items out first, so the check sits where every start passes: `docket show`,
+which a session runs on the item it is about to start however it got there.
+
+For an open item, `show` prints three things just above the brief:
+
+- **Its age**, `--today` minus `added:`.
+- **Each `touches` path**: whether it is in the working tree now, and how many
+  commits changed it on or after the filing date. That reads as `changed by N
+  commits` or `unchanged`. A path a commit since filing deleted reads as
+  `gone`. One nobody has touched since reads as `not in the tree, and untouched
+  since`: a file the work will create, or one already gone at filing. It is one
+  `git log --since` read over the declared paths, from `HEAD`. Merges are left
+  out so their work is not counted twice. Rename detection is off, so a renamed
+  path reads as gone under the name the brief uses.
+- **Past `recheck_after_days`** (default 14), one `RE-CONFIRM` line: check the
+  brief below against the tree before starting the item.
+
+It computes the facts and never the verdict. A path that is gone is a
+question, not the answer: a problem can leave with its code, or only move with
+it. Across five Java projects, 20-50% of self-admitted-debt removals were the
+comment deleted along with the class or method that held it, not the debt
+being paid (Zampetti, Serebrenik and Di Penta, "Was self-admitted technical
+debt removal a real removal?", MSR 2018, doi:10.1145/3196398.3196423). Deciding
+which happened means reading the brief against the tree. A script that guessed
+would print its guess as confidently as its facts.
+
+**A count nobody read is never zero.** Under `--no-git`, in a shallow clone,
+or wherever git does not answer, each path says only whether it is in the tree.
+The line above the paths says why the commits went unread. A shallow clone is
+missing its oldest commits, which are exactly the ones this read is about. An
+item with no `added:` says its age is unknown rather than printing nothing,
+because a missing re-confirm line reads as "this item is young".
+
+**It fires on the item being opened, never as an advisory.** 79 open items
+were past the line on 2026-09-23. A list that long on every `docket check` is
+one sessions learn to skim, which makes it a defect in the check rather than
+coverage. So nothing in `check` reads `recheck_after_days`.
 
 ### Two sessions, one queue: the lanes
 
@@ -3371,6 +3421,8 @@ debt_classes = ["defect", "safety", "science", "refactor", "perf"]
 new_work_classes = ["feature", "planning"]   # what `next --oldest` leaves out
 top_band_limit = 5
 untriaged_stale_days = 14
+recheck_after_days = 14            # past this, `show` asks for an open item
+                                   # to be re-confirmed against the tree
 instruction_stale_days = 90        # a dated assertion goes this long
                                    # unchecked before it is named
 instruction_paths = []             # the instruction files it reads;

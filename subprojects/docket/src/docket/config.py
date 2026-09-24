@@ -56,6 +56,13 @@ class Config:
     top_band_limit: int = 5
     #: Past this, an untriaged capture has become a second queue nobody reads.
     untriaged_stale_days: int = 14
+    #: Past this many days since `added:`, `docket show` tells a session to
+    #: re-confirm an open item against the tree before starting it. An item
+    #: describes the tree as it stood when filed, and in a tree that moves
+    #: fast one this old may describe code that has since moved or gone
+    #: (`PL-TQN2`, ratified 2026-09-22). It fires on the item being opened and
+    #: never as a store-wide advisory, which is why no `check` reads it.
+    recheck_after_days: int = 14
     #: Past this, a dated assertion in the instruction set is due for
     #: re-checking - not wrong, and not judged here, only old enough that
     #: nobody has confirmed it lately.
@@ -365,6 +372,7 @@ def load(root: Path) -> Config:
         untriaged_stale_days=int(
             section.get("untriaged_stale_days", defaults.untriaged_stale_days)
         ),
+        recheck_after_days=int(section.get("recheck_after_days", defaults.recheck_after_days)),
         instruction_stale_days=int(
             section.get("instruction_stale_days", defaults.instruction_stale_days)
         ),

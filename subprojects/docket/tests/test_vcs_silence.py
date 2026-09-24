@@ -31,6 +31,7 @@ from __future__ import annotations
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +46,7 @@ from docket.vcs import (
     behind_remote,
     branch_state,
     branches_in_flight,
+    change_landed,
     changed_items,
     churn,
     closed_by,
@@ -66,6 +68,7 @@ from docket.vcs import (
     released_on_base,
     resolved,
     settled_branches,
+    since_filed,
     stranded,
     tags,
     working_paths,
@@ -318,6 +321,14 @@ READS: tuple[Read, ...] = (
     Read("stranded", lambda r, g: stranded(r, set(), runner=g), _findings("items")),
     Read("lost", lambda r, g: lost(r, runner=g), _findings("items")),
     Read("orphaned", lambda r, g: orphaned(r, runner=g), _findings("branches")),
+    # The first commit on `orphaned`'s branch, whose change the base took as
+    # `(#3)`: its finding is that landing, which a silence must not move to a
+    # later candidate or drop without the answer saying so (`PL-GHHW`).
+    Read(
+        "change_landed",
+        lambda r, g: change_landed("claude/pl-0rp1-partly~1", "origin/main", r, runner=g),
+        _findings(),
+    ),
     Read(
         "merged_pull_requests", lambda r, g: merged_pull_requests(r, runner=g), _findings("numbers")
     ),
@@ -386,6 +397,13 @@ READS: tuple[Read, ...] = (
     # reads the mark, so a silence that stops every candidate resolving declines
     # here rather than answering `main` (`PL-73P0`).
     Read("default_base", lambda r, g: default_base(r, runner=g), _findings()),
+    # A file the fixture changes and a directory it adds to, from a date every
+    # fixture commit is after, so the truthful read counts something to lose.
+    Read(
+        "since_filed",
+        lambda r, g: since_filed(r, ("src/one.py", "docs/items"), date(2000, 1, 1), runner=g),
+        _findings("paths"),
+    ),
 )
 
 
