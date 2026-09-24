@@ -4991,6 +4991,7 @@ NO_GIT_ARGV: tuple[tuple[str, ...], ...] = (
     ("new", "An idea captured under the flag"),
     ("claim", "PL-B1B1"),
     ("yield", "PL-B1B1"),
+    ("arm",),
 )
 
 
