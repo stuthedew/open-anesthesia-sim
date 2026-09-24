@@ -72,8 +72,13 @@ person's judgment, exactly as the pair itself does.
 requirements listed in `KNOWN_SHORTFALLS` do not meet their minimum today. Listing them
 there against the item that closes each one keeps `make check` green while making the
 gap visible and owned, which is the opposite of the comment-that-nobody-checks
-this file replaces. The list cannot rot: a shortfall that starts *passing* is
-an error too, so fixing one forces its entry out.
+this file replaces. The list cannot rot. A shortfall that starts *passing* is
+an error too, so fixing one forces its entry out; and so is an entry whose key
+names no requirement `REQUIREMENTS` declares, so renaming, retyping or deleting
+the requirement forces its entry out as well. Every other reading of the list
+starts from a requirement, which is how such an entry used to outlive its
+requirement unread (PL-KNHX). The report line counts the requirements an entry
+excuses rather than the entries, so a dead entry is never counted as a gap.
 
 **What a Qt port costs this check, measured rather than estimated (PL-JRS3).**
 It survives, because its colour input is module-level `NAME = "#RRGGBB"`
@@ -764,7 +769,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
 
 #: Declared pairs that do not meet their minimum today, each against the item
 #: that closes it. Not a suppression list: an entry here that starts passing is
-#: reported as an error, so a fix cannot leave its excuse behind.
+#: reported as an error, so a fix cannot leave its excuse behind, and so is one
+#: whose key names no declared requirement, so a rename or a deletion cannot
+#: either (PL-KNHX).
 #:
 #: **Empty since 2026-09-16, and that is the state to keep it in.** `ACCENT` was
 #: listed twice with the same measured value and two different owners - the
@@ -1389,6 +1396,16 @@ class Report:
     missing: tuple[str, ...]
     unexpected: tuple[Result, ...]
     repaired: tuple[Result, ...]
+    #: The declared requirements below their minimum that an entry excuses,
+    #: which are the gaps the verdict line counts. Counted from what was
+    #: measured rather than from the list's length, so an entry that is stale
+    #: or has started passing is never counted as a gap (PL-KNHX).
+    excused: tuple[Result, ...]
+    #: `KNOWN_SHORTFALLS` keys naming no requirement in `REQUIREMENTS`. Every
+    #: other field reads the list from a requirement, so an entry whose
+    #: requirement was renamed, retyped or deleted is seen here or nowhere
+    #: (PL-KNHX).
+    stale_shortfalls: tuple[tuple[str, str], ...]
     citations: tuple[str, ...]
     #: Colors declared anywhere under `app/` other than the theme (PL-2CS8).
     misplaced_colors: tuple[str, ...]
@@ -1425,6 +1442,7 @@ class Report:
                 self.missing,
                 self.unexpected,
                 self.repaired,
+                self.stale_shortfalls,
                 self.citations,
                 self.misplaced_colors,
                 self.author_styled_disabled,
@@ -1469,6 +1487,15 @@ def analyze(root: Path) -> Report:
     repaired = tuple(
         result for result in results if result.meets and result.requirement.key in KNOWN_SHORTFALLS
     )
+    excused = tuple(
+        result
+        for result in results
+        if not result.meets and result.requirement.key in KNOWN_SHORTFALLS
+    )
+    # The one reading that starts from the list rather than from a requirement,
+    # so an entry that has outlived its requirement is still seen.
+    declared = {requirement.key for requirement in REQUIREMENTS}
+    stale_shortfalls = tuple(key for key in KNOWN_SHORTFALLS if key not in declared)
     drawn = tuple(name for name in TRACES if name in palette)
     trace_pairs = tuple(
         (
@@ -1497,6 +1524,8 @@ def analyze(root: Path) -> Report:
         missing=tuple(sorted(set(missing))),
         unexpected=unexpected,
         repaired=repaired,
+        excused=excused,
+        stale_shortfalls=stale_shortfalls,
         citations=check_citations(root),
         misplaced_colors=check_colors_live_in_the_theme(root),
         author_styled_disabled=check_authored_disabled_colours_are_measured(root),
@@ -1516,7 +1545,7 @@ def format_report(report: Report, *, matrix: bool) -> str:
         f"{report.modules_read} modules read under {APP.as_posix()}/, "
         f"{len(report.undeclared_controls)} control kinds declare no foreground and are "
         f"measured by nothing ({CONTROL_COVERAGE_TEST.as_posix()} names each), "
-        f"{len(KNOWN_SHORTFALLS)} known shortfalls, "
+        f"{len(report.excused)} known shortfalls, "
         f"{report.error_count} errors"
     ]
 
@@ -1572,15 +1601,30 @@ def format_report(report: Report, *, matrix: bool) -> str:
                 f"tracked by {KNOWN_SHORTFALLS[requirement.key]}"
             )
 
-    shortfalls = [result for result in report.results if not result.meets and not report.errors]
-    if shortfalls:
+    if report.stale_shortfalls:
+        lines.append("")
+        lines.append(
+            "Listed as a known shortfall but naming no declared requirement - the entry is stale:"
+        )
+        for foreground, background in report.stale_shortfalls:
+            lines.append(
+                f"  {foreground} on {background}, tracked by "
+                f"{KNOWN_SHORTFALLS[(foreground, background)]}"
+            )
+        lines.append(
+            "  A renamed, retyped or deleted requirement leaves its entry excusing nothing, "
+            "and this says nothing about whether that pair now meets its minimum. Move the "
+            "entry to the requirement's current key if it still falls short, or remove it."
+        )
+
+    if report.excused and not report.errors:
         lines.append("")
         lines.append("Known shortfalls (tracked, not failing):")
-        for result in shortfalls:
+        for result in report.excused:
             requirement = result.requirement
             lines.append(
                 f"  {requirement.label} on {requirement.background}: {result.rounded:.2f} < "
-                f"{requirement.minimum} - {KNOWN_SHORTFALLS.get(requirement.key, '?')}"
+                f"{requirement.minimum} - {KNOWN_SHORTFALLS[requirement.key]}"
             )
 
     if report.below_trace_floor:
