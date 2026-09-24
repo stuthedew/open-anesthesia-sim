@@ -266,7 +266,13 @@ to deletes the ref, and on pre-rewrite history that ref holds the only copy of
 its commits.
 
 The report names the commits nothing took, the paths under each, and the
-`git checkout` line that recovers them.
+`git cherry-pick` line that recovers them. A cherry-pick rather than a
+checkout, because a checkout writes the branch's copy of each file over
+whatever the base has changed in it since (`PL-GHHW`). A commit whose change
+the base already holds - a port that also landed through another pull
+request - is not listed at all: `vcs.change_landed` replays it onto the base
+and finds it changes nothing, and `tools/left_behind_check.py` reads the same
+test.
 
 **The branch ref is the only evidence, and that is worth stating because the
 obvious alternative does not work.** GitHub freezes `refs/pull/<n>/head` when
