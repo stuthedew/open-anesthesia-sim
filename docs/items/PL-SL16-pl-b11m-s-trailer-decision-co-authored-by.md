@@ -50,7 +50,7 @@ reason has inverted. It said a rule requiring a model id would conflict with
 the harness's instruction against one, and the harness now carries both
 instructions.
 
-**Recommendation.** One resident sentence in `CLAUDE.md`'s "Name the work
+**Recommendation.** One resident sentence in `CLAUDE.md` § "Name the work
 after the item" bullet, for example:
 
 > End every commit with `Co-authored-by: Claude <noreply@anthropic.com>` and
