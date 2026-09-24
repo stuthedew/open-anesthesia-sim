@@ -3,11 +3,12 @@ id: PL-NLXK
 title: Cut v0.5.10 from the 8 items finished since v0.5.9: who holds an item becomes a Claim trailer that bin/docket claim and yield write and one claims.holdings reader reads, every generator head names the fact its members misread, and a blocked generator's own blockers rank in its tier, with nothing in src/ moving
 priority: P2
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-24
+closed: 2026-09-24
 payoff: the 8 items finished since v0.5.9 ship under their own number and stop being re-offered in every session digest
 verify: grep -q "^version = \"0.5.10\"" pyproject.toml
 ---
@@ -38,3 +39,25 @@ uncommitted, because a claimed captures-only pull request opens as an ordinary
 mergeable one titled for the work. A draft cannot be merged, so it is marked
 ready only once the cut is pushed and green. That applies one of the remedies
 `PL-H14W` lists to weigh, to this branch only, and decides nothing there.
+
+**Cut 2026-09-24.** 8 items, as the dry run said at filing, and no other pull
+request was open. Cut with `make release VERSION=0.5.10`, which recorded the
+five `pr:` numbers still missing (`PL-038`, `PL-0TD9`, `PL-5MYR`, `PL-NST2`
+and `PL-SW2K`) before rendering the notes, stamped the 8 `milestone: v0.5.10`,
+wrote `docs/releases/v0.5.10.md`, bumped `pyproject.toml` and relocked
+`uv.lock`. None is a milestone and every number above this one is spent, so
+this is a patch on § "Versioning decision"'s test. No feature completes. None
+of the 8 is a Gate 2 entry, which stands at 46 of 185 as it did at v0.5.9, and
+five are v0.6.0 deferrals. No v0.5.10 item merged inside v0.5.9's tag, which is
+on its own cut's merge (`6c8307e0`), so v0.5.9's notes take no pointer.
+`src/`, `tests/reference/`, `docs/MODEL.md`, `README.md` and `.github/` are
+byte-identical to v0.5.9.
+
+`PL-LRP2` closes in the same commit: `git ls-remote --tags origin` shows v0.5.9
+tagged on `6c8307e0`, the cut's own merge, so the tag it asked for is in place.
+It ships in the next release, as this item does, because both close after the
+notes were rendered.
+
+Filed while cutting: `PL-08D4` (tag v0.5.10, the owner's step) and `PL-WX87`
+(`claim` read this branch's stale local tracking ref as the remote's copy, so
+its push-at-once never fired here and the session pushed the claim by hand).
