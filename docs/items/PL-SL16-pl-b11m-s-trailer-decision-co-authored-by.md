@@ -1,10 +1,16 @@
 ---
 id: PL-SL16
 title: PL-B11M's trailer decision - Co-authored-by: Claude <noreply@anthropic.com>, no model id in any pushed artifact - is stated nowhere a session reads before committing, and the harness attribution reminder, which yields to a CLAUDE.md rule, names Co-Authored-By: Claude Opus 5.5, so 800 of the 970 branch commits of pull requests merged since 2026-09-17 carry a model-named co-author
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, docs
 feature: public-history
-touches: CLAUDE.md
+touches: CLAUDE.md, docs/resident-instructions.md, docs/items/PL-LWMS-check-the-attribution-trailers-a-pull-request-s.md
 added: 2026-09-24
+closed: 2026-09-24
+payoff: Sessions write the attribution the owner decided, because the one carrier the harness reminder yields to now states it
+verify: grep -qF 'Co-authored-by: Claude <noreply@anthropic.com>` and never a model-named' CLAUDE.md
 ---
 
 **Problem.** PL-B11M's trailer decision - Co-authored-by: Claude <noreply@anthropic.com>, no model id in any pushed artifact - is stated nowhere a session reads before committing, and the harness attribution reminder, which yields to a CLAUDE.md rule, names Co-Authored-By: Claude Opus 5.5, so 800 of the 970 branch commits of pull requests merged since 2026-09-17 carry a model-named co-author
@@ -50,6 +56,13 @@ reason has inverted. It said a rule requiring a model id would conflict with
 the harness's instruction against one, and the harness now carries both
 instructions.
 
+**Why it matters.** Attribution is provenance, and the project owner fixed its
+form for a provenance reason: a trailer a session writes records the
+*configured* model, so it is confidently wrong at the one moment it would be
+read, a fallback (`PL-B11M`). A decided convention broken on 800 of 970 branch
+commits is one nobody can cite, and the break recurs in every session that
+commits, because the reminder that causes it arrives in every one of them.
+
 **Recommendation.** One resident sentence in `CLAUDE.md` § "Name the work
 after the item" bullet, for example:
 
@@ -68,6 +81,24 @@ no new rule. So it reads as "a defect in what exists", which needs no lift. The
 session that works it says which reading it took.
 
 **Done when.** `CLAUDE.md` states the attribution line, `make check` passes,
-and the routing is recorded. Then, once 30 pull requests have merged after it,
-re-run the census above over their branch commits and write the count into
-`PL-LWMS`. That count decides `PL-LWMS`.
+and the routing is recorded. The census re-run that tests the sentence is
+`PL-LWMS`'s first step, not this item's; see below.
+
+**Closed 2026-09-24, on the sentence.** It sits at the end of `CLAUDE.md`
+§ "Name the work after the item", in the project owner's own words from the
+request that started this session, which is why it is dated 2026-09-24 in the
+plain form rather than carrying `PL-B11M`'s date: it restates that decision and
+names it. It also says *why* it beats the reminder, since this brief found the
+reminder winning where nothing said so. The routing is
+`docs/resident-instructions.md` § "The attribution sentence, added 2026-09-24",
+which records that nothing was superseded and nothing was cut to pay for it.
+
+**The census moved to `PL-LWMS` when this closed.** The draft above ended with
+a step that waits for 30 merged pull requests. A closed item cannot hold that,
+and `blocked` needs an item or a milestone to wait on, which a count is not. The
+count decides `PL-LWMS`, which is already blocked on `PL-XH1D`, so it is written
+there as that item's first step, with the threshold, rather than left here.
+
+**The generator pause, read as a defect in what exists.** This states a
+decision already taken and adds no rule, so it needed no lift. The owner's
+request to work it would have lifted the pause for this work in any case.

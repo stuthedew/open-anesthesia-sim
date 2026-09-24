@@ -54,12 +54,18 @@ depends on which harness happened to write each commit.
 **This item is the check that stands behind `PL-SL16`, and is built only if
 that sentence does not hold.** `CLAUDE.md` § "Prefer deterministic tooling over
 repeated model work" says a check earns its place every run or is retired. If
-`PL-SL16`'s re-count comes back at zero, this check would fire on nothing and
-should not be built. So `PL-SL16`'s done-when ends by writing that count here.
+the re-count below comes back at zero, this check would fire on nothing and
+should not be built. The re-count is this item's first step: `PL-SL16` closed
+on the sentence alone on 2026-09-24 and handed it here, because the count
+decides this item and a closed item cannot hold a step that waits.
 
 **Name the number before deciding.** Build only if model-named co-author lines
 persist on the branch commits of pull requests merged after `PL-SL16` lands.
-Drop this item on the evidence if they do not. The owner's rule says "any", so
+Drop this item on the evidence if they do not. Take the count only once 30 pull
+requests have merged after the one that closed `PL-SL16` (its `pr:`); fewer is
+not a reading. Re-run `PL-SL16`'s census over their branch commits - `GET
+/repos/stuthedew/open-anesthesia-sim/pulls/N/commits`, co-author lines tallied
+by name - and write the count here. The owner's rule says "any", so
 any residue is a violation, but a check that refuses a pushed branch also costs
 a rewrite of that branch's commits. The session that reads the count weighs
 that cost against the residue it finds, and says which way it went.
@@ -181,7 +187,7 @@ the first design choice above has fixed which file that test lives in.
 
 **Done when.** One of two outcomes:
 
-- **Built.** `PL-SL16`'s count is written here and justifies the check. A pull
+- **Built.** The re-count above is written here and justifies the check. A pull
   request whose commits carry a model-named co-author, or a trailer outside
   `PL-XH1D`'s set, fails `pr-title`. The check has a test for each rule and one
   for a well-formed branch that passes.
