@@ -37,8 +37,9 @@ carry a model-named co-author: 469 `Claude Opus 5`, 316 `Claude Opus 5.5`, 14
 (measured 2026-09-24 over `GET /pulls/N/commits`, and reproduced by an
 independent verifier).
 
-The cause is routing, not the absence of a check. No file a session reads
-before committing states the decision. The harness's own attribution reminder
+The cause is routing, not the absence of a check. Until `PL-SL16`
+(2026-09-24), no file a session reads before committing stated the decision;
+`CLAUDE.md` § "Name the work after the item" now does. The harness's own attribution reminder
 names `Co-Authored-By: Claude Opus 5.5`, and it yields to "a CLAUDE.md or
 memory rule". `PL-SL16` carries the evidence and the one-sentence fix.
 
@@ -61,9 +62,13 @@ decides this item and a closed item cannot hold a step that waits.
 
 **Name the number before deciding.** Build only if model-named co-author lines
 persist on the branch commits of pull requests merged after `PL-SL16` lands.
-Drop this item on the evidence if they do not. Take the count only once 30 pull
-requests have merged after the one that closed `PL-SL16` (its `pr:`); fewer is
-not a reading. Re-run `PL-SL16`'s census over their branch commits - `GET
+Drop this item on the evidence if they do not. Count only pull requests whose
+branch was cut from a `main` already holding the commit that closed `PL-SL16`
+(its `pr:`), tested as `git merge-base --is-ancestor <that commit> <parent of
+the branch's first commit>`: a session keeps the `CLAUDE.md` it launched with,
+so a branch cut earlier cannot test the sentence. Take the count once 30 such
+pull requests have merged; fewer is not a reading. Re-run `PL-SL16`'s census
+over their branch commits - `GET
 /repos/stuthedew/open-anesthesia-sim/pulls/N/commits`, co-author lines tallied
 by name - and write the count here. The owner's rule says "any", so
 any residue is a violation, but a check that refuses a pushed branch also costs

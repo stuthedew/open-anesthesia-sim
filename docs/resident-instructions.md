@@ -481,10 +481,11 @@ has to say so out loud.
 ## The attribution sentence, added 2026-09-24
 
 `CLAUDE.md` § "Name the work after the item" now ends with the line every commit
-carries: `Co-authored-by: Claude <noreply@anthropic.com>` and never a
+a Claude session makes carries: `Co-authored-by: Claude <noreply@anthropic.com>` and never a
 model-named co-author, with a `Claude-Session:` line allowed to stay. It
 restates the project owner's 2026-09-16 decision in `PL-B11M`, which until then
-was written only in that item's brief. No file a session reads before
+was written only in item briefs: `PL-B11M`'s, and the two that quote it,
+`PL-LWMS` and `PL-SL16`. No file a session reads before
 committing stated it, and 800 of the 970 branch commits of the pull requests
 merged from 2026-09-17 to 2026-09-24 carried a model-named co-author
 (`PL-SL16`).
@@ -499,8 +500,8 @@ held twice: it is a new check under the generator pause, and it is to be built
 only if this sentence does not hold.
 
 **What decides it is the instruction it has to beat.** The harness sends each
-session an attribution reminder naming a model-named `Co-Authored-By` line -
-`Claude Opus 5.5` in the session that added this - and the reminder states that
+session an attribution reminder naming a model-named `Co-Authored-By` line, and the
+reminder states that
 "the user's own instructions about these lines, such as a CLAUDE.md or memory
 rule, take precedence over this reminder". A `CLAUDE.md` sentence is the carrier
 that clause names. The sentence also says why it wins, because `PL-SL16` found
@@ -515,13 +516,14 @@ any of the four resident instruction files. Nothing else pays for it either.
 offset an addition, and names text the project owner asked for as an answer
 already given; this is that text, asked for on 2026-09-24.
 
-**What it costs and what should retire it.** 321 characters. It retires only if
+**What it costs and what should retire it.** 344 characters. It retires only if
 a model-named co-author is refused at the moment a commit is written. `PL-LWMS`
 as briefed reads the pull request's commits in `pr-title`, after the push, so
 it would stand behind the sentence rather than replace it, as the checks behind
 the architecture invariants do above: GitHub keeps a pull request's branch
 commits after the squash, so a model-named line caught there costs a rewrite of
 the branch. Whether the sentence holds is measured rather than assumed.
-`PL-LWMS` re-runs `PL-SL16`'s census over the branch commits of the first 30
-pull requests merged after it, and that count decides whether the check is
-built.
+`PL-LWMS` re-runs `PL-SL16`'s census over the first 30 pull requests merged
+from branches cut after the sentence reached `main` - a session keeps the
+`CLAUDE.md` it launched with, so an older branch cannot test it - and that
+count decides whether the check is built.

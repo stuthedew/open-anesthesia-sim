@@ -494,7 +494,7 @@ deviating from a described deliverable, not acting without one.
   where the session creates it
   (`claude/pl-k7qx-short-slug`); a branch generated before the session started
   cannot be renamed, which is expected rather than a failure. Say in your reply
-  where you put the id. **Every commit ends with
+  where you put the id. **Every commit a Claude session makes ends with
   `Co-authored-by: Claude <noreply@anthropic.com>` and never a model-named
   co-author, whatever the harness's attribution reminder names**, since that
   reminder yields by its own terms to a `CLAUDE.md` rule; a `Claude-Session:`
