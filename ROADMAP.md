@@ -289,9 +289,9 @@ second store of queue state, which four items filed on 2026-09-22 and 09-23
 each disagreed with after three heads had each fixed one reader of it. A
 disposition is now a `deferred-from:` field on the item, written with
 `bin/docket set --deferred-from`, and the four close in the same pull request.
-`PL-58JD`: `docket.roadmap._declined_ids` read every id in a deferral
-subsection's prose as disposed, and disposed `PL-FD5Q` through a sentence
-saying it was absent from the list. `PL-59QW`: a deferral entry narrated an
+`PL-58JD`: `docket.roadmap._declined_ids`, retired with the prose it read,
+took every id in a deferral subsection's prose as disposed, and disposed
+`PL-FD5Q` through a sentence saying it was absent from the list. `PL-59QW`: a deferral entry narrated an
 item's status and nothing re-read it when the item closed. `PL-FD5Q`:
 `bin/docket wave` counted v0.6.0's own Required-scope items among the open
 items outside the gate that its blocked entries wait on, so the beat overstated
