@@ -101,7 +101,7 @@ because one looked busy costs almost nothing against a queue this size, while
 two sessions on one item costs a session and a merge conflict (`PL-PRHN`).
 
 **One shape of abandonment is separated outright rather than by age**
-(`PL-Q664`). A branch whose every claimed item is closed in its own copy and
+(`PL-Q664`). A branch whose every item it holds is closed in its own copy and
 which has no pull request open is finished work that has stalled, and `flight`
 moves those rows out of the list the age is meant to separate, into one saying
 that nothing there is being worked. Read it as what it says: nobody is on that

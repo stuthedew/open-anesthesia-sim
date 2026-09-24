@@ -31,12 +31,13 @@ from __future__ import annotations
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from docket.claims import holdings, settled_branches
 from docket.vcs import (
     SILENT,
     GitRunner,
@@ -67,7 +68,6 @@ from docket.vcs import (
     ref_walk,
     released_on_base,
     resolved,
-    settled_branches,
     since_filed,
     stranded,
     tags,
@@ -300,9 +300,14 @@ READS: tuple[Read, ...] = (
         # The forge half is a callable the caller supplies, so it is answered
         # here rather than reached: what is under test is the git half and the
         # propagation of a silence through it. The fixture's own branch closes
-        # `PL-K7QX` in its copy, which is exactly the shape this reads.
+        # `PL-K7QX` in its copy, which is exactly the shape this reads. It lives
+        # in `claims` since `PL-N162`, over the holds `claims.holdings` reads,
+        # and is swept here because every git call it makes is still one of
+        # these: the holdings beneath it, and the remotes it matches against.
         "settled_branches",
-        lambda r, g: settled_branches(r, branches_in_flight(r, runner=g), opened=tuple, runner=g),
+        lambda r, g: settled_branches(
+            r, holdings(r, now=datetime.now(UTC), runner=g), opened=tuple, runner=g
+        ),
         _findings("branches"),
     ),
     Read(
@@ -538,8 +543,10 @@ def test_the_sweep_covers_every_public_read_that_takes_a_runner() -> None:
         and "runner" in inspect.signature(obj).parameters
     }
     # `fetch_remote` is the one write in the module: it reads nothing and
-    # answers nothing, so it has no answer to get wrong.
-    assert public - {"fetch_remote"} == {read.name for read in READS}
+    # answers nothing, so it has no answer to get wrong. `settled_branches` left
+    # for `claims` in `PL-N162` and stays swept here, since each git call it
+    # makes is still one of this module's.
+    assert public - {"fetch_remote"} == {read.name for read in READS} - {"settled_branches"}
 
 
 # --- what `_run_git` reads git's exit codes as -----------------------------

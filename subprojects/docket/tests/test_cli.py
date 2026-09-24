@@ -2955,6 +2955,44 @@ def test_a_forge_that_answered_with_nothing_open_says_so_on_the_row(
     assert "Whether a pull request is open for any of them could not be read here" in unanswered
 
 
+def test_flight_moves_a_branch_that_closed_its_item_into_the_settled_rows(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-Q664`'s rows, end to end, read from the holds since `PL-N162`.
+
+    The close-out releases the branch's claim, so the row it keeps in flight
+    is the disposition the same status move made; a pull request open on the
+    branch puts it back among the live rows, waiting on review.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing", when="2026-09-22T10:00:00+00:00")
+    closed = READY.replace("PL-B1B1", "PL-0001").replace("status: ready", "status: done")
+    _commit_on(
+        root,
+        BRANCH,
+        {"items/PL-0001-on-main.md": closed},
+        "PL-0001 Close it out",
+        "2026-09-22T11:00:00+00:00",
+    )
+    argv = ["--items", str(root / "items"), "--now", "2026-09-22T12:00:00+00:00", "flight"]
+
+    _forge(root, "true")
+    assert main(argv) == 0
+    settled = capsys.readouterr().out
+    _forge(root, f'printf "{BRANCH} 812\\n"')
+    assert main(argv) == 0
+    reviewing = capsys.readouterr().out
+
+    assert "No branch is carrying an item anybody is still working." in settled
+    assert (
+        "On 1 branch every item it carries is already closed, and no pull request is open for it"
+        in settled
+    )
+    assert f"  {BRANCH}  PL-0001  last commit 1 hour ago" in settled
+    assert "already closed" not in reviewing
+    row = next(line for line in reviewing.splitlines() if line.startswith("PL-0001"))
+    assert row.endswith("pull request #812 open")
+
+
 def test_now_without_an_offset_is_refused_rather_than_guessed(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

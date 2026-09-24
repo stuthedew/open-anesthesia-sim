@@ -88,7 +88,7 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -103,6 +103,8 @@ from .vcs import (
     FlightReport,
     QueueEdit,
     Runner,
+    SettledBranch,
+    SettledReport,
     _annotates_only,
     _cut_versions,
     _head_name,
@@ -679,6 +681,116 @@ def holdings(
         declined=run.reason,
         head=branches[here][0] if here in branches else "",
     )
+
+
+def settled_branches(
+    root: Path,
+    read: Holdings,
+    *,
+    opened: Callable[[], Collection[str] | None] | None = None,
+    runner: Runner | None = None,
+) -> SettledReport:
+    """The in-flight refs that have finished: every item closed, and nothing open.
+
+    An age cannot tell a live session from a branch nobody will merge, and it
+    fails in the costly direction on the case that matters most: finished work
+    sitting on a branch with no pull request behind it, reported to every
+    session as in flight. `PL-Q664` is the worked instance: two items at
+    `status: done`, ten item files existing nowhere else, and three hours
+    before anybody noticed.
+
+    Two facts separate that case, and neither is the age. The ref holds nothing
+    but its own close-outs, and no pull request is open on it. Either alone is
+    ordinary: a branch mid-review has closed its items, and a branch with no
+    pull request is usually a session still working.
+
+    **The first fact is read from the holds, not from the rows `flight` shows**
+    (`PL-N162`). Closing an item in the branch's own copy releases the branch's
+    claim on it (`BY_STATUS`), and the same status move is a disposition, which
+    keeps the item in flight. So a ref is settled where every claim it recorded
+    is finished (`_finished_claim`), shadowed or not, and every live hold it
+    has, a disposition or its name, records a status in `CLOSED_STATUSES` in
+    its own copy. Not `RELEASING_STATUSES`: a blocked item releases its claim,
+    but it is not finished work. A name counts by the same reasoning, because
+    it holds only where the branch recorded no claim on the item - a capture
+    closed on the branch that filed it holds by nothing else. A cut is not an
+    item and is left out of the question. Only a ref with a row in
+    `Holdings.flight` is asked about, and its ids are that ref's own rows, so a
+    settled row always replaces live ones rather than adding a branch or an id
+    the report never named under it. It costs no `git show`: `Hold.status` is
+    the copy's status, read when the holds were.
+
+    **It never changes what is in flight.** The ids stay excluded from `docket
+    next`, because the work exists on a branch and offering it again would have
+    a second session redo it. Only how a reader is told changes.
+
+    **The forge is asked through `opened`, never reached from here.** This
+    package answers from a bare checkout with no network; the caller supplies a
+    way to ask which branch names have a pull request open, and `None` - no way
+    to ask, no token, no network - is carried into the report as `asked=False`
+    rather than read as "none is open". A callable, so it is asked only where
+    the cheap half found a candidate.
+
+    Every silence fails toward the live reading. A ref whose commits went
+    unread never settles, an item whose copy the ref lacks has no status and
+    leaves the ref live, and a read git declined any part of says so in
+    `declined`, because a live session wrongly called finished is the expensive
+    mistake.
+    """
+    run = _Silences(runner or _run_git)
+    unread = set(read.unreadable)
+    shown: dict[str, set[str]] = {}
+    for row in read.flight().branches:
+        if row.name not in unread:
+            shown.setdefault(row.name, set()).add(row.item_id)
+    # Every claim the ref recorded is asked, whether or not it won its item's
+    # row: a claim shadowed by another branch's is still a session working.
+    unfinished = {hold.ref for hold in read.holds if not _finished_claim(hold)}
+    for hold in (*read.dispositions, *read.named):
+        if hold.state == LIVE and hold.status not in CLOSED_STATUSES:
+            unfinished.add(hold.ref)
+
+    finished = sorted(
+        (
+            SettledBranch(name=name, item_ids=tuple(sorted(ids)), last_commit=read.last.get(name))
+            for name, ids in shown.items()
+            if name not in unfinished
+        ),
+        key=lambda entry: entry.name,
+    )
+    declined = read.declined
+    if not finished:
+        # Nothing to ask the forge about, so it is not asked - and the report
+        # says the question was answered, because a set with no members in it
+        # has no member whose pull request went unchecked.
+        return SettledReport(declined=declined)
+    answer = None if opened is None else opened()
+    if answer is None:
+        return SettledReport(branches=tuple(finished), asked=False, declined=declined)
+    remotes = _remotes(root, run)
+    heads = {head.strip() for head in answer if head.strip()}
+    return SettledReport(
+        branches=tuple(entry for entry in finished if _head_name(entry.name, remotes) not in heads),
+        declined=declined or run.reason,
+    )
+
+
+def _finished_claim(hold: Hold) -> bool:
+    """Whether `hold`, a claim, says nothing is left to do on its item on its branch.
+
+    Released by a yield, a takeover, the landed prefix or the base's close, the
+    work is elsewhere or done. Released by the branch's own status move, it is
+    done only where that status is closed: `blocked` releases the claim, and a
+    blocked item with no disposition behind it - a capture the base never had,
+    or one the base already shows as blocked - would otherwise settle the
+    branch that holds its only copy. A live or lapsed claim is unfinished; a
+    lapsed one holds nothing, but the branch may still carry its work. The
+    branch's copy is read before the base's, so an item it blocked and the base
+    later closed still reads as blocked, which errs toward the live reading.
+    """
+    if hold.state != RELEASED:
+        return False
+    return hold.released_by != BY_STATUS or hold.status in CLOSED_STATUSES
 
 
 def _utc(now: datetime) -> datetime:

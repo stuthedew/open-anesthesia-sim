@@ -721,10 +721,18 @@ is being reviewed, and the report was telling every session to leave it alone.
 `claude/hopeful-allen-tetrje` sat that way for three hours with two items at
 `status: done` and ten item files existing nowhere else, and surfaced only
 because the project owner asked whether the feature had been built (`PL-Q664`).
-So `settled_branches` reads both facts and `docket flight` moves those rows
-into a section of their own. Either fact alone is ordinary — a branch under
-review has closed its items, and a branch with no pull request is usually a
-session still working — which is why neither is read on its own.
+So `claims.settled_branches` reads both facts and `docket flight` moves those
+rows into a section of their own. The first comes from the holds `flight` has
+already read (`PL-N162`): closing an item in the branch's own copy releases the
+branch's claim on it, so a branch is finished where every claim it recorded,
+whether or not it won its item's row, is released and not by a status move to
+an open status, and every hold it keeps — the status disposition its close-out
+made, or its name, for a capture it closed — records a closed status there.
+`blocked` releases a claim too, and does not count: a blocked item is not
+finished work. A lapsed claim does not count either, since its branch may still
+carry the work. Either fact alone is ordinary — a branch under review has closed its items, and a
+branch with no pull request is usually a session still working — which is why
+neither is read on its own.
 
 It changes what a reader is told and never what is in flight. The ids stay
 excluded from `docket next`, because the work exists on a branch and offering
@@ -758,9 +766,9 @@ no row asks nothing, and every way the request fails is a row printed without
 the clause, under a line saying it could not be read.
 
 Every silence fails toward the live reading. A ref whose commits went unread,
-an item whose file the ref does not hold, a `git show` that came back empty:
-each leaves the branch in the ordinary list. A live session wrongly called
-finished is the expensive mistake; finished work wrongly called live is the one
+an item whose file the ref does not hold, a read git declined: each leaves the
+branch in the ordinary list, and the last also says the reading is partial. A
+live session wrongly called finished is the expensive mistake; finished work wrongly called live is the one
 this repository already had, and it is visible the moment anyone looks at the
 branch.
 

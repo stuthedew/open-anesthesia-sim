@@ -21,7 +21,7 @@ from typing import Any
 
 from . import arming, claiming, instructions, notes, render
 from .checks import Report, SettingsSource, analyze, brief_contradictions
-from .claims import Holdings, holdings
+from .claims import Holdings, holdings, settled_branches
 from .concurrency import (
     ORDERING,
     SAME_AREA,
@@ -142,7 +142,6 @@ from .vcs import (
     ref_walk,
     released_on_base,
     resolved,
-    settled_branches,
     since_filed,
     stranded,
     tags,
@@ -3334,12 +3333,13 @@ def cmd_flight(args: argparse.Namespace) -> int:
     tell which, and reporting is the whole job.
 
     **Except for the branches that have answered it themselves** (`PL-Q664`).
-    `settled_branches` names the refs whose every claimed item is closed in
-    their own copy and which no pull request is open on, and those move out of
-    the list the age is meant to separate. It is asked here rather than inside
-    `_flight` because that read is on the hot path of `next`,
-    `show`, `list`, `triage` and the digest, and this one is wanted by the
-    command whose whole question it is.
+    `claims.settled_branches` names the refs that hold nothing live but their
+    own close-outs and which no pull request is open on, and those move out of
+    the list the age is meant to separate. It reads the `Holdings` `_flight`
+    already made (`PL-N162`), since a close-out releases the branch's claim and
+    only the holds still say which ref closed what. It is asked here rather
+    than inside `_flight` because it may ask the forge, and that is wanted by
+    the command whose whole question it is.
     """
     inv = _invocation(args)
     if inv.git is None:
@@ -3352,9 +3352,7 @@ def cmd_flight(args: argparse.Namespace) -> int:
     lookup = _open_pull_requests(args, inv.root, inv.config)
     answer = lookup() if lookup is not None and report.branches else None
     opened = None if lookup is None else (lambda: answer)
-    settled = settled_branches(
-        inv.root, report, opened=opened, items_dir=inv.tracked, runner=inv.git
-    )
+    settled = settled_branches(inv.root, _holdings(args), opened=opened, runner=inv.git)
     reviews = open_pull_requests(inv.root, report, opened=opened, runner=inv.git)
     print(render.format_flight(report, _now(args), settled, reviews))
     return 0

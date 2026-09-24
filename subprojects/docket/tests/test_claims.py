@@ -15,6 +15,7 @@ import subprocess
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -35,7 +36,10 @@ from docket.claims import (
     NAMED,
     RELEASED,
     SESSION_VARIABLE,
+    Hold,
+    Holdings,
     holdings,
+    settled_branches,
 )
 from docket.vcs import _run_git
 
@@ -1083,3 +1087,356 @@ def test_a_branch_named_for_its_item_holds_it_behind_any_claim_and_lapses_with_t
     assert [(branch.name, branch.item_id) for branch in claimed.flight().branches] == [
         ("claude/worker", "PL-B1B1")
     ]
+
+
+# --- `settled_branches`: which in-flight refs have finished (`PL-Q664`) -----
+#
+# Read from the holds since `PL-N162`: closing an item in the branch's own copy
+# releases the branch's claim, and only the disposition that the same status
+# move creates still says which ref closed what.
+
+
+def _close(repo: _Repo, key: str, status: str, when: datetime) -> None:
+    """A commit moving the base's own copy of `key` to `status` on the checked-out branch."""
+    slug = {"PL-B1B1": "held", "PL-C2C2": "other"}[key]
+    repo.commit(
+        f"{key}: {status}", when=when, files={f"docs/items/{key}-{slug}.md": _item(key, status)}
+    )
+
+
+@pytest.mark.parametrize("status", ["done", "dropped"])
+def test_a_branch_that_closed_what_it_claimed_is_settled_and_stays_in_flight(
+    tmp_path: Path, status: str
+) -> None:
+    """The claim is released by the close, and the disposition it leaves is what settles.
+
+    The item stays in flight: the work exists on a branch, and offering it
+    again would have a second session redo what is already written.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/finished")
+    repo.claim("PL-B1B1", when=T0)
+    _close(repo, "PL-B1B1", status, T0 + HOUR)
+
+    read = holdings(repo.root, now=T0 + 2 * HOUR)
+    settled = settled_branches(repo.root, read, opened=lambda: ())
+
+    assert [(hold.state, hold.released_by) for hold in read.holds] == [(RELEASED, BY_STATUS)]
+    assert [(entry.name, entry.item_ids) for entry in settled.branches] == [
+        ("claude/finished", ("PL-B1B1",))
+    ]
+    assert settled.branches[0].last_commit == T0 + HOUR
+    assert settled.known
+    assert read.flight().ids == frozenset({"PL-B1B1"})
+
+
+def test_a_branch_that_blocked_what_it_claimed_is_not_settled(tmp_path: Path) -> None:
+    """`blocked` releases the claim, but a blocked item is not finished work.
+
+    So the disposition it leaves keeps the branch in the live list, which is
+    why the rule reads `CLOSED_STATUSES` rather than `RELEASING_STATUSES`.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/stalled")
+    repo.claim("PL-B1B1", when=T0)
+    _close(repo, "PL-B1B1", "blocked", T0 + HOUR)
+
+    read = holdings(repo.root, now=T0 + 2 * HOUR)
+
+    assert [hold.released_by for hold in read.holds] == [BY_STATUS]
+    assert read.flight().ids == frozenset({"PL-B1B1"})
+    assert settled_branches(repo.root, read, opened=lambda: ()).branches == ()
+
+
+@pytest.mark.parametrize("blocked_on_base", [False, True])
+def test_a_blocked_claim_with_no_disposition_behind_it_leaves_the_branch_live(
+    tmp_path: Path, blocked_on_base: bool
+) -> None:
+    """The claim itself says the item is blocked, where no disposition is left to.
+
+    A capture the base never had makes no disposition, and neither does a
+    block the base already shows. Either way the branch holds the only record
+    of unfinished work beside a close-out, and reading only the dispositions
+    reported it as finished (`PL-N162`, slice 4's review).
+    """
+    repo = _Repo(tmp_path / "repo")
+    files = {"src/y.py": "x\n"}
+    if blocked_on_base:
+        key = "PL-C2C2"
+        _close(repo, key, "blocked", T0 - DAY)
+        repo.branch("claude/work")
+    else:
+        key = "PL-D4D4"
+        repo.branch("claude/work")
+        capture = "docs/items/PL-D4D4-new.md"
+        repo.commit(f"{key}: capture", when=T0 - HOUR, files={capture: _item(key)})
+        files[capture] = _item(key, "blocked")
+    repo.claim(key, when=T0)
+    repo.commit(f"{key}: blocked", when=T0 + HOUR, files=files)
+    _close(repo, "PL-B1B1", "done", T0 + 2 * HOUR)
+
+    read = holdings(repo.root, now=T0 + 3 * HOUR)
+
+    assert [(hold.key, hold.released_by, hold.status) for hold in read.holds] == [
+        (key, BY_STATUS, "blocked")
+    ]
+    assert [hold.key for hold in read.dispositions] == ["PL-B1B1"]
+    assert [(branch.name, branch.item_id) for branch in read.flight().branches] == [
+        ("claude/work", "PL-B1B1")
+    ]
+    assert settled_branches(repo.root, read, opened=lambda: ()).branches == ()
+
+
+def test_a_lapsed_claim_on_an_open_item_leaves_the_branch_live(tmp_path: Path) -> None:
+    """A lapsed claim holds nothing, but the branch that made it may still carry its work."""
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/dormant")
+    repo.claim("PL-C2C2", when=T0)
+    _close(repo, "PL-B1B1", "done", T0 + LEASE_TERM + DAY)
+
+    read = holdings(repo.root, now=T0 + LEASE_TERM + 2 * DAY)
+
+    assert [(hold.key, hold.state) for hold in read.holds] == [("PL-C2C2", LAPSED)]
+    assert [(branch.name, branch.item_id) for branch in read.flight().branches] == [
+        ("claude/dormant", "PL-B1B1")
+    ]
+    assert settled_branches(repo.root, read, opened=lambda: ()).branches == ()
+
+
+def test_a_claim_shadowed_by_another_branch_s_still_leaves_its_branch_live(tmp_path: Path) -> None:
+    """Every claim the ref recorded is asked, not only one that won its item's row.
+
+    The later claim gets no row, because the earlier one holds the item; the
+    session behind it is still working, and calling its branch finished is the
+    expensive mistake.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/first")
+    repo.claim("PL-C2C2", when=T0)
+    repo.branch("claude/second", "main")
+    repo.claim("PL-C2C2", when=T0 + HOUR)
+    _close(repo, "PL-B1B1", "done", T0 + 2 * HOUR)
+
+    read = holdings(repo.root, now=T0 + 3 * HOUR)
+
+    assert [(branch.name, branch.item_id) for branch in read.flight().branches] == [
+        ("claude/second", "PL-B1B1"),
+        ("claude/first", "PL-C2C2"),
+    ]
+    assert settled_branches(repo.root, read, opened=lambda: ()).branches == ()
+
+
+def test_one_item_still_claimed_leaves_the_whole_branch_live(tmp_path: Path) -> None:
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/mixed")
+    repo.claim("PL-B1B1", "PL-C2C2", when=T0)
+    _close(repo, "PL-B1B1", "done", T0 + HOUR)
+
+    read = holdings(repo.root, now=T0 + 2 * HOUR)
+
+    assert settled_branches(repo.root, read, opened=lambda: ()).branches == ()
+
+
+def test_a_branch_named_for_a_capture_it_closed_is_settled_by_its_name(tmp_path: Path) -> None:
+    """A capture holds by no claim and no disposition, only by the branch's name.
+
+    The name counts as a disposition does: it holds only where the branch
+    recorded no claim, so its copy's status is the branch's own close-out.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/pl-d4d4-capture")
+    repo.commit(
+        "PL-D4D4: capture and close",
+        when=T0,
+        files={"docs/items/PL-D4D4-new.md": _item("PL-D4D4", "done")},
+    )
+
+    read = holdings(repo.root, now=T0 + HOUR)
+    settled = settled_branches(repo.root, read, opened=lambda: ())
+
+    assert [(hold.kind, hold.status, hold.on_base) for hold in read.named] == [
+        (NAMED, "done", False)
+    ]
+    assert [(entry.name, entry.item_ids) for entry in settled.branches] == [
+        ("claude/pl-d4d4-capture", ("PL-D4D4",))
+    ]
+
+
+def test_a_branch_named_for_an_item_it_holds_no_copy_of_is_not_settled(tmp_path: Path) -> None:
+    """Its copy has no status, so nothing says it finished: the silence reads as live."""
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/pl-d4d4-thing")
+    repo.commit("tidy", when=T0, files={"src/tidy.py": "x\n"})
+
+    read = holdings(repo.root, now=T0 + HOUR)
+
+    assert read.flight().ids == frozenset({"PL-D4D4"})
+    assert settled_branches(repo.root, read, opened=lambda: ()).branches == ()
+
+
+def test_a_close_out_shadowed_by_another_branch_s_claim_settles_nothing(tmp_path: Path) -> None:
+    """Only a ref with a row in `flight` is asked about, so a settled row replaces a live one.
+
+    Listing a branch the report never named would add a line about work
+    nobody reads as in flight, beside a report saying nothing is.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/claimer")
+    repo.claim("PL-B1B1", when=T0)
+    repo.branch("claude/closer", "main")
+    _close(repo, "PL-B1B1", "done", T0 + HOUR)
+
+    read = holdings(repo.root, now=T0 + 2 * HOUR)
+
+    assert [(branch.name, branch.item_id) for branch in read.flight().branches] == [
+        ("claude/claimer", "PL-B1B1")
+    ]
+    assert settled_branches(repo.root, read, opened=lambda: ()).branches == ()
+
+
+def test_a_finished_branch_with_a_pull_request_open_is_not_reported(tmp_path: Path) -> None:
+    """Every item closed and a pull request open is a branch waiting on review.
+
+    The pull request names `claude/x` and the ref is `origin/claude/x`, so the
+    remote is stripped against the remotes git lists before they are compared.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.git("remote", "add", "origin", (tmp_path / "nowhere").as_uri())
+    repo.branch("claude/reviewing")
+    repo.claim("PL-B1B1", when=T0)
+    _close(repo, "PL-B1B1", "done", T0 + HOUR)
+    repo.git("update-ref", "refs/remotes/origin/claude/reviewing", "HEAD")
+    repo.git("checkout", "-q", "main")
+    repo.git("branch", "-q", "-D", "claude/reviewing")
+
+    read = holdings(repo.root, now=T0 + 2 * HOUR)
+    reviewing = settled_branches(repo.root, read, opened=lambda: ["claude/reviewing"])
+    elsewhere = settled_branches(repo.root, read, opened=lambda: ["claude/other"])
+
+    assert (reviewing.branches, reviewing.asked) == ((), True)
+    assert [entry.name for entry in elsewhere.branches] == ["origin/claude/reviewing"]
+
+
+def test_a_close_out_lists_only_the_ids_its_own_rows_show(tmp_path: Path) -> None:
+    """An item whose row another branch's claim holds is not listed as settled here too.
+
+    Its disposition still has to be closed for the branch to settle, but the
+    id belongs to the live row, and printing it in both sections would say
+    the item is being worked and finished at once.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/claimer")
+    repo.claim("PL-B1B1", when=T0)
+    repo.branch("claude/closer", "main")
+    _close(repo, "PL-B1B1", "done", T0 + HOUR)
+    _close(repo, "PL-C2C2", "done", T0 + 2 * HOUR)
+
+    read = holdings(repo.root, now=T0 + 3 * HOUR)
+    settled = settled_branches(repo.root, read, opened=lambda: ())
+
+    assert sorted(hold.key for hold in read.dispositions) == ["PL-B1B1", "PL-C2C2"]
+    assert [(entry.name, entry.item_ids) for entry in settled.branches] == [
+        ("claude/closer", ("PL-C2C2",))
+    ]
+
+
+def test_a_name_the_base_closed_is_passed_over_and_the_branch_settles(tmp_path: Path) -> None:
+    """A released hold asks nothing: the base's close ended it, so its status is no evidence.
+
+    The branch blocked its named item and closed another; the base then
+    closed the named one, which releases the name and leaves no disposition.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/pl-c2c2-slug")
+    _close(repo, "PL-C2C2", "blocked", T0)
+    _close(repo, "PL-B1B1", "done", T0 + HOUR)
+    repo.git("checkout", "-q", "main")
+    _close(repo, "PL-C2C2", "done", T0 + 2 * HOUR)
+
+    read = holdings(repo.root, now=T0 + 3 * HOUR)
+    settled = settled_branches(repo.root, read, opened=lambda: ())
+
+    assert [(hold.key, hold.state, hold.released_by, hold.status) for hold in read.named] == [
+        ("PL-C2C2", RELEASED, BY_CLOSED, "blocked")
+    ]
+    assert [hold.key for hold in read.dispositions] == ["PL-B1B1"]
+    assert [(entry.name, entry.item_ids) for entry in settled.branches] == [
+        ("claude/pl-c2c2-slug", ("PL-B1B1",))
+    ]
+
+
+def test_the_remote_prefix_is_stripped_only_for_remotes_git_lists(tmp_path: Path) -> None:
+    """`feature/reviewing` is a local branch, not `reviewing` on a remote called `feature`.
+
+    A naive first-segment strip would drop it whenever the forge had an
+    unrelated `reviewing` open, silently hiding finished work.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.git("remote", "add", "origin", (tmp_path / "nowhere").as_uri())
+    repo.branch("feature/reviewing")
+    repo.claim("PL-B1B1", when=T0)
+    _close(repo, "PL-B1B1", "done", T0 + HOUR)
+
+    read = holdings(repo.root, now=T0 + 2 * HOUR)
+    settled = settled_branches(repo.root, read, opened=lambda: ["reviewing"])
+
+    assert [entry.name for entry in settled.branches] == ["feature/reviewing"]
+    assert settled.known
+
+
+@pytest.mark.parametrize("opened", [None, lambda: None])
+def test_a_forge_that_could_not_be_asked_reports_the_half_it_read(
+    tmp_path: Path, opened: Any
+) -> None:
+    """No way to ask and a forge that refused are one answer: half the test, said as half."""
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/finished")
+    repo.claim("PL-B1B1", when=T0)
+    _close(repo, "PL-B1B1", "done", T0 + HOUR)
+
+    settled = settled_branches(repo.root, holdings(repo.root, now=T0 + 2 * HOUR), opened=opened)
+
+    assert [entry.name for entry in settled.branches] == ["claude/finished"]
+    assert (settled.asked, settled.known) == (False, False)
+
+
+def test_the_forge_is_not_asked_when_no_branch_has_finished(tmp_path: Path) -> None:
+    """The cheap half decides whether the expensive one runs at all."""
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/working")
+    repo.claim("PL-B1B1", when=T0)
+    asked: list[bool] = []
+
+    def opened() -> tuple[str, ...]:
+        asked.append(True)
+        return ()
+
+    settled = settled_branches(repo.root, holdings(repo.root, now=T0 + HOUR), opened=opened)
+
+    assert (settled.branches, asked, settled.asked) == ((), [], True)
+
+
+def test_a_ref_whose_commits_went_unread_is_never_settled() -> None:
+    """Its name proves the id, and nothing read says what else the ref carries.
+
+    Built from the holds directly, because the one shape that could settle it -
+    a name hold recording a closed status on a ref in `unreadable` - is one
+    `holdings` never produces: an unread ref has no copy to read a status from.
+    The rule is kept anyway, so a later reader that learns to read one cannot
+    settle a ref whose history it never compared.
+    """
+    ref = "origin/claude/pl-d4d4-thing"
+    hold = Hold(
+        key="PL-D4D4",
+        ref=ref,
+        kind=NAMED,
+        state=LIVE,
+        since=T0,
+        renewed=T0,
+        commit="",
+        status="done",
+    )
+    read = Holdings(named=(hold,), unreadable=(ref,), now=T0)
+
+    assert [branch.name for branch in read.flight().branches] == [ref]
+    assert settled_branches(Path("."), read, opened=lambda: ()).branches == ()

@@ -916,7 +916,7 @@ def format_flight(
     instruction the evidence never supported.
 
     **Except where the branch itself has answered it** (`PL-Q664`). A ref whose
-    every claimed item is closed in its own copy, with no pull request open on
+    every held item is closed in its own copy, with no pull request open on
     it, is not a case the age decides - nobody is working it and nobody is
     reviewing it, and leaving such a row in the list above under "the age is
     what separates them" is how finished work sat unnoticed for three hours.
