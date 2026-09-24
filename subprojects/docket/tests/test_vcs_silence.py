@@ -31,6 +31,7 @@ from __future__ import annotations
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -67,6 +68,7 @@ from docket.vcs import (
     released_on_base,
     resolved,
     settled_branches,
+    since_filed,
     stranded,
     tags,
     working_paths,
@@ -395,6 +397,13 @@ READS: tuple[Read, ...] = (
     # reads the mark, so a silence that stops every candidate resolving declines
     # here rather than answering `main` (`PL-73P0`).
     Read("default_base", lambda r, g: default_base(r, runner=g), _findings()),
+    # A file the fixture changes and a directory it adds to, from a date every
+    # fixture commit is after, so the truthful read counts something to lose.
+    Read(
+        "since_filed",
+        lambda r, g: since_filed(r, ("src/one.py", "docs/items"), date(2000, 1, 1), runner=g),
+        _findings("paths"),
+    ),
 )
 
 

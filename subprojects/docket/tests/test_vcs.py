@@ -60,6 +60,7 @@ from docket.vcs import (
     released_on_base,
     resolved,
     settled_branches,
+    since_filed,
     stranded,
     tags,
 )
@@ -2129,6 +2130,60 @@ def test_a_shallow_clone_is_not_deepened_to_get_an_answer() -> None:
     merged_pull_requests(ROOT, runner=run)
 
     assert not any(args[0] in ("fetch", "clone", "remote") for args in asked)
+
+
+def _since_runner(log: str, shallow: str = "false") -> Runner:
+    def run(args: list[str], root: Path) -> str:
+        if args[:2] == ["rev-parse", "--is-shallow-repository"]:
+            return shallow + "\n"
+        return log if "log" in args else ""
+
+    return run
+
+
+def test_since_filed_counts_a_commit_once_per_path_and_only_beneath_it(tmp_path: Path) -> None:
+    """A directory counts a commit once however many files it changed, and a sibling never.
+
+    `docs/items` must not count a change to `docs/itemsX/`, which a bare
+    prefix test would, and a path deleted since filing is the one reported
+    gone rather than merely absent (`PL-TQN2`).
+    """
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "a.py").write_text("a\n")
+    log = "\x1fc1\0\nM\0src/a.py\0A\0src/b.py\0\x1fc2\0\nM\0docs/itemsX/y.md\0D\0gone.py\0"
+
+    report = since_filed(
+        tmp_path,
+        ("src/", "src/a.py", "docs/items", "gone.py"),
+        date(2026, 8, 5),
+        runner=_since_runner(log),
+    )
+
+    assert report.known
+    assert [(p.path, p.exists, p.commits, p.deleted) for p in report.paths] == [
+        ("src/", True, 1, False),
+        ("src/a.py", True, 1, False),
+        ("docs/items", False, 0, False),
+        ("gone.py", False, 1, True),
+    ]
+
+
+def test_since_filed_declines_on_a_shallow_clone_and_keeps_what_the_tree_says(
+    tmp_path: Path,
+) -> None:
+    """Its missing commits are the oldest, which this read is about - so no count, not zero."""
+    (tmp_path / "a.py").write_text("a\n")
+
+    report = since_filed(
+        tmp_path, ("a.py", "b.py"), date(2026, 8, 5), runner=_since_runner("", "true")
+    )
+
+    assert not report.known
+    assert "shallow" in report.declined
+    assert [(p.path, p.exists, p.commits) for p in report.paths] == [
+        ("a.py", True, None),
+        ("b.py", False, None),
+    ]
 
 
 def test_a_git_that_cannot_say_whether_the_checkout_is_complete_declines() -> None:
