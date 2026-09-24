@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: session-cost, docs
 feature: dev-tooling
+milestone: v0.5.10
 touches: CLAUDE.md, docs/items/PL-1T6T-re-test-the-refusal-of-compaction-now-that-root.md
 added: 2026-08-24
 closed: 2026-09-24
+pr: 984
 verify: ! grep -q 'invalidates that cache' CLAUDE.md && ! grep -q 'despite the cache cost' CLAUDE.md && grep -q 'resident rule mid-session invalidates no cache' CLAUDE.md
 ---
 

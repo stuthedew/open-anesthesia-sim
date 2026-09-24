@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: claim-record
+milestone: v0.5.10
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator-machinery defect
 added: 2026-09-24

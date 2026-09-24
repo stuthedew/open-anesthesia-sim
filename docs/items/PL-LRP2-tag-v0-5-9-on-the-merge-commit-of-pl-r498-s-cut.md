@@ -3,13 +3,15 @@ id: PL-LRP2
 title: Tag v0.5.9 on the merge commit of PL-R498's cut: the release is cut and only the project owner can push a tag ref from this environment
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning
 feature: release-process
 touches: docs/items/
 added: 2026-09-24
+closed: 2026-09-24
 payoff: v0.5.9 carries its annotated tag, so the next cut is not refused and git describe resolves across it
 not-delegable: Proving this means pushing a tag ref to the remote, which no session in this environment can do: PL-N936 measured the failure, a dry run reporting [new tag] and the real push dying on an unexpected disconnect
+recurrences: 2026-09-24 PL-08D4
 ---
 
 **Problem.** Tag v0.5.9 on the merge commit of PL-R498's cut: the release is cut and only the project owner can push a tag ref from this environment
@@ -40,3 +42,9 @@ only answer.
 
 **Done when.** `git ls-remote --tags origin v0.5.9` resolves, on the merge
 commit of the pull request that carries `PL-R498`'s cut.
+
+**Done 2026-09-24.** The project owner pushed the tag. `git ls-remote --tags
+origin` shows `refs/tags/v0.5.9` as an annotated tag object (`6da21496`)
+peeling to `6c8307e0`, "PL-R498: cut v0.5.9, the release where ...", which is
+the cut's own merge and not `8428844c`. Closed in `PL-NLXK`'s cut of v0.5.10,
+which the tag let through the untagged-predecessor refusal.

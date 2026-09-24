@@ -3,9 +3,11 @@ id: PL-SW2K
 title: Branches started between PL-3FYK's merge and PL-0TD9's write start mode's old empty start commit onto a tree already carrying claims.py, so claims.holdings reads them as claiming nothing; re-pointing CUTOVER_MARKER at a file PL-0TD9 creates would close the window
 status: done
 feature: claim-record
+milestone: v0.5.10
 touches: subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py
 added: 2026-09-24
 closed: 2026-09-24
+pr: 987
 verify: grep -q 'CUTOVER_MARKER = "subprojects/docket/src/docket/claiming.py"' subprojects/docket/src/docket/claims.py
 ---
 
