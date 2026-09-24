@@ -3,12 +3,57 @@ id: PL-038
 title: Verify what a mid-session `CLAUDE.md` edit actually invalidates
 priority: P2
 effort: S
-status: ready
+status: done
 classes: session-cost, docs
 feature: dev-tooling
-touches: CLAUDE.md
+touches: CLAUDE.md, docs/items/PL-1T6T-re-test-the-refusal-of-compaction-now-that-root.md
 added: 2026-08-24
+closed: 2026-09-24
+verify: ! grep -q 'invalidates that cache' CLAUDE.md && ! grep -q 'despite the cache cost' CLAUDE.md && grep -q 'resident rule mid-session invalidates no cache' CLAUDE.md
 ---
+
+**Resolved 2026-09-24: the claim was false, and the bullet now says what
+happens.** Editing `CLAUDE.md` or a resident rule mid-session invalidates
+nothing. Measured on Claude Code 2.1.281 from this session's own transcript -
+the per-request `usage` records `tools/context_reading.py` reads, split by
+field - by appending a marker line to the file on disk and reading the next
+request:
+
+| File edited | Previous request's context | Next request, read from cache | Next request, written |
+| --- | --- | --- | --- |
+| `CLAUDE.md` | 132,307 | 132,305 | 2,811 |
+| `.claude/rules/instruction-writing.md` | 135,965 | 135,963 | 2,545 |
+
+Both times the whole previous context came back from cache and only the new
+tool output was written. The session's first request shows where a real
+invalidation would have cut: it read 39,385 tokens, the system prompt and
+tools, and wrote 44,140, the resident set and the digest. A change inside the
+resident set would have read back about 39,000 and re-written the rest.
+
+**Why.** "CLAUDE.md content is delivered as a user message after the system
+prompt, not as part of the system prompt itself", and it is "loaded at launch"
+([memory](https://code.claude.com/docs/en/memory), read 2026-09-24). Nothing
+re-reads it when a turn starts or the file changes. The 2.1.281 binary names
+the events that re-read instruction files: session start, compaction, a
+managed-settings change, a working directory added, a settings sync, an
+account change, a plugin asking for it, and an organization policy arriving. A
+re-read that finds a change appends a message headed "These instruction files
+changed", or "Instruction files were re-read (...); these differ from their
+earlier copies", carrying the changed files, and leaves the launch copy where
+it is. The in-turn result above is measured; that a new user message does not
+re-read either rests on that list, because this session measured inside one
+turn.
+
+**What changed.** The bullet in § "Session and tool-use efficiency" states the
+mechanism and drops the own-session recommendation, which rested on nothing
+else; the behaviour-change bullet's "despite the cache cost noted above" went
+with it. The one real consequence of a mid-session edit is that the session
+keeps its launch copy until a re-read, and the bullet says that instead.
+
+**What would make this wrong.** A Claude Code release that re-reads
+instruction files per turn and rewrites the first message. Re-check it the same
+way: append a line, then compare the next request's `cache_read_input_tokens`
+with the previous request's total.
 
 > **Groomed 2026-09-22 (`PL-Y4YG`): still owed, unchanged.** The claim is
 > still in `CLAUDE.md` § "Session and tool-use efficiency", the bullet

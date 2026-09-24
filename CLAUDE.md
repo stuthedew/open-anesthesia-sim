@@ -245,9 +245,11 @@ before finishing.
 - Delegate broad codebase search to exploration subagents, whose transcripts
   stay out of the main context. Treat what they return as leads to verify
   against the source, not findings to rely on.
-- Edit this file and the core docs in their own session where practical: they
-  sit in the cached prefix of every request, so editing one partway through
-  invalidates that cache for the rest of the session.
+- Editing this file or a resident rule mid-session invalidates no cache. The
+  resident set is sent once, at launch, as a user message; an edit on disk
+  changes nothing already sent, so this session keeps its launch copy until a
+  re-read, such as compaction, sends the changed file as a new message
+  (`PL-038`).
 - Batch edits before rerunning the full quality suite (`ruff format`, `ruff
   check`, `mypy`, `pytest`) rather than rerunning all four after each one. Run
   it in full before finishing or committing; use `pytest -q` while iterating,
@@ -449,8 +451,7 @@ deviating from a described deliverable, not acting without one.
   nothing: it sits in the queue, untriaged and therefore invisible to `bin/docket
   next`, while every session in the meantime keeps doing the thing that was just
   corrected. The capture is the record; the edit is the change. Do both, and say
-  in your reply that you did both. This is the one case where editing this file
-  mid-session is right despite the cache cost noted above.
+  in your reply that you did both.
 
   **Route it; do not append here by default.** Ask *at what moment a session
   needs the rule, and what is the cheapest thing that delivers it then.* Four
