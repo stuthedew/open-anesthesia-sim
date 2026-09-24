@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: ux, defect
 feature: compartment-trace-legibility
+milestone: v0.5.9
 touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py, tests/integration/test_qt_chart.py, ROADMAP.md
 added: 2026-09-19
 closed: 2026-09-23
+pr: 959
 payoff: makes the slow compartments this simulator exists to teach visible on the chart that teaches them, instead of a flat line under 2 px
 verify: grep -qF 'The root cause is the axis, and the axis stays' docs/MODEL.md && ! grep -qF 'scaled by the alveolar peak' docs/MODEL.md
 ---

@@ -5,9 +5,11 @@ priority: P2
 effort: S
 status: done
 classes: docs, defect
+milestone: v0.5.9
 touches: .claude/skills/docket/modes/picking.md
 added: 2026-09-19
 closed: 2026-09-23
+pr: 976
 verify: ! grep -rqF 'prints no placement at all' .claude/skills/docket/
 ---
 

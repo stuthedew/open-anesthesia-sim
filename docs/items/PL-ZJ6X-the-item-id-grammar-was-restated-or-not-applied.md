@@ -5,9 +5,11 @@ priority: P3
 effort: S
 status: done
 classes: defect
+milestone: v0.5.9
 touches: tools/fixture_id_check.py, subprojects/docket/src/docket/store.py
 added: 2026-09-23
 closed: 2026-09-23
+pr: 969
 reason: Recorded for the audit: the mechanism is closed by tools/fixture_id_check.py
 verify: python3 tools/fixture_id_check.py
 root-cause-of: PL-GXPP, PL-CY8B, PL-DPY6, PL-3BZS, PL-7922, PL-L609, PL-KYW3

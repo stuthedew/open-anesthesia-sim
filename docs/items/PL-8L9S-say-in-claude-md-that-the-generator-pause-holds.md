@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs
 feature: generator-identification
+milestone: v0.5.9
 touches: CLAUDE.md, docs/items
 added: 2026-09-23
 closed: 2026-09-23
+pr: 974
 payoff: Sessions stop treating work on the generators, or on the machinery that finds them, as new apparatus needing the owner to lift the pause
 verify: grep -q 'machinery that finds and ranks generators' CLAUDE.md
 ---

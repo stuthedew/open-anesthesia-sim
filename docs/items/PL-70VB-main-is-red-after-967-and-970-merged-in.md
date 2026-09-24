@@ -6,10 +6,12 @@ effort: S
 status: done
 classes: defect, infra
 feature: merge-skew
+milestone: v0.5.9
 touches: ROADMAP.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; housekeeping for main's red docket check
 added: 2026-09-23
 closed: 2026-09-23
+pr: 971
 payoff: main goes green again, so no open pull request fails CI on a disposition it never touched
 verify: ! grep -q '^- PL-MB2W (M) - \*\*deferred' ROADMAP.md && grep -q '^deferred-from: v0.6.0' docs/items/PL-MB2W-who-holds-an-item-is-derived-by-every-reader.md
 ---

@@ -5,9 +5,11 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.5.9
 touches: CLAUDE.md
 added: 2026-09-23
 closed: 2026-09-23
+pr: 955
 payoff: a session keeps its claim on a pushed branch whatever kind of claim it pushed and whichever push carried it, instead of a needs-decision design round, or a claim pushed before the branch's first item files, arming auto-merge and erasing the claim
 verify: grep -q "whichever push carried it" CLAUDE.md
 ---

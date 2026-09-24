@@ -5,11 +5,14 @@ priority: P3
 effort: S
 status: done
 classes: housekeeping
+milestone: v0.5.9
 touches: docs/items, ROADMAP.md
 added: 2026-09-23
 closed: 2026-09-23
+pr: 963
 verify: grep -q 'root-cause-of: PL-58JD, PL-59QW, PL-FD5Q, PL-VFJ3' docs/items/PL-WD5Z-gate-dispositions-are-ids-mentioned-in-roadmap.md
 ---
+
 **Problem.** The owner asked on 2026-09-23 whether every generator is
 recorded, since workflow items were still arriving quickly, and asked for the
 untriaged captures to be included. `PL-04KR`'s command, which would answer that,

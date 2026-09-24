@@ -2,8 +2,10 @@
 id: PL-VFJ3
 title: The triage mode never says that a capture classed as debt while a gate is frozen owes a Declined entry in ROADMAP.md, which tools/doc_check.py enforces, nor that the pass should lead that commit with its own housekeeping id: #953 followed the mode, went red in checks, and its fix commit then marked the items it led with as in flight
 status: done
+milestone: v0.5.9
 added: 2026-09-23
 closed: 2026-09-23
+pr: 970
 reason: Closed through PL-WD5Z's route 1, which removed what set off this instance. A debt capture during a freeze now owes a deferred-from: field on the item, which bin/docket check requires and whose error names the command, not a ROADMAP.md entry the triage mode never mentioned. A triage pass recording one writes only under docs/items/, which vcs._annotates_only reads as annotation, so its leading ids claim nothing in flight. The general mechanism, a claim read from a commit's shape, stays with PL-MB2W.
 verify: grep -q 'def test_an_open_debt_item_the_gate_neither_places_nor_defers_is_an_error' subprojects/docket/tests/test_checks.py
 ---

@@ -5,9 +5,11 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.5.9
 touches: CLAUDE.md
 added: 2026-09-23
 closed: 2026-09-23
+pr: 961
 payoff: a claimed queue-only branch that has closed every item it claims - a triage pass under its housekeeping item, a stranded recovery, a grooming pass's drops - lands by auto-merge instead of waiting for the owner's hand merge, while a branch still holding a claim on an open item stays unarmed
 verify: grep -qF "closed in the branch's own copy" CLAUDE.md && grep -qF 'last item it claims arms it' CLAUDE.md
 ---
