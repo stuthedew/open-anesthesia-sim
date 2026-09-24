@@ -3,12 +3,13 @@ id: PL-Y1W0
 title: Eight squash bodies landed non-empty but different from their pull request's body (#834, #844-847, #861, #868, #938), and tools/pr_body_check.py tests only for an empty body, so it cannot see one
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: pr-body-integrity
-touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py
+touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, docs/ARCHITECTURE.md, docs/maintainer.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-23
+closed: 2026-09-24
 payoff: a commit on main that says something other than its pull request is reported, not passed as intact
 verify: grep -q 'def test_fires_on_a_squash_body_that_differs_from_its_pull_request_body' tests/unit/test_pr_body_check.py
 ---
@@ -58,3 +59,33 @@ request shows it. `#938` merged 2h13m after the close, with a differing body.
 That is one post-close item and three post-close merges. A second post-close
 item would reopen `PL-WFFX`'s `spent` verdict, and this item's work is what
 would let the store see one.
+
+**Done 2026-09-24: `python3 tools/pr_body_check.py --compare`.** It reads the
+closed-pull-request listing, a hundred bodies to a request and about ten
+requests for the whole history, and reports each squash commit whose body says
+something other than its pull request's. Both sides are normalised the same
+way first. GitHub's `Co-authored-by` trailer is stripped, whitespace is
+collapsed because the squash message arrives hard-wrapped, the claude.ai footer
+is stripped, and abbreviated commit hashes are masked because the 2026-09-06
+rewrite remapped them. The module docstring gives the measurement behind each
+step.
+
+**The count is 27, not eight.** On 2026-09-24 there were 681 squash commits
+whose body held more than GitHub's trailer. 654 match and 27 differ: all eight
+named in the title, `#968` and `#981`, and 17 older ones back to `#220`. Six
+are exactly `auto_merge.commit_message`. The mechanism there is `PL-M7W1`'s,
+whose 2026-09-23 evidence already says an arm made with message text freezes
+the body as well as the subject, so no new item was filed for prevention. The
+normalisation is not optional. A plain equality test reports 679 of the 681,
+and 22 bodies differ only in the hashes the rewrite remapped. In those 22,
+`main`'s copy is the one whose hashes resolve.
+
+**Generator check, answered.** Three merges after `PL-WFFX` closed differ:
+`#938`, `#968` and `#981`, the three triage had already counted. None of `#982`
+to `#993` does. So this work turned up no second post-close instance, and
+`PL-WFFX`'s `spent` verdict stands on this reading.
+
+**Left for later, and filed.** `--compare` reports these bodies and nothing
+records them. `--recover` writes a file only for an empty body, and a recovery
+file's header says the commit landed empty. So the 27 stay reported until that
+changes.
