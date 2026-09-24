@@ -3,9 +3,11 @@ id: PL-H5DV
 title: ROADMAP planned item 27 says fat holds more agent than every other compartment combined for hours, but in this model fat overtakes muscle only at 4.7-7.5 h and everything else at 7.0-9.5 h
 status: done
 feature: compartment-trace-legibility
+milestone: v0.5.9
 touches: ROADMAP.md
 added: 2026-09-23
 closed: 2026-09-23
+pr: 959
 verify: grep -qF 'overtakes muscle only after about five to seven and a' ROADMAP.md && ! grep -qF 'holding more agent than every other compartment combined' ROADMAP.md
 ---
 

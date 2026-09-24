@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect
 feature: dev-tooling
+milestone: v0.5.9
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_git_runner.py, subprojects/docket/tests/test_portability.py, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-23
+pr: 964
 payoff: stops bin/docket next printing a Python traceback that reads as the queue tool crashing whenever a session pipes it into head
 verify: grep -q 'BrokenPipeError' subprojects/docket/src/docket/cli.py
 recurrences: 2026-09-22 PL-QC0Y

@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs, infra
 feature: merge-skew
+milestone: v0.5.9
 touches: CLAUDE.md, docs/maintainer.md, docs/resident-instructions.md
 added: 2026-09-23
 closed: 2026-09-23
+pr: 977
 payoff: a pull request green on a stale base can no longer merge into a red main
 verify: grep -qF 'into an open pull request once, when' CLAUDE.md && ! grep -qF 'costs nothing that CI proves' CLAUDE.md
 not-delegable: the setting is the project owner's, in main's branch protection, which no session can change

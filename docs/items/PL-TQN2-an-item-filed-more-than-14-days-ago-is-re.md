@@ -6,10 +6,12 @@ effort: M
 status: done
 classes: infra
 feature: debt-aging
+milestone: v0.5.9
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, .claude/skills/docket/modes/start.md, .claude/skills/docket/modes/picking.md
 blocked-by: PL-1P5V
 added: 2026-09-22
 closed: 2026-09-23
+pr: 976
 payoff: a session starting an old item sees at once whether the code it describes has moved or gone, so it confirms, rewrites or drops the item before spending itself on a problem that may no longer exist
 verify: grep -q 'def test_show_says_what_changed_since_an_item_was_filed' subprojects/docket/tests/test_cli.py
 ---

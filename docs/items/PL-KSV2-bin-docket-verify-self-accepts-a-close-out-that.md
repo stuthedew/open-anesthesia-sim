@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect
 feature: verify-close-out
+milestone: v0.5.9
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 added: 2026-09-23
 closed: 2026-09-23
+pr: 956
 payoff: A close-out can no longer skip its own failing verify: command by deleting it and writing a not-delegable: reason beside the deletion, so an ACCEPT from verify --self again means the commissioned command ran and passed, or there never was one
 verify: grep -q 'def test_a_not_delegable_line_does_not_excuse_a_command_the_base_holds' subprojects/docket/tests/test_verify.py
 ---

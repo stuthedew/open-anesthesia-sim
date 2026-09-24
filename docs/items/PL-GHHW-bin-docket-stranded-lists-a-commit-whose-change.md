@@ -6,10 +6,12 @@ effort: M
 status: done
 classes: defect
 feature: landed-elsewhere
+milestone: v0.5.9
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, tools/left_behind_check.py, tests/unit/test_left_behind_check.py, .claude/hooks/docket-digest.sh, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
 closed: 2026-09-23
+pr: 975
 payoff: stranded stops handing out a recovery command that would silently revert newer work on main whenever a ported fix also landed through another pull request
 verify: grep -q 'def test_a_change_the_base_took_inside_a_larger_commit_is_not_left_behind' subprojects/docket/tests/test_vcs.py
 root-cause-of: PL-XLQ5, PL-MBTZ, PL-PXZ3

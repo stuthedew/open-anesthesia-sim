@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: housekeeping
 feature: generator-identification
+milestone: v0.5.9
 touches: docs/items
 added: 2026-09-23
 closed: 2026-09-23
+pr: 973
 payoff: The session that builds PL-5MYR starts from the durable design and the audit's 28 head records, not from a prose question nobody can afford to answer each pass
 verify: grep -q 'Head records seeded by PL-T7Y1' docs/items/PL-5MYR-generator-identification-reaches-one-level-up.md
 ---

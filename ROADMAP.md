@@ -104,7 +104,8 @@ capability-boundary rule above governs.
 | v0.5.5 | Completed | **The release where one hover box stopped holding two moments, and four checks stopped passing on what they could not see.** Fifteen items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed - the two changes a learner can see correct which instant an existing hover reports and how an existing panel lays out its rows - and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing computational moved, read off tree identity for every tree but one**: `src/anesthesia_sim/core/` (`d9e3ca9`), `src/anesthesia_sim/data/` (`ab3499f`), `tests/reference/` (`a184830`) and `.github/` (`da3c951`) resolve to the same objects at v0.5.4 and here, so no equation, parameter, constant, numerical method, solver step or published-reference expected value changed. `app/` moves (`50d13b3` to `f3c6e26`, eight files, +304/-187), and compared by syntax tree with docstrings stripped its whole move is four items, with `_hover_value` and every `format_*` function in it identical. **`PL-1K9G` is `safety` at `P1`, and it changes what a hover reports on purpose.** Each trace answered at its drawn point nearest the pointer in two dimensions, so the pointer's height decided which instant it answered at: one box could label one run's compartments with instants 72 s apart on a 60-minute chart and 912 s apart on the 12-hour one, and a purely vertical 2 px movement moved the instant on 44.9% of pairs and the printed value on 35.1%. Now the pointer names the instant - each run answers at its drawn instant nearest the pointer in time, and a trace answers there only if its point is inside the 12 px radius - so one run's readings share an instant and a vertical movement moves neither; the cost, measured and stated, is that a steep trace answers over less area, down to 45-54% for the four fast compartments on the 12-hour axis. **`two-run-attribution` completes, 7 of 8** (`PL-GHMB` dropped), with `PL-FPY2` drawing each mark as a row of its own so a wrapped standing that names a run continues under its own mark rather than reading as the next one's. `PL-59WB` and `PL-CZTR` name an instant as an instant - `fit_to_run`'s input is the newest case instant rather than a run length, and a branch's fork instant is read only as `fork.instant_s` - with every value and every refusal's text unchanged. **The tooling half is one shape, a check passing on what it could not see**: `PL-5B88` (verify's suppression check could not see `@pytest.mark.skip` or `skipif`), `PL-Q8RQ` (`docket check` refuses a `verify:` narrowed with `pytest -k`, which an unrelated test's name can satisfy), `PL-YKSD` (a release tag is held to its own release's version file, since `v0.5.3`'s was pushed onto the commit before its own) and `PL-SZJ2` (`wave` reports a released milestone whose frozen list holds an entry no later gate places). **`PL-6Q9L` pauses new workflow mechanisms while any item carries `generator: live`** (project owner, 2026-09-22, ratified), on `PL-KVDK`'s first pass over the 161 non-product items filed 2026-09-20 to 09-22; `PL-G40Z` lets a no-behaviour repair ride the commit already being made; `PL-Q89J` adds `docket next --oldest`. **Seven of the fifteen are Gate 2 entries**, which stands at 29 of 185 cleared at this cut, and `PL-4KSZ`, the v0.5.4 cut, closes here because a cut cannot stamp itself. | 15 items |
 | v0.5.6 | Completed | **The release where the in-flight guards stopped guessing who holds an item, and verify's assertion check started reading statements rather than lines.** Twelve items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved, and this cut says so by tree identity alone**: `src/` resolves to `37b0a4c` at v0.5.5 and here, so `core/` (`d9e3ca9`), `data/` (`ab3499f`) and `app/` (`f3c6e26`) are byte-identical, and `tests/reference/` (`a184830`), `docs/MODEL.md` and `README.md` with them. **Six items are one question - who holds an item - answered wrongly six ways.** `PL-3QM9` and `PL-7TVT`: `bin/docket flight` subtracted calendar dates, so a branch committed 55 minutes earlier read "last commit 1 day ago" across midnight, and the digest and `bin/docket show` told every reader "do not start these again" on evidence that cannot separate a live session from an abandoned branch in its first hour; `flight` now reports ages to the minute and, wherever the forge answers, whether a pull request is open on each live row's branch, and says what those can and cannot establish rather than what to conclude. The generator `PL-7TVT` headed is recorded spent (project owner, 2026-09-23, ratified, over keeping it live until something can read session state), its one remaining shape - a session ending mid-work before opening a pull request reads as a young branch with none open for about an hour - printed by `flight` as its own limit. `PL-N2PP` and `PL-HX5C`, work nobody had pushed reading as startable, close on a start rule rather than code: an empty commit leading with the id, pushed the moment an item is picked up, is a claim every guard already reads. `PL-8FJK` and `PL-3W3P` are one reading from opposite sides - a grooming branch closing items read as triage, so what it was dropping stayed offerable, and a pass editing a queue-only item's file for another item's reason claimed it - and one helper, `vcs._own_edit_claims`, now reads both: a queue-only commit claims an item only when it leads with that item's id and writes that item's file. **`PL-4W2L` rebuilds verify's assertion check at the statement altitude** (project owner, 2026-09-22, ratified, over refusing only an assertion that left its test and over patching three items at the line altitude): each `.py` file an item's commits touch is parsed before and after each commit, and a removed assertion is charged only where the base's copy holds it, so six line-shape helpers are retired and `PL-XQGH`, `PL-CNJH` and `PL-2DTK` are dropped as resolved, each carried as a named test; replayed over 1,127 commits of `main`, 121 were refused before and 124 after, identically under Python 3.11 and 3.14. `PL-0HPV` puts the scoped verify replay into `make check` (project owner, 2026-09-22, ratified, over adding it with the commands as they stood) after reordering 96 open `verify:` commands cheap-clause-first, which changed no command's pass-or-fail verdict and cut the widest recent scope from 41-46 s to about 5 s. `PL-RFHH` makes `bin/docket gate` and `bin/docket wave` each name the test it ran, where both said "cleared by the milestone itself" about different questions and disagreed on four v0.6.0 entries; `PL-WFFX` confirms by one merge that the GitHub app drops a squash body, and the habit is to merge on the Mac or by auto-merge (project owner, 2026-09-22, ratified); `PL-BYN2` carries an owner ratification off a branch nobody would merge. `PL-0HPV` and `PL-WFFX` merged inside v0.5.5's tag, whose notes now point here. **Seven of the twelve are Gate 2 entries**, which stands at 39 of 185 cleared at this cut, and `PL-3XWZ`, the v0.5.5 cut, closes here because a cut cannot stamp itself. | 12 items |
 | v0.5.7 | Completed | **The release where a git call that failed stopped reading as an empty answer, and a brief's prose started being read against its own status.** Seventeen items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved, and this cut says so by tree identity alone**: `src/` resolves to `37b0a4c` at v0.5.6 and here, so `core/` (`d9e3ca9`), `data/` (`ab3499f`) and `app/` (`f3c6e26`) are byte-identical, and `tests/reference/` (`a184830`), `docs/MODEL.md` and `README.md` with them; `.github/` moves (`27c67f3` to `275baf5`) by one rewritten comment in `pr-title.yml`. **Three items are one convention found in three places, a failed git call read as an empty answer**: `PL-9RFP`'s seven `verify.py` reads discarded git's exit status, so against a base that did not resolve the commission check named git's own error as an edit outside `touches` and both integrity checks passed on a diff they never read; `PL-19T3`'s `git diff` exits 1 outside a repository, which `vcs._run_git` read as "no item changed"; and `PL-1PBV` found the same answer in `pr_title_check`, `generator_check` and `branch_id_check`. Each now says it could not read rather than answering. `PL-NGBM`, `PL-M6FY` and `PL-3T2Q` resolve one `Invocation` per `bin/docket` command, so `--no-git` asks git nothing and every git read shares one runner, and `PL-KH3Q` records the red `main` that landing `#930` and `#933` nine minutes apart produced. **`brief-state-agreement` completes, 3 of 3**: `PL-8YXJ` has `bin/docket check` read an open brief for a wait on a closed item, a status the item has left and a second blocker, and has `bin/docket set` print the passages its own write left stale - 14 in 12 open items on the first run, `PL-X4RX`'s among them - and `PL-RWJD` writes the answer-underneath convention into the triage mode. `PL-J6HP` and `PL-B60Q` have a gate's facts read once, in `docket.roadmap`, and `bin/docket wave` print each deferral's state and release from the store instead of a mark written beside it. `PL-WNCT` (project owner, 2026-09-23, ratified) has a branch carrying only item files open its pull request at its first push with auto-merge armed; `PL-R808` builds the exact left-behind check; `PL-XYQW` reports a missing `pr` number in one line, and only once a cut has shipped the closure without it. Six of the seventeen close generator heads recorded `spent`. **Two are Gate 2 entries**, which stands at 41 of 185 cleared at this cut, six more are v0.6.0 deferrals, and `PL-38HD`, the v0.5.6 cut, closes here because a cut cannot stamp itself. | 17 items |
-| v0.5.8 | Completed / current baseline | **The release where a `verify:` command outside the admitted shapes started being refused when it is written, and a closed generator head or a misspelt front-matter key stopped passing silently.** Seven items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved, and this cut says so by tree identity alone**: `src/` resolves to `37b0a4c` at v0.5.7 and here, so `core/` (`d9e3ca9`), `data/` (`ab3499f`) and `app/` (`f3c6e26`) are byte-identical, and `tests/reference/` (`a184830`), `docs/MODEL.md`, `README.md` and `.github/` (`275baf5`) with them. **`PL-1P5V` closes the head over seven ways a `verify:` command could prove nothing** (project owner, 2026-09-23, ratified, over a structured `verify:` field): a command is admitted as `grep -q` or `! grep -q` clauses joined by `&&`, or as a lone `--cov` run, and any other shape is refused when it is written unless `not-delegable:` says why none fits - on items captured from 2026-09-24, and on any command a branch writes or rewrites for an older one; of 220 open commands, 103 fit as they stand and 93 more once a legacy health clause is stripped. `PL-BX1C` stops `bin/docket verify` running a dropped item's command, which REJECTed correct close-outs on work the drop records as never done; 38 of 191 dropped items still carried one. **Three items are the generator machinery reporting what was not so**: `PL-BBT8` has `bin/docket show` and `bin/docket generators` say a closed head ranks on no tier, where five closed items read as ranked; `PL-DSPM` refuses a front-matter key spelt outside the key grammar, so `root_cause_of:` or `Root-cause-of:` is named as unknown instead of vanishing at exit 0; and `PL-CT07` ends `CLAUDE.md`'s new-mechanism pause on the rule's own condition - no head `bin/docket generators` marks "still generating" - rather than on `bin/docket next`'s tier, which hides whatever is in flight, blocked or untriaged. `PL-QP9Z` (project owner, 2026-09-23, ratified, over arming auto-merge whatever rode the first push) leaves auto-merge unarmed where a start claim rides a captures-only first push, after the v0.5.7 cut's own claim was merged away mid-work. `PL-BBT8` merged inside v0.5.7's tag, whose notes now point here. **One of the seven is a Gate 2 entry**, which stands at 42 of 185 cleared at this cut, three more are v0.6.0 deferrals, and `PL-KNWP`, the v0.5.7 cut, closes here because a cut cannot stamp itself. | 7 items |
+| v0.5.8 | Completed | **The release where a `verify:` command outside the admitted shapes started being refused when it is written, and a closed generator head or a misspelt front-matter key stopped passing silently.** Seven items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved, and this cut says so by tree identity alone**: `src/` resolves to `37b0a4c` at v0.5.7 and here, so `core/` (`d9e3ca9`), `data/` (`ab3499f`) and `app/` (`f3c6e26`) are byte-identical, and `tests/reference/` (`a184830`), `docs/MODEL.md`, `README.md` and `.github/` (`275baf5`) with them. **`PL-1P5V` closes the head over seven ways a `verify:` command could prove nothing** (project owner, 2026-09-23, ratified, over a structured `verify:` field): a command is admitted as `grep -q` or `! grep -q` clauses joined by `&&`, or as a lone `--cov` run, and any other shape is refused when it is written unless `not-delegable:` says why none fits - on items captured from 2026-09-24, and on any command a branch writes or rewrites for an older one; of 220 open commands, 103 fit as they stand and 93 more once a legacy health clause is stripped. `PL-BX1C` stops `bin/docket verify` running a dropped item's command, which REJECTed correct close-outs on work the drop records as never done; 38 of 191 dropped items still carried one. **Three items are the generator machinery reporting what was not so**: `PL-BBT8` has `bin/docket show` and `bin/docket generators` say a closed head ranks on no tier, where five closed items read as ranked; `PL-DSPM` refuses a front-matter key spelt outside the key grammar, so `root_cause_of:` or `Root-cause-of:` is named as unknown instead of vanishing at exit 0; and `PL-CT07` ends `CLAUDE.md`'s new-mechanism pause on the rule's own condition - no head `bin/docket generators` marks "still generating" - rather than on `bin/docket next`'s tier, which hides whatever is in flight, blocked or untriaged. `PL-QP9Z` (project owner, 2026-09-23, ratified, over arming auto-merge whatever rode the first push) leaves auto-merge unarmed where a start claim rides a captures-only first push, after the v0.5.7 cut's own claim was merged away mid-work. `PL-BBT8` merged inside v0.5.7's tag, whose notes now point here. **One of the seven is a Gate 2 entry**, which stands at 42 of 185 cleared at this cut, three more are v0.6.0 deferrals, and `PL-KNWP`, the v0.5.7 cut, closes here because a cut cannot stamp itself. | 7 items |
+| v0.5.9 | Completed / current baseline | **The release where a gate's dispositions moved onto the item, `main` started refusing a branch that is not up to date, and an item filed more than 14 days ago started being re-confirmed before it is worked.** Twenty-seven items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in `src/` moved, and this cut says so by tree identity alone**: `src/` resolves to `37b0a4c` at v0.5.8 and here, so `core/` (`d9e3ca9`), `data/` (`ab3499f`) and `app/` (`f3c6e26`) are byte-identical, and `tests/reference/` (`a184830`), `README.md` and `.github/` (`275baf5`) with them. **`docs/MODEL.md` moves by a correction** (`148686b` to `fd139ea`): from v0.4.32 it said the chart's percent axis is scaled by the alveolar peak, where the code has fixed it at 3 MAC for every agent (`CHART_AXIS_TOP_MAC`) since v0.4.0. `PL-QYBW` keeps that one linear axis (project owner, 2026-09-23, ratified, over a reader-selected logarithmic scale) and corrects the three statements, and `PL-H5DV` corrects planned-milestone item 27's claim about how much agent fat holds. **Four features complete.** `gate-disposition-store`: `PL-WD5Z` moves a gate's dispositions from `ROADMAP.md` prose onto a `deferred-from:` field on the item, closing `PL-58JD`, `PL-59QW` (which completes `brief-state-agreement`), `PL-FD5Q` and `PL-VFJ3` with it. `merge-skew`: `PL-70VB` repairs the red `main` that `#967` and `#970` produced by merging cleanly, the third instance within 30 days, so the trigger `PL-Z0SM` recorded fired, the project owner turned on strict up-to-date checks for `main`, and `PL-6MW8` revises `CLAUDE.md`'s base-merge rule for them. `debt-aging`: `PL-TQN2` has `bin/docket show` print an open item's age and what changed under its `touches`, and ask past 14 days for re-confirmation. Six more finish the owner's generator audit and say what the new-mechanism pause holds, `PL-GHHW` and `PL-PXZ3` share one landing test, `vcs.change_landed`, and the rest fix the queue tool. **Four are Gate 2 entries**, which stands at 46 of 185 cleared at this cut, eight more are v0.6.0 deferrals, and `PL-8543`, the v0.5.8 cut, closes here because a cut cannot stamp itself. | 27 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -204,150 +205,199 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.8
+## Current baseline: v0.5.9
 
-v0.5.8 is the release where a `verify:` command outside the admitted shapes
-started being refused when it is written, and a closed generator head or a
-misspelt front-matter key stopped passing silently. Seven items, all apparatus
-and documentation, and a patch on both halves of § "Versioning decision"'s
-test: no capability boundary is crossed, because nothing a learner can reach
-changed at all, and every number above it is spent, v0.6.0 through v0.9.0 being
-given to milestone sections. One of the seven, `PL-BX1C`, is an entry in Gate
-2, the debt gate frozen under v0.6.0, which stands at 42 of its 185 entries
-cleared at this cut. Three more - `PL-1P5V`, `PL-BBT8` and `PL-DSPM` - are
-v0.6.0 deferrals.
+v0.5.9 is the release where a gate's dispositions moved onto the item, `main`
+started refusing a branch that is not up to date, and an item filed more than
+14 days ago started being re-confirmed before it is worked. Twenty-seven items,
+all apparatus and documentation, and a patch on both halves of § "Versioning
+decision"'s test: no capability boundary is crossed, because no code a learner
+runs changed and the one simulator document that moved was corrected to match
+that code, and every number above it is spent, v0.6.0 through v0.9.0 being
+given to milestone sections. Four of the twenty-seven - `PL-LF2C`, `PL-QYBW`,
+`PL-VJPJ` and `PL-WVJ0` - are entries in Gate 2, the debt gate frozen under
+v0.6.0, which stands at 46 of its 185 entries cleared at this cut. Eight more -
+`PL-59QW`, `PL-70VB`, `PL-FD5Q`, `PL-GHHW`, `PL-JD4L`, `PL-PXZ3`, `PL-WD5Z` and
+`PL-Z0SM` - are v0.6.0 deferrals.
 
-**Nothing in the simulator moved, and this cut says so by tree identity
-alone:**
+**Nothing in `src/` moved, and this cut says so by tree identity alone. One
+document a reader of the simulator needs did move, by a correction:**
 
-| Tree | v0.5.7 | This cut | What moved |
+| Tree | v0.5.8 | This cut | What moved |
 | --- | --- | --- | --- |
 | `src/` | `37b0a4c` | `37b0a4c` | nothing - `core/` (`d9e3ca9`), `data/` (`ab3499f`) and `app/` (`f3c6e26`) are byte-identical, so no equation, parameter, constant, numerical method, solver step or displayed value moves |
 | `tests/reference/` | `a184830` | `a184830` | nothing - every published-reference case, expected value and tolerance is byte-identical |
-| `docs/MODEL.md` | `148686b` | `148686b` | nothing |
+| `docs/MODEL.md` | `148686b` | `fd139ea` | three statements of how the chart's percent axis is scaled now say what the code does, and the decision to keep that axis is recorded - the first subsection below |
 | `README.md` | `9938368` | `9938368` | nothing |
 | `.github/` | `275baf5` | `275baf5` | nothing |
 
-What this release moves is the queue tool and the instructions that describe
-it: `subprojects/docket/` (`checks.py`, `cli.py`, `config.py`, `model.py`,
-`vcs.py` and `verify.py`, its README and five of its test modules),
-`docket.toml`, `CLAUDE.md`, the `docket` skill's triage and close-out modes, and
-this file. `PL-BBT8`'s change to `cli.py`, `model.py`, `plan.py` and
-`render.py` is not in that diff, because it merged inside v0.5.7's tag - the
-last subsection says how that is recorded.
+The same correction reaches three test docstrings in
+`tests/unit/test_chart_frame.py` and `tests/integration/test_qt_chart.py`, and
+no assertion changes. Everything else this release moves is the queue tool and
+the instructions that describe it: `subprojects/docket/` (`checks.py`,
+`cli.py`, `config.py`, `model.py`, `render.py`, `roadmap.py`, `vcs.py` and
+`verify.py`, its README and nine of its test modules), `tools/doc_check.py`,
+`tools/left_behind_check.py` and three test modules under `tests/unit/`,
+`docket.toml`, `CLAUDE.md`, `docs/maintainer.md`,
+`docs/resident-instructions.md`, the session-start digest hook, the `docket`
+skill's start, picking and close-out modes, one line of `docs/ARCHITECTURE.md`'s
+package map, and this file.
 
-### What a `verify:` command may be, and when it is run
+### The chart's percent axis, and what `docs/MODEL.md` said about it
 
-`PL-1P5V` (`#949`) is a generator head, recorded `spent`, over seven ways a
-`verify:` command could prove nothing: counting a symbol (`PL-0QRP`), a target
-that vanished (`PL-CWD4`), a pytest run beside the discriminator (`PL-09G9`), a
-phrase the document's wrapping splits (`PL-RR1N`), a read of the remote
-(`PL-205P`), a literal `true` (`PL-J3WK`) and a pytest node id (`PL-R812`).
-All seven were filed after `PL-6TP8` closed. That head settled what an exit may
-be read to mean and left what a command may *be* to a table in the skill, so
-each new shape was refused by a rule of its own only after it had cost a red
-`main`, a dead command or a misread. The fix refuses by default instead
-(project owner, 2026-09-23, ratified, over a structured `verify:` field).
-`checks.verify_shape_refusal` reads the command with a quote-aware lexer and
-admits `grep -q` clauses, `! grep -q` clauses, several of those joined by `&&`,
-or `uv run pytest --cov=<dotted.module> --cov-fail-under=<N>` alone. Anything
-else is refused, naming the first thing it found, unless `not-delegable:` says
-why no admitted shape fits. `! grep` is admitted on the direction it fails in:
-every way it goes wrong makes it pass, and a passing open command is already an
-error the changed-path replay reports on the branch that caused it.
+`PL-QYBW` (`#959`) was filed on 2026-09-19 as "The chart's percent axis is
+scaled by the alveolar peak, so the slow compartments are compressed into 1-2
+px and two runs' fat curves cannot be told apart by pointing". The first half
+of that is not so. `chart_axis_top_percent` in
+`src/anesthesia_sim/app/formatting.py` has topped the axis at
+`CHART_AXIS_TOP_MAC`, three times the running agent's 1 MAC, fixed for the
+session and blind to every trace, since v0.4.0. `docs/MODEL.md` repeated the
+wrong premise in three places, introduced by `PL-JVHL` (`#743`, v0.4.32) and
+`PL-0RZ0` (`#767`, v0.4.34), and three test docstrings repeated it too; all six
+now name the fixed axis. The item's title stays as filed, because `ROADMAP.md`'s
+two frozen lists quote it. So this release's notes carry a line under its
+bullet saying the premise is false, and a reader of the notes is not told that
+the chart used to scale to the alveolar peak, or that it now scales some other
+way.
 
-The refusal has two anchors where the brief named one. `verify_allowlist_from =
-2026-09-24` in `docket.toml` binds items captured from that date. A capture
-date cannot say when a command was written, though, so a command a branch
-writes or rewrites for an older item is held to the list on that branch too:
-`bin/docket check` reads it from git (`vcs.commands_written_here`), and
-`bin/docket set` knows it as it writes. A command left as the base had it stays
-grandfathered, and the seven per-shape rules guard those until they drain.
-Measured over the 220 open commands on 2026-09-23, 103 fit as they stand, 93
-more once their legacy trailing health clause is stripped, and 24 are other
-shapes. `PL-0QRP` is dropped against the fix; `PL-CWD4` and `PL-RR1N` stay
-open, re-pointed, because the list narrows each and settles neither.
+The compression the title describes is real, and the axis stays (project owner,
+2026-09-23, ratified, over a reader-selected logarithmic scale). At a 1 MAC dial
+on the three shipped agents, fat spans 1.5-3.7 px of the 360 px plot at one
+hour. That trace near zero is fat's true partial pressure, and partial pressure
+is what drives effect, so the chart keeps one linear axis for all six
+compartments, and the rule that answers every compartment inside the hover
+radius handles the contention between them. A logarithmic axis fixed from 0.001
+to 3 MAC would have put two runs' fat 23-75 px apart, at three costs: it draws
+below the 0.01-point resolution of `docs/MODEL.md` § "Displayed precision", it
+is a display mode on a chart of clinical values, and it would arrive ahead of
+the v0.6.0 View contract that decides where a View's own settings live.
+`docs/MODEL.md`'s paragraph opening "The root cause is the axis, and the axis
+stays" carries the measurements.
 
-`PL-BX1C` (`#952`) is the other end of a command's life. `bin/docket verify`
-ran a dropped item's stale command and REJECTed a correct close-out on it,
-though the drop is the record that the work was never done, and 38 of the 191
-dropped items still carried a command on 2026-09-23. It now reads `status:
-dropped` and prints the command as a `NOTE` instead: not run, because "a
-dropped item built nothing, so no command can prove it". Having `bin/docket
-check` refuse the combination was not built. It is a new check, which the
-new-mechanism pause refused while `PL-1P5V` was live, and it would have failed
-`make check` on those 38 without a dated cutover. Writing the reasoning down
-found three documents saying the exemptions are read from the base, which is
-true of `falsifies:` alone; the `not-delegable:` half is a real self-grant under
-`--self`, now filed as `PL-KSV2`.
+`PL-H5DV` rode the same pull request. Planned-milestone item 27 said fat holds
+more agent than every other compartment combined for hours; in this model fat
+overtakes muscle only at 4.7-7.5 h and everything else at 7.0-9.5 h, and the
+item is corrected. How much agent fat holds - a fifth of the stored agent at
+one hour and a third at three - is what the chart's trace cannot show, and item
+27's schematic is the view that answers it.
 
-### Generator machinery that reported what was not so
+### A gate's dispositions, moved onto the item
 
-Three items are feature `generator-identification`. Two of them carry
-`impairs-generators:`, so they ranked with generators while they were open.
+`PL-WD5Z` (`#970`) is a generator head, recorded `spent`. A gate's dispositions
+were ids mentioned in `ROADMAP.md` prose rather than a field on the item: a
+second store of queue state, which four items filed on 2026-09-22 and 09-23
+each disagreed with after three heads had each fixed one reader of it. A
+disposition is now a `deferred-from:` field on the item, written with
+`bin/docket set --deferred-from`, and the four close in the same pull request.
+`PL-58JD`: `docket.roadmap._declined_ids`, retired with the prose it read,
+took every id in a deferral subsection's prose as disposed, and disposed
+`PL-FD5Q` through a sentence saying it was absent from the list. `PL-59QW`: a deferral entry narrated an
+item's status and nothing re-read it when the item closed. `PL-FD5Q`:
+`bin/docket wave` counted v0.6.0's own Required-scope items among the open
+items outside the gate that its blocked entries wait on, so the beat overstated
+what the gate waits on outside the milestone, and `wave` now splits them out.
+`PL-VFJ3`: the triage mode never said that a capture classed as debt while a
+gate is frozen owes a disposition. `PL-WD5Z` completes `gate-disposition-store`,
+and `PL-59QW` completes `brief-state-agreement`.
 
-`PL-BBT8` (`#944`): `bin/docket show` reported a closed head carrying
-`generator: live`, or a closed item with a sound `impairs-generators:`, as
-ranked on the generator tier, though `plan.recommend` ranks only startable
-items. Five closed items read that way, so a mechanism its own verdict called
-live read as handled and was ranked by nothing. It re-entered `PL-T7QR`'s
-conflation of a recorded generator with a ranked one at a sibling site, so the
-status test moved into the rank predicates rather than becoming a third
-restatement: `model.ranks_as_generator` refuses a closed item, and
-`model.ranks_as_generator_defect` asks the same of the `impairs-generators:`
-entrance. `bin/docket generators` had the same fault and now lists a closed
-defect on its own line, as ranking on no tier.
+`PL-70VB` (`#971`) is what the move cost on its way in. `#967` recorded
+`PL-MB2W`'s v0.6.0 deferral as prose in the subsection `#970` replaced; git
+merged the two cleanly, and `main` went red because `bin/docket check` then
+failed `PL-MB2W` for owing a disposition. The orphaned entry is gone, and the
+disposition is on the item.
 
-`PL-DSPM` (`#945`): `model._front_matter_pairs` passed over a column-zero line
-whose key falls outside `FIELD_RE`'s grammar, so `root_cause_of:` or
-`Root-cause-of:` - the two misspellings a hand-typed key is likeliest to
-carry - never reached `unknown_fields`, and a hand-written generator claim
-vanished at `bin/docket check` exit 0. Such a line is now refused as an unknown
-field. It had not yet fired, and it is the first instance of closed head
-`PL-9HD1`'s mechanism since that head closed.
+### `main` refuses a branch that is not up to date
 
-`PL-CT07` (`#943`) is documentation. `CLAUDE.md` ended the new-mechanism pause
-when `bin/docket next` showed the generator tier empty, but `next` leaves out
-whatever is in flight, blocked or untriaged and counts `impairs-generators:`
-items the rule never names, so it read the pause as over while three open heads
-carried `generator: live`. The pause now ends on the rule's own condition: no
-open item carries `generator: live`, which is no head that `bin/docket
-generators` marks "still generating". The three briefs that had copied the old
-test - `PL-RX3H`, `PL-TH9K` and `PL-TQN2` - now name that reading.
+`PL-70VB` was the third merge-skew instance within 30 days, after `#476` and
+`#477` (`PL-33WM`) and `#930` and `#933` on 2026-09-23. `PL-Z0SM` (`#960`) had
+held the remedy until exactly that, as the project owner ratified: strict
+up-to-date status checks on `main` are adopted at a third instance within 30
+days of the last. The trigger fired, the project owner turned the setting on,
+and `PL-6MW8` (`#977`) revises `CLAUDE.md`'s base-merge rule for it:
+`origin/main` is brought into an open pull request once, when it is armed or
+being merged and `behind` is all that stops it, rather than by habit while it
+waits on review, where each base merge re-runs CI for a result the next merge
+makes stale. `docs/maintainer.md` says how to bring it in with **Update branch**
+at merge time. `PL-70VB` and `PL-6MW8` complete `merge-skew`.
 
-### A start claim that auto-merge erased
+### An old item is re-confirmed before it is worked
 
-`PL-QP9Z` (`#948`) was found on the v0.5.7 cut. That cut's capture and its
-empty start claim went up in one push, and the branch's diff was item files
-only, so `PL-WNCT`'s rule opened `#942` with auto-merge armed. It merged four
-minutes later while the cut was being written, GitHub deleted the branch, and
-the squash folded the claim into a capture commit, which no guard reads as a
-claim - for about nine minutes no pushed ref claimed `PL-KNWP` while a session
-was working on it. `CLAUDE.md`'s commit-and-push bullet now leaves a
-captures-only first push unarmed when a start claim rides it, and has the first
-push carrying anything else, a start claim included, disarm auto-merge (project
-owner, 2026-09-23, ratified, over arming auto-merge whatever rode the first
-push), for 201 resident characters net. `PL-1MCK`, open at this cut, records
-that auto-merge still arms on a branch whose claim is a queue-only commit or
-rode an earlier push.
+`PL-TQN2` (`#976`) completes `debt-aging`. An item describes the tree as it
+stood on its `added:` date, and the interface moved from Flet to Qt at v0.4.26,
+so an item filed before then can describe code that is gone. `bin/docket show`
+now prints an open item's age and, for each declared path, whether it is still
+in the tree and how many commits changed it since filing, and asks past 14 days
+for re-confirmation. The start mode then works the item as written, rewrites a
+brief whose problem has moved, or drops the item with the evidence. `PL-WVJ0`,
+a Gate 2 entry, rode the same pull request: the `docket` skill said `bin/docket
+show` prints no placement at all, though its `plan:` line has since v0.4.18.
+
+### The owner's generator audit, and what the pause holds
+
+Six items. `PL-02C4` (`#963`) swept the workflow inflow of 2026-09-19 to 09-23,
+untriaged captures included, for generators no head recorded, and recorded
+`PL-WD5Z`'s gate-prose head above. `PL-T7Y1` (`#969`) finished the owner's
+2026-09-23 audit: it adversarially verified `PL-5MYR`'s claim family, compared
+every head once for a shared record, and recorded four new heads. `PL-ZJ6X`
+closed with it as a head recorded `spent`: the item-id grammar had been
+restated, or not applied, wherever an id was hand-written, across seven items,
+until `tools/fixture_id_check.py` imported `store.ID_RE`. `PL-67SX` (`#973`)
+revises `PL-5MYR`'s recommendation to the durable version, under the owner's
+fix-it-right-once direction: a stated record per head and a member-overlap
+listing rather than a prose question alone, with the audit's 28 head records as
+the seed. `PL-QB26` (`#972`) records that direction beside the open decision on
+each live head, `PL-5MYR` and `PL-K046`. `PL-8L9S` (`#974`) says in `CLAUDE.md`
+that the new-mechanism pause holds apparatus work unrelated to the generators -
+new features and housekeeping - and not work on them or on the machinery that
+finds and ranks them, which needs no lift (project owner, 2026-09-23).
+
+### Work that landed through another pull request
+
+`PL-GHHW` and `PL-PXZ3` (`#975`) are one fault at two sites. `bin/docket
+stranded` listed a commit whose change had already reached `main` through
+another pull request as work that never landed: `#938`'s test port `f1bf1528`
+arrived via `#934`, and the recovery line it printed would have dropped 97 lines
+of `test_cli.py` that `main` had added since. `left_behind_check` reported a
+commit whose identical patch had landed the same way, so its reader had to
+prove the branch stale by hand. One change-level landing test,
+`vcs.change_landed`, is now read by `orphaned`, `stranded` and
+`left_behind_check`, and `PL-GHHW` is a head recorded `spent`. `PL-LF2C`
+(`#962`), a Gate 2 entry, records in `vcs.orphaned` why the exact left-behind
+check can never replace it: the check rests on GitHub's pull-request head refs
+being permanent, and GitHub is about to unreference 90 of them.
+
+### The queue tool
+
+Five more. `PL-1MCK` (`#955`) and `PL-KWCY` (`#961`) finish the auto-merge rule
+`PL-QP9Z` began in v0.5.8. A claim on the branch leaves a captures-only pull
+request unarmed whichever push carried it, and only until its item is closed in
+the branch's own copy, after which the push closing it arms the branch.
+`PL-KSV2` (`#956`): a `not-delegable:` reason no longer excuses a `verify:`
+command the base commissioned, so a close-out can no longer delete its failing
+command, write a reason beside it and ACCEPT itself under `--self`. `PL-JD4L`
+(`#958`), which carried `impairs-generators:`, reports a front-matter line no
+field reads - a value wrapped at column zero had lost its tail at `bin/docket
+check` exit 0 - and writes only through the lines the reader folds. `PL-VJPJ`
+(`#964`), a Gate 2 entry: a `bin/docket` command whose reader stops early now
+ends quietly with status 141 rather than a `BrokenPipeError` traceback, so
+`bin/docket next | head` no longer looks like a crash.
 
 ### The rest, and this release's tag span
 
-`PL-KNWP` (`#946`), the cut of v0.5.7, closes here for the structural reason
-every cut does: a cut cannot stamp itself. This cut recorded seven `pr:`
+`PL-8543` (`#957`), the cut of v0.5.8, closes here for the structural reason
+every cut does: a cut cannot stamp itself. This cut recorded all 27 `pr:`
 numbers before rendering its notes.
 
-**One of the seven shipped inside v0.5.7's tag.** `#944` (`PL-BBT8`) merged
-after v0.5.7's cut was taken and before its tag - `git describe --contains
-43f255bc` gives `v0.5.7~1` - as that release's baseline section said it would
-be handled. It is described here, and v0.5.7's notes now carry the
-`### also inside this tag's span` pointer to this release, as described under
-**Tags**. This cut is handled the same way, on `PL-V065`'s precedent (project
-owner, 2026-09-21, ratified, over holding the release while sibling sessions
-merge and re-running `make release` under the same number): anything merging
-after it is taken and before the v0.5.8 tag ships inside that tag, is described
-in the next release, and takes a pointer in v0.5.8's notes at that release's
-cut.
+**None of the twenty-seven shipped inside v0.5.8's tag.** That tag is on
+`42e8f513`, the merge of its own cut, and every other merge this release
+describes came after it - `git describe --contains` resolves none of them to
+v0.5.8 - so v0.5.8's notes take no `### also inside this tag's span` pointer.
+This cut is handled as v0.5.8's was, on `PL-V065`'s precedent (project owner,
+2026-09-21, ratified, over holding the release while sibling sessions merge and
+re-running `make release` under the same number): anything merging after it is
+taken and before the v0.5.9 tag ships inside that tag, is described in the next
+release, and takes a pointer in v0.5.9's notes at that release's cut. No other
+pull request was open when this cut was taken.
 
 ## The plan
 
