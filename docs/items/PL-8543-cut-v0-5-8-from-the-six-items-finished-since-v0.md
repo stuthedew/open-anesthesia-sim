@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: housekeeping
 feature: release-process
+milestone: v0.5.9
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-23
 closed: 2026-09-23
+pr: 957
 payoff: the seven items finished since v0.5.7 ship under their own number and stop being re-offered in every session digest
 verify: grep -q "^version = \"0.5.8\"" pyproject.toml
 ---

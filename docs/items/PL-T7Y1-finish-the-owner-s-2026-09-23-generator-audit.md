@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: housekeeping
 feature: generator-identification
+milestone: v0.5.9
 touches: docs/items, ROADMAP.md
 added: 2026-09-23
 closed: 2026-09-23
+pr: 969
 payoff: The owner's question 'are we sure we have all the generators?' gets a verified answer: which claim-family members survive, which heads share a record, and whether any family is unrecorded
 verify: grep -q 'Verified counts (PL-T7Y1' docs/items/PL-5MYR-generator-identification-reaches-one-level-up.md
 ---
