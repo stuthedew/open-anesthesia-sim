@@ -265,7 +265,7 @@ The new CI clauses skip legacy commits. A later item removes this path once `fli
 **Forgetful session.** Three catches:
 - The first-edit hook adds "this branch claims nothing: `bin/docket claim <id>`" to an edit outside `items_dir`.
 - `branch_id_check`, run by `make check` and by CI, fails a `claude/*` branch that has a non-legacy commit reaching outside `items_dir` and no live claim. The check is per branch, not per id, so captured or triaged ids are never pushed into claims.
-  - *Built by `PL-J9S0` as no claim in any state* (2026-09-24): a branch releases its claim by closing its item, so "no live claim" read literally fails every finished pull request. A branch named for its item holds it by the name. `PL-J9S0` records the reasoning.
+  - *Built by `PL-J9S0` as no claim in any state* (2026-09-24): a branch releases its claim by closing its item, so "no live claim" read literally fails every finished pull request. A branch named for its item holds it by the name. "The queue" is the items, the roadmap and the working notes, since triage and design rounds write all three, and "outside `items_dir`" alone would make a triage pass claim the ids it triaged. `PL-J9S0` records the reasoning.
 - `flight` lists an `unclaimed:` row for each such branch, which is where the count comes from.
 
 Residual: a queue-only round that forgets to claim. This is stated rather than audited.

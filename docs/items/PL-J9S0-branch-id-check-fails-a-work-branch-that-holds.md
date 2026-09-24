@@ -3,13 +3,14 @@ id: PL-J9S0
 title: branch_id_check fails a work branch that holds no claim and a claim that orders behind another live claim, and the first-edit hook says to claim
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: claim-record
-touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py, .claude/hooks/docket-branch-guard.sh, tests/unit/test_docket_branch_guard.py, docs/items/PL-MB2W-who-holds-an-item-is-derived-by-every-reader.md, docs/items/PL-WX87-bin-docket-claim-reads-the-clone-s-remote.md
+touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py, .claude/hooks/docket-branch-guard.sh, tests/unit/test_docket_branch_guard.py, docs/ARCHITECTURE.md, .claude/skills/docket/modes/capture.md, docs/items/PL-MB2W-who-holds-an-item-is-derived-by-every-reader.md, docs/items/PL-WX87-bin-docket-claim-reads-the-clone-s-remote.md
 blocked-by: PL-0TD9
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24
+closed: 2026-09-24
 payoff: part of the claim record that ends PL-MB2W's generator: one recorded fact decides who holds an item
 verify: grep -qF 'this branch claims nothing' .claude/hooks/docket-branch-guard.sh && grep -q 'def test_a_work_branch_holding_no_claim_is_refused' tests/unit/test_branch_id_check.py && grep -q 'def test_a_claim_ordering_behind_another_live_claim_is_refused' tests/unit/test_branch_id_check.py && grep -q 'def test_a_legacy_commit_owes_no_claim' tests/unit/test_branch_id_check.py
 ---
@@ -35,6 +36,7 @@ First verify that CI's fetch-depth 0 holds every head. Fail a non-legacy branch 
 **Decided while building, and why** (this session's calls inside the ratified design, recorded so `PL-N162`'s `unclaimed:` row can read the same way):
 
 - **"Holds no claim" is no claim in any state, not "no live claim".** A branch releases its claim by closing its item in its own copy (`RELEASING_STATUSES`), so the spec's "no live claim", read literally, fails every finished pull request. What the clause exists for is the forgetful session, which has claimed nothing at all. A claim that lapsed, was yielded or was taken over is not refused here: `flight` reports lapsed claims, `claim` refuses behind a live one, and failing CI on a lapse would block the owner's merge of a pull request that waited more than the term.
+- **The queue is the three records a queue workflow writes, not `items_dir` alone**: the items, `roadmap_file` and `notes_file`, from `docket.toml`. Triage puts an item on the debt gate's list in `ROADMAP.md`, and a design round keeps its thread in `docs/WORKING_NOTES.md`. Read as `items_dir` alone, the clause refused 12 queue passes merged in the week to 2026-09-24, and 1 of 12 live `origin/claude/*` heads when this was built, a triage pass - each of which could satisfy it only by claiming the ids it triaged, which the same spec bullet forbids. With the three, 0 of 12.
 - **A branch named for its item holds it by the name** (the spec's third "other hold", `PL-TZ3R`), so it owes no claim trailer.
 - **Work is a non-merge commit in `base..HEAD` whose own tree carries `CUTOVER_MARKER` and which changes a path outside `items_dir`.** A branch the reader does not offer, because its work is already on the base, owes nothing.
 - **Legacy is skipped on both sides of the fence.** Only this branch's live, non-legacy claims are judged, and only non-legacy claims order against them: an old-rule hold is an inference from a subject, which is what the record replaces. `claim`'s own refusal still reads them.

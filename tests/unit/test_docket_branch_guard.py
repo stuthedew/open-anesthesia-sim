@@ -5,7 +5,9 @@ asks it, at the moment a discussion becomes implementation. What has to hold is
 narrow and easy to get silently wrong, which is why each of these exists: the
 line has to travel in the JSON form a session can actually read, the hook must
 not grant the permission it is attached to, it must ask once per session rather
-than once per edit, and it must say nothing when there is nothing to say.
+than once per edit, and it must say nothing when there is nothing to say. The
+claim question (`PL-J9S0`) adds the same three at a different moment: the
+first edit that is work, which a capture's edit is not.
 
 Real git and a local `file://` remote, so nothing here touches a network.
 """
@@ -13,6 +15,7 @@ Real git and a local `file://` remote, so nothing here touches a network.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -25,7 +28,9 @@ def _git(*args: str, cwd: Path) -> None:
     subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
 
 
-def _clone_of_a_moved_remote(tmp_path: Path, *, moved: bool = True) -> Path:
+def _clone_of_a_moved_remote(
+    tmp_path: Path, *, moved: bool = True, branch: str = "claude/pl-k7qx-live"
+) -> Path:
     """A checkout on its own branch, with the remote's `main` ahead of it or not.
 
     The session the check exists for: opened to discuss the next piece of work,
@@ -43,7 +48,7 @@ def _clone_of_a_moved_remote(tmp_path: Path, *, moved: bool = True) -> Path:
     _git("commit", "-qm", "c0", cwd=seed)
     _git("push", "-q", str(remote), "main", cwd=seed)
     subprocess.run(["git", "clone", "-q", f"file://{remote}", str(work)], check=True)
-    _git("checkout", "-qb", "claude/pl-k7qx-live", cwd=work)
+    _git("checkout", "-qb", branch, cwd=work)
 
     if moved:
         (seed / "f.txt").write_text("1", encoding="utf-8")
@@ -72,14 +77,22 @@ def _guard_env(root: Path, tmp_path: Path) -> dict[str, str]:
         "PATH": f"{root / 'bin'}:/usr/bin:/bin:/usr/local/bin",
         "HOME": str(root),
         "TMPDIR": str(tmp_path / "markers"),
+        # For the checkout's copy of `tools/branch_id_check.py`, which finds
+        # `docket` beside itself, where this checkout carries none.
+        "PYTHONPATH": str(REPO / "subprojects" / "docket" / "src"),
     }
 
 
-def _run_guard(root: Path, tmp_path: Path, session: str = "s1") -> subprocess.CompletedProcess[str]:
+def _run_guard(
+    root: Path, tmp_path: Path, session: str = "s1", target: Path | None = None
+) -> subprocess.CompletedProcess[str]:
+    payload: dict[str, object] = {"session_id": session, "tool_name": "Edit", "cwd": str(root)}
+    if target is not None:
+        payload["tool_input"] = {"file_path": str(target)}
     return subprocess.run(
         ["bash", str(HOOK)],
         cwd=root,
-        input=json.dumps({"session_id": session, "tool_name": "Edit", "cwd": str(root)}),
+        input=json.dumps(payload),
         env=_guard_env(root, tmp_path),
         capture_output=True,
         text=True,
@@ -180,3 +193,40 @@ def test_the_hook_runs_under_the_interpreter_running_this_suite(tmp_path: Path) 
     ).stdout.strip()
 
     assert found == sys.version, f"the hook gets {found}, not this suite's {sys.version}"
+
+
+def _with_the_check(work: Path) -> None:
+    """The checkout's own `tools/branch_id_check.py`, which the claim question asks.
+
+    Copied rather than linked: the check finds its repository from its own
+    path, and a link would resolve to this one.
+    """
+    (work / "tools").mkdir()
+    shutil.copy(REPO / "tools" / "branch_id_check.py", work / "tools" / "branch_id_check.py")
+
+
+def test_branch_guard_says_to_claim_before_the_first_edit_that_is_work(tmp_path: Path) -> None:
+    """A fresh session's branch claims nothing, and the first edit of work hears so, once."""
+    (tmp_path / "markers").mkdir()
+    work = _clone_of_a_moved_remote(tmp_path, moved=False, branch="claude/some-session-a1b2c3")
+    _with_the_check(work)
+
+    first = _run_guard(work, tmp_path, target=work / "src" / "work.py")
+    again = _run_guard(work, tmp_path, target=work / "src" / "work.py")
+
+    context = json.loads(first.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert "this branch claims nothing: `bin/docket claim <id>`" in context
+    assert again.stdout == ""
+
+
+def test_branch_guard_keeps_the_claim_question_past_a_capture(tmp_path: Path) -> None:
+    """An item file is not work: asking there would spend the question on nothing."""
+    (tmp_path / "markers").mkdir()
+    work = _clone_of_a_moved_remote(tmp_path, moved=False, branch="claude/some-session-a1b2c3")
+    _with_the_check(work)
+
+    capture = _run_guard(work, tmp_path, target=work / "docs" / "items" / "PL-K7QX-x.md")
+    later = _run_guard(work, tmp_path, target=work / "src" / "work.py")
+
+    assert capture.stdout == ""
+    assert "this branch claims nothing" in later.stdout
