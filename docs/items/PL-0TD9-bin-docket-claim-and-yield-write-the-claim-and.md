@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: claim-record
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/start.md, .claude/skills/docket/modes/picking.md, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/start.md, .claude/skills/docket/modes/picking.md, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_claiming.py, subprojects/docket/README.md
 blocked-by: PL-3FYK
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24

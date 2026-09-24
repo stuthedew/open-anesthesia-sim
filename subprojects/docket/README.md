@@ -37,6 +37,9 @@ docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
 docket verify PL-K7QX --self # ...auditing your own branch, not reviewing a delegated one
+docket claim PL-K7QX         # record that this branch holds an item: one empty commit, pushed
+docket claim PL-K7QX --over claude/x --reason "..."   # ...taking it over from a dead claim
+docket yield PL-K7QX         # end this branch's claim without closing the item
 docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
 docket stranded              # work that exists only on a branch

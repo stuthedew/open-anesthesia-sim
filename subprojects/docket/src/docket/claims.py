@@ -53,11 +53,11 @@ per-claim half (the landed prefix, an item closed on the base) belongs to
 `PL-NST2`, with disposition holds, cut holds, the `resource:` field and
 `Holdings.flight()`.
 
-**A commit made before claims were recorded is read by the old rules**
-(`CUTOVER_MARKER`): a subject leading with ids claims them where the commit's
-diff is empty or reaches outside the queue - `vcs._annotates_only`'s rule -
-under the same lease, and with none of `vcs`'s promotions. `PL-CH3Z` deletes
-that reading once no ref carries such a commit.
+**A commit made before a session could write a claim is read by the old
+rules** (`CUTOVER_MARKER`): a subject leading with ids claims them where the
+commit's diff is empty or reaches outside the queue - `vcs._annotates_only`'s
+rule - under the same lease, and with none of `vcs`'s promotions. `PL-CH3Z`
+deletes that reading once no ref carries such a commit.
 
 **git 2.22 is the floor** (`GIT_FLOOR`), declared rather than worked around: a
 git that cannot read one trailer key's values declines, and says so, rather
@@ -113,13 +113,19 @@ RELEASING_STATUSES = CLOSED_STATUSES + ("blocked",)
 GIT_FLOOR = (2, 22)
 
 #: The file whose presence in a commit's own tree says the commit was made after
-#: claims were recorded: this module, which reached the default branch with the
-#: reader. A commit whose tree lacks it predates the record and is read by the
-#: old rules. The test needs no clock and survives the branch merging `main`
-#: later - the merge gives the branch the file and leaves the commits before it
-#: as they were. The path is this repository's layout, and it goes when
-#: `PL-CH3Z` removes the old reading.
-CUTOVER_MARKER = "subprojects/docket/src/docket/claims.py"
+#: a session could write a claim: `claiming.py`, which reached the default branch
+#: with `bin/docket claim`. A commit whose tree lacks it predates the record and
+#: is read by the old rules. The test needs no clock and survives the branch
+#: merging `main` later - the merge gives the branch the file and leaves the
+#: commits before it as they were. The path is this repository's layout, and it
+#: goes when `PL-CH3Z` removes the old reading.
+#:
+#: Not this module, which landed first (project owner, 2026-09-24, ratified, over
+#: accepting the window, `PL-SW2K`): a branch started between the two pushed the
+#: old empty start commit onto a tree already carrying the reader, and was read
+#: as claiming nothing it was working. Renaming the file turns every claim written
+#: after it into an old-rule one, which `test_claims` pins against.
+CUTOVER_MARKER = "subprojects/docket/src/docket/claiming.py"
 
 #: Where a remote session's own id is read from, to decide `Hold.mine`. `claim`
 #: writes the same variable's value as a claim's `<session>` token.
@@ -201,7 +207,7 @@ class Hold:
     #: `HEAD` is on the claiming branch - never by order.
     mine: bool = False
     on_base: bool = True
-    #: Read by the old rules, from a commit made before claims were recorded.
+    #: Read by the old rules, from a commit made before a session could write a claim.
     legacy: bool = False
     #: `BY_YIELD`, `BY_STATUS` or `BY_OVER` for a released hold, and empty
     #: otherwise.
@@ -580,9 +586,9 @@ def _events(
 ) -> tuple[list[_Claim], list[_Yield], tuple[str, ...]]:
     """Every claim and yield bound to the branch it was read on, and each unparsed trailer.
 
-    A commit made after claims were recorded speaks only through its trailers,
-    and each binds to a branch only where its token names that branch; its
-    leading ids are attribution and claim nothing. A commit made before is read
+    A commit made after a session could write a claim speaks only through its
+    trailers, and each binds to a branch only where its token names that branch;
+    its leading ids are attribution and claim nothing. A commit made before is read
     by the old rule and nothing else. Which of the two a commit is is asked only
     of commits that could say something under either reading, and once each.
 
@@ -606,8 +612,9 @@ def _events(
                 marker = run(["show", f"{entry.commit}:{CUTOVER_MARKER}"], root)
                 recorded[entry.commit] = bool(marker.strip())
             if not recorded[entry.commit]:
-                # Made before claims were recorded: any trailer it carries is
-                # not read, and the old rule is the whole of what it says.
+                # Made before a session could write a claim: any trailer it
+                # carries is not read, and the old rule is the whole of what it
+                # says.
                 if old_rule:
                     for key in ids:
                         claim = _Claim(
