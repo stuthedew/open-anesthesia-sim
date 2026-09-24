@@ -19,7 +19,7 @@ from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Any
 
-from . import claiming, instructions, notes, render
+from . import arming, claiming, instructions, notes, render
 from .checks import Report, SettingsSource, analyze, brief_contradictions
 from .concurrency import (
     ORDERING,
@@ -3414,6 +3414,30 @@ def cmd_yield(args: argparse.Namespace) -> int:
     return written.code
 
 
+def cmd_arm(args: argparse.Namespace) -> int:
+    """Whether this branch's pull request may be armed: `arming.arm`, which says how.
+
+    Exit 0 is `arm`, 1 is `hold` or `behind N` - the line printed says which -
+    and 2 is `unknown`: something the answer rests on could not be read.
+    """
+    inv = _invocation(args)
+    if inv.git is None:
+        print("unknown - `--no-git` asks git nothing, and the answer is read from git")
+        return arming.EXIT[arming.UNKNOWN]
+    if not inv.tracked:
+        print(
+            "unknown - the store is not below the repository root, so no path can be told "
+            "apart from it"
+        )
+        return arming.EXIT[arming.UNKNOWN]
+    verdict = arming.arm(
+        inv.root, items_dir=inv.tracked, now=_now(args), fetch=not args.no_fetch, runner=inv.git
+    )
+    for line in verdict.lines:
+        print(line)
+    return verdict.code
+
+
 def cmd_record(args: argparse.Namespace) -> int:
     """Write a pull request number onto the items its merge commit closed.
 
@@ -3813,6 +3837,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--trailer", action="append", default=[], metavar="'KEY: VALUE'", help=trailer_help
     )
     yield_cmd.set_defaults(func=cmd_yield)
+    arm_cmd = add("arm", "whether this branch's pull request may be armed for auto-merge")
+    arm_cmd.add_argument(
+        "--no-fetch",
+        action="store_true",
+        default=False,
+        help="read the refs as they are; the caller refreshed them, or cannot",
+    )
+    arm_cmd.set_defaults(func=cmd_arm)
 
     record = add("record", "write the pull request number onto the closures owed one")
     record.add_argument(

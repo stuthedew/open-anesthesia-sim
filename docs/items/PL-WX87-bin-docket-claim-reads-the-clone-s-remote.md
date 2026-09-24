@@ -40,7 +40,10 @@ before its first push, and another reported the item unstarted inside that
 window (`PL-7TVT`). If every session in this environment starts with such a
 ref, the push-at-once never fires on a fresh branch here, and the message tells
 each session something false about the remote. Whether the harness writes the
-ref for every session is not measured; one session showed it.
+ref for every session is not measured; two sessions showed it. The second was
+`PL-DDYD`'s, on `claude/jolly-davinci-60g2iy`, 2026-09-24: its tracking ref's
+reflog held one entry with an empty message at `main`'s commit, and the push
+made by hand afterwards reported `[new branch]`.
 
 **Remedies to weigh, none decided.** Ask the remote itself (`git ls-remote
 --heads origin` for the branch), one round trip beside the fetch `claim`
