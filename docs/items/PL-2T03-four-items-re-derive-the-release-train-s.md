@@ -13,6 +13,7 @@ closed: 2026-09-19
 pr: 690
 verify: grep -q 'def test_the_train_resolves_the_position_once' subprojects/docket/tests/test_roadmap.py && ! grep -q 'supported = plan.beat' subprojects/docket/src/docket/release.py
 root-cause-of: PL-Y1L0, PL-J45M, PL-7CSP, PL-B5DW
+misread: The release train's arrangement: which milestone, patch or gate the timeline places before which
 ---
 
 **Problem.** Four items re-derive the release train's arrangement by comparing version numbers, though ROADMAP.md's timeline table already records it

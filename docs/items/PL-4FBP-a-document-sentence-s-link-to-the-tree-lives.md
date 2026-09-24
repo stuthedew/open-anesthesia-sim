@@ -13,6 +13,7 @@ closed: 2026-09-19
 pr: 688
 verify: python3 tools/doc_check.py check && uv run pytest tests/unit/test_doc_check.py && grep -q 'def check_bound_families' tools/doc_check.py
 root-cause-of: PL-8LDF, PL-2M9N, PL-41YP, PL-GQWP, PL-5N7T, PL-9LXK, PL-T9XJ, PL-4RHP, PL-DHJ7, PL-B8V1, PL-NLP4, PL-LM8P, PL-NWTM, PL-B5LB, PL-GTSL, PL-036, PL-0VFF, PL-C25K, PL-N32Y, PL-FV7G, PL-BHJW, PL-C7XV, PL-0R06, PL-DBGT
+misread: The link between a document sentence and the tree fact it restates
 ---
 
 **Problem.** The project's authoritative documents were written as prose for a

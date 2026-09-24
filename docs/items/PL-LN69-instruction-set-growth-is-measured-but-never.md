@@ -11,6 +11,7 @@ closed: 2026-09-21
 reason: Answered rather than built: the project owner ratified no retirement mechanism on 2026-09-21. The three shapes this item proposed were declined, and an independent re-measurement found its own successor's counter-proposal already refused in docs/resident-instructions.md. Four of its derived claims are corrected in the resolution section; the stock figures stand. The real gap was staleness rather than bloat, filed as feature instruction-staleness-audit.
 root-cause-of: PL-H7XN, PL-NJTZ, PL-034, PL-JQY5, PL-JQVB, PL-QV1F, PL-BKQW
 generator: spent - answered rather than stopped: the owner ratified on 2026-09-21 that rule retirement gets no effect test, so growth under the add-versus-retire asymmetry is accepted rather than filed, and no item filed since names it; reopens on a measured adherence failure traceable to resident size, or ~150 rules with the rate still positive over 60 days
+misread: Whether each resident instruction changes session behaviour
 ---
 
 **Problem.** Every rule in the resident set is there on an *argument* about the

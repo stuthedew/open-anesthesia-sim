@@ -13,6 +13,7 @@ closed: 2026-09-19
 pr: 685
 verify: python3 tools/doc_check.py check && grep -q 'Ref operations a session cannot perform' docs/worker.md
 root-cause-of: PL-LT77, PL-PNW6, PL-YKXQ, PL-90CJ, PL-KFWL, PL-TFWR, PL-XQRK, PL-3V6C, PL-G8TR, PL-F48B
+misread: The remote's current refs and tags, and whether the clone's local copies still match them
 ---
 
 **Problem.** Two facts nobody recorded, and ten open items between them. The

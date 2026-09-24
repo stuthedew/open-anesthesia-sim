@@ -13,6 +13,7 @@ closed: 2026-09-19
 pr: 692
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_required_scope_places_only_declared_ids' subprojects/docket/tests/test_roadmap.py
 root-cause-of: PL-4PC5, PL-6P9Y, PL-C4RS
+misread: Which ids a milestone's Required scope declares as members, as distinct from ids its prose cites
 ---
 
 **Problem.** A milestone's `### Required scope` has no grammar. An id is a

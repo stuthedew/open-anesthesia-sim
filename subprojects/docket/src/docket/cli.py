@@ -2205,7 +2205,8 @@ def _say_recurring(items: list[Item], in_flight: Collection[str]) -> None:
     print(
         "  Not ranked above - the count comes from a title match, which may not buy a "
         "promotion. Read them against each other, and where they are one mechanism, "
-        "record it: `docket set <id> --root-cause-of <ids>`."
+        "record it: `docket set <id> --root-cause-of <ids> --generator <verdict> "
+        "--misread <fact>`, the three fields `docket check` asks of a head."
     )
 
 

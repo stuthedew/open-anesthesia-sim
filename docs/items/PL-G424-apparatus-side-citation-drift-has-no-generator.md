@@ -13,6 +13,7 @@ closed: 2026-09-19
 pr: 725
 verify: grep -q 'def test_a_closed_brief_is_exempt' tests/unit/test_doc_check.py
 root-cause-of: PL-037Y, PL-245B, PL-4HKS, PL-5748, PL-60CQ, PL-75R0, PL-DL4M, PL-MSFB, PL-2GQW, PL-38PN, PL-JXVD, PL-5F26, PL-8T3Z, PL-Z5FG, PL-YZKK, PL-CPLX, PL-WVJ0, PL-21RC, PL-6QZP, PL-QV5Y, PL-880Z
+misread: The link between a document sentence and the tree fact it restates
 ---
 
 **Problem.** `PL-4FBP` established that a document sentence's link to the tree

@@ -13,6 +13,7 @@ added: 2026-09-23
 payoff: a claim is one fact every reader reads, so a new shape of work stops costing an item per reader
 root-cause-of: PL-X3WZ, PL-7790, PL-N1JK, PL-3CTW, PL-VYSP, PL-2BZY, PL-61MD, PL-MFM4, PL-7TVT, PL-N2PP, PL-3QM9, PL-3W3P, PL-8FJK, PL-8GV1, PL-J16N, PL-QP9Z, PL-1MCK, PL-KWCY, PL-VFJ3, PL-8JQQ
 generator: live - who holds an item is derived from commit subjects, touched paths and ref age and never recorded, so each new shape of work is misread by some reader until it gets its own exception; PL-T7Y1's audit verified twenty members, four of them (PL-QP9Z, PL-1MCK, PL-KWCY, PL-VFJ3) filed after PL-7TVT closed spent, and two are open (PL-VFJ3 closed in #970)
+misread: Who holds an item now, and whether that holder is still live
 ---
 
 **Problem.** No record says who holds an item. Each reader works it out for

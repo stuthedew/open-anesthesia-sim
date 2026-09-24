@@ -1499,8 +1499,8 @@ def format_recurrences(item: Item) -> str:
         if recurrence_count(item) >= MIN_RECURRENCES:
             lines.append(
                 "    That is the generator threshold. Read them against this brief: one "
-                "mechanism means `docket set <id> --root-cause-of <ids>`, which is a "
-                "judgment nothing here makes for you."
+                "mechanism means `docket set <id> --root-cause-of <ids> --generator "
+                "<verdict> --misread <fact>`, which is a judgment nothing here makes for you."
             )
     if withdrawn:
         lines.append("  Matched and withdrawn, counting for nothing:")

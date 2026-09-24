@@ -14,6 +14,7 @@ pr: 842
 verify: uv run pytest subprojects/docket/tests/test_git_isolation.py -q
 root-cause-of: PL-W6NY, PL-KCQ7, PL-8T83, PL-FZ58
 generator: spent - the ambient commit.gpgsign this item isolates the suite from can no longer reach a test repository, so no further measurement can be inflated by it
+misread: What the docket suite's git-backed test commits cost, set by the machine's own global git config
 recurrences: 2026-09-05 PL-W6NY
 ---
 

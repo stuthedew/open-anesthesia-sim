@@ -16,6 +16,7 @@ payoff: stranded stops handing out a recovery command that would silently revert
 verify: grep -q 'def test_a_change_the_base_took_inside_a_larger_commit_is_not_left_behind' subprojects/docket/tests/test_vcs.py
 root-cause-of: PL-XLQ5, PL-MBTZ, PL-PXZ3
 generator: spent - the readers that report a change as unlanded work - vcs.orphaned, which stranded and the digest print, and tools/left_behind_check.py - now read one change-level test, vcs.change_landed, instead of commits, blobs or whole files; its open remainder PL-SLCC is one fixed shape, an adjacent-line edit git merges as a conflict, read in the safe direction
+misread: Whether the base already holds or has superseded a branch commit's change, by whatever route
 ---
 
 **Problem.** bin/docket stranded lists a commit whose change already reached main through another pull request as work that never landed, and its recover line would overwrite the newer file: #938's test port f1bf1528 arrived on main via #934, and the printed git checkout of test_cli.py would drop 97 lines main added since

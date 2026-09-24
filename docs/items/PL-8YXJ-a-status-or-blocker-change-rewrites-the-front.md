@@ -16,6 +16,7 @@ payoff: a brief can no longer tell a session its item waits on a decision or blo
 verify: grep -q 'def test_a_brief_naming_a_closed_prerequisite_is_advised' subprojects/docket/tests/test_checks.py && grep -q 'def test_a_brief_narrating_a_status_it_has_left_is_advised' subprojects/docket/tests/test_checks.py
 root-cause-of: PL-X4RX, PL-7G5M, PL-9K7K
 generator: spent - a status or blocked-by write still leaves narration behind, but docket set now prints each passage it leaves and docket check reports any left unmarked, so an instance is repaired in the commit that made it instead of becoming an item
+misread: An item's current queue state: its status, what blocks it, and what it must land after
 ---
 
 **Problem.** A status or blocker change rewrites the front matter and leaves the brief's prose narrating the old state, and nothing reports it: the prose-dependency advisory skips closed prerequisites and nothing reads a brief's claims about its own status

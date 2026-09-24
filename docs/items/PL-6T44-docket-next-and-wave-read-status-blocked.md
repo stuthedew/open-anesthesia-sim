@@ -14,6 +14,7 @@ pr: 769
 payoff: stops the queue reading as more stuck than it is by naming, where work is chosen, the blocked items whose blockers have all closed - the one that unblocked three more of v0.5.0's own scope was invisible to docket next
 verify: grep -q 'def test_an_item_whose_every_blocker_has_closed_is_reported_promotable' subprojects/docket/tests/test_plan.py
 root-cause-of: PL-JFQ3, PL-8G48, PL-CHQY
+misread: An item's current queue state: its status, what blocks it, and what it must land after
 ---
 
 **Problem.** docket next and wave read status: blocked literally, so an item whose blockers have all closed ranks as unstartable while docket check already prints it as promotable
