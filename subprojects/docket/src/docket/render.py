@@ -442,6 +442,10 @@ def format_digest(
             marks += f", root cause of {top.generator} items - ranked above every band but P0"
         if top.impairs_generators:
             marks += ", defect in the generator machinery - ranked above every band but P0"
+        if top.unblocks:
+            marks += (
+                f", unblocks generator {', '.join(top.unblocks)} - ranked above every band but P0"
+            )
         if top.scoped_to:
             marks += f", scoped to {top.scoped_to}, not this step"
         lines.append(f"  Top: {top.item.identifier} {top.item.title} ({marks})")

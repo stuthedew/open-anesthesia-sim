@@ -1258,6 +1258,101 @@ def test_the_plan_line_says_a_closed_item_ranks_nowhere() -> None:
         assert line.endswith("it is closed, so it ranks nowhere")
 
 
+# --- a blocked head hands its rank to what it waits on ----------------------
+#
+# `PL-QFWF`. A design round that decomposes a generator's fix blocks the head on
+# its build items, because `status: ready` may not declare an open blocker - and
+# a blocked head is startable by nothing, so the tier went with it.
+
+
+def _blocked_head(generator: str, blocked_by: tuple[str, ...], identifier: str = "PL-5555") -> Item:
+    return _item(
+        identifier,
+        status="blocked",
+        root_cause_of=GENERATOR,
+        generator=generator,
+        blocked_by=blocked_by,
+    )
+
+
+def test_a_blocked_generator_head_ranks_its_open_blockers_in_the_generator_tier() -> None:
+    """A decomposed generator fix keeps the tier, carried by the work it waits on.
+
+    `PL-MB2W`'s shape: the head blocked on each of its build items, one of them
+    startable and the next blocked behind it. Before the fix the startable one
+    fell to its band, under the `safety`-classed `P1` a generator outranks,
+    and nothing ranked the generator at all.
+    """
+    picks = recommend(
+        [
+            _item("PL-9999", priority="P0"),
+            _item("PL-1111", priority="P1", classes=("safety",)),
+            _blocked_head(LIVE, ("PL-B1B1", "PL-B2B2")),
+            _item("PL-B1B1", priority="P2"),
+            _item("PL-B2B2", priority="P2", status="blocked", blocked_by=("PL-B1B1",)),
+            *_explained(),
+        ],
+        limit=3,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-9999", "PL-B1B1", "PL-1111"]
+    blocker = picks[1]
+    assert blocker.unblocks == ("PL-5555",)
+    assert "Ranked on the generator tier as a blocker of PL-5555" in blocker.reason
+    assert "root cause of 3 items" in blocker.reason
+    assert "above every band but P0" in blocker.reason
+    assert "unblocks generator PL-5555" in blocker.describe()
+
+
+def test_a_spent_head_blocked_on_its_build_items_passes_no_rank() -> None:
+    """The rank passed down is only what the head holds itself.
+
+    A spent head ranks on its band, so its blockers do too - read through
+    `is_generator` instead, they would outrank the `safety`-classed `P1` on a
+    cluster whose mechanism was judged finished.
+    """
+    picks = recommend(
+        [
+            _item("PL-1111", priority="P1", classes=("safety",)),
+            _blocked_head(SPENT, ("PL-B1B1",)),
+            _item("PL-B1B1", priority="P2"),
+            *_explained(),
+        ],
+        limit=2,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-1111", "PL-B1B1"]
+    assert picks[1].unblocks == ()
+
+
+def test_a_blocker_of_a_blocked_head_is_not_told_it_ranks_on_its_band_alone() -> None:
+    """One reason line, one claim about how the item ranked - as for a head."""
+    (pick,) = recommend(
+        [_blocked_head(LIVE, ("PL-B1B1",)), _item("PL-B1B1"), *_explained()],
+        scope=_scope(current=("PL-1111",)),
+        limit=1,
+    )
+
+    assert pick.item.identifier == "PL-B1B1"
+    assert "ranks on its band alone" not in pick.reason
+
+
+def test_a_blocker_of_two_blocked_heads_names_both() -> None:
+    """Each head is a claim a reader checks, so neither is dropped for the other."""
+    (pick,) = recommend(
+        [
+            _blocked_head(LIVE, ("PL-B1B1",)),
+            _blocked_head(LIVE, ("PL-B1B1",), identifier="PL-6666"),
+            _item("PL-B1B1"),
+            *_explained(),
+        ],
+        limit=1,
+    )
+
+    assert pick.unblocks == ("PL-5555", "PL-6666")
+    assert "a blocker of PL-5555, PL-6666, live generators blocked on it" in pick.reason
+
+
 # --- placement_clause: the relation in the fewest plain words ---------------
 #
 # `PL-Z27P`. The two lines that name an item with no room for a sentence -
