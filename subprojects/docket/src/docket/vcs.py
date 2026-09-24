@@ -3973,6 +3973,13 @@ class BranchCut:
     the question a reader has is how old the *release* is. It separates a live
     session from a branch nobody will merge, and this reports it rather than
     deciding between them, the way `flight` and `stranded` do.
+
+    A train holder, which `cli._with_train` builds, bends all three: with
+    `item` set and `versions` empty it has cut nothing, `cut` is its claim's
+    date, and `mine` is False because the train is decided by branch name,
+    which has already excluded `HEAD`'s own. One whose branch this checkout
+    merged keeps its cut's versions and date, and is not `mine` for the same
+    reason.
     """
 
     ref: str
@@ -3980,17 +3987,26 @@ class BranchCut:
     versions: tuple[str, ...]
     cut: date | None = None
     mine: bool = False
+    #: The release item whose claim holds the release train on this ref, for a
+    #: holder that has filed and claimed its release but cut nothing yet: then
+    #: `versions` is empty and this is the only evidence. Empty for a holder
+    #: known only by its notes file, which is what `cuts_in_flight` reads.
+    item: str = ""
 
 
 @dataclass(frozen=True)
 class CutsInFlight:
     """Which refs are cutting a release nobody has merged, or which could not be read.
 
-    **This is the guard no `PL-` id can carry.** A release cut carries none by
-    design, so `branches_in_flight` and everything reading it are blind to the
-    widest write in the repository, and two sessions cut v0.3.7 within an hour
-    (`PL-66FP`). The evidence here is the notes file a ref introduces, which is
-    the one artifact a cut cannot happen without.
+    **The cut itself still carries no `PL-` id**: its commits stamp other
+    items' `milestone:`, so `branches_in_flight` and everything reading it are
+    blind to the widest write in the repository, and two sessions cut v0.3.7
+    within an hour (`PL-66FP`). The evidence here is the notes file a ref
+    introduces, which is the one artifact a cut cannot happen without. The id
+    the release guard reads is the release item's instead: its claim holds the
+    release train (`model.RELEASE_TRAIN`), which `claims.Holdings.holder`
+    answers for, and `bin/docket release` and the digest add a train holder
+    that has cut nothing yet to `branches` beside these (`PL-331V`).
 
     `unreadable` carries the obligation it carries everywhere else here: a ref
     whose history this checkout does not hold is named, never reported clean.

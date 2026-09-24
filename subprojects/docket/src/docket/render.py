@@ -580,11 +580,21 @@ def format_digest(
         # than being refused after the owner has already approved one
         # (`PL-66FP`). The advice is replaced rather than appended - "offer
         # 0.3.9" and "0.3.9 is already being cut" in one line is two answers.
+        #
+        # A holder with no versions has claimed the release train and cut
+        # nothing yet, which is the same answer arriving earlier (`PL-331V`).
         held = [branch for branch in (cuts.branches if cuts else ()) if not branch.mine]
+        cutting = ", ".join(
+            f"{branch.ref} (v{', v'.join(branch.versions)})" for branch in held if branch.versions
+        )
+        said = [f"A release is already being cut on {cutting}"] if cutting else []
+        said.extend(
+            f"{branch.item} holds the release train, nothing cut yet ({branch.ref})"
+            for branch in held
+            if not branch.versions
+        )
         advice = (
-            "A release is already being cut on "
-            + ", ".join(f"{branch.ref} (v{', v'.join(branch.versions)})" for branch in held)
-            + "; do not offer another until it merges."
+            "; ".join(said) + "; do not offer another until it merges."
             if held
             else _release_advice(ready, plan)
         )
@@ -1370,10 +1380,20 @@ def _verdict_phrase(head: Item) -> str:
     wholly open with it spent. Only the second decides the rank, so a report
     showing the first alone would let a recorded generator read as a ranked one
     - which is the conflation `PL-T7QR` closed.
+
+    A live head at `blocked` is not on the tier itself: its rank passes to the
+    open items it waits on, or reaches nothing, and `docket show` says which.
+    This line said "so on the tier" of `PL-MB2W` while `show` said it was
+    not ranked (`PL-4RK2`).
     """
     if head.status in CLOSED_STATUSES:
         return ""
     verdict, _ = split_generator_verdict(head.generator)
+    if verdict == "live" and head.status == "blocked":
+        return (
+            "; still generating, but blocked, so not on the tier itself"
+            " - `docket show` says what carries its rank"
+        )
     if verdict == "live":
         return "; still generating, so on the tier"
     if verdict == "spent":
