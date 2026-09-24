@@ -1,9 +1,15 @@
 ---
 id: PL-WMCJ
 title: docs/MODEL.md's Known limitations never names intertissue diffusion, the route Eger and Saidman 2005 describe for agent reaching fat, though every tissue group here exchanges only with arterial blood
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: science, docs
+feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-23
+payoff: a reader of the fat compartment learns that one published route by which agent reaches fat is not modelled, and which way leaving it out biases what the chart draws
+verify: grep -qiF 'intertissue diffusion' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md's Known limitations never names intertissue diffusion, the route Eger and Saidman 2005 describe for agent reaching fat, though every tissue group here exchanges only with arterial blood
@@ -39,6 +45,24 @@ it biases fat's modelled partial pressure and amount, and with the source.
 Establishing the direction and size needs more than an abstract, so check the
 Eger and Saidman full text, or the private reference corpus's uptake chapters,
 before writing the sentence.
+
+**Why it matters.** The fat compartment is drawn on the chart and read by
+learners reasoning about slow uptake and delayed emergence - the setting in
+which the cited paper says this route matters, in obese patients and with the
+more soluble agents. `docs/MODEL.md` is the one place this project states what
+the model leaves out, so a limitation missing there reads as none. The
+safety-critical standard asks for model limitations to be visible rather than
+implied away. Classed `science` with `docs`, as `PL-7DMJ` and `PL-DZQT` were
+for the same kind of gap. That class re-enters the v0.6.0 gate whenever it is
+found, so it is on that gate's frozen list rather than deferred.
+
+**Premise re-checked at triage, 2026-09-24.** `grep -niE "inter-?tissue"
+docs/MODEL.md` exits 1, and `src/anesthesia_sim/core/tissue.py`'s module docstring still
+says each group exchanges "independently of every other tissue group". PubMed's
+record for PMID 15781517 matches the citation and the quoted abstract sentence
+as filed. So does its record for PMID 3706798, including the fourth
+compartment's time constant "between the time constants predicted for muscle
+and fat".
 
 **Done when.** § "Known limitations" names intertissue diffusion, its effect on
 the fat compartment and its source.

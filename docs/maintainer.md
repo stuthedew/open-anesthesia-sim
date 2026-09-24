@@ -207,7 +207,9 @@ when you come to merge:
    still working on it. A "Merge branch 'main' into ..." commit appears and
    the checks restart. If it offers **Squash and merge** and no Update branch,
    the branch is already current: merge it as the section above says, and
-   stop.
+   stop. If the pull request is still a draft, leave it: a session's claim
+   rides it, GitHub will not merge it, and that session marks it ready when
+   the claimed item closes or is blocked (`PL-H14W`).
 2. If the merge box already says auto-merge is enabled, as it does on a
    captures-only pull request a session armed, skip this step: your update
    leaves it armed. Otherwise click **Enable auto-merge**, check that the

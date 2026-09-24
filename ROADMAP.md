@@ -5448,7 +5448,7 @@ named here, for the reason beat 3 gives.
 
 - PL-Y04W (L) Build break-out: an Area taken into its own top-level window, the window lifetime that keeps the main window unclosable while break-outs exist, and the test that every window the application can be left showing carries the invariant display tier
 
-**Cleared before v0.6.0 begins, the product lane - 44 entries**
+**Cleared before v0.6.0 begins, the product lane - 45 entries**
 
 - PL-0S0V (M) AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
 - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
@@ -5491,6 +5491,7 @@ named here, for the reason beat 3 gives.
 - PL-TCR5 (S) The chart hover answers the pointer's previous position and never re-answers a resting pointer while paused, because the direct sigMouseMoved slot reads the position the rate-limited proxy stored one event earlier
 - PL-W3Q5 (S) app/formatting.py types mac_percent as Percent in two signatures and as a bare float in five others, so one parameter carries two types in one module
 - PL-WG73 (S) COMPARING_FORK_LOCK_TEXT tells a learner to Reset the case, which labels no control - and the Reset they are likeliest to press discards the branch and leaves the lock standing
+- PL-WMCJ (S) docs/MODEL.md's Known limitations never names intertissue diffusion, the route Eger and Saidman 2005 describe for agent reaching fat, though every tissue group here exchanges only with arterial blood
 - PL-WPDB (S) The frame-cost harness measures a one-run dashboard, but v0.5.0 draws two runs on one chart, so the frame cost the branching milestone will actually pay is unmeasured
 - PL-Y4YX (S) PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
@@ -5637,6 +5638,12 @@ item records it as `deferred-from: v0.6.0 - <why>`, written by the triage pass
 that classes it. `bin/docket check` fails an open debt item that this section
 neither places nor defers, and `bin/docket wave` lists the deferrals with each
 one's state and the release that took it (`PL-WD5Z`).
+
+The `safety` or `science` items captured after the cut are placed in the lane
+groups above with the rest, and named here with the date each re-entered.
+`PL-WMCJ` (`science`, 2026-09-24) is the missing intertissue-diffusion
+limitation in `docs/MODEL.md`. The triage pass that classed it placed it in the
+product lane.
 
 The first 43 were recorded here in prose subsections, one per triage pass from
 `PL-2JRC`'s to the generator heads `PL-T7Y1`'s audit and `PL-TH9K`'s session
