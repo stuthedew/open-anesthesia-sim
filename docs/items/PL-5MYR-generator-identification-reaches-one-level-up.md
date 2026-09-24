@@ -3,13 +3,15 @@ id: PL-5MYR
 title: Generator identification reaches one level up and never clusters the heads: triage asks each item whether a head explains it, so one record read by several readers gets a head per reader, and both such generators found so far - PL-WD5Z's gate prose after three heads, and the claim family PL-MB2W names after four - surfaced only in a sweep the owner asked for
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect
 feature: generator-identification
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, .claude/skills/docket/modes/triage.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a gap in how generators are found, held for the owner's decision on lifting the pause
 added: 2026-09-23
+closed: 2026-09-24
 payoff: A record read by several readers is found by the next grooming pass reading one screen, not by a sweep the owner has to ask for
+verify: bin/docket generators --misread > /dev/null && uv run pytest subprojects/docket/tests -q -k "misread or overlap"
 impairs-generators: the triage mode's generator check and bin/docket generators (cli.cmd_generators, render) compare each new item with one head at a time and never compare heads with each other, so one record read by several readers gets a head per reader and its generator is found only by a sweep the owner asks for
 recurrences: 2026-09-24 PL-RJLQ
 ---

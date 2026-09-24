@@ -89,7 +89,8 @@ none of them.
 own statuses do not answer it.** Fixing a generator closes the head and leaves
 its members owed, so every head this project has recorded reads `done` over a
 cluster that is mostly open. The command prints each cluster's open count, how
-far it has drained since its head closed, and which clusters are finished; with
+far it has drained since its head closed, and which clusters are finished,
+with each head's `misread:` line and the heads whose clusters overlap; with
 an id it lists one cluster's members, and a member's id resolves to the head
 above it. Answering from the item files instead is the read this was built to
 replace — it had been done twice in two days by a throwaway script (`PL-XF5V`).
