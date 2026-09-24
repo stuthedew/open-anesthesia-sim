@@ -6,7 +6,7 @@ effort: S
 status: blocked
 classes: defect
 feature: parallel-sessions
-touches: subprojects/docket/README.md, subprojects/docket/src/docket/vcs.py, docs/items
+touches: subprojects/docket/README.md, subprojects/docket/src/docket/vcs.py, docs/items, CLAUDE.md
 blocked-by: PL-3FYK, PL-NST2, PL-0TD9, PL-N162, PL-FX5Q, PL-DDYD, PL-331V, PL-J9S0
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged to needs-decision as a generator head by PL-TH9K's session
 added: 2026-09-23
@@ -354,6 +354,8 @@ Rejected:
 **The owner's: Should a claim also be released when the branch's own copy moves to `blocked`, not only when it is closed? PL-KWCY's arming rule currently says 'until its item is closed'.** It changes the wording of PL-KWCY's ratified arming rule. CLAUDE.md says a ratified decision reopened on ordinary evidence goes back to the owner. The question is held in `PL-3FYK`, which defines the constant.
 
 *Recommendation:* Yes. A session that blocks its own item has stopped working it. Holding the claim strands a queue-only branch that never arms. It is one constant (`RELEASING_STATUSES`), so no item waits on the answer.
+
+**Answered 2026-09-24: yes** (project owner, 2026-09-24, ratified, over holding the claim until the item closes). Recorded in `PL-3FYK`, and `CLAUDE.md`'s arming bullet was amended in the same session. The owner also agreed with the round's decided recommendations below.
 
 **Decided by the round, which ordinary evidence reopens:**
 
