@@ -9,6 +9,7 @@ touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test
 added: 2026-09-19
 payoff: stops two sessions filing two release items for one release while every existing guard answers both cleanly
 verify: grep -q 'def test_an_open_release_item_from_another_session' subprojects/docket/tests/test_release.py
+recurrences: 2026-09-24 PL-331V
 ---
 
 **Problem.** bin/docket release's collision guard reads unmerged refs for a cut in progress, so it cannot see a second session that has filed a release item and asked the owner for the version without cutting anything: PL-Z0C7 and PL-R5VS were two ids for one release and every guard matched both cleanly
