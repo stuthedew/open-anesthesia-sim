@@ -3,11 +3,13 @@ id: PL-46VF
 title: Route 'do not merge origin/main out of habit' to a PreToolUse hook, the way no-prune-guard already does for prune
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: session-cost, infra
 feature: dev-tooling
 touches: .claude/hooks/no-habit-merge-guard.sh, .claude/settings.json, CLAUDE.md, docket.toml, tests/unit/test_no_habit_merge_guard.py
 added: 2026-09-16
+closed: 2026-09-23
+reason: Superseded by PL-6MW8: with main requiring up-to-date branches, the base-merge rule became conditional on GitHub state (review, auto-merge, CI) that no read of the repository answers, and a merge before editing work that will be pushed anyway is now allowed, so a PreToolUse deny on the command string would refuse correct merges
 verify: grep -q 'no-habit-merge-guard' .claude/settings.json && test -f tests/unit/test_no_habit_merge_guard.py && uv run pytest tests/unit/test_no_prune_guard.py
 ---
 
@@ -61,3 +63,18 @@ registered in `.claude/settings.json`, and has no test; the precedent
 `docs/resident-instructions.md:41-45` both stand. Two small drifts: the
 resident bullet is **10** lines (`CLAUDE.md:473-482`), not eleven, and its
 enclosing heading is § "The queue, and how the project owner works".
+
+**Dropped 2026-09-23 under `PL-6MW8`: the rule this would route was reversed.**
+`main` now requires a branch to be up to date before it merges (project owner,
+2026-09-23, ratified, on `PL-Z0SM`'s third-instance trigger), so `CLAUDE.md`'s
+bullet no longer forbids bringing the base in. It says when: once, when the
+pull request is armed or being merged and `behind` is all that stops it, plus
+the two old cases, and before editing work the session will push anyway. That
+leaves nothing for a `PreToolUse` deny to decide.
+Whether the pull request is waiting on review, armed for auto-merge, or green is
+GitHub state, not repository state, and no read of the tree answers it. And a
+local `git merge origin/main` before editing work the session will push anyway
+is now allowed, so a deny on the command string would refuse correct merges. The
+wasteful case left, bringing the base in while the pull request waits on
+review, can be done server-side with `update_pull_request_branch`,
+which a `Bash` hook never sees.
