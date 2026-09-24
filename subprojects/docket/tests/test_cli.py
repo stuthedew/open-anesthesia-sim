@@ -6819,6 +6819,7 @@ def _machinery_defect(tmp_path: Path, status: str) -> Path:
     [
         ("ready", "ranked on the generator tier - above every band but P0"),
         ("done", "closed, so on no tier - only an open item's claim ranks there"),
+        ("blocked", "blocked, so ranked nowhere until it can start"),
     ],
 )
 def test_show_says_a_machinery_defect_ranks_only_while_open(
@@ -6882,6 +6883,89 @@ def test_the_digest_says_why_a_blocker_of_a_blocked_head_leads_it(
     out = capsys.readouterr().out
     assert "Top: PL-F5F5" in out
     assert "unblocks generator PL-4040 - ranked above every band but P0" in out
+
+
+def test_show_on_a_blocked_live_head_says_it_is_blocked_and_names_its_blockers(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The head is startable by nothing, so the rank is its blockers' (`PL-4RK2`).
+
+    `show` said "ranked on the generator tier" of the head itself, and its
+    plan line that it ranks above every band, while `next` ranked the build
+    item and not the head.
+    """
+    store = _blocked_live_head(tmp_path)
+    (tmp_path / "pyproject.toml").write_text('version = "0.2.5"\n', encoding="utf-8")
+    (tmp_path / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+
+    assert _run("show", "PL-4040", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert (
+        "blocked, so not ranked itself - its rank, above every band but P0, passes to"
+        " the open items it waits on: PL-F5F5"
+    ) in output
+    assert "it is blocked, so it ranks nowhere until it can start" in output
+    assert "ranked on the generator tier" not in output
+    assert "- it ranks above every band but P0" not in output
+
+
+def _unranked_live_head(tmp_path: Path) -> Path:
+    """A live head behind a chain: its one blocker waits on startable work."""
+    return _store(
+        tmp_path,
+        _clustered(
+            "PL-4040",
+            "The shared refresh nobody owns",
+            names=_MEMBERS,
+            generator=_LIVE,
+            status="blocked",
+            **{"blocked-by": "PL-F5F5, v0.7.0"},
+        ),
+        _clustered("PL-B1B1", "A member of the cluster"),
+        _clustered("PL-C2C2", "Another member"),
+        _clustered("PL-D3D3", "A third member"),
+        _clustered("PL-F5F5", "The design round", status="blocked", **{"blocked-by": "PL-A1A1"}),
+        _clustered("PL-A1A1", "The startable work behind it"),
+    )
+
+
+def test_show_on_a_blocked_live_head_nothing_carries_says_it_is_ranked_by_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Naming the blockers is not enough where none of them can start."""
+    assert _run("show", "PL-4040", "--items", str(_unranked_live_head(tmp_path))) == 0
+
+    output = capsys.readouterr().out
+    assert (
+        "blocked, and ranked by nothing: it waits on PL-F5F5 (blocked), v0.7.0 (a milestone,"
+        " cleared when it is scoped); startable or in flight behind them: PL-A1A1."
+    ) in output
+    assert "write that work into the head's `blocked-by`" in output
+
+
+def test_next_names_a_live_generator_that_nothing_ranks(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The tier's silent failure, said where a session choosing work looks (`PL-4RK2`)."""
+    assert _run("next", "--items", str(_unranked_live_head(tmp_path))) == 0
+
+    out = capsys.readouterr().out
+    assert (
+        "A live generator that nothing ranks - blocked, and no item it waits on can start:" in out
+    )
+    assert "  PL-4040 (root cause of 3 items) waits on PL-F5F5 (blocked)" in out
+    assert "startable or in flight behind them: PL-A1A1" in out
+    assert "Not ranked above - a blocked head's rank passes one edge down" in out
+
+
+def test_next_is_silent_about_a_blocked_live_head_its_blockers_carry(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The recorded shape `PL-QFWF` fixed: the build item ranks, so nothing is lost."""
+    assert _run("next", "--items", str(_blocked_live_head(tmp_path))) == 0
+
+    assert "that nothing ranks" not in capsys.readouterr().out
 
 
 def test_generators_does_not_say_a_closed_machinery_defect_ranks(

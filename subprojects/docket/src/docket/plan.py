@@ -594,7 +594,8 @@ def generator_blockers(items: list[Item]) -> dict[str, tuple[Item, ...]]:
     nothing checks for this purpose, so one edge from a head whose claim
     `docket check` validates is the narrowest reading covering the recorded
     shape - a head blocked on each of its build items. A chain, or a head
-    waiting on a milestone alone, still lifts nothing (`PL-4RK2`).
+    waiting on a milestone alone, still lifts nothing, and `unranked_generators`
+    names the head instead of ranking further down (`PL-4RK2`).
 
     Keyed by blocker id, heads in id order. Every open blocker is listed,
     startable or not: `recommend` ranks only what it can start, and `docket
@@ -612,6 +613,102 @@ def generator_blockers(items: list[Item]) -> dict[str, tuple[Item, ...]]:
             if blocker in open_ids and blocker != head.identifier:
                 lifted.setdefault(blocker, []).append(head)
     return {blocker: tuple(heads) for blocker, heads in lifted.items()}
+
+
+@dataclass(frozen=True)
+class UnrankedGenerator:
+    """A blocked live generator head whose rank reaches nothing `next` can offer."""
+
+    head: Item
+    #: What the head waits on and cannot start: its open item blockers in the
+    #: order `blocked-by` writes them, an id the store cannot place included,
+    #: then its milestones. Empty where every item it names has closed.
+    waiting_on: tuple[str, ...]
+    #: Startable or in-flight items at the far end of a chain - reached through
+    #: blockers that are themselves `blocked`, by id. The work the rank would
+    #: reach if the head's own `blocked-by` named it, which is the remedy.
+    behind: tuple[str, ...]
+
+
+def unranked_generators(
+    items: list[Item], in_flight: Collection[str] | None = None
+) -> list[UnrankedGenerator]:
+    """Blocked live generator heads whose rank reaches no item `next` could offer.
+
+    `generator_blockers` passes a blocked head's rank one edge down, to the
+    open items its own `blocked-by` names, and deliberately no further. So a
+    head whose every open blocker is itself blocked, untriaged or unknown, or
+    which waits on a milestone alone, is ranked by nothing, and until this
+    nothing said so: the tier exists so a live generator is paid down before
+    the sessions it taxes, and in these shapes it went unranked silently
+    (`PL-4RK2`).
+
+    **Named, never ranked - the chain is not followed.** Each edge past the
+    first is a `blocked-by` written for sequencing and never checked for what
+    it would now buy, which is the one rank above a `safety`-classed `P1`. So
+    this reports the shape and the startable work behind it (`behind`), and
+    the remedy is a person writing that work into the head's own `blocked-by`,
+    where the rank then passes by the reading above. That is the recorded
+    decision about the evidence one more edge needs, made per head rather than
+    once for every chain.
+
+    **Carried** means some open direct blocker is startable - `recommend`
+    ranks it on the tier - or in flight, where a session is paying the edge
+    down now. A head in flight is left out for the second reason. A head
+    whose every item blocker has closed is named here as well as by
+    `promotable`: that line says the status is stale, and this one says the
+    item it would restore is a live generator, which is why it matters first.
+
+    The traversal behind a chain passes only through `blocked` items, since
+    an untriaged one has not been seated to wait on anything, and is
+    cycle-safe. `in_flight` is the ids the ranking excluded, exactly as in
+    `recommend`; `None` excludes nothing and counts nothing as in flight.
+    """
+    flight = set(in_flight or ())
+    known = {item.identifier for item in items if item.identifier}
+    by_id = {item.identifier: item for item in items if item.identifier}
+    offered = {item.identifier for item in _startable(items, flight)} | flight
+
+    def still_open(identifier: str) -> bool:
+        # An id the store cannot place is unresolved, as `promotable` reads it:
+        # a `blocked-by` naming nothing is not evidence that the blocker closed.
+        found = by_id.get(identifier)
+        return found is None or found.is_open
+
+    unranked: list[UnrankedGenerator] = []
+    for head in sorted(items, key=lambda i: i.identifier):
+        if (
+            head.status != "blocked"
+            or head.identifier in flight
+            or not ranks_as_generator(head, known)
+        ):
+            continue
+        direct = [
+            b for b in dict.fromkeys(head.blocking_items) if b != head.identifier and still_open(b)
+        ]
+        if any(b in offered for b in direct):
+            continue
+        behind: set[str] = set()
+        seen = {head.identifier}
+        frontier = [b for b in direct if b in by_id and by_id[b].status == "blocked"]
+        while frontier:
+            current = frontier.pop()
+            if current in seen:
+                continue
+            seen.add(current)
+            for upstream in by_id[current].blocking_items:
+                if upstream in offered:
+                    behind.add(upstream)
+                elif upstream in by_id and by_id[upstream].status == "blocked":
+                    frontier.append(upstream)
+        unranked.append(
+            UnrankedGenerator(
+                head=head,
+                waiting_on=(*direct, *dict.fromkeys(head.blocking_milestones)),
+                behind=tuple(sorted(behind)),
+            )
+        )
+    return unranked
 
 
 def recurring(items: list[Item], in_flight: Collection[str] | None = None) -> list[Item]:
@@ -697,7 +794,12 @@ def recurring(items: list[Item], in_flight: Collection[str] | None = None) -> li
 
 
 def placement_line(
-    scope: Scope | None, identifier: str, *, ranks_above_bands: bool = False, closed: bool = False
+    scope: Scope | None,
+    identifier: str,
+    *,
+    ranks_above_bands: bool = False,
+    closed: bool = False,
+    blocked: bool = False,
 ) -> str:
     """One short phrase saying where the plan places an id, or `""`.
 
@@ -726,6 +828,13 @@ def placement_line(
     sentence would be false of it. `docket show` printed "it ranks above every
     band but P0" under closed generator heads, and "it ranks on its band alone"
     under every other closed item (`PL-BBT8`).
+
+    `blocked` qualifies `ranks_above_bands` rather than replacing it: a blocked
+    item is startable by nothing, so "it ranks above every band" is false of it
+    now and true only once it can start. `docket show` said it of `PL-MB2W`, a
+    live head blocked on its build items, while `next` ranked those items and
+    not the head (`PL-4RK2`). A blocked item off the tier keeps "on its band
+    alone", which names the band it will rank on, and is not changed here.
     """
 
     if scope is None or not scope.anchor:
@@ -752,6 +861,11 @@ def placement_line(
         return f"explicitly out of scope for {scope.anchor}"
     if closed:
         return f"placed by no section of {scope.anchor} - it is closed, so it ranks nowhere"
+    if ranks_above_bands and blocked:
+        return (
+            f"placed by no section of {scope.anchor} - it is blocked, so it ranks nowhere "
+            f"until it can start, and then above every band but P0"
+        )
     if ranks_above_bands:
         return f"placed by no section of {scope.anchor} - it ranks above every band but P0"
     return f"placed by no section of {scope.anchor} - it ranks on its band alone"
@@ -1046,7 +1160,9 @@ def recommend(
     items it waits on (`generator_blockers`), so a generator whose fix a design
     round decomposed keeps the tier instead of sinking into its band
     (`PL-QFWF`). That is not a third entrance: the claim is still the head's,
-    and the blocker's reason line names the head it unblocks.
+    and the blocker's reason line names the head it unblocks. A head whose rank
+    reaches nothing startable that way is not ranked further down but named,
+    by `unranked_generators` (`PL-4RK2`).
 
     **Two tests, on different axes, and only the second one ranks.** The
     count - three or more items standing on one mechanism - decides whether a

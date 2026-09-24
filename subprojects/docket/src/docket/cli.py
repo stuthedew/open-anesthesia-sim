@@ -59,6 +59,7 @@ from .model import (
 )
 from .plan import (
     OfferedReport,
+    UnrankedGenerator,
     clusters,
     features,
     gate,
@@ -73,6 +74,7 @@ from .plan import (
     recommend,
     recurring,
     set_aside,
+    unranked_generators,
     unsound_generator_claims,
     waiting_since,
 )
@@ -1619,18 +1621,24 @@ def cmd_show(args: argparse.Namespace) -> int:
     # on (`PL-QFWF`): without it the plan line told the build item a design
     # round filed that it ranks on its band alone, while `next` ranked it on
     # the tier.
-    unblocks = generator_blockers(items).get(item.identifier, ())
+    lifted = generator_blockers(items)
+    unblocks = lifted.get(item.identifier, ())
     on_the_tier = (
         ranks_as_generator(item, known_ids)
         or ranks_as_generator_defect(item, config.generator_paths)
         or bool(unblocks)
     )
     closed = item.status in CLOSED_STATUSES
+    # A blocked item is startable by nothing, so whatever tier it is on it is
+    # not ranked there now - which the plan line and both tier lines below
+    # asserted of `PL-MB2W` while `next` ranked its blockers instead (`PL-4RK2`).
+    blocked = item.status == "blocked"
     placement = placement_line(
         plan.scope if plan is not None else None,
         item.identifier,
         ranks_above_bands=on_the_tier,
         closed=closed,
+        blocked=blocked,
     )
     if placement:
         print(f"  plan: {placement}")
@@ -1657,6 +1665,8 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  generator: {item.generator}")
         if verdict_faults:
             print(f"    UNSOUND - {'; '.join(verdict_faults)}; ranks on its band until repaired")
+        elif ranks_as_generator(item, known_ids) and blocked:
+            print(_blocked_head_rank(item, items, lifted, flight.ids))
         elif ranks_as_generator(item, known_ids):
             print("    ranked on the generator tier - above every band but P0")
         elif closed:
@@ -1703,6 +1713,14 @@ def cmd_show(args: argparse.Namespace) -> int:
             print(f"    UNSOUND - {'; '.join(faults)}; ranks on its band alone until repaired")
         elif closed:
             print("    closed, so on no tier - only an open item's claim ranks there")
+        elif blocked:
+            # Only a generator head hands its rank down (`generator_blockers`),
+            # so a blocked machinery defect is ranked by nothing until it can
+            # start, and saying so is all this line can truthfully do.
+            print(
+                "    blocked, so ranked nowhere until it can start"
+                " - then on the generator tier, above every band but P0"
+            )
         else:
             print("    ranked on the generator tier - above every band but P0")
     if unblocks:
@@ -1997,6 +2015,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
         _say_promotable(items)
+        _say_unranked_generators(items, flight.ids)
         _say_recurring(items, flight.ids)
         _say_lane_holdouts(items, flight, config, args, lane)
         _say_unread(flight)
@@ -2007,6 +2026,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     if flight.ids:
         print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
     _say_promotable(items)
+    _say_unranked_generators(items, flight.ids)
     _say_recurring(items, flight.ids)
     _say_lane_holdouts(items, flight, config, args, lane)
     _say_answer_lane(items, flight, config, args, plan, lane, picks[0].item)
@@ -2207,6 +2227,104 @@ def _say_recurring(items: list[Item], in_flight: Collection[str]) -> None:
         "promotion. Read them against each other, and where they are one mechanism, "
         "record it: `docket set <id> --root-cause-of <ids> --generator <verdict> "
         "--misread <fact>`, the three fields `docket check` asks of a head."
+    )
+
+
+#: What a reader does about a blocked live head nothing ranks, shared by `next`
+#: and `show` so the two surfaces cannot prescribe different remedies.
+UNRANKED_REMEDY = (
+    "a blocked head's rank passes one edge down, to the open items its own "
+    "`blocked-by` names, and not along a chain nobody wrote for that. Where startable "
+    "work sits behind it, write that work into the head's `blocked-by` and the rank "
+    "passes there"
+)
+
+
+def _waiting_on(found: UnrankedGenerator, items: list[Item]) -> str:
+    """What an unranked head waits on, each entry marked with why it carries nothing."""
+    if not found.waiting_on:
+        return "waits on nothing open: every item its `blocked-by` names has closed"
+    by_id = {item.identifier: item for item in items if item.identifier}
+    parts = []
+    for entry in found.waiting_on:
+        if entry in found.head.blocking_milestones:
+            parts.append(f"{entry} (a milestone, cleared when it is scoped)")
+        elif entry not in by_id:
+            parts.append(f"{entry} (not in the store)")
+        else:
+            parts.append(f"{entry} ({by_id[entry].status})")
+    said = f"waits on {', '.join(parts)}"
+    if found.behind:
+        said += f"; startable or in flight behind them: {', '.join(found.behind)}"
+    return said
+
+
+def _say_unranked_generators(items: list[Item], in_flight: Collection[str]) -> None:
+    """Name the blocked live generator heads whose rank reaches nothing offered.
+
+    The generator tier's own silent failure, printed beside `_say_promotable`
+    for its reason: `next` is where a session choosing work looks, and a
+    generator ranked by nothing is absent from the list above without a word
+    (`PL-4RK2`). Named, never ranked - `plan.unranked_generators` says why the
+    chain is not followed.
+
+    Takes the flight ids the ranking excluded on: a blocker being worked on a
+    branch is paying the head's edge down, so the head is not named for it.
+    """
+    found = unranked_generators(items, in_flight)
+    if not found:
+        return
+    heads = "A live generator" if len(found) == 1 else "Live generators"
+    print(f"{heads} that nothing ranks - blocked, and no item it waits on can start:")
+    for entry in found:
+        count = len(entry.head.root_cause_of)
+        print(
+            f"  {entry.head.identifier} (root cause of {count} items) {_waiting_on(entry, items)}"
+        )
+    print(f"  Not ranked above - {UNRANKED_REMEDY}.")
+
+
+def _blocked_head_rank(
+    head: Item, items: list[Item], lifted: dict[str, tuple[Item, ...]], in_flight: Collection[str]
+) -> str:
+    """Where a blocked live head's rank is now, for the line under its verdict.
+
+    `show` said "ranked on the generator tier" of the head itself, which a
+    blocked item is not, and named none of the blockers carrying the rank
+    instead (`PL-4RK2`). Three answers, and each says which it is: ranked by
+    nothing, in the shapes `plan.unranked_generators` names; carried by the
+    open items `generator_blockers` lifts, each marked where it cannot be
+    offered yet; or in flight, where no open item in this checkout carries it.
+    """
+    unranked = next(
+        (u for u in unranked_generators(items, in_flight) if u.head.identifier == head.identifier),
+        None,
+    )
+    if unranked is not None:
+        return (
+            f"    blocked, and ranked by nothing: it {_waiting_on(unranked, items)}."
+            f"\n    {UNRANKED_REMEDY[:1].upper()}{UNRANKED_REMEDY[1:]}."
+        )
+    by_id = {item.identifier: item for item in items if item.identifier}
+    carriers = []
+    for blocker in dict.fromkeys(head.blocking_items):
+        if not any(h.identifier == head.identifier for h in lifted.get(blocker, ())):
+            continue
+        state = by_id[blocker].status
+        if blocker in in_flight:
+            carriers.append(f"{blocker} (in flight)")
+        elif state in ("blocked", "untriaged"):
+            carriers.append(f"{blocker} ({state})")
+        else:
+            carriers.append(blocker)
+    if not carriers:
+        return (
+            "    blocked, so not ranked itself - no open item in this checkout carries its"
+            " rank, and the work is in flight"
+        )
+    return (
+        "    blocked, so not ranked itself - its rank, above every band but P0, passes to"
+        f" the open items it waits on: {', '.join(carriers)}"
     )
 
 

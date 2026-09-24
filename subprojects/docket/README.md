@@ -1068,7 +1068,16 @@ the open items it is blocked on: each ranks on the tier with a reason line
 naming the head it unblocks, and `docket show` on it says the same (`PL-QFWF`).
 Only what the head holds passes, so a spent head's blockers rank on their
 bands, and only one edge down: a chain through a blocked blocker, or a head
-waiting on a milestone alone, still ranks nothing (`PL-4RK2`).
+waiting on a milestone alone, ranks nothing. Such a head is named instead of
+ranked (`PL-4RK2`). When no open item it is blocked on can be started or is in
+flight, `docket next` prints it under the list, with what each blocker is
+waiting on and any startable work at the far end of the chain. The chain is
+not followed automatically. Every edge past the first is a `blocked-by` written
+for sequencing, and nothing checks it for the rank it would now pass. So the
+remedy is a person writing that startable work into the head's own
+`blocked-by`, and the rank then passes there by the rule above. `docket show`
+on a blocked head says it is not ranked itself, and names the open blockers
+carrying its rank, or says that nothing is.
 
 ### What newer work keeps outranking: `docket next --oldest`
 
