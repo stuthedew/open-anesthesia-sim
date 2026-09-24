@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from docket import claiming
 from docket.claims import (
     BY_OVER,
     BY_STATUS,
@@ -63,9 +64,9 @@ def _dated(when: datetime) -> dict[str, str]:
 class _Repo:
     """A scratch repository whose every commit carries the date a test gives it.
 
-    The base holds two open items and, unless `marked` is false, `claims.py`
-    itself - so every commit made on it counts as made after claims were
-    recorded, and an unmarked base builds a history from before.
+    The base holds two open items and, unless `marked` is false, the cutover
+    marker - so every commit made on it counts as made after a session could
+    write a claim, and an unmarked base builds a history from before.
     """
 
     def __init__(self, root: Path, *, marked: bool = True) -> None:
@@ -396,7 +397,7 @@ def test_a_legacy_start_commit_still_claims_after_the_branch_merges_main(tmp_pat
     """Legacy is a fact about each commit's own tree, which a later merge of `main` leaves alone.
 
     A queue-only commit claims nothing under the old rule either, and the
-    commit made after the merge carries `claims.py` in its tree, so its leading
+    commit made after the merge carries the marker in its tree, so its leading
     id is attribution only.
     """
     repo = _Repo(tmp_path / "repo", marked=False)
@@ -408,7 +409,7 @@ def test_a_legacy_start_commit_still_claims_after_the_branch_merges_main(tmp_pat
         files={"docs/items/PL-C2C2-other.md": _item("PL-C2C2", "untriaged")},
     )
     repo.git("checkout", "-q", "main")
-    repo.commit("the claim reader lands", when=T0 + 2 * HOUR, files={CUTOVER_MARKER: "# reader\n"})
+    repo.commit("the claim writer lands", when=T0 + 2 * HOUR, files={CUTOVER_MARKER: "# writer\n"})
     repo.git("checkout", "-q", "claude/old")
     repo.git("merge", "-q", "--no-edit", "main", env=_dated(T0 + 3 * HOUR))
     repo.commit("PL-D3D3: work", when=T0 + 4 * HOUR, files={"src/work.py": "x\n"})
@@ -418,6 +419,43 @@ def test_a_legacy_start_commit_still_claims_after_the_branch_merges_main(tmp_pat
     assert [(hold.key, hold.ref, hold.state, hold.legacy) for hold in read.holds] == [
         ("PL-B1B1", "claude/old", LIVE, True)
     ]
+
+
+def test_a_start_commit_made_once_the_reader_landed_but_before_claim_did_still_claims(
+    tmp_path: Path,
+) -> None:
+    """The window `PL-SW2K` closed: `claims.py` reached `main` before `bin/docket claim`.
+
+    A branch started in between could only push start mode's old empty start
+    commit, onto a tree already carrying the reader. Marked by the reader, that
+    commit read as claiming nothing; marked by the writer, it is read by the old
+    rules and holds.
+    """
+    repo = _Repo(tmp_path / "repo", marked=False)
+    repo.commit(
+        "the claim reader lands",
+        when=T0 - DAY,
+        files={"subprojects/docket/src/docket/claims.py": "# reader\n"},
+    )
+    repo.branch("claude/between")
+    repo.commit("PL-B1B1: start", when=T0)
+
+    read = holdings(repo.root, now=T0 + HOUR)
+
+    assert [(hold.key, hold.ref, hold.state, hold.legacy) for hold in read.holds] == [
+        ("PL-B1B1", "claude/between", LIVE, True)
+    ]
+
+
+def test_the_cutover_marker_is_the_module_that_writes_claims() -> None:
+    """Renaming it would read every claim written after the rename by the old rules.
+
+    Those read no trailer, so a takeover and a yield would stop counting, with
+    nothing failing to say so.
+    """
+    root = Path(__file__).resolve().parents[3]
+
+    assert (root / CUTOVER_MARKER).resolve() == Path(claiming.__file__).resolve()
 
 
 def test_two_claims_in_the_same_second_order_on_the_hash(tmp_path: Path) -> None:

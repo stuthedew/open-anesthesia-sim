@@ -3,15 +3,16 @@ id: PL-0TD9
 title: bin/docket claim and yield write the claim, and start mode is rewritten around them
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: claim-record
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/start.md, .claude/skills/docket/modes/picking.md, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/start.md, .claude/skills/docket/modes/picking.md, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_claiming.py, subprojects/docket/README.md
 blocked-by: PL-3FYK
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24
+closed: 2026-09-24
 payoff: part of the claim record that ends PL-MB2W's generator: one recorded fact decides who holds an item
-verify: grep -q 'bin/docket claim' .claude/skills/docket/modes/start.md && grep -q 'Yield: ' subprojects/docket/src/docket/cli.py
+verify: grep -q 'bin/docket claim' .claude/skills/docket/modes/start.md && grep -q 'Yield: ' subprojects/docket/src/docket/claiming.py && grep -q 'def test_a_push_that_fails_exits_4' subprojects/docket/tests/test_claiming.py
 recurrences: 2026-09-24 PL-DDYD
 ---
 
@@ -31,3 +32,5 @@ recurrences: 2026-09-24 PL-DDYD
 **Build order.** After `PL-3FYK`.
 
 **Rider: `PL-SW2K`** (the legacy marker; project owner, 2026-09-24, ratified). Re-point `claims.CUTOVER_MARKER` at a file this item creates, so a commit reads as made before claims were recorded exactly when it predates the `claim` command, and update `test_claims.py`'s legacy test to match. Same pull request; the closing commit leads with both ids.
+
+**Built 2026-09-24.** The write side is its own module, `claiming.py`, rather than part of `cli.py`: a failed push or fetch exits 1, which `vcs._run_git` reads as git answering, so writes need their own exit-status runner; and `PL-SW2K`'s marker had to be a file this item creates, which the module is. Two choices the spec left open: a continuation is written as an automatic `over <branch>@<claim commit>` (a plain claim would order behind the one it continues and fail its own read-back), and `--over` naming no claim on an id is a note rather than a refusal, since the ordering check still refuses where some other branch holds it first. `--trailer` carries the attribution lines, and each must be one `Key: value` line, because anything else in the last paragraph can make git read the claim as prose.
