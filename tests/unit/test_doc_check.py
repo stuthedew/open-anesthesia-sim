@@ -815,6 +815,34 @@ def test_citation_in_a_source_docstring_is_held_to_the_document_it_names(tmp_pat
     assert any("thing.py:1: quotes docs/MODEL.md" in e for e in _errors(root))
 
 
+@pytest.mark.parametrize(
+    ("source", "declined"),
+    [
+        (b'"""See `docs/MODEL.md`, "A thread that was deleted"."""\n\ndef f(:\n', ":3: Python "),
+        (b'"""See `docs/MODEL.md`, "A deleted thread"."""\n# \xff\n', ": could not be read ("),
+    ],
+    ids=["unparseable", "undecodable"],
+)
+def test_a_source_file_the_running_interpreter_cannot_parse_is_reported_not_skipped(
+    tmp_path: Path, source: bytes, declined: str
+) -> None:
+    """A source file this run cannot read is named as unread, never passed over.
+
+    The source is written for 3.14, and both gates also run this under the
+    3.11 floor, whose parser stops at a PEP 695 generic. Such a file was
+    skipped with nothing said, and `make check` printed "all resolve" over a
+    broken quotation it had never read (`PL-MB3F`). The syntax here is invalid
+    under every interpreter, so the test holds wherever it runs.
+    """
+    root = _repo(tmp_path)
+    (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_bytes(source)
+    report = doc_check.analyze(root)
+    about = [line for line in report.declined if "thing.py" in line]
+    assert len(about) == 1 and f"core/thing.py{declined}" in about[0], report.declined
+    assert not any("thing.py" in error for error in report.errors)
+    assert "all resolve" not in doc_check.format_check(report)
+
+
 def test_a_docstring_citation_is_reported_on_its_own_line(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     module = root / "src" / "anesthesia_sim" / "core" / "thing.py"

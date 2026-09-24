@@ -37,15 +37,21 @@ POSSESSIVE_RE = re.compile(
 )
 
 
-def sites(root: Path) -> list[str]:
-    """Every possessive citation whose quotation names a section of its target."""
+def sites(root: Path, declined: list[str]) -> list[str]:
+    """Every possessive citation whose quotation names a section of its target.
+
+    A source file this run cannot parse or read is appended to `declined`
+    rather than skipped, for the reason `doc_check._quoting_sources` gives: the
+    gates run this under the 3.11 floor, which cannot parse every file the
+    source's own interpreter can, and a skip said nothing (`PL-MB3F`).
+    """
     documents = doc_check.read_docs(root)
     headings = {
         str(path): [doc_check._comparable(title) for title in doc_check._headings(text)]
         for path, text in documents.items()
     }
     found: list[str] = []
-    for path, offset, text in doc_check._quoting_sources(root, documents):
+    for path, offset, text in doc_check._quoting_sources(root, documents, declined):
         for match in POSSESSIVE_RE.finditer(doc_check._without_fences(text)):
             quoted = doc_check._comparable(match.group("quoted"))
             titles = headings.get(match.group("document"), ())
@@ -62,8 +68,15 @@ def sites(root: Path) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     root = Path(argv[0]) if argv else Path(__file__).resolve().parent.parent
-    found = sites(root)
+    declined: list[str] = []
+    found = sites(root, declined)
     print("\n".join(found) if found else "possessive citations: none names a section")
+    if declined:
+        # A decline is not a finding, so it does not fail the run - the same
+        # split `doc_check.Report.declined` keeps: nothing was read, so
+        # nothing is claimed either way.
+        print(f"Not checked ({len(declined)}; this run cannot answer, and nothing is claimed):")
+        print("\n".join(f"  {line}" for line in declined))
     return 1 if found else 0
 
 

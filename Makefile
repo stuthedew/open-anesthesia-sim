@@ -248,7 +248,7 @@ check: sync
 # Under `uv run`, both of them, unlike the bare-`python3` lines above, and for
 # a reason about the *input* rather than about the tool. These two read `app/`
 # and every module under `src/anesthesia_sim/` with `ast`, and that source
-# targets 3.14. PEP 695 (3.12) type parameters in `app/chart_downsampling.py`
+# targets 3.14. PEP 695 (3.12) type parameters in `app/bookmarks.py`
 # are a `SyntaxError` to the 3.11 parser these tools promise to run under, and
 # `ast.parse`'s `feature_version` only ever narrows the accepted syntax - it
 # cannot teach an older parser a newer language. So the parser has to be the

@@ -333,7 +333,7 @@ jobs:
       # `src/anesthesia_sim/data/` and `tests/` with `ast`, and that source
       # targets 3.14, so the 3.11 parser
       # cannot read what they are given - a `SyntaxError` on
-      # `app/chart_downsampling.py`'s PEP 695 generics rather than anything
+      # `app/bookmarks.py`'s PEP 695 generics rather than anything
       # about the tool. `ast.parse`'s `feature_version` cannot help: it only
       # ever narrows the syntax accepted, so it cannot teach an older parser a
       # newer language.
