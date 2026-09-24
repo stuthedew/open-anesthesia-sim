@@ -1384,24 +1384,24 @@ def test_a_blocked_live_head_whose_rank_reaches_no_startable_item_is_reported() 
     """The chain shape: the one open blocker is blocked itself, on startable work.
 
     `recommend` offers nothing on the head's behalf - `PL-B2B2` is not
-    startable and `PL-A1A1` is not the head's blocker - so the startable work
+    startable and `PL-H1H1` is not the head's blocker - so the startable work
     at the far end is what the report hands the reader to write in.
     """
     items = [
         _blocked_head(LIVE, ("PL-B2B2",)),
-        _item("PL-B2B2", status="blocked", blocked_by=("PL-A1A1",)),
-        _item("PL-A1A1", priority="P3"),
+        _item("PL-B2B2", status="blocked", blocked_by=("PL-H1H1",)),
+        _item("PL-H1H1", priority="P3"),
         *_explained(),
     ]
 
     picks = recommend(items, limit=10)
     assert all(p.unblocks == () for p in picks)
-    assert "PL-A1A1" not in {p.item.identifier for p in picks if p.generator or p.unblocks}
+    assert "PL-H1H1" not in {p.item.identifier for p in picks if p.generator or p.unblocks}
 
     (found,) = unranked_generators(items)
     assert found.head.identifier == "PL-5555"
     assert found.waiting_on == ("PL-B2B2",)
-    assert found.behind == ("PL-A1A1",)
+    assert found.behind == ("PL-H1H1",)
 
 
 def test_a_blocked_live_head_waiting_on_a_milestone_alone_is_reported() -> None:
@@ -1426,7 +1426,7 @@ def test_a_blocked_live_head_whose_every_blocker_closed_is_reported() -> None:
     [
         (_item("PL-B1B1"), ()),
         (_item("PL-B1B1", status="needs-decision"), ()),
-        (_item("PL-B1B1", status="blocked", blocked_by=("PL-A1A1",)), ("PL-B1B1",)),
+        (_item("PL-B1B1", status="blocked", blocked_by=("PL-H1H1",)), ("PL-B1B1",)),
     ],
     ids=["startable", "needs-decision", "in-flight"],
 )
@@ -1434,7 +1434,7 @@ def test_a_blocked_head_carried_by_a_direct_blocker_is_not_reported(
     blocker: Item, in_flight: tuple[str, ...]
 ) -> None:
     """Startable, `next` ranks it on the tier; in flight, a session is paying it down."""
-    items = [_blocked_head(LIVE, ("PL-B1B1", "v0.7.0")), blocker, _item("PL-A1A1"), *_explained()]
+    items = [_blocked_head(LIVE, ("PL-B1B1", "v0.7.0")), blocker, _item("PL-H1H1"), *_explained()]
 
     assert unranked_generators(items, in_flight) == []
 
@@ -1451,18 +1451,18 @@ def test_only_a_ranking_head_that_is_blocked_and_not_in_flight_is_reported() -> 
 def test_the_chain_behind_an_unranked_head_ends_at_what_is_not_blocked() -> None:
     """Cycle-safe, and an untriaged item is not walked through - it waits on nothing yet."""
     items = [
-        _blocked_head(LIVE, ("PL-B1B1", "PL-U1U1")),
+        _blocked_head(LIVE, ("PL-B1B1", "PL-W1W1")),
         _item("PL-B1B1", status="blocked", blocked_by=("PL-B2B2",)),
-        _item("PL-B2B2", status="blocked", blocked_by=("PL-B1B1", "PL-5555", "PL-A1A1")),
-        _item("PL-A1A1", status="blocked", blocked_by=("PL-C1C1",)),
+        _item("PL-B2B2", status="blocked", blocked_by=("PL-B1B1", "PL-5555", "PL-H1H1")),
+        _item("PL-H1H1", status="blocked", blocked_by=("PL-C1C1",)),
         _item("PL-C1C1"),
-        _item("PL-U1U1", status="untriaged", blocked_by=("PL-D1D1",)),
+        _item("PL-W1W1", status="untriaged", blocked_by=("PL-D1D1",)),
         _item("PL-D1D1"),
         *_explained(),
     ]
 
     (found,) = unranked_generators(items)
-    assert found.waiting_on == ("PL-B1B1", "PL-U1U1")
+    assert found.waiting_on == ("PL-B1B1", "PL-W1W1")
     assert found.behind == ("PL-C1C1",)
 
 

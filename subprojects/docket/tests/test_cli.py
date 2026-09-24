@@ -6925,8 +6925,8 @@ def _unranked_live_head(tmp_path: Path) -> Path:
         _clustered("PL-B1B1", "A member of the cluster"),
         _clustered("PL-C2C2", "Another member"),
         _clustered("PL-D3D3", "A third member"),
-        _clustered("PL-F5F5", "The design round", status="blocked", **{"blocked-by": "PL-A1A1"}),
-        _clustered("PL-A1A1", "The startable work behind it"),
+        _clustered("PL-F5F5", "The design round", status="blocked", **{"blocked-by": "PL-H1H1"}),
+        _clustered("PL-H1H1", "The startable work behind it"),
     )
 
 
@@ -6939,7 +6939,7 @@ def test_show_on_a_blocked_live_head_nothing_carries_says_it_is_ranked_by_nothin
     output = capsys.readouterr().out
     assert (
         "blocked, and ranked by nothing: it waits on PL-F5F5 (blocked), v0.7.0 (a milestone,"
-        " cleared when it is scoped); startable or in flight behind them: PL-A1A1."
+        " cleared when it is scoped); startable or in flight behind them: PL-H1H1."
     ) in output
     assert "write that work into the head's `blocked-by`" in output
 
@@ -6955,7 +6955,7 @@ def test_next_names_a_live_generator_that_nothing_ranks(
         "A live generator that nothing ranks - blocked, and no item it waits on can start:" in out
     )
     assert "  PL-4040 (root cause of 3 items) waits on PL-F5F5 (blocked)" in out
-    assert "startable or in flight behind them: PL-A1A1" in out
+    assert "startable or in flight behind them: PL-H1H1" in out
     assert "Not ranked above - a blocked head's rank passes one edge down" in out
 
 
