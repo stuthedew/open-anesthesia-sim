@@ -9,6 +9,23 @@ touches: CLAUDE.md
 added: 2026-09-16
 ---
 
+> **Evidence added 2026-09-24 by `PL-038`: the reload claim now rests on the
+> primary pages.** The memory page: "Project-root CLAUDE.md survives
+> compaction: after `/compact`, Claude re-reads it from disk and re-injects it
+> into the session. Nested CLAUDE.md files in subdirectories and rules with
+> `paths:` frontmatter reload as Claude reads files they apply to"
+> ([memory](https://code.claude.com/docs/en/memory)). The context-window page,
+> at its compaction step: "System prompt, CLAUDE.md, memory, and MCP tools
+> reload automatically. Claude Code also re-reads up to five of the files
+> modified most recently and re-injects the skills you invoked. The skill
+> listing does not reload"
+> ([context window](https://code.claude.com/docs/en/context-window)). Both were
+> read 2026-09-24, and Claude Code 2.1.281's binary also lists compaction among
+> the events that re-read instruction files. Still open: neither quotation
+> names the rules without `paths:`, which load at launch beside `CLAUDE.md`,
+> and Anthropic's context-engineering post was not fetched. The decision is
+> untouched.
+
 **Problem.** `CLAUDE.md` § "Session and tool-use efficiency" groups compacting
 with continuing as the wrong move — "start a fresh one for an unrelated topic
 rather than continuing or compacting a long one" — and `PL-H253` put a low

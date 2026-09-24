@@ -19,7 +19,7 @@ from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Any
 
-from . import instructions, notes, render
+from . import claiming, instructions, notes, render
 from .checks import Report, SettingsSource, analyze, brief_contradictions
 from .concurrency import (
     ORDERING,
@@ -3362,6 +3362,58 @@ def _now(args: argparse.Namespace) -> datetime:
     return datetime.now(UTC)
 
 
+def cmd_claim(args: argparse.Namespace) -> int:
+    """Record that this branch holds the items named: `claiming.claim`, which says how.
+
+    Exit 3 means another branch holds one of them first, and exit 4 that the
+    claim was written but could not be pushed, so only this checkout can see it.
+    Neither is a failure of the command; each is a different next step.
+    """
+    inv = _invocation(args)
+    if inv.git is None:
+        print("claim: `--no-git` asks git nothing, and a claim is a commit")
+        return claiming.USAGE
+    if not inv.tracked:
+        print("claim: the store is not below the repository root, so no branch can hold its items")
+        return claiming.USAGE
+    written = claiming.claim(
+        inv.root,
+        args.ids,
+        items_dir=inv.tracked,
+        now=_now(args),
+        over=args.over or "",
+        reason=args.reason or "",
+        trailers=args.trailer,
+        fetch=not args.no_fetch,
+        runner=inv.git,
+    )
+    for line in written.lines:
+        print(line)
+    return written.code
+
+
+def cmd_yield(args: argparse.Namespace) -> int:
+    """End this branch's claim on the items named without closing them."""
+    inv = _invocation(args)
+    if inv.git is None:
+        print("yield: `--no-git` asks git nothing, and a yield is a commit")
+        return claiming.USAGE
+    if not inv.tracked:
+        print("yield: the store is not below the repository root, so no branch can hold its items")
+        return claiming.USAGE
+    written = claiming.yield_claims(
+        inv.root,
+        args.ids,
+        items_dir=inv.tracked,
+        now=_now(args),
+        trailers=args.trailer,
+        runner=inv.git,
+    )
+    for line in written.lines:
+        print(line)
+    return written.code
+
+
 def cmd_record(args: argparse.Namespace) -> int:
     """Write a pull request number onto the items its merge commit closed.
 
@@ -3726,6 +3778,41 @@ def build_parser() -> argparse.ArgumentParser:
         help="read the refs as they are; the caller refreshed them, or cannot",
     )
     stranded_cmd.set_defaults(func=cmd_stranded)
+
+    trailer_help = (
+        "an attribution line the commit must end with, such as Co-Authored-By; repeatable, "
+        "and written into the record's own paragraph, since git reads a trailer from the last "
+        "paragraph alone"
+    )
+    claim_cmd = add("claim", "record that this branch holds an item, in an empty commit")
+    claim_cmd.add_argument("ids", nargs="+", metavar="ID", help="the items to claim")
+    claim_cmd.add_argument(
+        "--over",
+        default=None,
+        metavar="BRANCH",
+        help="take the items over from the branch holding them; only on the owner's word, or "
+        "with get_session showing that session ARCHIVED or failed",
+    )
+    claim_cmd.add_argument(
+        "--reason", default=None, help="with --over, why: written into the commit's body"
+    )
+    claim_cmd.add_argument(
+        "--trailer", action="append", default=[], metavar="'KEY: VALUE'", help=trailer_help
+    )
+    claim_cmd.add_argument(
+        "--no-fetch",
+        action="store_true",
+        default=False,
+        help="read the refs as they are before writing; the caller refreshed them, or cannot. "
+        "The fetch after a push still runs",
+    )
+    claim_cmd.set_defaults(func=cmd_claim)
+    yield_cmd = add("yield", "end this branch's claim on an item without closing it")
+    yield_cmd.add_argument("ids", nargs="+", metavar="ID", help="the items to yield")
+    yield_cmd.add_argument(
+        "--trailer", action="append", default=[], metavar="'KEY: VALUE'", help=trailer_help
+    )
+    yield_cmd.set_defaults(func=cmd_yield)
 
     record = add("record", "write the pull request number onto the closures owed one")
     record.add_argument(

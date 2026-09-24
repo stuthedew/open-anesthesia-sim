@@ -302,6 +302,16 @@ PL-K7QX Decide what the interface shows after a halted step
 That message sets the next session's name and branch, so it must carry the id
 and title verbatim.
 
+**Where this session holds a claim on the item, the line carries the takeover
+too**, because the fresh session's `bin/docket claim` would otherwise exit 3
+behind this branch's claim for up to seven days. The owner pasting it is the
+owner's word that `--over` needs, and the fresh branch then holds the item where
+this one stood:
+
+```text
+PL-K7QX Decide what the interface shows after a halted step. Claim it with: bin/docket claim PL-K7QX --over claude/this-branch-name --reason "handed off by the session that held it"
+```
+
 ## Mode: work several items at once
 
 Triggered by "can we do these together", or by planning a batch.
