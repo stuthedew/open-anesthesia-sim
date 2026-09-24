@@ -49,11 +49,13 @@ own copy of the item reaching a status in `RELEASING_STATUSES`, a takeover, a
 lapse, or landing. Landing is derived, at two levels. A branch the base
 contains, or whose content it holds, is never offered by
 `vcs._unlanded_refs`. Within a branch still offered, a claim on an item the
-base has closed is spent, and so is every claim at or before the branch's
-*landed prefix*: the newest commit that adds content, all of it content the
-base has held, through which the branch's own work is all on the base. That
-is the shape a squash merge leaves on a branch that goes on committing
-(`PL-8JQQ`), and continuing work there claims again.
+base has closed is spent, and so is every claim the branch's *landed prefix*
+takes in: some commit descending from the claim adds content, all of it
+content the base has held, and the branch's own work through it is all on
+the base. That is the shape a squash merge leaves on a branch that goes on
+committing (`PL-8JQQ`), and continuing work there claims again. Descent, not
+place in the walk, because a merge of the base brings in commits that sort
+after a claim without descending from it.
 
 **Three other kinds of hold ride the same read, and none is a claim.** A
 *disposition* is a branch whose copy of an item has moved its `status:` away
@@ -498,14 +500,25 @@ def holdings(
 
     copies[base] = _item_paths_on(base, items_dir, root, run)
     on_base = set(copies[base])
-    prefixes: dict[str, int] = {}
+    landed: dict[str, dict[int, bool]] = {}
     ranked: list[tuple[tuple[datetime, str, int, datetime, str], str, Hold]] = []
     for (key, branch), (episode, yielded) in episodes.items():
         standing = [claim for claim in episode if claim.identity not in superseded]
-        if branch not in prefixes:
-            fork = refs.fork.get(tips[branch], "")
-            prefixes[branch] = _landed_through(histories[branch], fork, refs.base_blobs, root, run)
-        unspent = [claim for claim in standing if claim.position > prefixes[branch]]
+        fork = refs.fork.get(tips[branch], "")
+        unspent = [
+            claim
+            for claim in standing
+            if not _landed_through(
+                claim,
+                histories[branch],
+                branches[branch],
+                fork,
+                refs.base_blobs,
+                root,
+                run,
+                landed.setdefault(branch, {}),
+            )
+        ]
         end = moment if yielded is None else yielded
         # The earliest claim whose lease is unbroken holds; any later claim in
         # the same chain is a renewal of it. Where every chain broke, the last
@@ -1023,14 +1036,31 @@ def _touched(history: list[_Commit], prefix: str) -> dict[str, tuple[int, str]]:
 
 
 def _landed_through(
-    history: list[_Commit], fork: str, base_blobs: frozenset[str], root: Path, run: Runner
-) -> int:
-    """The place of the branch's landed prefix in its walk, or -1 where nothing has landed.
+    claim: _Claim,
+    history: list[_Commit],
+    names: list[str],
+    fork: str,
+    base_blobs: frozenset[str],
+    root: Path,
+    run: Runner,
+    landed: dict[int, bool],
+) -> bool:
+    """Whether the branch's landed prefix takes in the claim: whether the claim is spent.
 
-    The newest commit that wrote content, all of it content the base has held,
-    and through which the branch's own work - the branch as of that commit,
-    against its fork - is all on the base. That is where a squash merge took
-    the branch, and every claim at or before it has been spent.
+    A landed commit wrote content, all of it content the base has held, and
+    the branch's own work through it - the branch as of that commit, against
+    its fork - is all on the base. That is where a squash merge took the
+    branch, and a claim the commit descends from, or that is the commit, has
+    been spent.
+
+    **Descends from, not sorts after.** The walk is in author-date order, and
+    a merge of the base brings in commits no claim is an ancestor of. Where the
+    clone is grafted unevenly, the walk reaches them below the graft, and each
+    writes only content the base holds. One authored after the claim sorts
+    after it, and read by place it spent a live claim (`PL-N162`'s review of its
+    slice 2). So the landed commit is sought among the claim's descendants,
+    newest first. Taking the newest landed commit overall and then asking about
+    ancestry would leave the claim live when a squash really had taken it.
 
     **Both tests, because either alone releases a live claim.** The commit's
     own blobs are true of an empty commit - the claim commit itself - and of
@@ -1038,19 +1068,30 @@ def _landed_through(
     test is what a squash actually proves. The first is a necessary condition
     of the second, since a blob the commit writes is either in the branch's
     net change or is the fork's own copy, so it picks the candidates from the
-    walk already made and only a candidate costs a diff. A branch the squash
+    walk already made and only a candidate costs a diff; `landed` keeps each
+    diff's answer by place, for the branch's other claims. A branch the squash
     cannot be proven against - a file the base resolved against its own later
-    edits (`PL-LKFP`) - keeps its claims until a yield or the lease.
+    edits (`PL-LKFP`) - keeps its claims until a yield or the lease, and so does
+    one git would not list descendants for.
     """
     if not fork:
-        return -1
-    for position in range(len(history) - 1, -1, -1):
+        return False
+    after = set(run(["rev-list", "--ancestry-path", f"^{claim.commit}", *names], root).split())
+    after.add(claim.commit)
+    # A descendant sorts after its ancestors in the walk, so nothing before the
+    # claim can be one.
+    for position in range(len(history) - 1, claim.position - 1, -1):
         entry = history[position]
+        if entry.commit not in after:
+            continue
         if not entry.added or not all(blob in base_blobs for blob in entry.added):
             continue
-        if _work_already_on_base(_landing_split(entry.commit, fork, base_blobs, root, run)):
-            return position
-    return -1
+        if position not in landed:
+            split = _landing_split(entry.commit, fork, base_blobs, root, run)
+            landed[position] = _work_already_on_base(split)
+        if landed[position]:
+            return True
+    return False
 
 
 def _cuts(

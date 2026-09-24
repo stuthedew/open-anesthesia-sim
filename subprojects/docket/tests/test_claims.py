@@ -409,6 +409,91 @@ def test_a_walk_that_runs_off_a_truncated_history_is_unread_rather_than_believed
     assert named == ([] if branch == BRANCH else [(f"origin/{branch}", "PL-B1B1")])
 
 
+def test_a_merge_of_main_read_below_an_uneven_horizon_spends_only_what_a_squash_took(
+    tmp_path: Path,
+) -> None:
+    """`PL-N162`'s review of slice 2: a claim, then a merge of `main`, read in a shallow clone.
+
+    `main` reaches the root down a short path and is grafted on its long one,
+    `test_cli.py`'s `_unevenly_truncated_pair` topology. The merge brings in
+    `main`'s own long-path commits, which the walk then reaches below the
+    graft: each has a parent, so nothing marks the ref unread, and each writes
+    only content the base holds. Main work 3 was authored after the claim and is
+    no ancestor of it, so it sorts after the claim in the walk. Taken as the
+    landed prefix, it spent the live claim, and `flight` said nobody held the
+    item.
+
+    The second branch is the other direction. A squash took its first commit
+    before it merged `main`, so its claim is spent, and it stays spent although
+    the newest landed commit in its walk is one of `main`'s, which is no
+    descendant of the claim.
+    """
+    squashed = "claude/squashed-q8rt2m"
+    origin = _Repo(tmp_path / "origin")
+    root = origin.git("rev-parse", "HEAD").strip()
+    origin.branch(BRANCH)
+    origin.claim("PL-B1B1", when=T0)
+    origin.branch(squashed, root)
+    origin.claim("PL-C2C2", when=T0)
+    origin.commit("PL-C2C2: first", when=T0 + HOUR / 2, files={"src/first.py": "first\n"})
+    origin.git("checkout", "-q", "main")
+    for number, when in ((1, T0 - 2 * HOUR), (2, T0 - HOUR)):
+        origin.commit(f"main work {number}", when=when, files={f"a{number}": f"main {number}\n"})
+    origin.commit("PL-C2C2: first (#1)", when=T0 + HOUR / 2, files={"src/first.py": "first\n"})
+    origin.commit("main work 3", when=T0 + HOUR, files={"a3": "main 3\n"})
+    for branch, path in ((BRANCH, "src/work.py"), (squashed, "src/second.py")):
+        origin.git("checkout", "-q", branch)
+        origin.git("merge", "-q", "--no-edit", "main", env=_dated(T0 + 2 * HOUR))
+        origin.commit("the work", when=T0 + 3 * HOUR, files={path: f"{path}\n"})
+    origin.git("checkout", "-q", "main")
+    for number in (4, 5, 6):
+        origin.commit(
+            f"main work {number}", when=T0 + number * HOUR, files={f"a{number}": f"main {number}\n"}
+        )
+    origin.branch("side", root)
+    origin.commit("the short path", when=T0 + 7 * HOUR, files={"side": "side\n"})
+    origin.git("checkout", "-q", "main")
+    origin.git("merge", "-q", "--no-edit", "side", env=_dated(T0 + 8 * HOUR))
+    origin.commit("the tip", when=T0 + 9 * HOUR, files={"tip": "tip\n"})
+    work = tmp_path / "work"
+    # Five reaches the root down the short path and stops at main work 4 on the
+    # long one; the branches are then fetched whole.
+    subprocess.run(
+        ["git", "clone", "-q", "--depth=5", "--branch", "main", origin.root.as_uri(), str(work)],
+        check=True,
+        capture_output=True,
+    )
+    for branch in (BRANCH, squashed):
+        subprocess.run(
+            ["git", "fetch", "-q", "origin", f"{branch}:refs/remotes/origin/{branch}"],
+            cwd=work,
+            check=True,
+            capture_output=True,
+        )
+    walk = subprocess.run(
+        ["git", "log", "--no-merges", "--format=%p %s", "^origin/main", f"origin/{BRANCH}"],
+        cwd=work,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+
+    read = holdings(work, now=T0 + 10 * HOUR)
+
+    # The shape the guard cannot catch: the walk reaches main's own commits,
+    # and every one of them has a parent.
+    assert "main work 3" in [line.split(" ", 1)[1] for line in walk]
+    assert all(line.split(" ", 1)[0] for line in walk)
+    assert (read.unreadable, read.declined) == ((), "")
+    assert {(hold.key, hold.state, hold.released_by) for hold in read.holds} == {
+        ("PL-B1B1", LIVE, ""),
+        ("PL-C2C2", RELEASED, BY_LANDING),
+    }
+    assert [(branch.name, branch.item_id) for branch in read.flight().branches] == [
+        (f"origin/{BRANCH}", "PL-B1B1")
+    ]
+
+
 def test_a_legacy_start_commit_still_claims_after_the_branch_merges_main(tmp_path: Path) -> None:
     """Legacy is a fact about each commit's own tree, which a later merge of `main` leaves alone.
 

@@ -813,9 +813,11 @@ moves. So the behaviour was pinned by a test that asserted the wrong answer on
 purpose, which made changing it a decision rather than an accident.
 
 That decision came with the claim record (`PL-N162`). `flight` and every reader
-of in-flight work now answer from `claims.holdings`, which spends a claim at or
-before a branch's *landed prefix*: the newest commit through which the branch's
-work is content the base already holds. The default branch's own commits,
+of in-flight work now answer from `claims.holdings`, which spends a claim that a
+*landed* commit descends from: one through which the branch's work is content
+the base already holds. Descent rather than place in the walk, because a merge
+of the base brings in commits that sort after a claim without descending from
+it, and read by place one spent a live claim. The default branch's own commits,
 reached below the graft, wrote nothing the base lacks, so the ids they carry no
 longer survive the walk. That is a question about content, which the truncated
 clone holds, not about history, which it does not; the walk itself is
