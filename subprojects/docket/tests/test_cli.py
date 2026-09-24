@@ -27,6 +27,7 @@ import pytest
 
 from docket import cli, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
+from docket.claims import CUTOVER_MARKER, SESSION_VARIABLE
 from docket.cli import build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
@@ -80,6 +81,16 @@ def _no_inherited_guard(monkeypatch: pytest.MonkeyPatch) -> None:
     environment-dependent result the guard's own check exists to make visible.
     """
     monkeypatch.delenv(LANDED_GUARD, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _no_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the session running the suite from deciding `mine` for any claim read here.
+
+    `test_claims.py`'s fixture, for the release fixtures below that cut under a
+    claim: a claim's `mine` is decided by this variable where it carries a token.
+    """
+    monkeypatch.delenv(SESSION_VARIABLE, raising=False)
 
 
 def test_new_captures_several_ideas_in_one_call(
@@ -1482,12 +1493,57 @@ commit: abc1234
 """
 
 
+#: The release item every cut below is made under. Untriaged, so it changes no
+#: count a release test asserts: a cut ships finished work only.
+TRAIN_ITEM = """---
+id: PL-TR4N
+title: Cut the release
+status: untriaged
+resource: release-train
+added: 2026-08-01
+---
+
+**Problem.** Cut the release
+"""
+
+#: The branch those cuts are made from, named the way a session names one.
+TRAIN_BRANCH = "claude/pl-tr4n-cut-the-release"
+
+
+def _hold_the_train(root: Path, store: str = "items") -> None:
+    """Move `root` onto a branch whose live claim on a release item holds the release train.
+
+    `bin/docket release` refuses a branch holding no train claim (`PL-331V`),
+    so every fixture that cuts takes this step first, as release mode does.
+    The claim is the empty commit `claim` writes, made after the cutover marker
+    is in the tree so it is read by the current rules, and dated by the clock
+    so its lease is live when the command reads it.
+    """
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("checkout", "-q", "-b", TRAIN_BRANCH)
+    marker = root / CUTOVER_MARKER
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text("# the claim reader\n", encoding="utf-8")
+    (root / store / "PL-TR4N-cut-the-release.md").write_text(TRAIN_ITEM, encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "PL-TR4N: file the release")
+    git("commit", "-q", "--allow-empty", "-m", f"PL-TR4N: start\n\nClaim: PL-TR4N {TRAIN_BRANCH}")
+
+
 def _release_repo(tmp_path: Path, *tag_names: str, git: bool = True) -> Path:
     """A repository with one unreleased item, a version, and the tags given.
 
     `git=False` leaves it a plain directory, which is how a real `git tag
     --list` is made to fail: it exits 128 outside a repository, and how that
     exit is classified is half of what the refusal below is tested on.
+
+    With git, the checkout is left on `TRAIN_BRANCH` holding the release train,
+    and `main` is the base the tags sit on.
     """
     root = tmp_path / "repo"
     (root / "items").mkdir(parents=True)
@@ -1497,13 +1553,18 @@ def _release_repo(tmp_path: Path, *tag_names: str, git: bool = True) -> Path:
         return root
     # A real git checkout, built by running real git from `PATH`: the release
     # commands read tags and refs, so a stub would test the stub.
-    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
     for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
         subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)
     subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
     subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True, capture_output=True)
     for tag in tag_names:
         subprocess.run(["git", "tag", tag], cwd=root, check=True, capture_output=True)
+    _hold_the_train(root)
     return root
 
 
@@ -1563,7 +1624,10 @@ def test_a_cut_does_not_rename_the_files_it_stamps(tmp_path: Path) -> None:
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
 
     stamped = root / "items" / "done.md"
-    assert sorted(path.name for path in (root / "items").glob("*.md")) == ["done.md"]
+    assert sorted(path.name for path in (root / "items").glob("*.md")) == [
+        "PL-TR4N-cut-the-release.md",
+        "done.md",
+    ]
     assert "milestone: v0.2.6" in stamped.read_text(encoding="utf-8")
 
 
@@ -1596,12 +1660,16 @@ def test_a_release_the_default_branch_already_holds_is_refused(
     from git as git actually spells it.
     """
     root = _release_repo(tmp_path, "v0.2.5")
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
     notes = root / "docs" / "releases"
     notes.mkdir(parents=True)
     (notes / "v0.2.6.md").write_text("## v0.2.6\n", encoding="utf-8")
     subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
     subprocess.run(
         ["git", "commit", "-qm", "Release v0.2.6"], cwd=root, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "checkout", "-q", TRAIN_BRANCH], cwd=root, check=True, capture_output=True
     )
 
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
@@ -4341,6 +4409,7 @@ def _releasable_owed_clone(tmp_path: Path, *, subject: str = "PL-K7QX: close it 
     """
     work = _owed_clone(tmp_path, subject=subject, version="0.2.5")
     subprocess.run(["git", "tag", "v0.2.5"], cwd=work, check=True, capture_output=True)
+    _hold_the_train(work)
     return work
 
 

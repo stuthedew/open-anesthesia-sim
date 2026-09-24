@@ -21,6 +21,7 @@ from typing import Any
 
 from . import arming, claiming, instructions, notes, render
 from .checks import Report, SettingsSource, analyze, brief_contradictions
+from .claims import BY_STATUS, BY_YIELD, LAPSED, LIVE, Hold, Holdings, holdings
 from .concurrency import (
     ORDERING,
     SAME_AREA,
@@ -42,6 +43,8 @@ from .model import (
     LIST_FIELDS,
     MIN_RECURRENCES,
     PRIORITIES,
+    RELEASE_TRAIN,
+    RESOURCES,
     SELECTABLE_LANES,
     STATUSES,
     WITHDRAWN_MARKER,
@@ -118,9 +121,12 @@ from .vcs import (
     FlightReport,
     GitRunner,
     OrphanedReport,
+    Runner,
     SinceFiled,
     StrandedReport,
     WrittenReport,
+    _head_name,
+    _remotes,
     branch_state,
     branches_in_flight,
     changed_items,
@@ -912,12 +918,21 @@ def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight 
     offered a release has nothing to be warned off. It does not fetch - the
     digest's hook already did, and this must stay answerable in a checkout with
     no network.
+
+    A branch holding the release train with nothing cut yet is added beside the
+    cuts (`_with_train`), so a session that has filed and claimed its release
+    item stops the offer once its claim is pushed, not only once it cuts.
     """
     run = _invocation(args).git
     if run is None:
         return None
     base = released_on_base(root, version_file=config.version_file, notes_dir=NOTES_DIR, runner=run)
-    return cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=run)
+    cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=run)
+    tracked = _invocation(args).tracked
+    if not tracked:
+        return cuts
+    read = holdings(root, now=_now(args), items_dir=tracked, runner=run)
+    return _with_train(cuts, _release_train(read, root, run))
 
 
 def cmd_triage(args: argparse.Namespace) -> int:
@@ -968,6 +983,10 @@ def cmd_new(args: argparse.Namespace) -> int:
     Several titles are accepted in one call because that is how they arrive:
     an interruption rarely carries exactly one thought, and making each one a
     separate command turns a thirty-second capture into a conversation.
+
+    `--resource` is the one exception to asking nothing first: an item holding
+    a resource is filed only while nobody else holds it, and one title at a
+    time, because the check is what the field exists for (`_train_refusal`).
     """
     directory, items, _ = _load(args)
     # The `--touches` order that used to fail loudly now parses, so the one way
@@ -983,6 +1002,10 @@ def cmd_new(args: argparse.Namespace) -> int:
             "path lands in the title instead."
         )
         return 1
+    if args.resource:
+        refused = _train_refusal(args)
+        if refused:
+            return refused
     taken = {item.identifier for item in items}
     declared = _comma_separated(args.touches)
     # A fresh capture declares nothing, which is exactly when the search has
@@ -1004,6 +1027,110 @@ def cmd_new(args: argparse.Namespace) -> int:
             if onto is not None:
                 items = _record_recurrence(directory, items, onto.item, identifier, args)
     return 0
+
+
+def _train_refusal(args: argparse.Namespace) -> int:
+    """Why a release item may not be filed now, as an exit status, or 0 where it may.
+
+    Refused rather than filed and flagged, because a second release item is
+    `PL-MFM4`: two items filed for one release, each passing every guard, and
+    one of them discarded at the merge. Refusing here leaves nothing to undo.
+    Fetched first, as `claim` fetches, since the rival that matters is the one
+    another session pushed a minute ago; `--no-fetch` is for the caller that
+    already did.
+
+    Exit 3 is `claiming.HELD_ELSEWHERE`, for either holder - another branch's,
+    or this branch's own claim on an earlier release item, which is the item to
+    cut under; one whose claim lapsed or was yielded is that item too, and a
+    fresh claim revives it. A read that declined refuses with 1, since a
+    missing hold then proves nothing, and `--no-git` or more than one title is
+    a usage error. Refs the read could not believe, and trailers it could not
+    parse, are said before the answer, as `claim` says them.
+    """
+    inv = _invocation(args)
+    if inv.git is None:
+        print(
+            "new: `--no-git` asks git nothing, and `--resource` exists for the check that "
+            "reads who holds it; nothing was written"
+        )
+        return claiming.USAGE
+    if len(args.title) != 1:
+        print(
+            f"new: `--resource` files one item at a time, and was given {len(args.title)} "
+            "titles; nothing was written"
+        )
+        return claiming.USAGE
+    if not inv.tracked:
+        print(
+            "new: the store is not below the repository root, so no branch can hold its "
+            "items; nothing was written"
+        )
+        return claiming.USAGE
+    if not args.no_fetch:
+        fetched = claiming._git(["fetch", "--quiet", claiming.REMOTE], inv.root)
+        if fetched.code != 0:
+            print(
+                f"new: `git fetch {claiming.REMOTE}` failed, so a release another session "
+                "has claimed cannot be ruled out; nothing was written"
+            )
+            for line in claiming._indented(fetched.err):
+                print(line)
+            print("  Refresh the refs yourself and pass `--no-fetch`, or try again.")
+            return claiming.REFUSED
+    read = holdings(inv.root, now=_now(args), items_dir=inv.tracked, runner=inv.git)
+    if not read.known:
+        print(
+            f"new: declined to read who holds the release train - {read.declined}; "
+            "nothing was written"
+        )
+        return claiming.REFUSED
+    for line in claiming._unread(read):
+        print(line)
+    train = _release_train(read, inv.root, inv.git)
+    if train.rival is not None:
+        print(
+            f"new: another session is preparing a release - {train.rival.ref} holds the "
+            f"release train through {train.rival.key}, claimed "
+            f"{train.rival.since.date().isoformat()}; nothing was written"
+        )
+        print(
+            "  Wait for that release to merge before filing another. If its branch is "
+            "abandoned, recover what only it holds with `bin/docket stranded` before "
+            "dropping the ref."
+        )
+        return claiming.HELD_ELSEWHERE
+    if train.ours is not None:
+        print(
+            f"new: this branch already holds the release train through {train.ours.key}; "
+            "cut under that item rather than filing a second - nothing was written"
+        )
+        return claiming.HELD_ELSEWHERE
+    if train.idle is not None:
+        print(
+            f"new: this branch already has a release item, {train.idle.key}, whose claim on "
+            f"the release train is {_idle_state(train.idle)}; claim it again rather than "
+            "filing a second - nothing was written"
+        )
+        print(f"  {_reclaim(train.idle)}")
+        return claiming.HELD_ELSEWHERE
+    return 0
+
+
+def _idle_state(hold: Hold) -> str:
+    """How a train claim on an open release item stopped holding, in a clause."""
+    if hold.state == LAPSED:
+        return "lapsed"
+    if hold.released_by == BY_STATUS:
+        return "released by its `blocked` status"
+    return "yielded"
+
+
+def _reclaim(hold: Hold) -> str:
+    """The command that makes an idle train claim hold again."""
+    claim = f"`bin/docket claim {hold.key}`"
+    if hold.released_by == BY_STATUS:
+        return f"Move {hold.key} out of `blocked`, commit that, then {claim}."
+    return f"{claim} revives it."
 
 
 def _inferred_paths(args: argparse.Namespace) -> tuple[str, ...]:
@@ -1258,6 +1385,7 @@ def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namesp
         status="untriaged",
         classes=(),
         touches=_comma_separated(args.touches),
+        resource=args.resource or "",
         blocked_by=(),
         feature=args.feature or "",
         milestone="",
@@ -1292,6 +1420,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("classes", "classes"),
     ("feature", "feature"),
     ("touches", "touches"),
+    ("resource", "resource"),
     ("blocked-by", "blocked_by"),
     ("deferred-from", "deferred_from"),
     ("closed", "closed"),
@@ -2533,6 +2662,87 @@ def _numbers_before_notes(
     return with_fields(ready, shippable=shippable)
 
 
+@dataclass(frozen=True)
+class _Train:
+    """Who holds the release train, as `cmd_release`, the digest and `new` all read it.
+
+    `rival` is `Holdings.holder` where that claim is on another branch: the
+    first live claim in claim order, so a branch whose own claim orders first
+    has no rival, and one that orders second is refused before it cuts - the
+    window where both filed before either pushed a claim closes there. `ours`
+    is the first live train claim on `HEAD`'s branch, and `closed` a train
+    claim this branch released by closing its item, which a refusal names.
+    `idle` is one on an item this branch's copy still holds open whose claim
+    is not live - lapsed, yielded, or released by `blocked` - which a fresh
+    claim revives, so it is the item to cut under rather than a reason to file
+    a second.
+
+    Mine by branch name, not by `Hold.mine`'s session token, as `arming` and
+    `claiming` decide it: the claim binds to the branch the cut lands through,
+    and a session handed the branch carries a new token.
+    """
+
+    rival: Hold | None
+    ours: Hold | None
+    closed: Hold | None
+    idle: Hold | None
+    #: The remotes the names were compared under, for `_with_train`.
+    remotes: frozenset[str]
+
+
+def _release_train(read: Holdings, root: Path, run: Runner) -> _Train:
+    """The release train's holders in one `Holdings`, judged against `HEAD`'s branch."""
+    remotes = _remotes(root, run)
+    name = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
+    here = _head_name(name, remotes) if name not in {"", "HEAD"} else ""
+    trains = [hold for hold in read.holds if hold.resource == RELEASE_TRAIN]
+    ours = [hold for hold in trains if here and _head_name(hold.ref, remotes) == here]
+    holder = read.holder(RELEASE_TRAIN)
+    return _Train(
+        rival=holder if holder is not None and holder not in ours else None,
+        ours=next((hold for hold in ours if hold.state == LIVE), None),
+        closed=next((hold for hold in ours if hold.status in CLOSED_STATUSES), None),
+        idle=next(
+            (
+                hold
+                for hold in ours
+                if hold.status not in {"", *CLOSED_STATUSES}
+                and (hold.state == LAPSED or hold.released_by in {BY_YIELD, BY_STATUS})
+            ),
+            None,
+        ),
+        remotes=remotes,
+    )
+
+
+def _with_train(cuts: CutsInFlight, train: _Train) -> CutsInFlight:
+    """`cuts` with the train's rival added as a holder that has cut nothing yet.
+
+    One list, so the digest and the refusal name every other release the same
+    way; a rival whose branch is already listed for its cut is not repeated.
+
+    Listed means listed as another ref's: a cut `HEAD` contains is `mine` to
+    `cuts_in_flight`, and every reader drops those. A rival whose branch this
+    one merged is still a rival - the train is mine by branch name, as `new`
+    decides it - so its contained cut is turned into the rival's entry rather
+    than left to hide it, and is worded from the notes it wrote.
+    """
+    rival = train.rival
+    if rival is None:
+        return cuts
+    name = _head_name(rival.ref, train.remotes)
+    same = [branch for branch in cuts.branches if _head_name(branch.ref, train.remotes) == name]
+    if any(not branch.mine for branch in same):
+        return cuts
+    if same:
+        held = with_fields(same[0], mine=False, item=rival.key)
+        rest = [branch for branch in cuts.branches if branch is not same[0]]
+    else:
+        held = BranchCut(ref=rival.ref, versions=(), cut=rival.since.date(), item=rival.key)
+        rest = list(cuts.branches)
+    return with_fields(cuts, branches=tuple(sorted((*rest, held), key=lambda branch: branch.ref)))
+
+
 def cmd_release(args: argparse.Namespace) -> int:
     """Cut a release from whatever is finished and has not shipped yet.
 
@@ -2615,15 +2825,19 @@ def cmd_release(args: argparse.Namespace) -> int:
     version = (args.version or resuming or ready.suggested_version).lstrip("v")
     name = f"v{version}"
 
-    # The one change no in-flight guard can see, because it carries no item id
-    # by design (`PL-66FP`). Two questions, in the order their answers are
-    # certain in: what the default branch already holds is a merge that has
-    # happened, and what a ref is carrying is a claim that may yet be
-    # abandoned. A dry run is allowed through either with the warning, on the
-    # same reasoning as the untagged one above: it writes nothing, and
-    # withholding the notes would not un-ship what already shipped.
+    # The widest write in the repository, and one whose own commits carry no
+    # item id: a cut stamps other items' `milestone:` (`PL-66FP`). The id the
+    # guard reads is the release item's, whose claim holds the release train
+    # (`PL-331V`). Questions in the order their answers are certain in: what
+    # the default branch already holds is a merge that has happened; what
+    # another ref is cutting, or holds the train to cut, is a claim that may
+    # yet be abandoned; and last, whether this branch holds the train itself,
+    # so every earlier refusal still refuses for its own reason. A dry run is
+    # allowed through each with the warning, on the same reasoning as the
+    # untagged one above: it writes nothing, and withholding the notes would
+    # not un-ship what already shipped.
     #
-    # **The fetch is the part without which neither question is worth asking.**
+    # **The fetch is the part without which none of these is worth asking.**
     # The session that lost the v0.3.7 race cut from a checkout that did not
     # yet hold an item merged eight minutes before the winning release landed,
     # so every ref it could read was older than the collision it was in. This
@@ -2646,7 +2860,7 @@ def cmd_release(args: argparse.Namespace) -> int:
                 return 1
             print()
         else:
-            # **Both guards refuse on a read they could not complete**
+            # **The guards refuse on a read they could not complete**
             # (`PL-Q9Z1`). Each is looking for evidence that somebody else is
             # already cutting, and an absence of evidence is what a git that did
             # not answer produces - so proceeding on one is the v0.3.7
@@ -2654,15 +2868,31 @@ def cmd_release(args: argparse.Namespace) -> int:
             # rarest command here and the most expensive to get wrong, which is
             # what makes refusing the right side to err on.
             cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=git)
+            tracked = _invocation(args).tracked
+            read = (
+                holdings(root, now=_now(args), items_dir=tracked, runner=git)
+                if tracked
+                else Holdings(declined="the store is not below the repository root")
+            )
+            train = _release_train(read, root, git)
+            cuts = _with_train(cuts, train)
+            # A ref whose claims were not believed is named, never read as
+            # clean, as `claim` names it; `cuts.unreadable` is left as it was.
+            skipped = claiming._unread(read)
+            if skipped:
+                print(*skipped, sep="\n")
+                print()
             holders = [branch for branch in cuts.branches if not branch.mine]
             unread = "" if base.known else _base_unread(base.base)
+            refusal = ""
             if holders:
-                print(_parallel_cut_warning(holders))
-                if not args.dry_run:
-                    return 1
-                print()
-            elif unread or not cuts.known:
-                print(_unreadable_cut_warning(unread or cuts.declined))
+                refusal = _parallel_cut_warning(holders)
+            elif unread or not cuts.known or not read.known:
+                refusal = _unreadable_cut_warning(unread or cuts.declined or read.declined)
+            elif train.ours is None:
+                refusal = _no_train_refusal(name, len(ready.shippable), current, train, tracked)
+            if refusal:
+                print(refusal)
                 if not args.dry_run:
                     return 1
                 print()
@@ -2856,12 +3086,13 @@ def _unreadable_cut_warning(reason: str) -> str:
         [
             f"Cannot check whether another session is already cutting: {reason}.",
             "",
-            "Both duplicate-release guards read git, and neither can tell a clean answer",
-            "from one it never got - so this refuses rather than cutting on silence.",
+            "The duplicate-release guards read git, and none can tell a clean answer from",
+            "one it never got - so this refuses rather than cutting on silence.",
             "",
             "  git fetch origin",
             "",
-            "then run this again. `--dry-run` prints the notes without the guard.",
+            "then run this again. `--dry-run` prints the notes anyway, with this warning",
+            "above them.",
         ]
     )
 
@@ -2879,15 +3110,26 @@ def _parallel_cut_warning(holders: list[BranchCut]) -> str:
     `flight` and `stranded` do. Both remedies for the same reason - waiting is
     right for the first case and useless for the second, and the reader is the
     one who can tell them apart.
+
+    A holder with no versions holds the release train and has cut nothing yet
+    (`_with_train`), dated by its claim rather than by a notes file.
     """
     lines = []
     for branch in holders:
+        if not branch.versions:
+            when = f" (claimed {branch.cut.isoformat()})" if branch.cut else ""
+            lines.append(
+                f"  {branch.ref} holds the release train for {branch.item}{when}, "
+                "and has cut nothing yet"
+            )
+            continue
         versions = ", ".join(f"v{version}" for version in branch.versions)
         when = f", cut {branch.cut.isoformat()}" if branch.cut else ""
         lines.append(f"  {branch.ref} is cutting {versions}{when}")
+    doing = "cut" if any(branch.versions for branch in holders) else "prepared"
     return "\n".join(
         [
-            "A release is already being cut on a branch nothing has merged:",
+            f"A release is already being {doing} on a branch nothing has merged:",
             "",
             *lines,
             "",
@@ -2901,6 +3143,67 @@ def _parallel_cut_warning(holders: list[BranchCut]) -> str:
             "If that branch is abandoned, recover what only it holds before dropping it:",
             "",
             "  bin/docket stranded",
+        ]
+    )
+
+
+def _no_train_refusal(name: str, count: int, current: str, train: _Train, store: str) -> str:
+    """Refuse a cut from a branch holding no claim on the release train.
+
+    The claim is what the other guards read to see this cut before it is made,
+    so a cut without one is invisible to a second session until its notes are
+    pushed - the v0.3.7 window, reopened (`PL-66FP`). Filing the release item
+    with `new --resource` is also where a second release is refused outright.
+    """
+    closed, idle = train.closed, train.idle
+    if idle is not None:
+        return "\n".join(
+            [
+                f"Cannot cut {name} here: this branch holds no live claim on the release train.",
+                "",
+                f"{idle.key} is this branch's release item, and its claim is "
+                f"{_idle_state(idle)}. Cut under it rather than filing another:",
+                "",
+                f"  {_reclaim(idle)}",
+                "",
+                "then run this again. `--dry-run` prints the notes anyway, with this warning",
+                "above them.",
+            ]
+        )
+    spent = (
+        [
+            f"{closed.key} is {closed.status} on this branch, which released its claim on the "
+            "train; a closed release item holds nothing, so file a new one.",
+            "",
+        ]
+        if closed is not None
+        else []
+    )
+    since = current.strip().lstrip("v")
+    filed = f"{store}/ID-*.md" if store else "ID-*.md"
+    return "\n".join(
+        [
+            f"Cannot cut {name} here: this branch holds no claim on the release train.",
+            "",
+            *spent,
+            "A release is cut under a claimed release item, so that a second session is",
+            "refused when it files one rather than after it has cut. File and claim it:",
+            "",
+            f'  bin/docket new --resource {RELEASE_TRAIN} "Cut {name} from the {count} items '
+            f'finished since v{since}"',
+            f'  git add {filed} && git commit -m "ID: file the release"',
+            "  bin/docket claim ID",
+            "",
+            "where ID is the id `new` printed. A release item that already exists is",
+            "stamped instead, and the stamp committed, since a claim holds the train only",
+            "from the committed copy; `claim` then pushes it:",
+            "",
+            f"  bin/docket set ID --resource {RELEASE_TRAIN}",
+            f'  git add {filed} && git commit -m "ID: hold the release train"',
+            "  bin/docket claim ID    # or `git push`, where ID is claimed already",
+            "",
+            "then run this again. `--dry-run` prints the notes anyway, with this warning",
+            "above them.",
         ]
     )
 
@@ -3878,6 +4181,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="comma-separated paths the work is expected to reach; may be repeated",
     )
     new.add_argument("--feature", default=None, help="group this with related work")
+    new.add_argument(
+        "--resource",
+        choices=RESOURCES,
+        default=None,
+        help="the shared thing whoever claims this item also holds; refused, with nothing "
+        "written, while another claim holds it",
+    )
+    new.add_argument(
+        "--no-fetch",
+        action="store_true",
+        default=False,
+        help="with --resource, read the refs as they are; the caller refreshed them, or cannot",
+    )
     new.set_defaults(func=cmd_new)
 
     # Beside `new`, because it is the only undo `new` has. No abbreviations, for
@@ -3925,6 +4241,7 @@ def build_parser() -> argparse.ArgumentParser:
             flag, action="append", metavar=metavar, help="comma-separated; may be repeated"
         )
     setter.add_argument("--feature")
+    setter.add_argument("--resource", metavar="|".join(RESOURCES))
     setter.add_argument("--closed", type=_closing_date, metavar="YYYY-MM-DD")
     setter.add_argument("--reason")
     setter.add_argument("--payoff", metavar="LINE")

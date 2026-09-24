@@ -34,6 +34,7 @@ from .model import (
     EFFORTS,
     OPEN_STATUSES,
     PRIORITIES,
+    RESOURCES,
     STATUSES,
     Item,
     generator_defect_faults,
@@ -429,6 +430,16 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             "the value above - so every reader passes over them, and a value wrapped this way "
             "arrives without its tail. Indent a continuation under its field, or give the line "
             "its key"
+        )
+    # `claims.Holdings.holder` matches a resource exactly, so a misspelt one
+    # holds nothing and a release item carrying it lets a second release be
+    # filed and cut beside it - the collision the field exists to stop.
+    if item.resource and item.resource not in RESOURCES:
+        report.errors.append(
+            f"{where}: resource '{item.resource}' is not one of {', '.join(RESOURCES)}; "
+            "a claim holds a resource only under its exact name, so this one holds nothing; "
+            f"`bin/docket set {item.identifier} --resource {'|'.join(RESOURCES)} --overwrite` "
+            "repairs it, and `--resource '' --overwrite` removes it"
         )
     if not item.status:
         report.errors.append(f"{where}: no `status`; expected one of {', '.join(STATUSES)}")
