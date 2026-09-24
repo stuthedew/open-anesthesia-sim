@@ -530,7 +530,10 @@ def _history(names: list[str], base: str, root: Path, run: Runner) -> list[_Comm
         root,
     )
     entries: list[tuple[list[str], list[str]]] = []
-    for line in output.splitlines():
+    # Split on the newline git ends each line with, never `splitlines()`: that
+    # also breaks at `\x1e`, the separator between one key's values, and read
+    # that way a commit claiming two items lost both claims and itself.
+    for line in output.split("\n"):
         fields = line.split("\x1f", _FIELDS - 1)
         if len(fields) == _FIELDS:
             entries.append((fields, []))
@@ -582,6 +585,11 @@ def _events(
     leading ids are attribution and claim nothing. A commit made before is read
     by the old rule and nothing else. Which of the two a commit is is asked only
     of commits that could say something under either reading, and once each.
+
+    An old-rule claim has no token to bind by, so it counts for every branch
+    whose walk reaches it - the old attribution, bystanders included. That
+    over-reports where one branch merged another, which is the cheaper error of
+    the two, and it lasts only as long as the old reading does.
     """
     prefix = items_dir.strip("/") + "/"
     recorded: dict[str, bool] = {}
@@ -772,10 +780,10 @@ def _newest(names: list[str], root: Path, run: Runner) -> str:
     """
     newest = names[0]
     for other in names[1:]:
-        mine = run(["rev-parse", "--verify", "--quiet", newest], root).strip()
-        theirs = run(["rev-parse", "--verify", "--quiet", other], root).strip()
-        if mine and theirs and mine != theirs:
-            if run(["merge-base", newest, other], root).strip() == mine:
+        kept = run(["rev-parse", "--verify", "--quiet", newest], root).strip()
+        offered = run(["rev-parse", "--verify", "--quiet", other], root).strip()
+        if kept and offered and kept != offered:
+            if run(["merge-base", newest, other], root).strip() == kept:
                 newest = other
     return newest
 

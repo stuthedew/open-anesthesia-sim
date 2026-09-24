@@ -3,12 +3,13 @@ id: PL-3FYK
 title: Record who holds an item as a Claim trailer bound to the holder's own branch, read by one claims.holdings reader under a 7-day lease
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: claim-record
 touches: subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24
+closed: 2026-09-24
 payoff: part of the claim record that ends PL-MB2W's generator: one recorded fact decides who holds an item
 verify: grep -q 'def holdings' subprojects/docket/src/docket/claims.py && grep -q 'LEASE_TERM' subprojects/docket/src/docket/claims.py && grep -q 'def test_' subprojects/docket/tests/test_claims.py
 ---

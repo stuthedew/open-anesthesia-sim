@@ -3,7 +3,7 @@ id: PL-0TD9
 title: bin/docket claim and yield write the claim, and start mode is rewritten around them
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: defect
 feature: claim-record
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/start.md, .claude/skills/docket/modes/picking.md
@@ -11,6 +11,7 @@ blocked-by: PL-3FYK
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24
 payoff: part of the claim record that ends PL-MB2W's generator: one recorded fact decides who holds an item
+verify: grep -q 'bin/docket claim' .claude/skills/docket/modes/start.md && grep -q 'Yield: ' subprojects/docket/src/docket/cli.py
 recurrences: 2026-09-24 PL-DDYD
 ---
 
