@@ -6831,6 +6831,56 @@ def test_show_says_a_machinery_defect_ranks_only_while_open(
     assert "UNSOUND" not in output
 
 
+def _blocked_live_head(tmp_path: Path) -> Path:
+    """A live head blocked on one build item, the shape `PL-QFWF` was filed on."""
+    return _store(
+        tmp_path,
+        _clustered(
+            "PL-4040",
+            "The shared refresh nobody owns",
+            names=_MEMBERS,
+            generator=_LIVE,
+            status="blocked",
+            **{"blocked-by": "PL-F5F5"},
+        ),
+        _clustered("PL-B1B1", "A member of the cluster"),
+        _clustered("PL-C2C2", "Another member"),
+        _clustered("PL-D3D3", "A third member"),
+        _clustered("PL-F5F5", "The build item the head waits on"),
+    )
+
+
+def test_show_on_a_blocker_of_a_blocked_live_head_names_the_head(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The rank is the head's and `blocked-by` is on the head alone, so this is the carrier.
+
+    Without it the plan line told the build item it ranks on its band alone
+    while `next` ranked it above every band (`PL-QFWF`).
+    """
+    store = _blocked_live_head(tmp_path)
+    (tmp_path / "pyproject.toml").write_text('version = "0.2.5"\n', encoding="utf-8")
+    (tmp_path / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+
+    assert _run("show", "PL-F5F5", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "unblocks generator PL-4040: blocked on this item" in output
+    assert "it ranks above every band but P0" in output
+    assert "ranks on its band alone" not in output
+
+
+def test_the_digest_says_why_a_blocker_of_a_blocked_head_leads_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A bare `P2` leading the digest reads as a bug in the ranking."""
+    assert _run("digest", "--items", str(_blocked_live_head(tmp_path))) == 0
+
+    out = capsys.readouterr().out
+    assert "Top: PL-F5F5" in out
+    assert "unblocks generator PL-4040 - ranked above every band but P0" in out
+
+
 def test_generators_does_not_say_a_closed_machinery_defect_ranks(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
