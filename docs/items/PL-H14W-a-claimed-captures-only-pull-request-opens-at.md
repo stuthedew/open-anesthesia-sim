@@ -3,13 +3,15 @@ id: PL-H14W
 title: A claimed captures-only pull request opens at the first push as an ordinary mergeable one titled for the work, so #978 was merged six minutes in while the v0.5.9 cut was being written, erasing the start claim with the branch and leaving a subject on main that names a cut it does not contain
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect
 feature: parallel-sessions
 touches: CLAUDE.md, docs/maintainer.md, .claude/skills/docket/modes/start.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-24
+closed: 2026-09-24
 payoff: a claimed capture's pull request cannot be merged by hand while its claimed work is unfinished
+verify: grep -qF 'leaves it unarmed and a draft' CLAUDE.md && grep -qF 'is still a draft, leave it' docs/maintainer.md && grep -qF 'open it as a draft' .claude/skills/docket/modes/start.md
 ---
 
 **Problem.** A claimed captures-only pull request opens at the first push as an ordinary mergeable one titled for the work, so #978 was merged six minutes in while the v0.5.9 cut was being written, erasing the start claim with the branch and leaving a subject on main that names a cut it does not contain
@@ -85,6 +87,13 @@ owner's.
 
 The cost is one clause in `CLAUDE.md`'s bullet, one in `docs/maintainer.md`,
 and one step in `.claude/skills/docket/modes/start.md`.
+
+**Answered 2026-09-24: the draft** (project owner, 2026-09-24, ratified, over
+opening none while a claim rides and over titling it as the capture). Built in
+the session that recommended it, since `CLAUDE.md` makes a change to how
+sessions work take effect in the session that asks for it. The rule is in
+`CLAUDE.md`'s commit-and-push bullet, `docs/maintainer.md`'s merge steps and
+`.claude/skills/docket/modes/start.md`.
 
 **Done when.** The chosen remedy is written into `CLAUDE.md`,
 `docs/maintainer.md` and the start mode, so that a claimed captures-only pull

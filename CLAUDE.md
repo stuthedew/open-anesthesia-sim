@@ -506,17 +506,20 @@ deviating from a described deliverable, not acting without one.
   `main` even when its session ends before any work does (project owner,
   2026-09-23, ratified, over "a branch carrying only captured items is not a
   pull request", `PL-WNCT`), unless `main` has moved past its base by the time
-  its CI is green (`PL-S5MF`). **A claim on the branch leaves it unarmed,
-  whichever push carried it**: the empty start commit, or a queue-only commit
+  its CI is green (`PL-S5MF`). **A claim on the branch leaves it unarmed and a draft, whichever push carried
+  it**: the empty start commit, or a queue-only commit
   that start mode reads as one, such as a `needs-decision` design round. It
   holds until its item is closed or blocked in the branch's own copy, because
   the merge would erase the claim with the branch (project owner, 2026-09-23,
   ratified, over arming whatever rode the push, `PL-QP9Z`, over reading only a
   start claim on that push, `PL-1MCK`, and over holding it past the item's
-  closing, `PL-KWCY`; blocked releases it too, 2026-09-24, ratified, over
-  holding it until closed, `PL-3FYK`). So while only item files ride the
-  branch, the push closing or blocking the last item it claims arms it, and a push bringing an open claim or anything
-  but item files disarms it first, or green CI would merge half the work.
+  closing, `PL-KWCY`; blocked releases it too, 2026-09-24, ratified, over holding it until closed, `PL-3FYK`; the draft, 2026-09-24, ratified, over
+  opening none while a claim rides or titling it as the capture, because `#978`
+  was merged by hand while its claim was open, `PL-H14W`). So while only item
+  files ride the branch, the push closing or blocking the last item it claims
+  marks it ready and arms it, and a push bringing an open claim or anything but
+  item files disarms it first - an open claim making it a draft again - or green
+  CI would merge half the work.
   Where the **web harness
   says not to open one unless the
   owner explicitly asks**, this bullet is that ask, standing rather than per

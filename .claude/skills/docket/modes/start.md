@@ -50,6 +50,13 @@ unstarted inside that window (`PL-7TVT`). It costs nothing here -
 `main`, so a push to a branch with no pull request open runs no CI, and the
 squash merge folds the commit away.
 
+**Where the claim's push opens the branch's first pull request, open it as a draft**
+(`draft: true`), because a claim rides it and GitHub will not merge a draft by
+hand or otherwise. `#978` was merged by hand six minutes after it
+opened, with its claimed cut still uncommitted (`PL-H14W`). Mark it ready
+(`draft: false`) in the push that closes or blocks the claimed item, which is
+also the push that arms it under `CLAUDE.md`'s commit-and-push bullet.
+
 **A session has two things to remember: `claim` at pickup and for every rider,
 and `bin/docket yield <id>` when it stops without closing.** A rider is a second
 item picked up mid-session - one filed as housekeeping, or the item the first
