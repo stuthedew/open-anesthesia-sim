@@ -79,6 +79,16 @@ PROCESS_CLASSES = ("session-cost", "docs", "infra")
 
 LIST_FIELDS = ("classes", "touches", "blocked-by", "root-cause-of", "recurrences")
 
+# What a `resource:` may name: the one thing in the repository that more than
+# one item can want at once, so a claim on an item carrying it holds the thing
+# rather than only the item. The release train is the only one - two releases
+# cut in parallel both stamp `milestone:` onto the same finished work, and only
+# one of them can land (`PL-66FP`, `PL-MFM4`). `claims.Holdings.holder` matches
+# the value exactly, so a misspelt one would hold nothing, silently; `checks.py`
+# refuses anything outside this set for that reason.
+RELEASE_TRAIN = "release-train"
+RESOURCES = (RELEASE_TRAIN,)
+
 # How many distinct items a `root-cause-of:` has to name before the claim is a
 # generator rather than an ordinary item. Three is the project owner's own
 # threshold - "the root cause of more than 2 PLs" - and it is a floor rather
@@ -629,6 +639,14 @@ class Item:
     #: `_check_gate_dispositions` - and `bin/docket wave` lists the gate's
     #: deferrals from it.
     deferred_from: str = ""
+    #: The shared thing a claim on this item also holds, from `RESOURCES`, or
+    #: empty for an item that holds only itself. Release mode stamps
+    #: `release-train` on the item it files for a cut, so the session that
+    #: claims that item holds the train, and `bin/docket new --resource` and
+    #: `bin/docket release` refuse a second one while it does. Read from the
+    #: claiming branch's own copy by `claims.holdings`, so it takes effect with
+    #: the claim and not with a merge (`PL-331V`).
+    resource: str = ""
     #: The item file's name inside the store directory - `PL-K7QX-do-it.md`,
     #: never `docs/items/PL-K7QX-do-it.md`. A repository path is that name
     #: joined to the store directory, which is what `verify.front_matter_check`
@@ -1427,6 +1445,7 @@ def parse_item(text: str, path: str = "") -> Item:
         "status",
         "classes",
         "touches",
+        "resource",
         "blocked-by",
         "deferred-from",
         "feature",
@@ -1472,6 +1491,7 @@ def parse_item(text: str, path: str = "") -> Item:
         impairs_generators=fields.get("impairs-generators", ""),
         recurrences=_split_list(fields.get("recurrences", "")),
         deferred_from=fields.get("deferred-from", ""),
+        resource=fields.get("resource", ""),
         body=body,
         path=path,
         unknown_fields=tuple(sorted(set(fields) - known)),
@@ -1498,6 +1518,7 @@ FIELD_ORDER = (
     "feature",
     "milestone",
     "touches",
+    "resource",
     "blocked-by",
     "deferred-from",
     "added",
@@ -1534,6 +1555,7 @@ def _front_matter_values(item: Item) -> dict[str, str]:
         "feature": item.feature,
         "milestone": item.milestone,
         "touches": ", ".join(item.touches),
+        "resource": item.resource,
         "blocked-by": ", ".join(item.blocked_by),
         "deferred-from": item.deferred_from,
         "added": item.added.isoformat() if item.added else "",

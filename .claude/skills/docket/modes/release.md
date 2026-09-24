@@ -69,6 +69,37 @@ describes predates the freeze, or is `P0`, `safety` or `science`.
 
 ## Mode: ship a release
 
+**A release is cut under a claimed release item, filed first** (`PL-331V`).
+`new --resource` writes `resource: release-train` onto the item, so the branch
+that claims it holds the release train, and a second session's `new
+--resource` or cut is refused while it does. Once a cut is wanted, before
+asking the owner to confirm the version:
+
+```bash
+git fetch origin
+bin/docket new --resource release-train "Cut vX.Y.Z from the N items finished since vA.B.C"
+git add docs/items/ID-*.md && git commit -m "ID: file the release"  # the capture alone
+bin/docket claim ID                  # its pull request opens as a draft, per start.md
+bin/docket release X.Y.Z --dry-run   # a rival holder or cut surfaces here
+```
+
+The dry run names the version the filing did: without one, a manual-version
+project prints the finished items and stops before any guard runs.
+
+Exit 3 from `new` means the train is held, and the message says by whom.
+**By another branch:** wait for its release to merge; if that branch is
+abandoned, run `bin/docket stranded` before dropping the ref. **By this
+branch, through the item it names:** cut under that item rather than filing
+again - claiming it anew where its claim lapsed or was yielded.
+
+**Close the release item after the cut, never before it.** A closed item
+releases its claim, so closing it first makes the cut refuse. After `make
+release` and the edits below, close it in its own commit (`bin/docket set ID
+--status done --closed YYYY-MM-DD`, per the close-out) and mark the pull
+request ready in that push, as `start.md` has it for any claimed item. It
+carries no `milestone:`, so the next release ships it, like anything else
+finished after a cut.
+
 **Offer this; do not wait to be asked — when the session is about what to do
 next.** The session-start digest says when there is enough finished work to be
 worth raising, and the release itself takes no arguments: the store already
@@ -152,8 +183,8 @@ one is untagged**, because a release cut without a tag leaves a permanent gap
 cannot be repaired with confidence once the history has moved on.
 
 It **also refuses to cut a release another session already has** (`PL-66FP`,
-two sessions cut v0.3.7 independently), on either of two facts, and it
-fetches first so both are current:
+two sessions cut v0.3.7 independently), on any of three facts, and it
+fetches first so all are current:
 
 - **The default branch already holds the version** — its `docs/releases/`
   notes file or its version field. Another session's release has merged, so
@@ -165,6 +196,18 @@ fetches first so both are current:
   date is what separates a live session from a branch nobody will merge, and
   it is yours to read. Wait for a live one; for an abandoned one run
   `bin/docket stranded` before dropping the ref.
+- **Another branch holds the release train** — a live claim on its release
+  item that orders ahead of this branch's, with nothing cut yet. Named with
+  its item and claim date; the same two remedies apply.
+
+Last, it refuses a branch that **holds no train claim itself**, so each
+refusal above still refuses for its own reason: file and claim as above, or
+stamp an existing release item with `bin/docket set ID --resource
+release-train`, commit the stamp, and claim it (or `git push`, where it is
+claimed already) - a claim holds the train only from the committed, pushed
+copy. A release item already closed on the branch has released its claim, and
+the refusal says so; one whose claim lapsed or was yielded is named, with the
+claim that revives it.
 
 **A cut that was interrupted is resumed, never cut again under a new number.**
 The stamps go into the items one file at a time and the notes are written after
@@ -178,7 +221,7 @@ permanently wrong about the same items. Where nobody re-runs it, `docket check`
 reports the release whose notes were never written (`PL-1MKQ`).
 
 The digest says the same thing on its `Releasable:` line instead of offering
-a release, so the second session never raises one. **Neither read sees a
+a release, so the second session never raises one. **No read here sees a
 session that has pushed nothing**, so a clean answer still means "nothing
 visible", never "nothing" — which is why the session check under **Mode: start an item**, in
 `.claude/skills/docket/modes/start.md`, is worth running before offering a release too.

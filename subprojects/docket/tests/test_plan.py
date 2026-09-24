@@ -10,6 +10,8 @@ from __future__ import annotations
 from collections.abc import Collection
 from datetime import date
 
+import pytest
+
 from docket.model import Item
 from docket.plan import (
     Waiting,
@@ -26,8 +28,9 @@ from docket.plan import (
     recommend,
     recurring,
     set_aside,
+    unranked_generators,
 )
-from docket.roadmap import Scope, milestone_scope, parse_milestones
+from docket.roadmap import MilestoneStates, Scope, milestone_scope, parse_milestones
 
 
 def _item(
@@ -1260,6 +1263,22 @@ def test_the_plan_line_says_a_closed_item_ranks_nowhere() -> None:
         assert line.endswith("it is closed, so it ranks nowhere")
 
 
+def test_a_blocked_item_on_the_tier_is_not_told_it_ranks_above_every_band_now() -> None:
+    """Startable by nothing, so the tier is where it ranks once it can start (`PL-4RK2`).
+
+    Off the tier a blocked item keeps its band sentence, which names the band
+    it will rank on rather than claiming it ranks now above everything.
+    """
+    unplaced = _scope(current=("PL-2222",))
+
+    on_tier = placement_line(unplaced, "PL-1111", ranks_above_bands=True, blocked=True)
+    assert on_tier.endswith(
+        "it is blocked, so it ranks nowhere until it can start, and then above every band but P0"
+    )
+    off_tier = placement_line(unplaced, "PL-1111", blocked=True)
+    assert off_tier.endswith("it ranks on its band alone")
+
+
 # --- a blocked head hands its rank to what it waits on ----------------------
 #
 # `PL-QFWF`. A design round that decomposes a generator's fix blocks the head on
@@ -1353,6 +1372,139 @@ def test_a_blocker_of_two_blocked_heads_names_both() -> None:
 
     assert pick.unblocks == ("PL-5555", "PL-6666")
     assert "a blocker of PL-5555, PL-6666, live generators blocked on it" in pick.reason
+
+
+# --- a blocked head whose rank reaches nothing is named ---------------------
+#
+# `PL-4RK2`. The rank passes one edge down and no further, so a head behind a
+# chain or a milestone alone was ranked by nothing and nothing said so.
+
+
+def test_a_blocked_live_head_whose_rank_reaches_no_startable_item_is_reported() -> None:
+    """The chain shape: the one open blocker is blocked itself, on startable work.
+
+    `recommend` offers nothing on the head's behalf - `PL-B2B2` is not
+    startable and `PL-H1H1` is not the head's blocker - so the startable work
+    at the far end is what the report hands the reader to write in.
+    """
+    items = [
+        _blocked_head(LIVE, ("PL-B2B2",)),
+        _item("PL-B2B2", status="blocked", blocked_by=("PL-H1H1",)),
+        _item("PL-H1H1", priority="P3"),
+        *_explained(),
+    ]
+
+    picks = recommend(items, limit=10)
+    assert all(p.unblocks == () for p in picks)
+    assert "PL-H1H1" not in {p.item.identifier for p in picks if p.generator or p.unblocks}
+
+    (found,) = unranked_generators(items)
+    assert found.head.identifier == "PL-5555"
+    assert found.waiting_on == ("PL-B2B2",)
+    assert found.behind == ("PL-H1H1",)
+
+
+def test_a_blocked_live_head_waiting_on_a_milestone_alone_is_reported() -> None:
+    """No item blocker to lift at all, so the milestone is the whole of the answer."""
+    (found,) = unranked_generators([_blocked_head(LIVE, ("v0.7.0",)), *_explained()])
+
+    assert found.waiting_on == ("v0.7.0",)
+    assert found.behind == ()
+
+
+def test_a_blocked_live_head_whose_every_blocker_closed_is_reported() -> None:
+    """`promotable` names it as stale; this names it as a generator nothing ranks."""
+    (found,) = unranked_generators(
+        [_blocked_head(LIVE, ("PL-B1B1",)), _item("PL-B1B1", status="done"), *_explained()]
+    )
+
+    assert found.waiting_on == ()
+
+
+@pytest.mark.parametrize(
+    ("blocker", "in_flight"),
+    [
+        (_item("PL-B1B1"), ()),
+        (_item("PL-B1B1", status="needs-decision"), ()),
+        (_item("PL-B1B1", status="blocked", blocked_by=("PL-H1H1",)), ("PL-B1B1",)),
+    ],
+    ids=["startable", "needs-decision", "in-flight"],
+)
+def test_a_blocked_head_carried_by_a_direct_blocker_is_not_reported(
+    blocker: Item, in_flight: tuple[str, ...]
+) -> None:
+    """Startable, `next` ranks it on the tier; in flight, a session is paying it down."""
+    items = [_blocked_head(LIVE, ("PL-B1B1", "v0.7.0")), blocker, _item("PL-H1H1"), *_explained()]
+
+    assert unranked_generators(items, in_flight) == []
+
+
+def test_only_a_ranking_head_that_is_blocked_and_not_in_flight_is_reported() -> None:
+    """A spent head held no rank to lose, and a head in flight is being worked."""
+    spent = [_blocked_head(SPENT, ("v0.7.0",)), *_explained()]
+    live = [_blocked_head(LIVE, ("v0.7.0",)), *_explained()]
+
+    assert unranked_generators(spent) == []
+    assert unranked_generators(live, {"PL-5555"}) == []
+
+
+def test_the_chain_behind_an_unranked_head_ends_at_what_is_not_blocked() -> None:
+    """Cycle-safe, and an untriaged item is not walked through - it waits on nothing yet."""
+    items = [
+        _blocked_head(LIVE, ("PL-B1B1", "PL-W1W1")),
+        _item("PL-B1B1", status="blocked", blocked_by=("PL-B2B2",)),
+        _item("PL-B2B2", status="blocked", blocked_by=("PL-B1B1", "PL-5555", "PL-H1H1")),
+        _item("PL-H1H1", status="blocked", blocked_by=("PL-C1C1",)),
+        _item("PL-C1C1"),
+        _item("PL-W1W1", status="untriaged", blocked_by=("PL-D1D1",)),
+        _item("PL-D1D1"),
+        *_explained(),
+    ]
+
+    (found,) = unranked_generators(items)
+    assert found.waiting_on == ("PL-B1B1", "PL-W1W1")
+    assert found.behind == ("PL-C1C1",)
+
+
+def test_the_chain_behind_an_unranked_head_names_only_open_work() -> None:
+    """A closed id still in flight is no remedy: written into `blocked-by`, it lifts nothing."""
+    items = [
+        _blocked_head(LIVE, ("PL-B1B1",)),
+        _item("PL-B1B1", status="blocked", blocked_by=("PL-H1H1",)),
+        _item("PL-H1H1", status="done"),
+        *_explained(),
+    ]
+
+    (found,) = unranked_generators(items, {"PL-H1H1"})
+    assert found.behind == ()
+
+
+@pytest.mark.parametrize(
+    ("milestones", "waiting_on"),
+    [
+        (None, ("v0.7.0",)),
+        (MilestoneStates(known=frozenset({"v0.7.0"}), cleared=frozenset()), ("v0.7.0",)),
+        (MilestoneStates(known=frozenset({"v0.7.0"}), cleared=frozenset({"v0.7.0"})), ()),
+        (
+            MilestoneStates(
+                known=frozenset({"v0.7.0"}),
+                cleared=frozenset({"v0.7.0"}),
+                claimed={"v0.7.0": frozenset({"PL-5555"})},
+            ),
+            ("v0.7.0",),
+        ),
+    ],
+    ids=["roadmap-unread", "unscoped", "scoped", "ships-with-it"],
+)
+def test_a_milestone_that_cleared_drops_out_of_what_an_unranked_head_waits_on(
+    milestones: MilestoneStates | None, waiting_on: tuple[str, ...]
+) -> None:
+    """As `docket check` reads a milestone blocker: scoped clears it, unless it ships with it."""
+    (found,) = unranked_generators(
+        [_blocked_head(LIVE, ("v0.7.0",)), *_explained()], milestones=milestones
+    )
+
+    assert found.waiting_on == waiting_on
 
 
 # --- placement_clause: the relation in the fewest plain words ---------------
