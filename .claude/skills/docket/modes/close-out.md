@@ -137,11 +137,26 @@ page and decides which file a session reads.
    commission; it may not weaken what measures it, and it may not skip the
    test.
 
-   **Two of the four take an exemption the *item* declares.** `falsifies:`
-   turns on the base's copy of the item rather than on your branch, so adding
-   it beside the work it would excuse folds nothing and is reported as your own
-   word for it.
+   **Two of the four take an exemption the *item* declares, and which copy
+   of the item each field is read from - the base's or your branch's - follows
+   one rule, stated on `Commission` in `subprojects/docket/src/docket/verify.py`
+   (`PL-B8HZ`).** An *outcome* (`status`, `closed`, `reason`, `pr`) is your
+   branch's and excuses nothing. A *prediction* (`verify:`, `touches:`) is
+   measured against the base's copy, and your branch's copy is a correction of
+   it: honoured, and printed beside the base's with the base's own result. A
+   *waiver* (`falsifies:`, `not-delegable:`) removes a refusal and is the
+   base's alone, so adding one beside the work it would excuse waives nothing
+   and is reported as your own word for it.
 
+   - `verify:` is a prediction, and rewriting it is a correction the audit
+     honours and prints: where the base's copy commissions a different
+     command, both run, yours decides the check, and the report carries
+     ``commissioned: `A` - fails on this tree (exit 1); this branch runs `B`
+     instead`` under it. A rewritten command is never silent, so say in the
+     reply why the commissioned one was wrong - that line is what a reviewer
+     will ask about (`PL-PZ6T`). `touches:` is read the same way: the diff is
+     measured against the base's, and a path only your own widening declares
+     is named as that in the NOTE.
    - `falsifies:` names enough of an assertion to identify the one subject the
      item's work makes untrue - the string it pins is what the item was asked
      to delete, so no arrangement of the tests keeps it. A matching removal
@@ -152,9 +167,9 @@ page and decides which file a session reads.
      and the check says which applies rather than stopping the audit dead
      (`PL-L4KX`). A dropped item that still carries a `verify:` has it printed
      and not run, so there is no need to delete one when dropping (`PL-BX1C`).
-     This exemption is read off your branch, since the drop is what the
-     close-out writes - but a `not-delegable:` reason excuses only a command
-     the base never commissioned. Deleting the base's `verify:` and writing a
+     The drop is an outcome and is read off your branch, since the close-out
+     is what writes it - but a `not-delegable:` reason is a waiver and excuses
+     only a command the base never commissioned. Deleting the base's `verify:` and writing a
      reason beside it is refused (`PL-KSV2`), and the paragraph below applies:
      restore the command, or give the one that proves the work.
 
@@ -208,12 +223,41 @@ page and decides which file a session reads.
    `bin/docket set <id> --falsifies '<the quoted string>'` makes the close-out
    fold. But "at triage" is a precondition rather than a turn of phrase: the
    check reads the base's copy, so the declaration counts only once it has
-   *merged*, and the window shuts at this branch's first commit. Writing the
-   line now folds nothing and is reported as your own word for it, whatever
-   the brief says. So the prescription lives where the pass that can act on it
-   reads it - `.claude/skills/docket/modes/triage.md` § "`falsifies:`, and why
-   triage is the only pass that can write it" - and here the `REJECT` is
-   expected, with reporting it the whole of what is owed.
+   *merged*. Writing the line on this branch folds nothing and is reported as
+   your own word for it, whatever the brief says. So the prescription lives
+   where the pass that can act on it cheaply reads it -
+   `.claude/skills/docket/modes/triage.md` § "`falsifies:`, and why triage is
+   the only pass that can write it" - and here the `REJECT` is expected, with
+   reporting it the whole of what is owed unless the round trip below is worth
+   its cost.
+
+   **A waiver is amended where the commission lives, so a mid-work discovery
+   has a route, and so does an item captured and closed on one branch**
+   (`PL-TKFD`; project owner, 2026-09-25, ratified, over accepting a
+   declaration committed to the branch before the removing commit, and over
+   leaving the `REJECT` to carry the conversation). Neither needs a mechanism:
+
+   - **A `ready` item whose work turns out mid-way to falsify an assertion.**
+     Declare it on the base: from `origin/main`, an item-only branch carrying
+     `bin/docket set <id> --falsifies '<enough of the assertion to identify
+     it>'`, which `CLAUDE.md`'s capture rule opens a pull request for at its
+     first push - `bin/docket arm` answers `arm`, since the change lies under
+     the store and no claim is bound to that branch. Once it merges, bring
+     `main` into the work branch and re-audit: `verify --self` reads the
+     declaration from the base. On a solo project this buys visibility and
+     order rather than a second author - the declaration is a commit of its
+     own on `main`, ahead of the work - and that is all that is claimed for it.
+   - **An item captured and closed on one branch.** The same route in its
+     natural order: capture on its own branch with the declaration, let it
+     merge, and work from the merged base. A declaration written on the
+     capturing branch is still refused (`PL-ZMGR`), because the assertion it
+     would waive is in the base tree whether or not the base holds the item.
+
+   Both are the ordering the field always asked for - declare before the
+   commit that removes the assertion - made concrete on the base instead of on
+   the branch. Sized by `PL-YZJD`'s count, about 2 folds in 502 close-outs, the
+   round trip is paid rarely; honouring the branch's waiver instead was refused
+   because a wrong waiver switches an integrity check off.
 
    Run the bare `bin/docket verify <id>` only when reviewing a branch somebody
    else was commissioned to write.

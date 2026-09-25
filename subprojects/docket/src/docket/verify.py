@@ -34,14 +34,14 @@ import tempfile
 import time
 import warnings
 from collections import Counter
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import vcs
 from .config import Config
-from .model import CLOSED_STATUSES, WITHDRAWN_MARKER, Item, parse_front_matter
+from .model import CLOSED_STATUSES, WITHDRAWN_MARKER, Item, _split_list, parse_front_matter
 from .store import ID_PATTERN
 
 # Suppressions matched as text. `noqa` is deliberately absent: a project whose
@@ -1737,37 +1737,111 @@ def _recurrences_grew(added: list[str], removed: list[str]) -> bool:
 class Commission:
     """What the *base* holds for an item - the work as it was commissioned.
 
-    Three readings and a reason none could be taken. `falsifies` is the
-    declared exemption to "no existing assertion removed"; `status` rides
-    beside it because it is what says whose the decision was, and it is read
-    from the same place for the same reason - a session can set its own item's
-    status on its branch, and cannot set the base's (`PL-ZMGR`). `verify` is
-    the command the base commissioned, which a `not-delegable:` reason on the
-    branch cannot excuse (`PL-KSV2`).
+    **One rule decides which copy of an item, the base's or the branch's, each
+    contract field is read from, and it is keyed on what kind of statement the
+    field is, never on the field** (`PL-B8HZ`; project owner, 2026-09-25,
+    ratified, over reading every field from the base's copy with
+    `needs-decision` as the one exception). Six items arrived one field at a
+    time before it was stated - branch-side reads gave false `ACCEPT`s
+    (`PL-KSV2`, `PL-PZ6T`) and base-side reads false `REJECT`s (`PL-ZMGR`,
+    `PL-K4R5`, `PL-YZJD`, `PL-TKFD`) - so a new field is placed by one
+    question, and the copy follows from the answer:
+
+    1. **What the work did** - `status`, `closed`, `reason`, `pr`. An
+       *outcome*, read from the branch's copy, because the close-out is what
+       writes it, and it excuses nothing: a drop claims no work for a command
+       to prove (`PL-L4KX`, `PL-BX1C`).
+    2. **What the work was to satisfy, written before it existed** -
+       `verify:` and `touches:`. A *prediction*: a command naming a test not
+       yet written, a path list naming files not yet created. The base's copy
+       is the commission and is what the branch is measured against. The
+       branch's copy is a *correction* of the prediction - it is the evidence
+       the audit runs and reads, and it is printed as a correction beside the
+       base's with the base's own result, never substituted silently. A
+       delegated audit refuses the correction outright, through
+       `front_matter_check`.
+    3. **What the work may waive** - `falsifies:` and `not-delegable:`. A
+       *waiver* removes a refusal: `falsifies:` folds a removed assertion out
+       of an integrity check against the base *tree*, `not-delegable:`
+       excuses the command check. A waiver waives only what the base holds,
+       so the base's copy is the only word on it. Where the base holds
+       nothing to waive - no commissioned command - the check has nothing to
+       refuse and says why (`PL-KSV2`). The base hands a waiver to the branch
+       by exactly one written statement, `status: needs-decision` on its own
+       copy with the branch closing the item, because there the answer was
+       the branch's to make and what it falsifies follows from the answer
+       (`PL-ZMGR`, `self_declared_falsification`).
+
+    In one sentence: a correction supplies evidence and is honoured and
+    printed; a waiver removes a refusal and is the base's; an outcome is the
+    branch's and excuses nothing. Each reader in `_check_item` names the kind
+    it applies.
+
+    Counted before the kinds were split, because one copy for every field was
+    the shape first asked for. Of 1,437 close-outs on `main`, 163 rewrote a
+    `verify:` the base already held, and every one was a correction - a grep
+    target reworded, a test that never existed under the commissioned name, a
+    moved file - so reading `verify:` from the base and refusing where its
+    command fails would have refused 163 correct close-outs and caught
+    nothing. Honouring the branch's `falsifies:` instead would have bought
+    about 2 folds in 502 close-outs (`PL-YZJD`) at the cost of the property
+    the field exists for. A wrong correction leaves every integrity check
+    running over the diff; a wrong waiver switches one off. That is why the
+    two kinds cannot share a copy, and why "one copy" was the wrong altitude
+    for the rule.
+
+    The front matter is held whole, parsed once, so a field a later reader
+    needs is taken from here without a new attribute.
     """
 
-    falsifies: str = ""
-    status: str = ""
-    verify: str = ""
-    #: Why nothing could be read. Non-empty only where the three above are
-    #: empty *because nothing was looked at*, which is the distinction a caller
+    #: The base's front matter as it holds it. Empty where the base holds no
+    #: copy of the item, which is what every capture looks like, and where
+    #: nothing could be read - `unread` says which.
+    fields: Mapping[str, str] = field(default_factory=dict)
+    #: Why nothing could be read. Non-empty only where `fields` is empty
+    #: *because nothing was looked at*, which is the distinction a caller
     #: needs: an empty `falsifies` otherwise means "read it, it declares
     #: nothing".
     unread: str = ""
 
+    @property
+    def held(self) -> bool:
+        """Whether the base holds a copy of the item at all."""
+        return bool(self.fields)
 
-def commissioned_falsification(root: Path, base: str, items_dir: str, item: Item) -> Commission:
-    """The `falsifies:` declaration the *base* holds for this item, and the status and command too.
+    @property
+    def falsifies(self) -> str:
+        """The waiver: enough of the assertion the item was commissioned to make untrue."""
+        return self.fields.get("falsifies", "").strip()
+
+    @property
+    def status(self) -> str:
+        """Whose the decision was; `needs-decision` here is the hand-off of a waiver."""
+        return self.fields.get("status", "").strip()
+
+    @property
+    def verify(self) -> str:
+        """The prediction: the command the base commissioned to prove the work."""
+        return self.fields.get("verify", "").strip()
+
+    @property
+    def touches(self) -> tuple[str, ...]:
+        """The prediction: the paths the base commissioned the work to stay inside."""
+        return _split_list(self.fields.get("touches", ""))
+
+
+def read_commission(root: Path, base: str, items_dir: str, item: Item) -> Commission:
+    """The *base's* copy of the item, parsed once, for every reader that takes a field from it.
 
     `unread` is non-empty only where nothing could be looked at, so an empty
-    `Commission` carrying no `unread` means the commission was read and
-    declares nothing. Keeping "could not look" apart from "looked, found
-    nothing" is the same distinction `front_matter_check` makes below, for the
-    same reason: folding is suppressed identically by both, and only one of
-    them is a finding.
+    `Commission` carrying no `unread` means the commission was read and holds
+    nothing. Keeping "could not look" apart from "looked, found nothing" is
+    the same distinction `front_matter_check` makes below, for the same
+    reason: folding is suppressed identically by both, and only one of them is
+    a finding.
 
     **Read from the base rather than from the working tree**, which is the
-    whole of what makes the field worth having. `PL-K82G` argued the field was
+    whole of what makes a waiver worth having. `PL-K82G` argued the field was
     safe because `front_matter_check` refuses a branch that edits its own
     item's front matter - true of a delegated review, and not of the self-audit
     the close-out actually runs, where that guard is an advisory by design
@@ -1800,11 +1874,7 @@ def commissioned_falsification(root: Path, base: str, items_dir: str, item: Item
     if status != 0:
         return Commission(unread=f"{base}:{items_dir}/{was} could not be read")
     fields, _ = parse_front_matter(before)
-    return Commission(
-        falsifies=fields.get("falsifies", "").strip(),
-        status=fields.get("status", "").strip(),
-        verify=fields.get("verify", "").strip(),
-    )
+    return Commission(fields=fields)
 
 
 def self_declared_falsification(commission: Commission, item: Item) -> str:
@@ -1812,7 +1882,7 @@ def self_declared_falsification(commission: Commission, item: Item) -> str:
 
     Empty in every other case, and the emptiness is the point: a `falsifies:`
     line a branch writes beside the deletion it excuses is the worker's own
-    word for it, which is why `commissioned_falsification` reads the base at
+    word for it, which is why `read_commission` reads the base at
     all.
 
     **The one commission that cannot declare in advance.** A `ready` item's
@@ -1854,6 +1924,36 @@ def self_declared_falsification(commission: Commission, item: Item) -> str:
     if commission.status != "needs-decision" or item.status not in CLOSED_STATUSES:
         return ""
     return item.falsifies
+
+
+def commissioned_result(root: Path, base: str, commission: Commission, correction: str) -> str:
+    """The commissioned command run on this tree, printed beside the branch's correction of it.
+
+    `verify:` is a prediction, so the branch's command decides the check - but
+    a correction is honoured on the page, never substituted silently. Before
+    this the only trace of a rewritten command was the front-matter NOTE every
+    close-out prints, which `PL-KSV2` found readers skim, so a failing
+    commissioned command replaced by a weaker passing one reached `ACCEPT`
+    with nothing on the report to say so (`PL-PZ6T`). Now it reaches `ACCEPT`
+    only with this line under the check. The exit is read whichever way it
+    went: a commissioned command that still passes says the branch swapped a
+    working command for another, which is a different thing for a reviewer to
+    look at than one that fails.
+    """
+    status, _output = _run(
+        [commission.verify], root, shell=True, env={**os.environ, VERIFY_GUARD: "1"}
+    )
+    if status == 0:
+        result = "passes on this tree"
+    elif status == TIMED_OUT:
+        result = "did not finish on this tree, killed at the limit"
+    elif selects_no_test(commission.verify, status):
+        result = "selects no test on this tree (pytest exit 5)"
+    else:
+        result = f"fails on this tree (exit {status})"
+    return (
+        f"commissioned: `{commission.verify}` - {result}; this branch runs `{correction}` instead"
+    )
 
 
 def front_matter_check(
@@ -2011,30 +2111,40 @@ def verify_item(
     the thing that measures it, and it may not skip the test.
 
     Two of the four have a **declared** exemption, which is not a relaxation
-    of that line but the reason it can stay absolute:
+    of that line but the reason it can stay absolute. Which copy of the item
+    each field behind them is read from follows one rule, stated on
+    `Commission`: an outcome is the branch's and excuses nothing, a prediction
+    is measured against the base's with the branch's correction run and
+    printed, a waiver is the base's (`PL-B8HZ`).
 
-    - `falsifies:` names an assertion the item was commissioned to make
-      untrue, and a matching removal folds out of the assertion check and is
-      printed beside it (`PL-K82G`). It turns on the item as the *base* holds
-      it - the commission - rather than on the branch, so it is nothing a
-      session can grant itself mid-work. One commission cannot write the field in
-      advance and takes it from the branch instead: a `needs-decision` item's
-      answer is the session's to make, so which assertions it falsifies is not
-      known until it is made. There the *base's status* is the gate, which a
-      branch can no more set than it can the field -
-      `self_declared_falsification` holds the line and says on the page that it
-      did (`PL-ZMGR`).
+    - `falsifies:` is a waiver. It names an assertion the item was
+      commissioned to make untrue, and a matching removal folds out of the
+      assertion check and is printed beside it (`PL-K82G`). It turns on the
+      item as the *base* holds it - the commission - rather than on the
+      branch, so it is nothing a session can grant itself mid-work. One
+      commission cannot write the field in advance and hands the waiver to
+      the branch instead: a `needs-decision` item's answer is the session's
+      to make, so which assertions it falsifies is not known until it is
+      made. There the *base's status* is the gate, which a branch can no more
+      set than it can the field - `self_declared_falsification` holds the line
+      and says on the page that it did (`PL-ZMGR`).
     - A `dropped` item, or one carrying `not-delegable:`, has no command to
       run by construction, and the command check reports which applies
       (`PL-L4KX`). A dropped item that still carries one has it printed and
       not run, since it names work the drop says will not be done
-      (`PL-BX1C`). Both are read off the *branch's* copy, and the drop has to
-      be: it is what the close-out writes. A delegated audit refuses either
-      written by the worker, through the front-matter check; `--self` only
-      reports that, which grants nothing for a drop - it claims no work. The
-      reason is held to the base's copy as well: it excuses a command the
-      base never commissioned, never one the branch deleted, so it cannot be
-      written beside the deletion to skip the test (`PL-KSV2`).
+      (`PL-BX1C`). The drop is an outcome, read off the *branch's* copy as it
+      has to be: it is what the close-out writes, and it grants nothing - it
+      claims no work. A delegated audit refuses a worker's drop through the
+      front-matter check; `--self` only reports it. The reason is a waiver
+      and is held to the base's copy: it excuses a command the base never
+      commissioned, never one the branch deleted, so it cannot be written
+      beside the deletion to skip the test (`PL-KSV2`).
+    - `verify:` and `touches:` are predictions, and the branch's copy of each
+      is honoured as a correction rather than substituted silently. The
+      command the branch records decides its check, with the base's command
+      run and its exit printed under it where the two differ (`PL-PZ6T`),
+      and the diff is measured against the base's `touches` with a path only
+      the branch's own widening declares named as that.
 
     Without them the absolute checks had no passing route on close-outs the
     project's own instructions prescribe, and a session meeting one could only
@@ -2108,22 +2218,23 @@ def _check_item(
     # Read off the store rather than taken on the session's word, and neither
     # state is free to reach for: a drop is a closure that owes a `reason` and a
     # `closed` date, and a `not-delegable` line is the thing that withholds the
-    # item from delegation in the first place. Both are read off the branch's
-    # copy, since the close-out is what writes them, so the reason is also held
-    # to the base's: it excuses a command the commission never held, and never
-    # one the branch removed. Read off the branch alone, it let a close-out
-    # delete its failing command, write a reason beside the deletion and ACCEPT
-    # with the command never run - and a reason can say who should do the work
-    # rather than that nothing can prove it (`PL-KSV2`). A base that cannot be
-    # read excuses nothing, since the exemption turns on what it holds. The
-    # drop needs no such hold: it claims no work for a command to prove.
+    # item from delegation in the first place. `Commission` states which copy
+    # each is read from. The drop is an *outcome* and is the branch's: the
+    # close-out is what writes it, and it claims no work for a command to
+    # prove. The reason is a *waiver* and waives only what the base holds: it
+    # excuses a command the commission never held, and never one the branch
+    # removed. Read off the branch alone, it let a close-out delete its failing
+    # command, write a reason beside the deletion and ACCEPT with the command
+    # never run - and a reason can say who should do the work rather than that
+    # nothing can prove it (`PL-KSV2`). A base that cannot be read excuses
+    # nothing, since the waiver turns on what it holds.
     #
     # Advisory unconditionally rather than under `self_audit`, because what
     # excuses the command is a fact about the item and not about who is asking.
     # And it does not stop early: that no command was recorded says nothing
     # about whether the diff stayed inside `touches` or whether an assertion
     # went missing, which is the half a hard stop was throwing away.
-    commission = commissioned_falsification(root, base, config.items_dir, item)
+    commission = read_commission(root, base, config.items_dir, item)
     exemption, missing = "", "none recorded"
     unexcused: tuple[str, ...] = ()
     if item.status == "dropped":
@@ -2175,7 +2286,16 @@ def _check_item(
     # `**Worked.**` note to it, and `path` is a bare filename rather than a
     # repository path, so it is matched by basename.
     own_file = Path(item.path).name if item.path else ""
-    candidates = [p for p in paths if not _within(p, item.touches) and Path(p).name != own_file]
+    # `touches:` is a *prediction*, and the base's copy is the commission the
+    # diff is measured against where the base holds one. The branch's copy is
+    # its correction: the declaration itself where the base commissions no
+    # scope, and a widening named on the page where it does, so a path only the
+    # branch's own widening declares is reported as that rather than passing
+    # silently (`PL-B8HZ`). A delegated audit refuses the widening as an edit
+    # to the front matter; `--self` reports it, as it reports every commission
+    # check.
+    scope = commission.touches or item.touches
+    candidates = [p for p in paths if not _within(p, scope) and Path(p).name != own_file]
     # A queue edit the workflow itself asked for is separated from the rest
     # rather than excused silently: the audit says which paths it declined to
     # count and why, so a reader can disagree with the exemption (`PL-66PR`,
@@ -2187,8 +2307,13 @@ def _check_item(
         and (kind := sanctioned_queue_edit(root, base, commits, path))
     }
     outside = [path for path in candidates if path not in sanctioned]
+    widened = [path for path in outside if commission.touches and _within(path, item.touches)]
     if outside:
         detail = f"{len(outside)} path(s) outside"
+        if widened:
+            detail += (
+                f", {len(widened)} of them declared only by this branch's own widening of `touches`"
+            )
     else:
         # Say what is true rather than what is shaped like an answer. `commits`
         # is empty when no commit on the branch names this item, and the paths
@@ -2211,7 +2336,12 @@ def _check_item(
             "diff stayed inside `touches`",
             not outside,
             detail + (COMMISSION_NOTE if outside and self_audit else ""),
-            tuple(outside)
+            tuple(
+                f"{path} - declared by this branch's `touches` and not by {base}'s copy"
+                if path in widened
+                else path
+                for path in outside
+            )
             + tuple(f"{path} - {kind}, not counted" for path, kind in sanctioned.items()),
             advisory=self_audit,
         )
@@ -2278,10 +2408,11 @@ def _check_item(
     # item, before the work (`PL-K82G`).
     audit = removed_assertions(root, base, commits, removed)
     unread = commission.unread
-    # The one declaration read from the branch rather than from the base, and
-    # only where the base's own copy left the answer to this session
-    # (`PL-ZMGR`). Empty on every other branch, so `declared` is the base's
-    # word in the ordinary case exactly as before.
+    # `falsifies:` is a *waiver* and is the base's. The one declaration read
+    # from the branch rather than from the base is the hand-off, where the
+    # base's own copy left the answer to this session (`PL-ZMGR`). Empty on
+    # every other branch, so `declared` is the base's word in the ordinary case
+    # exactly as before.
     self_declared = self_declared_falsification(commission, item)
     declared = commission.falsifies or self_declared
     check, folded = assertion_check(audit, declared, self_declared, base)
@@ -2342,9 +2473,9 @@ def _check_item(
     # field at close-out was the workaround, applied by hand and not every
     # time - 38 of 191 dropped items still carried one on 2026-09-23.
     #
-    # Read off the branch's copy, like the exemption above, and it has to be:
-    # the drop is what the close-out writes, so the base still holds the item
-    # open. That grants a session nothing. A drop claims no work for a command
+    # An *outcome*, read off the branch's copy like the drop above, and it has
+    # to be: the drop is what the close-out writes, so the base still holds the
+    # item open. That grants a session nothing. A drop claims no work for a command
     # to prove, the integrity checks above have already run over the diff, and
     # a delegated audit refuses a worker who drops its own item, through the
     # front-matter check.
@@ -2386,7 +2517,25 @@ def _check_item(
             "this command selects no test (pytest exit 5, nothing collected), so it "
             "proves neither that the work is done nor that it is missing",
         ) + lines
-    report.checks.append(Check("`verify:` command passes", status == 0, item.verify, lines))
+    # `verify:` is a *prediction*, and the branch's copy is its correction: it
+    # is the command that decides this check, since a commissioned test can be
+    # reworded, moved or never have existed under that name - 163 of 1,437
+    # close-outs on `main` rewrote theirs, and every one was such a correction.
+    # A correction is honoured on the page, never substituted silently: where
+    # the base commissions a command and the branch's differs, the base's runs
+    # too and its exit is printed under the check (`PL-PZ6T`, `PL-B8HZ`). Where
+    # the base commissions none the line says the command is the branch's own -
+    # a suffix, since that is true of two close-outs in five and a line that
+    # fires that often is skimmed - and where the base could not be read it
+    # says that rather than guessing which.
+    detail = item.verify
+    if commission.unread:
+        detail += f" - whether {base} commissioned it could not be read: {commission.unread}"
+    elif not commission.verify:
+        detail += f" - this branch's own, since {base} commissions none"
+    elif commission.verify != item.verify:
+        lines = (commissioned_result(root, base, commission, item.verify), *lines)
+    report.checks.append(Check("`verify:` command passes", status == 0, detail, lines))
     return report
 
 
