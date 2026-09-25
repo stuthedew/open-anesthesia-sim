@@ -3371,6 +3371,67 @@ def test_show_names_the_branch_that_has_already_edited_the_item_file(
     assert "IN FLIGHT" not in out
 
 
+def test_show_names_a_round_that_retitled_the_item_file_as_editing_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Against real git: a design round that retitles its item still marks the file edited.
+
+    A title edit renames the file, and git reads a light one as a rename. Asked
+    with `--no-renames`, as every read of which paths a change touched is, git
+    lists both names, sorted, so where the new title sorts first the path the
+    walk keeps for the item is the one the branch deleted. Handed that path,
+    `_superseded` sees removals only - an edit the base already holds - and the
+    mark vanishes with nothing to say so; `_editing` finds the tip's copy by id
+    instead. A new title sorting after the old passes either way, so the order
+    is the point of the case (`PL-J16N`).
+    """
+    root = tmp_path / "repo"
+    old, new = "items/PL-0001-on-main.md", "items/PL-0001-a-narrower-title.md"
+    deciding = READY.replace("PL-B1B1", "PL-0001").replace(
+        "status: ready", "status: needs-decision"
+    )
+    (root / "items").mkdir(parents=True)
+    (root / old).write_text(deciding + "**Decision needed.** Which of two?\n", encoding="utf-8")
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-20T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-20T12:00:00+00:00",
+    }
+
+    def git(*args: str) -> str:
+        done = subprocess.run(
+            ["git", *args], cwd=root, check=True, capture_output=True, text=True, env=dated
+        )
+        return done.stdout
+
+    git("-c", "init.defaultBranch=main", "init", "-q")
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    git("checkout", "-qb", BRANCH)
+    git("mv", old, new)
+    retitled = (root / new).read_text(encoding="utf-8")
+    (root / new).write_text(
+        retitled.replace("title: A ready item", "title: A narrower title")
+        + "**Recommendation:** the first.\n",
+        encoding="utf-8",
+    )
+    git("add", "-A")
+    git("commit", "-qm", "PL-0001: narrow the question and recommend an answer")
+    git("checkout", "-q", "main")
+    # The premise, read from git rather than assumed. A heavier edit is a
+    # rewrite, listed as a deletion and an addition whatever is asked, and the
+    # case would then pass without ever meeting a rename.
+    assert git("diff", "--name-status", "-M", f"main...{BRANCH}").startswith("R")
+    assert git("diff", "--name-only", "--no-renames", f"main...{BRANCH}").split() == [new, old]
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"Its file is already edited on {BRANCH} (last commit 3 days ago)." in out
+    assert "IN FLIGHT" not in out
+
+
 def test_show_prefers_the_in_flight_mark_to_the_file_edit(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
