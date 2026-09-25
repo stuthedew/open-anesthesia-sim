@@ -144,6 +144,28 @@ def resolved(base: str) -> bool:
     return not isinstance(base, GuessedBase)
 
 
+def changed_path_args(subcommand: str, *args: str) -> list[str]:
+    """The argv for a read of which paths a change touched, a rename's two included.
+
+    `git diff`, `show` and `log` pair a deleted path with a similar added one and
+    print the pair as a rename, which under `--name-only` is the new name alone.
+    Measured on git 2.43.0, 2026-09-25: `git mv` of
+    `src/anesthesia_sim/core/alveolar.py` to `tools/`, committed, and both
+    `git diff --name-only <base>...HEAD` and `git show --name-only` print only
+    `tools/moved_core.py`. A read asking which paths the change touched then
+    misses the path it deleted, and `verify`'s protected-path audit passed that
+    branch as "none touched" while `arm`'s read of it listed the core file
+    (`PL-KR69`). `--no-renames` reports the rename as the deletion and the
+    addition it is, so every such read builds its argv here, and a new one cannot
+    leave the flag out by copying whichever spelling it found first.
+
+    A read asking which file is new (`--diff-filter=A`) or where a file came from
+    (`-M`, `--follow`) does not come here, because there the pairing is the
+    answer: a retitled item is not a new filing.
+    """
+    return [subcommand, "--no-renames", *args]
+
+
 def _asks_for_a_blob(args: list[str]) -> bool:
     """Whether the call names one path inside one revision, `<rev>:<path>`.
 
@@ -966,7 +988,7 @@ def _landing_split(
     landed: list[str] = []
     outstanding: list[str] = []
     for line in run(
-        ["diff", "--raw", "--no-renames", "--no-abbrev", fork_point, ref, "--"], root
+        changed_path_args("diff", "--raw", "--no-abbrev", fork_point, ref, "--"), root
     ).splitlines():
         # `:<src mode> <dst mode> <src blob> <dst blob> <status>\t<path>`. The
         # fields end at the first tab, and everything after it is the path -
@@ -1102,7 +1124,7 @@ def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Ru
     """
     superseded: set[str] = set()
     for chunk in _pathspec_chunks(paths):
-        output = run(["diff", "--numstat", "--no-renames", base, ref, "--", *chunk], root)
+        output = run(changed_path_args("diff", "--numstat", base, ref, "--", *chunk), root)
         if not answered(output):
             # Git did not answer for this chunk, so nothing in it has been shown
             # to be anything. Every path it named stays outstanding, which is
@@ -1214,7 +1236,7 @@ def change_landed(
     busiest files, met 48 candidates, held at none, in 1.1 s.
     """
     run = runner or _run_git
-    changed = run(["diff", "--name-only", "--no-renames", f"{commit}^", commit, "--"], root)
+    changed = run(changed_path_args("diff", "--name-only", f"{commit}^", commit, "--"), root)
     paths = tuple(line.strip() for line in changed.splitlines() if line.strip())
     if not paths:
         return None
@@ -1458,7 +1480,9 @@ def files_in_flight(
             sorted(
                 {
                     line.strip()
-                    for line in run(["diff", "--name-only", f"{base}...{name}"], root).splitlines()
+                    for line in run(
+                        changed_path_args("diff", "--name-only", f"{base}...{name}"), root
+                    ).splitlines()
                     if line.strip()
                 }
             )
@@ -2233,16 +2257,17 @@ def since_filed(
     text = run(
         [
             "--literal-pathspecs",
-            "log",
-            "--no-merges",
-            "--no-renames",
-            f"--since={filed.isoformat()} 00:00:00 +0000",
-            "--format=%x1f%H",
-            "-z",
-            "--name-status",
-            "HEAD",
-            "--",
-            *touches,
+            *changed_path_args(
+                "log",
+                "--no-merges",
+                f"--since={filed.isoformat()} 00:00:00 +0000",
+                "--format=%x1f%H",
+                "-z",
+                "--name-status",
+                "HEAD",
+                "--",
+                *touches,
+            ),
         ],
         root,
     )
@@ -2580,7 +2605,10 @@ def _cut_versions(
             {
                 version
                 for line in run(
-                    ["diff", "--name-only", f"{base}...{ref}", "--", f"{notes_dir}/"], root
+                    changed_path_args(
+                        "diff", "--name-only", f"{base}...{ref}", "--", f"{notes_dir}/"
+                    ),
+                    root,
                 ).splitlines()
                 if (leaf := line.strip().rsplit("/", 1)[-1])
                 and leaf not in on_base
@@ -2856,7 +2884,7 @@ def filed_with_work(
         if entry is None or item_id not in leading_ids(entry[1]):
             continue
         commit, subject = entry
-        changed = run(["show", "--format=", "--name-only", commit], root).split()
+        changed = run(changed_path_args("show", "--format=", "--name-only", commit), root).split()
         outside = tuple(path for path in changed if not path.startswith(prefix))
         if outside:
             found[item_id] = FilingCommit(
@@ -3163,7 +3191,7 @@ def _carried_work(revision: str, item_path: str, items_dir: str, root: Path, run
     direction the caller wants: an absent `pr` is a transcription still owed and
     a wrong one is a false provenance that nothing else will catch.
     """
-    listing = run(["diff", "--name-only", f"{revision}^", revision], root)
+    listing = run(changed_path_args("diff", "--name-only", f"{revision}^", revision), root)
     paths = [line.strip() for line in listing.splitlines() if line.strip()]
     if not paths:
         return False
@@ -3649,7 +3677,9 @@ def _changed_items(root: Path, base: str, items_dir: str, run: Runner) -> set[st
     """
     changed: set[str] = set()
     for revision in (f"{base}...HEAD", "HEAD"):
-        for line in run(["diff", "--name-only", revision, "--", items_dir], root).splitlines():
+        for line in run(
+            changed_path_args("diff", "--name-only", revision, "--", items_dir), root
+        ).splitlines():
             path = line.strip()
             match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1]) if path else None
             if match is not None:
@@ -3887,7 +3917,9 @@ def closed_by(
         )
 
     touched: dict[str, str] = {}
-    listing = run(["diff", "--name-only", f"{revision}^", revision, "--", items_dir], root)
+    listing = run(
+        changed_path_args("diff", "--name-only", f"{revision}^", revision, "--", items_dir), root
+    )
     for line in listing.splitlines():
         path = line.strip()
         name = path.rsplit("/", 1)[-1]
@@ -4342,6 +4374,10 @@ def _commits_by_landing(
     `\\x1e` opens each record so a subject containing a newline cannot be read
     as the start of another commit.
     """
+    # Not `changed_path_args`: each commit's paths are matched against
+    # `_landing_split`'s, which holds only the paths a change puts content at,
+    # so a rename's deleted side would match neither set and leave the commit
+    # unclassified (`PL-KR69`).
     output = run(["log", "--format=%x1e%H%x1f%s", "--name-only", f"^{base}", ref, "--"], root)
     found: list[OrphanedCommit] = []
     took_one_whole = False
@@ -4742,7 +4778,9 @@ def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> Ref
         ahead = run(["rev-list", "--count", f"{fork}..{name}"], root).strip()
         touched = [
             line
-            for line in run(["diff", "--name-only", fork, name, "--", prefix], root).splitlines()
+            for line in run(
+                changed_path_args("diff", "--name-only", fork, name, "--", prefix), root
+            ).splitlines()
             if line.strip()
         ]
         walked.append((name, int(ahead) if ahead.isdigit() else 0, len(touched)))
@@ -4818,8 +4856,8 @@ def working_paths(root: Path, *, runner: Runner | None = None) -> WorkingPaths:
     base = default_base(root, runner=run)
     found: set[str] = set()
     for args in (
-        ["diff", "--name-only", f"{base}...HEAD"],
-        ["diff", "--name-only", "HEAD"],
+        changed_path_args("diff", "--name-only", f"{base}...HEAD"),
+        changed_path_args("diff", "--name-only", "HEAD"),
         ["ls-files", "--others", "--exclude-standard"],
     ):
         found.update(line.strip() for line in run(args, root).splitlines() if line.strip())

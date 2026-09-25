@@ -1493,9 +1493,9 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
     so no value this could return would say "unread" (`PL-9RFP`).
     """
     if commits:
-        committed = _git(["show", "--name-only", "--format=", *commits], root)
+        committed = _git(vcs.changed_path_args("show", "--name-only", "--format=", *commits), root)
     else:
-        committed = _git(["diff", "--name-only", f"{base}...HEAD"], root)
+        committed = _git(vcs.changed_path_args("diff", "--name-only", f"{base}...HEAD"), root)
     working = _git(["status", "--porcelain"], root)
     paths = {line.strip() for line in committed.splitlines() if line.strip()}
     for line in working.splitlines():

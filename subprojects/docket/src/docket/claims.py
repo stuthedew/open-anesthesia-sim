@@ -120,6 +120,7 @@ from .vcs import (
     _unlanded_refs,
     _work_already_on_base,
     answered,
+    changed_path_args,
     default_base,
     leading_ids,
 )
@@ -861,13 +862,9 @@ def work_under_record(
         [
             "-c",
             "core.quotePath=false",
-            "log",
-            "--no-merges",
-            "--no-renames",
-            "--format=%x1e%H",
-            "--name-only",
-            f"{base}..{head}",
-            "--",
+            *changed_path_args(
+                "log", "--no-merges", "--format=%x1e%H", "--name-only", f"{base}..{head}", "--"
+            ),
         ],
         root,
     )
@@ -1064,19 +1061,18 @@ def _history(names: list[str], base: str, root: Path, run: Runner) -> list[_Comm
     pins it end to end.
     """
     output = run(
-        [
+        changed_path_args(
             "log",
             "--no-merges",
             "--author-date-order",
             "--reverse",
             "--raw",
             "--no-abbrev",
-            "--no-renames",
             _LOG_FORMAT,
             f"^{base}",
             *names,
             "--",
-        ],
+        ),
         root,
     )
     entries: list[tuple[list[str], list[str], list[str]]] = []

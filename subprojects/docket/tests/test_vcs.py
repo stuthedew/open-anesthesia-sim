@@ -2766,7 +2766,7 @@ def _cut_runner(
         if args[0] == "rev-list":
             return "onbase some/path\n"
         if args[0] == "diff" and "--name-only" in args:
-            ref = args[2].split("...")[-1]
+            ref = next(arg for arg in args if "..." in arg).split("...")[-1]
             return "".join(f"{path}\n" for path in notes.get(ref, []))
         if args[0] == "diff":
             ref = args[-2]
@@ -2906,7 +2906,7 @@ def _record_runner(
         if args[0] == "rev-parse":
             return "aaa111\n"
         if args[0] == "diff":
-            paths = committed if args[2].endswith("...HEAD") else uncommitted
+            paths = committed if any(arg.endswith("...HEAD") for arg in args) else uncommitted
             return "\n".join(paths)
         if args[0] == "ls-tree":
             return _tree_lines({path: path for path in listing})
@@ -3196,9 +3196,9 @@ def _landed_runner(
             return f"{behind}\t{ahead}\n"
         if args[:2] == ["rev-list", "--objects"]:
             return "\n".join(f"{oid} {path}" for oid, path in adds if oid in on_base)
-        if args[:2] == ["diff", "--raw"]:
+        if args[0] == "diff" and "--raw" in args:
             return "\n".join(f":000000 100644 {'0' * 40} {oid} A\t{path}" for oid, path in adds)
-        if args[:2] == ["diff", "--numstat"]:
+        if args[0] == "diff" and "--numstat" in args:
             # Every outstanding path still differs from the base's tip, which
             # is what a branch genuinely carrying work looks like.
             return ""
