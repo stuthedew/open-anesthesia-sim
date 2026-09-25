@@ -9,7 +9,7 @@ feature: review-hold
 touches: docs/items, src/anesthesia_sim
 added: 2026-09-25
 payoff: any wrong or misleading clinical value an unread merge put on screen since 2026-09-23 is found and filed, or the record says none was
-verify: grep -qF '**Reviewed.**' docs/items/PL-CBDX-*.md
+verify: grep -q '^\*\*Reviewed\.\*\*' docs/items/PL-CBDX-*.md
 not-delegable: the work is a read of merged diffs against the safety-critical standard; no command can prove a diff was read well, and the brief asks for a clean-context session on the strongest model
 ---
 
@@ -19,6 +19,6 @@ The owner's answer of 2026-09-25 under `PL-SQTR` confirmed that pull requests `b
 
 **Why it matters.** This is the one path by which an unread merge could have put a wrong or misleading clinical value on screen, and `CLAUDE.md`'s standard assumes a clinician could act on one.
 
-**Done when.** A fresh session, with a clean context and the strongest model, has read each such diff against `CLAUDE.md`'s safety-critical clinical-output standard and filed each finding with `bin/docket new`. It then adds a Reviewed section to this brief: one line per pull request read, with what it found, or that it found nothing.
+**Done when.** A fresh session, with a clean context and the strongest model, has read each such diff against `CLAUDE.md`'s safety-critical clinical-output standard and filed each finding with `bin/docket new`. It then adds a section to this brief whose first line is `**Reviewed.**` alone, followed by one line per pull request read, with what it found, or that it found nothing. The verify reads that line, anchored at the start of a line so it cannot match its own text in the frontmatter, which the first form did (caught by `make check`'s `--verify` sweep on 2026-09-25, before any push).
 
 **Generator check.** A one-off, from `PL-SQTR`'s owner-raised finding: a human step was skipped, and no record was misread.

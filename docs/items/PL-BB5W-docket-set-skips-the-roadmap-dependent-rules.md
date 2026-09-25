@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: defect
+feature: set-parity
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
