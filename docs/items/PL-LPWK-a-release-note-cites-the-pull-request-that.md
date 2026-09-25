@@ -84,3 +84,7 @@ Not recommended now: a check on the pull request that a closure's diff
 intersects the item's `touches` - the `PL-GJPD` reading moved before the
 merge. It would catch the split shape, but it rests on a declaration that
 drifts, and the same-commit rule and review carry that shape today.
+
+**Decided 2026-09-25: the second option, with the field's meaning stated**
+(project owner, 2026-09-25, ratified, with `PL-HMZZ`, over recording a second
+field and over preferring the oldest subject).

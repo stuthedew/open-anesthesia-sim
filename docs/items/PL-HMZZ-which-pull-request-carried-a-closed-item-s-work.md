@@ -132,6 +132,13 @@ says so. `PL-QNYF`: satisfied by the error rewrite in part 3. `PL-GJPD` and
 `PL-WG7Q`: defects in code this retires, dropped with the count above as the
 reason once it lands. `PL-XYQW` stays closed.
 
+**Decided 2026-09-25: record before the merge** (project owner, 2026-09-25,
+ratified, over commit-side recovery and over keeping the inference and closing
+this head spent). The build follows the recommendation above as written: the
+closing branch writes `pr:` while its pull request is open, the pull request's
+own required check refuses a closure without it, and the inference is retired
+with the count above as the evidence.
+
 **Done when.** The pull request that carried an item is recorded as a fact at
 a point that can record it, and the readers use that record. Or the owner
 decides inference stays, and this head is closed spent with that recorded.
