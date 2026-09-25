@@ -18,12 +18,14 @@ and made with `--only`, so nothing staged rides it.
 with `HELD_ELSEWHERE` and writes nothing where a live claim on another branch
 orders first - unless `--over` names that branch, or `HEAD` already contains
 that branch's tip, which is a continuation and is written as a takeover
-without being asked. It pushes only a branch with no upstream: a branch that
-has one may have a pull request open and armed, and a push would merge the
-claim away with the branch (`PL-QP9Z`). After a push it fetches again and
+without being asked. It pushes only a branch the remote does not have, and asks
+the remote itself rather than the clone's tracking ref (`PL-WX87`): a branch
+the remote has may have a pull request open and armed, and a push would merge
+the claim away with the branch (`PL-QP9Z`). After a push it fetches again and
 re-reads, because a claim pushed in the same minute is invisible until then;
 where that one orders first, the answer is `HELD_ELSEWHERE` and the line to
-yield by. A push that fails is `LOCAL_ONLY`, and says the claim is local.
+yield by. A push that fails, or a remote that cannot be asked, is `LOCAL_ONLY`,
+and says the claim is local.
 
 **Why writes go round the command's runner.** `vcs._run_git` reads exit 1 as
 git answering "no", and a failed push or fetch exits 1 too, so a write read
@@ -114,8 +116,17 @@ class _Branch:
     """The branch a claim or yield is written on, and what was learned checking it."""
 
     name: str
-    upstream: str
     remotes: frozenset[str]
+
+
+@dataclass(frozen=True)
+class _OnRemote:
+    """What the remote itself said of the branch, asked by `_on_remote`."""
+
+    #: The branch's tip there, or `""` where the remote has no such branch.
+    tip: str
+    #: git's words where the remote could not be asked, and `tip` then says nothing.
+    failed: str = ""
 
 
 #: The read-back a write is judged by, given the checkout, the fresh read, the ids
@@ -229,7 +240,8 @@ def claim(
         notes.append(f"{key}: {branch.name} already holds it first; nothing written for it")
     writing = [key for key in wanted if key not in already]
     if not writing:
-        unpushed = [key for key, made in already.items() if not _published(root, branch, made)]
+        remote = _on_remote(root, branch.name)
+        unpushed = [key for key, made in already.items() if not _published(root, remote, made)]
         if not unpushed:
             return Written(CLAIMED, tuple(notes))
         # An earlier run wrote the claim and could not push it; this run is
@@ -239,6 +251,7 @@ def claim(
             branch,
             unpushed,
             _head(root),
+            remote=remote,
             made_now=False,
             command="claim",
             now=now,
@@ -379,7 +392,7 @@ def _branch(
     """
     remotes = _remotes(root, run)
     name = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
-    empty = _Branch(name="", upstream="", remotes=remotes)
+    empty = _Branch(name="", remotes=remotes)
     if name in {"", "HEAD"}:
         return empty, (f"{command}: HEAD is detached; a claim names the branch it is on",)
     base = _head_name(default_base(root, runner=run), remotes)
@@ -402,7 +415,7 @@ def _branch(
             "would be read by the old rules and its trailers ignored; merge the default "
             "branch first",
         )
-    branch = _Branch(name=name, upstream=upstream, remotes=remotes)
+    branch = _Branch(name=name, remotes=remotes)
     problems: list[str] = []
     copies = _item_paths_on("HEAD", items_dir, root, run) if keys else {}
     for key in keys:
@@ -505,7 +518,7 @@ def _write(
     notes: list[str],
     check: _Check,
 ) -> Written:
-    """Commit, push where there is no upstream, and read the result back."""
+    """Commit, push where the remote has no copy of the branch, and read the result back."""
     command = "claim" if verb == "start" else "yield"
     paragraphs = [
         f"{', '.join(keys)}: {verb}",
@@ -525,6 +538,7 @@ def _write(
         branch,
         keys,
         _head(root),
+        remote=_on_remote(root, branch.name),
         made_now=True,
         command=command,
         now=now,
@@ -540,6 +554,7 @@ def _publish(
     keys: list[str],
     commit: str,
     *,
+    remote: _OnRemote,
     made_now: bool,
     command: str,
     now: datetime,
@@ -552,18 +567,42 @@ def _publish(
     **The remote's copy decides, not the tracking setting.** A branch pushed
     without `-u`, or checked out in a fresh container without tracking, has no
     upstream configured and can still carry an open, armed pull request, which
-    is the case the refusal to push exists for (`PL-QP9Z`).
+    is the case the refusal to push exists for (`PL-QP9Z`). Nor does the clone's
+    tracking ref decide, since it is not the remote's copy either: `remote` is
+    what the remote said when asked, and where it could not be asked nothing is
+    pushed and the answer is `LOCAL_ONLY`.
     """
     said = list(said)
     short = commit[:12]
     what = f"{', '.join(keys)}: {command} " + (
         f"written on {branch.name} as {short}" if made_now else f"{short} on {branch.name}"
     )
-    upstream = branch.upstream or _remote_copy(root, branch.name)
-    if upstream:
+    if remote.failed:
+        # A commit made just now is certainly local; one an earlier run made
+        # may already be on the remote, which is exactly what could not be asked.
+        seen = (
+            "It is local: no other session can see it."
+            if made_now
+            else "Whether an earlier run's push put it there is unknown too."
+        )
+        return Written(
+            LOCAL_ONLY,
+            (
+                *said,
+                f"{what}, and not pushed: `git ls-remote {REMOTE}` failed, so whether the branch "
+                "is on the remote, with a pull request a push could merge it away with, is "
+                f"unknown. {seen}",
+                *_indented(remote.failed),
+                f"  Push it with `git push --set-upstream {REMOTE} {branch.name}` once no pull "
+                "request on the branch is armed"
+                + (", or run this again." if command == "claim" else "."),
+            ),
+            commit,
+        )
+    if remote.tip:
         said.append(
-            f"{what}, and not pushed: the branch is on the remote as {upstream}, so a pull "
-            "request may be open on it and armed, and a push could merge it away. Disarm "
+            f"{what}, and not pushed: the branch is on the remote as {REMOTE}/{branch.name}, so "
+            "a pull request may be open on it and armed, and a push could merge it away. Disarm "
             "auto-merge if it is armed, then push."
         )
     else:
@@ -595,16 +634,35 @@ def _head(root: Path) -> str:
     return _git(["rev-parse", "HEAD"], root).out.strip()
 
 
-def _remote_copy(root: Path, name: str) -> str:
-    """`origin/<name>` where the remote has the branch, as of the last fetch, else `""`."""
-    found = _git(["rev-parse", "--verify", "--quiet", f"refs/remotes/{REMOTE}/{name}"], root)
-    return f"{REMOTE}/{name}" if found.code == 0 else ""
+def _on_remote(root: Path, name: str) -> _OnRemote:
+    """Ask the remote for the branch, rather than read the clone's copy of its last answer.
+
+    `refs/remotes/origin/<name>` is what some fetch last saw, and a fetch that
+    does not prune never deletes it - `claim`'s does not, deliberately, since
+    such a ref can be the only surviving copy of a deleted branch's work
+    (`vcs.fetch_remote`). The harness writes that ref at session start for a
+    branch nobody has pushed, sometimes with the tracking setting too, so read
+    as the remote's copy it kept every fresh session's claim unpushed and said
+    the branch was on the remote (`PL-WX87`).
+    """
+    ref = f"refs/heads/{name}"
+    asked = _git(["ls-remote", REMOTE, ref], root)
+    if asked.code != 0:
+        return _OnRemote(tip="", failed=asked.err.strip() or f"exit status {asked.code}")
+    # `ls-remote` matches a pattern against the tail of each ref, so the listing
+    # can hold refs other than the one asked for.
+    for line in asked.out.splitlines():
+        tip, _, listed = line.partition("\t")
+        if listed.strip() == ref:
+            return _OnRemote(tip=tip.strip())
+    return _OnRemote(tip="")
 
 
-def _published(root: Path, branch: _Branch, commit: str) -> bool:
-    """Whether the remote's copy of the branch already carries `commit`."""
-    remote = f"refs/remotes/{REMOTE}/{branch.name}"
-    return _git(["merge-base", "--is-ancestor", commit, remote], root).code == 0
+def _published(root: Path, remote: _OnRemote, commit: str) -> bool:
+    """Whether the branch's tip on the remote, as asked, already carries `commit`."""
+    if not remote.tip:
+        return False
+    return _git(["merge-base", "--is-ancestor", commit, remote.tip], root).code == 0
 
 
 def _recorded(root: Path, base: str, branch: _Branch, key: str) -> str:

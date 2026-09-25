@@ -485,6 +485,72 @@ def test_a_branch_on_the_remote_without_tracking_is_not_pushed_onto(
     assert remote.tip(BRANCH) == pushed != work.head()
 
 
+@pytest.mark.parametrize("upstream", [False, True], ids=["ref-only", "ref-and-upstream"])
+def test_a_stale_tracking_ref_for_a_branch_the_remote_lacks_is_pushed_through(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    upstream: bool,
+) -> None:
+    """The harness writes `refs/remotes/origin/<branch>` at session start for a branch nobody
+    has pushed, sometimes with the tracking setting too, and a fetch that does not prune keeps
+    it; read as the remote's copy, it left every fresh session's claim unpushed (`PL-WX87`).
+    """
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    work.git("update-ref", f"refs/remotes/origin/{BRANCH}", "HEAD")
+    if upstream:
+        work.git("branch", "-q", f"--set-upstream-to=origin/{BRANCH}")
+
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
+
+    out = capsys.readouterr().out
+    assert "and pushed" in out and "on the remote" not in out
+    assert remote.tip(BRANCH) == work.head()
+
+
+def test_a_claim_whose_branch_the_remote_deleted_is_pushed_again_not_reported_held(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The clone's tracking ref still carries the claim, and no other session can see it."""
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
+    claimed = work.head()
+    _git(remote.path, "update-ref", "-d", f"refs/heads/{BRANCH}")
+    capsys.readouterr()
+
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
+
+    assert "and pushed" in capsys.readouterr().out
+    assert remote.tip(BRANCH) == claimed == work.head()
+
+
+def test_a_remote_that_cannot_be_asked_leaves_the_claim_local_and_says_so(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Neither pushed blind nor said to be on the remote on the strength of the clone's ref."""
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    work.git("update-ref", f"refs/remotes/origin/{BRANCH}", "HEAD")
+    work.git("remote", "set-url", "origin", str(tmp_path / "gone.git"))
+
+    assert _claim(monkeypatch, work, "PL-B1B1", "--no-fetch") == claiming.LOCAL_ONLY
+
+    out = capsys.readouterr().out
+    assert "`git ls-remote origin` failed" in out and "It is local" in out
+    assert "on the remote as" not in out
+    assert _trailer(work, "Claim") == f"PL-B1B1 {BRANCH}"
+    claimed = work.head()
+
+    # The retry cannot say the claim is local: an earlier push may have put it there.
+    assert _claim(monkeypatch, work, "PL-B1B1", "--no-fetch") == claiming.LOCAL_ONLY
+
+    out = capsys.readouterr().out
+    assert "unknown too" in out and "It is local" not in out
+    assert work.head() == claimed
+
+
 def test_a_legacy_claim_shared_by_merging_the_holder_is_continued_not_tied(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

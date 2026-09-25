@@ -33,10 +33,11 @@ fetches, refuses with exit 3 and writes nothing where another branch holds the
 item first, and otherwise makes one empty commit - subject `<id>: start`, a
 `Claim: <id> <branch> <session>` trailer - with the attribution lines in the
 same paragraph, since git reads a trailer from the last paragraph alone and one
-added below it afterwards turns the claim into prose. On a branch with no
-upstream it pushes, fetches again and re-reads, so a claim another session
-pushed in the same minute is seen: exit 3 then prints the line to yield by, and
-exit 4 means the push failed and the claim is only in this checkout. Who holds
+added below it afterwards turns the claim into prose. On a branch the remote
+does not have yet it pushes, fetches again and re-reads, so a claim another
+session pushed in the same minute is seen: exit 3 then prints the line to yield
+by, and exit 4 means the push failed, or the remote could not be asked, and the
+claim is only in this checkout. Who holds
 an item is that recorded claim, read by `claims.holdings` (`PL-MB2W` § "Design
 round, 2026-09-24"), and not whatever shape the first push happens to take;
 `show`, `flight` and `next` answer from the same read, so a takeover or a yield
@@ -63,13 +64,14 @@ item picked up mid-session - one filed as housekeeping, or the item the first
 turned out to be waiting on - and a session named after one item is invisible
 under every other: `PL-HX5C` implemented `PL-W8XP` in full inside a session
 titled for other work, and `PL-N2PP`'s rider was seen by no guard until its
-push. On a branch that already has an upstream, `claim` commits and does not
-push, because a pull request may be open and armed and the push would merge the
-claim away with the branch (`PL-QP9Z`); it says so, and the claim rides your
-next push, made after disarming auto-merge if it is armed. The remote's copy of
-the branch decides that, not the tracking setting. Running `claim` again on an
-item the branch already holds writes nothing, and pushes a claim an earlier run
-could not.
+push. On a branch the remote already has, `claim` commits and does not push,
+because a pull request may be open and armed and the push would merge the claim
+away with the branch (`PL-QP9Z`); it says so, and the claim rides your next
+push, made after disarming auto-merge if it is armed. It asks the remote itself,
+so neither the tracking setting nor the tracking ref the harness writes at
+session start for a branch nobody has pushed decides that (`PL-WX87`). Running
+`claim` again on an item the branch already holds writes nothing, and pushes a
+claim an earlier run could not.
 
 **Taking over a dead claim is `bin/docket claim <id> --over <branch> --reason
 "..."`, and only on the owner's word or with `get_session` showing the holding
