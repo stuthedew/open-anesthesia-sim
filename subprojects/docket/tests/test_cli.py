@@ -3086,6 +3086,42 @@ def test_flight_ignores_a_branch_that_only_wrote_to_the_queue(
     assert "PL-K7QX" not in capsys.readouterr().out
 
 
+def test_files_in_flight_lists_both_names_of_a_rename(tmp_path: Path) -> None:
+    """Against real git: a branch that moves a file has changed the path it left.
+
+    git prints a rename as its new name alone, so the observed half of
+    `concurrent` told a session working in the old path that no branch had
+    touched it (`PL-KR69`). The fakes in `test_vcs.py` answer whatever they are
+    asked, so only a real checkout shows which names git prints.
+    """
+    root = tmp_path / "repo"
+    (root / "src").mkdir(parents=True)
+    (root / "src" / "moved.py").write_text("VALUE = 1\n")
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    git("checkout", "-qb", BRANCH)
+    (root / "tools").mkdir()
+    git("mv", "src/moved.py", "tools/moved.py")
+    git("commit", "-qm", "PL-K7QX move it")
+    git("checkout", "-q", "main")
+    report = vcs.FlightReport(branches=(vcs.Branch(name=BRANCH, item_id="PL-K7QX"),), base="main")
+
+    files = vcs.files_in_flight(root, report)
+
+    assert [entry.paths for entry in files.branches] == [("src/moved.py", "tools/moved.py")]
+
+
 def test_a_nested_store_reads_the_same_in_flight_answer_as_the_default(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

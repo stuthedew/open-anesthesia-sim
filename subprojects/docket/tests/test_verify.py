@@ -224,6 +224,31 @@ def test_editing_a_protected_path_is_rejected(tmp_path: Path) -> None:
     assert any("protected" in c.name and not c.passed for c in report.checks)
 
 
+@pytest.mark.parametrize(
+    "subject",
+    ["PL-K7QX move the core out", "move the core out"],
+    ids=["the item's own commits", "the branch diff"],
+)
+def test_moving_a_protected_file_out_is_rejected(tmp_path: Path, subject: str) -> None:
+    """`git mv` out of a protected path deletes a file from it (`PL-KR69`).
+
+    git prints a rename as its new name alone, so the audit read the move as one
+    file added under `tools/` and passed it as "none touched". Both of
+    `changed_paths`' reads are driven: the commits the item's id leads, and the
+    branch diff where no commit carries the id.
+    """
+    root = _repo(tmp_path)
+    (root / "tools").mkdir()
+    _git(root, "mv", "src/core.py", "tools/moved_core.py")
+    _git(root, "commit", "-qm", subject)
+
+    report = verify(root, _item(touches=("tools/moved_core.py",)), _config(), "HEAD~1")
+
+    protected = _check(report, "no protected path modified")
+    assert not protected.passed
+    assert "src/core.py" in protected.detail
+
+
 def test_editing_the_gate_is_rejected(tmp_path: Path) -> None:
     """Changing the thing that measures the work invalidates the measurement."""
     root = _repo(tmp_path)

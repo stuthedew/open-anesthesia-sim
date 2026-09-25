@@ -150,7 +150,16 @@ try:
     # cannot say", never as "there are no tags". `GitRunner` is borrowed for its
     # blob batch, which answers every tag's `pyproject.toml` from one process,
     # and `answered` for telling git's silence from an empty file.
-    from docket.vcs import DEFAULT_BRANCHES, GitRunner, answered, is_shallow, tags
+    # `changed_path_args` is borrowed so the close-out sweep lists a renamed
+    # file's old name, the one stale prose still cites (`PL-KR69`).
+    from docket.vcs import (
+        DEFAULT_BRANCHES,
+        GitRunner,
+        answered,
+        changed_path_args,
+        is_shallow,
+        tags,
+    )
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
@@ -4815,7 +4824,7 @@ CROWDED_TERM_LIMIT = 10
 
 
 def _changed_paths(root: Path, base: str) -> list[str]:
-    paths = _git(root, "diff", "--name-only", base)
+    paths = _git(root, *changed_path_args("diff", "--name-only", base))
     paths += _git(root, "ls-files", "--others", "--exclude-standard")
     return sorted(set(paths))
 
