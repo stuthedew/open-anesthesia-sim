@@ -60,7 +60,17 @@ from pathlib import Path
 
 from .claiming import REMOTE, _git
 from .claims import LAPSED, RELEASED, Hold, holdings
-from .vcs import Runner, _head_name, _remotes, _run_git, _Silences, answered, default_base, resolved
+from .vcs import (
+    Runner,
+    _head_name,
+    _remotes,
+    _run_git,
+    _Silences,
+    answered,
+    changed_path_args,
+    default_base,
+    resolved,
+)
 
 #: The four answers, each the first word of what `arm` prints.
 ARM = "arm"
@@ -194,9 +204,9 @@ def arm(
         return Verdict(UNKNOWN, branch=name, base=base, unread=(reason,))
 
     prefix = items_dir.strip("/") + "/"
-    # `--no-renames`, so a file moved into the store shows the deletion it
-    # made outside it, which a rename would print as one path under the store.
-    changed = run(["diff", "--name-only", "--no-renames", f"{base}...HEAD", "--"], root)
+    # Both sides of a rename, so a file moved into the store shows the deletion
+    # it made outside it, which a rename would print as one path under the store.
+    changed = run(changed_path_args("diff", "--name-only", f"{base}...HEAD", "--"), root)
     outside: tuple[str, ...] = ()
     if answered(changed):
         paths = {path for path in changed.splitlines() if path.strip()}
