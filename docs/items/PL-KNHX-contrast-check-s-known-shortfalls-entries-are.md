@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.5.11
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-06
 closed: 2026-09-24
+pr: 996
 verify: grep -q 'def test_a_shortfall_naming_no_declared_requirement_is_an_error' tests/unit/test_contrast_check.py && uv run pytest tests/unit/test_contrast_check.py
 ---
 

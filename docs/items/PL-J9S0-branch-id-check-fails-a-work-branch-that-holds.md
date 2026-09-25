@@ -6,11 +6,13 @@ effort: S
 status: done
 classes: defect
 feature: claim-record
+milestone: v0.5.11
 touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py, .claude/hooks/docket-branch-guard.sh, tests/unit/test_docket_branch_guard.py, docs/ARCHITECTURE.md, .claude/skills/docket/modes/capture.md, docs/items/PL-MB2W-who-holds-an-item-is-derived-by-every-reader.md, docs/items/PL-WX87-bin-docket-claim-reads-the-clone-s-remote.md
 blocked-by: PL-0TD9
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24
 closed: 2026-09-24
+pr: 991
 payoff: part of the claim record that ends PL-MB2W's generator: one recorded fact decides who holds an item
 verify: grep -qF 'this branch claims nothing' .claude/hooks/docket-branch-guard.sh && grep -q 'def test_a_work_branch_holding_no_claim_is_refused' tests/unit/test_branch_id_check.py && grep -q 'def test_a_claim_ordering_behind_another_live_claim_is_refused' tests/unit/test_branch_id_check.py && grep -q 'def test_a_legacy_commit_owes_no_claim' tests/unit/test_branch_id_check.py
 ---
