@@ -27,6 +27,24 @@ How the 09-19 risks are handled:
 
 Sources: https://code.claude.com/docs/en/claude-projects (fetched 2026-09-25); the evidence on coordination (Kim et al., arXiv:2512.08296: independent agents amplify errors 17.2x against 4.4x under central coordination, and lose 70% on sequential work) is why the plan runs two serial streams rather than one thread per item.
 
+**Stress test, 2026-09-25 (PL-P0FP): two lines for the instructions, and four riders for Stream B.** *Recommendation:* before the Project is created, add to the "Every thread" paragraph:
+
+```
+Claims: claim before opening any pull request. Run `git push -u origin HEAD`
+first, then `bin/docket claim`; if it prints "not pushed", run `git push`.
+`bin/docket flight` must then show your claim, or stop and tell me.
+Never commit to a branch whose pull request has merged: branch again from
+origin/main.
+```
+
+Why. `claim` exited 0 without pushing in PL-P0FP's own session (PL-1X56), and in simulation, with that session's real branch settings, it refused outright until the branch was pushed (PL-KX73). The trial's backstop, recorded claims, holds only for a pushed claim. A design thread pushes item files only. A claimed item-files-only pull request opens as a draft; one whose claim is not visible is armed by `bin/docket arm`. After such a pull request merges, `branch` and `arm` advise committing to the merged branch (PL-8BR0), and an answer recorded there never reaches main. That chain is inferred from the simulation's findings, not run end to end.
+
+Add to Stream B, one thread each:
+- PL-KR69 after PL-J16N: the same git rename-detection trap, in `verify.py` rather than `vcs.py`.
+- PL-KX73, PL-1X56 and PL-ZLJ9 before the PL-MB2W close-out: defects in the claim record it built.
+
+These touch the files Stream B changes, so a separate session would collide with it. They reach main with PL-P0FP's captures, which have to land before Stream B gets to them.
+
 **Setup.** One repository, `stuthedew/open-anesthesia-sim`. Environment: `Default` (the account's only one, created 2026-08-22), chosen explicitly, since threads otherwise start in a generic Anthropic-hosted one. Thread model Opus at high effort; coordinator effort low; the three design threads on Fable. The desktop app, for notifications (a browser shows only a dot).
 
 **Project instructions, verbatim** (Project settings > Memory > Project instructions):
