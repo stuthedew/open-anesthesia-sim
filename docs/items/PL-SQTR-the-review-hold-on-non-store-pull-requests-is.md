@@ -3,9 +3,11 @@ id: PL-SQTR
 title: The review hold on non-store pull requests is not delivering review - the owner armed many in the browser unread because the manual merge felt slow, and 22 more carry the API-armed signature, 11 of those touching src/, tests/, CLAUDE.md or .github/
 priority: P1
 effort: M
-status: needs-decision
+status: blocked
 classes: defect
+feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md
+blocked-by: PL-CBDX, PL-K6B2
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 ---
@@ -30,6 +32,8 @@ being clicked through. It did not settle these three.
 3. **Recommended, now and until 2 is decided:** keep arming item-only and docket-only pull requests as before, but read anything touching the simulator paths in 1 before arming it.
 
 Once decided, 1 and 2 become separate items.
+
+**Answered 2026-09-25** (project owner, 2026-09-25, ratified, over leaving the hold as it stands): all three. 1 is `PL-CBDX`, `safety` and on v0.6.0's frozen list. 2 is `PL-K6B2`, and the owner's yes lifts the generator pause for it (`PL-6Q9L`). 3 is `docs/maintainer.md` § "Read a simulator change before you arm it", which stands until `PL-K6B2` lands. This item stays open, blocked by the two, and closes when both have.
 
 **Done when.** The retrospective review is recorded, and the gate decision is taken and, if tiered, built with tests in `subprojects/docket/tests/`.
 
