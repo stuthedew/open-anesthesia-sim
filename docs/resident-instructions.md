@@ -98,6 +98,19 @@ stopping form could not: overshoot was bounded by the gap between natural
 breaks rather than by the cap, and `PL-H253`'s own author read 176,689 before
 looking. Still no mechanism, so there is still nothing to route it to.
 
+It was reshaped again on 2026-09-25, same number and moment and a different
+reset: push, then the owner types `/compact`, instead of a handoff the owner
+carries by pasting a prompt into a new session (`PL-YJG1`, ratified). The
+moment is unchanged, so the argument for residency is too. The edit replaces
+the handoff instruction and its 25,000-token rebuild figure, which `PL-W80S`'s
+measured floor of 81,048-115,320 had already falsified. The net growth, 543
+characters, is the one sentence on what compaction keeps and re-attaches:
+without it the next session to read the rule re-derives the objection that
+compaction drops detail, which is the objection this edit answers. Still no
+mechanism. The `SessionStart` `compact` hook the reset seemed to need is not
+built, because Claude Code 2.1.282 clears its loaded-rule set on compaction and
+a path-scoped rule re-attaches on the next matching read.
+
 The gate-scope bullet in that section was added on 2026-09-16 for the same
 reason and against a measured asymmetry. The stop-and-wait rule is stated once,
 bolded, at line 66; the cases that release it are stated four times — a note

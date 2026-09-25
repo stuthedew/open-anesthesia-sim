@@ -292,8 +292,10 @@ unresolved decision, wants the strongest available model at high effort, for
 both the change and the review of it. Say so before work starts — a model
 switch mid-session costs a cold cache.
 
-Recommend a **fresh session** when this one is long or was about something
-else. Give the exact line to paste, on its own:
+When this one is only long, the reset is in place: push, then ask for
+`/compact` (`CLAUDE.md` § "Session and tool-use efficiency", `PL-YJG1`).
+Recommend a **fresh session** when this one was about something else. Give the
+exact line to paste, on its own:
 
 ```text
 PL-K7QX Decide what the interface shows after a halted step

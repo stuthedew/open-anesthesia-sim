@@ -213,30 +213,37 @@ applies to routine iteration, never to skipping a check before a commit or
 before finishing.
 
 - Keep a session short and scoped to one topic; start a fresh one for an
-  unrelated topic rather than continuing or compacting a long one. **Hand off
-  at 150,000 tokens of spend — and check that budget before starting an item,
+  unrelated topic rather than continuing or compacting a long one. **Reset at
+  150,000 tokens of spend — and check that budget before starting an item,
   not on reaching it** (project owner, 2026-09-16; re-anchored from the
   absolute reading to spend 2026-09-21, ratified, over a budget that is mostly
   a budget on the apparatus and moves whenever the resident set does).
   *Spend* is what this session added over the context it started with;
   `python3 tools/context_reading.py` prints it from the session's own
   transcript. Read it as you pick up the next item, and if the item will not
-  fit in what is left, hand off instead of starting. **Not `get_session`:**
+  fit in what is left, reset instead of starting. **Not `get_session`:**
   `context_usage.used_tokens` is written at turn boundaries, so it never moves
   inside a turn and reads 0 before the first (`PL-W80S`, `PL-BZVY`). Checked
   before the spend the budget cannot be overshot, and work never started cannot
   be cut off half-done; as a stopping rule it was open to both, and the session
   that wrote it was already at 176,689 of context, an absolute reading, when
-  it first looked (`PL-NW76`). Past the budget
-  anyway — an item that ran long, or a design round holding its reasoning in
-  the conversation — **externalize before handing off**: the item,
-  `docs/WORKING_NOTES.md`, a pushed commit. The handoff keeps only what is on
-  disk and costs about 25,000 tokens to rebuild. Finish the item in hand, push
-  it, and say in your reply that you stopped for length rather than for the
-  work. This is the largest adherence lever the project has, and the reason
-  trimming these instructions is not: the resident set measured 2.5–5.6% of
+  it first looked (`PL-NW76`). **The reset is in place, not a new session**
+  (project owner, 2026-09-25, ratified, over a handoff the owner carries by
+  pasting a prompt into a new session, `PL-YJG1`): externalize what only the
+  conversation holds — the item, `docs/WORKING_NOTES.md` — commit and push it,
+  then ask the project owner to type `/compact`, which a session cannot run on
+  itself. Pushed first, compaction lands where a handoff did — the floor, a
+  summary, files re-read, with `CLAUDE.md` and unscoped rules re-injected and
+  path-scoped rules re-attaching on the next matching read — and keeps the
+  branch, claim and pull-request watch. That floor is 81,048–115,320 tokens,
+  not the 25,000 once written here. Past the budget anyway — an item that ran
+  long, or a design round holding its reasoning in the conversation — finish
+  the item in hand, reset the same way, and say in your reply that you stopped
+  for length rather than for the work. This is the largest adherence lever
+  the project has, and the reason trimming these instructions is not: the
+  resident set measured 2.5–5.6% of
   the 263k–519k contexts seven concurrent sessions were carrying on
-  2026-09-16, so no cut to it substitutes for ending the session (`PL-H253`).
+  2026-09-16, so no cut to it substitutes for resetting the session (`PL-H253`).
   Pick up cold from the session-start digest, `bin/docket next`, and the one
   item being worked — not by reading the queue whole.
 - Batch related questions, and related edits, into one turn.
