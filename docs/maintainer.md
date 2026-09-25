@@ -161,10 +161,14 @@ set it when the session opens rather than toggling it.
   `CLAUDE.md` tells sessions to delegate broad codebase search to them; a
   small, fast model is appropriate, because their transcripts stay out of the
   main context and what they return is verified against the source anyway.
-- Prefer starting a fresh session over compacting a long one. Compaction costs
-  a summarization pass and drops the detail this repository's provenance and
-  safety requirements depend on. `docs/items/` and `docs/WORKING_NOTES.md`
-  exist so a new session can pick up cold.
+- **A session asking you to type `/compact` is resetting at its budget**
+  (project owner, 2026-09-25, ratified, over pasting a handoff prompt into a
+  new session, `PL-YJG1`). It pushes everything first, so what the summary
+  drops is already on disk, and it keeps its branch, claim and pull-request
+  watch. `/compact` works in cloud sessions and takes optional focus text
+  (`/compact keep the open question about X`); `/clear` does not. Start a
+  fresh session for an unrelated topic instead: that is where a clean prompt
+  beats a carried conversation.
 
 ## Merge on the Mac or by auto-merge, never in the GitHub app
 

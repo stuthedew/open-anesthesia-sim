@@ -3,13 +3,14 @@ id: PL-YJG1
 title: Reset a session at the 150k spend budget by pushing its work and compacting in place, not by handing off to a new session through a pasted prompt
 priority: P2
 effort: S
-status: untriaged
+status: done
 classes: session-cost, docs
 feature: context-budget-reading
-touches: CLAUDE.md, docs/maintainer.md, docs/resident-instructions.md, .claude/skills/docket/modes/picking.md, tools/context_reading.py, docs/items/PL-H253-measure-session-context-length-as-the-dominant.md
+touches: CLAUDE.md, docs/maintainer.md, docs/resident-instructions.md, .claude/skills/docket/modes/picking.md, tools/context_reading.py, docs/ARCHITECTURE.md, docs/items/PL-H253-measure-session-context-length-as-the-dominant.md
 added: 2026-09-25
+closed: 2026-09-25
 payoff: A session that reaches its budget resets with one command the owner types, keeping its branch, claim and pull-request watch, instead of costing the owner a copy, a new session and a paste
-verify: grep -qF 'push it, then ask the project owner to type `/compact`' CLAUDE.md
+verify: grep -qF 'then ask the project owner to type `/compact`' CLAUDE.md
 ---
 
 **Problem.** The budget (`PL-H253`, `PL-NW76`, `PL-W80S`) resets a session by
@@ -79,5 +80,5 @@ it is corrected here.
 **Done when.** `CLAUDE.md` § "Session and tool-use efficiency" states the
 budget reset as push-then-`/compact`, with its figure corrected. Four files
 agree with it: `docs/maintainer.md`, `docs/resident-instructions.md`,
-`.claude/skills/docket/modes/picking.md` and `tools/context_reading.py`'s
-docstring. `PL-H253`'s citations say what their sources say.
+`.claude/skills/docket/modes/picking.md`, `tools/context_reading.py`'s
+docstring, and `docs/ARCHITECTURE.md`'s name for the budget. `PL-H253`'s citations say what their sources say.

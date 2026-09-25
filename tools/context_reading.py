@@ -34,7 +34,7 @@ single turn, while `get_session` held at 0 throughout.
 `baseline` is the first request of the session: the system prompt, the resident
 instruction set, the session-start digest, and any skill the harness loaded
 before the session did anything. The session did not choose it and cannot
-reduce it except by ending - and it is therefore also the floor a handoff
+reduce it except by ending - and it is therefore also the floor a reset
 restarts at, which is what makes it the interesting denominator rather than
 just an overhead.
 
@@ -43,9 +43,9 @@ just an overhead.
 `spend` is the difference: what this session has added by its own reading,
 searching and writing. It is the only one of the three the session controls.
 
-Which of them a budget should be stated against is `PL-W80S`, and is the
-project owner's. This script deliberately decides nothing - it prints the
-reading and stops, per `CLAUDE.md` § "Prefer deterministic tooling over
+Which of them the budget is stated against was `PL-W80S`'s question, and
+the project owner chose `spend` (2026-09-21). This script deliberately decides
+nothing - it prints the reading and stops, per `CLAUDE.md` § "Prefer deterministic tooling over
 repeated model work": the decidable half is finding the number, and the
 judgment half is what to do about it.
 
@@ -54,8 +54,11 @@ in `CLAUDE_CODE_SESSION_ID`, so it answers only for the session that runs it; a
 subagent's context is in a transcript of its own and is not counted here, which
 is correct, since a subagent's transcript never enters this context. After a
 compaction the series is not monotonic and `spend` measures from the session's
-original floor rather than from the post-compaction one - untested, since no
-compaction has been observed in a measured session.
+original floor rather than from the post-compaction one. That is the reading
+the budget wants, since `CLAUDE.md` now resets a session with `/compact`
+(`PL-YJG1`): what the compacted context holds above the floor it started at is
+what the next item has to fit beside. Untested, since no compaction has been
+observed in a measured session.
 
 Per `.claude/rules/apparatus-standard.md`, an answer here has to be true or has
 to say what it could not read: records that fail to parse, and assistant
