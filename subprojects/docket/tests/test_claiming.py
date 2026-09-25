@@ -320,10 +320,17 @@ def test_a_push_that_fails_exits_4_and_says_the_claim_is_local(
     assert remote.tip(BRANCH) == ""
 
 
-def test_a_branch_with_an_upstream_is_committed_and_left_for_the_session_to_push(
+def test_a_claim_left_unpushed_on_a_branch_the_remote_has_exits_4_because_no_other_session_sees_it(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Its pull request may be armed, and a push would merge the claim away with it."""
+    """The stress test's scenario i (`PL-1X56`): a captures-only push went first.
+
+    Its pull request may be armed, so the claim is not pushed onto it - and
+    until the session pushes, a second clone's read finds no hold, so the exit
+    is the one a failed push gives rather than the one a pushed claim gets.
+    Running `claim` again is not the retry it is after a failed push, since
+    the branch is still on the remote: it names the same push and exits 4.
+    """
     remote = _Remote(tmp_path)
     work = remote.clone("work", BRANCH)
     work.commit(
@@ -332,12 +339,23 @@ def test_a_branch_with_an_upstream_is_committed_and_left_for_the_session_to_push
     work.git("push", "-q", "-u", "origin", BRANCH)
     pushed = work.head()
 
-    assert _claim(monkeypatch, work, "PL-F4F4") == claiming.CLAIMED
+    assert _claim(monkeypatch, work, "PL-F4F4") == claiming.LOCAL_ONLY
 
     out = capsys.readouterr().out
-    assert "not pushed" in out and "Disarm auto-merge" in out
+    assert "not pushed, so only this checkout can see it" in out
+    assert "Disarm auto-merge" in out and f"git push --set-upstream origin {BRANCH}" in out
     assert remote.tip(BRANCH) == pushed != work.head()
     assert [hold.key for hold in holdings(work.root, now=T0 + HOUR).holds] == ["PL-F4F4"]
+    other = remote.clone("other")
+    assert holdings(other.root, now=T0 + HOUR).holds == ()
+
+    assert _claim(monkeypatch, work, "PL-F4F4") == claiming.LOCAL_ONLY
+
+    out = capsys.readouterr().out
+    assert "already holds it first" in out and f"git push --set-upstream origin {BRANCH}" in out
+    work.git("push", "-q")
+    other.git("fetch", "-q", "origin")
+    assert [hold.key for hold in holdings(other.root, now=T0 + HOUR).holds] == ["PL-F4F4"]
 
 
 def test_a_fetch_that_fails_refuses_before_anything_is_written(
@@ -438,7 +456,9 @@ def test_yield_ends_the_claim_and_refuses_one_the_branch_never_made(
 
     code = _docket(monkeypatch, work, "yield", "PL-B1B1", "--trailer", ATTRIBUTION, when=T0 + HOUR)
 
-    assert code == claiming.CLAIMED
+    # The claim's push put the branch on the remote, so the yield is left for
+    # the session to push, and exits 4 exactly as a claim left unpushed does.
+    assert code == claiming.LOCAL_ONLY
     assert work.git("log", "-1", "--format=%s").strip() == "PL-B1B1: yield"
     assert _trailer(work, "Yield") == f"PL-B1B1 {BRANCH}"
     assert _trailer(work, "Co-Authored-By") == "T <t@example.com>"
@@ -485,7 +505,7 @@ def test_a_branch_on_the_remote_without_tracking_is_not_pushed_onto(
     work.git("push", "-q", "origin", BRANCH)
     pushed = work.head()
 
-    assert _claim(monkeypatch, work, "PL-F4F4") == claiming.CLAIMED
+    assert _claim(monkeypatch, work, "PL-F4F4") == claiming.LOCAL_ONLY
 
     assert f"on the remote as origin/{BRANCH}" in capsys.readouterr().out
     assert remote.tip(BRANCH) == pushed != work.head()
@@ -531,7 +551,7 @@ def test_a_branch_tracking_the_default_branch_already_on_the_remote_is_given_its
     work.git("push", "-q", "origin", BRANCH)
     pushed = work.head()
 
-    assert _claim(monkeypatch, work, "PL-F4F4") == claiming.CLAIMED
+    assert _claim(monkeypatch, work, "PL-F4F4") == claiming.LOCAL_ONLY
 
     out = capsys.readouterr().out
     assert f"on the remote as origin/{BRANCH}" in out
