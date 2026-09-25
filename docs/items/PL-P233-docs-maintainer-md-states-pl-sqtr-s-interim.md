@@ -3,11 +3,12 @@ id: PL-P233
 title: docs/maintainer.md states PL-SQTR's interim review rule: read a pull request that changes the simulator paths before arming it, until PL-K6B2's tiered arm lands
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: review-hold
 touches: docs/maintainer.md
 added: 2026-09-25
+closed: 2026-09-25
 payoff: until the tiered arm lands, a pull request that changes the simulator is read before it is armed, so a simulator change cannot reach main on green CI alone
 verify: grep -qF '## Read a simulator change before you arm it' docs/maintainer.md
 ---

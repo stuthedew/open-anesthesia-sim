@@ -67,9 +67,9 @@ Order:
    Stream A: PL-8HSX, then PL-Q4DF, PL-XBV4, PL-PVW2 (PL-6P0F first) and
    PL-GPJ7, each build then its open members. PL-KR69 and the PL-B8HZ
    build are done.
-   Stream B: PL-FX5Q, PL-J16N, PL-KX73, PL-1X56, PL-ZLJ9, the PL-MB2W
-   close-out, the PL-HMZZ build and members with PL-979D, the PL-QHCW build and
-   members.
+   Stream B: PL-ZLJ9, the PL-MB2W close-out, the PL-HMZZ build and members
+   with PL-979D, the PL-QHCW build and members. PL-FX5Q, PL-J16N, PL-KX73
+   and PL-1X56 are done.
    Start the next thread in a stream only after the previous pull request
    merged. An untriaged item is triaged first, in the thread that takes it.
 
