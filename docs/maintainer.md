@@ -190,6 +190,8 @@ the measurements.
 - If the app is the only option, check the message behind its cog icon first.
 - `python3 tools/pr_body_check.py` still reports any body that goes missing,
   and `--recover` fetches it back from GitHub into `docs/pr-bodies/`.
+  `--compare` reports a body that landed but says something other than the
+  pull request, such as one edited after auto-merge was armed.
 
 ## Bring a stale base in when you merge, with Update branch
 
