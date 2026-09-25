@@ -1,10 +1,12 @@
 ---
 id: PL-P0FP
 title: Stress-test the workflow apparatus: multi-session simulation, adversarial inputs to the prose-reading checks, duplicate-definition audit and inflow forensics, and record what makes its defect inflow multiple per day
-status: untriaged
+status: done
 feature: workflow-stress-2026-09
 touches: docs/items, docs/stress-2026-09-25/evidence.tar.gz
 added: 2026-09-25
+closed: 2026-09-25
+verify: bin/docket feature exact-gates && bin/docket feature one-snapshot && bin/docket feature claim-integrity && bin/docket feature one-answer && bin/docket feature workflow-stress-2026-09 && grep -q '^root-cause-of: ' docs/items/PL-GPJ7-*.md && grep -q '^root-cause-of: ' docs/items/PL-XBV4-*.md && grep -q '^root-cause-of: ' docs/items/PL-PVW2-*.md && bin/docket show PL-2866
 ---
 
 **Problem.** Apparatus defects like PL-YSMV (a prose-reading gate refuses correct prose) and PL-X3NY (stranded cannot tell in-flight pull-request work from abandoned) arrive multiple times a day. The owner asked, 2026-09-25, for a stress test run without affecting `main`, and for what would make such defects occasional.
