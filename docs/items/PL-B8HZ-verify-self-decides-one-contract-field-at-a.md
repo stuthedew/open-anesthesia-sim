@@ -152,12 +152,12 @@ share a copy, and why "one copy" was the wrong altitude for the rule.
   branch's own widening declares. Advisory in `--self` as today; a delegated
   audit already refuses the edit.
 - `falsifies:` and `not-delegable:` - unchanged in code. `PL-TKFD`'s two open
-  cases are routes the rule implies, recorded there and in `close-out.md`.
+  cases are routes the rule implies, recorded there and in `.claude/skills/docket/modes/close-out.md`.
 - Tests: one per row of the table pinning which copy is read, on
   `test_verify.py`'s existing helpers, and the `PL-PZ6T` shape - the base
   commissions a failing test, the branch runs a passing grep - driving the
   printed correction. Docs: `Commission`'s docstring, `subprojects/docket/README.md`
-  § "Verification is scoped, not just green", and `close-out.md`'s "Two of the
+  § "Verification is scoped, not just green", and `.claude/skills/docket/modes/close-out.md`'s "Two of the
   four take an exemption" paragraph, each restated as the three kinds.
 
 **What it does to the members.** `PL-KSV2`, `PL-ZMGR`, `PL-K4R5` and `PL-YZJD`
