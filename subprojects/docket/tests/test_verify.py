@@ -351,6 +351,26 @@ def test_a_pytest_mark_skip_is_a_suppression(tmp_path: Path, shape: str, marker:
     assert suppression.lines == (marker,)
 
 
+def test_the_suppression_evidence_names_the_lines_it_omits(tmp_path: Path) -> None:
+    """Six added suppressions print five and count the sixth (`PL-7NKD`).
+
+    The sibling of the removed-assertion cap: the count said six while five
+    lines sat under it, and nothing named the one left out.
+    """
+    root = _repo(tmp_path)
+    markers = [f'@pytest.mark.skip(reason="broken {n}")' for n in range(6)]
+    tests = "".join(
+        f"\n\n{marker}\ndef test_{n}() -> None:\n    assert {n} == {n}\n"
+        for n, marker in enumerate(markers)
+    )
+    _work(root, "PL-K7QX silence six", "tests/test_thing.py", KEPT + tests)
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    suppression = _check(report, "no suppression added")
+    assert suppression.detail == "6 line(s)"
+    assert suppression.lines == (*markers[:5], "and 1 more line(s)")
+
+
 def test_suppression_ignores_prose(tmp_path: Path) -> None:
     """A release cut re-adds whole prose rows, and the check read them as code.
 
@@ -2915,6 +2935,51 @@ def test_a_file_this_interpreter_cannot_parse_is_read_line_by_line_and_named(
         )
         for line in check.lines
     )
+
+
+@pytest.mark.parametrize("parsed", [True, False], ids=["parsed", "line_by_line"])
+def test_the_removed_assertion_evidence_names_the_lines_it_omits(
+    tmp_path: Path, parsed: bool
+) -> None:
+    """Six dropped assertions print five and count the sixth, on either reading.
+
+    The count on the check's own line said six while five lines sat under it,
+    and nothing named the cap or the line it left out (`PL-7NKD`). A file the
+    parser reads is grouped by function and counts what left beyond the fifth;
+    one it cannot parse is read line by line, and that list stopped at five
+    in silence.
+    """
+    root = _repo(tmp_path)
+    tail = "" if parsed else "\n\ndef broken(:\n    pass\n"
+    pinned = "".join(f"    assert value == {n}\n" for n in range(6))
+    _work(
+        root,
+        "PL-K7QX pin six",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n" + pinned + tail,
+    )
+    _work(
+        root,
+        "PL-K7QX drop six",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    pass\n" + tail,
+    )
+
+    check = _assertions(root)
+
+    assert check.blocks
+    if parsed:
+        assert check.detail == "6 assertion(s)"
+        assert [line for line in check.lines if line.startswith("    was  ")] == [
+            f"    was  assert value == {n}" for n in range(5)
+        ]
+        assert "    and 1 more that left" in check.lines
+    else:
+        assert check.detail == "6 line(s) in a file read line by line"
+        assert [line for line in check.lines if line.startswith("tests/test_thing.py: ")] == [
+            f"tests/test_thing.py: assert value == {n}" for n in range(5)
+        ]
+        assert "and 1 more line(s)" in check.lines
 
 
 @pytest.mark.parametrize(

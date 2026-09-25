@@ -780,13 +780,29 @@ def removed_assertions(
     return AssertionAudit(tuple(absent), tuple(unparsed.items()), tuple(lines))
 
 
-#: How many functions the report prints, and how many assertions on each side
-#: of one. The counts on the check's own line are never capped.
+#: How many functions the report prints - or lines, where a check reads lines
+#: rather than functions - and how many assertions on each side of one. The
+#: counts on the check's own line are never capped, and a capped list ends by
+#: counting what it left out, so the count and the lines under it reconcile
+#: (`PL-7NKD`).
 SHOWN_FUNCTIONS, SHOWN_PER_SIDE, SHOWN_WIDTH = 5, 5, 140
 
 
 def _clip(text: str) -> str:
     return text if len(text) <= SHOWN_WIDTH else text[: SHOWN_WIDTH - 3] + "..."
+
+
+def _capped(lines: Sequence[str]) -> list[str]:
+    """The first `SHOWN_FUNCTIONS` of `lines`, then one line counting the rest.
+
+    A bounded display says it is bounded. A block printing five lines under a
+    count of six left the reader unable to tell which line was missing, and
+    reading it back took a `git show` per commit (`PL-7NKD`).
+    """
+    shown = list(lines[:SHOWN_FUNCTIONS])
+    if len(lines) > SHOWN_FUNCTIONS:
+        shown.append(f"and {len(lines) - SHOWN_FUNCTIONS} more line(s)")
+    return shown
 
 
 def _absence_lines(absence: FileAbsence, counted: Collection[str]) -> list[tuple[str, list[str]]]:
@@ -870,15 +886,15 @@ def assertion_check(
         shown += [label, *body]
     if len(groups) > SHOWN_FUNCTIONS:
         shown.append(f"and {len(groups) - SHOWN_FUNCTIONS} more function(s)")
-    by_line = 0
+    unfolded: list[str] = []
     for path, line in audit.lines:
         if declared and declared in line:
             folded += 1
             declared_lines.append(f"declared falsified, not counted: {line.strip()}")
         else:
-            by_line += 1
-            if by_line <= SHOWN_FUNCTIONS:
-                shown.append(f"{path}: {line.strip()}")
+            unfolded.append(f"{path}: {line.strip()}")
+    by_line = len(unfolded)
+    shown += _capped(unfolded)
     shown += [f"read line by line, not parsed: {path} - {why}" for path, why in audit.unparsed]
     parts = [f"{counted} assertion(s)"] if counted else []
     parts += [f"{by_line} line(s) in a file read line by line"] if by_line else []
@@ -2410,7 +2426,7 @@ def _check_item(
             "no suppression added",
             not suppressed,
             f"{len(suppressed)} line(s)" if suppressed else "none",
-            tuple(suppressed[:5]),
+            tuple(_capped(suppressed)),
         )
     )
 
