@@ -208,6 +208,43 @@ def test_the_command_is_told_it_is_running_underneath_docket_verify(tmp_path: Pa
     assert verify(root, _item(verify=probe), _config(), "HEAD~1").passed
 
 
+def test_a_nested_docket_check_from_verify_declines(tmp_path: Path) -> None:
+    """A `verify:` running `docket check --verify` does not replay the store under the audit.
+
+    `verify_item` set only `VERIFY_GUARD`, so such a command made `docket
+    verify` run every open item's command one level down (`PL-SHTR`). The store
+    here holds an item whose command leaves a file behind, so a sweep is seen
+    rather than inferred, and the same command run outside `docket verify` is
+    the control showing it would sweep.
+    """
+    root = _repo(tmp_path)
+    (root / "docs" / "items" / "PL-C3C3-leave-a-mark.md").write_text(
+        _stored("PL-C3C3", "Leave a mark", verify="touch swept")
+    )
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-C3C3 capture")
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 1\n",
+    )
+    source = Path(verify_module.__file__).resolve().parents[1]
+    # `; true` because this store's items carry only the fields the audit
+    # reads, so the nested check's exit reports them, and the file is the answer.
+    nested = f'PYTHONPATH="{source}" "{sys.executable}" -m docket check --verify; true'
+    swept = root / "swept"
+
+    subprocess.run(nested, shell=True, cwd=root, check=True, capture_output=True)
+    assert swept.exists()
+    swept.unlink()
+
+    report = verify(root, _item(verify=nested), _config(), "HEAD~1")
+
+    assert _check(report, "`verify:` command passes").passed
+    assert not swept.exists()
+
+
 def test_a_file_outside_touches_is_rejected(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     _work(root, "PL-K7QX stray edit", "tests/other.py", "x = 1\n")

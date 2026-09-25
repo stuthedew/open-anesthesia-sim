@@ -1972,9 +1972,7 @@ def commissioned_result(root: Path, base: str, commission: Commission, correctio
     working command for another, which is a different thing for a reviewer to
     look at than one that fails.
     """
-    status, _output = _run(
-        [commission.verify], root, shell=True, env={**os.environ, VERIFY_GUARD: "1"}
-    )
+    status, _output = _run([commission.verify], root, shell=True, env=_command_env())
     if status == 0:
         result = "passes on this tree"
     elif status == TIMED_OUT:
@@ -2538,7 +2536,7 @@ def _check_item(
         )
         return report
 
-    status, output = _run([item.verify], root, shell=True, env={**os.environ, VERIFY_GUARD: "1"})
+    status, output = _run([item.verify], root, shell=True, env=_command_env())
     lines = () if status == 0 else tuple(output.strip().splitlines()[-4:])
     # A rejection either way, and for opposite reasons, so the report says
     # which. "The command failed" sends a reviewer to look for the missing
@@ -2634,6 +2632,21 @@ LANDED_GUARD = "DOCKET_SKIP_LANDED"
 # `checks.py` refuses such a command outright, so this is what stands between a
 # store nobody has checked yet and a recursion the process table ends.
 VERIFY_GUARD = "DOCKET_IN_VERIFY"
+
+
+def _command_env() -> dict[str, str]:
+    """The environment `docket verify` runs an item's command in: both guards set.
+
+    `already_passing` has always set both on its children. `verify_item` set
+    only its own, so an item whose command runs `docket check --verify` made
+    the audit replay every open item's command one level down - 111 commands
+    and 87 s on the quality job - to answer a question about the store rather
+    than about the branch (`PL-SHTR`). The commissioned command that
+    `commissioned_result` runs beside a corrected one is the same kind of
+    child, so it takes the same environment.
+    """
+    return {**os.environ, LANDED_GUARD: "1", VERIFY_GUARD: "1"}
+
 
 # Long enough for a project's own suite, short enough that one wedged command
 # cannot hang `make check`. The timeout bounds a single command, so the figure
