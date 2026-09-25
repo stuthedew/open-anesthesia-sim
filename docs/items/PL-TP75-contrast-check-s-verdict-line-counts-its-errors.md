@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.5.11
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-24
 closed: 2026-09-24
+pr: 996
 payoff: A reader who stops at the contrast report's first line is never told a failing run has 0 errors
 verify: grep -q 'def test_a_run_failing_on_a_trace_alone_says_so_in_its_header' tests/unit/test_contrast_check.py
 ---

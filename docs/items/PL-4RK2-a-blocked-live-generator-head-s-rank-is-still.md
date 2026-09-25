@@ -6,10 +6,12 @@ effort: M
 status: done
 classes: defect
 feature: generator-identification
+milestone: v0.5.11
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - filed after the freeze by PL-QFWF's close-out (2026-09-24), and not safety or science; generator-machinery defect
 added: 2026-09-24
 closed: 2026-09-24
+pr: 997
 payoff: a live generator stays ranked, or is named as unranked, whatever shape its blockers take, and docket show stops telling the reader a blocked head is ranked itself
 verify: grep -q 'def test_a_blocked_live_head_whose_rank_reaches_no_startable_item_is_reported' subprojects/docket/tests/test_plan.py && grep -q 'def test_show_on_a_blocked_live_head_says_it_is_blocked_and_names_its_blockers' subprojects/docket/tests/test_cli.py
 impairs-generators: plan.generator_blockers passes a blocked live head's rank only to its direct open item blockers, so a head whose rank reaches no startable item through a chain or a milestone blocker is ranked by nothing and nothing says so; cmd_show and plan.placement_line meanwhile tell the reader the blocked head itself is on the tier
