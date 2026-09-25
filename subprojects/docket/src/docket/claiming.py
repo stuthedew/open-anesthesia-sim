@@ -19,9 +19,12 @@ with `HELD_ELSEWHERE` and writes nothing where a live claim on another branch
 orders first - unless `--over` names that branch, or `HEAD` already contains
 that branch's tip, which is a continuation and is written as a takeover
 without being asked. It pushes only a branch the remote does not have, and asks
-the remote itself rather than the clone's tracking ref (`PL-WX87`): a branch
-the remote has may have a pull request open and armed, and a push would merge
-the claim away with the branch (`PL-QP9Z`). After a push it fetches again and
+the remote itself rather than the tracking setting or the clone's tracking ref
+(`PL-WX87`): a branch the remote has may have a pull request open and armed,
+and a push would merge the claim away with the branch (`PL-QP9Z`). An upstream
+naming the default branch is how the web harness starts a session branch
+(`PL-KX73`), so it is not refused as pushing to another branch, and the push
+gives the branch its own. After a push it fetches again and
 re-reads, because a claim pushed in the same minute is invisible until then;
 where that one orders first, the answer is `HELD_ELSEWHERE` and the line to
 yield by. A push that fails, or a remote that cannot be asked, is `LOCAL_ONLY`,
@@ -387,6 +390,12 @@ def _branch(
     where `HEAD`'s tree predates the claim record - a commit made there is read
     by the old rules, which read no trailer at all.
 
+    A branch tracking the default branch is not pushing to one of another name.
+    It has no upstream of its own yet - `git checkout -b <branch> --track
+    origin/main` is how the web harness starts a session branch (`PL-KX73`) -
+    so it is read as having none, and the remote's copy decides whether the
+    claim is pushed.
+
     For `claim`, each id must be an item `HEAD` holds and at a status that does
     not release a claim the moment it is written.
     """
@@ -404,6 +413,8 @@ def _branch(
     upstream = run(
         ["for-each-ref", "--format=%(upstream:short)", f"refs/heads/{name}"], root
     ).strip()
+    if upstream and _head_name(upstream, remotes) == base:
+        upstream = ""
     if upstream and _head_name(upstream, remotes) != name:
         return empty, (
             f"{command}: {name} pushes to {upstream}, and a claim names one branch; "
@@ -565,12 +576,12 @@ def _publish(
     """Push where the remote has no copy of the branch, then read the result back.
 
     **The remote's copy decides, not the tracking setting.** A branch pushed
-    without `-u`, or checked out in a fresh container without tracking, has no
-    upstream configured and can still carry an open, armed pull request, which
-    is the case the refusal to push exists for (`PL-QP9Z`). Nor does the clone's
-    tracking ref decide, since it is not the remote's copy either: `remote` is
-    what the remote said when asked, and where it could not be asked nothing is
-    pushed and the answer is `LOCAL_ONLY`.
+    without `-u`, or checked out in a fresh container without tracking or
+    tracking the default branch, has no upstream of its own and can still carry
+    an open, armed pull request, which is the case the refusal to push exists
+    for (`PL-QP9Z`). Nor does the clone's tracking ref decide, since it is not
+    the remote's copy either: `remote` is what the remote said when asked, and
+    where it could not be asked nothing is pushed and the answer is `LOCAL_ONLY`.
     """
     said = list(said)
     short = commit[:12]
@@ -600,10 +611,14 @@ def _publish(
             commit,
         )
     if remote.tip:
+        # Named in full because a bare `git push` fails on a branch with no
+        # upstream of its own, and one still tracking the default branch sends
+        # it there, or is refused, depending on `push.default`.
         said.append(
             f"{what}, and not pushed: the branch is on the remote as {REMOTE}/{branch.name}, so "
             "a pull request may be open on it and armed, and a push could merge it away. Disarm "
-            "auto-merge if it is armed, then push."
+            f"auto-merge if it is armed, then push it with `git push --set-upstream {REMOTE} "
+            f"{branch.name}`."
         )
     else:
         pushed = _git(["push", "--quiet", "--set-upstream", REMOTE, branch.name], root)
