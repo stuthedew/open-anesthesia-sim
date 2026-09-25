@@ -51,3 +51,36 @@ resident growth too, so it names what it replaces.
 - The next compaction keeps the item ids in play, the sources cited and the
   routes refuted.
 - It also marks each carried conclusion as verified or inferred.
+
+**Evidence on what summaries lose, checked against the sources 2026-09-25.**
+- Anthropic's guidance: "overly aggressive compaction can result in the loss
+  of subtle but critical context whose importance only becomes apparent
+  later" (Rajasekaran P, et al., *Effective context engineering for AI
+  agents*, Anthropic Engineering, 29 Sep 2025,
+  https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents).
+- In book-length summaries, leaving things out is the main error, not making
+  them up:
+  - 2.1% (Claude 3 Opus) to 11.5% of claims were unfaithful;
+  - 52% to 84.6% of summaries were criticised for omitting important
+    information (Kim Y, et al., *FABLES*, COLM 2024, arXiv:2404.01261).
+- A running summary, updated chunk by chunk, made 840 coherence errors to
+  353 for hierarchical merging with GPT-4, and omission was the commonest
+  error in both. The running summary kept more detail, and for Claude 2 with
+  large chunks the gap vanished (Chang Y, et al., *BooookScore*, ICLR 2024,
+  arXiv:2310.00785).
+- For SWE-bench Verified agents (Lindenbauer T, et al., *The Complexity Trap*,
+  NeurIPS 2025 DL4C workshop, arXiv:2508.21433):
+  - LLM summaries made one model's runs 15% longer than hiding old tool
+    output, which the authors read as summaries masking failure signals;
+  - they cut another model's solve rate from 40.4% to 31.4%;
+  - hiding old tool output matched summarisation's solve rate at about half
+    the raw agent's cost.
+- A fresh prompt carrying the same information recovered nearly all of the
+  multi-turn loss, and restating it inside the conversation recovered only
+  part. The researchers assembled that prompt; no model wrote it (Laban P, et
+  al., arXiv:2505.06120).
+- Counterweight, from everyday chat without tools: user turns kept verbatim,
+  with assistant turns cut to one-sentence summaries, often matched full
+  context at about 8x less of it (Huang JY, et al., *Do LLMs Benefit From
+  Their Own Words?*, COLM 2026, arXiv:2602.24287). Claude Code's compaction
+  prompt keeps every user message too.
