@@ -614,8 +614,9 @@ def _publish(
                     *said,
                     f"{what}, but `git push` failed, so it is local: no other session can see it.",
                     *_indented(pushed.err),
-                    f"  Push it with `git push --set-upstream {REMOTE} {branch.name}`, or run "
-                    "this again.",
+                    # `yield` run again finds the claim ended and pushes nothing (`PL-NNLM`).
+                    f"  Push it with `git push --set-upstream {REMOTE} {branch.name}`"
+                    + (", or run this again." if command == "claim" else "."),
                 ),
                 commit,
             )
