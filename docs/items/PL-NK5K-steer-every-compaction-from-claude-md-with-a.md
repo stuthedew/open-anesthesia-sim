@@ -72,7 +72,7 @@ resident growth too, so it names what it replaces.
   NeurIPS 2025 DL4C workshop, arXiv:2508.21433):
   - LLM summaries made one model's runs 15% longer than hiding old tool
     output, which the authors read as summaries masking failure signals;
-  - they cut another model's solve rate from 40.4% to 31.4%;
+  - for the same model, they cut the solve rate from 40.4% to 31.4%;
   - hiding old tool output matched summarisation's solve rate at about half
     the raw agent's cost.
 - A fresh prompt carrying the same information recovered nearly all of the
