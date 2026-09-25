@@ -86,6 +86,23 @@ path turns out to wrap, and then say so in `tools/pr_body_check.py`'s module
 docstring, which today calls the squash body "the permanent commit message a
 reader of `main` meets".
 
+**Under `PL-979D`'s answer, 2026-09-25, whose form the owner recorded there
+the same day.** `PL-979D`'s answer (project owner, 2026-09-25,
+ratified) makes a copy recorded in the tree before the merge the permanent
+record, and its second design round recommends `docs/pr-bodies/<N>.md`,
+written by the session while the pull request is open and held by the pull
+request's own required check. Under that, the squash body on `main` is a
+derived copy, and its wrap is the plain-text form of a copy rather than damage
+to the record. So this item's three remedies resolve to the third, taken for a
+reason the brief did not have: no detector, no merge-path instruction, and no
+measurement of which path wraps, since the remedy no longer turns on it. The
+wrap was re-measured for that round at 166 of 248 tabled bodies on
+`origin/main`, and stands as the case for a backfill of the store, which
+`PL-979D` keeps as a separate decision. What remains of this item's "Done when"
+is the decision recorded where `tools/pr_body_check.py` describes the record,
+which the `PL-979D` build rewrites. Recommendation: close this item with that
+build, citing `PL-979D`, and start no work of its own.
+
 **Done when.** The wrapping path is named in this brief with the evidence that
 names it, and either merges through that path stop wrapping or the decision to
 accept the wrap is recorded where `tools/pr_body_check.py` describes the

@@ -139,6 +139,36 @@ the payload does not carry the armed subject, fall back to direction 2 rather
 than direction 3: retiring the claim reopens `PL-2XTF`, which wanted both
 halves deliberately.
 
+**Under the two answers of 2026-09-25 - a recommendation until the owner
+records `PL-979D`'s form.** Two heads answered on 2026-09-25 change the ground
+the three directions were weighed on. `PL-HMZZ` (project owner, 2026-09-25,
+ratified): the pull request that carried an item is written as `pr:` on the
+closing branch and refused by the pull request's own required check when
+absent, and the inference from squash subjects (`_merges_naming`,
+`_number_closing`) is retired. `PL-979D` (same date, ratified): the pull
+request's reasoning is a copy recorded in the tree before the merge, not the
+squash body. Together they take the provenance role away from the squash
+subject and body both: `docket check` no longer recovers a number from a
+subject, and the reasoning is no longer read from `main`'s message. The freeze
+then costs a `git log` reader a stale line and nothing else. So direction 3 -
+retire the gate's stronger claim - is the right one once the `PL-HMZZ` build
+lands, and the objection this brief raised against it, that it reopens
+`PL-2XTF`, is met: `PL-HMZZ` part 3 retires `PL-2XTF`'s recovery half
+deliberately, with the count that it costs nothing. Direction 1 would then
+guard a string nothing reads for provenance, and direction 2 already stands in
+`docs/maintainer.md` ("Auto-merge is safe when nothing sets its message").
+Recommendation: direction 3, taken inside the `PL-HMZZ` build's rewrite of
+`tools/pr_title_check.py`'s docstring, keeping the title check itself for the
+`git log` reader and `CLAUDE.md`'s leading-id rule; the body half of this item
+closes with the `PL-979D` build.
+
+**Decided 2026-09-25: direction 3** (project owner, 2026-09-25, ratified, over
+directions 1 and 2, on the two heads' answers above). Taken inside the
+`PL-HMZZ` build's rewrite of `tools/pr_title_check.py`'s docstring, which
+keeps the title check for the `git log` reader and `CLAUDE.md`'s leading-id
+rule and stops claiming to protect provenance; the body half closes with the
+`PL-979D` build. The thread that builds `PL-HMZZ` takes this item with it.
+
 **Done when.** A session that arms auto-merge and later renames a pull request
 either cannot land a stale subject, or is told at the moment it matters that it
 will - and whichever is chosen, `pr_title_check.py`'s docstring describes the
