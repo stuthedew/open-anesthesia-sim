@@ -947,13 +947,17 @@ def cmd_digest(args: argparse.Namespace) -> int:
 
 
 def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight | None:
-    """Which refs are mid-release, read only where a release is being offered.
+    """Which refs are mid-release, read only where the digest prints `Releasable:`.
 
-    Gated on the offer rather than run for every digest: it costs a walk of the
-    unlanded refs (measured 103 ms on this repository), and a session not being
-    offered a release has nothing to be warned off. It does not fetch - the
-    digest's hook already did, and this must stay answerable in a checkout with
-    no network.
+    Gated on `Readiness.is_worth_cutting` rather than run for every digest: it
+    costs a walk of the unlanded refs (measured 103 ms on this repository), and
+    a session shown no `Releasable:` line has nothing to be warned off. That
+    gate means there is finished work to cut, whether or not a version is free
+    to cut it at, so it is not the release offer: where the roadmap has
+    reserved the number a bump would reach, the line says `No release to offer`
+    and the walk still runs, which between milestones is the usual case
+    (`PL-FT3M`). It does not fetch - the digest's hook already did, and this
+    must stay answerable in a checkout with no network.
 
     A branch holding the release train with nothing cut yet is added beside the
     cuts (`_with_train`), so a session that has filed and claimed its release
