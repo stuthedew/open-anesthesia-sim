@@ -51,4 +51,4 @@ The three heads this test recorded (PL-GPJ7, PL-XBV4, PL-PVW2) are outside the t
 
 **Done when.** The owner has answered each part; for each yes, the text lands in `CLAUDE.md` and `.claude/skills/docket/SKILL.md`, recorded as specified or ratified per `CLAUDE.md`. Parts 2 and 3 are workflow rules written while the generator pause holds, so the owner's yes is what lifts it for them (PL-6Q9L), and the session writing them says so.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn`.
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz`.

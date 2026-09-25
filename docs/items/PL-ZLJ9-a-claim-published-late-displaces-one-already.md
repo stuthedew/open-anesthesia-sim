@@ -15,4 +15,4 @@ Reproduced (scenarios i2, a3): s1 captures and pushes, then `claim X` exits 0 wi
 
 **Done when.** A claim confirmed first-visible is never revoked by one published later; a test holds scenario i2.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

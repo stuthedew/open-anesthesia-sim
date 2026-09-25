@@ -18,4 +18,4 @@ The audit enumerated the questions the apparatus asks and found every implementa
 
 **Done when.** Each listed question has one implementation that every caller imports, with `tools/` importing `subprojects/docket/src` as `branch_id_check` already does; a test per question holds the disagreeing input.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

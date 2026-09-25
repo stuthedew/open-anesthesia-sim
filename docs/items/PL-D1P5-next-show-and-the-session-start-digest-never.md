@@ -15,4 +15,4 @@ Reproduced in the simulation (k, b): a stale `flight` reports merged work as liv
 
 **Done when.** Each command either reads after the snapshot's fetch or prints the age of the refs it read; decided together with PL-QSGX.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

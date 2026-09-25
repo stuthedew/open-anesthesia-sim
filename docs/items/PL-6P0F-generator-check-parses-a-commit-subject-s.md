@@ -16,4 +16,4 @@ Reproduced by importing both: `PL-4JHS backfill ... (#809)` gives `[PL-4JHS]` to
 
 **Done when.** generator_check imports the leading-id parse from docket (or `store.ID_PATTERN` plus the same separator grammar), and a test holds both reproductions.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

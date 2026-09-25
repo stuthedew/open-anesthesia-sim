@@ -15,4 +15,4 @@ Reproduced: `https://x-access-token:abc@github.com/o/r.git` gives None to open_p
 
 **Done when.** One slug parser and one token lookup, imported by all four.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

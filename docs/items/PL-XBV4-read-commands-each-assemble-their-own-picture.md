@@ -18,6 +18,6 @@ The simulation's violations V3, V4, V5, V7 and the cross-command audit's contrad
 
 **Done when.** One snapshot type (fetch result, origin/main vs working tree, refs, forge states open/merged/closed or unknown) built once per command and read by every read command, each of which prints what the snapshot rests on when it is not a fresh fetch; the members close against it and the regression suite item holds them.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
 
 **Added 2026-09-25: PL-HVLJ.** `doc_check` reads the tags git holds, fetched now, against `ROADMAP.md` in a working tree that is behind `origin/main`, so any branch errors the moment a release merges and is tagged. It fired on `PL-P0FP`'s own branch after `v0.5.11` (#1003) was tagged, filed 2026-09-21 and still open.

@@ -15,4 +15,4 @@ added: 2026-09-25
 
 **Done when.** Both citations name headings that exist; the check that makes bare `§` citations checked is the `exact-gates` head's work, not this item's.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

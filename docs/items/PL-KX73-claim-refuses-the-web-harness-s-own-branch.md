@@ -15,4 +15,4 @@ Confirmed read-only on this session's branch (`branch.claude/upbeat-heisenberg-2
 
 **Done when.** `claim` sets the branch's own upstream (or pushes with `-u`) when the upstream is the default branch, or prints the one command that does; a test holds scenario u.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

@@ -15,4 +15,4 @@ Reproduced twice, independently (by the audit and again by PL-P0FP's session in 
 
 **Done when.** Every changed-path read in the apparatus passes `--no-renames` (one helper); a regression test moves a core file out and the audit fails.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

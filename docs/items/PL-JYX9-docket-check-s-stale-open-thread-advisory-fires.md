@@ -15,4 +15,4 @@ Observed on every run of `docket check` in the stress test. `CLAUDE.md`: a check
 
 **Done when.** Either retired, or a thread can be acknowledged with a dated marker the advisory honours; decide which in the item.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

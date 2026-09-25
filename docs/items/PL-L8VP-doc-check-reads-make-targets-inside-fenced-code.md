@@ -15,4 +15,4 @@ Reproduced both. 107 make targets are checked in code spans, all real; 5 in fenc
 
 **Done when.** Fenced blocks are not scanned for make targets, or only lines that begin with `make `; a test holds both reproductions through a clean run.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

@@ -15,4 +15,4 @@ Reproduced four: a negated mention, a planned `tools/unit_suffix_check.py`, a de
 
 **Done when.** A documented marker, or a negation/plan cue read as an advisory rather than an error, lets these pass; a test holds each.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

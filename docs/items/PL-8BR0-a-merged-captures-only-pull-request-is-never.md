@@ -15,4 +15,4 @@ Reproduced (scenario f): capture, push, PR; `arm` says arm; squash-merge; fetch;
 
 **Done when.** A captures-only branch whose pull request merged is told to restart; the forge's merged state, where available, is the evidence; a test holds scenario f.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

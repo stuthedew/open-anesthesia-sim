@@ -15,4 +15,4 @@ Reproduced: exit 0 on both. The check tests the id's position, never that the id
 
 **Done when.** An id in a branch name or leading a subject must resolve in the store (base or branch copy); a test holds both reproductions.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

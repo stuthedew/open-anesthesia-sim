@@ -15,4 +15,4 @@ Reproduced 2026-09-25 with PR #1003 cutting v0.5.11: the digest said a release i
 
 **Done when.** `status` and `release --dry-run` read `cuts_in_flight`; a tag item whose tag exists on the remote is reported done or carries a `verify:` that says so.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

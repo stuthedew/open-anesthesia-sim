@@ -15,4 +15,4 @@ Reproduced: `in_queue` True, `work_under_record` False; `arm` says `hold - ... c
 
 **Done when.** One definition in claims.py that arming imports.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

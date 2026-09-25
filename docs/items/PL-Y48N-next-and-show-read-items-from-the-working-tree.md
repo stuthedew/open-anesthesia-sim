@@ -15,4 +15,4 @@ Reproduced (scenarios b, c, d): s2 branches; s1 claims X, closes it, is squash-m
 
 **Done when.** `next`/`show`/`claim` read the item's status from origin/main when it is newer than the working tree's, or say the working tree is behind; a test holds scenario b.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

@@ -15,4 +15,4 @@ Reproduced (scenario i, and 9 distinct instances across 6 seeded random runs): `
 
 **Done when.** An unpushed claim exits non-zero, or claim pushes; a test holds scenario i.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

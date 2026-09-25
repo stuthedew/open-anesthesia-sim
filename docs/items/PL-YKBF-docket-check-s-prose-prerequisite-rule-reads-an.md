@@ -15,4 +15,4 @@ Reproduced by the fuzz harness, and again by filing this item: its first draft q
 
 **Done when.** A negation cue before the id suppresses it; a test holds the reproduction.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

@@ -15,4 +15,4 @@ Reproduced live with PL-DRRG: `next` `Excluded, already in flight: PL-DRRG (live
 
 **Done when.** `show` on an id held only on a branch names the branch and how to read it.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

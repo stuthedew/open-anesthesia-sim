@@ -15,4 +15,4 @@ Reproduced by importing both. doc_check's comment says it reads the number "the 
 
 **Done when.** One parser, imported by all four.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

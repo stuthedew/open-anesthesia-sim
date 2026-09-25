@@ -15,4 +15,4 @@ Reproduced three, and a fourth by filing this item: its first title quoted the e
 
 **Done when.** Escaped brackets and indented code blocks are blanked before the delimiter scan; a test holds each through a clean run.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

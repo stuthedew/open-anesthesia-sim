@@ -15,4 +15,4 @@ Reproduced in a scratch branch holding its own claimed capture: digest `Filed on
 
 **Done when.** One predicate for 'only on a branch'; the digest names the session's own branch as here.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

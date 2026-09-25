@@ -15,4 +15,4 @@ Reproduced: a brief quoting the template in a fence, then carrying real sections
 
 **Done when.** Fenced blocks are blanked before the section scan; a test holds the reproduction.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

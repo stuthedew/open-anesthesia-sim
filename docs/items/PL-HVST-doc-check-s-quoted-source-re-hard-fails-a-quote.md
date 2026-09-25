@@ -15,4 +15,4 @@ Reproduced: an item quoting proposed wording as `` `CLAUDE.md`: "Hand off at 120
 
 **Done when.** Only `§` forms are hard errors; the other connectives are an advisory or not read; a test holds a quoted proposal through a clean run.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

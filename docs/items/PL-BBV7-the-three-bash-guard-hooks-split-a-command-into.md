@@ -15,4 +15,4 @@ Reproduced against `floor-interpreter-guard.sh` (plain `shlex.split`), `gate-sta
 
 **Done when.** One splitter shared by the three hooks; a test holds each reproduction.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

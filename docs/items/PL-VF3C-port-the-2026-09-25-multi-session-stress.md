@@ -15,4 +15,4 @@ The harness (`harness.py` in the evidence archive, one stdlib file) builds a bar
 
 **Done when.** The scenario matrix runs under `pytest` in the docket suite with each V1-V8 reproduction as a named test (xfail until its item closes), and a seeded random run is available behind a marker.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

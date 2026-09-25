@@ -18,4 +18,4 @@ The fuzz harness injected correct-but-tricky prose into real documents and ran e
 
 **Done when.** Every hard gate is an exact rule: recognition by explicit syntax (`§ "X"`, a front-matter field, a backticked path, the store's id grammar), with anything that needs wording to recognise demoted to an advisory; the members close or are dropped against that rule.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

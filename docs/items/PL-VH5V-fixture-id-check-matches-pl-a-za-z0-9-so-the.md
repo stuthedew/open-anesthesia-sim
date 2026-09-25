@@ -15,4 +15,4 @@ Reproduced both false refusals and both false passes. 42 `not-an-id` exemptions 
 
 **Done when.** The pattern is the store's own id grammar (`store.ID_PATTERN`); a test holds `PL-prefixed` and `PL-XXXX`.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

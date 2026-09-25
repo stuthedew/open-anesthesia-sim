@@ -15,4 +15,4 @@ Reproduced with one escaped pipe in a Symbol cell: the check reads the wrong col
 
 **Done when.** Escaped pipes are honoured when splitting; a test holds a cell containing `\|`.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).

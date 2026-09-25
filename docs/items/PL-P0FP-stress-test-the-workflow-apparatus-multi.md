@@ -30,4 +30,4 @@ Measured over the store on origin/main, 2026-09-15..25, by the inflow scripts in
 
 **Done when.** The findings are in the queue under the features `exact-gates`, `one-snapshot`, `claim-integrity`, `one-answer` and `workflow-stress-2026-09`, the three heads carry `root-cause-of:`, and the plan decision stands as its own item.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn`.
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz`.

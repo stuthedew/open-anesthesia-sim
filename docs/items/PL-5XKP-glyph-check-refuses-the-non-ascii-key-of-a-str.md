@@ -15,4 +15,4 @@ Reproduced both directions: `str.maketrans({"→": "->"})` fails; `f"{chr(0x2192
 
 **Done when.** A literal used only as a translation-table key is accepted, or the check documents why not; the `chr()` gap is recorded as known.
 
-Evidence: `docs/stress-2026-09-25/evidence.tar.gz` on `claude/upbeat-heisenberg-27vafn` (PL-P0FP).
+Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
