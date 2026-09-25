@@ -3865,8 +3865,9 @@ def cmd_claim(args: argparse.Namespace) -> int:
     Exit 3 means another branch holds one of them first, and exit 4 that the
     claim was written and did not reach the remote - its push failed, or the
     branch's copy on the remote meant none was tried - so only this checkout can
-    see it until the push the message names. Neither is a failure of the
-    command; each is a different next step.
+    see it until the push the message names, or that the remote could not be
+    asked whether it has the branch, so nothing was pushed. Neither is a failure
+    of the command; each is a different next step.
     """
     inv = _invocation(args)
     if inv.git is None:

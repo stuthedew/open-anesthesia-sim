@@ -26,8 +26,9 @@ remote's tip does not carry goes to `_publish` again, by `_published`.
 **Why it matters.** Until the lease runs out, seven days past the branch's
 last commit, every other session reads the item as held by a session that has
 stopped, and the rerun's exit 0 is what the yielding session reports. The same
-shape as `PL-1X56`, whose `claim` path exits 0 for a claim no other session
-can see; the recurrence line there is this filing.
+shape as `PL-1X56`, whose `claim` path exited 0 for a claim no other session
+could see until #1026; the recurrence line there is this filing. That fix
+reaches `_publish` alone, which the rerun returns before.
 
 **Already done.** `PL-WX87`'s branch stopped the failed-push message telling a
 yield to "run this again", since that pushes nothing; it names the push
