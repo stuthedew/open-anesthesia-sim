@@ -113,7 +113,20 @@ the field and carrying on is not a third (project owner, 2026-09-19, against
 the recommendation to confine the obligation to a measured cluster; `PL-4MPJ`).
 So this is a `docket new` only on the way to one of those two, never instead of
 one — which is the same shape `CLAUDE.md` gives a generator, and the reason a
-triage pass meeting such an item escalates it rather than banding it. A suggestion the step has not reached stays in the list, marked with
+triage pass meeting such an item escalates it rather than banding it.
+
+**Found in a product session under product focus, a head takes the second
+ending, after the product item** (project owner, 2026-09-25, ratified, over
+holding the ending for heads found in product work, `PL-2866`): finish the item
+unless the head blocks it, record the head, and end the reply with the prompt.
+While the Projects trial runs (`PL-NZC0`), the owner does not paste that prompt
+into a new session: the trial's Goal line keeps new heads out of scope, so the
+head waits for the trial's coordinator until the owner adds it to that line or
+the trial ends. The closing block's line for it is that choice, put with a
+recommendation. A head that blocks the product item takes either ending, as
+above.
+
+A suggestion the step has not reached stays in the list, marked with
 the milestone that places it, because hiding it would be a verdict the tool
 cannot support. Placement is read from the frozen list a milestone records and
 from the `(queue item …)` slot its `Required scope` entries declare in, never

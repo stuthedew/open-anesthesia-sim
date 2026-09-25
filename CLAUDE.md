@@ -67,6 +67,17 @@ and counts `impairs-generators:` items the rule does not name (`PL-CT07`). A
 request from the project owner lifts it for that request, and the session says
 so (`PL-6Q9L`).
 
+**Product focus, from 2026-09-25** (project owner, 2026-09-25, ratified, over
+a fix batch before the switch and over working each root cause in the owner's
+own sessions, `PL-2866`). A session given no particular work is a product
+session, and picks from `bin/docket next product`. An apparatus finding stops
+one only when it blocks it: a hard gate refusing correct work, a state answer
+that would lose or duplicate work, or a gap in a safety-floor guard. Any other
+is captured as always and the product item finished. Root causes are worked in
+parallel by the Projects trial's coordinator (`PL-NZC0`), not in the owner's
+sessions. It holds until the owner ends it, and ending it deletes this
+paragraph.
+
 ## Working with the project owner
 
 **The outcome is the requirement. An implementation sketched alongside it is
@@ -435,7 +446,11 @@ deviating from a described deliverable, not acting without one.
   answered. A *ranking* generator then takes one of exactly two
   endings: **fix it in this session, or end the reply with a ready-to-paste
   prompt that starts a fresh session on it.** Filing it and carrying on is not
-  a third — an item alone changes nothing. A spent one is ordinary work under
+  a third — an item alone changes nothing. **Found in a product session, it
+  takes the second, after the product item**, unless it blocks that item
+  (project owner, 2026-09-25, ratified, over holding the ending for heads found
+  in product work and over fixing each one here once the item is done,
+  `PL-2866`). A spent one is ordinary work under
   the capture rule above. Identifying one is judgment and stays a session's;
   what follows from it is not.
 

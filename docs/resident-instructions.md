@@ -540,3 +540,39 @@ the branch. Whether the sentence holds is measured rather than assumed.
 from branches cut after the sentence reached `main` - a session keeps the
 `CLAUDE.md` it launched with, so an older branch cannot test it - and that
 count decides whether the check is built.
+
+## Product focus, added 2026-09-25
+
+`CLAUDE.md` § "What this project is" now declares product focus from
+2026-09-25: a session given no particular work picks from `bin/docket next
+product`, an apparatus finding stops it only when it blocks it, and root causes
+go to the Projects trial's coordinator (`PL-NZC0`). § "A root cause of more
+than two items is pulled, not queued" gains one sentence: a head found in a
+product session takes the second of its two endings, after the product item.
+Both are the project owner's ratification of `PL-2866`'s fourth pass, which
+lifted the generator pause for them (`PL-6Q9L`).
+
+**The carrier test.** The blocking test fires when a finding arrives in the
+middle of product work, and nothing is read between the finding and the
+session deciding whether to stop for it. The generator sentence has to sit
+beside the rule it narrows, because that rule is resident and would otherwise
+be obeyed whole: a session that has just identified a live head holds the
+unamended endings, and the first of them is to fix it in this session. The pick
+itself belongs to `docket next`, so the skill carries it as well, in
+`SKILL.md`'s Implementation paragraph and
+`.claude/skills/docket/modes/picking.md`, and the trial-time
+detail - the head waits for the coordinator until the owner adds it to the
+trial's Goal line - lives there rather than here.
+
+**Why nothing is cut.** Nothing resident stated a focus, so nothing is
+superseded, and the generator sentence narrows a rule rather than replacing
+one. The owner asked for this text on 2026-09-25, which the growth advisory
+already names as an answer. And the paragraph is written to be removed: product
+focus holds until the owner ends it, and ending it deletes the paragraph.
+
+**What it costs and what would falsify it.** 975 characters. The blocking test
+is wrong if deferred apparatus defects bite product sessions more often than
+about 1 in 10 product items, the rate measured over 2026-09-15..25 (7 found
+during product work against 72 simulator items closed); `PL-RB9W` counts it on
+or after 2026-10-09. Where the root causes go is tested by the trial's own bar
+in `PL-NZC0`, which now carries the fallback if it fails.

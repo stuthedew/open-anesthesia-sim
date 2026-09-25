@@ -1,10 +1,12 @@
 ---
 id: PL-2866
-title: Decide how apparatus findings are worked while the owner's focus is product: capture all of them as now, but let a product session stop only for one that blocks it, and hold the generator ending for apparatus heads found in product sessions
-status: untriaged
+title: Decide how apparatus findings are worked while the owner's focus is product: capture all of them as now, let a product session stop only for one that blocks it, and hand root causes to the Projects trial's coordinator
+status: done
 feature: workflow-stress-2026-09
-touches: CLAUDE.md, .claude/skills/docket/SKILL.md
+touches: CLAUDE.md, .claude/skills/docket/SKILL.md, .claude/skills/docket/modes/picking.md, docs/resident-instructions.md, docs/items/PL-NZC0-a-claude-code-projects-trial-needs-project.md
 added: 2026-09-25
+closed: 2026-09-25
+verify: grep -q 'Product focus, from 2026-09-25' CLAUDE.md && grep -q 'Found in a product session, it' CLAUDE.md && grep -q 'docket next product. instead' .claude/skills/docket/SKILL.md && grep -q 'Found in a product session under product focus' .claude/skills/docket/modes/picking.md && grep -q 's fallback follows' docs/items/PL-NZC0-*.md && grep -q '## Product focus, added 2026-09-25' docs/resident-instructions.md && bin/docket show PL-RB9W && bin/docket show PL-2CPD
 ---
 
 **Problem.** Decide how apparatus findings are worked while the owner's focus is product: capture all of them as now, but let a product session stop only for one that blocks it, and hold the generator ending for apparatus heads found in product sessions
@@ -54,3 +56,5 @@ The three heads this test recorded (PL-GPJ7, PL-XBV4, PL-PVW2) are outside the t
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz`.
 
 **Decision** (project owner, 2026-09-25, ratified, over a separate fix batch before the switch, working each root cause in the owner's own session right after the product item, and holding the generator ending for heads found during product work): yes to all three parts of the fourth-pass recommendation above. Parts 2 and 3 are workflow rules written while the generator pause holds, and this yes lifts it for them (`PL-6Q9L`). Still to do: the text in `CLAUDE.md` and `.claude/skills/docket/SKILL.md`, each recorded as ratified. The title still describes the first pass's part 3, which held the generator ending; retitle it at close-out.
+
+**Done** (2026-09-25). The text landed as ratified. `CLAUDE.md` § "What this project is" declares product focus from 2026-09-25, with the blocking test and the coordinator; § "A root cause of more than two items is pulled, not queued" sends a head found in a product session to the second ending, after the product item. `.claude/skills/docket/SKILL.md`'s Implementation paragraph and `.claude/skills/docket/modes/picking.md` carry the pick and the trial-time wait. `PL-NZC0` carries part 2's fallback. `docs/resident-instructions.md` § "Product focus, added 2026-09-25" records the carrier test and why nothing is cut, 975 resident characters. Captured on the way: `PL-2CPD` (the digest's `Top:` line ignores product focus) and `PL-RB9W` (this item's falsifier, counted on or after 2026-10-09).
