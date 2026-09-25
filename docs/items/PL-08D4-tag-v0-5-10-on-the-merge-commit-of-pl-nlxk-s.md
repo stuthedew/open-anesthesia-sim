@@ -10,6 +10,7 @@ touches: docs/items/
 added: 2026-09-24
 payoff: v0.5.10 carries its annotated tag, so the next cut is not refused and git describe resolves across it
 not-delegable: Proving this means pushing a tag ref to the remote, which no session in this environment can do: PL-N936 measured the failure, a dry run reporting [new tag] and the real push dying on an unexpected disconnect
+recurrences: 2026-09-25 PL-HZWB
 ---
 
 **Problem.** Tag v0.5.10 on the merge commit of PL-NLXK's cut: the release is cut and only the project owner can push a tag ref from this environment
