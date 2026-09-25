@@ -22,8 +22,8 @@ without being asked. It pushes only a branch with no upstream of its own and
 no copy on the remote: a branch with either may have a pull request open and
 armed, and a push would merge the claim away with the branch (`PL-QP9Z`). An
 upstream naming the default branch is not the branch's own - it is how the web
-harness starts a session branch (`PL-KX73`) - so the push goes ahead there,
-and gives the branch one. After a push it fetches again and
+harness starts a session branch (`PL-KX73`) - so it does not stop the push,
+and the push gives the branch one. After a push it fetches again and
 re-reads, because a claim pushed in the same minute is invisible until then;
 where that one orders first, the answer is `HELD_ELSEWHERE` and the line to
 yield by. A push that fails is `LOCAL_ONLY`, and says the claim is local.
