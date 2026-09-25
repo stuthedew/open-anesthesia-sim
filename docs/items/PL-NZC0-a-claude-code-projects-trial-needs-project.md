@@ -97,3 +97,5 @@ request number, what you need from me, and any items filed.
 - any thread left in Waiting on you unseen for more than an hour;
 - anything Claude wrote to project memory, and whether it moved into the repository or was deleted;
 - the owner's decision whether the protocol becomes a committed docket skill mode, which is a new workflow mechanism and needs the generator pause ended or lifted.
+
+**If it fails either bar, `PL-2866`'s fallback follows** (project owner, 2026-09-25, ratified, over a pick rule that ends in a prompt the owner pastes): build the pick into `bin/docket next`, so that after a product item it offers the top startable root cause and after a root cause a product item, and the digest's top line is then the pick. That is a new workflow mechanism too, so it needs the generator pause ended or lifted, as the decision above does. Heads found in product sessions while the trial runs wait for it, outside its Goal line, until the owner adds them there (`CLAUDE.md` § "A root cause of more than two items is pulled, not queued").
