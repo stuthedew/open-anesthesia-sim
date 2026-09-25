@@ -5,6 +5,7 @@ status: untriaged
 feature: claim-integrity
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claiming.py
 added: 2026-09-25
+recurrences: 2026-09-25 PL-NNLM
 ---
 
 **Problem.** claim exits 0 for a claim no other session can see, printing 'not pushed', while a failed push leaving the same invisible state exits 4, and every claim made after a branch's first push takes that path
