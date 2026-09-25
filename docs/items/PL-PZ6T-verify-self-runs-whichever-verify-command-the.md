@@ -3,14 +3,14 @@ id: PL-PZ6T
 title: verify --self runs whichever verify: command the branch holds, so a close-out can replace a failing commissioned command with a weaker passing one and ACCEPT; the only trace is the front-matter NOTE every close-out prints, the one PL-KSV2 found readers skim
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: verify-close-out
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
-blocked-by: PL-B8HZ
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-23
 payoff: a close-out that rewrites the command proving its work can no longer turn that command's failure into ACCEPT
+verify: grep -q 'def test_a_rewritten_command_prints_the_commissioned_one_beside_it' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** verify --self runs whichever verify: command the branch holds, so a close-out can replace a failing commissioned command with a weaker passing one and ACCEPT; the only trace is the front-matter NOTE every close-out prints, the one PL-KSV2 found readers skim
@@ -27,13 +27,18 @@ the branch's own test passes. This is `CLAUDE.md`'s first compounding test, a
 check passing while its guarantee is void. It is already ranked, through its
 head.
 
-**Blocked on `PL-B8HZ`**, the live head that names this item in its
+[superseded 2026-09-25] **Blocked on `PL-B8HZ`**, the live head that names this item in its
 `root-cause-of:`. That head's design round sets one rule for which copy each
 contract field is read from. The owner's direction of 2026-09-23 was "I'd
 rather fix it right once, then fix it twice", recorded there. So fixing this
 field on its own would be the per-field choice that direction rules out. When
 the rule lands, this item is either done by it or becomes the small change that
 applies it to `verify:`.
+
+**Done when.** Where the base commissions a command and this branch's differs,
+`verify --self` runs both: the branch's decides the check, and the commissioned
+command and its exit are printed under it as a correction, so a rewritten
+command can no longer turn its predecessor's failure into a silent `ACCEPT`.
 
 **Generator check.** A re-entry of `PL-KSV2` (closed 2026-09-23) at a
 sibling site. `PL-KSV2` stopped a close-out that *deletes* its failing

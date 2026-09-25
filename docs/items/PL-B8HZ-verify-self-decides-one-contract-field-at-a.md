@@ -3,13 +3,14 @@ id: PL-B8HZ
 title: verify --self decides one contract field at a time whether to read the base's or the branch's copy of the item, so each field's wrong choice arrives as its own item - six so far, PL-PZ6T and PL-TKFD open
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect
 feature: verify-close-out
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
 payoff: One stated rule for which copy each contract field is read from, so a new field stops costing an item per wrong direction
+verify: grep -q 'def test_a_widened_touches_is_measured_against_the_commission_and_named' subprojects/docket/tests/test_verify.py
 root-cause-of: PL-KSV2, PL-PZ6T, PL-TKFD, PL-ZMGR, PL-K4R5, PL-YZJD
 generator: live - verify --self chooses the base's or the branch's copy one contract field at a time, and PL-PZ6T (verify:) and PL-TKFD (falsifies:) are still open; every further contract field needs its own choice
 misread: Which copy of an item, the base's or the branch's, is authoritative for each contract field

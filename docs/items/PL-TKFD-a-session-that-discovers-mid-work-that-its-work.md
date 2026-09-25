@@ -3,11 +3,12 @@ id: PL-TKFD
 title: A session that discovers mid-work that its work falsifies an assertion cannot declare falsifies: on the base, so verify --self has no clean route for the case the field was built for
 priority: P3
 effort: M
-status: needs-decision
+status: ready
 classes: infra
 feature: verify-close-out
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-17
+verify: grep -q 'A waiver is amended where the commission lives' .claude/skills/docket/modes/close-out.md
 ---
 
 **Problem.** A session that discovers mid-work that its work falsifies an assertion cannot declare falsifies: on the base, so verify --self has no clean route for the case the field was built for
