@@ -3,12 +3,14 @@ id: PL-ZLJ9
 title: A claim published late displaces one already confirmed first, because claims are ordered by commit author date rather than by when they became visible, and claim's retry path never asks whether a visible rival claimed in between
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: defect
 feature: claim-integrity
-touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claiming.py
+touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_claiming.py, subprojects/docket/README.md, .claude/skills/docket/modes/start.md
 deferred-from: v0.6.0 - filed 2026-09-25 by PL-P0FP's stress test, after the freeze, and not safety or science; a defect in the claim record's ordering, which merged after the freeze
 added: 2026-09-25
+payoff: a session told by claim's exit 0 that it holds an item keeps it: a claim written earlier but published later through claim yields instead of displacing it
+verify: grep -q 'def test_a_claim_confirmed_first_is_not_displaced_by_one_published_later_through_push' subprojects/docket/tests/test_claiming.py && grep -q 'def test_a_retry_withdraws_a_claim_a_rival_published_over_while_it_was_unpublished' subprojects/docket/tests/test_claiming.py
 ---
 
 **Problem.** A claim published late displaces one already confirmed first, because claims are ordered by commit author date rather than by when they became visible, and claim's retry path never asks whether a visible rival claimed in between
@@ -17,7 +19,7 @@ Reproduced (scenarios i2, a3): s1 captures and pushes, then `claim X` exits 0 wi
 
 **Why it matters.** Two sessions each told, in turn, that they hold the item: the duplicated-work failure the claim record exists to prevent.
 
-**Done when.** A claim confirmed first-visible is never revoked by one published later; a test holds scenario i2.
+**Done when.** `claim` publishes every claim itself, and an unpublished claim yields to any live rival already on the remote, so a claim confirmed first is never revoked by one published later through `claim`. A test holds scenario i2 with the late session publishing through `claim --push`, and a second holds scenario a3's retry. The residual, a stale claim published by a hand or work push, is recorded here rather than tested.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
 
@@ -39,3 +41,13 @@ Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
 - **B. A fence on the remote.** `claim` pushes the claim commit to a per-item ref, `refs/claims/<ID>`, with a compare-and-swap. The remote updates one ref atomically, so whoever creates it first holds the item, and no later push to a branch can move it. This closes i2 and a3 completely, the hand push included. Costs: new shared state on the remote with its own lifecycle (create on claim, delete on yield or close, compare-and-swap on takeover); every reader's ordering source changes; CI's checkout must fetch the namespace, since it fetches heads and tags today (`PL-J9S0`'s premise check); and it partly reverses the design's rule that a claim lives only on its holder's own branch. Unverified: whether GitHub and this environment's git proxy accept a push to a ref that is not a branch. Testing that writes to the repository outside a session branch, which needs the owner's word. Size L. It is not the dead end of an index committed beside the items: the ref cannot be recomputed from anything else, and refs are never merged.
 
 **Recommended: A.** It closes both scenarios wherever sessions do what `claim` tells them. What it leaves is the class of race the design already accepts, and `show` still gives every clone the same verdict on who yields, so the cost of the residual is a handover rather than two sessions both continuing. B is close to a one-way door. It builds shared remote state on a platform capability nobody has checked, to remove a residual that needs a session to ignore `claim`'s own message. Take B only if "never revoked" must hold whatever a session does, and then its first step is a push to a scratch ref, made only on the owner's say-so. Under A, the Done-when's "a test holds scenario i2" would read: a test holds i2 with the late session publishing through `claim --push`, a second holds a3's retry, and the hand-push residual is recorded here rather than tested.
+
+**Answered 2026-09-25 on the decision card in this item's project thread** (project owner, 2026-09-25, ratified, over the remote fence): route A, the claim-side fix. Before this answer the Done-when read: "A claim confirmed first-visible is never revoked by one published later; a test holds scenario i2." It now reads as the recommendation above said it would.
+
+**Build plan, recorded 2026-09-25 before a context reset.**
+
+- In `claiming.claim`'s per-key loop, where this branch's live hold orders first: if that hold's claim commit is not on `origin/<branch>` (`_published`), and a live rival on another branch has its claim commit on that branch's own remote copy, this branch does not hold the item. Write a `Yield:` for it on this branch, committed and not pushed, since it matters only once the stale claim is published and it rides that same push. Refuse the whole call, write no new claim, and exit 3 with a line naming the rival and the withdrawal commit. A rival that orders first by date is already refused by the existing rule, and a rival only in this checkout is not published, so neither is touched.
+- `claim --push`: on a branch the remote already has, push and read back as on a new branch. `claim`'s exit-4 "not pushed" message names `bin/docket claim <IDs> --push`, after disarming auto-merge, instead of `git push`. A failed push's message says to run `claim` again rather than push by hand. `yield`'s messages keep `git push`, because a yield published late displaces nobody.
+- Tests: the two `verify:` names, i2 with the late session publishing through `claim --push` and a3's retry, plus a `--push` happy path. Update the tests that assert `claim`'s old `git push --set-upstream` wording.
+- Docs: `start.md`'s claim paragraphs, since exit 4 now names `--push` and the race paragraph gains the new rule and the residual; `subprojects/docket/README.md`'s `claim` lines; `claiming.py`'s docstring.
+- Outside the repository: the project's claim protocol changes to claim before the first push, which is the owner's line to edit.
