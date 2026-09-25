@@ -3,11 +3,12 @@ id: PL-MB3F
 title: make check runs tools/doc_check.py under bare python3 while CI also runs it under uv's newer interpreter, and _docstrings silently skips a source file the running interpreter cannot parse, so on Python 3.11 a broken docs quotation in app/bookmarks.py or app_metadata.py passes make check and fails CI
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
-touches: tools/doc_check.py, tools/possessive_section_check.py, tests/unit/test_doc_check.py, .github/workflows/quality.yml, Makefile
+touches: tools/doc_check.py, tools/possessive_section_check.py, tests/unit/test_doc_check.py, .github/workflows/quality.yml, Makefile, tests/unit/test_possessive_section_check.py, tests/unit/test_tools_portability.py, tools/ruff.toml, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-23
+closed: 2026-09-24
 payoff: no source file goes unread by doc_check or the possessive-citation check without the run saying so
 verify: grep -q 'def test_a_source_file_the_running_interpreter_cannot_parse_is_reported_not_skipped' tests/unit/test_doc_check.py
 ---
@@ -84,3 +85,30 @@ the local gate and the merge gate differ, which is `PL-0HPV`'s `misread:`.
 `PL-0HPV` closed on 2026-09-22, the day before this was filed. So this is one
 instance of that head's fact after its close. One instance is not enough for
 anything more to follow.
+
+**Worked 2026-09-24: both, the switch included** (project owner, 2026-09-24,
+ratified, over reporting the skip alone as triage decided). The triage
+condition for switching was met on the first run rather than on most of them:
+under 3.11 the declined line names `app/bookmarks.py:451` and
+`app_metadata.py:92` every time, and it grows with each file that takes 3.12+
+syntax, which `ruff format` at `py314` writes on its own for a multi-exception
+`except`. A line that fires on every run is one nobody reads, and reporting
+alone left the possessive check reading neither file in either gate.
+
+- `doc_check._quoting_sources` takes the caller's declined list, and appends
+  one line per `.py` file it cannot parse or read. The line names the file and
+  the line where the parse stopped, the interpreter's version, and the
+  parser's message. `_docstrings` now takes a parsed tree. The possessive
+  check's `sites` takes the same list and prints it under "Not checked"; a
+  decline does not fail either tool. Each file is parsed as bytes, as Python
+  reads source, so a byte-order mark or a coding cookie is not declined.
+- `make check` runs both tools under `uv run python`, and `make doc-check`
+  runs `doc_check`, the only one it runs, the same way. CI's
+  floor section keeps both bare as the no-virtualenv proof, where they now
+  decline by name. CI's `uv run` group adds the possessive check beside
+  `doc_check`.
+- The comments and docs that said these tools read only Markdown, or that
+  `make check` runs `doc_check` bare, are corrected: `Makefile`,
+  `quality.yml`, `tools/ruff.toml`, `docs/ARCHITECTURE.md` and
+  `tests/unit/test_tools_portability.py`'s docstrings. `ARCHITECTURE.md` and
+  the portability docstring now name these two as the tools run both ways.
