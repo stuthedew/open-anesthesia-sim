@@ -37,8 +37,9 @@ carry a model-named co-author: 469 `Claude Opus 5`, 316 `Claude Opus 5.5`, 14
 (measured 2026-09-24 over `GET /pulls/N/commits`, and reproduced by an
 independent verifier).
 
-The cause is routing, not the absence of a check. No file a session reads
-before committing states the decision. The harness's own attribution reminder
+The cause is routing, not the absence of a check. Until `PL-SL16`
+(2026-09-24), no file a session reads before committing stated the decision;
+`CLAUDE.md` § "Name the work after the item" now does. The harness's own attribution reminder
 names `Co-Authored-By: Claude Opus 5.5`, and it yields to "a CLAUDE.md or
 memory rule". `PL-SL16` carries the evidence and the one-sentence fix.
 
@@ -54,12 +55,22 @@ depends on which harness happened to write each commit.
 **This item is the check that stands behind `PL-SL16`, and is built only if
 that sentence does not hold.** `CLAUDE.md` § "Prefer deterministic tooling over
 repeated model work" says a check earns its place every run or is retired. If
-`PL-SL16`'s re-count comes back at zero, this check would fire on nothing and
-should not be built. So `PL-SL16`'s done-when ends by writing that count here.
+the re-count below comes back at zero, this check would fire on nothing and
+should not be built. The re-count is this item's first step: `PL-SL16` closed
+on the sentence alone on 2026-09-24 and handed it here, because the count
+decides this item and a closed item cannot hold a step that waits.
 
 **Name the number before deciding.** Build only if model-named co-author lines
 persist on the branch commits of pull requests merged after `PL-SL16` lands.
-Drop this item on the evidence if they do not. The owner's rule says "any", so
+Drop this item on the evidence if they do not. Count only pull requests whose
+branch was cut from a `main` already holding the commit that closed `PL-SL16`
+(its `pr:`), tested as `git merge-base --is-ancestor <that commit> <parent of
+the branch's first commit>`: a session keeps the `CLAUDE.md` it launched with,
+so a branch cut earlier cannot test the sentence. Take the count once 30 such
+pull requests have merged; fewer is not a reading. Re-run `PL-SL16`'s census
+over their branch commits - `GET
+/repos/stuthedew/open-anesthesia-sim/pulls/N/commits`, co-author lines tallied
+by name - and write the count here. The owner's rule says "any", so
 any residue is a violation, but a check that refuses a pushed branch also costs
 a rewrite of that branch's commits. The session that reads the count weighs
 that cost against the residue it finds, and says which way it went.
@@ -181,7 +192,7 @@ the first design choice above has fixed which file that test lives in.
 
 **Done when.** One of two outcomes:
 
-- **Built.** `PL-SL16`'s count is written here and justifies the check. A pull
+- **Built.** The re-count above is written here and justifies the check. A pull
   request whose commits carry a model-named co-author, or a trailer outside
   `PL-XH1D`'s set, fails `pr-title`. The check has a test for each rule and one
   for a well-formed branch that passes.

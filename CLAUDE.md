@@ -494,7 +494,11 @@ deviating from a described deliverable, not acting without one.
   where the session creates it
   (`claude/pl-k7qx-short-slug`); a branch generated before the session started
   cannot be renamed, which is expected rather than a failure. Say in your reply
-  where you put the id.
+  where you put the id. **Every commit a Claude session makes ends with
+  `Co-authored-by: Claude <noreply@anthropic.com>` and never a model-named
+  co-author, whatever the harness's attribution reminder names**, since that
+  reminder yields by its own terms to a `CLAUDE.md` rule; a `Claude-Session:`
+  line may stay (project owner, 2026-09-24, restating `PL-B11M`).
 - **Commit and push as you go; the pull request arrives with the work**
   (project owner, 2026-08-31). The container is ephemeral, so an uncommitted
   thought is one interruption from gone and an unpushed commit dies with it.
