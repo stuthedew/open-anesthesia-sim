@@ -38,7 +38,10 @@ docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
 docket verify PL-K7QX --self # ...auditing your own branch, not reviewing a delegated one
 docket claim PL-K7QX         # record that this branch holds an item: one empty commit,
-                             # pushed where the remote has no copy of the branch yet
+                             # pushed where the remote has no copy of the branch yet;
+                             # a claim never pushed yields to one published since
+docket claim PL-K7QX --push  # ...publishing it where the remote has the branch,
+                             # once auto-merge is disarmed on its pull request
 docket claim PL-K7QX --over claude/x --reason "..."   # ...taking it over from a dead claim
 docket yield PL-K7QX         # end this branch's claim without closing the item
 docket arm                   # whether this branch's pull request may be armed:
