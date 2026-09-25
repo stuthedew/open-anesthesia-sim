@@ -1,9 +1,13 @@
 ---
 id: PL-NK5K
 title: Steer every compaction from CLAUDE.md with a Compact Instructions section, so the summary keeps the sources cited, the routes refuted, and which claims were verified
-status: untriaged
+priority: P3
+effort: S
+status: blocked
+classes: session-cost, docs
 feature: compaction-reset
-touches: CLAUDE.md
+touches: CLAUDE.md, docs/resident-instructions.md
+blocked-by: PL-GPJ7, PL-HMZZ, PL-MB2W, PL-PVW2, PL-QHCW, PL-XBV4
 added: 2026-09-25
 ---
 
@@ -41,10 +45,37 @@ what this project's design rounds produce.
 - A few lines would steer every compaction, manual or automatic, with no
   focus text typed.
 
+**Why it matters.** Compaction is now the routine reset (`PL-YJG1`), and
+automatic compaction runs whatever the rule says, so its summary carries
+whatever was not written down first. Externalize-first is what saved the
+measured case, and nothing checks that it was done. A few resident lines
+would make every summary keep what a design round produces and a summary
+drops first.
+
 **Held by the generator pause.** It is a new rule, and `CLAUDE.md` § "What
 this project is" holds those while any item carries `generator: live`. A
 request from the project owner lifts that for this item (`PL-6Q9L`). It is
 resident growth too, so it names what it replaces.
+
+**Blocked, confirmed at triage 2026-09-25.**
+- It is a new rule, not a defect in what exists. The measured compaction lost
+  nothing needed, so no current guarantee failed, and the section fixes no
+  generator. So it waits for the pause.
+- `blocked-by` names the six items carrying `generator: live` that day. The
+  pause's own test is `bin/docket generators` marking no head "still
+  generating". A head recorded spent while open, or a new live one, moves that
+  without touching this list, so check the command before unblocking
+  (`PL-RX3H`'s procedure).
+- Sequencing only. Building it sooner is the owner's call alone, made by
+  asking; a session never makes it.
+- Re-confirmed 2026-09-25 against 46954a81: `CLAUDE.md` holds no `Compact
+  Instructions` (0 matches). The installed Claude Code 2.1.282 binary still
+  carries the compaction prompt's "additional summarization instructions
+  provided in the included context", with `## Compact Instructions` as its
+  example.
+- **Generator check.** One-off: a proposal, not a misread. It shares a feature
+  with `PL-384P`, about what compaction carries across, but no fact any item
+  misread.
 
 **Done when.**
 - `CLAUDE.md` carries the section.
