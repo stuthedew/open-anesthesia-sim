@@ -87,11 +87,21 @@ from .store import ID_PATTERN
 # which is a reviewer's call and is now put in front of one. No prose line
 # matched in any suffix the check reads, `.toml`, `.cfg` and `.ini` included.
 #
-# Still unread, and absent from that history too: `pytest.importorskip`,
-# `unittest.expectedFailure`, `self.skipTest`, a raised `unittest.SkipTest` and
-# `collect_ignore` in a `conftest.py` (`PL-DNZ0`). A deselection in `addopts`
-# is configuration: in `pyproject.toml`, one of `gate_paths`' defaults, the
-# gate check reads it, and in a `.cfg` or `.ini` file nothing does.
+# The last six finish the family, drawn from the frameworks' documented ways to
+# skip, fail or ignore a test (`PL-DNZ0`): `importorskip`, which skips a module
+# whose import fails; `expectedFailure`, unittest's `xfail`; `skipTest`, its
+# imperative skip; `SkipTest`, the exception both frameworks skip on when it is
+# raised; and the two ways a `conftest.py` drops a file from collection - the
+# `collect_ignore` list, `collect_ignore_glob` included, and the
+# `pytest_ignore_collect` hook, whose words run the other way. Replayed on
+# 2026-09-25 over `main`'s 1,237 non-merge commits, of 1,354, the six match no
+# added line in any suffix the check reads: the names stood only on three
+# comment lines above this list, which `strip_non_code` blanks, and the list
+# before them still matches the one `bash` guard. `importorskip` is the one with
+# a common legitimate use, an optional dependency, and is put in front of a
+# reviewer as that guard is. A deselection in `addopts` is configuration: in
+# `pyproject.toml`, one of `gate_paths`' defaults, the gate check reads it, and
+# in a `.cfg` or `.ini` file nothing does.
 SUPPRESSIONS = (
     "typing.no_type_check",
     "xfail",
@@ -99,6 +109,12 @@ SUPPRESSIONS = (
     "@skip",
     "mark.skip",
     "unittest.skip",
+    "importorskip",
+    "expectedFailure",
+    "skipTest",
+    "SkipTest",
+    "collect_ignore",
+    "pytest_ignore_collect",
 )
 
 #: The same list as something a line can be matched against, anchored on the
@@ -111,9 +127,9 @@ SUPPRESSIONS = (
 #: wanted and would match only where a word character precedes it.
 #:
 #: Left only. The right-hand side is deliberately open, so `@skip` still finds
-#: `@skipif`, `mark.skip` finds `mark.skipif` and `unittest.skip` finds
-#: `skipIf` and `skipUnless`, each of which is the thing this looks for rather
-#: than a collision with it.
+#: `@skipif`, `mark.skip` finds `mark.skipif`, `unittest.skip` finds `skipIf`
+#: and `skipUnless`, and `collect_ignore` finds `collect_ignore_glob`, each of
+#: which is the thing this looks for rather than a collision with it.
 _SUPPRESSION_RE = re.compile(
     "|".join(
         (r"\b" if text[0].isalnum() or text[0] == "_" else "") + re.escape(text)

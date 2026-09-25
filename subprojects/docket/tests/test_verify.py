@@ -312,6 +312,12 @@ def test_a_suppression_is_still_found_after_a_word_character(tmp_path: Path) -> 
         ("imported", "@mark.skip"),
         ("module", 'pytestmark = pytest.mark.skip(reason="flaky")'),
         ("unittest", '@unittest.skip("broken")'),
+        ("importorskip", 'numpy = pytest.importorskip("numpy")'),
+        ("expectedFailure", "@unittest.expectedFailure"),
+        ("skipTest", 'self.skipTest("broken")'),
+        ("SkipTest", 'raise unittest.SkipTest("broken")'),
+        ("collect_ignore", 'collect_ignore = ["test_thing.py"]'),
+        ("pytest_ignore_collect", "def pytest_ignore_collect(collection_path, config):"),
     ],
 )
 def test_a_pytest_mark_skip_is_a_suppression(tmp_path: Path, shape: str, marker: str) -> None:
@@ -323,6 +329,13 @@ def test_a_pytest_mark_skip_is_a_suppression(tmp_path: Path, shape: str, marker:
     than `pytest.mark.skip` - the reason the assertion check matches a bare
     `raises`. `module` carries no `@` and disables a whole file, so it is what
     fails if the entry is ever anchored on the decorator.
+
+    The last six are the rarer forms, one case each (`PL-DNZ0`): `importorskip`,
+    `expectedFailure`, the imperative `skipTest`, a raised `SkipTest`, and the
+    `collect_ignore` list and `pytest_ignore_collect` hook a `conftest.py` drops
+    a file from collection with. The check reads a line's text and its file's
+    suffix, never whether the file is a `conftest.py`, so the two collection
+    forms sit in the same file as the rest.
     """
     root = _repo(tmp_path)
     _work(
