@@ -1,10 +1,16 @@
 ---
 id: PL-384P
 title: Files that compaction restores count as already read, so the first edit to one is written without its path-scoped rules, and a /compact typed after the cache hour re-reads the whole history at full price
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs, session-cost
 feature: compaction-reset
 touches: .claude/hooks/docket-digest.sh, CLAUDE.md, docs/maintainer.md, docs/items/PL-YJG1-reset-a-session-at-the-150k-spend-budget-by.md, tools/context_reading.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
+payoff: The first edit after a compaction is written with its file's rules loaded, including the simulator's provenance and domain rules under src/, and the owner knows when a late /compact costs a full-price read of the whole history
+verify: grep -q 'compact' .claude/hooks/docket-digest.sh && ! grep -qF 'Untested, since no compaction' tools/context_reading.py
 ---
 
 **Problem.** Measured on the first live use of `PL-YJG1`'s reset
@@ -59,6 +65,16 @@ added: 2026-09-25
 - But this session had been resumed after 15 idle minutes, just before
   `/compact`. One observation, cause unconfirmed.
 
+**Why it matters.** Since `PL-YJG1` every long session resets through
+`/compact`, and auto-compaction does the same unasked, so the first half
+recurs at every reset. The restored files are the ones the work in hand was
+editing, which makes an edit before any read the likely next step. Under
+`src/` that edit goes without `sources-and-docstrings.md` and
+`core-domain.md`, the rules carrying the simulator's provenance and domain
+bar, while `CLAUDE.md` tells the session they re-attach. The second half
+costs one uncached read of the whole history, 248,803 tokens at full price in
+the measured case, where the same read inside the cache hour bills at 0.1x.
+
 **Proposed fix.**
 - `.claude/hooks/docket-digest.sh`, on `source: compact`, prints one line:
   read a restored file again before editing it.
@@ -74,3 +90,29 @@ added: 2026-09-25
   compaction lands.
 - The owner guidance names the timing.
 - Both false claims are corrected.
+
+**Triage, 2026-09-25.**
+- Re-confirmed 2026-09-25 against 46954a81: `CLAUDE.md` still says
+  "path-scoped rules re-attaching on the next matching read"; `PL-YJG1` still
+  says "editing an existing file after compaction needs a fresh read anyway";
+  `.claude/hooks/docket-digest.sh` has no `compact` branch, and
+  `.claude/settings.json` registers it with no matcher, so every source gets
+  the same digest; `tools/context_reading.py`'s docstring still says
+  "Untested"; `docs/maintainer.md`'s `/compact` bullet names no timing. The
+  harness behaviour itself was not re-measured, since a subagent cannot
+  compact, so it stands as the filer's one observation on 2.1.282.
+- **Not held by the generator pause.** It corrects a defect in what exists,
+  which `CLAUDE.md` § "What this project is" exempts: two false claims in
+  `PL-YJG1`'s reset, and the hook `PL-YJG1` declined to build on the strength
+  of one of them ("The `SessionStart` `compact` hook this reset seemed to need
+  is therefore not built").
+- **It does not reopen `PL-YJG1`'s ratified route.** Push, then `/compact`,
+  stays the reset. The maintainer line states a cost the owner weighs at the
+  moment of typing. If the work finds the route itself should change, that is
+  ordinary evidence against a ratified decision, and it goes back to the
+  owner.
+- **Generator check.** One-off. The fact misread is an external behaviour:
+  which files Claude Code's compaction restores, and that they count as read
+  after `readFileState` is cleared. `PL-YJG1` read it from the binary once. No
+  head's `misread:` states anything about the harness, and nothing in the
+  store models it. `PL-NK5K`, in the same feature, misreads nothing.
