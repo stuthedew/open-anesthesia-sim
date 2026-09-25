@@ -1068,7 +1068,18 @@ the open items it is blocked on: each ranks on the tier with a reason line
 naming the head it unblocks, and `docket show` on it says the same (`PL-QFWF`).
 Only what the head holds passes, so a spent head's blockers rank on their
 bands, and only one edge down: a chain through a blocked blocker, or a head
-waiting on a milestone alone, still ranks nothing (`PL-4RK2`).
+waiting on a milestone alone, ranks nothing. Such a head is named instead of
+ranked (`PL-4RK2`). When no open item it is blocked on can be started or is in
+flight, `docket next` prints it under the list, with each blocker's state -
+a milestone's read from the roadmap, so a scoped one drops out as a closed
+item does - and any startable work at the far end of the chain. The chain is
+not followed automatically. Every edge past the first is a `blocked-by` written
+for sequencing, and nothing checks it for the rank it would now pass. So the
+remedy is a person writing that startable work into the head's own
+`blocked-by`, and the rank then passes there by the rule above. `docket show`
+on a blocked head says it is not ranked itself, and names the open blockers
+carrying its rank, or says that nothing is; `docket generators` says it is not
+on the tier itself.
 
 ### What newer work keeps outranking: `docket next --oldest`
 
@@ -1545,13 +1556,17 @@ writes the notes from the items themselves, and stops short of tagging.
 Generated notes cannot claim something the items do not, and nothing shipped
 goes unmentioned because whoever wrote them forgot it.
 
-**A release is the one change no in-flight guard can see.** Every guard here
-matches a `PL-` id — `flight`, `show`, `next`, `concurrent`, the digest,
-`branch_id_check` — and a release cut carries none by design. So the change
-that rewrites the version file, the lock file, the roadmap and a new notes
-file, which is the most collision-prone in the repository, is the only one
-nothing watches. Two sessions cut v0.3.7 within an hour that way, and the
-second one's whole release was discarded at the merge (`PL-66FP`).
+**A cut is the one change whose own commits no in-flight guard can see.**
+Every guard here matches a `PL-` id — `flight`, `show`, `next`, `concurrent`,
+the digest, `branch_id_check` — and a cut still carries none: it stamps other
+items' `milestone:`. So the change that rewrites the version file, the lock
+file, the roadmap and a new notes file, which is the most collision-prone in
+the repository, was the only one nothing watched. Two sessions cut v0.3.7
+within an hour that way, and the second one's whole release was discarded at
+the merge (`PL-66FP`). The id the guard reads now is the release item's: a
+release is filed with `new --resource release-train` and claimed, and that
+claim holds the release train (`resource:`, below), so a second session is
+refused when it files and again before it cuts (`PL-331V`).
 
 `release.already_released` closes the half of that which is *certain*.
 `vcs.released_on_base` reads the default branch's own version file and its
@@ -1576,7 +1591,8 @@ subtracts the notes the base already holds - without that subtraction the
 branch whose v0.3.9 release had merged twenty minutes earlier was still
 listed, and a guard that fires on every release after the first is one nobody
 reads. A ref `HEAD` contains is marked `mine` rather than reported, for the
-reason `Carrier.mine` gives.
+reason `Carrier.mine` gives - unless its branch holds the release train, which
+is decided by branch name, so merging a rival's branch does not hide it.
 
 `cmd_release` refuses on *any* unmerged cut, not only one of the version being
 written: two concurrent releases under different numbers is the worse case,
@@ -1586,8 +1602,8 @@ notes were written, because that is the only thing separating a live session
 from a branch nobody will merge, and leaves that judgment to the reader the
 way `flight` and `stranded` do.
 
-**And it fetches first**, which is the step without which neither question is
-worth asking. This is the rarest command here and the most expensive to get
+**And it fetches first**, which is the step without which none of these
+questions is worth asking. This is the rarest command here and the most expensive to get
 wrong, which is what makes one network read proportionate where the digest's
 would not be; `--no-fetch` is there for a caller that has already refreshed or
 cannot. The digest carries the same answer on its `Releasable:` line, computed
@@ -2612,6 +2628,27 @@ second store of queue state. Every debt capture during a freeze owed it an entry
 moved (`PL-59QW`), and a sentence saying an item was *absent* read as its
 disposition (`PL-58JD`). The field stays on an item after it closes, so the
 gate's deferral count does not shrink as its deferrals ship.
+
+### `resource:` names a shared thing the item's claim also holds
+
+```yaml
+resource: release-train
+```
+
+Optional, and one value from `model.RESOURCES`, of which the release train is
+the only one. A claim on an item carrying it holds the resource too:
+`claims.Holdings.holder` answers who does, read from the claiming branch's own
+copy of the item, so it takes effect with the claim rather than with a merge.
+`docket new --resource release-train "..."` files a release item stamped with
+it, and refuses (exit 3, nothing written) while a live claim elsewhere holds
+the train, or this branch already does; `docket set <id> --resource
+release-train` stamps an item filed without it, and the stamp is committed and
+pushed before it holds anything, since `holdings` reads the claiming branch's
+committed copy rather than the working tree. `docket release` refuses a
+rival holder and a branch holding no train claim, and the digest names a
+holder that has cut nothing yet instead of offering a release. `docket check`
+refuses any other value, because the match is exact and a misspelt resource
+would hold nothing.
 
 ### `milestone:` records where work went out, never where it is planned
 

@@ -27,6 +27,7 @@ import pytest
 
 from docket import cli, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
+from docket.claims import CUTOVER_MARKER, SESSION_VARIABLE
 from docket.cli import build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
@@ -80,6 +81,16 @@ def _no_inherited_guard(monkeypatch: pytest.MonkeyPatch) -> None:
     environment-dependent result the guard's own check exists to make visible.
     """
     monkeypatch.delenv(LANDED_GUARD, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _no_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the session running the suite from deciding `mine` for any claim read here.
+
+    `test_claims.py`'s fixture, for the release fixtures below that cut under a
+    claim: a claim's `mine` is decided by this variable where it carries a token.
+    """
+    monkeypatch.delenv(SESSION_VARIABLE, raising=False)
 
 
 def test_new_captures_several_ideas_in_one_call(
@@ -1482,12 +1493,57 @@ commit: abc1234
 """
 
 
+#: The release item every cut below is made under. Untriaged, so it changes no
+#: count a release test asserts: a cut ships finished work only.
+TRAIN_ITEM = """---
+id: PL-TR4N
+title: Cut the release
+status: untriaged
+resource: release-train
+added: 2026-08-01
+---
+
+**Problem.** Cut the release
+"""
+
+#: The branch those cuts are made from, named the way a session names one.
+TRAIN_BRANCH = "claude/pl-tr4n-cut-the-release"
+
+
+def _hold_the_train(root: Path, store: str = "items") -> None:
+    """Move `root` onto a branch whose live claim on a release item holds the release train.
+
+    `bin/docket release` refuses a branch holding no train claim (`PL-331V`),
+    so every fixture that cuts takes this step first, as release mode does.
+    The claim is the empty commit `claim` writes, made after the cutover marker
+    is in the tree so it is read by the current rules, and dated by the clock
+    so its lease is live when the command reads it.
+    """
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("checkout", "-q", "-b", TRAIN_BRANCH)
+    marker = root / CUTOVER_MARKER
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text("# the claim reader\n", encoding="utf-8")
+    (root / store / "PL-TR4N-cut-the-release.md").write_text(TRAIN_ITEM, encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "PL-TR4N: file the release")
+    git("commit", "-q", "--allow-empty", "-m", f"PL-TR4N: start\n\nClaim: PL-TR4N {TRAIN_BRANCH}")
+
+
 def _release_repo(tmp_path: Path, *tag_names: str, git: bool = True) -> Path:
     """A repository with one unreleased item, a version, and the tags given.
 
     `git=False` leaves it a plain directory, which is how a real `git tag
     --list` is made to fail: it exits 128 outside a repository, and how that
     exit is classified is half of what the refusal below is tested on.
+
+    With git, the checkout is left on `TRAIN_BRANCH` holding the release train,
+    and `main` is the base the tags sit on.
     """
     root = tmp_path / "repo"
     (root / "items").mkdir(parents=True)
@@ -1497,13 +1553,18 @@ def _release_repo(tmp_path: Path, *tag_names: str, git: bool = True) -> Path:
         return root
     # A real git checkout, built by running real git from `PATH`: the release
     # commands read tags and refs, so a stub would test the stub.
-    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
     for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
         subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)
     subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
     subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True, capture_output=True)
     for tag in tag_names:
         subprocess.run(["git", "tag", tag], cwd=root, check=True, capture_output=True)
+    _hold_the_train(root)
     return root
 
 
@@ -1563,7 +1624,10 @@ def test_a_cut_does_not_rename_the_files_it_stamps(tmp_path: Path) -> None:
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
 
     stamped = root / "items" / "done.md"
-    assert sorted(path.name for path in (root / "items").glob("*.md")) == ["done.md"]
+    assert sorted(path.name for path in (root / "items").glob("*.md")) == [
+        "PL-TR4N-cut-the-release.md",
+        "done.md",
+    ]
     assert "milestone: v0.2.6" in stamped.read_text(encoding="utf-8")
 
 
@@ -1596,12 +1660,16 @@ def test_a_release_the_default_branch_already_holds_is_refused(
     from git as git actually spells it.
     """
     root = _release_repo(tmp_path, "v0.2.5")
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
     notes = root / "docs" / "releases"
     notes.mkdir(parents=True)
     (notes / "v0.2.6.md").write_text("## v0.2.6\n", encoding="utf-8")
     subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
     subprocess.run(
         ["git", "commit", "-qm", "Release v0.2.6"], cwd=root, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "checkout", "-q", TRAIN_BRANCH], cwd=root, check=True, capture_output=True
     )
 
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
@@ -4341,6 +4409,7 @@ def _releasable_owed_clone(tmp_path: Path, *, subject: str = "PL-K7QX: close it 
     """
     work = _owed_clone(tmp_path, subject=subject, version="0.2.5")
     subprocess.run(["git", "tag", "v0.2.5"], cwd=work, check=True, capture_output=True)
+    _hold_the_train(work)
     return work
 
 
@@ -6819,6 +6888,7 @@ def _machinery_defect(tmp_path: Path, status: str) -> Path:
     [
         ("ready", "ranked on the generator tier - above every band but P0"),
         ("done", "closed, so on no tier - only an open item's claim ranks there"),
+        ("blocked", "blocked, so ranked nowhere until it can start"),
     ],
 )
 def test_show_says_a_machinery_defect_ranks_only_while_open(
@@ -6882,6 +6952,148 @@ def test_the_digest_says_why_a_blocker_of_a_blocked_head_leads_it(
     out = capsys.readouterr().out
     assert "Top: PL-F5F5" in out
     assert "unblocks generator PL-4040 - ranked above every band but P0" in out
+
+
+def test_show_on_a_blocked_live_head_says_it_is_blocked_and_names_its_blockers(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The head is startable by nothing, so the rank is its blockers' (`PL-4RK2`).
+
+    `show` said "ranked on the generator tier" of the head itself, and its
+    plan line that it ranks above every band, while `next` ranked the build
+    item and not the head.
+    """
+    store = _blocked_live_head(tmp_path)
+    (tmp_path / "pyproject.toml").write_text('version = "0.2.5"\n', encoding="utf-8")
+    (tmp_path / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+
+    assert _run("show", "PL-4040", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert (
+        "blocked, so not ranked itself - its rank, above every band but P0, passes to"
+        " the open items it waits on: PL-F5F5"
+    ) in output
+    assert "it is blocked, so it ranks nowhere until it can start" in output
+    assert "ranked on the generator tier" not in output
+    assert "- it ranks above every band but P0" not in output
+
+
+def _unranked_live_head(tmp_path: Path) -> Path:
+    """A live head behind a chain: its one blocker waits on startable work."""
+    return _store(
+        tmp_path,
+        _clustered(
+            "PL-4040",
+            "The shared refresh nobody owns",
+            names=_MEMBERS,
+            generator=_LIVE,
+            status="blocked",
+            **{"blocked-by": "PL-F5F5, v0.7.0"},
+        ),
+        _clustered("PL-B1B1", "A member of the cluster"),
+        _clustered("PL-C2C2", "Another member"),
+        _clustered("PL-D3D3", "A third member"),
+        _clustered("PL-F5F5", "The design round", status="blocked", **{"blocked-by": "PL-H1H1"}),
+        _clustered("PL-H1H1", "The startable work behind it"),
+    )
+
+
+def test_show_on_a_blocked_live_head_nothing_carries_says_it_is_ranked_by_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Naming the blockers is not enough where none of them can start."""
+    assert _run("show", "PL-4040", "--items", str(_unranked_live_head(tmp_path))) == 0
+
+    output = capsys.readouterr().out
+    assert (
+        "blocked, and ranked by nothing: it waits on PL-F5F5 (blocked), v0.7.0 (a milestone;"
+        " the roadmap was not read to say if scoped); startable or in flight behind them:"
+        " PL-H1H1."
+    ) in output
+    assert "write that work into the head's `blocked-by`" in output
+
+
+def test_next_names_a_live_generator_that_nothing_ranks(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The tier's silent failure, said where a session choosing work looks (`PL-4RK2`)."""
+    assert _run("next", "--items", str(_unranked_live_head(tmp_path))) == 0
+
+    out = capsys.readouterr().out
+    assert (
+        "A live generator that nothing ranks - blocked, and no item it waits on can start:" in out
+    )
+    assert "  PL-4040 (root cause of 3 items) waits on PL-F5F5 (blocked)" in out
+    assert "startable or in flight behind them: PL-H1H1" in out
+    assert "Not ranked above - a blocked head's rank passes one edge down" in out
+
+
+def test_next_is_silent_about_a_blocked_live_head_its_blockers_carry(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The recorded shape `PL-QFWF` fixed: the build item ranks, so nothing is lost."""
+    assert _run("next", "--items", str(_blocked_live_head(tmp_path))) == 0
+
+    assert "that nothing ranks" not in capsys.readouterr().out
+
+
+def _head_blocked_on(tmp_path: Path, blocked_by: str) -> Path:
+    """A live head whose `blocked-by` is exactly what is given, and its three members."""
+    return _store(
+        tmp_path,
+        _clustered(
+            "PL-4040",
+            "The shared refresh nobody owns",
+            names=_MEMBERS,
+            generator=_LIVE,
+            status="blocked",
+            **{"blocked-by": blocked_by},
+        ),
+        _clustered("PL-B1B1", "A member of the cluster"),
+        _clustered("PL-C2C2", "Another member"),
+        _clustered("PL-D3D3", "A third member"),
+    )
+
+
+def test_next_says_a_scoped_milestone_no_longer_holds_an_unranked_head(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Read from the roadmap, as `docket check` reads it, not assumed unscoped."""
+    store = _head_blocked_on(tmp_path, "v0.4.0")
+    (tmp_path / "pyproject.toml").write_text('version = "0.2.5"\n', encoding="utf-8")
+    (tmp_path / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+
+    assert _run("next", "--items", str(store)) == 0
+
+    out = capsys.readouterr().out
+    assert (
+        "PL-4040 (root cause of 3 items) waits on nothing still open: every blocker its"
+        " `blocked-by` names has closed or been scoped"
+    ) in out
+    assert "not yet scoped" not in out
+
+
+def test_next_does_not_say_the_blockers_closed_of_a_head_naming_only_itself(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`docket check` refuses the shape; until it is repaired, `next` must not misdescribe it."""
+    assert _run("next", "--items", str(_head_blocked_on(tmp_path, "PL-4040"))) == 0
+
+    out = capsys.readouterr().out
+    assert "names no blocker in its `blocked-by` but itself" in out
+    assert "has closed" not in out
+
+
+def test_generators_says_a_blocked_live_head_is_not_on_the_tier_itself(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The same claim `show` stopped making, on the cluster summary (`PL-4RK2`)."""
+    assert _run("generators", "--items", str(_blocked_live_head(tmp_path))) == 0
+
+    out = capsys.readouterr().out
+    assert "still generating, but blocked, so not on the tier itself" in out
+    assert "still generating, so on the tier" not in out
 
 
 def test_generators_does_not_say_a_closed_machinery_defect_ranks(

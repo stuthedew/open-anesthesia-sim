@@ -21,6 +21,7 @@ from typing import Any
 
 from . import arming, claiming, instructions, notes, render
 from .checks import Report, SettingsSource, analyze, brief_contradictions
+from .claims import BY_STATUS, BY_YIELD, LAPSED, LIVE, Hold, Holdings, holdings
 from .concurrency import (
     ORDERING,
     SAME_AREA,
@@ -42,6 +43,8 @@ from .model import (
     LIST_FIELDS,
     MIN_RECURRENCES,
     PRIORITIES,
+    RELEASE_TRAIN,
+    RESOURCES,
     SELECTABLE_LANES,
     STATUSES,
     WITHDRAWN_MARKER,
@@ -59,6 +62,7 @@ from .model import (
 )
 from .plan import (
     OfferedReport,
+    UnrankedGenerator,
     clusters,
     features,
     gate,
@@ -73,6 +77,7 @@ from .plan import (
     recommend,
     recurring,
     set_aside,
+    unranked_generators,
     unsound_generator_claims,
     waiting_since,
 )
@@ -118,9 +123,12 @@ from .vcs import (
     FlightReport,
     GitRunner,
     OrphanedReport,
+    Runner,
     SinceFiled,
     StrandedReport,
     WrittenReport,
+    _head_name,
+    _remotes,
     branch_state,
     branches_in_flight,
     changed_items,
@@ -912,12 +920,21 @@ def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight 
     offered a release has nothing to be warned off. It does not fetch - the
     digest's hook already did, and this must stay answerable in a checkout with
     no network.
+
+    A branch holding the release train with nothing cut yet is added beside the
+    cuts (`_with_train`), so a session that has filed and claimed its release
+    item stops the offer once its claim is pushed, not only once it cuts.
     """
     run = _invocation(args).git
     if run is None:
         return None
     base = released_on_base(root, version_file=config.version_file, notes_dir=NOTES_DIR, runner=run)
-    return cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=run)
+    cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=run)
+    tracked = _invocation(args).tracked
+    if not tracked:
+        return cuts
+    read = holdings(root, now=_now(args), items_dir=tracked, runner=run)
+    return _with_train(cuts, _release_train(read, root, run))
 
 
 def cmd_triage(args: argparse.Namespace) -> int:
@@ -968,6 +985,10 @@ def cmd_new(args: argparse.Namespace) -> int:
     Several titles are accepted in one call because that is how they arrive:
     an interruption rarely carries exactly one thought, and making each one a
     separate command turns a thirty-second capture into a conversation.
+
+    `--resource` is the one exception to asking nothing first: an item holding
+    a resource is filed only while nobody else holds it, and one title at a
+    time, because the check is what the field exists for (`_train_refusal`).
     """
     directory, items, _ = _load(args)
     # The `--touches` order that used to fail loudly now parses, so the one way
@@ -983,6 +1004,10 @@ def cmd_new(args: argparse.Namespace) -> int:
             "path lands in the title instead."
         )
         return 1
+    if args.resource:
+        refused = _train_refusal(args)
+        if refused:
+            return refused
     taken = {item.identifier for item in items}
     declared = _comma_separated(args.touches)
     # A fresh capture declares nothing, which is exactly when the search has
@@ -1004,6 +1029,110 @@ def cmd_new(args: argparse.Namespace) -> int:
             if onto is not None:
                 items = _record_recurrence(directory, items, onto.item, identifier, args)
     return 0
+
+
+def _train_refusal(args: argparse.Namespace) -> int:
+    """Why a release item may not be filed now, as an exit status, or 0 where it may.
+
+    Refused rather than filed and flagged, because a second release item is
+    `PL-MFM4`: two items filed for one release, each passing every guard, and
+    one of them discarded at the merge. Refusing here leaves nothing to undo.
+    Fetched first, as `claim` fetches, since the rival that matters is the one
+    another session pushed a minute ago; `--no-fetch` is for the caller that
+    already did.
+
+    Exit 3 is `claiming.HELD_ELSEWHERE`, for either holder - another branch's,
+    or this branch's own claim on an earlier release item, which is the item to
+    cut under; one whose claim lapsed or was yielded is that item too, and a
+    fresh claim revives it. A read that declined refuses with 1, since a
+    missing hold then proves nothing, and `--no-git` or more than one title is
+    a usage error. Refs the read could not believe, and trailers it could not
+    parse, are said before the answer, as `claim` says them.
+    """
+    inv = _invocation(args)
+    if inv.git is None:
+        print(
+            "new: `--no-git` asks git nothing, and `--resource` exists for the check that "
+            "reads who holds it; nothing was written"
+        )
+        return claiming.USAGE
+    if len(args.title) != 1:
+        print(
+            f"new: `--resource` files one item at a time, and was given {len(args.title)} "
+            "titles; nothing was written"
+        )
+        return claiming.USAGE
+    if not inv.tracked:
+        print(
+            "new: the store is not below the repository root, so no branch can hold its "
+            "items; nothing was written"
+        )
+        return claiming.USAGE
+    if not args.no_fetch:
+        fetched = claiming._git(["fetch", "--quiet", claiming.REMOTE], inv.root)
+        if fetched.code != 0:
+            print(
+                f"new: `git fetch {claiming.REMOTE}` failed, so a release another session "
+                "has claimed cannot be ruled out; nothing was written"
+            )
+            for line in claiming._indented(fetched.err):
+                print(line)
+            print("  Refresh the refs yourself and pass `--no-fetch`, or try again.")
+            return claiming.REFUSED
+    read = holdings(inv.root, now=_now(args), items_dir=inv.tracked, runner=inv.git)
+    if not read.known:
+        print(
+            f"new: declined to read who holds the release train - {read.declined}; "
+            "nothing was written"
+        )
+        return claiming.REFUSED
+    for line in claiming._unread(read):
+        print(line)
+    train = _release_train(read, inv.root, inv.git)
+    if train.rival is not None:
+        print(
+            f"new: another session is preparing a release - {train.rival.ref} holds the "
+            f"release train through {train.rival.key}, claimed "
+            f"{train.rival.since.date().isoformat()}; nothing was written"
+        )
+        print(
+            "  Wait for that release to merge before filing another. If its branch is "
+            "abandoned, recover what only it holds with `bin/docket stranded` before "
+            "dropping the ref."
+        )
+        return claiming.HELD_ELSEWHERE
+    if train.ours is not None:
+        print(
+            f"new: this branch already holds the release train through {train.ours.key}; "
+            "cut under that item rather than filing a second - nothing was written"
+        )
+        return claiming.HELD_ELSEWHERE
+    if train.idle is not None:
+        print(
+            f"new: this branch already has a release item, {train.idle.key}, whose claim on "
+            f"the release train is {_idle_state(train.idle)}; claim it again rather than "
+            "filing a second - nothing was written"
+        )
+        print(f"  {_reclaim(train.idle)}")
+        return claiming.HELD_ELSEWHERE
+    return 0
+
+
+def _idle_state(hold: Hold) -> str:
+    """How a train claim on an open release item stopped holding, in a clause."""
+    if hold.state == LAPSED:
+        return "lapsed"
+    if hold.released_by == BY_STATUS:
+        return "released by its `blocked` status"
+    return "yielded"
+
+
+def _reclaim(hold: Hold) -> str:
+    """The command that makes an idle train claim hold again."""
+    claim = f"`bin/docket claim {hold.key}`"
+    if hold.released_by == BY_STATUS:
+        return f"Move {hold.key} out of `blocked`, commit that, then {claim}."
+    return f"{claim} revives it."
 
 
 def _inferred_paths(args: argparse.Namespace) -> tuple[str, ...]:
@@ -1258,6 +1387,7 @@ def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namesp
         status="untriaged",
         classes=(),
         touches=_comma_separated(args.touches),
+        resource=args.resource or "",
         blocked_by=(),
         feature=args.feature or "",
         milestone="",
@@ -1292,6 +1422,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("classes", "classes"),
     ("feature", "feature"),
     ("touches", "touches"),
+    ("resource", "resource"),
     ("blocked-by", "blocked_by"),
     ("deferred-from", "deferred_from"),
     ("closed", "closed"),
@@ -1619,18 +1750,24 @@ def cmd_show(args: argparse.Namespace) -> int:
     # on (`PL-QFWF`): without it the plan line told the build item a design
     # round filed that it ranks on its band alone, while `next` ranked it on
     # the tier.
-    unblocks = generator_blockers(items).get(item.identifier, ())
+    lifted = generator_blockers(items)
+    unblocks = lifted.get(item.identifier, ())
     on_the_tier = (
         ranks_as_generator(item, known_ids)
         or ranks_as_generator_defect(item, config.generator_paths)
         or bool(unblocks)
     )
     closed = item.status in CLOSED_STATUSES
+    # A blocked item is startable by nothing, so whatever tier it is on it is
+    # not ranked there now - which the plan line and both tier lines below
+    # asserted of `PL-MB2W` while `next` ranked its blockers instead (`PL-4RK2`).
+    blocked = item.status == "blocked"
     placement = placement_line(
         plan.scope if plan is not None else None,
         item.identifier,
         ranks_above_bands=on_the_tier,
         closed=closed,
+        blocked=blocked,
     )
     if placement:
         print(f"  plan: {placement}")
@@ -1657,6 +1794,8 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  generator: {item.generator}")
         if verdict_faults:
             print(f"    UNSOUND - {'; '.join(verdict_faults)}; ranks on its band until repaired")
+        elif ranks_as_generator(item, known_ids) and blocked:
+            print(_blocked_head_rank(item, items, lifted, flight.ids, _milestones(root, config)))
         elif ranks_as_generator(item, known_ids):
             print("    ranked on the generator tier - above every band but P0")
         elif closed:
@@ -1703,6 +1842,14 @@ def cmd_show(args: argparse.Namespace) -> int:
             print(f"    UNSOUND - {'; '.join(faults)}; ranks on its band alone until repaired")
         elif closed:
             print("    closed, so on no tier - only an open item's claim ranks there")
+        elif blocked:
+            # Only a generator head hands its rank down (`generator_blockers`),
+            # so a blocked machinery defect is ranked by nothing until it can
+            # start, and saying so is all this line can truthfully do.
+            print(
+                "    blocked, so ranked nowhere until it can start"
+                " - then on the generator tier, above every band but P0"
+            )
         else:
             print("    ranked on the generator tier - above every band but P0")
     if unblocks:
@@ -1997,6 +2144,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
         _say_promotable(items)
+        _say_unranked_generators(items, flight.ids, _milestones(root, config))
         _say_recurring(items, flight.ids)
         _say_lane_holdouts(items, flight, config, args, lane)
         _say_unread(flight)
@@ -2007,6 +2155,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     if flight.ids:
         print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
     _say_promotable(items)
+    _say_unranked_generators(items, flight.ids, _milestones(root, config))
     _say_recurring(items, flight.ids)
     _say_lane_holdouts(items, flight, config, args, lane)
     _say_answer_lane(items, flight, config, args, plan, lane, picks[0].item)
@@ -2207,6 +2356,129 @@ def _say_recurring(items: list[Item], in_flight: Collection[str]) -> None:
         "promotion. Read them against each other, and where they are one mechanism, "
         "record it: `docket set <id> --root-cause-of <ids> --generator <verdict> "
         "--misread <fact>`, the three fields `docket check` asks of a head."
+    )
+
+
+#: What a reader does about a blocked live head nothing ranks, shared by `next`
+#: and `show` so the two surfaces cannot prescribe different remedies.
+UNRANKED_REMEDY = (
+    "a blocked head's rank passes one edge down, to the open items its own "
+    "`blocked-by` names, and not along a chain nobody wrote for that. Where startable "
+    "work sits behind it, write that work into the head's `blocked-by` and the rank "
+    "passes there"
+)
+
+
+def _waiting_on(
+    found: UnrankedGenerator, items: list[Item], milestones: MilestoneStates | None
+) -> str:
+    """What an unranked head waits on, each entry marked with why it carries nothing.
+
+    A milestone is marked by what the roadmap says of it, and by what could not
+    be read where it could not: `unranked_generators` has already dropped the
+    ones that cleared, so what is left is unscoped, or ships with the head.
+    """
+    head = found.head
+    if not found.waiting_on:
+        if not [entry for entry in head.blocked_by if entry != head.identifier]:
+            return "names no blocker in its `blocked-by` but itself, so nothing can carry its rank"
+        cleared = "has closed or been scoped" if head.blocking_milestones else "has closed"
+        return f"waits on nothing still open: every blocker its `blocked-by` names {cleared}"
+    by_id = {item.identifier: item for item in items if item.identifier}
+    parts = []
+    for entry in found.waiting_on:
+        if entry in head.blocking_milestones:
+            if milestones is None:
+                parts.append(f"{entry} (a milestone; the roadmap was not read to say if scoped)")
+            elif milestones.is_cleared(entry):
+                parts.append(f"{entry} (a milestone whose scope names it, so it waits to ship)")
+            else:
+                parts.append(f"{entry} (a milestone not yet scoped)")
+        elif entry not in by_id:
+            parts.append(f"{entry} (not in the store)")
+        else:
+            parts.append(f"{entry} ({by_id[entry].status})")
+    said = f"waits on {', '.join(parts)}"
+    if found.behind:
+        said += f"; startable or in flight behind them: {', '.join(found.behind)}"
+    return said
+
+
+def _say_unranked_generators(
+    items: list[Item], in_flight: Collection[str], milestones: MilestoneStates | None
+) -> None:
+    """Name the blocked live generator heads whose rank reaches nothing offered.
+
+    The generator tier's own silent failure, printed beside `_say_promotable`
+    for its reason: `next` is where a session choosing work looks, and a
+    generator ranked by nothing is absent from the list above without a word
+    (`PL-4RK2`). Named, never ranked - `plan.unranked_generators` says why the
+    chain is not followed.
+
+    Takes the flight ids the ranking excluded on: a blocker being worked on a
+    branch is paying the head's edge down, so the head is not named for it.
+    """
+    found = unranked_generators(items, in_flight, milestones=milestones)
+    if not found:
+        return
+    heads = "A live generator" if len(found) == 1 else "Live generators"
+    print(f"{heads} that nothing ranks - blocked, and no item it waits on can start:")
+    for entry in found:
+        count = len(entry.head.root_cause_of)
+        said = _waiting_on(entry, items, milestones)
+        print(f"  {entry.head.identifier} (root cause of {count} items) {said}")
+    print(f"  Not ranked above - {UNRANKED_REMEDY}.")
+
+
+def _blocked_head_rank(
+    head: Item,
+    items: list[Item],
+    lifted: dict[str, tuple[Item, ...]],
+    in_flight: Collection[str],
+    milestones: MilestoneStates | None,
+) -> str:
+    """Where a blocked live head's rank is now, for the line under its verdict.
+
+    `show` said "ranked on the generator tier" of the head itself, which a
+    blocked item is not, and named none of the blockers carrying the rank
+    instead (`PL-4RK2`). Three answers, and each says which it is: ranked by
+    nothing, in the shapes `plan.unranked_generators` names; carried by the
+    open items `generator_blockers` lifts, each marked where it cannot be
+    offered yet; or in flight, where no open item in this checkout carries it.
+    """
+    unranked = next(
+        (
+            u
+            for u in unranked_generators(items, in_flight, milestones=milestones)
+            if u.head.identifier == head.identifier
+        ),
+        None,
+    )
+    if unranked is not None:
+        return (
+            f"    blocked, and ranked by nothing: it {_waiting_on(unranked, items, milestones)}."
+            f"\n    {UNRANKED_REMEDY[:1].upper()}{UNRANKED_REMEDY[1:]}."
+        )
+    by_id = {item.identifier: item for item in items if item.identifier}
+    carriers = []
+    for blocker in dict.fromkeys(head.blocking_items):
+        if not any(h.identifier == head.identifier for h in lifted.get(blocker, ())):
+            continue
+        state = by_id[blocker].status
+        if blocker in in_flight:
+            carriers.append(f"{blocker} (in flight)")
+        elif state in ("blocked", "untriaged"):
+            carriers.append(f"{blocker} ({state})")
+        else:
+            carriers.append(blocker)
+    if not carriers:
+        return (
+            "    blocked, so not ranked itself - no open item in this checkout carries its"
+            " rank, and the work is in flight"
+        )
+    return (
+        "    blocked, so not ranked itself - its rank, above every band but P0, passes to"
+        f" the open items it waits on: {', '.join(carriers)}"
     )
 
 
@@ -2533,6 +2805,87 @@ def _numbers_before_notes(
     return with_fields(ready, shippable=shippable)
 
 
+@dataclass(frozen=True)
+class _Train:
+    """Who holds the release train, as `cmd_release`, the digest and `new` all read it.
+
+    `rival` is `Holdings.holder` where that claim is on another branch: the
+    first live claim in claim order, so a branch whose own claim orders first
+    has no rival, and one that orders second is refused before it cuts - the
+    window where both filed before either pushed a claim closes there. `ours`
+    is the first live train claim on `HEAD`'s branch, and `closed` a train
+    claim this branch released by closing its item, which a refusal names.
+    `idle` is one on an item this branch's copy still holds open whose claim
+    is not live - lapsed, yielded, or released by `blocked` - which a fresh
+    claim revives, so it is the item to cut under rather than a reason to file
+    a second.
+
+    Mine by branch name, not by `Hold.mine`'s session token, as `arming` and
+    `claiming` decide it: the claim binds to the branch the cut lands through,
+    and a session handed the branch carries a new token.
+    """
+
+    rival: Hold | None
+    ours: Hold | None
+    closed: Hold | None
+    idle: Hold | None
+    #: The remotes the names were compared under, for `_with_train`.
+    remotes: frozenset[str]
+
+
+def _release_train(read: Holdings, root: Path, run: Runner) -> _Train:
+    """The release train's holders in one `Holdings`, judged against `HEAD`'s branch."""
+    remotes = _remotes(root, run)
+    name = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
+    here = _head_name(name, remotes) if name not in {"", "HEAD"} else ""
+    trains = [hold for hold in read.holds if hold.resource == RELEASE_TRAIN]
+    ours = [hold for hold in trains if here and _head_name(hold.ref, remotes) == here]
+    holder = read.holder(RELEASE_TRAIN)
+    return _Train(
+        rival=holder if holder is not None and holder not in ours else None,
+        ours=next((hold for hold in ours if hold.state == LIVE), None),
+        closed=next((hold for hold in ours if hold.status in CLOSED_STATUSES), None),
+        idle=next(
+            (
+                hold
+                for hold in ours
+                if hold.status not in {"", *CLOSED_STATUSES}
+                and (hold.state == LAPSED or hold.released_by in {BY_YIELD, BY_STATUS})
+            ),
+            None,
+        ),
+        remotes=remotes,
+    )
+
+
+def _with_train(cuts: CutsInFlight, train: _Train) -> CutsInFlight:
+    """`cuts` with the train's rival added as a holder that has cut nothing yet.
+
+    One list, so the digest and the refusal name every other release the same
+    way; a rival whose branch is already listed for its cut is not repeated.
+
+    Listed means listed as another ref's: a cut `HEAD` contains is `mine` to
+    `cuts_in_flight`, and every reader drops those. A rival whose branch this
+    one merged is still a rival - the train is mine by branch name, as `new`
+    decides it - so its contained cut is turned into the rival's entry rather
+    than left to hide it, and is worded from the notes it wrote.
+    """
+    rival = train.rival
+    if rival is None:
+        return cuts
+    name = _head_name(rival.ref, train.remotes)
+    same = [branch for branch in cuts.branches if _head_name(branch.ref, train.remotes) == name]
+    if any(not branch.mine for branch in same):
+        return cuts
+    if same:
+        held = with_fields(same[0], mine=False, item=rival.key)
+        rest = [branch for branch in cuts.branches if branch is not same[0]]
+    else:
+        held = BranchCut(ref=rival.ref, versions=(), cut=rival.since.date(), item=rival.key)
+        rest = list(cuts.branches)
+    return with_fields(cuts, branches=tuple(sorted((*rest, held), key=lambda branch: branch.ref)))
+
+
 def cmd_release(args: argparse.Namespace) -> int:
     """Cut a release from whatever is finished and has not shipped yet.
 
@@ -2615,15 +2968,19 @@ def cmd_release(args: argparse.Namespace) -> int:
     version = (args.version or resuming or ready.suggested_version).lstrip("v")
     name = f"v{version}"
 
-    # The one change no in-flight guard can see, because it carries no item id
-    # by design (`PL-66FP`). Two questions, in the order their answers are
-    # certain in: what the default branch already holds is a merge that has
-    # happened, and what a ref is carrying is a claim that may yet be
-    # abandoned. A dry run is allowed through either with the warning, on the
-    # same reasoning as the untagged one above: it writes nothing, and
-    # withholding the notes would not un-ship what already shipped.
+    # The widest write in the repository, and one whose own commits carry no
+    # item id: a cut stamps other items' `milestone:` (`PL-66FP`). The id the
+    # guard reads is the release item's, whose claim holds the release train
+    # (`PL-331V`). Questions in the order their answers are certain in: what
+    # the default branch already holds is a merge that has happened; what
+    # another ref is cutting, or holds the train to cut, is a claim that may
+    # yet be abandoned; and last, whether this branch holds the train itself,
+    # so every earlier refusal still refuses for its own reason. A dry run is
+    # allowed through each with the warning, on the same reasoning as the
+    # untagged one above: it writes nothing, and withholding the notes would
+    # not un-ship what already shipped.
     #
-    # **The fetch is the part without which neither question is worth asking.**
+    # **The fetch is the part without which none of these is worth asking.**
     # The session that lost the v0.3.7 race cut from a checkout that did not
     # yet hold an item merged eight minutes before the winning release landed,
     # so every ref it could read was older than the collision it was in. This
@@ -2646,7 +3003,7 @@ def cmd_release(args: argparse.Namespace) -> int:
                 return 1
             print()
         else:
-            # **Both guards refuse on a read they could not complete**
+            # **The guards refuse on a read they could not complete**
             # (`PL-Q9Z1`). Each is looking for evidence that somebody else is
             # already cutting, and an absence of evidence is what a git that did
             # not answer produces - so proceeding on one is the v0.3.7
@@ -2654,15 +3011,31 @@ def cmd_release(args: argparse.Namespace) -> int:
             # rarest command here and the most expensive to get wrong, which is
             # what makes refusing the right side to err on.
             cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=git)
+            tracked = _invocation(args).tracked
+            read = (
+                holdings(root, now=_now(args), items_dir=tracked, runner=git)
+                if tracked
+                else Holdings(declined="the store is not below the repository root")
+            )
+            train = _release_train(read, root, git)
+            cuts = _with_train(cuts, train)
+            # A ref whose claims were not believed is named, never read as
+            # clean, as `claim` names it; `cuts.unreadable` is left as it was.
+            skipped = claiming._unread(read)
+            if skipped:
+                print(*skipped, sep="\n")
+                print()
             holders = [branch for branch in cuts.branches if not branch.mine]
             unread = "" if base.known else _base_unread(base.base)
+            refusal = ""
             if holders:
-                print(_parallel_cut_warning(holders))
-                if not args.dry_run:
-                    return 1
-                print()
-            elif unread or not cuts.known:
-                print(_unreadable_cut_warning(unread or cuts.declined))
+                refusal = _parallel_cut_warning(holders)
+            elif unread or not cuts.known or not read.known:
+                refusal = _unreadable_cut_warning(unread or cuts.declined or read.declined)
+            elif train.ours is None:
+                refusal = _no_train_refusal(name, len(ready.shippable), current, train, tracked)
+            if refusal:
+                print(refusal)
                 if not args.dry_run:
                     return 1
                 print()
@@ -2856,12 +3229,13 @@ def _unreadable_cut_warning(reason: str) -> str:
         [
             f"Cannot check whether another session is already cutting: {reason}.",
             "",
-            "Both duplicate-release guards read git, and neither can tell a clean answer",
-            "from one it never got - so this refuses rather than cutting on silence.",
+            "The duplicate-release guards read git, and none can tell a clean answer from",
+            "one it never got - so this refuses rather than cutting on silence.",
             "",
             "  git fetch origin",
             "",
-            "then run this again. `--dry-run` prints the notes without the guard.",
+            "then run this again. `--dry-run` prints the notes anyway, with this warning",
+            "above them.",
         ]
     )
 
@@ -2879,15 +3253,26 @@ def _parallel_cut_warning(holders: list[BranchCut]) -> str:
     `flight` and `stranded` do. Both remedies for the same reason - waiting is
     right for the first case and useless for the second, and the reader is the
     one who can tell them apart.
+
+    A holder with no versions holds the release train and has cut nothing yet
+    (`_with_train`), dated by its claim rather than by a notes file.
     """
     lines = []
     for branch in holders:
+        if not branch.versions:
+            when = f" (claimed {branch.cut.isoformat()})" if branch.cut else ""
+            lines.append(
+                f"  {branch.ref} holds the release train for {branch.item}{when}, "
+                "and has cut nothing yet"
+            )
+            continue
         versions = ", ".join(f"v{version}" for version in branch.versions)
         when = f", cut {branch.cut.isoformat()}" if branch.cut else ""
         lines.append(f"  {branch.ref} is cutting {versions}{when}")
+    doing = "cut" if any(branch.versions for branch in holders) else "prepared"
     return "\n".join(
         [
-            "A release is already being cut on a branch nothing has merged:",
+            f"A release is already being {doing} on a branch nothing has merged:",
             "",
             *lines,
             "",
@@ -2901,6 +3286,67 @@ def _parallel_cut_warning(holders: list[BranchCut]) -> str:
             "If that branch is abandoned, recover what only it holds before dropping it:",
             "",
             "  bin/docket stranded",
+        ]
+    )
+
+
+def _no_train_refusal(name: str, count: int, current: str, train: _Train, store: str) -> str:
+    """Refuse a cut from a branch holding no claim on the release train.
+
+    The claim is what the other guards read to see this cut before it is made,
+    so a cut without one is invisible to a second session until its notes are
+    pushed - the v0.3.7 window, reopened (`PL-66FP`). Filing the release item
+    with `new --resource` is also where a second release is refused outright.
+    """
+    closed, idle = train.closed, train.idle
+    if idle is not None:
+        return "\n".join(
+            [
+                f"Cannot cut {name} here: this branch holds no live claim on the release train.",
+                "",
+                f"{idle.key} is this branch's release item, and its claim is "
+                f"{_idle_state(idle)}. Cut under it rather than filing another:",
+                "",
+                f"  {_reclaim(idle)}",
+                "",
+                "then run this again. `--dry-run` prints the notes anyway, with this warning",
+                "above them.",
+            ]
+        )
+    spent = (
+        [
+            f"{closed.key} is {closed.status} on this branch, which released its claim on the "
+            "train; a closed release item holds nothing, so file a new one.",
+            "",
+        ]
+        if closed is not None
+        else []
+    )
+    since = current.strip().lstrip("v")
+    filed = f"{store}/ID-*.md" if store else "ID-*.md"
+    return "\n".join(
+        [
+            f"Cannot cut {name} here: this branch holds no claim on the release train.",
+            "",
+            *spent,
+            "A release is cut under a claimed release item, so that a second session is",
+            "refused when it files one rather than after it has cut. File and claim it:",
+            "",
+            f'  bin/docket new --resource {RELEASE_TRAIN} "Cut {name} from the {count} items '
+            f'finished since v{since}"',
+            f'  git add {filed} && git commit -m "ID: file the release"',
+            "  bin/docket claim ID",
+            "",
+            "where ID is the id `new` printed. A release item that already exists is",
+            "stamped instead, and the stamp committed, since a claim holds the train only",
+            "from the committed copy; `claim` then pushes it:",
+            "",
+            f"  bin/docket set ID --resource {RELEASE_TRAIN}",
+            f'  git add {filed} && git commit -m "ID: hold the release train"',
+            "  bin/docket claim ID    # or `git push`, where ID is claimed already",
+            "",
+            "then run this again. `--dry-run` prints the notes anyway, with this warning",
+            "above them.",
         ]
     )
 
@@ -3878,6 +4324,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="comma-separated paths the work is expected to reach; may be repeated",
     )
     new.add_argument("--feature", default=None, help="group this with related work")
+    new.add_argument(
+        "--resource",
+        choices=RESOURCES,
+        default=None,
+        help="the shared thing whoever claims this item also holds; refused, with nothing "
+        "written, while another claim holds it",
+    )
+    new.add_argument(
+        "--no-fetch",
+        action="store_true",
+        default=False,
+        help="with --resource, read the refs as they are; the caller refreshed them, or cannot",
+    )
     new.set_defaults(func=cmd_new)
 
     # Beside `new`, because it is the only undo `new` has. No abbreviations, for
@@ -3925,6 +4384,7 @@ def build_parser() -> argparse.ArgumentParser:
             flag, action="append", metavar=metavar, help="comma-separated; may be repeated"
         )
     setter.add_argument("--feature")
+    setter.add_argument("--resource", metavar="|".join(RESOURCES))
     setter.add_argument("--closed", type=_closing_date, metavar="YYYY-MM-DD")
     setter.add_argument("--reason")
     setter.add_argument("--payoff", metavar="LINE")
