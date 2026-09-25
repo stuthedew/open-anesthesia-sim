@@ -1,8 +1,9 @@
 # Everything under `tools/` runs with whatever bare `python3` is on PATH.
-# `make check` invokes `python3 tools/doc_check.py check` directly, CI does the
-# same, and both have to work in a checkout with no virtualenv and no install
-# step - which is why these tools depend on nothing outside the standard
-# library.
+# `make check` invokes the ones that parse no repository source that way
+# directly, CI's floor section runs `python3 tools/doc_check.py check` before
+# any virtualenv exists, and both have to work in a checkout with no
+# virtualenv and no install step - which is why these tools depend on nothing
+# outside the standard library.
 #
 # The repository around them targets 3.14, and formatting to that target is not
 # cosmetic: it rewrites the source into syntax older interpreters cannot parse.

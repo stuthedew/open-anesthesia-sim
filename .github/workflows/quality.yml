@@ -155,8 +155,8 @@ jobs:
       #
       # `tools/` and `subprojects/docket/` promise to run under a bare `python3`
       # with no virtualenv and no install step; that is why they depend on
-      # nothing outside the standard library, and `make check`'s last two lines
-      # are exactly that invocation. This was a separate `floor` job until
+      # nothing outside the standard library, and `make check` runs the ones
+      # that parse no project source exactly that way. This was a separate `floor` job until
       # `PL-D551`, which merged it here: it billed a whole minute for eight
       # seconds of work, and a job is also a slot against the account's
       # concurrent-job cap, which is what throttles parallel sessions once
@@ -193,10 +193,11 @@ jobs:
 
       - run: python3 tools/doc_check.py check
       # Beside `doc_check` because it imports it and asks the notation half of
-      # its question, which is the order the Makefile runs them in too. Here
-      # rather than below because it reads Markdown with the standard library
-      # and nothing else: measured 1.6 s against this tree, under this
-      # section's own 3.11 interpreter.
+      # its question, which is the order the Makefile runs them in too. Both
+      # read source docstrings as well as Markdown, so here they prove only that
+      # they run with no virtualenv: each names on a "Not checked" line the
+      # files this 3.11 parser cannot read, and passes. Both are repeated under
+      # `uv run` below, which is the run that checks those files (`PL-MB3F`).
       - run: python3 tools/possessive_section_check.py
       - run: python3 tools/branch_id_check.py
       - run: python3 tools/rules_paths_check.py
@@ -320,12 +321,17 @@ jobs:
       - name: verify replay, the whole store
         if: github.event_name != 'pull_request'
         run: bin/docket check --verify
-      # Repeated from the floor section above, unlike the two lines after them:
-      # these read `git log`, the branch name and the documentation, never
-      # project source, so the 3.11 parser has nothing it cannot read.
-      # `PL-CP74`.
+      # Repeated from the floor section above, unlike the seven lines after
+      # them. `branch_id_check.py` reads `git log` and the branch name, never
+      # project source, so the 3.11 parser has nothing it cannot read
+      # (`PL-CP74`). The other two read every module's docstrings for the
+      # citations in them, and the floor declines the files it cannot parse, so
+      # these are the runs that check them (project owner, 2026-09-24,
+      # ratified, over leaving the possessive check at the floor alone, where
+      # no gate read `app/bookmarks.py` or `app_metadata.py`, `PL-MB3F`).
       - run: uv run python tools/branch_id_check.py
       - run: uv run python tools/doc_check.py check
+      - run: uv run python tools/possessive_section_check.py
       # Deliberately absent from the floor section above, all seven of them, for
       # a reason about the *input* rather than about the tool. That section runs
       # the tools under the 3.11 floor to prove they need no virtualenv; these
@@ -333,7 +339,7 @@ jobs:
       # `src/anesthesia_sim/data/` and `tests/` with `ast`, and that source
       # targets 3.14, so the 3.11 parser
       # cannot read what they are given - a `SyntaxError` on
-      # `app/chart_downsampling.py`'s PEP 695 generics rather than anything
+      # `app/bookmarks.py`'s PEP 695 generics rather than anything
       # about the tool. `ast.parse`'s `feature_version` cannot help: it only
       # ever narrows the syntax accepted, so it cannot teach an older parser a
       # newer language.
