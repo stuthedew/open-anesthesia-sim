@@ -9,6 +9,7 @@ feature: release-process
 touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/cli.py
 added: 2026-09-07
 verify: grep -rq 'git tag -a' .claude/skills/docket/ && ! grep -rq 'git tag -a v0.3.0 origin/main' .claude/skills/docket/ && python3 tools/doc_check.py check
+recurrences: 2026-09-25 PL-53Y6
 ---
 
 **Problem.** The docket skill's release handover tags at origin/main rather than at the cut's own merge commit, so a re-run of the three commands tags whatever merged next

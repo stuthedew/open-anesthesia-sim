@@ -9,6 +9,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-21
 payoff: prose quoting what a command printed passes make check, instead of being reworded to satisfy a check that misread it
 verify: grep -q 'def test_a_quoted_command_output_is_not_a_section_citation' tests/unit/test_doc_check.py
+recurrences: 2026-09-25 PL-L8VP
 ---
 
 **Problem.** doc_check reads any quoted string near the word section as a section citation, so prose quoting a command's own output fails make check
@@ -40,3 +41,5 @@ is reported as an unresolvable citation rather than assumed to be one, or the
 two forms are narrowed so that quoted tool output does not match; and a test in
 `tests/unit/test_doc_check.py` holds a sentence quoting command output through a
 clean run.
+
+**Stress test, 2026-09-25 (PL-P0FP).** Two corrections and a number. `check_citations` reads the documents in `DOC_GLOBS` only - README, ROADMAP, `CLAUDE.md`, `AGENTS.md`, `docs/*.md`, `.claude/rules` and `.claude/skills` - not `docs/items/`, so an item quoting tool output does not reach this wall; a document does. And the false refusals reach past quoted output: UI labels, text in code spans and fences, an em dash against a hyphen, a heading carrying backticks (11 reproduced). The number: on all 1,647 item briefs, which this check has never filtered, the see and above/below forms matched 10 times and found 0 real stale citations. In the documents, going `§`-only costs 150 one-time rewrites and brings 264 bare `§` citations under checking, 2 of them stale today (PL-QQCD). **Recommendation:** close this under PL-GPJ7 by narrowing `CITATION_RE` to the explicit `§ "X"` form, with the rewrite scripted.

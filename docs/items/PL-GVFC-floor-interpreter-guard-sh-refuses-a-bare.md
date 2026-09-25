@@ -10,6 +10,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-23
 payoff: the interpreter guard stops refusing the 3.11 floor code it exists to protect, so its refusals stay worth obeying
 verify: grep -q 'def test_the_docket_subproject_is_floor_code_and_is_admitted' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_a_path_after_a_semicolon_is_another_commands' tests/unit/test_floor_interpreter_guard.py
+recurrences: 2026-09-25 PL-BBV7
 ---
 
 **Problem.** floor-interpreter-guard.sh refuses a bare python3 aimed at subprojects/docket/src/, the 3.11 floor tree it exists to protect, because GUARDED's lookbehind admits docket/src/; and plain shlex.split glues a ; to the word before it, so a path in the next command is read as the interpreter's argument

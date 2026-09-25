@@ -164,3 +164,5 @@ pointing at the command: it is resident in every session, and rule 14 already
 runs `stranded` before every closing block, which is where the split is acted
 on. A merged pull request needs no category of its own here: its items are on
 the base, so `stranded` does not list them.
+
+**Stress test, 2026-09-25 (PL-P0FP).** Reproduced as the simulation's V6: `stranded` hands back a capture on an open, armed pull request with a recover line. The simulation also found why classification needs more than the existing seam: `open_pull_requests_command` is docket's only forge input, only `flight` reads it, and its contract lists open pull requests only, so merged, closed-unmerged and never-opened are indistinguishable - a closed-unmerged pull request's claim blocks its item for the full 7-day lease. Now a member of PL-XBV4.
