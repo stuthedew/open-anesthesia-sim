@@ -185,3 +185,13 @@ row it names, not the rule.
 
 **Decision asked of the project owner:** approve the rule as the build's
 specification, or name the row of the table drawn wrongly.
+
+**Decided 2026-09-25: the rule above is the build's specification** (project
+owner, 2026-09-25, ratified, over reading every field from the base's copy with
+`needs-decision` as the one exception, and over keeping the per-field choice and
+closing this head spent). "Agree with recs", so ordinary evidence reopens it,
+and the two counts named under "What would change the recommendation" are that
+evidence. The build is Stream A's next thread after `PL-KR69`: it moves this
+item to `ready` with a `verify:` as it starts, per the `docket` skill's start
+mode, and closes `PL-PZ6T` and `PL-TKFD` with it. This design branch changed no
+status and yields its claim so the pull request carrying this record can arm.

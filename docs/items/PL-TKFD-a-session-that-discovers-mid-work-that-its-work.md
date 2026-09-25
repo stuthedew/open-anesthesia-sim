@@ -137,3 +137,9 @@ made concrete on the base instead of on the branch, and neither needs a new
 mechanism. Sized by `PL-YZJD`'s count, about 2 folds in 502 close-outs, the
 round trip is paid rarely, and honouring the branch's waiver instead is refused
 for the reason the head records: a wrong waiver switches an integrity check off.
+
+**Ratified with the head, 2026-09-25** (project owner, 2026-09-25, ratified,
+over accepting a declaration committed to the branch before the removing
+commit, and over leaving the `REJECT` to carry the conversation): both routes
+above are the record, `PL-B8HZ`'s build writes them into
+`.claude/skills/docket/modes/close-out.md`, and this item closes with it.

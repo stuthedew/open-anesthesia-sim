@@ -54,3 +54,7 @@ gave. Counted before choosing print over refuse: 163 of 1,437 close-outs on
 `main` rewrote a commissioned command, and none was this shape, so a refusal
 would have fired 163 times on correct work and caught nothing. Closes with the
 head's build; `blocked` stands until then.
+
+**Ratified with the head, 2026-09-25** (project owner, 2026-09-25, ratified,
+over running the base's command as the measure and refusing where it fails):
+this item closes with `PL-B8HZ`'s build.
