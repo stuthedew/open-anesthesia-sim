@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: needs-decision
 classes: defect
+feature: commit-provenance
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
