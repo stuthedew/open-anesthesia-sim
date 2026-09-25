@@ -172,14 +172,19 @@ set it when the session opens rather than toggling it.
 
 ## Read a simulator change before you arm it
 
-Read a pull request that changes `src/`, `tests/` outside `subprojects/`,
-`docs/MODEL.md`, `src/anesthesia_sim/data/` or `README.md` before you arm it.
-Item-only and docket-only pull requests arm as before (project owner,
-2026-09-25, ratified, over leaving the review hold as it stands, `PL-SQTR`).
-`bin/docket arm` holds every pull request that changes anything outside
-`docs/items/`, and on 2026-09-25 you confirmed those holds were being clicked
-through, so the hold was guarding nothing. This stands until `PL-K6B2` builds a
-gate that holds only what needs a read. `PL-CBDX` reads the diffs merged unread
+`bin/docket arm` answers `arm` for a pull request whose every changed path is
+under `docs/items/` or `subprojects/docket/`, so a session arms it and it
+merges on green with no read from you. It holds everything else for your read,
+and a change to `subprojects/docket/src/docket/arming.py` as well, although that
+file is under `subprojects/docket/`: it is the gate itself, and a change to it
+could loosen the rule (project owner, 2026-09-25, ratified, over holding every
+pull request that changes anything outside `docs/items/`, `PL-SQTR`; built by
+`PL-K6B2`). A session leaves a held pull request unarmed. Read it before you
+arm it, most closely where it changes `src/`, `tests/` outside `subprojects/`,
+`docs/MODEL.md`, `src/anesthesia_sim/data/` or `README.md`, where a wrong
+clinical value could reach the screen. The old hold fired on every docket
+change as well, and on 2026-09-25 you confirmed those holds were being clicked
+through, so it was guarding nothing. `PL-CBDX` reads the diffs merged unread
 since 2026-09-23.
 
 ## Merge on the Mac or by auto-merge, never in the GitHub app
