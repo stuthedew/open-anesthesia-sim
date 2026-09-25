@@ -88,6 +88,7 @@ import argparse
 import ast
 import json
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -173,7 +174,7 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 # which is the coverage-shaped hole a split would otherwise open silently
 # (`PL-2XM2`). This widening admits the skills tree and nothing else; the
 # reasoning under `_quoting_sources` for leaving the *queue* out is untouched,
-# since that one turns on handing 687 item files to `check_make_targets`.
+# since that one turns on handing every item file to `check_make_targets`.
 DOC_GLOBS = (
     "README.md",
     "ROADMAP.md",
@@ -3480,12 +3481,8 @@ def _without_fences(text: str) -> str:
     return "".join(out)
 
 
-def _docstrings(text: str) -> Iterator[tuple[int, str]]:
+def _docstrings(tree: ast.Module) -> Iterator[tuple[int, str]]:
     """Every module, class and function docstring, with the line it starts on."""
-    try:
-        tree = ast.parse(text)
-    except (SyntaxError, ValueError):  # pragma: no cover - not this tool's question
-        return
     for node in ast.walk(tree):
         if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
@@ -3493,14 +3490,40 @@ def _docstrings(text: str) -> Iterator[tuple[int, str]]:
             yield node.body[0].lineno, docstring
 
 
-def _quoting_sources(root: Path, documents: dict[Path, str]) -> Iterator[tuple[Path, int, str]]:
+def _unread_source(relative: Path, error: Exception) -> str:
+    """The `declined` line for a source file whose docstrings were not read.
+
+    Names the interpreter, because which one ran is the whole difference: the
+    same file parses under one and not another, and a reader shown only "could
+    not parse" would go looking for a syntax error that is not there.
+    """
+    if isinstance(error, OSError):
+        return (
+            f"{relative}: could not be read ({error}), so no citation in its docstrings was checked"
+        )
+    if isinstance(error, SyntaxError):
+        where = f"{relative}:{error.lineno}" if error.lineno else str(relative)
+        return (
+            f"{where}: Python {platform.python_version()} cannot parse this file "
+            f"({error.msg}), so no citation in its docstrings was checked; run under "
+            "`uv run python` if the project's own interpreter can"
+        )
+    return (
+        f"{relative}: Python {platform.python_version()} cannot parse this file "
+        f"({error}), so no citation in its docstrings was checked"
+    )
+
+
+def _quoting_sources(
+    root: Path, documents: dict[Path, str], declined: list[str]
+) -> Iterator[tuple[Path, int, str]]:
     """Every text that may quote a document, as (file, first line, text).
 
     Three sets, and the two `DOC_GLOBS` misses are where this project actually
     writes its citations: the queue, which is most of its prose, and the
     docstrings, which are where a contributor reading the code is sent
     somewhere else. `DOC_GLOBS` itself is left alone - widening it would hand
-    687 item files to `check_make_targets` and to `candidates`, neither of
+    every item file to `check_make_targets` and to `candidates`, neither of
     which wants them.
 
     **The queue half is the *live* briefs only**, which is `_live_item_briefs`
@@ -3513,6 +3536,20 @@ def _quoting_sources(root: Path, documents: dict[Path, str]) -> Iterator[tuple[P
     every release, so a closed brief quoting one of its headings went red at
     the next cut, and the only ways out were repairing a historical record or
     editing the roadmap to suit a check (`PL-ZM8P`).
+
+    **A source file this run cannot read is declined, never skipped**
+    (`PL-MB3F`). The source is written for the project interpreter, and CI's
+    floor section also runs this under 3.11, whose parser reads neither PEP 695
+    generics nor PEP 758's unparenthesised `except`. Such a file used to be
+    skipped without a word, under the same "all resolve" a clean run prints. A
+    broken quotation in `app/bookmarks.py` would have passed `make check` and
+    failed CI - reproduced, though no run had failed that way - and
+    `tools/possessive_section_check.py` read neither that file nor
+    `app_metadata.py` in either gate. Each file is appended to `declined` as
+    the walk meets it, so a caller reads `declined` only after exhausting this.
+
+    The file is parsed as bytes, as Python reads source, so a byte-order mark
+    or a PEP 263 coding cookie is honoured rather than declined.
     """
     for path, text in documents.items():
         yield path, 1, text
@@ -3521,12 +3558,14 @@ def _quoting_sources(root: Path, documents: dict[Path, str]) -> Iterator[tuple[P
     for path in sorted(_walk(root)):
         if path.suffix != ".py":
             continue
+        relative = path.relative_to(root)
         try:
-            source = path.read_text(encoding="utf-8")
-        except UNREADABLE:  # pragma: no cover - unreadable is not a citation
+            tree = ast.parse(path.read_bytes())
+        except (OSError, SyntaxError, ValueError) as error:
+            declined.append(_unread_source(relative, error))
             continue
-        for line, docstring in _docstrings(source):
-            yield path.relative_to(root), line, docstring
+        for line, docstring in _docstrings(tree):
+            yield relative, line, docstring
 
 
 def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report) -> None:
@@ -3556,7 +3595,7 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     """
     bodies: dict[str, str | None] = {}
 
-    for path, offset, text in _quoting_sources(root, documents):
+    for path, offset, text in _quoting_sources(root, documents, report.declined):
         for match in QUOTED_SOURCE_RE.finditer(_without_fences(text)):
             cited, quoted = match.group("document"), _normalized(match.group("quoted"))
             if "..." in quoted or "…" in quoted:

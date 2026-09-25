@@ -263,6 +263,7 @@ def test_a_declared_shortfall_does_not_fail_the_build(tmp_path: Path, declare) -
 
     assert not report.errors
     assert "PL-DDDD" in contrast_check.format_report(report, matrix=False)
+    assert "1 known shortfalls" in contrast_check.format_report(report, matrix=False)
 
 
 def test_a_shortfall_that_starts_passing_is_an_error(tmp_path: Path, declare) -> None:
@@ -274,6 +275,37 @@ def test_a_shortfall_that_starts_passing_is_an_error(tmp_path: Path, declare) ->
     assert report.errors
     assert report.repaired
     assert "remove the entry" in contrast_check.format_report(report, matrix=False)
+    assert "0 known shortfalls" in contrast_check.format_report(report, matrix=False), (
+        "a pair that passes is not a gap"
+    )
+
+
+def test_a_shortfall_naming_no_declared_requirement_is_an_error(tmp_path: Path, declare) -> None:
+    """PL-KNHX. An entry that outlives its requirement is stale, not a pair that passes.
+
+    The fixture is PL-GNN1's near miss: a single pair retyped as a disjunction
+    takes a new key, and the entry under the old one names nothing. Every other
+    reading of the list starts from a requirement, so this run used to pass and
+    its verdict line counted a shortfall nothing fell short of.
+    """
+    declare(
+        (
+            _either(
+                ("demoflurane.fill", "demoflurane.foreground"), "PANEL", contrast_check.AA_NON_TEXT
+            ),
+        ),
+        {("demoflurane.fill", "PANEL"): "PL-DDDD"},
+    )
+
+    report = contrast_check.analyze(_repo(tmp_path))
+    output = contrast_check.format_report(report, matrix=False)
+
+    assert report.errors
+    assert report.stale_shortfalls == (("demoflurane.fill", "PANEL"),)
+    assert "the entry is stale" in output
+    assert "demoflurane.fill on PANEL, tracked by PL-DDDD" in output
+    assert "now passing" not in output, "a stale entry says nothing about the pair"
+    assert "0 known shortfalls" in output, "a stale entry is not a gap"
 
 
 def test_a_requirement_met_by_either_channel(tmp_path: Path, declare) -> None:
@@ -680,6 +712,27 @@ def test_a_trace_clearing_the_floor_everywhere_is_quiet(
     monkeypatch.setattr(contrast_check, "TRACES", ("MUSCLE_COLOR",))
 
     assert contrast_check.analyze(root).below_trace_floor == ()
+
+
+def test_a_run_failing_on_a_trace_alone_says_so_in_its_header(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, declare
+) -> None:
+    """PL-TP75. The verdict line counts from the list that decides the exit code.
+
+    `below_trace_floor` was added to `Report.errors` and not to the count the
+    header printed, so this run exited 1 under a line reading `0 errors`. The
+    colour is in the theme rather than the view, so the trace is the run's only
+    error and a header counting anything else would read 0.
+    """
+    declare(())
+    root = _repo(tmp_path, theme=THEME_SOURCE + 'MUSCLE_COLOR = "#D97706"\n')
+    monkeypatch.setattr(contrast_check, "TRACES", ("MUSCLE_COLOR",))
+
+    report = contrast_check.analyze(root)
+    header = contrast_check.format_report(report, matrix=False).splitlines()[0]
+
+    assert len(report.below_trace_floor) == report.error_count == 1
+    assert header.endswith(", 1 errors"), header
 
 
 def test_no_two_trace_contrasts_reach_the_non_text_minimum() -> None:

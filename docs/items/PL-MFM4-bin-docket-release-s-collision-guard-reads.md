@@ -3,10 +3,12 @@ id: PL-MFM4
 title: bin/docket release's collision guard reads unmerged refs for a cut in progress, so it cannot see a second session that has filed a release item and asked the owner for the version without cutting anything: PL-Z0C7 and PL-R5VS were two ids for one release and every guard matched both cleanly
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-19
+closed: 2026-09-24
+reason: Fixed by PL-331V: a release item names resource: release-train and its claim holds the train, so bin/docket new --resource refuses a second filing and bin/docket release refuses a cut beside another session's train claim
 payoff: stops two sessions filing two release items for one release while every existing guard answers both cleanly
 verify: grep -q 'def test_an_open_release_item_from_another_session' subprojects/docket/tests/test_release.py
 ---

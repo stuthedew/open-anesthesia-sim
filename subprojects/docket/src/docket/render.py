@@ -572,11 +572,21 @@ def format_digest(
         # than being refused after the owner has already approved one
         # (`PL-66FP`). The advice is replaced rather than appended - "offer
         # 0.3.9" and "0.3.9 is already being cut" in one line is two answers.
+        #
+        # A holder with no versions has claimed the release train and cut
+        # nothing yet, which is the same answer arriving earlier (`PL-331V`).
         held = [branch for branch in (cuts.branches if cuts else ()) if not branch.mine]
+        cutting = ", ".join(
+            f"{branch.ref} (v{', v'.join(branch.versions)})" for branch in held if branch.versions
+        )
+        said = [f"A release is already being cut on {cutting}"] if cutting else []
+        said.extend(
+            f"{branch.item} holds the release train, nothing cut yet ({branch.ref})"
+            for branch in held
+            if not branch.versions
+        )
         advice = (
-            "A release is already being cut on "
-            + ", ".join(f"{branch.ref} (v{', v'.join(branch.versions)})" for branch in held)
-            + "; do not offer another until it merges."
+            "; ".join(said) + "; do not offer another until it merges."
             if held
             else _release_advice(ready, plan)
         )

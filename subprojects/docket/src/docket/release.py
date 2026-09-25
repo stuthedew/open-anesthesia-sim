@@ -293,13 +293,14 @@ def already_released(
 ) -> list[str]:
     """What on the default branch says this version has already gone out.
 
-    **A release is the one change no in-flight guard can see.** Every one this
-    package has matches a `PL-` id, and a release cut carries none by design -
-    so the change that rewrites the version file, the lock file, the roadmap
-    and a new notes file, which is the most collision-prone in the repository,
-    is the only one nothing watches. Two sessions cut v0.3.7 within an hour
-    that way, and the second one's whole release was discarded at the merge
-    (`PL-66FP`).
+    **A cut is the one change whose own commits no in-flight guard can see.**
+    Every one this package has matches a `PL-` id, and a cut still carries
+    none - so the change that rewrites the version file, the lock file, the
+    roadmap and a new notes file, which is the most collision-prone in the
+    repository, was the only one nothing watched. Two sessions cut v0.3.7
+    within an hour that way, and the second one's whole release was discarded
+    at the merge (`PL-66FP`). The release item's claim on the release train is
+    the id the guard reads now (`PL-331V`).
 
     This is the half of that which is *certain*. A notes file or a version
     field on the default branch is a fact about a merge that has already

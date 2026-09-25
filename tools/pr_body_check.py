@@ -1,4 +1,4 @@
-"""Report a squash commit on the default branch that landed with no body.
+"""Report a squash commit on the default branch whose body was lost or says something else.
 
 `main` is squash-merged, `allow_merge_commit` is false, and the repository is
 configured `squash_merge_commit_title: PR_TITLE` / `squash_merge_commit_message:
@@ -51,8 +51,8 @@ So prevention needs a change of merge client, which is the project owner's to
 make and cannot be enforced from the tree. Detection plus repair is what this
 tool can do, and it holds whether or not the client is ever named.
 
-**Detection reads git and the filesystem, never the network.** The rule is
-exact: a first-parent commit on the default branch whose subject ends in
+**The default mode reads git and the filesystem, never the network.** The rule
+is exact: a first-parent commit on the default branch whose subject ends in
 `(#N)`, whose message body is empty, and for which `docs/pr-bodies/<N>.md` does
 not exist. That predicate was checked against the whole history - the 20
 body-less commits it must *not* fire on are the 2026-08 bootstrap commits and
@@ -67,6 +67,43 @@ under `docs/pr-bodies/`. One file per pull request, which is the shape
 `docs/items/` already uses for 1,378 records and for the reason recorded in
 `docs/dead-ends.md`: a single shared document serializes every writer, and this
 project runs many concurrent branches.
+
+**A body can also arrive and say something else, and `--compare` reports that
+one** (`PL-Y1W0`). An empty body is decidable offline; a body that differs from
+the pull request's is not, because only GitHub holds the other copy - so it is
+a third mode, and it reads the network. Measured 2026-09-24 over all 681 squash
+commits whose body held more than GitHub's trailer: **27 say something other
+than their pull request**. Six are exactly `auto_merge.commit_message`, the
+body as it stood when auto-merge was armed, with the pull request edited after
+it - the body version of `PL-M7W1`'s frozen subject. The other 21 carry no
+surviving `auto_merge` object: some bodies were edited after the merge (`#466`
+and `#522` add a note saying so), and some merges were sent a shorter message
+of their own (`#744` landed a 464-character message where the pull request's
+body is 3,507).
+Nothing offline could have seen any of them, and `PL-WFFX` was closed on this
+tool's reading, which could not either.
+
+**A plain equality test would report 679 of the 681, so both sides are
+normalised the same way first, and each step is here because a measurement
+needed it.** GitHub appends a `Co-authored-by` trailer to 670 of the 681, 470
+of them after a `---------` line and the rest directly. The squash message
+arrives hard-wrapped: 651 of the 654 that match differ in whitespace, and 653
+of 654 still match with whitespace collapsed only inside paragraphs, their
+breaks kept, so all whitespace is compared as a single space. The 2026-09-06 signing rewrite
+remapped the abbreviated commit hashes quoted in messages, while the pull
+request still quotes the old ones: 22 bodies differ in nothing else, and
+`main`'s copy is the one whose hashes resolve, so a token of 7 to 40 hex
+characters that contains both a digit and a letter compares equal to any
+other. The claude.ai
+attribution footer appears on one side only in `#969`, and is attribution
+rather than reasoning. What these steps cannot see is a difference made only
+of whitespace, or only of one commit hash replaced by another.
+
+The bodies come from the closed-pull-request listing, 100 to a request, so the
+whole history is about ten requests: inside the 60 an hour GitHub allows
+without a token, which this tool does not read. A listing that fails partway
+is reported with the number of commits left uncompared, not treated as a
+clean result.
 
 **Advisory, never a hard failure, and that is a considered refusal rather than
 timidity.** The condition is created by a *merge*, so the branch running a
@@ -114,6 +151,7 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
@@ -134,6 +172,35 @@ SQUASH_SUBJECT_RE = re.compile(r"\(#(\d+)\)\s*$")
 #: YAML frontmatter, which is what `docs/items/` uses, so a reader meeting one
 #: of these files already knows the convention.
 FRONT_MATTER = "---"
+
+#: What GitHub appends to a squash body: `Co-authored-by` trailers, after a
+#: `---------` line or directly after a blank one - both shapes are on `main`.
+#: Anchored to the end and to the start of each line, so a trailer quoted
+#: inside the body, or named mid-sentence on its last line, is compared.
+APPENDED_TRAILER_RE = re.compile(
+    r"(?:^-{9}\n)?(?:^[ \t]*\n)*(?:^Co-authored-by: [^\n]*(?:\n|\Z))+\s*\Z",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+#: The attribution footer the claude.ai server appends to a pull request body,
+#: matched after whitespace is collapsed, since the squash copy is wrapped
+#: inside it (`[Claude` / `Code]`).
+FOOTER_RE = re.compile(r"(?:\s*---)?\s*_Generated by \[Claude Code\]\([^)]*\)_\s*\Z")
+
+#: An abbreviated commit hash, as the 2026-09-06 rewrite remapped them. A digit
+#: *and* a letter are both required, so a plain number and a hex-spelled word
+#: are never masked, and neither is a token straight after a dot: the
+#: `000000e` in `1.000000e+00` and the `c100011` in a DOI's `cphy.c100011`
+#: both occur in bodies here and are figures, not hashes. A hash after a dot,
+#: as in `a1b2c3d..e4f5a6b`, then shows up as a difference, which a reader can
+#: dismiss, rather than a figure that changed passing as the same.
+ABBREVIATED_HASH_RE = re.compile(r"(?<!\.)\b(?=[0-9a-f]*[0-9])(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b")
+
+#: The closed-pull-request listing gives 100 bodies to a request. A listing that
+#: never returns an empty page must still end, and this repository is an order
+#: of magnitude short of the bound.
+PER_PAGE = 100
+MAX_PAGES = 100
 
 #: Written in place of a body where the pull request genuinely has none. The
 #: file has to exist so the advisory can clear - without it the check would
@@ -232,21 +299,28 @@ def repo_slug() -> str | None:
 NO_BODY = object()
 
 
-def fetch_body(slug: str, pr: int) -> str | object | None:
-    """The pull request's body, `NO_BODY` if it has none, or None if unreadable.
+def _get_json(url: str) -> object | None:
+    """GET one GitHub API URL and parse it, or None if the read failed.
 
     Unauthenticated, for the reason `tools/main_ci_status.py` gives: the
     repository is public, so no token is needed and none is read, which keeps
     this runnable from a bare checkout and keeps a credential out of it.
     """
     request = urllib.request.Request(
-        f"{API}/repos/{slug}/pulls/{pr}",
-        headers={"Accept": "application/vnd.github+json", "User-Agent": "pr-body-check"},
+        url, headers={"Accept": "application/vnd.github+json", "User-Agent": "pr-body-check"}
     )
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
-            payload = json.load(response)
+            payload: object = json.load(response)
     except (OSError, urllib.error.URLError, ValueError, TimeoutError):
+        return None
+    return payload
+
+
+def fetch_body(slug: str, pr: int) -> str | object | None:
+    """The pull request's body, `NO_BODY` if it has none, or None if unreadable."""
+    payload = _get_json(f"{API}/repos/{slug}/pulls/{pr}")
+    if not isinstance(payload, dict):
         return None
     body = payload.get("body")
     if isinstance(body, str) and body.strip():
@@ -255,6 +329,123 @@ def fetch_body(slug: str, pr: int) -> str | object | None:
     #: `body` is null on GitHub, and its squash commit escaped this check only
     #: because GitHub left the 46-character `Co-authored-by` trailer behind.
     return NO_BODY
+
+
+class Listed(NamedTuple):
+    """One pull request as the closed-pull-request listing reports it."""
+
+    body: str | None
+    #: `auto_merge.commit_message`: the message auto-merge was armed with, which
+    #: survives the merge on some pull requests and not on others.
+    armed_message: str | None
+
+
+def normalise(body: str | None) -> str:
+    """A body as `--compare` reads it, with what GitHub and the rewrite changed taken out.
+
+    Applied to both sides alike, so a step can hide a difference but never make
+    one. The module docstring gives the measurement behind each step.
+    """
+    text = APPENDED_TRAILER_RE.sub("", (body or "").replace("\r\n", "\n"))
+    text = FOOTER_RE.sub("", " ".join(text.split()))
+    return ABBREVIATED_HASH_RE.sub("<hash>", text)
+
+
+def comparable(ref: str) -> list[tuple[str, int, str]]:
+    """Squash commits `--compare` reads, newest first, as (sha, pr, body).
+
+    Those with a body on `ref` and no recovery file. An empty body is the
+    default mode's to report, and a recovery file already puts the pull
+    request's own body in the checkout.
+    """
+    have = recovered()
+    return [
+        (sha, pr, body)
+        for sha, pr, _, body in squash_commits(ref)
+        if body.strip() and pr not in have
+    ]
+
+
+def listed_bodies(slug: str, wanted: set[int]) -> tuple[dict[int, Listed], str | None]:
+    """The listing's entry for each wanted pull request, and why reading stopped short.
+
+    The reason is None when the listing was read until every wanted pull request
+    was found or the listing ran out; otherwise it says where reading stopped,
+    so a caller reports what went uncompared rather than passing it as equal.
+    """
+    found: dict[int, Listed] = {}
+    for page in range(1, MAX_PAGES + 1):
+        if wanted <= found.keys():
+            return found, None
+        payload = _get_json(
+            f"{API}/repos/{slug}/pulls?state=closed&sort=created&direction=desc"
+            f"&per_page={PER_PAGE}&page={page}"
+        )
+        if not isinstance(payload, list):
+            return found, f"the pull request listing could not be read at page {page}"
+        if not payload:
+            return found, None
+        for entry in payload:
+            number = entry.get("number") if isinstance(entry, dict) else None
+            if number not in wanted:
+                continue
+            auto = entry.get("auto_merge")
+            armed = auto.get("commit_message") if isinstance(auto, dict) else None
+            found[number] = Listed(entry.get("body"), armed if isinstance(armed, str) else None)
+    return found, f"the pull request listing ran past {MAX_PAGES} pages"
+
+
+def verdict(squash_body: str, listed: Listed) -> str | None:
+    """Why a squash body is not its pull request's body, or None where it is."""
+    ours = normalise(squash_body)
+    theirs = normalise(listed.body)
+    if ours == theirs:
+        return None
+    if not ours:
+        #: `missing()` asks for an empty body, and GitHub's trailer alone is not
+        #: empty: `#325` escaped it that way, though its pull request had no body.
+        return "carries only GitHub's trailer"
+    if listed.armed_message is not None and normalise(listed.armed_message) == ours:
+        return "is the body auto-merge was armed with, and the pull request was edited after"
+    return "differs"
+
+
+def compare(ref: str) -> list[str]:
+    """The `--compare` report, as the lines to print."""
+    slug = repo_slug()
+    if slug is None:
+        return ["pr-body: origin is not a GitHub remote; nothing to compare against."]
+    commits = comparable(ref)
+    listed, short = listed_bodies(slug, {pr for _, pr, _ in commits})
+    report: list[str] = []
+    unread = 0
+    for sha, pr, body in commits:
+        entry = listed.get(pr)
+        if entry is None:
+            unread += 1
+            continue
+        reason = verdict(body, entry)
+        if reason is not None:
+            report.append(
+                f"  #{pr} ({sha[:8]}) {reason}: {len(normalise(body)):,} characters compared "
+                f"on {ref}, {len(normalise(entry.body)):,} on the pull request"
+            )
+    compared = len(commits) - unread
+    if report:
+        head = (
+            f"pr-body: {len(report)} of {compared} squash commit(s) on {ref} say something "
+            f"other than their pull request's body:"
+        )
+    else:
+        head = (
+            f"pr-body: compared {compared} squash commit(s) on {ref}; "
+            f"none differs from its pull request's body."
+        )
+    tail = []
+    if unread:
+        why = short or "the pull request listing did not include them"
+        tail.append(f"pr-body: {unread} squash commit(s) not compared: {why}.")
+    return [head, *report, *tail]
 
 
 def queue_backlinks() -> dict[int, set[str]]:
@@ -353,11 +544,20 @@ def main(argv: list[str]) -> int:
     """Print the advisory if there is one. Always exits 0; never blocks a branch."""
     ref = default_branch_ref()
     if ref is None:
+        #: Silence is right at session start, where it is one line fewer. Run
+        #: by hand, `--compare` always prints a verdict, so saying nothing
+        #: there would read as "none differs".
+        if "--compare" in argv:
+            print("pr-body: no default branch is readable here; nothing compared.")
         return 0
 
     if "--recover" in argv:
         written = recover(ref)
         print(f"pr-body: recovered {written} body/bodies.")
+        return 0
+
+    if "--compare" in argv:
+        print("\n".join(compare(ref)))
         return 0
 
     gaps = missing(ref)

@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
 from dataclasses import replace
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
-from docket.model import Item
+from docket.claims import CUTOVER_MARKER, SESSION_VARIABLE
+from docket.cli import main
+from docket.model import RELEASE_TRAIN, Item, parse_item, render_item
 from docket.release import (
     SPAN_HEADING,
     Readiness,
@@ -1472,3 +1476,470 @@ def test_wave_withholds_the_scope_split_while_the_gate_is_open() -> None:
 
     assert "clear the gate" in printed
     assert "Scope" not in printed
+
+
+# --- the release train: filing and cutting under a claim (`PL-331V`) ----------
+#
+# A cut's own commits carry no item id, so the release guard reads the release
+# item's instead: whoever claims an item carrying `resource: release-train`
+# holds the train, and `new --resource` and `release` refuse a second holder.
+# Real git, dated explicitly, because what is under test is which claims
+# `claims.holdings` reads as live at the instant the command names.
+
+TRAIN_T0 = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
+TRAIN_NOW = (TRAIN_T0 + timedelta(hours=2)).isoformat()
+
+
+@pytest.fixture
+def _no_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the session running the suite from deciding `mine` for any claim read here."""
+    monkeypatch.delenv(SESSION_VARIABLE, raising=False)
+
+
+def _train_item(identifier: str, status: str = "untriaged", resource: str = RELEASE_TRAIN) -> str:
+    """A release item as `new --resource` files it, or closed where `status` says so."""
+    closed = "closed: 2026-09-01\ncommit: abc1234\n" if status == "done" else ""
+    stamp = f"resource: {resource}\n" if resource else ""
+    return (
+        f"---\nid: {identifier}\ntitle: Cut the release\nstatus: {status}\n{stamp}"
+        f"added: 2026-08-01\n{closed}---\n\n**Problem.** Cut the release\n"
+    )
+
+
+class _TrainRepo:
+    """A tagged v0.2.5 with one finished item on `main`, and branches that claim release items.
+
+    Every commit is dated, and the base sits a month before `TRAIN_T0`, so a
+    lease is live exactly when a test's claim says it is.
+    """
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        self.items = root / "items"
+        self.items.mkdir(parents=True)
+        self.git("-c", "init.defaultBranch=main", "init", "-q")
+        for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+            self.git("config", name, value)
+        self.commit(
+            "base",
+            when=TRAIN_T0 - timedelta(days=30),
+            files={
+                "items/PL-D1D1-shipped.md": _train_item("PL-D1D1", "done", resource=""),
+                "pyproject.toml": '[project]\nversion = "0.2.5"\n',
+                CUTOVER_MARKER: "# the claim reader\n",
+            },
+        )
+        self.git("tag", "v0.2.5")
+
+    def git(self, *args: str, when: datetime | None = None) -> str:
+        env = None
+        if when is not None:
+            env = os.environ | {
+                "GIT_AUTHOR_DATE": when.isoformat(),
+                "GIT_COMMITTER_DATE": when.isoformat(),
+            }
+        done = subprocess.run(
+            ["git", *args], cwd=self.root, check=True, capture_output=True, text=True, env=env
+        )
+        return done.stdout
+
+    def commit(self, message: str, *, when: datetime, files: dict[str, str] | None = None) -> None:
+        for path, text in (files or {}).items():
+            target = self.root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-q", "--allow-empty", "-m", message, when=when)
+
+    def hold(self, branch: str, identifier: str, *, when: datetime = TRAIN_T0) -> None:
+        """Branch from `main`, file a release item and claim it, as release mode does."""
+        self.git("checkout", "-q", "-b", branch, "main")
+        self.commit(
+            f"{identifier}: file the release",
+            when=when,
+            files={f"items/{identifier}-cut.md": _train_item(identifier)},
+        )
+        self.commit(f"{identifier}: start\n\nClaim: {identifier} {branch}", when=when)
+
+    def run(self, *argv: str) -> int:
+        return main([*argv, "--items", str(self.items), "--now", TRAIN_NOW])
+
+    def version(self) -> str:
+        return (self.root / "pyproject.toml").read_text(encoding="utf-8")
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_filing_a_release_item_is_refused_while_another_branch_holds_the_release_train(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-MFM4`: two release items filed for one release, each passing every guard.
+
+    Refused at filing, with nothing written, so there is no second item to
+    discard at the merge.
+    """
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    repo.git("checkout", "-q", "-b", "claude/second", "main")
+    before = sorted(path.name for path in repo.items.iterdir())
+
+    code = repo.run("new", "--resource", RELEASE_TRAIN, "--no-fetch", "Cut v0.2.6")
+
+    out = capsys.readouterr().out
+    assert code == 3
+    assert "another session is preparing a release" in out
+    assert "claude/pl-tr4n-cut holds the release train through PL-TR4N" in out
+    assert sorted(path.name for path in repo.items.iterdir()) == before
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_filing_a_second_release_item_on_the_branch_holding_the_release_train_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    before = sorted(path.name for path in repo.items.iterdir())
+
+    code = repo.run("new", "--resource", RELEASE_TRAIN, "--no-fetch", "Cut v0.2.6")
+
+    assert code == 3
+    assert "this branch already holds the release train through PL-TR4N" in (
+        capsys.readouterr().out
+    )
+    assert sorted(path.name for path in repo.items.iterdir()) == before
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_filing_a_release_item_nobody_holds_stamps_the_release_train(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.git("checkout", "-q", "-b", "claude/first", "main")
+
+    assert repo.run("new", "--resource", RELEASE_TRAIN, "--no-fetch", "Cut v0.2.6") == 0
+
+    identifier = capsys.readouterr().out.split()[0]
+    [filed] = repo.items.glob(f"{identifier}-*.md")
+    assert parse_item(filed.read_text(encoding="utf-8")).resource == RELEASE_TRAIN
+
+
+@pytest.mark.parametrize(
+    ("extra", "said"),
+    [(("--no-git",), "`--no-git` asks git nothing"), (("Two", "Three"), "was given 3 titles")],
+)
+def test_a_release_train_filing_that_cannot_be_checked_is_a_usage_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], extra: tuple[str, ...], said: str
+) -> None:
+    repo = _TrainRepo(tmp_path / "repo")
+
+    assert repo.run("new", "--resource", RELEASE_TRAIN, "Cut v0.2.6", *extra) == 2
+
+    assert said in capsys.readouterr().out
+    assert sorted(path.name for path in repo.items.iterdir()) == ["PL-D1D1-shipped.md"]
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_cut_is_refused_on_a_rival_release_train_holder_that_has_cut_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Both sessions filed before either pushed a claim; the one ordering second stops here."""
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    repo.hold("claude/pl-bcdf-cut", "PL-BCDF", when=TRAIN_T0 + timedelta(hours=1))
+
+    assert repo.run("release", "0.2.6", "--no-fetch") == 1
+
+    out = capsys.readouterr().out
+    assert "A release is already being prepared on a branch nothing has merged" in out
+    assert (
+        "claude/pl-tr4n-cut holds the release train for PL-TR4N (claimed 2026-09-01), "
+        "and has cut nothing yet"
+    ) in out
+    assert 'version = "0.2.5"' in repo.version()
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_cut_proceeds_where_head_holds_the_release_train_first(tmp_path: Path) -> None:
+    """The other side of the same order: the branch claiming first has no rival."""
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-bcdf-cut", "PL-BCDF", when=TRAIN_T0 + timedelta(hours=1))
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+
+    repo.git("checkout", "-q", "claude/pl-bcdf-cut")
+    assert repo.run("release", "0.2.6", "--no-fetch") == 1
+    repo.git("checkout", "-q", "claude/pl-tr4n-cut")
+    assert repo.run("release", "0.2.6", "--no-fetch") == 0
+    assert 'version = "0.2.6"' in repo.version()
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_cut_is_refused_where_head_holds_no_release_train_claim(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.git("checkout", "-q", "-b", "claude/unclaimed", "main")
+
+    assert repo.run("release", "0.2.6", "--no-fetch") == 1
+
+    out = capsys.readouterr().out
+    assert "Cannot cut v0.2.6 here: this branch holds no claim on the release train." in out
+    assert 'bin/docket new --resource release-train "Cut v0.2.6 from the 1 items' in out
+    assert "bin/docket set ID --resource release-train" in out
+    assert 'version = "0.2.5"' in repo.version()
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_dry_run_warns_that_head_holds_no_release_train_and_still_shows_the_notes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.git("checkout", "-q", "-b", "claude/unclaimed", "main")
+
+    assert repo.run("release", "0.2.6", "--no-fetch", "--dry-run") == 0
+
+    out = capsys.readouterr().out
+    assert "this branch holds no claim on the release train" in out
+    assert "PL-D1D1" in out
+    assert "Dry run: nothing was changed." in out
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_release_item_closed_on_this_branch_has_released_the_release_train(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    repo.commit(
+        "PL-TR4N: close it",
+        when=TRAIN_T0 + timedelta(hours=1),
+        files={"items/PL-TR4N-cut.md": _train_item("PL-TR4N", "done")},
+    )
+
+    assert repo.run("release", "0.2.6", "--no-fetch", "--dry-run") == 0
+
+    out = capsys.readouterr().out
+    assert "PL-TR4N is done on this branch, which released its claim on the train" in out
+
+
+@pytest.mark.usefixtures("_no_session")
+@pytest.mark.parametrize("ending", ["yield", "close"])
+def test_a_rival_whose_release_train_claim_ended_no_longer_refuses(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], ending: str
+) -> None:
+    """A `Yield:` or the item closed on its own branch releases the train, so a later claim cuts."""
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    later = TRAIN_T0 + timedelta(minutes=30)
+    if ending == "yield":
+        repo.commit("PL-TR4N: stop\n\nYield: PL-TR4N claude/pl-tr4n-cut", when=later)
+    else:
+        repo.commit(
+            "PL-TR4N: close it",
+            when=later,
+            files={"items/PL-TR4N-cut.md": _train_item("PL-TR4N", "dropped")},
+        )
+    repo.hold("claude/pl-bcdf-cut", "PL-BCDF", when=TRAIN_T0 + timedelta(hours=1))
+
+    assert repo.run("release", "0.2.6", "--no-fetch") == 0
+
+    assert "release train" not in capsys.readouterr().out
+    assert 'version = "0.2.6"' in repo.version()
+
+
+def test_the_digest_names_a_release_train_holder_that_has_cut_nothing_yet() -> None:
+    """The offer stops as soon as a release item is claimed, not only once it is cut."""
+    from docket.checks import Report
+    from docket.render import format_digest
+    from docket.vcs import BranchCut, CutsInFlight
+
+    digest = format_digest(
+        Report(items=[_item("PL-4444")]),
+        None,
+        _ready("0.2.8", "0.2.9"),
+        _plan("0.2.8", KNOWN_IDS),
+        cuts=CutsInFlight(
+            branches=(
+                BranchCut(
+                    ref="origin/claude/pl-tr4n-cut",
+                    versions=(),
+                    cut=date(2026, 9, 1),
+                    item="PL-TR4N",
+                ),
+            )
+        ),
+    )
+
+    assert (
+        "PL-TR4N holds the release train, nothing cut yet (origin/claude/pl-tr4n-cut); "
+        "do not offer another until it merges."
+    ) in digest
+    assert "already being cut" not in digest
+    assert "Offer" not in digest
+
+
+def test_a_resource_outside_the_known_set_is_a_check_error() -> None:
+    """`Holdings.holder` matches exactly, so a misspelt resource would hold nothing, silently."""
+    from docket.checks import analyze
+
+    misspelt = parse_item(_train_item("PL-TR4N", resource="release_train"), "PL-TR4N-cut.md")
+    stamped = parse_item(_train_item("PL-TR4N"), "PL-TR4N-cut.md")
+
+    [error] = [e for e in analyze([misspelt], TODAY).errors if "resource" in e]
+    assert "resource 'release_train' is not one of release-train" in error
+    assert not [e for e in analyze([stamped], TODAY).errors if "resource" in e]
+
+
+def test_the_resource_field_round_trips_after_touches() -> None:
+    item = replace(_item("PL-TR4N", status="ready", milestone=""), resource=RELEASE_TRAIN)
+    item = replace(item, touches=("a.py",))
+
+    text = render_item(item)
+
+    assert parse_item(text).resource == RELEASE_TRAIN
+    assert "touches: a.py\nresource: release-train\n" in text
+    assert render_item(parse_item(text)) == text
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_rival_whose_branch_this_one_merged_still_refuses_the_cut(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The train is mine by branch name, so a contained cut does not hide its holder.
+
+    `cuts_in_flight` marks a cut `HEAD` contains as `mine`; before this, the
+    rival's entry was deduplicated against it and then dropped with it, so
+    `release` cut while `new` refused on the same branch.
+    """
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/x", "PL-XXXX")
+    repo.commit(
+        "PL-XXXX: cut",
+        when=TRAIN_T0 + timedelta(minutes=10),
+        files={"docs/releases/v0.2.6.md": "# v0.2.6\n"},
+    )
+    repo.hold("claude/y", "PL-YYYY", when=TRAIN_T0 + timedelta(hours=1))
+    repo.git("merge", "-q", "--no-edit", "claude/x", when=TRAIN_T0 + timedelta(hours=1))
+
+    assert repo.run("release", "0.2.7", "--no-fetch") == 1
+
+    out = capsys.readouterr().out
+    assert "claude/x is cutting v0.2.6" in out
+    assert 'version = "0.2.5"' in repo.version()
+    assert repo.run("new", "--resource", RELEASE_TRAIN, "--no-fetch", "Cut v0.2.7") == 3
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_rival_already_listed_for_its_cut_is_named_once(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    repo.commit(
+        "PL-TR4N: cut",
+        when=TRAIN_T0 + timedelta(minutes=10),
+        files={"docs/releases/v0.2.6.md": "# v0.2.6\n"},
+    )
+    repo.git("checkout", "-q", "-b", "claude/second", "main")
+
+    assert repo.run("release", "0.2.6", "--no-fetch", "--dry-run") == 0
+
+    out = capsys.readouterr().out
+    assert out.count("claude/pl-tr4n-cut") == 1
+    assert "claude/pl-tr4n-cut is cutting v0.2.6" in out
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_lapsed_release_train_claim_on_this_branch_is_revived_not_filed_again(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A second release item on one branch is the thing filing refuses, lapsed or not."""
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/x", "PL-XXXX", when=TRAIN_T0 - timedelta(days=9))
+    before = sorted(path.name for path in repo.items.iterdir())
+
+    assert repo.run("new", "--resource", RELEASE_TRAIN, "--no-fetch", "Cut v0.2.6") == 3
+    filed = capsys.readouterr().out
+    assert repo.run("release", "0.2.6", "--no-fetch") == 1
+    refused = capsys.readouterr().out
+
+    assert "PL-XXXX, whose claim on the release train is lapsed" in filed
+    assert "`bin/docket claim PL-XXXX` revives it." in filed
+    assert sorted(path.name for path in repo.items.iterdir()) == before
+    assert "PL-XXXX is this branch's release item, and its claim is lapsed" in refused
+    assert "file a new one" not in refused
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_filing_names_a_claim_record_it_could_not_parse(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """What the read could not see is said before the answer, as `claim` says it."""
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.git("checkout", "-q", "-b", "claude/x", "main")
+    repo.commit(
+        "PL-XXXX: file the release",
+        when=TRAIN_T0,
+        files={"items/PL-XXXX-cut.md": _train_item("PL-XXXX")},
+    )
+    repo.commit("PL-XXXX: start\n\nClaim: PL-XXXX", when=TRAIN_T0)
+    repo.git("checkout", "-q", "-b", "claude/z", "main")
+
+    repo.run("new", "--resource", RELEASE_TRAIN, "--no-fetch", "Cut v0.2.6")
+
+    out = capsys.readouterr().out
+    assert "note: not a claim record, so not read: " in out
+    assert "on claude/x: Claim: PL-XXXX" in out
+
+
+@pytest.mark.usefixtures("_no_session")
+@pytest.mark.parametrize("command", ["new", "release"])
+def test_a_declined_holdings_read_refuses_a_filing_and_a_cut(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    command: str,
+) -> None:
+    """A missing hold proves nothing when git would not answer, so neither goes through."""
+    from docket import cli
+    from docket.claims import Holdings
+
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    before = sorted(path.name for path in repo.items.iterdir())
+    monkeypatch.setattr(cli, "holdings", lambda *_, **__: Holdings(declined="git said no"))
+
+    if command == "new":
+        code = repo.run("new", "--resource", RELEASE_TRAIN, "--no-fetch", "Cut v0.2.6")
+        said = "declined to read who holds the release train - git said no"
+    else:
+        code = repo.run("release", "0.2.6", "--no-fetch")
+        said = "Cannot check whether another session is already cutting: git said no."
+
+    assert code == 1
+    assert said in capsys.readouterr().out
+    assert sorted(path.name for path in repo.items.iterdir()) == before
+    assert 'version = "0.2.5"' in repo.version()
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_the_digest_reads_a_release_train_holder_from_the_refs(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """End to end: `_cuts` asks `holdings`, so a claim alone stops the offer."""
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.git("checkout", "-q", "main")
+    repo.commit(
+        "two more finished",
+        when=TRAIN_T0 - timedelta(days=20),
+        files={
+            f"items/{key}-shipped.md": _train_item(key, "done", resource="")
+            for key in ("PL-D2D2", "PL-D3D3")
+        },
+    )
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    repo.git("checkout", "-q", "-b", "claude/second", "main")
+
+    assert repo.run("digest") == 0
+
+    out = capsys.readouterr().out
+    assert "PL-TR4N holds the release train, nothing cut yet (claude/pl-tr4n-cut)" in out
+    assert "Offer" not in out
