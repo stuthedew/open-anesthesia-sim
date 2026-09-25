@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: review-hold
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md, docs/items/PL-0JGZ-does-a-branch-change-only-the-queue-has-two.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 closed: 2026-09-25
