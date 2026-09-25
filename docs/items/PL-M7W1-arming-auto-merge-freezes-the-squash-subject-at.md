@@ -162,6 +162,13 @@ Recommendation: direction 3, taken inside the `PL-HMZZ` build's rewrite of
 `git log` reader and `CLAUDE.md`'s leading-id rule; the body half of this item
 closes with the `PL-979D` build.
 
+**Decided 2026-09-25: direction 3** (project owner, 2026-09-25, ratified, over
+directions 1 and 2, on the two heads' answers above). Taken inside the
+`PL-HMZZ` build's rewrite of `tools/pr_title_check.py`'s docstring, which
+keeps the title check for the `git log` reader and `CLAUDE.md`'s leading-id
+rule and stops claiming to protect provenance; the body half closes with the
+`PL-979D` build. The thread that builds `PL-HMZZ` takes this item with it.
+
 **Done when.** A session that arms auto-merge and later renames a pull request
 either cannot land a stale subject, or is told at the moment it matters that it
 will - and whichever is chosen, `pr_title_check.py`'s docstring describes the

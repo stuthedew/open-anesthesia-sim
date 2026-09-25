@@ -86,8 +86,8 @@ path turns out to wrap, and then say so in `tools/pr_body_check.py`'s module
 docstring, which today calls the squash body "the permanent commit message a
 reader of `main` meets".
 
-**Under `PL-979D`'s answer, 2026-09-25 - a recommendation until the owner
-records the form there.** `PL-979D`'s answer (project owner, 2026-09-25,
+**Under `PL-979D`'s answer, 2026-09-25, whose form the owner recorded there
+the same day.** `PL-979D`'s answer (project owner, 2026-09-25,
 ratified) makes a copy recorded in the tree before the merge the permanent
 record, and its second design round recommends `docs/pr-bodies/<N>.md`,
 written by the session while the pull request is open and held by the pull

@@ -63,8 +63,8 @@ header's provenance claim, so the header changes once and not twice. A session
 can take this: it is the structure of an internal record, not a product
 question.
 
-**Under `PL-979D`'s answer, 2026-09-25 - a recommendation until the owner
-records the form there.** For every pull request merged after the `PL-979D`
+**Under `PL-979D`'s answer, 2026-09-25, whose form the owner recorded there
+the same day.** For every pull request merged after the `PL-979D`
 build lands, which body is the record is answered once: the copy in
 `docs/pr-bodies/<N>.md`, written before the merge and checked against the pull
 request by `pr-title.yml` on every edit, whatever the merge then sends. The

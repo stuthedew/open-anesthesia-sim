@@ -152,14 +152,23 @@ is `PL-73G8`'s ask on the same lines, so the three land as one header change in
 the build. `PL-M7W1`: its body half closes here; its subject half is
 `PL-HMZZ`'s, whose part 3 retires the inference the squash subject exists to
 feed, and the recommendation is written beside its own question. `PL-Y1W0`
-stays closed. Each note is marked as a recommendation until the owner records
-the form here.
+stays closed. The form is recorded below, and each note says so.
 
 **Decision needed, second round.** Whether the record takes this form: the
 file under `docs/pr-bodies/`, the session's `--record` before the merge, the
 `edited`-triggered required check, forward only. It is the owner's because it
 adds a required step to every pull request and a file to the tree for each,
 and because the backfill is a separate yes or no.
+
+**Decided 2026-09-25: this form** (project owner, 2026-09-25, ratified, over
+the same form with a backfill of the 714 unrecorded bodies, and over another
+form). The build follows the recommendation above as written: the record is
+`docs/pr-bodies/<N>.md`, written by the session with `--record` while its
+pull request is open, held by a step in `pr-title.yml`'s required job, with
+the squash body on `main` a derived copy; forward only, the backfill left as
+its own decision. The members take the dispositions written above. The
+build's touches are named under "What it costs" and are declared when it
+starts. Still blocked by `PL-HMZZ`'s build, whose writer and check this rides.
 
 **Done when.** One of the two is recorded here as the answer, and each open member is re-scoped or closed against it.
 
