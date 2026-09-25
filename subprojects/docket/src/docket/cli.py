@@ -21,7 +21,17 @@ from typing import Any
 
 from . import arming, claiming, instructions, notes, render
 from .checks import Report, SettingsSource, analyze, brief_contradictions
-from .claims import BY_STATUS, BY_YIELD, LAPSED, LIVE, Hold, Holdings, holdings
+from .claims import (
+    BY_STATUS,
+    BY_YIELD,
+    LAPSED,
+    LIVE,
+    Hold,
+    Holdings,
+    holdings,
+    settled_branches,
+    unclaimed,
+)
 from .concurrency import (
     ORDERING,
     SAME_AREA,
@@ -130,7 +140,6 @@ from .vcs import (
     _head_name,
     _remotes,
     branch_state,
-    branches_in_flight,
     changed_items,
     churn,
     closed_by,
@@ -146,12 +155,10 @@ from .vcs import (
     merged_pull_requests,
     open_pull_requests,
     orphaned,
-    precedence,
     records_on_base,
     ref_walk,
     released_on_base,
     resolved,
-    settled_branches,
     since_filed,
     stranded,
     tags,
@@ -197,7 +204,7 @@ def _root(items: Path | None) -> Path:
     docs/items` resolved the root to `docs/`, and everything downstream took
     its answer from there. Two readings broke and neither said so (`PL-P757`).
 
-    The queue prefix handed to `branches_in_flight` became `items/` where `git
+    The queue prefix handed to the in-flight read became `items/` where `git
     log --name-only` prints `docs/items/...` from the repository root, so no
     path matched, `_annotates_only` read every commit as work and
     `_item_file_ids` read none as a file edit - the direction `PL-X3WZ`
@@ -230,7 +237,7 @@ def _tracked(root: Path, directory: Path) -> str:
 
     Taken from the store the invocation resolved - `--items` wins over the
     setting, because a command pointed at one queue must not be answered about
-    another. `branches_in_flight` decides whether a commit was recording an
+    another. The in-flight read decides whether a commit was recording an
     item or working on it by whether its whole diff sits in this directory, so
     the wrong directory here reads every commit as work. That is not
     hypothetical: it is what `--items docs/items` did, from a root taken as the
@@ -310,8 +317,8 @@ class Invocation:
     `argparse` builds a fresh one per parse, so the lifetime is the command's
     and nothing has to be remembered to reset. That lifetime is what makes the
     runner's memo safe - `cmd_branch` fetches in-process - and what lets
-    `main` close its `cat-file` batch. `flight` is the one field written after
-    construction, by `_flight`, once.
+    `main` close its `cat-file` batch. `holdings` and `flight` are the two
+    fields written after construction, by `_holdings` and `_flight`, once each.
 
     The store itself is not held here: `_load` reads it on every call, because
     `set`, `new` and `withdraw` write between reads.
@@ -323,6 +330,7 @@ class Invocation:
     tracked: str
     settings: SettingsSource
     git: GitRunner | None
+    holdings: Holdings | None = None
     flight: FlightReport | None = None
 
 
@@ -383,6 +391,13 @@ def _flight(args: argparse.Namespace) -> FlightReport:
     session told an item is startable when one unread ref might be carrying it
     - which is the collapse `FlightReport` exists to prevent.
 
+    **Answered by `claims.holdings`, not inferred** (`PL-N162`). An item is in
+    flight where a branch holds a live claim on it, a live status disposition,
+    or its name; `Holdings.flight` keeps `vcs.branches_in_flight`'s shape, so
+    no reader below changed. What a commit subject says is attribution and
+    holds nothing, except on a commit made before a session could write a
+    claim, which is read by the old rule without its three promotions.
+
     The root is resolved from the store, exactly as `_load` resolves it. Asking
     git about the repository this command happens to be *run* in, while
     answering about a queue somewhere else, is the same wrong-project error
@@ -407,13 +422,31 @@ def _flight(args: argparse.Namespace) -> FlightReport:
     inv = _invocation(args)
     if inv.flight is not None:
         return inv.flight
-    report = (
-        FlightReport()
-        if inv.git is None
-        else branches_in_flight(inv.root, items_dir=inv.tracked, runner=inv.git)
-    )
+    report = FlightReport() if inv.git is None else _holdings(args).flight()
     inv.flight = report
     return report
+
+
+def _holdings(args: argparse.Namespace) -> Holdings:
+    """Who holds each item, as the claims on the unlanded refs record it (`PL-MB2W`).
+
+    `_flight` is this in `FlightReport`'s shape; `show` and `flight` read it
+    whole, for the kind and state of each hold that shape has no room for.
+    Cached on the invocation for `_flight`'s reason, and judged at `_now`, so
+    `--now` and `--today` date every lease in one run the way they date every
+    age. Under `--no-git` nothing is asked and nothing is held.
+    """
+    inv = _invocation(args)
+    if inv.holdings is not None:
+        return inv.holdings
+    now = _now(args)
+    found = (
+        Holdings(now=now)
+        if inv.git is None
+        else holdings(inv.root, now=now, items_dir=inv.tracked, runner=inv.git)
+    )
+    inv.holdings = found
+    return found
 
 
 def _say_unread(flight: FlightReport) -> None:
@@ -895,6 +928,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         protected_paths=config.protected_paths,
         gate_paths=config.gate_paths,
         now=_now(args),
+        read=_holdings(args),
     )
     if rendered:
         print(rendered)
@@ -1700,10 +1734,20 @@ def cmd_show(args: argparse.Namespace) -> int:
     **The mark then had to say *whose* branch it was.** "Do not start this
     again" is the right answer to another session's work and a false alarm
     about your own, and re-reading the item you are implementing is the
-    commonest reason to run this twice. `precedence` separates the two, and
-    where more than one branch is carrying the item it also says which of them
+    commonest reason to run this twice. `Holdings.order` separates the two, and
+    where more than one branch has claimed the item it also says which of them
     continues - the one question every other guard in this package leaves
     open (queue item PL-YHD3).
+
+    **And what kind of hold it is** (`PL-N162`). The mark is read from
+    `claims.holdings`, the same read `_flight` makes: the item's live claims in
+    order, and where nothing claims it the status disposition or branch name
+    holding it instead, each with its kind and state. A disposition is a branch
+    that moved the item's status - a triage or grooming pass, or a close-out -
+    and is worded as that rather than as work; before this it printed nothing, as the old
+    precedence read had no carrier for it. A lapsed claim on an item the base
+    holds open prints too where nothing claims it live, as the free claim it
+    is.
 
     **A fourth thing a session cannot learn from the item's own file: that
     something above it explains it.** `root-cause-of:` is written on the head,
@@ -1863,22 +1907,17 @@ def cmd_show(args: argparse.Namespace) -> int:
             f"  unblocks generator {named}: blocked on this item, so the head's rank passes"
             " here - the generator tier, above every band but P0"
         )
-    inv = _invocation(args)
-    if item.identifier in flight.ids and inv.git is not None:
-        # The whole precedence read only where something is actually carrying
-        # the item, which is the rare case. A session starting ordinary work
-        # pays exactly what it paid before. Nothing is in flight under
-        # `--no-git`, so the second test is for the type rather than the case.
-        print(
-            render.format_precedence(
-                precedence(root, item.identifier, items_dir=inv.tracked, runner=inv.git), _now(args)
-            )
-        )
-    elif edit := next((e for e in flight.editing if e.item_id == item.identifier), None):
-        # The weaker mark, and only where the stronger one is silent. A session
-        # that names an item reaches `show` and nothing else, so before this
-        # the one thing it could not learn here was that another branch had
-        # already written to the file it was about to write to (`PL-N1JK`).
+    # The read `_flight` already made, whole: the kind and state of each hold
+    # are what `FlightReport` has no room for. Empty under `--no-git`.
+    if held := render.format_holds(_holdings(args), item.identifier, _now(args)):
+        print(held)
+    edit = next((e for e in flight.editing if e.item_id == item.identifier), None)
+    if edit is not None and item.identifier not in flight.ids:
+        # The weaker mark, and only where no hold is live: a lapsed claim above
+        # holds nothing, so it does not silence this. A session that names an
+        # item reaches `show` and nothing else, so before this the one thing it
+        # could not learn here was that another branch had already written to
+        # the file it was about to write to (`PL-N1JK`).
         print(render.format_queue_edit(edit, _now(args)))
     if threads := _notes_threads(root, config, item.identifier):
         print(render.format_notes_threads(threads, item.identifier, config.notes_file))
@@ -2153,7 +2192,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     for index, pick in enumerate(picks, start=1):
         print(f"  {index}. {pick.describe()}\n")
     if flight.ids:
-        print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
+        print(render.format_excluded(flight.ids, _holdings(args)))
     _say_promotable(items)
     _say_unranked_generators(items, flight.ids, _milestones(root, config))
     _say_recurring(items, flight.ids)
@@ -2215,7 +2254,7 @@ def _next_oldest(
             f"{waiting.new_work} item(s), which `docket next` still ranks."
         )
     if flight.ids:
-        print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
+        print(render.format_excluded(flight.ids, _holdings(args)))
     _say_promotable(items)
     # The lane's set-aside count is taken over the owed work alone, so it
     # describes the answer above rather than a queue it was never drawn from.
@@ -3750,12 +3789,21 @@ def cmd_flight(args: argparse.Namespace) -> int:
     tell which, and reporting is the whole job.
 
     **Except for the branches that have answered it themselves** (`PL-Q664`).
-    `settled_branches` names the refs whose every claimed item is closed in
-    their own copy and which no pull request is open on, and those move out of
-    the list the age is meant to separate. It is asked here rather than inside
-    `branches_in_flight` because that read is on the hot path of `next`,
-    `show`, `list`, `triage` and the digest, and this one is wanted by the
-    command whose whole question it is.
+    `claims.settled_branches` names the refs that hold nothing live but their
+    own close-outs and which no pull request is open on, and those move out of
+    the list the age is meant to separate. It reads the `Holdings` `_flight`
+    already made (`PL-N162`), since a close-out releases the branch's claim and
+    only the holds still say which ref closed what. It is asked here rather
+    than inside `_flight` because it may ask the forge, and that is wanted by
+    the command whose whole question it is.
+
+    **And it prints what the claim record adds** (`PL-N162`, `PL-MB2W`'s
+    spec): each row's kind and state, from the `Holdings` rather than the
+    `FlightReport`, which has no field for them; lapsed claims on items the
+    base holds open; how many refs still hold by the old rule; and an
+    `unclaimed:` row per work branch that claims nothing, asked of the same
+    `claims.claims_nothing` CI refuses on. That last walks each branch again,
+    so it is asked here and by no command that only ranks against the report.
     """
     inv = _invocation(args)
     if inv.git is None:
@@ -3768,11 +3816,14 @@ def cmd_flight(args: argparse.Namespace) -> int:
     lookup = _open_pull_requests(args, inv.root, inv.config)
     answer = lookup() if lookup is not None and report.branches else None
     opened = None if lookup is None else (lambda: answer)
-    settled = settled_branches(
-        inv.root, report, opened=opened, items_dir=inv.tracked, runner=inv.git
-    )
+    settled = settled_branches(inv.root, _holdings(args), opened=opened, runner=inv.git)
     reviews = open_pull_requests(inv.root, report, opened=opened, runner=inv.git)
-    print(render.format_flight(report, _now(args), settled, reviews))
+    read = _holdings(args)
+    # The queue as `holdings` read it: the store this command was pointed at,
+    # with the roadmap and the notes the project's settings name.
+    queue = with_fields(inv.config, items_dir=inv.tracked)
+    forgetful = unclaimed(inv.root, read, queue, runner=inv.git)
+    print(render.format_flight(report, _now(args), settled, reviews, read, forgetful))
     return 0
 
 

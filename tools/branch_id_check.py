@@ -82,6 +82,10 @@ for the reason the ids above come from `docket`'s own parsers.
   refuse every finished pull request, and the session this exists for is the
   one that never claimed. A branch named for its item holds it by the name
   (`PL-TZ3R`), and one whose work is already on the base owes nothing.
+  The question is `claims.claims_nothing`, not a copy of it here: `flight`'s
+  `unclaimed:` row asks the same function of every branch it walks, so the
+  refusal and the count the design's 1-in-20 threshold reads cannot disagree
+  (`PL-FFR0`).
 - *A claim that orders behind another live claim is refused* - the fence the
   claim order needs, since nothing stops a later claim being written. Only
   claims made under the record take part, on either side: an old-rule hold is
@@ -113,7 +117,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.claims import CLAIM, CUTOVER_MARKER, LIVE, Hold, Holdings, holdings  # noqa: E402
+from docket.claims import (  # noqa: E402
+    AGENT_BRANCH_PREFIX,
+    LIVE,
+    Hold,
+    Holdings,
+    claims_bound,
+    claims_nothing,
+    holdings,
+    in_queue,
+)
 from docket.config import Config  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
 from docket.vcs import (  # noqa: E402
@@ -131,11 +144,6 @@ from docket.vcs import (  # noqa: E402
 #: What `make release` writes and `git tag -a vX.Y.Z` marks. Anchored, so a
 #: subject that merely mentions a release is not one.
 RELEASE_RE = re.compile(r"^Release\s+v\d+\.\d+\.\d+")
-
-#: The namespace an agent session's branch sits in, and the whole of what this
-#: check binds. Not `docket`'s to know - it matches ids, and has no concept of
-#: who made a branch - so unlike `BRANCH_ID_RE` this is declared locally.
-AGENT_BRANCH_PREFIX = "claude/"
 
 #: `%p` is empty only for a commit whose parents this checkout does not hold.
 #: A walk that emits one ran off the end of a truncated history instead of
@@ -256,72 +264,6 @@ def attribution(name: str, subjects: list[str]) -> list[str]:
     return found
 
 
-def in_queue(path: str, config: Config) -> bool:
-    """Whether a repository path is one of the records a queue workflow writes.
-
-    The items, the roadmap and the working notes. A capture, a triage pass or a
-    design round writes these and nothing else - triage puts an item on the debt
-    gate's list in the roadmap, and a design round keeps its thread in the notes
-    - and owes no claim, since the ids it leads with are never pushed into one
-    (`PL-3CTW`). Read as the items directory alone, as the spec's "outside
-    `items_dir`" says, it refused 12 such passes merged in the week to
-    2026-09-24, and would have made each claim the ids it triaged.
-    """
-    return path.startswith(config.items_dir.strip("/") + "/") or path in {
-        config.roadmap_file,
-        config.notes_file,
-    }
-
-
-def _work_under_record(base: str, config: Config, head: str = "HEAD") -> bool | None:
-    """Whether `head` changes a path outside the queue in a commit made under the record.
-
-    `None` where git did not answer. A merge is how the base arrives rather than
-    the branch's own work, and `claims.holdings` reads none either. A commit whose
-    own tree lacks `CUTOVER_MARKER` was made before a session could write a
-    claim, and the claim clauses skip it, as the design's migration requires.
-    Newest first, so a branch made under the record answers in one `ls-tree`.
-    """
-    log = _git(
-        [
-            "-c",
-            "core.quotePath=false",
-            "log",
-            "--no-merges",
-            "--no-renames",
-            "--format=%x1e%H",
-            "--name-only",
-            f"{base}..{head}",
-            "--",
-        ]
-    )
-    if not answered(log):
-        return None
-    for record in log.split("\x1e"):
-        lines = [line for line in record.split("\n") if line]
-        if not lines or all(in_queue(path, config) for path in lines[1:]):
-            # Nothing at all, or the queue alone: a claim or a yield, which
-            # are empty, a capture or a triage pass.
-            continue
-        # The tree's own listing, which is the design's test; the reader asks
-        # `git show` for the same file, and the two agree on any real tree.
-        tree = _git(["ls-tree", "--name-only", lines[0], "--", CUTOVER_MARKER])
-        if not answered(tree):
-            return None
-        if tree.strip():
-            return True
-    return False
-
-
-def claims_here(report: Holdings, name: str, remotes: frozenset[str]) -> tuple[Hold, ...]:
-    """The claims this branch wrote under the record, in whatever state each is in now."""
-    return tuple(
-        hold
-        for hold in report.holds
-        if hold.kind == CLAIM and not hold.legacy and _head_name(hold.ref, remotes) == name
-    )
-
-
 def ahead_of(hold: Hold, report: Holdings) -> Hold | None:
     """The live claim ordering first on `hold`'s item, where that is another branch's.
 
@@ -402,7 +344,7 @@ def check_claims(
             f"{report.base} here"
         ]
 
-    mine = claims_here(report, name, remotes)
+    mine = claims_bound(report, name, remotes)
     refusals = [
         _behind(hold, first, name, remotes)
         for hold in mine
@@ -414,13 +356,18 @@ def check_claims(
             f"branch-id: {', '.join(report.unreadable)} could not be read, so a claim ordering "
             f"ahead of this branch's there is not ruled out"
         )
-    if mine or not in_agent_namespace(name) or BRANCH_ID_RE.search(name) is not None:
-        return refusals, notes
-    if not any(_head_name(ref, remotes) == name for ref in report.last):
-        # The reader offers only work the base has not taken, so a branch it
-        # did not walk has nothing outstanding to hold.
-        return refusals, notes
-    work = _work_under_record(base, config, head)
+    # `flight`'s `unclaimed:` row asks the same function of every branch it
+    # walked, so the refusal here and the count there cannot disagree (`PL-FFR0`).
+    work = claims_nothing(
+        report,
+        name,
+        base=base,
+        head=head,
+        root=ROOT,
+        config=config,
+        remotes=remotes,
+        runner=_runner,
+    )
     if work is None:
         notes.append(
             "branch-id: claims not checked - git did not answer which commits here are work"
@@ -460,7 +407,7 @@ def hint(path: str, now: datetime) -> int:
     remotes = _remotes(ROOT, _runner)
     if not report.known or any(_head_name(ref, remotes) == name for ref in report.unreadable):
         return 0
-    if not claims_here(report, name, remotes):
+    if not claims_bound(report, name, remotes):
         print(
             f"{CLAIMS_NOTHING}, naming the item this work is for. Who holds an item is that "
             f"record (`PL-MB2W`); a capture, a triage pass or a design round, which changes "

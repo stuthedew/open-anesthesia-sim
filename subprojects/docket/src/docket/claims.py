@@ -49,13 +49,15 @@ own copy of the item reaching a status in `RELEASING_STATUSES`, a takeover, a
 lapse, or landing. Landing is derived, at two levels. A branch the base
 contains, or whose content it holds, is never offered by
 `vcs._unlanded_refs`. Within a branch still offered, a claim on an item the
-base has closed is spent, and so is every claim at or before the branch's
-*landed prefix*: the newest commit that adds content, all of it content the
-base has held, through which the branch's own work is all on the base. That
-is the shape a squash merge leaves on a branch that goes on committing
-(`PL-8JQQ`), and continuing work there claims again.
+base has closed is spent, and so is every claim the branch's *landed prefix*
+takes in: some commit descending from the claim adds content, all of it
+content the base has held, and the branch's own work through it is all on
+the base. That is the shape a squash merge leaves on a branch that goes on
+committing (`PL-8JQQ`), and continuing work there claims again. Descent, not
+place in the walk, because a merge of the base brings in commits that sort
+after a claim without descending from it.
 
-**Two other kinds of hold ride the same read, and neither is a claim.** A
+**Three other kinds of hold ride the same read, and none is a claim.** A
 *disposition* is a branch whose copy of an item has moved its `status:` away
 from both the fork's copy and the base's - a grooming pass blocking or
 dropping it, a triage pass readying it - which `docket next` must not offer
@@ -64,8 +66,12 @@ nothing; it reads `status:` alone, so a pass rewriting another field of a
 hundred items holds none of them (`PL-3W3P`); it runs on the branch's lease;
 and it never orders against a claim or holds arming. A *cut* is a release's
 notes file on the branch, `vcs.cuts_in_flight`'s read, and it always refuses a
-release. They are kept apart from the claims (`Holdings.dispositions`,
-`Holdings.cuts`) so that a reader wanting claims cannot be handed either.
+release. A *name* is a branch named for its item, `claude/pl-k7qx-slug`, which
+`vcs.branches_in_flight` has always read as carrying it and which needs no
+history to read (`PL-TZ3R`); it runs on the branch's lease and never orders
+against a claim or holds arming. They are kept apart from the claims
+(`Holdings.dispositions`, `Holdings.cuts`, `Holdings.named`) so that a reader
+wanting claims cannot be handed one.
 
 **A commit made before a session could write a claim is read by the old
 rules** (`CUTOVER_MARKER`): a subject leading with ids claims them where the
@@ -82,11 +88,12 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from .config import Config
 from .model import CLOSED_STATUSES, parse_front_matter
 from .release import NOTES_DIR
 from .store import ID_PATTERN
@@ -97,6 +104,8 @@ from .vcs import (
     FlightReport,
     QueueEdit,
     Runner,
+    SettledBranch,
+    SettledReport,
     _annotates_only,
     _cut_versions,
     _head_name,
@@ -155,10 +164,21 @@ CUTOVER_MARKER = "subprojects/docket/src/docket/claiming.py"
 #: writes the same variable's value as a claim's `<session>` token.
 SESSION_VARIABLE = "CLAUDE_CODE_REMOTE_SESSION_ID"
 
-#: `Hold.kind`: a recorded claim, a status disposition, or a release cut.
+#: `Hold.kind`: a recorded claim, a status disposition, a release cut, or a branch
+#: named for its item.
 CLAIM = "claim"
 DISPOSITION = "disposition"
 CUT = "cut"
+NAMED = "named"
+
+#: The namespace every agent session's branch sits in: the web harness gives it
+#: to each session it starts, and `CLAUDE.md` asks a session naming its own
+#: branch to use it. The unclaimed-work question binds this namespace and no
+#: other, because a contributor has no queue and no `bin/docket` to claim with
+#: (`PL-8P6D`). Declared here since `flight`'s `unclaimed:` row asks it as well
+#: as `tools/branch_id_check.py`, and the two must read one definition
+#: (`PL-FFR0`).
+AGENT_BRANCH_PREFIX = "claude/"
 
 #: `Hold.state`: holding the item at `now`, out of lease, or ended.
 LIVE = "live"
@@ -223,7 +243,10 @@ class Hold:
 
     A disposition fills the same fields from the commit that last touched the
     item's file, and is `live` or `lapsed` only; a cut's `key` is the version
-    it cuts, without its `v`, and it is always `live`.
+    it cuts, without its `v`, and it is always `live`. A name's `since` and
+    `commit` are the branch's first commit, and `renewed` its newest; a ref
+    whose commits went unread has neither, so both dates are the read's `now`
+    and `commit` is empty.
     """
 
     key: str
@@ -262,9 +285,13 @@ class Holdings:
 
     `holds` is the claims, sorted into the order that decides which branch
     continues: author date, then hash, with a takeover immediately ahead of the
-    claim it names. One order across every item, so `order` is a filter of it
-    and `holder` its first match. `dispositions` and `cuts` are the other two
-    kinds, kept apart so that no reader wanting claims is handed one.
+    claim it names, and last the branch's name - a claim read by the old rules
+    counts for every branch reaching its commit, so two branches can tie on one
+    commit, and the name keeps the order the same in every checkout rather than
+    leaving it to which refs this one lists first. One order across every item,
+    so `order` is a filter of it and `holder` its first match. `dispositions`,
+    `cuts` and `named` are the other three kinds, kept apart so that no reader
+    wanting claims is handed one.
 
     **What went unread travels with the answer**, as it does on `FlightReport`.
     `unreadable` names refs whose history this checkout cannot compare with the
@@ -279,6 +306,8 @@ class Holdings:
     holds: tuple[Hold, ...] = ()
     dispositions: tuple[Hold, ...] = ()
     cuts: tuple[Hold, ...] = ()
+    #: One per branch whose name carries an item id, in the order refs were listed.
+    named: tuple[Hold, ...] = ()
     unreadable: tuple[str, ...] = ()
     malformed: tuple[str, ...] = ()
     base: str = ""
@@ -292,12 +321,19 @@ class Holdings:
     #: Per `Hold.ref`, when that branch's newest non-merge commit was made.
     last: Mapping[str, datetime] = field(default_factory=dict)
     declined: str = ""
+    #: The `Hold.ref` of the branch `HEAD` is on, or `""` where it is detached or
+    #: that branch is not read. A claim carrying a session token is `mine` by the
+    #: token alone, so this is what says a claim is on this branch although
+    #: another session made it - the case `claim` answers by branch.
+    head: str = ""
 
     @property
     def ids(self) -> frozenset[str]:
-        """The items some branch holds live, by a claim or a disposition."""
+        """The items some branch holds live, by a claim, a disposition or its name."""
         return frozenset(
-            hold.key for hold in (*self.holds, *self.dispositions) if hold.state == LIVE
+            hold.key
+            for hold in (*self.holds, *self.dispositions, *self.named)
+            if hold.state == LIVE
         )
 
     def order(self, key: str) -> tuple[Hold, ...]:
@@ -320,17 +356,31 @@ class Holdings:
         """
         return tuple(hold for hold in self.holds if hold.state == LAPSED and hold.on_base)
 
+    def holding(self) -> dict[str, Hold]:
+        """The one hold that puts each item in flight, by item.
+
+        The claim that continues first, where nothing claims it the
+        disposition, and where neither holds it the branch named for it
+        (`PL-TZ3R`). `flight` is these as rows, and `flight`'s command reads
+        them whole for the kind and state a row has no field for.
+        """
+        held: dict[str, Hold] = {}
+        for hold in (*self.holds, *self.dispositions, *self.named):
+            if hold.state == LIVE:
+                held.setdefault(hold.key, hold)
+        return held
+
+    @property
+    def legacy_refs(self) -> frozenset[str]:
+        """The refs holding a live claim read by the old rule: `PL-CH3Z` waits for none."""
+        return frozenset(hold.ref for hold in self.holds if hold.state == LIVE and hold.legacy)
+
     def flight(self) -> FlightReport:
         """The holds in `vcs.branches_in_flight`'s shape, so its callers read them unchanged.
 
-        One `Branch` per item held live: the claim that continues first, and
-        where nothing claims it, the disposition. A name that carries an id is
-        not read as a hold here (`PL-TZ3R`).
+        One `Branch` per item held live, from `holding`.
         """
-        held: dict[str, Hold] = {}
-        for hold in (*self.holds, *self.dispositions):
-            if hold.state == LIVE:
-                held.setdefault(hold.key, hold)
+        held = self.holding()
         return FlightReport(
             branches=tuple(
                 Branch(
@@ -485,14 +535,25 @@ def holdings(
 
     copies[base] = _item_paths_on(base, items_dir, root, run)
     on_base = set(copies[base])
-    prefixes: dict[str, int] = {}
-    ranked: list[tuple[tuple[datetime, str, int, datetime, str], str, Hold]] = []
+    landed: dict[str, dict[int, bool]] = {}
+    ranked: list[tuple[tuple[datetime, str, int, datetime, str], str, str, Hold]] = []
     for (key, branch), (episode, yielded) in episodes.items():
         standing = [claim for claim in episode if claim.identity not in superseded]
-        if branch not in prefixes:
-            fork = refs.fork.get(tips[branch], "")
-            prefixes[branch] = _landed_through(histories[branch], fork, refs.base_blobs, root, run)
-        unspent = [claim for claim in standing if claim.position > prefixes[branch]]
+        fork = refs.fork.get(tips[branch], "")
+        unspent = [
+            claim
+            for claim in standing
+            if not _landed_through(
+                claim,
+                histories[branch],
+                branches[branch],
+                fork,
+                refs.base_blobs,
+                root,
+                run,
+                landed.setdefault(branch, {}),
+            )
+        ]
         end = moment if yielded is None else yielded
         # The earliest claim whose lease is unbroken holds; any later claim in
         # the same chain is a renewal of it. Where every chain broke, the last
@@ -542,8 +603,8 @@ def holdings(
             over=holder.over,
             resource=fields.get("resource", ""),
         )
-        ranked.append((rank(holder), key, hold))
-    ranked.sort(key=lambda entry: (entry[0], entry[1]))
+        ranked.append((rank(holder), key, branch, hold))
+    ranked.sort(key=lambda entry: (entry[0], entry[1], entry[2]))
 
     # A disposition: the branch's copy has moved `status:` away from both the
     # fork's and the base's. Asked only of items a commit on the branch touched,
@@ -578,8 +639,49 @@ def holdings(
             )
     dispositions.sort(key=lambda hold: (hold.since, hold.commit, hold.key))
 
-    holds = tuple(hold for _, _, hold in ranked)
-    held = {hold.key for hold in (*holds, *dispositions) if hold.state == LIVE}
+    # A branch named for its item holds it by the name, which needs no history,
+    # so a ref whose commits went unread still proves its id and stays in
+    # `unreadable` for whatever those commits might add (`PL-TZ3R`). Live while
+    # the branch's newest commit is within the term; an unread ref is live,
+    # since nothing dates it and dropping the id offers an item a live session
+    # may be holding. An item the base has closed releases it, as it does a
+    # claim. A branch that recorded a claim on the item, in any state, holds it
+    # by that record and not by its name, so that its yield, takeover or
+    # close-out ends the hold rather than leaving the name holding for a lease
+    # more (`PL-N162`); a close-out in its own copy is a disposition, and stays
+    # in flight as one.
+    named: dict[str, Hold] = {}
+    for name in candidates:
+        match = BRANCH_ID_RE.search(name)
+        if match is None or (name not in unlanded and name not in unreadable):
+            continue
+        branch = _head_name(name, remotes)
+        key = match.group(1).upper()
+        if f"{key} {branch}" in named or (key, branch) in episodes:
+            continue
+        history = histories.get(branch, [])
+        dates = renewals.get(branch, [])
+        if status(base, key) in CLOSED_STATUSES:
+            state, released_by = RELEASED, BY_CLOSED
+        else:
+            state = LIVE if not dates or moment - dates[-1] <= term else LAPSED
+            released_by = ""
+        named[f"{key} {branch}"] = Hold(
+            key=key,
+            ref=branches[branch][0] if branch in histories else name,
+            kind=NAMED,
+            state=state,
+            since=history[0].authored if history else moment,
+            renewed=dates[-1] if dates else moment,
+            commit=history[0].commit if history else "",
+            status=status(tips[branch], key) if branch in tips else "",
+            mine=bool(here) and branch == here,
+            on_base=key in on_base,
+            released_by=released_by,
+        )
+
+    holds = tuple(hold for *_, hold in ranked)
+    held = {hold.key for hold in (*holds, *dispositions, *named.values()) if hold.state == LIVE}
     last = {branches[branch][0]: dates[-1] for branch, dates in renewals.items() if dates}
     cuts = _cuts(histories, branches, tips, last, base, notes_dir, root, run, moment)
     editing = _editing(touched, branches, tips, last, held, base, root, run, copies)
@@ -587,6 +689,7 @@ def holdings(
         holds=holds,
         dispositions=tuple(dispositions),
         cuts=cuts,
+        named=tuple(named.values()),
         unreadable=tuple(name for name in candidates if name in unreadable),
         malformed=malformed,
         base=base,
@@ -600,7 +703,283 @@ def holdings(
         ),
         last=last,
         declined=run.reason,
+        head=branches[here][0] if here in branches else "",
     )
+
+
+def settled_branches(
+    root: Path,
+    read: Holdings,
+    *,
+    opened: Callable[[], Collection[str] | None] | None = None,
+    runner: Runner | None = None,
+) -> SettledReport:
+    """The in-flight refs that have finished: every item closed, and nothing open.
+
+    An age cannot tell a live session from a branch nobody will merge, and it
+    fails in the costly direction on the case that matters most: finished work
+    sitting on a branch with no pull request behind it, reported to every
+    session as in flight. `PL-Q664` is the worked instance: two items at
+    `status: done`, ten item files existing nowhere else, and three hours
+    before anybody noticed.
+
+    Two facts separate that case, and neither is the age. The ref holds nothing
+    but its own close-outs, and no pull request is open on it. Either alone is
+    ordinary: a branch mid-review has closed its items, and a branch with no
+    pull request is usually a session still working.
+
+    **The first fact is read from the holds, not from the rows `flight` shows**
+    (`PL-N162`). Closing an item in the branch's own copy releases the branch's
+    claim on it (`BY_STATUS`), and the same status move is a disposition, which
+    keeps the item in flight. So a ref is settled where every claim it recorded
+    is finished (`_finished_claim`), shadowed or not, and every live hold it
+    has, a disposition or its name, records a status in `CLOSED_STATUSES` in
+    its own copy. Not `RELEASING_STATUSES`: a blocked item releases its claim,
+    but it is not finished work. A name counts by the same reasoning, because
+    it holds only where the branch recorded no claim on the item - a capture
+    closed on the branch that filed it holds by nothing else. A cut is not an
+    item and is left out of the question. Only a ref with a row in
+    `Holdings.flight` is asked about, and its ids are that ref's own rows, so a
+    settled row always replaces live ones rather than adding a branch or an id
+    the report never named under it. It costs no `git show`: `Hold.status` is
+    the copy's status, read when the holds were.
+
+    **It never changes what is in flight.** The ids stay excluded from `docket
+    next`, because the work exists on a branch and offering it again would have
+    a second session redo it. Only how a reader is told changes.
+
+    **The forge is asked through `opened`, never reached from here.** This
+    package answers from a bare checkout with no network; the caller supplies a
+    way to ask which branch names have a pull request open, and `None` - no way
+    to ask, no token, no network - is carried into the report as `asked=False`
+    rather than read as "none is open". A callable, so it is asked only where
+    the cheap half found a candidate.
+
+    Every silence fails toward the live reading. A ref whose commits went
+    unread never settles, an item whose copy the ref lacks has no status and
+    leaves the ref live, and a read git declined any part of says so in
+    `declined`, because a live session wrongly called finished is the expensive
+    mistake.
+    """
+    run = _Silences(runner or _run_git)
+    unread = set(read.unreadable)
+    shown: dict[str, set[str]] = {}
+    for row in read.flight().branches:
+        if row.name not in unread:
+            shown.setdefault(row.name, set()).add(row.item_id)
+    # Every claim the ref recorded is asked, whether or not it won its item's
+    # row: a claim shadowed by another branch's is still a session working.
+    unfinished = {hold.ref for hold in read.holds if not _finished_claim(hold)}
+    for hold in (*read.dispositions, *read.named):
+        if hold.state == LIVE and hold.status not in CLOSED_STATUSES:
+            unfinished.add(hold.ref)
+
+    finished = sorted(
+        (
+            SettledBranch(name=name, item_ids=tuple(sorted(ids)), last_commit=read.last.get(name))
+            for name, ids in shown.items()
+            if name not in unfinished
+        ),
+        key=lambda entry: entry.name,
+    )
+    declined = read.declined
+    if not finished:
+        # Nothing to ask the forge about, so it is not asked - and the report
+        # says the question was answered, because a set with no members in it
+        # has no member whose pull request went unchecked.
+        return SettledReport(declined=declined)
+    answer = None if opened is None else opened()
+    if answer is None:
+        return SettledReport(branches=tuple(finished), asked=False, declined=declined)
+    remotes = _remotes(root, run)
+    heads = {head.strip() for head in answer if head.strip()}
+    return SettledReport(
+        branches=tuple(entry for entry in finished if _head_name(entry.name, remotes) not in heads),
+        declined=declined or run.reason,
+    )
+
+
+def _finished_claim(hold: Hold) -> bool:
+    """Whether `hold`, a claim, says nothing is left to do on its item on its branch.
+
+    Released by a yield, a takeover, the landed prefix or the base's close, the
+    work is elsewhere or done. Released by the branch's own status move, it is
+    done only where that status is closed: `blocked` releases the claim, and a
+    blocked item with no disposition behind it - a capture the base never had,
+    or one the base already shows as blocked - would otherwise settle the
+    branch that holds its only copy. A live or lapsed claim is unfinished; a
+    lapsed one holds nothing, but the branch may still carry its work. The
+    branch's copy is read before the base's, so an item it blocked and the base
+    later closed still reads as blocked, which errs toward the live reading.
+    """
+    if hold.state != RELEASED:
+        return False
+    return hold.released_by != BY_STATUS or hold.status in CLOSED_STATUSES
+
+
+# A work branch that claims nothing: `PL-MB2W`'s third "Forgetful session"
+# catch, asked by `tools/branch_id_check.py`, which refuses it in CI, and by
+# `flight`'s `unclaimed:` row, which counts it. One definition in this module
+# for both (`PL-FFR0`), because two spellings of one question are two answers
+# waiting to disagree, and the pre-registered 1-in-20 threshold is counted from
+# the row while CI refuses on the check.
+
+
+def in_queue(path: str, config: Config) -> bool:
+    """Whether a repository path is one of the records a queue workflow writes.
+
+    The items, the roadmap and the working notes. A capture, a triage pass or a
+    design round writes these and nothing else - triage puts an item on the debt
+    gate's list in the roadmap, and a design round keeps its thread in the notes
+    - and owes no claim, since the ids it leads with are never pushed into one
+    (`PL-3CTW`). Read as the items directory alone, as the spec's "outside
+    `items_dir`" says, it refused 12 such passes merged in the week to
+    2026-09-24, and would have made each claim the ids it triaged.
+    """
+    return path.startswith(config.items_dir.strip("/") + "/") or path in {
+        config.roadmap_file,
+        config.notes_file,
+    }
+
+
+def work_under_record(
+    root: Path, base: str, head: str, config: Config, *, runner: Runner | None = None
+) -> bool | None:
+    """Whether `head` changes a path outside the queue in a commit made under the record.
+
+    `None` where git did not answer. A merge is how the base arrives rather than
+    the branch's own work, and `holdings` reads none either. A commit whose own
+    tree lacks `CUTOVER_MARKER` was made before a session could write a claim,
+    and the claim clauses skip it, as the design's migration requires. Newest
+    first, so a branch made under the record answers in one `ls-tree`.
+    `core.quotePath` off so a path outside ASCII is compared as written rather
+    than in git's quoted form, which no queue path would match.
+    """
+    run = runner or _run_git
+    log = run(
+        [
+            "-c",
+            "core.quotePath=false",
+            "log",
+            "--no-merges",
+            "--no-renames",
+            "--format=%x1e%H",
+            "--name-only",
+            f"{base}..{head}",
+            "--",
+        ],
+        root,
+    )
+    if not answered(log):
+        return None
+    for record in log.split("\x1e"):
+        lines = [line for line in record.split("\n") if line]
+        if not lines or all(in_queue(path, config) for path in lines[1:]):
+            # Nothing at all, or the queue alone: a claim or a yield, which
+            # are empty, a capture or a triage pass.
+            continue
+        # The tree's own listing, which is the design's test; `holdings` asks
+        # `git show` for the same file, and the two agree on any real tree.
+        tree = run(["ls-tree", "--name-only", lines[0], "--", CUTOVER_MARKER], root)
+        if not answered(tree):
+            return None
+        if tree.strip():
+            return True
+    return False
+
+
+def claims_bound(read: Holdings, branch: str, remotes: frozenset[str]) -> tuple[Hold, ...]:
+    """The claims `branch` wrote under the record, in whatever state each is in now.
+
+    Any state, by the project owner's reading (2026-09-24): a branch releases
+    its claim by closing its item in its own copy, so "no live claim" would call
+    every finished branch forgetful, and the session this catches is the one
+    that never claimed. Old-rule holds are left out, since an inference from a
+    subject is what the record replaces.
+    """
+    return tuple(
+        hold
+        for hold in read.holds
+        if hold.kind == CLAIM and not hold.legacy and _head_name(hold.ref, remotes) == branch
+    )
+
+
+def claims_nothing(
+    read: Holdings,
+    branch: str,
+    *,
+    base: str,
+    head: str,
+    root: Path,
+    config: Config,
+    remotes: frozenset[str],
+    runner: Runner | None = None,
+) -> bool | None:
+    """Whether `branch` is a work branch that claims nothing, or `None` where git did not answer.
+
+    A `claude/` branch with a non-merge commit made under the record that
+    changes a path outside the queue (`work_under_record`, walking
+    `base..head`), no claim of its own in any state (`claims_bound`), and no
+    item id in its name, which holds the item by the name (`PL-TZ3R`). The
+    question is per branch, never per id, so a capture or a triage pass is
+    never pushed into claiming the ids it leads with. A branch `read` did not
+    walk has nothing the base has not taken, and owes nothing.
+    """
+    if (
+        claims_bound(read, branch, remotes)
+        or not branch.lower().startswith(AGENT_BRANCH_PREFIX)
+        or BRANCH_ID_RE.search(branch) is not None
+    ):
+        return False
+    if not any(_head_name(ref, remotes) == branch for ref in read.last):
+        return False
+    return work_under_record(root, base, head, config, runner=runner)
+
+
+@dataclass(frozen=True)
+class Unclaimed:
+    """The work branches that claim nothing, and those git did not answer about.
+
+    `branches` are `Hold.ref` names, as `flight` shows every other row.
+    `unasked` is not "claims something": a branch there may be either.
+    """
+
+    branches: tuple[str, ...] = ()
+    unasked: tuple[str, ...] = ()
+
+
+def unclaimed(
+    root: Path, read: Holdings, config: Config, *, runner: Runner | None = None
+) -> Unclaimed:
+    """Every branch `read` walked that `claims_nothing`, for `flight`'s `unclaimed:` rows.
+
+    Asked of `read`'s own base and of each ref it walked, so a row and the
+    holds beside it are one reading. Nothing is asked where `read` declined:
+    its `last` and `holds` are then incomplete, and a branch missing a claim
+    from a partial read would be named as forgetful.
+    """
+    if not read.known:
+        return Unclaimed()
+    run = runner or _run_git
+    remotes = _remotes(root, run)
+    found: list[str] = []
+    unasked: list[str] = []
+    for ref in sorted(read.last):
+        answer = claims_nothing(
+            read,
+            _head_name(ref, remotes),
+            base=read.base,
+            head=ref,
+            root=root,
+            config=config,
+            remotes=remotes,
+            runner=run,
+        )
+        if answer is None:
+            unasked.append(ref)
+        elif answer:
+            found.append(ref)
+    return Unclaimed(branches=tuple(found), unasked=tuple(unasked))
 
 
 def _utc(now: datetime) -> datetime:
@@ -971,14 +1350,31 @@ def _touched(history: list[_Commit], prefix: str) -> dict[str, tuple[int, str]]:
 
 
 def _landed_through(
-    history: list[_Commit], fork: str, base_blobs: frozenset[str], root: Path, run: Runner
-) -> int:
-    """The place of the branch's landed prefix in its walk, or -1 where nothing has landed.
+    claim: _Claim,
+    history: list[_Commit],
+    names: list[str],
+    fork: str,
+    base_blobs: frozenset[str],
+    root: Path,
+    run: Runner,
+    landed: dict[int, bool],
+) -> bool:
+    """Whether the branch's landed prefix takes in the claim: whether the claim is spent.
 
-    The newest commit that wrote content, all of it content the base has held,
-    and through which the branch's own work - the branch as of that commit,
-    against its fork - is all on the base. That is where a squash merge took
-    the branch, and every claim at or before it has been spent.
+    A landed commit wrote content, all of it content the base has held, and
+    the branch's own work through it - the branch as of that commit, against
+    its fork - is all on the base. That is where a squash merge took the
+    branch, and a claim the commit descends from, or that is the commit, has
+    been spent.
+
+    **Descends from, not sorts after.** The walk is in author-date order, and
+    a merge of the base brings in commits no claim is an ancestor of. Where the
+    clone is grafted unevenly, the walk reaches them below the graft, and each
+    writes only content the base holds. One authored after the claim sorts
+    after it, and read by place it spent a live claim (`PL-N162`'s review of its
+    slice 2). So the landed commit is sought among the claim's descendants,
+    newest first. Taking the newest landed commit overall and then asking about
+    ancestry would leave the claim live when a squash really had taken it.
 
     **Both tests, because either alone releases a live claim.** The commit's
     own blobs are true of an empty commit - the claim commit itself - and of
@@ -986,19 +1382,30 @@ def _landed_through(
     test is what a squash actually proves. The first is a necessary condition
     of the second, since a blob the commit writes is either in the branch's
     net change or is the fork's own copy, so it picks the candidates from the
-    walk already made and only a candidate costs a diff. A branch the squash
+    walk already made and only a candidate costs a diff; `landed` keeps each
+    diff's answer by place, for the branch's other claims. A branch the squash
     cannot be proven against - a file the base resolved against its own later
-    edits (`PL-LKFP`) - keeps its claims until a yield or the lease.
+    edits (`PL-LKFP`) - keeps its claims until a yield or the lease, and so does
+    one git would not list descendants for.
     """
     if not fork:
-        return -1
-    for position in range(len(history) - 1, -1, -1):
+        return False
+    after = set(run(["rev-list", "--ancestry-path", f"^{claim.commit}", *names], root).split())
+    after.add(claim.commit)
+    # A descendant sorts after its ancestors in the walk, so nothing before the
+    # claim can be one.
+    for position in range(len(history) - 1, claim.position - 1, -1):
         entry = history[position]
+        if entry.commit not in after:
+            continue
         if not entry.added or not all(blob in base_blobs for blob in entry.added):
             continue
-        if _work_already_on_base(_landing_split(entry.commit, fork, base_blobs, root, run)):
-            return position
-    return -1
+        if position not in landed:
+            split = _landing_split(entry.commit, fork, base_blobs, root, run)
+            landed[position] = _work_already_on_base(split)
+        if landed[position]:
+            return True
+    return False
 
 
 def _cuts(

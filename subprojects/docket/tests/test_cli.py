@@ -20,18 +20,19 @@ import subprocess
 import sys
 from collections.abc import Callable
 from dataclasses import replace as with_fields
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from docket import cli, vcs
+from docket import claims, cli, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
-from docket.claims import CUTOVER_MARKER, SESSION_VARIABLE
+from docket.claims import CUTOVER_MARKER, SESSION_VARIABLE, Holdings
 from docket.cli import build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
-from docket.vcs import FlightReport, commands_written_here, lost, records_on_base
+from docket.vcs import commands_written_here, lost, records_on_base
 from docket.verify import LANDED_GUARD, GitUnanswered
 
 READY = """---
@@ -1084,12 +1085,12 @@ def test_next_computes_the_flight_report_once(
     calls: list[str] = []
 
     def counted(
-        root: Path, *, items_dir: str = "docs/items", runner: object = None
-    ) -> FlightReport:
+        root: Path, *, now: datetime, items_dir: str = "docs/items", runner: object = None
+    ) -> Holdings:
         calls.append(items_dir)
-        return FlightReport()
+        return Holdings(now=now)
 
-    monkeypatch.setattr("docket.cli.branches_in_flight", counted)
+    monkeypatch.setattr("docket.cli.holdings", counted)
     store = str(_store(tmp_path, READY))
     # `_run` passes `--no-git`, which short-circuits the read this is about, so
     # the parser is driven directly here.
@@ -1117,12 +1118,12 @@ def test_the_flight_cache_does_not_outlive_one_invocation(
     calls: list[str] = []
 
     def counted(
-        root: Path, *, items_dir: str = "docs/items", runner: object = None
-    ) -> FlightReport:
+        root: Path, *, now: datetime, items_dir: str = "docs/items", runner: object = None
+    ) -> Holdings:
         calls.append(items_dir)
-        return FlightReport()
+        return Holdings(now=now)
 
-    monkeypatch.setattr("docket.cli.branches_in_flight", counted)
+    monkeypatch.setattr("docket.cli.holdings", counted)
     store = str(_store(tmp_path, READY))
     ran = ["--items", store, "--today", "2026-08-24"]
 
@@ -3021,6 +3022,44 @@ def test_a_forge_that_answered_with_nothing_open_says_so_on_the_row(
     assert "Whether a pull request is open for any of them could not be read here" in unanswered
 
 
+def test_flight_moves_a_branch_that_closed_its_item_into_the_settled_rows(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-Q664`'s rows, end to end, read from the holds since `PL-N162`.
+
+    The close-out releases the branch's claim, so the row it keeps in flight
+    is the disposition the same status move made; a pull request open on the
+    branch puts it back among the live rows, waiting on review.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing", when="2026-09-22T10:00:00+00:00")
+    closed = READY.replace("PL-B1B1", "PL-0001").replace("status: ready", "status: done")
+    _commit_on(
+        root,
+        BRANCH,
+        {"items/PL-0001-on-main.md": closed},
+        "PL-0001 Close it out",
+        "2026-09-22T11:00:00+00:00",
+    )
+    argv = ["--items", str(root / "items"), "--now", "2026-09-22T12:00:00+00:00", "flight"]
+
+    _forge(root, "true")
+    assert main(argv) == 0
+    settled = capsys.readouterr().out
+    _forge(root, f'printf "{BRANCH} 812\\n"')
+    assert main(argv) == 0
+    reviewing = capsys.readouterr().out
+
+    assert "No branch is carrying an item anybody is still working." in settled
+    assert (
+        "On 1 branch every item it carries is already closed, and no pull request is open for it"
+        in settled
+    )
+    assert f"  {BRANCH}  PL-0001  last commit 1 hour ago" in settled
+    assert "already closed" not in reviewing
+    row = next(line for line in reviewing.splitlines() if line.startswith("PL-0001"))
+    assert row.endswith("pull request #812 open")
+
+
 def test_now_without_an_offset_is_refused_rather_than_guessed(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -3089,13 +3128,14 @@ def test_show_marks_an_item_a_branch_has_in_flight(
     """
     root = _flight_repo(tmp_path, "PL-0001 Do the thing")
 
-    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
 
     out = capsys.readouterr().out
     assert f"IN FLIGHT on {BRANCH}" in out
     # What the branch holds, not that somebody holds it: a branch outlives its
     # session, so the line may not presume one (`PL-7TVT`).
-    assert "That branch already carries PL-0001's work, so starting it here would redo it." in out
+    assert "live legacy claim, made 2026-08-20 12:00 UTC; last commit 3 days ago" in out
+    assert "That branch has claimed PL-0001, so starting it here would redo its work." in out
     assert "does not say anybody is still on it" in out
     assert "do not start" not in out
     assert "PL-0001" in out.splitlines()[0]
@@ -3114,7 +3154,7 @@ def test_show_does_not_tell_a_session_to_stop_working_its_own_branch(
     root = _flight_repo(tmp_path, "PL-0001 Do the thing")
     subprocess.run(["git", "checkout", "-q", BRANCH], cwd=root, check=True, capture_output=True)
 
-    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
 
     out = capsys.readouterr().out
     assert f"IN FLIGHT on this branch ({BRANCH})" in out
@@ -3137,8 +3177,15 @@ def test_show_reads_a_branch_ahead_of_its_tracking_ref_as_this_session(
     remote = tmp_path / "origin.git"
     subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True, capture_output=True)
 
+    # Dated inside the claim's lease: an undated commit takes the wall clock,
+    # and a gap longer than the term would break the chain it renews.
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-21T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-21T12:00:00+00:00",
+    }
+
     def git(*args: str) -> None:
-        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
 
     git("remote", "add", "origin", str(remote))
     git("push", "-q", "origin", "main", BRANCH)
@@ -3147,7 +3194,7 @@ def test_show_reads_a_branch_ahead_of_its_tracking_ref_as_this_session(
     git("add", "-A")
     git("commit", "-qm", "carry on without pushing")
 
-    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
 
     out = capsys.readouterr().out
     assert "IN FLIGHT on this branch" in out
@@ -3160,10 +3207,11 @@ def test_show_says_which_branch_holds_an_item_two_are_carrying(
     """PL-YHD3: the second session is told it is the second, from real refs.
 
     Real git rather than an injected runner, because what is being proved here
-    is that two branches carrying one item produce one order git can actually
-    be asked for - the earliest commit naming the item, read through
-    `--source` and `%cI`, against a checkout whose HEAD is the later of the
-    two.
+    is that two branches claiming one item produce one order git can actually
+    be asked for - `Holdings.order`, on `(%aI, hash)` - against a checkout
+    whose HEAD is the later of the two. The second commit reaches outside the
+    queue, since these commits predate the claim writer and are read by the
+    old rule, under which a queue-only one claims nothing (`PL-N162`).
     """
     root = _flight_repo(tmp_path, "PL-0001 Do the thing")
     later = os.environ | {
@@ -3175,19 +3223,21 @@ def test_show_says_which_branch_holds_an_item_two_are_carrying(
         subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=env)
 
     git("checkout", "-qb", "claude/pl-0001-second", "main")
-    (root / "items" / "second.txt").write_text("the other session\n")
+    (root / "src").mkdir()
+    (root / "src" / "second.txt").write_text("the other session\n")
     git("add", "-A")
     git("commit", "-qm", "PL-0001 Do the thing as well", env=later)
 
     assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
 
     out = capsys.readouterr().out
-    assert "PL-0001 is on 2 branches" in out
+    assert "PL-0001 is claimed on 2 branches" in out
     assert "which session yields" in out
     assert f"holds it  {BRANCH}" in out
     assert "yields    claude/pl-0001-second (this branch)" in out
     assert "This branch yields" in out
-    assert "named it 2026-08-20 12:00 UTC" in out
+    assert "made 2026-08-20 12:00 UTC" in out
+    assert "made 2026-08-21 09:00 UTC" in out
 
 
 def test_triage_names_an_item_already_in_flight(
@@ -3205,7 +3255,7 @@ def test_triage_names_an_item_already_in_flight(
     root = _flight_repo(tmp_path, "PL-V1V1 Triage it")
     (root / "items" / "PL-V1V1-untriaged.md").write_text(UNTRIAGED, encoding="utf-8")
 
-    assert main(["--items", str(root / "items"), "triage"]) == 0
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "triage"]) == 0
 
     out = capsys.readouterr().out
     assert f"IN FLIGHT on {BRANCH} - triaging it here as well collides at merge." in out
@@ -3288,21 +3338,31 @@ def test_show_names_the_branch_that_has_already_edited_the_item_file(
 def test_show_prefers_the_in_flight_mark_to_the_file_edit(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """One item, one answer. A closure writes the item and the code together."""
+    """One item, one answer. A closure writes the item and the code together.
+
+    Closing the item in the branch's own copy releases the branch's claim, and
+    the status it moved is then what holds the item: a disposition, which is
+    the mark printed (`PL-N162`).
+    """
     root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-21T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-21T12:00:00+00:00",
+    }
     subprocess.run(["git", "checkout", "-q", BRANCH], cwd=root, check=True, capture_output=True)
     (root / "items" / "PL-0001-on-main.md").write_text(
         READY.replace("PL-B1B1", "PL-0001").replace("status: ready", "status: done"),
         encoding="utf-8",
     )
     for args in (["add", "-A"], ["commit", "-qm", "PL-0001 Close it out"]):
-        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
     subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
 
     assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
 
     out = capsys.readouterr().out
-    assert "IN FLIGHT" in out
+    assert f"STATUS HELD on {BRANCH}" in out
+    assert "live status disposition, moved to `done` 2026-08-21 12:00 UTC" in out
     assert "Its file is already edited" not in out
 
 
@@ -3339,13 +3399,17 @@ def test_next_withholds_a_recurrence_cluster_on_an_item_already_in_flight(
     flight" is the ranking working, and only this block's copy is the offer
     nobody can take.
     """
-    root = _flight_repo(tmp_path, "PL-0002 Fix the thing three sessions have filed")
+    root = _flight_repo(
+        tmp_path,
+        "PL-0002 Fix the thing three sessions have filed",
+        when="2026-09-20T12:00:00+00:00",
+    )
     filings = "recurrences: 2026-09-18 PL-8888, 2026-09-19 PL-BBBB, 2026-09-20 PL-CCCC"
     for identifier in ("PL-0002", "PL-0003"):
         body = READY.replace("PL-B1B1", identifier).replace("added:", f"{filings}\nadded:")
         (root / "items" / f"{identifier}-clustered.md").write_text(body, encoding="utf-8")
 
-    assert main(["--items", str(root / "items"), "next"]) == 0
+    assert main(["--items", str(root / "items"), "--today", "2026-09-21", "next"]) == 0
 
     out = capsys.readouterr().out
     offered = out.split("Filed more than once, and never promoted for it:")[1]
@@ -3359,10 +3423,282 @@ def test_show_leaves_an_item_no_branch_carries_out_of_flight(
 ) -> None:
     """The mark is a claim about this id, not about the branch existing."""
     root = _flight_repo(tmp_path, "PL-K7QX Do the thing")
+    ran = ["--items", str(root / "items"), "--today", "2026-08-23"]
 
-    assert main(["--items", str(root / "items"), "show", "PL-0001"]) == 0
+    # Inside the lease, so the other branch is live: read at the wall clock it
+    # lapsed, nothing was in flight, and the absence below proved nothing.
+    assert main([*ran, "flight"]) == 0
+    assert "PL-K7QX" in capsys.readouterr().out
+    assert main([*ran, "show", "PL-0001"]) == 0
 
     assert "IN FLIGHT" not in capsys.readouterr().out
+
+
+def _commit_on(root: Path, branch: str, files: dict[str, str], subject: str, when: str) -> None:
+    """One dated commit writing `files` on `branch`, which is made from `main` where it is new.
+
+    The checkout is left on `main`, where the `show`s below read from unless
+    they check out the holding branch first.
+    """
+    dated = os.environ | {"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when}
+    if subprocess.run(["git", "checkout", "-q", branch], cwd=root, capture_output=True).returncode:
+        subprocess.run(
+            ["git", "checkout", "-qb", branch, "main"], cwd=root, check=True, capture_output=True
+        )
+    for path, text in files.items():
+        (root / path).parent.mkdir(parents=True, exist_ok=True)
+        (root / path).write_text(text, encoding="utf-8")
+    for args in (["add", "-A"], ["commit", "-qm", subject], ["checkout", "-q", "main"]):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
+
+
+def test_show_names_a_branch_holding_an_item_only_by_moving_its_status(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-N162`'s review: a triage pass readying an item holds it, and `show` said nothing.
+
+    The refuter's repro: one queue-only commit takes the item from `untriaged`
+    to `ready`. `next` stops offering it, as a status disposition, and `show`
+    printed no mark at all, since the old precedence read had no carrier for
+    it and the file-edit line skips held items. It is named now, with its kind
+    and state, and worded as a decision about the item rather than as work.
+    """
+    root = _flight_repo(tmp_path, "Tidy up")
+    _commit_on(
+        root,
+        "main",
+        {"items/PL-V1V1-untriaged.md": UNTRIAGED},
+        "PL-V1V1: capture",
+        "2026-08-20T12:00:00+00:00",
+    )
+    triage = "claude/triage-pass-q2w3e4"
+    _commit_on(
+        root,
+        triage,
+        {"items/PL-V1V1-untriaged.md": UNTRIAGED.replace("status: untriaged", "status: ready")},
+        "PL-V1V1: triage",
+        "2026-08-21T09:00:00+00:00",
+    )
+    ran = ["--items", str(root / "items"), "--today", "2026-08-23"]
+
+    assert main([*ran, "show", "PL-V1V1"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"STATUS HELD on {triage}" in out
+    assert "live status disposition, moved to `ready` 2026-08-21 09:00 UTC" in out
+    assert "a triage or grooming pass, or a close-out" in out
+    assert "which is a decision about the item, not somebody working it" in out
+    assert "IN FLIGHT" not in out
+    assert "Its file is already edited" not in out
+
+
+def test_show_names_a_branch_holding_an_item_only_by_its_name(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-TZ3R`'s hold, which nothing claims: named as the branch's name, and live."""
+    root = _flight_repo(tmp_path, "Tidy up")
+    named = "claude/pl-0001-named"
+    _commit_on(root, named, {"src/named.txt": "x\n"}, "tidy", "2026-08-21T09:00:00+00:00")
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"IN FLIGHT on {named}, by its name" in out
+    assert "live branch name, first commit 2026-08-21 09:00 UTC; last commit 2 days ago" in out
+    assert "records no claim" in out
+
+
+def test_show_says_a_lapsed_claim_on_an_open_item_holds_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A claim past its lease holds nothing, so it is no mark, and the item is free to claim.
+
+    Not gated on `get_session` or the owner's word, which is `claim`'s refusal
+    to get past a *live* claim (`PL-N162`'s review): `claim` passes a lapsed
+    one, and `--over` is offered for the record it adds. The file-edit mark is
+    not silenced by it, since nothing is held.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+    _commit_on(
+        root,
+        "claude/capture-z9x8c7",
+        {"items/PL-0001-on-main.md": READY.replace("PL-B1B1", "PL-0001") + "A note.\n"},
+        "PL-0001: note",
+        "2026-08-30T09:00:00+00:00",
+    )
+
+    assert main(["--items", str(root / "items"), "--today", "2026-09-02", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"LAPSED on {BRANCH}" in out
+    assert (
+        "lapsed legacy claim, made 2026-08-20 12:00 UTC; lapsed 2026-08-27 12:00 UTC,"
+        " 7 days after the last commit that renewed it"
+    ) in out
+    assert "That claim holds nothing, so `bin/docket claim PL-0001` takes the item." in out
+    assert f'bin/docket claim PL-0001 --over {BRANCH} --reason "..."' in out
+    assert "get_session" not in out
+    assert "IN FLIGHT" not in out
+    assert "Its file is already edited on claude/capture-z9x8c7" in out
+
+
+def test_show_offers_no_takeover_of_a_lapsed_claim_where_another_claim_is_live(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-N162`'s review: a lapsed claim is not what stands in the way once another is live.
+
+    The next session claims plainly over a lapsed claim, which stays unspent
+    until its branch goes. `show` went on printing its takeover beside the live
+    claim - "do not start this" and "take it over" on one screen, the second
+    refused by `claim` - and printed it to the live holder too.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+    second = "claude/second-abc"
+    _commit_on(
+        root, second, {"src/second.txt": "x\n"}, "PL-0001 Carry on", "2026-08-30T09:00:00+00:00"
+    )
+    ran = ["--items", str(root / "items"), "--today", "2026-09-01", "show", "PL-0001"]
+
+    assert main(ran) == 0
+    out = capsys.readouterr().out
+    assert f"IN FLIGHT on {second}" in out
+
+    subprocess.run(["git", "checkout", "-q", second], cwd=root, check=True, capture_output=True)
+    assert main(ran) == 0
+    held = capsys.readouterr().out
+    assert f"IN FLIGHT on this branch ({second})" in held
+
+    for said in (out, held):
+        assert "LAPSED" not in said
+        assert "--over" not in said
+
+
+def test_show_words_a_hold_on_this_branch_as_this_branch_s_own(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A disposition, a name and a lapsed claim, each read from the branch holding it.
+
+    `PL-N162`'s review: the other-branch wording is what a session must never
+    be shown about its own branch - told to read its own copy first, or
+    offered `--over` to take over its own claim - and every other `show` test
+    here reads from `main`.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+    triage = "claude/triage-pass-q2w3e4"
+    _commit_on(
+        root,
+        triage,
+        {
+            "items/PL-0001-on-main.md": READY.replace("PL-B1B1", "PL-0001").replace(
+                "status: ready", "status: blocked"
+            )
+        },
+        "Triage",
+        "2026-08-31T09:00:00+00:00",
+    )
+    named = "claude/pl-0002-named"
+    _commit_on(
+        root,
+        named,
+        {"items/PL-0002-other.md": READY.replace("PL-B1B1", "PL-0002"), "src/n.txt": "x\n"},
+        "tidy",
+        "2026-08-31T09:00:00+00:00",
+    )
+    _commit_on(
+        root,
+        "main",
+        {"items/PL-0002-other.md": READY.replace("PL-B1B1", "PL-0002")},
+        "file it",
+        "2026-08-31T08:00:00+00:00",
+    )
+    ran = ["--items", str(root / "items"), "--today", "2026-09-02", "show"]
+
+    def show(branch: str, item: str) -> str:
+        subprocess.run(["git", "checkout", "-q", branch], cwd=root, check=True, capture_output=True)
+        assert main([*ran, item]) == 0
+        return capsys.readouterr().out
+
+    status = show(triage, "PL-0001")
+    assert f"STATUS HELD on this branch ({triage}) - its copy moves PL-0001 to `blocked`." in status
+    assert "Read that copy before starting" not in status.replace("\n  ", " ")
+
+    name = show(named, "PL-0002")
+    assert f"IN FLIGHT on this branch ({named}), by its name - PL-0002 is this session's" in name
+    assert "`bin/docket claim PL-0002` does." in name
+
+    lapsed = show(BRANCH, "PL-0001")
+    assert f"LAPSED on this branch ({BRANCH}) - its claim on PL-0001 no longer holds it." in lapsed
+    assert "`bin/docket claim PL-0001` claims it again, from now." in lapsed
+    assert "--over" not in lapsed
+
+
+def test_show_marks_a_named_branch_that_closed_its_claimed_item_by_the_status_alone(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-N162`'s review: blocking its own item left the name holding it as work in flight.
+
+    The branch claimed its item, then blocked it, which releases the claim.
+    Its name went on holding the item beside the disposition, worded as work
+    that "records no claim" - and, to the session itself, as an instruction
+    to claim again what it had just stopped. A branch that recorded a claim
+    holds by that record, so the status it moved is the one mark.
+    """
+    root = _flight_repo(tmp_path, "Tidy up")
+    work = "claude/pl-0001-work"
+    _commit_on(
+        root, work, {"src/w.txt": "x\n"}, "PL-0001 Start the work", "2026-08-21T09:00:00+00:00"
+    )
+    _commit_on(
+        root,
+        work,
+        {
+            "items/PL-0001-on-main.md": READY.replace("PL-B1B1", "PL-0001").replace(
+                "status: ready", "status: blocked"
+            )
+        },
+        "PL-0001 Block it",
+        "2026-08-21T10:00:00+00:00",
+    )
+    ran = ["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]
+
+    assert main(ran) == 0
+    out = capsys.readouterr().out
+    subprocess.run(["git", "checkout", "-q", work], cwd=root, check=True, capture_output=True)
+    assert main(ran) == 0
+    own = capsys.readouterr().out
+
+    assert f"STATUS HELD on {work}" in out
+    assert f"STATUS HELD on this branch ({work})" in own
+    for said in (out, own):
+        assert said.count("STATUS HELD") == 1
+        assert "IN FLIGHT" not in said
+        assert "records no claim" not in said
+        assert "bin/docket claim" not in said
+
+
+def test_show_marks_a_named_branch_that_moved_its_unclaimed_item_s_status_once(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A name and a disposition on one branch are one mark, the disposition, as `flight` prefers."""
+    root = _flight_repo(tmp_path, "Tidy up")
+    named = "claude/pl-0001-groom"
+    _commit_on(
+        root,
+        named,
+        {
+            "items/PL-0001-on-main.md": READY.replace("PL-B1B1", "PL-0001").replace(
+                "status: ready", "status: blocked"
+            )
+        },
+        "groom",
+        "2026-08-21T09:00:00+00:00",
+    )
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"STATUS HELD on {named}" in out
+    assert "by its name" not in out
 
 
 def test_flight_does_not_read_a_mentioned_id_as_work_in_progress(
@@ -3849,30 +4185,29 @@ def test_flight_still_reports_a_branch_pushed_to_after_its_pull_request_squashed
     assert "work" in out
 
 
-def test_flight_reports_below_an_uneven_horizon_which_is_the_accepted_limit(
+def test_flight_reads_below_an_uneven_horizon_by_the_landed_prefix(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The limit `PL-MGNC`'s guard cannot reach, pinned so a change to it is deliberate.
+    """The limit `PL-MGNC`'s guard cannot reach, which the claim record's landed prefix does.
 
-    **This test asserts a known-wrong answer on purpose**, and the decision behind
-    that is `PL-W1LN`'s: the shape is real and reproducible, and no *sound* fix is
-    available inside a truncated checkout. The decisive question is whether an
-    emitted commit is one the base reaches in the **full** history, and the commits
-    that would answer it are exactly the ones the clone does not hold. The three
-    alternatives each cost more than the shape is worth - naming a ref unread
-    whenever the base is truncated silences `flight` in every agent container,
-    fetching to deepen breaks the bare-tree/no-network rule, and distrusting a
-    commit older than the base's newest graft trades an exact guard for one resting
-    on dates a rebase moves (project owner, 2026-09-13).
+    **This test asserted a known-wrong answer on purpose until `PL-N162`**, on
+    `PL-W1LN`'s decision: the shape is real and reproducible, and no *sound* fix
+    to the walk is available inside a truncated checkout. Whether an emitted
+    commit is one the base reaches in the **full** history is a question about
+    exactly the commits the clone does not hold, and naming a ref unread whenever
+    the base is truncated would silence `flight` in every agent container
+    (project owner, 2026-09-13).
 
-    So the limit is accepted and written down here rather than inferred from the
-    absence of a test. What the guard *does* catch is
-    `test_flight_does_not_answer_from_a_walk_the_clone_truncated`, whose default
-    branch is linear; the only difference here is a second, shorter path to the
-    root, and it is enough to remove the parentless commit the guard keys on.
-
-    If a later change makes this pass differently, that is progress and not a
-    regression - but it must be a decision, which is what this test forces.
+    `flight` now answers from `claims.holdings`, and that read asks a different
+    question the clone *can* answer: whether the branch's work up to a commit is
+    content the base already holds (`claims._landed_through`). The default
+    branch's own commits, reached below the graft, wrote nothing the base lacks,
+    so every claim they carry is spent by landing, since each claim is its own
+    commit or an ancestor of a landed one, and the branch's own commit after
+    them is still read. The walk guard is unchanged and stays silent,
+    since every emitted commit still has a parent; what changed is that the
+    wrong ids no longer survive past it. `vcs._unmerged_commits` keeps the limit
+    for as long as it has readers.
     """
     work = _unevenly_truncated_pair(tmp_path)
     walk = (
@@ -3894,15 +4229,15 @@ def test_flight_reports_below_an_uneven_horizon_which_is_the_accepted_limit(
     for line in walk:
         assert len(line.split()) >= 3, f"every emitted commit must carry a parent: {line!r}"
 
-    assert main(["--items", str(work / "items"), "flight"]) == 0
+    assert main(["--items", str(work / "items"), "--today", "2026-08-23", "flight"]) == 0
     out = capsys.readouterr().out
 
     # The branch's own work, correctly reported.
     assert "PL-K7QX" in out
-    # A commit of `main`'s own, wrongly reported - the accepted limit.
-    assert "PL-M3NW" in out
-    # And the guard stayed silent, which is the whole point: nothing tells the
-    # reader this answer came from a walk the clone could not bound.
+    # A commit of `main`'s own, spent by the landed prefix rather than reported.
+    assert "PL-M3NW" not in out
+    # And the guard stayed silent: the walk was not refused, its wrong ids were
+    # answered after it.
     assert "cannot be compared with origin/main" not in out
 
 
@@ -4914,8 +5249,9 @@ def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
     to re-ask git what the rest of the invocation already knew (`PL-M6FY`).
     Twenty-three call sites had drifted that way when this was written.
 
-    The census is the module's own imports rather than a list, so a read added
-    later is held without anybody remembering to add it here, and a runner is
+    The census is the module's own imports from `vcs` and `claims` rather than
+    a list - `claims.holdings` is the in-flight walk since `PL-N162` - so a read
+    added later is held without anybody remembering to add it here, and a runner is
     anything that is not a call: a site constructing one of its own is the
     same omission spelled out. `ref_walk` is the one deliberate exception, and
     it is held to passing its plain runner explicitly - measuring must never
@@ -4923,17 +5259,17 @@ def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
     test exists to catch.
     """
     tree = ast.parse(Path(cli.__file__).read_text(encoding="utf-8"))
+    modules = {"vcs": vcs, "claims": claims}
     imported = {
-        alias.asname or alias.name
+        alias.asname or alias.name: getattr(modules[node.module], alias.name)
         for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom) and node.level == 1 and node.module == "vcs"
+        if isinstance(node, ast.ImportFrom) and node.level == 1 and node.module in modules
         for alias in node.names
     }
     reads = {
         name
-        for name in imported
-        if inspect.isfunction(getattr(vcs, name))
-        and "runner" in inspect.signature(getattr(vcs, name)).parameters
+        for name, value in imported.items()
+        if inspect.isfunction(value) and "runner" in inspect.signature(value).parameters
     }
     drifted: list[str] = []
     for node in ast.walk(tree):
@@ -4944,7 +5280,7 @@ def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
         elif (
             isinstance(node.func, ast.Attribute)
             and isinstance(node.func.value, ast.Name)
-            and node.func.value.id == "vcs"
+            and node.func.value.id in modules
         ):
             name = node.func.attr
         else:
@@ -4957,7 +5293,7 @@ def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
         elif name != "ref_walk" and isinstance(given, ast.Call):
             drifted.append(f"{name} (line {node.lineno}) is handed a new runner")
 
-    assert "branches_in_flight" in reads, "the census found none of the reads it is holding"
+    assert {"holdings", "settled_branches"} <= reads, "the census missed the reads it is holding"
     assert not drifted, (
         "cli.py asks git through a runner other than the invocation's: " + "; ".join(drifted)
     )
@@ -5000,10 +5336,10 @@ def test_flight_shares_the_invocations_git_runner(
     built one of its own and the memo every other branch-walking command
     shares was never reached by the command whose whole job is the walk. The
     reads are wrapped rather than replaced, so each still answers and the
-    command runs to the end.
+    command runs to the end. The walk is `claims.holdings` since `PL-N162`.
     """
     seen: dict[str, object] = {}
-    for name in ("branches_in_flight", "settled_branches", "open_pull_requests"):
+    for name in ("holdings", "settled_branches", "open_pull_requests"):
         real = getattr(cli, name)
 
         def spy(*args: Any, _name: str = name, _real: Any = real, **kwargs: Any) -> Any:
@@ -5014,7 +5350,7 @@ def test_flight_shares_the_invocations_git_runner(
 
     assert main(["--items", str(_store(tmp_path, READY)), "--today", "2026-08-24", "flight"]) == 0
 
-    assert set(seen) == {"branches_in_flight", "settled_branches", "open_pull_requests"}
+    assert set(seen) == {"holdings", "settled_branches", "open_pull_requests"}
     runners = list(seen.values())
     assert isinstance(runners[0], vcs.GitRunner)
     assert all(runner is runners[0] for runner in runners)
@@ -7723,3 +8059,149 @@ def test_arm_answers_unknown_rather_than_arm_from_a_read_it_could_not_complete(
     git("checkout", "-q", "--detach")
     assert _arm(root, "--no-fetch") == 2
     assert capsys.readouterr().out.startswith("unknown - HEAD is on no branch")
+
+
+def _flight_row(out: str, start: str) -> str:
+    return next(line for line in out.splitlines() if line.startswith(start))
+
+
+def test_flight_prints_each_hold_s_kind_and_state_the_lapsed_claims_and_the_unclaimed_work(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-N162`'s slice 5, against real git under the claim record.
+
+    A live claim prints its state and kind on its row. A claim twelve days
+    old on an open item has lapsed, holds nothing, and prints as its own row
+    under a heading saying so. A `claude/` branch whose commit reaches outside
+    the queue with no claim on it is an `unclaimed:` row, although its subject
+    leads with an id - attribution, which claims nothing - and `legacy refs:`
+    reads 0, because every commit here was made under the record.
+
+    Three branches owe no row, from the review of this slice. The lapsed
+    branch did work outside the queue, and a claim counts in any state
+    (project owner, 2026-09-24). A capture writing an item and the roadmap
+    wrote only the queue. And a capture claimed past its lease names
+    an item the base lacks, which is nobody's to start, so it is no lapsed row.
+    """
+    root, git = _arm_repo(tmp_path)
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
+    _commit_file(git, root, "work.py", "WORK = 1\n", ARM_T0)
+    git("checkout", "-qb", "claude/gone-a1b2c3", "main")
+    _claim_by_hand(git, "PL-C2C2", "claude/gone-a1b2c3", "2026-08-20T12:00:00+00:00")
+    _commit_file(git, root, "gone.py", "GONE = 1\n", "2026-08-20T12:00:00+00:00")
+    git("checkout", "-qb", "claude/forgetful-d4e5f6", "main")
+    _commit_file(git, root, "forgot.py", "FORGOT = 1\n", ARM_T0)
+    git("checkout", "-qb", "claude/capture-g7h8j9", "main")
+    (root / "ROADMAP.md").write_text("- PL-F6F6\n", encoding="utf-8")
+    _commit_file(git, root, "docs/items/PL-F6F6-later.md", _item_document("PL-F6F6"), ARM_T0)
+    git("checkout", "-qb", "claude/capture-k2m9p4", "main")
+    _commit_file(
+        git,
+        root,
+        "docs/items/PL-H5H5-new.md",
+        _item_document("PL-H5H5"),
+        "2026-08-20T12:00:00+00:00",
+    )
+    _claim_by_hand(git, "PL-H5H5", "claude/capture-k2m9p4", "2026-08-20T12:00:00+00:00")
+
+    argv = ["--items", str(root / "docs" / "items"), "--now", ARM_NOW, "flight", "--no-remote"]
+    assert main(argv) == 0
+    out = capsys.readouterr().out
+
+    assert re.fullmatch(
+        rf"PL-B1B1  {ARM_BRANCH}\s+live  claim  last commit 1 minute ago",
+        _flight_row(out, "PL-B1B1"),
+    )
+    assert "1 claim has lapsed on an item the default branch holds open" in out
+    assert re.fullmatch(
+        r"PL-C2C2  claude/gone-a1b2c3  lapsed  claim  last commit 12 days ago",
+        _flight_row(out, "PL-C2C2"),
+    )
+    assert "legacy refs: 0" in out
+    assert "1 work branch claims nothing" in out
+    assert [line for line in out.splitlines() if line.startswith("unclaimed:")] == [
+        "unclaimed: claude/forgetful-d4e5f6  last commit 1 minute ago"
+    ]
+    assert "PL-H5H5" not in out
+
+
+def test_flight_counts_the_refs_still_holding_by_the_old_rule(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Before the record a subject leading with an id claims it, and `PL-CH3Z` waits on the count.
+
+    `_flight_repo`'s commits predate `CUTOVER_MARKER`, so its branch holds by
+    the old rule: the row says `legacy claim`, the ref is counted, and the
+    branch is no `unclaimed:` row - the catch skips what was made before a
+    session could claim, and the harness's name is outside `claude/` anyway.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "flight"]) == 0
+    out = capsys.readouterr().out
+
+    assert re.fullmatch(
+        rf"PL-0001  {BRANCH}  live  legacy claim  last commit 3 days ago",
+        _flight_row(out, "PL-0001"),
+    )
+    assert "legacy refs: 1 - 1 ref holds an item" in out
+    assert "unclaimed:" not in out
+    assert "lapsed" not in out
+
+
+def test_flight_counts_only_legacy_claims_still_live(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A legacy claim past its lease holds nothing, so it no longer needs the old rule either."""
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+
+    assert main(["--items", str(root / "items"), "--today", "2026-09-20", "flight"]) == 0
+    out = capsys.readouterr().out
+
+    assert "legacy refs: 0 - no ref holds an item" in out
+
+
+def test_flight_reads_legacy_refs_as_a_floor_where_a_ref_went_unread(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-CH3Z` starts on `legacy refs: 0`, and a truncated clone must not print it.
+
+    `_shallow_pair` is an agent container in miniature: its branch leads with
+    an id on commits made before the record, and the ref goes unread, so
+    whatever it holds by the old rule is never counted. The zero would be the
+    go-ahead to delete that rule over a ref still holding by it.
+    """
+    work = _shallow_pair(tmp_path)
+
+    assert main(["--items", str(work / "items"), "flight"]) == 0
+    out = capsys.readouterr().out
+
+    assert (
+        "legacy refs: at least 0 - 1 ref went unread and may hold by the old rule as well "
+        f"(origin/{BRANCH})" in out
+    )
+    assert "nothing here still needs the old rule" not in out
+
+
+def test_next_and_the_digest_say_what_holds_each_item_they_leave_out(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-N162`'s done-when: the digest and `next` gain each held id's state and kind.
+
+    A status disposition is a decision about an item and a claim is somebody
+    working it, and the bare id read the two the same.
+    """
+    root, git = _arm_repo(tmp_path)
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
+    store = str(root / "docs" / "items")
+
+    assert main(["--items", store, "--now", ARM_NOW, "next"]) == 0
+    listed = capsys.readouterr().out
+    assert main(["--items", store, "--now", ARM_NOW, "digest"]) == 0
+    digest = capsys.readouterr().out
+
+    assert "Excluded, already in flight: PL-B1B1 (live claim)" in listed
+    assert re.search(
+        r"In flight on a branch, by time since its last commit: PL-B1B1 [^,(]+ \(live claim\)\.",
+        digest,
+    )

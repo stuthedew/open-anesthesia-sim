@@ -28,7 +28,7 @@ import re
 import subprocess
 import time
 from collections import Counter
-from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -320,8 +320,20 @@ _ENCODING = locale.getpreferredencoding(False)
 
 
 def _subcommand(argv: tuple[str, ...]) -> str:
-    """The git subcommand an argv names, ignoring the options in front of it."""
-    return next((token for token in argv if not token.startswith("-")), "")
+    """The git subcommand an argv names, ignoring the options in front of it.
+
+    `-c` and `-C` take their value as the next word, which is not the
+    subcommand: `claims.work_under_record` asks `-c core.quotePath=false log`,
+    and read as the subcommand `core.quotePath=false` it was counted under
+    that name and, being no read this module knows, emptied the memo.
+    """
+    words = iter(argv)
+    for token in words:
+        if token in {"-c", "-C"}:
+            next(words, None)
+        elif not token.startswith("-"):
+            return token
+    return ""
 
 
 @dataclass(frozen=True)
@@ -1115,11 +1127,13 @@ def _unmerged_commits(
     another, a single `--depth` truncates unevenly, and a branch forked from a
     commit below the graft descends through commits `^base` cannot exclude
     before terminating against the fork point the *short* path still reaches.
-    Every commit it emits carries a parent, so this signature stays silent.
+    Every commit it emits carries a parent, so this signature stays silent,
+    and three of the default branch's own commits come back as work a branch
+    is carrying. `flight` no longer reports them since `PL-N162`, because
+    `claims.holdings` spends their claims by the landed prefix, a question
+    about content the clone does hold; the walk here still emits them.
     Reproduced end to end in
-    `subprojects/docket/tests/test_cli.py::test_flight_reports_below_an_uneven_horizon_which_is_the_accepted_limit`,
-    where three of the default branch's own commits are reported as work a
-    branch is carrying.
+    `subprojects/docket/tests/test_cli.py::test_flight_reads_below_an_uneven_horizon_by_the_landed_prefix`.
 
     It is accepted because no *sound* replacement exists inside a truncated
     checkout: the decisive question is whether an emitted commit is one the base
@@ -3064,10 +3078,11 @@ def _has_own_commits(name: str, base: str, root: Path, run: Runner) -> bool:
 class SettledBranch:
     """One unmerged ref on which nothing is left for anybody to work.
 
-    `item_ids` is every item this ref claimed, all of them closed in the ref's
+    `item_ids` is every item this ref holds, all of them closed in the ref's
     own copy; `last_commit` is when it last moved, carried across from the
-    flight report so a reader judging how long it has sat does not have to look
-    it up separately.
+    holdings so a reader judging how long it has sat does not have to look it
+    up separately. `claims.settled_branches` builds it: it reads the claims,
+    which this module cannot import.
     """
 
     name: str
@@ -3122,115 +3137,6 @@ def _head_name(name: str, remotes: frozenset[str]) -> str:
     return rest if rest and prefix in remotes else name
 
 
-def settled_branches(
-    root: Path,
-    report: FlightReport,
-    *,
-    opened: Callable[[], Collection[str] | None] | None = None,
-    items_dir: str = "docs/items",
-    runner: Runner | None = None,
-) -> SettledReport:
-    """The in-flight refs that have finished: every item closed, and nothing open.
-
-    `branches_in_flight` cannot tell a live session from a branch nobody will
-    merge, says so, and leaves the age to separate them. Age is a weak
-    separator where a session turns around in under an hour, and it fails in
-    the costly direction on the one case that matters most: work that is
-    *finished*, sitting on a branch with no pull request behind it, reported to
-    every session as "in flight ... do not start these again". That reading is
-    exactly backwards - nobody is doing it, and nobody will. `PL-Q664` is the
-    worked instance: two items at `status: done`, ten item files existing
-    nowhere else, and three hours before anybody noticed.
-
-    Two facts separate that case, and neither is the age. Every item the ref
-    claims is closed **in the ref's own copy**, which is where a session that
-    finished the work wrote it; and no pull request is open on the ref, which
-    is what a session that finished *and* opened one would have left. Both
-    together are what says nothing is being worked. Either one alone is
-    ordinary: a branch mid-review has closed its items, and a branch with no
-    pull request is usually a session still working.
-
-    **Kept out of `branches_in_flight` for the reason `files_in_flight` is.**
-    That read is on the hot path of `next`, `list`, `triage`, `show` and the
-    session-start digest, and this one costs a `git show` per claimed item plus,
-    where there is a candidate at all, whatever asking the forge costs. It is
-    paid by the command that asks the question and by nobody else.
-
-    **It never changes what is in flight.** The ids stay excluded from `docket
-    next`, because the work exists on a branch and offering it again would have
-    a second session redo it. What changes is only how a reader is told: a row
-    moved out of the list the age is meant to separate, into one that says
-    plainly that nothing there is being worked.
-
-    **The forge is asked through `opened`, never reached from here.** This
-    package answers from a bare checkout with no network and knows nothing
-    about GitHub; the caller supplies a way to ask which branch names have a
-    pull request open, and `None` - no way to ask, no token, no network - is
-    carried into the report as `asked=False` rather than read as "none is
-    open". It is a callable rather than a collection so that the cost is paid
-    only where the cheap half found a candidate: a checkout whose branches are
-    all still working never asks at all.
-
-    Every silence fails toward the live reading. A ref whose commits went
-    unread, an item the ref does not hold a copy of, a `git show` that returned
-    nothing: each leaves the ref out of this report and in the ordinary
-    in-flight list, because a live session wrongly called finished is the
-    expensive mistake and finished work wrongly called live is the one this
-    repository already has.
-    """
-    run = _Silences(runner or _run_git)
-    unread = set(report.unreadable)
-    carried: dict[str, list[str]] = {}
-    for branch in report.branches:
-        if branch.name in unread:
-            continue
-        carried.setdefault(branch.name, []).append(branch.item_id)
-
-    finished: list[SettledBranch] = []
-    for name, ids in carried.items():
-        held = _items_at(name, root, items_dir, run)
-        paths = [held.get(identifier.upper(), "") for identifier in ids]
-        if not all(paths) or not all(_closed_at_ref(name, path, root, run) for path in paths):
-            continue
-        finished.append(
-            SettledBranch(
-                name=name,
-                item_ids=tuple(sorted(ids)),
-                last_commit=next((b.last_commit for b in report.branches if b.name == name), None),
-            )
-        )
-
-    if not finished:
-        # Nothing to ask the forge about, so it is not asked - and the report
-        # says the question was answered, because a set with no members in it
-        # has no member whose pull request went unchecked.
-        return SettledReport(declined=report.declined or run.reason)
-    if opened is None:
-        return SettledReport(
-            branches=tuple(sorted(finished, key=lambda entry: entry.name)),
-            asked=False,
-            declined=report.declined or run.reason,
-        )
-    answer = opened()
-    if answer is None:
-        return SettledReport(
-            branches=tuple(sorted(finished, key=lambda entry: entry.name)),
-            asked=False,
-            declined=report.declined or run.reason,
-        )
-    remotes = _remotes(root, run)
-    heads = {head.strip() for head in answer if head.strip()}
-    return SettledReport(
-        branches=tuple(
-            sorted(
-                (entry for entry in finished if _head_name(entry.name, remotes) not in heads),
-                key=lambda entry: entry.name,
-            )
-        ),
-        declined=report.declined or run.reason,
-    )
-
-
 @dataclass(frozen=True)
 class OpenPullRequests:
     """Which in-flight refs have a pull request open, where the forge was asked.
@@ -3278,13 +3184,13 @@ def open_pull_requests(
     archived while its three items read as somebody's live work, and nothing
     `flight` printed could have said otherwise.
 
-    Asked through the same `opened` that `settled_branches` takes, and for the
+    Asked through the same `opened` that `claims.settled_branches` takes, and for the
     same reason: this package answers from a bare checkout with no network and
     knows nothing about GitHub, so the caller supplies the way to ask. It is
     asked only where a ref is carrying something, and a caller holding both
     readings passes one memoized callable to each so the forge is asked once.
 
-    Unlike `settled_branches`, it asks on every run that has a row to answer
+    Unlike `claims.settled_branches`, it asks on every run that has a row to answer
     for - which is nearly every run. That is the price of the row carrying the
     fact, and it was measured before it was paid: one request, 0.55 s in an
     agent session on 2026-09-22, and every way it fails is a row printed

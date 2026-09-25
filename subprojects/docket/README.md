@@ -559,8 +559,9 @@ what keeps out the other items a pass writes: until 2026-09-22 the first
 exception below was read off any edit to an item's file, so `PL-0HPV`'s
 `verify:` reorder, led by `PL-0HPV`, claimed four queue-only items it merely
 passed through, none of them named by any subject, until its pull request
-merged (`PL-3W3P`). `flight` and `precedence` read the same three through the
-same helper, so the verdict `show` prints names every carrier the mark does.
+merged (`PL-3W3P`). `precedence` reads the same three through the same helper;
+neither `flight` nor `show` reads either any longer, since both answer from
+`claims.holdings` (`PL-N162`), and `PL-FX5Q` deletes them.
 
 **An item whose own work *is* a queue edit is the first.** A release tag item,
 a triage pass and a stranded recovery all deliver nothing but a write to
@@ -720,10 +721,18 @@ is being reviewed, and the report was telling every session to leave it alone.
 `claude/hopeful-allen-tetrje` sat that way for three hours with two items at
 `status: done` and ten item files existing nowhere else, and surfaced only
 because the project owner asked whether the feature had been built (`PL-Q664`).
-So `settled_branches` reads both facts and `docket flight` moves those rows
-into a section of their own. Either fact alone is ordinary — a branch under
-review has closed its items, and a branch with no pull request is usually a
-session still working — which is why neither is read on its own.
+So `claims.settled_branches` reads both facts and `docket flight` moves those
+rows into a section of their own. The first comes from the holds `flight` has
+already read (`PL-N162`): closing an item in the branch's own copy releases the
+branch's claim on it, so a branch is finished where every claim it recorded,
+whether or not it won its item's row, is released and not by a status move to
+an open status, and every hold it keeps — the status disposition its close-out
+made, or its name, for a capture it closed — records a closed status there.
+`blocked` releases a claim too, and does not count: a blocked item is not
+finished work. A lapsed claim does not count either, since its branch may still
+carry the work. Either fact alone is ordinary — a branch under review has closed its items, and a
+branch with no pull request is usually a session still working — which is why
+neither is read on its own.
 
 It changes what a reader is told and never what is in flight. The ids stay
 excluded from `docket next`, because the work exists on a branch and offering
@@ -731,6 +740,34 @@ it again would have a second session redo what is already written. What moves
 is the row: out of the list whose closing lines say what an age and a pull
 request can and cannot establish, and into one that says plainly that nothing
 there is being worked.
+
+**Each row also says what kind of hold put the item there, and in what
+state** (`PL-N162`). Since the claim record, "in flight" is one of four
+things: a `claim`, a `legacy claim` read by the old rule from a commit made
+before a session could write one, a `status disposition` — a branch that moved
+the item's status, which is a decision about it rather than somebody working
+it — or a `branch name`. Three more readings follow the rows, each from the
+same `claims.holdings` read. Claims that have *lapsed* on items the default
+branch holds open, and that nothing else holds live, are listed apart, since
+they hold nothing and `next` offers the item, and `show` says what taking one
+involves; a lapsed claim on a closed item is spent and not listed, and one
+beside a later live claim or disposition on the same item is not listed
+either, because `next` does not offer that item. `legacy refs: N` counts the
+refs whose live hold is a legacy claim, and prints at zero too, because zero is
+when `PL-CH3Z` deletes the old rule — but only on a whole read: where git
+declined it prints `unknown`, and where a ref went unread it prints the count
+as a floor and names the ref, since an unread ref may still hold by the old
+rule. And an `unclaimed:` row names each `claude/*` branch
+that has a non-merge commit made under the record changing a path outside the
+queue — the items, `roadmap_file` and `notes_file` — no claim of its own in
+any state, and no item id in its name. That is `claims.claims_nothing`, the
+same function `tools/branch_id_check.py` refuses such a branch on in CI
+(`PL-FFR0`), so the count the design's pre-registered 1-in-20 threshold reads
+and the refusal cannot disagree. A claim counts in any state because closing
+an item releases the branch's claim on it, and a finished branch is not a
+forgetful one. The digest's in-flight line and `next`'s exclusion line carry
+the same state and kind beside each id, as `PL-B1B1 (live claim)`, so a
+triage pass's disposition does not read as a session at work there either.
 
 **The package does not ask the forge, and will not learn how.** It answers from
 a bare checkout with no network and knows nothing about GitHub; which forge a
@@ -757,9 +794,9 @@ no row asks nothing, and every way the request fails is a row printed without
 the clause, under a line saying it could not be read.
 
 Every silence fails toward the live reading. A ref whose commits went unread,
-an item whose file the ref does not hold, a `git show` that came back empty:
-each leaves the branch in the ordinary list. A live session wrongly called
-finished is the expensive mistake; finished work wrongly called live is the one
+an item whose file the ref does not hold, a read git declined: each leaves the
+branch in the ordinary list, and the last also says the reading is partial. A
+live session wrongly called finished is the expensive mistake; finished work wrongly called live is the one
 this repository already had, and it is visible the moment anyone looks at the
 branch.
 
@@ -809,8 +846,19 @@ are precisely what the clone lacks. Naming a ref unread whenever the base is
 grafted is sound and silences this read in every agent container; fetching to
 deepen answers exactly and breaks the bare-tree, no-network rule; distrusting a
 commit older than the base's newest graft is cheap and rests on dates a rebase
-moves. So the behaviour is pinned by a test that asserts the wrong answer on
-purpose, which makes changing it a decision rather than an accident.
+moves. So the behaviour was pinned by a test that asserted the wrong answer on
+purpose, which made changing it a decision rather than an accident.
+
+That decision came with the claim record (`PL-N162`). `flight` and every reader
+of in-flight work now answer from `claims.holdings`, which spends a claim that a
+*landed* commit descends from: one through which the branch's work is content
+the base already holds. Descent rather than place in the walk, because a merge
+of the base brings in commits that sort after a claim without descending from
+it, and read by place one spent a live claim. The default branch's own commits,
+reached below the graft, wrote nothing the base lacks, so the ids they carry no
+longer survive the walk. That is a question about content, which the truncated
+clone holds, not about history, which it does not; the walk itself is
+unchanged and still emits them.
 
 **And the naming reaches wherever the queue is read**, not only `docket
 flight`. The seven answers that rank or mark against in-flight work — `next`,
@@ -889,7 +937,7 @@ the subject clause — on the current list, none. A shallow clone declines rathe
 than reporting nothing filed, since its missing commits are the oldest and an
 old item would read as filed by nobody.
 
-**Detection stops at "somebody is on it"; `precedence` says which one
+**Detection stops at "somebody is on it"; `Holdings.order` says which one
 continues.** Everything above answers whether an item is being worked, and
 nothing said which of two sessions discovering each other was the one to stop.
 Two sessions reasoning in prose from the same evidence can reach the same
@@ -898,24 +946,32 @@ until the merge — and the expensive outcome is not both continuing, which is
 merely the state before any of this, but both standing down, after which the
 item is unstarted and each session believes the other has it.
 
-So it is an order rather than a judgment: the earliest commit naming the item
-holds it, and a tie breaks on that commit's hash. Both halves carry weight. The
-*earliest* commit, so a session that pushes again does not overtake one that
-started before it; a commit rather than a push time, because git records no
-push time and a commit's date is the same fact in both checkouts. Two sessions
-can still both continue, when one has pushed nothing the other can see; what
-cannot happen is both yielding, since that needs each to be ahead of the other
-in one order. `docket show` prints the order whenever more than one branch is
-carrying the item.
+So it is an order rather than a judgment: the earliest live claim on the item
+holds it, a tie breaks on the claim commit's hash, and a takeover stands where
+the claim it names stood (`claims.py` has the rule). Both halves carry weight.
+The *earliest* claim, dated by author date, so a session that claims again does
+not overtake one that started before it; a commit rather than a push time,
+because git records no push time and a commit's date is the same fact in both
+checkouts. Two sessions can still both continue, when one has pushed nothing the
+other can see; what cannot happen is both yielding, since that needs each to be
+ahead of the other in one order. `docket show` prints the order whenever more
+than one branch has claimed the item. Where nothing claims it, `show` names the
+status disposition or branch name holding it instead, each with its kind and
+state, and worded so a triage or grooming pass that moved the item's status is
+not read as somebody working it, and then any lapsed claim on an item the base
+holds open, which holds nothing and which `claim` passes (`PL-N162`). One claim
+commit reached by two branches through a merge - a claim read by the old rules
+counts for each - prints as the one claim it is, with no verdict, and the order
+breaks that tie on the branch's name so it reads the same in every checkout.
 
-**A claim is identified by the commit that staked it, never by the ref that
-reached it.** `git log --source` credits a commit two refs reach to one of
-them, and not reliably the one named first — so a branch a single merge ahead
-of its own tracking ref has its claim reported under `origin/...`, and a check
-on branch names then reads a session's own work as somebody else's and tells it
-to stand down. Asking whether `HEAD` *contains* the staking commit answers it
-for the local branch, its tracking ref, and a branch pushed under a third name
-alike.
+**A claim holds for the branch its token names, and a local branch and its
+tracking ref are one holder.** `git log --source` credits a commit two refs
+reach to one of them, and not reliably the one named first — so a branch a
+single merge ahead of its own tracking ref had its claim reported under
+`origin/...`, and a check on ref names then read a session's own work as
+somebody else's and told it to stand down. `claims.holdings` folds the two refs
+into one branch before reading, and decides `mine` by the claim's session token
+where it carries one and otherwise by whether `HEAD` is on the claiming branch.
 
 Neither half reaches the network. Only `docket branch` calls `fetch_remote`, so
 `flight` and `show` answer from the refs this checkout already holds — which is
