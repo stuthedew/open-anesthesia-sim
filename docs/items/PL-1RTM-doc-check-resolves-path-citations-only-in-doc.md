@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md
 blocked-by: PL-H0CF
 added: 2026-09-15
 verify: grep -q 'def test_a_path_citation_in_an_item_brief_is_resolved' tests/unit/test_doc_check.py && uv run pytest tests/unit/test_doc_check.py
+recurrences: 2026-09-25 PL-HJ8G
 ---
 
 **Problem.** doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked

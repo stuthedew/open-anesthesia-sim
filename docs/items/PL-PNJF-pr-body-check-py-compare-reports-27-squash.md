@@ -5,6 +5,7 @@ status: untriaged
 feature: pr-body-integrity
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, docs/pr-bodies
 added: 2026-09-24
+recurrences: 2026-09-25 PL-YYDT
 ---
 
 **Problem.** pr_body_check.py --compare reports 27 squash bodies that say something other than their pull request, and nothing can record the pull request's body for them: --recover writes only for an empty body, and a recovery file's header says the commit landed empty
