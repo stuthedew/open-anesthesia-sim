@@ -915,7 +915,8 @@ def cmd_digest(args: argparse.Namespace) -> int:
     # because the two count lines below - errors, and the grooming total - are
     # read as the store's whole answer by a session that has run nothing yet.
     report = _complete_report(root, items, config, args)
-    ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
+    current = read_version(root / config.version_file)
+    ready = readiness(items, current, config.minor_classes)
     rendered = render.format_digest(
         report,
         _flight(args),
@@ -930,6 +931,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         gate_paths=config.gate_paths,
         now=_now(args),
         read=_holdings(args),
+        interrupted=_interrupted(root, items, current),
     )
     if rendered:
         print(rendered)
@@ -945,6 +947,19 @@ def cmd_digest(args: argparse.Namespace) -> int:
             walk = ref_walk(root, _invocation(args).tracked, runner=plain)
         print(render.format_git_profile(git.profile(walk)))
     return 0
+
+
+def _interrupted(root: Path, items: list[Item], current: str) -> str:
+    """The release whose cut stopped before its notes, as `cmd_release` would resume it.
+
+    Read beside `readiness` rather than through it: `readiness` leaves the
+    stamps out by contract, since a caller other than `cmd_release` is asking
+    what is shippable now, so the digest and `status` read this separately
+    and say why their count is short (`PL-1BS2`). The newest, as the resume
+    takes it; `docket check` reports any other.
+    """
+    interrupted = unrecorded_milestones(items, notes_by_version(root), current)
+    return interrupted[-1] if interrupted else ""
 
 
 def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight | None:
@@ -2120,8 +2135,15 @@ def cmd_status(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
     root = _invocation(args).root
-    ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
-    rendered = render.format_status(report, ready, _flight(args), _plan(root, items, config))
+    current = read_version(root / config.version_file)
+    ready = readiness(items, current, config.minor_classes)
+    rendered = render.format_status(
+        report,
+        ready,
+        _flight(args),
+        _plan(root, items, config),
+        interrupted=_interrupted(root, items, current),
+    )
     print(rendered if rendered else "Nothing open.")
     return 0
 
