@@ -96,6 +96,7 @@ from .release import (
     SEMVER_RE,
     Readiness,
     already_released,
+    below_current,
     is_untagged,
     milestones,
     notes_by_version,
@@ -3011,6 +3012,15 @@ def cmd_release(args: argparse.Namespace) -> int:
     version = (args.version or resuming or ready.suggested_version).lstrip("v")
     name = f"v{version}"
 
+    # A wrong number rather than a state a dry run exists to review, so it is
+    # refused outright as the unfinished-cut refusal above is: the bump, the
+    # notes and every stamp would carry it, and no re-run takes the stamps
+    # back (`PL-3DN1`).
+    backwards = below_current(version, current, config.version_file)
+    if backwards:
+        print(_backwards_refusal(name, current, backwards))
+        return 1
+
     # The widest write in the repository, and one whose own commits carry no
     # item id: a cut stamps other items' `milestone:` (`PL-66FP`). The id the
     # guard reads is the release item's, whose claim holds the release train
@@ -3220,6 +3230,20 @@ def _unfinished_cut_refusal(resuming: str, ready: Readiness, requested: str) -> 
             f"cuts all {len(ready.shippable)}:",
             "",
             f"  make release VERSION={resuming.lstrip('v')}",
+        ]
+    )
+
+
+def _backwards_refusal(name: str, current: str, reason: str) -> str:
+    """Say the number is below the tree's, and that nothing was touched.
+
+    Naming both versions is the whole of it: the likely cause is a typo, and
+    the reader corrects it by seeing the two side by side.
+    """
+    return "\n".join(
+        [
+            f"Cannot cut {name}: {reason}. Nothing was stamped and nothing was written.",
+            f"A release moves the version forward, so name a number above {current.strip()}.",
         ]
     )
 
