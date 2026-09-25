@@ -36,7 +36,7 @@ Sources: https://code.claude.com/docs/en/claude-projects (fetched 2026-09-25); t
 
 All four were untriaged on 2026-09-25, so the thread that takes one triages it first.
 
-**Setup.** One repository, `stuthedew/open-anesthesia-sim`. Environment: `Default` (the account's only one, created 2026-08-22), chosen explicitly, since threads otherwise start in a generic Anthropic-hosted one. Thread model Opus at high effort; coordinator effort low; the three design threads on Fable. The desktop app, for notifications (a browser shows only a dot).
+**Setup.** One repository, `stuthedew/open-anesthesia-sim`. Environment: `Default` (the account's only one, created 2026-08-22), chosen explicitly, since threads otherwise start in a generic Anthropic-hosted one. Thread model Opus at high effort; coordinator effort medium, not the Projects default of low, which the effort docs reserve for work that is not intelligence-sensitive: the coordinator's job here is sequencing against the Order list, and one slip costs a whole thread; not high, since Opus 5.5 at medium matches or beats Opus 5 at high on Anthropic's coding and knowledge-work evaluations and the job is rule-following rather than hard reasoning (settings > Usage shows the conversation's share: above about 10-15% with no slips, drop to low; a slip more thought would have caught, raise to high); the three design threads on Fable. The desktop app, for notifications (a browser shows only a dot).
 
 **Project instructions, verbatim** (Project settings > Memory > Project instructions):
 
