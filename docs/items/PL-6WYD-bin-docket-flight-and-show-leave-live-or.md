@@ -15,7 +15,7 @@ verify: grep -q 'def test_flight_s_claim_rows_print_the_holder_s_session' subpro
 
 **Problem.** bin/docket flight and show leave live-or-abandoned to a branch's age, though each claim records its holder's session id and get_session on it answers directly; flight prints no id, and its 'live' means only inside the 7-day lease
 
-Reproduced 2026-09-25 at 22:12 UTC on `origin/main` at `7556f556`:
+Reproduced 2026-09-25 at 22:12 UTC, with `bin/docket` at `4f37ef29` reading `origin/main` at `7556f556`, which changed none of `render.py`, `cli.py` or `claims.py`:
 
 - `bin/docket flight` printed `PL-WX87  origin/claude/eager-johnson-8v3qgw  live  claim  last commit 12 minutes ago  no pull request open`, with no session on any row, under "A branch outlives its session, so no row here says anybody is still on it: the age is how long it has sat. ... nothing a checkout can read tells the two apart sooner." (`render.format_flight`).
 - `bin/docket show PL-WX87` printed `live claim, made 2026-09-25 21:59 UTC, session cse_01K7YtoZYBcov6QYr9oiMoAu`, then "A branch outlives its session, so this does not say anybody is still on it; `bin/docket flight` adds whether a pull request is open" (`render._hold_detail`, `render._one_claim`). It prints the key, then points at the command that prints none.
