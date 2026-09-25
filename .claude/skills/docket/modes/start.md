@@ -117,8 +117,10 @@ overtakes learns that only by reading `show` again.
 
 **So read the session list too, which sees what no ref can.** `list_sessions`
 from the `claude-code-remote` MCP server (`mine: true`) returns every session's
-title and its branch, including a session that has committed nothing at all —
-the window the two rules above leave open. Scan the live ones for the id
+title and its branch but a Projects thread's, including a session that has
+committed nothing at all — the window the two rules above leave open. For a
+thread, rule 14 in `.claude/rules/instruction-writing.md` says where the trial
+records what it will take. Scan the live ones for the id
 (`session_status` `RUNNING` or `IDLE`; archived and completed ones are finished
 work), in the title and in `external_metadata.current_branches` both, because
 either can carry it and neither reliably does.
