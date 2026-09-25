@@ -2013,7 +2013,10 @@ folds every removed assertion containing it, so `assert` would fold the lot.
 Whether the fragment is long enough to name a subject is decidable; whether it
 names the *right* one is left to whoever reads the lines `verify` prints. Write
 it when the item is triaged, not while working it — a declaration only counts
-where the base already holds it. See *Verification is scoped, not just green*.
+where the base already holds it. A session that learns mid-work what its work
+falsifies amends the base first, on an item-only branch that merges ahead of
+the work, and re-audits once it has (`.claude/skills/docket/modes/close-out.md`
+carries the route, `PL-TKFD`). See *Verification is scoped, not just green*.
 
 `root-cause-of` names three or more items this one is the cause of.
 `CLAUDE.md` calls such a mechanism a *generator*. `docket check` holds every id
@@ -3445,7 +3448,63 @@ could trip with no passing route at all, leaving a session to game the fold or
 push through a red integrity check — and either sets the precedent the split
 exists to prevent.
 
-- **`falsifies:`** names enough of an assertion to identify the one subject
+Which copy of the item each field is read from, the base's or the branch's,
+follows **one rule, keyed on what kind of statement the field is and never on
+the field** (`PL-B8HZ`; project owner, 2026-09-25, ratified, over reading every
+field from the base's copy with `needs-decision` as the one exception). Six
+items arrived one field at a time before it was stated: branch-side reads gave
+false `ACCEPT`s and base-side reads false `REJECT`s. An item's front matter
+holds three kinds of statement, and a new field is placed by asking which it
+is; `Commission` in `subprojects/docket/src/docket/verify.py` carries the rule
+and each reader names the kind it applies.
+
+- **An outcome** — `status`, `closed`, `reason`, `pr` — says what the work did.
+  It is the **branch's**, because the close-out is what writes it, and it
+  excuses nothing: a drop claims no work for a command to prove.
+- **A prediction** — `verify:` and `touches:` — says what the work was to
+  satisfy, written before it existed: a command naming a test not yet written,
+  a path list naming files not yet created. The **base's** copy is the
+  commission and is what the branch is measured against. The branch's copy is
+  a *correction* of the prediction: it is the evidence the audit runs and
+  reads, and it is printed as a correction beside the base's with the base's
+  own result, never substituted silently. A delegated audit refuses the
+  correction outright, through the front-matter check.
+- **A waiver** — `falsifies:` and `not-delegable:` — says what the work may
+  waive. A waiver removes a refusal, and it waives only what the base holds, so
+  the **base's** copy is the only word on it. The base hands a waiver to the
+  branch by exactly one written statement, `status: needs-decision` on its own
+  copy with the branch closing the item, because there the answer was the
+  branch's to make and what it falsifies follows from it.
+
+In one sentence: a correction supplies evidence and is honoured and printed; a
+waiver removes a refusal and is the base's; an outcome is the branch's and
+excuses nothing. Counted before the kinds were split, because one copy for
+every field was the shape first asked for. Of 1,437 close-outs on `main`, 163
+rewrote a `verify:` the base already held and every one was a correction — a
+grep target reworded, a test that never existed under the commissioned name, a
+moved file — so reading the command from the base and refusing where it fails
+would have refused 163 correct close-outs and caught nothing. Honouring the
+branch's `falsifies:` instead would have bought about 2 folds in 502 close-outs
+at the cost of the property the field exists for. A wrong correction leaves
+every integrity check running over the diff; a wrong waiver switches one off,
+which is why the two kinds cannot share a copy.
+
+- **`verify:` and `touches:`** are predictions, and the branch's copy of each
+  is honoured as a correction rather than substituted silently. Where the base
+  commissions a command and the branch's differs, both run: the branch's
+  decides the check, and the commissioned command and its own exit are printed
+  under it — ``commissioned: `A` - fails on this tree (exit 1); this branch
+  runs `B` instead`` — so a failing commissioned command replaced by a weaker
+  passing one reaches `ACCEPT` only with that trace beside it, where before
+  the only trace was the front-matter NOTE every close-out prints, which
+  `PL-KSV2` found readers skim (`PL-PZ6T`). Where the base commissions none,
+  the check's own line says the command is the branch's own — a suffix, since
+  that is true of two close-outs in five and a line that fires that often is
+  skimmed. The diff is measured against the base's `touches` where the base
+  holds one, and a path only the branch's own widening declares is named as
+  that rather than passing silently: `--self` reports it as it reports every
+  commission check, and a delegated audit refuses it.
+- **`falsifies:`** is a waiver. It names enough of an assertion to identify the one subject
   the item's work makes untrue. Not weakened — *falsified*: the string the
   assertion pins is what the item was commissioned to delete, so no
   arrangement of the tests keeps it. An absent assertion whose source contains
@@ -3470,8 +3529,8 @@ exists to prevent.
   item. The fold names itself on the page rather than happening quietly: the
   check says the declaration is the closure's own, and that the base is what
   let it be (`PL-ZMGR`).
-- **A `dropped` item, or one carrying `not-delegable:`**, has no `verify:`
-  command by construction — the first built nothing, and the second is what
+- **A `dropped` item, or one carrying `not-delegable:`** — an outcome and a
+  waiver — has no `verify:` command by construction: the first built nothing, and the second is what
   `docket check` accepts *instead of* a command. The check names which applies
   and the remaining checks still run, where a missing command used to stop the
   audit dead. `docket check` and `docket verify` had disagreed about every
@@ -3496,16 +3555,16 @@ on this branch, which is also the one route by which a session could write both
 halves of the `needs-decision` gate itself — the commission declares nothing
 and carries no status, so the fold is not reached.
 
-The command exemption is read the other way, off the **branch's** copy, and
-the drop has to be: it is what the close-out writes, while the base still holds
-the item open. A delegated audit refuses either state written by the worker,
-through `front_matter_check`; `--self` only reports it. For a drop that grants
-nothing, since a drop claims no work for a command to prove. A `not-delegable:`
-reason is held to the base's copy as well: it excuses a command the base never
+The drop is an outcome and is read the other way, off the **branch's** copy,
+as it has to be: it is what the close-out writes, while the base still holds
+the item open. A delegated audit refuses a drop written by the worker, through
+`front_matter_check`; `--self` only reports it, which grants nothing, since a
+drop claims no work for a command to prove. A `not-delegable:` reason is a
+waiver and is held to the base's copy: it excuses a command the base never
 commissioned - an item filed and closed on one branch, or one the base holds
 without a command - and never one the branch deleted, so a reason written
 beside the deletion is refused rather than skipping the test (`PL-KSV2`). A
-base whose copy cannot be read excuses nothing, since the exemption turns on
+base whose copy cannot be read excuses nothing, since the waiver turns on
 what it holds.
 
 `--self` also adds one line when the audited commits name other items' ids.

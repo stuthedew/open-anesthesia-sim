@@ -3,12 +3,14 @@ id: PL-TKFD
 title: A session that discovers mid-work that its work falsifies an assertion cannot declare falsifies: on the base, so verify --self has no clean route for the case the field was built for
 priority: P3
 effort: M
-status: ready
+status: done
 classes: infra
 feature: verify-close-out
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-17
+closed: 2026-09-25
 verify: grep -q 'A waiver is amended where the commission lives' .claude/skills/docket/modes/close-out.md
+recurrences: 2026-09-25 PL-PLV0
 ---
 
 **Problem.** A session that discovers mid-work that its work falsifies an assertion cannot declare falsifies: on the base, so verify --self has no clean route for the case the field was built for
@@ -144,3 +146,13 @@ over accepting a declaration committed to the branch before the removing
 commit, and over leaving the `REJECT` to carry the conversation): both routes
 above are the record, `PL-B8HZ`'s build writes them into
 `.claude/skills/docket/modes/close-out.md`, and this item closes with it.
+
+## Closed by PL-B8HZ's build, 2026-09-25
+
+No code changed, as the ratified disposition said: both routes are recorded in
+`.claude/skills/docket/modes/close-out.md` under "A waiver is amended where the
+commission lives", and the triage mode's account of the window now points at
+them. The advisory `verify` prints on a branch-side declaration still says the
+line had to reach the base before the branch's first commit and that triage is
+the only pass that can write it; changing that string changes a pinned
+assertion, so it is filed as `PL-PLV0` rather than fixed here.

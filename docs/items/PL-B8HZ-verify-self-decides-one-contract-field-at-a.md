@@ -3,16 +3,17 @@ id: PL-B8HZ
 title: verify --self decides one contract field at a time whether to read the base's or the branch's copy of the item, so each field's wrong choice arrives as its own item - six so far, PL-PZ6T and PL-TKFD open
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: verify-close-out
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/triage.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
+closed: 2026-09-25
 payoff: One stated rule for which copy each contract field is read from, so a new field stops costing an item per wrong direction
 verify: grep -q 'def test_a_widened_touches_is_measured_against_the_commission_and_named' subprojects/docket/tests/test_verify.py
 root-cause-of: PL-KSV2, PL-PZ6T, PL-TKFD, PL-ZMGR, PL-K4R5, PL-YZJD
-generator: live - verify --self chooses the base's or the branch's copy one contract field at a time, and PL-PZ6T (verify:) and PL-TKFD (falsifies:) are still open; every further contract field needs its own choice
+generator: spent - Commission's docstring states the one rule and every reader in _check_item names the kind it applies, so a new contract field is placed by kind and needs no copy choice of its own
 misread: Which copy of an item, the base's or the branch's, is authoritative for each contract field
 ---
 
@@ -196,3 +197,25 @@ evidence. The build is Stream A's next thread after `PL-KR69`: it moves this
 item to `ready` with a `verify:` as it starts, per the `docket` skill's start
 mode, and closes `PL-PZ6T` and `PL-TKFD` with it. This design branch changed no
 status and yields its claim so the pull request carrying this record can arm.
+
+## Built, 2026-09-25
+
+The rule is stated on `Commission` in `subprojects/docket/src/docket/verify.py`,
+which now holds the base's front matter whole, parsed once by `read_commission`
+(renamed from `commissioned_falsification`, which no longer described it), with
+`touches` joining `falsifies`, `status` and `verify` as the fields the readers
+take. `_check_item`'s readers name the kind each applies. The command check
+runs the commissioned command beside a differing branch command and prints
+``commissioned: `A` - fails on this tree (exit 1); this branch runs `B`
+instead`` under it, says on its own line that a command the base never
+commissioned is the branch's own, and says when the commission could not be
+read. The scope check measures the diff against the base's `touches` where the
+base holds one and names a path only the branch's widening declares. The
+waiver readers are unchanged in code. Six tests pin the prediction rows in
+`subprojects/docket/tests/test_verify.py`; the outcome and waiver rows were
+already pinned, and the comment above the new tests names which test pins
+which. `subprojects/docket/README.md` § "Verification is scoped, not just
+green" and `.claude/skills/docket/modes/close-out.md` restate the rule as the
+three kinds; `PL-TKFD`'s two routes are written into the close-out mode and
+named from the triage mode. `generator:` moves to spent: a new contract field
+is placed by kind, so none needs a copy choice of its own.

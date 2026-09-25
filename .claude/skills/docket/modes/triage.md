@@ -477,10 +477,12 @@ base's copy of the item**, never from the branch, because the whole worth of
 the field is that a reviewer wrote it before the work. So the line counts only
 once it has *merged*: a session that triages an item and works it in the same
 session declares on its branch alone, folds nothing, and is told the
-declaration is its own word for it. The window shuts at the working branch's
-first commit, and triage is the last pass inside it - which is also why a
-session meeting that refusal has nothing to do about it, and the advisory now
-says so.
+declaration is its own word for it. Triage is the last pass that can write
+it for nothing: a session that learns mid-work what its work falsifies can
+still amend the base, on an item-only branch that merges ahead of the work,
+and re-audit once it has - the round trip
+`.claude/skills/docket/modes/close-out.md` records under `PL-TKFD`, paid about
+twice in 502 close-outs.
 
 **Write it only from what the brief already quotes**, as `PL-FCM3`'s title did -
 then `bin/docket set <id> --falsifies '<the quoted string>'`, twelve characters

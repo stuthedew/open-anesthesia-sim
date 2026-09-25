@@ -3,12 +3,13 @@ id: PL-PZ6T
 title: verify --self runs whichever verify: command the branch holds, so a close-out can replace a failing commissioned command with a weaker passing one and ACCEPT; the only trace is the front-matter NOTE every close-out prints, the one PL-KSV2 found readers skim
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: verify-close-out
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-23
+closed: 2026-09-25
 payoff: a close-out that rewrites the command proving its work can no longer turn that command's failure into ACCEPT
 verify: grep -q 'def test_a_rewritten_command_prints_the_commissioned_one_beside_it' subprojects/docket/tests/test_verify.py
 ---
@@ -63,3 +64,13 @@ head's build; `blocked` stands until then.
 **Ratified with the head, 2026-09-25** (project owner, 2026-09-25, ratified,
 over running the base's command as the measure and refusing where it fails):
 this item closes with `PL-B8HZ`'s build.
+
+## Closed by PL-B8HZ's build, 2026-09-25
+
+`verify --self` now runs the commissioned command beside a differing branch
+command and prints its exit under the check, so this item's shape reaches
+`ACCEPT` only with ``commissioned: `A` - fails on this tree (exit 1); this
+branch runs `B` instead`` on the report. Pinned by
+`test_a_rewritten_command_prints_the_commissioned_one_beside_it` in
+`subprojects/docket/tests/test_verify.py`, in both audit modes and for a
+commissioned command that still passes as well as one that fails.
