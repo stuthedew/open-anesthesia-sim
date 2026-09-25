@@ -3188,7 +3188,7 @@ def test_an_item_captured_and_closed_on_one_branch_declares_nothing(tmp_path: Pa
     """The self-grant route the base read closes, tested where the base holds no copy.
 
     A session that writes its own `needs-decision` item and closes it in the
-    same branch has written both halves of the gate. `commissioned_falsification`
+    same branch has written both halves of the gate. `read_commission`
     reports an empty status for an item the base does not hold, so the
     exemption is never reached.
     """
@@ -3504,6 +3504,165 @@ def test_a_not_delegable_line_excuses_nothing_where_the_base_cannot_be_read(tmp_
     assert command.blocks
     assert "no item store at HEAD~2:docs/queue" in command.detail
     assert not report.passed
+
+
+# One rule for which copy of the item each contract field is read from
+# (`PL-B8HZ`), stated on `Commission`: an outcome is the branch's and excuses
+# nothing, a prediction is measured against the base's with the branch's
+# correction run and printed, a waiver is the base's. The outcome row is
+# pinned by `test_a_dropped_items_verify_command_is_not_run` and
+# `test_a_worker_dropping_its_own_item_is_still_refused_in_a_delegated_audit`;
+# the waiver rows by `test_a_declaration_added_on_the_branch_folds_nothing`,
+# `test_a_needs_decision_closure_may_declare_what_it_falsifies` and
+# `test_a_not_delegable_line_does_not_excuse_a_command_the_base_holds`; and
+# a scope the base never commissioned staying the branch's own by
+# `test_work_inside_the_declared_scope_is_accepted`. The prediction rows,
+# `verify:` and `touches:`, are pinned here.
+
+ITEM_FILE = "docs/items/PL-K7QX-do-the-thing.md"
+COMMISSIONED = "grep -q 'def test_b' tests/test_thing.py"
+CORRECTED = "grep -q 'def test_c' tests/test_thing.py"
+ADDS_TEST_C = KEPT + "\ndef test_c() -> None:\n    assert 3 == 3\n"
+
+
+@pytest.mark.parametrize(
+    ("commissioned", "result"),
+    [(COMMISSIONED, "fails on this tree (exit 1)"), ("true", "passes on this tree")],
+    ids=["a-failing-command-swapped-away", "a-passing-command-swapped-away"],
+)
+@pytest.mark.parametrize("self_audit", [True, False], ids=["self-audit", "delegated"])
+def test_a_rewritten_command_prints_the_commissioned_one_beside_it(
+    tmp_path: Path, commissioned: str, result: str, self_audit: bool
+) -> None:
+    """`PL-PZ6T`'s shape: a commissioned test that never arrives, swapped for a passing grep.
+
+    The branch's command decides the check - 163 of 1,437 close-outs on `main`
+    rewrote theirs and every one was a correction - and the commissioned
+    command's own exit is printed under it, so an `ACCEPT` carries the trace
+    the front-matter NOTE never gave. Printed in both modes; what refuses the
+    rewrite in a delegated audit is the front-matter check, as before.
+    """
+    root = _repo(tmp_path)
+    _commission(root, "PL-K7QX-do-the-thing.md", verify=commissioned)
+    _work(root, "PL-K7QX do it", "tests/test_thing.py", ADDS_TEST_C)
+    closed = _stored("PL-K7QX", "Do the thing", status="done", verify=CORRECTED)
+    _work(root, "PL-K7QX close it", ITEM_FILE, closed)
+
+    report = verify(
+        root, _item(status="done", verify=CORRECTED), _config(), "HEAD~2", self_audit=self_audit
+    )
+
+    command = _check(report, "`verify:` command passes")
+    assert command.passed and command.detail == CORRECTED
+    assert command.lines == (
+        f"commissioned: `{commissioned}` - {result}; this branch runs `{CORRECTED}` instead",
+    )
+    assert _check(report, FRONT_MATTER).blocks is not self_audit
+    assert report.passed is self_audit
+
+
+def test_the_same_command_on_both_copies_prints_no_correction(tmp_path: Path) -> None:
+    """The ordinary close-out keeps its command, and its report gains no line."""
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX do it", "tests/test_thing.py", ADDS_TEST_C)
+
+    report = verify(root, _item(), _config(), "HEAD~1", self_audit=True)
+
+    command = _check(report, "`verify:` command passes")
+    assert command.passed and command.detail == "true" and command.lines == ()
+
+
+@pytest.mark.parametrize("held", ["no copy", "a copy with no command"])
+def test_a_command_the_base_never_commissioned_is_named_as_the_branch_s_own(
+    tmp_path: Path, held: str
+) -> None:
+    """Where the base commissions none, the line says the command is the branch's own.
+
+    A suffix rather than a line: an item captured and closed on one branch is
+    two close-outs in five, and a line that fires that often is skimmed.
+    """
+    root = _repo(tmp_path)
+    if held == "no copy":
+        identifier, title = "PL-N3W1", "A new one"
+    else:
+        identifier, title = "PL-K7QX", "Do the thing"
+    item_file = f"docs/items/{identifier}-{title.lower().replace(' ', '-')}.md"
+    if held != "no copy":
+        _work(root, "commission", item_file, _without_command(_stored(identifier, title)))
+    _work(root, f"{identifier} do it", "tests/test_thing.py", ADDS_TEST_C)
+    _work(root, f"{identifier} close it", item_file, _stored(identifier, title, status="done"))
+
+    report = verify(
+        root,
+        _item(identifier=identifier, title=title, path=Path(item_file).name, status="done"),
+        _config(),
+        "HEAD~2",
+        self_audit=True,
+    )
+
+    command = _check(report, "`verify:` command passes")
+    assert command.passed and command.lines == ()
+    assert command.detail == "true - this branch's own, since HEAD~2 commissions none"
+
+
+def test_an_unreadable_commission_says_the_command_could_not_be_compared(tmp_path: Path) -> None:
+    """Neither corrected nor called the branch's own: a comparison never made is said so."""
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX do it", "tests/test_thing.py", ADDS_TEST_C)
+
+    report = verify(root, _item(), _config(items_dir="nowhere"), "HEAD~1", self_audit=True)
+
+    command = _check(report, "`verify:` command passes")
+    assert command.passed and command.lines == ()
+    assert command.detail.startswith(
+        "true - whether HEAD~1 commissioned it could not be read: no item store at HEAD~1:nowhere"
+    )
+
+
+@pytest.mark.parametrize("self_audit", [True, False], ids=["self-audit", "delegated"])
+def test_a_widened_touches_is_measured_against_the_commission_and_named(
+    tmp_path: Path, self_audit: bool
+) -> None:
+    """The scope the base commissioned is what the diff is measured against.
+
+    A path only the branch's own widening of `touches` declares used to pass
+    silently, because the check read the branch's copy. It is a correction of
+    the prediction and is named as one: reported in `--self`, as every
+    commission check is, and refused in a delegated audit, where the
+    front-matter check refuses the widening itself.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "commission",
+        ITEM_FILE,
+        _stored("PL-K7QX", "Do the thing", touches="tests/test_thing.py"),
+    )
+    _work(
+        root,
+        "PL-K7QX reach further",
+        "tests/test_other.py",
+        "def test_z() -> None:\n    assert 1 == 1\n",
+    )
+    widened = ("tests/test_thing.py", "tests/test_other.py")
+    _work(
+        root,
+        "PL-K7QX widen the scope",
+        ITEM_FILE,
+        _stored("PL-K7QX", "Do the thing", touches=", ".join(widened)),
+    )
+
+    report = verify(root, _item(touches=widened), _config(), "HEAD~2", self_audit=self_audit)
+
+    scope = _check(report, "diff stayed inside `touches`")
+    assert not scope.passed and scope.advisory is self_audit
+    assert scope.detail.startswith(
+        "1 path(s) outside, 1 of them declared only by this branch's own widening of `touches`"
+    )
+    assert scope.lines == (
+        "tests/test_other.py - declared by this branch's `touches` and not by HEAD~2's copy",
+    )
+    assert report.passed is self_audit
 
 
 # `verify:` commands that read past the tree (`PL-205P`). The two recorded
