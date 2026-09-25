@@ -170,6 +170,18 @@ set it when the session opens rather than toggling it.
   fresh session for an unrelated topic instead: that is where a clean prompt
   beats a carried conversation.
 
+## Read a simulator change before you arm it
+
+Read a pull request that changes `src/`, `tests/` outside `subprojects/`,
+`docs/MODEL.md`, `src/anesthesia_sim/data/` or `README.md` before you arm it.
+Item-only and docket-only pull requests arm as before (project owner,
+2026-09-25, ratified, over leaving the review hold as it stands, `PL-SQTR`).
+`bin/docket arm` holds every pull request that changes anything outside
+`docs/items/`, and on 2026-09-25 you confirmed those holds were being clicked
+through, so the hold was guarding nothing. This stands until `PL-K6B2` builds a
+gate that holds only what needs a read. `PL-CBDX` reads the diffs merged unread
+since 2026-09-23.
+
 ## Merge on the Mac or by auto-merge, never in the GitHub app
 
 You merge by three routes: the Mac's browser, auto-merge armed through Claude,
