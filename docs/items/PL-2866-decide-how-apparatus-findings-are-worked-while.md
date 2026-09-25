@@ -52,3 +52,5 @@ The three heads this test recorded (PL-GPJ7, PL-XBV4, PL-PVW2) are outside the t
 **Done when.** The owner has answered each part; for each yes, the text lands in `CLAUDE.md` and `.claude/skills/docket/SKILL.md`, recorded as specified or ratified per `CLAUDE.md`. Parts 2 and 3 are workflow rules written while the generator pause holds, so the owner's yes is what lifts it for them (PL-6Q9L), and the session writing them says so.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz`.
+
+**Decision** (project owner, 2026-09-25, ratified, over a separate fix batch before the switch, working each root cause in the owner's own session right after the product item, and holding the generator ending for heads found during product work): yes to all three parts of the fourth-pass recommendation above. Parts 2 and 3 are workflow rules written while the generator pause holds, and this yes lifts it for them (`PL-6Q9L`). Still to do: the text in `CLAUDE.md` and `.claude/skills/docket/SKILL.md`, each recorded as ratified. The title still describes the first pass's part 3, which held the generator ending; retitle it at close-out.
