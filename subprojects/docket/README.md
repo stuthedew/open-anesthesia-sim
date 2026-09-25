@@ -421,7 +421,7 @@ than the normal case** (`PL-K2ZK`). Every environment this runs in clones
 shallow, so the decline above used to fire in every session for the life of a
 container - and the answer it declined to give is one a single fetch makes
 available: 3.4 s to take this repository from 52 commits to 542, measured
-2026-09-02, after which `branches_in_flight` answers instead of declining.
+2026-09-02, after which the in-flight read answers instead of declining.
 `.claude/hooks/docket-digest.sh` therefore runs `git fetch --unshallow origin`
 once, before anything reads a ref, guarded on the checkout actually being
 shallow and bounded by `timeout` where that exists. It is allowed to fail: no
@@ -551,68 +551,24 @@ were open, startable, and hidden from every session for it. So the paths are
 read alongside the subject, from the same `git log` rather than a `git show`
 per commit, and a commit that only wrote to the queue stakes no claim.
 
-**Three exceptions, each read from the item rather than from the commit, and
-all three from one shape of commit.** The walk records a queue-only commit that
-leads with an id *and* changes that id's own file, and `_own_edit_claims`
-promotes it where the item says the queue edit is the work. The conjunction is
-what keeps out the other items a pass writes: until 2026-09-22 the first
-exception below was read off any edit to an item's file, so `PL-0HPV`'s
-`verify:` reorder, led by `PL-0HPV`, claimed four queue-only items it merely
-passed through, none of them named by any subject, until its pull request
-merged (`PL-3W3P`). `precedence` reads the same three through the same helper;
-neither `flight` nor `show` reads either any longer, since both answer from
-`claims.holdings` (`PL-N162`), and `PL-FX5Q` deletes them.
-
-**An item whose own work *is* a queue edit is the first.** A release tag item,
-a triage pass and a stranded recovery all deliver nothing but a write to
-`docs/items/`, so the path test excludes the very work it was built to find.
-`_queue_only_work` asks the default branch what the item declares in `touches`
-and promotes it where that never leaves the queue; an item the base does not
-hold at all is a capture creating its own file, and is not promoted. Measured
-against the eight false marks above, not one declares `touches` inside the
-queue alone, so the fix costs none of them back. Measured live on 2026-09-14,
-`PL-XR8K` was being closed on a branch and appeared in no reading of the report.
-
-**An item at `needs-decision` is the second.** Its next step is a decision,
-and a decision is recorded into the item file, so a design round can run its
-whole course without a diff outside the queue — and on this project it often
-does, because implementing the decision is separate work. Observed 2026-09-19:
-`PL-BHVM`, the top of the whole queue, had three commits pushed with every
-subject led by the id and a live session on the branch, and `show` called it
-startable; the mark appeared only when the round happened to edit
-`ROADMAP.md`. So `_deciding_on_base` promotes the shape where the default
-branch holds the item at `needs-decision` (`PL-VYSP`). The conjunction is
-deliberate: a round re-points its cluster, writing a dozen other items' files,
-and those stay file edits rather than becoming claims on items other sessions
-may be working. Counted before it was adopted, over the 1,006 commits then on
-`origin/main`: the rule the item itself
-proposed — any queue-only commit changing the leading id's own file — would
-have marked 316 (commit, id) pairs, 81 of them captures creating the file and
-120 more triage passes; the status test left 23, of which 21 were the item's
-own decision work and two were notes written into one item on consecutive
-days. One more read keeps a stale capture out: a capture that merged by another
-route and was triaged to `needs-decision` there leaves a branch that also leads
-with the id and changes its own file, so the commit's own parent is asked
-whether it held the file — a round writes into a file that exists, a capture
-creates one. Three such branches, all eleven days old, were promoted the first
-time the status test ran live. Two design rounds on one item therefore get a
-verdict.
-
-**An item the branch closes while the default branch holds it open is the
-third.** A grooming pass disposes of items it never claimed: `#914` dropped
-`PL-027`, `PL-043` and `PL-ZBR6` in queue-only commits leading with each id,
-and `docket next` went on offering all three, to sessions that would have
-started work another had already decided to drop (`PL-8FJK`). The branch's
-*tip* is read rather than the commit, so a branch that dropped an item and then
-reopened it claims nothing, and a closure the base already records - after the
-squash, or by another route - is not open to be closed. The one thing it cannot
-see is a closure under a subject that does not lead with the closed id: that
-stays a file edit, because reading a closure off any edit is `PL-3W3P` again,
-and `CLAUDE.md` already requires a closing commit to lead with every id it
-closes.
+**Three promotions once read exceptions from the item rather than the commit,
+and `PL-FX5Q` deleted them.** The walk recorded a queue-only commit that led
+with an id *and* changed that id's own file, and promoted it back to a claim
+where the item said the queue edit was the work: an item whose own work is a
+queue edit, such as a release tag, a triage pass or a stranded recovery
+(`PL-7790`); an item at `needs-decision`, whose design round may never write
+outside the queue (`PL-VYSP`); and an item the branch closes while the default
+branch holds it open, as `#914` dropped three in queue-only commits
+(`PL-8FJK`). Each patched the inference for one more case where a session's
+intent never reached its diff, and those items carry the measurements each was
+adopted on. The claim record (`PL-MB2W`) removed the case instead: a commit
+made since a session could write a claim claims by its `Claim:` trailer and
+nothing else, whatever its diff. The path rule above still reads a commit made
+before then (`CUTOVER_MARKER`), without the promotions, until `PL-CH3Z`
+deletes it.
 
 **A claim on an item the default branch has no copy of is kept, and worded
-differently.** This is the opposite direction from the three exceptions above,
+differently.** This was the opposite direction from the three promotions above,
 and the only one measurement refused outright. A capture commit that also
 reaches past the queue claims the ids it merely filed — `CLAUDE.md` requires
 the leading id and requires the capture, so the collision comes of keeping the
@@ -649,14 +605,14 @@ because the steady state is empty: `tools/branch_id_check.py` fails a
 `claude/*` branch of one's own that names no id, and on 2026-09-14 none of this
 repository's ten unlanded heads was unattributable. A bookkeeping push is not
 one of these — a capture, a triage pass and a `docket record` write all name
-the item they concern, so they are attributable even though `_annotates_only`
-withholds their claim. That distinction is what keeps the line quiet.
+the item they concern, so they are attributable even though none of them
+claims it. That distinction is what keeps the line quiet.
 
 It fails toward keeping the mark. A merge prints no paths under `--name-only`,
 and a path git quoted does not match the prefix; neither is evidence of
-bookkeeping, so both keep their claim. What it cannot see is a session that
+bookkeeping, so both keep their claim. What it could not see is a session that
 *starts* an item by pushing only a `touches` fill — annotation by the diff and
-a claim in fact. A branch named for its item still carries the claim in its
+a claim in fact — which is the case the claim record ended. A branch named for its item still carries the claim in its
 name, which is read whatever the diff says.
 
 **A branch is finished when its content has landed, not when its commits
@@ -1646,8 +1602,9 @@ So `vcs.cuts_in_flight` reads the other half from the refs. It reuses
 subtracts the notes the base already holds - without that subtraction the
 branch whose v0.3.9 release had merged twenty minutes earlier was still
 listed, and a guard that fires on every release after the first is one nobody
-reads. A ref `HEAD` contains is marked `mine` rather than reported, for the
-reason `Carrier.mine` gives - unless its branch holds the release train, which
+reads. A ref `HEAD` contains is marked `mine` rather than reported, because a
+session told to yield to its own cut, pushed under whatever name, would stop
+for nobody - unless its branch holds the release train, which
 is decided by branch name, so merging a rival's branch does not hide it.
 
 `cmd_release` refuses on *any* unmerged cut, not only one of the version being
@@ -2887,8 +2844,8 @@ commit changing nothing outside the queue directory is a closure separated from
 its work only where the work was somewhere else to begin with; for a
 release-tag item, a triage pass, a stranded recovery or a rename pass it is
 what landing correctly looks like. So a queue-only closure is declined only
-where the item declares work outside the queue — the same field
-`branches_in_flight` reads to draw the same distinction (`PL-7790`). Without
+where the item declares work outside the queue — the same field the
+in-flight read once took to draw the same distinction (`PL-7790`). Without
 it, `PL-YTDN` closed correctly in `#712` with all twelve changed files under
 `docs/items/`, the number was declined, and `check` raised the error rather
 than the advisory: `main` failed on every branch cut from it, and nothing

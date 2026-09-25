@@ -32,7 +32,7 @@ root="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}
 
 # Deepen a shallow checkout once, before anything below reads a ref (PL-K2ZK).
 #
-# A container clones shallow, and `branches_in_flight` cannot find a merge base
+# A container clones shallow, and `claims.holdings` cannot find a merge base
 # for a ref whose history was truncated - so it declines to answer, correctly,
 # and goes on declining in every session for the life of that container. The
 # answer it declines to give is one a single fetch makes available: measured

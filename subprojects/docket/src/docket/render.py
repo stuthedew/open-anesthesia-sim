@@ -135,7 +135,7 @@ def format_unread(flight: FlightReport) -> str:
     be carrying it, and the collision surfaces at push time instead.
 
     It is the ref's *commits* that went unread. Where such a ref is named for
-    its item, `branches_in_flight` reports that id anyway - the branch name
+    its item, `claims.holdings` holds that id by the name anyway - a name
     needs no history - so the sentence claims only what is actually missing.
 
     It says what went unread rather than what to do about it, for the reason
@@ -1748,7 +1748,7 @@ def format_queue_edit(edit: QueueEdit, now: datetime) -> str:
     **The line exists to be different from `IN FLIGHT`, so it does not open
     with a mark.** Two sessions triaged one pair of items on 2026-09-06,
     fetched, checked and were each told correctly that nothing was in flight -
-    a triage pass has no diff outside the queue, so `_annotates_only` withholds
+    a triage pass has no diff outside the queue, so `_annotates_only` withheld
     the claim and nothing else was reading the paths (`PL-N1JK`). What the
     second session needed was not "do not start this", which would have been
     false, but "the file you are about to write to has already been written
@@ -2262,8 +2262,8 @@ def format_triage(
     and `PL-LXR3` on one afternoon and the merge discarded most of one answer,
     the reasoning behind it included (queue item PL-PRHN).
 
-    It marks and does not refuse, for the reason `branches_in_flight` reports
-    rather than blocks: the answer is bounded by what has been pushed and by
+    It marks and does not refuse, for the reason `flight` reports rather than
+    blocks: the answer is bounded by what has been pushed and by
     the refs this checkout can read, so a lock built on it would sooner or
     later block the session whose own branch is the one holding the item,
     with no way to tell it apart. Triage is cheap to redo and expensive to
@@ -2271,9 +2271,9 @@ def format_triage(
 
     **The mark that fires here is not the one `next` ranks on, and on a triage
     pass it is usually the only one there is.** A pass that only fills in
-    fields writes nothing outside `docs/items/`, which is exactly the shape
-    `branches_in_flight` refuses to read as work - so before `FlightReport`
-    carried the file edits, two sessions triaging one item could each fetch,
+    fields writes nothing outside `docs/items/` and records no claim - so
+    before `FlightReport` carried the file edits, two sessions triaging one
+    item could each fetch,
     each run `show`, and each be told truthfully that nothing was in flight.
     Both marks print here and neither ranks anything (`PL-N1JK`).
 
@@ -2294,9 +2294,8 @@ def format_triage(
     # warning that is heeded and one that is trained out.
     carrying = {branch.item_id: branch.name for branch in flight.branches}
     # The weaker mark, for the case the stronger one cannot reach at all: a
-    # triage pass writes nothing outside the queue, so `_annotates_only`
-    # withholds its claim and two passes on one item are invisible to each
-    # other however carefully each fetches (`PL-N1JK`).
+    # triage pass records no claim, so two passes on one item are invisible to
+    # each other however carefully each fetches (`PL-N1JK`).
     editing = {edit.item_id: edit.name for edit in flight.editing}
     lines = [f"{_plural(len(report.untriaged), 'item is', 'items are')} untriaged.", ""]
     for item in sorted(report.untriaged, key=lambda i: i.sort_key()):

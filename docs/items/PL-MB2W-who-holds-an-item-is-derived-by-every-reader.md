@@ -3,7 +3,7 @@ id: PL-MB2W
 title: Who holds an item is derived by every reader from commit subjects, touched paths and ref age and never recorded, so each reader misreads every new shape of work until it gets its own exception - twenty verified members, two still open
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: parallel-sessions
 touches: subprojects/docket/README.md, subprojects/docket/src/docket/vcs.py, docs/items, CLAUDE.md
@@ -11,6 +11,7 @@ blocked-by: PL-3FYK, PL-NST2, PL-0TD9, PL-N162, PL-FX5Q, PL-DDYD, PL-331V, PL-J9
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged to needs-decision as a generator head by PL-TH9K's session
 added: 2026-09-23
 payoff: a claim is one fact every reader reads, so a new shape of work stops costing an item per reader
+verify: ! grep -qF 'So it is derived, never stored.' subprojects/docket/src/docket/vcs.py && grep -qF 'git 2.22' subprojects/docket/README.md
 root-cause-of: PL-X3WZ, PL-7790, PL-N1JK, PL-3CTW, PL-VYSP, PL-2BZY, PL-61MD, PL-MFM4, PL-7TVT, PL-N2PP, PL-3QM9, PL-3W3P, PL-8FJK, PL-8GV1, PL-J16N, PL-QP9Z, PL-1MCK, PL-KWCY, PL-VFJ3, PL-8JQQ
 generator: live - who holds an item is derived from commit subjects, touched paths and ref age and never recorded, so each new shape of work is misread by some reader until it gets its own exception; PL-T7Y1's audit verified twenty members, four of them (PL-QP9Z, PL-1MCK, PL-KWCY, PL-VFJ3) filed after PL-7TVT closed spent, and two are open (PL-VFJ3 closed in #970)
 misread: Who holds an item now, and whether that holder is still live
@@ -228,7 +229,7 @@ Evidence for the term:
 - the branch's copy reaches done or dropped (and blocked, pending the owner);
 - an `over` supersedes it;
 - it lapses;
-- it lands. Landing is derived: containment or squash-content (vcs.py:1729-1766), closed on the base (vcs.py:1823), or the landed prefix. The landed prefix is the newest commit k in `base..R` whose added blobs have all been on the base, and it spends every claim at or before k. That replaces `_taken_on_base` and stops reading leading ids on the base.
+- it lands. Landing is derived: containment or squash-content (`vcs._unlanded_refs` and `vcs._landing_split`), closed on the base (`vcs._closed_on_base` until `PL-FX5Q`, now `claims.holdings`' read of the base's copy), or the landed prefix. The landed prefix is the newest commit k in `base..R` whose added blobs have all been on the base, and it spends every claim at or before k. That replaces `_taken_on_base` and stops reading leading ids on the base.
 
 **The reader.**
 ```python
@@ -372,6 +373,8 @@ Rejected:
 
 Filed under `feature: claim-record`, in build order. This item is blocked on the first eight and closes with its own remaining work: the close-out that was the synthesis's item 7 (the `vcs.py` docstring changes from "derive, never record" to "claims recorded, landing derived", the README gets a claims section and states the git floor, `PL-J16N` is re-scoped to rename fidelity in the fake runner, and the answered members are closed). `PL-CH3Z` follows once `flight` prints `legacy refs: 0`, and does not block this item.
 
+**Readied 2026-09-25, when `PL-FX5Q` closed the last of the eight.** What is left is the close-out the paragraph above names. Its `verify:` was run on that branch and fails for the reason it should: `vcs.py`'s module docstring still reads "So it is derived, never stored.", and `subprojects/docket/README.md` names no git floor. `flight` already prints `legacy refs: 0`, which is `PL-CH3Z`'s condition.
+
 1. `PL-3FYK`: Record who holds an item as a Claim trailer bound to the holder's own branch, read by one claims.holdings reader under a 7-day lease
 2. `PL-NST2`: claims.holdings reads status dispositions, the landed prefix, the item resource field and cut holds, and adapts to FlightReport
 3. `PL-0TD9`: bin/docket claim and yield write the claim, and start mode is rewritten around them
@@ -409,4 +412,4 @@ Not measured, and any of these could overturn a choice:
 - GitHub squash commit message settings: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/configuring-commit-squashing-for-pull-requests
 - GitHub REST repos, squash_merge_commit_title and squash_merge_commit_message: https://docs.github.com/en/rest/repos/repos
 - GitHub merge methods, rebase drops commits that were empty to begin with: https://docs.github.com/en/pull-requests/reference/pull-request-merges
-- Code: subprojects/docket/src/docket/vcs.py:1729-1766 (landing), :1823 (closed on base), :2207-2278 (promotions deleted), :4171 (cuts_in_flight); model.py:67 (OPEN_STATUSES), :1543 (writer raises on an existing field); .claude/skills/docket/modes/start.md:29-78; .github/workflows/quality.yml:140 (fetch-depth 0)
+- Code: subprojects/docket/src/docket/vcs.py `_unlanded_refs` and `_landing_split` (landing) and `cuts_in_flight`, and the closed-on-base read and the promotions `PL-FX5Q` deleted; model.py:67 (OPEN_STATUSES), :1543 (writer raises on an existing field); .claude/skills/docket/modes/start.md:29-78; .github/workflows/quality.yml:140 (fetch-depth 0)

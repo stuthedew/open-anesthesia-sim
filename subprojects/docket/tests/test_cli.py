@@ -1655,8 +1655,8 @@ def test_a_release_the_default_branch_already_holds_is_refused(
 ) -> None:
     """PL-66FP: two sessions cut v0.3.7, and no guard could see the second one.
 
-    A release carries no item id, so `branches_in_flight` and everything
-    reading it are blind to it. What the default branch already holds is the
+    A release carries no item id, so a read of item ids alone is blind to
+    it. What the default branch already holds is the
     part of that which is certain, and this is the command proving it is read
     from git as git actually spells it.
     """
@@ -3332,8 +3332,8 @@ def test_triage_names_an_item_whose_file_a_branch_has_already_edited(
     """PL-N1JK: two sessions triaged one pair of items and collided at merge.
 
     The mark above this one cannot fire for a triage pass. A pass that fills in
-    fields writes nothing outside the queue, which is exactly the diff shape
-    `branches_in_flight` refuses to read as work - so the two sessions each
+    fields writes nothing outside the queue and records no claim - so the two
+    sessions each
     fetched, each ran `show`, and each were told correctly that nothing was in
     flight. Against real git rather than an injected runner, because what is
     being proved here is that `--name-only` names the item file in a shape the
@@ -4163,8 +4163,8 @@ def test_flight_still_reports_a_branch_pushed_to_after_its_pull_request_squashed
     A session runs a design round on an item, that pull request squash-merges,
     and the session goes on to push the implementation to the same branch. The
     merge carries the item file to `main` and its subject leads with the id, so
-    both facts `_taken_on_base` judges a claim by are true of the branch from
-    the moment it merged - and they say nothing about the commit that came
+    both facts `_taken_on_base` judged a claim by were true of the branch from
+    the moment it merged - and they said nothing about the commit that came
     after. Measured 2026-09-20 on `origin/claude/lucid-dijkstra-i1qy6x`, where
     `PL-3K9B`'s whole implementation went unreported and a second session was
     told three times to start it (`PL-8JQQ`).
@@ -4242,8 +4242,8 @@ def test_flight_reads_below_an_uneven_horizon_by_the_landed_prefix(
     commit or an ancestor of a landed one, and the branch's own commit after
     them is still read. The walk guard is unchanged and stays silent,
     since every emitted commit still has a parent; what changed is that the
-    wrong ids no longer survive past it. `vcs._unmerged_commits` keeps the limit
-    for as long as it has readers.
+    wrong ids no longer survive past it. `vcs._unmerged_commits` kept the limit
+    until `PL-FX5Q` deleted it.
     """
     work = _unevenly_truncated_pair(tmp_path)
     walk = (

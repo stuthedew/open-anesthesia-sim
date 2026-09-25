@@ -151,7 +151,7 @@ def test_a_shallow_clone_behind_its_remote_is_counted_correctly(tmp_path: Path) 
 def test_a_shallow_checkout_is_deepened_once_at_session_start(tmp_path: Path) -> None:
     """PL-K2ZK: the hook repairs the truncation instead of reading around it.
 
-    The container's clone is shallow, so `branches_in_flight` cannot find a
+    The container's clone is shallow, so `claims.holdings` cannot find a
     merge base and declines - in every session, for the life of the container.
     One fetch converts that non-answer into the right answer, so the hook takes
     it before anything below reads a ref.

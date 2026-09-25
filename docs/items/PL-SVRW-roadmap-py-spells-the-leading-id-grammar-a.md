@@ -12,7 +12,7 @@ added: 2026-09-02
 ---
 
 **Problem.** `vcs.py` and `roadmap.py` each define their own `leading_ids`
-over the same idea — the run of item ids a line opens with. `vcs.py:158`
+over the same idea — the run of item ids a line opens with. `vcs.leading_ids`
 returns `list[str]` from `LEADING_IDS_RE`; `roadmap.py:422` returns
 `tuple[str, ...]` from its own pattern. Neither imports the other.
 

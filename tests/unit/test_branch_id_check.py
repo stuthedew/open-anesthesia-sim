@@ -125,7 +125,7 @@ def test_a_subject_leading_with_an_id_passes(
 def test_a_branch_name_carrying_the_id_is_enough(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    # `branches_in_flight` reads the name as well as the subjects, and needs no
+    # `claims.holdings` reads the name as a hold of its own, and needs no
     # history to do it. Failing here would fire on work the guards can see.
     _install(monkeypatch, ["Resolve the merge"], branch="claude/pl-cp74-unfiled-housekeeping")
 
