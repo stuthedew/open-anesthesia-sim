@@ -10,7 +10,7 @@ touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/c
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
 payoff: The commit a release was cut on becomes a recorded fact, so the tag and its readers stop disagreeing
-root-cause-of: PL-VYK1, PL-6YYR, PL-KFWL, PL-BKDP, PL-YKSD, PL-6SV4
+root-cause-of: PL-VYK1, PL-6YYR, PL-KFWL, PL-BKDP, PL-YKSD, PL-6SV4, PL-53Y6
 generator: live - release.md:191 still hands the owner git tag -a from origin/main and cli.py:2694 prints an unfilled MERGE_COMMIT, so no record says which commit a cut was made on; three members are open
 misread: Which commit a release was cut on, if it was cut at all
 ---

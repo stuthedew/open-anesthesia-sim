@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: defect
+feature: one-answer
 touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpreter_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23

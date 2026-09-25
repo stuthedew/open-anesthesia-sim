@@ -1,11 +1,15 @@
 ---
 id: PL-PNJF
 title: pr_body_check.py --compare reports 27 squash bodies that say something other than their pull request, and nothing can record the pull request's body for them: --recover writes only for an empty body, and a recovery file's header says the commit landed empty
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: defect
 feature: pr-body-integrity
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, docs/pr-bodies
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-24
-recurrences: 2026-09-25 PL-YYDT
+recurrences: 2026-09-25 PL-YYDT withdrawn 2026-09-25 PL-PNJF
 ---
 
 **Problem.** pr_body_check.py --compare reports 27 squash bodies that say something other than their pull request, and nothing can record the pull request's body for them: --recover writes only for an empty body, and a recovery file's header says the commit landed empty
@@ -25,3 +29,55 @@ the merge, and the squash is what was true at merge time. For shapes like
 and not a flag on `--recover`. `PL-73G8` is already changing the header's
 provenance claim in the same function, so land that first or decide the two
 together.
+
+Reproduced 2026-09-25 against 46954a81 by reading `tools/pr_body_check.py`:
+
+- `comparable()` drops a pull request only when `docs/pr-bodies/<N>.md` exists.
+- `missing()` returns empty bodies alone, and `recover()` writes only for
+  those.
+- `write_recovery()` writes "landed with an empty message body" into every
+  file it makes.
+
+So a body that differs can only be cleared by a hand-written file with an
+untrue header. I did not re-run the count of 27, which needs about ten
+unauthenticated API requests. `--compare` runs by hand only; the session-start
+digest runs the empty-body mode.
+
+**Why it matters.** `--compare` is the instrument that says whether merges
+still land something other than the pull request's body. `PL-Y1W0`'s
+generator check used it to judge whether `PL-WFFX`'s `spent` verdict held.
+With 27 findings nothing can clear, its output never reads clean, so a new
+instance arrives buried among known ones. And the only way to clear one writes
+a false provenance claim into the recovered record.
+
+**Decision needed.** Which body is the record for each shape of difference,
+and how a recovery file says which one it holds.
+
+**Recommendation:** keep one store, `docs/pr-bodies/<N>.md`, and let `--recover`
+write a file for every body `--compare` names. Replace the fixed "landed
+empty" sentence with a header field naming the shape: empty, edited after
+arming, a note added after the merge, or a message the merge composed. For the
+post-merge-note shape, the header says that `main`'s copy is what was true at
+the merge. Decide this together with `PL-73G8`, which rewrites the same
+header's provenance claim, so the header changes once and not twice. A session
+can take this: it is the structure of an internal record, not a product
+question.
+
+**Done when.** `--compare` reports nothing on a tree where every differing
+body has its file, each file's header names its shape truthfully, and
+`tests/unit/test_pr_body_check.py` holds one case per shape.
+
+**Not a recurrence of `PL-YYDT`.** `docket new` recorded `PL-YYDT` (filed
+2026-09-25) as a filing of this item, and the match rests only on the shared
+`tools/pr_body_check.py`. `PL-YYDT` is about four parsers of the pull-request
+number in a commit subject, a different mechanism in `PL-HMZZ`'s family. The
+entry is withdrawn with this item as the reason.
+
+**Generator check.** An instance of `PL-WFFX`'s fact ("The squash commit's
+subject and body as the merge sends them, not as the pull request shows
+them"), filed after that head closed on 2026-09-22. `recover()` and
+`write_recovery()` read any squash body that differs from its pull request's as
+an empty one. With `PL-Y1W0` and `PL-BZHX`, this is the third post-close
+instance, which counts as a generator whose fix did not hold. `PL-WFFX` is
+closed and outside this triage batch, so the record is reported to the triage
+coordinator, not written here.

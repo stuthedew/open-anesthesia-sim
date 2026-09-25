@@ -36,9 +36,11 @@ same paragraph, since git reads a trailer from the last paragraph alone and one
 added below it afterwards turns the claim into prose. On a branch the remote
 does not have yet it pushes with `--set-upstream`, fetches again and re-reads,
 so a claim another session pushed in the same minute is seen: exit 3 then
-prints the line to yield by, and exit 4 means the push failed, or the remote
-could not be asked, and the claim is only in this checkout. An upstream naming
-the default branch, which is how the web harness starts some sessions, is not
+prints the line to yield by, and exit 4 means the claim is only in this
+checkout until you push - the push failed, or the branch was already on the
+remote and none was tried (`PL-1X56`) - or that the remote could not be asked
+whether it has the branch, so nothing was pushed. An upstream naming the
+default branch, which is how the web harness starts some sessions, is not
 refused as pushing elsewhere (`PL-KX73`). Who holds
 an item is that recorded claim, read by `claims.holdings` (`PL-MB2W` § "Design
 round, 2026-09-24"), and not whatever shape the first push happens to take;
@@ -68,10 +70,11 @@ under every other: `PL-HX5C` implemented `PL-W8XP` in full inside a session
 titled for other work, and `PL-N2PP`'s rider was seen by no guard until its
 push. On a branch the remote already has, `claim` commits and does not push,
 because a pull request may be open and armed and the push would merge the claim
-away with the branch (`PL-QP9Z`); it says so and names the push command, and
-the claim rides your next push, made after disarming auto-merge if it is armed.
-It asks the remote itself, so neither the tracking setting nor the tracking ref
-the harness writes at session start for a branch nobody has pushed decides that
+away with the branch (`PL-QP9Z`); it says so, names the push command and exits
+4, since until that push no other session can see the claim; the claim rides
+your next push, made after disarming auto-merge if it is armed. It asks the
+remote itself, so neither the tracking setting nor the tracking ref the harness
+writes at session start for a branch nobody has pushed decides that
 (`PL-WX87`). Running `claim` again on an item the branch already holds writes
 nothing, and pushes a claim an earlier run could not.
 
@@ -150,7 +153,7 @@ other has it.
 One consequence worth acting on before the verdict is ever needed: a branch
 nobody can fetch is not in the other session's copy of the order at all, which
 is the second reason `claim` pushes at once, and why exit 4 - a claim only this
-checkout holds - wants the push retried before any work.
+checkout holds - wants the push made, or retried, before any work.
 
 **Yielding costs a session's work only if the session throws it away**, so hand
 it over instead:
