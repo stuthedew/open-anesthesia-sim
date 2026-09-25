@@ -106,3 +106,40 @@ route. And an item **captured and closed on one branch** is still refused, which
 
 Re-scope to those two before working it; the `needs-decision` case above is
 done and should not be rebuilt.
+
+## Folded into PL-B8HZ's design round, 2026-09-25
+
+The rule recommended there (`PL-B8HZ` § "Design round, 2026-09-25") reads
+`falsifies:` as a waiver, and a waiver is the base's. The two cases left open
+above get routes rather than code, and the recommendation is to record them here
+and in `.claude/skills/docket/modes/close-out.md` and close this item with the
+head's build.
+
+- **A `ready` item's mid-work discovery.** The waiver is amended where the
+  commission lives. An item-only branch from `origin/main` carrying
+  `bin/docket set <id> --falsifies '...'` is what `CLAUDE.md`'s capture rule
+  opens a pull request for at first push and arms - `bin/docket arm` answers
+  `arm`, since the change lies under the store and no claim is bound to that
+  branch - and once it merges, the work branch brings `main` in and
+  `verify --self` reads the declaration from the base. On a solo project this
+  buys visibility and order rather than a second author: the declaration is a
+  commit of its own on `main`, before the work merges, and that is all that is
+  claimed for it.
+- **An item captured and closed on one branch.** The same route in its natural
+  order: capture on its own branch with the declaration, let it merge, work
+  from the merged base. The refusal of a declaration written on the capturing
+  branch (`PL-ZMGR`, ratified) stands, because the assertion it would waive is
+  in the base tree whether or not the base holds the item.
+
+Neither is a fourth candidate beside the three above. Both are the second
+candidate's ordering - declare before the commit that removes the assertion -
+made concrete on the base instead of on the branch, and neither needs a new
+mechanism. Sized by `PL-YZJD`'s count, about 2 folds in 502 close-outs, the
+round trip is paid rarely, and honouring the branch's waiver instead is refused
+for the reason the head records: a wrong waiver switches an integrity check off.
+
+**Ratified with the head, 2026-09-25** (project owner, 2026-09-25, ratified,
+over accepting a declaration committed to the branch before the removing
+commit, and over leaving the `REJECT` to carry the conversation): both routes
+above are the record, `PL-B8HZ`'s build writes them into
+`.claude/skills/docket/modes/close-out.md`, and this item closes with it.
