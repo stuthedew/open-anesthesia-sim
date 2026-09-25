@@ -28,7 +28,7 @@ The row's `live` is `claims.LIVE`, a lease state: inside `LEASE_TERM`, seven day
 
 `.claude/skills/docket/modes/start.md` says the token "reads `cse_...` where `get_session` wants `session_...`". `get_session` took the `cse_` form directly for both tokens tried in that form on 2026-09-25.
 
-**Why it matters.** Whoever reads `flight` or `show` - the owner looking over every branch, a session deciding whether an item is really being worked - is handed a judgment from age where one lookup answers it, and one screen uses `live` in two senses. Taking over a claim already needs the owner's word or `get_session` showing ARCHIVED or failed (`start.md`, "Taking over a dead claim"), so the payoff is in reading rather than in takeovers: modest, and cheap to take.
+**Why it matters.** Whoever reads `flight` or `show` - the owner looking over every branch, a session deciding whether an item is really being worked - is handed a judgment from age where one lookup answers it, and one screen uses `live` in two senses. Taking over a claim already needs the owner's word or `get_session` showing ARCHIVED or failed (`.claude/skills/docket/modes/start.md`, "Taking over a dead claim"), so the payoff is in reading rather than in takeovers: modest, and cheap to take.
 
 **Not the fix.** A session-service call inside `docket`: `PL-SK88` refused it, because `docket` is standard-library only and answers offline, and a live service would make its output unreproducible. A `list_sessions` scan: it cannot see Projects threads (`PL-DR3G`). A shorter lease or heartbeat commits: `LEASE_TERM`'s evidence (92.1 h owner absence, 8.43 h inside a live session) stands, and the lookup answers sooner than any lease could.
 
@@ -37,7 +37,7 @@ The row's `live` is `claims.LIVE`, a lease state: inside `LEASE_TERM`, seven day
 - Each claim row in `flight` prints the holder's session token as the claim records it (`Hold.session`), where it carries one.
 - The `flight` caveat and `show`'s line name `get_session` on that token as what tells a running session from an ended one, in place of "nothing a checkout can read tells the two apart sooner".
 - The state printed on a row no longer reads as "a session is on it" (`held`, say, or `in lease`); the state can stay `claims.LIVE` in code.
-- `start.md`'s prefix sentence says `get_session` takes the `cse_` token as printed.
+- `.claude/skills/docket/modes/start.md`'s prefix sentence says `get_session` takes the `cse_` token as printed.
 - `test_flight_s_claim_rows_print_the_holder_s_session` in `subprojects/docket/tests/test_claims.py` pins the token on the row and the caveat's wording.
 
 **Generator check.** Not a member of `PL-MB2W`'s head. The fact at issue is whether a recorded holder is still running, not who holds the item; the claim record answers "who" and carries the token, so this is a presentation gap at the two readers that print it - a one-off.
