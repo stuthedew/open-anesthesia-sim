@@ -16,3 +16,5 @@ Reproduced (scenario f): capture, push, PR; `arm` says arm; squash-merge; fetch;
 **Done when.** A captures-only branch whose pull request merged is told to restart; the forge's merged state, where available, is the evidence; a test holds scenario f.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+**Seen again, 2026-09-25, on a pull request that was not captures-only.** `PL-P0FP`'s pull request 1007 carried `docs/stress-2026-09-25/evidence.tar.gz` beside its items. It squash-merged and GitHub deleted the branch. The next session-start digest in that session still reported the branch 2 behind and 9 ahead and told it to run `git merge origin/main` before its first edit, while listing `PL-P0FP` itself among the items landed on `origin/main`. Every path the branch changed already matched `origin/main`. So the captures-only reading above may not be the whole cause: check whether the digest and `branch` consult `landed_whole` at all before advising a merge.
