@@ -35,6 +35,24 @@ independently of instruction size
 [long-context instruction following](https://aclanthology.org/2026.findings-eacl.254.pdf),
 [multi-turn attention loss](https://arxiv.org/pdf/2605.12922)).
 
+**Citation correction, 2026-09-25 (`PL-YJG1`).** The paragraph above
+overstates two of its three sources.
+- arXiv 2605.12922 (Dongre et al., *When Attention Closes*, May 2026) measures
+  *attention to system-prompt tokens* against turn number, in 2B-32B
+  open-weight models. It does not measure adherence, and it reports that "some
+  models preserve goal-conditioned behavior at vanishing attention".
+- The EACL 2026 paper (Robinette et al., *We Are What We Repeatedly Do*,
+  Findings of EACL 2026, pp. 4855-4884) says in its abstract that longer
+  contexts "pose challenges to system instruction adherence". The abstract
+  does not carry "independently of instruction size", and its PDF could not be
+  reached to check further.
+
+The conclusion, that total length rather than resident size is the lever,
+stands on better sources: Anthropic, *Effective context engineering for AI
+agents* (2025), which calls the effect "a performance gradient rather than a
+hard cliff"; and Laban P, et al., *LLMs Get Lost In Multi-Turn Conversation*,
+arXiv:2505.06120 (2025).
+
 `CLAUDE.md` § "Session and tool-use efficiency" already states the rule — "Keep
 a session short and scoped to one topic; start a fresh one for an unrelated
 topic rather than continuing or compacting a long one". It is being missed by
