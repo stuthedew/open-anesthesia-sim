@@ -27,23 +27,14 @@ How the 09-19 risks are handled:
 
 Sources: https://code.claude.com/docs/en/claude-projects (fetched 2026-09-25); the evidence on coordination (Kim et al., arXiv:2512.08296: independent agents amplify errors 17.2x against 4.4x under central coordination, and lose 70% on sequential work) is why the plan runs two serial streams rather than one thread per item.
 
-**Stress test, 2026-09-25 (PL-P0FP): two lines for the instructions, and four riders for Stream B.** *Recommendation:* before the Project is created, add to the "Every thread" paragraph:
+**Stress-test additions, decided 2026-09-25** (project owner, 2026-09-25, ratified, over `PL-P0FP`'s proposal as written, which put `PL-KR69` in Stream B although it changes `verify.py`, the file Stream A's `PL-B8HZ` build changes, so the two would have run at once in one file). Folded into the instructions below:
 
-```
-Claims: claim before opening any pull request. Run `git push -u origin HEAD`
-first, then `bin/docket claim`; if it prints "not pushed", run `git push`.
-`bin/docket flight` must then show your claim, or stop and tell me.
-Never commit to a branch whose pull request has merged: branch again from
-origin/main.
-```
+- **The claims paragraph.** Push, claim, and confirm the claim in `flight` before opening a pull request; never commit to a branch whose pull request has merged. Why: `claim` exited 0 without pushing in `PL-P0FP`'s own session (`PL-1X56`) and refused the web harness's branch shape until the branch was pushed (`PL-KX73`). The trial's backstop against two threads on one item is a claim other sessions can see. An item-files-only pull request whose claim is not visible is armed by `bin/docket arm` and merges, after which `branch` and `arm` advise committing to the merged branch (`PL-8BR0`), and an answer recorded there never reaches main. The chain is inferred from the stress test's simulation, not run end to end.
+- **`bin/docket yield` for design threads.** Added by the session recording this decision: a claim holds its pull request unarmed until the claim is released (`arming.py`), and a design thread's item stays open for its build, so without a yield its pull request would stay a draft indefinitely.
+- **`PL-KX73`, `PL-1X56` and `PL-ZLJ9`** (defects in the claim record) in Stream B before the `PL-MB2W` close-out, which should not close while the record it built carries them. They change `claiming.py` and `claims.py`, which no other stream touches, so the placement is for order, not to avoid a collision.
+- **`PL-KR69`** (a rename out of `src/anesthesia_sim/core/` passes `verify --self`'s protected-path audit) first in Stream A: it changes `verify.py` with the `PL-B8HZ` build, needs no design answer, and is a check that passes while the guarantee it stands for is void.
 
-Why. `claim` exited 0 without pushing in PL-P0FP's own session (PL-1X56), and in simulation, with that session's real branch settings, it refused outright until the branch was pushed (PL-KX73). The trial's backstop, recorded claims, holds only for a pushed claim. A design thread pushes item files only. A claimed item-files-only pull request opens as a draft; one whose claim is not visible is armed by `bin/docket arm`. After such a pull request merges, `branch` and `arm` advise committing to the merged branch (PL-8BR0), and an answer recorded there never reaches main. That chain is inferred from the simulation's findings, not run end to end.
-
-Add to Stream B, one thread each:
-- PL-KR69 after PL-J16N: the same git rename-detection trap, in `verify.py` rather than `vcs.py`.
-- PL-KX73, PL-1X56 and PL-ZLJ9 before the PL-MB2W close-out: defects in the claim record it built.
-
-These touch the files Stream B changes, so a separate session would collide with it. They reach main with PL-P0FP's captures, which have to land before Stream B gets to them.
+All four were untriaged on 2026-09-25, so the thread that takes one triages it first.
 
 **Setup.** One repository, `stuthedew/open-anesthesia-sim`. Environment: `Default` (the account's only one, created 2026-08-22), chosen explicitly, since threads otherwise start in a generic Anthropic-hosted one. Thread model Opus at high effort; coordinator effort low; the three design threads on Fable. The desktop app, for notifications (a browser shows only a dot).
 
@@ -65,17 +56,27 @@ Order:
 1. Design threads first, one per head: PL-B8HZ (fold in PL-PZ6T, PL-TKFD),
    PL-HMZZ (fold in PL-LPWK), PL-QHCW. Model: Fable. Each writes a marked
    recommendation beside the open question in the item file, changes no
-   status, pushes item files only, and stops for my answer.
-2. After I answer, at most two code threads at once.
-   Stream A: the PL-B8HZ build, then its open members.
-   Stream B, strictly one at a time, in order: PL-FX5Q, PL-J16N, the PL-MB2W
+   status, pushes item files only, and stops for my answer. After recording
+   my answer in the item, it runs `bin/docket yield`, so its pull request
+   can arm.
+2. After I answer, at most two code threads at once, each stream strictly
+   one at a time, in order.
+   Stream A: PL-KR69, the PL-B8HZ build, then its open members.
+   Stream B: PL-FX5Q, PL-J16N, PL-KX73, PL-1X56, PL-ZLJ9, the PL-MB2W
    close-out, the PL-HMZZ build and members, the PL-QHCW build and members.
-   Start the next thread in a stream only after the previous pull request merged.
+   Start the next thread in a stream only after the previous pull request
+   merged. An untriaged item is triaged first, in the thread that takes it.
 
-Every thread: follow CLAUDE.md and the docket skill; one item; `bin/docket
-claim`; commit subjects lead with the id; open the pull request when checks
-are green; let `bin/docket arm` decide arming. Never merge on your own. When I
-send "Merge it", arm auto-merge and bring main in yourself (docs/maintainer.md).
+Every thread: follow CLAUDE.md and the docket skill; one item; commit
+subjects lead with the id; open the pull request when checks are green; let
+`bin/docket arm` decide arming. Never merge on your own. When I send "Merge
+it", arm auto-merge and bring main in yourself (docs/maintainer.md).
+
+Claims: claim before opening any pull request. Run `git push -u origin HEAD`
+first, then `bin/docket claim`; if it prints "not pushed", run `git push`.
+`bin/docket flight` must then show your claim, or stop and tell me.
+Never commit to a branch whose pull request has merged: branch again from
+origin/main.
 
 Stop and wait for me when: a brief is unclear or needs a decision; main is red
 for a reason outside your item; the same check fails twice; you reach the
