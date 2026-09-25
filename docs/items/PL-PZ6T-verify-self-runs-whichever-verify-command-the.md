@@ -40,3 +40,17 @@ sibling site. `PL-KSV2` stopped a close-out that *deletes* its failing
 `verify:`, and this is one that *replaces* it. The shared fact is that `verify
 --self` runs the command from the branch under audit, although `falsifies:` is
 read from the base's copy of the item. One instance, so there is no cluster.
+
+## Folded into PL-B8HZ's design round, 2026-09-25
+
+Under the rule recommended there (`PL-B8HZ` § "Design round, 2026-09-25"),
+`verify:` is a prediction the branch may correct: where the base commissions a
+command and the branch's differs, both run, the branch's decides the check, and
+the base's command and its exit are printed under it as a correction. This
+item's shape - a failing commissioned command replaced by a weaker passing one -
+then reaches `ACCEPT` only with "commissioned: `A` - fails on this tree; this
+branch runs `B` instead" on the report, the trace the front-matter NOTE never
+gave. Counted before choosing print over refuse: 163 of 1,437 close-outs on
+`main` rewrote a commissioned command, and none was this shape, so a refusal
+would have fired 163 times on correct work and caught nothing. Closes with the
+head's build; `blocked` stands until then.
