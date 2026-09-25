@@ -8,6 +8,7 @@ in a way git accepts is proved against a real checkout in `test_cli.py`.
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 from collections.abc import Mapping
 from datetime import UTC, date, datetime, timedelta, timezone
@@ -43,6 +44,7 @@ from docket.vcs import (
     branch_state,
     change_landed,
     changed_items,
+    changed_path_args,
     closed_by,
     closures_on_base,
     cut_window,
@@ -81,6 +83,17 @@ def _tree_lines(entries: Mapping[str, str]) -> str:
         f"100644 blob {hashlib.sha1(text.encode()).hexdigest()}\t{path}\n"
         for path, text in entries.items()
     )
+
+
+def _bare(args: list[str]) -> list[str]:
+    """`args` without the `-c core.quotePath=false` a changed-path read opens with.
+
+    `changed_path_args` puts it ahead of the subcommand, where git reads it
+    (`PL-8HSX`), and the fakes here dispatch on `args[0]` and index the words
+    after it. Stripped before a fake records its call, so an assertion that no
+    `log` was asked still sees one.
+    """
+    return args[2:] if args[:2] == ["-c", "core.quotePath=false"] else args
 
 
 def _blob(entry: str | tuple[str, str]) -> str:
@@ -154,6 +167,7 @@ def _runner(
     """
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[0] == "rev-parse":
             return f"{BASE}\n" if args[-1] == BASE else ""
         if args[0] == "for-each-ref":
@@ -426,6 +440,7 @@ def test_a_base_with_no_counterpart_on_the_remote_is_not_judged() -> None:
 
 def _pr_runner(shallow: str, subjects: list[str]):
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[:2] == ["rev-parse", "--is-shallow-repository"]:
             return shallow + "\n" if shallow else ""
         if args[0] == "rev-parse":
@@ -475,6 +490,7 @@ def test_a_shallow_clone_is_not_deepened_to_get_an_answer() -> None:
 
 def _since_runner(log: str, shallow: str = "false") -> Runner:
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[:2] == ["rev-parse", "--is-shallow-repository"]:
             return shallow + "\n"
         return log if "log" in args else ""
@@ -572,6 +588,7 @@ def _tree_runner(
     """
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[0] == "for-each-ref":
             return "\n".join(ref for ref in trees if ref != "HEAD")
         if args[:2] == ["rev-parse", "--verify"]:
@@ -1014,6 +1031,7 @@ def _branch_runner(
     """
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[:3] == ["rev-parse", "--abbrev-ref", "HEAD"]:
             return f"{branch}\n"
         if args[0] == "rev-parse":
@@ -1419,6 +1437,7 @@ def _closure_runner(
         return int(revision[1:]) + parents
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if log is not None:
             log.append(args)
         if args[0] == "rev-parse":
@@ -1486,6 +1505,7 @@ def _recovery_runner(
     """
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[0] == "rev-parse":
             return "" if args[-1] == "--is-shallow-repository" else f"{BASE}\n"
         if args[0] == "for-each-ref":
@@ -2076,6 +2096,7 @@ def _closed_by_runner(
     """
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if log is not None:
             log.append(args)
         if args[0] == "rev-parse":
@@ -2227,6 +2248,7 @@ def _files_runner(diffs: dict[str, list[str]], counts: dict[str, int] | None = N
     """
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[0] == "diff":
             ref = args[-1].split("...")[-1]
             return "".join(f"{path}\n" for path in diffs.get(ref, []))
@@ -2666,6 +2688,7 @@ def _base_runner(declared: str = '[project]\nversion = "0.3.8"\n', notes: tuple[
     """
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[0] == "rev-parse":
             return f"{BASE}\n" if args[-1] == BASE else ""
         if args[0] == "show":
@@ -2771,6 +2794,7 @@ def _cut_runner(
     refs = list(notes)
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[0] == "rev-parse":
             if args[-1] == BASE:
                 return f"{BASE}\n"
@@ -2926,6 +2950,7 @@ def _record_runner(
     listing = base_paths or tuple(on_base)
 
     def run(args: list[str], _root: Path) -> str:
+        args = _bare(args)
         if args[0] == "rev-parse":
             return "aaa111\n"
         if args[0] == "diff":
@@ -3073,6 +3098,7 @@ def _rename_runner(commits: tuple[tuple[str, str, str, str], ...], items_dir: st
         return ["M", paths[at]]
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[0] == "rev-parse":
             return "" if args[-1] == "--is-shallow-repository" else f"{BASE}\n"
         if args[0] == "for-each-ref":
@@ -3209,6 +3235,7 @@ def _landed_runner(
     """
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[:3] == ["rev-parse", "--abbrev-ref", "HEAD"]:
             return f"{branch}\n"
         if args[0] == "rev-parse":
@@ -3371,6 +3398,7 @@ def _cut_window_runner(
     """A git whose `HEAD` introduces `added` notes files and whose base gained `landed`."""
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[:2] == ["rev-parse", "--verify"]:
             return f"{BASE}\n" if args[-1] == BASE else ""
         if args[0] == "rev-parse":
@@ -3427,6 +3455,7 @@ def _filing_runner(shallow: str, log: str, changed: dict[str, list[str]] | None 
     """Git for a store whose item files were added by the commits `log` describes."""
 
     def run(args: list[str], root: Path) -> str:
+        args = _bare(args)
         if args[:2] == ["rev-parse", "--is-shallow-repository"]:
             return shallow + "\n" if shallow else ""
         if args[0] == "rev-parse":
@@ -3835,6 +3864,48 @@ class _Repo:
 
     def read(self, name: str) -> str:
         return (self.root / name).read_text(encoding="utf-8")
+
+
+def test_a_changed_path_read_prints_a_path_outside_ascii_as_written(tmp_path: Path) -> None:
+    """`changed_path_args` turns `core.quotePath` off for every read it builds (`PL-8HSX`).
+
+    Left on, git printed `src/anesthesia_sim/core/café.py` as
+    `"src/anesthesia_sim/core/caf\\303\\251.py"`, quotes included, and matched
+    against that, `verify`'s protected-path audit passed the file as "none
+    touched". `claims.work_under_record` was the one reader spelling its own
+    `-c`, and now relies on this one.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", seed_txt="seed\n")
+    core = repo.root / "src" / "anesthesia_sim" / "core"
+    core.mkdir(parents=True)
+    (core / "café.py").write_text("VALUE = 1\n", encoding="utf-8")
+    repo.git("add", "-A")
+    repo.git("commit", "-qm", "add a core module")
+
+    listing = _run_git(changed_path_args("diff", "--name-only", "HEAD~1", "HEAD"), repo.root)
+
+    assert listing.splitlines() == ["src/anesthesia_sim/core/café.py"]
+
+
+def test_a_path_that_is_not_utf8_reads_as_unanswered_rather_than_raising(tmp_path: Path) -> None:
+    """Printed as written, a Latin-1 `café.py` is a byte no UTF-8 decode reads (`PL-8HSX`).
+
+    Quoted, it had been `"caf\\351.py"`; unquoted, `subprocess.run` raised out
+    of `_run_git`, whose contract is that nothing does.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", seed_txt="seed\n")
+    try:
+        (repo.root / os.fsdecode(b"caf\xe9.py")).write_text("x\n")
+    except OSError:
+        pytest.skip("this filesystem refuses a name that is not UTF-8")
+    repo.git("add", "-A")
+    repo.git("commit", "-qm", "add a Latin-1 name")
+
+    listing = _run_git(changed_path_args("diff", "--name-only", "HEAD~1", "HEAD"), repo.root)
+
+    assert listing is SILENT
 
 
 def _edit(text: str, **replace: str) -> str:
