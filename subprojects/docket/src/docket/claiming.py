@@ -18,12 +18,19 @@ and made with `--only`, so nothing staged rides it.
 with `HELD_ELSEWHERE` and writes nothing where a live claim on another branch
 orders first - unless `--over` names that branch, or `HEAD` already contains
 that branch's tip, which is a continuation and is written as a takeover
-without being asked. It pushes only a branch with no upstream: a branch that
-has one may have a pull request open and armed, and a push would merge the
-claim away with the branch (`PL-QP9Z`). After a push it fetches again and
+without being asked. It pushes only a branch with no upstream of its own and
+no copy on the remote: a branch with either may have a pull request open and
+armed, and a push would merge the claim away with the branch (`PL-QP9Z`). An
+upstream naming the default branch is not the branch's own - it is how the web
+harness starts a session branch (`PL-KX73`) - so it does not stop the push,
+and the push gives the branch one. After a push it fetches again and
 re-reads, because a claim pushed in the same minute is invisible until then;
 where that one orders first, the answer is `HELD_ELSEWHERE` and the line to
-yield by. A push that fails is `LOCAL_ONLY`, and says the claim is local.
+yield by. A claim that did not reach the remote is `LOCAL_ONLY`, whether its
+push failed or the branch's copy on the remote meant none was tried: no other
+session can fetch it, and a session reports the exit status as evidence that
+its claim is visible, so `CLAIMED` would say it was held when it is not
+(`PL-1X56`). The message says which, and names the push that publishes it.
 
 **Why writes go round the command's runner.** `vcs._run_git` reads exit 1 as
 git answering "no", and a failed push or fetch exits 1 too, so a write read
@@ -70,7 +77,8 @@ from .vcs import (
 #: Exit statuses. `USAGE` is argparse's own. `HELD_ELSEWHERE` and `LOCAL_ONLY`
 #: are the two a session has to act on differently from a plain refusal: the
 #: first means another session has the item, the second that the claim exists
-#: only in this checkout.
+#: only in this checkout - its push failed, or the branch's copy on the remote
+#: meant none was tried - until the push the message names.
 CLAIMED = 0
 REFUSED = 1
 USAGE = 2
@@ -374,6 +382,12 @@ def _branch(
     where `HEAD`'s tree predates the claim record - a commit made there is read
     by the old rules, which read no trailer at all.
 
+    A branch tracking the default branch is not pushing to one of another name.
+    It has no upstream of its own yet - `git checkout -b <branch> --track
+    origin/main` is how the web harness starts a session branch (`PL-KX73`) -
+    so it is read as having none, and the remote's copy decides whether the
+    claim is pushed.
+
     For `claim`, each id must be an item `HEAD` holds and at a status that does
     not release a claim the moment it is written.
     """
@@ -391,6 +405,8 @@ def _branch(
     upstream = run(
         ["for-each-ref", "--format=%(upstream:short)", f"refs/heads/{name}"], root
     ).strip()
+    if upstream and _head_name(upstream, remotes) == base:
+        upstream = ""
     if upstream and _head_name(upstream, remotes) != name:
         return empty, (
             f"{command}: {name} pushes to {upstream}, and a claim names one branch; "
@@ -550,9 +566,18 @@ def _publish(
     """Push where the remote has no copy of the branch, then read the result back.
 
     **The remote's copy decides, not the tracking setting.** A branch pushed
-    without `-u`, or checked out in a fresh container without tracking, has no
-    upstream configured and can still carry an open, armed pull request, which
-    is the case the refusal to push exists for (`PL-QP9Z`).
+    without `-u`, or checked out in a fresh container without tracking or
+    tracking the default branch, has no upstream of its own and can still carry
+    an open, armed pull request, which is the case the refusal to push exists
+    for (`PL-QP9Z`).
+
+    **Not pushed is `LOCAL_ONLY` whichever way it happened.** The read-back
+    answers from this clone's refs, where a record just written is live, so
+    without this a claim declined a push exited `CLAIMED` exactly as a pushed
+    one did, while a second clone's `next` went on offering the item
+    (`PL-1X56`). The read-back still runs, since a record that does not read
+    back at all is a defect worth saying, but it promotes nothing to `CLAIMED`
+    that nobody else can fetch.
     """
     said = list(said)
     short = commit[:12]
@@ -561,10 +586,14 @@ def _publish(
     )
     upstream = branch.upstream or _remote_copy(root, branch.name)
     if upstream:
+        # Named in full because a bare `git push` fails on a branch with no
+        # upstream of its own, and one still tracking the default branch sends
+        # it there, or is refused, depending on `push.default`.
         said.append(
-            f"{what}, and not pushed: the branch is on the remote as {upstream}, so a pull "
-            "request may be open on it and armed, and a push could merge it away. Disarm "
-            "auto-merge if it is armed, then push."
+            f"{what}, and not pushed, so only this checkout can see it: the branch is on the "
+            f"remote as {upstream}, so a pull request may be open on it and armed, and a push "
+            "could merge it away. Disarm auto-merge if it is armed, then push it with "
+            f"`git push --set-upstream {REMOTE} {branch.name}`."
         )
     else:
         pushed = _git(["push", "--quiet", "--set-upstream", REMOTE, branch.name], root)
@@ -588,6 +617,8 @@ def _publish(
             )
     reread = holdings(root, now=now, items_dir=items_dir, runner=_run_git)
     code, lines = check(root, reread, keys, branch, commit)
+    if upstream and code == CLAIMED:
+        code = LOCAL_ONLY
     return Written(code, (*said, *lines), commit)
 
 

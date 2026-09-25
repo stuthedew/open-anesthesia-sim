@@ -373,7 +373,7 @@ Rejected:
 
 Filed under `feature: claim-record`, in build order. This item is blocked on the first eight and closes with its own remaining work: the close-out that was the synthesis's item 7 (the `vcs.py` docstring changes from "derive, never record" to "claims recorded, landing derived", the README gets a claims section and states the git floor, `PL-J16N` is re-scoped to rename fidelity in the fake runner, and the answered members are closed). `PL-CH3Z` follows once `flight` prints `legacy refs: 0`, and does not block this item.
 
-**Readied 2026-09-25, when `PL-FX5Q` closed the last of the eight.** What is left is the close-out the paragraph above names. Its `verify:` was run on that branch and fails for the reason it should: `vcs.py`'s module docstring still reads "So it is derived, never stored.", and `subprojects/docket/README.md` names no git floor. `flight` already prints `legacy refs: 0`, which is `PL-CH3Z`'s condition.
+**Readied 2026-09-25, when `PL-FX5Q` closed the last of the eight.** What is left is the close-out the paragraph above names. Its `verify:` was run on that branch and fails for the reason it should: `vcs.py`'s module docstring still reads "So it is derived, never stored.", and `subprojects/docket/README.md` names no git floor. `flight` already prints `legacy refs: 0`, which is `PL-CH3Z`'s condition. `PL-J16N`'s re-scope has left the close-out: the owner answered it on 2026-09-25, and that item was re-scoped and closed on its own branch.
 
 1. `PL-3FYK`: Record who holds an item as a Claim trailer bound to the holder's own branch, read by one claims.holdings reader under a 7-day lease
 2. `PL-NST2`: claims.holdings reads status dispositions, the landed prefix, the item resource field and cut holds, and adapts to FlightReport

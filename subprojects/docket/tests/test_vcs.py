@@ -98,6 +98,27 @@ def _path(entry: str | tuple[str, str]) -> str:
     return entry[1] if isinstance(entry, tuple) else f"some/{entry}"
 
 
+def _name_only(changes: tuple[str | tuple[str, str], ...], args: list[str]) -> str:
+    """What `git diff --name-only` prints for `changes`, a rename given as `(old, new)`.
+
+    Git pairs a deleted path with a similar added one and prints the pair as its
+    new name alone. `--no-renames` prints the deletion and the addition, and it
+    is what every read of which paths a change touched sends
+    (`vcs.changed_path_args`). Measured on git 2.43.0, 2026-09-25: a retitle git
+    scores `R078` prints one name under `--name-only` and both, sorted, under
+    `--no-renames`. A fake that printed a rename one way whatever it was asked
+    let a test pass against a git that does not behave that way (`PL-J16N`).
+    """
+    apart = "--no-renames" in args
+    paths: list[str] = []
+    for change in changes:
+        if isinstance(change, tuple):
+            paths.extend(change if apart else change[1:])
+        else:
+            paths.append(change)
+    return "\n".join(sorted(paths))
+
+
 def _runner(
     refs: list[str],
     merged: list[str] | None = None,
@@ -2038,7 +2059,7 @@ REV = "abc123"
 
 
 def _closed_by_runner(
-    touched: tuple[str, ...],
+    touched: tuple[str | tuple[str, str], ...],
     trees: dict[str, str],
     *,
     resolves: bool = True,
@@ -2048,9 +2069,10 @@ def _closed_by_runner(
     """A git whose `trees` map `<ref>:<path>` to the text held there.
 
     `touched` is what the commit changed under the item directory, which is
-    what `git diff --name-only` against the first parent answers. `resolves`
-    and `parent` are the two ways the read declines: a revision this checkout
-    does not hold, and one whose parent it does not hold.
+    what `git diff --name-only` against the first parent answers, a rename
+    listed as `_name_only` says git lists it. `resolves` and `parent` are the
+    two ways the read declines: a revision this checkout does not hold, and
+    one whose parent it does not hold.
     """
 
     def run(args: list[str], root: Path) -> str:
@@ -2061,7 +2083,7 @@ def _closed_by_runner(
                 return f"{REV}~1\n" if parent else ""
             return f"{REV}\n" if resolves else ""
         if args[0] == "diff":
-            return "\n".join(touched)
+            return _name_only(touched, args)
         if args[0] == "ls-tree":
             prefix = f"{args[2]}:"
             return _tree_lines({k[len(prefix) :]: k for k in sorted(trees) if k.startswith(prefix)})
@@ -2113,7 +2135,7 @@ def test_a_closed_item_renamed_by_the_commit_was_not_closed_by_it() -> None:
     actually closed the item.
     """
     run = _closed_by_runner(
-        ("items/PL-K7QX-new.md", "items/PL-K7QX-old.md"),
+        (("items/PL-K7QX-old.md", "items/PL-K7QX-new.md"),),
         {
             f"{REV}:items/PL-K7QX-new.md": CLOSED.format(id="PL-K7QX"),
             f"{REV}^:items/PL-K7QX-old.md": CLOSED.format(id="PL-K7QX"),
@@ -2889,16 +2911,17 @@ RECORDED = "---\nid: {id}\ntitle: T\nstatus: done\nverify: {verify}\n---\n"
 
 def _record_runner(
     on_base: dict[str, str],
-    committed: tuple[str, ...] = (),
-    uncommitted: tuple[str, ...] = (),
+    committed: tuple[str | tuple[str, str], ...] = (),
+    uncommitted: tuple[str | tuple[str, str], ...] = (),
     base_paths: tuple[str, ...] = (),
 ):
     """A git whose base holds `on_base`, keyed by the path the base stores it under.
 
     `committed` and `uncommitted` are the paths the two diffs report, so a case
-    can put an edit in either place; `base_paths` is what `ls-tree` lists, which
-    defaults to the keys of `on_base` and is given explicitly only where a test
-    needs the base to hold a path the tree does not.
+    can put an edit in either place, a rename listed as `_name_only` says git
+    lists it. `base_paths` is what `ls-tree` lists, which defaults to the keys
+    of `on_base` and is given explicitly only where a test needs the base to
+    hold a path the tree does not.
     """
     listing = base_paths or tuple(on_base)
 
@@ -2907,7 +2930,7 @@ def _record_runner(
             return "aaa111\n"
         if args[0] == "diff":
             paths = committed if any(arg.endswith("...HEAD") for arg in args) else uncommitted
-            return "\n".join(paths)
+            return _name_only(paths, args)
         if args[0] == "ls-tree":
             return _tree_lines({path: path for path in listing})
         if args[0] == "show":
@@ -2975,7 +2998,7 @@ def test_a_retitled_item_is_found_by_id_rather_than_by_path() -> None:
     # would let a rewrite through on exactly the branch that renamed it.
     run = _record_runner(
         {"docs/items/PL-K7QX-old-title.md": RECORDED.format(id="PL-K7QX", verify="pytest a")},
-        committed=("docs/items/PL-K7QX-new-title.md",),
+        committed=(("docs/items/PL-K7QX-old-title.md", "docs/items/PL-K7QX-new-title.md"),),
     )
 
     assert records_on_base(ROOT, {"PL-K7QX": "PL-K7QX-new-title.md"}, runner=run).commands == {

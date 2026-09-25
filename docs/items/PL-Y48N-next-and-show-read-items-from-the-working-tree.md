@@ -1,10 +1,16 @@
 ---
 id: PL-Y48N
 title: next and show read items from the working tree while holds come from refs, so a fetched clone whose working tree is behind origin/main offers, and shows as ready, an item origin/main has closed - and claim then pushes a dead claim and calls it 'a defect in docket'
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
 feature: one-snapshot
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_claiming.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-snapshot batch
 added: 2026-09-25
+payoff: a session in a clone whose working tree is behind origin/main is neither offered nor allowed to claim an item another session already finished, and is not sent hunting a docket bug
+verify: grep -q 'def test_next_does_not_offer_an_item_origin_main_has_closed' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** next and show read items from the working tree while holds come from refs, so a fetched clone whose working tree is behind origin/main offers, and shows as ready, an item origin/main has closed - and claim then pushes a dead claim and calls it 'a defect in docket'
@@ -16,3 +22,7 @@ Reproduced (scenarios b, c, d): s2 branches; s1 claims X, closes it, is squash-m
 **Done when.** `next`/`show`/`claim` read the item's status from origin/main when it is newer than the working tree's, or say the working tree is behind; a test holds scenario b.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+Reproduced 2026-09-25 against 46954a81, in a scratch clone on a branch at `46954a81~1` with `origin/main` at `46954a81`, where `PL-FX5Q` is done: `next` offered `PL-FX5Q` first, `show PL-FX5Q` said `ready` with no note, and `claim PL-FX5Q` printed `claim written on s2 ... and pushed`, then `does not read back as a live claim by s2; this is a defect in docket`. `claiming._branch` (claiming.py:366) checks the status of `HEAD`'s copy only, so `touches` now carries `claiming.py` and its test.
+
+**Generator check.** PL-XBV4's fact: the working tree's moment read as the moment of the refs beside it.
