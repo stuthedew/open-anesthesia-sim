@@ -6,11 +6,13 @@ effort: M
 status: done
 classes: defect
 feature: claim-record
+milestone: v0.5.11
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, CLAUDE.md, .claude/rules/instruction-writing.md, docs/resident-instructions.md, docs/items/PL-WX87-bin-docket-claim-reads-the-clone-s-remote.md
 blocked-by: PL-NST2, PL-0TD9
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24
 closed: 2026-09-24
+pr: 993
 payoff: part of the claim record that ends PL-MB2W's generator: one recorded fact decides who holds an item
 verify: grep -q 'def cmd_arm' subprojects/docket/src/docket/cli.py && grep -q 'def test_arm' subprojects/docket/tests/test_cli.py && grep -qF 'bin/docket arm' CLAUDE.md
 ---

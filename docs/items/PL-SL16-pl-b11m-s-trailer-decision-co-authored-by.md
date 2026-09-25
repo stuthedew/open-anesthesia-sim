@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, docs
 feature: public-history
+milestone: v0.5.11
 touches: CLAUDE.md, docs/resident-instructions.md, docs/items/PL-LWMS-check-the-attribution-trailers-a-pull-request-s.md
 added: 2026-09-24
 closed: 2026-09-24
+pr: 1001
 payoff: Sessions write the attribution the owner decided, because the one carrier the harness reminder yields to now states it
 verify: grep -qF 'Co-authored-by: Claude <noreply@anthropic.com>` and never a model-named' CLAUDE.md
 ---

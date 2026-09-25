@@ -6,10 +6,12 @@ effort: S
 status: done
 classes: defect
 feature: parallel-sessions
+milestone: v0.5.11
 touches: CLAUDE.md, docs/maintainer.md, .claude/skills/docket/modes/start.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-24
 closed: 2026-09-24
+pr: 992
 payoff: a claimed capture's pull request cannot be merged by hand while its claimed work is unfinished
 verify: grep -qF 'leaves it unarmed and a draft' CLAUDE.md && grep -qF 'is still a draft, leave it' docs/maintainer.md && grep -qF 'open it as a draft' .claude/skills/docket/modes/start.md
 ---

@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: housekeeping
 feature: pr-body-integrity
+milestone: v0.5.11
 touches: docs/pr-bodies, docs/items
 added: 2026-09-23
 closed: 2026-09-24
+pr: 994
 payoff: the ten lost commit bodies are kept in the tree, and the digest stops printing a warning every session has learned to skip
 verify: grep -q '^pr: 848' docs/pr-bodies/848.md && grep -q '^pr: 849' docs/pr-bodies/849.md && grep -q '^pr: 886' docs/pr-bodies/886.md && grep -q '^pr: 887' docs/pr-bodies/887.md && grep -q '^pr: 910' docs/pr-bodies/910.md && grep -q '^pr: 911' docs/pr-bodies/911.md && grep -q '^pr: 912' docs/pr-bodies/912.md && grep -q '^pr: 913' docs/pr-bodies/913.md && grep -q '^pr: 916' docs/pr-bodies/916.md && grep -q '^pr: 918' docs/pr-bodies/918.md
 ---

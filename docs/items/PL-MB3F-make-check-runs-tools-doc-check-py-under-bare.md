@@ -5,10 +5,12 @@ priority: P2
 effort: M
 status: done
 classes: defect, infra
+milestone: v0.5.11
 touches: tools/doc_check.py, tools/possessive_section_check.py, tests/unit/test_doc_check.py, .github/workflows/quality.yml, Makefile, tests/unit/test_possessive_section_check.py, tests/unit/test_tools_portability.py, tools/ruff.toml, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-23
 closed: 2026-09-24
+pr: 999
 payoff: no source file goes unread by doc_check or the possessive-citation check without the run saying so
 verify: grep -q 'def test_a_source_file_the_running_interpreter_cannot_parse_is_reported_not_skipped' tests/unit/test_doc_check.py
 ---

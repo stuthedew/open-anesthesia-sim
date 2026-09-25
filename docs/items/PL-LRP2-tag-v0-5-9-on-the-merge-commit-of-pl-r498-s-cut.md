@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: planning
 feature: release-process
+milestone: v0.5.11
 touches: docs/items/
 added: 2026-09-24
 closed: 2026-09-24
+pr: 989
 payoff: v0.5.9 carries its annotated tag, so the next cut is not refused and git describe resolves across it
 not-delegable: Proving this means pushing a tag ref to the remote, which no session in this environment can do: PL-N936 measured the failure, a dry run reporting [new tag] and the real push dying on an unexpected disconnect
 recurrences: 2026-09-24 PL-08D4

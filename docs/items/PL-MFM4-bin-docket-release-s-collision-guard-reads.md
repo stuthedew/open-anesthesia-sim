@@ -5,9 +5,11 @@ priority: P2
 effort: M
 status: done
 classes: defect
+milestone: v0.5.11
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-19
 closed: 2026-09-24
+pr: 995
 reason: Fixed by PL-331V: a release item names resource: release-train and its claim holds the train, so bin/docket new --resource refuses a second filing and bin/docket release refuses a cut beside another session's train claim
 payoff: stops two sessions filing two release items for one release while every existing guard answers both cleanly
 verify: grep -q 'def test_an_open_release_item_from_another_session' subprojects/docket/tests/test_release.py

@@ -6,11 +6,13 @@ effort: M
 status: done
 classes: defect
 feature: claim-record
+milestone: v0.5.11
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/start.md, subprojects/docket/README.md, tools/branch_id_check.py, tests/unit/test_branch_id_check.py, subprojects/docket/tests/test_git_runner.py, docs/items/PL-FFR0-move-branch-id-check-s-unclaimed-work-predicate.md, docs/items/PL-FX5Q-delete-the-claim-inference-and-the-three.md
 blocked-by: PL-NST2
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24
 closed: 2026-09-24
+pr: 1002
 payoff: part of the claim record that ends PL-MB2W's generator: one recorded fact decides who holds an item
 verify: grep -qF 'legacy refs:' subprojects/docket/src/docket/render.py && grep -qF 'unclaimed:' subprojects/docket/src/docket/render.py && ! grep -qF 'branches_in_flight(inv.root' subprojects/docket/src/docket/cli.py && ! grep -qF 'precedence(root, item.identifier' subprojects/docket/src/docket/cli.py
 ---
