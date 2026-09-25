@@ -3863,8 +3863,10 @@ def cmd_claim(args: argparse.Namespace) -> int:
     """Record that this branch holds the items named: `claiming.claim`, which says how.
 
     Exit 3 means another branch holds one of them first, and exit 4 that the
-    claim was written but could not be pushed, so only this checkout can see it.
-    Neither is a failure of the command; each is a different next step.
+    claim was written and did not reach the remote - its push failed, or the
+    branch's copy on the remote meant none was tried - so only this checkout can
+    see it until the push the message names. Neither is a failure of the
+    command; each is a different next step.
     """
     inv = _invocation(args)
     if inv.git is None:
@@ -3890,7 +3892,11 @@ def cmd_claim(args: argparse.Namespace) -> int:
 
 
 def cmd_yield(args: argparse.Namespace) -> int:
-    """End this branch's claim on the items named without closing them."""
+    """End this branch's claim on the items named without closing them.
+
+    Exit 4 as for `claim`: a yield that did not reach the remote is one every
+    other session still reads past, so it is not reported as done.
+    """
     inv = _invocation(args)
     if inv.git is None:
         print("yield: `--no-git` asks git nothing, and a yield is a commit")
