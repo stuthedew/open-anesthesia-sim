@@ -157,6 +157,15 @@ answers for the build. Once it merges, `generator:` reads spent: the block and
 both readers name the cut, so nothing hands this head another member. Effort
 M as filed; nothing here reaches the simulator.
 
+**Decided (project owner, 2026-09-25, ratified): the recommendation above -
+derive the cut from the notes file's first-parent add and make the block and
+every reader use it - over a `cut:` field written after the merge, and over
+CI placing the tag.** The owner's words: "Agree with recs". Ratified rather
+than specified, so ordinary evidence reopens it. The build is Stream B's
+PL-QHCW build thread; the status stays `needs-decision` here because the
+design round was instructed to change none, and the build's first commit
+moves it.
+
 **Done when.** The commit a release was cut on is recorded when the cut
 merges, and the tag and its readers use it. Or the owner decides the hand-placed
 tag stays, and this head is closed spent with that recorded. It is a design
