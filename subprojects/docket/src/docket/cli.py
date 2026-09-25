@@ -393,10 +393,10 @@ def _flight(args: argparse.Namespace) -> FlightReport:
 
     **Answered by `claims.holdings`, not inferred** (`PL-N162`). An item is in
     flight where a branch holds a live claim on it, a live status disposition,
-    or its name; `Holdings.flight` keeps `vcs.branches_in_flight`'s shape, so
-    no reader below changed. What a commit subject says is attribution and
-    holds nothing, except on a commit made before a session could write a
-    claim, which is read by the old rule without its three promotions.
+    or its name; `Holdings.flight` returns the `FlightReport` the inferred
+    read did, so no reader below changed. What a commit subject says is
+    attribution and holds nothing, except on a commit made before a session
+    could write a claim, which is read by the old rule alone.
 
     The root is resolved from the store, exactly as `_load` resolves it. Asking
     git about the repository this command happens to be *run* in, while

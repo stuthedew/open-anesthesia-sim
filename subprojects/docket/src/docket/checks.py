@@ -2112,8 +2112,8 @@ def _check_gate_dispositions(
     sentence saying an item was *absent* for its disposition (`PL-58JD`). A
     field has none of the three. The error below names the one command that
     writes it, there is nothing beside it to narrate or to mis-parse, and a
-    triage pass recording one writes only under `docs/items/`, which
-    `vcs._annotates_only` reads as annotation, so it claims nothing in flight.
+    triage pass recording one writes only under `docs/items/` and writes no
+    `Claim:` trailer, so it claims nothing in flight.
 
     Three refusals ride with it, each exact:
 

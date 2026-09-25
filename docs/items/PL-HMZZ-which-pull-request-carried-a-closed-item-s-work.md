@@ -26,7 +26,7 @@ render") cover the timing half, and this is the inference half.
 **The mechanism.** Which pull request carried a closed item's work is never
 recorded when the merge creates that fact. The merge-time write was removed
 (`PL-N5WZ`, #265: a `GITHUB_TOKEN` push starts no workflow, which is in the
-digest's dead ends). So `closures_on_base` (`vcs.py:4295`) infers it later,
+digest's dead ends). So `vcs.closures_on_base` infers it later,
 from merge subjects (`_merges_naming`) and then `_number_closing`. Each new
 shape of history misleads it: a queue-only closure, a triage pass that also
 edited `ROADMAP.md`, a rider id that never leads a subject (`PL-GW37`).

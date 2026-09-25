@@ -67,8 +67,8 @@ hundred items holds none of them (`PL-3W3P`); it runs on the branch's lease;
 and it never orders against a claim or holds arming. A *cut* is a release's
 notes file on the branch, `vcs.cuts_in_flight`'s read, and it always refuses a
 release. A *name* is a branch named for its item, `claude/pl-k7qx-slug`, which
-`vcs.branches_in_flight` has always read as carrying it and which needs no
-history to read (`PL-TZ3R`); it runs on the branch's lease and never orders
+`flight` has always read as carrying it and which needs no history to read
+(`PL-TZ3R`); it runs on the branch's lease and never orders
 against a claim or holds arming. They are kept apart from the claims
 (`Holdings.dispositions`, `Holdings.cuts`, `Holdings.named`) so that a reader
 wanting claims cannot be handed one.
@@ -76,8 +76,9 @@ wanting claims cannot be handed one.
 **A commit made before a session could write a claim is read by the old
 rules** (`CUTOVER_MARKER`): a subject leading with ids claims them where the
 commit's diff is empty or reaches outside the queue - `vcs._annotates_only`'s
-rule - under the same lease, and with none of `vcs`'s promotions. `PL-CH3Z`
-deletes that reading once no ref carries such a commit.
+rule - under the same lease, and with none of the promotions `vcs` layered on
+that rule until `PL-FX5Q` deleted them. `PL-CH3Z` deletes that reading once no
+ref carries such a commit.
 
 **git 2.22 is the floor** (`GIT_FLOOR`), declared rather than worked around: a
 git that cannot read one trailer key's values declines, and says so, rather
@@ -376,7 +377,7 @@ class Holdings:
         return frozenset(hold.ref for hold in self.holds if hold.state == LIVE and hold.legacy)
 
     def flight(self) -> FlightReport:
-        """The holds in `vcs.branches_in_flight`'s shape, so its callers read them unchanged.
+        """The holds as a `vcs.FlightReport`, the shape every in-flight reader takes.
 
         One `Branch` per item held live, from `holding`.
         """
@@ -468,7 +469,7 @@ def holdings(
     one instant per call, converted to UTC, and never the wall clock.
 
     `include_remote` reads `refs/remotes` as well as the checkout's own
-    branches, as it does for `vcs.branches_in_flight`. `include_head=False`
+    branches, as it does for `vcs.orphaned`. `include_head=False`
     leaves the checkout's own branches out, so that only what has been pushed -
     what every other session can also read - decides the answer.
 
@@ -1031,11 +1032,36 @@ def _history(names: list[str], base: str, root: Path, run: Runner) -> list[_Comm
     of the branch and not the other.
 
     **A walk must stop because the base accounted for what came next, never
-    because the checkout ran out of history** - `vcs._unmerged_commits` has the
-    argument. A commit with no parents here means the walk ran off a grafted
-    history and nothing it produced is proven, so the whole branch is unread.
-    A date git wrote in a shape this cannot parse is treated the same way,
-    because a claim that cannot be dated can be neither leased nor ordered.
+    because the checkout ran out of history.** `^base` excludes only the
+    commits this checkout can reach from the base, and in a truncated clone
+    the base's own history ends at a grafted commit, so everything below the
+    graft goes unexcluded. A branch reaching round it - a merge of the base is
+    enough - would have the base's own commits, and the claims they carry,
+    read as its own. A merge-base that resolves does not rule this out: it
+    proves the two share *a* commit this checkout can see, never that the walk
+    can see the rest. So a commit with no parents here means the walk ran off
+    a grafted history and nothing it produced is proven, and the whole branch
+    is unread. The repository's true root reads the same way and is answered
+    the same way, since it sits on the base. Reading the commits settles it
+    rather than `is_shallow`, so a git too old to say whether the checkout is
+    truncated is guarded too. A date git wrote in a shape this cannot parse is
+    treated the same way, because a claim that cannot be dated can be neither
+    leased nor ordered.
+
+    **The converse does not hold, and the limit is accepted** (`PL-W1LN`,
+    decided with the project owner 2026-09-13). Where the base reaches the root
+    down one path and is grafted on another, a single `--depth` truncates
+    unevenly, and a branch forked below the graft descends through commits
+    `^base` cannot exclude before ending against the fork point the short path
+    still reaches. Every commit it emits has a parent, so the test above stays
+    silent and the base's own commits come back in the walk. `_landed_through`
+    is what keeps them from holding anything: they wrote only content the base
+    holds, so a claim they carry is spent (`PL-N162`). No sound test exists
+    inside a truncated checkout - naming a branch unread whenever the base is
+    grafted would silence this read in every agent container, and deepening
+    the clone breaks the rule that these commands need no network.
+    `test_cli.py::test_flight_reads_below_an_uneven_horizon_by_the_landed_prefix`
+    pins it end to end.
     """
     output = run(
         [

@@ -1318,10 +1318,10 @@ CLOSED = "---\nid: {id}\ntitle: T\nstatus: done\n---\n"
 OPEN_ITEM = "---\nid: {id}\ntitle: T\nstatus: ready\n---\n"
 
 
-#: The same two, declaring where the item's work lives. Only the readings that
-#: ask for `touches` need them - `_declares_queue_only` here, and
-#: `_queue_only_work` a level up - so the bare pair stay the default and a test
-#: that says nothing about `touches` is a test about an item that declares none.
+#: The same two, declaring where the item's work lives. Only
+#: `_declares_queue_only` asks for `touches`, so the bare pair stay the default
+#: and a test that says nothing about `touches` is a test about an item that
+#: declares none.
 CLOSED_DECLARING = "---\nid: {id}\ntitle: T\nstatus: done\ntouches: {touches}\n---\n"
 
 

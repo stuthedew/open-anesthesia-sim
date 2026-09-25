@@ -19,7 +19,7 @@ tool in the middle of a judgment it has no business making (below). The
 remedy is two commands, and the failure prints them.
 
 **It reads the ids with `docket`'s own parsers rather than its own.** A check
-that matched ids more loosely than `branches_in_flight` does would certify a
+that matched ids more loosely than `claims.holdings` does would certify a
 branch as visible that `docket flight` still cannot see, which is worse than
 no check at all: the guarantee would be void while the gate stayed green. So
 `BRANCH_ID_RE` and `leading_ids` are imported from the module under protection,

@@ -430,7 +430,7 @@ class GitRunner:
       by ratio instead.
     - **The memo** (`PL-MMVF`). Every `merge-base` this module issues is asked
       exactly three times - `_unlanded_refs` runs once for each of
-      `branches_in_flight`, `orphaned` and `cuts_in_flight` - so two of every
+      `claims.holdings`, `orphaned` and `cuts_in_flight` - so two of every
       three are removed by remembering the answer. **An answer, and never a
       silence** (`PL-MM7F`): a failure stored here would be served to every
       later caller asking the same question, which turns one transient fault
@@ -757,7 +757,7 @@ class FlightReport:
     merge-base with the default branch that this checkout can resolve, and a
     commit walk that ran off the end of the history instead of stopping
     against the default branch. The second is not implied by the first -
-    `_unmerged_commits` has the argument - so a ref answering the merge-base
+    `claims._history` has the argument - so a ref answering the merge-base
     is not thereby answerable.
 
     **It names what went unread, not a ref that was skipped, so a ref can sit
@@ -867,92 +867,30 @@ def _annotates_only(paths: list[str], prefix: str) -> bool:
     **What it withholds is the claim to be *working* an item, which is all it
     was ever asked to withhold.** A commit that only annotates still edited
     that item's file, and a second session editing the same file collides at
-    merge whatever either commit was for - so `_item_file_ids` reads the same
+    merge whatever either commit was for - so `claims._editing` reads the same
     paths for that weaker fact and `FlightReport.editing` carries it. Two
     sessions triaged one pair of items on 2026-09-06 and the merge discarded
     one of the two answers: a triage pass has by definition no diff outside
     the queue, so it could never raise the mark this function withholds, and
     no amount of care with `show` or `flight` would have surfaced it
     (`PL-N1JK`). Nothing here is relaxed to fix that - `docket next` still
-    ranks on `FlightReport.branches` alone, which is `PL-X3WZ`'s reading
-    intact.
+    ranks on `FlightReport.branches` alone.
 
-    The residual case it cannot see is a session that *starts* an item by
-    pushing only a `touches` fill or a `verify:` command, which is annotation
-    by this rule and a claim in fact. **Three shapes of it are recovered a
-    level up, and none of them here.** `_unmerged_commits` records one shape - a
-    queue-only commit leading with an id and changing that id's own file - and
-    `_own_edit_claims` promotes it back to a claim where the item says the
-    queue edit is the work:
-
-    - **Its whole deliverable is a queue edit** (`PL-7790`): `_queue_only_work`
-      reads the item's own declared `touches`, so a tag item, a triage item
-      or a recovery item is a claim.
-    - **It is at `needs-decision`** (`PL-VYSP`). Its next step is a decision,
-      and a decision is recorded into the item file - so a design round may
-      never produce a diff outside the queue at all, and this test withheld
-      its claim for the whole life of the work. `bin/docket show PL-BHVM`
-      called that item startable on 2026-09-19 while a live session held it
-      with three `PL-BHVM` commits pushed; the mark appeared only when the
-      round happened to edit `ROADMAP.md`.
-    - **The branch closes it while the base holds it open** (`PL-8FJK`). A
-      grooming pass closes items, and "nothing finer was needed" above was
-      measured on eight marks none of which closed anything: `#914` dropped
-      `PL-027`, `PL-043` and `PL-ZBR6` in queue-only commits leading with each
-      id, and `docket next` went on offering all three.
-
-    Nothing changes in this test, deliberately: it answers "did this commit
-    reach past the queue", which is a fact about the commit, and each
-    promotion answers a question about the item - where its work lives, what
-    its status is on the base, what the branch has made it. Reading them in
-    one place is what made the two path-level refinements fail.
-
-    What is left is a session filling in the `touches` of an item whose work is
-    elsewhere, which stays unmarked until its first commit outside the queue -
-    though `show` reports the file edit underneath, which is the warning that
-    case previously had nowhere to come from. The start procedure's empty
-    commit, which this test reads as work, is what claims such an item.
+    **It no longer decides who holds an item, except on old commits.** It
+    could not see a session that *starts* an item by pushing only a `touches`
+    fill or a `verify:` command, which is annotation by this rule and a claim
+    in fact, and three promotions grew around it to recover shapes of that
+    case: an item whose whole deliverable is a queue edit (`PL-7790`), one at
+    `needs-decision` (`PL-VYSP`), and one the branch closes while the base
+    holds it open (`PL-8FJK`). The claim record (`PL-MB2W`) ended the
+    inference instead - a session claims an item with a `Claim:` trailer,
+    whatever its commit's diff - and `PL-FX5Q` deleted the promotions with it.
+    `claims` still reads a commit made before a session could write a claim
+    by this rule alone, until `PL-CH3Z` retires that reading. `_carried_work`
+    and `orphaned` ask it their own question: whether a commit wrote anywhere
+    but the queue.
     """
     return bool(paths) and all(path.startswith(prefix) for path in paths)
-
-
-def _item_files(paths: list[str], prefix: str) -> list[tuple[str, str]]:
-    """The items whose own file a commit changed, as `(id, path)`, read from the paths alone.
-
-    **The path is returned beside the id because the mark has to be checked
-    against the base before it is believed** (`PL-8MJ3`). Which file a commit
-    changed is a fact about that commit and says nothing about whether the
-    change is still only on the branch - so the id alone was enough to raise the
-    mark and never enough to keep it.
-
-    **The weaker of the two readings this walk makes, and the one that infers
-    nothing.** `_annotates_only` and `leading_ids` between them decide what a
-    commit was *for*, which is a judgment about a subject; this decides which
-    item files it *changed*, which is a measurement of a diff. The second is
-    what a merge conflict is actually made of, so it is what a session about to
-    edit the same file needs (`PL-N1JK`).
-
-    The store names each file for its item - `docs/items/PL-K7QX-do-it.md` - so
-    the id is the head of the basename, and `store.filename_for` is what
-    guarantees it. `ITEM_FILE_RE` is the same constant `_items_at` reads a tree
-    listing with, for the reason stated where it is defined: two spellings of
-    one id format are two answers waiting to disagree.
-
-    **It fails toward silence where `_annotates_only` fails toward the mark**,
-    and the directions differ because the costs do. A path git quoted for its
-    non-ASCII bytes, or a store outside the repository whose prefix no path can
-    match, drops the edit rather than inventing one. What is lost is an
-    advisory a session would have picked around; what a false one costs is a
-    session told to leave alone an item nobody is holding.
-    """
-    found: list[tuple[str, str]] = []
-    for path in paths:
-        if not path.startswith(prefix):
-            continue
-        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
-        if match is not None:
-            found.append((match.group(1), path))
-    return found
 
 
 def _base_blobs(base: str, root: Path, run: Runner) -> frozenset[str]:
@@ -1341,9 +1279,10 @@ class _Refs:
     #: second time to find out *which* half was which.
     landing: dict[str, tuple[tuple[str, ...], tuple[str, ...]]]
     #: Per candidate ref, the commit it forked from. Kept because resolving it
-    #: is how a ref is decided readable at all, and `_taken_on_base` needs the
-    #: same commit to bound its window - asking git for it a second time could
-    #: return a different answer about where the branch left from.
+    #: is how a ref is decided readable at all, and `claims.holdings` needs the
+    #: same commit to test a branch's landed prefix against - asking git for it
+    #: a second time could return a different answer about where the branch
+    #: left from.
     fork: dict[str, str]
     #: Every blob the base's history holds, which the split above was judged
     #: against. Kept because `claims.holdings` asks the same per-blob question
@@ -1435,10 +1374,10 @@ def _item_paths_on(base: str, items_dir: str, root: Path, run: Runner) -> dict[s
 class BranchFiles:
     """What one in-flight ref has actually changed since the default branch.
 
-    `item_ids` is every item `branches_in_flight` attributed to this ref, so a
+    `item_ids` is every item the in-flight report holds on this ref, so a
     reader told their file is being edited can also be told by whom. It may be
     empty in principle and is not in practice: a ref reaches here only because
-    an id was read from its name or its subjects.
+    it holds an item, by a claim, a status disposition or its name.
     """
 
     branch: str
@@ -1485,12 +1424,12 @@ def files_in_flight(
 ) -> FlightFiles:
     """The files each in-flight branch has changed, read from the branch itself.
 
-    Kept out of `branches_in_flight` deliberately. That read is on the hot path
+    Kept out of `claims.holdings` deliberately. That read is on the hot path
     of `next`, `list`, `triage`, `status` and the session-start digest, and this
     one costs a `git diff` per unmerged ref - so it is paid by the two callers
     that ask the file question and by nobody else.
 
-    A ref `branches_in_flight` could not read is not read here either. Its
+    A ref `claims.holdings` could not read is not read here either. Its
     commits are the thing the checkout is missing, and a three-dot diff needs
     exactly the merge-base that already failed to resolve, so asking again
     would produce an empty answer indistinguishable from a branch that changed
@@ -1935,7 +1874,7 @@ def _landed_since(
 ) -> tuple[str, ...]:
     """The ids leading the subjects the default branch gained since the fork.
 
-    Only a leading id counts, for the reason `_unmerged_commits` gives: a
+    Only a leading id counts, for the reason `LEADING_IDS_RE` gives: a
     subject mentioning an item further in is usually bookkeeping about somebody
     else's work. Bounded, because a branch forked long ago would otherwise
     print a release's worth of ids into a digest line - the newest are the ones
@@ -2432,9 +2371,10 @@ class BranchCut:
 
     `mine` is this checkout's own cut seen from outside - a local branch, its
     tracking ref, or a branch pushed under a third name - decided by whether
-    `HEAD` contains the ref's tip rather than by comparing names, for the
-    reason `Carrier.mine` gives: a session told to yield to itself would stop
-    for nobody.
+    `HEAD` contains the ref's tip rather than by comparing names, because a
+    name matches the local branch alone and never its tracking ref or a branch
+    pushed under a third name - and a session told to yield to itself would
+    stop for nobody.
 
     `cut` dates the commit that wrote the notes, not the ref's tip, because
     the question a reader has is how old the *release* is. It separates a live
@@ -2466,8 +2406,8 @@ class CutsInFlight:
     """Which refs are cutting a release nobody has merged, or which could not be read.
 
     **The cut itself still carries no `PL-` id**: its commits stamp other
-    items' `milestone:`, so `branches_in_flight` and everything reading it are
-    blind to the widest write in the repository, and two sessions cut v0.3.7
+    items' `milestone:`, so a read of ids alone is blind to the widest write
+    in the repository, and two sessions cut v0.3.7
     within an hour (`PL-66FP`). The evidence here is the notes file a ref
     introduces, which is the one artifact a cut cannot happen without. The id
     the release guard reads is the release item's instead: its claim holds the
@@ -2905,8 +2845,10 @@ def filed_with_work(
             continue
         if not commit or not line.strip() or not line.split("\t")[0].startswith("A"):
             continue
-        for item_id, _path in _item_files([line.split("\t")[-1]], prefix):
-            filed.setdefault(item_id, (commit, subject))
+        path = line.split("\t")[-1]
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1]) if path.startswith(prefix) else None
+        if match is not None:
+            filed.setdefault(match.group(1), (commit, subject))
 
     found: dict[str, FilingCommit] = {}
     for item_id in sorted(item_ids):
@@ -4384,9 +4326,9 @@ def _commits_by_landing(
     deletes the ref an open pull request was raised against - `PL-5TRV`'s harm
     reached by a narrower route.
 
-    `_annotates_only` is the test, which is the same reading
-    `branches_in_flight` already applies to the same commits for the same
-    reason: a capture, a triage pass, a recovered item and a `record` write all
+    `_annotates_only` is the test, which is the reading the in-flight read
+    applied to the same commits, for the same reason, until the claim record
+    replaced it: a capture, a triage pass, a recovered item and a `record` write all
     lead with an id they are not implementing, and none of them is work a merge
     took. Using it here rather than matching `pr:` lines keeps one rule for
     "this commit wrote to the queue and nowhere else" instead of two spellings
