@@ -6,6 +6,7 @@ feature: workflow-stress-2026-09
 touches: docs/items, docs/stress-2026-09-25/evidence.tar.gz
 added: 2026-09-25
 closed: 2026-09-25
+pr: 1007
 verify: bin/docket feature exact-gates && bin/docket feature one-snapshot && bin/docket feature claim-integrity && bin/docket feature one-answer && bin/docket feature workflow-stress-2026-09 && grep -q '^root-cause-of: ' docs/items/PL-GPJ7-*.md && grep -q '^root-cause-of: ' docs/items/PL-XBV4-*.md && grep -q '^root-cause-of: ' docs/items/PL-PVW2-*.md && bin/docket show PL-2866
 ---
 

@@ -54,7 +54,11 @@ ideas arrive at once — `docket new` takes several titles in one call, so
 capture them in one command rather than one per turn.
 
 **Implementation.** Usage is available and the point is to burn it on work.
-Here `docket next` picks, and the session goes deep.
+Here `docket next` picks, and the session goes deep. While product focus holds
+(`CLAUDE.md` § "What this project is"), a session given no particular work runs
+`docket next product` instead, and takes the product entry of the digest's
+`By lane` line rather than its `Top:` line, which is the bare `next`
+(`PL-2866`).
 
 Do not silently convert the first into the second. An idea raised mid-session
 gets captured and the session continues; it does not become an implementation
