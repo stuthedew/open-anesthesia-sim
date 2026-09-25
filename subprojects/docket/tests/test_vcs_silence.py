@@ -46,7 +46,6 @@ from docket.vcs import (
     answered,
     behind_remote,
     branch_state,
-    branches_in_flight,
     change_landed,
     changed_items,
     churn,
@@ -63,7 +62,6 @@ from docket.vcs import (
     merged_pull_requests,
     open_pull_requests,
     orphaned,
-    precedence,
     records_on_base,
     ref_walk,
     released_on_base,
@@ -282,14 +280,15 @@ def _findings(*names: str) -> Callable[[Any], frozenset[Any]]:
 
 READS: tuple[Read, ...] = (
     Read(
-        "branches_in_flight",
-        lambda r, g: branches_in_flight(r, runner=g),
-        _findings("branches", "editing", "unattributed", "unreadable"),
-    ),
-    Read(
-        "precedence",
-        lambda r, g: precedence(r, "PL-K7QX", runner=g),
-        _findings("carriers", "unreadable"),
+        # What `branches_in_flight` and `precedence` answered here until
+        # `PL-FX5Q` deleted them: `flight` and `order` are views over this one
+        # read and ask git nothing of their own. It lives in `claims`, and is
+        # swept here for the reason `settled_branches` is below.
+        "holdings",
+        lambda r, g: holdings(r, now=datetime.now(UTC), runner=g),
+        _findings(
+            "holds", "dispositions", "cuts", "named", "editing", "unattributed", "unreadable"
+        ),
     ),
     Read(
         "branch_state",
@@ -317,7 +316,7 @@ READS: tuple[Read, ...] = (
         "open_pull_requests",
         lambda r, g: open_pull_requests(
             r,
-            branches_in_flight(r, runner=g),
+            holdings(r, now=datetime.now(UTC), runner=g).flight(),
             opened=lambda: {"claude/pl-k7qx-carried": 757},
             runner=g,
         ),
@@ -372,7 +371,9 @@ READS: tuple[Read, ...] = (
     ),
     Read(
         "files_in_flight",
-        lambda r, g: files_in_flight(r, branches_in_flight(r, runner=g), runner=g),
+        lambda r, g: files_in_flight(
+            r, holdings(r, now=datetime.now(UTC), runner=g).flight(), runner=g
+        ),
         _findings("branches", "unreadable"),
     ),
     Read("working_paths", lambda r, g: working_paths(r, runner=g), _findings("paths")),
@@ -544,9 +545,13 @@ def test_the_sweep_covers_every_public_read_that_takes_a_runner() -> None:
     }
     # `fetch_remote` is the one write in the module: it reads nothing and
     # answers nothing, so it has no answer to get wrong. `settled_branches` left
-    # for `claims` in `PL-N162` and stays swept here, since each git call it
-    # makes is still one of this module's.
-    assert public - {"fetch_remote"} == {read.name for read in READS} - {"settled_branches"}
+    # for `claims` in `PL-N162`, and `holdings` replaced this module's in-flight
+    # reads in `PL-FX5Q`; both stay swept here, since each git call they make is
+    # still one of this module's.
+    assert public - {"fetch_remote"} == {read.name for read in READS} - {
+        "settled_branches",
+        "holdings",
+    }
 
 
 # --- what `_run_git` reads git's exit codes as -----------------------------
