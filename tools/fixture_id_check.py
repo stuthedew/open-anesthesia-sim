@@ -176,7 +176,12 @@ CANDIDATE_RE = re.compile(r"(?<![A-Za-z0-9])PL-[A-Z0-9]+(?![A-Za-z0-9])")
 #: nothing about the grammar and are left alone. Measured 2026-09-21 over every
 #: text file in the repository: the rule matches the six sites `PL-KYW3`
 #: repaired and nothing else outside `docs/items/`, which is not scanned.
-GRAMMAR_RE = re.compile(r"PL-(?:\(\?:)?(?:\[[^\]]*\]|\\[dwsDWS])\{\d+(?:,\d*)?\}")
+#:
+#: The prefix is matched in either case. A branch name carries its id in lower
+#: case, so a pattern for one is naturally spelled `pl-` under `re.I`, and
+#: `vcs.BRANCH_ID_RE` was exactly that: a second copy of the alphabet this
+#: rule could not see while it read `PL-` alone (`PL-PB8V`).
+GRAMMAR_RE = re.compile(r"PL-(?:\(\?:)?(?:\[[^\]]*\]|\\[dwsDWS])\{\d+(?:,\d*)?\}", re.I)
 
 #: `f"PL-B1B{n:03d}"` mints `PL-B1B000`, so a hole has to stand for the digits
 #: it will be given. This reads the width out of an explicit format spec; one

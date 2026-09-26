@@ -3,12 +3,14 @@ id: PL-PB8V
 title: vcs.BRANCH_ID_RE spells the item-id grammar a second time, in lower case, and tools/fixture_id_check.py cannot see it because its grammar rule matches PL- case-sensitively
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: dev-tooling
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1113
 payoff: a change to the item-id alphabet can no longer leave branch-name attribution matching the old one, and the check that refuses second spellings of the grammar sees a lower-cased one
 verify: ! grep -q 'bcdfghjklmnpqrstvwxyz' subprojects/docket/src/docket/vcs.py && grep -q 'def test_the_branch_id_pattern_is_the_stores_grammar' subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_lower_cased_restatement_is_refused' tests/unit/test_fixture_id_check.py
 ---

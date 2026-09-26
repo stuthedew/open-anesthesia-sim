@@ -17,8 +17,10 @@ from pathlib import Path
 import pytest
 
 from docket.checks import Report
+from docket.store import ID_PATTERN
 from docket.vcs import (
     _PATHSPEC_BYTES,
+    BRANCH_ID_RE,
     FETCH_FAILED,
     FETCHED,
     REWRITTEN,
@@ -260,6 +262,37 @@ def _runner(
 
 
 HARNESS = "origin/claude/roadmap-release-write-failure-nhsjwo"
+
+
+def test_the_branch_id_pattern_is_the_stores_grammar() -> None:
+    """The branch-name read uses the store's grammar, so the two cannot drift apart.
+
+    `BRANCH_ID_RE` used to spell the alphabet out a second time in lower case,
+    which the check that refuses second spellings could not see (`PL-PB8V`).
+    Embedding `ID_PATTERN` is what moves this read with any change to the
+    alphabet; the two tables pin that the move changed nothing it matched.
+    """
+    assert ID_PATTERN in BRANCH_ID_RE.pattern
+
+    for name, held in (
+        ("claude/pl-k7qx-short-slug", "PL-K7QX"),
+        ("claude/PL-K7QX", "PL-K7QX"),
+        ("pl-001", "PL-001"),
+        ("claude/fix_pl-8888_again", "PL-8888"),
+    ):
+        match = BRANCH_ID_RE.search(name)
+        assert match is not None, name
+        assert match.group(1).upper() == held
+
+    for name in (
+        "claude/pl-aaaa-slug",
+        "claude/pl-k7qx1-slug",
+        "claude/pl-12-slug",
+        "claude/xpl-k7qx-slug",
+        "claude/pl-k7qxslug",
+        "claude/eager-gauss-3kxw0u",
+    ):
+        assert BRANCH_ID_RE.search(name) is None, name
 
 
 def test_a_pathspec_too_long_for_one_command_line_is_split_rather_than_sent() -> None:
