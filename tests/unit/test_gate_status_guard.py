@@ -526,6 +526,7 @@ def test_the_refusal_names_the_separator_that_lost_the_status() -> None:
     assert "LAST stage" in _decision("make check | tail")["permissionDecisionReason"]
     assert "after the `;`" in _decision("make check; echo hi")["permissionDecisionReason"]
     assert "backgrounded" in _decision("make check &")["permissionDecisionReason"]
+    assert "fallback succeeds" in _decision("make check || true")["permissionDecisionReason"]
     assert "`exit 1` or `false`" in _decision("make check || true")["permissionDecisionReason"]
 
 

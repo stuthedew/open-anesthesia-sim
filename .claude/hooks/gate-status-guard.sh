@@ -454,8 +454,9 @@ LOSS = {
     ";": "The status of whatever runs after the `;` is what the string exits with",
     "&": "The gate is backgrounded, so the string exits before it has an answer",
     "||": (
-        "The status of the `||` fallback replaces that of the gate, and nothing "
-        "shows the fallback fails too (one ending in `exit 1` or `false` would)"
+        "Where the `||` fallback succeeds, its status replaces that of the gate, "
+        "and nothing shows this fallback fails too (one ending in `exit 1` or "
+        "`false` would)"
     ),
     "done": (
         "The next pass of the loop replaces its status, and only the last pass "
