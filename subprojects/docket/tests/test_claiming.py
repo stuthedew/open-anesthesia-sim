@@ -640,6 +640,74 @@ def test_a_claim_on_another_item_withdraws_a_displaced_claim_its_push_would_publ
     assert _order(observer, "PL-C2C2") == [f"origin/{BRANCH}"]
 
 
+def _unpublished_under_a_rival(
+    remote: _Remote, monkeypatch: pytest.MonkeyPatch
+) -> tuple[_Clone, _Clone]:
+    """Scenario a3's start: this branch's claim unpublished, and a rival's published since.
+
+    This clone has fetched the rival's branch, so it keeps a tracking ref for it.
+    """
+    remote.hook("pre-receive", "exit 1")
+    work = remote.clone("work", BRANCH)
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.LOCAL_ONLY
+    (remote.path / "hooks" / "pre-receive").unlink()
+    rival = remote.clone("rival", RIVAL)
+    assert _claim(monkeypatch, rival, "PL-B1B1", when=T0 + 5 * MINUTE) == claiming.CLAIMED
+    work.git("fetch", "-q", "origin")
+    return work, rival
+
+
+@pytest.mark.parametrize("local", [False, True], ids=["tracking-ref", "and-local-branch"])
+def test_a_rival_whose_branch_the_remote_deleted_withdraws_no_claim(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    local: bool,
+) -> None:
+    """A deleted rival's claim is on no copy another session can fetch (`PL-C3MN`).
+
+    No fetch here prunes, so the rival's tracking ref outlives its branch, and
+    read as the remote's copy it withdrew this branch's claim in favour of one
+    no fresh clone can see, leaving the item held by nobody. `holdings` drops
+    that ref since `PL-MT3R`, but not a local branch of the same name, which is
+    this checkout's own; so the check itself reads the remote's listing.
+    """
+    remote = _Remote(tmp_path)
+    work, _ = _unpublished_under_a_rival(remote, monkeypatch)
+    if local:
+        work.git("branch", "-q", RIVAL, f"origin/{RIVAL}")
+    _git(remote.path, "update-ref", "-d", f"refs/heads/{RIVAL}")
+    claimed = work.head()
+    capsys.readouterr()
+
+    assert _claim(monkeypatch, work, "PL-B1B1", when=T0 + 10 * MINUTE) == claiming.CLAIMED
+
+    out = capsys.readouterr().out
+    assert "Withdrawn by" not in out and "and pushed" in out
+    assert work.head() == claimed == remote.tip(BRANCH)
+    assert _order(remote.clone("observer")) == [f"origin/{BRANCH}"]
+
+
+def test_a_rival_tip_this_clone_has_not_fetched_is_read_through_its_tracking_ref(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The listing can name a tip this clone lacks, under `--no-fetch` or after a push since
+    the fetch. The clone's copy of the branch is then the evidence left, and it carries the
+    rival's published claim, so this branch's is still withdrawn (`PL-ZLJ9` over `PL-C3MN`).
+    """
+    remote = _Remote(tmp_path)
+    work, rival = _unpublished_under_a_rival(remote, monkeypatch)
+    rival.commit("more work", when=T0 + 6 * MINUTE, files={"src/r.py": "r = 1\n"})
+    rival.git("push", "-q")
+    capsys.readouterr()
+
+    code = _claim(monkeypatch, work, "PL-B1B1", "--no-fetch", when=T0 + 10 * MINUTE)
+
+    assert code == claiming.HELD_ELSEWHERE
+    assert "Withdrawn by" in capsys.readouterr().out
+    assert _trailer(work, "Yield") == f"PL-B1B1 {BRANCH}"
+
+
 def test_a_branch_on_the_remote_without_tracking_is_not_pushed_onto(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
