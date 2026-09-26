@@ -13,6 +13,14 @@ verify: grep -qF 'read against the primary pages rather than search summaries' d
 
 **Problem.** docs/interface-provenance.md's stated-rationale section rests on search-engine summaries because every blender.org host and web.archive.org are egress-blocked, so a session that can reach the HIG and Developer Docs should re-read it against the pages themselves
 
+**Reachable now, measured 2026-09-26 (`PL-M701`).** The premise above no
+longer holds for `blender.org`: `docs.blender.org`, `developer.blender.org`,
+`www.blender.org`, `archive.blender.org` and `projects.blender.org` each
+answered 200 at CONNECT through the proxy, and the project owner has
+`blender.org` and `*.blender.org` on the environment's allowed domains.
+`web.archive.org` was still refused. So any session can do this now; probe
+again before starting, since the owner edits that list.
+
 **Why it matters.** `docs/interface-provenance.md` is the document a session
 building the layout is told to read first, and its stated-rationale section is
 the half that says *why* Blender's designers made each choice - which is exactly

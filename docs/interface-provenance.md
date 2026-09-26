@@ -130,13 +130,17 @@ from Blender's own shipped startup data rather than from screenshots in the
 Manual. See that section for how.
 
 **The prose: reached only through a search engine, and that is a real
-weakness.** Every `blender.org` host — `developer.blender.org`,
-`docs.blender.org`, `www.blender.org`, `archive.blender.org`,
-`projects.blender.org` — is refused by this environment's egress proxy, as is
-`web.archive.org`. The Manual and the Developer Documentation could not be
-opened. What the "stated rationale" section below reports therefore rests on
-search-engine summaries of those pages, which `.claude/rules/citing-sources.md`
-warns is the thing likeliest to be mistaken for a reading. **Every claim in
+weakness.** When this section was written, on 2026-09-15, every `blender.org`
+host — `developer.blender.org`, `docs.blender.org`, `www.blender.org`,
+`archive.blender.org`, `projects.blender.org` — was refused by this
+environment's egress proxy, as was `web.archive.org`, so the Manual and the
+Developer Documentation could not be opened. That no longer holds for
+`blender.org`: each of those five hosts answered a probe on 2026-09-26, while
+`web.archive.org` was still refused (`PL-M701`), and `PL-PV5Q` is the
+re-reading that closes the gap. What the "stated rationale" section below
+reports therefore rests on search-engine summaries of those pages, which
+`.claude/rules/citing-sources.md` warns is the thing likeliest to be mistaken
+for a reading. **Every claim in
 that section carries its grade**, and a claim graded thin or second-hand should
 be re-checked against the page itself by any session that can reach it. Where
 the honest answer was that Blender does not appear to state something, that is
@@ -545,12 +549,14 @@ expressive than Blender's representation**, not merely differently organised.
 ## What the code cannot answer: Blender's stated reasoning
 
 **Evidence warning, and it applies to this whole section.** None of the pages
-below could be opened; every `blender.org` host and `web.archive.org` are
-refused by this environment's egress proxy. What follows rests on search-engine
-summaries of those pages. Where a claim could be checked against the source it
-was, and that is marked. Everything else should be re-read at the page itself by
-any session that can reach one. Where the honest answer was that Blender does
-not appear to say something, that is recorded as the finding.
+below could be opened when it was written; every `blender.org` host and
+`web.archive.org` were refused by this environment's egress proxy. What follows
+rests on search-engine summaries of those pages. The `blender.org` hosts
+answered a probe on 2026-09-26 (`PL-M701`), so the pages can be read now, and
+`PL-PV5Q` is that re-reading. Where a claim could be checked against the source
+it was, and that is marked. Everything else should be re-read at the page
+itself by any session that can reach one. Where the honest answer was that
+Blender does not appear to say something, that is recorded as the finding.
 
 ### Blender's reason for non-overlapping is not this project's reason
 

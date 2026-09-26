@@ -5976,9 +5976,11 @@ removed, and this file's history before that change holds their text.
   `tools/import_boundary_check.py` enforces it, and Required scope entry 6 only
   adds to it.
 - **Re-reading the Blender design rationale against the primary pages** (queue
-  item `PL-PV5Q`), which rests on search summaries because `blender.org` is
-  egress-blocked from this project's sessions. It is independent of this
-  milestone and waits for a session that can reach those pages.
+  item `PL-PV5Q`), which rests on search summaries because `blender.org` was
+  refused by the session egress proxy when that document was written. That no
+  longer holds: every `blender.org` host answered a probe on 2026-09-26
+  (`PL-M701`), so the pages can be read now. It is independent of this
+  milestone.
 
 ## Development rules for scientific milestones
 
@@ -7462,9 +7464,10 @@ once someone is ready to scope it.
     *The vocabulary is Blender's, and it is the concept rather than a
     resemblance* (project owner, 2026-09-16: "the workspace/area concept ...
     is what I want to implement"). Read at the source, the manual's "Areas"
-    and "Workspaces" pages having been supplied directly - `docs.blender.org`
-    is blocked by the session egress proxy. Three terms, two of them adopted
-    from Blender rather than invented:
+    and "Workspaces" pages having been supplied directly, since
+    `docs.blender.org` was refused by the session egress proxy when this was
+    written (it answered a probe on 2026-09-26, `PL-M701`). Three terms, two
+    of them adopted from Blender rather than invented:
 
     - an **Area** is a rectangle that reserves screen space. It holds one
       thing and nothing else, and areas never overlap;
