@@ -3,12 +3,14 @@ id: PL-92MY
 title: Three readings of where a fenced block is disagree: docket checks._without_fences follows CommonMark (a backtick opener's info string holds no backtick, and only a closed block is blanked), docket instructions.FENCE_RE toggles on any line opening with three backticks or tildes, and doc_check._without_fences toggles on backtick lines and blanks everything after one left open
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/fences.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/tests/test_fences.py, subprojects/docket/tests/test_instructions.py, tools/doc_check.py, tools/possessive_section_check.py, tests/unit/test_doc_check.py, .claude/rules/citation-drift.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1105
 payoff: a line-initial triple-backtick code span stops hiding the rest of a brief from make check, and every reader of where a fenced block is, in docket and doc_check alike, takes one answer instead of five spellings that disagree
 verify: grep -q 'def test_a_code_span_at_a_line_start_hides_no_citation_below_it' tests/unit/test_doc_check.py && grep -q 'def test_an_opener_nothing_closes_opens_no_block' subprojects/docket/tests/test_fences.py
 ---

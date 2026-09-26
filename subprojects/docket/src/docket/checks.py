@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
+from . import fences
 from .config import Config
 from .instructions import Assertion
 from .model import (
@@ -134,50 +135,6 @@ STATUS_REQUIREMENTS: tuple[tuple[str, str], ...] = (
 # so bold text inside a paragraph does not end a section and a bold-opened
 # paragraph does.
 BRIEF_HEADING = re.compile(r"^\*\*", re.MULTILINE)
-
-# A fenced block's opening and closing lines, by CommonMark's rules: three or
-# more backticks or tildes, closed by a bare run of the same character at least
-# as long. A backtick opener's info string holds no backtick, which is what keeps
-# a triple-backtick code span wrapped to a line's start - `PL-6SRZ`'s brief has
-# one - from opening a block. Any indentation, as a fence under a list item is
-# indented to sit inside it.
-FENCE_OPEN_RE = re.compile(r"^[ \t]*(?P<fence>`{3,}(?=[^`]*$)|~{3,})")
-FENCE_CLOSE_RE = re.compile(r"^[ \t]*(?P<fence>`{3,}|~{3,})[ \t]*$")
-
-
-def _blank(line: str) -> str:
-    """`line` as spaces, its line break kept, so every offset past it still holds."""
-    text = line.rstrip("\r\n")
-    return " " * len(text) + line[len(text) :]
-
-
-def _without_fences(body: str) -> str:
-    """`body` with every closed fenced block blanked, offsets and line breaks kept.
-
-    A fence holds a literal: a brief quoting the capture template shows its
-    headings there, and read as headings they became the brief's own, so the
-    real sections below them were never judged (`PL-NQ3X`). Only a block that
-    closes is blanked. One left open is read as written rather than hiding
-    every section after it, which would report a brief the writer can see is
-    whole as missing them.
-    """
-    out: list[str] = []
-    held: list[str] = []
-    fence = ""
-    for line in body.splitlines(keepends=True):
-        text = line.rstrip("\r\n")
-        if fence:
-            held.append(line)
-            closing = FENCE_CLOSE_RE.match(text)
-            if closing and closing["fence"].startswith(fence):
-                out.extend(_blank(fenced) for fenced in held)
-                held, fence = [], ""
-        elif opening := FENCE_OPEN_RE.match(text):
-            fence, held = opening["fence"], [line]
-        else:
-            out.append(line)
-    return "".join(out + held)
-
 
 # An item file's whole name, as `store.filename_for` writes one: the id, then a
 # slug, then the suffix. This is what tells a `touches` entry that names *an
@@ -294,9 +251,14 @@ def _sections(body: str, marker: str) -> list[tuple[int, str]]:
     """Each heading opening with `marker`'s words: where it ends, and the text under it.
 
     Found in `body` with its fences blanked, so the one reading of where a
-    heading stands serves `_section_text` and `_stub_above_brief` alike.
+    heading stands serves `_section_text` and `_stub_above_brief` alike. A
+    brief quoting the capture template shows its headings in a fence, and read
+    as headings they became the brief's own, so the real sections below them
+    were never judged (`PL-NQ3X`). `fences` decides where a fence is, and an
+    opener nothing closes blanks nothing, so a fence left open never reports
+    the sections a writer can see below it as missing.
     """
-    scan = _without_fences(body)
+    scan = fences.without_fences(body)
     sections = []
     for heading in _heading_words(marker).finditer(scan):
         # Past the heading's own closing `**`, so that an elaborated heading is
@@ -338,7 +300,7 @@ def _stub_above_brief(body: str) -> str | None:
     less can never trigger it. Only writing a brief and leaving the template
     above it can.
     """
-    scan = _without_fences(body)
+    scan = fences.without_fences(body)
     problem = _heading_words(REQUIRED_BRIEF[0])
     for marker in (*REQUIRED_BRIEF, DONE_WHEN):
         for end, text in _sections(body, marker):

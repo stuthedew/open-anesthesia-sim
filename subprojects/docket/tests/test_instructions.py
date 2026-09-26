@@ -86,6 +86,24 @@ def test_a_tilde_fence_closes_the_way_a_backtick_fence_does() -> None:
     assert [row.when for row in parse("r.md", text)] == [date(2026, 9, 4)]
 
 
+def test_a_code_span_at_a_line_start_hides_no_date_below_it() -> None:
+    """A backtick fence's info string holds no backtick, so this line opens nothing.
+
+    Read as a toggle, it opened a fence the next real one closed, and the
+    dated line between the two went unread (`PL-92MY`).
+    """
+    text = "Match on\n``` `x` ```, then.\nMeasured 2026-09-04.\n```\n2026-01-01\n```\n"
+
+    assert [row.when for row in parse("r.md", text)] == [date(2026, 9, 4)]
+
+
+def test_an_opener_nothing_closes_hides_no_date_below_it() -> None:
+    """A fence nothing closes is not a fence, so the audit still reads past it."""
+    text = "```\nan example never closed\nMeasured 2026-09-04.\n"
+
+    assert [row.when for row in parse("r.md", text)] == [date(2026, 9, 4)]
+
+
 def test_something_shaped_like_a_date_and_not_being_one_is_dropped() -> None:
     """A typo takes its own line out of the audit, never the whole file."""
     text = "A typo, 2026-13-45, and a real one, 2026-09-04.\nAnd 2026-02-30 alone.\n"
