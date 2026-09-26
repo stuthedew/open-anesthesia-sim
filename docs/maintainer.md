@@ -278,4 +278,14 @@ to merge it: it arms auto-merge and brings the base in itself, with the same
 merge the button makes. GitHub never updates an armed pull request that falls
 behind, so one whose session has ended waits for you. A captures-only pull
 request is the usual case, and `PL-S5MF` holds the question of what should
-pick it up instead.
+pick it up instead. **A pull request already green and current is the
+exception: the session tells you it cannot arm it, and the Squash and merge is
+yours** (project owner, 2026-09-26, ratified, over the session merging it
+directly through the API, `PL-V2X5`). GitHub offers auto-merge "only on pull
+requests that cannot be merged immediately" ([GitHub
+Docs](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request)),
+and a session merges only by arming, because its GitHub calls are yours and an
+admin's merge passes the up-to-date check `main` holds everyone else to:
+merging directly, it would land a stale branch whenever another pull request
+merged between its read and its call. Merge it on the Mac, as step 1 says for
+a branch that is already current.

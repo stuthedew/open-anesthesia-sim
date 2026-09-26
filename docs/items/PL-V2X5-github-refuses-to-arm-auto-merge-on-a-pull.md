@@ -3,13 +3,16 @@ id: PL-V2X5
 title: GitHub refuses to arm auto-merge on a pull request that is already green and current ('already in clean status'), and a session merges only by arming, so arming on green under the owner's merge rule and docs/maintainer.md's ask-the-session-to-merge route both leave such a pull request waiting on the owner's click; seen on #1086
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, docs
 feature: review-hold
 touches: docs/maintainer.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1106
 payoff: a pull request the owner asks a session to merge never sits green waiting on a merge nobody makes: the session arms it while its checks run, or tells him the click is his
+verify: grep -qF 'the session tells you it cannot arm it' docs/maintainer.md && grep -qF 'cannot be merged immediately' docs/maintainer.md && grep -qF 'Answered 2026-09-26: keep the rule' docs/items/PL-V2X5-github-refuses-to-arm-auto-merge-on-a-pull.md
 ---
 
 **Problem.** GitHub refuses to arm auto-merge on a pull request that is already green and current ('already in clean status'), and a session merges only by arming, so arming on green under the owner's merge rule and docs/maintainer.md's ask-the-session-to-merge route both leave such a pull request waiting on the owner's click; seen on #1086
@@ -73,6 +76,14 @@ needing no push, on a base nothing has moved since its checks passed, which is
 rare with several sessions merging, and it costs one click on the Mac. The
 alternative trades that click for a standing exception to the only rule that
 keeps a session's merge from passing branch protection.
+
+**Answered 2026-09-26: keep the rule** (project owner, 2026-09-26, ratified,
+over letting a session merge a green, current pull request directly through
+the API). Chosen on a decision card in the Fix generators project, whose
+consequence read: "docs/maintainer.md says that case is your Squash and merge
+on the Mac, and the session tells you so." The paragraph of
+`docs/maintainer.md` § "Bring a stale base in when you merge, with Update
+branch" that offers asking the session to merge now says so.
 
 **Done when.** The paragraph of `docs/maintainer.md` that offers asking the
 session to merge says what happens when the pull request is already green and
