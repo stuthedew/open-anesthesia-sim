@@ -390,14 +390,15 @@ class Recommendation:
     #: into one count would print "root cause of 0 items" on an item that
     #: outranks every `P1`.
     impairs_generators: bool = False
-    #: The blocked generator-tier items this item is an open blocker of, by id,
-    #: or `()` - the rank those items cannot hold while blocked, passed down to
-    #: the work they wait on (`generator_blockers`). A head or a machinery
-    #: defect, so the marks say "on the generator tier" rather than "generator".
-    #: Carried for the reason `generator` is: the digest's `Top:` line has only
-    #: the `Recommendation`,
+    #: The blocked live generator heads this item is an open blocker of, by id,
+    #: or `()` - the rank those heads cannot hold while blocked, passed down to
+    #: the work they wait on (`generator_blockers`). Carried for the reason
+    #: `generator` is: the digest's `Top:` line has only the `Recommendation`,
     #: and the build item a design round filed would lead it as a bare `P2`.
     unblocks: tuple[str, ...] = ()
+    #: The same for blocked machinery defects, kept apart so neither mark calls
+    #: a defect a generator (`PL-Q4DF`).
+    unblocks_defects: tuple[str, ...] = ()
     #: Whether a cheaper model may take this item, from `Item.delegability`.
     #: Carried here for the reason `scoped_to` and `generator` are: the answer
     #: needs `protected_paths` and `gate_paths`, which `describe` cannot
@@ -423,7 +424,9 @@ class Recommendation:
         if self.impairs_generators:
             marks.append("defect in the generator machinery")
         if self.unblocks:
-            marks.append(f"unblocks {', '.join(self.unblocks)} on the generator tier")
+            marks.append(f"unblocks generator {', '.join(self.unblocks)}")
+        if self.unblocks_defects:
+            marks.append(f"unblocks machinery defect {', '.join(self.unblocks_defects)}")
         if self.scoped_to:
             marks.append(f"scoped to {self.scoped_to}, not this step")
         head = f"{self.item.priority} {self.item.identifier} {self.item.title}"
@@ -1530,12 +1533,22 @@ def recommend(
                 scoped_to=scoped_to,
                 generator=len(generating.get(item.identifier, ())),
                 impairs_generators=item.identifier in impairing,
-                unblocks=tuple(h.identifier for h in unblocking.get(item.identifier, ())),
+                unblocks=_unblocked(unblocking.get(item.identifier, ()), standings, heads=True),
+                unblocks_defects=_unblocked(
+                    unblocking.get(item.identifier, ()), standings, heads=False
+                ),
                 delegable=item.delegability(protected_paths, gate_paths) is None,
             )
         )
 
     return ranked[:limit]
+
+
+def _unblocked(
+    lifted_by: tuple[Item, ...], standings: Mapping[str, Standing], *, heads: bool
+) -> tuple[str, ...]:
+    """The blocked tier items given, by id: the generator heads, or the machinery defects."""
+    return tuple(h.identifier for h in lifted_by if standings[h.identifier].generator == heads)
 
 
 def waiting_since(item: Item, today: date) -> str:
@@ -1618,7 +1631,8 @@ def longest_waiting(
     ]
     owed = [item for item in startable if not is_new_work(item, new_work_classes, debt_classes)]
     known = {item.identifier for item in items if item.identifier}
-    unblocking = generator_blockers(items, generator_paths)
+    standings = tier_standings(items, generator_paths)
+    unblocking = {i: s.lifted_by for i, s in standings.items() if s.lifted_by}
 
     def rank(item: Item) -> tuple[int, int, date, int, str]:
         hotfix = 0 if item.priority == "P0" else 1
@@ -1645,7 +1659,10 @@ def longest_waiting(
                 scoped_to=scoped_to,
                 generator=len(item.root_cause_of) if ranks_as_generator(item, known) else 0,
                 impairs_generators=impairs_generators_soundly(item, generator_paths),
-                unblocks=tuple(h.identifier for h in unblocking.get(item.identifier, ())),
+                unblocks=_unblocked(unblocking.get(item.identifier, ()), standings, heads=True),
+                unblocks_defects=_unblocked(
+                    unblocking.get(item.identifier, ()), standings, heads=False
+                ),
                 delegable=item.delegability(protected_paths, gate_paths) is None,
             )
         )

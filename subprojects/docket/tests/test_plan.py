@@ -1327,7 +1327,7 @@ def test_a_blocked_generator_head_ranks_its_open_blockers_in_the_generator_tier(
     assert "Ranked on the generator tier as a blocker of PL-5555" in blocker.reason
     assert "root cause of 3 items" in blocker.reason
     assert "above every band but P0" in blocker.reason
-    assert "unblocks PL-5555 on the generator tier" in blocker.describe()
+    assert "unblocks generator PL-5555" in blocker.describe()
 
 
 def test_a_spent_head_blocked_on_its_build_items_passes_no_rank() -> None:
@@ -1539,7 +1539,8 @@ def test_a_blocked_impairs_generators_item_passes_its_rank_to_its_open_blockers(
 
     assert [p.item.identifier for p in picks] == ["PL-BBBB", "PL-1111"]
     assert "PL-DDDD, a defect in the generator machinery that is blocked on it" in picks[0].reason
-    assert "unblocks PL-DDDD on the generator tier" in picks[0].describe()
+    assert "unblocks machinery defect PL-DDDD" in picks[0].describe()
+    assert "unblocks generator" not in picks[0].describe()
     assert unranked_generators(items, generator_paths=MACHINERY) == []
 
 

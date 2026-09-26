@@ -1906,11 +1906,20 @@ def cmd_show(args: argparse.Namespace) -> int:
         # head alone, as `root-cause-of:` is. It says where the rank comes
         # from rather than that the item is ranked now, which a blocker that
         # is blocked itself is not.
-        named = ", ".join(head.identifier for head in unblocks)
-        print(
-            f"  unblocks {named} on the generator tier: blocked on this item, so its rank"
-            " passes here - above every band but P0"
-        )
+        head_ids = [h.identifier for h in unblocks if standings[h.identifier].generator]
+        defect_ids = [h.identifier for h in unblocks if not standings[h.identifier].generator]
+        if head_ids:
+            print(
+                f"  unblocks generator {', '.join(head_ids)}: blocked on this item, so the head's"
+                " rank passes here - the generator tier, above every band but P0"
+            )
+        if defect_ids:
+            # Its own line, so a machinery defect is never called a generator
+            # (`PL-Q4DF`, which let a blocked defect's rank pass here at all).
+            print(
+                f"  unblocks machinery defect {', '.join(defect_ids)}: blocked on this item, so"
+                " its rank passes here - the generator tier, above every band but P0"
+            )
     # The read `_flight` already made, whole: the kind and state of each hold
     # are what `FlightReport` has no room for. Empty under `--no-git`.
     if held := render.format_holds(_holdings(args), item.identifier, _now(args)):

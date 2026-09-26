@@ -463,7 +463,11 @@ def format_digest(
             marks += ", defect in the generator machinery - ranked above every band but P0"
         if top.unblocks:
             marks += (
-                f", unblocks {', '.join(top.unblocks)} on the generator tier"
+                f", unblocks generator {', '.join(top.unblocks)} - ranked above every band but P0"
+            )
+        if top.unblocks_defects:
+            marks += (
+                f", unblocks machinery defect {', '.join(top.unblocks_defects)}"
                 " - ranked above every band but P0"
             )
         if top.scoped_to:

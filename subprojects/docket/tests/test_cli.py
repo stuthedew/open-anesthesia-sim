@@ -7446,7 +7446,7 @@ def test_show_on_a_blocker_of_a_blocked_live_head_names_the_head(
     assert _run("show", "PL-F5F5", "--items", str(store)) == 0
 
     output = capsys.readouterr().out
-    assert "unblocks PL-4040 on the generator tier: blocked on this item" in output
+    assert "unblocks generator PL-4040: blocked on this item" in output
     assert "it ranks above every band but P0" in output
     assert "ranks on its band alone" not in output
 
@@ -7459,7 +7459,7 @@ def test_the_digest_says_why_a_blocker_of_a_blocked_head_leads_it(
 
     out = capsys.readouterr().out
     assert "Top: PL-F5F5" in out
-    assert "unblocks PL-4040 on the generator tier - ranked above every band but P0" in out
+    assert "unblocks generator PL-4040 - ranked above every band but P0" in out
 
 
 def test_show_on_a_blocked_live_head_says_it_is_blocked_and_names_its_blockers(
@@ -7658,6 +7658,11 @@ def test_a_blocked_machinery_defect_hands_its_rank_to_what_it_waits_on(
     assert _run("show", "PL-5050", "--items", store) == 0
     out = capsys.readouterr().out
     assert "passes to the open items it waits on: PL-F5F5" in out
+
+    assert _run("show", "PL-F5F5", "--items", store) == 0
+    out = capsys.readouterr().out
+    assert "unblocks machinery defect PL-5050: blocked on this item" in out
+    assert "unblocks generator" not in out
 
     assert _run("generators", "--items", store) == 0
     out = capsys.readouterr().out
