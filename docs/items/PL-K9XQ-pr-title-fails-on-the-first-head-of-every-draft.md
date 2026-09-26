@@ -1,10 +1,12 @@
 ---
 id: PL-K9XQ
 title: pr-title fails on the first head of every draft opened at the claim push with its description, because docs/pr-bodies/N.md cannot exist before the pull request has a number, so each such pull request carries a red run that held nothing (a draft cannot merge) and wakes its session to a CI failure it must investigate; seen on #1106
-status: untriaged
+status: dropped
 feature: pr-body-integrity
 touches: tools/pr_body_check.py, .github/workflows/pr-title.yml, .claude/skills/docket/modes/start.md
 added: 2026-09-26
+closed: 2026-09-26
+reason: moot under PL-3PH2 (project owner, 2026-09-26, ratified): pr-title no longer checks the body, so a draft's first head has nothing to fail on and no red run to wake its session
 ---
 
 **Problem.** pr-title fails on the first head of every draft opened at the claim push with its description, because docs/pr-bodies/N.md cannot exist before the pull request has a number, so each such pull request carries a red run that held nothing (a draft cannot merge) and wakes its session to a CI failure it must investigate; seen on #1106

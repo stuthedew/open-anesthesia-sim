@@ -92,10 +92,28 @@ is" still holds it as a new feature unrelated to fixing the generators, until
 the design is settled. It does not lift the pause. The store has no field for
 the pause, and `blocked` needs a single blocker to name.
 
-**The fault is predicted, not yet observed.** No armed pull request has sat
-behind since the setting went on (checked 2026-09-24 00:35 UTC: none open).
-#976, which was unarmed, shows the mechanism: it was opened on `dd64b712`
-after `main` had moved to `92cfa3c5`, and it reported `behind`.
+**Observed 2026-09-26, wider than the title.** On 2026-09-24 no armed pull
+request had yet sat behind (checked 00:35 UTC); #976, unarmed, showed the
+mechanism. `#1115`, the v0.5.12 cut (`PL-5ZLQ`), was armed at 18:40 UTC.
+`#1113` merged at 18:41, so when its checks went green at 18:46 it was
+already `behind`, and GitHub never merged it. `#1116` put it two behind at
+18:52. It stayed there until the branch was updated from the owner's account
+at 19:17, and merged at 19:21 once CI re-ran. Two of this brief's premises did
+not hold:
+
+- **Its session was live, and was not told.** It was subscribed to the pull
+  request's activity, but no event reports a branch falling behind, and the
+  checks' success event never reached it. The trial's coordinator raised it at
+  19:12.
+- **It was not a captures-only pull request.** `bin/docket arm` answered
+  `hold` for its `ROADMAP.md`, notes and version files, and said nothing of
+  `behind` while the branch was two behind. The Projects trial arms a `hold`
+  that raises no question for the owner, so it was armed all the same.
+
+**Recommended: widen route 1's line to every armed pull request that is
+behind**, whatever its files, since `update_pull_request_branch` lands any of
+them; `verify:` and **Done when** would then say "armed" where they say
+"captures-only".
 
 **Done when.** The chosen route is in place, or "accept it" is recorded with
 its reason, and a captures-only pull request that falls behind after its

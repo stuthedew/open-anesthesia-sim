@@ -2307,24 +2307,31 @@ def test_a_new_item_file_that_is_not_a_capture_is_still_outside_touches(tmp_path
 RECORD = "docs/pr-bodies/1059.md"
 
 
-def _record(pr: str = "1059", header: str = "recorded: 2026-09-26\n", body: str = "Why.\n") -> str:
-    """A body record as `tools/pr_body_check.py --record` writes one before the merge."""
+def _record(pr: str = "1059", header: str = "recovered: 2026-09-26\n", body: str = "Why.\n") -> str:
+    """A body file as `tools/pr_body_check.py --recover` writes one, cut to what the kind reads."""
     return f"---\npr: {pr}\n{header}---\n\n{body}"
 
 
-def test_a_body_record_the_branch_added_is_not_outside_touches(tmp_path: Path) -> None:
-    """What `tools/pr_body_check.py --record` writes on every pull request's branch (`PL-979D`).
+@pytest.mark.parametrize(
+    "header",
+    ["recovered: 2026-09-26\n", "recorded: 2026-09-26\n"],
+    ids=["recovered", "recorded-under-PL-979D"],
+)
+def test_a_body_file_the_branch_added_is_not_outside_touches(tmp_path: Path, header: str) -> None:
+    """What `tools/pr_body_check.py --recover` writes on a release's branch (`PL-3PH2`).
 
-    Without the exemption every close-out would name its own record as work
-    outside the commission. The record is written again after any edit to the
-    body, and that rewrite of the branch's own record is still the file it added.
+    Without the exemption the release's close-out would name each body it
+    recovered as work outside the commission. A `recorded:` file is what
+    `--record` wrote on every branch while `PL-979D`'s record stood, which a
+    branch opened then may still carry. A file the branch rewrites is still the
+    file it added.
     """
     root = _repo(tmp_path)
     _work(
         root, "PL-K7QX do the thing", "tests/test_thing.py", KEPT + "\ndef test_more():\n    pass\n"
     )
-    _work(root, "PL-K7QX record the pull request's body", RECORD, _record())
-    _work(root, "PL-K7QX record the body again after an edit", RECORD, _record(body="Edited.\n"))
+    _work(root, "PL-K7QX recover a lost body", RECORD, _record(header=header))
+    _work(root, "PL-K7QX recover it again", RECORD, _record(header=header, body="Edited.\n"))
 
     check = _check(verify(root, _item(), _config(), "HEAD~3"), TOUCHES)
     assert check.passed, check
@@ -2335,20 +2342,20 @@ def test_a_body_record_the_branch_added_is_not_outside_touches(tmp_path: Path) -
     ("path", "text", "held"),
     [
         (RECORD, _record(pr="1058"), False),
-        (RECORD, _record(header="recovered: 2026-09-26\n"), False),
+        (RECORD, _record(header="commit: 0123abc\n"), False),
         ("docs/pr-bodies/draft.md", _record(pr="draft"), False),
         ("docs/pr-bodies/old/1059.md", _record(), False),
         (RECORD, _record(), True),
     ],
-    ids=["pr-disagrees-with-its-name", "no-recorded-line", "not-a-number", "nested", "held"],
+    ids=["pr-disagrees-with-its-name", "no-date-line", "not-a-number", "nested", "held"],
 )
 def test_a_file_under_the_records_that_is_not_a_new_record_is_still_outside_touches(
     tmp_path: Path, path: str, text: str, held: bool
 ) -> None:
     """Each condition of the `record` kind, failing alone.
 
-    A record the base holds is a merged pull request's history, so a branch
-    rewriting it is not recording its own body, however well-formed the result.
+    A file the base holds is a merged pull request's history, so a branch
+    rewriting it is not adding a body of its own, however well-formed the result.
     """
     root = _repo(tmp_path)
     if held:
