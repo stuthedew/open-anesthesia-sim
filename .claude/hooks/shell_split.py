@@ -45,34 +45,55 @@ unquoted. So the rules are bash's own, from the Bash Reference Manual (§2
 so no guard can disagree with another about which word is the command. It
 drops everything bash reads ahead of a command's name, the reserved words that
 open a command included: `do make check` runs `make`, where it once read as a
-command named `do` and passed all three guards (`PL-0X0G`). And `commands`
+command named `do` and passed all three guards (`PL-0X0G`). A redirection is
+among them, and is no word of the command wherever it stands: bash lifts it out
+before it runs anything, so `2>/dev/null make check` runs `make` and `echo a
+2>&1 b` prints `a b` (`PL-K9QL`). It takes its operator, the word after it, and
+the descriptor written against it - a number or a `{name}` with no space before
+a `<` or `>` operator, unquoted - so `timeout 5>x make check` hands `timeout` no
+duration, where `timeout 5 >x` and `timeout '5'>x` do. And `commands`
 finds every command a string runs, those inside `( )` and `$( )` included, for
 a guard that must see one wherever bash would run it. `no-prune-guard.sh` read
 that with a regex of its own, which took a `;` inside quotes for a separator
 (`PL-WGFY`).
 
+**So is which program a command runs**, by `program_words`, because a program
+that runs another is not the one a guard is looking for: `timeout 600 make
+check | tail -5` runs `make`, and read from its first word it passed the gate
+guard that refuses the same pipe without `timeout` (`PL-TRMN`). `WRAPPERS`
+names the programs read past, each by its own option grammar, bare or by path.
+Each finds its command on PATH as bash would, which is what lets the floor
+guard read `timeout 60 python3` as the bare interpreter it is. `uv run` does
+not, so it is the gate guard's to read past, not this module's.
+
 **What it does not read**, none of which a guard here has needed: arithmetic
 (`$(( ))` and `(( ))`, where a `<<` shift reads as a heredoc here), the `&&`,
 `||`, `<` and `>` inside `[[ ]]`, which read as a separator or a redirection,
 the `)` that ends a `case` pattern, a backtick's contents, which split at
-spaces as `shlex` split them, and the command a `coproc` runs. A reserved word
+spaces as `shlex` split them, the command a `coproc` runs, a wrapper `WRAPPERS`
+does not name (`sudo`, `stdbuf`, a `time` run by path), and the string `env -S`
+splits, for which `program_words` reads no program at all. A reserved word
 opens a command here only at the head of its segment, so `command_words` does
 not reach the `make check` in `if (true) then make check; fi` or in `for f do
 make check; done`; `commands` reads the first, splitting at its `)`. And a
 quoted `if` or `{`, or a `time` after a `|`, reads as the reserved word, where
 bash reads a command's name.
 
-A command bash would refuse - an unclosed quote or substitution, a `<<` with no
-word after it - is unreadable. `words` and `segments` answer None for it, and
-the gate and floor guards fail open on that, as they always have. `commands`
-still reads it as far as it can, because bash runs every line before the one it
-cannot finish. Standard library only, and it parses at the floor
-`tests/unit/test_tools_portability.py` holds `.claude/hooks/` to.
+A redirection with no word after it, which bash refuses, is read as taking only
+its operator, and a `<(` or `>(` as the process substitution it is rather than
+a redirection. A command bash would refuse - an unclosed quote or
+substitution, a `<<` with no word after it - is unreadable. `words` and
+`segments` answer None for it, and the gate and floor guards fail open on that,
+as they always have. `commands` still reads it as far as it can, because bash
+runs every line before the one it cannot finish. Standard library only, and it
+parses at the floor `tests/unit/test_tools_portability.py` holds
+`.claude/hooks/` to.
 """
 
 from __future__ import annotations
 
 import re
+from typing import NamedTuple
 
 
 class Operator(str):
@@ -85,9 +106,25 @@ class Operator(str):
     __slots__ = ()
 
 
+class Descriptor(str):
+    """The descriptor a redirection names ahead of its operator: `2` in `2>&1`, `fd` in `{fd}>x`.
+
+    POSIX calls it IO_NUMBER (XCU §2.10.1), and bash also takes a `{name}` there
+    (Bash Reference Manual §3.6 "Redirections"). Spaced from the operator or
+    quoted it is an ordinary word, so it cannot be a plain string either.
+    """
+
+    __slots__ = ()
+
+
 # Bash's control and redirection operators, matched longest first.
 OPERATORS = frozenset("; ;; ;& ;;& & && &> &>> | || |& ( ) < << <<- <<< <& <> > >> >& >|".split())
 OPERATOR_CHARACTERS = frozenset("&|;()<>")
+
+# The operators that redirect, each taking the word after it. Only those opening
+# with `<` or `>` take a descriptor: in `echo hi 2&>x` the `2` is a word.
+REDIRECTIONS = frozenset("< << <<- <<< <& <> > >> >& >| &> &>>".split())
+DESCRIPTOR = re.compile(r"[0-9]+|\{[A-Za-z_][A-Za-z0-9_]*\}")
 
 # The operators that end a command, and the one each is read as: `|&` is a pipe
 # that carries stderr too, and `;;`, `;&` and `;;&` end a `case` clause as `;`
@@ -129,12 +166,99 @@ TIME_OPTIONS = ("-p", "--")
 ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
 
 
+class Grammar(NamedTuple):
+    """How one wrapper reads the words ahead of the command it runs, as GNU getopt reads them."""
+
+    # Short options whose value is the rest of the word, or else the next word.
+    valued: str = ""
+    # Short options whose value is only ever the rest of the word.
+    optional: str = ""
+    # Short options taking no value, which a bundle may run on after.
+    flags: str = ""
+    # Long options whose value follows an `=`, or else is the next word; each
+    # may be abbreviated to any prefix no other long option shares.
+    long_valued: tuple[str, ...] = ()
+    # Long options taking a value only after an `=`, and those taking none.
+    long_other: tuple[str, ...] = ()
+    # Options after which no program is read: one that describes a command
+    # rather than running it, or one that runs a string this does not split.
+    stops: frozenset[str] = frozenset(("help", "version"))
+    # The words read between the options and the command: a duration.
+    operands: int = 0
+
+
+# The programs that run a command named after their own options, finding it on
+# PATH as bash would, from `timeout --help`, `env --help`, `nice --help` and
+# `nohup --help` in coreutils 9.4, `xargs --help` in findutils 4.9.0, and `help
+# command` and `help exec` in bash 5.2.21, each spelling run to see which word
+# it ran (`PL-TRMN`). Every one stops reading options at its first word that is
+# not one, so an option after the command is the command's: `timeout 5 echo -s
+# x` prints `-s x`.
+WRAPPERS = {
+    "timeout": Grammar(
+        valued="ks",
+        flags="v",
+        long_valued=("kill-after", "signal"),
+        long_other=("foreground", "preserve-status", "verbose"),
+        operands=1,
+    ),
+    "env": Grammar(
+        valued="uCS",
+        flags="i0v",
+        long_valued=("unset", "chdir", "split-string"),
+        long_other=(
+            "ignore-environment",
+            "null",
+            "block-signal",
+            "default-signal",
+            "ignore-signal",
+            "list-signal-handling",
+            "debug",
+        ),
+        stops=frozenset(("help", "version", "S", "split-string")),
+    ),
+    "nice": Grammar(valued="n", long_valued=("adjustment",)),
+    "nohup": Grammar(),
+    "xargs": Grammar(
+        valued="adEILnPs",
+        optional="eil",
+        flags="0oprtx",
+        long_valued=(
+            "arg-file",
+            "delimiter",
+            "max-lines",
+            "max-args",
+            "max-procs",
+            "max-chars",
+            "process-slot-var",
+        ),
+        long_other=(
+            "null",
+            "eof",
+            "replace",
+            "open-tty",
+            "interactive",
+            "no-run-if-empty",
+            "show-limits",
+            "verbose",
+            "exit",
+        ),
+    ),
+    # `command -v` and `-V` describe the command and run nothing.
+    "command": Grammar(flags="p", stops=frozenset(("help", "v", "V"))),
+    "exec": Grammar(valued="a", flags="cl"),
+}
+
+# `nice`'s older spelling of an adjustment: `nice -5` and `nice --5`.
+NICE_ADJUSTMENT = re.compile(r"^-[-+]?\d")
+
+
 def words(command: str) -> list[str] | None:
     """The tokens bash reads in `command`, or None where bash would refuse it.
 
-    Words come with their quotes removed and operators as `Operator`, with each
-    newline that ends a command read as `;` and every comment, continuation and
-    heredoc body gone.
+    Words come with their quotes removed, operators as `Operator` and a
+    redirection's descriptor as `Descriptor`, with each newline that ends a
+    command read as `;` and every comment, continuation and heredoc body gone.
     """
     reader = _Reader(command, [], 0, nested=False)
     try:
@@ -161,9 +285,12 @@ def command_words(segment: list[str]) -> list[str]:
 
     That is any run of grouping and of the reserved words that open a command,
     `time`'s options with it - `then ! time -p make check` runs `make` - and
-    then any assignments. Assignments come last because bash reads a reserved
-    word only as a command's first word: after `FOO=1`, `if` and `time` are
-    the names of programs, which bash 5.2.21 reports it cannot find (`PL-0X0G`).
+    then any assignments and redirections, in any order (POSIX.1-2017 XCU
+    §2.9.1). Those come last because bash reads a reserved word only as a
+    command's first word: after `FOO=1` or `2>/dev/null`, `if` and `time` are
+    the names of programs, which bash 5.2.21 reports it cannot find (`PL-0X0G`,
+    `PL-K9QL`). A redirection after the command word is left where it stands,
+    so the words dropped are always the ones ahead of what is returned.
 
     Every guard reads the head of a command through this, so none can disagree
     with another about which word is the command - as two readers inside one
@@ -175,13 +302,142 @@ def command_words(segment: list[str]) -> list[str]:
             for option in TIME_OPTIONS:
                 if rest and rest[0] == option:
                     rest.pop(0)
-    while rest and ASSIGNMENT.match(rest[0]):
-        rest.pop(0)
+    while rest:
+        taken = 1 if ASSIGNMENT.match(rest[0]) else _redirection(rest, 0)
+        if not taken:
+            break
+        del rest[:taken]
     return rest
 
 
+def program_words(segment: list[str]) -> list[str]:
+    """`segment` from the program it runs: its command word, or past each wrapper ahead of it.
+
+    `timeout 60 nice -n 5 git fetch --prune` runs `git`, so that is where the
+    words start (`PL-TRMN`). Every redirection is gone from what is returned,
+    since bash passes none of them to the program: `env 2>/dev/null git fetch
+    --prune` runs `git`, and `bin/docket 2>/dev/null check` hands `bin/docket`
+    the word `check` first (`PL-K9QL`). Empty where the wrapper runs nothing -
+    `command -v git` describes it, a wrapper given no command runs none, and
+    one refusing an option it does not know stops there - or runs a string this
+    does not read, as `env -S` does.
+    """
+    rest, _ = _lift(command_words(segment))
+    while rest and _basename(rest[0]) in WRAPPERS:
+        rest = _run_by(rest)
+    return rest
+
+
+def redirections(segment: list[str]) -> list[tuple[str, str, str]]:
+    """Each redirection in `segment`, wherever it stands: its descriptor, its operator and its word.
+
+    A descriptor not written is "", and so is the word of an operator bash
+    would refuse for having none. For a guard reading what a command is handed
+    apart from its words, as the floor guard reads a file redirected onto an
+    interpreter's standard input (`PL-K9QL`).
+    """
+    _, lifted = _lift(segment)
+    return lifted
+
+
+def _redirection(words: list[str], at: int) -> int:
+    """How many of `words` the redirection starting at `at` takes, or 0 where none starts there.
+
+    Its descriptor where one is written against it, its operator, and the word
+    it names. A `<(` or `>(` starts a process substitution, not a redirection,
+    and an operator with no word after it takes only itself.
+    """
+    end = at + 1 if isinstance(words[at], Descriptor) else at
+    if end == len(words) or not (isinstance(words[end], Operator) and words[end] in REDIRECTIONS):
+        return 0
+    operator, end = words[end], end + 1
+    if end < len(words) and not isinstance(words[end], Operator):
+        return end + 1 - at
+    if end < len(words) and words[end] == "(" and operator in ("<", ">"):
+        return 0
+    return end - at
+
+
+def _lift(words: list[str]) -> tuple[list[str], list[tuple[str, str, str]]]:
+    """`words` apart from their redirections, and the redirections, as bash lifts them out."""
+    kept: list[str] = []
+    lifted: list[tuple[str, str, str]] = []
+    at = 0
+    while at < len(words):
+        taken = _redirection(words, at)
+        if not taken:
+            kept.append(words[at])
+            at += 1
+            continue
+        parts = words[at : at + taken]
+        descriptor = parts.pop(0) if isinstance(parts[0], Descriptor) else ""
+        operator = parts.pop(0)
+        lifted.append((descriptor, operator, parts[0] if parts else ""))
+        at += taken
+    return kept, lifted
+
+
+def _basename(word: str) -> str:
+    return word.rsplit("/", 1)[-1]
+
+
+def _long_option(grammar: Grammar, written: str) -> str | None:
+    """The long option `written` names, whole or as an abbreviation getopt accepts, or None."""
+    names = (*grammar.long_valued, *grammar.long_other, "help", "version")
+    if written in names:
+        return written
+    matching = [name for name in names if name.startswith(written)]
+    return matching[0] if len(matching) == 1 else None
+
+
+def _run_by(words: list[str]) -> list[str]:
+    """The words of the command the wrapper opening `words` runs, or [] as `program_words` says."""
+    name = _basename(words[0])
+    grammar = WRAPPERS[name]
+    at = 1
+    while at < len(words):
+        word = words[at]
+        if isinstance(word, Operator) or not word.startswith("-") or word == "-":
+            break
+        at += 1
+        if word == "--":
+            break
+        if name == "nice" and NICE_ADJUSTMENT.match(word):
+            continue
+        if word.startswith("--"):
+            written, equals, _ = word[2:].partition("=")
+            option = _long_option(grammar, written)
+            if option is None or option in grammar.stops:
+                return []
+            if option in grammar.long_valued and not equals:
+                at += 1
+            continue
+        for position, letter in enumerate(word[1:], 2):
+            if letter in grammar.stops:
+                return []
+            if letter in grammar.valued:
+                # The value is the rest of the word, or the next word if none is left.
+                if position == len(word):
+                    at += 1
+                break
+            if letter in grammar.optional:
+                break
+            if letter not in grammar.flags:
+                return []
+    if name == "env":
+        # A lone `-` is `-i`, and each `NAME=VALUE` sets the command's environment.
+        if at < len(words) and words[at] == "-":
+            at += 1
+        while at < len(words) and "=" in words[at] and not isinstance(words[at], Operator):
+            at += 1
+    at += grammar.operands
+    if at >= len(words) or isinstance(words[at], Operator):
+        return []
+    return words[at:]
+
+
 def commands(command: str) -> list[list[str]]:
-    """Every command in `command` that bash would run, each read through `command_words`.
+    """Every command in `command` that bash would run, each read through `program_words`.
 
     A segment ends only at a separator; a command also starts after each `(`
     or `)` read as an operator, so a subshell, a `$( )`, a `<( )` and the
@@ -204,7 +460,7 @@ def commands(command: str) -> list[list[str]]:
             piece: list[str] = []
             for token in [*segment, Operator(")")]:
                 if isinstance(token, Operator) and token in ("(", ")"):
-                    head = command_words(piece)
+                    head = program_words(piece)
                     if head:
                         found.append(head)
                     piece = []
@@ -253,6 +509,18 @@ def _operator_at(text: str, at: int) -> str:
     return text[at]
 
 
+def _takes_a_descriptor(text: str, at: int) -> bool:
+    """Whether the operator at `at` is a redirection a descriptor can be written against.
+
+    One opening with `<` or `>`, and not a process substitution's `<(` or `>(`:
+    bash 5.2.21 prints `2/dev/fd/63` for `echo 2>(cat)`, the `2` a word.
+    """
+    operator = _operator_at(text, at)
+    if operator not in REDIRECTIONS or operator[0] not in "<>":
+        return False
+    return not (operator in ("<", ">") and text[at + 1 : at + 2] == "(")
+
+
 def _backquote_end(text: str, opening: int) -> int:
     """Where the backquote closing the one at `opening` stands, or -1."""
     at = opening + 1
@@ -287,6 +555,9 @@ class _Reader:
         self.tokens: list[str] = []
         self.word: list[str] = []
         self.in_word = False
+        # Whether any of the word in progress was quoted or escaped, which
+        # keeps a number written against a redirection a word.
+        self.quoted = False
         # The heredocs whose bodies start at the next unquoted newline: each
         # delimiter, and whether `<<-` strips its lines' leading tabs.
         self.pending: list[tuple[str, bool]] = []
@@ -311,7 +582,7 @@ class _Reader:
                     self._remove(self.at, self.at + 2)
                 else:
                     self.word.append(following or character)
-                    self.in_word = True
+                    self.in_word = self.quoted = True
                 self.at += 2
             elif character == "\n":
                 self._end_word()
@@ -328,7 +599,7 @@ class _Reader:
             elif character == "$" and following == "'":
                 self._ansi_c_quoted()
             elif character in OPERATOR_CHARACTERS:
-                self._end_word()
+                self._end_word(redirected=_takes_a_descriptor(text, self.at))
                 if self._operator() == ")" and self.nested:
                     if self.depth == 0:
                         return self.at
@@ -345,13 +616,19 @@ class _Reader:
     def _remove(self, start: int, end: int) -> None:
         self.removed.append((start, end))
 
-    def _end_word(self) -> None:
+    def _end_word(self, *, redirected: bool = False) -> None:
+        """End the word in progress; `redirected` where a redirection follows it unspaced."""
         if not self.in_word:
             return
         word = "".join(self.word)
+        # Unquoted, and not the delimiter a `<<` is waiting for, which takes
+        # this word whatever follows it.
+        descriptor = redirected and not self.quoted and self.introducer is None
+        if descriptor and DESCRIPTOR.fullmatch(word):
+            word = Descriptor(word)
         self.tokens.append(word)
         self.word.clear()
-        self.in_word = False
+        self.in_word = self.quoted = False
         if self.introducer is not None:
             self.pending.append((word, self.introducer))
             self.introducer = None
@@ -399,7 +676,7 @@ class _Reader:
         if close < 0:
             raise _Unreadable
         self.word.append(self.text[self.at + 1 : close])
-        self.in_word = True
+        self.in_word = self.quoted = True
         self.at = close + 1
 
     def _ansi_c_quoted(self) -> None:
@@ -411,7 +688,7 @@ class _Reader:
             raise _Unreadable
         # Its escapes are kept as written: no guard reads what they decode to.
         self.word.append(text[self.at + 2 : at])
-        self.in_word = True
+        self.in_word = self.quoted = True
         self.at = at + 1
 
     def _double_quoted(self) -> None:
@@ -421,7 +698,7 @@ class _Reader:
             character = text[at]
             following = text[at + 1 : at + 2]
             if character == '"':
-                self.in_word = True
+                self.in_word = self.quoted = True
                 self.at = at + 1
                 return
             if character == "\\" and following in ESCAPED_IN_DOUBLE_QUOTES:

@@ -264,6 +264,73 @@ def test_a_reserved_word_opens_the_command_after_it(command: str) -> None:
     assert "LAST stage" in decision["permissionDecisionReason"]
 
 
+WRAPPED = (
+    # `PL-TRMN`'s reproduction, verbatim, and the spelling a long suite gets.
+    ("timeout 600 make check | tail -5", True),
+    ("timeout 600 uv run pytest -q 2>&1 | tail -5", True),
+    # Each wrapper by its own grammar, named bare or by path, and nested.
+    ("timeout -s KILL -k 5 900 make check | tail", True),
+    ("env CI=1 make check | tail", True),
+    ("/usr/bin/env -u CI make check | tail", True),
+    ("nice -n 10 nohup make check &", True),
+    ("command make check | tail", True),
+    ("exec -a gate make check | tail", True),
+    ("echo t.py | xargs -n 1 uv run pytest -q | tail", True),
+    ("uv run timeout 60 pytest -q | tail", True),
+    # A wrapper keeps the status wherever the bare gate keeps it.
+    ("set -o pipefail; timeout 600 make check 2>&1 | tail -5", False),
+    ("timeout 600 make check", False),
+    ('timeout 600 make check > /tmp/gate.log 2>&1; echo "exit=$?"', False),
+    # And runs no gate where it describes one, or runs something else.
+    ("command -v pytest | head", False),
+    ("timeout 60 bin/docket next | head -30", False),
+    ("env | grep PATH", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), WRAPPED)
+def test_a_wrapper_runs_the_command_after_it(command: str, refused: bool) -> None:
+    """A gate run through `timeout`, `env` or another wrapper is the gate (`PL-TRMN`).
+
+    The guard read the wrapper as the command, so each refused pipe here
+    passed, while the same pipe without `timeout` was refused.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+REDIRECTED = (
+    # `PL-K9QL`'s reproductions, verbatim: ahead of the command, and among a
+    # wrapper's words.
+    ("2>/dev/null make check | tail -5", True),
+    ("timeout 5 >x make check | tail", True),
+    # Among assignments in any order, and among the program's own words.
+    ("FOO=1 2>/dev/null BAR=2 make check | tail", True),
+    ("{ >/tmp/gate.log make check; } | tail", True),
+    ("bin/docket 2>/dev/null check | tail -5", True),
+    ("uv 2>&1 run pytest -q | tail", True),
+    # A number written against the operator is its descriptor, so this hands
+    # `timeout` the duration `make`, which it refuses, and runs no gate. Quoted
+    # or spaced, as in the second line above, a number is a word.
+    ("timeout 5>x make check | tail", False),
+    ("timeout '5'>x make check | tail", True),
+    # A `set` after a redirection still runs in this shell.
+    ("2>/dev/null set -o pipefail; make check 2>&1 | tail -5", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), REDIRECTED)
+def test_a_redirection_is_not_a_word_of_the_command(command: str, refused: bool) -> None:
+    """Bash lifts a redirection out wherever it stands, so it hides no gate (`PL-K9QL`).
+
+    The guard read `2>/dev/null` as the word `2` and took it for the command,
+    or for the subcommand after `bin/docket`, and a wrapper stopped reading at
+    the `>`: each refused pipe here lost its status unrefused.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 COMPOUND = (
     # A gate ending an `if` branch leaves with the `if`, whose status is "the
     # exit status of the last command executed" (`help if`, bash 5.2.21). The

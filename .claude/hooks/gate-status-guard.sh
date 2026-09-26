@@ -95,12 +95,23 @@
 # way: a fix that "treats the instance rather than the fault" leaves the next
 # spelling to find it again.
 #
-# **Narrow on purpose in the other direction.** A gate reached through a wrapper
-# - `timeout 900 make check | tail`, `xargs make check` - is not matched, and
-# neither is one built out of a variable. Both are unobserved here, and widening
-# the pattern to reach them is how a guard starts refusing commands nobody
-# meant it to. `uv run` is unwrapped because it is how this project spells most
-# of the list.
+# **A gate reached through a wrapper is the gate** (`PL-TRMN`). `timeout 600
+# make check | tail -5` loses `make`'s status exactly as the bare pipe does, and
+# it is how a long suite gets spelled; this file left it unmatched as
+# unobserved, and it was observed. `shell_split.program_words` reads past
+# `timeout`, `env`, `nice`, `nohup`, `xargs`, `command` and `exec`, each by its
+# own grammar, so reading past one refuses nothing the bare command would not.
+# `uv run` is read past here rather than there, because it is how this project
+# spells most of the list and the floor guard must not read past it. Still
+# unmatched on purpose: a gate built out of a variable, and a wrapper that list
+# does not name.
+#
+# **So is a gate written around a redirection** (`PL-K9QL`). Bash lifts a
+# redirection out of a command wherever it stands, so `2>/dev/null make check |
+# tail` runs `make`, and `bin/docket 2>/dev/null check | tail` hands it `check`;
+# read as words, the first took `2` for the command and the second `2` for the
+# subcommand, and both lost the status unrefused. `shell_split.py` takes a
+# redirection out of the words for all three guards.
 #
 # **Where one command ends is `shell_split.py`'s answer, not this file's.** The
 # three Bash guards import it, so a shape one of them read differently from bash
@@ -161,18 +172,17 @@ def base(token):
 
 
 def strip_prefixes(tokens):
-    """Drop grouping, leading assignments and a `uv run` wrapper.
+    """Drop what runs ahead of the program: grouping, assignments, a wrapper, a `uv run`.
 
-    `gate` and `sets_pipefail` both read a segment head through
-    `shell_split.command_words`, so they cannot disagree about where its
-    command starts - which they did, and a `set` opening a group went unseen
-    (`PL-1SFZ`).
+    `gate` and `sets_pipefail` both start from `shell_split.command_words`,
+    so they cannot disagree about where a command starts - which they did, and
+    a `set` opening a group went unseen (`PL-1SFZ`). `gate` then reads past a
+    wrapper to the program it runs (`PL-TRMN`), and `sets_pipefail` must not:
+    `timeout 5 set -o pipefail` runs `set` as a program, which is not found.
     """
-    rest = shell_split.command_words(tokens)
+    rest = shell_split.program_words(tokens)
     if len(rest) >= 2 and base(rest[0]) == "uv" and rest[1] == "run":
-        rest = rest[2:]
-        while rest and shell_split.ASSIGNMENT.match(rest[0]):
-            rest.pop(0)
+        rest = shell_split.program_words(rest[2:])
     return rest
 
 

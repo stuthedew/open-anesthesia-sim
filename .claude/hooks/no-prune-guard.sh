@@ -47,13 +47,17 @@ if not isinstance(command, str):
 
 # Where each command starts is the answer `shell_split.py` gives, which the
 # three Bash guards share (`PL-PVW2`), and this guard reads every command it
-# finds: those in a subshell or a `$( )` too, quoted or not, since each runs. A
-# quoted argument stays one word, so a `;` or a flag inside it is the text it
-# is, where the regex this file used took a `;` inside quotes for a separator
-# (`PL-WGFY`). Heredoc bodies and comments are gone, which is what lets this
-# repository write prose *about* pruning - `CLAUDE.md`, this hook, the ledger -
-# without the guard eating its own documentation; a prune after the terminator
-# of a heredoc is read like any other line (`PL-39LD`).
+# finds: those in a subshell or a `$( )` too, quoted or not, since each runs,
+# and the git a wrapper runs, so `timeout 60 git fetch --prune` is the prune it
+# is (`PL-TRMN`). Its words are the ones bash hands git, every redirection
+# lifted out, so `2>/dev/null git fetch --prune` is one too, and so is a
+# setting passed after a redirection (`PL-K9QL`). A quoted argument stays one
+# word, so a `;` or a flag inside it is the text it is, where the regex this
+# file used took a `;` inside quotes for a separator (`PL-WGFY`). Heredoc
+# bodies and comments are gone, which is what lets this repository write prose
+# *about* pruning - `CLAUDE.md`, this hook, the ledger - without the guard
+# eating its own documentation; a prune after the terminator of a heredoc is
+# read like any other line (`PL-39LD`).
 #
 # **What prunes is read from git 2.43 itself** (`PL-R17X`): its usage lines,
 # `git -h`, `git fetch -h`, `git pull -h` and `git remote -h`, and each
@@ -151,8 +155,9 @@ def in_order(words, steps):
     return True
 
 
+# A path to git is git: `/usr/bin/git fetch --prune` prunes (`PL-TRMN`).
 if not any(
-    words[0] == "git"
+    words[0].rsplit("/", 1)[-1] == "git"
     and (sets_pruning(words) or any(in_order(words[1:], shape) for shape in SHAPES))
     for words in shell_split.commands(command)
 ):

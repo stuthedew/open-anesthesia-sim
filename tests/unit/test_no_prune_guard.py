@@ -227,6 +227,62 @@ def test_a_reserved_word_opens_the_command_after_it() -> None:
     assert _decision("echo then git fetch --prune") is None
 
 
+WRAPPED = (
+    # `PL-TRMN`'s reproductions, verbatim.
+    ("timeout 60 git fetch --prune", True),
+    ("env GIT_TRACE=1 git fetch --prune", True),
+    ("command git fetch --prune", True),
+    ("/usr/bin/git fetch --prune", True),
+    # The other wrappers, each by its own grammar, and nested.
+    ("timeout --signal KILL 60 nice -n 5 git remote prune origin", True),
+    ("nohup git fetch -p origin", True),
+    ("exec -a fetch git fetch --prune", True),
+    ("echo origin | xargs -n 1 git fetch --prune", True),
+    # What the wrapper runs decides, so a harmless call stays harmless.
+    ("timeout 60 git fetch origin", False),
+    ("env -i PATH=/usr/bin git fetch origin", False),
+    ("command -v git", False),
+    # An option after the command is the command's: this `-p` is git's.
+    ("timeout 5 git log -p", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), WRAPPED)
+def test_a_wrapper_runs_the_command_after_it(command: str, refused: bool) -> None:
+    """A prune run through `timeout`, `env` or another wrapper is a prune (`PL-TRMN`).
+
+    So is one run by a path to git. The guard read the wrapper as the command
+    and compared a path with `git`, so each refused spelling here pruned
+    unrefused.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+REDIRECTED = (
+    # `PL-K9QL`'s reproductions, verbatim: ahead of git, and among a wrapper's
+    # words.
+    ("2>/dev/null git fetch --prune", True),
+    ("env 2>/dev/null git fetch --prune", True),
+    # Among git's own words, ahead of the setting it reads for the whole call.
+    ("git 2>/dev/null -c fetch.prune=true fetch origin", True),
+    # A redirection's word is a file, never a flag.
+    ("git fetch origin 2>-p", False),
+    ("2>/dev/null git fetch origin", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), REDIRECTED)
+def test_a_redirection_is_not_a_word_of_the_command(command: str, refused: bool) -> None:
+    """Bash lifts a redirection out wherever it stands, so it hides no prune (`PL-K9QL`).
+
+    The guard read `2>/dev/null` as the word `2` and took it for the command,
+    a wrapper stopped reading at the `>`, and git's own options stopped at it.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 def test_a_prune_before_a_line_bash_cannot_read_is_refused() -> None:
     """Bash runs every line before a syntax error, so the hook reads them.
 
