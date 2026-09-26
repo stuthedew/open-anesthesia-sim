@@ -45,6 +45,8 @@ PRUNING = (
     "git config --global fetch.prune true",
     "git fetch origin && git fetch --prune",
     "GIT_TRACE=1 git fetch --prune",
+    # A line continued with a backslash is one command.
+    "git fetch origin \\\n  --prune",
 )
 
 
@@ -85,6 +87,8 @@ ALLOWED = (
     "grep -n -- --prune tools/doc_check.py",
     'echo "never git fetch --prune"',
     "cat > f.md <<'EOF'\ngit fetch --prune\nEOF",
+    # A comment is nobody's flag.
+    "git fetch origin  # never with --prune",
 )
 
 
@@ -92,6 +96,21 @@ ALLOWED = (
 def test_an_innocent_call_is_untouched(command: str) -> None:
     """Silence, not an allow: the hook must never grant a permission either."""
     assert _decision(command) is None, f"{command!r} was denied"
+
+
+def test_only_a_heredoc_body_is_removed() -> None:
+    """The prose in a body stays allowed, and a prune after its terminator is refused (`PL-39LD`).
+
+    The hook read only the text before the first `<<`, so a prune on any line
+    after a heredoc was never seen - including after the commit message this
+    repository writes through one.
+    """
+    for heredoc in (
+        "cat > f.md <<'EOF'\ngit fetch --prune\nEOF\n",
+        "git commit -m \"$(cat <<'EOF'\nNever run git fetch --prune here.\nEOF\n)\"\n",
+    ):
+        assert _decision(heredoc + "git fetch origin") is None
+        assert _decision(heredoc + "git fetch --prune") is not None
 
 
 def test_another_tool_is_not_this_hook_s_business() -> None:

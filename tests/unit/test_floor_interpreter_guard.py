@@ -161,6 +161,8 @@ UNSPACED = (
     "true;python3 -m compileall src/",
     "true||python3 -m compileall src/",
     "cd /x\npython3 -m compileall src/",
+    # A comment hides the rest of its line, not the lines after it.
+    "cd /x  # a note\npython3 -m compileall src/",
 )
 
 
@@ -194,10 +196,40 @@ def test_a_subshell_paren_does_not_hide_the_interpreter(command: str) -> None:
     assert decision["permissionDecision"] == "deny"
 
 
+GLUED = (
+    # `PL-63TT`'s reproduction, and the same `)` glued to a pipe.
+    ("(true); python3 src/a.py", True),
+    ("(true)|python3 src/a.py", True),
+    ("(true) ; python3 src/a.py", True),
+    # The other way round: a path after the `);` is another command's argument,
+    # not this interpreter's, where the glued run joined the two commands.
+    ("(python3 -c 'print(1)');sed -n 1p src/anesthesia_sim/app_metadata.py", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), GLUED)
+def test_a_glued_punctuation_run_splits_into_bash_operators(command: str, refused: bool) -> None:
+    """A `)` touching a `;` or `|` is two operators, so neither hides the separator (`PL-63TT`)."""
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 def test_prose_about_the_rule_in_a_heredoc_is_not_matched() -> None:
     """The repository documents this rule by writing the refused command down."""
     command = "cat > docs/note.md <<'EOF'\npython3 -m compileall src/\nEOF"
     assert _decision(command) is None
+
+
+def test_only_a_heredoc_body_is_removed() -> None:
+    """The lines after a heredoc's terminator are commands again (`PL-39LD`).
+
+    The hook read only the text before the first `<<`, so a floor parse after
+    a heredoc in the same call was never seen.
+    """
+    heredoc = "cat > docs/note.md <<'EOF'\npython3 -m compileall src/\nEOF\n"
+    assert _decision(heredoc + "git status") is None
+    assert _decision(heredoc + "python3 -m compileall src/") is not None
+    assert _decision("python3 - <<'EOF'\nprint(1)\nEOF\npython3 src/a.py") is not None
 
 
 def test_a_non_bash_tool_is_ignored() -> None:
