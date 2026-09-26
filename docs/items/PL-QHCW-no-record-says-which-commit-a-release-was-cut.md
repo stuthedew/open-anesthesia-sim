@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: release-process
+milestone: v0.5.12
 touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_cli.py, tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md, docs/items/PL-NZC0-a-claude-code-projects-trial-needs-project.md, docs/ARCHITECTURE.md, subprojects/docket/README.md, subprojects/docket/tests/test_vcs_silence.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23

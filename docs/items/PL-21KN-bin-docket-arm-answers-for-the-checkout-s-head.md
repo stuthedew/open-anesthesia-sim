@@ -3,13 +3,15 @@ id: PL-21KN
 title: bin/docket arm answers for the checkout's HEAD even where the pull request's own branch on origin is ahead of it, so once someone else has brought main into the pull request it still reports behind N and advises update_pull_request_branch or a merge and push, both of which misfire
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: remote-copy
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 blocked-by: PL-MT3R
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-26
+payoff: arm stops advising an update for a pull request already level with main, so neither misfiring remedy gets run
+verify: grep -q 'def test_arm_reads_the_pull_requests_branch_on_the_remote_not_head' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket arm answers for the checkout's HEAD even where the pull request's own branch on origin is ahead of it, so once someone else has brought main into the pull request it still reports behind N and advises update_pull_request_branch or a merge and push, both of which misfire

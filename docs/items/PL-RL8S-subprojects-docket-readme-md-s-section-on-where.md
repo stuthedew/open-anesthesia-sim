@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: count-input-addressing
+milestone: v0.5.12
 touches: subprojects/docket/README.md
 added: 2026-09-22
 closed: 2026-09-26

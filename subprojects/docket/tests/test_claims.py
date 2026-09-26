@@ -47,7 +47,7 @@ from docket.claims import (
     work_outside_queue,
 )
 from docket.config import Config
-from docket.vcs import SILENT, _run_git
+from docket.vcs import SILENT, _run_git, remote_heads
 
 #: When the claims under test are made. Each repository's base sits a month
 #: earlier, outside every lease.
@@ -196,6 +196,43 @@ def test_a_local_branch_and_its_tracking_ref_are_one_holder(tmp_path: Path) -> N
 
     assert (hold.ref, hold.state, hold.renewed) == ("claude/held", LIVE, T0 + 6 * DAY)
     assert (pushed.ref, pushed.state, pushed.renewed) == ("origin/claude/held", LAPSED, T0)
+
+
+def test_holdings_reads_no_hold_from_a_branch_the_remote_deleted(tmp_path: Path) -> None:
+    """A claim pushed, fetched here, then deleted with its branch holds nothing once listed.
+
+    `PL-MT3R`: no fetch prunes, so this clone keeps the branch's tracking ref,
+    and `holdings` read it as a live holder while no fresh clone could see the
+    claim at all. Given the remote's own listing of its branches, that ref
+    holds nothing. Given none, it holds as it always has: it is still the
+    surviving copy of the branch's work, which `stranded` recovers from.
+    """
+    origin = tmp_path / "origin.git"
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", "--bare", str(origin)],
+        check=True,
+        capture_output=True,
+    )
+    session = _Repo(tmp_path / "session")
+    session.git("remote", "add", "origin", str(origin))
+    session.git("push", "-q", "origin", "main")
+    session.branch(BRANCH)
+    session.claim("PL-B1B1", when=T0)
+    session.git("push", "-q", "origin", BRANCH)
+    here = tmp_path / "here"
+    subprocess.run(["git", "clone", "-q", str(origin), str(here)], check=True, capture_output=True)
+    session.git("push", "-q", "origin", "--delete", BRANCH)
+
+    listed = remote_heads(here)
+    read = holdings(here, now=T0 + HOUR, remote=listed)
+    kept = holdings(here, now=T0 + HOUR)
+
+    assert listed.known and set(listed.tips) == {"main"}
+    assert read.known, read.declined
+    assert read.holds == ()
+    assert [(hold.key, hold.ref, hold.state) for hold in kept.holds] == [
+        ("PL-B1B1", f"origin/{BRANCH}", LIVE)
+    ]
 
 
 def test_the_lease_holds_through_a_gap_of_exactly_the_term_and_lapses_past_it(

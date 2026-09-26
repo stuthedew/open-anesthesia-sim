@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: release-process
+milestone: v0.5.12
 touches: subprojects/docket/README.md
 added: 2026-09-26
 closed: 2026-09-26

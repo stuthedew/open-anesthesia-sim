@@ -252,7 +252,9 @@ filed by that id and needs nothing more. A fix `CLAUDE.md`'s fix-now rule
 admits needs nothing more either, even though it takes a commit of its own:
 that commit leads with the current item's id, so every id-matcher still sees
 it. File it when it is the reason this session exists, or when it will take a
-branch of its own.
+branch of its own. Not deleting remote branches, even when that is why the
+session exists: it takes no commit at all, so there is nothing for an id to
+lead, and the reply hands the owner the list and the command (`PL-S8LZ`).
 
 `tools/branch_id_check.py` catches the case where none of this happened: `make
 check` and CI fail a branch ahead of `main` that carries no id in its name and
