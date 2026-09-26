@@ -3,13 +3,14 @@ id: PL-HMZZ
 title: Which pull request carried a closed item's work is inferred from commit history after the merge and never recorded when the merge happens - ten items, four open
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect
 feature: commit-provenance
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
 payoff: Which pull request carried an item becomes one recorded fact, so a new shape of history stops costing an item
+verify: grep -q 'def test_a_closure_on_this_branch_is_written_the_pull_request_number' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-2XTF, PL-GW37, PL-YDL6, PL-S5LB, PL-KX9N, PL-YFXG, PL-LPWK, PL-QNYF, PL-GJPD, PL-WG7Q
 generator: live - closures_on_base still infers the carrying pull request from merge subjects and _number_closing after the merge, and four members are open (PL-LPWK, PL-QNYF, PL-GJPD, PL-WG7Q)
 misread: Which pull request carried an item's work

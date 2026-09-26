@@ -3,11 +3,12 @@ id: PL-LPWK
 title: A release note cites the pull request that closed an item, not the one that carried its code, whenever the two differ
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: defect, docs
 feature: commit-provenance
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/README.md, subprojects/docket/tests/test_release.py
 added: 2026-09-06
+verify: grep -q 'names the pull request whose merge closed the item' subprojects/docket/README.md
 ---
 
 **Problem.** `release_notes()` in `subprojects/docket/src/docket/release.py`
