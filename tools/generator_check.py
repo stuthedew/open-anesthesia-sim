@@ -36,7 +36,12 @@ commit subject to lead with the id of the item being worked, and `bin/docket
 new` writes each captured item as a file in that same commit. So the commit
 that *adds* an item file names, in its subject, the item whose work produced
 it; where the leading ids are the new item's own, the commit is a plain capture
-and the item has no parent. Only a child that also declares the same `touches`
+and the item has no parent. Which ids a subject leads with is `vcs.leading_ids`,
+the reading `docket` and `tools/pr_title_check.py` use, imported rather than
+spelled again: the copy this file kept was case-sensitive, took only commas and
+required a colon, so it found no parent in 74 of the 769 commits that added an
+item on `main` by 2026-09-26, `PL-4JHS backfill ... (#809)` and `pl-b8hz: x`
+among them (`PL-6P0F`). Only a child that also declares the same `touches`
 path is counted, because a session closing an item captures whatever else it
 noticed and those captures attribute to the item it was working - counting all
 of them rates any heavily-worked file a generator. Where git will not give that
@@ -78,6 +83,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.store import ID_PATTERN  # noqa: E402
+from docket.vcs import leading_ids  # noqa: E402
 
 ITEM_DIR = Path("docs/items")
 
@@ -110,7 +116,6 @@ SHOW = 6
 #: 44 item filenames went unread, so `citations` undercounted exactly the
 #: oldest items and `creation_parents` attributed none of them (`PL-KYW3`).
 ID_RE = re.compile(ID_PATTERN)
-LEADING_IDS_RE = re.compile(rf"^((?:{ID_PATTERN})(?:\s*,\s*(?:{ID_PATTERN}))*)\s*:")
 
 
 class GitUnanswered(Exception):
@@ -236,8 +241,7 @@ def creation_parents(repo: Path) -> dict[str, set[str]]:
     parents: dict[str, set[str]] = {}
     for block in out.split("\x01")[1:]:
         subject, _, body = block.partition("\n")
-        match = LEADING_IDS_RE.match(subject.strip())
-        leading = set(ID_RE.findall(match.group(1))) if match else set()
+        leading = set(leading_ids(subject))
         created = set()
         for line in body.splitlines():
             line = line.strip()
