@@ -167,6 +167,23 @@ def test_a_body_unreadable_from_the_api_is_left_for_a_later_run(
     assert [pr for _, pr, _ in pr_body_check.missing("origin/main")] == [768]
 
 
+def test_default_branch_ref_follows_docket_on_a_master_only_clone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A clone whose default is `master` gets `origin/master`, as every docket command does.
+
+    The `origin/main`-then-`main` list spelled here gave None, so the advisory
+    stayed silent on a history it could have read (`PL-GNCB`). It now asks
+    `vcs.default_base`, through this module's own `_git`.
+    """
+
+    def fake(*args: str) -> str:
+        return "0" * 40 + "\n" if args[:1] == ("rev-parse",) and "origin/master" in args else ""
+
+    monkeypatch.setattr(pr_body_check, "_git", fake)
+    assert pr_body_check.default_branch_ref() == "origin/master"
+
+
 def test_says_nothing_when_the_default_branch_cannot_be_read(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

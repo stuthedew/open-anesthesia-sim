@@ -32,3 +32,5 @@ Reproduced: `in_queue` True, `work_under_record` False; `arm` says `hold - ... c
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
 
 **Changed by `PL-K6B2`, 2026-09-25.** Arming's side of the title no longer counts `docs/items` only: `arm` now arms a branch whose every path is under `docs/items/` or `subprojects/docket/`, `arming.py` excepted (`arming.TOOLING`, `arming.GATE`). The two definitions still disagree, now on `subprojects/docket/` as well as on `ROADMAP.md` and `docs/WORKING_NOTES.md`.
+
+**Answered 2026-09-26: no, keep arming at its own scope** (project owner, 2026-09-26, ratified, over widening `arm` to treat `ROADMAP.md` and `docs/WORKING_NOTES.md` as queue records). The owner agreed with the recommendation above on a decision card in the Fix generators project. The done-when is therefore the recommendation's: two named predicates in `claims.py`, every caller importing one of them, and a test holding the `ROADMAP.md`-only branch for each. Recorded here by the `PL-PVW2` build thread so the answer does not live only on the card; the status moves when the item is taken.

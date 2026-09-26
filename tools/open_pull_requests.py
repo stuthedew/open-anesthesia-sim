@@ -39,8 +39,8 @@ one spelling of the token, the timeout and the failure rule rather than two.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -48,6 +48,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
+
+from docket.vcs import github_slug, github_token  # noqa: E402
 
 #: Where the lookup goes. Named here rather than inline so a test can point it
 #: somewhere that is not the network.
@@ -84,13 +88,12 @@ def _git(args: list[str]) -> str:
 
 
 def repo_slug() -> str | None:
-    """`owner/name` for `origin`, or None when it cannot be read as GitHub's."""
-    url = _git(["remote", "get-url", "origin"]).strip()
-    for prefix in ("git@github.com:", "ssh://git@github.com/", "https://github.com/"):
-        if url.startswith(prefix):
-            slug = url[len(prefix) :].removesuffix(".git").strip("/")
-            return slug if slug.count("/") == 1 and all(slug.split("/")) else None
-    return None
+    """`owner/name` for `origin`, or None when it cannot be read as GitHub's.
+
+    Parsed by `docket`'s one reading, `vcs.github_slug`, which a token-bearing
+    URL does not defeat (`PL-2TV9`).
+    """
+    return github_slug(_git(["remote", "get-url", "origin"]))
 
 
 def open_pull_requests(slug: str, *, head: str | None = None) -> tuple[PullRequest, ...] | None:
@@ -112,7 +115,7 @@ def open_pull_requests(slug: str, *, head: str | None = None) -> tuple[PullReque
     that is never wrong. It cannot fire on a `head` listing, which asks about
     one branch and is complete at one entry.
     """
-    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    token = github_token()
     if not token:
         return None
     query: dict[str, str | int] = {"state": "open", "per_page": 1 if head else PAGE}
