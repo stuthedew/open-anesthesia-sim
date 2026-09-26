@@ -3,10 +3,12 @@ id: PL-YYV9
 title: triage.md's 'Run it and watch it fail' paragraph says docket check --verify raises an advisory that CI catches only after the push, but the replay has been an error since PL-71P4, make check runs it scoped to the branch, and since PL-FTDB bin/docket set --verify refuses a passing command as it is written
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: .claude/skills/docket/modes/triage.md
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1123
 payoff: a session writing a verify: at triage is told what actually refuses a command that already passes - set as it is written, make check before the push - and why watching it fail still matters once the tools do that
 verify: grep -qF 'refuses one the replay would report as already passing' .claude/skills/docket/modes/triage.md && ! grep -qF 'raises an advisory for the ones that pass' .claude/skills/docket/modes/triage.md
 ---
