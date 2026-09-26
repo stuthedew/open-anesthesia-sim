@@ -20,7 +20,6 @@ should look, and never fail a build.
 from __future__ import annotations
 
 import re
-import shlex
 from collections import Counter
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
@@ -966,12 +965,20 @@ _PYTEST_VALUE_OPTIONS = frozenset(
 _STATUS_REPLACED = frozenset({"|", "|&", "||", ";", "&"})
 
 
-def _after_pytest(tokens: Sequence[str]) -> list[str] | None:
-    """The tokens following the pytest executable, or `None` if nothing runs it."""
+def _after_pytest(tokens: Sequence[_Word | str]) -> list[_Word | str] | None:
+    """The tokens following the pytest executable, or `None` if nothing runs it.
+
+    Only a word can be the executable, since an operator is never a command.
+    """
     for index, token in enumerate(tokens):
-        if token == "pytest" or token.endswith("/pytest"):
+        if isinstance(token, _Word) and (token.text == "pytest" or token.text.endswith("/pytest")):
             return list(tokens[index + 1 :])
     return None
+
+
+def _texts(tokens: Sequence[_Word | str]) -> list[str]:
+    """Each token as it reads: a word with its quotes removed, or the operator itself."""
+    return [token.text if isinstance(token, _Word) else token for token in tokens]
 
 
 def _run_targets(arguments: Sequence[str]) -> list[str]:
@@ -995,30 +1002,33 @@ def _inside(target: str, collected: Sequence[str]) -> bool:
     return any(target == root or target.startswith(f"{root}/") for root in collected)
 
 
-def _pytest_targets(clause: str) -> list[str] | None:
+def _pytest_targets(clause: _Clause) -> list[str] | None:
     """The paths a pytest clause runs, or `None` if it is not one to read.
 
-    `None` covers three cases that are all "this is not a redundant health
-    check": the clause does not invoke pytest at all, its arguments cannot be
-    split (an unbalanced quote, which the format check elsewhere reports), or
-    it carries a selector, which makes the run something narrower than a
-    proof that a file's suite is green.
+    `None` covers two cases that are both "this is not a redundant health
+    check": the clause does not invoke pytest at all, or it carries a
+    selector, which makes the run something narrower than a proof that a
+    file's suite is green. A command with an unbalanced quote has no clauses
+    to ask about, because `_shell_words` cannot read it.
+
+    An operator after the run - a pipe, a `;`, a redirection - stays among the
+    arguments as it stands, where no collected tree holds it, so a run with
+    anything after it but its own arguments is left alone: whether that still
+    makes it a second proof is a shape nobody has asked this rule to judge.
 
     An empty list is the meaningful answer rather than a missing one: a bare
     `pytest` with no path runs the whole suite, which is exactly what
     `check_command` runs.
     """
-    try:
-        rest = _after_pytest(shlex.split(clause))
-    except ValueError:
-        return None
+    rest = _after_pytest(clause.tokens)
     if rest is None:
         return None
-    if any(token.startswith(_PYTEST_SELECTORS) for token in rest) or any(
-        "::" in token for token in rest
+    arguments = _texts(rest)
+    if any(argument.startswith(_PYTEST_SELECTORS) for argument in arguments) or any(
+        "::" in argument for argument in arguments
     ):
         return None
-    return _run_targets(rest)
+    return _run_targets(arguments)
 
 
 def _redundant_pytest_clause(command: str, collected: Sequence[str]) -> str | None:
@@ -1042,12 +1052,14 @@ def _redundant_pytest_clause(command: str, collected: Sequence[str]) -> str | No
     whatever the item turns out to be about. A command whose only clause is
     the pytest run says the opposite and is left alone.
 
-    Split on `&&` alone, which is what every command in this store uses and
-    the only separator that carries the "and then" this reads.
+    Cut at `&&` alone, which is what every command in this store uses and the
+    only separator that carries the "and then" this reads - by `_shell_words`,
+    the reading every rule over a command takes, so an `&&` inside quotes is
+    part of an argument rather than the end of a clause.
     """
     if not collected:
         return None
-    clauses = [clause.strip() for clause in command.split("&&")]
+    clauses = _shell_words(command).clauses
     if len(clauses) < 2:
         return None
     pytest_clauses = [clause for clause in clauses if _pytest_targets(clause) is not None]
@@ -1056,23 +1068,8 @@ def _redundant_pytest_clause(command: str, collected: Sequence[str]) -> str | No
     for clause in pytest_clauses:
         targets = _pytest_targets(clause) or []
         if all(_inside(target, collected) for target in targets):
-            return clause
+            return clause.text
     return None
-
-
-def _shell_tokens(clause: str) -> list[str] | None:
-    """A clause's words with its shell operators split out as words of their own.
-
-    `shlex.split` leaves `x|grep` as one word, so an unspaced pipe would read
-    as part of a pytest argument; this is what lets `_k_selector_clause` see
-    that the status is another command's. `None` for an unbalanced quote.
-    """
-    lexer = shlex.shlex(clause, posix=True, punctuation_chars=True)
-    lexer.whitespace_split = True
-    try:
-        return list(lexer)
-    except ValueError:
-        return None
 
 
 def _k_selector_clause(command: str, collected: Sequence[str]) -> str | None:
@@ -1109,22 +1106,25 @@ def _k_selector_clause(command: str, collected: Sequence[str]) -> str | None:
 
     `-m` narrows the same way and would fail the same way, but no command in
     this store has ever carried one, so this reads `-k` alone rather than a
-    shape nobody writes. Clauses are split on `&&` as `_redundant_pytest_clause`
-    splits them.
+    shape nobody writes. Clauses are read by `_shell_words`, as
+    `_redundant_pytest_clause` reads them, so only an operator the shell would
+    act on replaces the status: a `|` inside quotes is part of a word.
     """
     if not collected:
         return None
-    for clause in (part.strip() for part in command.split("&&")):
-        tokens = _shell_tokens(clause)
-        arguments = _after_pytest(tokens) if tokens is not None else None
-        if arguments is None or _STATUS_REPLACED.intersection(arguments):
+    for clause in _shell_words(command).clauses:
+        rest = _after_pytest(clause.tokens)
+        if rest is None or any(
+            isinstance(token, str) and token in _STATUS_REPLACED for token in rest
+        ):
             continue
-        if not any(token.startswith("-k") for token in arguments):
+        arguments = _texts(rest)
+        if not any(argument.startswith("-k") for argument in arguments):
             continue
-        if any(token.startswith("--cov") for token in arguments):
+        if any(argument.startswith("--cov") for argument in arguments):
             continue
         if all(_inside(target, collected) for target in _run_targets(arguments)):
-            return clause
+            return clause.text
     return None
 
 
@@ -1191,6 +1191,35 @@ _GREP_FLAGS = frozenset("qFEri")
 _PLAIN = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_./-+=@%,:")
 _GLOB = frozenset("*?")
 _SHELL_OPERATORS = frozenset("|&;<>()")
+
+#: Bash's operators, longest first, so that none is read as two shorter ones:
+#: `>|` is a redirection rather than a pipe, and `&>` one rather than a
+#: background `&` (Bash Reference Manual, §2 "Definitions"). The hooks read a
+#: command by the same table, in `.claude/hooks/shell_split.py`.
+_OPERATORS = (
+    ";;&",
+    "<<<",
+    "&>>",
+    "&&",
+    "||",
+    ";;",
+    ";&",
+    "|&",
+    "<<",
+    ">>",
+    "<&",
+    ">&",
+    "<>",
+    ">|",
+    "&>",
+    "&",
+    "|",
+    ";",
+    "(",
+    ")",
+    "<",
+    ">",
+)
 _DOTTED_MODULE_RE = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
 _PERCENT_RE = re.compile(r"(?:100|[1-9]?[0-9])(?:\.[0-9]+)?")
 _COVERAGE_RUN = ("uv", "run", "pytest")
@@ -1209,69 +1238,136 @@ class _Word:
     bang: bool = False
 
 
-def _shell_words(command: str) -> list[_Word | str] | str:
-    """The command's words and `&&` separators, or what in it the admitted shapes never use.
+@dataclass(frozen=True)
+class _Clause:
+    """What runs between two `&&`s: its words and other operators, and its text as written."""
 
-    A lexer rather than `shlex`, because `shlex` drops the one fact this needs:
-    whether a character was quoted. `grep -q '$x' f` searches for a dollar sign,
-    and `grep -q $x f` searches for whatever the shell has in `x`. Every
-    operator but `&&` is refused as it is met: a pipe answers with another
-    command's status, `||` and `;` replace or discard a failure, a redirection
-    or a subshell is a shape nobody has argued for.
+    #: The clause as the command spells it, quotes and all, for a message to name.
+    text: str
+    #: Its words, as `_Word`, and any operator but `&&`, as the string that spells it.
+    tokens: tuple[_Word | str, ...]
+
+
+@dataclass(frozen=True)
+class _Reading:
+    """A `verify:` command read once, for every rule here that reads one."""
+
+    #: Its clauses, cut at each `&&`; none where the shell could not read it at all.
+    clauses: tuple[_Clause, ...]
+    #: The first thing in it the admitted shapes never use, or `None` where there is none.
+    refusal: str | None
+
+
+def _shell_words(command: str) -> _Reading:
+    """The command's clauses and words, and the first thing in it the admitted shapes never use.
+
+    The one reading of a `verify:` command, taken by every rule here that reads
+    one (`PL-B5VZ`). The prerequisite and `-k` rules above used to cut the
+    command at each `&&` as text, inside quotes too, and then split each piece
+    with `shlex` two ways, so `t/a.py|tail` was one word to one of them and
+    three to the other.
+
+    A lexer rather than `shlex`, because `shlex` drops the one fact the
+    admitted shapes need: whether a character was quoted. `grep -q '$x' f`
+    searches for a dollar sign, and `grep -q $x f` searches for whatever the
+    shell has in `x`. The rules are bash's (Bash Reference Manual §3.1.2
+    "Quoting", §3.1.3 "Comments"): `'...'` is literal; in `"..."` a backslash
+    escapes only `"`, a backslash, `$` and a backtick; outside quotes it
+    escapes the next character; an operator is the longest match in
+    `_OPERATORS`; and `#` opens a comment only where no word is in progress.
+    The hooks read a command by the same rules with
+    `.claude/hooks/shell_split.py`, which docket cannot import - `bin/docket`
+    puts this package alone on the path, and those words drop their quoting.
+
+    Every operator is read rather than stopped at, because a pipe answering
+    with another command's status is what the `-k` rule looks for. Every one
+    but `&&` is also a refusal where it comes first: a pipe answers with
+    another command's status, `||` and `;` replace or discard a failure, a
+    redirection or a subshell is a shape nobody has argued for. So are an
+    unquoted character outside `_PLAIN` and a `$` or backtick inside double
+    quotes, where the shell expands it. A command the shell cannot read - an
+    unbalanced quote, a trailing backslash - has no clauses, and its refusal
+    says why unless something earlier already had.
     """
     tokens: list[_Word | str] = []
+    spans: list[tuple[int, int]] = []
     text: list[str] = []
-    started = quoted = globbed = bang = False
+    begin = -1
+    quoted = globbed = bang = False
+    refusal: str | None = None
     index, length = 0, len(command)
 
+    def refuse(reason: str) -> None:
+        nonlocal refusal
+        if refusal is None:
+            refusal = reason
+
+    def start() -> None:
+        nonlocal begin
+        if begin < 0:
+            begin = index
+
     def finish() -> None:
-        nonlocal started, quoted, globbed, bang
-        if started:
+        nonlocal begin, quoted, globbed, bang
+        if begin >= 0:
             tokens.append(_Word("".join(text), quoted, globbed, bang))
+            spans.append((begin, index))
         text.clear()
-        started = quoted = globbed = bang = False
+        begin = -1
+        quoted = globbed = bang = False
+
+    def unreadable(reason: str) -> _Reading:
+        return _Reading((), refusal or reason)
 
     while index < length:
         char = command[index]
         if char in " \t":
             finish()
             index += 1
+        elif char == "#" and begin < 0:
+            refuse("carries an unquoted `#`, which no admitted shape uses")
+            break  # a comment runs to the end of its line, and a field is one line
         elif char == "'":
             end = command.find("'", index + 1)
             if end < 0:
-                return "has an unbalanced quote"
+                return unreadable("has an unbalanced quote")
+            start()
             text.append(command[index + 1 : end])
-            started = quoted = True
+            quoted = True
             index = end + 1
         elif char == '"':
+            start()
             index += 1
             while True:
                 if index >= length:
-                    return "has an unbalanced quote"
+                    return unreadable("has an unbalanced quote")
                 inner = command[index]
                 if inner == '"':
                     index += 1
                     break
                 if inner in "$`":
-                    return f"has a `{inner}` inside double quotes, where the shell expands it"
+                    refuse(f"has a `{inner}` inside double quotes, where the shell expands it")
                 if inner == "\\" and index + 1 < length and command[index + 1] in '"\\$`':
                     index += 1
                     inner = command[index]
                 text.append(inner)
                 index += 1
-            started = quoted = True
+            quoted = True
         elif char == "\\":
             if index + 1 >= length:
-                return "ends in a backslash"
+                return unreadable("ends in a backslash")
+            start()
             text.append(command[index + 1])
-            started = quoted = True
+            quoted = True
             index += 2
         elif char in _SHELL_OPERATORS:
-            if not command.startswith("&&", index):
-                return f"carries `{char}`, which no admitted shape uses"
             finish()
-            tokens.append("&&")
-            index += 2
+            operator = next(each for each in _OPERATORS if command.startswith(each, index))
+            if operator != "&&":
+                refuse(f"carries `{operator}`, which no admitted shape uses")
+            tokens.append(operator)
+            spans.append((index, index + len(operator)))
+            index += len(operator)
         else:
             if char in _GLOB:
                 globbed = True
@@ -1279,12 +1375,20 @@ def _shell_words(command: str) -> list[_Word | str] | str:
                 bang = True
             elif char not in _PLAIN:
                 shown = repr(char) if char.isspace() else f"`{char}`"
-                return f"carries an unquoted {shown}, which no admitted shape uses"
+                refuse(f"carries an unquoted {shown}, which no admitted shape uses")
+            start()
             text.append(char)
-            started = True
             index += 1
     finish()
-    return tokens
+
+    clauses: list[_Clause] = []
+    first = 0
+    cuts = [at for at, token in enumerate(tokens) if isinstance(token, str) and token == "&&"]
+    for cut in [*cuts, len(tokens)]:
+        spelled = command[spans[first][0] : spans[cut - 1][1]] if cut > first else ""
+        clauses.append(_Clause(spelled, tuple(tokens[first:cut])))
+        first = cut + 1
+    return _Reading(tuple(clauses), refusal)
 
 
 def _coverage_refusal(words: Sequence[_Word]) -> str | None:
@@ -1415,15 +1519,13 @@ def verify_shape_refusal(command: str) -> str | None:
     it will refuse the next one - `-m`, which `_k_selector_clause` names as
     unread, among them.
     """
-    tokens = _shell_words(command)
-    if isinstance(tokens, str):
-        return tokens
-    clauses: list[list[_Word]] = [[]]
-    for token in tokens:
-        if isinstance(token, str):
-            clauses.append([])
-        else:
-            clauses[-1].append(token)
+    reading = _shell_words(command)
+    if reading.refusal is not None:
+        return reading.refusal
+    # Nothing refused, so `&&` was the only operator, and the cut took each one.
+    clauses = [
+        [token for token in clause.tokens if isinstance(token, _Word)] for clause in reading.clauses
+    ]
     if any(not clause for clause in clauses):
         return "has an `&&` with no clause on one side of it"
     for clause in clauses:

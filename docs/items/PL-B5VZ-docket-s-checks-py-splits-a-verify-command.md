@@ -3,12 +3,14 @@ id: PL-B5VZ
 title: docket's checks.py splits a verify: command three ways beside its own quote-aware _shell_words - str.split('&&'), which cuts inside a quoted argument, shlex.split, which keeps 't/a.py|tail' one word, and shlex's punctuation runs - so _redundant_pytest_clause and _k_selector_clause read one clause two ways
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, docs/items/PL-PVW2-predicates-the-apparatus-asks-repeatedly-which.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a member of PL-PVW2, docket's reading of a verify: command
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1095
 payoff: every rule that reads a verify: command reads it through the one quote-aware reading the admitted shapes take, so no rule's answer turns on how a pipe is spaced or loses a clause behind a quoted &&
 verify: grep -q 'def test_a_verify_clause_is_read_one_way' subprojects/docket/tests/test_checks.py
 recurrences: 2026-09-26 PL-P7J7 withdrawn 2026-09-26 PL-P7J7
