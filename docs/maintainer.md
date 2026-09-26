@@ -173,14 +173,15 @@ set it when the session opens rather than toggling it.
 ## Read a simulator change before you arm it
 
 `bin/docket arm` answers `arm` for a pull request whose every changed path is
-under `docs/items/` or `subprojects/docket/`, so a session arms it and it
-merges on green with no read from you. It holds everything else for your read,
-and a change to `subprojects/docket/src/docket/arming.py` as well, although that
-file is under `subprojects/docket/`: it is the gate itself, and a change to it
-could loosen the rule (project owner, 2026-09-25, ratified, over holding every
-pull request that changes anything outside `docs/items/`, `PL-SQTR`; built by
-`PL-K6B2`). A session leaves a held pull request unarmed. Read it before you
-arm it, most closely where it changes `src/`, `tests/` outside `subprojects/`,
+under `docs/items/`, `docs/pr-bodies/` (`PL-979D`) or `subprojects/docket/`, so
+a session arms it and it merges on green with no read from you. It holds
+everything else for your read, and a change to
+`subprojects/docket/src/docket/arming.py` as well, although that file is under
+`subprojects/docket/`: it is the gate itself, and a change to it could loosen
+the rule (project owner, 2026-09-25, ratified, over holding every pull request
+that changes anything outside `docs/items/`, `PL-SQTR`; built by `PL-K6B2`). A
+session leaves a held pull request unarmed. Read it before you arm it, most
+closely where it changes `src/`, `tests/` outside `subprojects/`,
 `docs/MODEL.md`, `src/anesthesia_sim/data/` or `README.md`, where a wrong
 clinical value could reach the screen. The old hold fired on every docket
 change as well, and on 2026-09-25 you confirmed those holds were being clicked
@@ -193,12 +194,15 @@ You merge by three routes: the Mac's browser, auto-merge armed through Claude,
 and the GitHub iPhone app (project owner, 2026-09-22). Squash-merge and arm
 auto-merge by the first two, and not in the app (project owner, 2026-09-22,
 ratified, over leaving after-the-fact detection as the whole remedy). A pull
-request's description is this repository's squash commit message, so it is
-where a change's reasoning reaches `main`. The GitHub iPhone app submits the
-squash with an empty message, which GitHub honours over the repository's
-default, and the reasoning is gone from `main` with nothing saying so. `#918`,
-merged in the app, reached `main` with no body. GitHub has acknowledged the
-defect since 2023, in community discussion
+request's description is this repository's squash commit message, but that
+body is a copy, useful in `git log` and nothing more. The record of a change's
+reasoning is `docs/pr-bodies/<N>.md`, which the session commits on the pull
+request's own branch before the merge (`PL-979D`; project owner, 2026-09-25,
+ratified, over pinning every merge path to one that sends the body verbatim).
+The GitHub iPhone app submits the squash with an empty message, which GitHub
+honours over the repository's default, so a merge there empties that copy with
+nothing saying so. `#918`, merged in the app, reached `main` with no body.
+GitHub has acknowledged the defect since 2023, in community discussion
 [#51016](https://github.com/orgs/community/discussions/51016); `PL-WFFX` holds
 the measurements.
 
@@ -209,10 +213,19 @@ the measurements.
   empty message, six of them armed in the away-from-desk hours when the app is
   in use.
 - If the app is the only option, check the message behind its cog icon first.
-- `python3 tools/pr_body_check.py` still reports any body that goes missing,
-  and `--recover` fetches it back from GitHub into `docs/pr-bodies/`.
-  `--compare` reports a body that landed but says something other than the
-  pull request, such as one edited after auto-merge was armed.
+- `python3 tools/pr_body_check.py` still reports a body that reached neither
+  `main` nor `docs/pr-bodies/`, which since `PL-979D` can only be a merge from
+  before it or one that bypassed `pr-title`, and `--recover` fetches it back
+  from GitHub into `docs/pr-bodies/`. `--compare` reports a squash body that
+  says something other than its pull request, which is now drift in the copy.
+
+**A description you edit by hand on GitHub holds the merge until it is
+recorded again.** `pr-title` re-runs on the edit and fails, because the
+branch's `docs/pr-bodies/<N>.md` no longer holds the same body, and an armed
+auto-merge waits on it. To clear it, check out the pull request's branch, run
+`python3 tools/pr_body_check.py --record N` with `N` its number, commit the
+file it writes and push, or ask a session to. `pr-title` re-runs on the push
+and passes.
 
 ## Bring a stale base in when you merge, with Update branch
 
