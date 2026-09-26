@@ -8,10 +8,12 @@ bookkeeping in advance. Anyone who forgets is told their release is empty
 while a fortnight of finished work sits outside it.
 
 So an item that is `done` with no `milestone` is simply unreleased, which is
-the state finished work is naturally in. Cutting a release stamps that work
-with the version it went out in. Nothing has to be decided up front, nothing
-is forgotten, and the question "is it worth cutting one?" becomes answerable
-by reading the store rather than by remembering what was promised.
+the state finished work is naturally in - all of it but the item a release is
+cut under, which ships in none (`unreleased` says why). Cutting a release
+stamps that work with the version it went out in. Nothing has to be decided up
+front, nothing is forgotten, and the question "is it worth cutting one?"
+becomes answerable by reading the store rather than by remembering what was
+promised.
 
 Planning ahead is what `feature` is for. A feature says what a group of items
 is *for*; a milestone says which release it left in.
@@ -26,7 +28,7 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .model import Item
+from .model import RELEASE_TRAIN, Item
 from .store import ID_PATTERN
 
 if TYPE_CHECKING:  # `roadmap` reads this module's version grammar, so the
@@ -84,12 +86,21 @@ def unreleased(items: list[Item], resuming: str = "") -> list[Item]:
     a named version idempotent, which is the property that holds however far
     the interrupted run got - and it is the stamp loop, not the bump, that is
     the likely place to be interrupted, since it writes a file per item.
+
+    The item a release was cut under is never among it (`PL-KRS6`). It closes
+    in the cut's own pull request, after the notes are written, so it carries
+    no `milestone:` - and read as unreleased it was the next release's whole
+    content, offered to every session from the moment a cut merged until real
+    work closed. Its `resource: release-train`, which every cut requires
+    (`PL-331V`), is what marks it, so it counts toward no release and no notes
+    name it.
     """
     return sorted(
         (
             i
             for i in items
             if i.status == "done"
+            and i.resource != RELEASE_TRAIN
             and (not i.milestone or (bool(resuming) and i.milestone.strip() == resuming))
         ),
         key=lambda i: (i.closed or date.min, i.identifier),

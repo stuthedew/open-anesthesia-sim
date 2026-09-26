@@ -97,8 +97,9 @@ releases its claim, so closing it first makes the cut refuse. After `make
 release` and the edits below, close it in its own commit (`bin/docket set ID
 --status done --closed YYYY-MM-DD`, per the close-out) and mark the pull
 request ready in that push, as `start.md` has it for any claimed item. It
-carries no `milestone:`, so the next release ships it, like anything else
-finished after a cut.
+carries no `milestone:` and ships in no release: its `resource:
+release-train` keeps it out of every later release's count and notes, so the
+cut it closed is never offered again as the next release (`PL-KRS6`).
 
 **Offer this; do not wait to be asked — when the session is about what to do
 next.** The session-start digest says when there is enough finished work to be
