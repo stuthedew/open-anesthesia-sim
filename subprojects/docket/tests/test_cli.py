@@ -8920,6 +8920,147 @@ def test_arm_answers_unknown_rather_than_arm_from_a_read_it_could_not_complete(
     assert capsys.readouterr().out.startswith("unknown - HEAD is on no branch")
 
 
+def _other_writer(tmp_path: Path) -> Callable[..., None]:
+    """A second clone of the `_arm_repo` remote, whose commits are dated as `_arm_repo`'s are.
+
+    It stands for whoever else writes to the pull request's branch: GitHub's
+    *Update branch*, or another session pushing to it.
+    """
+    other = tmp_path / "other"
+    subprocess.run(
+        ["git", "clone", "-q", str(tmp_path / "origin.git"), str(other)],
+        check=True,
+        capture_output=True,
+    )
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-01T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-01T12:00:00+00:00",
+    }
+
+    def git(*args: str) -> None:
+        subprocess.run(
+            ["git", "-c", "user.email=t@example.com", "-c", "user.name=T", *args],
+            cwd=other,
+            check=True,
+            capture_output=True,
+            env=dated,
+        )
+
+    return git
+
+
+@pytest.mark.parametrize("pushed", ["update-branch", "second-writer", "diverged"])
+def test_arm_reads_the_pull_requests_branch_on_the_remote_not_head(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], pushed: str
+) -> None:
+    """Another writer moved the branch on the remote, so HEAD is not what its pull request lands.
+
+    `update-branch` is `PL-21KN`'s shape: *Update branch* merged the moved base
+    into the pull request, and `arm`, reading HEAD, said `behind 1` of a pull
+    request already level with it and advised two remedies that both misfire.
+    `second-writer` is the case its brief inferred: a commit outside the store
+    pushed onto the branch elsewhere, which read from HEAD armed a pull request
+    landing it. `diverged` is the first with a commit of HEAD's own the remote
+    lacks, which a fast-forward cannot bring in. Each is read from the remote's
+    listing, and under `--no-fetch` from the tracking ref the fetch refreshed.
+    """
+    root, git = _arm_repo(tmp_path)
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+    git("push", "-q", "-u", "origin", ARM_BRANCH)
+    elsewhere = _other_writer(tmp_path)
+    if pushed == "second-writer":
+        elsewhere("checkout", "-q", ARM_BRANCH)
+        (tmp_path / "other" / "src").mkdir()
+        (tmp_path / "other" / "src" / "x.py").write_text("X = 1\n", encoding="utf-8")
+        elsewhere("add", "-A")
+        elsewhere("commit", "-qm", "outside the store")
+    else:
+        elsewhere("commit", "-q", "--allow-empty", "-m", "main moves on")
+        elsewhere("push", "-q", "origin", "main")
+        elsewhere("checkout", "-q", ARM_BRANCH)
+        elsewhere("merge", "-q", "--no-edit", "main")
+    elsewhere("push", "-q", "origin", ARM_BRANCH)
+    lacks = "1 commit" if pushed == "second-writer" else "2 commits"
+    pull = f"`git pull --ff-only origin {ARM_BRANCH}`"
+    if pushed == "diverged":
+        _put(git, root, "docs/items/PL-G5G5-local.md")
+        pull = f"`git pull --no-rebase origin {ARM_BRANCH}`"
+
+    assert _arm(root) == 2
+    out = capsys.readouterr().out
+    assert out.startswith(f"unknown - origin's copy of {ARM_BRANCH} has {lacks} {ARM_BRANCH} lacks")
+    assert pull in out
+    assert (f"and {ARM_BRANCH} has 1 commit that copy lacks" in out) == (pushed == "diverged")
+    assert "update_pull_request_branch" not in out
+
+    assert _arm(root, "--no-fetch") == 2
+    out = capsys.readouterr().out
+    assert out.startswith(f"unknown - the tracking ref origin/{ARM_BRANCH} has {lacks}")
+    assert pull in out
+
+    git("pull", "-q", "--no-rebase", "--no-edit", "origin", ARM_BRANCH)
+    if pushed == "second-writer":
+        assert _arm(root) == 1
+        assert capsys.readouterr().out.startswith(f"hold - {ARM_BRANCH}: it changes 1 path")
+    else:
+        assert _arm(root) == 0
+        assert capsys.readouterr().out.startswith(f"arm - {ARM_BRANCH}")
+
+
+def test_arm_answers_unknown_where_the_remote_names_a_tip_this_clone_has_not_fetched(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """git cannot say whether HEAD carries a commit it does not have, which is not "no".
+
+    A clone fetching `main` alone - the refspec a single-branch clone writes -
+    lists the branch's new tip and never fetches it, and `merge-base
+    --is-ancestor` then exits 128. Read as "HEAD carries it", that is the
+    answer from HEAD this item removed, so it is said as unread (`PL-C3MN`).
+    The branch is pushed with no upstream, since a fetch also brings the
+    current branch's upstream into `FETCH_HEAD`, whatever the refspec says.
+    """
+    root, git = _arm_repo(tmp_path)
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+    git("push", "-q", "origin", ARM_BRANCH)
+    git("config", "remote.origin.fetch", "+refs/heads/main:refs/remotes/origin/main")
+    elsewhere = _other_writer(tmp_path)
+    elsewhere("checkout", "-q", ARM_BRANCH)
+    elsewhere("commit", "-q", "--allow-empty", "-m", "pushed elsewhere")
+    elsewhere("push", "-q", "origin", ARM_BRANCH)
+
+    assert _arm(root) == 2
+    out = capsys.readouterr().out
+    assert out.startswith(f"unknown - origin's copy of {ARM_BRANCH} is at ")
+    assert "a commit git could not compare with HEAD" in out
+    assert f"`git pull --no-rebase origin {ARM_BRANCH}`" in out
+
+
+def test_arm_takes_no_copy_of_its_branch_from_a_tracking_ref_the_remote_deleted(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A branch restarted from the base after its old copy was deleted owes that copy nothing.
+
+    No fetch here prunes, so the tracking ref still names the deleted branch's
+    tip and the claim on it, and HEAD lacks both. Read as the remote's copy,
+    it would send the session to pull a finished pull request's commits back
+    in and hold on a claim no clone can fetch (`PL-MT3R`); the listing says
+    the remote has no such branch.
+    """
+    root, git = _arm_repo(tmp_path)
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
+    git("push", "-q", "-u", "origin", ARM_BRANCH)
+    subprocess.run(
+        ["git", "--git-dir", str(tmp_path / "origin.git"), "branch", "-q", "-D", ARM_BRANCH],
+        check=True,
+        capture_output=True,
+    )
+    git("reset", "-q", "--hard", "main")
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+
+    assert _arm(root) == 0
+    assert capsys.readouterr().out.startswith(f"arm - {ARM_BRANCH}")
+
+
 #: The module deciding `arm`'s answer, as the brief names it (`PL-K6B2`).
 ARM_GATE = "subprojects/docket/src/docket/arming.py"
 
