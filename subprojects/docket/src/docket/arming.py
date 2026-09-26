@@ -14,16 +14,17 @@ every later push while a pull request is open.
 **Four answers, and an exit status for each.**
 
 - `arm` (0): the net change a squash would land - `base...HEAD` - lies under
-  the store or the queue's own tooling, `subprojects/docket/`, and leaves this
-  module alone; no claim bound to this branch is unreleased; and the branch
-  contains the base's tip.
+  the store, the queue's own tooling, `subprojects/docket/`, or the pull
+  requests' body records, `docs/pr-bodies/`, and leaves this module alone; no
+  claim bound to this branch is unreleased; and the branch contains the base's
+  tip.
 - `hold` (1), naming what holds it. A claim holds the pull request unarmed and
   a draft, whichever push carried it, until the branch's own copy closes or
   blocks the item or the branch yields it: merged, the branch and its claim go
   together while the work goes on. A lapsed claim is unreleased too - it is
-  work nobody finished or handed back. A path outside the store and the
-  tooling holds it unarmed, and so does a change to this module, because that
-  work waits on a read rather than merging on green CI.
+  work nobody finished or handed back. A path outside the store, the tooling
+  and the records holds it unarmed, and so does a change to this module,
+  because that work waits on a read rather than merging on green CI.
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
@@ -51,7 +52,11 @@ it, rather than withheld.
   read, this module included (2026-09-25, ratified, over holding every path
   outside the store, `PL-SQTR`, built by `PL-K6B2`): the hold fired on every
   docket change and was clicked through, so it guarded nothing, the simulator
-  included. This module stays held so that the gate cannot loosen itself.
+  included. This module stays held so that the gate cannot loosen itself;
+- a body record arms on green beside them (2026-09-25, ratified with the
+  record's form, over every pull request holding on the record it writes
+  before its merge, `PL-979D`): the record is a copy of the body, never a
+  change to read.
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge
@@ -89,13 +94,20 @@ UNKNOWN = "unknown"
 #: now", and the line printed says which.
 EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, UNKNOWN: 2}
 
-#: How many paths outside the store and the tooling a `hold` names before
-#: counting the rest.
+#: How many paths outside the store, the tooling and the records a `hold`
+#: names before counting the rest.
 SHOWN = 5
 
 #: The queue's own tooling, which arms on green beside the store. The path is
 #: this repository's layout, as `claims.CUTOVER_MARKER` is.
 TOOLING = "subprojects/docket/"
+
+#: The pull requests' body records, which arm on green beside the store and the
+#: tooling: `tools/pr_body_check.py --record` writes one on each pull request's
+#: branch before its merge, and a copy of a body is never a change to read
+#: (`PL-979D`). `verify` sanctions the same write as `record`. The path is this
+#: repository's layout, as `TOOLING`'s is.
+RECORDS = "docs/pr-bodies/"
 
 #: The one file under `TOOLING` that still waits on a read: this module, which
 #: decides the answer, so a change to it could loosen the rule it states.
@@ -109,9 +121,9 @@ class Verdict:
     """`arm`'s answer for `HEAD`, and what it rests on.
 
     `claims` are the unreleased claims bound to this branch, `outside` the
-    paths a merge would land outside the store and the tooling, `gate` whether
-    it would change this module, and `behind` how many of the base's commits
-    the branch lacks. `unread` is why the answer is `unknown`,
+    paths a merge would land outside the store, the tooling and the records,
+    `gate` whether it would change this module, and `behind` how many of the
+    base's commits the branch lacks. `unread` is why the answer is `unknown`,
     or what went unread beside a `hold`.
     """
 
