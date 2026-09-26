@@ -9,6 +9,7 @@ feature: interface-areas
 touches: docs/WORKING_NOTES.md, ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-26
+pr: 1114
 verify: grep -qF 'QBuffer::readData' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
