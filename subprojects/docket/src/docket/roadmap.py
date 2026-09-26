@@ -1535,6 +1535,7 @@ def stale_milestones(
     sections: Sequence[MilestoneSection],
     rows: Sequence[VersionRow],
     reached: tuple[int, int, int] | None,
+    releasing: bool | None = None,
 ) -> list[str]:
     """The milestone rows numbered at or below `reached` with no release of that
     number in the version table, each as a statement of the two files.
@@ -1551,6 +1552,12 @@ def stale_milestones(
     the plan needs to give back, and each statement says which edit its case
     owes. A table recording nothing is no record to compare against and
     answers nothing here; `outstanding_roadmap_edits` reports that on its own.
+
+    `releasing` is which of those two a number exactly reached is, where a
+    caller knows: the plan read before a cut's bump was releasing that
+    milestone, or was not (`PL-YS9F`). The files alone cannot say, so `None` -
+    the default, and every caller holding no such plan - names the edit each
+    reading owes and leaves the choice to the reader.
     """
     recorded = released_versions(rows)
     if not recorded or reached is None:
@@ -1567,11 +1574,26 @@ def stale_milestones(
         where = f"timeline line {step.line}"
         where += f", section line {section.line}" if section is not None else ", no section"
         if step.version == reached:
-            statements.append(
+            state = (
                 f"{step.label} ({where}) is numbered v{number}, which the project has reached"
-                f" with no v{number} release in the version table: its table row is owed if"
-                " this release is that milestone, and a new number if it is not"
+                f" with no v{number} release in the version table: "
             )
+            if releasing is None:
+                owed = (
+                    "its table row is owed if this release is that milestone, and a new"
+                    " number if it is not"
+                )
+            elif releasing:
+                owed = (
+                    "the plan was releasing it, so this release is that milestone and its"
+                    " table row is owed"
+                )
+            else:
+                owed = (
+                    "the plan was not releasing it, so a patch has taken its number and the"
+                    " row and its section owe a new one"
+                )
+            statements.append(state + owed)
         else:
             statements.append(
                 f"{step.label} ({where}) is numbered v{number}, which the project has passed"
