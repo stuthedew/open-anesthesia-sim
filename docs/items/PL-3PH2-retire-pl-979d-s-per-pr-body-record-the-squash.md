@@ -92,3 +92,11 @@ put in the reply that proposed it, on `claude/pr-body-storage-cnnpme`.
 **Done when.** No pull request runs a body check or a record step, the release
 mode recovers dropped bodies, every document above says the squash commit is
 the record, the three follow-ons are closed, and `make check` is green.
+
+**Build state, 2026-09-26.** Claimed on `claude/pr-body-storage-cnnpme`, then
+stopped for length before any build commit. No pull request is open yet on
+purpose: open it, as a draft, with the build's first push, which removes the
+`pr-title` body step. The workflow then runs from the pull request's own merge
+ref and never reaches the check, whereas a draft opened now would fail
+`pr-title` on its first head for want of a `docs/pr-bodies/` record -
+`PL-K9XQ`'s defect, which this item retires.
