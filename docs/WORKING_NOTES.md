@@ -1304,9 +1304,272 @@ window has closed, so closing the main window quits the application while the
 break-out window is still visible. The rule v0.6.0's region is built for needs
 the main window to *veto its own close* instead; `PL-Y04W` carries it.
 
-**A third, filed rather than left here**: PySide6 6.11.2 segfaults on
-`QDataStream` over a temporary `QByteArray`, which the persistence work will
-meet the first time it decodes a saved blob (`PL-NDKC`).
+**A third, filed rather than left here**: PySide6 6.11.2 frees a temporary
+`QByteArray` that Qt still points at, through `QDataStream`, `QBuffer` and four
+more entry points (`PL-NDKC`), measured in full on 2026-09-26 in a thread of its
+own that `bin/docket show PL-NDKC` finds. The forecast first written here, that the persistence work
+meets it when it decodes a saved blob, did not survive `PL-C842`: the saved
+workspace is JSON.
+
+## Measured: PySide6 frees a temporary QByteArray that Qt still points at, at six entry points - PL-NDKC (2026-09-26)
+
+**The trap.** A Qt object built over a `QByteArray` that nothing else
+references reads or writes freed memory. Found 2026-09-16 while re-measuring
+`QSplitter.saveState()` for the v0.6.0 scoping, and measured on 2026-09-26
+against PySide6 6.11.2 / Qt 6.11.2 on CPython 3.14.7, Linux x86-64 - the
+versions `uv.lock` resolves. 6.11.2 was also the newest PySide6 on PyPI that
+day, so no upgrade escapes it.
+
+Six Qt entry points keep the `QByteArray *` they are given. PyQt6 6.11.0's sip
+declarations for QtCore, QtGui and QtWidgets name seven `QByteArray *`
+parameters, all in QtCore: these six, and `QIODevice::readLineInto(QByteArray *,
+qint64)`, which writes into the array during the call and keeps nothing. Each
+form below ran 25 times, one process per run. The readers read back an `int32`
+and a `QString` first written through a stream over a named array, or a line of
+text, and the writers wrote one key and its value:
+
+| Qt's C++ signature | Python calls that bind it on PySide6 6.11.2 | Over a temporary, 25 runs each |
+| --- | --- | --- |
+| `QDataStream(QByteArray *, OpenMode)` | `QDataStream(array, mode)`, two arguments only | segfault on the first read, every run (exit 139) |
+| `QBuffer(QByteArray *, QObject *)` | `QBuffer(array)` | opened and read through `QDataStream(buffer)`: `0` and `''` every run, with `stream.status()` still `Ok` |
+| `QBuffer::setBuffer(QByteArray *)` | `buffer.setBuffer(array)` | read through `QDataStream(buffer)`: `0` and `''` with `Ok`, every run; read with `readAll()`, `read()` or `data()`: segfault, every run |
+| `QTextStream(QByteArray *, OpenMode)` | `QTextStream(array)` and `QTextStream(array, mode)` | segfault in `readAll()`, every run, one argument or two |
+| `QXmlStreamWriter(QByteArray *)` | `QXmlStreamWriter(array)` | segfault while writing, every run |
+| `QCborStreamWriter(QByteArray *)` | `QCborStreamWriter(array)` | segfault while writing, every run |
+
+And the forms that read or wrote correctly:
+
+| Constructed as | Outcome, 25 runs each |
+| --- | --- |
+| `QDataStream(QByteArray(blob))` - one argument, no mode | correct every run |
+| any of the six, given an array bound to a name | correct every run |
+| `QBuffer()`, then `setData(QByteArray(blob))` or `setData(blob)` | correct every run |
+| `QTextStream`, `QXmlStreamWriter` or `QCborStreamWriter` over a `QBuffer()` opened for writing, read back with `buffer.data()` | correct every run |
+| `QDataStream(blob, ...)`, `QDataStream(blob)`, `QBuffer(blob)` or `QTextStream(blob)`, `blob` a Python `bytes` | refused: `ValueError`, "called with wrong argument values" |
+
+**PySide6 keeps no reference to the array at any of the six.** `sys.getrefcount`
+on a named array reads the same before and after each of the six calls, while
+`QReadLocker(lock)`, which PySide6's typesystem does give a `reference-count`,
+raises its lock's count by one. So once the caller's last reference goes, the
+array is freed with Qt still pointing at it.
+
+The `QDataStream` segfault's faulthandler C stack, innermost first:
+`QBuffer::readData`, from `QIODevicePrivate::read`, from
+`QDataStream::readBlock`, all in `libQt6Core.so.6`.
+
+**The silent rows are the worse ones, and no row is a guarantee.** They return
+values a decoder would accept, and `status()` - whose `ReadPastEnd` and
+`ReadCorruptData` are how Qt reports a bad read - says `Ok`. Nor is the outcome
+fixed per entry point. `setBuffer` read zeros through a stream and segfaulted
+through `readAll()`. A `QBuffer` over a temporary whose `size()` and then
+`data()` were called reported the right size and then segfaulted inside
+`data()`. And a second session on the same versions, running its own scripts
+five times each on 2026-09-26, saw `QXmlStreamWriter` return normally 5 of 5 -
+writing into freed memory with nothing reported - and `QCborStreamWriter`
+segfault 1 of 5, where the scripts here segfaulted 25 of 25 for both. This is
+undefined behaviour, so each row is what this build's allocator and that script
+happened to leave in the freed memory, not a property anything can rely on.
+
+**Why.** All six end in a `QBuffer` holding the caller's pointer. `QBuffer`'s
+constructor and `setBuffer` store it, and the four stream constructors -
+`QDataStream::QDataStream(QByteArray *a, OpenMode)`,
+`QTextStream::QTextStream(QByteArray *array, OpenMode)`,
+`QXmlStreamWriter::QXmlStreamWriter(QByteArray *array)` and
+`QCborStreamWriter::QCborStreamWriter(QByteArray *data)` - wrap it in
+`new QBuffer` and open that buffer before they return. Qt documents
+`QBuffer::QBuffer(QByteArray *byteArray, QObject *parent)` as: "The caller is
+responsible for ensuring that byteArray remains valid until the QBuffer is
+destroyed, or until setBuffer() is called to change the buffer. QBuffer doesn't
+take ownership of the QByteArray." PySide6 keeps nothing alive for any of them:
+their entries in the 6.11.2 wheel's typesystems/typesystem_core_common.xml carry
+no `reference-count`, the element the same file uses to hold a pointer argument
+alive elsewhere, as on `QReadLocker(QReadWriteLock*)`. So a temporary's wrapper
+is released when the call returns, and takes the C++ array with it. The
+one-argument `QDataStream::QDataStream(const QByteArray &a)` fills its buffer
+with `setData(a)` instead, which copies, and that is why it is safe. Qt gives
+`QTextStream` the same copying overload, `QTextStream(const QByteArray &,
+OpenMode)`, but the 6.11.2 typesystem removes it (`remove="all"`), so in Python
+every `QTextStream` over a `QByteArray` binds the pointer, one argument or two.
+Qt's sources at the tag the wheel bundles:
+https://github.com/qt/qtbase/blob/v6.11.2/src/corelib/serialization/qdatastream.cpp,
+https://github.com/qt/qtbase/blob/v6.11.2/src/corelib/io/qbuffer.cpp,
+https://github.com/qt/qtbase/blob/v6.11.2/src/corelib/serialization/qtextstream.cpp,
+https://github.com/qt/qtbase/blob/v6.11.2/src/corelib/serialization/qxmlstream.cpp
+and
+https://github.com/qt/qtbase/blob/v6.11.2/src/corelib/serialization/qcborstreamwriter.cpp.
+
+**Not a PySide quirk, and not reported.** PyQt6 6.11.0 / Qt 6.11.0 fails the
+`QDataStream` and `QBuffer` forms under the same reproduction, 25 runs of 25
+each: the `QDataStream` form segfaults through the same three frames, and the
+`QBuffer` form segfaults rather than reading zeros. PyQt6's sip declarations
+give none of the six a KeepReference - five mark the array Constrained, and
+`QXmlStreamWriter`'s carries no annotation - so it too leaves the array's
+lifetime to the caller. PySide's development branch declared all six exactly as
+6.11.2 does on 2026-09-26, so no fix is in progress. A query of the PYSIDE
+project on the Qt tracker, now https://qt-project.atlassian.net, on 2026-09-26
+for `QBuffer`, `setBuffer`, `QDataStream`, `QTextStream`, `QXmlStreamWriter` and
+`QCborStreamWriter` found no report of the trap among the 27 distinct issues it
+returned. The nearest title, PYSIDE-232 "Crash with QDataStream and
+QByteArray", is a different bug: PySide 1.2.0 crashing in `repr()` of a named
+`QByteArray` that a `QDataStream` had written into, closed Done on 2018-06-04 by
+pyside-setup commit ee8e7117, "Improve the QByteArray implementation". In C++ the mistake does not
+compile - g++ 13 rejects taking a temporary's address with "taking address of
+rvalue" - so this is a C++ safety rule lost on the way to Python: the calling
+code breaks Qt's documented contract, and neither binding stops it, although
+Python's own promise is that pure-Python code cannot corrupt memory.
+
+**PySide's own documentation states the rule for one of the six.** Its
+`QBuffer` page (https://doc.qt.io/qtforpython-6/PySide6/QtCore/QBuffer.html)
+carries Qt's sentence verbatim: "The caller is responsible for ensuring that
+byteArray remains valid until the QBuffer is destroyed, or until setBuffer() is
+called to change the buffer." Its `QDataStream` and `QTextStream` pages say only
+that a `QBuffer` is created internally to wrap the array, which is exactly the
+buffer the caller never sees.
+
+**Upstream's stance, which a report has to answer.** PySide's maintainers have
+held that a pointer argument is the caller's to keep alive. On PYSIDE-1807
+(2022, `installEventFilter`, still unresolved) a maintainer wrote: "it seems to
+me it's the proper behavior and a reference must not be taken, and you should
+be responsible of keeping the filter object alive ... it takes a pointer, and
+not a reference so I'm more inclined to keep this behavior as is". PYSIDE-237
+(`QStandardItem.insertRow`) was closed Invalid on 2017-03-02 as by design, and
+has been disputed in its comments since, most recently in 2026 against PySide6
+6.10.2. A report here would argue what differs: the argument is a value type
+whose own Python signature advertises `bytes | bytearray | memoryview` (which
+the binding then refuses, as measured above); the pointer is held by a `QBuffer`
+the caller never sees, created inside the call; and the outcome is a segfault or
+silently wrong data. A report was recommended to the project owner on
+2026-09-26 and is not filed.
+
+**The rule: never pass a `QByteArray` where Qt's C++ signature takes
+`QByteArray *`.** Let Qt own the bytes, or copy them. The first table above
+lists the six signatures and the Python calls that bind them. A call does not
+show which overload it binds, and two read alike: `QDataStream(array)` with one
+argument binds `const QByteArray &` and copies, while `QTextStream(array)` with
+one argument binds the pointer. `PL-KJXS` is the check that would enforce the
+rule, filed rather than built here.
+
+- **This project's own data goes through the standard library**, not Qt's
+  binary stream: JSON bytes into and out of `QMimeData.setData` for a drag
+  payload, measured round-tripping on 2026-09-26. Qt's own documentation says
+  `QDataStream`'s binary format "has evolved since Qt 1.0, and is likely to
+  continue evolving", so bytes saved through it are tied to a Qt version, where
+  JSON is readable, diffable and testable without Qt.
+- **Where Qt needs an I/O device**, `QBuffer()` with no argument owns its
+  storage and cannot dangle: an in-memory PNG written through
+  `QImage.save(buffer, "PNG")` encoded and decoded correctly on 2026-09-26, and
+  text, XML and CBOR written through `QTextStream`, `QXmlStreamWriter` and
+  `QCborStreamWriter` over one came back byte for byte from `buffer.data()`.
+- **Reading bytes Qt itself wrote** - a stock item view's drag data, say - is
+  the one case that needs a stream, and the one-argument `QDataStream(array)` is
+  Qt's own read-only constructor, which copies, so a temporary is safe there.
+- **Do not lean on `stream.status()` to catch it.** The silent rows read `Ok`.
+
+**What avoiding it costs: nothing planned.** Saved layouts are JSON under
+`PL-C842`, and so is the saved-workspace file `PL-SSQW` decides. Scenario
+save/load, planned-milestone item 9, persists simulation state, and
+`tools/import_boundary_check.py` already refuses any `PySide6` import under
+`core/`, so no stream could reach it. Qt's opaque geometry and splitter blobs go
+back to Qt undecoded, if they are kept at all.
+
+**Where it will be met.** Nowhere yet: nothing under `src/` or `tests/`
+calls any of the six on 2026-09-26. And not where `PL-NDKC` first said.
+Under `PL-C842` the saved workspace `PL-SSQW` decides is versioned JSON written
+from the `LayoutModel`, and no view calls `saveState()`, so the persistence path
+decodes no Qt blob. The candidates are the Qt code built around the model:
+
+- a drag payload in `QMimeData` for `PL-2KXB`'s Area swap. Qt's own Draggable
+  Icons example decodes one with `QDataStream dataStream(&itemData,
+  QIODevice::ReadOnly)`, which is safe in C++ over its named `itemData` and is
+  the trap in a Python port that passes `event.mimeData().data(...)` straight
+  into the call
+  (https://github.com/qt/qtbase/blob/v6.11.2/examples/widgets/draganddrop/draggableicons/dragwidget.cpp);
+- a `saveGeometry()` blob, if `PL-Y04W`'s break-out persists window placement
+  that way and decodes it to validate it;
+- any test that decodes a Qt state blob, as the 2026-09-16 measurement did.
+
+**The reproduction**, one form per process: `python -X faulthandler repro.py
+refcount` first, then `temporary`, `qbuffer`, `textstream`, `xml` and `safe`.
+The `refcount` form is the deterministic one; the others show what the freed
+memory did on this build:
+
+```python
+import sys
+
+from PySide6.QtCore import (
+    QBuffer,
+    QByteArray,
+    QCborStreamWriter,
+    QDataStream,
+    QIODevice,
+    QReadLocker,
+    QReadWriteLock,
+    QTextStream,
+    QXmlStreamWriter,
+)
+
+READ = QIODevice.OpenModeFlag.ReadOnly
+written = QByteArray()
+out = QDataStream(written, QIODevice.OpenModeFlag.WriteOnly)
+out.writeInt32(42)
+out.writeQString("hello, workspace")
+del out
+blob = bytes(written.data())
+
+
+def set_buffer(array):
+    buffer = QBuffer()
+    buffer.setBuffer(array)
+    return buffer
+
+
+if sys.argv[1] == "refcount":  # the six print n -> n; the control prints n -> n + 1
+    lock = QReadWriteLock()
+    before = sys.getrefcount(lock)
+    locker = QReadLocker(lock)
+    print("control QReadLocker(lock)", before, "->", sys.getrefcount(lock))
+    locker.unlock()
+    for name, keep in [
+        ("QBuffer(array)", QBuffer),
+        ("QBuffer().setBuffer(array)", set_buffer),
+        ("QDataStream(array, READ)", lambda array: QDataStream(array, READ)),
+        ("QTextStream(array)", QTextStream),
+        ("QXmlStreamWriter(array)", QXmlStreamWriter),
+        ("QCborStreamWriter(array)", QCborStreamWriter),
+    ]:
+        array = QByteArray(blob)
+        before = sys.getrefcount(array)
+        kept = keep(array)
+        print(name, before, "->", sys.getrefcount(array))
+        del kept  # before the array it points at is rebound and freed
+elif sys.argv[1] == "temporary":  # segfaults in QBuffer::readData
+    stream = QDataStream(QByteArray(blob), READ)
+    print(stream.readInt32(), repr(stream.readQString()), stream.status())
+elif sys.argv[1] == "qbuffer":  # reads 0 and '' with status Ok
+    buffer = QBuffer(QByteArray(blob))
+    buffer.open(READ)
+    stream = QDataStream(buffer)
+    print(stream.readInt32(), repr(stream.readQString()), stream.status())
+elif sys.argv[1] == "textstream":  # segfaults, with one argument as with two
+    text = QTextStream(QByteArray(b"hello, workspace"))
+    print(repr(text.readAll()))
+elif sys.argv[1] == "xml":  # segfaults while writing
+    writer = QXmlStreamWriter(QByteArray())
+    writer.writeStartDocument()
+    writer.writeTextElement("k", "v")
+    writer.writeEndDocument()
+else:  # "safe": reads 42 and 'hello, workspace'
+    stream = QDataStream(QByteArray(blob))
+    print(stream.readInt32(), repr(stream.readQString()), stream.status())
+```
+
+**Re-measure on any PySide6 upgrade.** Run `refcount` first. A fix made the way
+PySide already keeps `QReadLocker`'s lock alive shows as that entry point's
+count rising by one, like the control's, and a fix to one entry point says
+nothing about the other five. The other forms are illustrations rather than the
+test, since their outcome is undefined behaviour and has varied by script. The
+rule above does not depend on a fix: it avoids the pointer-taking signatures
+rather than working around them, so it costs nothing to keep after one.
 
 ## The generator tier has a second entrance, and one question left open
 
