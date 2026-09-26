@@ -6546,10 +6546,14 @@ def test_trend_reports_each_measure_and_names_the_work_no_lane_could_place(
     assert rows["2026-09-01..09-05"] == ["1/0", "1", "0", "100%", "1/0", "100%"]
 
 
-def test_trend_omits_the_churn_columns_when_git_cannot_be_read(
+def test_trend_omits_the_churn_columns_under_no_git(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Absent rather than zero: a zero would read as a week nobody wrote code in."""
+    """Absent rather than zero: a zero would read as a week nobody wrote code in.
+
+    Named for the cause it runs. `--no-git` asks git nothing, which the key
+    words differently from a git that could not be read (`PL-PWH6`).
+    """
     store = str(_trend_store(tmp_path))
 
     assert main(["trend", "--items", store, "--no-git", "--today", "2026-09-05"]) == 0
@@ -7329,6 +7333,31 @@ def test_set_holds_a_command_it_writes_to_the_admitted_shapes_whatever_the_item_
 
     assert write("--verify", "grep -q 'def test_a' tests/unit/test_a.py") == 0
     assert "verify: grep -q 'def test_a' tests/unit/test_a.py\n" in _item_text(store)
+
+
+def test_set_refuses_a_verify_that_already_passes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The replay's error, at the moment of writing rather than a `make check` later.
+
+    A `grep` for a string the command itself spells passes on its own
+    `verify:` line, so it proves nothing about the work. `set` wrote one and
+    exited 0, and the next `check --verify` refused it (`PL-CBDX`, `PL-FTDB`).
+    The command runs with the line written, which is the only tree it passes
+    on, and a refusal puts the file back as it was.
+    """
+    store = _store(tmp_path, OPEN_ITEM)
+    probe = "grep -qF 'self-match-probe' items/item-0.md"
+
+    assert _run("set", "PL-K7QX", "--verify", probe, "--overwrite", "--items", str(store)) == 1
+    out = capsys.readouterr().out
+    assert "nothing was written" in out
+    assert "PL-K7QX is open but its `verify:` command already passes" in out
+    assert _item_text(store) == OPEN_ITEM
+
+    work = "grep -qF 'def test_the_work' tests/unit/test_work.py"
+    assert _run("set", "PL-K7QX", "--verify", work, "--overwrite", "--items", str(store)) == 0
+    assert f"verify: {work}\n" in _item_text(store)
 
 
 def test_set_refuses_a_file_it_could_not_rewrite_faithfully(
