@@ -2744,6 +2744,16 @@ def cmd_generators(args: argparse.Namespace) -> int:
     the command makes it one screen, and flags the overlap it can decide.
     """
     _, items, config = _load(args)
+    if args.head and args.misread:
+        # The pair is refused rather than half of it dropped: the id view was
+        # printed as though the flag had been honoured (`PL-SL4L`), and it
+        # already carries its head's `misread:` line.
+        print(
+            f"`--misread` lists every head and takes no id: run `bin/docket generators "
+            f"--misread` for that list, or `bin/docket generators {args.head}` for one "
+            f"cluster, whose view already prints its head's `misread:` line."
+        )
+        return 1
     groups = clusters(items)
     if not args.head:
         pairs = overlaps(groups)

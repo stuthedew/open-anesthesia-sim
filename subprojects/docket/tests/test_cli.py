@@ -7830,6 +7830,25 @@ def test_generators_on_a_head_prints_its_misread(
     assert f"\n  misread: {_MISREAD}\n" in capsys.readouterr().out
 
 
+def test_generators_given_an_id_and_misread_does_not_ignore_the_flag(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The pair printed the cluster view at exit 0, as though the flag were honoured.
+
+    Refused instead, naming both commands that answer (`PL-SL4L`).
+    """
+    store = _overlapping_heads(tmp_path)
+
+    assert _run("generators", "PL-4040", "--misread", "--items", str(store)) == 1
+
+    output = capsys.readouterr().out
+    assert "`--misread` lists every head and takes no id" in output
+    assert "`bin/docket generators --misread`" in output
+    assert "`bin/docket generators PL-4040`" in output
+    assert "root cause of" not in output
+    assert f"misread: {_MISREAD}" not in output
+
+
 def test_show_on_a_head_prints_its_misread_beside_the_verdict(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
