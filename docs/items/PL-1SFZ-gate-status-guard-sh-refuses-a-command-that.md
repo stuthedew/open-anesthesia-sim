@@ -32,7 +32,7 @@ Removing any single one of the differences still refuses: the leading
 `git status -s &&`, `-p no:randomly`, `-k "name"`, or the trailing
 `git stash pop -q && git status -s`. So the trigger is a combination, not yet
 isolated. Start from those two strings. `sets_pipefail` and the separator
-walk after it (around line 171 and line 198) are where the verdict is made.
+walk after it are where the verdict is made.
 
 **Reproduced at triage, 2026-09-23, and the premise above is half wrong.** Both
 commands quoted above are refused today, the second as well as the first, and
@@ -44,14 +44,31 @@ command without stripping the `{` or `(` that `strip_prefixes` strips for
 ... )` are refused; `set -o pipefail; { uv run pytest -q t.py 2>&1 | tail -12;
 echo "exit=$?"; }` passes.
 
+**Re-confirmed 2026-09-26 on `22a856a4`, and the fix is wider than one token.**
+Every replay above still reproduces, and there is a second cause the triage's
+own replay needs: the `;` that ends a brace group is read as handing the status
+on, so `{ set -o pipefail; uv run pytest -q t.py 2>&1 | tail -12; }` stays
+refused with `sets_pipefail` fixed, and so are `{ make check; }` and `( make
+check; )`, which keep the status with no pipe at all. The last passing replay
+above passes only because its `echo "exit=$?"` sits between the pipeline and
+the `}`. And crediting the `set` to everything after it would trade the false
+refusal for a false green: `(set -o pipefail; make check) | tail` and `{ set -o
+pipefail; make check; } | tail` lose the status in bash, because the `set` runs
+in a subshell the outer pipe never sees. So the fix is bash's own scoping - a
+`set` lasts as long as the shell it runs in - and a `;` before the `}` or `)`
+that ends a group hands the status to nothing.
+
 **Why it matters.** The refusal tells the session to add `set -o pipefail`,
 which the refused command already carries, so the correct spelling costs a retry
 and the guard teaches that its refusals can be wrong - the lesson that gets a
 guard routed around.
 
 **Done when.** A `set -o pipefail` opening a `{ ...; }` or `( ... )` group
-counts for the pipelines after it, as it does in bash, pinned by a test that
-replays both group spellings.
+counts for the pipelines after it, as it does in bash - to the group's end
+where the group is a subshell, past it where it is not - and a `;` before the
+`}` or `)` that ends a group hands the status to nothing. Pinned by a test that
+replays both group spellings, and by one holding that the subshell shapes above
+are still refused.
 
 **Generator check.** One-off: two readers of a segment's head disagree about
 which prefixes to strip inside one hook. `PL-GVFC` is the same kind of fault in
