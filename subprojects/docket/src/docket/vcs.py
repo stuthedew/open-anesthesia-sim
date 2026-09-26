@@ -1,15 +1,25 @@
 """What git already knows about work in progress.
 
-Whether an item is being worked on right now is a fact the repository
-already holds: a branch is carrying its commits. Storing that in the item file
-instead would mean a session has to remember to write it when it starts and
-to clear it when it stops - and a session that crashes, or that is simply
-abandoned, leaves the item marked in-progress forever with nobody able to
-tell whether that is true.
+Who holds an item is recorded; whether the work has landed is derived. This
+module once derived both, because storing a hold in the item file would mean a
+session has to remember to write it when it starts and to clear it when it
+stops - and a session that crashes, or that is simply abandoned, leaves the
+item marked in-progress forever with nobody able to tell whether that is true.
+Deriving the holder failed in its own way. Read from which ids lead a commit's
+subject, which paths it touched and how old the ref is, each new shape of work
+was misread by some reader until it got an exception of its own, and twenty
+items were that one mechanism (`PL-MB2W`). So a session records its hold as a
+`Claim:` trailer on an empty commit on its own branch, nothing is written into
+the store, and a claim whose branch goes seven days without a non-merge commit
+lapses: the lease answers the crashed session, which was the whole case against
+recording. Every reader of in-flight work asks `claims.holdings`, which reads
+that record.
 
-So it is derived, never stored. A branch that is gone means work that is not
-in flight, which is exactly right: branches are deleted when their pull
-request merges.
+What stays here is what the repository holds without anybody writing it down.
+A branch that is gone means work that is not in flight, which is exactly
+right: branches are deleted when their pull request merges. Whether a branch's
+work has landed is derived, because the merge authors that fact and no session
+can record it (`_unlanded_refs`, `_landing_split`).
 
 The same holds for finished work: which pull requests have reached the
 default branch is a fact the repository holds, so an item's recorded pull

@@ -520,15 +520,101 @@ repository, where it must decline. Silencing one call at a time cannot reach a
 read whose every call git answers there, which is how `changed_items` came to
 answer with no repository at all (`PL-19T3`).
 
+### Who holds an item is recorded, and whether its work landed is derived
+
+A session takes an item with `docket claim`, and that commit is the record of
+who holds it. Every reader of in-flight work asks one function for it,
+`claims.holdings`: `flight` and the commands that rank against it, the session
+digest, `release`'s collision guard, `docket arm`, `claim` itself and
+`tools/branch_id_check.py`. The holder used to be worked out instead, by each
+of three readers for itself (`branches_in_flight`, the release guard and the
+arming rule), from which id led a commit's subject, which paths the commit
+touched and how old the ref was. Every new shape of work — a triage pass, a
+design round, a rider, a bystander ref — was misread by some reader until it
+got an exception of its own. Twenty items were that one mechanism (`PL-MB2W`),
+and recording the fact where it is known retired it.
+
+**The carrier is a trailer on an empty commit on the holder's own branch:**
+
+    Claim: <ID> <branch> [<session>] [over <ref>@<hash>]
+    Yield: <ID> <branch>
+
+It sits in the commit's last paragraph beside the attribution lines, because
+that is the only paragraph git reads a trailer from, and only `claim` and
+`yield` write it (`claiming.py`). Nothing is written into the store, so a claim
+conflicts with nothing, and one that squashes into the default branch is inert
+there: the base's own commits are never read for claims. A claim counts only
+for the branch its token names, so a branch that merged the claiming one, or
+cherry-picked its commit, holds nothing by it.
+
+**It holds under a lease, which answers the objection that kept it derived.**
+A recorded mark was refused because a session that crashes leaves the item
+marked in progress forever (`PL-BHVM`). A claim lapses once its branch goes
+seven days (`claims.LEASE_TERM`) without a non-merge commit, a term measured
+against the longest owner absence on `main`, 92.1 h, since a session waiting
+on the owner cannot renew. A lapsed claim holds nothing, and `claim` passes it.
+A claim still live whose session has ended is taken over with `claim --over
+<branch> --reason "..."`, which records the reason in the commit's body;
+`.claude/skills/docket/modes/start.md` says what evidence that needs.
+
+**A claim ends in one of five ways:** a `Yield:`, the branch's own copy of the
+item reaching `done`, `dropped` or `blocked` (`claims.RELEASING_STATUSES`), a
+takeover, a lapse, or landing. Landing is the one a session cannot record,
+because the merge authors it, so it stays derived. A branch the base contains,
+or whose content it holds, is not read at all; within one still read, a claim
+is spent by the base closing the item, or by the branch's landed prefix — a
+commit descending from the claim through which the branch's work is all on the
+base, which is what a squash leaves on a branch that goes on committing
+(`PL-8JQQ`).
+
+**The order is author date, then hash**, which a rebase leaves alone, so every
+checkout computes the same order from the same commits: the earliest live
+claim holds the item, and a takeover sorts immediately ahead of the claim it
+names. It is an order rather than a fence: nothing stops a later claim being
+written. `claim` itself writes nothing where a live claim elsewhere orders
+first, unless it is taking that claim over, and withdraws a claim this branch
+never pushed where another session has published one, since git records no
+push time (`PL-ZLJ9`). And
+`tools/branch_id_check.py`, in `make check` and in CI, fails a branch whose
+claim orders behind another live claim on the same item, and a `claude/*`
+branch that changed something outside the queue with no claim of its own and
+no item in its name (`PL-J9S0`).
+
+**Three other kinds of hold ride the same read, and none of them is a claim.**
+A *status disposition* is a branch whose copy of an item has moved its
+`status:` away from both the fork's copy and the base's — a triage or grooming
+pass readying, blocking or dropping it — which `next` must not offer over. A
+*cut* is a release's notes file on an unlanded branch, and it always refuses a
+release. A *name* is a branch named for its item, `claude/pl-k7qx-slug`.
+`Holdings` keeps each apart from the claims, so a reader wanting claims is
+never handed one, and neither a disposition nor a name orders against a claim
+or holds arming.
+
+**git 2.22 is the floor** (`claims.GIT_FLOOR`), declared rather than worked
+around. It is the first git whose `%(trailers:...)` placeholder takes `key=`,
+`valueonly` and `separator=`, which is what reads one trailer key's values
+without copying git's rules for finding a trailer block into Python. An older
+git declines: `holdings` returns no holds and says why in `Holdings.declined`,
+and each reader then says its reading is partial, or declines to answer,
+rather than reporting that nothing is held.
+
+A commit made before a session could write a claim is read by the old rule in
+the section below, with none of the promotions, and `PL-CH3Z` deletes that
+reading once no ref needs it, which `flight`'s `legacy refs:` count reports.
+`claims.py`'s module docstring carries the rest of the specification, and
+`PL-MB2W` § "Design round, 2026-09-24" the reasoning.
+
 ### In flight is read from the commits, not from the branch name
 
 Two sessions may be running at once, so neither must start an item the other
-is already implementing — and nothing records that one has. The fact is in git,
-where a branch is already carrying the work: `docket flight` reads it back, and
-`docket next` excludes what it finds.
+is already implementing. The claim above records that one has, and the rest of
+what a branch carries is in git beside it: `docket flight` reads both back,
+and `docket next` excludes what it finds.
 
-The id is taken from **the front of the commit subjects**, and from the branch
-name where it carries one. Reading names alone is what this replaced, and it
+Before the claim record, the id was taken from **the front of the commit
+subjects**, and from the branch name where it carries one; attribution, and a
+commit made before the record, are still read that way. Reading names alone is
+what this replaced, and it
 went blind in exactly the case it existed for. A session names its own branch
 `claude/pl-k7qx-short-slug`, but a branch created for it by a web harness is
 named from the opening prompt — `claude/roadmap-release-write-failure-nhsjwo` —
@@ -3819,9 +3905,12 @@ The advisory is skipped where the project names no `instruction_paths`.
 
 ## Requirements
 
-Python 3.11 or newer, and nothing else. Standard library only, so a
-session-start hook can run it in a bare checkout with no virtualenv and no
-install step.
+Python 3.11 or newer, and git 2.22 or newer to read who holds an item, and
+nothing else. Standard library only, so a session-start hook can run it in a
+bare checkout with no virtualenv and no install step. The git floor is the
+claim record's (`claims.GIT_FLOOR`): below it `holdings` declines and says so,
+rather than reading no claims, as § "Who holds an item is recorded, and
+whether its work landed is derived" describes.
 
 ## Running the tests
 
