@@ -3,12 +3,14 @@ id: PL-61FT
 title: The Bash guard hooks decide what a command does from its spelling and pass whatever their model of bash and git does not cover, so each fix's session probes the next spelling and files it: the six guard fixes merged on 2026-09-26 filed nine more, and none of the twelve records a session meeting it in ordinary work
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect
 feature: bash-guard-bound
 touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/no-prune-guard.sh, .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_gate_status_guard.py, tests/unit/test_no_prune_guard.py, tests/unit/test_floor_interpreter_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head at triage
 added: 2026-09-26
+payoff: each Bash guard's header says what it promises, and a spelling found only by probing is recorded as a known gap beside its tests instead of filed, so fixing one guard spelling stops filing the next as work owed
+verify: grep -q 'def test_a_known_gap_keeps_todays_verdict' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_known_gap_keeps_todays_verdict' tests/unit/test_no_prune_guard.py && grep -q 'def test_a_known_gap_keeps_todays_verdict' tests/unit/test_floor_interpreter_guard.py && grep -q 'What it promises' .claude/hooks/gate-status-guard.sh && grep -q 'What it promises' .claude/hooks/no-prune-guard.sh && grep -q 'What it promises' .claude/hooks/floor-interpreter-guard.sh
 root-cause-of: PL-0X0G, PL-K9QL, PL-TRMN, PL-9RSP, PL-KQ4Q, PL-R17X, PL-DCHW, PL-QMN0, PL-W9XN, PL-M2NV, PL-YFT4, PL-R5N0, PL-R295, PL-N6JP
 generator: live - each fix reads one more spelling as bash or git reads it, and the session making it probes the spellings beside it and files each gap: the six member fixes merged on 2026-09-26 filed nine more members in their own closing commits
 misread: What a shell command does when run: which program it runs, on what, and whether its status survives
@@ -251,7 +253,7 @@ starts it before the build records it as a known gap. The build follows the
 plan under "The build": one thread after `PL-M2NV` merges, writing the promise
 paragraphs, the three `KNOWN_GAPS` tables and their test, and the close-outs of
 `PL-DCHW`, `PL-QMN0`, `PL-W9XN`, `PL-YFT4`, `PL-BM3Z` and `PL-7PB9`; `PL-R295`
-and `PL-N6JP` are worked at their own ranks. Left at `needs-decision` by the
-design thread, which moves no status; the build thread readies it when it
-takes it, and `bin/docket generators` should report this head drained when
-the last of those close-outs lands.
+and `PL-N6JP` are worked at their own ranks. The design thread moved no
+status, and the build thread readied the item on taking it; `bin/docket
+generators` should report this head drained when the last of those
+close-outs lands.
