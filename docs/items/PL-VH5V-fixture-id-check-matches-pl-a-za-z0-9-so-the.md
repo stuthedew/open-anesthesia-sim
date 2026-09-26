@@ -3,13 +3,16 @@ id: PL-VH5V
 title: fixture_id_check matches PL-[A-Za-z0-9]+, so the prose 'Every PL-prefixed token' in .claude/ or a .py message is read as an id, while the placeholders PL-XXXX and PL-ZZZZ are accepted as valid
 priority: P3
 effort: S
-status: blocked
+status: done
 classes: defect
 feature: exact-gates
 touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py
-blocked-by: PL-GPJ7
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
+closed: 2026-09-26
+pr: 1094
+payoff: a sentence under .claude/ or a Python message that writes the PL- prefix as a word stops failing make check, while a malformed id written there is still refused
+verify: grep -q 'def test_the_prose_token_pl_prefixed_is_not_read_as_an_id' tests/unit/test_fixture_id_check.py
 ---
 
 **Problem.** fixture_id_check matches PL-[A-Za-z0-9]+, so the prose 'Every PL-prefixed token' in .claude/ or a .py message is read as an id, while the placeholders PL-XXXX and PL-ZZZZ are accepted as valid
@@ -20,7 +23,7 @@ Re-confirmed 2026-09-25 against 46954a81, for half of it: `fixture_id_check.malf
 
 **The original done-when would switch the check off** (corrected at triage, 2026-09-25). `CANDIDATE_RE` is loose on purpose: it finds what looks like an id and `ID_RE` judges it. Made `ID_PATTERN`, it finds only tokens that pass, and `malformed()` can never yield. Of the 35 markers in tests, 28 are in `tests/unit/test_fixture_id_check.py`, the check's own rejection fixtures, malformed on purpose; no marker outside tests marks prose, so the false refusal has not been met outside the fuzz harness. Writing the prefix as code, a backticked `PL-` before `-prefixed`, already passes.
 
-Blocked on `PL-GPJ7`: whether this check's `.claude/` text scan can be an exact rule, or goes to an advisory, is the head's rule to set, and the fix here follows from it.
+[superseded 2026-09-26] Blocked on `PL-GPJ7`: whether this check's `.claude/` text scan can be an exact rule, or goes to an advisory, is the head's rule to set, and the fix here follows from it. The head set it in its Done-when and took this item as step 4 of its Split, so it is worked there.
 
 **Generator check.** The fact misread is whether a `PL-` token is an attempted id, recognised by the prefix - `PL-GPJ7`'s `misread:`, and a member of it correctly for the false-refusal half only. The false-pass half misreads nothing: it is `PL-ZJ6X`'s grammar, applied as that head left it.
 
