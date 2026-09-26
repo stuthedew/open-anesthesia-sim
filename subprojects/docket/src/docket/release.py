@@ -329,6 +329,39 @@ def already_released(
     return found
 
 
+def below_current(version: str, current: str, version_file: str) -> str:
+    """Why cutting `version` would move the version field backwards, or empty.
+
+    `already_released` asks whether this number has gone out; this asks what it
+    leaves open, which is whether the number is below the one the tree
+    declares. `version_policy = "manual"` is what makes that reachable: the
+    number is typed by a person, and a dry run of 0.2.0 over 0.4.28 printed
+    `0.4.28 -> 0.2.0` and exited 0, so the cut itself would have bumped the
+    version field backwards, written its notes under the lower number and
+    stamped every item with it - stamps no re-run takes back (`PL-3DN1`).
+
+    Equal is decided here rather than left to fall out of the comparison, and
+    it is not this refusal's. The current number is asked for by the resume of
+    a cut interrupted after its bump, whose version field already carries the
+    release being finished, and that run has to get through; and by a re-cut
+    of a release already out, which `already_released` refuses naming the
+    evidence a reader can check, letting a dry run preview it. A resume whose
+    number is below the current one is refused like any other.
+
+    Only numbers that parse are compared, so an empty or unversioned field
+    stays `prepare_bump`'s to refuse.
+    """
+    requested = version.strip().lstrip("v")
+    declared = current.strip().lstrip("v")
+    if not SEMVER_RE.match(requested) or not SEMVER_RE.match(declared):
+        return ""
+    if version_key(requested) == version_key(declared):
+        return ""
+    if version_key(requested) > version_key(declared):
+        return ""
+    return f"{requested} is below {declared}, the version {version_file} declares"
+
+
 @dataclass(frozen=True)
 class PreparedBump:
     """A version bump proved possible, holding the bytes it has yet to write.

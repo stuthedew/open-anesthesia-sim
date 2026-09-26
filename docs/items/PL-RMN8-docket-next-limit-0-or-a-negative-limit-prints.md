@@ -3,11 +3,12 @@ id: PL-RMN8
 title: docket next --limit 0 (or a negative limit) prints 'Nothing is ready to start' while work is startable, because the limit slices the ranking to nothing rather than being refused
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22
+closed: 2026-09-26
 payoff: docket next stops telling a session nothing is ready to start when it was only asked for zero picks, so a zero or negative limit fails loudly instead of ending a session's search for work
 verify: grep -q 'def test_next_refuses_a_limit_below_one' subprojects/docket/tests/test_cli.py
 ---
@@ -42,3 +43,14 @@ drives 0 and a negative value.
 into a slice, and `PL-Q89J`'s `--oldest` ranking inherited the slice, which is
 how its session came to file this. No head names unvalidated arguments, and no
 open item shares the mechanism.
+
+**Worked.** 2026-09-26, on `claude/pl-batch-04-d15tqm`. The refusal is an
+argparse `type=` on `next --limit`: a new private `cli._at_least_one`, beside
+`_instant`, raises `ArgumentTypeError`, so argparse prints `argument --limit:
+must be 1 or more, got N` on stderr and exits 2 before either ranking runs. The
+brief located the fault in `plan.recommend`'s and `plan.longest_waiting`'s
+slices; those stay untouched, since `plan.py` is outside `touches` and every
+path into them now passes a count of at least one. The test is parametrized over
+0 and -2, on the plan's ranking and under `--oldest`, and each case also asserts
+`--limit 1` still answers with the item. `concurrent --limit`'s off-by-one,
+which the brief noted and left outside its done-when, is captured as `PL-HY56`.

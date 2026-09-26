@@ -3,11 +3,12 @@ id: PL-3BYK
 title: docket digest --profile's ref set block counts item-file edits per ref and sums across refs, while the walk holds one entry per identifier, so anyone predicting a diff count from it over-predicts by about 2x on a clone with overlapping long-lived branches
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: rendered-claim-accuracy
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-17
+closed: 2026-09-26
 verify: grep -q 'def test_the_ref_set_block_names_distinct_item_files' subprojects/docket/tests/test_cli.py
 ---
 
@@ -54,3 +55,20 @@ set with deliberate overlap, which no existing fixture has.
 **Done when** the `ref set` block states a figure a reader can divide a
 per-item-edit rate by without over-predicting, or names the one it prints as a
 per-ref sum, and a test drives two refs editing one item file.
+
+**Worked.** Took the first of the brief's two routes, the one its `verify:`
+names: `RefWalk` gains `item_files`, the distinct item files the unmerged refs
+edit between them, and the block prints it beside the sum, which it now calls
+"item-file edits summed per ref". Distinct is counted by path, the unit the
+per-ref figure already counts, not by item id, so a ref that retitles an item
+(listed under both names by `--no-renames`) counts two there as it does in its
+own row. The brief's `_ref_walk` is `vcs.ref_walk` now, and the walk it
+compared against, `branches_in_flight`'s one entry per identifier, is
+`claims.holdings`, which asks `vcs._superseded` once per branch; so the
+0.95-diff-calls-per-edit rate is not re-derived here, and the change makes the
+block say which figure is which. `subprojects/docket/tests/test_vcs_silence.py`
+compares `ref_walk`'s counts under git silences and does not name the new
+field, which comes from the same per-ref reads as `item_edits`; that file is
+outside `touches` and is left as it is. The test builds two branches editing
+one item file from `main` and runs `digest --profile` end to end; it fails when
+the distinct count is computed as the sum.

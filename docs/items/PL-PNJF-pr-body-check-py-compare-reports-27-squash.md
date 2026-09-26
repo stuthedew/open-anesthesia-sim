@@ -63,6 +63,22 @@ header's provenance claim, so the header changes once and not twice. A session
 can take this: it is the structure of an internal record, not a product
 question.
 
+**Under `PL-979D`'s answer, 2026-09-25, whose form the owner recorded there
+the same day.** For every pull request merged after the `PL-979D`
+build lands, which body is the record is answered once: the copy in
+`docs/pr-bodies/<N>.md`, written before the merge and checked against the pull
+request by `pr-title.yml` on every edit, whatever the merge then sends. The
+question survives only for the 27, and there it narrows to this brief's second
+half, the header: a file holds either a body *recorded* before the merge or one
+*recovered* after it from the API on a date, and says which - `PL-73G8`'s ask
+on the same lines, so the two headers change once. The shape names above
+(empty, edited after arming, a note added after the merge, a message the merge
+composed) become the `--compare` verdict, kept in a recovered file's header
+where it is known. Writing a file for any pull request named, not only for an
+empty body, stays as recommended, as the same `--record N` the build adds.
+Recommendation: fold this item and `PL-73G8` into the `PL-979D` build as its
+header work, rather than landing the header twice.
+
 **Done when.** `--compare` reports nothing on a tree where every differing
 body has its file, each file's header names its shape truthfully, and
 `tests/unit/test_pr_body_check.py` holds one case per shape.

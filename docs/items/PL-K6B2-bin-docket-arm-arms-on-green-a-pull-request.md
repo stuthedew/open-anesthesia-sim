@@ -3,14 +3,16 @@ id: PL-K6B2
 title: bin/docket arm arms on green a pull request whose every path is under docs/items/ or subprojects/docket/ except arming.py, and holds the rest for a read
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect
 feature: review-hold
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md, docs/items/PL-0JGZ-does-a-branch-change-only-the-queue-has-two.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
+closed: 2026-09-25
 payoff: the review hold fires only where a read matters, on simulator code, so the owner's read is spent where a wrong clinical value could land
 verify: grep -q 'def test_arm_arms_a_docket_only_pull_request_on_green' subprojects/docket/tests/test_cli.py
+recurrences: 2026-09-25 PL-WW0Q
 ---
 
 **Problem.** bin/docket arm arms on green a pull request whose every path is under docs/items/ or subprojects/docket/ except arming.py, and holds the rest for a read
@@ -24,3 +26,5 @@ verify: grep -q 'def test_arm_arms_a_docket_only_pull_request_on_green' subproje
 **The pause.** This is a new rule in an existing check, which the generator pause holds. The owner's yes to `PL-SQTR`'s recommendation 2, on 2026-09-25, lifts it for this request (`PL-6Q9L`).
 
 **Generator check.** A one-off, from `PL-SQTR`'s owner-raised finding: `arm` reads its paths correctly.
+
+**Worked.** The tooling's path and the gate's are module constants in `arming.py`, `TOOLING` and `GATE`, because `touches` reach neither `config.py` nor `docket.toml`; `claims.CUTOVER_MARKER` is the precedent, and `test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer` pins `GATE` to the module's real path, as `test_claims` pins the marker. `PL-QFCR` records that a `docket.toml` field is where the package keeps layout. `Verdict` gains a `gate` field, so the hold names the gate as its own reason ("it changes subprojects/docket/src/docket/arming.py, the gate itself") rather than counting it among the paths outside the tooling, which it is not. The hold line now ends ", so its pull request waits on a read" wherever a path or the gate holds it, and the `arm` line reads "changes nothing outside docs/items and subprojects/docket, leaves arming.py alone"; both keep the prefixes the existing tests assert. The paths the hold test is parametrized over are my choice: five simulator paths, `CLAUDE.md`, and `subprojects/docketeer/`, a sibling sharing the tooling's letters. The gate test also moves the module, which reads as its deletion under `--no-renames`. One existing test's docstring changed its "merges on review" to "waits on a read"; no assertion changed. The exception covers `arming.py` alone, as the brief says, though the answer is read through `vcs.py`, `claims.py` and `cli.cmd_arm` too, which arm on green: `PL-WW0Q`.

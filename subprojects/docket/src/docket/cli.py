@@ -96,6 +96,7 @@ from .release import (
     SEMVER_RE,
     Readiness,
     already_released,
+    below_current,
     is_untagged,
     milestones,
     notes_by_version,
@@ -914,7 +915,8 @@ def cmd_digest(args: argparse.Namespace) -> int:
     # because the two count lines below - errors, and the grooming total - are
     # read as the store's whole answer by a session that has run nothing yet.
     report = _complete_report(root, items, config, args)
-    ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
+    current = read_version(root / config.version_file)
+    ready = readiness(items, current, config.minor_classes)
     rendered = render.format_digest(
         report,
         _flight(args),
@@ -929,6 +931,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         gate_paths=config.gate_paths,
         now=_now(args),
         read=_holdings(args),
+        interrupted=_interrupted(root, items, current),
     )
     if rendered:
         print(rendered)
@@ -946,14 +949,31 @@ def cmd_digest(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight | None:
-    """Which refs are mid-release, read only where a release is being offered.
+def _interrupted(root: Path, items: list[Item], current: str) -> str:
+    """The release whose cut stopped before its notes, as `cmd_release` would resume it.
 
-    Gated on the offer rather than run for every digest: it costs a walk of the
-    unlanded refs (measured 103 ms on this repository), and a session not being
-    offered a release has nothing to be warned off. It does not fetch - the
-    digest's hook already did, and this must stay answerable in a checkout with
-    no network.
+    Read beside `readiness` rather than through it: `readiness` leaves the
+    stamps out by contract, since a caller other than `cmd_release` is asking
+    what is shippable now, so the digest and `status` read this separately
+    and say why their count is short (`PL-1BS2`). The newest, as the resume
+    takes it; `docket check` reports any other.
+    """
+    interrupted = unrecorded_milestones(items, notes_by_version(root), current)
+    return interrupted[-1] if interrupted else ""
+
+
+def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight | None:
+    """Which refs are mid-release, read only where the digest prints `Releasable:`.
+
+    Gated on `Readiness.is_worth_cutting` rather than run for every digest: it
+    costs a walk of the unlanded refs (measured 103 ms on this repository), and
+    a session shown no `Releasable:` line has nothing to be warned off. That
+    gate means there is finished work to cut, whether or not a version is free
+    to cut it at, so it is not the release offer: where the roadmap has
+    reserved the number a bump would reach, the line says `No release to offer`
+    and the walk still runs, which between milestones is the usual case
+    (`PL-FT3M`). It does not fetch - the digest's hook already did, and this
+    must stay answerable in a checkout with no network.
 
     A branch holding the release train with nothing cut yet is added beside the
     cuts (`_with_train`), so a session that has filed and claimed its release
@@ -1566,13 +1586,17 @@ def cmd_set(args: argparse.Namespace) -> int:
     written = (
         WrittenReport(identifiers=frozenset({item.identifier})) if "verify" in changes else None
     )
-    introduced = analyze(after, today, config, written=written).errors
+    # The roadmap `check` reads, so the rules that need it - a debt item's gate
+    # disposition among them - refuse the write too, rather than surfacing one
+    # `check` later (`PL-BB5W`). Unreadable, it declines as it does for `check`.
+    milestones = _milestones(_invocation(args).root, config)
+    introduced = analyze(after, today, config, milestones=milestones, written=written).errors
     if introduced:
         # Only what this write adds counts against it. An error the store
         # already carries is somebody else's, and blocking every write until
         # the whole store is clean would refuse the command on exactly the
         # days it is needed.
-        already = set(analyze(items, today, config).errors)
+        already = set(analyze(items, today, config, milestones=milestones).errors)
         introduced = [error for error in introduced if error not in already]
     if introduced:
         print(f"{item.identifier}: nothing was written; `docket check` would then report:")
@@ -1762,6 +1786,7 @@ def cmd_show(args: argparse.Namespace) -> int:
     item = find_item(items, args.item)
     if item is None:
         print(f"no item matching '{args.item}'")
+        _say_held_elsewhere(args, items)
         return 1
     flight = _flight(args)
     print(f"{item.identifier} {item.title}")
@@ -1917,8 +1942,12 @@ def cmd_show(args: argparse.Namespace) -> int:
         # holds nothing, so it does not silence this. A session that names an
         # item reaches `show` and nothing else, so before this the one thing it
         # could not learn here was that another branch had already written to
-        # the file it was about to write to (`PL-N1JK`).
-        print(render.format_queue_edit(edit, _now(args)))
+        # the file it was about to write to (`PL-N1JK`). Startable by
+        # `plan._startable`'s rule - open, triaged, not blocked, and not in
+        # flight, which the condition above already holds - so a closed or
+        # blocked item is not invited to start (`PL-9F8B`).
+        startable = item.is_open and not item.is_untriaged and not blocked
+        print(render.format_queue_edit(edit, _now(args), startable=startable))
     if threads := _notes_threads(root, config, item.identifier):
         print(render.format_notes_threads(threads, item.identifier, config.notes_file))
     # Last before the brief, because the line it ends on past the threshold
@@ -1929,6 +1958,36 @@ def cmd_show(args: argparse.Namespace) -> int:
     print(item.body.strip())
     _say_unread(flight)
     return 0
+
+
+def _say_held_elsewhere(args: argparse.Namespace, items: list[Item]) -> None:
+    """Which branch holds an id this store lacks, and how to read its file there.
+
+    An item captured and claimed on another branch is absent from this store
+    until that branch merges, while `next` and `flight` already name it as a
+    live claim - so the bare not-found line was a dead end at the moment a
+    session asked about work another session holds (`PL-140X`). The holds are
+    the lines `show` prints for an item it has. The file is found by the read
+    `stranded` makes, without its fetch, as the holds were read without one.
+    Silent where nothing holds the id, which is the ordinary typo.
+    """
+    held = render.format_holds(_holdings(args), args.item, _now(args))
+    if not held:
+        return
+    print("It is held on a branch, and this checkout's store has no copy of it:")
+    print(held)
+    key = args.item.upper()
+    report = _stranded(items, args)
+    found = next(
+        (entry for entry in (report.items if report else ()) if entry.identifier.upper() == key),
+        None,
+    )
+    if found is None:
+        print("  Its file was not found on a ref this checkout holds; `bin/docket stranded`")
+        print("  fetches and names every item that exists only on a branch.")
+        return
+    for branch in found.branches:
+        print(f"  read it: git show {branch}:{found.path}")
 
 
 def _since_filed(args: argparse.Namespace, item: Item, root: Path, config: Config) -> str:
@@ -2115,8 +2174,15 @@ def cmd_status(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
     root = _invocation(args).root
-    ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
-    rendered = render.format_status(report, ready, _flight(args), _plan(root, items, config))
+    current = read_version(root / config.version_file)
+    ready = readiness(items, current, config.minor_classes)
+    rendered = render.format_status(
+        report,
+        ready,
+        _flight(args),
+        _plan(root, items, config),
+        interrupted=_interrupted(root, items, current),
+    )
     print(rendered if rendered else "Nothing open.")
     return 0
 
@@ -2717,6 +2783,16 @@ def cmd_generators(args: argparse.Namespace) -> int:
     the command makes it one screen, and flags the overlap it can decide.
     """
     _, items, config = _load(args)
+    if args.head and args.misread:
+        # The pair is refused rather than half of it dropped: the id view was
+        # printed as though the flag had been honoured (`PL-SL4L`), and it
+        # already carries its head's `misread:` line.
+        print(
+            f"`--misread` lists every head and takes no id: run `bin/docket generators "
+            f"--misread` for that list, or `bin/docket generators {args.head}` for one "
+            f"cluster, whose view already prints its head's `misread:` line."
+        )
+        return 1
     groups = clusters(items)
     if not args.head:
         pairs = overlaps(groups)
@@ -3007,6 +3083,15 @@ def cmd_release(args: argparse.Namespace) -> int:
     version = (args.version or resuming or ready.suggested_version).lstrip("v")
     name = f"v{version}"
 
+    # A wrong number rather than a state a dry run exists to review, so it is
+    # refused outright as the unfinished-cut refusal above is: the bump, the
+    # notes and every stamp would carry it, and no re-run takes the stamps
+    # back (`PL-3DN1`).
+    backwards = below_current(version, current, config.version_file)
+    if backwards:
+        print(_backwards_refusal(name, current, backwards))
+        return 1
+
     # The widest write in the repository, and one whose own commits carry no
     # item id: a cut stamps other items' `milestone:` (`PL-66FP`). The id the
     # guard reads is the release item's, whose claim holds the release train
@@ -3216,6 +3301,20 @@ def _unfinished_cut_refusal(resuming: str, ready: Readiness, requested: str) -> 
             f"cuts all {len(ready.shippable)}:",
             "",
             f"  make release VERSION={resuming.lstrip('v')}",
+        ]
+    )
+
+
+def _backwards_refusal(name: str, current: str, reason: str) -> str:
+    """Say the number is below the tree's, and that nothing was touched.
+
+    Naming both versions is the whole of it: the likely cause is a typo, and
+    the reader corrects it by seeing the two side by side.
+    """
+    return "\n".join(
+        [
+            f"Cannot cut {name}: {reason}. Nothing was stamped and nothing was written.",
+            f"A release moves the version forward, so name a number above {current.strip()}.",
         ]
     )
 
@@ -3840,6 +3939,21 @@ def _instant(text: str) -> datetime:
     return value
 
 
+def _at_least_one(text: str) -> int:
+    """A count of picks, for `next --limit`, refused below one.
+
+    The ranking is sliced with the value as given, so zero printed "Nothing is
+    ready to start" at exit 0 over a queue holding work, and a negative value
+    sliced from the end - `--limit -2` printed all but the last two picks
+    (`PL-RMN8`). "Nothing is ready" is the answer that ends a session's search
+    for work, so a count that cannot be honoured is refused instead.
+    """
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"must be 1 or more, got {value}")
+    return value
+
+
 def _now(args: argparse.Namespace) -> datetime:
     """The instant a branch's age is measured to.
 
@@ -3862,11 +3976,12 @@ def _now(args: argparse.Namespace) -> datetime:
 def cmd_claim(args: argparse.Namespace) -> int:
     """Record that this branch holds the items named: `claiming.claim`, which says how.
 
-    Exit 3 means another branch holds one of them first, and exit 4 that the
-    claim was written and did not reach the remote - its push failed, or the
+    Exit 3 means another branch holds one of them first, or holds one that this
+    branch's unpushed claim would have taken from it, now withdrawn; exit 4 that
+    the claim was written and did not reach the remote - its push failed, or the
     branch's copy on the remote meant none was tried - so only this checkout can
-    see it until the push the message names. Neither is a failure of the
-    command; each is a different next step.
+    see it until the `claim` the message names publishes it. Neither is a
+    failure of the command; each is a different next step.
     """
     inv = _invocation(args)
     if inv.git is None:
@@ -3884,6 +3999,7 @@ def cmd_claim(args: argparse.Namespace) -> int:
         reason=args.reason or "",
         trailers=args.trailer,
         fetch=not args.no_fetch,
+        push=args.push,
         runner=inv.git,
     )
     for line in written.lines:
@@ -4333,6 +4449,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="read the refs as they are before writing; the caller refreshed them, or cannot. "
         "The fetch after a push still runs",
     )
+    claim_cmd.add_argument(
+        "--push",
+        action="store_true",
+        default=False,
+        help="push the claim even where the remote already has the branch, which is left "
+        "unpushed otherwise; only once auto-merge is disarmed on its pull request",
+    )
     claim_cmd.set_defaults(func=cmd_claim)
     yield_cmd = add("yield", "end this branch's claim on an item without closing it")
     yield_cmd.add_argument("ids", nargs="+", metavar="ID", help="the items to yield")
@@ -4471,7 +4594,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="only work that fits the time available",
     )
-    nxt.add_argument("--limit", type=int, default=3)
+    nxt.add_argument("--limit", type=_at_least_one, default=3)
     nxt.add_argument(
         "--oldest",
         action="store_true",

@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/ren
 added: 2026-09-21
 payoff: a command reading a store under settings that are not that store's own says so, so a band size or lane split judged against library defaults is visible rather than silent
 verify: grep -q 'def test_next_names_the_settings_it_ran_under' subprojects/docket/tests/test_cli.py
+recurrences: 2026-09-25 PL-397Q withdrawn 2026-09-25 PL-397Q
 ---
 
 **Problem.** Only docket check names the settings it ran under, so next, digest, status and list under --items are read under the wrong policy in silence

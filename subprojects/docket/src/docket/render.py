@@ -49,7 +49,15 @@ from .plan import (
     recurring,
     set_aside,
 )
-from .release import PLANNED, RESERVED, Readiness, ReleaseOffer, release_offer
+from .release import (
+    NOTES_DIR,
+    PLANNED,
+    RESERVED,
+    Readiness,
+    ReleaseOffer,
+    notes_name,
+    release_offer,
+)
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, GateStatus, Scope, Wave
 from .trend import APPARATUS, BY_DAY, EFFORT_POINTS, LANES, PRODUCT_BUCKETS, QUEUE, Trend
 from .vcs import (
@@ -351,6 +359,7 @@ def format_digest(
     gate_paths: tuple[str, ...] = (),
     now: datetime | None = None,
     read: Holdings | None = None,
+    interrupted: str = "",
 ) -> str:
     """The few lines injected into session context at startup.
 
@@ -414,6 +423,9 @@ def format_digest(
     `read` adds each in-flight id's state and kind (`held_as`, `PL-N162`),
     because five triage passes' status dispositions otherwise read exactly
     like a session's claim.
+
+    `interrupted` names a release whose cut stopped before its notes, and
+    replaces the release sentence with `_interrupted_cut`'s (`PL-1BS2`).
     """
     flight = in_flight or FlightReport()
     if not report.items:
@@ -569,7 +581,9 @@ def format_digest(
             f"  Grooming due: {_plural(len(report.advisories), 'advisory', 'advisories')} "
             "(`make docket` to see them)."
         )
-    if ready is not None and ready.is_worth_cutting:
+    if interrupted:
+        lines.append(f"  Releasable: {_interrupted_cut(report, ready, interrupted)}")
+    elif ready is not None and ready.is_worth_cutting:
         completes = (
             f", completing {', '.join(ready.completed_features)}"
             if ready.completed_features
@@ -637,8 +651,15 @@ def format_stranded(report: StrandedReport) -> str:
     Organized by item rather than by branch, because the loss is of an item and
     the recovery is of a file. The branches are still named in full - every one
     holding a copy, not just the first - so the other question this answers
-    reads off the same output: a branch named nowhere below carries no item the
-    default branch lacks, and deleting it loses no work the queue knows about.
+    reads off the same output: a branch named nowhere below carries no item
+    missing from both the default branch and this checkout's store.
+
+    **Both halves of that predicate are printed, in the finding case and the
+    empty one** (`PL-Z6M3`). `vcs.stranded` leaves out what the store holds so
+    that a session is not told about its own capture, and that also silences
+    the session that has just recovered a stranded item: its checkout now holds
+    the item while the default branch still lacks it. A sentence naming only
+    the default branch told that session the hole was closed.
 
     That is the only claim being made about *items*. What a branch carries
     outside `docs/items/` is `format_orphaned`'s question, and `cmd_stranded`
@@ -674,16 +695,18 @@ def format_stranded(report: StrandedReport) -> str:
     if not report.items:
         lines = [
             *partial,
-            f"No item exists only on a branch, across the {refs} this checkout holds.",
-            "A branch not fetched here was not read, so this is bounded by what has been.",
+            "No item exists only on a branch and outside this checkout's store, "
+            f"across the {refs} this checkout holds.",
+            "An item in this checkout's store is not listed even where the default branch "
+            "lacks it, and a branch not fetched here was not read, so this is bounded by both.",
             *_stale_base(report),
         ]
         return "\n".join([*lines, *_edited_lines(report)])
 
     lines = [
         *partial,
-        f"{_plural(len(report.items), 'item exists', 'items exist')} only on a branch, "
-        f"across the {refs} this checkout holds:",
+        f"{_plural(len(report.items), 'item exists', 'items exist')} only on a branch "
+        f"and outside this checkout's store, across the {refs} this checkout holds:",
         "",
         *_stale_base(report),
     ]
@@ -698,7 +721,10 @@ def format_stranded(report: StrandedReport) -> str:
         "A branch on live work will appear here and that is expected; the hole is a "
         "branch nobody will merge."
     )
-    lines.append("Every other branch read carries no item the default branch lacks.")
+    lines.append(
+        "Every other branch read carries no item missing from both the default branch "
+        "and this checkout's store."
+    )
     return "\n".join([*lines, *_edited_lines(report)])
 
 
@@ -1742,7 +1768,7 @@ def format_notes_threads(threads: Sequence[Thread], identifier: str, notes_path:
     return "\n".join(lines)
 
 
-def format_queue_edit(edit: QueueEdit, now: datetime) -> str:
+def format_queue_edit(edit: QueueEdit, now: datetime, *, startable: bool) -> str:
     """That an item's file has already been edited, which is not that it is in flight.
 
     **The line exists to be different from `IN FLIGHT`, so it does not open
@@ -1754,14 +1780,27 @@ def format_queue_edit(edit: QueueEdit, now: datetime) -> str:
     false, but "the file you are about to write to has already been written
     to", which is true and is a different sentence.
 
-    So it says what was observed and what follows, and it says the item is
-    startable in as many words. A weaker signal worded like a stronger one is
-    read as the stronger one, and the cost lands on the wrong side: an item
-    nobody is working left unstarted because a capture commit touched its file.
+    So it says what was observed and what follows, and where the item can be
+    started it says so in as many words. A weaker signal worded like a
+    stronger one is read as the stronger one, and the cost lands on the wrong
+    side: an item nobody is working left unstarted because a capture commit
+    touched its file.
+
+    **`startable` is the caller's, read from the item's status, because the
+    edit cannot say it** (`PL-9F8B`). A branch edits a closed or blocked
+    item's file as readily as a ready one's, and the line called `PL-6T44`
+    (`done`) and `PL-MB2W` (`blocked`) startable alike. Where the status does
+    not allow a start, the line says nothing about starting at all: the
+    collision is still true, and it is the only thing this line knows.
     """
+    edited = f"  Its file is already edited on {edit.name} ({_since(edit.last_commit, now)}).\n"
+    if not startable:
+        return (
+            f"{edited}  Not work in flight - but a second edit to the same file collides\n"
+            "  at merge, so land the smaller change first."
+        )
     return (
-        f"  Its file is already edited on {edit.name} ({_since(edit.last_commit, now)}).\n"
-        f"  Not work in flight - {edit.item_id} is startable - but a second edit to the\n"
+        f"{edited}  Not work in flight - {edit.item_id} is startable - but a second edit to the\n"
         "  same file collides at merge, so land the smaller change first."
     )
 
@@ -2625,6 +2664,7 @@ def format_status(
     ready: Readiness | None = None,
     in_flight: FlightReport | None = None,
     plan: Wave | None = None,
+    interrupted: str = "",
 ) -> str:
     """The whole project at feature altitude, which is the altitude decisions happen at.
 
@@ -2700,7 +2740,10 @@ def format_status(
         lines.append("")
         lines.append(f"Finished: {', '.join(sorted(f.name for f in complete))}")
 
-    if ready is not None and ready.shippable:
+    if interrupted:
+        lines.append("")
+        lines.append(f"Unreleased: {_interrupted_cut(report, ready, interrupted)}")
+    elif ready is not None and ready.shippable:
         lines.append("")
         done_note = (
             f", completing {', '.join(ready.completed_features)}"
@@ -2973,6 +3016,26 @@ def _scope_lines(plan: Wave) -> list[str]:
     return lines
 
 
+def _interrupted_cut(report: Report, ready: Readiness | None, version: str) -> str:
+    """The release sentence while a cut is unfinished, for the digest and `status` alike.
+
+    `readiness` leaves an interrupted cut's stamps out by its own contract, so
+    what it counts is only the remainder the stopped run never reached: a
+    twenty-item cut stopped after fifteen reads as an ordinary offer of five,
+    with nothing saying why (`PL-1BS2`). The version and the notes it never
+    wrote are named instead, with the command that finishes the cut - the
+    same one `bin/docket release` prints when refusing another number over it.
+    """
+    stamped = sum(1 for item in report.items if item.milestone.strip() == version)
+    total = stamped + (len(ready.shippable) if ready is not None else 0)
+    return (
+        f"a cut of {version} was interrupted: {stamped} item(s) carry "
+        f"`milestone: {version}` and {NOTES_DIR}/{notes_name(version)} was never written. "
+        f"Finish it before offering another - `make release VERSION={version.lstrip('v')}` "
+        f"cuts all {total}."
+    )
+
+
 def _reserved_refusal(offer: ReleaseOffer, pointer: str) -> str:
     """The one sentence both release surfaces say when the plan owns the number.
 
@@ -3243,10 +3306,14 @@ def format_git_profile(profile: GitProfile) -> str:
     if walk.declined:
         lines.append(f"  ref set: not read - {walk.declined}")
         return "\n".join(lines)
+    # The sum is named as a sum and the distinct count printed beside it: a
+    # figure a reader divides a per-edit rate by has to say which of the two it
+    # is, since they part as soon as two refs edit one file (`PL-3BYK`).
     lines += [
         "",
         f"  ref set: {walk.listed} refs, {walk.merged} merged, {walk.unmerged} unmerged, "
-        f"carrying {walk.commits} commits and {walk.item_edits} item-file edits",
+        f"carrying {walk.commits} commits and {walk.item_edits} item-file edits summed per "
+        f"ref, {_plural(walk.item_files, 'distinct item file', 'distinct item files')}",
     ]
     lines += [
         f"    {name:<52}{ahead:>5} commits{edits:>5} items" for name, ahead, edits in walk.refs
