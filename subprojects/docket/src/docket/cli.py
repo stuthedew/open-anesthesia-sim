@@ -135,7 +135,6 @@ from .vcs import (
     BaseCopies,
     BaseCopy,
     BranchCut,
-    Churn,
     ClosureReport,
     CutsInFlight,
     FilingReport,
@@ -3980,9 +3979,11 @@ def cmd_trend(args: argparse.Namespace) -> int:
         )
         return 1
     inv = _invocation(args)
-    history = Churn() if inv.git is None else churn(inv.root, runner=inv.git)
+    # `None` under `--no-git`, not a bare `Churn()`: whether git was asked is
+    # this command's to say, and an empty reading cannot say it (`PL-PWH6`).
+    history = None if inv.git is None else churn(inv.root, runner=inv.git)
     report = analyze_trend(items, history, config, by=args.by, today=args.today or date.today())
-    if history.declined:
+    if history is not None and history.declined:
         # A measurement with an unread stretch of history is not the measurement
         # it looks like, and the shape of a trend is exactly what a missing
         # stretch changes (`PL-Q9Z1`).

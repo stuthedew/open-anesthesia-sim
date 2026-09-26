@@ -6513,10 +6513,14 @@ def test_trend_reports_each_measure_and_names_the_work_no_lane_could_place(
     assert rows["2026-09-01..09-05"] == ["1/0", "1", "0", "100%", "1/0", "100%"]
 
 
-def test_trend_omits_the_churn_columns_when_git_cannot_be_read(
+def test_trend_omits_the_churn_columns_under_no_git(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Absent rather than zero: a zero would read as a week nobody wrote code in."""
+    """Absent rather than zero: a zero would read as a week nobody wrote code in.
+
+    Named for the cause it runs. `--no-git` asks git nothing, which the key
+    words differently from a git that could not be read (`PL-PWH6`).
+    """
     store = str(_trend_store(tmp_path))
 
     assert main(["trend", "--items", store, "--no-git", "--today", "2026-09-05"]) == 0
