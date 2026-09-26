@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-snapshot batch
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1054
 payoff: every docket read says which moment it answered from, so a failed or skipped fetch, or a working tree behind origin/main, stops passing for a fresh answer in every command at once
 verify: grep -q 'def test_every_read_command_names_what_its_snapshot_rests_on' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-8Z1T, PL-Y48N, PL-D1P5, PL-QSGX, PL-HVLJ

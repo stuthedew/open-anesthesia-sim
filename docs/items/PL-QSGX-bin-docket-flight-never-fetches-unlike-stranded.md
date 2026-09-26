@@ -9,6 +9,7 @@ feature: refresh-before-reporting
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 closed: 2026-09-26
+pr: 1054
 verify: grep -q 'def test_flight_fetches_by_default' subprojects/docket/tests/test_cli.py && uv run pytest subprojects/docket/tests/test_cli.py
 ---
 
