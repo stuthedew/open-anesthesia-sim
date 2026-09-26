@@ -42,8 +42,10 @@ prints the line to yield by, and exit 4 means the claim is only in this
 checkout - the push failed, or the branch was already on the remote and none
 was tried - so nobody else can see it until `claim` publishes it (`PL-1X56`),
 or that the remote could not be asked whether it has the branch, so nothing was
-pushed. Run the `claim` the message prints - the same command again after a
-failed push or an unanswered remote, `--push` added once auto-merge is disarmed
+pushed, or that git could not say whether the branch's copy there carries the
+claim, since another writer moved it after this clone fetched (`PL-20DL`). Run
+the `claim` the message prints - the same command again after a failed push, an
+unanswered remote or an uncompared copy, `--push` added once auto-merge is disarmed
 on a branch the remote has - and not `git push`, which skips the check for a
 claim another session published meanwhile (`PL-ZLJ9`, below). An upstream
 naming the default branch, which is how the web harness starts some sessions,
