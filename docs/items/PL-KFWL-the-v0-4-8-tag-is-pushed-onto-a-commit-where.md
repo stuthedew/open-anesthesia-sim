@@ -3,11 +3,13 @@ id: PL-KFWL
 title: The v0.4.8 tag is pushed onto a commit where the release was never cut, so doc_check errors on main for every session
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: tag-error-names-its-cause
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-07
+closed: 2026-09-26
+pr: 1065
 verify: grep -q 'def test_a_tag_ahead_of_its_own_cut_is_named' tests/unit/test_doc_check.py && python3 tools/doc_check.py check
 ---
 
@@ -135,3 +137,10 @@ annotated tag on the tip of a `_tagged` checkout, whose version table has no
 row for it, so the error is anchored on the bare `ROADMAP.md` rather than a
 row. `test_a_tag_whose_pyproject_version_disagrees_is_refused` covers the
 row-anchored path only.
+
+**Closed 2026-09-26 under `PL-QHCW`.** `doc_check` holds every tag with notes to
+the commit that added them and names that commit when a tag is elsewhere, so a
+tag one merge past its cut - which still declares its version, and so passed
+the version check - is caught: `test_a_tag_ahead_of_its_own_cut_is_named`. The
+v0.4.8 instance itself had already been repaired; its tag sits on its cut,
+`b340e7ff`.

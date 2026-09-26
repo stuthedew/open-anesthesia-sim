@@ -22,6 +22,7 @@ is *for*; a milestone says which release it left in.
 from __future__ import annotations
 
 import re
+import shlex
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -174,6 +175,61 @@ def is_untagged(version: str, existing: frozenset[str]) -> bool:
 def notes_name(version: str) -> str:
     """The notes file a version's release is written to, with no leading path."""
     return f"v{version.strip().lstrip('v')}.md"
+
+
+def notes_path(version: str) -> str:
+    """The notes file a version's release is written to, from the repository root."""
+    return f"{NOTES_DIR}/{notes_name(version)}"
+
+
+#: What a release's *cut* is, stated once for every reader of it: the commit
+#: that added its notes file, compared with its first parent. That commit's
+#: tree is the first to carry the release's notes and its version bump, so it
+#: is the commit the release shipped from and the one its tag goes on - not
+#: whatever `origin/main` names when somebody gets round to tagging, which is
+#: the next merge as often as this one (`PL-VYK1`). `--first-parent` keeps a
+#: merge that brought the file in from counting as its add, and
+#: `--diff-filter=A` keeps a later edit to the notes from moving the cut.
+#:
+#: **Never ask it of a branch's `HEAD`.** A branch that merged the default
+#: branch in after a release has its own merge commit on its first-parent line,
+#: and that merge added the notes file compared with *its* first parent:
+#: measured 2026-09-26, a scratch branch that merged the v0.5.11 cut `fe2046f7`
+#: named its own merge `4308874b` instead. So the printed commands ask
+#: `origin/main`, and `tools/doc_check.py` asks each tag's own commit
+#: (`PL-QHCW`).
+CUT_FLAGS = ("--first-parent", "--diff-filter=A")
+
+
+def cut_query(version: str, ref: str) -> list[str]:
+    """The `git` arguments that name the commit which cut `version`, read from `ref`.
+
+    One commit where the notes were added once; none where `ref` never carried
+    them; more than one where they were added, deleted and added again, which
+    no reader may settle by picking one.
+    """
+    return ["log", *CUT_FLAGS, "--format=%H", ref, "--", notes_path(version)]
+
+
+def tag_commands(
+    version: str, remote: str = "origin", branch: str = "main"
+) -> tuple[str, str, str]:
+    """The three shell lines that tag `version` on its cut, filled in.
+
+    The tag line finds the cut *when it runs*, from `remote/branch`, instead
+    of naming a commit here. Printed by the cut, there is no commit on the
+    default branch to name yet; printed later, a named commit is only as good
+    as the moment it was read. Run before the release has merged, the lookup
+    prints nothing and `git tag` refuses the empty name; run late, it still
+    finds the cut, however many merges have landed since (`PL-VYK1`).
+    """
+    name = f"v{version.strip().lstrip('v')}"
+    lookup = shlex.join(["git", *cut_query(version, f"{remote}/{branch}")])
+    return (
+        f"git fetch {remote} {branch}",
+        f'git tag -a {name} "$({lookup})" -m "{name}"',
+        f"git push {remote} {name}",
+    )
 
 
 #: Where a notes file stops claiming work and starts pointing at it. Bullets
