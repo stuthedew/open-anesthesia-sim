@@ -3,12 +3,13 @@ id: PL-KRS6
 title: bin/docket release counts the previous release's own cut item as releasable work, so every session after a release is offered an empty one
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: release-process
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py, .claude/skills/docket/modes/release.md
 added: 2026-09-07
-verify: grep -q 'def test_a_release_cut_item_belongs_to_the_version_it_cut' subprojects/docket/tests/test_release.py && uv run pytest -q subprojects/docket/tests/test_release.py
+closed: 2026-09-26
+verify: grep -q 'def test_the_item_a_release_was_cut_under_ships_in_no_release' subprojects/docket/tests/test_release.py && grep -q 'def test_a_freshly_merged_release_offers_nothing_while_only_its_own_item_has_closed' subprojects/docket/tests/test_release.py && ! grep -q 'so the next release ships it' .claude/skills/docket/modes/release.md && uv run pytest -q subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** `bin/docket release --dry-run`, run 2026-09-07 immediately after
@@ -103,3 +104,36 @@ leaves out a `done` item carrying `resource: release-train`, so a cut's own item
 belongs to no release's count and appears in no release's notes. `touches` and
 **Done when** above are widened and rewritten to match. The brief is no longer
 blocked; the work is `S` and ready for a session to claim.
+
+**Worked.** 2026-09-26, on `claude/pl-krs6-nu6ly9`. Re-confirmed first on
+`origin/main` at `f8719f71`: `bin/docket release --dry-run --no-fetch` still
+listed `PL-DRRG`, the v0.5.11 cut, among the finished items since 0.5.11, and
+after the fix it does not. `unreleased()` now leaves out a `done` item whose
+`resource` is exactly `release-train`, on the plain read and on a resumed
+cut's, matched the way `claims.Holdings.holder` matches it.
+
+The `verify:` command is rewritten, which a reviewer will ask about. The
+commissioned one grepped for `test_a_release_cut_item_belongs_to_the_version_it_cut`,
+a name for the original brief's rule (the cut's item belongs to the version it
+cut). Decision A replaced that rule with "belongs to no release", so a test
+under the old name would say the opposite of what it asserts, and the commit
+recording the decision rewrote `touches` and **Done when** but not the command.
+The rewrite greps the two tests that pin A and the removal of `release.md`'s
+"so the next release ships it", and keeps the commissioned `uv run pytest -q`
+run of the file.
+
+The two tests: `test_the_item_a_release_was_cut_under_ships_in_no_release`
+pins `unreleased()`; `test_a_freshly_merged_release_offers_nothing_while_only_its_own_item_has_closed`
+cuts v0.2.6 with the real `release` command under a claimed release item in
+`_TrainRepo`, closes the item, fast-forwards `main` to the cut, and asserts the
+dry run says `Nothing to release` and the digest prints no `Releasable:` line.
+Before the fix it printed `Releasable: 1 finished item(s) since 0.2.6,
+completing release-process. Offer 0.2.7 before taking new work.` The closed
+item carries `feature: release-process` because one finished item completing a
+feature is what makes the digest raise it, as `PL-H1GH` did after v0.4.7.
+
+Also changed, inside `touches`: `release.py`'s module docstring, whose "an item
+that is `done` with no `milestone` is simply unreleased" now names the one
+exception. Not changed: the dry run's wording in this state, `Nothing to
+release: no finished work since 0.2.6.`, is `cmd_release`'s own and `cli.py` is
+outside `touches`.
