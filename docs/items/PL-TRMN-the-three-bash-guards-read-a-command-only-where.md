@@ -3,11 +3,13 @@ id: PL-TRMN
 title: The three Bash guards read a command only where its name is the program itself, so a gate, a floor parse or a prune run through a wrapper passes all three: timeout 600 make check | tail -5, timeout 60 python3 -m compileall -q src/anesthesia_sim/, and timeout, env, command or a path to git ahead of git fetch --prune
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/no-prune-guard.sh, tests/unit/test_gate_status_guard.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1107
 payoff: a gate, a floor parse or a prune run under timeout, env, nice, nohup, xargs, command or exec is refused like the same command on its own, so a red make check under timeout piped to tail no longer reaches a session as exit 0
 verify: grep -q 'def test_a_wrapper_runs_the_command_after_it' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_wrapper_runs_the_command_after_it' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_a_wrapper_runs_the_command_after_it' tests/unit/test_no_prune_guard.py
 ---
