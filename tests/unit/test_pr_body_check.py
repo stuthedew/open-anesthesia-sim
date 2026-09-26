@@ -29,11 +29,7 @@ claude.ai footer do to every body must not be, or 654 bodies that match would
 bury the 27 that do not. And a listing that could not be read has to say so,
 because a comparison never made reads exactly like one that found nothing.
 
-The record written before the merge (`PL-979D`) adds the case that matters
-most: what `--record` writes has to be exactly what `--check` accepts, and a
-body edited after it was recorded has to be refused.
-
-`_git`, `fetch_body`, `fetch_pull` and `_get_json` are substituted rather than a repository
+`_git`, `fetch_body` and `_get_json` are substituted rather than a repository
 built and the network called, because what is under test is the reading of
 subjects and bodies, not git and not GitHub.
 """
@@ -184,21 +180,20 @@ def test_default_branch_ref_follows_docket_on_a_master_only_clone(
     assert pr_body_check.default_branch_ref() == "origin/master"
 
 
-def test_says_nothing_when_the_default_branch_cannot_be_read(
+def test_says_it_checked_nothing_when_the_default_branch_cannot_be_read(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """A bare or shallow checkout has no history to judge, and must not claim one.
 
-    At session start that means silence. Asked to `--compare`, it means saying
-    nothing was compared, since a run that prints nothing there reads as clean.
+    Every mode run by hand says so, because a run that prints nothing reads as
+    clean, and the release step reads it by hand (`PL-3PH2`).
     """
     monkeypatch.setattr(pr_body_check, "_git", lambda *args: "")
 
     assert pr_body_check.default_branch_ref() is None
-    assert pr_body_check.main([]) == 0
-    assert capsys.readouterr().out == ""
-    assert pr_body_check.main(["--compare"]) == 0
-    assert "nothing compared" in capsys.readouterr().out
+    for mode in ([], ["--compare"], ["--recover"]):
+        assert pr_body_check.main(mode) == 0
+        assert "nothing checked" in capsys.readouterr().out
 
 
 def test_a_pull_request_with_no_body_is_tombstoned_rather_than_reported_forever(
@@ -224,20 +219,17 @@ def test_a_pull_request_with_no_body_is_tombstoned_rather_than_reported_forever(
     assert pr_body_check.missing("origin/main") == []
 
 
-def test_the_advisory_is_one_line(monkeypatch: pytest.MonkeyPatch, tmp_path, capsys) -> None:
-    """Session-start output is resent on every turn, so the budget is a line.
-
-    `tools/dead_ends.py` caps its emitted half for the same reason. A
-    multi-line advisory here is paid by every turn of every session for as long
-    as one loss stays unrecovered, which at the measured recurrence is always.
-    """
+def test_the_advisory_names_the_count_and_the_remedy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, capsys
+) -> None:
+    """What the release step acts on: how many bodies are missing, and what recovers them."""
     monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", tmp_path / "pr-bodies")
     _install(monkeypatch, [(f"abc123{n}", f"PL-8PS6: a title (#{760 + n})", "") for n in range(9)])
 
     assert pr_body_check.main([]) == 0
-    printed = capsys.readouterr().out.strip()
-    assert printed.count("\n") == 0
-    assert "--recover" in printed
+    printed = capsys.readouterr().out
+    assert printed.startswith("pr-body: 9 squash commit(s) on origin/main lost their body")
+    assert "python3 tools/pr_body_check.py --recover" in printed
 
 
 def test_item_ids_judges_a_subject_by_the_stores_own_grammar() -> None:
@@ -576,26 +568,14 @@ def test_compare_is_its_own_mode_and_exits_zero(
     assert "--recover" not in printed
 
 
-# The record, written before the merge (`PL-979D`). What `--record` writes has
-# to be exactly what `--check` accepts, so the two are tested as one path; a
-# body edited after it was recorded has to be refused, or the file is a
-# snapshot rather than the record; and a header has to say truthfully which of
-# its two provenances it is.
-
-
 def _git_serving(
-    monkeypatch: pytest.MonkeyPatch,
-    records: list[tuple[str, str, str]],
-    shown: dict[str, str] | None = None,
-    shallow: str = "false",
+    monkeypatch: pytest.MonkeyPatch, records: list[tuple[str, str, str]], shallow: str = "false"
 ) -> None:
-    """`_install`'s history, plus the head tree `--check` reads and the line `--anchors` does."""
+    """`_install`'s history, plus whether the clone is shallow and the line `--anchors` reads."""
     _install(monkeypatch, records)
     served = pr_body_check._git
 
     def fake(*args: str) -> str:
-        if args[0] == "show":
-            return (shown or {}).get(args[1].split(":", 1)[1], "")
         if args[:2] == ("rev-parse", "--is-shallow-repository"):
             return f"{shallow}\n"
         if args[0] == "rev-list":
@@ -605,163 +585,26 @@ def _git_serving(
     monkeypatch.setattr(pr_body_check, "_git", fake)
 
 
-def test_a_recorded_body_is_what_the_check_holds_the_pull_request_to(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
+def test_a_clean_history_says_so_and_a_shallow_one_says_what_it_read(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The writer's file is the checker's input, so a format drift between them fails here.
+    """The release step runs this by hand, and would read silence as a clean history.
 
-    The body arrives with Windows line endings and trailing blank lines, as one
-    edited in the browser does, and opens with the harness's own HTML comment,
-    which is why the record carries no comment of its own.
+    A shallow clone holds only part of the line, so its verdict says so rather
+    than passing a partial read as the whole.
     """
-    recovery = tmp_path / "pr-bodies"
-    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
-    monkeypatch.setattr(pr_body_check, "today", lambda: "2026-09-26")
-    body = "<!-- ccr-projects-attribution: {} -->\r\n| a | b |\r\n| --- | --- |\r\n\r\nWhy.\r\n\r\n"
-    _install(monkeypatch, [])
-    monkeypatch.setattr(
-        pr_body_check, "fetch_pull", lambda slug, pr: {"state": "open", "body": body}
+    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", tmp_path / "pr-bodies")
+    records = [("abc1234", "PL-8PS6: a title (#768)", "Why.")]
+    _git_serving(monkeypatch, records)
+
+    assert pr_body_check.main([]) == 0
+    assert capsys.readouterr().out == (
+        "pr-body: no squash commit on origin/main lost its body without a recovered file.\n"
     )
 
-    assert pr_body_check.record(1059) == 0
-    written = (recovery / "1059.md").read_text(encoding="utf-8")
-    assert written == (
-        "---\npr: 1059\nrecorded: 2026-09-26\n---\n\n"
-        "<!-- ccr-projects-attribution: {} -->\n| a | b |\n| --- | --- |\n\nWhy.\n"
-    )
-
-    _git_serving(monkeypatch, [], shown={"docs/pr-bodies/1059.md": written})
-    monkeypatch.setenv("PR_NUMBER", "1059")
-    monkeypatch.setenv("PR_BODY", body)
-    assert pr_body_check.check() == 0
-
-
-def test_a_body_edited_after_it_was_recorded_holds_the_merge(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """`edited` re-runs the check, and this is the answer it has to give.
-
-    A record that still passes an older body is the snapshot the rule exists to
-    refuse: the merge would carry reasoning the tree does not hold.
-    """
-    held = "---\npr: 1059\nrecorded: 2026-09-26\n---\n\nThe first draft.\n"
-    _git_serving(monkeypatch, [], shown={"docs/pr-bodies/1059.md": held})
-    monkeypatch.setenv("PR_NUMBER", "1059")
-    monkeypatch.setenv("PR_BODY", "The first draft, with a paragraph added.")
-
-    assert pr_body_check.check() == 1
-    err = capsys.readouterr().err
-    assert "edited after it was recorded" in err
-    assert "--record 1059" in err
-
-
-def test_a_body_with_no_record_is_refused_and_an_empty_one_owes_nothing(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """Red from opening until the first record; a pull request with no body never is."""
-    _git_serving(monkeypatch, [])
-    monkeypatch.setenv("PR_NUMBER", "1059")
-    monkeypatch.setenv("PR_BODY", "Why this change.")
-    assert pr_body_check.check() == 1
-    assert "is not in the tree" in capsys.readouterr().err
-
-    monkeypatch.setenv("PR_BODY", "  \n")
-    assert pr_body_check.check() == 0
-
-
-def test_a_body_missing_from_the_environment_is_not_passed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The step always sets `PR_BODY`, so an unset one is a broken step, never a pass."""
-    _git_serving(monkeypatch, [])
-    monkeypatch.setenv("PR_NUMBER", "1059")
-    monkeypatch.delenv("PR_BODY", raising=False)
-
-    assert pr_body_check.check() == 1
-
-
-def test_recording_an_emptied_body_removes_the_stale_record(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
-) -> None:
-    """A file left from before the body was emptied would record text nobody can see."""
-    recovery = tmp_path / "pr-bodies"
-    recovery.mkdir()
-    (recovery / "1059.md").write_text("---\npr: 1059\nrecorded: 2026-09-25\n---\n\nOld.\n")
-    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
-    _install(monkeypatch, [])
-    monkeypatch.setattr(
-        pr_body_check, "fetch_pull", lambda slug, pr: {"state": "open", "body": None}
-    )
-
-    assert pr_body_check.record(1059) == 0
-    assert not (recovery / "1059.md").exists()
-
-
-@pytest.mark.parametrize(
-    ("squash_body", "armed", "shape"),
-    [
-        ("", None, "empty"),
-        ("Co-authored-by: Someone <someone@example.com>\n", None, "trailer-only"),
-        ("The body as armed.\n", "The body as armed.", "armed-message"),
-        ("Something else entirely.\n", None, "differs"),
-        ("The body as it stands.\n", None, "matches"),
-    ],
-)
-def test_recording_a_merged_pull_request_names_how_its_squash_copy_compares(
-    monkeypatch: pytest.MonkeyPatch, tmp_path, squash_body: str, armed: str | None, shape: str
-) -> None:
-    """`PL-PNJF`: one case per shape, each named truthfully in a header dated when it was fetched.
-
-    The old header said every recovered commit "landed with an empty message
-    body", which was true of the one shape `--recover` wrote and false of the
-    27 `--compare` found; and it claimed the body verbatim from the merge,
-    where what the API serves is the body as it stands on the day (`PL-73G8`).
-    """
-    recovery = tmp_path / "pr-bodies"
-    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
-    monkeypatch.setattr(pr_body_check, "today", lambda: "2026-09-26")
-    monkeypatch.setattr(pr_body_check, "queue_backlinks", dict)
-    _install(monkeypatch, [("abc1234", "PL-8PS6: a title (#768)", squash_body)])
-    pull = {
-        "state": "closed",
-        "merged_at": "2026-09-20T00:00:00Z",
-        "body": "The body as it stands.",
-        "auto_merge": None if armed is None else {"commit_message": armed},
-    }
-    monkeypatch.setattr(pr_body_check, "fetch_pull", lambda slug, pr: pull)
-
-    assert pr_body_check.record(768) == 0
-    parsed = pr_body_check.parse_record((recovery / "768.md").read_text(encoding="utf-8"))
-    assert parsed is not None
-    header, body = parsed
-    assert (header["squash"], header["recovered"], header["commit"]) == (
-        shape,
-        "2026-09-26",
-        "abc1234",
-    )
-    assert "recorded" not in header
-    assert body == "The body as it stands.\n"
-
-
-@pytest.mark.parametrize(
-    ("pull", "records"),
-    [
-        ({"state": "closed", "merged_at": None, "body": "Closed unmerged."}, []),
-        ({"state": "closed", "merged_at": "2026-09-20T00:00:00Z", "body": "Not fetched here."}, []),
-        (None, []),
-    ],
-    ids=["closed-without-merging", "squash-commit-not-here", "unreadable"],
-)
-def test_record_refuses_what_it_cannot_anchor_rather_than_writing_it(
-    monkeypatch: pytest.MonkeyPatch, tmp_path, pull: dict | None, records: list
-) -> None:
-    """A file here is read as the record, so a wrong one is worse than none."""
-    recovery = tmp_path / "pr-bodies"
-    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
-    monkeypatch.setattr(pr_body_check, "queue_backlinks", dict)
-    _install(monkeypatch, records)
-    monkeypatch.setattr(pr_body_check, "fetch_pull", lambda slug, pr: pull)
-
-    assert pr_body_check.record(768) == 1
-    assert not (recovery / "768.md").exists()
+    _git_serving(monkeypatch, records, shallow="true")
+    assert pr_body_check.main([]) == 0
+    assert "only the commits it holds were read" in capsys.readouterr().out
 
 
 def test_a_recovery_file_whose_commit_sha_no_longer_resolves_is_reported(
