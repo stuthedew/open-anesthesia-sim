@@ -39,6 +39,15 @@
 # immediately after the separator, since anything in between replaces `$?` with
 # its own status, and never after `&`, where `$?` is the background launch.
 #
+# **A group is read the way bash runs it, and a false refusal is why.** `{ set
+# -o pipefail; uv run pytest -q t.py 2>&1 | tail -12; }` keeps the status and
+# was refused twice over (`PL-1SFZ`): the `{` hid the `set` from the one reader
+# of a segment's head that did not strip it, and the `;` that ends the group
+# read as handing the status on. The scoping is bash's and not a looser one,
+# because crediting a `set` to everything after it would pass `(set -o
+# pipefail; make check) | tail`, where the `set` dies with its subshell and the
+# outer pipe loses the status exactly as `PL-2JRC`'s did.
+#
 # **What counts as a gate is a list, not an inference.** The guarded commands
 # are the ones whose exit status *is* the evidence a session reports:
 # `make check|test|docket|doc-check|prebuild|pr-title`, `bin/docket
@@ -113,6 +122,11 @@ SEPARATORS = {";", "&&", "||", "|", "&"}
 ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
 INTERPRETER = re.compile(r"^python(?:3(?:\.\d+)?)?$")
 GROUPING = ("(", "{", "!")
+CLOSERS = (")", "}")
+# The characters `punctuation_chars` splits on. It also glues a run of them
+# into one token - `;)`, `)|` - so a `)` is counted where it appears rather
+# than matched as a whole token.
+PUNCTUATION = frozenset("();<>|&")
 
 MAKE_GATES = ("check", "test", "docket", "doc-check", "prebuild", "pr-title")
 DOCKET_GATES = ("check", "verify")
@@ -123,13 +137,24 @@ def base(token):
     return token.rsplit("/", 1)[-1]
 
 
-def strip_prefixes(tokens):
-    """Drop grouping, leading assignments and a `uv run` wrapper."""
+def command_words(tokens):
+    """The segment from its command word on, grouping and assignments dropped.
+
+    `gate` and `sets_pipefail` both read a segment head through this, so they
+    cannot disagree about where its command starts - which they did, and a
+    `set` opening a group went unseen (`PL-1SFZ`).
+    """
     rest = list(tokens)
     while rest and rest[0] in GROUPING:
         rest.pop(0)
     while rest and ASSIGNMENT.match(rest[0]):
         rest.pop(0)
+    return rest
+
+
+def strip_prefixes(tokens):
+    """Drop grouping, leading assignments and a `uv run` wrapper."""
+    rest = command_words(tokens)
     if len(rest) >= 2 and base(rest[0]) == "uv" and rest[1] == "run":
         rest = rest[2:]
         while rest and ASSIGNMENT.match(rest[0]):
@@ -170,13 +195,50 @@ def gate(segment):
 
 def sets_pipefail(segment):
     """True for `set -o pipefail` in any of its spellings, false for `set +o`."""
-    rest = list(segment)
-    while rest and ASSIGNMENT.match(rest[0]):
-        rest.pop(0)
+    rest = command_words(segment)
     if not rest or rest[0] != "set" or "pipefail" not in rest[1:]:
         return False
     flag = rest[rest.index("pipefail") - 1]
     return flag.startswith("-") and flag.endswith("o")
+
+
+def pipefail_by_separator(segments, separators):
+    """Whether `pipefail` holds in the shell that runs each separator.
+
+    A `set` lasts as long as the shell it runs in. `( ... )` and a
+    substitution are subshells, and so is a command or `{ ...; }` group that
+    is piped or backgrounded, so a `set` inside one ends where it does. A
+    `{ ...; }` group run on its own is this shell, and its `set` outlives it.
+    """
+    state, groups, held = False, [], []
+    for index, segment in enumerate(segments):
+        piped = index > 0 and separators[index - 1] == "|"
+        forked = separators[index] in ("|", "&")
+        rest = list(segment)
+        while rest and rest[0] in GROUPING:
+            opener = rest.pop(0)
+            if opener != "!":
+                # A group takes the pipe into it; its first command does not.
+                groups.append((state, opener == "(" or piped))
+                piped = False
+        if sets_pipefail(rest) and not piped and not forked:
+            state = True
+        for position, token in enumerate(rest):
+            if PUNCTUATION.issuperset(token):
+                for character in token:
+                    if character == "(":
+                        groups.append((state, True))
+                    elif character == ")" and groups:
+                        state = groups.pop()[0]
+            # `}` is a word, and ends a group only where a command could start.
+            elif token == "}" and groups and (
+                position == 0 or rest[position - 1].endswith(CLOSERS)
+            ):
+                before, subshell = groups.pop()
+                if subshell or forked:
+                    state = before
+        held.append(state)
+    return held
 
 
 segments, separators, current = [], [], []
@@ -190,22 +252,35 @@ for token in tokens:
 segments.append(current)
 separators.append(None)
 
+pipefail = pipefail_by_separator(segments, separators)
+
 offender = swallowed_by = None
 for index, segment in enumerate(segments):
     name = gate(segment)
     if name is None:
         continue
-    pipefail = any(sets_pipefail(s) for s in segments[:index])
     # Everything to the right decides whether this status survives. `&&` is the
     # one separator that propagates it - a failing gate short-circuits the rest
-    # and the string exits non-zero. `|` propagates it only under pipefail. `;`
-    # and `&` hand the status to whatever runs next, and `||` hands it to a
-    # fallback that succeeds, which is the same loss wearing a different face.
+    # and the string exits non-zero. `|` propagates it only under pipefail, in
+    # the shell that runs that pipe. `;` and `&` hand the status to whatever
+    # runs next, and `||` hands it to a fallback that succeeds, which is the
+    # same loss wearing a different face.
     lost = None
     for offset, separator in enumerate(separators[index:]):
         if separator is None or separator == "&&":
             continue
-        if separator == "|" and pipefail:
+        if separator == "|" and pipefail[index + offset]:
+            continue
+        following = index + offset + 1
+        # A `;` before the `}` or `)` that ends a group hands the status to
+        # nothing: the group exits with it, and the separator after the group
+        # decides the rest. `{ make check; }` keeps it; `{ make check; } |
+        # tail` loses it at the `|`.
+        if (
+            separator == ";"
+            and following < len(segments)
+            and segments[following][:1] in ([")"], ["}"])
+        ):
             continue
         # Unless the next thing the string does is *read* the status. `make
         # check > /tmp/gate.log 2>&1; echo "exit=$?"` prints the verdict into
@@ -216,7 +291,6 @@ for index, segment in enumerate(segments):
         # separator counts, because anything in between replaces `$?` with its
         # own status, and `&` is excluded outright: after a background launch
         # `$?` is the launch, never the gate.
-        following = index + offset + 1
         if (
             separator != "&"
             and following < len(segments)
@@ -242,12 +316,24 @@ LOSS = {
     "||": "The `||` fallback succeeds, so a failing gate still exits 0",
 }
 
+# A refusal of a command that visibly sets `pipefail` reads as the guard being
+# wrong - the lesson `PL-1SFZ` was filed against - so it says why this one is
+# right.
+UNREACHED = (
+    "The command does set `pipefail`, but not in the shell that runs this "
+    "pipe. A `set` lasts as long as the shell it runs in: inside `( ... )`, or "
+    "inside a `{ ...; }` group that is piped or backgrounded, it ends with the "
+    "group, and after the pipeline it comes too late.\n\n"
+)
+unreached = swallowed_by == "|" and any(sets_pipefail(s) for s in segments)
+
 reason = (
     "This command runs `" + offender + "` and then throws its exit status "
     "away. " + LOSS.get(swallowed_by, "The status is discarded") + ", so a RED "
     "tree arrives here as exit 0 and nothing else in the output is read as a "
     "verdict.\n\n"
-    "That is not hypothetical. `PL-2JRC` ran `make check 2>&1 | tail -45`, "
+    + (UNREACHED if unreached else "")
+    + "That is not hypothetical. `PL-2JRC` ran `make check 2>&1 | tail -45`, "
     "read exit 0, and reported the gate green in its commit message and in the "
     "body of `#880`. The tree it pushed was red, and the correction is the "
     "block that body now opens with. `PL-D0W8` is this refusal.\n\n"
