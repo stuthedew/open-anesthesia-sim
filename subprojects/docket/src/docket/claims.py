@@ -317,7 +317,8 @@ class Holdings:
     now: datetime | None = None
     #: What `flight` reports beside the holds: refs that edited an item's file
     #: where nothing holds the item and the base has not superseded the edit,
-    #: and readable refs no subject, claim or name attributes to any item.
+    #: every such ref per item (`PL-1X2C`), and readable refs no subject, claim
+    #: or name attributes to any item.
     editing: tuple[QueueEdit, ...] = ()
     unattributed: tuple[str, ...] = ()
     #: Per `Hold.ref`, when that branch's newest non-merge commit was made.
@@ -1499,10 +1500,17 @@ def _editing(
 
     The weaker mark (`PL-N1JK`): a second edit to the file collides at merge
     whatever either was for. An edit the base's tip already accounts for is not
-    one (`PL-8MJ3`), which `vcs._superseded` asks once per branch; the first
-    branch, in the order refs were listed, whose edit survives is reported.
+    one (`PL-8MJ3`), which `vcs._superseded` asks once per branch.
+
+    **Every branch whose edit survives is reported, in the order refs were
+    listed** (`PL-1X2C`). Keeping only the first per item left out the one that
+    would actually collide: run on the second of two branches that had promoted
+    `PL-B8MK`, `show` named the reader's own and said nothing of the other. The
+    checked-out branch is reported with the rest, because this is a measurement
+    of the refs; a command that answers a reader leaves its own branch out, by
+    `Holdings.head`, since the reader already knows what it wrote.
     """
-    edited: dict[str, QueueEdit] = {}
+    edited: dict[str, list[QueueEdit]] = {}
     for branch, found in touched.items():
         wanted = {key: path for key, (_, path) in found.items() if key not in held}
         if not wanted:
@@ -1514,7 +1522,7 @@ def _editing(
         name = branches[branch][0]
         for key, path in paths.items():
             if path not in spent:
-                edited.setdefault(
-                    key, QueueEdit(name=name, item_id=key, last_commit=last.get(name))
+                edited.setdefault(key, []).append(
+                    QueueEdit(name=name, item_id=key, last_commit=last.get(name))
                 )
-    return tuple(edited[key] for key in sorted(edited))
+    return tuple(edit for key in sorted(edited) for edit in edited[key])
