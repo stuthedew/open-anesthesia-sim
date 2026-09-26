@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs
+milestone: v0.5.13
 touches: .claude/rules/instruction-writing.md, ROADMAP.md, docs/interface-provenance.md, docs/items/PL-PV5Q-docs-interface-provenance-md-s-stated-rationale.md, docs/worker.md, docs/resident-instructions.md, docs/items/PL-P5NB-docs-references-readme-md-records-doi-org-as.md
 added: 2026-09-26
 closed: 2026-09-26
