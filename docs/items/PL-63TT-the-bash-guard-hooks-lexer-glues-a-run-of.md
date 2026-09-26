@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-answer
-touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_gate_status_guard.py, tests/unit/test_floor_interpreter_guard.py
+touches: .claude/hooks/shell_split.py, docs/ARCHITECTURE.md, .claude/hooks/gate-status-guard.sh, .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_gate_status_guard.py, tests/unit/test_floor_interpreter_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a member of PL-PVW2, worked with its step 2
 added: 2026-09-26
 closed: 2026-09-26

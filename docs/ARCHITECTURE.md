@@ -1210,7 +1210,10 @@ in `tools/` until `PL-W4H9`, which is exactly the gap that item names: a script
 that rewrites another hook, editable without review. `docket-digest.sh`,
 `docket-branch-guard.sh`, `item_read_log.py`, `no-prune-guard.sh`,
 `floor-interpreter-guard.sh` and `gate-status-guard.sh` are documented where
-their behavior is, in their own headers.
+their behavior is, in their own headers. `shell_split.py` is the one file there
+that nothing wires: the three Bash guards import it for where one shell command
+ends (`PL-PVW2`), and it sits in the protected directory for the hooks' own
+reason, because its answer decides what they refuse.
 
 `.claude/hooks/stop_hook_patch.py` is the one hook here that is not a check and
 does not run under `make check`. It is wired as a SessionStart hook, and it
