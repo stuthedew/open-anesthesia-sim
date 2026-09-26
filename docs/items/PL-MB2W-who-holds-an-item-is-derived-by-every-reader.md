@@ -3,17 +3,18 @@ id: PL-MB2W
 title: Who holds an item is derived by every reader from commit subjects, touched paths and ref age and never recorded, so each reader misreads every new shape of work until it gets its own exception - twenty verified members, two still open
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parallel-sessions
 touches: subprojects/docket/README.md, subprojects/docket/src/docket/vcs.py, docs/items, CLAUDE.md
 blocked-by: PL-3FYK, PL-NST2, PL-0TD9, PL-N162, PL-FX5Q, PL-DDYD, PL-331V, PL-J9S0
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged to needs-decision as a generator head by PL-TH9K's session
 added: 2026-09-23
+closed: 2026-09-26
 payoff: a claim is one fact every reader reads, so a new shape of work stops costing an item per reader
 verify: ! grep -qF 'So it is derived, never stored.' subprojects/docket/src/docket/vcs.py && grep -qF 'git 2.22' subprojects/docket/README.md
 root-cause-of: PL-X3WZ, PL-7790, PL-N1JK, PL-3CTW, PL-VYSP, PL-2BZY, PL-61MD, PL-MFM4, PL-7TVT, PL-N2PP, PL-3QM9, PL-3W3P, PL-8FJK, PL-8GV1, PL-J16N, PL-QP9Z, PL-1MCK, PL-KWCY, PL-VFJ3, PL-8JQQ
-generator: live - who holds an item is derived from commit subjects, touched paths and ref age and never recorded, so each new shape of work is misread by some reader until it gets its own exception; PL-T7Y1's audit verified twenty members, four of them (PL-QP9Z, PL-1MCK, PL-KWCY, PL-VFJ3) filed after PL-7TVT closed spent, and two are open (PL-VFJ3 closed in #970)
+generator: spent - who holds an item is recorded as a Claim trailer on the holder's own branch and read by claims.holdings for every reader, so a new shape of work meets one recorded fact instead of each reader's inference; PL-FX5Q deleted the inference and its three promotions, and the design's two residuals, a work branch reaching a push unclaimed and a queue-only round that forgets to claim, carry pre-registered triggers rather than patches
 misread: Who holds an item now, and whether that holder is still live
 ---
 
@@ -384,6 +385,20 @@ Filed under `feature: claim-record`, in build order. This item is blocked on the
 7. `PL-DDYD`: bin/docket arm decides auto-merge arming, and CLAUDE.md names it instead of restating start mode's catalog
 8. `PL-331V`: Model the release train as a claimed resource, so the release collision guard sees a session that has filed a release item but not cut
 9. `PL-CH3Z`: Delete the legacy claim reading once bin/docket flight prints legacy refs: 0
+
+**Closed 2026-09-26, with the close-out.** `vcs.py`'s module docstring now says who holds an item is recorded and whether its work landed is derived, and why the lease answers the crashed-session objection that kept the holder derived. `subprojects/docket/README.md` gains § "Who holds an item is recorded, and whether its work landed is derived", which describes the carrier, the lease, the five endings, the order and what enforces it, the three other kinds of hold, and the git 2.22 floor, and § "Requirements" names that floor. The opening of § "In flight is read from the commits, not from the branch name" no longer says nothing records a hold, and scopes the leading-id rules to attribution and to commits made before the record. The rest of the close-out had already happened:
+
+- `PL-J16N` was re-scoped to rename fidelity in the fake runner and closed in #1018 (`4f37ef29`).
+- All twenty members are closed, so this close-out had none left to close: nineteen `done` and `PL-8GV1` dropped. The three last open were `PL-VFJ3` (#970), `PL-MFM4` (with `PL-331V`, #995) and `PL-J16N` (#1018).
+
+Done-when, checked against the tree at `b0ae1ed2`:
+
+- One reader decides who holds an item: `claims.holdings`. `flight` and every command ranking against it read it through `Holdings.flight()` (`cli._holdings`); the release guard reads the train's holder from it through `cli._release_train`, which `release`, `new --resource` and the digest's release offer all ask; and `arming.py`, `claiming.py` and `tools/branch_id_check.py` call it directly. `branches_in_flight` is gone.
+- A queue-only pass that closes or blocks an item it never claimed holds it as a status disposition, with no promotion for that shape: `PL-FX5Q` deleted the three.
+- `CLAUDE.md`'s arming rule names `bin/docket arm` (`PL-DDYD`).
+- The three open members are closed, as above.
+
+The generator is recorded `spent`. Its mechanism, a holder inferred from the shape of the work, is deleted rather than patched, and the two residuals the design states each carry a pre-registered trigger instead of a patch: a work branch reaching a push unclaimed (re-add a weak hold past 1 in 20, counted from `flight`'s `unclaimed:` rows), and a queue-only round that forgets to claim (file an item if one auto-merges mid-round). `PL-CH3Z` still follows, and `flight` printed `legacy refs: 0` on this branch.
 
 ### Not measured
 
