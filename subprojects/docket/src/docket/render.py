@@ -1042,16 +1042,13 @@ def format_flight(
     otherwise: read perfectly well, and attributable to nothing.
 
     **`read` adds what the claim record knows and a row has no field for**
-    (`PL-N162`, to `PL-MB2W`'s spec). Each row's state and kind - a claim, an
-    old-rule `legacy claim`, a `status disposition` or a `branch name` - since
-    "held" meant four different things once dispositions and names joined
-    claims, and a status disposition is a decision about an item rather than
-    somebody working it. Then the claims that lapsed on items the base holds
-    open, which hold nothing and which `next` therefore offers: a session
-    about to start one should know whose work it may be continuing. Then
-    `legacy refs: N`, printed at zero too, because zero is the reading
-    `PL-CH3Z` waits for before it deletes the old rule - on a whole read only
-    (`_legacy_line`). `unclaimed` is the
+    (`PL-N162`, to `PL-MB2W`'s spec). Each row's state and kind - a `claim`, a
+    `status disposition` or a `branch name` - since "held" meant three
+    different things once dispositions and names joined claims, and a status
+    disposition is a decision about an item rather than somebody working it.
+    Then the claims that lapsed on items the base holds open, which hold
+    nothing and which `next` therefore offers: a session about to start one
+    should know whose work it may be continuing. `unclaimed` is the
     `unclaimed:` rows, one per work branch that claims nothing
     (`claims.claims_nothing`), and the design's pre-registered 1-in-20
     threshold for a weak hold is counted from them, so they print wherever one
@@ -1108,12 +1105,11 @@ def format_flight(
         # (`PL-VYSP`): a capture leads with an id and claims nothing, and a
         # claim the base has since taken or closed is removed above, so "no
         # commit leads with an id" was false whenever either existed. Since
-        # `PL-N162` a hold is a claim, a status move or a name, and a subject
-        # claims only on a commit made before the record.
+        # `PL-N162` a hold is a claim, a status move or a name, and since
+        # `PL-CH3Z` a subject claims nothing at all.
         lines.append(
             "No branch holds an item. No branch carries an item id in its name, records a live "
-            "claim on one or moves one's status, and no commit made before the claim record "
-            "leads with one the default branch has not already taken or closed."
+            "claim on one or moves one's status."
         )
     else:
         # Every claim there was is in the section below, which explains itself.
@@ -1126,8 +1122,6 @@ def format_flight(
 
     if read is not None:
         lines.extend(_format_lapsed(read, now))
-        lines.append("")
-        lines.append(_legacy_line(read))
     if unclaimed is not None:
         lines.extend(_format_unclaimed(unclaimed, read, now))
 
@@ -1156,9 +1150,8 @@ def format_flight(
 
 
 def _kind(hold: Hold) -> str:
-    """A hold's kind in the reader's words, `legacy` where the old rule read it."""
-    kind = _HOLD_KINDS.get(hold.kind, hold.kind)
-    return f"legacy {kind}" if hold.legacy else kind
+    """A hold's kind in the reader's words."""
+    return _HOLD_KINDS.get(hold.kind, hold.kind)
 
 
 def held_as(key: str, read: Holdings | None) -> str:
@@ -1234,42 +1227,6 @@ def _format_lapsed(read: Holdings, now: datetime) -> list[str]:
     return lines
 
 
-def _legacy_line(read: Holdings) -> str:
-    """`legacy refs: N`, the count `PL-CH3Z` waits to read as zero.
-
-    **Zero is a conclusion only on a whole read.** `PL-CH3Z` deletes the old
-    rule once this prints 0, and a read git declined holds nothing, while a
-    ref whose history went unread - any truncated clone - contributes no
-    hold whatever its subjects say. Either would print the go-ahead over refs
-    that may still hold by the old rule, so a partial read prints the count as
-    a floor and names what it could not see, and never the conclusion.
-    """
-    count = len(read.legacy_refs)
-    if not read.known:
-        return (
-            f"legacy refs: unknown - git did not answer ({read.declined}), so whether any ref "
-            "still holds an item by the old rule is not read here, and this is not the reading "
-            "`PL-CH3Z` waits for."
-        )
-    if read.unreadable:
-        unread = len(read.unreadable)
-        return (
-            f"legacy refs: at least {count} - {_plural(unread, 'ref', 'refs')} went unread and "
-            f"may hold by the old rule as well ({', '.join(read.unreadable)}), so this is not "
-            "the reading `PL-CH3Z` waits for; a full clone reads the whole count."
-        )
-    if not count:
-        return (
-            "legacy refs: 0 - no ref holds an item by a commit made before the claim record, "
-            "so nothing here still needs the old rule (`PL-CH3Z` removes it)."
-        )
-    return (
-        f"legacy refs: {count} - {_plural(count, 'ref holds', 'refs hold')} an item by a commit "
-        "made before the claim record, read by the old rule from its subject. `PL-CH3Z` "
-        "removes that rule once this reads 0."
-    )
-
-
 def _format_unclaimed(found: Unclaimed, read: Holdings | None, now: datetime) -> list[str]:
     """The `unclaimed:` rows: work branches that claim nothing (`claims.claims_nothing`).
 
@@ -1289,8 +1246,8 @@ def _format_unclaimed(found: Unclaimed, read: Holdings | None, now: datetime) ->
             [
                 "",
                 f"{_plural(count, 'work branch claims', 'work branches claim')} nothing: "
-                f"{'it changes' if count == 1 else 'each changes'} files outside the queue in "
-                "commits made under the claim record, and records no claim of its own:",
+                f"{'it changes' if count == 1 else 'each changes'} files outside the queue "
+                "and records no claim of its own:",
                 "",
             ]
         )
@@ -1949,9 +1906,8 @@ def _hold_detail(hold: Hold, last: datetime | None, now: datetime, *, aged: bool
     On one clock, UTC, rather than as git wrote it: two sessions can be in two
     zones, and two timestamps a reader has to convert before comparing are two
     a reader will compare wrongly - which here would mean reading the wrong
-    branch as the one that continues. `legacy` is said because such a claim
-    was read from a commit subject by the old rule rather than recorded.
-    `aged` false leaves the branch's age off, for a caller saying when instead.
+    branch as the one that continues. `aged` false leaves the branch's age
+    off, for a caller saying when instead.
     """
     kind = _kind(hold)
     if hold.kind == NAMED and not hold.commit:
@@ -1980,12 +1936,9 @@ def _ours(hold: Hold, read: Holdings) -> bool:
     return hold.mine or _on_head(hold, read)
 
 
-def _one_claim(group: Sequence[Hold], item: str, read: Holdings, now: datetime) -> list[str]:
-    """The mark for an item one claim holds, however many branches reach its commit."""
-    only = next((hold for hold in group if _ours(hold, read)), group[0])
+def _one_claim(only: Hold, item: str, read: Holdings, now: datetime) -> list[str]:
+    """The mark for an item one claim holds."""
     lines = [f"    {_hold_detail(only, read.last.get(only.ref), now)}"]
-    if len(group) > 1:
-        lines.append(_reached_by(group, only))
     if only.mine and _on_head(only, read):
         return [
             f"  IN FLIGHT on this branch ({only.ref}) - {item} is this session's own work.",
@@ -2015,12 +1968,6 @@ def _one_claim(group: Sequence[Hold], item: str, read: Holdings, now: datetime) 
     ]
 
 
-def _reached_by(group: Sequence[Hold], shown: Hold) -> str:
-    """The other branches one claim commit is on, said as the one claim it is."""
-    others = ", ".join(hold.ref for hold in group if hold is not shown)
-    return f"    the same claim commit is on {others} too, through a merge: one claim, not two"
-
-
 def _live_claims(order: Sequence[Hold], item: str, read: Holdings, now: datetime) -> list[str]:
     """Who has claimed an item, and - where more than one branch has - which session yields.
 
@@ -2035,13 +1982,6 @@ def _live_claims(order: Sequence[Hold], item: str, read: Holdings, now: datetime
     yields, a session is never told to yield to itself, and one carrying none
     of the claims has nothing to hand over.
 
-    **One claim commit is one claim, whichever branches reach it.** A claim
-    read by the old rules counts for every branch whose walk reaches its
-    commit, so a branch that merged another's carries the same claim, and an
-    order over the two would tell each checkout its own branch holds it.
-    Grouped by commit, as `vcs.precedence` grouped them, it is one holder and
-    no verdict - the handoff it usually is.
-
     **It says what the branch holds, not that somebody is holding it**
     (`PL-7TVT`). A branch outlives its session: PR `#757`'s items read as held
     for 25 minutes after its session was archived. A live claim proves the item
@@ -2049,38 +1989,24 @@ def _live_claims(order: Sequence[Hold], item: str, read: Holdings, now: datetime
     it - true of a live session, of a pull request waiting on review and of an
     abandoned branch alike, which is the one instruction the evidence supports.
     """
-    groups: dict[str, list[Hold]] = {}
-    for hold in order:
-        groups.setdefault(hold.commit, []).append(hold)
-    claims = list(groups.values())
-    if len(claims) == 1:
-        return _one_claim(claims[0], item, read, now)
+    if len(order) == 1:
+        return _one_claim(order[0], item, read, now)
 
     lines = [
-        f"  {item} is claimed on {_plural(len(claims), 'branch', 'branches')}. Whichever claimed "
+        f"  {item} is claimed on {_plural(len(order), 'branch', 'branches')}. Whichever claimed "
         "it first holds it,",
         "  a tie breaks on the claim commit's hash and a takeover stands where the claim it",
         "  names stood, so which session yields reads the same in every checkout:",
         "",
     ]
-    ours = next(
-        (
-            position
-            for position, group in enumerate(claims)
-            if any(_ours(hold, read) for hold in group)
-        ),
-        None,
-    )
-    for position, group in enumerate(claims):
-        shown = next((hold for hold in group if _ours(hold, read)), group[0])
+    ours = next((position for position, hold in enumerate(order) if _ours(hold, read)), None)
+    for position, shown in enumerate(order):
         verdict = "holds it" if position == 0 else "yields  "
         here = (
             " (this branch)" if _on_head(shown, read) else " (this session)" if shown.mine else ""
         )
         lines.append(f"    {verdict}  {shown.ref}{here}")
         lines.append(f"              {_hold_detail(shown, read.last.get(shown.ref), now)}")
-        if len(group) > 1:
-            lines.append(f"          {_reached_by(group, shown).strip()}")
     lines.append("")
     if ours == 0:
         lines.append(f"  This branch holds {item}; the others are the ones that yield.")

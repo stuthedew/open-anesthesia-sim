@@ -416,8 +416,8 @@ def _flight(args: argparse.Namespace) -> FlightReport:
     flight where a branch holds a live claim on it, a live status disposition,
     or its name; `Holdings.flight` returns the `FlightReport` the inferred
     read did, so no reader below changed. What a commit subject says is
-    attribution and holds nothing, except on a commit made before a session
-    could write a claim, which is read by the old rule alone.
+    attribution and holds nothing: `PL-CH3Z` deleted the old rule that read
+    one on a commit made before the record.
 
     The root is resolved from the store, exactly as `_load` resolves it. Asking
     git about the repository this command happens to be *run* in, while
@@ -4250,8 +4250,8 @@ def cmd_flight(args: argparse.Namespace) -> int:
     **And it prints what the claim record adds** (`PL-N162`, `PL-MB2W`'s
     spec): each row's kind and state, from the `Holdings` rather than the
     `FlightReport`, which has no field for them; lapsed claims on items the
-    base holds open; how many refs still hold by the old rule; and an
-    `unclaimed:` row per work branch that claims nothing, asked of the same
+    base holds open; and an `unclaimed:` row per work branch that claims
+    nothing, asked of the same
     `claims.claims_nothing` CI refuses on. That last walks each branch again,
     so it is asked here and by no command that only ranks against the report.
     """

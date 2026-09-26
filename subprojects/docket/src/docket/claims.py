@@ -73,12 +73,12 @@ against a claim or holds arming. They are kept apart from the claims
 (`Holdings.dispositions`, `Holdings.cuts`, `Holdings.named`) so that a reader
 wanting claims cannot be handed one.
 
-**A commit made before a session could write a claim is read by the old
-rules** (`CUTOVER_MARKER`): a subject leading with ids claims them where the
-commit's diff is empty or reaches outside the queue - `vcs._annotates_only`'s
-rule - under the same lease, and with none of the promotions `vcs` layered on
-that rule until `PL-FX5Q` deleted them. `PL-CH3Z` deletes that reading once no
-ref carries such a commit.
+**Every commit is read by its trailers alone.** The old rule - a subject
+leading with ids claimed them where the commit's diff was empty or reached
+outside the queue - was kept for commits made before a session could write a
+claim, and `PL-CH3Z` deleted it on 2026-09-26, once `flight` counted no ref
+still holding by it. A commit from before the record carries no `Claim:`
+trailer, so it claims nothing, and its leading ids are attribution.
 
 **git 2.22 is the floor** (`GIT_FLOOR`), declared rather than worked around: a
 git that cannot read one trailer key's values declines, and says so, rather
@@ -107,7 +107,6 @@ from .vcs import (
     Runner,
     SettledBranch,
     SettledReport,
-    _annotates_only,
     _cut_versions,
     _head_name,
     _item_paths_on,
@@ -147,21 +146,6 @@ RELEASING_STATUSES = CLOSED_STATUSES + ("blocked",)
 #: `separator=` (git 2.22.0 release notes), which is what reads one trailer key's
 #: values without copying git's rules for finding a trailer block into Python.
 GIT_FLOOR = (2, 22)
-
-#: The file whose presence in a commit's own tree says the commit was made after
-#: a session could write a claim: `claiming.py`, which reached the default branch
-#: with `bin/docket claim`. A commit whose tree lacks it predates the record and
-#: is read by the old rules. The test needs no clock and survives the branch
-#: merging `main` later - the merge gives the branch the file and leaves the
-#: commits before it as they were. The path is this repository's layout, and it
-#: goes when `PL-CH3Z` removes the old reading.
-#:
-#: Not this module, which landed first (project owner, 2026-09-24, ratified, over
-#: accepting the window, `PL-SW2K`): a branch started between the two pushed the
-#: old empty start commit onto a tree already carrying the reader, and was read
-#: as claiming nothing it was working. Renaming the file turns every claim written
-#: after it into an old-rule one, which `test_claims` pins against.
-CUTOVER_MARKER = "subprojects/docket/src/docket/claiming.py"
 
 #: Where a remote session's own id is read from, to decide `Hold.mine`. `claim`
 #: writes the same variable's value as a claim's `<session>` token.
@@ -261,7 +245,7 @@ class Hold:
     commit: str
     #: The claim's `<session>` token, which decides `mine` and is what
     #: `get_session` is asked about before a takeover. Empty for a claim written
-    #: without one and for every claim read by the old rules.
+    #: without one.
     session: str = ""
     status: str = ""
     #: Whether this checkout's session made the claim. Decided by the session
@@ -269,8 +253,6 @@ class Hold:
     #: `HEAD` is on the claiming branch - never by order.
     mine: bool = False
     on_base: bool = True
-    #: Read by the old rules, from a commit made before a session could write a claim.
-    legacy: bool = False
     #: `BY_YIELD`, `BY_STATUS`, `BY_OVER`, `BY_LANDING` or `BY_CLOSED` for a
     #: released hold, and empty otherwise.
     released_by: str = ""
@@ -288,10 +270,9 @@ class Holdings:
 
     `holds` is the claims, sorted into the order that decides which branch
     continues: author date, then hash, with a takeover immediately ahead of the
-    claim it names, and last the branch's name - a claim read by the old rules
-    counts for every branch reaching its commit, so two branches can tie on one
-    commit, and the name keeps the order the same in every checkout rather than
-    leaving it to which refs this one lists first. One order across every item,
+    claim it names, and last the branch's name, which keeps the order the same
+    in every checkout rather than leaving it to which refs this one lists
+    first. One order across every item,
     so `order` is a filter of it and `holder` its first match. `dispositions`,
     `cuts` and `named` are the other three kinds, kept apart so that no reader
     wanting claims is handed one.
@@ -374,11 +355,6 @@ class Holdings:
                 held.setdefault(hold.key, hold)
         return held
 
-    @property
-    def legacy_refs(self) -> frozenset[str]:
-        """The refs holding a live claim read by the old rule: `PL-CH3Z` waits for none."""
-        return frozenset(hold.ref for hold in self.holds if hold.state == LIVE and hold.legacy)
-
     def flight(self) -> FlightReport:
         """The holds as a `vcs.FlightReport`, the shape every in-flight reader takes.
 
@@ -437,7 +413,6 @@ class _Claim:
     position: int
     session: str = ""
     over: str = ""
-    legacy: bool = False
 
     @property
     def identity(self) -> tuple[str, str, str]:
@@ -509,7 +484,7 @@ def holdings(
         else:
             histories[branch] = history
 
-    claims, yields, malformed = _events(histories, branches, items_dir, remotes, root, run)
+    claims, yields, malformed = _events(histories, branches, remotes)
     episodes = _episodes(claims, yields)
     successors = _takeovers(claims, remotes)
     superseded = set(successors.values())
@@ -602,7 +577,6 @@ def holdings(
             status=current,
             mine=session in tokens if tokens else bool(here) and branch == here,
             on_base=key in on_base,
-            legacy=holder.legacy,
             released_by=released_by,
             over=holder.over,
             resource=fields.get("resource", ""),
@@ -846,18 +820,17 @@ def in_queue(path: str, config: Config) -> bool:
     }
 
 
-def work_under_record(
+def work_outside_queue(
     root: Path, base: str, head: str, config: Config, *, runner: Runner | None = None
 ) -> bool | None:
-    """Whether `head` changes a path outside the queue in a commit made under the record.
+    """Whether `head` changes a path outside the queue in a non-merge commit of its own.
 
     `None` where git did not answer. A merge is how the base arrives rather than
-    the branch's own work, and `holdings` reads none either. A commit whose own
-    tree lacks `CUTOVER_MARKER` was made before a session could write a claim,
-    and the claim clauses skip it, as the design's migration requires. Newest
-    first, so a branch made under the record answers in one `ls-tree`.
-    `changed_path_args` asks for `-z`, so a path is compared as written rather
-    than in git's quoted form, which no queue path would match.
+    the branch's own work, and `holdings` reads none either. Every commit
+    counts: `PL-CH3Z` deleted the old rule that read a commit made before the
+    record by its subject and had this skip it. `changed_path_args` asks for
+    `-z`, so a path is compared as written rather than in git's quoted form,
+    which no queue path would match.
     """
     run = runner or _run_git
     log = run(
@@ -870,20 +843,11 @@ def work_under_record(
         return None
     for record in log.split("\x1e"):
         # The hash, then the commit's paths, each ended by NUL; git opens the
-        # paths with one `\n`, which belongs to none of them.
-        commit, _, listing = record.partition("\0")
-        if not commit or all(
-            in_queue(path, config) for path in listed_paths(listing.removeprefix("\n"))
-        ):
-            # Nothing at all, or the queue alone: a claim or a yield, which
-            # are empty, a capture or a triage pass.
-            continue
-        # The tree's own listing, which is the design's test; `holdings` asks
-        # `git show` for the same file, and the two agree on any real tree.
-        tree = run(["ls-tree", "--name-only", commit, "--", CUTOVER_MARKER], root)
-        if not answered(tree):
-            return None
-        if tree.strip():
+        # paths with one `\n`, which belongs to none of them. Nothing at all, or
+        # the queue alone, is a claim or a yield, which are empty, a capture or
+        # a triage pass; anything else is work.
+        paths = listed_paths(record.partition("\0")[2].removeprefix("\n"))
+        if paths and not all(in_queue(path, config) for path in paths):
             return True
     return False
 
@@ -894,13 +858,12 @@ def claims_bound(read: Holdings, branch: str, remotes: frozenset[str]) -> tuple[
     Any state, by the project owner's reading (2026-09-24): a branch releases
     its claim by closing its item in its own copy, so "no live claim" would call
     every finished branch forgetful, and the session this catches is the one
-    that never claimed. Old-rule holds are left out, since an inference from a
-    subject is what the record replaces.
+    that never claimed.
     """
     return tuple(
         hold
         for hold in read.holds
-        if hold.kind == CLAIM and not hold.legacy and _head_name(hold.ref, remotes) == branch
+        if hold.kind == CLAIM and _head_name(hold.ref, remotes) == branch
     )
 
 
@@ -917,9 +880,9 @@ def claims_nothing(
 ) -> bool | None:
     """Whether `branch` is a work branch that claims nothing, or `None` where git did not answer.
 
-    A `claude/` branch with a non-merge commit made under the record that
-    changes a path outside the queue (`work_under_record`, walking
-    `base..head`), no claim of its own in any state (`claims_bound`), and no
+    A `claude/` branch with a non-merge commit that changes a path outside the
+    queue (`work_outside_queue`, walking `base..head`), no claim of its own in
+    any state (`claims_bound`), and no
     item id in its name, which holds the item by the name (`PL-TZ3R`). The
     question is per branch, never per id, so a capture or a triage pass is
     never pushed into claiming the ids it leads with. A branch `read` did not
@@ -933,7 +896,7 @@ def claims_nothing(
         return False
     if not any(_head_name(ref, remotes) == branch for ref in read.last):
         return False
-    return work_under_record(root, base, head, config, runner=runner)
+    return work_outside_queue(root, base, head, config, runner=runner)
 
 
 @dataclass(frozen=True)
@@ -1129,56 +1092,22 @@ def _values(field: str) -> tuple[str, ...]:
 
 
 def _events(
-    histories: dict[str, list[_Commit]],
-    branches: dict[str, list[str]],
-    items_dir: str,
-    remotes: frozenset[str],
-    root: Path,
-    run: Runner,
+    histories: dict[str, list[_Commit]], branches: dict[str, list[str]], remotes: frozenset[str]
 ) -> tuple[list[_Claim], list[_Yield], tuple[str, ...]]:
     """Every claim and yield bound to the branch it was read on, and each unparsed trailer.
 
-    A commit made after a session could write a claim speaks only through its
-    trailers, and each binds to a branch only where its token names that branch;
-    its leading ids are attribution and claim nothing. A commit made before is read
-    by the old rule and nothing else. Which of the two a commit is is asked only
-    of commits that could say something under either reading, and once each.
-
-    An old-rule claim has no token to bind by, so it counts for every branch
-    whose walk reaches it - the old attribution, bystanders included. That
-    over-reports where one branch merged another, which is the cheaper error of
-    the two, and it lasts only as long as the old reading does.
+    A commit speaks only through its trailers, and each binds to a branch only
+    where its token names that branch; its leading ids are attribution and
+    claim nothing. So a claim commit two branches reach through a merge is one
+    claim, on the branch its token names, and a commit made before the record,
+    which carries no trailer, claims nothing at all (`PL-CH3Z`).
     """
-    prefix = items_dir.strip("/") + "/"
-    recorded: dict[str, bool] = {}
     claims: dict[tuple[str, str, str], _Claim] = {}
     yields: list[_Yield] = []
     malformed: dict[tuple[str, str], str] = {}
     for branch, history in histories.items():
         for position, entry in enumerate(history):
-            ids = leading_ids(entry.subject)
-            old_rule = bool(ids) and not _annotates_only(list(entry.paths), prefix)
-            if not (entry.claims or entry.yields or old_rule):
-                continue
-            if entry.commit not in recorded:
-                marker = run(["show", f"{entry.commit}:{CUTOVER_MARKER}"], root)
-                recorded[entry.commit] = bool(marker.strip())
-            if not recorded[entry.commit]:
-                # Made before a session could write a claim: any trailer it
-                # carries is not read, and the old rule is the whole of what it
-                # says.
-                if old_rule:
-                    for key in ids:
-                        claim = _Claim(
-                            key=key,
-                            branch=branch,
-                            commit=entry.commit,
-                            authored=entry.authored,
-                            committed=entry.committed,
-                            position=position,
-                            legacy=True,
-                        )
-                        claims.setdefault(claim.identity, claim)
+            if not (entry.claims or entry.yields):
                 continue
             for text in entry.yields:
                 parsed_yield = _parse_yield(text)
