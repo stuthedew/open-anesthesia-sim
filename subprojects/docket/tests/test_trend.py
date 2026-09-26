@@ -9,8 +9,12 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+import pytest
+
+from docket.cli import main
 from docket.config import Config
 from docket.model import Item
+from docket.render import format_trend
 from docket.trend import (
     APPARATUS,
     BY_DAY,
@@ -321,3 +325,76 @@ def test_the_top_band_named_is_the_highest_one_anything_is_actually_in() -> None
 
 def test_a_store_with_no_history_at_all_produces_no_periods() -> None:
     assert analyze([], Churn(), CONFIG, today=date(2026, 8, 27)).periods == ()
+
+
+# --- what the key says about a run without churn ----------------------------
+
+
+def _no_git_trend(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> str:
+    """The key of a `--no-git` run over two closures, whitespace folded.
+
+    Folded because the assertions are about what the key says, not about where
+    its lines happen to wrap.
+    """
+    items = tmp_path / "docs" / "items"
+    items.mkdir(parents=True)
+    (items.parent / "docket.toml").write_text(
+        '[docket]\nworkflow_paths = ["tools"]\n', encoding="utf-8"
+    )
+    for ident, touches, closed in (
+        ("PL-4401", "src/core.py", "2026-08-25"),
+        ("PL-4402", "tools/x.py", "2026-09-02"),
+    ):
+        (items / f"{ident}-x.md").write_text(
+            f"---\nid: {ident}\ntitle: Item {ident}\npriority: P2\neffort: S\n"
+            f"status: done\nclasses: perf\ntouches: {touches}\nadded: 2026-08-01\n"
+            f"closed: {closed}\n---\n\n**Problem.** P\n**Why it matters.** W\n"
+            "**Done when.** D\n",
+            encoding="utf-8",
+        )
+
+    assert main(["trend", "--items", str(items), "--no-git", "--today", "2026-09-05"]) == 0
+    return " ".join(capsys.readouterr().out.split())
+
+
+def test_no_git_says_churn_was_not_asked_for(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The flag is a choice, not a fault, and the key must not report it as one.
+
+    It said "git could not be read in this checkout" under `--no-git`, where
+    nothing had been asked of git at all (`PL-F5NV`).
+    """
+    key = _no_git_trend(tmp_path, capsys)
+
+    assert "churn not shown: not asked for, so this run read nothing from git." in key
+    assert "could not be read" not in key
+
+
+def test_a_history_git_did_not_answer_still_says_it_could_not_be_read() -> None:
+    """The other cause keeps its own wording, so the two cannot collapse into one."""
+    report = analyze(
+        [_item("PL-0001")],
+        Churn(declined="git did not answer 1 of the 1 questions this read put to it"),
+        CONFIG,
+        today=date(2026, 8, 27),
+    )
+    key = " ".join(format_trend(report).split())
+
+    assert "churn not shown: git could not be read in this checkout." in key
+    assert "not asked for" not in key
+
+
+def test_no_git_names_the_day_its_windows_are_anchored_at(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """And why a run that reads git puts the same closures in other periods.
+
+    Without git the first commit is unknown, so the windows start at the first
+    closure; a run that reads git starts them at the first commit, and every
+    item column re-bucketed with nothing saying why (`PL-F5NV`).
+    """
+    key = _no_git_trend(tmp_path, capsys)
+
+    assert "anchored at 2026-08-25, the first closure." in key
+    assert "A run that reads git anchors at the first commit to change a line instead" in key

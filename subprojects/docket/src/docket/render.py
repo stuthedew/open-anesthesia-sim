@@ -61,7 +61,16 @@ from .release import (
     release_offer,
 )
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, GateStatus, Scope, Wave
-from .trend import APPARATUS, BY_DAY, EFFORT_POINTS, LANES, PRODUCT_BUCKETS, QUEUE, Trend
+from .trend import (
+    APPARATUS,
+    BY_DAY,
+    CHURN_NOT_ASKED,
+    EFFORT_POINTS,
+    LANES,
+    PRODUCT_BUCKETS,
+    QUEUE,
+    Trend,
+)
 from .vcs import (
     CURRENT,
     FETCH_FAILED,
@@ -3287,7 +3296,7 @@ def format_trend(report: Trend) -> str:
     docstring carries which. A single number here would be the tool guessing at
     the judgment half, which is the one thing it must not do.
     """
-    if not report.periods:
+    if not report.periods or report.anchor is None:
         return "Nothing closed and no history to read: there is no trend yet."
 
     churn_width = _CHURN + _PCT if report.has_churn else 0
@@ -3316,10 +3325,30 @@ def format_trend(report: Trend) -> str:
 
     window = "day" if report.by == BY_DAY else "7-day period"
     ladder = ", ".join(f"{size}={points}" for size, points in EFFORT_POINTS.items())
+    anchored = f"One row per {window}, anchored at {report.anchor.isoformat()}"
+    if report.has_churn:
+        opening = [
+            f"{anchored}, the first day that changed a line",
+            "or closed an item. Three measures, because no one of them is honest alone:",
+        ]
+    elif report.by == BY_DAY:
+        # A day is a day whatever it is counted from, so a daily run owes no
+        # caveat for starting somewhere else.
+        opening = [
+            f"{anchored}, the first closure. Three measures,",
+            "because no one of them is honest alone:",
+        ]
+    else:
+        # Without git the first commit is unknown, so the windows start later
+        # and the same closures land in different periods (`PL-F5NV`).
+        opening = [
+            f"{anchored}, the first closure. A run that",
+            "reads git anchors at the first commit to change a line instead, so its periods",
+            "can start on other days. Three measures, because no one of them is honest alone:",
+        ]
     lines += [
         "",
-        f"One row per {window}, anchored at the first day of the history. Three measures,",
-        "because no one of them is honest alone:",
+        *opening,
         "  wf/prod  items closed, by the lane their `touches` place them in.",
         "  +x       crossing: reaches both halves, so neither lane offers it.",
         "  +u       unplaced: declares no `touches`, so nothing can place it.",
@@ -3335,6 +3364,8 @@ def format_trend(report: Trend) -> str:
             f"           while doing something else would count as {APPARATUS} work.",
             f"           Product churn is {', '.join(PRODUCT_BUCKETS)} together.",
         ]
+    elif report.churn_reading == CHURN_NOT_ASKED:
+        lines.append("  churn    not shown: not asked for, so this run read nothing from git.")
     else:
         lines.append("  churn    not shown: git could not be read in this checkout.")
 

@@ -81,6 +81,14 @@ BY_DAY = "day"
 BY_WEEK = "week"
 WINDOWS: Mapping[str, int] = {BY_DAY: 1, BY_WEEK: 7}
 
+#: How the churn columns were come by. Two causes leave them out, and the key
+#: printed in their place has to name the right one: a run told not to ask git
+#: that says git could not be read sends its reader looking for a fault that is
+#: not there (`PL-F5NV`).
+CHURN_READ = "read"
+CHURN_NOT_ASKED = "not asked"
+CHURN_UNREADABLE = "unreadable"
+
 
 def bucket(path: str, config: Config) -> str:
     """Which half of the project a changed file sits in, and where inside it.
@@ -185,9 +193,18 @@ class Trend:
     top_band: Mapping[str, int]
     top_band_name: str
     by: str
-    #: False where git could not be read, so the churn columns are absent
-    #: rather than zero.
-    has_churn: bool
+    #: One of the `CHURN_*` readings. Anything but `CHURN_READ` leaves the
+    #: churn columns absent rather than zero.
+    churn_reading: str
+    #: The day the windows are counted from, or nothing where there is no
+    #: history. Without churn it is the first closure, where a run that reads
+    #: git starts at the first commit, so the two runs bucket the same closures
+    #: into different periods and only this says why.
+    anchor: date | None
+
+    @property
+    def has_churn(self) -> bool:
+        return self.churn_reading == CHURN_READ
 
 
 def _windows(first: date, last: date, span: int) -> list[tuple[date, date]]:
@@ -217,6 +234,22 @@ def _first_day(items: Sequence[Item], churn: Churn) -> date | None:
     days = [day for day in churn.by_day]
     days += [item.closed for item in items if item.closed]
     return min(days) if days else None
+
+
+def _churn_reading(churn: Churn) -> str:
+    """Whether the churn columns can be drawn, and if not, which cause stopped them.
+
+    A read git did not answer comes back declined, because `vcs.churn` wraps
+    its runner in the silence record every read carries. `cmd_trend` hands a
+    `--no-git` run a bare `Churn()`, which put no question to git and so
+    declined none. Empty and undeclined therefore means not asked - with one
+    residual this cannot see: a history git answered with no line counts at
+    all, which takes a repository whose every commit is a merge, empty, or
+    binary-only.
+    """
+    if churn:
+        return CHURN_READ
+    return CHURN_UNREADABLE if churn.declined else CHURN_NOT_ASKED
 
 
 def analyze(
@@ -275,7 +308,8 @@ def analyze(
         ),
         top_band_name=top_band,
         by=by,
-        has_churn=bool(churn),
+        churn_reading=_churn_reading(churn),
+        anchor=first,
     )
 
 
