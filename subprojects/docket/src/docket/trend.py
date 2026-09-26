@@ -236,31 +236,44 @@ def _first_day(items: Sequence[Item], churn: Churn) -> date | None:
     return min(days) if days else None
 
 
-def _churn_reading(churn: Churn) -> str:
+def _churn_reading(churn: Churn | None) -> str:
     """Whether the churn columns can be drawn, and if not, which cause stopped them.
 
-    A read git did not answer comes back declined, because `vcs.churn` wraps
-    its runner in the silence record every read carries. `cmd_trend` hands a
-    `--no-git` run a bare `Churn()`, which put no question to git and so
-    declined none. Empty and undeclined therefore means not asked - with one
-    residual this cannot see: a history git answered with no line counts at
-    all, which takes a repository whose every commit is a merge, empty, or
-    binary-only.
+    `None` is a run that asked git nothing, and it is `cmd_trend`'s word for
+    `--no-git`: only the command knows whether it asked, so the cause is taken
+    from what it did rather than inferred from the shape of an empty reading
+    (`PL-PWH6`). A read git did not answer comes back declined, because
+    `vcs.churn` wraps its runner in the silence record every read carries, and
+    declined with no days in it is the unreadable case. Anything else was read:
+    a partial reading with days in it, whose gap `cmd_trend` prints above the
+    table, and a history git answered with no line counts at all - a repository
+    whose every commit is a merge, empty, or binary-only - whose columns are
+    drawn at zero, because zero lines is then what git said. That last one read
+    as not asked while the cause was inferred.
     """
-    if churn:
+    if churn is None:
+        return CHURN_NOT_ASKED
+    if churn or not churn.declined:
         return CHURN_READ
-    return CHURN_UNREADABLE if churn.declined else CHURN_NOT_ASKED
+    return CHURN_UNREADABLE
 
 
 def analyze(
     items: Sequence[Item],
-    churn: Churn,
+    churn: Churn | None,
     config: Config,
     *,
     by: str = BY_WEEK,
     today: date | None = None,
 ) -> Trend:
-    """The whole report, from the store and the history together."""
+    """The whole report, from the store and the history together.
+
+    `churn` is `None` where the caller asked git nothing, which is the only way
+    the key can say so rather than guess it from an empty reading (`PL-PWH6`).
+    """
+    reading = _churn_reading(churn)
+    if churn is None:
+        churn = Churn()
     last = today or date.today()
     first = _first_day(items, churn)
     span = WINDOWS.get(by, WINDOWS[BY_WEEK])
@@ -308,7 +321,7 @@ def analyze(
         ),
         top_band_name=top_band,
         by=by,
-        churn_reading=_churn_reading(churn),
+        churn_reading=reading,
         anchor=first,
     )
 
