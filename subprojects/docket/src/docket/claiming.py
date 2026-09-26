@@ -242,7 +242,7 @@ def claim(
     # Which of this branch's claims are on that copy is what `_displaced` asks;
     # where the remote could not say, nothing is pushed, so the check waits for
     # a run that can ask it rather than withdraw on a guess.
-    displaced = {} if remote.failed else _displaced(root, read, branch, remote)
+    displaced = {} if remote.failed else _displaced(root, read, branch, remote, heads)
     if displaced:
         withdrawn = _withdraw(root, branch, displaced, trailers=trailers, asked=wanted)
         if withdrawn.code != CLAIMED:
@@ -631,15 +631,16 @@ def _take_another(hold: Hold, key: str) -> tuple[str, ...]:
 
 
 def _displaced(
-    root: Path, read: Holdings, branch: _Branch, remote: _OnRemote
+    root: Path, read: Holdings, branch: _Branch, remote: _OnRemote, heads: RemoteHeads
 ) -> dict[str, tuple[Hold, Hold]]:
     """This branch's claims that publishing would put over one already published, by item.
 
     Each is a live claim of the branch's that orders first and is not on the
     remote's copy of the branch, as the remote itself answered (`PL-WX87`),
     paired with the first live claim behind it that is on its own branch's copy
-    there: the one every other session reads as holding the item, and whose
-    session was told it does (`PL-ZLJ9`).
+    there, as the same listing answered (`PL-C3MN`): the one every other
+    session reads as holding the item, and whose session was told it does
+    (`PL-ZLJ9`).
     """
     found: dict[str, tuple[Hold, Hold]] = {}
     for hold in read.holds:
@@ -650,7 +651,7 @@ def _displaced(
             continue
         for rival in live[1:]:
             name = _branch_of(rival, branch)
-            if name != branch.name and _on_copy(root, name, rival.commit):
+            if name != branch.name and _on_copy(root, heads, name, rival.commit):
                 found[hold.key] = (hold, rival)
                 break
     return found
@@ -947,10 +948,36 @@ def _published(root: Path, remote: _OnRemote, commit: str) -> bool:
     return _git(["merge-base", "--is-ancestor", commit, remote.tip], root).code == 0
 
 
-def _on_copy(root: Path, name: str, commit: str) -> bool:
-    """Whether the remote's copy of another branch, as of the last fetch, carries `commit`."""
+def _on_copy(root: Path, heads: RemoteHeads, name: str, commit: str) -> bool:
+    """Whether another branch's copy on the remote carries `commit`, as the listing has it.
+
+    It read `refs/remotes/origin/<name>` until `PL-C3MN`, and no fetch here
+    prunes, so a rival branch the remote had deleted still read as carrying
+    its claim, and withdrew this branch's in favour of one no fresh clone can
+    see. `holdings` drops such a ref since `PL-MT3R`, but not a local branch of
+    the same name, so the listing decides here too: a branch it lacks carries
+    nothing.
+
+    The listing can name a tip the clone lacks - pushed since the fetch, or
+    under `--no-fetch` - and git then cannot say what it carries. The tracking
+    ref is the evidence left, read as it was before the listing, as it is
+    where the listing failed: the remote still has the branch, so taking its
+    claim as published withdraws this branch's in favour of one every clone
+    can fetch, where the other answer would publish over a claim a session
+    was told it holds (`PL-ZLJ9`).
+    """
+    if not commit:
+        return False
+    tip = heads.tip(name)
+    if tip == "":
+        return False
+    if tip is not None:
+        # 0 is "carries it" and 1 "does not"; anything else is git unable to say.
+        carried = _git(["merge-base", "--is-ancestor", commit, tip], root).code
+        if carried in (0, 1):
+            return carried == 0
     ref = f"refs/remotes/{REMOTE}/{name}"
-    return bool(commit) and _git(["merge-base", "--is-ancestor", commit, ref], root).code == 0
+    return _git(["merge-base", "--is-ancestor", commit, ref], root).code == 0
 
 
 def _recorded(root: Path, base: str, branch: _Branch, key: str, *, trailer: str = "Claim") -> str:
