@@ -4267,8 +4267,8 @@ presence rule re-entered them here regardless of when they were found, and this
 subsection then had to argue them back out one hazard at a time - which is the
 argument `PL-83LS` turned into the rule above. Each is classed `anticipated`, so
 none of the four is debt against this gate: the splitter handles are inert today
-(`src/anesthesia_sim/app/qt_widgets.py:784`), and no reader can close, replace
-or cover a required value until item 34 makes them live.
+(`src/anesthesia_sim/app/qt_widgets.py`'s `inert_splitter`), and no reader can
+close, replace or cover a required value until item 34 makes them live.
 
 Each of the four is named in v0.6.0's `Required scope`, which is where the rule
 puts a hazard rather than where a deferral would leave it: the milestone that
@@ -5364,7 +5364,7 @@ multiplicity. Blender's own editors keep the name wherever
 
 The dashboard is one arrangement and the learner cannot change it. Every
 surface is already an independent widget inside nested splitters whose handles
-are disabled - `inert_splitter` at `src/anesthesia_sim/app/qt_widgets.py:784`,
+are disabled - `inert_splitter` at `src/anesthesia_sim/app/qt_widgets.py`,
 the reservation v0.4.26 built and did not turn live - so the only way to see a
 chart larger is to make the whole window larger. Stated as they stand on
 2026-09-16, the day this milestone was scoped, three gaps:
@@ -5463,7 +5463,7 @@ before v0.7.0's implementation begins, which is the release that builds it; and
 the entry stays written on this list in its own group above rather than being
 removed. **Its hazard is not live, read against the tree rather than
 asserted**: nothing under `src/anesthesia_sim/` creates a second top-level
-window, `inert_splitter` at `src/anesthesia_sim/app/qt_widgets.py:784` has its
+window, `inert_splitter` at `src/anesthesia_sim/app/qt_widgets.py` has its
 handles disabled, and no Area can therefore be taken out of one - so there is
 no window today that could be left showing without the invariant display tier.
 That is what its `anticipated` class already records, and what v0.6.0's Goal
@@ -6251,7 +6251,7 @@ and putting the 2026-09-16 area-model findings on v0.5.0's list). The paragraph
 above is unconditional about *when* a finding was made; this says what it takes
 to be a finding against the current gate at all. An item classed `anticipated`
 describes a hazard a later milestone will create — the splitter handles are
-inert today (`src/anesthesia_sim/app/qt_widgets.py:784`), so no reader can
+inert today (`src/anesthesia_sim/app/qt_widgets.py`'s `inert_splitter`), so no reader can
 close, replace or cover a required value until planned-milestone item 34 makes
 them live — and a gate that exists to clear debt *before* a milestone begins
 cannot clear a hazard that milestone introduces. It is § "What counts"'s own

@@ -17,7 +17,7 @@ touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration
 that no View can see a splitter, call `saveState()`, or store its own
 geometry - the property interchangeability rests on. The adapter is also where
 v0.4.26's reservation is spent: `inert_splitter`
-(`src/anesthesia_sim/app/qt_widgets.py:784`) disables every handle so that a
+(`src/anesthesia_sim/app/qt_widgets.py`) disables every handle so that a
 later item can turn them live, and this is that item.
 
 **Done when.** One module builds and updates the Qt widget tree from the
