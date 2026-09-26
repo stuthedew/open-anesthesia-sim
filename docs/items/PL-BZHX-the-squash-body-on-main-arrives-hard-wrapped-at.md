@@ -3,12 +3,15 @@ id: PL-BZHX
 title: The squash body on main arrives hard-wrapped at about 72 columns, which splits Markdown table rows and flattens nested lists in the permanent record: #993's table and sub-bullets are intact on GitHub and broken in a56c86c4
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: defect
 feature: pr-body-integrity
 touches: docs/maintainer.md, tools/pr_body_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-24
+closed: 2026-09-26
+pr: 1068
+verify: grep -q 'The hard wrap (.PL-BZHX.) is now the plain-text form' tools/pr_body_check.py
 ---
 
 **Problem.** The squash body on main arrives hard-wrapped at about 72 columns, which splits Markdown table rows and flattens nested lists in the permanent record: #993's table and sub-bullets are intact on GitHub and broken in a56c86c4
@@ -118,3 +121,10 @@ could not see this one. This item is the second post-close instance, and
 fix did not hold. `PL-WFFX` is closed and outside this triage batch, so the
 record is reported to the triage coordinator, not written here. `PL-HMZZ`
 ("Which pull request carried an item's work") is a different fact.
+
+**Closed 2026-09-26 with `PL-979D`'s build (#1068)**, as recommended above,
+with no work of its own. What remained of "Done when" is met: the decision to
+accept the wrap is recorded where `tools/pr_body_check.py` describes the
+record, whose module docstring calls the squash body a derived copy and the
+wrap that copy's plain-text form. The wrapping path stays unnamed, since the
+remedy no longer turns on it.

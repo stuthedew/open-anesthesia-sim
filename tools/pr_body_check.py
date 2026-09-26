@@ -1,19 +1,63 @@
-"""Report a squash commit on the default branch whose body was lost or says something else.
+"""Record each pull request's body in the tree, and report where a squash copy lost one.
 
 `main` is squash-merged, `allow_merge_commit` is false, and the repository is
 configured `squash_merge_commit_title: PR_TITLE` / `squash_merge_commit_message:
-PR_BODY`. So the pull request body is not a review artifact thrown away on
-merge - it *is* the permanent commit message a reader of `main` meets, and it
-is the densest record this project produces: what was refused, what was
-measured, what was filed, and why.
+PR_BODY`, so each squash commit carries a copy of its pull request's body. The
+body is the densest record this project produces: what was refused, what was
+measured, what was filed, and why. **Since `PL-979D` the record is
+`docs/pr-bodies/<N>.md`, written on the pull request's own branch before the
+merge, and the squash body on `main` is a derived copy of it**, useful in `git
+log` and nothing more (project owner, 2026-09-25, ratified, over pinning every
+merge path to one that sends the body verbatim). Each merge path composed that
+copy its own way - emptied, replaced, hard-wrapped, frozen when auto-merge was
+armed - and each new rewrite arrived as its own item while nothing held the
+body anywhere else. The hard wrap (`PL-BZHX`) is now the plain-text form of a
+copy rather than damage to the record, so nothing detects it, instructs a merge
+path about it, or measures which path wraps.
 
-It does not always arrive. Measured 2026-09-20 over all 805 first-parent
-commits on `main`: **187 of the 683 squash commits, 27.4%, carry a zero-length
-body**, and every one of those 187 pull requests *had* a body on GitHub -
-763,224 characters of reasoning that exist only outside the repository. The
-loss is silent from every direction anyone looks: the pull request still reads
-correctly on GitHub, and `git log` shows a subject line that looks deliberate.
-`PL-843V`.
+**`--record [N]` writes the record, and `--check` holds the merge on it.** The
+session runs `--record` once its pull request is open and again after any edit
+to the body; bare, it finds the branch's open pull request as
+`pr_title_check.py --discover` does. It fetches the body rather than writing
+what the session sent: GitHub's copy is what a reader and the merge meet, the
+server rewrites bodies silently (`PL-1DN9`), and the file cannot be named
+before the number exists - so the committed file is also the read-back
+`CLAUDE.md`'s commit-and-push bullet asks for. `--check` is a step of
+`pr-title.yml`'s required job, which runs on `edited`: it fails unless the body
+is empty or the head holds `docs/pr-bodies/<N>.md` with the same body, compared
+after line endings and the whitespace at the body's end are normalised and
+nothing else, since both sides come from the same source. A body edited after it was
+recorded turns the job red until it is recorded again. That is what makes the
+file the record rather than a snapshot: nothing merges with a body the tree
+does not hold, whatever the merge then sends.
+
+**Two headers, one per provenance** (`PL-PNJF`, `PL-73G8`). A record written
+before the merge carries `pr:` and `recorded:` and nothing else - no `commit:`
+and no `merged:`, since neither exists yet. A body fetched for a pull request
+already merged carries `recovered:`, the date it was fetched, because the API
+serves the body as it stands that day rather than as it stood at the merge;
+then `commit:`, `merged:`, `items:`, `subject:`, and `squash:`, how the squash
+copy compares (`SQUASH_SHAPES`). No HTML comment sits above either body: this
+repository's bodies open with the harness's own `<!-- ccr-projects-attribution
+... -->` marker, and a reader could not tell a tool's comment from the body's.
+The 201 files recovered before `PL-979D` keep their older header and comment,
+forward only; the commit that added each one dates its fetch.
+
+**`--anchors` checks that every recovered file's `commit:` is a first-parent
+commit of the default branch** (`PL-73G8`). It is the one field tying a
+recovered body to the tree, and the 2026-09-06 signing rewrite remapped every
+hash once already. It runs in `make check`, fails naming each file and the
+squash commit its number resolves to now, and on a shallow clone or with no
+default branch says it checked nothing.
+
+**What follows is the history the record replaced**, and the modes that still
+serve the commits merged before it. The squash copy did not always arrive.
+Measured 2026-09-20 over all 805 first-parent commits on `main`: **187 of the
+683 squash commits, 27.4%, carry a zero-length body**, and every one of those
+187 pull requests *had* a body on GitHub - 763,224 characters of reasoning that
+exist only outside the repository. The loss is silent from every direction
+anyone looks: the pull request still reads correctly on GitHub, and `git log`
+shows a subject line that looks deliberate. `PL-843V`.
 
 **The mechanism is known; the client sending it is not, and this check depends
 on neither.** The merge request is submitted with an *explicitly empty*
@@ -47,14 +91,16 @@ rewrite - `main` was rewritten once when commit signing was switched on
 the body is empty in 74/74 of the affected and non-empty in 116/116 of the
 rest, so the loss originates at merge time in GitHub's own commit object.
 
-So prevention needs a change of merge client, which is the project owner's to
-make and cannot be enforced from the tree. Detection plus repair is what this
-tool can do, and it holds whether or not the client is ever named.
+So prevention would have needed a change of merge client, which cannot be
+enforced from the tree. Recording the body before the merge makes the client
+irrelevant instead; for what merged before that, detection plus repair is what
+this tool can do.
 
 **The default mode reads git and the filesystem, never the network.** The rule
 is exact: a first-parent commit on the default branch whose subject ends in
 `(#N)`, whose message body is empty, and for which `docs/pr-bodies/<N>.md` does
-not exist. That predicate was checked against the whole history - the 20
+not exist. Since `--check`, only a merge made before it or an admin bypass of
+it can fire this. That predicate was checked against the whole history - the 20
 body-less commits it must *not* fire on are the 2026-08 bootstrap commits and
 the old `Merge pull request #N from ...` merges, and neither shape ends in
 `(#N)`. `allow_merge_commit` is now false, so no new commit of that second
@@ -81,7 +127,10 @@ and `#522` add a note saying so), and some merges were sent a shorter message
 of their own (`#744` landed a 464-character message where the pull request's
 body is 3,507).
 Nothing offline could have seen any of them, and `PL-WFFX` was closed on this
-tool's reading, which could not either.
+tool's reading, which could not either. Since `PL-979D` a squash body that
+differs is no longer a defect in the record, so `--compare` is a hand-run
+measurement of the drift before that rule - what sizes the backfill the owner
+kept as a separate decision - and nothing runs it as a check.
 
 **A plain equality test would report 679 of the 681, so both sides are
 normalised the same way first, and each step is here because a measurement
@@ -145,11 +194,13 @@ bare checkout with no virtualenv can run it.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
 import urllib.error
 import urllib.request
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
 
@@ -158,7 +209,10 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.store import ID_PATTERN  # noqa: E402
 
-RECOVERY_DIR = ROOT / "docs" / "pr-bodies"
+#: Relative for `git show`, which `--check` reads because the question is what
+#: the head commit holds, not what this working tree does.
+RECORD_PATH = "docs/pr-bodies"
+RECOVERY_DIR = ROOT / RECORD_PATH
 API = "https://api.github.com"
 TIMEOUT_S = 15
 
@@ -299,16 +353,20 @@ def repo_slug() -> str | None:
 NO_BODY = object()
 
 
-def _get_json(url: str) -> object | None:
+def _get_json(url: str, token: str | None = None) -> object | None:
     """GET one GitHub API URL and parse it, or None if the read failed.
 
-    Unauthenticated, for the reason `tools/main_ci_status.py` gives: the
-    repository is public, so no token is needed and none is read, which keeps
-    this runnable from a bare checkout and keeps a credential out of it.
+    Unauthenticated unless a token is passed, for the reason
+    `tools/main_ci_status.py` gives: the repository is public, so no token is
+    needed, which keeps this runnable from a bare checkout and keeps a
+    credential out of it. Only `--record` passes one, where the environment
+    has it, because it is the step a pull request cannot merge without and
+    sessions share one address's unauthenticated hourly allowance.
     """
-    request = urllib.request.Request(
-        url, headers={"Accept": "application/vnd.github+json", "User-Agent": "pr-body-check"}
-    )
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "pr-body-check"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
             payload: object = json.load(response)
@@ -410,6 +468,25 @@ def verdict(squash_body: str, listed: Listed) -> str | None:
     return "differs"
 
 
+#: A recovered file's `squash:` value for each answer `verdict()` gives, and
+#: `empty` for the one it is never asked about, which is `missing()`'s shape and
+#: the only one `--recover` writes. A new reason there without a word here
+#: fails `--record` loudly rather than writing a header that guesses.
+SQUASH_SHAPES: dict[str | None, str] = {
+    None: "matches",
+    "carries only GitHub's trailer": "trailer-only",
+    "is the body auto-merge was armed with, and the pull request was edited after": "armed-message",
+    "differs": "differs",
+}
+
+
+def squash_shape(squash_body: str, listed: Listed) -> str:
+    """How a merged pull request's squash copy compares with its body, as `squash:` says."""
+    if not squash_body.strip():
+        return "empty"
+    return SQUASH_SHAPES[verdict(squash_body, listed)]
+
+
 def compare(ref: str) -> list[str]:
     """The `--compare` report, as the lines to print."""
     slug = repo_slug()
@@ -482,32 +559,84 @@ def item_ids(subject: str, pr: int, backlinks: dict[int, set[str]]) -> list[str]
     return sorted(found)
 
 
-def write_recovery(
-    sha: str, pr: int, subject: str, body: str, merged: str, backlinks: dict[int, set[str]]
-) -> Path:
-    """Write one recovery file, body verbatim below a frontmatter block."""
+def today() -> str:
+    """The UTC date a record or recovery is written on, as its header states it."""
+    return datetime.now(UTC).date().isoformat()
+
+
+def as_recorded(body: str) -> str:
+    """A body as a record holds it and `--check` compares it: line endings and the end cut.
+
+    Nothing inside the body is touched. Both sides of the comparison come from
+    GitHub, so the whitespace collapse `normalise()` needs for a squash copy
+    would only hide a real edit here.
+    """
+    return body.replace("\r\n", "\n").rstrip()
+
+
+def _write(pr: int, header: list[str], body: str) -> Path:
+    """Write `docs/pr-bodies/<pr>.md`: front matter, one blank line, the body."""
     RECOVERY_DIR.mkdir(parents=True, exist_ok=True)
+    path = RECOVERY_DIR / f"{pr}.md"
+    lines = [FRONT_MATTER, *header, FRONT_MATTER, "", ""]
+    path.write_text("\n".join(lines) + as_recorded(body) + "\n", encoding="utf-8")
+    return path
+
+
+def write_record(pr: int, body: str, recorded: str) -> Path:
+    """The record of an open pull request's body, written before its merge."""
+    return _write(pr, [f"pr: {pr}", f"recorded: {recorded}"], body)
+
+
+def write_recovery(
+    sha: str,
+    pr: int,
+    subject: str,
+    body: str,
+    merged: str,
+    backlinks: dict[int, set[str]],
+    squash: str,
+    recovered_on: str,
+) -> Path:
+    """A merged pull request's body, fetched on `recovered_on`, anchored to its squash commit."""
     ids = item_ids(subject, pr, backlinks)
     header = [
-        FRONT_MATTER,
         f"pr: {pr}",
+        f"recovered: {recovered_on}",
         f"commit: {sha}",
         f"merged: {merged}",
         f"items: {', '.join(ids) if ids else '(none)'}",
         f"subject: {subject}",
-        FRONT_MATTER,
-        "",
-        f"<!-- Recovered by tools/pr_body_check.py. The squash commit {sha[:8]} landed with an",
-        "empty message body; this is the pull request body it should have carried, verbatim.",
-        "PL-843V. -->",
-        "",
-        "",
+        f"squash: {squash}",
     ]
-    path = RECOVERY_DIR / f"{pr}.md"
-    path.write_text(
-        "\n".join(header) + body.replace("\r\n", "\n").rstrip() + "\n", encoding="utf-8"
-    )
-    return path
+    return _write(pr, header, body)
+
+
+def parse_record(text: str) -> tuple[dict[str, str], str] | None:
+    """A record's front matter and body, or None where it opens with no front matter."""
+    lines = text.replace("\r\n", "\n").split("\n")
+    if lines[0] != FRONT_MATTER or FRONT_MATTER not in lines[1:]:
+        return None
+    end = lines.index(FRONT_MATTER, 1)
+    header: dict[str, str] = {}
+    for line in lines[1:end]:
+        key, colon, value = line.partition(":")
+        if colon:
+            header[key.strip()] = value.strip()
+    rest = lines[end + 1 :]
+    #: The one blank line `_write` puts after the front matter, and no more, so
+    #: a body that itself opens with a blank line survives the round trip.
+    return header, "\n".join(rest[1:] if rest[:1] == [""] else rest)
+
+
+def _shown(path: Path) -> Path:
+    """`path` relative to the repository where it is inside it, as a message names it.
+
+    `relative_to` raises where the recovery directory is not under the root,
+    which is only ever a test's temporary directory, and a progress line is not
+    worth an exception either way.
+    """
+    return path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
 
 
 def recover(ref: str) -> int:
@@ -525,24 +654,203 @@ def recover(ref: str) -> int:
             continue
         merged = _git("log", "-1", "--format=%cs", sha).strip() or "unknown"
         if body is NO_BODY:
-            path = write_recovery(sha, pr, subject, TOMBSTONE, merged, backlinks)
+            write_recovery(sha, pr, subject, TOMBSTONE, merged, backlinks, "empty", today())
             print(f"  #{pr} has no body on GitHub either; recorded as nothing to recover")
             written += 1
             continue
         assert isinstance(body, str)
-        path = write_recovery(sha, pr, subject, body, merged, backlinks)
-        #: `relative_to` raises where the recovery directory is not under the
-        #: repository root, which is only ever a test's temporary directory -
-        #: but a progress line is not worth an exception either way.
-        shown = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
-        print(f"  recovered #{pr} -> {shown} ({len(body):,} chars)")
+        path = write_recovery(sha, pr, subject, body, merged, backlinks, "empty", today())
+        print(f"  recovered #{pr} -> {_shown(path)} ({len(body):,} chars)")
         written += 1
     return written
 
 
-def main(argv: list[str]) -> int:
-    """Print the advisory if there is one. Always exits 0; never blocks a branch."""
+def fetch_pull(slug: str, pr: int) -> dict[str, object] | None:
+    """One pull request as the API serves it, or None if it could not be read."""
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    payload = _get_json(f"{API}/repos/{slug}/pulls/{pr}", token)
+    return payload if isinstance(payload, dict) else None
+
+
+def record(number: int | None) -> int:
+    """`--record`: write a pull request's body into the tree. Exits 1 where it cannot.
+
+    An open pull request gets the record `--check` holds it to; a merged one
+    gets a recovery, anchored to its squash commit and dated the day it was
+    fetched. Everything else is refused rather than written, because a file
+    here is read as the record and a wrong one is worse than none.
+    """
+    slug = repo_slug()
+    if slug is None:
+        print("pr-body: origin is not a GitHub remote; nothing to record from.", file=sys.stderr)
+        return 1
+    if number is None:
+        from pr_title_check import _branch, open_pull_request
+
+        branch = _branch()
+        found = open_pull_request(slug, branch) if branch else None
+        if found is None:
+            print(
+                "pr-body: this branch's open pull request could not be found - no token, no "
+                "network, or none open. Name it: --record N",
+                file=sys.stderr,
+            )
+            return 1
+        number = found[0]
+    pull = fetch_pull(slug, number)
+    if pull is None:
+        print(
+            f"pr-body: #{number} could not be read from the API; nothing recorded.", file=sys.stderr
+        )
+        return 1
+    raw = pull.get("body")
+    body = raw if isinstance(raw, str) else ""
+    path = RECOVERY_DIR / f"{number}.md"
+
+    if pull.get("state") == "open":
+        if not body.strip():
+            #: Nothing is owed for an empty body, and a file left from before
+            #: an edit emptied it would be a record of a body nobody can see.
+            if path.exists():
+                path.unlink()
+                print(f"pr-body: #{number} has an empty body; removed the stale {_shown(path)}.")
+            else:
+                print(f"pr-body: #{number} has an empty body; nothing to record.")
+            return 0
+        path = write_record(number, body, today())
+        print(f"pr-body: recorded #{number} -> {_shown(path)}; commit it and push.")
+        return 0
+
+    if not pull.get("merged_at"):
+        print(f"pr-body: #{number} was closed without merging; nothing to record.", file=sys.stderr)
+        return 1
+    #: The squash commit is found by its `(#N)` subject rather than by the API's
+    #: `merge_commit_sha`, which the 2026-09-06 rewrite left naming commits that
+    #: are no longer on `main`: the anchor has to be one `--anchors` accepts.
     ref = default_branch_ref()
+    row = next((r for r in squash_commits(ref) if r[1] == number), None) if ref else None
+    if row is None:
+        print(
+            f"pr-body: #{number} is merged, but no squash commit ending `(#{number})` is on "
+            f"{ref or 'a default branch'} here; fetch it and try again.",
+            file=sys.stderr,
+        )
+        return 1
+    sha, _, subject, squash_body = row
+    auto = pull.get("auto_merge")
+    armed = auto.get("commit_message") if isinstance(auto, dict) else None
+    shape = squash_shape(squash_body, Listed(body, armed if isinstance(armed, str) else None))
+    merged = _git("log", "-1", "--format=%cs", sha).strip() or "unknown"
+    kept = body if body.strip() else TOMBSTONE
+    path = write_recovery(sha, number, subject, kept, merged, queue_backlinks(), shape, today())
+    print(f"pr-body: recovered #{number} -> {_shown(path)} (squash copy: {shape}); commit it.")
+    return 0
+
+
+def check() -> int:
+    """`--check`, the required step: the head must hold the pull request's body.
+
+    `PR_NUMBER`, `PR_BODY` and `PR_HEAD` come through the environment and
+    never through argv, for the reason `pr_title_check.py` gives for the title:
+    `${{ }}` pasted into a `run:` line is the standard Actions script-injection
+    hole, and a body is the longest attacker-controlled string an event holds.
+    """
+    given = os.environ.get("PR_NUMBER")
+    if given is None:
+        print("pr-body: PR_NUMBER is not set; nothing to check", file=sys.stderr)
+        return 0
+    if not given.strip().isdigit() or int(given) < 1:
+        print(
+            f"pr-body: PR_NUMBER is {given!r}, which is not a pull request number", file=sys.stderr
+        )
+        return 1
+    number = int(given)
+    body = os.environ.get("PR_BODY")
+    if body is None:
+        #: The workflow always sets it, to "" for a pull request with none, so
+        #: an unset one is a broken step, and passing it would hold nothing.
+        print("pr-body: PR_BODY is not set, so the body is unknown; not checked.", file=sys.stderr)
+        return 1
+    if not body.strip():
+        print(f"pr-body: #{number} has an empty body; nothing is owed")
+        return 0
+    head = os.environ.get("PR_HEAD", "HEAD")
+    where = f"{RECORD_PATH}/{number}.md"
+    held = _git("show", f"{head}:{where}")
+    parsed = parse_record(held) if held else None
+    if parsed is None:
+        why = f"{where} is not in the tree at {head}" if not held else f"{where} is not a record"
+    elif parsed[0].get("pr") != str(number):
+        why = f"{where} records `pr: {parsed[0].get('pr', '')}`"
+    elif as_recorded(parsed[1]) != as_recorded(body):
+        why = f"{where} holds a different body - it was edited after it was recorded"
+    else:
+        print(f"pr-body: #{number}'s body is recorded at {where}")
+        return 0
+    print(
+        f"pr-body: #{number}'s body is not recorded on this branch: {why}.\n"
+        f"  The body is this change's permanent record, and the squash commit only a copy "
+        f"of it (`PL-979D`).\n"
+        f"  Run `python3 tools/pr_body_check.py --record {number}` on this branch, commit what "
+        f"it wrote, and push.",
+        file=sys.stderr,
+    )
+    return 1
+
+
+def anchors(ref: str | None) -> int:
+    """`--anchors`: every recovered file's `commit:` must be on `ref`'s first-parent line."""
+    shallow = _git("rev-parse", "--is-shallow-repository").strip()
+    line = (
+        set(_git("rev-list", "--first-parent", ref).split())
+        if ref and shallow == "false"
+        else set()
+    )
+    if not line:
+        print("pr-body: recovery anchors not checked: no full default branch is readable here.")
+        return 0
+    stray: list[tuple[str, str, str]] = []
+    for path in sorted(RECOVERY_DIR.glob("*.md")) if RECOVERY_DIR.is_dir() else []:
+        parsed = parse_record(path.read_text(encoding="utf-8"))
+        sha = parsed[0].get("commit", "") if parsed else ""
+        if sha and sha not in line:
+            stray.append((path.name, parsed[0].get("pr", path.stem) if parsed else path.stem, sha))
+    if not stray:
+        return 0
+    now = {str(pr): sha for sha, pr, _, _ in squash_commits(ref or "")}
+    print(
+        f"pr-body: {len(stray)} recovered file(s) name a `commit:` that is not on {ref}'s "
+        f"first-parent line, so nothing anchors the body to the tree:",
+        file=sys.stderr,
+    )
+    for name, pr, sha in stray:
+        fix = f"its squash commit there is {now[pr]}" if pr in now else "no squash commit names it"
+        print(f"  {RECORD_PATH}/{name}: commit {sha[:12]}; {fix}", file=sys.stderr)
+    print("  Replace each `commit:` with the squash commit named, and commit.", file=sys.stderr)
+    return 1
+
+
+def main(argv: list[str]) -> int:
+    """Run the mode `argv` names.
+
+    The default mode prints the advisory if there is one, always exits 0 and
+    never blocks a branch. `--record`, `--check` and `--anchors` exit 1 where
+    they fail, because each is the step something else rests on.
+    """
+    if "--check" in argv:
+        return check()
+    if "--record" in argv:
+        given = argv[argv.index("--record") + 1 :][:1]
+        if given and not given[0].isdigit():
+            print(
+                f"pr-body: --record takes a pull request number, not {given[0]!r}", file=sys.stderr
+            )
+            return 2
+        return record(int(given[0]) if given else None)
+
+    ref = default_branch_ref()
+    if "--anchors" in argv:
+        return anchors(ref)
     if ref is None:
         #: Silence is right at session start, where it is one line fewer. Run
         #: by hand, `--compare` always prints a verdict, so saying nothing

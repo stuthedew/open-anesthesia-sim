@@ -3,12 +3,14 @@ id: PL-6P0F
 title: generator_check parses a commit subject's leading ids differently from vcs.leading_ids - case-sensitive, commas only, colon required - so creation_parents misses the capturing parent of 74 of 729 item-adding commits on origin/main and the self-generation ratio it surfaces candidates from undercounts
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/generator_check.py, tests/unit/test_generator_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-answer batch
 added: 2026-09-25
+closed: 2026-09-26
+pr: 1069
 payoff: generator_check credits every capture to the item whose work filed it, so a self-generating cluster is no longer hidden behind a subject with no colon or a lower-case id
 verify: grep -q 'def test_creation_parents_reads_leading_ids_as_docket_does' tests/unit/test_generator_check.py
 impairs-generators: tools/generator_check.py's leading-id parse is case-sensitive, comma-only and colon-required where vcs.leading_ids is not, so creation_parents drops the capturing parent of 74 of 729 item-adding commits and the self-generation ratio undercounts
