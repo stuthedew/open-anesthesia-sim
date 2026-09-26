@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: parallel-sessions
+milestone: v0.5.12
 touches: subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, docs/items/PL-MB2W-who-holds-an-item-is-derived-by-every-reader.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22

@@ -5,6 +5,7 @@ priority: P3
 effort: M
 status: done
 classes: defect
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/verify.py, tools/doc_check.py, subprojects/docket/tests
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-26 with the path-listing step of PL-PVW2
 added: 2026-09-26

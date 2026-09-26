@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: exact-gates
+milestone: v0.5.12
 touches: tools/dead_ends.py, tools/possessive_section_check.py, subprojects/docket/src/docket/checks.py, tools/doc_check.py, tests/unit/test_dead_ends.py, tests/unit/test_possessive_section_check.py, subprojects/docket/tests/test_checks.py, tests/unit/test_doc_check.py, subprojects/docket/README.md, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25

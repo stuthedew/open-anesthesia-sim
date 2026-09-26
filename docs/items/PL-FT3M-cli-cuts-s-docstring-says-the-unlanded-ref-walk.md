@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, defect
 feature: release-process
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/cli.py
 added: 2026-09-14
 closed: 2026-09-25

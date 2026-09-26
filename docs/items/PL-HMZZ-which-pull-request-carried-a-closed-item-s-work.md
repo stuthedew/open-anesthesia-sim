@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: commit-provenance
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/README.md, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_vcs_silence.py, tools/pr_record_check.py, tools/pr_title_check.py, tools/doc_check.py, tests/unit/test_pr_record_check.py, .github/workflows/pr-title.yml, Makefile, docket.toml, docs/ARCHITECTURE.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/release.md, docs/items/PL-M7W1-arming-auto-merge-freezes-the-squash-subject-at.md, docs/items/PL-0JDP-bin-docket-claim-refuses-a-blocked-item-because.md, docs/items/PL-979D-the-squash-commit-on-main-is-composed-by.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
