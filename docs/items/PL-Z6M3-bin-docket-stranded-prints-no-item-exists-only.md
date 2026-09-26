@@ -10,7 +10,7 @@ touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_
 added: 2026-09-19
 closed: 2026-09-26
 verify: grep -q 'def test_stranded_states_both_halves_of_its_predicate' subprojects/docket/tests/test_cli.py
-recurrences: 2026-09-25 PL-LFNK
+recurrences: 2026-09-25 PL-LFNK, 2026-09-26 PL-PV6H
 ---
 
 **Problem.** bin/docket stranded prints 'No item exists only on a branch' while an item sits on two branches and not on main, because the predicate is 'neither the store nor the default branch' and the rendered sentence drops the store half
