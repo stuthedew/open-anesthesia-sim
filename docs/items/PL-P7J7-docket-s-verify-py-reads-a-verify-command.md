@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/shell.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, docs/items/PL-PVW2-predicates-the-apparatus-asks-repeatedly-which.md
+touches: subprojects/docket/src/docket/shell.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, docs/items/PL-PVW2-predicates-the-apparatus-asks-repeatedly-which.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a member of PL-PVW2, docket's reading of a verify: command
 added: 2026-09-26
 closed: 2026-09-26

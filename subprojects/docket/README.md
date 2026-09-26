@@ -3196,7 +3196,9 @@ recorded such a command, four of them the same release-tag line, one per
 release; there is no hermetic substitute to prefer, because the work is the
 owner's and the remote is the only place it is visible.
 
-`verify.reaches_outside_tree` decides it by `shlex`-tokenizing the command and
+`verify.reaches_outside_tree` decides it by reading the command's words through
+`shell.shell_words`, docket's one reading of a `verify:` command, over the
+command and every substitution's body (`PL-P7J7`), and
 looking for a network command word — `curl`, `wget`, `gh`, `ssh`, `scp`,
 `rsync`, `nc`, or `git` immediately followed by `ls-remote`, `fetch`, `push`,
 `pull` or `clone`. Tokenized rather than searched because a hermetic command
