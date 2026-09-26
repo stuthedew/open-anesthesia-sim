@@ -17,6 +17,15 @@ operator `>` and the word `/dev/null`, so the guard reads `2` as the command.
 Its docstring says it drops everything bash reads ahead of a command's name,
 which is what `PL-0X0G` (done, #1093) made it do for reserved words.
 
+**The same holds among a wrapper's words** (found 2026-09-26 closing
+`PL-TRMN`). Bash lifts a redirection out of a simple command wherever it sits,
+so `timeout 5 >x make check | tail`, `env 2>/dev/null git fetch --prune` and
+`timeout 60 2>/dev/null python3 -m compileall -q src/` run `make`, `git` and
+`python3`, and each passes all three guards, run as hook payloads on
+`PL-TRMN`'s branch: `_run_by` in `.claude/hooks/shell_split.py` stops at the
+`>` operator and reads no program. A fix in `command_words` alone leaves that
+site, so both want one answer for which words a redirection takes.
+
 **Generator check.** A re-entry of `PL-0X0G`: the same fact - which word bash
 reads as a command's name, past what it reads ahead of it - at a sibling site
 its fix should have covered, closed the same day.
