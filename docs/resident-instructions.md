@@ -576,3 +576,37 @@ about 1 in 10 product items, the rate measured over 2026-09-15..25 (7 found
 during product work against 72 simulator items closed); `PL-RB9W` counts it on
 or after 2026-10-09. Where the root causes go is tested by the trial's own bar
 in `PL-NZC0`, which now carries the fallback if it fails.
+
+## Rule 14's Projects-thread sentence, added 2026-09-25
+
+Rule 14's `list_sessions` bullet now ends by saying the call lists no Projects
+thread, and that while `PL-NZC0`'s trial runs, its Order list is what the
+threads will take, triage included (`PL-DR3G`). It was measured that day.
+`list_sessions` returned 28 rows with `mine: true` and 12 without. Neither
+listing held the running "Stream B: PL-J16N" thread or the trial's
+coordinator, though both reached back past the hour each was created in.
+`get_session` read both by id: origin `claude-in-hearth`, tagged
+`hearth-thread` and `hearth-overview`. The `tags` filter answered "tags filter
+is not currently available", which the tool's own description says it does
+for an in-session caller.
+
+**The carrier test.** The sentence fires where the rest of the bullet does, as
+a reply recommends work. No read precedes that moment, so a skill or a
+`paths:` scope would arrive too late. No check can carry it either. The
+harness withholds the threads from every call a session can make, and a
+`docket` field marking the Order list's items would be a new mechanism under
+the generator pause, restating a list the trial already keeps.
+`.claude/skills/docket/modes/start.md` said the call returns every session's
+title. It now names the exception and points to the rule, which is where the
+fact lives.
+
+**Why nothing is cut.** Nothing resident said the call has a blind spot, so
+nothing is superseded. The bullet's other clauses were measured for routing in
+`PL-4H01` and kept, for the reason § "When a resident rule is retired" gives.
+Without the sentence, the bullet hands over a partial reading as a complete
+one. That is the floor `.claude/rules/apparatus-standard.md` refuses.
+
+**What it costs and what should retire it.** 311 characters. The first
+sentence goes when `list_sessions` lists a `hearth-thread` session or its
+`tags` filter answers inside a session. The second goes when `PL-NZC0`
+closes.
