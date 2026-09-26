@@ -1,9 +1,11 @@
 ---
 id: PL-XQY6
 title: The cloud environment's setup script left uv missing on 2026-09-26: its ln -sf /usr/local/bin/uv /root/.local/bin/uv replaced the uv pip had installed in /root/.local/bin with a link to a file that does not exist, so the second line PL-QKXZ's closing note suggests breaks what the first installs
-status: untriaged
+status: dropped
 feature: projects-trial
 added: 2026-09-26
+closed: 2026-09-26
+reason: duplicate of PL-7TH9, filed on claude/pl-batch-14-pjd1sh for the same observation, cause and repair, with a marked recommendation for the corrected setup line
 ---
 
 **Problem.** The cloud environment's setup script left uv missing on 2026-09-26: its ln -sf /usr/local/bin/uv /root/.local/bin/uv replaced the uv pip had installed in /root/.local/bin with a link to a file that does not exist, so the second line PL-QKXZ's closing note suggests breaks what the first installs
