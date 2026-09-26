@@ -2290,10 +2290,8 @@ def _check_misread(report: Report, known: set[str]) -> None:
     what `docket generators --misread` sorts, so two heads reading one record
     sit next to each other where a session will see them.
 
-    Closed heads are held too, unlike the verdict check beside this. A closed
-    head's verdict moves no ranking; its stated fact is what a later capture
-    is compared against, and "an instance of a closed head's mechanism, filed
-    after the head closed" is triage's first landing.
+    Closed heads are held too, unlike the verdict check beside this
+    (`PL-5MYR`).
 
     Errors, because every rule here is exact: presence on a sound head, a
     cluster for the line to be about, and the length bound. Whether the line
