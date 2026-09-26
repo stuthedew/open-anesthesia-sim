@@ -5,11 +5,11 @@ priority: P2
 effort: S
 status: ready
 classes: infra, docs
-touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
+touches: .github/workflows/update-armed.yml, tools/update_armed.py, tests/unit/test_update_armed.py, docket.toml, docs/maintainer.md, CLAUDE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed at capture by PL-6MW8's session, 2026-09-23
 added: 2026-09-23
-payoff: a capture whose session has ended reaches main even when main moved past its base before its CI went green
-verify: grep -q 'def test_flight_names_a_captures_only_pull_request_left_behind_main' subprojects/docket/tests/test_cli.py
+payoff: an armed pull request that main has moved past is brought up to date on the next push to main, so auto-merge lands it without a session or the owner bringing main in
+verify: grep -q 'def test_an_unarmed_pull_request_is_never_updated' tests/unit/test_update_armed.py
 ---
 
 **Problem.** An armed pull request whose session has ended stalls at behind: main now requires branches to be up to date and GitHub's auto-merge never updates one, so PL-WNCT's promise that a capture reaches main after its session ends no longer holds
@@ -115,10 +115,45 @@ behind**, whatever its files, since `update_pull_request_branch` lands any of
 them; `verify:` and **Done when** would then say "armed" where they say
 "captures-only".
 
-**Done when.** The chosen route is in place, or "accept it" is recorded with
-its reason, and a captures-only pull request that falls behind after its
-session ends either reaches `main` or is named with its one-call fix in the
-digest.
+**Answered again 2026-09-26: route 2, over every armed pull request** (project
+owner, 2026-09-26, ratified, over the trial's coordinator bringing `main` into
+each armed pull request by hand whenever it saw a merge). It replaces the
+route 1 answer, and route 1 is not built. At 20:37 UTC the owner asked in the
+Projects trial whether a session could keep the project's pull requests current
+"for CI checks as things merge". The coordinator put route 2 on a decision
+card, recommended, and the owner chose it at 20:39. The card read: "on every
+push to main, it runs Update branch on each open pull request with auto-merge
+armed". Its reason was that this removes the lag and the dependence on a
+session spotting each merge. #1115 had already shown that dependence failing:
+a live, subscribed session was never told its pull request had fallen behind.
+The request names this item for building now, so it lifts the generator pause
+for it (`PL-6Q9L`).
+
+**What this builds.** `.github/workflows/update-armed.yml` runs
+`tools/update_armed.py` on every push to `main`. For each open pull request
+with auto-merge armed, onto `main`, from this repository and not a draft, it
+asks GitHub how far `main` is ahead of the pull request's head. One that is
+behind is updated with GitHub's *Update branch* call (`PUT
+/repos/{owner}/{repo}/pulls/{pull_number}/update-branch`), which merges `main`
+in. It passes `expected_head_sha`, so a commit pushed since the read is never
+merged over. Two kinds are left alone and listed: a pull request already level
+with `main`, and one whose required check has already failed on its head.
+`CLAUDE.md` brings the base in only when `behind` is all that stops a pull
+request, and a red one would re-run a failing check on every push to `main`.
+Pending checks are updated, because they would finish behind.
+
+The update is made with a fine-grained personal access token held in the
+repository secret `UPDATE_BRANCH_TOKEN`. An update made with the workflow's own
+`GITHUB_TOKEN` "creates workflow runs in an approval-required state" (GitHub
+Docs, *Triggering a workflow*, checked 2026-09-26), so the required checks
+would wait on a click. Without the secret the run changes nothing, lists what
+it would have updated, and passes. A red run means a reading failed or GitHub
+refused the token. A conflict, or a head that moved during the run, is listed
+and passes, since neither is this workflow's to fix.
+
+**Done when.** The workflow is on `main` with its secret set, and an armed pull
+request that `main` moves past is updated by the next run without a session or
+the owner acting.
 
 **Generator check.** Not a generator: it has no members yet. It is the one way
 back into `PL-WNCT`'s drained mechanism. So count against this item any
