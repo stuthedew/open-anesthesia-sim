@@ -1,8 +1,14 @@
 ---
 id: PL-21KN
 title: bin/docket arm answers for the checkout's HEAD even where the pull request's own branch on origin is ahead of it, so once someone else has brought main into the pull request it still reports behind N and advises update_pull_request_branch or a merge and push, both of which misfire
-status: untriaged
-touches: subprojects/docket/src/docket/arming.py
+priority: P2
+effort: S
+status: blocked
+classes: defect
+feature: remote-copy
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
+blocked-by: PL-MT3R
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-26
 ---
 
@@ -49,3 +55,36 @@ this checkout lacks, fast-forward (or merge) it and ask again. That makes it an
 `PL-XBV4` (read commands answering from different moments without saying
 which): `arm` fetched, then answered from a checkout that lagged what it had
 fetched. Whoever triages this should decide whether it belongs there.
+
+**Premise confirmed by reading, 2026-09-26, against `78b1a02b`.** One grep of
+`arming.py` found `HEAD` in two reads only: `rev-list --count HEAD..<base>` and
+`diff --name-only <base>...HEAD`. Nothing in the module reads `refs/remotes`
+or the branch's copy on origin.
+
+**Why it matters.** `CLAUDE.md` has a session ask `arm` before arming and
+before every later push while a pull request is open. A wrong `behind` sends
+it to a remedy that fails at the moment the pull request is otherwise ready:
+`update_pull_request_branch` with a stale `expectedHeadSha`, or a merge and
+push refused as a non-fast-forward. The case under **Not yet checked.** would
+matter more, though it is inferred rather than reproduced. It would answer
+`arm` for a pull request landing a path outside the store, which is the
+direction the gate exists to refuse.
+
+**Done when.** Where the pull request's branch on the remote has commits `HEAD`
+lacks, `arm` says so before anything else and answers `unknown` or `hold`, not
+`behind`, naming what brings them in. A real-git test holds the *Update branch*
+shape: the branch's copy on the remote carries a merge of the base that `HEAD`
+lacks. The second writer's case under **Not yet checked.** is either covered by
+the same read or recorded as not arising.
+
+**Generator check.** An instance of `PL-4Q9B`'s fact, "The remote's current
+refs and tags, and whether the clone's local copies still match them". It is
+the fourth since that head closed on 2026-09-19, after `PL-WX87`, `PL-KX73` and
+`PL-C3MN`, and belongs to `PL-MT3R`. It is not `PL-XBV4`'s, which is the moment
+a read's sources were taken. `arm` had fetched, so its refs were fresh. It read
+the local branch where the pull request's copy on the remote was the answer,
+and a fresher fetch would not have moved that local branch.
+
+**Blocked, triage 2026-09-26, on `PL-MT3R`'s decision.** The record that head
+recommends is where `arm` would read the branch's copy on the remote from, so
+the direction above waits on it rather than reading `origin/<branch>` alone.
