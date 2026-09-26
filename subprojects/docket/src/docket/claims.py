@@ -802,22 +802,65 @@ def _finished_claim(hold: Hold) -> bool:
 # waiting to disagree, and the pre-registered 1-in-20 threshold is counted from
 # the row while CI refuses on the check.
 
+#: The pull requests' body records. `tools/pr_body_check.py --record` writes
+#: `<N>.md` here on every pull request's branch before its merge, since
+#: `pr-title`'s required job fails without it (`PL-979D`), and `--recover`
+#: writes one for a pull request already merged. `arming.RECORDS` spells the
+#: same directory for what arms on green, in the one module the gate holds for
+#: a read, and is kept there rather than imported from here, so that widening
+#: what arms still takes an edit the gate holds; `test_claims` pins the two
+#: equal (`PL-F6MM`). The path is this repository's layout, as
+#: `arming.TOOLING`'s is.
+RECORDS = "docs/pr-bodies/"
+
+
+def queue_records(config: Config) -> tuple[str, ...]:
+    """The records a queue workflow writes, as `in_queue` counts them and a refusal names them.
+
+    A name ending in `/` is a directory and holds every path under it; any
+    other is one file. One list for the check and for what its refusal says it
+    admits, so the two cannot drift apart: `PL-F6MM`'s body records were
+    missing from both.
+    """
+    return tuple(
+        name
+        for name in (
+            config.items_dir.strip("/") + "/",
+            config.roadmap_file,
+            config.notes_file,
+            RECORDS,
+        )
+        if name
+    )
+
 
 def in_queue(path: str, config: Config) -> bool:
     """Whether a repository path is one of the records a queue workflow writes.
 
-    The items, the roadmap and the working notes. A capture, a triage pass or a
-    design round writes these and nothing else - triage puts an item on the debt
-    gate's list in the roadmap, and a design round keeps its thread in the notes
-    - and owes no claim, since the ids it leads with are never pushed into one
-    (`PL-3CTW`). Read as the items directory alone, as the spec's "outside
-    `items_dir`" says, it refused 12 such passes merged in the week to
-    2026-09-24, and would have made each claim the ids it triaged.
+    The items, the roadmap, the working notes and the pull requests' body
+    records (`queue_records`). A capture, a triage pass or a design round writes
+    these and nothing else - triage puts an item on the debt gate's list in the
+    roadmap, a design round keeps its thread in the notes, and every pull
+    request records its body before its merge - and owes no claim, since the
+    ids it leads with are never pushed into one (`PL-3CTW`). Read as the items
+    directory alone, as the spec's "outside `items_dir`" says, it refused 12
+    such passes merged in the week to 2026-09-24, and would have made each
+    claim the ids it triaged. Without the body records it refused every such
+    pass once recorded, so `pr-title` and `checks` could not both pass on it
+    (`PL-F6MM`).
+
+    The whole records directory counts, a `--recover` pass's bodies included,
+    so CI no longer refuses such a pass that claims nothing, though
+    `CLAUDE.md`'s housekeeping rule still files and claims one. Telling a
+    branch's own record from a recovery takes more than the path, and would
+    buy a refusal for a pass with almost nothing left to do: every pull
+    request with a body has recorded it since `PL-979D`, so `--recover` has
+    only the bodies lost before it - two on 2026-09-26 (`PL-F6MM`).
     """
-    return path.startswith(config.items_dir.strip("/") + "/") or path in {
-        config.roadmap_file,
-        config.notes_file,
-    }
+    return any(
+        path.startswith(name) if name.endswith("/") else path == name
+        for name in queue_records(config)
+    )
 
 
 def work_outside_queue(

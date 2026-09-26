@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 
-from docket import render
+from docket import arming, render
 from docket.claims import (
     BY_CLOSED,
     BY_LANDING,
@@ -33,6 +33,7 @@ from docket.claims import (
     LEASE_TERM,
     LIVE,
     NAMED,
+    RECORDS,
     RELEASED,
     SESSION_VARIABLE,
     Hold,
@@ -40,6 +41,7 @@ from docket.claims import (
     Unclaimed,
     holdings,
     in_queue,
+    queue_records,
     settled_branches,
     unclaimed,
     work_outside_queue,
@@ -1419,12 +1421,63 @@ def test_unclaimed_names_a_branch_git_did_not_answer_about_apart(tmp_path: Path)
     assert unclaimed(repo.root, declined, QUEUE) == Unclaimed()
 
 
-def test_the_queue_is_the_items_the_roadmap_and_the_notes() -> None:
+def test_the_queue_is_the_items_the_roadmap_the_notes_and_the_body_records() -> None:
+    assert queue_records(QUEUE) == (
+        "docs/items/",
+        "ROADMAP.md",
+        "docs/WORKING_NOTES.md",
+        "docs/pr-bodies/",
+    )
     assert in_queue("docs/items/PL-B1B1-held.md", QUEUE)
     assert in_queue("ROADMAP.md", QUEUE)
     assert in_queue("docs/WORKING_NOTES.md", QUEUE)
+    assert in_queue("docs/pr-bodies/1066.md", QUEUE)
     assert not in_queue("docs/items-archive.md", QUEUE)
+    assert not in_queue("docs/pr-bodies.md", QUEUE)
     assert not in_queue("src/work.py", QUEUE)
+
+
+def test_the_gate_keeps_its_own_copy_of_the_body_records() -> None:
+    """`arming.RECORDS` spells the body records again, and the two spellings must agree.
+
+    The gate holds `arming.py` for a read so that it cannot loosen itself, and
+    this module arms on green. Imported from here, a one-line widening of the
+    records would merge unread and then arm whatever it newly admitted, so the
+    held file keeps its own copy (`PL-F6MM`; project owner, 2026-09-26,
+    ratified, over `arming` importing this one). This keeps the two one answer.
+    """
+    assert RECORDS == arming.RECORDS
+
+
+def test_a_body_record_is_not_work_that_owes_a_claim(tmp_path: Path) -> None:
+    """A pull request's body record is a queue record, so a queue-only pass still owes no claim.
+
+    `tools/pr_body_check.py --record` writes one on every pull request's branch
+    before its merge, since `pr-title` fails without it (`PL-979D`), so a
+    capture, a triage pass or a design round carries one as surely as its
+    items. Read as work, it named each such branch a forgetful session here and
+    had CI refuse it (`PL-F6MM`). The branch whose record rides real work is
+    still named, so the record is what the answer turns on.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/capture-a1b2c3")
+    repo.commit(
+        "PL-D3D3: capture a finding",
+        when=T0,
+        files={"docs/items/PL-D3D3-found.md": _item("PL-D3D3", "untriaged")},
+    )
+    repo.commit(
+        "PL-D3D3: record the body", when=T0, files={"docs/pr-bodies/1066.md": "---\npr: 1066\n"}
+    )
+    repo.branch("claude/forgetful-d4e5f6", "main")
+    repo.commit(
+        "PL-B1B1: record the body", when=T0, files={"docs/pr-bodies/1067.md": "---\npr: 1067\n"}
+    )
+    repo.commit("PL-B1B1: the work", when=T0, files={"src/work.py": "WORK = 1\n"})
+
+    read = holdings(repo.root, now=T0 + HOUR)
+
+    assert unclaimed(repo.root, read, QUEUE) == Unclaimed(branches=("claude/forgetful-d4e5f6",))
 
 
 def test_flight_s_rows_carry_the_kind_and_state_of_the_hold_behind_each(tmp_path: Path) -> None:
