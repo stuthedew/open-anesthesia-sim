@@ -10,6 +10,7 @@ touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .clau
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a member of PL-PVW2, worked with its step 2
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1087
 payoff: a check run after a heredoc in the same call is read by all three guards, so a lost status, a floor parse or a prune there is refused
 verify: grep -q 'def test_only_a_heredoc_body_is_removed' tests/unit/test_gate_status_guard.py && grep -q 'def test_only_a_heredoc_body_is_removed' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_only_a_heredoc_body_is_removed' tests/unit/test_no_prune_guard.py
 ---

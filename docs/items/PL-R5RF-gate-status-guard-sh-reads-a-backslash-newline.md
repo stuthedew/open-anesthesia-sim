@@ -10,6 +10,7 @@ touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, tests
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a member of PL-PVW2, worked with its step 2
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1087
 payoff: a pipefail gate continued onto a second line runs the first time, and no refusal blames a semicolon the command does not contain
 verify: grep -q 'def test_a_backslash_newline_continues_the_command' tests/unit/test_gate_status_guard.py
 ---

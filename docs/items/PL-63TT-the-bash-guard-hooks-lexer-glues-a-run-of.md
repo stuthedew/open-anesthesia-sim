@@ -10,6 +10,7 @@ touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .clau
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a member of PL-PVW2, worked with its step 2
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1087
 payoff: a gate or bare interpreter written after a closing parenthesis is refused like any other command, instead of passing the guard that exists to refuse it
 verify: grep -q 'def test_a_glued_punctuation_run_splits_into_bash_operators' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_glued_punctuation_run_splits_into_bash_operators' tests/unit/test_floor_interpreter_guard.py
 ---
