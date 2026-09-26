@@ -28,8 +28,9 @@
 # every reader of that record until CI refuses its pull request. So before the
 # first edit that is work, the hook adds "this branch claims nothing:
 # `bin/docket claim <id>`" where that is so. Not at the first edit of any kind:
-# a capture or a triage pass writes only item files and owes no claim, and
-# asking then would spend the session's one question where it had no answer.
+# a capture or a triage pass writes only the queue - its items, the roadmap,
+# the notes and its body record - and owes no claim, and asking then would
+# spend the session's one question where it had no answer.
 # `tools/branch_id_check.py --hint` decides, from the reader CI's refusal uses,
 # so the hook and the gate cannot disagree: its exit 3 says the path was not
 # work outside the queue and nothing was asked, and anything else spends the
