@@ -49,7 +49,15 @@ from .plan import (
     recurring,
     set_aside,
 )
-from .release import PLANNED, RESERVED, Readiness, ReleaseOffer, release_offer
+from .release import (
+    NOTES_DIR,
+    PLANNED,
+    RESERVED,
+    Readiness,
+    ReleaseOffer,
+    notes_name,
+    release_offer,
+)
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, GateStatus, Scope, Wave
 from .trend import APPARATUS, BY_DAY, EFFORT_POINTS, LANES, PRODUCT_BUCKETS, QUEUE, Trend
 from .vcs import (
@@ -351,6 +359,7 @@ def format_digest(
     gate_paths: tuple[str, ...] = (),
     now: datetime | None = None,
     read: Holdings | None = None,
+    interrupted: str = "",
 ) -> str:
     """The few lines injected into session context at startup.
 
@@ -414,6 +423,9 @@ def format_digest(
     `read` adds each in-flight id's state and kind (`held_as`, `PL-N162`),
     because five triage passes' status dispositions otherwise read exactly
     like a session's claim.
+
+    `interrupted` names a release whose cut stopped before its notes, and
+    replaces the release sentence with `_interrupted_cut`'s (`PL-1BS2`).
     """
     flight = in_flight or FlightReport()
     if not report.items:
@@ -569,7 +581,9 @@ def format_digest(
             f"  Grooming due: {_plural(len(report.advisories), 'advisory', 'advisories')} "
             "(`make docket` to see them)."
         )
-    if ready is not None and ready.is_worth_cutting:
+    if interrupted:
+        lines.append(f"  Releasable: {_interrupted_cut(report, ready, interrupted)}")
+    elif ready is not None and ready.is_worth_cutting:
         completes = (
             f", completing {', '.join(ready.completed_features)}"
             if ready.completed_features
@@ -2625,6 +2639,7 @@ def format_status(
     ready: Readiness | None = None,
     in_flight: FlightReport | None = None,
     plan: Wave | None = None,
+    interrupted: str = "",
 ) -> str:
     """The whole project at feature altitude, which is the altitude decisions happen at.
 
@@ -2700,7 +2715,10 @@ def format_status(
         lines.append("")
         lines.append(f"Finished: {', '.join(sorted(f.name for f in complete))}")
 
-    if ready is not None and ready.shippable:
+    if interrupted:
+        lines.append("")
+        lines.append(f"Unreleased: {_interrupted_cut(report, ready, interrupted)}")
+    elif ready is not None and ready.shippable:
         lines.append("")
         done_note = (
             f", completing {', '.join(ready.completed_features)}"
@@ -2971,6 +2989,26 @@ def _scope_lines(plan: Wave) -> list[str]:
     if own.unknown_ids:
         lines.append(f"          not in the store, so not countable: {', '.join(own.unknown_ids)}")
     return lines
+
+
+def _interrupted_cut(report: Report, ready: Readiness | None, version: str) -> str:
+    """The release sentence while a cut is unfinished, for the digest and `status` alike.
+
+    `readiness` leaves an interrupted cut's stamps out by its own contract, so
+    what it counts is only the remainder the stopped run never reached: a
+    twenty-item cut stopped after fifteen reads as an ordinary offer of five,
+    with nothing saying why (`PL-1BS2`). The version and the notes it never
+    wrote are named instead, with the command that finishes the cut - the
+    same one `bin/docket release` prints when refusing another number over it.
+    """
+    stamped = sum(1 for item in report.items if item.milestone.strip() == version)
+    total = stamped + (len(ready.shippable) if ready is not None else 0)
+    return (
+        f"a cut of {version} was interrupted: {stamped} item(s) carry "
+        f"`milestone: {version}` and {NOTES_DIR}/{notes_name(version)} was never written. "
+        f"Finish it before offering another - `make release VERSION={version.lstrip('v')}` "
+        f"cuts all {total}."
+    )
 
 
 def _reserved_refusal(offer: ReleaseOffer, pointer: str) -> str:

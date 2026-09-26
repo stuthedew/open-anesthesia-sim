@@ -42,7 +42,6 @@ from pathlib import Path
 from . import vcs
 from .config import Config
 from .model import CLOSED_STATUSES, WITHDRAWN_MARKER, Item, _split_list, parse_front_matter
-from .store import ID_PATTERN
 
 # Suppressions matched as text. `noqa` is deliberately absent: a project whose
 # ruff configuration does not enable a rule carries `noqa` directives that
@@ -87,11 +86,21 @@ from .store import ID_PATTERN
 # which is a reviewer's call and is now put in front of one. No prose line
 # matched in any suffix the check reads, `.toml`, `.cfg` and `.ini` included.
 #
-# Still unread, and absent from that history too: `pytest.importorskip`,
-# `unittest.expectedFailure`, `self.skipTest`, a raised `unittest.SkipTest` and
-# `collect_ignore` in a `conftest.py` (`PL-DNZ0`). A deselection in `addopts`
-# is configuration: in `pyproject.toml`, one of `gate_paths`' defaults, the
-# gate check reads it, and in a `.cfg` or `.ini` file nothing does.
+# The last six finish the family, drawn from the frameworks' documented ways to
+# skip, fail or ignore a test (`PL-DNZ0`): `importorskip`, which skips a module
+# whose import fails; `expectedFailure`, unittest's `xfail`; `skipTest`, its
+# imperative skip; `SkipTest`, the exception both frameworks skip on when it is
+# raised; and the two ways a `conftest.py` drops a file from collection - the
+# `collect_ignore` list, `collect_ignore_glob` included, and the
+# `pytest_ignore_collect` hook, whose words run the other way. Replayed on
+# 2026-09-25 over `main`'s 1,237 non-merge commits, of 1,354, the six match no
+# added line in any suffix the check reads: the names stood only on three
+# comment lines above this list, which `strip_non_code` blanks, and the list
+# before them still matches the one `bash` guard. `importorskip` is the one with
+# a common legitimate use, an optional dependency, and is put in front of a
+# reviewer as that guard is. A deselection in `addopts` is configuration: in
+# `pyproject.toml`, one of `gate_paths`' defaults, the gate check reads it, and
+# in a `.cfg` or `.ini` file nothing does.
 SUPPRESSIONS = (
     "typing.no_type_check",
     "xfail",
@@ -99,6 +108,12 @@ SUPPRESSIONS = (
     "@skip",
     "mark.skip",
     "unittest.skip",
+    "importorskip",
+    "expectedFailure",
+    "skipTest",
+    "SkipTest",
+    "collect_ignore",
+    "pytest_ignore_collect",
 )
 
 #: The same list as something a line can be matched against, anchored on the
@@ -111,9 +126,9 @@ SUPPRESSIONS = (
 #: wanted and would match only where a word character precedes it.
 #:
 #: Left only. The right-hand side is deliberately open, so `@skip` still finds
-#: `@skipif`, `mark.skip` finds `mark.skipif` and `unittest.skip` finds
-#: `skipIf` and `skipUnless`, each of which is the thing this looks for rather
-#: than a collision with it.
+#: `@skipif`, `mark.skip` finds `mark.skipif`, `unittest.skip` finds `skipIf`
+#: and `skipUnless`, and `collect_ignore` finds `collect_ignore_glob`, each of
+#: which is the thing this looks for rather than a collision with it.
 _SUPPRESSION_RE = re.compile(
     "|".join(
         (r"\b" if text[0].isalnum() or text[0] == "_" else "") + re.escape(text)
@@ -764,13 +779,29 @@ def removed_assertions(
     return AssertionAudit(tuple(absent), tuple(unparsed.items()), tuple(lines))
 
 
-#: How many functions the report prints, and how many assertions on each side
-#: of one. The counts on the check's own line are never capped.
+#: How many functions the report prints - or lines, where a check reads lines
+#: rather than functions - and how many assertions on each side of one. The
+#: counts on the check's own line are never capped, and a capped list ends by
+#: counting what it left out, so the count and the lines under it reconcile
+#: (`PL-7NKD`).
 SHOWN_FUNCTIONS, SHOWN_PER_SIDE, SHOWN_WIDTH = 5, 5, 140
 
 
 def _clip(text: str) -> str:
     return text if len(text) <= SHOWN_WIDTH else text[: SHOWN_WIDTH - 3] + "..."
+
+
+def _capped(lines: Sequence[str]) -> list[str]:
+    """The first `SHOWN_FUNCTIONS` of `lines`, then one line counting the rest.
+
+    A bounded display says it is bounded. A block printing five lines under a
+    count of six left the reader unable to tell which line was missing, and
+    reading it back took a `git show` per commit (`PL-7NKD`).
+    """
+    shown = list(lines[:SHOWN_FUNCTIONS])
+    if len(lines) > SHOWN_FUNCTIONS:
+        shown.append(f"and {len(lines) - SHOWN_FUNCTIONS} more line(s)")
+    return shown
 
 
 def _absence_lines(absence: FileAbsence, counted: Collection[str]) -> list[tuple[str, list[str]]]:
@@ -854,15 +885,15 @@ def assertion_check(
         shown += [label, *body]
     if len(groups) > SHOWN_FUNCTIONS:
         shown.append(f"and {len(groups) - SHOWN_FUNCTIONS} more function(s)")
-    by_line = 0
+    unfolded: list[str] = []
     for path, line in audit.lines:
         if declared and declared in line:
             folded += 1
             declared_lines.append(f"declared falsified, not counted: {line.strip()}")
         else:
-            by_line += 1
-            if by_line <= SHOWN_FUNCTIONS:
-                shown.append(f"{path}: {line.strip()}")
+            unfolded.append(f"{path}: {line.strip()}")
+    by_line = len(unfolded)
+    shown += _capped(unfolded)
     shown += [f"read line by line, not parsed: {path} - {why}" for path, why in audit.unparsed]
     parts = [f"{counted} assertion(s)"] if counted else []
     parts += [f"{by_line} line(s) in a file read line by line"] if by_line else []
@@ -1440,6 +1471,9 @@ def _git(args: list[str], root: Path) -> str:
     could not read. Only stdout is returned, so none of stderr can reach a
     caller as output.
     """
+    # By the subcommand, not `args[0]`, which is `-c` for every read
+    # `vcs.changed_path_args` builds.
+    command = f"`git {vcs.subcommand_of(args)}`"
     try:
         result = subprocess.run(
             ["git", *args],
@@ -1451,11 +1485,15 @@ def _git(args: list[str], root: Path) -> str:
             check=False,
         )
     except (OSError, subprocess.SubprocessError) as error:
-        raise GitUnanswered(f"`git {args[0]}` could not run: {error}") from error
+        raise GitUnanswered(f"{command} could not run: {error}") from error
+    except UnicodeDecodeError as error:
+        # A path printed as written whose bytes are not text here: unread, so
+        # the audit stops rather than passing a path it cannot compare.
+        raise GitUnanswered(f"{command} printed a path this cannot read: {error}") from error
     if result.returncode != 0:
         said = next((line.strip() for line in result.stderr.splitlines() if line.strip()), "")
         raise GitUnanswered(
-            f"`git {args[0]}` exited {result.returncode}: {said or 'with nothing on stderr'}"
+            f"{command} exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
     return result.stdout
 
@@ -1491,20 +1529,35 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
     Raises `GitUnanswered` where either half cannot be read, a base that does
     not resolve among them. The empty tuple is a branch that changed nothing,
     so no value this could return would say "unread" (`PL-9RFP`).
+
+    **Both halves read `-z`, the one form in which git quotes no path**
+    (`PL-8HSX`). A quoted path starts with `"`, so `_within` matches it against
+    nothing protected. Git quotes a path outside ASCII while `core.quotePath` is
+    on, one holding a tab, newline, `"` or `\\` however that is set, and in
+    `status` one holding a space as well: measured on git 2.43.0, 2026-09-25, a
+    committed `src/anesthesia_sim/core/café.py` and an uncommitted
+    `src/anesthesia_sim/core/a b.py` each passed as "none touched".
+    `--untracked-files=all` because `status.showUntrackedFiles=no` in a user's
+    git config drops every untracked file from the porcelain, which passed a new
+    uncommitted core file the same way, and because otherwise an untracked
+    directory is one `dir/` entry rather than the files in it.
     """
     if commits:
-        committed = _git(vcs.changed_path_args("show", "--name-only", "--format=", *commits), root)
+        committed = _git(
+            vcs.changed_path_args("show", "-z", "--name-only", "--format=", *commits), root
+        )
     else:
-        committed = _git(vcs.changed_path_args("diff", "--name-only", f"{base}...HEAD"), root)
-    working = _git(["status", "--porcelain"], root)
-    paths = {line.strip() for line in committed.splitlines() if line.strip()}
-    for line in working.splitlines():
-        entry = line[3:].strip() if len(line) > 3 else ""
-        if " -> " in entry:  # a rename touches both names
-            before, _, after = entry.partition(" -> ")
-            paths.update({before.strip(), after.strip()})
-        elif entry:
-            paths.add(entry)
+        committed = _git(vcs.changed_path_args("diff", "-z", "--name-only", f"{base}...HEAD"), root)
+    working = _git(["status", "--porcelain", "-z", "--untracked-files=all"], root)
+    paths = {path for path in committed.split("\0") if path}
+    entries = iter(working.split("\0"))
+    for entry in entries:
+        # `XY path`: two status letters and a space. A rename or a copy is
+        # followed by the path it came from, as a field of its own.
+        paths.add(entry[3:])
+        if "R" in entry[:2] or "C" in entry[:2]:
+            paths.add(next(entries, ""))
+    paths.discard("")
     return tuple(sorted(paths))
 
 
@@ -1940,9 +1993,7 @@ def commissioned_result(root: Path, base: str, commission: Commission, correctio
     working command for another, which is a different thing for a reviewer to
     look at than one that fails.
     """
-    status, _output = _run(
-        [commission.verify], root, shell=True, env={**os.environ, VERIFY_GUARD: "1"}
-    )
+    status, _output = _run([commission.verify], root, shell=True, env=_command_env())
     if status == 0:
         result = "passes on this tree"
     elif status == TIMED_OUT:
@@ -2040,8 +2091,10 @@ def base_warning(root: Path, base: str) -> str:
     )
 
 
-def other_items_named(root: Path, commits: tuple[str, ...], identifier: str) -> tuple[str, ...]:
-    """The other items' ids the audited commits name in their subjects.
+def other_items_named(
+    root: Path, commits: tuple[str, ...], identifier: str
+) -> tuple[tuple[str, ...], int]:
+    """The other items' ids the audited commits lead with, and how many commits carry one.
 
     `item_commits` selects by id so that a batch branch is judged per item -
     "a reviewer can take four items and reject the fifth", as its own
@@ -2057,15 +2110,30 @@ def other_items_named(root: Path, commits: tuple[str, ...], identifier: str) -> 
     ids is what lets a reader see that the scope being audited is wider than
     the item, which is the whole of what went wrong silently before.
 
+    An id counts only where it *leads* a subject, read through
+    `vcs.leading_ids`, the one reading of which ids a subject claims: a
+    subject citing another item mid-sentence is a citation, not a batch. Any
+    id in the text used to count, and the note printed every audited commit as
+    naming it, so `PL-19T3`'s closure, one of whose four subjects cited
+    `PL-9RFP` in passing, read as four commits also naming `PL-9RFP`
+    (`PL-WM46`). The count returned is of the commits that lead with another
+    id, never of every commit audited.
+
     Raises `GitUnanswered` where the subjects cannot be read. Otherwise git's
     complaint would be searched for ids, and finding none would read as the
     commits naming this item alone.
     """
     if not commits:
-        return ()
-    output = _git(["show", "-s", "--format=%s", *commits], root)
-    found = {match.group(0) for match in re.finditer(ID_PATTERN, output)}
-    return tuple(sorted(found - {identifier}))
+        return (), 0
+    # NUL-separated, so a subject is split only where git ended it.
+    output = _git(["show", "-s", "--format=%s%x00", *commits], root)
+    found: set[str] = set()
+    carrying = 0
+    for subject in output.split("\0"):
+        others = set(vcs.leading_ids(subject)) - {identifier}
+        found |= others
+        carrying += bool(others)
+    return tuple(sorted(found)), carrying
 
 
 def verify_item(
@@ -2350,14 +2418,14 @@ def _check_item(
     # Said once, beside the check whose reach it widens. Silent when the
     # commits name this item alone, which is the delegated case and the one
     # the scoping was built for.
-    others = other_items_named(root, commits, item.identifier)
+    others, carrying = other_items_named(root, commits, item.identifier)
     if others:
         report.checks.append(
             Check(
                 "the audited diff is this item's alone",
                 False,
-                f"{len(commits)} commit(s) also name {', '.join(others)}, so the paths "
-                "above are the batch's rather than this item's",
+                f"{carrying} of {len(commits)} commit(s) also lead with {', '.join(others)}, "
+                "so the paths above are the batch's rather than this item's",
                 advisory=True,
             )
         )
@@ -2394,7 +2462,7 @@ def _check_item(
             "no suppression added",
             not suppressed,
             f"{len(suppressed)} line(s)" if suppressed else "none",
-            tuple(suppressed[:5]),
+            tuple(_capped(suppressed)),
         )
     )
 
@@ -2506,7 +2574,7 @@ def _check_item(
         )
         return report
 
-    status, output = _run([item.verify], root, shell=True, env={**os.environ, VERIFY_GUARD: "1"})
+    status, output = _run([item.verify], root, shell=True, env=_command_env())
     lines = () if status == 0 else tuple(output.strip().splitlines()[-4:])
     # A rejection either way, and for opposite reasons, so the report says
     # which. "The command failed" sends a reviewer to look for the missing
@@ -2602,6 +2670,21 @@ LANDED_GUARD = "DOCKET_SKIP_LANDED"
 # `checks.py` refuses such a command outright, so this is what stands between a
 # store nobody has checked yet and a recursion the process table ends.
 VERIFY_GUARD = "DOCKET_IN_VERIFY"
+
+
+def _command_env() -> dict[str, str]:
+    """The environment `docket verify` runs an item's command in: both guards set.
+
+    `already_passing` has always set both on its children. `verify_item` set
+    only its own, so an item whose command runs `docket check --verify` made
+    the audit replay every open item's command one level down - 111 commands
+    and 87 s on the quality job - to answer a question about the store rather
+    than about the branch (`PL-SHTR`). The commissioned command that
+    `commissioned_result` runs beside a corrected one is the same kind of
+    child, so it takes the same environment.
+    """
+    return {**os.environ, LANDED_GUARD: "1", VERIFY_GUARD: "1"}
+
 
 # Long enough for a project's own suite, short enough that one wedged command
 # cannot hang `make check`. The timeout bounds a single command, so the figure
