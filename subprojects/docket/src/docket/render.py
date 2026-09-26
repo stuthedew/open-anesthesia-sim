@@ -37,11 +37,13 @@ from .model import (
 )
 from .notes import Thread
 from .plan import (
+    HELD,
     PLACEMENT_MARKS,
     Cluster,
     Feature,
     Gate,
     Overlap,
+    Standing,
     effort_total,
     placement_clause,
     placement_mark,
@@ -462,6 +464,11 @@ def format_digest(
         if top.unblocks:
             marks += (
                 f", unblocks generator {', '.join(top.unblocks)} - ranked above every band but P0"
+            )
+        if top.unblocks_defects:
+            marks += (
+                f", unblocks machinery defect {', '.join(top.unblocks_defects)}"
+                " - ranked above every band but P0"
             )
         if top.scoped_to:
             marks += f", scoped to {top.scoped_to}, not this step"
@@ -1390,7 +1397,7 @@ def _drain_phrase(cluster: Cluster) -> str:
     return f"{phrase} ({', '.join(footnotes)})" if footnotes else phrase
 
 
-def _verdict_phrase(head: Item) -> str:
+def _verdict_phrase(head: Item, standing: Standing | None) -> str:
     """Whether this head still ranks, as a trailing clause, or `""`.
 
     Only for an **open** head, which is the only one the answer can move.
@@ -1410,16 +1417,20 @@ def _verdict_phrase(head: Item) -> str:
     A live head at `blocked` is not on the tier itself: its rank passes to the
     open items it waits on, or reaches nothing, and `docket show` says which.
     This line said "so on the tier" of `PL-MB2W` while `show` said it was
-    not ranked (`PL-4RK2`).
+    not ranked (`PL-4RK2`), and of four untriaged heads `next` offered nowhere
+    (`PL-Q4DF`) - so where a live head stands is `standing`, the caller's
+    reading of `plan.tier_standings`, rather than a status tested here.
     """
     if head.status in CLOSED_STATUSES:
         return ""
     verdict, _ = split_generator_verdict(head.generator)
-    if verdict == "live" and head.status == "blocked":
+    if verdict == "live" and standing is not None and standing.why == "blocked":
         return (
             "; still generating, but blocked, so not on the tier itself"
             " - `docket show` says what carries its rank"
         )
+    if verdict == "live" and standing is not None and standing.why == "untriaged":
+        return "; still generating, but untriaged, so ranked nowhere until triage seats it"
     if verdict == "live":
         return "; still generating, so on the tier"
     if verdict == "spent":
@@ -1446,6 +1457,8 @@ def format_clusters(
     unsound: Sequence[Item] = (),
     defects: Sequence[Item] = (),
     overlaps: Sequence[Overlap] = (),
+    *,
+    standings: Mapping[str, Standing],
 ) -> str:
     """Every generator against how much of its cluster is still open.
 
@@ -1484,7 +1497,7 @@ def format_clusters(
     """
     if not clusters:
         lines = ["no item carries a sound `root-cause-of:`, so no generator is recorded"]
-        return "\n".join(lines + _outside_clusters(unsound, defects))
+        return "\n".join(lines + _outside_clusters(unsound, defects, standings))
 
     members = {i.identifier for c in clusters.values() for i in c.members}
     still_open = {i.identifier for c in clusters.values() for i in c.open_items}
@@ -1502,11 +1515,11 @@ def format_clusters(
         lines.append(
             f"  {cluster.head.identifier} "
             f"{_plural(len(cluster.members), 'member', 'members')}, {_drain_phrase(cluster)}"
-            f"{_verdict_phrase(cluster.head)}"
+            f"{_verdict_phrase(cluster.head, standings.get(cluster.head.identifier))}"
         )
         lines.append(f"      {_misread_or_title(cluster.head)}")
     lines.extend(_format_overlaps(overlaps))
-    lines.extend(_outside_clusters(unsound, defects))
+    lines.extend(_outside_clusters(unsound, defects, standings, heads=clusters.keys()))
     return "\n".join(lines)
 
 
@@ -1590,8 +1603,20 @@ def format_misread(
     return "\n".join(lines)
 
 
-def _outside_clusters(unsound: Sequence[Item], defects: Sequence[Item]) -> list[str]:
-    """The generator-tier items no cluster count reaches, so the total is honest."""
+def _outside_clusters(
+    unsound: Sequence[Item],
+    defects: Sequence[Item],
+    standings: Mapping[str, Standing] | None = None,
+    heads: Collection[str] = (),
+) -> list[str]:
+    """The generator-tier items no cluster count reaches, so the total is honest.
+
+    A machinery defect that is also a head is in the table above, members and
+    all, so it is left out here: `PL-Q4DF` itself was listed as naming no
+    members while its `root-cause-of:` named three. Which of the rest rank is
+    `standings`' answer rather than a status tested here, since a blocked or
+    untriaged one ranks nowhere itself and this line called it ranked (`PL-Q4DF`).
+    """
     lines: list[str] = []
     if unsound:
         named = ", ".join(i.identifier for i in unsound)
@@ -1606,8 +1631,11 @@ def _outside_clusters(unsound: Sequence[Item], defects: Sequence[Item]) -> list[
     # while printing `(done)` beside it (`PL-BBT8`). The closed ones stay
     # named, as a drained cluster does above, since they are the half of "are
     # the generators dealt with?" that is.
-    ranking = [i for i in defects if i.status not in CLOSED_STATUSES]
-    closed = [i for i in defects if i.status in CLOSED_STATUSES]
+    tier = standings or {}
+    outside = [i for i in defects if i.identifier not in heads]
+    ranking = [i for i in outside if i.identifier in tier and tier[i.identifier].state == HELD]
+    waiting = [i for i in outside if i.identifier in tier and tier[i.identifier].state != HELD]
+    closed = [i for i in outside if i.status in CLOSED_STATUSES]
     if ranking:
         named = ", ".join(f"{i.identifier} ({i.status})" for i in ranking)
         lines.append("")
@@ -1615,6 +1643,15 @@ def _outside_clusters(unsound: Sequence[Item], defects: Sequence[Item]) -> list[
             f"  {_plural(len(ranking), 'item ranks', 'items rank')} on the generator tier by "
             f"`impairs-generators:` and {'names' if len(ranking) == 1 else 'name'} no members, "
             f"so none is a cluster above: {named}"
+        )
+    if waiting:
+        named = ", ".join(f"{i.identifier} ({i.status})" for i in waiting)
+        lines.append("")
+        lines.append(
+            f"  {_plural(len(waiting), 'item carries', 'items carry')} a sound "
+            f"`impairs-generators:`, {'names' if len(waiting) == 1 else 'name'} no members, and "
+            f"{'ranks' if len(waiting) == 1 else 'rank'} nowhere itself, being blocked or "
+            f"untriaged - `docket show` says where the rank stands: {named}"
         )
     if closed:
         named = ", ".join(f"{i.identifier} ({i.status})" for i in closed)
