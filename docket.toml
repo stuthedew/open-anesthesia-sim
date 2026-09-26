@@ -423,6 +423,7 @@ workflow_paths = [
   "tests/unit/test_workflow_paths_check.py",
   "tests/unit/test_possessive_section_check.py",
   "tests/unit/test_left_behind_check.py",
+  "tests/unit/test_update_armed.py",
   "tools",
 ]
 

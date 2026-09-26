@@ -175,6 +175,80 @@ def test_a_spelling_that_prunes_nothing_is_untouched(command: str) -> None:
     assert _decision(command) is None, f"{command!r} was denied"
 
 
+# Each read a prune or mirror setting and wrote nothing, run on git 2.43.0 in a
+# scratch repository on 2026-09-26 (`PL-YFT4`). The first is the read the
+# project owner met in ordinary work, verbatim.
+CONFIG_READS = (
+    "git config --get fetch.prune",
+    "git config --get remote.origin.mirror",
+    "git config --get-all remote.origin.prune",
+    "git config --get-regexp 'remote.*.prune'",
+    "git config --get-urlmatch fetch.prune https://example.com",
+    # `--list` takes no name, so one reaches it only as a file named for one.
+    "git config -f fetch.prune.cfg --list",
+    "git config -l --file remote.origin.mirror.cfg",
+    # After `--get`, a second word is a pattern the value must match, not a value.
+    "git config --get fetch.prune true",
+    # With no action, a name alone is read.
+    "git config fetch.prune",
+    "git config remote.origin.mirror",
+    # Beside a location, a type or a display option, its value stuck or not.
+    "git config --global --get fetch.prune",
+    "git config --type=bool --get fetch.prune",
+    "git config -t bool --get fetch.prune",
+    "git config --file=.git/config --show-origin --get-all fetch.prune",
+    "git config --default false --get fetch.prune",
+    "git config --get -- fetch.prune",
+    # Wherever the call runs.
+    'echo "$(git config --get fetch.prune)"',
+    "git config --get fetch.prune || echo unset",
+)
+
+
+@pytest.mark.parametrize("command", CONFIG_READS)
+def test_a_read_that_prunes_nothing_is_admitted(command: str) -> None:
+    """A `config` that only reads a prune or mirror setting passes (`PL-YFT4`).
+
+    The guard refused every `config` naming either setting, read or write, so
+    `git config --get fetch.prune`, met in ordinary work, was refused with a
+    reason saying it prunes.
+    """
+    assert _decision(command) is None, f"{command!r} was denied"
+
+
+# Each wrote the setting it names on the same scratch repository, though a read
+# action or a read's shape is among its words, so each stays refused.
+CONFIG_WRITES = (
+    "git config fetch.prune true",
+    # git reads options only up to the first word that is not one, so this
+    # writes the value `--get`.
+    "git config fetch.prune --get",
+    # A `--no-` form clears the action before it, leaving a name and a value.
+    "git config --get --no-get fetch.prune true",
+    "git config --list --no-list fetch.prune true",
+    # After `--`, or beside a type alone, a name and a value are written.
+    "git config -- fetch.prune true",
+    "git config --bool fetch.prune true",
+    "git config --add fetch.prune true",
+    "git config --unset fetch.prune",
+    "git config --replace-all remote.origin.mirror true",
+    # Bash makes new words of these after the hook has read the call, an option
+    # among them, so a call holding one is read as a write.
+    'x=--no-get; git config --get "$x" fetch.prune true',
+    'git config --get "$(echo --no-get)" fetch.prune true',
+    "git config --get `echo --no-get` fetch.prune true",
+    "git config --get {--no-get,} fetch.prune true",
+)
+
+
+@pytest.mark.parametrize("command", CONFIG_WRITES)
+def test_a_config_that_writes_is_refused_whatever_it_reads_like(command: str) -> None:
+    """A `config` write stays refused beside a read action or a read's shape (`PL-YFT4`)."""
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert decision["permissionDecision"] == "deny"
+
+
 def test_only_a_heredoc_body_is_removed() -> None:
     """The prose in a body stays allowed, and a prune after its terminator is refused (`PL-39LD`).
 
@@ -372,6 +446,131 @@ def test_the_push_refusal_answers_the_question_the_caller_had() -> None:
     both = _decision("git fetch --prune && git push --mirror origin")["permissionDecisionReason"]
     assert "git push -u origin <branch>" in both
     assert "git branch -dr origin/<branch>" in both
+
+
+# Why each spelling below is outside the promise the hook's header opens with,
+# naming what found it.
+PROBED_READ = (
+    "a read that prunes nothing, found by piping it to the hook rather than met by a "
+    "session: `PL-YFT4`, found working `PL-R17X`, which fixes the one spelling of it a "
+    "session met, `git config --get fetch.prune`"
+)
+BY_SETTING = (
+    "a prune git takes from an alias, a setting in the environment or an abbreviated "
+    "long option, which no usage line of git 2.43 spells and no session has written: out "
+    "of reach since `PL-R17X`"
+)
+BY_MIRROR = (
+    "a mirror push reached through an abbreviated option or a remote's mirror setting, "
+    "which no session has written: out of reach since `PL-M2NV`"
+)
+BY_VARIABLE = (
+    "a flag built from a variable, which bash expands after the hook has read the words, "
+    "and which no session has written: out of reach since `PL-JK0M`"
+)
+BY_SHELL = (
+    "a command handed to another shell as a string, which the hook reads as one quoted "
+    "word, and which no session has written: out of reach since `PL-WGFY`"
+)
+UNREAD_CONFIG = (
+    "a `config` read the hook cannot read whole - an option it does not know, or a word "
+    "bash expands after the hook has read it - which it takes for a write rather than "
+    "guess, found building `PL-YFT4`"
+)
+
+# Spellings outside the promise, each read wrongly today (`PL-61FT`): the
+# command, whether it is refused today, what git does with it, and why it is
+# outside. A session probing the guard records what it finds here rather than
+# filing it, and a row becomes an item only once a session is seen writing it.
+# What each does was measured on git 2.43.0 on 2026-09-26, against a scratch
+# remote holding `main` and `other` and a clone holding only `main`, with
+# `other` deleted on the remote first wherever a prune was measured.
+KNOWN_GAPS = (
+    ("git remote prune -n origin", True, "prunes nothing, since `-n` is `--dry-run`", PROBED_READ),
+    (
+        "git log -S fetch -p",
+        True,
+        "prunes nothing: a search of the history for `fetch`, printed with patches",
+        PROBED_READ,
+    ),
+    (
+        "git log --grep pull -p",
+        True,
+        "prunes nothing: a search of commit messages for `pull`, printed with patches",
+        PROBED_READ,
+    ),
+    (
+        "git config --get-a fetch.prune",
+        True,
+        "reads `fetch.prune`, since git takes `--get-a` for `--get-all`",
+        UNREAD_CONFIG,
+    ),
+    (
+        'repo=.; git -C "$repo" config --get fetch.prune',
+        True,
+        "reads `fetch.prune`, once bash expands `$repo`",
+        UNREAD_CONFIG,
+    ),
+    (
+        "git -c alias.fp='fetch --prune' fp",
+        False,
+        "prunes, since the alias runs `git fetch --prune`",
+        BY_SETTING,
+    ),
+    (
+        "GIT_CONFIG_PARAMETERS=\"'fetch.prune'='true'\" git fetch origin",
+        False,
+        "prunes, since git reads `fetch.prune` from the environment",
+        BY_SETTING,
+    ),
+    (
+        "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=fetch.prune GIT_CONFIG_VALUE_0=true git fetch origin",
+        False,
+        "prunes, since git reads `fetch.prune` from the environment",
+        BY_SETTING,
+    ),
+    (
+        "git pull --pru",
+        False,
+        "prunes, since git takes an unambiguous prefix of a long option for the option",
+        BY_SETTING,
+    ),
+    (
+        "git push --mir origin",
+        False,
+        "deletes every branch on the remote that the clone does not hold, as `--mirror`",
+        BY_MIRROR,
+    ),
+    (
+        "git remote add --mirror=push copy ../remote.git && git push copy",
+        False,
+        "deletes every branch on `copy` that the clone does not hold, since the remote's "
+        "mirror setting makes the push a mirror push",
+        BY_MIRROR,
+    ),
+    ("p=--prune; git fetch origin $p", False, "prunes, once bash expands `$p`", BY_VARIABLE),
+    ("bash -c 'git fetch --prune'", False, "prunes, in the shell it starts", BY_SHELL),
+)
+
+
+@pytest.mark.parametrize(("command", "refused", "effect", "outside"), KNOWN_GAPS)
+def test_a_known_gap_keeps_todays_verdict(
+    command: str, refused: bool, effect: str, outside: str
+) -> None:
+    """A spelling outside the promise gets the verdict it was recorded with (`PL-61FT`).
+
+    What is pinned is the record, not the behaviour - and not as `xfail`, which
+    `bin/docket verify --self` counts as a suppressed test. A change that closes
+    a gap, meant or not, fails here: the row then moves into the tables above,
+    and the promise in the hook's header is widened to hold it.
+    """
+    assert "PL-" in outside, f"{command!r}: name the item or branch that found it"
+    decision = _decision(command)
+    assert (decision is not None) is refused, (
+        f"{command!r} is a known gap recorded as {'refused' if refused else 'admitted'} "
+        f"({outside}), and it no longer is. Run, it {effect}. Move the row into the tables "
+        "above, and widen the promise in the hook's header to hold it."
+    )
 
 
 def test_a_prune_before_a_line_bash_cannot_read_is_refused() -> None:
