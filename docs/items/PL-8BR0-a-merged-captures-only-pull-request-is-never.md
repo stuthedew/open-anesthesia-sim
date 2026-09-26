@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-25
 payoff: a session whose pull request already squash-merged is told to restart instead of merging the base in, so its next capture is not stranded on a branch nothing will merge again
 verify: grep -q 'def test_a_merged_captures_only_branch_is_told_to_restart' subprojects/docket/tests/test_vcs.py
+recurrences: 2026-09-26 PL-RLTK
 ---
 
 **Problem.** A merged captures-only pull request is never recognised as merged, because vcs.landed_whole refuses queue-only commits as merge evidence (PL-JBRC), so branch tells its session to merge the base in, arm says arm for a pull request that already merged, and the next capture there lands nowhere
