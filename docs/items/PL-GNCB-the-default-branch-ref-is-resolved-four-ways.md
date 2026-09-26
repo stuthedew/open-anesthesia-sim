@@ -3,12 +3,14 @@ id: PL-GNCB
 title: The default-branch ref is resolved four ways (vcs.default_base, pr_body_check.default_branch_ref, pr_title_check --base, left_behind_check's symref), so a clone whose default is master gets origin/master from one and None from another
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/vcs.py, tools/pr_body_check.py, tools/pr_title_check.py, tools/left_behind_check.py, tests/unit/test_pr_body_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-answer batch
 added: 2026-09-25
+closed: 2026-09-26
+pr: 1074
 payoff: a clone whose default branch is not main gets the same base from every tool as from docket, instead of a silent skip from some and a wrong comparison from others
 verify: grep -q 'def test_default_branch_ref_follows_docket_on_a_master_only_clone' tests/unit/test_pr_body_check.py
 ---
@@ -26,3 +28,5 @@ Reproduced with a master-only clone. PL-GVC0 covers the prefix only.
 **Done when.** One resolver, imported by all four.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+**Fixed 2026-09-26.** `pr_body_check.default_branch_ref` and `pr_title_check`'s `--base` default now ask `vcs.default_base`, so a `master`-only clone gets `origin/master` from all three. `left_behind_check` keeps its `ls-remote --symref origin HEAD` read, and its docstring now says why: it is the one reader comparing the remote's tips, and it takes the default branch from the same answer as those tips, so the two cannot come from different moments. That read already named `master` on the master-only clone this item was reproduced on, so it was never one of the disagreeing answers.

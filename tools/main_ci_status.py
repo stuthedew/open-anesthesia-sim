@@ -97,7 +97,6 @@ from __future__ import annotations
 
 import http.client
 import json
-import re
 import subprocess
 import sys
 import urllib.request
@@ -107,6 +106,10 @@ from pathlib import Path
 # it from wherever a session started, and `git remote` would otherwise answer
 # for a different checkout or for nothing at all.
 ROOT = Path(__file__).resolve().parents[1]
+
+sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
+
+from docket.vcs import github_slug  # noqa: E402
 
 # Every way a read of the API can fail, and it is a named tuple rather than an
 # inline one because both call sites have to catch the same set: a gap in either
@@ -168,8 +171,6 @@ UNNAMED_STEP = "(a step whose name could not be read)"
 # the workflow whole; only the unnamed `run:` lines reach it.
 STEP_WIDTH = 70
 
-_REMOTE = re.compile(r"github\.com[:/]+([^/]+)/(.+?)(?:\.git)?/?$")
-
 
 def repo_slug(remote_url: str) -> str | None:
     """Return `owner/repo` for a GitHub remote, or None for anything else.
@@ -179,11 +180,7 @@ def repo_slug(remote_url: str) -> str | None:
     a workstation — and a non-GitHub remote returns None so the caller stays
     silent rather than guessing at an API that is not there.
     """
-    match = _REMOTE.search(remote_url.strip())
-    if match is None:
-        return None
-    owner, repo = match.group(1), match.group(2)
-    return f"{owner}/{repo}" if owner and repo else None
+    return github_slug(remote_url)
 
 
 def pick_run(runs: list[object]) -> dict[str, object] | None:
