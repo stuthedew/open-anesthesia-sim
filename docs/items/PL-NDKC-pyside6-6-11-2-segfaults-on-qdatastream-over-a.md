@@ -3,11 +3,12 @@ id: PL-NDKC
 title: PySide6 6.11.2 segfaults on QDataStream over a temporary QByteArray, and a QBuffer over one reads zeros with status Ok, which the first Qt code to decode a byte payload will meet
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: interface-areas
-touches: docs/WORKING_NOTES.md
+touches: docs/WORKING_NOTES.md, ROADMAP.md
 added: 2026-09-16
+closed: 2026-09-26
 verify: grep -qF 'QBuffer::readData' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 

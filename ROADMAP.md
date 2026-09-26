@@ -5454,9 +5454,11 @@ That is what its `anticipated` class already records, and what v0.6.0's Goal
 section calls a violation pre-loaded rather than present.
 
 **The other disagreement is `PL-NDKC`**, a `defect`/`infra` item about a
-PySide6 `QDataStream` segfault the layout persistence work will meet. It
-carries the milestone's feature and is not in `Required scope`, so it clears
-before rather than inside, and its `touches` put it in the workflow lane.
+PySide6 `QDataStream` segfault that the Qt code built around the layout model
+could meet - not the JSON persistence path it was first expected in, which
+decodes no Qt blob. It carries the milestone's feature and is not in
+`Required scope`, so it clears before rather than inside, and its `touches`
+put it in the workflow lane.
 
 **`PL-WZVZ` is inherited rather than found here.** It is Gate 1's one deferred
 entry - deferred on § "The cadence" beat 3's terms by `PL-S5Q9`, and still
