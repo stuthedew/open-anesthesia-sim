@@ -824,3 +824,89 @@ def test_a_claim_on_a_branch_whose_content_has_landed_names_that_as_the_cause(
     assert _claim(monkeypatch, work, "PL-C2C2") == claiming.REFUSED
 
     assert "the branch reads as landed" in capsys.readouterr().out
+
+
+def _close_on_main(remote: _Remote, *, publish: bool = True) -> _Clone:
+    """Another session's close-out of PL-B1B1, squash-merged onto the remote's `main`.
+
+    Unpublished, it waits under a ref no fetch copies, for a hook to move `main` onto.
+    """
+    landing = remote.clone("landing")
+    landing.commit(
+        "PL-B1B1: the work (#9)",
+        when=T0 - HOUR,
+        files={"docs/items/PL-B1B1-held.md": _item("PL-B1B1", "done")},
+    )
+    landing.git("push", "-q", "origin", "HEAD:main" if publish else "HEAD:refs/hidden/landing")
+    return landing
+
+
+def test_a_claim_on_an_item_the_default_branch_closed_after_the_fork_writes_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-Y48N`, scenario b: refused by the rule the read-back would have released it by.
+
+    `_branch` read only `HEAD`'s copy, which a branch forked before the
+    close-out landed still holds at `ready`, so the claim was written, pushed,
+    and read back dead as "a defect in docket" - because `holdings` releases a
+    claim on any item the base has closed. The base's copy is read after the
+    fetch now, and nothing is written or pushed.
+    """
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    _close_on_main(remote)
+    before = work.head()
+
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.REFUSED
+
+    out = capsys.readouterr().out
+    assert (
+        "claim: PL-B1B1 is `done` on origin/main, which closed it after this branch forked, "
+        "and a claim on an item origin/main has closed is released as soon as it is written; "
+        "nothing was written." in out
+    )
+    assert "defect in docket" not in out
+    assert work.head() == before
+    assert remote.tip(BRANCH) == ""
+
+
+def test_a_claim_reopening_an_item_the_default_branch_holds_closed_writes_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The same release where the base closed it before the fork and the branch reopened it."""
+    remote = _Remote(tmp_path)
+    _close_on_main(remote)
+    work = remote.clone("work", BRANCH)
+    work.commit(
+        "PL-B1B1: reopen",
+        when=T0 - DAY,
+        files={"docs/items/PL-B1B1-held.md": _item("PL-B1B1", "ready")},
+    )
+    before = work.head()
+
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.REFUSED
+
+    out = capsys.readouterr().out
+    assert "claim: PL-B1B1 is `done` on origin/main and this branch's copy reopens it" in out
+    assert work.head() == before
+
+
+def test_a_closure_landing_between_the_check_and_the_read_back_is_named_as_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The window the refusal cannot close: `main` moves while the claim is pushed.
+
+    The read-back finds the claim released because the base closed the item,
+    and says that, rather than calling a finished item a defect in docket.
+    """
+    remote = _Remote(tmp_path)
+    landing = _close_on_main(remote, publish=False)
+    remote.hook("post-receive", f"git update-ref refs/heads/main {landing.head()}")
+    work = remote.clone("work", BRANCH)
+
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.REFUSED
+
+    out = capsys.readouterr().out
+    assert "and pushed" in out
+    assert "origin/main closed it after the read this claim was checked against" in out
+    assert "defect in docket" not in out
