@@ -194,7 +194,7 @@ STUB_ABOVE_BRIEF = (
 
 
 def test_a_stub_above_a_real_brief_does_not_satisfy_the_check() -> None:
-    """`PL-RWZV`'s own shape, and why the *first* heading is the one judged.
+    """`PL-RWZV`'s own shape, and why a heading with text never speaks for an empty one.
 
     Four empty headings echoing the format, with the real brief written under
     a second set below them. Judging any occurrence with text under it would
@@ -221,7 +221,7 @@ def test_a_stub_above_a_real_brief_is_named_rather_than_called_an_empty_section(
 
 
 def test_an_elaborated_second_heading_is_not_a_stub() -> None:
-    """The false positive the rule has to avoid, and the reason it reads the first.
+    """The false positive the rule has to avoid.
 
     `**Why it matters more than a normal benchmark.**` opens a section of its
     own rather than restating the one above it, so the plain heading above is
@@ -239,6 +239,99 @@ def test_an_elaborated_second_heading_is_not_a_stub() -> None:
     )
 
     assert _errors(briefed) == []
+
+
+def test_a_fenced_copy_of_the_capture_template_is_not_the_brief() -> None:
+    """`PL-NQ3X`: headings quoted in a fence were read as the brief's own.
+
+    The first `**Why it matters.**` was the fenced one, with the next fenced
+    heading directly under it, so a brief with every section written reported
+    "brief has nothing under **Why it matters.**". A fence is the one place a
+    line-initial heading is certainly a quotation.
+    """
+    quoting = _item(
+        body=(
+            "**Problem.** A brief can quote the template it was captured from:\n\n"
+            "```\n"
+            "**Problem.** {title}\n"
+            "**Why it matters.**\n"
+            "**Done when.**\n"
+            "```\n\n"
+            "**Why it matters.** Refusing it fails a correct brief.\n\n"
+            "**Done when.** The fence is read as the literal it is.\n"
+        )
+    )
+
+    assert _errors(quoting) == []
+
+
+def test_a_triple_backtick_code_span_at_a_line_start_opens_no_fence() -> None:
+    """A backtick fence's info string holds no backtick, so this line is a code span.
+
+    `PL-6SRZ`'s brief wraps one to a line's start. Read as an opening fence, it
+    is closed by the next real fence, and every heading between the two is
+    blanked with it.
+    """
+    spanning = _item(
+        body=(
+            "**Problem.** The pattern\n"
+            "``` `(test_\\w+)` ```, which cannot match a wrapped name.\n\n"
+            "**Why it matters.** A test goes unread.\n\n"
+            "```\n"
+            "bin/docket check\n"
+            "```\n\n"
+            "**Done when.** It is read.\n"
+        )
+    )
+
+    assert _errors(spanning) == []
+
+
+def test_a_fence_under_a_heading_is_text_under_it() -> None:
+    """Blanked to find the headings, never to judge what is under one."""
+    fenced = _item(
+        body="**Problem.** x\n\n**Why it matters.** y\n\n**Done when.**\n\n```\nmake check\n```\n"
+    )
+
+    assert _errors(fenced) == []
+
+
+def test_a_fence_left_open_hides_no_section_below_it() -> None:
+    """An unclosed fence is read as written rather than blanking the rest of the brief.
+
+    CommonMark runs it to the end of the document, and that reading would
+    report as missing every section a writer can see below it.
+    """
+    unclosed = _item(
+        body=(
+            "**Problem.** x\n\n```\nan example never closed\n\n"
+            "**Why it matters.** y\n\n**Done when.** z\n"
+        )
+    )
+
+    assert _errors(unclosed) == []
+
+
+QUOTED_ABOVE = (
+    "**Problem.** `docket triage` names the section it asks for as\n"
+    "**Done when.** in its message, and this sentence wraps there.\n\n"
+    "**Why it matters.** y\n\n"
+)
+
+
+def test_a_quoted_heading_does_not_fill_an_empty_one_below_it() -> None:
+    """`PL-6G8T`: a quotation wrapped to a line's start stood in for the real heading.
+
+    Only the first matching heading was judged, so a quotation opening a line
+    above an empty real one passed an item with no closing condition. It can
+    only ever hide a gap, which is how it outlived the stub, its loud opposite.
+    `PL-JL2M` has the same shape with both filled, which still passes.
+    """
+    messages = _errors(_item(body=QUOTED_ABOVE + "**Done when.**\n"))
+
+    assert _has(messages, "brief has nothing under **Done when.**")
+    assert not _has(messages, "the capture template is still above the brief")
+    assert _errors(_item(body=QUOTED_ABOVE + "**Done when.** It is reported.\n")) == []
 
 
 def test_an_empty_section_is_reported_as_empty_rather_than_missing() -> None:
@@ -4152,6 +4245,27 @@ def test_prose_about_recommending_does_not_pass_the_rule() -> None:
     report = analyze([_decision(body=body)], TODAY, RECOMMEND)
 
     assert _has(report.advisories, "marks no recommendation")
+
+
+def test_lacks_a_recommendation_does_not_mark_one() -> None:
+    """`PL-FKH6` (b): the label is `Recommendation:`, capitalised, outside a code span.
+
+    Matched in any case, "this brief lacks a recommendation:" read as the
+    labelled form, and a brief saying it had none was counted as marking one.
+    A brief quoting the label in a code span has not written it either.
+    """
+    for said in (
+        "This brief lacks a recommendation: the deciding number is not measured.\n",
+        "Nothing here is marked with a `Recommendation:` label yet.\n",
+    ):
+        report = analyze([_decision(body=UNMARKED + said)], TODAY, RECOMMEND)
+
+        assert _has(report.advisories, "marks no recommendation"), said
+
+    labelled = UNMARKED + "Recommendation: take the second.\n"
+    report = analyze([_decision(body=labelled)], TODAY, RECOMMEND)
+
+    assert not _has(report.advisories, "marks no recommendation")
 
 
 def test_a_marker_wrapped_across_a_line_break_is_still_a_marker() -> None:

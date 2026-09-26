@@ -3597,11 +3597,20 @@ def _headings(text: str) -> list[str]:
     vertical range is denominated in MAC, and fixed.**` marker, and that
     citation is correct.
     """
+    return _hash_headings(text) + MARKER_RE.findall(text)
+
+
+def _hash_headings(text: str) -> list[str]:
+    """Every `#` heading's title: the titles that name a section and nothing else.
+
+    A `**Bold.**` marker is often a paragraph's or a bullet's lead sentence as
+    well, so quoting one is not by itself a citation of a section (`PL-FKH6`).
+    """
     return [
         match.group("title")
         for line in text.splitlines()
         if (match := HEADING_RE.match(line)) is not None
-    ] + MARKER_RE.findall(text)
+    ]
 
 
 def _cites_heading(term: str, headings: Iterable[str]) -> bool:

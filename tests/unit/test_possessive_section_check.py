@@ -45,6 +45,22 @@ def test_a_possessive_quotation_of_a_sentence_is_left_alone(tmp_path: Path) -> N
     assert possessive_section_check.sites(root, []) == []
 
 
+def test_a_possessive_quotation_of_a_bold_lead_sentence_is_left_alone(tmp_path: Path) -> None:
+    """`PL-FKH6` (c): a bold marker is a sentence as well as a title.
+
+    `CLAUDE.md`'s bullets open on bold lead sentences, and quoting one with the
+    possessive was told to use `§` - a gate refusing a quotation that was
+    right. Only a `#` heading is a title and nothing else, so only that is
+    reported.
+    """
+    root = _repo(tmp_path, '`docs/MODEL.md`\'s "Capture, always" is the rule.\n')
+    (root / "docs" / "MODEL.md").write_text(
+        "# Model\n\n- **Capture, always.** Record what is found.\n", encoding="utf-8"
+    )
+
+    assert possessive_section_check.sites(root, []) == []
+
+
 def test_the_section_mark_form_is_already_right_and_is_not_reported(tmp_path: Path) -> None:
     root = _repo(tmp_path, '`docs/MODEL.md` § "Known limitations" says what is lumped.\n')
     assert possessive_section_check.sites(root, []) == []
