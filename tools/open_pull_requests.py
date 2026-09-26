@@ -69,11 +69,16 @@ PAGE = 100
 
 @dataclass(frozen=True)
 class PullRequest:
-    """One open pull request: its number, its title, and the branch it is for."""
+    """One open pull request: its number, its title, the branch it is for, and its base.
+
+    `base` is empty where GitHub's answer carried none; the branch sweep, the
+    one caller that reads it, declines on that rather than read it as no base.
+    """
 
     number: int
     title: str
     head: str
+    base: str = ""
 
 
 def _git(args: list[str]) -> str:
@@ -149,7 +154,9 @@ def open_pull_requests(slug: str, *, head: str | None = None) -> tuple[PullReque
         branch = entry.get("head", {}).get("ref") if isinstance(entry.get("head"), dict) else None
         if not isinstance(number, int) or not isinstance(title, str) or not isinstance(branch, str):
             return None
-        found.append(PullRequest(number=number, title=title, head=branch))
+        target = entry.get("base", {}).get("ref") if isinstance(entry.get("base"), dict) else None
+        base = target if isinstance(target, str) else ""
+        found.append(PullRequest(number=number, title=title, head=branch, base=base))
     return tuple(found)
 
 
