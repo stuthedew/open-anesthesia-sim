@@ -3,13 +3,16 @@ id: PL-M7W1
 title: Arming auto-merge freezes the squash subject at that moment, so a later rename to satisfy pr-title never reaches origin/main: the gate goes green on a title that will not land
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: commit-provenance
 touches: tools/pr_title_check.py, .github/workflows/pr-title.yml, docs/worker.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-2JRC's triage pass
 added: 2026-09-21
+closed: 2026-09-26
+pr: 1068
 payoff: the pr-title gate stops reporting green on a subject that will never reach main, so the provenance it exists to protect is actually protected rather than left to the fallback
+verify: grep -q 'pr_body_check.py --check' .github/workflows/pr-title.yml
 ---
 
 **Problem.** `tools/pr_title_check.py` reads the pull request's **live** title.
@@ -237,3 +240,10 @@ unconditional.
 the one line of `main`'s history naming what a change was about, and that
 provenance rests on `tools/pr_record_check.py` beside it. The body half closes
 with `PL-979D`.
+
+**Closed 2026-09-26: the body half, with `PL-979D`'s build (#1068).** A body
+frozen when auto-merge was armed now reaches `main` only as the squash copy.
+The record is `docs/pr-bodies/N.md`, which the required `pr-title` job holds to
+the body GitHub has on every edit. With the title half in #1056, direction 3 is
+complete, and `tools/pr_title_check.py`'s docstring describes the guarantee it
+provides.
