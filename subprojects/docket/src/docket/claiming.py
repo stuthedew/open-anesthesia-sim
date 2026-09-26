@@ -36,7 +36,10 @@ remote meant none was tried: no other session can fetch it, and a session
 reports the exit status as evidence that its claim is visible, so `CLAIMED`
 would say it was held when it is not (`PL-1X56`). So is one where the remote
 could not be asked, since whether it has the branch is what the push waits on
-(`PL-WX87`). The message says which, and names the `claim` that publishes it.
+(`PL-WX87`), and one git could not compare with the branch's copy there, a tip
+another writer pushed after this clone last fetched: that is said as not known
+rather than as local, and nothing is pushed (`PL-20DL`). The message says
+which, and names the `claim` that publishes it.
 
 **A claim never pushed yields to one already published** (`PL-ZLJ9`). Claims
 order by author date and git records no push time, so a claim written first
@@ -105,7 +108,7 @@ from .vcs import (
 #: first means another session has the item, the second that the claim exists
 #: only in this checkout - its push failed, or the branch's copy on the remote
 #: meant none was tried - until the push the message names, or that the remote
-#: could not be asked whether it does.
+#: could not be asked whether it does, or git could not compare its copy.
 CLAIMED = 0
 REFUSED = 1
 USAGE = 2
@@ -283,7 +286,11 @@ def claim(
         notes.append(f"{key}: {branch.name} already holds it first; nothing written for it")
     writing = [key for key in wanted if key not in already]
     if not writing:
-        unpushed = [key for key, made in already.items() if not _published(root, remote, made)]
+        published = {key: _published(root, remote, made) for key, made in already.items()}
+        unknown = [key for key, state in published.items() if state is None]
+        if unknown:
+            return Written(LOCAL_ONLY, (*notes, *_uncompared(unknown, "claim", branch, remote)))
+        unpushed = [key for key, state in published.items() if not state]
         if not unpushed:
             return Written(CLAIMED, tuple(notes))
         # An earlier run wrote the claim and could not push it; this run is
@@ -398,12 +405,15 @@ def yield_claims(
         if not ended:
             return Written(CLAIMED, tuple(notes))
         remote = _on_remote(heads, branch.name)
-        unpushed = [
-            key
-            for key in ended
-            if (made := _recorded(root, read.base, branch, key, trailer="Yield"))
-            and not _published(root, remote, made)
-        ]
+        published: dict[str, bool | None] = {}
+        for key in ended:
+            made = _recorded(root, read.base, branch, key, trailer="Yield")
+            if made:
+                published[key] = _published(root, remote, made)
+        unknown = [key for key, state in published.items() if state is None]
+        if unknown:
+            return Written(LOCAL_ONLY, (*notes, *_uncompared(unknown, "yield", branch, remote)))
+        unpushed = [key for key, state in published.items() if not state]
         if not unpushed:
             return Written(CLAIMED, tuple(notes))
         # An earlier run wrote the yield and could not push it; this run is
@@ -641,13 +651,18 @@ def _displaced(
     there, as the same listing answered (`PL-C3MN`): the one every other
     session reads as holding the item, and whose session was told it does
     (`PL-ZLJ9`).
+
+    A claim git cannot compare with the branch's copy is withdrawn for
+    nothing, as where the remote could not be asked: read as unpublished, a
+    claim every clone reads as holding first was withdrawn for a later one
+    (`PL-20DL`). The run that has the copy's tip decides.
     """
     found: dict[str, tuple[Hold, Hold]] = {}
     for hold in read.holds:
         if hold.state != LIVE or _branch_of(hold, branch) != branch.name:
             continue
         live = read.order(hold.key)
-        if live[0] is not hold or _published(root, remote, hold.commit):
+        if live[0] is not hold or _published(root, remote, hold.commit) is not False:
             continue
         for rival in live[1:]:
             name = _branch_of(rival, branch)
@@ -941,11 +956,50 @@ def _on_remote(heads: RemoteHeads, name: str) -> _OnRemote:
     return _OnRemote(tip=tip)
 
 
-def _published(root: Path, remote: _OnRemote, commit: str) -> bool:
-    """Whether the branch's tip on the remote, as asked, already carries `commit`."""
+def _published(root: Path, remote: _OnRemote, commit: str) -> bool | None:
+    """Whether the branch's tip on the remote, as asked, already carries `commit`.
+
+    `None` where git cannot say. `merge-base --is-ancestor` answers 0 for
+    "carries it" and 1 for "does not"; anything else is git unable to answer,
+    most often 128 for a tip the listing names that this clone has not
+    fetched, which another writer's push leaves - GitHub's *Update branch*, a
+    second session. Read as "does not", a claim every clone could fetch was
+    reported as only in this checkout, with a `claim --push` git refuses, and
+    a published claim was withdrawn for a later one (`PL-20DL`). So each
+    caller says what it could not read instead, as `arming._unpulled` does of
+    the same exit (`PL-21KN`).
+    """
     if not remote.tip:
         return False
-    return _git(["merge-base", "--is-ancestor", commit, remote.tip], root).code == 0
+    carried = _git(["merge-base", "--is-ancestor", commit, remote.tip], root).code
+    if carried in (0, 1):
+        return carried == 0
+    return None
+
+
+def _uncompared(
+    keys: list[str], command: str, branch: _Branch, remote: _OnRemote
+) -> tuple[str, ...]:
+    """What to say where `_published` could not tell whether the remote has a record.
+
+    Neither "published" nor "only in this checkout", since either could be
+    true, and nothing is pushed: a push is refused anyway until this clone
+    has the tip. `claim` fetches before it reads, so running it again answers;
+    `yield` does not, so the fetch is named.
+    """
+    listed = " ".join(keys)
+    again = (
+        f"Run `bin/docket claim {listed}` again, which fetches it first."
+        if command == "claim"
+        else f"Fetch it with `git fetch {REMOTE}`, then run `bin/docket yield {listed}` again."
+    )
+    return (
+        f"{', '.join(keys)}: whether {REMOTE}'s copy of {branch.name} carries this branch's "
+        f"{command} is not known: that copy is at {remote.tip[:12]}, a commit git could not "
+        "compare with it - most often one another writer pushed after this clone last "
+        "fetched - so nothing was pushed.",
+        f"  {again}",
+    )
 
 
 def _on_copy(root: Path, heads: RemoteHeads, name: str, commit: str) -> bool:
