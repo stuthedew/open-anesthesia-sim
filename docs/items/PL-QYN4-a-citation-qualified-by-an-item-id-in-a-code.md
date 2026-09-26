@@ -9,6 +9,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1104
 payoff: a section mark after an item id, such as the seven citing PL-MB2W's brief, fails make check when the brief stops holding the words, instead of passing unread under a report that every citation resolved
 verify: grep -q 'def test_a_marked_citation_of_an_item_is_held_to_its_brief' tests/unit/test_doc_check.py
 ---
