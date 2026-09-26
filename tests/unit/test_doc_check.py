@@ -698,6 +698,58 @@ def test_a_marked_citation_opening_on_a_digit_is_checked(tmp_path: Path) -> None
     )
 
 
+def test_a_bare_section_mark_citation_is_checked(tmp_path: Path) -> None:
+    """The mark is the recognition wherever it stands, not only beside see, under, above or below.
+
+    Two citations stayed stale for a fortnight because each stood in a
+    position the check did not read - one after `in`, one wrapped across a
+    line - while 308 of the documents' 471 marks stood outside the four read
+    positions (`PL-QQCD`, `PL-GPJ7`).
+    """
+    readme = '# Demo\n\nThe rest is per § "Renamed limitations", as the model says.\n'
+
+    assert any(
+        'cites section "Renamed limitations", which no documentation file has' in e
+        for e in _errors(_repo(tmp_path, readme=readme))
+    )
+
+
+def test_a_bare_section_mark_citation_that_resolves_is_quiet(tmp_path: Path) -> None:
+    readme = '# Demo\n\nThe rest is per § "Known limitations", as the model says.\n'
+
+    assert not any("cites section" in e for e in _errors(_repo(tmp_path, readme=readme)))
+
+
+def test_a_marked_citation_after_its_source_document_is_left_to_containment(tmp_path: Path) -> None:
+    """`` `doc.md` § "X" `` names its document; `check_quoted_sources` holds it by containment."""
+    readme = '# Demo\n\nThe rest is in `docs/MODEL.md` § "Renamed limitations".\n'
+    errors = _errors(_repo(tmp_path, readme=readme))
+
+    assert not any("cites section" in e for e in errors)
+    assert any('quotes docs/MODEL.md as "Renamed limitations"' in e for e in errors)
+
+
+def test_an_outside_source_section_is_written_without_the_mark(tmp_path: Path) -> None:
+    """A section of a paper is no heading here, so the mark is reserved for these documents."""
+    marked = (
+        "# Demo\n\n"
+        'Yasuda 1991 *Anesthesiology* § "Materials and Methods" sites the port at the tube.\n'
+    )
+    unmarked = (
+        "# Demo\n\n"
+        'Yasuda 1991 *Anesthesiology*, in its "Materials and Methods", sites the port at '
+        "the tube.\n"
+    )
+
+    assert any(
+        "write an outside source's section without the mark" in e
+        for e in _errors(_repo(tmp_path, readme=marked))
+    )
+    report = doc_check.analyze(_repo(tmp_path, readme=unmarked))
+    assert report.errors == []
+    assert report.advisories == []
+
+
 def test_a_citation_shown_in_a_fence_or_a_code_span_is_a_literal(tmp_path: Path) -> None:
     """An example of the form, or the form being described, is not a claim about the tree."""
     readme = (

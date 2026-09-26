@@ -2007,9 +2007,9 @@ and say why. `PL-B9PY` is not moved, for the reason in its entry above.
   and `fork_at`, `fork_points_s` and `branches` have no caller outside
   `app/controller.py`, so nothing in the interface creates the second run it
   draws. The display shipped ahead of the capability it displays. The id and the
-  reasoning are in § "Current baseline: v0.4.26" → "The comparison display landed
-  early, and the patch survives it", deliberately rather than here: `docket next`
-  reads this heading, so an id named under it is placed out of scope.
+  reasoning are in the v0.4.26 row of § "Versioning decision", deliberately
+  rather than here: `docket next` reads this heading, so an id named under it is
+  placed out of scope.
 - **The branched run.** v0.5.0's bookmarks and forking are that milestone's, and
   this one does not touch them. **Its comparison *display* is the exception
   above**, drawn here rather than there so that the largest new visual surface in
@@ -7497,8 +7497,8 @@ once someone is ready to scope it.
 
     *The vocabulary is Blender's, and it is the concept rather than a
     resemblance* (project owner, 2026-09-16: "the workspace/area concept ...
-    is what I want to implement"). Read at the source, the manual's § "Areas"
-    and § "Workspaces" pages having been supplied directly - `docs.blender.org`
+    is what I want to implement"). Read at the source, the manual's "Areas"
+    and "Workspaces" pages having been supplied directly - `docs.blender.org`
     is blocked by the session egress proxy. Three terms, two of them adopted
     from Blender rather than invented:
 
@@ -7537,7 +7537,7 @@ once someone is ready to scope it.
     region is built in the per-window shape the next paragraph settles. What
     the two halves together build is the no-overlap invariant above,
     plus break-out: an area may be taken into **its own top-level window**,
-    itself a full window with its own areas. The Blender Manual's § "Areas"
+    itself a full window with its own areas. The Blender Manual's "Areas" page
     documents that as *View > Duplicate Area into New Window*, or Shift-LMB on
     an area's splitter widget, and describes the result as a fully functional
     window belonging to the same running instance, useful across multiple
