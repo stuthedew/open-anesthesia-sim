@@ -3,16 +3,18 @@ id: PL-PVW2
 title: Predicates the apparatus asks repeatedly - which ids a subject leads with, which files a branch changed, the pull-request number, the origin slug, the default ref, captures-only, how a shell command splits - are spelled again wherever they are needed, and the spellings disagree
 priority: P2
 effort: L
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests, tools/generator_check.py, tools/pr_body_check.py, tools/doc_check.py, tools/open_pull_requests.py, tools/main_ci_status.py, tools/required_checks_check.py, tools/pr_title_check.py, tools/left_behind_check.py, .claude/hooks/, tests/unit/test_generator_check.py, tests/unit/test_open_pull_requests.py, tests/unit/test_required_checks_check.py, tests/unit/test_pr_body_check.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_gate_status_guard.py, tests/unit/test_no_prune_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head, triaged 2026-09-25 with the one-answer batch
 added: 2026-09-25
+closed: 2026-09-26
+pr: 1099
 payoff: the next tool or hook imports the one answer to each question the apparatus keeps asking instead of copying a spelling that disagrees, the way PL-KR69's and PL-8HSX's did on the protected-path audit
 verify: grep -q 'def test_creation_parents_reads_leading_ids_as_docket_does' tests/unit/test_generator_check.py && grep -q 'def test_a_non_ascii_protected_path_is_rejected' subprojects/docket/tests/test_verify.py && grep -q 'def test_repo_slug_reads_a_token_bearing_url' tests/unit/test_open_pull_requests.py && grep -q 'def test_default_branch_ref_follows_docket_on_a_master_only_clone' tests/unit/test_pr_body_check.py && grep -q 'def test_pull_request_number_reads_both_subject_shapes' subprojects/docket/tests/test_vcs.py && grep -q 'def test_an_unspaced_separator_still_ends_a_command' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_a_path_listing_is_read_one_way' subprojects/docket/tests/test_vcs.py && grep -q 'def test_digest_counts_this_branch_as_here' subprojects/docket/tests/test_cli.py && grep -q 'def test_a_roadmap_only_branch_is_queue_work_but_not_armable' subprojects/docket/tests/test_claims.py && grep -q 'def test_a_glued_punctuation_run_splits_into_bash_operators' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_backslash_newline_continues_the_command' tests/unit/test_gate_status_guard.py && grep -q 'def test_only_a_heredoc_body_is_removed' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_quoted_separator_starts_no_command' tests/unit/test_no_prune_guard.py && grep -q 'def test_a_verify_clause_is_read_one_way' subprojects/docket/tests/test_checks.py && grep -q 'def test_an_apostrophe_in_double_quotes_hides_no_command' subprojects/docket/tests/test_verify.py && grep -q 'def test_workflow_paths_reads_a_quoted_path_as_one_word' tests/unit/test_doc_check.py
-root-cause-of: PL-KR69, PL-YYDT, PL-2TV9, PL-GNCB, PL-0JGZ, PL-BBV7, PL-6P0F, PL-8HSX, PL-GVFC, PL-GJPD, PL-LFNK, PL-0T5X, PL-NK1L, PL-Y2L6, PL-PQ0R, PL-R5RF, PL-63TT, PL-39LD, PL-WGFY, PL-B5VZ, PL-P7J7
-generator: live - each listed question has one implementation its callers import but how a shell command splits, which tools/doc_check.py's check_workflow_paths still reads with a quote-blind pattern of its own beside docket's shell.py and the hooks' shell_split.py (PL-CWBJ, untriaged; whether it is this head's member is put to the project owner), so the next reader of a command in tools/ can copy whichever spelling it meets first
+root-cause-of: PL-KR69, PL-YYDT, PL-2TV9, PL-GNCB, PL-0JGZ, PL-BBV7, PL-6P0F, PL-8HSX, PL-GVFC, PL-GJPD, PL-LFNK, PL-0T5X, PL-NK1L, PL-Y2L6, PL-PQ0R, PL-R5RF, PL-63TT, PL-39LD, PL-WGFY, PL-B5VZ, PL-P7J7, PL-CWBJ
+generator: spent - every listed question has one implementation its callers import, the last spelling of how a shell command splits (tools/doc_check.py, PL-CWBJ) now reads through docket's shell.py, and a sweep of tools/, .claude/hooks/ and docket found no other reader to hand it a member
 misread: Which spelling of a repeated predicate is the answer, when tools, hooks and docket each spell it
 ---
 
@@ -131,7 +133,7 @@ and reads a `$( )` or backquote body as the command bash runs, and `verify.py`'s
 five readers take it, with no quote regex or `shlex` left in either file.
 `test_an_apostrophe_in_double_quotes_hides_no_command` is where this item's
 `verify:` predicted it. `PL-P7J7`'s brief has the store's answers before and
-after. **The head stays open, `generator:` live, on `PL-CWBJ`:**
+after. [superseded 2026-09-26: `PL-CWBJ` built, and the head closed, as the paragraph below says] **The head stays open, `generator:` live, on `PL-CWBJ`:**
 `tools/doc_check.py` still splits a CI step's `run:` with a quote-blind pattern
 of its own, the one spelling of how a shell command splits left outside
 docket's `shell.py` and the hooks' `shell_split.py`. It is untriaged and off
@@ -142,6 +144,21 @@ prediction in `tests/unit/test_doc_check.py`:
 `test_workflow_paths_reads_a_quoted_path_as_one_word`. The thread that builds
 `PL-CWBJ` updates the line where it names or places the test otherwise; if
 `PL-CWBJ` is not this head's member, the clause goes as the head closes.
+
+**`PL-CWBJ` built 2026-09-26, and the head closes, `generator:` spent.**
+`PL-CWBJ` was triaged as this head's member on the project owner's word that it
+joins the Fix generators list, and recorded there. `tools/doc_check.py`'s two
+readers of a shell line, `check_workflow_paths` and `check_gate_parity`, take
+`docket.shell.shell_words`, and `COMMAND_SPLIT_RE` is gone;
+`test_workflow_paths_reads_a_quoted_path_as_one_word` is where this item's
+`verify:` predicted it. Swept again for another spelling of how a shell command
+splits, across `tools/`, `.claude/hooks/` and docket's `src/`: none.
+`cli.py`'s `shlex.split` turns a configured command into the argv it runs
+without a shell, and `release.py`'s `shlex.join` builds one; neither reads what
+a shell would run. Two readings remain, each for its own input, as #1095
+recorded: docket's `shell.py` for one line, which `tools/` now imports, and the
+hooks' `shell_split.py` for a whole Bash command. Every listed question has one
+implementation its callers import.
 
 **Why it matters.** The members are one mechanism; fixed one at a time, each fix leaves the mechanism in place to hand over the next.
 
