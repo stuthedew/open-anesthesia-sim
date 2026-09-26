@@ -2872,9 +2872,9 @@ def _check_tag_versions(
 
 
 #: A squash merge's subject ends with the pull request it closed, which is how
-#: `bin/docket record` recovers a closure's number and how `docket check` holds
-#: a recorded one to the default branch. Read the same way here rather than
-#: spelled a second time.
+#: `docket check` holds a recorded `pr` to the default branch
+#: (`merged_pull_requests`). Read the same way here rather than spelled a
+#: second time.
 SQUASH_PR_RE = re.compile(r"\(#(\d+)\)\s*$")
 
 #: A tag as `%D` prints it under `--decorate=full`: comma-separated ref names,

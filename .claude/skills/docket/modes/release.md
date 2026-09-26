@@ -146,18 +146,16 @@ release. That happened on both releases the command has existed for. `make
 release` runs `bin/docket release` and then `uv lock`, which is the whole
 mechanical half.
 
-**Before it renders the notes it writes the numbers they will cite.** A
-closure lands with an empty `pr` by design, so an item that merged since the
-last cut used to ship a bullet naming no pull request, with no supported way to
-add one afterwards — 128 bullets across 22 releases before this was fixed
-(`PL-W7WL`). The cut now reads the same thing `docket record` reads and writes
-it onto the items first, printing a `recorded pr: N, so these notes can cite
-it` line for each. Two things follow for you. A number it could not reach is
-said so rather than refused — the release still cuts, and `bin/docket record`
-repairs the bullet afterwards. And where it reports a **shallow clone**, run
-`git fetch --unshallow origin` and cut again: the merge commits that name the
-numbers are outside the checkout, and a bullet is better written right than
-repaired.
+**Every bullet cites its pull request, because the closure carried the number
+before it merged.** A closure once landed with an empty `pr` and the cut read
+the merge subjects to fill it before rendering, which shipped a bullet naming
+no pull request whenever the reading could not answer - 128 bullets across 22
+releases before it was first repaired (`PL-W7WL`). Since `PL-HMZZ` the number
+is written on the closing branch and the pull request's own check refuses a
+closure without it, so the cut reads nothing from history and has nothing to
+write first. A bullet still citing no pull request is a closure that reached
+the base past that check; `bin/docket record N --merge SHA` writes the number
+onto it and restates the bullet, and `docket check` names both.
 
 **It stops there, and the last thing it prints is what is left.** `ROADMAP.md`
 needs a version-table row, the `current baseline` mark moved onto it, and a

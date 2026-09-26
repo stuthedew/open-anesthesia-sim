@@ -9,6 +9,7 @@ feature: context-budget-reading
 touches: CLAUDE.md, docs/maintainer.md, docs/resident-instructions.md, .claude/skills/docket/modes/picking.md, tools/context_reading.py, docs/ARCHITECTURE.md, docs/items/PL-H253-measure-session-context-length-as-the-dominant.md
 added: 2026-09-25
 closed: 2026-09-25
+pr: 1005
 payoff: A session that reaches its budget resets with one command the owner types, keeping its branch, claim and pull-request watch, instead of costing the owner a copy, a new session and a paste
 verify: grep -qF 'then ask the project owner to type `/compact`' CLAUDE.md
 ---

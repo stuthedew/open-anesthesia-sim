@@ -9,6 +9,7 @@ touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
 closed: 2026-09-26
+pr: 1051
 payoff: a --no-git trend says truthfully why churn is missing and why its weeks differ from an ordinary run
 verify: grep -q 'def test_no_git_says_churn_was_not_asked_for' subprojects/docket/tests/test_trend.py && grep -q 'def test_no_git_names_the_day_its_windows_are_anchored_at' subprojects/docket/tests/test_trend.py
 recurrences: 2026-09-26 PL-PWH6

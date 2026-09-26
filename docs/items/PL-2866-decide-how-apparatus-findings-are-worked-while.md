@@ -6,6 +6,7 @@ feature: workflow-stress-2026-09
 touches: CLAUDE.md, .claude/skills/docket/SKILL.md, .claude/skills/docket/modes/picking.md, docs/resident-instructions.md, docs/items/PL-NZC0-a-claude-code-projects-trial-needs-project.md
 added: 2026-09-25
 closed: 2026-09-25
+pr: 1014
 verify: grep -q 'Product focus, from 2026-09-25' CLAUDE.md && grep -q 'Found in a product session, it' CLAUDE.md && grep -q 'docket next product. instead' .claude/skills/docket/SKILL.md && grep -q 'Found in a product session under product focus' .claude/skills/docket/modes/picking.md && grep -q 's fallback follows' docs/items/PL-NZC0-*.md && grep -q '## Product focus, added 2026-09-25' docs/resident-instructions.md && bin/docket show PL-RB9W && bin/docket show PL-2CPD
 ---
 

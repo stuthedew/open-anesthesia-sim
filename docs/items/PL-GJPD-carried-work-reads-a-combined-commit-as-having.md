@@ -3,11 +3,13 @@ id: PL-GJPD
 title: _carried_work reads a combined commit as having carried the work, so the triage pass that closed PL-3CBS is recorded as its pull request because it also edited ROADMAP.md - three of main's 698 answerable closures disagree with their stored pr
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: defect
 feature: commit-provenance
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-19
+closed: 2026-09-26
+reason: the combined-commit reading it describes a defect in (_carried_work and the subject scan behind closures_on_base) was deleted by the PL-HMZZ build (#1056); nothing infers the carrying pull request any more, so there is no reading left to fix
 payoff: stops the store recording a confident, well-formed and wrong pull request as the provenance of a closed change, which no check would report
 verify: grep -q 'def test_a_combined_commit_that_carried_no_part_of_the_item' subprojects/docket/tests/test_vcs.py
 ---

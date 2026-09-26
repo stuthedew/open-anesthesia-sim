@@ -9,6 +9,7 @@ feature: review-hold
 touches: docs/maintainer.md
 added: 2026-09-25
 closed: 2026-09-25
+pr: 1027
 payoff: until the tiered arm lands, a pull request that changes the simulator is read before it is armed, so a simulator change cannot reach main on green CI alone
 verify: grep -qF '## Read a simulator change before you arm it' docs/maintainer.md
 ---

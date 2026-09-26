@@ -947,9 +947,8 @@ def _annotates_only(paths: list[str], prefix: str) -> bool:
     inference instead - a session claims an item with a `Claim:` trailer,
     whatever its commit's diff - and `PL-FX5Q` deleted the promotions with it.
     `claims` still reads a commit made before a session could write a claim
-    by this rule alone, until `PL-CH3Z` retires that reading. `_carried_work`
-    and `orphaned` ask it their own question: whether a commit wrote anywhere
-    but the queue.
+    by this rule alone, until `PL-CH3Z` retires that reading. `orphaned` asks
+    it its own question: whether a commit wrote anywhere but the queue.
     """
     return bool(paths) and all(path.startswith(prefix) for path in paths)
 
@@ -3113,38 +3112,36 @@ class ClosureReport:
     type: a shallow clone is the normal state of an agent session, so a reader
     that declined there would decline in exactly the case this exists to cover.
 
-    Reading *which pull request* landed it is the other kind of question, and
-    `shallow` is what qualifies the *absence* of a number here. At
-    `fetch-depth: 1` there is one commit to search, so every closure but the
-    newest yields nothing, and a caller that read that as "no commit names a
-    number" would call correct provenance lost. It did: `main` was red on
-    97573ae and 3b37a75 for a `pr` recoverable from a commit the clone no
-    longer held (`PL-99Y4`). So the emptiness is reported with the depth that
-    produced it, and the caller decides - the rule `PL-J295` already set for
-    `tags`, applied to the question beside it.
+    *Which pull request* landed a closure is not read from history at all, any
+    more. The number is recorded before the merge by the branch that closes
+    the item, and the pull request's own required check refuses a closure that
+    does not carry it (`PL-HMZZ`). This once derived it afterwards, from the
+    merge subjects on the base and then from each item file's own history, and
+    every new shape of history - a rider id that led no subject, a rename, a
+    closure split from its work, a queue-only closure, a graft boundary -
+    misled one reading or the other until it got an exception of its own: ten
+    items in three weeks were that one mechanism. So the only question left
+    about a landed closure is what the base's own copy of the item records,
+    which is the same tree read, and `recorded` carries it: a checkout holding
+    a stale copy of an item is not told the number is missing when the base
+    already has it.
 
-    A number that *is* derived was once held to be trustworthy at any depth, on
-    the reasoning that the commit was found and finding it is proof enough. It
-    is not, and `shallow` was never what would have caught it: what a truncated
-    history breaks is the parent comparison that tells a closure from every
-    later commit touching the same file, and `_closed_at` now refuses that
-    question rather than answering it. Until it did, `record` wrote `#401` onto
-    five items on a `--depth 1` clone and four of them had merged in `#399`,
-    `#400` and `#402` (`PL-KX9N`). So a derived number means the parent was
-    there to compare against, at whatever depth.
+    `unlanded` is the other half of the answer, and `_check_provenance` reads
+    it. A closure this checkout holds that the base does not yet is the one
+    whose recorded number names a pull request the base has not merged - by
+    construction rather than by mistake, since the branch wrote its own open
+    pull request's number there.
     """
 
     base: str = ""
     landed: frozenset[str] = frozenset()
-    #: The pull request each landed closure's own merge commit names, where
-    #: the base still holds that commit. Pairs rather than a mapping to keep
-    #: the type hashable like everything else here; `numbers` unpacks it.
-    derived: tuple[tuple[str, int], ...] = ()
-    #: Whether the history behind `base` is truncated, or `None` where git
-    #: will not say - straight from `is_shallow`, and read only to qualify
-    #: what a *missing* `derived` entry is allowed to mean. Defaults to `None`
-    #: so that a report built without it claims nothing.
-    shallow: bool | None = None
+    #: The closures asked about that do not read `done` on the base: still in
+    #: flight, on this branch.
+    unlanded: frozenset[str] = frozenset()
+    #: The `pr` the base's own copy records, for each landed closure that
+    #: records one. Pairs rather than a mapping to keep the type hashable like
+    #: everything else here; `numbers` unpacks it.
+    recorded: tuple[tuple[str, int], ...] = ()
     declined: str = ""
 
     @property
@@ -3153,7 +3150,7 @@ class ClosureReport:
 
     @property
     def numbers(self) -> dict[str, int]:
-        return dict(self.derived)
+        return dict(self.recorded)
 
 
 def closures_on_base(
@@ -3163,347 +3160,54 @@ def closures_on_base(
     items_dir: str = "docs/items",
     runner: Runner | None = None,
 ) -> ClosureReport:
-    """Which of `closures` already read `status: done` on the default base.
+    """Which of `closures` read `status: done` on the default base, and what each records there.
 
     `closures` maps an item id to the file name that holds it, and is expected
     to carry only the items whose closure is in question: each one costs a
     `git show`, and the caller is the one that knows which those are.
 
     An item absent from the base is a closure that has not landed, which is
-    the whole point rather than a failure to read it. So is one whose file is
-    there under another name, because retitling an item renames its file and
-    the old path stops resolving. Both are accepted rather than reported, which
-    is the safe direction: this rule's failure mode is blocking a closure that
-    is already correct.
-
-    Each landed closure is also asked which pull request its own merge commit
-    names, which is the question that decides whether a missing `pr` is a gap
-    or a transcription still owed. It costs one history read for the whole
-    set, made only when something landed, and it reuses the two parsers that
-    already exist: the subject a squash merge writes carries the item ids it
-    opens with and the number in trailing parentheses.
-
-    Deriving nothing is a normal answer, not a failure, and `shallow` is
-    recorded alongside so the caller can tell which kind of nothing it is. A
-    complete history that names no number means none exists; a truncated one
-    means the commit may simply be outside it, which at `fetch-depth: 1` is
-    true of every closure but the newest.
+    the whole point rather than a failure to read it. One whose file the base
+    holds under another name is read at that name: retitling an item renames
+    its file, so the old path stops resolving, and the ids the base holds are
+    one `ls-tree` away - paid only when a name fails to resolve, which on a
+    healthy store is never. Reading a renamed closure as unlanded was safe
+    while nothing wrote on the strength of it; `docket record N` now does, and
+    would have replaced a landed closure's number with the branch's own.
     """
     run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)
     if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
         return ClosureReport(declined="no default branch this checkout can read")
     landed: set[str] = set()
+    recorded: dict[str, int] = {}
+    held: dict[str, str] | None = None
     for identifier, name in closures.items():
-        text = run(["show", f"{base}:{items_dir}/{name}"], root)
-        if text and parse_item(text, name).status == "done":
-            landed.add(identifier)
+        path = f"{items_dir}/{name}"
+        text = run(["show", f"{base}:{path}"], root)
+        if not text:
+            if held is None:
+                held = _items_at(base, root, items_dir, run)
+            elsewhere = held.get(identifier)
+            if elsewhere is None or elsewhere == path:
+                continue
+            path, name = elsewhere, elsewhere.rsplit("/", 1)[-1]
+            text = run(["show", f"{base}:{path}"], root)
+            if not text:
+                continue
+        item = parse_item(text, name)
+        if item.status != "done":
+            continue
+        landed.add(identifier)
+        if item.pr and item.pr.isdigit():
+            recorded[identifier] = int(item.pr)
     return ClosureReport(
         declined=run.reason,
         base=base,
         landed=frozenset(landed),
-        derived=_merges_naming(landed, closures, items_dir, base, root, run),
-        shallow=is_shallow(root, runner=run),
+        unlanded=frozenset(closures) - frozenset(landed),
+        recorded=tuple(sorted(recorded.items())),
     )
-
-
-def _merges_naming(
-    identifiers: set[str],
-    closures: Mapping[str, str],
-    items_dir: str,
-    base: str,
-    root: Path,
-    run: Runner,
-) -> tuple[tuple[str, int], ...]:
-    """The pull request number each id's closure on `base` can be traced to.
-
-    Two readings, tried in that order. The subject scan is first because it is
-    one history read for the whole set: one commit can close two items - a
-    subject may open with a run of ids - so a single merge answers for several,
-    and each is recorded against the same number. Only the newest such commit
-    counts: an id that led an earlier subject too, most often the capture that
-    filed it, was not the merge that landed its work.
-
-    **Recency is not enough, and the scan's answer is confirmed before it is
-    believed.** Leading a subject proves the commit is *about* the item, never
-    that it *closed* it, and several kinds of commit are about a closed item:
-    the bookkeeping merge that writes its `pr` back, a follow-up fix, a triage
-    that filed it. Measured 2026-09-04 over the 122 closed items on `main` that
-    a leading-id subject names, the unconfirmed scan answered 21 of them with a
-    number that is not their closure - `PL-1TF4` and `PL-J49T` with `250`, whose
-    subject reads "record #249"; `PL-B0YN` and `PL-G1MF` with `188` from "record
-    their pull request" against a true `186`; `PL-YLZQ` with `159`, the commit
-    that triaged it, against a true `204` (`PL-GW37`). The rider closure this
-    was raised for is one shape of that, not the whole of it.
-
-    So each answer is put to the test `_number_closing` already uses on the
-    file: the commit must read `status: done` in its own tree and not in its
-    parent's. That is what distinguishes the closure from every other commit
-    naming the item, it costs two `git show` for each id the scan answered, and
-    it is asked only of items whose `pr` is missing - a handful, not the store.
-    Over the same 122 it agreed with the file reading in every case where both
-    could answer, and disagreed in none.
-
-    A checkout that does not hold the parent cannot run that test at all, and
-    `_closed_at` says so rather than answering. An unconfirmable candidate
-    falls through to the file reading below exactly as an unanswered one does,
-    and declines again there - which is the point, because the file reading is
-    the half that stamped one number across four items (`PL-KX9N`).
-
-    Whatever the subjects do not answer - or answer unconfirmably - falls back
-    to the item's own file, per `PL-2XTF`. A squash merge takes its subject from
-    the pull request title, which is written by whoever opened it and need not
-    lead with any id - `#220` was created from the Claude Code UI, closed three
-    items, and left `main` red with an error no recovery could clear, because
-    the one subject that landed named none of them. The file always knows: the
-    commit that wrote `status: done` into it *is* the closure, and it carries
-    `(#N)` like every other squash. That is strictly more evidence than the
-    subject scan, not less, and it costs a read only for the ids the cheap pass
-    missed.
-
-    That fallback had a defect of its own when this was written, and routing
-    more ids into it is what made the defect worth fixing: it walked `git log --
-    <path>` without rename detection, so for an item whose file was renamed
-    after it closed, the oldest commit the walk could see was the rename, whose
-    parent does not hold that path at all. `_walk_following_renames` is the
-    repair (`PL-S5LB`).
-    """
-    if not identifiers:
-        return ()
-    found: dict[str, int] = {}
-    candidates: dict[str, tuple[str, int]] = {}
-    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
-    for line in run(["log", "--format=%H%x1f%s", base], root).split("\n"):
-        revision, _, subject = line.partition("\x1f")
-        subject = subject.strip()
-        match = PR_SUBJECT_RE.search(subject)
-        if match is None:
-            continue
-        number = int(match.group(1) or match.group(2))
-        for identifier in leading_ids(subject):
-            if identifier in identifiers:
-                candidates.setdefault(identifier, (revision.strip(), number))
-    for identifier, (revision, number) in candidates.items():
-        path = f"{items_dir}/{closures[identifier]}"
-        if _closed_at(revision, path, path, root, run):
-            found[identifier] = number
-    for identifier in sorted(identifiers - set(found)):
-        recovered = _number_closing(closures[identifier], items_dir, base, root, run)
-        if recovered is not None:
-            found[identifier] = recovered
-    return tuple(sorted(found.items()))
-
-
-def _number_closing(name: str, items_dir: str, base: str, root: Path, run: Runner) -> int | None:
-    """The number on the commit that wrote `status: done` into one item's file.
-
-    Walks the commits on `base` that touched the file, newest first, and takes
-    the first one that closed it - `done` in that commit's tree and not in its
-    parent's. The parent comparison is what keeps a *later* edit from being
-    read as the closure: backfilling a `pr` field, or correcting a brief, both
-    touch the file long after the work landed and both carry their own `(#N)`.
-    Answering with one of those would record a false provenance, which is worse
-    than the missing one this exists to supply.
-
-    The walk follows renames and reads each commit at the name the file carried
-    there, per `_walk_following_renames`. Without that, a rename *is* the shape
-    this test looks for - the new name is done in the renaming commit's tree and
-    absent from its parent's - so an item whose title was edited after it closed
-    was attributed to whichever pull request happened to rename it, and one
-    whose renaming commit named no number was declined instead (`PL-S5LB`).
-
-    A commit whose parent this checkout does not hold ends the walk with no
-    answer, per `_closed_at`. That reasoning used to run the other way: a
-    failed `git show` collapses to "not done there", which was called the safe
-    direction because it could only make the walk accept an older commit than
-    it should have. It is not safe. At a graft boundary git reports every file
-    in the tree as added, so the oldest commit held reads as "done here and not
-    in the parent" for every closed item there is, and its number is stamped
-    across all of them - `#401` onto five items on a `--depth 1` clone of this
-    repository, four of which had merged in `#399`, `#400` and `#402`
-    (`PL-KX9N`). Nothing older than that commit is in the walk either, so
-    stopping loses nothing that a deeper fetch would not restore.
-    """
-    path = f"{items_dir}/{name}"
-    for revision, subject, here, there in _walk_following_renames(path, base, root, run):
-        match = PR_SUBJECT_RE.search(subject.strip())
-        if match is None:
-            continue
-        closed = _closed_at(revision, here, there, root, run)
-        if closed is None:  # its parent is outside this checkout, and so is everything older
-            return None
-        if closed:
-            # **A closure that landed without its work names the wrong pull
-            # request, so it names none** (`PL-YDL6`). This walk finds the commit
-            # that wrote `status: done`; where the work and the closure landed in
-            # different pull requests, that commit carries the closure and none
-            # of the code, and `pr:` would record a change whose diff does not
-            # contain the work the item describes. `commit:` was retired
-            # (`PL-T63T`), so `pr` is the only surviving link to the work and a
-            # wrong one is worse than an absent one.
-            #
-            # A closure commit that carries its work touches something outside
-            # the queue, so `_annotates_only` separates the two - the same rule
-            # that tells recording an item from working on it everywhere else in
-            # this module. Declining is the answer rather than a guess at which
-            # pull request held the work: nothing here knows which files an
-            # item's work was, and `PL-99Y4` already settled that a provenance
-            # question the checkout cannot answer is reported rather than
-            # invented.
-            #
-            # Audited over real history while fixing `PL-S5LB`: 249 of the 252
-            # closures this can answer agree with what the store recorded, and
-            # all three that disagree are this shape, each off by one. The store
-            # already holds the better answer in every case, so declining loses
-            # nothing that was ever right. All three predate the same-commit
-            # closure rule (`PL-D2GW`, then `PL-P5S0`), which is what keeps the
-            # shape rare rather than impossible.
-            #
-            # **The diff is not the test for an item whose work *is* the
-            # queue** (`PL-YFXG`). A commit changing nothing outside
-            # `docs/items/` is a closure separated from its work only where the
-            # work was somewhere else to begin with; for a release-tag item, a
-            # triage pass, a stranded recovery or a rename pass it is what
-            # landing correctly looks like, and that is a standing category here
-            # rather than an accident. `_carried_work` therefore falls back to
-            # the item's own `touches`, which says where its work lives. `PL-YTDN`
-            # is the worked example: its whole deliverable was renaming drifted
-            # item files, so `#712` changed 12 files and every one was an item,
-            # the number was declined, and `origin/main` was left failing
-            # `docket check` with an error no command could clear - the bare
-            # `record` writes only what the base can supply, and this was a
-            # number it decided it could not.
-            if not _carried_work(revision, here, items_dir, root, run):
-                return None
-            return int(match.group(1) or match.group(2))
-    return None
-
-
-def _carried_work(revision: str, item_path: str, items_dir: str, root: Path, run: Runner) -> bool:
-    """Whether `revision`'s diff holds the work of the item it closed there.
-
-    Two readings, and the second is the whole of `PL-YFXG`. A diff reaching
-    outside the queue carried work, whatever the item says. A diff wholly
-    inside the queue carried work only where the item's own `touches` says the
-    queue is where its work lives - so the `PL-YDL6` hazard stays refused for
-    every item declaring work outside it, which is the set that hazard was
-    measured on, and the standing category of items whose deliverable is a
-    queue edit stops being unanswerable by construction.
-
-    `git diff` against the first parent rather than a bare `diff-tree`, for the
-    reason `closed_by` gives beside the same call: a true merge commit shows an
-    empty `diff-tree` by default and would read as touching nothing.
-
-    Silence reads as "no work", so a commit this checkout cannot diff declines
-    the number rather than supplying it, and no declaration rescues it: an
-    unreadable diff is not evidence that the work was a queue edit. That is the
-    direction the caller wants: an absent `pr` is a transcription still owed and
-    a wrong one is a false provenance that nothing else will catch.
-    """
-    listing = run(changed_path_args("diff", "--name-only", f"{revision}^", revision), root)
-    paths = [line.strip() for line in listing.splitlines() if line.strip()]
-    if not paths:
-        return False
-    if not _annotates_only(paths, items_dir.strip("/") + "/"):
-        return True
-    return _declares_queue_only(revision, item_path, items_dir, root, run)
-
-
-def _declares_queue_only(
-    revision: str, item_path: str, items_dir: str, root: Path, run: Runner
-) -> bool:
-    """Whether the item at `item_path` declared, in `revision`'s tree, work wholly in the queue.
-
-    That is a `touches` naming the queue directory, or paths inside it, and
-    nothing else. An item declaring no `touches` at all has said nothing about
-    where its work lives, so it is not queue-only work and the number is
-    withheld.
-
-    **Read from the closure commit rather than the base**, because the question
-    is what the item declared when its closure landed - a `touches` repaired
-    afterwards would otherwise change the recorded provenance of a merge that is
-    already history, and repairing one is ordinary work here rather than a
-    hypothetical: it was `PL-YTDN`'s own deliverable. The name to read comes
-    from the walk, so an item renamed since costs no lookup of its own.
-
-    Its silence declines, like every other read in this module: an item file
-    this checkout cannot show has declared nothing.
-    """
-    text = run(["show", f"{revision}:{item_path}"], root)
-    if not text:
-        return False
-    prefix = items_dir.strip("/")
-
-    def inside(declared: str) -> bool:
-        """Whether one `touches` entry names the queue directory or something in it."""
-        declared = declared.strip().rstrip("/")
-        return declared == prefix or declared.startswith(prefix + "/")
-
-    touches = parse_item(text, _basename(item_path)).touches
-    return bool(touches) and all(inside(declared) for declared in touches)
-
-
-def _basename(path: str) -> str:
-    """The file name in a path the walk carries, for `parse_item` to record."""
-    return path.rsplit("/", 1)[-1]
-
-
-def _walk_following_renames(
-    path: str, base: str, root: Path, run: Runner
-) -> tuple[tuple[str, str, str, str], ...]:
-    """Every commit on `base` that touched one item's file, newest first.
-
-    Four fields each: the revision, its subject, the name the file carried in
-    that commit's tree, and the name it carried in its parent's. Those last two
-    differ exactly where the commit renamed the file - which is an ordinary
-    event rather than a rare one, because `docket` names a file from a slug of
-    its title, so editing a title renames it and `bin/docket release` renames
-    every item whose title has drifted since the last release.
-
-    **Rename detection is half the fix, and on its own it is the half that does
-    nothing.** `--follow` reaches past the rename, but each commit it returns
-    still has to be *read* at the name the file had there. Asking `git show
-    <rev>:<the name it has today>` of a commit older than the rename fails,
-    `_run_git` answers a failed `show` with empty output, and the closure behind
-    the rename therefore reads as "not done" - leaving the renaming commit still
-    looking like the one that closed the item. Measured against this repository
-    on 2026-09-06: `--follow` alone still answered `PL-3D2M` with `319`, the
-    pull request that renamed the file in passing, against a true `313`.
-
-    So the names come from `--name-status`, whose rename entry carries both of
-    them. `-z` is what makes that parseable - every field NUL-terminated, which
-    leaves the `--format` output's own newline at the front of the status token
-    following it, and keeps a path containing a tab or a newline in one piece.
-
-    A commit listed without a name-status entry - a merge, which git shows with
-    no diff - keeps the name carried back from the newer side of the walk, which
-    is what the file was called there.
-    """
-    fields = run(
-        ["log", "--format=%H%x1f%s", "-z", "--name-status", "-M", "--follow", base, "--", path],
-        root,
-    ).split("\0")
-    commits: list[tuple[str, str, str, str]] = []
-    revision = subject = ""
-    entry: list[str] = []
-    carried = path
-    for token in (*fields, "\x1f"):
-        if token.startswith("\n"):
-            entry = [token.lstrip("\n")]
-        elif "\x1f" in token:
-            if revision:
-                here = there = carried
-                if len(entry) > 2 and entry[0].startswith("R"):
-                    there, here = entry[1], entry[2]
-                elif len(entry) > 1:
-                    here = there = entry[1]
-                commits.append((revision, subject, here, there))
-                carried = there
-            revision, _, subject = token.partition("\x1f")
-            entry = []
-        elif token:
-            entry.append(token)
-    return tuple(commits)
 
 
 def _done_at(revision: str, path: str, name: str, root: Path, run: Runner) -> bool:
@@ -3520,36 +3224,6 @@ def _parent_in_reach(revision: str, root: Path, run: Runner) -> bool:
     callers' question is answerable only against one.
     """
     return bool(run(["rev-parse", "--verify", "--quiet", f"{revision}^^{{commit}}"], root).strip())
-
-
-def _closed_at(revision: str, here: str, there: str, root: Path, run: Runner) -> bool | None:
-    """Whether `revision` is the commit that closed one item, or `None` if unanswerable.
-
-    The test both readings above apply: the item reads `status: done` in this
-    commit's tree and not in its parent's. `here` and `there` are the names the
-    file carried in each, which differ exactly where the commit renamed it.
-
-    Three answers rather than two, for the reason `is_shallow` has three. The
-    parent is the whole of what separates the closure from every later commit
-    that touches a closed item - a `pr` written back, a retitle, a follow-up
-    fix - so a checkout that does not hold it cannot make the comparison at
-    all. Saying so costs one `rev-parse`; the alternative is not `False` but a
-    confident wrong answer, because `_run_git` collapses a failed `git show`
-    into "not done there". At a graft boundary git reports every file in the
-    tree as added, so that collapse made the oldest commit held look like the
-    closure of every closed item in the store, and `record` wrote its number
-    onto all of them - `#401` onto five items on a `--depth 1` clone, four of
-    which had merged in `#399`, `#400` and `#402` (`PL-KX9N`).
-
-    `closed_by` has refused exactly this since it was written, asking the same
-    question of one commit rather than of one file. These two readings never
-    got the guard, which is the whole of that defect.
-    """
-    if not _done_at(revision, here, _basename(here), root, run):
-        return False
-    if not _parent_in_reach(revision, root, run):
-        return None
-    return not _done_at(f"{revision}^", there, _basename(there), root, run)
 
 
 @dataclass(frozen=True)
@@ -4088,10 +3762,9 @@ def closed_by(
     parent's. That is the question a merge-time caller is asking, and the
     stricter half of it is the parent: a pull request records its number on
     what it closed, never on what was already closed when it branched.
-    `_number_closing` asks the same question of one file, walking backwards
-    until it finds the commit that closed it; this asks it of one commit,
-    forwards, and needs no subject to parse because the caller already has the
-    number.
+    It asks the question of one commit, and needs no subject to parse because
+    the caller already has the number: `docket record N --merge SHA`, for a
+    closure that reached the base without one (`PL-HMZZ`).
 
     The comparison is by id rather than by path. A title edit renames an item's
     file, so a path missing from the parent tree proves nothing about whether
@@ -4109,9 +3782,10 @@ def closed_by(
     "no parent" would otherwise read as "everything done here was closed here"
     - the confident wrong answer this module refuses to give, and here it would
     stamp one pull request number across the whole store. It did, through the
-    two readings behind `closures_on_base`, which asked the same question
-    without this guard until `PL-KX9N`. `_parent_in_reach` is shared with them
-    now, so the three cannot drift apart again.
+    two readings that once derived a closure's number from history, which
+    asked the same question without this guard until `PL-KX9N`; they are gone
+    since `PL-HMZZ` retired the inference, and `_parent_in_reach` stays here
+    as the one place the question is asked.
     """
     run = _Silences(runner or _run_git)
     if not run(["rev-parse", "--verify", "--quiet", f"{revision}^{{commit}}"], root).strip():

@@ -1358,13 +1358,15 @@ def test_the_branch_state_line_says_when_nothing_refreshed_the_base() -> None:
     assert "refreshed" not in fresh
 
 
-# --- which pull request a landed closure's own merge commit names ------------
+# --- which closures already stand on the base, and what the base records -----
 #
 # The number does not exist when the closure is committed - it travels with its
 # work, which is what stops a merge taking the fix and leaving the item open -
-# so a closure that reaches the default base carrying no `pr` is the normal
-# shape of a successful merge, not a gap. Whether the provenance is actually
-# lost is decided by whether the merge commit still names the number.
+# and the branch writes it onto the closure while its pull request is open,
+# before the merge (`PL-HMZZ`). So the base is asked two things of one tree
+# read per closure in question: does the closure stand there, and what does its
+# copy record. Nothing here reads history; the readings that once derived the
+# number from merge subjects and item-file history are gone with their tests.
 
 CLOSED = "---\nid: {id}\ntitle: T\nstatus: done\n---\n"
 
@@ -1372,580 +1374,111 @@ CLOSED = "---\nid: {id}\ntitle: T\nstatus: done\n---\n"
 OPEN_ITEM = "---\nid: {id}\ntitle: T\nstatus: ready\n---\n"
 
 
-#: The same two, declaring where the item's work lives. Only
-#: `_declares_queue_only` asks for `touches`, so the bare pair stay the default
-#: and a test that says nothing about `touches` is a test about an item that
-#: declares none.
-CLOSED_DECLARING = "---\nid: {id}\ntitle: T\nstatus: done\ntouches: {touches}\n---\n"
+RECORDED_CLOSURE = "---\nid: {id}\ntitle: T\nstatus: done\npr: {pr}\n---\n"
 
 
-OPEN_DECLARING = "---\nid: {id}\ntitle: T\nstatus: ready\ntouches: {touches}\n---\n"
+def _base_tree_runner(on_base: dict[str, str], log: list[list[str]] | None = None):
+    """A git whose default branch holds `on_base`, file name to text, and nothing else.
 
-
-def _z_name_status(entries: tuple[tuple[str, str, list[str]], ...]) -> str:
-    """What git writes for `log --format=%H%x1f%s -z --name-status`.
-
-    `entries` is newest first, as (revision, subject, name-status fields). The
-    `-z` stream NUL-terminates every field, which leaves the format output's own
-    newline at the front of the status token that follows it - so a reader
-    splitting on NUL meets the subject, then `\nM` or `\nR100`, then the path or
-    the pair of them. Checked against this repository's own history rather than
-    remembered, because the walk under test is parsing it.
+    `ls-tree` lists that same tree, which is what the read falls back to when a
+    name does not resolve: an item the base holds under another name.
     """
-    if not entries:
-        return ""
-    fields = [
-        field
-        for revision, subject, entry in entries
-        for field in (f"{revision}\x1f{subject}", "\n" + "\0".join(entry))
-    ]
-    return "\0".join(fields) + "\0"
-
-
-def _closure_runner(
-    on_base: dict[str, str],
-    subjects: tuple[str, ...] = (),
-    log: list[list[str]] | None = None,
-    shallow: str = "",
-    closed_from: int = 0,
-    file_history: tuple[str, ...] = (),
-    depth: int | None = None,
-):
-    """A git holding `on_base` (file name to text) and a default branch of `subjects`.
-
-    `subjects` is newest-first, as `git log` gives it, and each is given the
-    revision `c<index>` so that `c0^` resolves to `c1` the way a real parent
-    does. `closed_from` is the index from which the items read `status: done`,
-    so the default of 0 makes the newest subject the closure - the healthy
-    shape, where the commit that landed the work is also the one that wrote the
-    closure. A test wanting the defect shape says `closed_from=1` or more: the
-    newest commit naming the item then finds it *already* closed, which is what
-    a bookkeeping merge or a follow-up fix looks like.
-
-    `shallow` is what `rev-parse --is-shallow-repository` answers - "true",
-    "false", or the empty string for a git that will not say, which is the
-    default because most cases here are about reading the base rather than
-    about depth.
-
-    `depth` is how many commits from the tip this checkout holds, which decides
-    whether `c<i>^` resolves. The default of `None` means it always does - the
-    revisions are a window on a history that continues below them, which is
-    what every test here meant before a depth could be expressed. A number
-    makes `c<depth-1>` the graft boundary of a shallow clone, whose parent git
-    does not hold and which therefore cannot be compared against anything.
-
-    `file_history` is the item file's own log, which the fallback reads when
-    the subject scan cannot answer. It defaults to empty rather than to
-    `subjects`, because the two are different questions - a commit can name an
-    item in its subject without touching its file, and vice versa - and
-    conflating them let a subject about another item answer through the
-    fallback. `_recovery_runner` is the fake for tests about that path.
-    """
-
-    def index_of(revision: str) -> int | None:
-        """The index a revision names, following one `^` to its parent."""
-        parents = 0
-        while revision.endswith("^"):
-            revision, parents = revision[:-1], parents + 1
-        if not revision.startswith("c") or not revision[1:].isdigit():
-            return None
-        return int(revision[1:]) + parents
 
     def run(args: list[str], root: Path) -> str:
         args = _bare(args)
         if log is not None:
             log.append(args)
         if args[0] == "rev-parse":
-            if args[-1] == "--is-shallow-repository":
-                return f"{shallow}\n" if shallow else ""
-            if args[-1] == BASE:
-                return f"{BASE}\n"
-            if args[-1].endswith("^^{commit}"):  # is this revision's parent in reach?
-                index = index_of(args[-1].removesuffix("^{commit}"))
-                if index is None or (depth is not None and index >= depth):
-                    return ""
-                return f"c{index}\n"
-            return ""
+            return f"{BASE}\n" if args[-1] == BASE else ""
         if args[0] == "for-each-ref":
             return f"{BASE}\n"
-        if args[0] == "diff" and "--name-only" in args:
-            # The paths a commit changed, which is what tells a closure that
-            # landed with its work from one that landed without it. These
-            # histories are the healthy shape - the commit that wrote the
-            # closure also carried the code - so every commit names work.
-            return "src/changed.py\n"
         if args[0] == "show":
             revision, _, path = args[-1].partition(":")
-            name = path.split("/")[-1]
-            text = on_base.get(name, "")
-            if revision == BASE or not text:
-                return text
-            index = index_of(revision)
-            if index is None or index >= len(subjects):
-                return ""
-            identifier = name.split("-")[0]
-            return text if index <= closed_from else OPEN_ITEM.format(id=identifier)
-        if args[0] == "log":
-            if "--" not in args:
-                return "\n".join(f"c{index}\x1f{subject}" for index, subject in enumerate(subjects))
-            return _z_name_status(
-                tuple(
-                    (f"c{index}", subject, ["M", args[-1]])
-                    for index, subject in enumerate(file_history)
-                )
+            return on_base.get(path.split("/")[-1], "") if revision == BASE else ""
+        if args[0] == "ls-tree":
+            return "".join(
+                f"100644 blob {index:040x}\tdocs/items/{name}\n"
+                for index, name in enumerate(on_base)
             )
         return ""
 
     return run
 
 
-def _recovery_runner(
-    history: tuple[tuple[str, str], ...],
-    done_at: set[str],
-    name: str,
-    carried: tuple[str, ...] | None = None,
-    declares: str = "",
-):
-    """A git whose base subjects name no id, so only the file's history answers.
-
-    `history` is the file's own log, newest first, as (revision, subject).
-    `done_at` names the revisions whose tree has the item closed - written as
-    revisions rather than derived, so a test can say exactly where the status
-    flipped, including at a parent the walk has to look at.
-
-    `declares` is the `touches` the item carries in every tree read here. It is
-    what tells a closure that landed without its work from the landing of an
-    item whose work *is* the queue, so a test that leaves it empty is a test
-    about an item that has declared nothing (`PL-YFXG`).
-    """
-
-    def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
-        if args[0] == "rev-parse":
-            return "" if args[-1] == "--is-shallow-repository" else f"{BASE}\n"
-        if args[0] == "for-each-ref":
-            return f"{BASE}\n"
-        if args[0] == "diff" and "--name-only" in args:
-            # The paths a commit changed: these histories are all the healthy
-            # shape, where the commit that wrote the closure carried the work.
-            # A test about a closure that landed alone says so by naming only
-            # the item file here.
-            return "\n".join(carried) if carried is not None else "src/changed.py\n"
-        if args[0] == "show":
-            revision, _, _path = args[-1].partition(":")
-            done = revision == BASE or revision in done_at
-            if declares:
-                template = CLOSED_DECLARING if done else OPEN_DECLARING
-                return template.format(id="PL-K7QX", touches=declares)
-            return CLOSED.format(id="PL-K7QX") if done else OPEN_ITEM.format(id="PL-K7QX")
-        if args[0] == "log":
-            if "--" in args:
-                return _z_name_status(
-                    tuple((revision, subject, ["M", args[-1]]) for revision, subject in history)
-                )
-            # The base's own subjects, naming no id - the case this recovers.
-            return "Design the thing and fix the checks (#220)"
-        return ""
-
-    return run
-
-
-def test_a_squash_subject_naming_no_id_is_recovered_from_the_item_s_file() -> None:
-    # PL-2XTF: #220 was created from the UI, closed three items, and its title
-    # led with no id. The subject scan finds nothing; the file's own history is
-    # what still knows, because the commit that wrote `status: done` is the
-    # closure and carries `(#N)` like every other squash.
-    run = _recovery_runner(
-        history=(("aaa111", "Design the thing and fix the checks (#220)"),),
-        done_at={"aaa111"},
-        name="PL-K7QX-a.md",
-    )
+def test_a_landed_closure_is_reported_with_the_number_the_base_records() -> None:
+    run = _base_tree_runner({"PL-K7QX-a.md": RECORDED_CLOSURE.format(id="PL-K7QX", pr=148)})
 
     report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
 
     assert report.landed == frozenset({"PL-K7QX"})
-    assert report.numbers == {"PL-K7QX": 220}
-
-
-def test_a_closure_split_from_its_work_records_no_pull_request() -> None:
-    """A closure that landed without its work names the wrong pull request, so it names none.
-
-    Where the work and the closure landed in *different* pull requests, the
-    commit that wrote `status: done` carries the closure and none of the code -
-    so `pr:` would record a change whose diff does not contain the work the item
-    describes. `commit:` was retired (`PL-T63T`), so `pr` is the only surviving
-    link to the work and a wrong one is worse than an absent one (`PL-YDL6`).
-
-    Audited over real history while fixing `PL-S5LB`: 249 of the 252 closures
-    this can answer agree with what the store recorded, and all three that
-    disagree are this shape, each off by one - `#128` did `PL-3CBS`'s work and
-    left the item at `status: ready`, and the triage pass that merged as `#129`
-    wrote the closure. The store already holds the better answer in all three,
-    so declining loses nothing that was ever right.
-
-    Declining rather than guessing which pull request held the work: nothing here
-    knows which files an item's work was, and `PL-99Y4` settled that a provenance
-    question the checkout cannot answer is reported rather than invented.
-    """
-    run = _recovery_runner(
-        history=(("ccc333", "Triage the open captures (#129)"),),
-        done_at={"ccc333"},
-        name="PL-K7QX-a.md",
-        carried=("docs/items/PL-K7QX-a.md",),
-    )
-
-    report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
-
-    assert report.landed == frozenset({"PL-K7QX"})
-    assert report.numbers == {}
-
-
-def test_a_queue_only_closure_supplies_its_pr() -> None:
-    """An item whose declared work is the queue carried it, whatever its diff looks like.
-
-    The test above is right about the hazard and was wrong about the shape. A
-    commit changing nothing outside `docs/items/` is a closure separated from
-    its work only where the work was somewhere else to begin with; for a
-    release-tag item, a triage pass, a stranded recovery or a rename pass it is
-    what landing correctly looks like, and `.claude/skills/docket/SKILL.md`
-    names that as a standing category under **Mode: start an item**.
-
-    `PL-YTDN` is the worked example and this is its shape: its whole deliverable
-    was renaming drifted item files, so `#712` changed 12 files and every one
-    of them was an item. The number was declined, `docket check` raised its
-    error rather than its recoverable advisory, and `origin/main` failed `make
-    check` on every branch cut from it - with nothing to clear it, since the
-    bare `bin/docket record` writes only what the base can supply and this was
-    a number it had decided it could not (`PL-YFXG`).
-
-    Audited over real history before it was adopted: across the 927 closed
-    items on `origin/main`, this changes 29 answers and every one of the 29
-    matches the `pr` the store already holds, recorded by hand or by the
-    explicit `--merge` escape. No answer that was already right changes, which
-    is the half the `PL-YDL6` guard was built to protect.
-    """
-    run = _recovery_runner(
-        history=(("ddd444", "PL-K7QX: rename the drifted item files (#712)"),),
-        done_at={"ddd444"},
-        name="PL-K7QX-a.md",
-        carried=("docs/items/PL-K7QX-a.md", "docs/items/PL-B1C2-renamed.md"),
-        declares="docs/items/",
-    )
-
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
-        "PL-K7QX": 712
-    }
-
-
-def test_an_item_declaring_one_other_item_s_file_is_queue_only_work_too() -> None:
-    # The declaration names a path *inside* the queue rather than the directory
-    # itself, which is how an item whose work is one other item's file writes
-    # it - `PL-GBBZ` declares four of them, `PL-X7VY` one. Both are in the 29.
-    run = _recovery_runner(
-        history=(("ddd444", "PL-K7QX: repair the stale brief (#434)"),),
-        done_at={"ddd444"},
-        name="PL-K7QX-a.md",
-        carried=("docs/items/PL-B1C2-another.md",),
-        declares="docs/items/PL-B1C2-another.md",
-    )
-
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
-        "PL-K7QX": 434
-    }
-
-
-def test_a_declaration_reaching_outside_the_queue_still_records_nothing() -> None:
-    # The exemption is the item's own word for where its work lives, so one
-    # path outside the queue withdraws it and the `PL-YDL6` reading stands.
-    # `PL-21GS` is the shape: `docs/items/, docs/releases/`.
-    run = _recovery_runner(
-        history=(("ccc333", "PL-K7QX: triage the open captures (#129)"),),
-        done_at={"ccc333"},
-        name="PL-K7QX-a.md",
-        carried=("docs/items/PL-K7QX-a.md",),
-        declares="docs/items/, docs/releases/",
-    )
-
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
-
-
-def test_a_diff_this_checkout_cannot_read_declines_whatever_the_item_declares() -> None:
-    # Silence is not evidence that the work was a queue edit. A commit with no
-    # paths at all is a merge or a read that went wrong, and an absent `pr` is
-    # a transcription still owed where a wrong one is a false provenance.
-    run = _recovery_runner(
-        history=(("ddd444", "PL-K7QX: rename the drifted item files (#712)"),),
-        done_at={"ddd444"},
-        name="PL-K7QX-a.md",
-        carried=(),
-        declares="docs/items/",
-    )
-
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
-
-
-def test_a_later_edit_to_a_closed_item_does_not_steal_the_attribution() -> None:
-    # Backfilling a `pr`, or correcting a brief, touches the file long after
-    # the work landed and carries its own number. Recording one of those would
-    # be a false provenance, which is worse than the missing one.
-    run = _recovery_runner(
-        history=(
-            ("ccc333", "Correct the brief (#226)"),
-            ("aaa111", "Design the thing and fix the checks (#220)"),
-        ),
-        done_at={"ccc333", "ccc333^", "aaa111"},
-        name="PL-K7QX-a.md",
-    )
-
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
-        "PL-K7QX": 220
-    }
-
-
-def test_an_item_whose_file_history_names_no_number_still_reports_nothing() -> None:
-    run = _recovery_runner(
-        history=(("aaa111", "no number here"),), done_at={"aaa111"}, name="PL-K7QX-a.md"
-    )
-
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
-
-
-def test_the_file_history_is_not_read_when_a_subject_already_answered() -> None:
-    # The subject scan is one history read for the whole set; the fallback is
-    # one per unanswered id. Paying for it when nothing is missing would make
-    # the cheap path cost the same as the expensive one.
-    log: list[list[str]] = []
-    run = _closure_runner(
-        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")}, ("PL-K7QX Do the thing (#148)",), log
-    )
-
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
-        "PL-K7QX": 148
-    }
-    assert not [args for args in log if args[0] == "log" and "--" in args]
-
-
-def test_a_landed_closure_reports_the_pull_request_its_merge_commit_names() -> None:
-    run = _closure_runner(
-        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
-        ("PL-K7QX Do the thing (#148)", "PL-B1C2 Something earlier (#140)"),
-    )
-    report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
-
-    assert report.landed == frozenset({"PL-K7QX"})
+    assert report.unlanded == frozenset()
     assert report.numbers == {"PL-K7QX": 148}
 
 
-def test_one_merge_closing_two_items_answers_for_both() -> None:
-    # A subject may open with a run of ids, because one branch may carry two
-    # items. Both closed in the same pull request, so both name it.
-    run = _closure_runner(
-        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX"), "PL-B1C2-b.md": CLOSED.format(id="PL-B1C2")},
-        ("PL-K7QX, PL-B1C2: two items at once (#151)",),
-    )
-    report = closures_on_base(
-        ROOT, {"PL-K7QX": "PL-K7QX-a.md", "PL-B1C2": "PL-B1C2-b.md"}, runner=run
-    )
+def test_a_landed_closure_the_base_holds_without_a_number_records_none() -> None:
+    # A closure that reached the base before the rule, or past the check: the
+    # caller's error, and nothing here guesses a number for it.
+    run = _base_tree_runner({"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")})
 
-    assert report.numbers == {"PL-K7QX": 151, "PL-B1C2": 151}
-
-
-def test_the_merge_that_landed_the_work_wins_over_the_commit_that_filed_it() -> None:
-    # An id leads more than one subject in a healthy history: the capture that
-    # filed the item, then the merge that landed it. Newest first from `git
-    # log`, so the merge is what is recorded.
-    run = _closure_runner(
-        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
-        ("PL-K7QX Do the thing (#148)", "PL-K7QX Capture the idea (#131)"),
-    )
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
-        "PL-K7QX": 148
-    }
-
-
-def test_a_merge_naming_no_pull_request_derives_nothing() -> None:
-    # A repository merging without pull requests, or a subject written by
-    # hand. Deriving nothing is an answer, and the caller keeps its error.
-    run = _closure_runner({"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")}, ("PL-K7QX Do the thing",))
     report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
 
     assert report.landed == frozenset({"PL-K7QX"})
     assert report.numbers == {}
 
 
-def test_a_merge_the_truncated_history_no_longer_holds_derives_nothing() -> None:
-    run = _closure_runner({"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")}, ())
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
+def test_a_closure_the_base_holds_open_is_still_in_flight() -> None:
+    run = _base_tree_runner({"PL-K7QX-a.md": OPEN_ITEM.format(id="PL-K7QX")})
 
-
-def test_a_closure_that_has_not_landed_is_asked_nothing_about_its_number() -> None:
-    run = _closure_runner({}, ("PL-K7QX Do the thing (#148)",))
     report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
 
     assert report.landed == frozenset()
-    assert report.numbers == {}
+    assert report.unlanded == frozenset({"PL-K7QX"})
 
 
-def test_no_closure_in_question_costs_no_history_read() -> None:
-    # The walk is the one added cost, so it is not paid where there is nothing
-    # to answer for - which is every run on a store with no closure in flight.
+def test_a_closure_the_base_has_no_copy_of_is_in_flight_too() -> None:
+    # An item captured and closed on the same branch: no file on the base, and
+    # the fallback finds no other name for it either.
+    report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=_base_tree_runner({}))
+
+    assert report.known
+    assert report.unlanded == frozenset({"PL-K7QX"})
+
+
+def test_a_closure_the_base_holds_under_another_name_is_read_there() -> None:
+    """A title edit renames the file, and a landed closure must not read as unlanded.
+
+    Harmless while nothing wrote on the strength of it; `docket record N` now
+    does, and would have replaced this closure's `pr: 148` with the branch's own
+    number.
+    """
     log: list[list[str]] = []
-    closures_on_base(ROOT, {}, runner=_closure_runner({}, (), log))
-
-    assert not [args for args in log if args[0] == "log"]
-
-
-def test_a_rider_closure_recovers_the_pull_request_that_closed_it() -> None:
-    # PL-GW37. An item closed as a rider on another item's pull request is not
-    # named by that subject, so the newest subject naming it is something
-    # older - here the triage that filed it. Recency alone recorded `159` for
-    # `PL-YLZQ`, a commit containing none of its work, and advised writing that
-    # number in. Confirming the hit rejects it, and the file's own history
-    # answers with the merge that actually closed it.
-    run = _closure_runner(
-        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
-        (
-            "PL-B1C2 Make the simulation step transactional (#204)",
-            "PL-K7QX, PL-41B2: triage the two captures (#159)",
-        ),
-        file_history=(
-            "PL-B1C2 Make the simulation step transactional (#204)",
-            "PL-K7QX, PL-41B2: triage the two captures (#159)",
-        ),
+    run = _base_tree_runner(
+        {"PL-K7QX-the-old-title.md": RECORDED_CLOSURE.format(id="PL-K7QX", pr=148)}, log
     )
 
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
-        "PL-K7QX": 204
-    }
-
-
-def test_a_bookkeeping_merge_naming_a_closed_item_does_not_win() -> None:
-    # The other half of the same defect, and the commoner one: the newest
-    # subject leading with the id is a merge that wrote the item's `pr` back,
-    # or a follow-up fix. `PL-1TF4` and `PL-J49T` recovered `250`, whose
-    # subject reads "record #249". The item is already closed at such a commit
-    # *and* at its parent, which is what tells it from the closure.
-    run = _closure_runner(
-        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
-        ("PL-K7QX: record #249 (#250)", "PL-K7QX: do the work (#249)"),
-        closed_from=1,
-        file_history=("PL-K7QX: record #249 (#250)", "PL-K7QX: do the work (#249)"),
-    )
-
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
-        "PL-K7QX": 249
-    }
-
-
-def test_a_subject_hit_that_cannot_be_confirmed_and_has_no_file_history_says_nothing() -> None:
-    # Silence is the correct outcome when nothing can be confirmed. Recording
-    # the unconfirmed number would be the false provenance this exists to stop.
-    run = _closure_runner(
-        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
-        ("PL-B1C2 Something else (#204)", "PL-K7QX: triage it (#159)"),
-    )
-
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
-
-
-def test_a_number_belonging_to_another_item_is_not_borrowed() -> None:
-    run = _closure_runner(
-        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")}, ("PL-ZZZZ A different item entirely (#149)",)
-    )
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
-
-
-def test_a_closure_report_records_whether_the_checkout_is_truncated() -> None:
-    """The depth travels with the answer, because it qualifies what a gap means.
-
-    `checks.py` errors on a missing `pr` only where the history is complete;
-    without this field it cannot tell "no commit names a number" from "no
-    commit was in reach", and reporting the second as the first is what turned
-    `main` red (`PL-99Y4`).
-    """
-    for answer, expected in (("true", True), ("false", False), ("", None)):
-        run = _closure_runner(
-            {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
-            ("PL-K7QX Do the thing (#148)",),
-            shallow=answer,
-        )
-        report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
-
-        assert report.shallow is expected, answer
-        # `shallow` describes the checkout, not this commit: the parent here is
-        # in reach at every one of the three, so the number is derived at every
-        # one of them. What a truncated history costs is the test below.
-        assert report.numbers == {"PL-K7QX": 148}
-
-
-def test_a_number_is_not_derived_where_the_parent_is_out_of_reach() -> None:
-    """The defect `PL-KX9N` reports, in the reading that produced it.
-
-    A commit is the closure only if the item reads `done` in its tree and not
-    in its parent's, and `_run_git` answers a failed `git show` with empty
-    output - so a parent outside the checkout reads as "not done there" and the
-    oldest commit held becomes the closure of everything in it. At a graft
-    boundary git reports every file as added, which is exactly that shape.
-
-    Measured on a `--depth 1` clone of this repository: `record` wrote `#401`
-    onto `PL-6Q8N`, `PL-GJDW`, `PL-N2X4` and `PL-VRMK`, whose true numbers were
-    `#399`, `#400`, `#400` and `#402`. Four wrong provenances written by the
-    one command the skill forbids hand-editing the field in favour of.
-    """
-    run = _closure_runner(
-        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
-        ("PL-B1C2 The newest thing held (#401)",),
-        shallow="true",
-        depth=1,
-        file_history=("PL-B1C2 The newest thing held (#401)",),
-    )
-
-    report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
+    report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-the-new-title.md"}, runner=run)
 
     assert report.landed == frozenset({"PL-K7QX"})
-    assert report.numbers == {}
-    assert report.shallow is True
+    assert report.numbers == {"PL-K7QX": 148}
+    assert [args for args in log if args[0] == "ls-tree"], "the base's ids were never listed"
 
 
-def test_a_subject_scan_hit_is_not_confirmed_where_the_parent_is_out_of_reach() -> None:
-    """The other reading, which asks the same question of the same commit.
+def test_the_base_s_ids_are_listed_only_when_a_name_fails_to_resolve() -> None:
+    # One `git show` per closure is the whole cost on a healthy store.
+    log: list[list[str]] = []
+    run = _base_tree_runner({"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")}, log)
 
-    The scan finds a subject leading with the id and then confirms it against
-    the parent, so it is unguarded in the same way. It answered correctly on
-    the clone above only because the boundary commit happened to be that item's
-    real closure - luck, not a property.
-    """
-    run = _closure_runner(
-        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
-        ("PL-K7QX Do the thing (#148)",),
-        shallow="true",
-        depth=1,
-    )
+    closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
 
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
+    assert not [args for args in log if args[0] == "ls-tree"]
 
 
-def test_a_partly_deepened_clone_answers_for_what_it_holds() -> None:
-    """Declining is per commit, not per checkout, and this is why that matters.
+def test_no_closure_in_question_costs_no_tree_read() -> None:
+    log: list[list[str]] = []
 
-    `is_shallow` is true of a clone deepened to any bounded depth, so a rule
-    keyed on it would refuse the numbers a bounded fetch had just made provable
-    - including the `git fetch --depth=200` that recovered the four wrong ones.
-    Keying on the parent instead answers wherever the comparison can be made.
+    closures_on_base(ROOT, {}, runner=_base_tree_runner({}, log))
 
-    Measured against real git on a 12-commit history fetched to depth 4: the
-    three newest closures resolve, the nine at or below the boundary do not.
-    """
-    run = _closure_runner(
-        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
-        ("PL-K7QX Do the thing (#148)", "PL-B1C2 Something earlier (#140)"),
-        shallow="true",
-        depth=2,
-    )
-
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
-        "PL-K7QX": 148
-    }
+    assert not [args for args in log if args[0] in ("show", "ls-tree", "log")]
 
 
 def _lost_runner(tree: list[str], history: list[str], *, shallow: str = "false"):
@@ -3074,148 +2607,6 @@ def test_a_checkout_with_no_default_branch_declines_rather_than_passing() -> Non
     assert "no default branch" in report.declined
 
 
-# --- the file's own history, across the renames a title edit makes ----------
-#
-# `docket` names an item's file from its title, so editing a title renames the
-# file and `bin/docket release` renames every item whose title has drifted. The
-# fallback walks that file's history, and a walk that does not follow renames
-# sees only as far back as the rename: `PL-3D2M` was renamed by the v0.3.9
-# release commit and `bin/docket record` declined to write its number
-# (`PL-S5LB`).
-
-
-def _rename_runner(commits: tuple[tuple[str, str, str, str], ...], items_dir: str = "docs/items"):
-    """A git whose item file changed its name partway through its own history.
-
-    `commits` is newest first, as (revision, subject, path, text): the name the
-    item file had in that commit's tree and what it read there. One path per
-    commit is the whole of it - a file is at one name in one tree - and that is
-    what makes `show <rev>^:<path>` answer the way git does, because a commit's
-    parent is simply the next entry and holds the file under whatever name that
-    entry names.
-
-    The `log` answer is the one git really gives for the walk's own arguments,
-    so a test fails here for the reason the defect failed for: the history
-    reaches past the rename, and each entry carries the name the file had at
-    that commit, which is the half `--follow` does not supply. The base's own
-    subjects lead with no id, so the subject scan in `_merges_naming` cannot
-    answer and the file's history is what is left - which is the path under
-    test.
-    """
-    paths = [f"{items_dir}/{path}" for _, _, path, _ in commits]
-
-    def entry(at: int) -> list[str]:
-        """The `--name-status` fields for a commit, against its parent's name."""
-        if at + 1 >= len(commits):
-            return ["A", paths[at]]
-        if paths[at] != paths[at + 1]:
-            return ["R100", paths[at + 1], paths[at]]
-        return ["M", paths[at]]
-
-    def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
-        if args[0] == "rev-parse":
-            return "" if args[-1] == "--is-shallow-repository" else f"{BASE}\n"
-        if args[0] == "for-each-ref":
-            return f"{BASE}\n"
-        if args[0] == "show":
-            revision, _, path = args[-1].partition(":")
-            named = revision.rstrip("^")
-            at = (
-                0
-                if named == BASE
-                else next(
-                    (index for index, commit in enumerate(commits) if commit[0] == named),
-                    len(commits),
-                )
-            )
-            at += len(revision) - len(named)
-            return commits[at][3] if at < len(commits) and paths[at] == path else ""
-        if args[0] == "diff" and "--name-only" in args:
-            # The paths a commit changed, which is how a closure that landed
-            # with its work is told from one that landed without it. Every
-            # commit in these histories carries work, which is what a closure
-            # written in the same commit as the work looks like.
-            return "src/changed.py\n"
-        if args[0] != "log":
-            return ""
-        if "--" not in args:
-            # The base's own subjects, naming no id - so only the file answers.
-            return "".join(f"c{at}\x1f{commit[1]}\n" for at, commit in enumerate(commits))
-        return _z_name_status(
-            tuple(
-                (revision, subject, entry(at))
-                for at, (revision, subject, _, _) in enumerate(commits)
-            )
-        )
-
-    return run
-
-
-RENAMED = (
-    ("c0", "Ship v0.3.9 (#313)", "PL-K7QX-the-new-title.md", CLOSED.format(id="PL-K7QX")),
-    ("c1", "Design the thing (#204)", "PL-K7QX-the-old-title.md", CLOSED.format(id="PL-K7QX")),
-    ("c2", "Capture it (#100)", "PL-K7QX-the-old-title.md", OPEN_ITEM.format(id="PL-K7QX")),
-)
-
-
-def test_a_rename_after_the_closure_does_not_steal_the_attribution() -> None:
-    """The renaming commit is not the closure, however the walk stops at it.
-
-    Without rename detection the oldest commit the walk can see is the rename,
-    whose parent does not hold the new path at all - so it reads as "done here,
-    not done there", which is exactly the closure test, and the release that
-    renamed the file answers for the pull request that did the work.
-    """
-    run = _rename_runner(RENAMED)
-
-    numbers = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-the-new-title.md"}, runner=run).numbers
-
-    assert numbers == {"PL-K7QX": 204}
-
-
-def test_a_rename_carrying_no_number_does_not_silence_the_closure_behind_it() -> None:
-    """The same defect's quieter half: declining rather than answering wrongly.
-
-    `bin/docket release` stamps `milestone:` onto every item it ships, which
-    renames whatever titles have drifted - and its own subject carries no
-    number until it is squashed. `PL-3D2M` was renamed that way and `bin/docket
-    record` printed nothing at all for it, so the omission was visible only by
-    reading the store afterwards.
-    """
-    run = _rename_runner((("c0", "Ship v0.3.9", *RENAMED[0][2:]), *RENAMED[1:]))
-
-    numbers = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-the-new-title.md"}, runner=run).numbers
-
-    assert numbers == {"PL-K7QX": 204}
-
-
-RENAMED_THEN_STAMPED = (
-    ("d0", "Release v0.4.0 (#320)", "PL-K7QX-the-new-title.md", CLOSED.format(id="PL-K7QX")),
-    ("d1", "Chart the other thing (#319)", "PL-K7QX-the-new-title.md", CLOSED.format(id="PL-K7QX")),
-    ("d2", "Design the thing (#313)", "PL-K7QX-the-old-title.md", CLOSED.format(id="PL-K7QX")),
-    ("d3", "Capture it (#100)", "PL-K7QX-the-old-title.md", OPEN_ITEM.format(id="PL-K7QX")),
-)
-
-
-def test_a_renamed_item_file_recovers_its_own_pull_request() -> None:
-    """The shape observed on this repository, where two commits sit on the rename.
-
-    `PL-3D2M` closed in `#313`, was renamed in passing by `#319` - a pull
-    request for another item entirely, which stamped a title whose slug had
-    drifted - and was then modified again by the `v0.3.9` release commit. So the
-    walk has to pass a commit that changes the file without renaming it, and a
-    commit that renames it, before reaching the closure. Both are rejected for
-    their own reason: the release finds the item already done in its parent, and
-    the rename does too once the parent is read at the name it had there.
-    """
-    run = _rename_runner(RENAMED_THEN_STAMPED)
-
-    numbers = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-the-new-title.md"}, runner=run).numbers
-
-    assert numbers == {"PL-K7QX": 313}
-
-
 # --- the branch whose pull request already merged ----------------------------
 #
 # `PL-8M8H`. `disposition` picked between four states from the commit counts,
@@ -4155,17 +3546,6 @@ def test_a_filing_subject_holding_a_line_separator_keeps_its_pull_request() -> N
     filing = report.filings["PL-0J9K"]
     assert filing.subject == subject
     assert filing.pull_request == 635
-
-
-def test_a_closure_subject_holding_a_line_separator_names_its_pull_request() -> None:
-    run = _closure_runner(
-        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
-        ("PL-K7QX Do the thing\u2028and say why (#148)",),
-    )
-
-    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
-        "PL-K7QX": 148
-    }
 
 
 def test_a_landing_subject_holding_a_line_separator_names_its_pull_request(tmp_path: Path) -> None:

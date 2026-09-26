@@ -9,6 +9,7 @@ feature: rendered-claim-accuracy
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-17
 closed: 2026-09-26
+pr: 1036
 verify: grep -q 'def test_the_ref_set_block_names_distinct_item_files' subprojects/docket/tests/test_cli.py
 ---
 

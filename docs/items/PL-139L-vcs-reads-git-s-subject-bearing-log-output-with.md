@@ -9,6 +9,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-24
 closed: 2026-09-26
+pr: 1040
 payoff: a commit subject holding a stray form feed or line separator can no longer make docket report work in flight, landed or merged that is not
 verify: grep -q 'def test_a_line_separator_inside_a_subject_does_not_start_another_subject' subprojects/docket/tests/test_vcs.py
 ---

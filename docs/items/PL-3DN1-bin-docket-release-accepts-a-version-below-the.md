@@ -9,6 +9,7 @@ feature: release-process
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-13
 closed: 2026-09-25
+pr: 1032
 verify: grep -rq 'def test_a_version_below_the_current_one_is_refused' subprojects/docket/tests/ && uv run pytest subprojects/docket/tests/test_release.py subprojects/docket/tests/test_cli.py -q
 ---
 

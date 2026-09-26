@@ -9,6 +9,7 @@ feature: generator-identification
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md
 added: 2026-09-24
 closed: 2026-09-26
+pr: 1038
 payoff: the reason heads carry a misread: line is kept true in one place instead of six
 verify: ! grep -rqF --include=*.py 'one head at a time' subprojects/docket/src/docket && ! grep -rqF --include=*.py 'head per reader' subprojects/docket/src/docket
 ---

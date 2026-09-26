@@ -11,9 +11,10 @@ page and decides which file a session reads.
 1. Set `status: done` and `closed` - `bin/docket set <id> --status done
    --closed DATE` - and commit that **with the work, in one commit**, whose
    subject leads with **every** id it closes, comma-separated -
-   the recovery below reads the newest subject naming an id, so a rider closed
-   under another item's id alone is attributed to its own capture commit
-   (`PL-GW37`). **Do not write `commit:`** - the field is retired (`PL-T63T`),
+   `pr-title` holds the pull request's title to the same set, and the squash
+   subject is the one line of `main`'s history that says which items the
+   change was about (`PL-GW37` was a rider left out of it). **Do not write
+   `commit:`** - the field is retired (`PL-T63T`),
    because a squash-merge discards the branch commit while the pull request
    number outlives it.
 
@@ -27,43 +28,39 @@ page and decides which file a session reads.
    Nothing is owed where no pull request is open yet: the title leads with
    the ids when it is opened.
 
-   **Leave `pr` empty; it is written after the merge, by command.** The number
-   cannot be known before the pull request is open, and `docket check` owes a
-   `pr` only on a closure that already stands on the default base — so an
-   unlanded closure carrying none is the expected shape rather than an error.
-   **Do not split the closure out to get the number earlier** — pushing the
-   work first and adding the `pr` before the merge reopens the very window
-   below, and the merge can arrive between the two pushes. Closing in the same
-   commit as the work is what removes that
-   window: requiring the number up front forced the closure into a second
-   push, and a merge inside it took the work and left the closure on the
-   branch — `main` had the fix while the queue still called the item open and
-   a debt gate still counted it (`PL-D2GW`, then `PL-P5S0`).
+   **Write `pr` before you push the closure, with `bin/docket record N`.** `N`
+   is this branch's own pull request, so the number exists as soon as the pull
+   request is open - which the start mode permits at the claim push, and which
+   the commit-and-push rule requires no later than the first push of work. Run
+   it after `bin/docket set --status done` and before the closure commit, and
+   the number rides the same commit as the work. It writes onto every closure
+   this checkout introduces, committed or not, and onto nothing the base
+   already holds as done; `make check` then reads the committed tree through
+   `tools/pr_record_check.py --discover`, and CI's required `pr-title` job
+   refuses the pull request until every closure records its number
+   (`PL-HMZZ`). **Never edit the field by hand** - typing the line is how the
+   wrong number gets recorded (`PL-QTSB`). Where the pull request opens only
+   after the closure was pushed, run the command then: the number rides one
+   more push, and the red check is what holds the merge until it lands, so
+   the window below stays shut.
 
-   **`bin/docket record` writes it, and `make fix` runs that.** Bare, with no
-   number: it writes every `pr` the base is owed and can supply, which is the
-   same reading `docket check` prints the advisory from. **Never edit the field
-   by hand** — the command refuses to overwrite a different number, and typing
-   the line is how the wrong one gets recorded and how two sessions opened
-   `#229` and `#230` for one identical insertion (`PL-QTSB`). Let the write
-   ride a commit you are already making; do not compose one for it, and do not
-   open a pull request for it alone. Where a number exists that the base cannot
-   name — a squash subject that led with no id — `bin/docket record NUMBER
-   --merge MERGE_COMMIT` is the explicit form.
+   **Do not split the closure out to get the number earlier.** Closing in the
+   same commit as the work is what removes the window in which a merge takes
+   the work and leaves the closure on the branch: requiring the number up
+   front forced the closure into a second push, and a merge inside it left
+   `main` with the fix while the queue still called the item open and a debt
+   gate still counted it (`PL-D2GW`, then `PL-P5S0`). The number may trail
+   the closure; the closure never trails the work.
 
-   No in-flight guard is owed before running it, unlike every other path that
-   edits an item someone else may hold. `PL-QTSB`'s harm was two *pull
-   requests* for one insertion (`#229`, `#230`), and there is no pull request
-   here: two sessions that both run it write the same tool-dictated line and
-   git merges them. Asking each to fetch and check first would be friction
-   that changes no outcome.
+   `bin/docket record N --merge SHA` is the explicit form, for a closure that
+   reached the default base without its number - closed before this rule, or
+   merged past the check. It writes onto what that merge closed and restates
+   the released bullets that shipped without the number. `docket check` names
+   it in the one error it still raises about `pr`: a landed closure recording
+   none.
 
-   The advisory is still an *error* where no commit on the base names a number
-   at all **and** the checkout says it is complete, which is provenance
-   genuinely lost; a truncated checkout declines instead, because the commit
-   may be outside it (`PL-99Y4`).
-
-   **Act on what that command prints about the items you just unblocked.** It
+   **Act on what `bin/docket set --status done` prints about the items you
+   just unblocked.** It
    names the items whose last recorded blocker this closure clears - the
    reverse of `blocked-by`, derived rather than stored. Do not defer them to a
    grooming pass: you are holding the context the judgment needs, and the pass
