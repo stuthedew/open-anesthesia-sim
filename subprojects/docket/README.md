@@ -752,10 +752,14 @@ So nothing is withdrawn, and what changed is what the reader is told. An item
 the base has no copy of is in no other session's store, so nothing can offer it
 and refusing it refuses work that was never on offer — about the very branch
 the `stranded` line beneath it names as the place to recover the item from.
-`Branch.on_base` carries the fact; the digest sends those ids to `Filed on a
-branch, not yet on <base>` and to `bin/docket stranded`, and `docket flight`
-marks their rows `filed there` (`PL-3CTW`). `PL-G5ZH` sat in both readings at
-once on 2026-09-19, told to be left alone and to be recovered.
+`Branch.on_base` carries the base's half of the fact and `vcs.only_on_a_branch`
+adds this checkout's store, which is `stranded`'s own answer: the digest sends
+the ids neither holds to `Filed on a branch, not yet on <base>` and to `bin/docket
+stranded`, and `docket flight` marks their rows `filed there` (`PL-3CTW`). Asked
+of the base alone, a session's own claimed capture read "no copy here to start
+from" while `show` placed it on this branch; the digest now names it as `this
+branch` (`PL-LFNK`). `PL-G5ZH` sat in both readings at once on 2026-09-19, told
+to be left alone and to be recovered.
 
 **A ref naming nothing at all is the third outcome, and it is reported rather
 than dropped.** `unreadable` says the commits could not be read; `unattributed`

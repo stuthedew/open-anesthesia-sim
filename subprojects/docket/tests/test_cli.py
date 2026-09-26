@@ -4047,6 +4047,78 @@ def test_show_names_the_branch_of_a_stranded_id_no_hold_names(
     assert capsys.readouterr().out == "no item matching 'PL-Q9Q9'\n"
 
 
+def _own_capture_repo(tmp_path: Path) -> Path:
+    """`PL-LFNK`'s scratch clone: `HEAD` on a branch holding its own claimed capture.
+
+    `PL-ZZZZ` is captured and claimed on the checked-out branch, so the base
+    lacks it and this checkout holds it; `PL-DRRG` is captured and claimed on
+    another branch, so neither does. Each is a capture commit and then an empty
+    claim commit, as `docket new` and `docket claim` write them.
+    """
+    when = "2026-08-20T12:00:00+00:00"
+    root = _flight_repo(tmp_path, "Tidy up", when=when)
+    dated = os.environ | {"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when}
+    for key, branch in (("PL-ZZZZ", BRANCH), ("PL-DRRG", "claude/elsewhere-q2w3e4")):
+        captured = {f"items/{key}-captured.md": READY.replace("PL-B1B1", key)}
+        _commit_on(root, branch, captured, f"{key}: capture", when)
+        for args in (
+            ["checkout", "-q", branch],
+            ["commit", "-q", "--allow-empty", "-m", f"{key}: start\n\nClaim: {key} {branch}"],
+            ["checkout", "-q", "main"],
+        ):
+            subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
+    subprocess.run(["git", "checkout", "-q", BRANCH], cwd=root, check=True, capture_output=True)
+    return root
+
+
+def test_digest_counts_this_branch_as_here(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-LFNK: a session's own claimed capture was told it had no copy here.
+
+    The digest's `Filed on a branch` line asked only whether the default
+    branch lacked the item, and `stranded` whether this checkout lacked it as
+    well, so the branch `HEAD` is on read `no copy here to start from` about
+    its own claimed capture while `show` said `IN FLIGHT on this branch`. Both
+    now ask `vcs.only_on_a_branch`: this branch's capture is named as this
+    branch's, and the one another branch alone holds is sent to `stranded` -
+    once, where it was named on two consecutive lines.
+    """
+    root = _own_capture_repo(tmp_path)
+    ran = ["--items", str(root / "items"), "--today", "2026-08-23"]
+
+    assert main([*ran, "digest"]) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    carried = next(line for line in lines if "In flight on a branch" in line)
+    assert "PL-ZZZZ 3 days (live claim, this branch)" in carried
+    filed = next(line for line in lines if "no copy here to start from" in line)
+    assert "PL-DRRG" in filed
+    assert "PL-ZZZZ" not in filed
+    assert sum("PL-DRRG" in line for line in lines) == 1
+
+    # The two commands the digest sends a reader to give the same answer.
+    assert main([*ran, "show", "PL-ZZZZ"]) == 0
+    assert f"IN FLIGHT on this branch ({BRANCH})" in capsys.readouterr().out
+    assert main([*ran, "stranded"]) == 0
+    stranded = capsys.readouterr().out
+    assert "PL-DRRG" in stranded
+    assert "PL-ZZZZ" not in stranded
+
+
+def test_flight_marks_filed_there_only_what_this_checkout_lacks(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-LFNK's other reader: `filed there` said this branch's capture was in no queue here."""
+    root = _own_capture_repo(tmp_path)
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "flight"]) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert "filed there" in next(line for line in lines if line.startswith("PL-DRRG"))
+    assert "filed there" not in next(line for line in lines if line.startswith("PL-ZZZZ"))
+
+
 def test_show_says_a_lapsed_claim_on_an_open_item_holds_nothing(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -9050,7 +9122,8 @@ def test_next_and_the_digest_say_what_holds_each_item_they_leave_out(
     """`PL-N162`'s done-when: the digest and `next` gain each held id's state and kind.
 
     A status disposition is a decision about an item and a claim is somebody
-    working it, and the bare id read the two the same.
+    working it, and the bare id read the two the same. The claim is on the
+    branch checked out, which the digest names as this one (`PL-LFNK`).
     """
     root, git = _arm_repo(tmp_path)
     _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
@@ -9063,7 +9136,8 @@ def test_next_and_the_digest_say_what_holds_each_item_they_leave_out(
 
     assert "Excluded, already in flight: PL-B1B1 (live claim)" in listed
     assert re.search(
-        r"In flight on a branch, by time since its last commit: PL-B1B1 [^,(]+ \(live claim\)\.",
+        r"In flight on a branch, by time since its last commit: "
+        r"PL-B1B1 [^,(]+ \(live claim, this branch\)\.",
         digest,
     )
 
