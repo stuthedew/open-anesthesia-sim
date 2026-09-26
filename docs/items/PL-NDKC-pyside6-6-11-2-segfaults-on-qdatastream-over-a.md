@@ -44,3 +44,9 @@ against.
 of 25. The forecast that the persistence work meets it did not survive
 `PL-C842`, and a second door, `QBuffer`, turned out to read silently wrong
 rather than crash, so the brief above replaces the one filed.
+
+*Widened before merge, 2026-09-26.* A second session found four more entry
+points with the same gap - `QBuffer.setBuffer`, `QTextStream`,
+`QXmlStreamWriter` and `QCborStreamWriter` - and a tracker report, PYSIDE-232.
+The thread measures all six and states the rule by signature: never pass a
+`QByteArray` where Qt's C++ signature takes `QByteArray *`.
