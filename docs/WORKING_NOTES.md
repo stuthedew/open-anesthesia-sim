@@ -1359,16 +1359,47 @@ the tag the wheel bundles:
 https://github.com/qt/qtbase/blob/v6.11.2/src/corelib/serialization/qdatastream.cpp
 and https://github.com/qt/qtbase/blob/v6.11.2/src/corelib/io/qbuffer.cpp.
 
-**The workaround.**
+**Not a PySide quirk, and not reported.** PyQt6 6.11.0 / Qt 6.11.0 fails the
+same two forms under the same reproduction, 25 runs of 25 each: the
+`QDataStream` form segfaults through the same three frames, and the `QBuffer`
+form segfaults rather than reading zeros. PyQt6's sip declarations mark both
+constructors' array argument Constrained and never KeepReference, so it too
+leaves the array's lifetime to the caller, and PySide's development branch declared both
+exactly as 6.11.2 does on 2026-09-26, so no fix is in progress. A web search
+found no report on the PySide tracker (bugreports.qt.io, project PYSIDE); the
+tracker itself was unreachable from the container, so that is a search result
+rather than a tracker query. In C++ the mistake does not compile - g++ 13
+rejects taking a temporary's address with "taking address of rvalue" - so this
+is a C++ safety rule lost on the way to Python: the calling code breaks Qt's
+documented contract, and neither binding stops it, although Python's own
+promise is that pure-Python code cannot corrupt memory. A report asking PySide
+for a `reference-count` on the three pointer-taking entry points was
+recommended to the project owner on 2026-09-26 and is not filed.
 
-- **Reading a blob**: `QDataStream(array)`, with no mode argument. It is
-  read-only and holds its own copy, so a temporary is safe.
-- **Writing, or any constructor taking a mode**: bind the array to a name that
-  outlives the stream - a local in the same scope, or an attribute of whatever
-  owns the stream - and take the result from that name.
-- **A `QBuffer`**: `QBuffer()` and then `setData(...)`, which copies; never
-  `QBuffer(QByteArray(...))`.
+**The rule: never hand a `QByteArray` to `QBuffer`'s or `QDataStream`'s
+constructor, or to `QBuffer.setBuffer`.** Let Qt own the bytes, or copy them.
+`PL-KJXS` is the check that would enforce it, filed rather than built here.
+
+- **This project's own data goes through the standard library**, not Qt's
+  binary stream: JSON bytes into and out of `QMimeData.setData` for a drag
+  payload, measured round-tripping on 2026-09-26. Qt's own documentation says
+  `QDataStream`'s binary format "has evolved since Qt 1.0, and is likely to
+  continue evolving", so bytes saved through it are tied to a Qt version, where
+  JSON is readable, diffable and testable without Qt.
+- **Where Qt needs an I/O device**, `QBuffer()` with no argument owns its
+  storage and cannot dangle: an in-memory PNG written through
+  `QImage.save(buffer, "PNG")` encoded and decoded correctly on 2026-09-26.
+- **Reading bytes Qt itself wrote** - a stock item view's drag data, say - is
+  the one case that needs a stream, and the one-argument `QDataStream(array)` is
+  Qt's own read-only constructor, which copies, so a temporary is safe there.
 - **Do not lean on `stream.status()` to catch it.** The silent row reads `Ok`.
+
+**What avoiding it costs: nothing planned.** Saved layouts are JSON under
+`PL-C842`, and so is the saved-workspace file `PL-SSQW` decides. Scenario
+save/load, planned-milestone item 9, persists simulation state, and
+`tools/import_boundary_check.py` already refuses any `PySide6` import under
+`core/`, so no stream could reach it. Qt's opaque geometry and splitter blobs go
+back to Qt undecoded, if they are kept at all.
 
 **Where it will be met.** Nowhere yet: nothing under `src/` or `tests/`
 constructs either class on 2026-09-26. And not where `PL-NDKC` first said.
@@ -1413,8 +1444,9 @@ print(stream.readInt32(), repr(stream.readQString()), stream.status())
 ```
 
 **Re-measure on any PySide6 upgrade.** A fixed binding shows as the `temporary`
-form printing `42 'hello, workspace'`. Until then the workaround is required,
-and it costs nothing to keep afterwards.
+form printing `42 'hello, workspace'`. The rule above does not depend on that:
+it avoids the pointer-taking entry points rather than working around them, so
+it costs nothing to keep after a fix.
 
 ## The generator tier has a second entrance, and one question left open
 
