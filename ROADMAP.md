@@ -28,7 +28,7 @@ would bury it.
 which is unlike every gate that follows it: Gate 0 is the accumulated backlog
 from before the debt gate existed, twenty items deep, while Gate 1 onward hold
 the findings of a single milestone. Later gates ship *inside* the milestone
-they gate and take no version of their own — see "The cadence" under "The
+they gate and take no version of their own — see § "The cadence" under § "The
 debt gate". Absent a further deliberate exception recorded here, the
 capability-boundary rule above governs.
 
@@ -418,7 +418,7 @@ makes the loop they will be built through reliable, and by v0.3.0, which
 adds no capability and exists to clear the ground they are built on:
 
 - **v0.3.0, the foundation** — Gate 0's inherited backlog cleared. No new
-  capability; see the versioning exception under "Versioning decision".
+  capability; see the versioning exception under § "Versioning decision".
 - **v0.4.0, the teachable case** — one case end to end, in clinical units, at
   a speed and on a time base that make its lessons observable at all.
 - **v0.5.0, the case you can branch** — bookmarks, forking from them, and
@@ -451,7 +451,7 @@ adds no capability and exists to clear the ground they are built on:
 and they are not the same kind of thing.** Row 2 is Gate 0's release: that
 gate earns a version of its own because it clears the backlog inherited from
 before the debt gate existed, which is the exception recorded under
-"Versioning decision" above, and an exception rather than a pattern. Row 1
+§ "Versioning decision" above, and an exception rather than a pattern. Row 1
 is not a gate at all — v0.2.8's frozen list is its own scope, recorded under
 a gate heading because that subsection is what `bin/docket wave` reads, and
 the second of the two groups it lists is new workflow capability rather than
@@ -491,7 +491,7 @@ out of scope. That is a deliberate departure from "Development pathway"'s Phase
 A gate that lives in a separate document, or in a session's memory, is
 renegotiated every time it is inconvenient. Put on the timeline it is a step
 with a size, and skipping it is visible as skipping a step. The cadence that
-generates rows 2, 4, 6, 8, 10 and 12 is specified under "The debt gate" below;
+generates rows 2, 4, 6, 8, 10 and 12 is specified under § "The debt gate" below;
 the rule is that scoping a milestone freezes its gate, and the gate clears
 before that milestone's implementation begins. Row 6 is where that rule has an
 exception rather than an application, and § "The cadence" states it: a
@@ -630,7 +630,7 @@ v0.2.0 is complete only when:
 
 - A UI control for selecting which agent is running. Agent switching and
   interlock behavior belong to the anesthesia-machine milestone (item 1 in
-  "Planned milestones" below); this milestone only needs the model to be
+  § "Planned milestones" below); this milestone only needs the model to be
   capable of running as isoflurane or desflurane, not to expose that choice
   in the interface yet. (Recorded as this milestone's scope at tag time. A
   basic picker was in fact added afterwards in commit `00791b1`; it restarts
@@ -646,7 +646,7 @@ v0.2.0 is complete only when:
   added, not be assumed available just because the Gas Man reference
   simulator depicts them.
 - Nitrous oxide: not a halogenated volatile, so out of scope here; covered
-  separately by items 6-7 in "Planned milestones" below.
+  separately by items 6-7 in § "Planned milestones" below.
 - Any change to the v0.1.0 governing equations themselves — this milestone
   proves they are agent-generic, not that they change per agent.
 
@@ -679,7 +679,7 @@ through a merge path that does not wait for CI, a release script that stops
 halfway, and a `docket next` that ranks work the current milestone excludes
 costs more than fixing those does.
 
-It is a patch by the ordinary rule under "Versioning decision" above: it
+It is a patch by the ordinary rule under § "Versioning decision" above: it
 crosses no capability boundary, adds nothing to the simulator, and changes no
 equation, parameter, numerical method, unit or displayed value. Gate 0's
 minor-version exception is not extended to it and is not needed.
@@ -691,7 +691,7 @@ More have been admitted since — under the completion rule and the scope test
 beneath this list, and one at the project owner's direction — so the entries
 below, rather than that original seventeen, are its whole content. What the freeze does and does not close is set
 out beneath the list; an entry records its own outcome as it closes, per
-"The cadence" below.
+§ "The cadence" below.
 
 **It is a frozen scope, not a fourth gate in the cadence.** The first group
 below is debt by "What counts", all classed `defect`, and the second is new
@@ -1053,13 +1053,13 @@ its verification gate widened to the inputs the interface can actually reach
 and its failure path unable to leave partial state behind.
 
 Its contents are exactly Gate 0's items that fall outside the teachable
-case's own scope — those listed under "Debt gate: the frozen list" in
+case's own scope — those listed under § "Debt gate: the frozen list" in
 the v0.4.0 section below. It has no scope of its own to specify, which is why
 this section is short: the frozen list *is* the specification, and nothing
-may be added to it (see "The gate is a snapshot, not a moving target").
+may be added to it (see § "The gate is a snapshot, not a moving target").
 
 It is a minor rather than a patch by deliberate exception, recorded under
-"Versioning decision" above. That exception covers Gate 0 alone.
+§ "Versioning decision" above. That exception covers Gate 0 alone.
 
 ### Definition of done
 
@@ -1127,17 +1127,17 @@ interface asserts, even though the model behind them is untouched.
 It promotes planned-milestone item 25 (playback multiplier) in full and the
 recording half of item 8 (control-input timeline). It does not promote item
 26 (bookmarks) or item 12 (forking), but it is designed so that neither is
-blocked - see "Designed for forking" below.
+blocked - see § "Designed for forking" below.
 
 ### Debt gate: the frozen list
 
 **Frozen 2026-08-25, the day this milestone was scoped.** Twenty open items
-are debt by "The debt gate" below — classed `defect`, `safety`, `science`,
+are debt by § "The debt gate" below — classed `defect`, `safety`, `science`,
 `refactor` or `perf`, or at `needs-decision`. Six of them are inside this
 milestone's own Required scope and are cleared by it, per "Debt inside the
 milestone's own scope". The other fourteen clear before implementation begins.
 The list itself stays frozen; an entry records its own outcome as it closes,
-per "The cadence" below.
+per § "The cadence" below.
 
 **Cleared before v0.4.0 begins — 21 entries, 22 item ids** (14 and 15 at the
 freeze; seven were added later, per the three notes beneath this list). These
@@ -1185,7 +1185,7 @@ in `core/`:*
   default
 
 *Live process machinery that does not reliably work — `defect` by the rule
-under "What counts":*
+under § "What counts":*
 
 - PL-G049 (S) A `verify:` command that has never been run is not a
   specification
@@ -1216,7 +1216,7 @@ more instance of it. That entry is the case the presence rule was written for.
 
 The second advertised a command that does not exist, and had done so since
 `6f1b5b1` on 2026-08-24 — the day before this list was frozen. Present at the
-freeze by date, and `defect` by "What counts" above: a live mechanism `main`
+freeze by date, and `defect` by § "What counts" above: a live mechanism `main`
 depends on that does not work.
 
 Neither extends what the gate has left to run: both are closed.
@@ -1274,7 +1274,7 @@ because the alternative reading is available: a later reader finding a
 the absence for a deliberate deferral. It was not one, and the exception is in
 any case written as not deferrable.
 
-The pairing rule under "The cadence" — an entry is worked with the entry it
+The pairing rule under § "The cadence" — an entry is worked with the entry it
 completes, not after it — cannot be satisfied here, because PL-VP7N, the entry
 PL-0MLQ continues, shipped in v0.2.7. It therefore stands as its own entry.
 
@@ -1352,7 +1352,7 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   one a run has already taken is refused rather than counted, and reset frees
   it. The interface's own cadence is still 0.1 s, and a step-refinement study
   can still take a whole run at a smaller one. `docs/MODEL.md` states the
-  guarantee, and the four things it does not cover, under "The reproducibility
+  guarantee, and the four things it does not cover, under § "The reproducibility
   guarantee".
 - **A playback multiplier** (queue item PL-SN2C), implemented as steps per
   tick and never as a larger step, with the current rate visible beside the
@@ -1943,7 +1943,7 @@ Recorded because the cost of missing them is not a defect - it is work done and
 thrown away.
 
 - **`PL-B9PY`** was listed here on 2026-09-10 as work the port would throw
-  away, and **that was wrong**. Gate 1 places it under "Cleared by v0.5.0
+  away, and **that was wrong**. Gate 1 places it under § "Cleared by v0.5.0
   itself", not ahead of v0.5.0: decomposing `SimulationView` so two runs render
   is what the branched-run milestone *is*, so it could not wait for a port that
   then shipped after it without deferring the MVP. **It landed on Flet on
@@ -2111,7 +2111,7 @@ save/load, which is out of scope here (project owner, 2026-09-06).
 ### Debt gate: the frozen list
 
 **Frozen 2026-09-06, the day this milestone was scoped.** Every open item that
-is debt by "The debt gate" below — classed `defect`, `safety`, `science`,
+is debt by § "The debt gate" below — classed `defect`, `safety`, `science`,
 `refactor` or `perf`, or at `needs-decision` — is on this list. It is by a wide
 margin the largest gate this project has held: Gate 0 held twenty-one and
 v0.2.8's frozen scope thirty-eight. The size is stated in the group headings
@@ -2170,14 +2170,14 @@ the three ids below now sit under headings that agree with `Required scope`,
 and each placement is stated rather than implied:
 
 - `PL-2FM6` (delete `RunHistory`) and `PL-8LXM` (delete the M4 decimation
-  path) are under "Cleared by the `v0.4.x` track, ahead of this gate", and
+  path) are under § "Cleared by the `v0.4.x` track, ahead of this gate", and
   they have left `Required scope`, which is what the note under that heading
   already recorded on 2026-09-08: "Required scope below drops to sixteen
   items". The entries were never removed, so the two structures had disagreed
   since. What v0.5.0 required of them, and that the patch track shipped it, is
   recorded in prose under `Required scope` instead, where it places nothing.
 - `PL-GVXP` (separate the six chart traces by more than colour) is under
-  "Cleared before v0.5.0 begins, the product lane" and is not in `Required
+  § "Cleared before v0.5.0 begins, the product lane" and is not in `Required
   scope`. It never was an entry there: it was cited inside the `PL-8PSW`
   entry's prose, and `PL-HWW1` made a declaration rather than a mention the
   record of membership on 2026-09-19, so the disagreement ended with the
@@ -2367,7 +2367,7 @@ that can hold the whole change.
 The 2026-09-06 triage pass classed the eleven captures that were untriaged when
 this list was frozen the same day. Eight are debt, and every one of them
 describes a problem that existed at the freeze and was merely undecidable then,
-so they re-enter this gate under "The gate is a snapshot" rather than waiting
+so they re-enter this gate under § "The gate is a snapshot" rather than waiting
 for Gate 2. None is inside this milestone's Required scope, so all eight clear
 before implementation begins. Five sit in the product lane or reach both
 halves, three in the workflow lane.
@@ -2709,7 +2709,7 @@ surface a clinician reads. It rides the Qt port behind `PL-25KS` (port the
 dashboard) on the carried-fix rule, text on a dashboard rewritten from scratch
 being written once, and clears before v0.5.0 begins like the five carried
 entries; § "Sequenced past v0.5.0" below carries it in that table, and the
-port names it under "Decisions the port has to make anyway" so its parity
+port names it under § "Decisions the port has to make anyway" so its parity
 claim stays checkable.
 
 - PL-2K1R (S) The interface carries a use disclaimer but no interpretation one, so nothing tells a reader the compartment readouts and chart traces are modelled rather than measured
@@ -3294,7 +3294,7 @@ entries should be dropped or postponed now that the interface moves to Qt.
 Counted rather than answered from the shape of the question: of the 23 entries
 this gate can clear, 13 never touch the interface, 9 of the remaining 10
 survive the port or are inputs to it - `PL-JRS3` is the port's own Required
-scope item 4, `PL-LL9Y` is named under "Decisions the port has to make anyway",
+scope item 4, `PL-LL9Y` is named under § "Decisions the port has to make anyway",
 `PL-YLKR`'s design is toolkit-independent, and `PL-B9PY` ships on Flet in
 v0.5.0 by the decision recorded in § "Items this port moots or transforms".
 One entry was left, and it is this one. The general proposal would have
@@ -5388,7 +5388,7 @@ make room, and cannot leave the screen with the surface that drew them.
 turn on 2026-09-16, so beat 1 of the cadence did not freeze its list - § "The
 debt gate" -> "The cadence" records that exception and the condition on it, and
 the condition is met here: Gate 2 holds v0.5.0's findings, and v0.5.0 is now
-implemented and released. Every open item that is debt by "The debt gate"
+implemented and released. Every open item that is debt by § "The debt gate"
 below - classed `defect`, `safety`, `science`, `refactor` or `perf`, or at
 `needs-decision` - is on this list as the store held it on the day of the cut.
 How many are *closed* is deliberately not recorded here, for the reason the
@@ -6284,7 +6284,7 @@ decision is what makes it one worth making.
 ### The cadence
 
 The gate is a recurring step on the plan, not a precondition assumed in the
-background. Every milestone runs the same four beats, and "The plan" above
+background. Every milestone runs the same four beats, and § "The plan" above
 shows them on one timeline with the milestones they gate:
 
 1. **Scope** the milestone here — goal, required scope, definition of done,
@@ -6344,7 +6344,7 @@ shows them on one timeline with the milestones they gate:
    editing a satisfied condition is the wider change (`PL-Y949`).
 4. **Implement** the milestone. A finding made while clearing or implementing
    goes to the next gate unless the problem it describes predates the freeze
-   (per "The gate is a snapshot" above) or is `P0`/`safety`/`science`, either
+   (per § "The gate is a snapshot" above) or is `P0`/`safety`/`science`, either
    of which re-enters this one.
 
 A milestone whose gate has not been recorded has not been scoped, whatever
@@ -6390,7 +6390,7 @@ few gate items are finished — decline it, or the gate work scatters across
 patch releases and the milestone ships carrying only its feature work.
 
 Gate 0 is the single exception, released as v0.3.0 for the reason recorded
-under "Versioning decision". It is exempt because it holds the backlog
+under § "Versioning decision". It is exempt because it holds the backlog
 inherited from before this mechanism existed; every later gate holds one
 milestone's findings and is ordinary maintenance, which is not a thing to
 version.
@@ -6478,7 +6478,7 @@ but the capture rule working as designed. A gate that requires a refilling
 queue to empty is a gate that never opens, and the honest outcomes for such a
 rule are that it gets quietly abandoned or that it blocks all work forever.
 
-"The debt gate" above is the mechanism that replaced it, and it is strictly
+§ "The debt gate" above is the mechanism that replaced it, and it is strictly
 better for the same purpose: it freezes a list at a moment rather than chasing
 a moving one, so it is always finite and always openable, and it recurs before
 every milestone rather than once. Everything Phase 0 was trying to buy — debt
@@ -6577,7 +6577,7 @@ single-agent assumption, and would have to be revisited afterwards.
 
 ## Planned milestones
 
-This section is the catalogue of intent; "Development pathway" above gives
+This section is the catalogue of intent; § "Development pathway" above gives
 the order the items are intended to be worked in. Each item is deliberately
 left unspecified (no goal, required scope, or definition of done) until it
 is actually promoted into a scoped milestone per the development rules
@@ -6708,7 +6708,7 @@ specified.
    snapshot", the fallback in every snapshot-interval design, cannot be
    implemented without it. It is also what makes a run reproducible and
    citable; a curve without its input history is not a result anyone can
-   check. Hence the 8-to-12 ordering in "Development pathway" above is not
+   check. Hence the 8-to-12 ordering in § "Development pathway" above is not
    negotiable.
 9. Add scenario save/load.
 10. Add deterministic replay of a saved scenario, after item 9.
@@ -6856,7 +6856,7 @@ specified.
     than real time without changing the simulation's own time step. Kept
     separate from deterministic replay (item 10): replay reproduces a recorded
     run, while this changes the rate at which any run is displayed.
-    *Shipped in v0.4.0 as `PL-SN2C` - see "Completed: v0.4.0 - the teachable
+    *Shipped in v0.4.0 as `PL-SN2C` - see § "Completed: v0.4.0 - the teachable
     case" above. Five rates (1, 5, 20, 60, 300x), implemented as steps per
     tick so the simulation's own step never changes size.*
 26. Add run bookmarks that halt a run at a target, after item 25. There is
@@ -7092,7 +7092,7 @@ specified.
     that number to a milestone section ahead of the current one, which the
     reserved-version guard withholds (project owner, 2026-09-16, ratified, on
     `PL-KQHN`). The number this ships under is whatever the cut assigns. This was briefly recorded as a minor earlier the same
-    day, reasoning from the size of the change; "Versioning decision" above
+    day, reasoning from the size of the change; § "Versioning decision" above
     chooses by the **capability boundary crossed**, and this step crosses none.
     The simulator models the same system with the same parameters, the same
     four controls, the same three agents, and the learner can do nothing they
@@ -7287,7 +7287,7 @@ specified.
     Doppler rather than thermodilution, and the authors state that normal ranges
     are method-specific - which is why the file cites it and does not adopt it.
     Adopting it as a default would be its own recorded decision under
-    "Source hierarchy", on the terms every other value in `data/` is held to.
+    § "Source hierarchy", on the terms every other value in `data/` is held to.
 
     *An out-of-range covariate: agreed in principle, cutoffs unresearched
     (project owner, 2026-09-02).* Bounding a covariate and reporting when one
@@ -7328,7 +7328,7 @@ specified.
     values; the project owner chose this route on 2026-09-03.
 
 Item 1 (isoflurane and desflurane) has been promoted into a fully scoped
-milestone, delivered as v0.2.0 — see "Completed: v0.2.0" above — so it no
+milestone, delivered as v0.2.0 — see § "Completed: v0.2.0" above — so it no
 longer appears here. Further volatile agents beyond isoflurane and desflurane (halothane,
 enflurane, ether, xenon; not nitrous oxide, which is covered by items 6-7
 above) remain an unscoped later idea, to be added back here as its own item

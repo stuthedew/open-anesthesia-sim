@@ -374,7 +374,7 @@ Three things this deliberately does not become:
   branch deletion still meet no check, and cutting only the dead clause would be
   rewriting rather than routing. It was measured at 1287 characters, the largest
   single candidate anywhere, and left resident (`PL-4H01`).
-- **Not silent.** A retirement is recorded in "What was routed out" above with
+- **Not silent.** A retirement is recorded in § "What was routed out" above with
   what now enforces the rule, exactly as an addition is recorded in "What stays
   resident". The ledger is the audit trail in both directions or it is not an
   audit trail: a later session must be able to find where a rule went instead of

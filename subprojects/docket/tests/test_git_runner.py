@@ -266,7 +266,7 @@ def test_a_fault_that_clears_does_not_outlive_itself(tmp_path: Path) -> None:
 def test_a_config_option_in_front_of_the_subcommand_is_not_taken_for_it(tmp_path: Path) -> None:
     """`-c core.quotePath=false log` is a `log`, counted and memoized as one.
 
-    `claims.work_under_record` asked git that way first, and every read
+    `claims.work_outside_queue` asked git that way first, and every read
     `changed_path_args` builds does now (`PL-8HSX`). The subcommand reader took
     the first word not starting with `-` - the option's value - so the call was
     counted as `core.quotePath=false` and, being no read the memo knows,

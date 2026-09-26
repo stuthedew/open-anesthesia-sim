@@ -72,10 +72,9 @@ reader of it - so this asks that reader rather than parsing a trailer itself,
 for the reason the ids above come from `docket`'s own parsers.
 
 - *A work branch that claims nothing is refused.* Work is a non-merge commit
-  changing a path outside the queue - the items, the roadmap and the working
-  notes, the records a queue workflow writes - and made under the record - its own tree
-  carries `claims.CUTOVER_MARKER` - so commits made before a session could
-  write a claim are skipped. The question is per branch, never per id: a
+  changing a path outside the queue - the items, the roadmap, the working notes
+  and the pull requests' body records, the records a queue workflow writes
+  (`claims.queue_records`). The question is per branch, never per id: a
   capture or a triage pass, whose ids lead its subjects, is never pushed into
   claiming them (`PL-3CTW`). A claim counts in any state. A branch releases
   its claim by closing its item in its own copy, so "no live claim" would
@@ -87,9 +86,7 @@ for the reason the ids above come from `docket`'s own parsers.
   refusal and the count the design's 1-in-20 threshold reads cannot disagree
   (`PL-FFR0`).
 - *A claim that orders behind another live claim is refused* - the fence the
-  claim order needs, since nothing stops a later claim being written. Only
-  claims made under the record take part, on either side: an old-rule hold is
-  an inference from a subject, which is what the record replaces.
+  claim order needs, since nothing stops a later claim being written.
 
 The fence reads every pushed head, and CI's checkout holds them all: checked
 on 2026-09-24 against `quality` run 35969686133, whose fetch was
@@ -126,6 +123,7 @@ from docket.claims import (  # noqa: E402
     claims_nothing,
     holdings,
     in_queue,
+    queue_records,
 )
 from docket.config import Config  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
@@ -265,15 +263,10 @@ def attribution(name: str, subjects: list[str]) -> list[str]:
 
 
 def ahead_of(hold: Hold, report: Holdings) -> Hold | None:
-    """The live claim ordering first on `hold`'s item, where that is another branch's.
-
-    Old-rule holds take no part: the fence enforces the order the record keeps,
-    and an old-rule hold is an inference from a subject. `claim` still refuses
-    behind one at write time, which is where a session can act on it.
-    """
+    """The live claim ordering first on `hold`'s item, where that is another branch's."""
     if hold.state != LIVE:
         return None
-    first = next((other for other in report.order(hold.key) if not other.legacy), None)
+    first = next(iter(report.order(hold.key)), None)
     return None if first is None or first.ref == hold.ref else first
 
 
@@ -299,11 +292,7 @@ def _behind(hold: Hold, first: Hold, name: str, remotes: frozenset[str]) -> str:
 
 
 def _queue_named(config: Config) -> str:
-    return ", ".join(
-        name
-        for name in (config.items_dir.strip("/") + "/", config.roadmap_file, config.notes_file)
-        if name
-    )
+    return ", ".join(queue_records(config))
 
 
 def _claims_nothing(name: str, config: Config) -> str:

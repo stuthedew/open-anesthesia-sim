@@ -25,6 +25,7 @@ it needs no network because it asserts only the tree half.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -405,6 +406,48 @@ def test_an_unprotected_branch_yields_nothing_and_names_no_source(
     """`reconcile` turns this into the hard failure; the read itself reports it honestly."""
     _stub(monkeypatch, branch={}, rules=[])
     assert rcc.required_contexts("o/r", "main", None) == (set(), [])
+
+
+def test_token_is_read_in_one_precedence(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`GH_TOKEN` over `GITHUB_TOKEN`, as every other tool and `gh` itself read them.
+
+    This tool read them the other way round, so with both set it asked GitHub
+    with a different credential from the rest of the apparatus (`PL-2TV9`).
+    """
+    monkeypatch.setenv("GH_TOKEN", "from-gh-token")
+    monkeypatch.setenv("GITHUB_TOKEN", "from-github-token")
+    asked: list[str | None] = []
+
+    def fake(repo: str, branch: str, token: str | None) -> tuple[set[str], list[str]]:
+        asked.append(token)
+        return {"checks", "pr-title"}, ["classic branch protection"]
+
+    monkeypatch.setattr(rcc, "required_contexts", fake)
+    assert rcc.main(["--repo", "o/r", "--branch", "main"]) == 0
+    assert asked == ["from-gh-token"]
+    capsys.readouterr()
+
+
+def test_the_repository_is_read_from_a_token_bearing_origin(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The URL shape an Actions checkout can leave behind reads as its slug, not an error."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "remote",
+            "add",
+            "origin",
+            "https://x-access-token:abc@github.com/o/r.git",
+        ],
+        check=True,
+    )
+    assert rcc._repo_from_git(tmp_path) == "o/r"
 
 
 # --- end to end, against this repository's own workflows ---------------------

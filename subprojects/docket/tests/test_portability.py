@@ -50,6 +50,7 @@ ALLOWED_IMPORTS = {
     "tomllib",
     "typing",
     "unicodedata",
+    "urllib",
     "warnings",
     "__future__",
     "docket",
