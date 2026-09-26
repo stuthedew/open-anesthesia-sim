@@ -3,12 +3,14 @@ id: PL-3PH2
 title: Retire PL-979D's per-PR body record: the squash commit on main is the record of a pull request's body again, a body a merge drops is recovered in one batch at each release, and no pull request runs --record or pr-title's body check
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: pr-body-integrity
-touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, .github/workflows/pr-title.yml, .claude/hooks/docket-digest.sh, .claude/skills/docket/modes/release.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/start.md, docs/maintainer.md, docs/ARCHITECTURE.md, ROADMAP.md, docket.toml, tools/fixture_id_check.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, docs/items/PL-979D-the-squash-commit-on-main-is-composed-by.md
+touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, .github/workflows/pr-title.yml, .claude/hooks/docket-digest.sh, .claude/skills/docket/modes/release.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/start.md, docs/maintainer.md, docs/ARCHITECTURE.md, ROADMAP.md, docket.toml, tools/fixture_id_check.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py, docs/items/PL-979D-the-squash-commit-on-main-is-composed-by.md, docs/items/PL-K9XQ-pr-title-fails-on-the-first-head-of-every-draft.md, docs/items/PL-X2XP-backfill-docs-pr-bodies-for-the-pull-requests.md, docs/items/PL-7VWK-since-pl-979d-the-record-of-a-pull-request-s.md, .github/workflows/quality.yml
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1118
 payoff: no pull request carries a record step or a body check, and a body a merge drops still reaches the tree at the next release
 verify: ! grep -q pr_body_check .github/workflows/pr-title.yml && grep -q pr_body_check .claude/skills/docket/modes/release.md && ! grep -q -- '--record' .claude/skills/docket/modes/close-out.md
 ---
@@ -93,10 +95,31 @@ put in the reply that proposed it, on `claude/pr-body-storage-cnnpme`.
 mode recovers dropped bodies, every document above says the squash commit is
 the record, the three follow-ons are closed, and `make check` is green.
 
-**Build state, 2026-09-26.** Claimed on `claude/pr-body-storage-cnnpme`, then
-stopped for length before any build commit. No pull request is open yet on
-purpose: open it, as a draft, with the build's first push, which removes the
-`pr-title` body step. The workflow then runs from the pull request's own merge
-ref and never reaches the check, whereas a draft opened now would fail
-`pr-title` on its first head for want of a `docs/pr-bodies/` record -
-`PL-K9XQ`'s defect, which this item retires.
+**Built 2026-09-26, on `#1118`.** The build's own calls, for a later reader:
+
+- `pr-title.yml` lost the step and keeps no comment about it; this item and
+  `PL-979D` carry the history.
+- `tools/pr_body_check.py` lost `--record`, `--check`, `fetch_pull`,
+  `write_record`, `squash_shape` with `SQUASH_SHAPES`, and `_get_json`'s token.
+  **The default mode now prints a verdict every run**, and so does every
+  hand-run mode where no default branch is readable. Silence was right only at
+  session start, where output is resent every turn; a release step run by hand
+  reads silence as a clean history, which the apparatus floor refuses.
+- `.claude/hooks/docket-digest.sh` no longer runs it. `release.md` runs it, and
+  `--recover` where it names anything, before `make check`, whose `--anchors`
+  then holds each new file to its squash commit.
+- `quality.yml`'s floor section now runs `--anchors`. `make check` failed
+  without it: `doc_check`'s gate parity had counted the merge gate as running
+  the script only through `pr-title.yml`'s `--check`, a different mode, so
+  `--anchors` had never run in CI. That blind spot is `PL-RW3T`.
+- `verify.py`'s `record` kind now takes a branch-added file with a `recovered:`
+  line, which is what a release adds, and still takes `recorded:`, which a
+  branch opened under `PL-979D` may carry. `RECORDS` stays in `arming.py` and
+  `claims.py`, since `--recover` still writes there; their comments, and
+  `test_claims`' docstring, were corrected in place, declared in `touches`.
+- `docs/maintainer.md`'s paragraph on editing a description by hand now says an
+  edit made after auto-merge is armed does not land, and how to land one.
+- Checked, no change needed: `ROADMAP.md` (historical mentions, still true),
+  `docket.toml` (the test list), `tools/fixture_id_check.py` (a historical
+  pattern note), `vcs.py` (the subject reading the tool still uses) and
+  `start.md` (names no record step).

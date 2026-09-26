@@ -1534,14 +1534,15 @@ def test_a_roadmap_only_branch_is_queue_work_but_not_armable(tmp_path: Path) -> 
 
 
 def test_a_body_record_is_not_work_that_owes_a_claim(tmp_path: Path) -> None:
-    """A pull request's body record is a queue record, so a queue-only pass still owes no claim.
+    """A pull request's body file is a queue record, so a queue-only pass still owes no claim.
 
-    `tools/pr_body_check.py --record` writes one on every pull request's branch
-    before its merge, since `pr-title` fails without it (`PL-979D`), so a
-    capture, a triage pass or a design round carries one as surely as its
+    `tools/pr_body_check.py --recover` writes one for a squash commit that
+    landed with no body (`PL-3PH2`), and from 2026-09-25 to 2026-09-26
+    `--record` wrote one on every pull request's branch (`PL-979D`), so a
+    capture, a triage pass or a design round carried one as surely as its
     items. Read as work, it named each such branch a forgetful session here and
-    had CI refuse it (`PL-F6MM`). The branch whose record rides real work is
-    still named, so the record is what the answer turns on.
+    had CI refuse it (`PL-F6MM`). The branch whose body file rides real work is
+    still named, so the file is what the answer turns on.
     """
     repo = _Repo(tmp_path / "repo")
     repo.branch("claude/capture-a1b2c3")
