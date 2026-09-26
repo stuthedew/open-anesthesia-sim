@@ -1001,6 +1001,54 @@ def test_a_possessive_quotation_of_text_that_is_there_passes(tmp_path: Path) -> 
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
 
 
+def test_a_marked_citation_of_an_item_is_held_to_its_brief(tmp_path: Path) -> None:
+    """`` `PL-MB2W` § "X" `` cites that item's brief, and the brief is what holds the words.
+
+    `check_citations` leaves a mark after a code-spanned source to containment,
+    since no documentation heading answers an item, and `QUOTED_SOURCE_RE`
+    names only a `.md` document, so seven such citations were read by nothing
+    and a drifted one passed (`PL-QYN4`). The brief is read closed as well as
+    open: a closed one is a record, and a citation of it still claims the
+    words are there.
+    """
+    readme = '# Demo\n\nWho holds an item is `PL-T3ST` § "Design round".\n'
+    root = _repo(tmp_path, readme=readme)
+    _item(root, "PL-T3ST-demo", _brief("done", "**Design round.** The recorded claim decides."))
+    assert not any("quotes PL-T3ST" in e for e in _errors(root))
+
+    _item(root, "PL-T3ST-demo", _brief("done", "**Other holds.** The recorded claim decides."))
+    assert any(
+        'quotes PL-T3ST as "Design round", which is not in docs/items/PL-T3ST-demo.md' in e
+        for e in _errors(root)
+    )
+
+
+def test_a_marked_citation_of_an_item_no_file_holds_is_an_error(tmp_path: Path) -> None:
+    """An id no brief carries resolves against nothing, which is the finding itself."""
+    readme = '# Demo\n\nWho holds an item is `PL-T3ST` § "Design round".\n'
+
+    assert any(
+        "quotes PL-T3ST, which no file under docs/items/ holds" in e
+        for e in _errors(_repo(tmp_path, readme=readme))
+    )
+
+
+def test_an_item_listed_under_a_heading_is_not_held_to_its_brief(tmp_path: Path) -> None:
+    """After an id only the mark claims the brief holds the words.
+
+    `under "X"` there names the heading the item is listed under elsewhere, as
+    both such sites did on 2026-09-26 - `` `PL-Z7LY` under "Explicitly out of
+    scope for v0.4.0" `` among them - so reading it as a quotation of the brief
+    would refuse prose that is right.
+    """
+    readme = '# Demo\n\n`PL-T3ST` under "Known limitations" is out of scope.\n'
+    root = _repo(tmp_path, readme=readme)
+    _item(root, "PL-T3ST-demo", _brief("ready", "Something else entirely."))
+    report = doc_check.analyze(root)
+
+    assert not any("quotes PL-T3ST" in finding for finding in report.errors + report.advisories)
+
+
 def test_a_citation_wrapping_inside_a_blockquote_is_not_reported_stale(tmp_path: Path) -> None:
     """A `>` opening the continued line belongs to the blockquote, not the quote.
 

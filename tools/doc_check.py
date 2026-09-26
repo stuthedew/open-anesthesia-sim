@@ -410,7 +410,8 @@ BRACE_RE = re.compile(r"\{([^{}]*)\}")
 # (`PL-QQCD`). A mark that a code-spanned source stands directly before is not
 # this pattern's to resolve: `` `docs/MODEL.md` § "X" `` names its document and
 # `QUOTED_SOURCE_RE` holds it by containment, and `` `PL-MB2W` § "X" `` names
-# an item brief, which no documentation heading answers.
+# an item brief, which no documentation heading answers and `ITEM_SECTION_RE`
+# holds the same way.
 #
 # The mark names a section of this repository's own documents, and nothing
 # else. A section of an outside source - a paper's "Materials and Methods", a
@@ -526,6 +527,18 @@ CLAIMING_CONNECTIVE_RE = re.compile(r"§{1,2}|['\u2019]s(?:\s+own)?")
 #: "Known limitations" `` is `QUOTED_SOURCE_RE`'s to hold, by containment, and
 #: telling it to take a `§` would break the one match that reads it.
 QUALIFIED_RE = re.compile(r"`[\w./-]+`[ \n]*" + CITATION_CONNECTIVE + r"?[ \n]*$")
+#: A section mark after a code-spanned item id, which cites that item's brief:
+#: `` `PL-MB2W` § "Design round, 2026-09-24" ``. `QUALIFIED_RE` hands it on
+#: from `check_citations`, since no documentation heading answers it, and
+#: `QUOTED_SOURCE_RE` names only a `.md` document, so the seven such citations
+#: standing on 2026-09-26 were read by nothing (`PL-QYN4`). The mark alone,
+#: because nothing else after an id claims the brief holds the words: `under
+#: "X"` names the heading the item is listed under elsewhere, as both such sites
+#: did that day, and a quotation after a bare id is prose. The possessive would
+#: claim it, and waits on a comparison that folds emphasis (`PL-RX0W`).
+ITEM_SECTION_RE = re.compile(
+    r"`(?P<item>" + ID_PATTERN + r')`[ \n]*§{1,2}[ \n]*"(?P<quoted>\w[^"]{2,200}?)"', re.DOTALL
+)
 
 # The `**Tags.**` statement. What it claims is deliberately not a list: the
 # version table above it already says which releases exist, so restating them
@@ -3693,8 +3706,8 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
 
         for match in CITATION_RE.finditer(prose):
             # A code-spanned source directly before the mark says where the
-            # section lives: a document, which `check_quoted_sources` holds by
-            # containment, or an item brief, which no heading here answers.
+            # section lives: a document, or an item brief no heading here
+            # answers, and `check_quoted_sources` holds either by containment.
             before = prose[max(0, match.start() - 200) : match.start()]
             if _inside(match.start(), spans) or QUALIFIED_RE.search(before):
                 continue
@@ -4034,21 +4047,40 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     advisory: the words may be a proposal for the file or a sentence it has
     since dropped, which it rightly lacks, and a reader can tell that from
     drift where no spelling can (`PL-HVST`).
+
+    **An item id is a source too, after the mark** - `ITEM_SECTION_RE`. The
+    brief its file holds is tested the same way, closed or open, because a
+    citation of a closed brief still claims the words are there; only a
+    closed brief's own citations go unread, since `_quoting_sources` reads the
+    live briefs alone. An id no file under `docs/items/` holds is an error, and
+    one two files hold is declined rather than guessed at.
     """
     bodies: dict[str, str | None] = {}
+    briefs: dict[str, list[str]] = {}
+
+    def body_of(cited: str) -> str | None:
+        if cited not in bodies:
+            target = root / cited
+            bodies[cited] = (
+                _comparable(target.read_text(encoding="utf-8")) if target.is_file() else None
+            )
+        return bodies[cited]
+
+    def briefs_of(item: str) -> list[str]:
+        if item not in briefs:
+            store = root / "docs" / "items"
+            named = (*store.glob(f"{item}-*.md"), *store.glob(f"{item}.md"))
+            briefs[item] = sorted(brief.relative_to(root).as_posix() for brief in named)
+        return briefs[item]
 
     for path, offset, text in _quoting_sources(root, documents, report.declined):
-        for match in QUOTED_SOURCE_RE.finditer(_without_fences(text)):
+        prose = _without_fences(text)
+        for match in QUOTED_SOURCE_RE.finditer(prose):
             cited, quoted = match.group("document"), _normalized(match.group("quoted"))
             if "..." in quoted or "…" in quoted:
                 continue
             line = offset + _line_of(text, match.start()) - 1
-            if cited not in bodies:
-                target = root / cited
-                bodies[cited] = (
-                    _comparable(target.read_text(encoding="utf-8")) if target.is_file() else None
-                )
-            body = bodies[cited]
+            body = body_of(cited)
             if body is None:
                 finding = f"{path}:{line}: quotes {cited}, which does not exist"
             elif _comparable(quoted).rstrip(" .,;:") not in body:
@@ -4062,6 +4094,26 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                     f"{finding} - drift, if it quotes the file; if it quotes wording proposed "
                     "for it or since removed, nothing to do (only `§` or the possessive claims "
                     "the file holds the words)"
+                )
+
+        for match in ITEM_SECTION_RE.finditer(prose):
+            item, quoted = match.group("item"), _normalized(match.group("quoted"))
+            if "..." in quoted or "…" in quoted:
+                continue
+            line = offset + _line_of(text, match.start()) - 1
+            held = briefs_of(item)
+            if not held:
+                report.errors.append(
+                    f"{path}:{line}: quotes {item}, which no file under docs/items/ holds"
+                )
+            elif len(held) > 1:
+                report.declined.append(
+                    f'{path}:{line}: quotes {item} as "{quoted}", but {len(held)} files under '
+                    "docs/items/ carry that id, so which brief it cites was not decided"
+                )
+            elif _comparable(quoted).rstrip(" .,;:") not in (body_of(held[0]) or ""):
+                report.errors.append(
+                    f'{path}:{line}: quotes {item} as "{quoted}", which is not in {held[0]}'
                 )
 
 
