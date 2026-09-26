@@ -2273,12 +2273,9 @@ def _check_misread(report: Report, known: set[str]) -> None:
     """Hold every generator head to stating the one fact its members misread.
 
     The two checks above decide whether a head is recorded and whether it
-    ranks. This holds what makes it comparable: triage compared each new item
-    with one head at a time and never compared heads with each other, so one
-    record read by several readers got a head per reader - four for "who holds
-    an item" before `PL-MB2W` named it (`PL-5MYR`). The stated fact is what
-    `docket generators --misread` sorts, so two heads reading one record sit
-    next to each other where a session will see them.
+    ranks. This holds what makes it comparable (`PL-5MYR`): the stated fact is
+    what `docket generators --misread` sorts, so two heads reading one record
+    sit next to each other where a session will see them.
 
     Closed heads are held too, unlike the verdict check beside this. A closed
     head's verdict moves no ranking; its stated fact is what a later capture

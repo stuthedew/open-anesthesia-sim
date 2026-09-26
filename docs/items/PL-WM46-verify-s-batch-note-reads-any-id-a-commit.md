@@ -3,11 +3,12 @@ id: PL-WM46
 title: verify's batch NOTE reads any id a commit subject mentions as a batch claim, and prints every audited commit as naming it, so a closure whose one subject cited PL-9RFP mid-sentence read as 4 commits also naming PL-9RFP
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
+closed: 2026-09-25
 payoff: verify's batch note fires only on a real batch, so readers keep reading it
 verify: grep -q 'def test_a_subject_citing_another_item_is_not_a_batch' subprojects/docket/tests/test_verify.py
 ---
@@ -52,3 +53,15 @@ case, is still reported.
 
 **Generator check.** One-off: `vcs.leading_ids` is already the single reading of
 which ids a subject claims, and this function predates using it.
+
+**Worked.** `other_items_named` now returns the other ids and how many
+commits lead with one, as a pair, so the note reads `1 of 3 commit(s) also
+lead with PL-B2B2`: the total is kept beside the count, and "lead with"
+replaces "name" so the sentence says what was read. The subjects are read
+NUL-separated (`--format=%s%x00`) rather than split into lines, which
+`vcs.leading_ids` tolerates since its pattern allows leading whitespace. The
+`ID_PATTERN` import went with the old reading, having no other use in the
+module. The tests share a small helper, `_commit_each`, that makes one commit
+per subject, each adding a test so no commit removes an assertion; the second
+test pins the count, which the brief asked for and no existing test covered.
+Both fail with the fix reverted.

@@ -3,11 +3,12 @@ id: PL-0TB3
 title: The rationale that heads were compared with nothing, so one record got a head per reader, is written out in five docstrings and the docket README; the apparatus standard names restated prose as bloat
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: generator-identification
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md
 added: 2026-09-24
+closed: 2026-09-26
 payoff: the reason heads carry a misread: line is kept true in one place instead of six
 verify: ! grep -rqF --include=*.py 'one head at a time' subprojects/docket/src/docket && ! grep -rqF --include=*.py 'head per reader' subprojects/docket/src/docket
 ---
@@ -46,3 +47,16 @@ each function that session touched, and no head's `misread:` states a fact
 this misreads. The closed-head paragraph written three times by the same
 commit is the same shape. That is noted here, and not added to this item's
 scope.
+
+**Worked.** The README section already stated the whole rationale, including
+why the overlap of member lists cannot stand in for the `misread:` line (the
+paragraph under the `docket generators` summary, same section), so it is
+unchanged and the five source copies were cut. `Item.misread`'s comment keeps
+one sentence naming the README section and `PL-5MYR`; `overlaps`,
+`format_clusters`, `_check_misread` and `cmd_generators` keep their `PL-5MYR`
+citation and the sentences about what that function itself does. Two
+near-matches were left as they are: `format_misread`'s clause "the comparison
+nobody was making (`PL-5MYR`)", which is a clause naming the item, and
+`_check_misread`'s error text "head is compared with nothing", which is output
+rather than rationale. The closed-head paragraph this brief notes and leaves
+out of scope is untouched.

@@ -37,11 +37,15 @@ added below it afterwards turns the claim into prose. On a branch the remote
 does not have yet it pushes with `--set-upstream`, fetches again and re-reads,
 so a claim another session pushed in the same minute is seen: exit 3 then
 prints the line to yield by, and exit 4 means the claim is only in this
-checkout until you push - the push failed, or the branch was already on the
-remote and none was tried (`PL-1X56`) - or that the remote could not be asked
-whether it has the branch, so nothing was pushed. An upstream naming the
-default branch, which is how the web harness starts some sessions, is not
-refused as pushing elsewhere (`PL-KX73`). Who holds
+checkout - the push failed, or the branch was already on the remote and none
+was tried - so nobody else can see it until `claim` publishes it (`PL-1X56`),
+or that the remote could not be asked whether it has the branch, so nothing was
+pushed. Run the `claim` the message prints - the same command again after a
+failed push or an unanswered remote, `--push` added once auto-merge is disarmed
+on a branch the remote has - and not `git push`, which skips the check for a
+claim another session published meanwhile (`PL-ZLJ9`, below). An upstream
+naming the default branch, which is how the web harness starts some sessions,
+is not refused as pushing elsewhere (`PL-KX73`). Who holds
 an item is that recorded claim, read by `claims.holdings` (`PL-MB2W` § "Design
 round, 2026-09-24"), and not whatever shape the first push happens to take;
 `show`, `flight` and `next` answer from the same read, so a takeover or a yield
@@ -70,13 +74,16 @@ under every other: `PL-HX5C` implemented `PL-W8XP` in full inside a session
 titled for other work, and `PL-N2PP`'s rider was seen by no guard until its
 push. On a branch the remote already has, `claim` commits and does not push,
 because a pull request may be open and armed and the push would merge the claim
-away with the branch (`PL-QP9Z`); it says so, names the push command and exits
-4, since until that push no other session can see the claim; the claim rides
-your next push, made after disarming auto-merge if it is armed. It asks the
-remote itself, so neither the tracking setting nor the tracking ref the harness
-writes at session start for a branch nobody has pushed decides that
-(`PL-WX87`). Running `claim` again on an item the branch already holds writes
-nothing, and pushes a claim an earlier run could not.
+away with the branch (`PL-QP9Z`); it says so and exits 4, since until the claim
+is pushed no other session can see it. Disarm auto-merge if it is armed, then
+publish it with the `bin/docket claim <id> --push` the message names, before
+any other push: a claim left to ride your next work push is published without
+the check for one another session published meanwhile. It asks the remote
+itself, so neither the tracking setting nor the tracking ref the harness writes
+at session start for a branch nobody has pushed decides that (`PL-WX87`).
+Running `claim` again on an item the branch already holds writes nothing, and
+pushes a claim an earlier run could not - unless another session has published
+a claim on it since, when it withdraws this branch's instead, as below.
 
 **Taking over a dead claim is `bin/docket claim <id> --over <branch> --reason
 "..."`, and only on the owner's word or with `get_session` showing the holding
@@ -118,9 +125,19 @@ rather than a merge to make.
 The ids stay in flight for `docket next`, because the work exists and starting
 it again would redo what is already written.
 
-`claim`'s read after its push narrows the race rather than closing it: a
-claim written first and pushed last still orders first, and the session it
-overtakes learns that only by reading `show` again.
+`claim`'s read after its push narrows the race rather than closing it. **A
+claim never pushed yields to one already published** (`PL-ZLJ9`): claims order
+by author date and git records no push time, so a claim written first and
+published last would order first, and take the item from a session already
+told it holds it. So before it pushes or reports, `claim` withdraws every live
+claim of this branch's that orders first but is not on the remote, where
+another branch's claim on the item is: a `Yield:` committed and not pushed,
+which rides the push that publishes the claim, and exit 3 where the item was
+one asked for. Two residuals stay open. A stale claim published by a hand or
+work push rather than by `claim` skips that check, which is why a claim is
+published only through `claim`; and two claims pushed in the same minute are
+still ordered by date, the session overtaken learning that only by reading
+`show` again.
 
 **So read the session list too, which sees what no ref can.** `list_sessions`
 from the `claude-code-remote` MCP server (`mine: true`) returns every session's
@@ -153,7 +170,7 @@ other has it.
 One consequence worth acting on before the verdict is ever needed: a branch
 nobody can fetch is not in the other session's copy of the order at all, which
 is the second reason `claim` pushes at once, and why exit 4 - a claim only this
-checkout holds - wants the push made, or retried, before any work.
+checkout holds - wants the `claim` it names run before any work.
 
 **Yielding costs a session's work only if the session throws it away**, so hand
 it over instead:

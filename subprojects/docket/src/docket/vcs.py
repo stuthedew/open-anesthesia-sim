@@ -159,11 +159,22 @@ def changed_path_args(subcommand: str, *args: str) -> list[str]:
     addition it is, so every such read builds its argv here, and a new one cannot
     leave the flag out by copying whichever spelling it found first.
 
+    `core.quotePath` is off for the same reason: a path git quotes is a path no
+    caller can match. Left on, git prints a path outside ASCII as a quoted string
+    of octal escapes, so a committed `src/anesthesia_sim/core/café.py` came back
+    as `"src/anesthesia_sim/core/caf\\303\\251.py"`, quotes included, and the
+    protected-path audit passed it as "none touched" (`PL-8HSX`). Off, it prints
+    as written. A path holding a tab, newline, `"` or `\\` is quoted either way,
+    measured on git 2.43.0, 2026-09-25, so a read that must see those as written
+    adds `-z` and splits on NUL, as `verify.changed_paths` does. The `-c` goes
+    ahead of the subcommand, where git reads it, so `argv[0]` here is `-c` and
+    `subcommand_of` is what names the read.
+
     A read asking which file is new (`--diff-filter=A`) or where a file came from
     (`-M`, `--follow`) does not come here, because there the pairing is the
     answer: a retitled item is not a new filing.
     """
-    return [subcommand, "--no-renames", *args]
+    return ["-c", "core.quotePath=false", subcommand, "--no-renames", *args]
 
 
 def _asks_for_a_blob(args: list[str]) -> bool:
@@ -202,7 +213,7 @@ def _asks_for_a_diff(args: list[str]) -> bool:
     and `_run_git` would have discarded what either said: the 1 comes back as
     `""` and carries no status.
     """
-    return _subcommand(tuple(args)) == "diff"
+    return subcommand_of(args) == "diff"
 
 
 def _run_git(args: list[str], root: Path) -> str:
@@ -228,6 +239,13 @@ def _run_git(args: list[str], root: Path) -> str:
     | `diff` outside a repository | 1 | **silence** |
     | a mistyped option | 129 | **silence** |
     | git missing, or the ten-second timeout | - | **silence** |
+    | a path whose bytes are not in the locale's encoding | 0 | **silence** |
+
+    The last row is this function's, not git's: `changed_path_args` has git
+    print a path as written, and a `café.py` named in Latin-1 holds the byte
+    `\\351`, which no UTF-8 decode reads, so `subprocess.run` raised out of a
+    read whose contract is that nothing does (`PL-8HSX`, measured on Linux).
+    Git answered; this could not read it.
 
     So exit 1 is git saying no and exit 128 is git not saying anything, with one
     exception each way and the reason for each on the predicate that carries it:
@@ -245,7 +263,7 @@ def _run_git(args: list[str], root: Path) -> str:
         result = subprocess.run(
             ["git", *args], cwd=root, capture_output=True, text=True, timeout=10, check=False
         )
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError, UnicodeDecodeError):
         return SILENT
     if result.returncode == 0:
         return result.stdout
@@ -341,13 +359,15 @@ _READ_ONLY = frozenset(
 _ENCODING = locale.getpreferredencoding(False)
 
 
-def _subcommand(argv: tuple[str, ...]) -> str:
+def subcommand_of(argv: Sequence[str]) -> str:
     """The git subcommand an argv names, ignoring the options in front of it.
 
     `-c` and `-C` take their value as the next word, which is not the
-    subcommand: `claims.work_under_record` asks `-c core.quotePath=false log`,
-    and read as the subcommand `core.quotePath=false` it was counted under
-    that name and, being no read this module knows, emptied the memo.
+    subcommand. `claims.work_under_record` asked `-c core.quotePath=false log`
+    first, and read as the subcommand `core.quotePath=false` it was counted
+    under that name and, being no read this module knows, emptied the memo
+    (`PL-N162`). Every read `changed_path_args` builds now asks that way, which
+    is why `verify` names a read that failed by this rather than by `argv[0]`.
     """
     words = iter(argv)
     for token in words:
@@ -399,7 +419,16 @@ class RefWalk:
     merged: int = 0
     unmerged: int = 0
     commits: int = 0
+    #: Each unmerged ref's item files, summed across refs: an item file edited
+    #: on ten refs counts ten.
     item_edits: int = 0
+    #: The distinct item files those refs edit between them, so the same file
+    #: counts once however many refs edit it. Printed beside the sum rather than
+    #: in place of it, because the gap between the two is the overlap: on a clone
+    #: of long-lived branches all editing one store the sum ran 2.6x the files,
+    #: and a per-edit rate divided by the sum over-predicted by as much
+    #: (`PL-3BYK`).
+    item_files: int = 0
     #: Per unmerged ref: its name, the commits it holds that the base does not,
     #: and how many item files it touches. The per-ref detail rather than the
     #: totals alone, because that is what makes two machines comparable by
@@ -484,7 +513,7 @@ class GitRunner:
 
     def __call__(self, args: list[str], root: Path) -> str:
         argv = tuple(args)
-        sub = _subcommand(argv)
+        sub = subcommand_of(argv)
         self._asked[sub] += 1
         self._distinct.setdefault(sub, set()).add(argv)
         key = (argv, str(root))
@@ -4765,6 +4794,7 @@ def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> Ref
     prefix = items_dir.strip("/") + "/"
     walked: list[tuple[str, int, int]] = []
     unread: list[str] = []
+    distinct: set[str] = set()
     for name in listing:
         if name in merged:
             continue
@@ -4784,12 +4814,14 @@ def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> Ref
             if line.strip()
         ]
         walked.append((name, int(ahead) if ahead.isdigit() else 0, len(touched)))
+        distinct.update(touched)
     return RefWalk(
         listed=len(listing),
         merged=len(merged),
         unmerged=len(walked) + len(unread),
         commits=sum(ahead for _, ahead, _ in walked),
         item_edits=sum(edits for _, _, edits in walked),
+        item_files=len(distinct),
         refs=tuple(walked),
         unread=tuple(sorted(unread)),
         declined=run.reason,

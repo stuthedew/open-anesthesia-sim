@@ -18,22 +18,38 @@ and made with `--only`, so nothing staged rides it.
 with `HELD_ELSEWHERE` and writes nothing where a live claim on another branch
 orders first - unless `--over` names that branch, or `HEAD` already contains
 that branch's tip, which is a continuation and is written as a takeover
-without being asked. It pushes only a branch the remote does not have, and asks
-the remote itself rather than the tracking setting or the clone's tracking ref
-(`PL-WX87`): a branch the remote has may have a pull request open and armed,
-and a push would merge the claim away with the branch (`PL-QP9Z`). An upstream
-naming the default branch is how the web harness starts a session branch
-(`PL-KX73`), so it is not refused as pushing to another branch, and the push
-gives the branch its own. After a push it fetches again and
-re-reads, because a claim pushed in the same minute is invisible until then;
-where that one orders first, the answer is `HELD_ELSEWHERE` and the line to
-yield by. A claim that did not reach the remote is `LOCAL_ONLY`, whether its
-push failed or the branch's copy on the remote meant none was tried: no other
-session can fetch it, and a session reports the exit status as evidence that
-its claim is visible, so `CLAIMED` would say it was held when it is not
-(`PL-1X56`). So is one where the remote could not be asked, since whether it
-has the branch is what the push waits on (`PL-WX87`). The message says which,
-and names the push that publishes it.
+without being asked. It pushes only a branch the remote does not have, unless
+`push` says auto-merge is disarmed, and asks the remote itself rather than the
+tracking setting or the clone's tracking ref (`PL-WX87`): a branch the remote
+has may have a pull request open and armed, and a push would merge the claim
+away with the branch (`PL-QP9Z`). An upstream naming the default branch is how
+the web harness starts a session branch (`PL-KX73`), so it is not refused as
+pushing to another branch, and the push gives the branch its own. After a push
+it fetches again and re-reads, because a claim pushed in the same minute is
+invisible until then; where that one orders first, the answer is
+`HELD_ELSEWHERE` and the line to yield by. A claim that did not reach the
+remote is `LOCAL_ONLY`, whether its push failed or the branch's copy on the
+remote meant none was tried: no other session can fetch it, and a session
+reports the exit status as evidence that its claim is visible, so `CLAIMED`
+would say it was held when it is not (`PL-1X56`). So is one where the remote
+could not be asked, since whether it has the branch is what the push waits on
+(`PL-WX87`). The message says which, and names the `claim` that publishes it.
+
+**A claim never pushed yields to one already published** (`PL-ZLJ9`). Claims
+order by author date and git records no push time, so a claim written first
+and published last would order first, and take the item from a session told
+it held it while this one was invisible. So before anything else, every live
+claim of this branch's that orders first but is not on the remote's copy of
+the branch, where a claim on another branch is on that branch's copy, is
+withdrawn: a `Yield:` committed and not pushed, since it matters only once the
+claim it ends is published, and rides the same push. Every one, not only those
+asked for, because a push publishes them all. An item asked for that is
+withdrawn refuses the call with `HELD_ELSEWHERE`. A claim published by a hand
+or work push skips the check, which is why every message asking for a push of
+a claim names `claim` rather than `git push`; the item records that residual.
+Where the remote could not be asked the check waits for a run that can ask it,
+since which of this branch's claims are on its copy is what went unanswered,
+and nothing is pushed until then.
 
 **Why writes go round the command's runner.** `vcs._run_git` reads exit 1 as
 git answering "no", and a failed push or fetch exits 1 too, so a write read
@@ -154,6 +170,7 @@ def claim(
     reason: str = "",
     trailers: Sequence[str] = (),
     fetch: bool = True,
+    push: bool = False,
     runner: Runner | None = None,
 ) -> Written:
     """Claim `keys` for the branch `HEAD` is on, in one empty commit.
@@ -163,7 +180,8 @@ def claim(
     branch a takeover is from, and `reason` - required with it - goes into the
     commit's body; the evidence a takeover needs (the owner's word, or
     `get_session` showing that session archived or failed) is the session's to
-    have, since nothing here can ask for it.
+    have, since nothing here can ask for it. `push` pushes a branch the remote
+    already has, which the caller says is safe: no pull request on it armed.
 
     An item this branch already holds first by a recorded claim is left alone,
     so running `claim` twice writes one commit. One held only by the old rules
@@ -207,6 +225,18 @@ def claim(
             ),
         )
     notes = _unread(read)
+    # Asked once, since nothing before the push `_publish` decides on moves the
+    # remote's copy of this branch.
+    remote = _on_remote(root, branch.name)
+    # Which of this branch's claims are on that copy is what `_displaced` asks;
+    # where the remote could not say, nothing is pushed, so the check waits for
+    # a run that can ask it rather than withdraw on a guess.
+    displaced = {} if remote.failed else _displaced(root, read, branch, remote)
+    if displaced:
+        withdrawn = _withdraw(root, branch, displaced, trailers=trailers, asked=wanted)
+        if withdrawn.code != CLAIMED:
+            return Written(withdrawn.code, (*notes, *withdrawn.lines), withdrawn.commit)
+        notes.extend(withdrawn.lines)
 
     takeovers: dict[str, Hold] = {}
     reasons: list[str] = [" ".join(reason.split())] if reason.strip() else []
@@ -250,7 +280,6 @@ def claim(
         notes.append(f"{key}: {branch.name} already holds it first; nothing written for it")
     writing = [key for key in wanted if key not in already]
     if not writing:
-        remote = _on_remote(root, branch.name)
         unpushed = [key for key, made in already.items() if not _published(root, remote, made)]
         if not unpushed:
             return Written(CLAIMED, tuple(notes))
@@ -264,6 +293,7 @@ def claim(
             remote=remote,
             made_now=False,
             command="claim",
+            push=push,
             now=now,
             items_dir=items_dir,
             said=notes,
@@ -283,6 +313,8 @@ def claim(
         verb="start",
         body=reasons,
         trailers=[*lines, *trailers],
+        remote=remote,
+        push=push,
         now=now,
         items_dir=items_dir,
         notes=notes,
@@ -355,6 +387,7 @@ def yield_claims(
         verb="yield",
         body=[],
         trailers=[*(f"Yield: {key} {branch.name}" for key in writing), *trailers],
+        remote=_on_remote(root, branch.name),
         now=now,
         items_dir=items_dir,
         notes=notes,
@@ -486,19 +519,113 @@ def _continues(root: Path, branch: _Branch, other: str) -> bool:
 
 def _held_first(hold: Hold, key: str, *, written: bool) -> tuple[str, ...]:
     """What to say where another branch holds `key` first."""
-    who = f"{hold.ref} holds it first (claimed {_when(hold.since)}"
-    who += f", session {hold.session})" if hold.session else ")"
+    who = _holds(hold, first=True)
     if written:
         return (
             f"claim: {key}: {who}, and this branch's claim, just written, orders behind it.",
             f"  Yield it with `bin/docket yield {key}`, and hand the work over as start mode says.",
         )
+    return (f"claim: {key}: {who}; nothing was written.", *_take_another(hold, key))
+
+
+def _holds(hold: Hold, *, first: bool) -> str:
+    """Who holds an item, and since when."""
+    who = f"{hold.ref} holds it{' first' if first else ''} (claimed {_when(hold.since)}"
+    return who + (f", session {hold.session})" if hold.session else ")")
+
+
+def _take_another(hold: Hold, key: str) -> tuple[str, ...]:
+    """What to do where another branch holds `key`: leave it, or take it over."""
     return (
-        f"claim: {key}: {who}; nothing was written.",
         "  Take another item. Where that session is gone - `get_session` shows it ARCHIVED or "
         "failed - or the owner says so:",
         f'  bin/docket claim {key} --over {hold.ref} --reason "..."',
     )
+
+
+def _displaced(
+    root: Path, read: Holdings, branch: _Branch, remote: _OnRemote
+) -> dict[str, tuple[Hold, Hold]]:
+    """This branch's claims that publishing would put over one already published, by item.
+
+    Each is a live claim of the branch's that orders first and is not on the
+    remote's copy of the branch, as the remote itself answered (`PL-WX87`),
+    paired with the first live claim behind it that is on its own branch's copy
+    there: the one every other session reads as holding the item, and whose
+    session was told it does (`PL-ZLJ9`). A hold read by the old rules predates
+    the record, and is left to them.
+    """
+    found: dict[str, tuple[Hold, Hold]] = {}
+    for hold in read.holds:
+        if hold.legacy or hold.state != LIVE or _branch_of(hold, branch) != branch.name:
+            continue
+        live = read.order(hold.key)
+        if live[0] is not hold or _published(root, remote, hold.commit):
+            continue
+        for rival in live[1:]:
+            name = _branch_of(rival, branch)
+            if name != branch.name and _on_copy(root, name, rival.commit):
+                found[hold.key] = (hold, rival)
+                break
+    return found
+
+
+def _withdraw(
+    root: Path,
+    branch: _Branch,
+    displaced: dict[str, tuple[Hold, Hold]],
+    *,
+    trailers: Sequence[str],
+    asked: Sequence[str],
+) -> Written:
+    """Yield each claim `_displaced` found, in one empty commit left unpushed.
+
+    Unpushed because the yield matters only once the claim it ends is
+    published, and the push that publishes that claim carries the yield with
+    it. `CLAIMED` where the call can go on to what was asked, and
+    `HELD_ELSEWHERE` where an item asked for was withdrawn, since a claim is
+    all or nothing.
+    """
+    keys = list(displaced)
+    made = _commit(
+        root,
+        keys,
+        verb="yield",
+        body=[
+            f"{rival.ref} published a claim on {key} while this branch's was unpublished."
+            for key, (_, rival) in displaced.items()
+        ],
+        trailers=[*(f"Yield: {key} {branch.name}" for key in keys), *trailers],
+    )
+    if made.code != 0:
+        return Written(
+            REFUSED,
+            (
+                f"claim: {', '.join(keys)}: this branch's claim was never pushed and another "
+                "branch's is on the remote, but `git commit` failed writing the yield that "
+                "withdraws it; nothing was written",
+                *_indented(made.err),
+                f"  Push nothing from {branch.name} until `bin/docket yield {' '.join(keys)}` "
+                "has run.",
+            ),
+        )
+    commit = _head(root)
+    lines = [
+        f"claim: {key}: {_holds(rival, first=False)}, published while this branch's claim, "
+        f"{mine.commit[:12]}, was not, so publishing this one would take the item from a "
+        "session told it holds it."
+        for key, (mine, rival) in displaced.items()
+    ]
+    lines.append(
+        f"  Withdrawn by {commit[:12]}, a yield on {branch.name} left unpushed: it rides the "
+        "push that publishes the claim."
+    )
+    refused = [key for key in keys if key in asked]
+    for key in refused:
+        lines.extend(_take_another(displaced[key][1], key))
+    if refused:
+        lines.append("claim: no claim was written; a claim is all or nothing")
+    return Written(HELD_ELSEWHERE if refused else CLAIMED, tuple(lines), commit)
 
 
 def _when(moment: datetime) -> str:
@@ -531,6 +658,8 @@ def _write(
     verb: str,
     body: list[str],
     trailers: list[str],
+    remote: _OnRemote,
+    push: bool = False,
     now: datetime,
     items_dir: str,
     notes: list[str],
@@ -538,14 +667,7 @@ def _write(
 ) -> Written:
     """Commit, push where the remote has no copy of the branch, and read the result back."""
     command = "claim" if verb == "start" else "yield"
-    paragraphs = [
-        f"{', '.join(keys)}: {verb}",
-        *([" ".join(body)] if body else []),
-        "\n".join(trailers),
-    ]
-    made = _git(
-        ["commit", "--quiet", "--allow-empty", "--only", "-m", "\n\n".join(paragraphs)], root
-    )
+    made = _commit(root, keys, verb=verb, body=body, trailers=trailers)
     if made.code != 0:
         return Written(
             REFUSED,
@@ -556,13 +678,28 @@ def _write(
         branch,
         keys,
         _head(root),
-        remote=_on_remote(root, branch.name),
+        remote=remote,
         made_now=True,
         command=command,
+        push=push,
         now=now,
         items_dir=items_dir,
         said=notes,
         check=check,
+    )
+
+
+def _commit(
+    root: Path, keys: list[str], *, verb: str, body: list[str], trailers: list[str]
+) -> _Ran:
+    """One empty commit, `<IDs>: <verb>`, with the record in its last paragraph."""
+    paragraphs = [
+        f"{', '.join(keys)}: {verb}",
+        *([" ".join(body)] if body else []),
+        "\n".join(trailers),
+    ]
+    return _git(
+        ["commit", "--quiet", "--allow-empty", "--only", "-m", "\n\n".join(paragraphs)], root
     )
 
 
@@ -575,20 +712,22 @@ def _publish(
     remote: _OnRemote,
     made_now: bool,
     command: str,
+    push: bool = False,
     now: datetime,
     items_dir: str,
     said: list[str],
     check: _Check,
 ) -> Written:
-    """Push where the remote has no copy of the branch, then read the result back.
+    """Push where the remote has no copy of the branch, or `push` says to, then read back.
 
     **The remote's copy decides, not the tracking setting.** A branch pushed
     without `-u`, or checked out in a fresh container without tracking or
     tracking the default branch, has no upstream of its own and can still carry
     an open, armed pull request, which is the case the refusal to push exists
-    for (`PL-QP9Z`). Nor does the clone's tracking ref decide, since it is not
-    the remote's copy either: `remote` is what the remote said when asked, and
-    where it could not be asked nothing is pushed and the answer is `LOCAL_ONLY`.
+    for (`PL-QP9Z`). `push` is the caller saying none is armed. Nor does the
+    clone's tracking ref decide, since it is not the remote's copy either:
+    `remote` is what the remote said when asked, and where it could not be
+    asked nothing is pushed, `push` or not, and the answer is `LOCAL_ONLY`.
 
     **Not pushed is `LOCAL_ONLY` whichever way it happened.** The read-back
     answers from this clone's refs, where a record just written is live, so
@@ -597,12 +736,23 @@ def _publish(
     (`PL-1X56`). The read-back still runs, since a record that does not read
     back at all is a defect worth saying, but it promotes nothing to `CLAIMED`
     that nobody else can fetch.
+
+    **A claim is published by `claim`, not by hand,** so the messages name it
+    rather than `git push` (`PL-ZLJ9`): `claim` withdraws a claim of this
+    branch's that another session's published since would be displaced by,
+    and a hand push publishes it regardless. A yield displaces nobody, so a
+    yield's messages name the push.
     """
     said = list(said)
     short = commit[:12]
     what = f"{', '.join(keys)}: {command} " + (
         f"written on {branch.name} as {short}" if made_now else f"{short} on {branch.name}"
     )
+    # Named in full because a bare `git push` fails on a branch with no
+    # upstream of its own, and one still tracking the default branch sends it
+    # there, or is refused, depending on `push.default`.
+    by_hand = f"git push --set-upstream {REMOTE} {branch.name}"
+    again = f"bin/docket claim {' '.join(keys)}{' --push' if remote.tip else ''}"
     if remote.failed:
         # A commit made just now is certainly local; one an earlier run made
         # may already be on the remote, which is exactly what could not be asked.
@@ -619,21 +769,25 @@ def _publish(
                 "is on the remote, with a pull request a push could merge it away with, is "
                 f"unknown. {seen}",
                 *_indented(remote.failed),
-                f"  Push it with `git push --set-upstream {REMOTE} {branch.name}` once no pull "
-                "request on the branch is armed"
-                + (", or run this again." if command == "claim" else "."),
+                f"  Run `{again}` again once the remote answers, rather than pushing by hand, "
+                "which skips the check for a claim published meanwhile."
+                if command == "claim"
+                else f"  Push it with `{by_hand}` once no pull request on the branch is armed.",
             ),
             commit,
         )
-    if remote.tip:
-        # Named in full because a bare `git push` fails on a branch with no
-        # upstream of its own, and one still tracking the default branch sends
-        # it there, or is refused, depending on `push.default`.
+    held_back = bool(remote.tip) and not push
+    if held_back:
         said.append(
             f"{what}, and not pushed, so only this checkout can see it: the branch is on the "
             f"remote as {REMOTE}/{branch.name}, so a pull request may be open on it and armed, "
-            "and a push could merge it away. Disarm auto-merge if it is armed, then push it with "
-            f"`git push --set-upstream {REMOTE} {branch.name}`."
+            "and a push could merge it away. Disarm auto-merge if it is armed, then "
+            + (
+                f"publish it with `{again}`, not `git push`: a claim pushed by hand skips the "
+                "check for one another session published meanwhile, and takes the item from it."
+                if command == "claim"
+                else f"push it with `{by_hand}`."
+            )
         )
     else:
         pushed = _git(["push", "--quiet", "--set-upstream", REMOTE, branch.name], root)
@@ -644,9 +798,12 @@ def _publish(
                     *said,
                     f"{what}, but `git push` failed, so it is local: no other session can see it.",
                     *_indented(pushed.err),
-                    # `yield` run again finds the claim ended and pushes nothing (`PL-NNLM`).
-                    f"  Push it with `git push --set-upstream {REMOTE} {branch.name}`"
-                    + (", or run this again." if command == "claim" else "."),
+                    # A `yield` run again finds the claim ended and pushes nothing, so it
+                    # is not offered (`PL-NNLM`).
+                    f"  Run `{again}` again once what git says is dealt with, rather than "
+                    "pushing by hand, which skips the check for a claim published meanwhile."
+                    if command == "claim"
+                    else f"  Push it with `{by_hand}`.",
                 ),
                 commit,
             )
@@ -658,7 +815,7 @@ def _publish(
             )
     reread = holdings(root, now=now, items_dir=items_dir, runner=_run_git)
     code, lines = check(root, reread, keys, branch, commit)
-    if remote.tip and code == CLAIMED:
+    if held_back and code == CLAIMED:
         code = LOCAL_ONLY
     return Written(code, (*said, *lines), commit)
 
@@ -696,6 +853,12 @@ def _published(root: Path, remote: _OnRemote, commit: str) -> bool:
     if not remote.tip:
         return False
     return _git(["merge-base", "--is-ancestor", commit, remote.tip], root).code == 0
+
+
+def _on_copy(root: Path, name: str, commit: str) -> bool:
+    """Whether the remote's copy of another branch, as of the last fetch, carries `commit`."""
+    ref = f"refs/remotes/{REMOTE}/{name}"
+    return bool(commit) and _git(["merge-base", "--is-ancestor", commit, ref], root).code == 0
 
 
 def _recorded(root: Path, base: str, branch: _Branch, key: str) -> str:

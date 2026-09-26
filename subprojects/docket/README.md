@@ -38,7 +38,10 @@ docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
 docket verify PL-K7QX --self # ...auditing your own branch, not reviewing a delegated one
 docket claim PL-K7QX         # record that this branch holds an item: one empty commit,
-                             # pushed where the remote has no copy of the branch yet
+                             # pushed where the remote has no copy of the branch yet;
+                             # a claim never pushed yields to one published since
+docket claim PL-K7QX --push  # ...publishing it where the remote has the branch,
+                             # once auto-merge is disarmed on its pull request
 docket claim PL-K7QX --over claude/x --reason "..."   # ...taking it over from a dead claim
 docket yield PL-K7QX         # end this branch's claim without closing the item
 docket arm                   # whether this branch's pull request may be armed:
@@ -3352,12 +3355,19 @@ disabled - had no entry until `PL-5B88`, so the check reported `none` with
 one in the diff. The widening owed the count a narrowing does: replayed over
 `main`'s 1,115 non-merge commits, it flags one added line, a
 `@pytest.mark.skipif` on a test that needs `bash` - a real directive, which a
-reviewer should see - and no prose in any suffix the check reads. Not read,
-and absent from that history too: `pytest.importorskip`,
-`unittest.expectedFailure`, `self.skipTest`, a raised `unittest.SkipTest`, and
-`collect_ignore` in a `conftest.py` (`PL-DNZ0`). A deselection in `addopts` is
-configuration: in `pyproject.toml`, one of `gate_paths`' defaults, the gate
-check reads it, and in a `.cfg` or `.ini` file nothing does.
+reviewer should see - and no prose in any suffix the check reads. The rarer
+forms followed in `PL-DNZ0`: `importorskip` reads `pytest.importorskip`,
+which skips a module whose import fails; `expectedFailure` reads
+`@unittest.expectedFailure`, unittest's `xfail`; `skipTest` the imperative
+`self.skipTest`; `SkipTest` a raised `unittest.SkipTest`, the exception both
+frameworks skip on; and `collect_ignore` and `pytest_ignore_collect` the list
+and the hook a `conftest.py` drops a file from collection with,
+`collect_ignore_glob` included. Replayed over `main`'s 1,237 non-merge commits
+on 2026-09-25, the six flag no added line: `importorskip` has a common
+legitimate use, an optional dependency, and when one arrives a reviewer sees it
+as they see the `bash` guard. A deselection in `addopts` is configuration: in
+`pyproject.toml`, one of `gate_paths`' defaults, the gate check reads it, and
+in a `.cfg` or `.ini` file nothing does.
 
 What counts as a *removed assertion* is decided by the parser rather than by a
 line (`PL-4W2L`): an assertion the base's copy of a `.py` file holds - an
@@ -3683,6 +3693,24 @@ asked to act on it.
 
 Refusing such a run instead was considered and is wrong: reading another
 project's store under its own defaults is correct behaviour and a real use.
+
+**Where a git read takes the store from is the sibling question, and the same
+invocation answers it** (`PL-T441`). The settings come from beside the store;
+the store, for every read that asks git about the queue - what has landed,
+which closure is owed a `pr`, what a branch holds, what a `--verify` replay is
+scoped to - is the one the command resolved, spelled as git spells it beneath
+the repository root (`Invocation.tracked`, from `_tracked` in `cli.py`). It is
+never `config.items_dir`: `--items` wins over the setting here for the reason
+it does above, since a command pointed at one queue must not be answered about
+another. Handed the setting instead, a store that `--items` named and the
+loaded settings did not made every `git show` miss, so no closure had landed,
+no `pr` was owed, and `docket check` reported a clean provenance record for a
+store it never read - exit zero, a plausible count, and nothing on the line
+saying the question went unasked. A store git cannot address - outside the
+repository, or the repository root itself - comes back as the empty prefix,
+and no reader takes that for an empty queue: the in-flight reading keeps every
+commit's claim, and the readers that cannot ask git about such a store at all
+decline rather than answer (`_tracked`'s docstring names them).
 
 ### `notes_file`: making a threads file reachable
 

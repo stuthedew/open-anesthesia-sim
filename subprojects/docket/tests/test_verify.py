@@ -208,6 +208,43 @@ def test_the_command_is_told_it_is_running_underneath_docket_verify(tmp_path: Pa
     assert verify(root, _item(verify=probe), _config(), "HEAD~1").passed
 
 
+def test_a_nested_docket_check_from_verify_declines(tmp_path: Path) -> None:
+    """A `verify:` running `docket check --verify` does not replay the store under the audit.
+
+    `verify_item` set only `VERIFY_GUARD`, so such a command made `docket
+    verify` run every open item's command one level down (`PL-SHTR`). The store
+    here holds an item whose command leaves a file behind, so a sweep is seen
+    rather than inferred, and the same command run outside `docket verify` is
+    the control showing it would sweep.
+    """
+    root = _repo(tmp_path)
+    (root / "docs" / "items" / "PL-C3C3-leave-a-mark.md").write_text(
+        _stored("PL-C3C3", "Leave a mark", verify="touch swept")
+    )
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-C3C3 capture")
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 1\n",
+    )
+    source = Path(verify_module.__file__).resolve().parents[1]
+    # `; true` because this store's items carry only the fields the audit
+    # reads, so the nested check's exit reports them, and the file is the answer.
+    nested = f'PYTHONPATH="{source}" "{sys.executable}" -m docket check --verify; true'
+    swept = root / "swept"
+
+    subprocess.run(nested, shell=True, cwd=root, check=True, capture_output=True)
+    assert swept.exists()
+    swept.unlink()
+
+    report = verify(root, _item(verify=nested), _config(), "HEAD~1")
+
+    assert _check(report, "`verify:` command passes").passed
+    assert not swept.exists()
+
+
 def test_a_file_outside_touches_is_rejected(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     _work(root, "PL-K7QX stray edit", "tests/other.py", "x = 1\n")
@@ -247,6 +284,111 @@ def test_moving_a_protected_file_out_is_rejected(tmp_path: Path, subject: str) -
     protected = _check(report, "no protected path modified")
     assert not protected.passed
     assert "src/core.py" in protected.detail
+
+
+def _audit_one_file(root: Path, name: str, subject: str) -> Check:
+    """The protected-path check, with one file added under a protected directory.
+
+    Committed under `subject`, or left uncommitted where it is empty. An item's
+    own commit is read with `show`, a commit naming no id through the branch
+    diff, and uncommitted work through `status`, so between them the three
+    cover each read `changed_paths` makes.
+    """
+    added = f"src/anesthesia_sim/core/{name}"
+    (root / "src" / "anesthesia_sim" / "core").mkdir(parents=True)
+    (root / added).write_text("VALUE = 2\n", encoding="utf-8")
+    if subject:
+        _git(root, "add", "-A")
+        _git(root, "commit", "-qm", subject)
+    report = verify(
+        root,
+        _item(touches=(added,)),
+        _config(protected_paths=("src/anesthesia_sim/core",)),
+        "HEAD~1" if subject else "HEAD",
+    )
+    return _check(report, "no protected path modified")
+
+
+@pytest.mark.parametrize(
+    "subject",
+    ["PL-K7QX add a core module", "add a core module", ""],
+    ids=["the item's own commits", "the branch diff", "uncommitted"],
+)
+def test_a_non_ascii_protected_path_is_rejected(tmp_path: Path, subject: str) -> None:
+    """A path outside ASCII is compared as written (`PL-8HSX`).
+
+    git printed `src/anesthesia_sim/core/café.py` as
+    `"src/anesthesia_sim/core/caf\\303\\251.py"`, quotes included, in all three
+    reads, and `_within` matched that against no protected path, so the audit
+    passed a new core module as "none touched".
+    """
+    protected = _audit_one_file(_repo(tmp_path), "café.py", subject)
+
+    assert not protected.passed
+    assert "src/anesthesia_sim/core/café.py" in protected.detail
+
+
+@pytest.mark.parametrize(
+    ("name", "subject"),
+    [("t\tab.py", "PL-K7QX add a core module"), ("t\tab.py", "add a core module"), ("a b.py", "")],
+    ids=["a tab, the item's own commits", "a tab, the branch diff", "a space, uncommitted"],
+)
+def test_a_path_git_quotes_whatever_quote_path_says_is_rejected(
+    tmp_path: Path, name: str, subject: str
+) -> None:
+    """`-z` is the one form git quotes nothing in, so every read asks for it (`PL-8HSX`).
+
+    `core.quotePath=false` leaves a tab, newline, `"` or `\\` quoted, and
+    `status` quotes a space as well: measured on git 2.43.0, an uncommitted
+    `src/anesthesia_sim/core/a b.py` was read as `"src/.../a b.py"` and passed.
+    """
+    protected = _audit_one_file(_repo(tmp_path), name, subject)
+
+    assert not protected.passed
+    assert f"src/anesthesia_sim/core/{name}" in protected.detail
+
+
+def test_an_untracked_file_the_status_config_hides_is_rejected(tmp_path: Path) -> None:
+    """`status.showUntrackedFiles=no` drops untracked files from the porcelain (`PL-8HSX`).
+
+    Set in a developer's git config, it passed a new, uncommitted core module as
+    "none touched" until `changed_paths` asked for `--untracked-files=all`.
+    """
+    root = _repo(tmp_path)
+    _git(root, "config", "status.showUntrackedFiles", "no")
+
+    protected = _audit_one_file(root, "new.py", "")
+
+    assert not protected.passed
+    assert "src/anesthesia_sim/core/new.py" in protected.detail
+
+
+def test_a_protected_path_that_is_not_utf8_stops_the_audit(tmp_path: Path) -> None:
+    """A path the audit cannot read as text ends it, rather than raising (`PL-8HSX`).
+
+    `-z` prints a Latin-1 `café.py` as the byte `\\351`, which no UTF-8 decode
+    reads. Uncaught, it was a traceback out of `verify`; caught, it is the read
+    that stops the audit, which never passes.
+    """
+    root = _repo(tmp_path)
+    blob = subprocess.run(
+        ["git", "hash-object", "-w", "src/core.py"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    # Through the index alone, so no filesystem is asked to hold the name.
+    cacheinfo = f"100644,{blob},".encode() + b"src/anesthesia_sim/core/caf\xe9.py"
+    subprocess.run(
+        [b"git", b"update-index", b"--add", b"--cacheinfo", cacheinfo], cwd=root, check=True
+    )
+    _git(root, "commit", "-qm", "PL-K7QX add a core module")
+
+    report = verify(root, _item(), _config(protected_paths=("src/anesthesia_sim/core",)), "HEAD~1")
+
+    assert not report.passed
+    assert not _check(report, "the diff could be read").passed
 
 
 def test_editing_the_gate_is_rejected(tmp_path: Path) -> None:
@@ -312,6 +454,12 @@ def test_a_suppression_is_still_found_after_a_word_character(tmp_path: Path) -> 
         ("imported", "@mark.skip"),
         ("module", 'pytestmark = pytest.mark.skip(reason="flaky")'),
         ("unittest", '@unittest.skip("broken")'),
+        ("importorskip", 'numpy = pytest.importorskip("numpy")'),
+        ("expectedFailure", "@unittest.expectedFailure"),
+        ("skipTest", 'self.skipTest("broken")'),
+        ("SkipTest", 'raise unittest.SkipTest("broken")'),
+        ("collect_ignore", 'collect_ignore = ["test_thing.py"]'),
+        ("pytest_ignore_collect", "def pytest_ignore_collect(collection_path, config):"),
     ],
 )
 def test_a_pytest_mark_skip_is_a_suppression(tmp_path: Path, shape: str, marker: str) -> None:
@@ -323,6 +471,13 @@ def test_a_pytest_mark_skip_is_a_suppression(tmp_path: Path, shape: str, marker:
     than `pytest.mark.skip` - the reason the assertion check matches a bare
     `raises`. `module` carries no `@` and disables a whole file, so it is what
     fails if the entry is ever anchored on the decorator.
+
+    The last six are the rarer forms, one case each (`PL-DNZ0`): `importorskip`,
+    `expectedFailure`, the imperative `skipTest`, a raised `SkipTest`, and the
+    `collect_ignore` list and `pytest_ignore_collect` hook a `conftest.py` drops
+    a file from collection with. The check reads a line's text and its file's
+    suffix, never whether the file is a `conftest.py`, so the two collection
+    forms sit in the same file as the rest.
     """
     root = _repo(tmp_path)
     _work(
@@ -336,6 +491,26 @@ def test_a_pytest_mark_skip_is_a_suppression(tmp_path: Path, shape: str, marker:
     suppression = _check(report, "no suppression added")
     assert not suppression.passed
     assert suppression.lines == (marker,)
+
+
+def test_the_suppression_evidence_names_the_lines_it_omits(tmp_path: Path) -> None:
+    """Six added suppressions print five and count the sixth (`PL-7NKD`).
+
+    The sibling of the removed-assertion cap: the count said six while five
+    lines sat under it, and nothing named the one left out.
+    """
+    root = _repo(tmp_path)
+    markers = [f'@pytest.mark.skip(reason="broken {n}")' for n in range(6)]
+    tests = "".join(
+        f"\n\n{marker}\ndef test_{n}() -> None:\n    assert {n} == {n}\n"
+        for n, marker in enumerate(markers)
+    )
+    _work(root, "PL-K7QX silence six", "tests/test_thing.py", KEPT + tests)
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    suppression = _check(report, "no suppression added")
+    assert suppression.detail == "6 line(s)"
+    assert suppression.lines == (*markers[:5], "and 1 more line(s)")
 
 
 def test_suppression_ignores_prose(tmp_path: Path) -> None:
@@ -2244,6 +2419,52 @@ def test_a_single_item_branch_says_nothing_about_other_items(tmp_path: Path) -> 
     assert not any(check.name == ALONE for check in report.checks)
 
 
+def _commit_each(root: Path, subjects: tuple[str, ...]) -> None:
+    """One commit per subject, each adding a test, so no commit removes anything."""
+    text = KEPT
+    for n, subject in enumerate(subjects):
+        text += f"\ndef test_{n}() -> None:\n    assert {n} == {n}\n"
+        _work(root, subject, "tests/test_thing.py", text)
+
+
+def test_a_subject_citing_another_item_is_not_a_batch(tmp_path: Path) -> None:
+    """`PL-WM46`: an id cited mid-sentence is a citation, not a batch claim.
+
+    `PL-19T3`'s closure had four commits all led by its own id, one of them
+    citing `PL-9RFP` in passing, and the note read that as four commits also
+    naming `PL-9RFP`. Only an id that leads a subject claims an item, which is
+    how `vcs.leading_ids` reads one.
+    """
+    root = _repo(tmp_path)
+    _commit_each(
+        root,
+        (
+            "PL-K7QX start the work",
+            "PL-K7QX run PL-B2B2's replay test with git",
+            "PL-K7QX pin the case",
+            "PL-K7QX close it",
+        ),
+    )
+
+    report = verify(root, _item(), _config(), "HEAD~4", self_audit=True)
+
+    assert not any(check.name == ALONE for check in report.checks)
+
+
+def test_the_batch_note_counts_the_commits_that_lead_with_the_other_id(tmp_path: Path) -> None:
+    """The count is of the commits carrying the other id, never every commit audited."""
+    root = _repo(tmp_path)
+    _commit_each(
+        root, ("PL-K7QX start the work", "PL-K7QX, PL-B2B2 do both things", "PL-K7QX close it")
+    )
+
+    report = verify(root, _item(), _config(), "HEAD~3", self_audit=True)
+
+    check = _check(report, ALONE)
+    assert check.advisory and not check.blocks
+    assert check.detail.startswith("1 of 3 commit(s) also lead with PL-B2B2,")
+
+
 def test_a_self_audit_still_refuses_a_removed_assertion(tmp_path: Path) -> None:
     """The line the whole design rests on.
 
@@ -2902,6 +3123,51 @@ def test_a_file_this_interpreter_cannot_parse_is_read_line_by_line_and_named(
         )
         for line in check.lines
     )
+
+
+@pytest.mark.parametrize("parsed", [True, False], ids=["parsed", "line_by_line"])
+def test_the_removed_assertion_evidence_names_the_lines_it_omits(
+    tmp_path: Path, parsed: bool
+) -> None:
+    """Six dropped assertions print five and count the sixth, on either reading.
+
+    The count on the check's own line said six while five lines sat under it,
+    and nothing named the cap or the line it left out (`PL-7NKD`). A file the
+    parser reads is grouped by function and counts what left beyond the fifth;
+    one it cannot parse is read line by line, and that list stopped at five
+    in silence.
+    """
+    root = _repo(tmp_path)
+    tail = "" if parsed else "\n\ndef broken(:\n    pass\n"
+    pinned = "".join(f"    assert value == {n}\n" for n in range(6))
+    _work(
+        root,
+        "PL-K7QX pin six",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n" + pinned + tail,
+    )
+    _work(
+        root,
+        "PL-K7QX drop six",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    pass\n" + tail,
+    )
+
+    check = _assertions(root)
+
+    assert check.blocks
+    if parsed:
+        assert check.detail == "6 assertion(s)"
+        assert [line for line in check.lines if line.startswith("    was  ")] == [
+            f"    was  assert value == {n}" for n in range(5)
+        ]
+        assert "    and 1 more that left" in check.lines
+    else:
+        assert check.detail == "6 line(s) in a file read line by line"
+        assert [line for line in check.lines if line.startswith("tests/test_thing.py: ")] == [
+            f"tests/test_thing.py: assert value == {n}" for n in range(5)
+        ]
+        assert "and 1 more line(s)" in check.lines
 
 
 @pytest.mark.parametrize(

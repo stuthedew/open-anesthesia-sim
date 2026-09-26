@@ -30,3 +30,5 @@ Reproduced: `in_queue` True, `work_under_record` False; `arm` says `hold - ... c
 **Done when.** It depends on the decision above. As filed, it is one definition in claims.py that arming imports. Under the recommendation, it is the two named predicates described there.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+**Changed by `PL-K6B2`, 2026-09-25.** Arming's side of the title no longer counts `docs/items` only: `arm` now arms a branch whose every path is under `docs/items/` or `subprojects/docket/`, `arming.py` excepted (`arming.TOOLING`, `arming.GATE`). The two definitions still disagree, now on `subprojects/docket/` as well as on `ROADMAP.md` and `docs/WORKING_NOTES.md`.

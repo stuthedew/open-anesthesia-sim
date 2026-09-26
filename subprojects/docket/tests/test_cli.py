@@ -26,7 +26,7 @@ from typing import Any
 
 import pytest
 
-from docket import claims, cli, vcs
+from docket import arming, claims, cli, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.claims import CUTOVER_MARKER, SESSION_VARIABLE, Holdings
 from docket.cli import build_parser, main, merge_shared
@@ -2030,6 +2030,80 @@ def test_a_different_version_is_refused_while_a_cut_is_unfinished(
     assert not (root / "docs" / "releases" / "v0.2.7.md").exists()
 
 
+def _cut_stopped_after(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, count: int, stamped: int
+) -> Path:
+    """A repository whose cut of v0.2.6 stamped `stamped` of `count` items and wrote no notes."""
+    root = _interruptible_repo(tmp_path, count)
+    _interrupt_after(monkeypatch, stamped)
+    with pytest.raises(_ContainerLost):
+        main(["release", "0.2.6", "--items", str(root / "items")])
+    monkeypatch.undo()
+    return root
+
+
+def test_the_digest_names_an_interrupted_cut_behind_the_releasable_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-1BS2: the digest offered what an unfinished cut had not reached as a release.
+
+    `readiness` leaves the stamps out by contract, so a six-item cut stopped
+    after two read `Releasable: 4 finished item(s) since 0.2.5` with an offer
+    beside it, and nothing said a cut was half made. The line names the
+    version, the notes never written and the command that finishes it.
+    """
+    root = _cut_stopped_after(tmp_path, monkeypatch, 6, 2)
+    capsys.readouterr()
+
+    assert main(["digest", "--items", str(root / "items")]) == 0
+
+    out = capsys.readouterr().out
+    assert (
+        "Releasable: a cut of v0.2.6 was interrupted: 2 item(s) carry `milestone: v0.2.6` "
+        "and docs/releases/v0.2.6.md was never written. Finish it before offering another "
+        "- `make release VERSION=0.2.6` cuts all 6."
+    ) in out
+    assert "4 finished item(s)" not in out
+    assert "Offer" not in out
+
+
+def test_the_digest_names_an_interrupted_cut_that_left_nothing_unstamped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Stopped after its bump, a cut leaves no remainder, and the line used to be absent."""
+    root = _interruptible_repo(tmp_path, 3)
+
+    def stop(version: str) -> str:
+        raise _ContainerLost("the container went away")
+
+    monkeypatch.setattr(cli, "notes_name", stop)
+    with pytest.raises(_ContainerLost):
+        main(["release", "0.2.6", "--items", str(root / "items")])
+    monkeypatch.undo()
+    capsys.readouterr()
+
+    assert main(["digest", "--items", str(root / "items")]) == 0
+
+    out = capsys.readouterr().out
+    assert "Releasable: a cut of v0.2.6 was interrupted: 3 item(s) carry" in out
+    assert "`make release VERSION=0.2.6` cuts all 3." in out
+
+
+def test_status_names_an_interrupted_cut_the_way_the_digest_does(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-1BS2: `status` read the same short remainder as `Unreleased:`."""
+    root = _cut_stopped_after(tmp_path, monkeypatch, 6, 2)
+    capsys.readouterr()
+
+    assert main(["status", "--items", str(root / "items")]) == 0
+
+    out = capsys.readouterr().out
+    assert "Unreleased: a cut of v0.2.6 was interrupted: 2 item(s) carry" in out
+    assert "`make release VERSION=0.2.6` cuts all 6." in out
+    assert "Next version would be" not in out
+
+
 def test_check_reports_a_release_whose_notes_were_never_written(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -2572,6 +2646,50 @@ def test_stranded_reports_nothing_when_every_branch_has_landed(
     assert main(["--items", str(root / "items"), "stranded"]) == 0
 
     assert "No item exists only on a branch" in capsys.readouterr().out
+
+
+def test_stranded_states_both_halves_of_its_predicate(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The store half is part of the claim, so the sentence carries it (`PL-Z6M3`).
+
+    An item this checkout's store holds is never reported, so that a session
+    is not told about its own capture - which also silences the session that
+    has just recovered a stranded item while the default branch still lacks
+    it. Checked out on the branch that carries it, `PL-K7QX` is in the store
+    and absent from `main`: the answer is empty, and says what it is empty of.
+    """
+    root = _branched_repo(tmp_path)
+    subprocess.run(
+        ["git", "checkout", "-q", "abandoned"], cwd=root, check=True, capture_output=True
+    )
+    # The premise, read from git rather than assumed: the store holds the item
+    # and the default branch does not.
+    on_main = subprocess.run(
+        ["git", "ls-tree", "--name-only", "main", "items/"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "PL-K7QX" not in on_main
+    assert (root / "items" / "PL-K7QX-lost.md").is_file()
+
+    assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "No item exists only on a branch and outside this checkout's store" in out
+    assert "not listed even where the default branch lacks it" in out
+    assert "No item exists only on a branch," not in out, "the one-part claim is gone"
+
+    # The finding case names both halves too, from a checkout whose store lacks it.
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
+
+    assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "1 item exists only on a branch and outside this checkout's store" in out
+    assert "no item missing from both the default branch and this checkout's store" in out
 
 
 def test_stranded_refreshes_the_base_before_deciding_anything_is_lost(
@@ -3371,6 +3489,49 @@ def test_show_names_the_branch_that_has_already_edited_the_item_file(
     assert "IN FLIGHT" not in out
 
 
+@pytest.mark.parametrize(
+    ("status", "extra"),
+    [("done", "\nclosed: 2026-08-21"), ("blocked", "")],
+    ids=["done", "blocked"],
+)
+def test_show_calls_an_edited_item_startable_only_when_its_status_allows(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], status: str, extra: str
+) -> None:
+    """The edit says nothing about the item's status, so the line may not either (`PL-9F8B`).
+
+    `PL-6T44` (`done`) and `PL-MB2W` (`blocked`) were both called startable,
+    from the command a session runs to learn about one item. The collision
+    is still true of either, so the warning stays; the invitation goes.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Capture a note", wrote="items/PL-0001-on-main.md")
+    # The default branch moves the item on after the branch forked, as a
+    # closure or a block lands while somebody's edit to its file sits unmerged.
+    (root / "items" / "PL-0001-on-main.md").write_text(
+        READY.replace("PL-B1B1", "PL-0001")
+        .replace("status: ready", f"status: {status}")
+        .replace("added: 2026-08-01", f"added: 2026-08-01{extra}")
+    )
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-21T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-21T12:00:00+00:00",
+    }
+    subprocess.run(
+        ["git", "commit", "-qam", f"PL-0001 {status}"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        env=dated,
+    )
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert out.splitlines()[1].endswith(f"· {status}"), "the premise: show read the status"
+    assert f"Its file is already edited on {BRANCH} (last commit 3 days ago)." in out
+    assert "a second edit to the same file collides" in out
+    assert "startable" not in out
+
+
 def test_show_names_a_round_that_retitled_the_item_file_as_editing_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -3603,6 +3764,44 @@ def test_show_names_a_branch_holding_an_item_only_by_its_name(
     assert f"IN FLIGHT on {named}, by its name" in out
     assert "live branch name, first commit 2026-08-21 09:00 UTC; last commit 2 days ago" in out
     assert "records no claim" in out
+
+
+def test_show_names_the_branch_holding_an_item_absent_here(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A capture claimed on another branch is absent here, and `show` says where it is.
+
+    `next` and `flight` named such an item as a live claim while `show` printed
+    only "no item matching": a dead end at the moment a session asks about work
+    another session holds (`PL-140X`).
+    """
+    from docket.claims import CUTOVER_MARKER
+
+    when = "2026-08-20T12:00:00+00:00"
+    root = _flight_repo(tmp_path, "Tidy up", when=when)
+    _commit_on(root, "main", {CUTOVER_MARKER: "# the claim writer\n"}, "claims", when)
+    held = "claude/capture-k7qx"
+    captured = "items/PL-K7QX-captured-there.md"
+    _commit_on(root, held, {captured: READY.replace("PL-B1B1", "PL-K7QX")}, "capture", when)
+    dated = os.environ | {"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when}
+    for args in (
+        ["checkout", "-q", held],
+        ["commit", "-q", "--allow-empty", "-m", f"PL-K7QX: start\n\nClaim: PL-K7QX {held}"],
+        ["checkout", "-q", "main"],
+    ):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
+    ran = ["--items", str(root / "items"), "--today", "2026-08-23", "show"]
+
+    assert main([*ran, "PL-K7QX"]) == 1
+
+    out = capsys.readouterr().out
+    assert out.startswith("no item matching 'PL-K7QX'\n")
+    assert f"IN FLIGHT on {held}" in out
+    assert f"  read it: git show {held}:{captured}\n" in out
+
+    # An id nothing holds is the ordinary typo, and gets the one line it always did.
+    assert main([*ran, "PL-Q9Q9"]) == 1
+    assert capsys.readouterr().out == "no item matching 'PL-Q9Q9'\n"
 
 
 def test_show_says_a_lapsed_claim_on_an_open_item_holds_nothing(
@@ -5336,6 +5535,44 @@ def test_no_git_read_in_the_cli_takes_the_store_from_the_settings() -> None:
     )
 
 
+def test_the_ref_set_block_names_distinct_item_files(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Two refs editing one item file are two edits and one file, and the block says both.
+
+    The `ref set` block summed each ref's item files, so an item file edited
+    on ten refs counted ten, and it printed the sum as though it counted
+    files. On a clone of long-lived branches editing one store the sum ran
+    2.6x the files, and a rate divided by it over-predicted by as much
+    (`PL-3BYK`). So the sum is named for what it is, beside the distinct count.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    item = root / "items" / "PL-0001-on-main.md"
+    item.write_text(READY.replace("PL-B1B1", "PL-0001"), encoding="utf-8")
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    git("-c", "init.defaultBranch=main", "init", "-q")
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    for branch in ("first-edit", "second-edit"):
+        git("checkout", "-qb", branch, "main")
+        item.write_text(item.read_text(encoding="utf-8") + f"A note from {branch}.\n")
+        git("commit", "-qam", f"PL-0001: {branch}")
+    git("checkout", "-q", "main")
+
+    argv = ["--items", str(root / "items"), "--today", "2026-08-23", "digest", "--profile"]
+    assert main(argv) == 0
+
+    out = capsys.readouterr().out
+    assert "2 unmerged, carrying 2 commits and 2 item-file edits summed per ref" in out
+    assert "summed per ref, 1 distinct item file" in out
+
+
 def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
     """Every read `cli.py` asks of `vcs` is handed the one runner the command holds.
 
@@ -5791,6 +6028,30 @@ def test_next_without_oldest_still_ranks_new_work(
     assert "longest-waiting" not in plain and "The plan's own pick" not in plain
     assert "PL-F3F3" not in oldest.split("The plan's own pick")[0]
     assert "Left out as new work, classed feature or planning: 1 item(s)" in oldest
+
+
+@pytest.mark.parametrize("oldest", [(), ("--oldest",)], ids=["plan", "oldest"])
+@pytest.mark.parametrize("limit", ["0", "-2"])
+def test_next_refuses_a_limit_below_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], oldest: tuple[str, ...], limit: str
+) -> None:
+    """A limit that cannot be honoured is refused, never sliced into a false answer.
+
+    Zero said "Nothing is ready to start" over a queue holding work, and a
+    negative value sliced the ranking from its end (`PL-RMN8`).
+    """
+    store = str(_store(tmp_path, READY))
+
+    with pytest.raises(SystemExit) as stop:
+        _run("next", *oldest, "--limit", limit, "--items", store)
+
+    assert stop.value.code != 0
+    captured = capsys.readouterr()
+    assert f"argument --limit: must be 1 or more, got {limit}" in captured.err
+    assert "Nothing is ready to start" not in captured.out
+    assert "No owed work is ready to start" not in captured.out
+    assert _run("next", *oldest, "--limit", "1", "--items", store) == 0
+    assert "PL-B1B1" in capsys.readouterr().out
 
 
 def test_next_oldest_reads_what_counts_as_new_work_from_the_config(
@@ -6769,6 +7030,75 @@ def test_set_refuses_a_write_the_checker_would_fail_and_says_why(
     assert _item_text(store) == CAPTURED
 
 
+# The least a roadmap needs to record a current gate: a baseline row, and the
+# next milestone's frozen list, which names an id other than the capture's.
+GATE_ROADMAP = """# Plan
+
+## Versioning decision
+
+| Version | Status | Milestone |
+| --- | --- | --- |
+| v0.4.0 | Completed / current baseline | The teachable case |
+
+## The plan
+
+### The timeline
+
+| # | Step | Notes | Effort |
+| --- | --- | --- | --- |
+| 1 | **v0.5.0 — the case you can branch** | scoped below | - |
+
+## v0.5.0 - the case you can branch
+
+### Goal
+
+Make the comparison possible.
+
+### Debt gate: the frozen list
+
+- PL-B1B1 (S) On the list
+
+### Required scope
+
+Both branches.
+
+### Definition of done
+
+Both branches read.
+
+### Explicitly out of scope for v0.5.0
+
+Three branches.
+"""
+
+
+def test_set_refuses_a_debt_capture_with_no_gate_disposition(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A rule that needs the roadmap refuses the write too, as `check` would.
+
+    `set` validated without the milestones, so a capture classed as debt was
+    written at a triaged status and failed the next `check` for having no gate
+    disposition (`PL-BB5W`).
+    """
+    store = _store(tmp_path, CAPTURED)
+    (tmp_path / "ROADMAP.md").write_text(GATE_ROADMAP, encoding="utf-8")
+    fields = ("--status", "ready", "--priority", "P3", "--effort", "S", "--classes", "defect")
+
+    assert _run("set", "PL-D4D4", *fields, "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert "nothing was written" in out
+    assert "open debt (classed defect) that v0.5.0's gate neither places nor defers" in out
+    assert 'bin/docket set PL-D4D4 --deferred-from "v0.5.0 - <why>"' in out
+    assert _item_text(store) == CAPTURED
+
+    deferral = ("--deferred-from", "v0.5.0 - captured after the freeze")
+    assert _run("set", "PL-D4D4", *fields, *deferral, "--items", str(store)) == 0
+    assert "deferred-from: v0.5.0 - captured after the freeze" in _item_text(store)
+    assert _run("check", "--items", str(store)) == 0
+
+
 def test_set_holds_a_command_it_writes_to_the_admitted_shapes_whatever_the_item_s_age(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -7732,6 +8062,25 @@ def test_generators_on_a_head_prints_its_misread(
     assert f"\n  misread: {_MISREAD}\n" in capsys.readouterr().out
 
 
+def test_generators_given_an_id_and_misread_does_not_ignore_the_flag(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The pair printed the cluster view at exit 0, as though the flag were honoured.
+
+    Refused instead, naming both commands that answer (`PL-SL4L`).
+    """
+    store = _overlapping_heads(tmp_path)
+
+    assert _run("generators", "PL-4040", "--misread", "--items", str(store)) == 1
+
+    output = capsys.readouterr().out
+    assert "`--misread` lists every head and takes no id" in output
+    assert "`bin/docket generators --misread`" in output
+    assert "`bin/docket generators PL-4040`" in output
+    assert "root cause of" not in output
+    assert f"misread: {_MISREAD}" not in output
+
+
 def test_show_on_a_head_prints_its_misread_beside_the_verdict(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -8085,7 +8434,7 @@ def test_arm_holds_a_lapsed_claim_and_says_how_to_end_it(
 def test_arm_holds_a_branch_changing_paths_outside_the_store_and_names_them(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Work outside the store merges on review, and a move into the store is still a deletion.
+    """Work outside the store waits on a read, and a move into the store is still a deletion.
 
     Read with rename detection, the file moved in from `docs/` prints as one
     path under the store, and the branch would arm with a file gone from
@@ -8156,6 +8505,138 @@ def test_arm_answers_unknown_rather_than_arm_from_a_read_it_could_not_complete(
     git("checkout", "-q", "--detach")
     assert _arm(root, "--no-fetch") == 2
     assert capsys.readouterr().out.startswith("unknown - HEAD is on no branch")
+
+
+#: The module deciding `arm`'s answer, as the brief names it (`PL-K6B2`).
+ARM_GATE = "subprojects/docket/src/docket/arming.py"
+
+
+def _put(git: Callable[..., str], root: Path, path: str, when: str = ARM_T0) -> None:
+    """Commit a new file at `path` on the checked-out branch, making its directory."""
+    (root / path).parent.mkdir(parents=True, exist_ok=True)
+    _commit_file(git, root, path, "X = 1\n", when)
+
+
+def test_arm_arms_a_docket_only_pull_request_on_green(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The queue's own tooling arms beside the store, so the hold is left for what needs a read.
+
+    The hold fired on every docket change and was clicked through (`PL-SQTR`).
+    The branch is the usual shape of docket work: a module, its test, the
+    package's README and the item it closes.
+    """
+    root, git = _arm_repo(tmp_path)
+    for path in (
+        "subprojects/docket/src/docket/render.py",
+        "subprojects/docket/tests/test_render.py",
+        "subprojects/docket/README.md",
+    ):
+        _put(git, root, path)
+    closed = _item_document("PL-B1B1", "done")
+    _commit_file(git, root, "docs/items/PL-B1B1-held.md", closed, ARM_T0)
+
+    assert _arm(root) == 0
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"arm - {ARM_BRANCH} changes nothing outside docs/items and subprojects/docket, "
+        "leaves arming.py alone, holds no open claim"
+    )
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "src/anesthesia_sim/core/uptake.py",
+        "src/anesthesia_sim/data/agents/sevoflurane.json",
+        "tests/unit/test_uptake.py",
+        "docs/MODEL.md",
+        "README.md",
+        "CLAUDE.md",
+        "subprojects/docketeer/tool.py",
+    ],
+)
+def test_arm_holds_for_a_read_a_path_outside_the_store_and_the_tooling(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
+) -> None:
+    """Everything but the store and the tooling waits on a read, the simulator first of all.
+
+    The branch also changes a docket module, which would arm alone, so the
+    hold is the path's own. `subprojects/docketeer/` shares the tooling's
+    letters and not its directory.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "subprojects/docket/src/docket/render.py")
+    _put(git, root, path)
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes 1 path outside docs/items and subprojects/docket, "
+        "so its pull request waits on a read\n"
+    )
+    assert f"\n  {path}\n" in out
+    assert "subprojects/docket/src/docket/render.py" not in out
+    assert "keep the pull request a draft" not in out
+
+
+@pytest.mark.parametrize("change", ["edit", "move"])
+def test_arm_holds_a_change_to_arming_py_for_a_read_although_it_lies_under_the_tooling(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], change: str
+) -> None:
+    """The gate cannot loosen itself, by an edit or by moving where the exception points.
+
+    The module is on the base, so a move reads as its deletion beside the new
+    file, both under the tooling: read with rename detection, the move would
+    print as the new path alone and arm.
+    """
+    root, git = _arm_repo(tmp_path)
+    git("checkout", "-q", "main")
+    _put(git, root, ARM_GATE, "2026-08-01T12:00:00+00:00")
+    git("push", "-q", "origin", "main")
+    git("checkout", "-q", ARM_BRANCH)
+    git("merge", "-q", "--ff-only", "main")
+    if change == "edit":
+        _commit_file(git, root, ARM_GATE, "X = 2\n", ARM_T0)
+    else:
+        git("mv", ARM_GATE, "subprojects/docket/src/docket/gating.py")
+        git("commit", "-qm", "move the gate", when=ARM_T0)
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes {ARM_GATE}, the gate itself, "
+        "so its pull request waits on a read\n"
+    )
+    assert "outside docs/items" not in out
+
+
+def test_arm_names_the_gate_beside_the_paths_outside_the_tooling(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Both reasons are said, and the listed paths are the ones outside, not the gate."""
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, ARM_GATE)
+    _put(git, root, "src/anesthesia_sim/core/uptake.py")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes 1 path outside docs/items and subprojects/docket "
+        f"and it changes {ARM_GATE}, the gate itself, so its pull request waits on a read\n"
+        "  src/anesthesia_sim/core/uptake.py\n"
+    )
+
+
+def test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer() -> None:
+    """A move of `arming.py` would leave the exception naming a file nothing reads.
+
+    The moved module would then arm on green, which is the gate loosening itself.
+    """
+    root = Path(__file__).resolve().parents[3]
+
+    assert arming.GATE == ARM_GATE
+    assert (root / arming.GATE).resolve() == Path(arming.__file__).resolve()
 
 
 def _flight_row(out: str, start: str) -> str:

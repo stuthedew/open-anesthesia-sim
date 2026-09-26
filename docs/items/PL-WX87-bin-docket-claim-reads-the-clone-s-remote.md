@@ -90,3 +90,13 @@ a tracking ref at `main`'s commit with no upstream configured, and `claim
 PL-WX87` printed "not pushed: the branch is on the remote" while `git
 ls-remote` listed nothing; the push by hand reported `[new branch]`. Three
 sessions of three now.
+
+**Merged over `PL-ZLJ9` (#1028), 2026-09-26.** `_displaced` reads this
+branch's own claims through the remote's answer, asked once per `claim` run,
+as #1028 asked of whichever of the two landed second; a rival's copy is still
+the fetched ref it reads, which is `PL-C3MN`. Where the remote cannot be asked
+the check is skipped rather than guessed, since nothing is pushed until a run
+that can ask, and that run withdraws:
+`test_a_remote_that_cannot_be_asked_withdraws_nothing_until_it_answers`, shown
+failing with the skip removed. The unanswered-remote message names `claim`
+rather than `git push`, as #1028 has every message asking for a claim's push.
