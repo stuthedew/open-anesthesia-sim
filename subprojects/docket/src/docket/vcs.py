@@ -1864,12 +1864,11 @@ class BranchState:
     is the other shape: the comparison exists and could not be made, which is
     the one that has to be said out loud.
 
-    It records that the caller *attempted* a refresh, not that one arrived: a
-    quiet `git fetch` prints nothing whether it succeeded or failed, and no
-    read here can tell those apart. So it is reported only in the negative -
-    nothing tried - which is the claim that can be made. A fetch that tried and
-    failed leaves the answer stale by exactly one fetch, which is the error the
-    session-start hook has always accepted.
+    It records that a refresh *arrived*, not merely that one was tried: since
+    `PL-XBV4` the caller sets it from `fetch_remote`'s outcome, which reads
+    git's exit status rather than its silent output, so a fetch that failed
+    leaves this `False` and the report says what the refs rest on instead of
+    reading as fresh.
     """
 
     branch: str = ""
@@ -2044,8 +2043,69 @@ def _duplicated_history(
     return RewriteReport(duplicated=duplicated, own=tuple(own), merges=merges)
 
 
-def fetch_remote(root: Path, *, runner: Runner | None = None) -> None:
-    """Refresh the remote-tracking refs, or fail quietly having tried.
+#: The remote every fetch here goes to, and the one a snapshot dates its refs by.
+REMOTE = "origin"
+
+# What a command did about the network before it read, as `Snapshot.fetch`
+# carries it. Strings rather than an enum so a report can print one as it is,
+# and so a test can assert the decision without matching prose (`PL-XBV4`).
+#: This command refreshed the refs and the remote answered: the refs are now.
+FETCHED = "fetched"
+#: This command tried and the remote did not answer: the refs are whatever
+#: the last fetch before it left, and `refs_at` says when that was.
+FETCH_FAILED = "fetch failed"
+#: The caller said not to (`--no-fetch`): the refs are as the last fetch left
+#: them, dated by `refs_at` where the checkout records it.
+UNFETCHED = "unfetched"
+#: There is no `origin` to fetch from, so the refs are the checkout's own and
+#: no fetch could make them fresher.
+UNFETCHABLE = "no remote"
+#: Git was asked nothing (`--no-git`), so no ref was read at all.
+UNASKED = "unasked"
+
+
+@dataclass(frozen=True)
+class Fetch:
+    """What one `fetch_remote` did, and when the refs it found were last refreshed.
+
+    `refs_at` is read *before* the fetch, because a fetch that fails truncates
+    `FETCH_HEAD` to nothing on its way out - measured against git 2.43 on
+    2026-09-26 - and with it the only record the checkout keeps of when the
+    refs were last refreshed. Read first, the moment survives the failure and
+    the report can still say how old the refs it answered from are.
+    """
+
+    outcome: str
+    refs_at: datetime | None = None
+
+
+def _fetch_head_at(root: Path, run: Runner) -> datetime | None:
+    """When this checkout last fetched, as `FETCH_HEAD` records it, or `None`.
+
+    Git writes `FETCH_HEAD` on every fetch that reaches the remote - a fetch
+    that found nothing new still lists the refs it compared - and truncates it
+    to nothing on one that did not, so an empty file is the trace of a failed
+    attempt and dates nothing. A clone writes no `FETCH_HEAD` at all, so its
+    absence means no fetch since the clone. Asked through `--git-path` rather
+    than `.git/FETCH_HEAD`, because a worktree's `.git` is a file.
+    """
+    where = run(["rev-parse", "--git-path", "FETCH_HEAD"], root).strip()
+    if not where:
+        return None
+    path = Path(where)
+    if not path.is_absolute():
+        path = root / path
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    if stat.st_size == 0:
+        return None
+    return datetime.fromtimestamp(stat.st_mtime, UTC)
+
+
+def fetch_remote(root: Path, *, runner: Runner | None = None) -> Fetch:
+    """Refresh the remote-tracking refs, and say whether the remote answered.
 
     The one read in this module that goes to the network, kept apart from the
     rest for exactly that reason: a caller that must not touch it simply does
@@ -2053,9 +2113,107 @@ def fetch_remote(root: Path, *, runner: Runner | None = None) -> None:
     not `--prune` - a branch deleted on the remote leaves a tracking ref that
     is the only surviving copy of anything committed on it, which is the case
     `stranded` exists to catch.
+
+    **Its result is the answer, not a side effect** (`PL-8Z1T`, `PL-XBV4`).
+    This returned nothing and swallowed the exit status, so a checkout whose
+    fetch failed - no network, a remote gone - was reported on by `branch` as
+    `current with origin/main` and by `stranded` with recovery commands and no
+    caveat, on refs as old as the last fetch that worked. `_run_git` has told a
+    failure from an empty answer since `PL-Q9Z1`, so the outcome is read off
+    the runner: `FETCHED` where the remote answered, `FETCH_FAILED` where it
+    did not, `UNFETCHABLE` where there is no `origin` to ask. Where nothing is
+    configured the fetch is not tried, because git's refusal there is an
+    answer about the checkout and not about the network.
     """
     run = runner or _run_git
-    run(["fetch", "--quiet", "origin"], root)
+    if REMOTE not in _remotes(root, run):
+        return Fetch(UNFETCHABLE)
+    before = _fetch_head_at(root, run)
+    if answered(run(["fetch", "--quiet", REMOTE], root)):
+        return Fetch(FETCHED, before)
+    return Fetch(FETCH_FAILED, before)
+
+
+@dataclass(frozen=True)
+class Snapshot:
+    """Which moment a read command answered from (`PL-XBV4`).
+
+    Every read command assembled its own picture of the world: the store from
+    the working tree, holds from refs some command had fetched and some had
+    not, a failed fetch discarded, so each answered from a different moment and
+    none said which. This is the one record of that moment, built once per
+    command and read by every read beneath it, so a stale answer cannot pass
+    for a fresh one in any command without passing in all of them.
+
+    `fetch` is what the command did about the network, one of the five
+    outcomes above. `refs_at` is when the remote-tracking refs were last
+    refreshed, where the checkout records it: `now` after a fetch that
+    answered, the last fetch's moment where none was tried or this one failed,
+    and `None` where nothing dates them - a clone nothing has fetched since,
+    or a checkout with no remote. `branch` is where the working tree stands
+    against the default branch, read against the same refs, so the store the
+    command reads from the working tree and the refs it reads holds from are
+    placed relative to each other in the same breath.
+
+    The forge - which branches have a pull request open, merged or closed - is
+    not here, on a decision recorded in `PL-XBV4`: one command asks it, the
+    lookup has an eight-second timeout that every other command would then
+    pay, and the two members that wanted it moved to heads of their own.
+
+    `declined` carries the meaning it has everywhere in this module: the read
+    was partial, and why.
+    """
+
+    fetch: str = UNASKED
+    refs_at: datetime | None = None
+    branch: BranchState = field(default_factory=BranchState)
+    declined: str = ""
+
+    @property
+    def fresh(self) -> bool:
+        """Whether this command's own fetch is what the refs rest on."""
+        return self.fetch == FETCHED
+
+
+def snapshot(
+    root: Path, *, now: datetime, fetch: Fetch | None = None, runner: Runner | None = None
+) -> Snapshot:
+    """The moment a command is answering from, read against what the checkout holds.
+
+    `fetch` is what the command did about the network before asking, and
+    `None` says it did nothing - `--no-fetch` - so the refs are dated here from
+    `FETCH_HEAD`. **It never fetches itself**: the command fetches and the
+    function does not, which is the rule every read in this module follows and
+    the reason `fetch_remote` is a separate call.
+
+    `now` is the caller's instant rather than the clock, for `holdings`'
+    reason: an age is a subtraction, and a read that took the clock itself
+    could not be replayed.
+
+    A silence beneath any of the reads here marks the whole answer partial,
+    the branch position included, exactly as `branch_state` marks its own.
+    """
+    run = _Silences(runner or _run_git)
+    outcome = UNFETCHED if fetch is None else fetch.outcome
+    if outcome == UNFETCHED and REMOTE not in _remotes(root, run):
+        outcome = UNFETCHABLE
+    if outcome == FETCHED:
+        refs_at: datetime | None = now
+    elif outcome == FETCH_FAILED:
+        refs_at = fetch.refs_at if fetch is not None else None
+    elif outcome == UNFETCHED:
+        refs_at = _fetch_head_at(root, run)
+    else:
+        refs_at = None
+    branch = _branch_state(root, run, fetched=outcome == FETCHED)
+    if run.reason:
+        return Snapshot(
+            fetch=outcome,
+            refs_at=refs_at,
+            branch=replace(branch, absent=True, declined=run.reason),
+            declined=run.reason,
+        )
+    return Snapshot(fetch=outcome, refs_at=refs_at, branch=branch)
 
 
 def branch_state(root: Path, *, runner: Runner | None = None, fetched: bool = False) -> BranchState:
@@ -3127,10 +3285,9 @@ class StrandedReport:
     deletes the branch too - so freshness is the whole of what separates a hole
     from a merge.
 
-    It records that the caller *attempted* a refresh, not that one arrived, and
-    for `BranchState`'s reason: a quiet `git fetch` prints nothing whether it
-    reached the remote or not. So it is reported only in the negative - nothing
-    tried - which is the claim that can be made.
+    It records that a refresh *arrived*, for `BranchState`'s reason: the caller
+    sets it from `fetch_remote`'s outcome, so a fetch that failed leaves it
+    `False` and the report says what the refs rest on (`PL-XBV4`).
     """
 
     items: tuple[StrandedItem, ...] = ()

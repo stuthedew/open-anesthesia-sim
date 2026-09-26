@@ -8,6 +8,7 @@ in a way git accepts is proved against a real checkout in `test_cli.py`.
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 from collections.abc import Mapping
 from datetime import UTC, date, datetime, timedelta, timezone
@@ -18,12 +19,17 @@ import pytest
 from docket.checks import Report
 from docket.vcs import (
     _PATHSPEC_BYTES,
+    FETCH_FAILED,
+    FETCHED,
     REWRITTEN,
     SILENT,
+    UNFETCHABLE,
+    UNFETCHED,
     BaseRelease,
     Branch,
     BranchCut,
     BranchState,
+    Fetch,
     FlightFiles,
     FlightReport,
     OpenPullRequests,
@@ -49,6 +55,7 @@ from docket.vcs import (
     cut_window,
     cuts_in_flight,
     default_base,
+    fetch_remote,
     filed_with_work,
     files_in_flight,
     lost,
@@ -59,6 +66,7 @@ from docket.vcs import (
     released_on_base,
     resolved,
     since_filed,
+    snapshot,
     stranded,
     tags,
 )
@@ -1332,14 +1340,22 @@ def test_the_branch_state_line_prints_the_command_for_each_state() -> None:
 
 
 def test_the_branch_state_line_says_when_nothing_refreshed_the_base() -> None:
-    """A position measured against a ref nobody refreshed is a report, not a claim."""
+    """A position measured against a ref nobody refreshed is a report, not a claim.
+
+    The caveat is the snapshot's one sentence, handed in by the caller as
+    `rests_on` (`PL-XBV4`), so `branch` words it exactly as every other read
+    command does; the renderer prints it beneath the position and invents
+    nothing where the caller passed nothing.
+    """
     from docket.render import format_branch_state
 
-    stale = format_branch_state(BranchState(branch="main", base=BASE, behind=1))
+    state = BranchState(branch="main", base=BASE, behind=1)
+    caveat = "Nothing refreshed the refs for this answer (`--no-fetch`): read from the clone."
+    stale = format_branch_state(state, rests_on=caveat)
     fresh = format_branch_state(BranchState(branch="main", base=BASE, behind=1, fetched=True))
 
-    assert "nothing refreshed origin/main" in stale
-    assert "nothing refreshed" not in fresh
+    assert f"  {caveat}" in stale
+    assert "refreshed" not in fresh
 
 
 # --- which closures already stand on the base, and what the base records -----
@@ -3542,3 +3558,99 @@ def test_a_landing_subject_holding_a_line_separator_names_its_pull_request(tmp_p
 
     assert found is not None
     assert found.pull_request == 934
+
+
+# --- the fetch's outcome, and the moment a command answers from (PL-XBV4) ----
+
+
+def _clone_of_a_remote(tmp_path: Path) -> Path:
+    """A clone whose `origin` is a real repository beside it, with no fetch made yet."""
+    origin = tmp_path / "origin"
+    origin.mkdir()
+
+    def git(*args: str, cwd: Path = origin) -> None:
+        subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+
+    git("-c", "init.defaultBranch=main", "init", "-q")
+    for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", key, value)
+    git("commit", "-q", "--allow-empty", "-m", "base")
+    work = tmp_path / "work"
+    subprocess.run(["git", "clone", "-q", str(origin), str(work)], check=True, capture_output=True)
+    return work
+
+
+def test_fetch_remote_reports_whether_the_remote_answered(tmp_path: Path) -> None:
+    """`PL-8Z1T`: the outcome is the answer, read off git's exit status rather than discarded.
+
+    Three outcomes against real git: a remote that answers, one that does
+    not, and none configured - the last not tried at all, because git's
+    refusal there is about the checkout and not the network. The moment the
+    refs were last refreshed is read before the fetch, since a fetch that
+    fails truncates `FETCH_HEAD` on its way out (measured against git 2.43).
+    """
+    work = _clone_of_a_remote(tmp_path)
+    fetch_head = work / ".git" / "FETCH_HEAD"
+    assert not fetch_head.exists(), "a clone writes no FETCH_HEAD"
+
+    assert fetch_remote(work) == Fetch(FETCHED, None)
+    assert fetch_head.read_text(encoding="utf-8").strip(), "an answered fetch lists its refs"
+    dated = fetch_remote(work)
+    assert dated.outcome == FETCHED and dated.refs_at is not None
+
+    subprocess.run(
+        ["git", "remote", "set-url", "origin", str(tmp_path / "gone")],
+        cwd=work,
+        check=True,
+        capture_output=True,
+    )
+    failed = fetch_remote(work)
+    assert failed.outcome == FETCH_FAILED
+    assert failed.refs_at is not None, "read before the failure truncated the record"
+    assert fetch_head.stat().st_size == 0, "the failure truncated it"
+    assert fetch_remote(work) == Fetch(FETCH_FAILED, None), "and nothing dates the refs now"
+
+    subprocess.run(["git", "remote", "remove", "origin"], cwd=work, check=True, capture_output=True)
+    assert fetch_remote(work) == Fetch(UNFETCHABLE, None)
+
+
+def test_snapshot_dates_the_refs_it_did_not_fetch(tmp_path: Path) -> None:
+    """The snapshot places the refs in time from what the checkout records, never the clock.
+
+    Fetched, the refs are `now`; not fetched, they are as old as `FETCH_HEAD`
+    says, or undated where a clone has never fetched; failed, they are as old
+    as the fetch before the failure, which the caller read first; and with no
+    remote there is nothing to date, whatever the caller said.
+    """
+    work = _clone_of_a_remote(tmp_path)
+    now = datetime(2026, 9, 26, 2, 0, tzinfo=UTC)
+
+    fresh = snapshot(work, now=now, fetch=Fetch(FETCHED))
+    assert (fresh.fetch, fresh.refs_at, fresh.fresh, fresh.branch.fetched) == (
+        FETCHED,
+        now,
+        True,
+        True,
+    )
+    assert fresh.branch.branch == "main" and fresh.branch.base == "origin/main"
+    assert not fresh.declined
+
+    undated = snapshot(work, now=now)
+    assert (undated.fetch, undated.refs_at, undated.fresh, undated.branch.fetched) == (
+        UNFETCHED,
+        None,
+        False,
+        False,
+    )
+
+    subprocess.run(["git", "fetch", "-q", "origin"], cwd=work, check=True, capture_output=True)
+    at = datetime(2026, 9, 26, 1, 30, tzinfo=UTC)
+    os.utime(work / ".git" / "FETCH_HEAD", (at.timestamp(), at.timestamp()))
+    assert snapshot(work, now=now).refs_at == at
+
+    failed = snapshot(work, now=now, fetch=Fetch(FETCH_FAILED, at))
+    assert (failed.fetch, failed.refs_at, failed.fresh) == (FETCH_FAILED, at, False)
+
+    subprocess.run(["git", "remote", "remove", "origin"], cwd=work, check=True, capture_output=True)
+    alone = snapshot(work, now=now)
+    assert (alone.fetch, alone.refs_at) == (UNFETCHABLE, None)

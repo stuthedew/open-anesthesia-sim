@@ -3,11 +3,12 @@ id: PL-QSGX
 title: bin/docket flight never fetches, unlike stranded and branch, so it reports refs as old as the clone - the one command whose whole job is reading other sessions' branches
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: refresh-before-reporting
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
+closed: 2026-09-26
 verify: grep -q 'def test_flight_fetches_by_default' subprojects/docket/tests/test_cli.py && uv run pytest subprojects/docket/tests/test_cli.py
 ---
 
@@ -34,3 +35,9 @@ report which of the two happened, so a bare or offline checkout still answers.
 
 **Done when.** `bin/docket flight` fetches by default, takes `--no-fetch` like
 its siblings, says which it did, and a test pins both directions.
+
+**Closed 2026-09-26 with `PL-XBV4`.** `flight` fetches by default through
+`cli._snapshot`, as every read command now does, takes the shared `--no-fetch`,
+and says which happened on the refs line.
+`test_flight_fetches_by_default_and_says_when_told_not_to` pins both
+directions, and the census holds every other read command to the same.

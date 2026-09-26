@@ -67,6 +67,7 @@ from docket.vcs import (
     released_on_base,
     resolved,
     since_filed,
+    snapshot,
     stranded,
     tags,
     working_paths,
@@ -294,6 +295,17 @@ READS: tuple[Read, ...] = (
         "branch_state",
         lambda r, g: branch_state(r, runner=g),
         lambda a: frozenset({(a.branch, a.base, a.behind, a.ahead, a.disposition)}),
+    ),
+    Read(
+        # The moment a command answers from (`PL-XBV4`): the fetch outcome the
+        # caller hands in, the refs' date from `FETCH_HEAD`, and the branch
+        # position read against the same refs. The date is left out of the
+        # findings because it is a file's mtime rather than git's answer.
+        "snapshot",
+        lambda r, g: snapshot(r, now=datetime.now(UTC), runner=g),
+        lambda a: frozenset(
+            {(a.fetch, a.branch.branch, a.branch.base, a.branch.behind, a.branch.ahead)}
+        ),
     ),
     Read(
         # The forge half is a callable the caller supplies, so it is answered
