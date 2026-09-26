@@ -7,7 +7,7 @@ status: blocked
 classes: refactor
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, docket.toml
-blocked-by: PL-979D, PL-GPJ7, PL-HMZZ, PL-PVW2, PL-QHCW, PL-XBV4
+blocked-by: PL-979D, PL-GPJ7, PL-HMZZ, PL-MT3R, PL-PVW2, PL-QHCW
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
 ---

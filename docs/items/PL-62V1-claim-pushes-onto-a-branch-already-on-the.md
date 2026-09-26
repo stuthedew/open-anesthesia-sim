@@ -7,7 +7,7 @@ status: blocked
 classes: infra, session-cost
 feature: claim-integrity
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_claiming.py, .claude/skills/docket/modes/start.md
-blocked-by: PL-979D, PL-GPJ7, PL-HMZZ, PL-MT3R, PL-PVW2, PL-QHCW, PL-XBV4
+blocked-by: PL-979D, PL-GPJ7, PL-HMZZ, PL-MT3R, PL-PVW2, PL-QHCW
 added: 2026-09-25
 ---
 

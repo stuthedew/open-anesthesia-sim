@@ -87,7 +87,7 @@ to consult, not a copy to pick.
 for `claim`, `yield` and `arm`.
 
 **Recommendation:** one `git ls-remote --heads origin` listing per command,
-held beside `PL-XBV4`'s snapshot (`vcs.Snapshot`) once that build lands, and
+held beside `PL-XBV4`'s snapshot (`vcs.Snapshot`, landed in #1054), and
 consulted by every reader that now takes a local copy for the remote's. One
 round trip answers every branch at once, which `PL-C3MN`'s rival check needs
 and `PL-WX87`'s per-branch `ls-remote` cannot give. It reads the remote without
@@ -95,10 +95,10 @@ writing the clone, so `vcs.fetch_remote` goes on refusing `--prune`, and a
 deleted branch's tracking ref stays the surviving copy `stranded` exists to
 find, which is `PL-4Q9B`'s constraint. Where the listing fails, a reader says
 the remote's copy is unknown, as `_on_remote` does now. It costs one round
-trip per command beside the fetch `PL-XBV4`'s snapshot already makes. The
-build comes after `PL-XBV4`'s, which is in flight on
-`origin/claude/pl-xbv4-build-js9j6d` and rewrites the same region of `vcs.py`.
-The decision does not have to wait for it.
+trip per command beside the fetch `PL-XBV4`'s snapshot already makes.
+`PL-XBV4`'s build landed in #1054 on 2026-09-26, so nothing waits on it now,
+and re-read on the merged tree that day, `vcs.fetch_remote` still refuses
+`--prune`.
 
 Against:
 - **`git fetch --prune`.** Among the open members it fixes `PL-C3MN` only. It
@@ -107,7 +107,7 @@ Against:
   a deleted branch's only surviving copy.
 - **Per-reader fixes.** That is the pattern that produced these four instances.
 
-**The nearest live head is `PL-XBV4`, and they stay separate.** Its fact is
+**The nearest head is `PL-XBV4` (done 2026-09-26, #1054), and they stay separate.** Its fact is
 the moment a read's sources were taken: "How fresh the refs, working tree and
 forge state a read command answered from are". This one is which copy is the
 remote's. A fetch made a second ago still leaves every copy these readers
