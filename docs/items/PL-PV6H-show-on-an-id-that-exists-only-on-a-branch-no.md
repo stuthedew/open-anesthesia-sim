@@ -3,12 +3,14 @@ id: PL-PV6H
 title: show on an id that exists only on a branch no live hold names, such as a stranded capture the digest lists, still prints only 'no item matching', since PL-140X points at the branch only where a hold names the id
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-snapshot
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1059
 payoff: show on an id the digest lists as only on a branch names that branch and how to recover it instead of a dead end, for about 0.3 s on a miss
 verify: grep -q 'def test_show_names_the_branch_of_a_stranded_id_no_hold_names' subprojects/docket/tests/test_cli.py
 ---

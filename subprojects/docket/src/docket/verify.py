@@ -2036,10 +2036,12 @@ def front_matter_check(
     case on the same argument, that an answer identical for every item is a
     misconfiguration reporting itself as a finding.
 
-    The base copy is found by id rather than by name, because `store.write_item`
-    renames the file when the title changes - and the title is front matter, so
-    looking the current name up would miss the one edit that moves the file out
-    from under the guard watching it.
+    The base copy is found by id rather than by name, because a title edit can
+    move the file: a `git mv` pass brings the slug back into line with the new
+    title (`PL-YTDN`), and a write through `store.write_item` lands it under a
+    second name. The title is front matter, so looking the current name up
+    would miss the one edit that moves the file out from under the guard
+    watching it.
     """
     name = "item front matter unchanged"
     if not item.path:
