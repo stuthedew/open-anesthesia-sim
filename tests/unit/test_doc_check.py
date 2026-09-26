@@ -588,6 +588,84 @@ def test_identifiers_are_not_mistaken_for_paths(tmp_path: Path) -> None:
     assert not any("cites `" in e for e in _errors(_repo(tmp_path, readme=readme)))
 
 
+@pytest.mark.parametrize(
+    ("sentence", "token"),
+    [
+        ("This project has no `setup.py`; its build is declared elsewhere.", "setup.py"),
+        (
+            "A future `tools/unit_suffix_check.py` would hold every float name to a\n"
+            "suffix; not built, and `PL-JW9J` carries why.",
+            "tools/unit_suffix_check.py",
+        ),
+        (
+            "The Flet chart module, `src/anesthesia_sim/app/chart_series.py`, was\n"
+            "deleted by the Qt port.",
+            "src/anesthesia_sim/app/chart_series.py",
+        ),
+        ("A Node project would put this in `package.json`; this one does not.", "package.json"),
+    ],
+    ids=["negated", "planned", "deleted", "another ecosystem's"],
+)
+def test_a_file_named_as_absent_is_not_a_missing_citation(
+    tmp_path: Path, sentence: str, token: str
+) -> None:
+    """A sentence naming a file that is not there on purpose fails nothing.
+
+    Each of these failed as citing a path that does not exist, while saying
+    exactly that (`PL-HJ8G`). The sentence's words cannot tell the gate so -
+    reading "no" or "a future" is the wording recognition `PL-GPJ7` retires -
+    so a marker under the paragraph does, and is held to being true.
+    """
+    readme = f"{README}\n{sentence}\n<!-- absent: {token} -->\n"
+
+    assert _errors(_repo(tmp_path, readme=readme)) == []
+
+
+def test_an_undeclared_absent_path_is_told_how_to_declare_it(tmp_path: Path) -> None:
+    readme = f"{README}\nThis project has no `setup.py`.\n"
+
+    assert any(
+        "cites `setup.py`" in e and "<!-- absent: setup.py -->" in e
+        for e in _errors(_repo(tmp_path, readme=readme))
+    )
+
+
+def test_a_path_marked_absent_that_exists_is_an_error(tmp_path: Path) -> None:
+    """The marker is a claim too: a planned file that gets built fails until updated."""
+    readme = f"{README}\nA future `core/thing.py` is planned.\n<!-- absent: core/thing.py -->\n"
+
+    errors = _errors(_repo(tmp_path, readme=readme))
+
+    assert any("marks `core/thing.py` absent, but it is in the tree" in e for e in errors)
+
+
+def test_an_absent_marker_covers_only_the_paragraph_it_sits_under(tmp_path: Path) -> None:
+    """A marker under the wrong paragraph declares nothing, and says so."""
+    readme = (
+        f"{README}\nThis project has no `setup.py`.\n\nAnother paragraph.\n"
+        "<!-- absent: setup.py -->\n"
+    )
+
+    errors = _errors(_repo(tmp_path, readme=readme))
+
+    assert any(
+        "marks `setup.py` absent, but the paragraph above does not cite it" in e for e in errors
+    )
+    assert any("cites `setup.py`, which does not exist" in e for e in errors)
+
+
+def test_an_absent_marker_beside_a_provenance_marker_leaves_both_readable(tmp_path: Path) -> None:
+    """Sibling markers are skipped when either finds its paragraph."""
+    model = MODEL.replace(
+        "The demo agent's blood:gas coefficient is 0.5.\n" + MARKER.format("0.5"),
+        "The demo agent's blood:gas coefficient is 0.5, and it ships no `setup.py`.\n"
+        "<!-- absent: setup.py -->\n" + MARKER.format("0.5"),
+    )
+    assert model != MODEL
+
+    assert _errors(_repo(tmp_path, model=model)) == []
+
+
 def test_dangling_section_citation_is_an_error(tmp_path: Path) -> None:
     readme = README.replace('"Known limitations"', '"Renamed limitations"')
     root = _repo(tmp_path, readme=readme)
@@ -837,7 +915,7 @@ def _docstringed(root: Path, body: str) -> None:
 def test_citation_in_an_item_brief_is_held_to_the_document_it_names(tmp_path: Path) -> None:
     """The queue is where most of this project's prose is, and it was unread."""
     root = _repo(tmp_path)
-    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`, "A thread that was deleted".\n')
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`\'s "A thread that was deleted".\n')
     assert any(
         'PL-0000-demo.md:1: quotes docs/MODEL.md as "A thread that was deleted"' in e
         for e in _errors(root)
@@ -848,6 +926,7 @@ def test_citation_in_an_item_brief_that_resolves_is_not_an_error(tmp_path: Path)
     root = _repo(tmp_path)
     _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`, "Known limitations".\n')
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+    assert not any("quotes docs/MODEL.md" in a for a in _advisories(root))
 
 
 def test_a_section_mark_citation_is_checked_like_a_comma_one(tmp_path: Path) -> None:
@@ -875,16 +954,22 @@ def test_a_section_mark_citation_that_resolves_is_not_an_error(tmp_path: Path) -
 
 
 def test_an_under_citation_after_the_document_is_checked(tmp_path: Path) -> None:
-    """`` `doc.md` under "X" `` - 11 in the tree, and `under` says outright it cites."""
+    """`` `doc.md` under "X" `` is read, and a miss is an advisory rather than an error.
+
+    `under` claims less than it looks: the section mark is how a citation says
+    it names the document's own words, so under `PL-GPJ7`'s rule this is read
+    for drift and printed, not refused (`PL-HVST`).
+    """
     root = _repo(tmp_path)
     _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` under "A deleted thread".\n')
-    assert any("quotes docs/MODEL.md" in e for e in _errors(root))
+    assert any("quotes docs/MODEL.md" in a for a in _advisories(root))
 
 
 def test_a_parenthesised_citation_is_checked(tmp_path: Path) -> None:
+    """Read for drift and printed as an advisory, like every non-claiming connective."""
     root = _repo(tmp_path)
     _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` ("A deleted thread").\n')
-    assert any("quotes docs/MODEL.md" in e for e in _errors(root))
+    assert any("quotes docs/MODEL.md" in a for a in _advisories(root))
 
 
 def test_a_possessive_quotation_of_absent_text_is_reported(tmp_path: Path) -> None:
@@ -933,7 +1018,7 @@ def test_a_citation_wrapping_inside_a_blockquote_is_not_reported_stale(tmp_path:
 def test_citation_in_a_source_docstring_is_held_to_the_document_it_names(tmp_path: Path) -> None:
     """A contributor reading the class is sent somewhere; it has to still answer."""
     root = _repo(tmp_path)
-    _docstringed(root, 'See `docs/MODEL.md`, "A thread that was deleted".')
+    _docstringed(root, 'See `docs/MODEL.md` § "A thread that was deleted".')
     assert any("thing.py:1: quotes docs/MODEL.md" in e for e in _errors(root))
 
 
@@ -974,7 +1059,7 @@ def test_a_source_file_with_a_byte_order_mark_is_read_not_declined(tmp_path: Pat
     """
     root = _repo(tmp_path)
     (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_bytes(
-        b'\xef\xbb\xbf"""See `docs/MODEL.md`, "A thread that was deleted"."""\n'
+        '\ufeff"""See `docs/MODEL.md` § "A thread that was deleted"."""\n'.encode()
     )
     report = doc_check.analyze(root)
     assert not any("thing.py" in line for line in report.declined), report.declined
@@ -985,7 +1070,7 @@ def test_a_docstring_citation_is_reported_on_its_own_line(tmp_path: Path) -> Non
     root = _repo(tmp_path)
     module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
     module.write_text(
-        '''X = 1\n\n\ndef f() -> None:\n    """See `docs/MODEL.md`, "A deleted thread"."""\n''',
+        '''X = 1\n\n\ndef f() -> None:\n    """See `docs/MODEL.md` § "A deleted thread"."""\n''',
         encoding="utf-8",
     )
     assert any("thing.py:5: quotes docs/MODEL.md" in e for e in _errors(root))
@@ -1000,6 +1085,7 @@ def test_a_quoted_source_inside_a_fence_is_not_a_citation(tmp_path: Path) -> Non
         'It ended with\n\n```text\n`docs/MODEL.md`, "A thread that was deleted"\n```\n',
     )
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+    assert not any("quotes docs/MODEL.md" in a for a in _advisories(root))
 
 
 def test_a_closed_brief_quoting_a_deleted_heading_is_not_an_error(tmp_path: Path) -> None:
@@ -1013,7 +1099,7 @@ def test_a_closed_brief_quoting_a_deleted_heading_is_not_an_error(tmp_path: Path
     record or editing the roadmap to suit a check (`PL-ZM8P`).
     """
     root = _repo(tmp_path)
-    _item(root, "PL-0000-done", _brief("done", '`docs/MODEL.md`, "A thread that was deleted".'))
+    _item(root, "PL-0000-done", _brief("done", '`docs/MODEL.md` § "A thread that was deleted".'))
 
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
 
@@ -1025,7 +1111,7 @@ def test_an_open_brief_quoting_a_deleted_heading_is_still_an_error(tmp_path: Pat
     switching the check off.
     """
     root = _repo(tmp_path)
-    _item(root, "PL-0000-open", _brief("ready", '`docs/MODEL.md`, "A thread that was deleted".'))
+    _item(root, "PL-0000-open", _brief("ready", '`docs/MODEL.md` § "A thread that was deleted".'))
 
     assert any("quotes docs/MODEL.md" in e for e in _errors(root))
 
@@ -1039,6 +1125,7 @@ def test_an_indented_fence_hides_a_quoted_source_too(tmp_path: Path) -> None:
         '- It ended with\n\n  ```text\n  `docs/MODEL.md`, "A thread that was deleted"\n  ```\n',
     )
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+    assert not any("quotes docs/MODEL.md" in a for a in _advisories(root))
 
 
 def test_an_elided_quotation_is_not_checked(tmp_path: Path) -> None:
@@ -1046,6 +1133,7 @@ def test_an_elided_quotation_is_not_checked(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     _item(root, "PL-0000-demo", '`docs/MODEL.md`, "Known ... limitations".\n')
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+    assert not any("quotes docs/MODEL.md" in a for a in _advisories(root))
 
 
 def test_a_quotation_differing_only_in_dash_style_resolves(tmp_path: Path) -> None:
@@ -1054,6 +1142,7 @@ def test_a_quotation_differing_only_in_dash_style_resolves(tmp_path: Path) -> No
     root = _repo(tmp_path, model=model)
     _item(root, "PL-0000-demo", '`docs/MODEL.md`, "The step is fixed \u2014 and stated once".\n')
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+    assert not any("quotes docs/MODEL.md" in a for a in _advisories(root))
 
 
 def test_a_quotation_recapitalised_to_open_a_sentence_resolves(tmp_path: Path) -> None:
@@ -1061,6 +1150,7 @@ def test_a_quotation_recapitalised_to_open_a_sentence_resolves(tmp_path: Path) -
     root = _repo(tmp_path, model=model)
     _item(root, "PL-0000-demo", '`docs/MODEL.md`, "The step is fixed and stated once".\n')
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+    assert not any("quotes docs/MODEL.md" in a for a in _advisories(root))
 
 
 def test_a_quoted_sentence_that_is_not_a_heading_still_resolves(tmp_path: Path) -> None:
@@ -1068,12 +1158,55 @@ def test_a_quoted_sentence_that_is_not_a_heading_still_resolves(tmp_path: Path) 
     root = _repo(tmp_path)
     _item(root, "PL-0000-demo", '`docs/MODEL.md`, "blood:gas coefficient is 0.5".\n')
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+    assert not any("quotes docs/MODEL.md" in a for a in _advisories(root))
 
 
 def test_a_citation_naming_a_document_that_does_not_exist_is_an_error(tmp_path: Path) -> None:
     root = _repo(tmp_path)
-    _item(root, "PL-0000-demo", '`docs/GONE.md`, "Anything at all".\n')
+    _item(root, "PL-0000-demo", '`docs/GONE.md` § "Anything at all".\n')
     assert any("quotes docs/GONE.md, which does not exist" in e for e in _errors(root))
+
+
+PROPOSAL = "Hand off at 120,000 tokens of spend."
+
+
+@pytest.mark.parametrize(
+    "quotation",
+    [
+        f'`docs/MODEL.md`: "{PROPOSAL}"',
+        f'`docs/MODEL.md`, "{PROPOSAL}"',
+        f'`docs/MODEL.md` ("{PROPOSAL}")',
+        f'`docs/MODEL.md` under "{PROPOSAL}"',
+        f'`docs/MODEL.md` "{PROPOSAL}"',
+    ],
+    ids=["colon", "comma", "parenthesis", "under", "bare"],
+)
+def test_a_proposal_quoted_beside_a_document_is_not_an_error(
+    tmp_path: Path, quotation: str
+) -> None:
+    """Wording proposed for a document, which it rightly lacks, fails nothing.
+
+    A brief proposing a sentence for `CLAUDE.md` after a colon, and one quoting
+    since-replaced wording after a comma, both failed `make check` as
+    misquotations, and the only repair was to reword a correct brief
+    (`PL-HVST`). Only `§` and the possessive claim the file holds the words.
+    After any other connective the miss is still printed, as an advisory,
+    because it may equally be drift.
+    """
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", f"**Proposed wording.** {quotation}\n")
+
+    assert _errors(root) == []
+    assert any(f'quotes docs/MODEL.md as "{PROPOSAL}"' in a for a in _advisories(root))
+
+
+def test_a_proposal_for_a_document_not_yet_written_is_an_advisory(tmp_path: Path) -> None:
+    """A missing file takes the connective's severity too, as a missing passage does."""
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", f'**Proposed.** `docs/NEW.md`: "{PROPOSAL}"\n')
+
+    assert not any("docs/NEW.md" in e for e in _errors(root))
+    assert any("quotes docs/NEW.md, which does not exist" in a for a in _advisories(root))
 
 
 def test_broken_relative_link_is_an_error(tmp_path: Path) -> None:
@@ -1712,6 +1845,26 @@ def test_a_target_named_in_a_fenced_block_is_read(tmp_path: Path) -> None:
     errors = _errors(_with_make(tmp_path, mentions="\n```bash\nmake lint\n```\n"))
 
     assert any("make lint" in message for message in errors)
+
+
+def test_a_fenced_shell_comment_saying_make_sure_names_no_target(tmp_path: Path) -> None:
+    """A fenced line names a target only where `make` is its first word.
+
+    Read anywhere on the line, `make sure` in a shell comment failed as a
+    target the Makefile lacks, and the only repair was to reword a correct
+    sample (`PL-L8VP`). A line opening on `make` is still read, which
+    `test_a_target_named_in_a_fenced_block_is_read` holds.
+    """
+    block = "```\n# make sure the virtualenv exists first\nuv sync --locked --dev\n```"
+
+    assert _errors(_with_make(tmp_path, mentions=f"\n{block}\n")) == []
+
+
+def test_make_error_output_in_a_fence_names_no_target(tmp_path: Path) -> None:
+    """Pasted output is not a command: `No rule to make target` names no target `target`."""
+    block = "```\n$ make chek\nmake: *** No rule to make target 'chek'.  Stop.\n```"
+
+    assert _errors(_with_make(tmp_path, mentions=f"\n{block}\n")) == []
 
 
 def test_prose_that_says_make_sure_names_no_target(tmp_path: Path) -> None:
@@ -3471,6 +3624,58 @@ def test_math_in_the_body_below_frontmatter_is_still_reported(tmp_path: Path) ->
 
     assert len(errors) == 2
     assert all("docs/items/PL-6194-x.md:5" in error for error in errors)
+
+
+SUBJECT_PATTERN = 'SQUASH_SUBJECT_RE = r"\\(#(\\d+)\\)\\s*$"'
+
+
+@pytest.mark.parametrize(
+    ("name", "body"),
+    [
+        (
+            "docs/NOTE.md",
+            f"The subject pattern, indented as a code block:\n\n    {SUBJECT_PATTERN}\n",
+        ),
+        (
+            "docs/items/PL-0000-demo.md",
+            f"The subject pattern, indented as a code block:\n\n    {SUBJECT_PATTERN}\n",
+        ),
+        ("docs/NOTE.md", f"- An item, with a code block of its own:\n\n      {SUBJECT_PATTERN}\n"),
+        ("docs/NOTE.md", f"- An item.\n\nThe list is closed.\n\n    {SUBJECT_PATTERN}\n"),
+    ],
+    ids=["document", "item", "inside a list item", "after a closed list"],
+)
+def test_math_in_an_indented_code_block_is_quiet(tmp_path: Path, name: str, body: str) -> None:
+    """A regex shown as an indented code block is code, as a fenced one is.
+
+    CommonMark defines the block: four columns past its container, not
+    continuing a paragraph. Only fences were blanked, so the regex failed as
+    LaTeX GitHub does not render (`PL-XGYH`). Inside a list item the four
+    columns count from the item's content, so its code block sits at six.
+    """
+    assert _math_errors(tmp_path / "repo", name, body) == []
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "- An item.\n\n    Its second paragraph writes \\(t\\).\n",
+        "- An item whose prose\n    wraps four in and writes \\(t\\).\n",
+        "1. A step.\n\n    Its second paragraph writes \\(t\\).\n",
+        "A paragraph\n    continued four in writes \\(t\\).\n",
+    ],
+    ids=["list item paragraph", "list item continuation", "ordered item", "paragraph continuation"],
+)
+def test_math_in_prose_indented_four_is_still_reported(tmp_path: Path, body: str) -> None:
+    """Four spaces inside a list item, or under a paragraph, are prose, not code.
+
+    The trap the indented-block rule has to avoid: blanking every line
+    indented four would hide a real delimiter in an item's own paragraph, the
+    way a false pass always hides - silently (`PL-XGYH`).
+    """
+    errors = _math_errors(tmp_path / "repo", "docs/NOTE.md", body)
+
+    assert len(errors) == 2
 
 
 def test_math_github_inline_syntax_is_quiet(tmp_path: Path) -> None:
