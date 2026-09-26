@@ -131,7 +131,8 @@ half, and `CLAUDE.md` refuses that — a tool that guesses at judgment is worse
 than no tool, because its output looks authoritative and is not.
 
 An item whose *subject* is a broken citation can quote it inside a fenced block,
-which `_without_fences` blanks before the check reads it.
+which `without_fences` in `subprojects/docket/src/docket/fences.py` blanks before
+the check reads it. The fence has to close: one nothing closes is read as written.
 
 ## What this does not reach
 

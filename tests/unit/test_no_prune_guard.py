@@ -107,6 +107,70 @@ def test_an_innocent_call_is_untouched(command: str) -> None:
     assert _decision(command) is None, f"{command!r} was denied"
 
 
+# Each deleted a remote-tracking ref when run on git 2.43.0 against a scratch
+# remote (`PL-R17X`), but `git fetch -P` and a `pruneTags` setting, which delete
+# tags once pruning is on and are refused as `--prune-tags` is, since a config
+# file the hook never reads can have turned it on.
+SPELLINGS = (
+    "git pull --prune",
+    "git pull -p",
+    "git pull -np",
+    "git remote update -p",
+    "git remote -v update -p",
+    "git fetch -P",
+    # A bundle of short flags prunes where its prune letter comes first.
+    "git fetch -tp",
+    "git fetch -pj4",
+    # A setting ahead of the command name holds for the whole call; a name with
+    # no `=` reads as true, and git reads the name without regard to case.
+    "git -c fetch.prune=true fetch origin",
+    "git -c remote.origin.prune=true pull",
+    "git -c fetch.prune fetch",
+    "git -c FETCH.PRUNE=Yes fetch",
+    "git -c fetch.pruneTags=true fetch",
+    "git --config-env=fetch.prune=PRUNE fetch",
+    "git --config-env fetch.prune=PRUNE fetch",
+    # Found past the options that take the next word as their value.
+    "git -C . --git-dir .git --work-tree . -c fetch.prune=on fetch",
+    "git config fetch.pruneTags true",
+    "git config FETCH.PRUNE true",
+)
+
+
+@pytest.mark.parametrize("command", SPELLINGS)
+def test_every_pruning_spelling_is_refused(command: str) -> None:
+    """The spellings the four shapes missed are refused like `git fetch --prune` (`PL-R17X`)."""
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert decision["permissionDecision"] == "deny"
+
+
+# Each deleted nothing on the same scratch remote, so none is refused.
+NOT_PRUNING = (
+    # A setting that reads as false turns nothing on.
+    "git -c fetch.prune= fetch",
+    "git -c fetch.prune=off fetch",
+    "git -c fetch.prune=0 fetch",
+    "git -c fetch.prune=NO fetch",
+    # A letter taking a value takes the rest of the word: `-j4p` is jobs `4p`.
+    "git fetch -j4p",
+    "git pull -rp",
+    "git pull -Sp",
+    # Ahead of the command name, `-p` and `-P` are --paginate and --no-pager.
+    "git -p fetch origin",
+    "git -P fetch origin",
+    # After it, `-c` is an option of that command: a count, a reused message.
+    "git grep -c fetch.prune",
+    "git commit -c HEAD",
+)
+
+
+@pytest.mark.parametrize("command", NOT_PRUNING)
+def test_a_spelling_that_prunes_nothing_is_untouched(command: str) -> None:
+    """Reading git as git reads it cuts both ways: what it would not prune passes."""
+    assert _decision(command) is None, f"{command!r} was denied"
+
+
 def test_only_a_heredoc_body_is_removed() -> None:
     """The prose in a body stays allowed, and a prune after its terminator is refused (`PL-39LD`).
 

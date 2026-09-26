@@ -119,6 +119,15 @@ try:
     # say which milestone is current and what it still owes.
     from docket.config import Config
     from docket.config import load as load_docket_config
+
+    # `fences` is the one reading of where a fenced block is (`PL-92MY`). This
+    # tool held three spellings of its own beside docket's two, and one read a
+    # triple-backtick code span wrapped to a line's start as a fence nothing
+    # closed, so the rest of that brief was never read for line citations.
+    # `without_fences` is re-exported, as `tools/possessive_section_check.py`
+    # reads it from here.
+    from docket.fences import blocks, fenced_lines
+    from docket.fences import without_fences as without_fences
     from docket.model import CLOSED_STATUSES, Item
     from docket.release import NOTES_DIR, SPAN_HEADING, notes_path
     from docket.roadmap import (
@@ -142,6 +151,12 @@ try:
         table_rows,
         version_tuple,
     )
+
+    # `shell_words` is the one reading of how a shell command splits
+    # (`PL-PVW2`). A CI step's line and a Makefile recipe line are read through
+    # it rather than a split of this tool's own, which cut inside quotes and
+    # read `python3 "tools/my file.py"` as `tools/my` (`PL-CWBJ`).
+    from docket.shell import Word, shell_words
     from docket.store import ID_PATTERN, read_items
 
     # Reading `git tag` is a second borrowing, for the same reason as the first.
@@ -182,8 +197,9 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
         "grammar, docket/vcs.py for the tag read and the default-branch list, "
-        "docket/release.py for where a cut writes its notes, and "
-        "docket/{config,model,store}.py for the queue, "
+        "docket/release.py for where a cut writes its notes, docket/shell.py for "
+        "how a shell line splits, docket/fences.py for where a fenced block is, "
+        "and docket/{config,model,store}.py for the queue, "
         f"and could not import them: {error}"
     ) from error
 
@@ -337,9 +353,6 @@ NON_PARAMETER_KEYS = frozenset({"schema_version", "sources", "provenance_gap"})
 # and `tests/unit/test_parameters.py` fails if the two ever disagree.
 SOURCE_TIERS = ("primary", "secondary", "reference-implementation")
 
-FENCE_RE = re.compile(r"^```")
-#: The same fence, allowed to sit inside a list item.
-INDENTED_FENCE_RE = re.compile(r"^[ \t]*```")
 TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
 #: A source file named in the reference index, as inline code: `name.pdf`.
 REFERENCE_FILE_RE = re.compile(r"`(?P<name>[\w][\w.-]*\.(?:pdf|txt|csv|json))`")
@@ -404,7 +417,8 @@ BRACE_RE = re.compile(r"\{([^{}]*)\}")
 # (`PL-QQCD`). A mark that a code-spanned source stands directly before is not
 # this pattern's to resolve: `` `docs/MODEL.md` § "X" `` names its document and
 # `QUOTED_SOURCE_RE` holds it by containment, and `` `PL-MB2W` § "X" `` names
-# an item brief, which no documentation heading answers.
+# an item brief, which no documentation heading answers and `ITEM_SECTION_RE`
+# holds the same way.
 #
 # The mark names a section of this repository's own documents, and nothing
 # else. A section of an outside source - a paper's "Materials and Methods", a
@@ -520,6 +534,18 @@ CLAIMING_CONNECTIVE_RE = re.compile(r"§{1,2}|['\u2019]s(?:\s+own)?")
 #: "Known limitations" `` is `QUOTED_SOURCE_RE`'s to hold, by containment, and
 #: telling it to take a `§` would break the one match that reads it.
 QUALIFIED_RE = re.compile(r"`[\w./-]+`[ \n]*" + CITATION_CONNECTIVE + r"?[ \n]*$")
+#: A section mark after a code-spanned item id, which cites that item's brief:
+#: `` `PL-MB2W` § "Design round, 2026-09-24" ``. `QUALIFIED_RE` hands it on
+#: from `check_citations`, since no documentation heading answers it, and
+#: `QUOTED_SOURCE_RE` names only a `.md` document, so the seven such citations
+#: standing on 2026-09-26 were read by nothing (`PL-QYN4`). The mark alone,
+#: because nothing else after an id claims the brief holds the words: `under
+#: "X"` names the heading the item is listed under elsewhere, as both such sites
+#: did that day, and a quotation after a bare id is prose. The possessive would
+#: claim it, and waits on a comparison that folds emphasis (`PL-RX0W`).
+ITEM_SECTION_RE = re.compile(
+    r"`(?P<item>" + ID_PATTERN + r')`[ \n]*§{1,2}[ \n]*"(?P<quoted>\w[^"]{2,200}?)"', re.DOTALL
+)
 
 # The `**Tags.**` statement. What it claims is deliberately not a list: the
 # version table above it already says which releases exist, so restating them
@@ -628,11 +654,6 @@ MATH_EDGE_RE = re.compile(r"\$`|`\$")
 # expression.
 BACKTICK_RUN_RE = re.compile(r"(`+)(?:(?!\1).)*\1")
 
-# Any fence, including an indented one. `FENCE_RE` is anchored at column zero
-# and matches only backticks, which is right for the package-map reader but
-# would leave an indented or tilde-fenced sample exposed to the rules below.
-ANY_FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
-
 # A list item's opening line: its marker, a bullet or an ordered number, and
 # the gap to its content, or nothing where the item opens empty. What
 # `_content_column` reads to place an indented code block inside the item.
@@ -647,14 +668,12 @@ WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 RUN_STEP_RE = re.compile(r"^(?P<indent>\s*)-?\s*run:\s*(?P<inline>.*)$")
 BLOCK_SCALARS = frozenset({"|", ">", "|-", ">-", "|+", ">+"})
 
-# Shell syntax that separates one token from the next.
-COMMAND_SPLIT_RE = re.compile(r"[\s;|&()<>]+")
-
 # A token this check cannot resolve by reading the tree: a shell or GitHub
 # expansion, a glob whose intended match is not stated, a URL, or an action
 # reference. Skipped rather than guessed at - a checker that guesses at the
-# judgment half is worse than no checker.
-UNRESOLVABLE = ("$", "*", "?", "://", "@")
+# judgment half is worse than no checker. The backquote is there because a
+# word keeps a command substitution as written; its body is read on its own.
+UNRESOLVABLE = ("$", "`", "*", "?", "://", "@")
 
 
 @dataclass
@@ -832,21 +851,10 @@ def read_docs(root: Path) -> dict[Path, str]:
 
 
 def _fenced_blocks(text: str) -> Iterator[tuple[int, list[str]]]:
-    """Yield each fenced block as its opening line number and its contents."""
+    """Yield each closed fenced block as its opening line's number and the lines inside it."""
     lines = text.splitlines()
-    index = 0
-    while index < len(lines):
-        if not FENCE_RE.match(lines[index]):
-            index += 1
-            continue
-        start = index + 1
-        body: list[str] = []
-        index += 1
-        while index < len(lines) and not FENCE_RE.match(lines[index]):
-            body.append(lines[index])
-            index += 1
-        index += 1
-        yield start, body
+    for block in blocks(text):
+        yield block.start + 1, lines[block.start + 1 : block.end]
 
 
 def parse_tree(root: Path, start_line: int, block: list[str]) -> TreeMap | None:
@@ -1323,18 +1331,16 @@ def check_prose_provenance(root: Path, report: Report) -> None:
     if not path.is_file():
         return  # `check_provenance` has already reported the missing document.
 
-    lines = path.read_text(encoding="utf-8").splitlines()
+    text = path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    fenced = fenced_lines(text)
     markers = 0
-    fenced = False
     for index, line in enumerate(lines):
         # A marker inside a code fence is the format being *shown*, not a claim
         # being made - the section below documents the convention by printing
         # one. Reading it as a claim would force every example to be
         # coincidentally true of the shipped data.
-        if ANY_FENCE_RE.match(line):
-            fenced = not fenced
-            continue
-        if fenced:
+        if index in fenced:
             continue
         match = PROSE_MARKER_RE.match(line.strip())
         if match is None:
@@ -3684,13 +3690,13 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
 
         # A fence or a code span holds a literal - an example, a command, the
         # form being described - and a literal is not a claim about the tree.
-        prose = _without_fences(text)
+        prose = without_fences(text)
         spans = [(span.start(), span.end()) for span in CODE_SPAN_RE.finditer(prose)]
 
         for match in CITATION_RE.finditer(prose):
             # A code-spanned source directly before the mark says where the
-            # section lives: a document, which `check_quoted_sources` holds by
-            # containment, or an item brief, which no heading here answers.
+            # section lives: a document, or an item brief no heading here
+            # answers, and `check_quoted_sources` holds either by containment.
             before = prose[max(0, match.start() - 200) : match.start()]
             if _inside(match.start(), spans) or QUALIFIED_RE.search(before):
                 continue
@@ -3739,7 +3745,7 @@ def _absent_paths(
     presence differs between a working tree and CI. A marker shown in a fence
     is the format being shown, and is not read.
     """
-    lines = _without_fences(text).splitlines()
+    lines = without_fences(text).splitlines()
     declared: dict[int, set[str]] = {}
     for index, line in enumerate(lines):
         marker = ABSENT_MARKER_RE.match(line.strip())
@@ -3873,7 +3879,9 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
 
     sources = list(documents.items()) + list(_live_item_briefs(root))
     for path, raw in sources:
-        for match in LINE_CITATION_RE.finditer(_without_fences(raw)):
+        # A fence holds a literal, and read as a claim it made an item that
+        # documents a stale citation an error for quoting the one it reports.
+        for match in LINE_CITATION_RE.finditer(without_fences(raw)):
             token, first, last = match.group(1), int(match.group(2)), match.group(3)
             if not _is_path_citation(token):
                 continue
@@ -3889,28 +3897,6 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
                     f"{count} lines. Anchor the citation to a symbol rather than "
                     f"re-pointing it at a line number, which drifts again."
                 )
-
-
-def _without_fences(text: str) -> str:
-    """`text` with fenced blocks blanked, offsets and line numbers preserved.
-
-    A fence holds a literal - a command, an example, a quotation shown as
-    broken. Reading one as a claim is how an item that documents a stale
-    citation becomes an error for containing the citation it reports.
-
-    Indented fences count. `FENCE_RE` anchors at column 0, which is right for
-    the top-level blocks it was written for and wrong here: an example given
-    under a list item is indented to sit inside it, and that is exactly where
-    an item shows the citation it is reporting.
-    """
-    out, fenced = [], False
-    for line in text.splitlines(keepends=True):
-        if INDENTED_FENCE_RE.match(line):
-            fenced = not fenced
-            out.append(" " * (len(line) - 1) + "\n")
-        else:
-            out.append(" " * (len(line) - 1) + "\n" if fenced else line)
-    return "".join(out)
 
 
 def _docstrings(tree: ast.Module) -> Iterator[tuple[int, str]]:
@@ -4030,21 +4016,40 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     advisory: the words may be a proposal for the file or a sentence it has
     since dropped, which it rightly lacks, and a reader can tell that from
     drift where no spelling can (`PL-HVST`).
+
+    **An item id is a source too, after the mark** - `ITEM_SECTION_RE`. The
+    brief its file holds is tested the same way, closed or open, because a
+    citation of a closed brief still claims the words are there; only a
+    closed brief's own citations go unread, since `_quoting_sources` reads the
+    live briefs alone. An id no file under `docs/items/` holds is an error, and
+    one two files hold is declined rather than guessed at.
     """
     bodies: dict[str, str | None] = {}
+    briefs: dict[str, list[str]] = {}
+
+    def body_of(cited: str) -> str | None:
+        if cited not in bodies:
+            target = root / cited
+            bodies[cited] = (
+                _comparable(target.read_text(encoding="utf-8")) if target.is_file() else None
+            )
+        return bodies[cited]
+
+    def briefs_of(item: str) -> list[str]:
+        if item not in briefs:
+            store = root / "docs" / "items"
+            named = (*store.glob(f"{item}-*.md"), *store.glob(f"{item}.md"))
+            briefs[item] = sorted(brief.relative_to(root).as_posix() for brief in named)
+        return briefs[item]
 
     for path, offset, text in _quoting_sources(root, documents, report.declined):
-        for match in QUOTED_SOURCE_RE.finditer(_without_fences(text)):
+        prose = without_fences(text)
+        for match in QUOTED_SOURCE_RE.finditer(prose):
             cited, quoted = match.group("document"), _normalized(match.group("quoted"))
             if "..." in quoted or "…" in quoted:
                 continue
             line = offset + _line_of(text, match.start()) - 1
-            if cited not in bodies:
-                target = root / cited
-                bodies[cited] = (
-                    _comparable(target.read_text(encoding="utf-8")) if target.is_file() else None
-                )
-            body = bodies[cited]
+            body = body_of(cited)
             if body is None:
                 finding = f"{path}:{line}: quotes {cited}, which does not exist"
             elif _comparable(quoted).rstrip(" .,;:") not in body:
@@ -4058,6 +4063,26 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                     f"{finding} - drift, if it quotes the file; if it quotes wording proposed "
                     "for it or since removed, nothing to do (only `§` or the possessive claims "
                     "the file holds the words)"
+                )
+
+        for match in ITEM_SECTION_RE.finditer(prose):
+            item, quoted = match.group("item"), _normalized(match.group("quoted"))
+            if "..." in quoted or "…" in quoted:
+                continue
+            line = offset + _line_of(text, match.start()) - 1
+            held = briefs_of(item)
+            if not held:
+                report.errors.append(
+                    f"{path}:{line}: quotes {item}, which no file under docs/items/ holds"
+                )
+            elif len(held) > 1:
+                report.declined.append(
+                    f'{path}:{line}: quotes {item} as "{quoted}", but {len(held)} files under '
+                    "docs/items/ carry that id, so which brief it cites was not decided"
+                )
+            elif _comparable(quoted).rstrip(" .,;:") not in (body_of(held[0]) or ""):
+                report.errors.append(
+                    f'{path}:{line}: quotes {item} as "{quoted}", which is not in {held[0]}'
                 )
 
 
@@ -4161,13 +4186,42 @@ def workflow_commands(text: str) -> Iterator[tuple[str, int]]:
                 yield body.strip(), index
 
 
-def _command_paths(command: str) -> Iterator[str]:
-    """Every token in a shell line that is written as a path."""
-    for raw in COMMAND_SPLIT_RE.split(command):
-        token = raw.strip("\"'`,")
+def _shell_words(where: str, command: str, report: Report, unread: str) -> tuple[str, ...]:
+    """The words a shell line runs, quotes removed, as docket's `shell.shell_words` reads them.
+
+    That is the one reading of how a shell command splits (`PL-PVW2`), and
+    this tool kept a split of its own until `PL-CWBJ`: a pattern cutting at
+    whitespace and operators, inside quotes too, so `python3 "tools/my
+    file.py"` read as `tools/my`. A command substitution's body is read as
+    the command it is, so a path named inside one is read as well.
+
+    The reading is of one line, which is how both callers hand a command over.
+    A line whose quote, substitution or trailing backslash runs past its end
+    is a command this cannot place, so it is declined, naming `unread`, and
+    answers no words rather than a guess at them.
+    """
+    reading = shell_words(command)
+    if not reading.clauses:
+        report.declined.append(
+            f"{where}: `{command}` does not end where its line does - a quote, a command "
+            f"substitution or a backslash runs past it - so {unread}"
+        )
+        return ()
+    return tuple(
+        token.text
+        for clause in reading.every_clause()
+        for token in clause.tokens
+        if isinstance(token, Word)
+    )
+
+
+def _command_paths(words: Iterable[str]) -> Iterator[str]:
+    """Every word of a shell line that is written as a path."""
+    for word in words:
+        token = word.strip(",")
         # `--cov=src/x` and `KEY=path` carry the path on the right of the `=`.
         if "=" in token:
-            token = token.rpartition("=")[2].strip("\"'")
+            token = token.rpartition("=")[2]
         token = token.removeprefix("./")
         if "/" not in token or token.startswith("-"):
             continue
@@ -4200,7 +4254,10 @@ def check_workflow_paths(root: Path, report: Report) -> None:
         relative = path.relative_to(root)
         reported: set[tuple[str, int]] = set()
         for command, line in workflow_commands(path.read_text(encoding="utf-8")):
-            for token in _command_paths(command):
+            words = _shell_words(
+                f"{relative}:{line}", command, report, "the paths it runs were not resolved"
+            )
+            for token in _command_paths(words):
                 if PurePosixPath(token).parts[0] not in top_level:
                     continue
                 if (token, line) in reported:
@@ -4380,16 +4437,19 @@ def _without_code(text: str) -> list[str]:
     prose it could continue. Where the reading is unsure it keeps an item open
     or a line as prose, so a doubt costs a false refusal, which a fence
     repairs, and never a delimiter left unread.
+
+    A fenced block is where `docket.fences` finds one, blanked from its opening
+    line through its closing one, so an opener nothing closes blanks nothing
+    and the prose below it is still read (`PL-92MY`).
     """
     lines: list[str] = []
-    fenced = False
+    closes = {block.start: block.end for block in blocks(text)}
+    closing = -1  # the closing line of the fenced block being blanked
     items: list[int] = []  # the content column of each open list item, innermost last
     paragraph = False  # whether the line above is prose this line may continue
-    for raw in text.splitlines():
+    for index, raw in enumerate(text.splitlines()):
         line = raw.expandtabs(4)
-        if fenced or not line.strip():
-            if fenced and ANY_FENCE_RE.match(line):
-                fenced = False
+        if index <= closing or not line.strip():
             lines.append("")
             paragraph = False
             continue
@@ -4401,8 +4461,8 @@ def _without_code(text: str) -> list[str]:
         if not paragraph and indent >= (items[-1] if items else 0) + 4:
             lines.append("")
             continue
-        if ANY_FENCE_RE.match(line):
-            fenced = True
+        if index in closes:
+            closing = closes[index]
             lines.append("")
             paragraph = False
             continue
@@ -4511,8 +4571,8 @@ def _target_commands(
     return commands + recipes[target]
 
 
-def _gate_scripts(root: Path, command: str) -> Iterator[str]:
-    """Every repository script a shell line names, as a repository-relative path.
+def _gate_scripts(root: Path, words: Iterable[str]) -> Iterator[str]:
+    """Every repository script a shell line's words name, as a repository-relative path.
 
     The rule is deliberately about *this project's own* scripts and not about
     the commands around them. `ruff`, `mypy`, `pytest` and `uv` are third-party
@@ -4526,10 +4586,10 @@ def _gate_scripts(root: Path, command: str) -> Iterator[str]:
     that exists. The second half is what keeps a `.py` written in prose, or a
     path a step creates, out of the comparison.
     """
-    for raw in COMMAND_SPLIT_RE.split(command):
-        token = raw.strip("\"'`,").removeprefix("./")
+    for word in words:
+        token = word.strip(",").removeprefix("./")
         if "=" in token:
-            token = token.rpartition("=")[2].strip("\"'")
+            token = token.rpartition("=")[2]
         if not token.endswith(GATE_SCRIPT_SUFFIX) and token not in GATE_SCRIPT_NAMES:
             continue
         if any(mark in token for mark in UNRESOLVABLE):
@@ -4606,20 +4666,24 @@ def check_gate_parity(root: Path, report: Report) -> None:
     recipes, prerequisites = _target_recipes(makefile.read_text(encoding="utf-8"))
     if "check" not in recipes:
         return
+    unread = "the scripts it runs were not compared"
     local = {
         script
         for command in _target_commands(recipes, prerequisites, "check")
-        for script in _gate_scripts(root, command)
+        for script in _gate_scripts(root, _shell_words("Makefile", command, report, unread))
     }
     merge: set[str] = set()
     for path in workflows:
         text = path.read_text(encoding="utf-8")
         if not _gates_pull_requests(text):
             continue
+        where = path.relative_to(root)
         merge |= {
             script
-            for command, _ in workflow_commands(text)
-            for script in _gate_scripts(root, command)
+            for command, line in workflow_commands(text)
+            for script in _gate_scripts(
+                root, _shell_words(f"{where}:{line}", command, report, unread)
+            )
         }
     if not local or not merge:
         return

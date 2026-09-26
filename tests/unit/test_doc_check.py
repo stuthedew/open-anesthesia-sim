@@ -1001,6 +1001,54 @@ def test_a_possessive_quotation_of_text_that_is_there_passes(tmp_path: Path) -> 
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
 
 
+def test_a_marked_citation_of_an_item_is_held_to_its_brief(tmp_path: Path) -> None:
+    """`` `PL-MB2W` § "X" `` cites that item's brief, and the brief is what holds the words.
+
+    `check_citations` leaves a mark after a code-spanned source to containment,
+    since no documentation heading answers an item, and `QUOTED_SOURCE_RE`
+    names only a `.md` document, so seven such citations were read by nothing
+    and a drifted one passed (`PL-QYN4`). The brief is read closed as well as
+    open: a closed one is a record, and a citation of it still claims the
+    words are there.
+    """
+    readme = '# Demo\n\nWho holds an item is `PL-T3ST` § "Design round".\n'
+    root = _repo(tmp_path, readme=readme)
+    _item(root, "PL-T3ST-demo", _brief("done", "**Design round.** The recorded claim decides."))
+    assert not any("quotes PL-T3ST" in e for e in _errors(root))
+
+    _item(root, "PL-T3ST-demo", _brief("done", "**Other holds.** The recorded claim decides."))
+    assert any(
+        'quotes PL-T3ST as "Design round", which is not in docs/items/PL-T3ST-demo.md' in e
+        for e in _errors(root)
+    )
+
+
+def test_a_marked_citation_of_an_item_no_file_holds_is_an_error(tmp_path: Path) -> None:
+    """An id no brief carries resolves against nothing, which is the finding itself."""
+    readme = '# Demo\n\nWho holds an item is `PL-T3ST` § "Design round".\n'
+
+    assert any(
+        "quotes PL-T3ST, which no file under docs/items/ holds" in e
+        for e in _errors(_repo(tmp_path, readme=readme))
+    )
+
+
+def test_an_item_listed_under_a_heading_is_not_held_to_its_brief(tmp_path: Path) -> None:
+    """After an id only the mark claims the brief holds the words.
+
+    `under "X"` there names the heading the item is listed under elsewhere, as
+    both such sites did on 2026-09-26 - `` `PL-Z7LY` under "Explicitly out of
+    scope for v0.4.0" `` among them - so reading it as a quotation of the brief
+    would refuse prose that is right.
+    """
+    readme = '# Demo\n\n`PL-T3ST` under "Known limitations" is out of scope.\n'
+    root = _repo(tmp_path, readme=readme)
+    _item(root, "PL-T3ST-demo", _brief("ready", "Something else entirely."))
+    report = doc_check.analyze(root)
+
+    assert not any("quotes PL-T3ST" in finding for finding in report.errors + report.advisories)
+
+
 def test_a_citation_wrapping_inside_a_blockquote_is_not_reported_stale(tmp_path: Path) -> None:
     """A `>` opening the continued line belongs to the blockquote, not the quote.
 
@@ -2477,6 +2525,51 @@ def test_an_expansion_is_skipped_rather_than_guessed_at(tmp_path: Path) -> None:
     assert _errors(_with_workflow(_repo(tmp_path), body=body)) == []
 
 
+# PL-CWBJ: a step's line was split by a pattern of this tool's own, which cut at
+# whitespace and shell operators inside quotes too, so a quoted path holding a
+# space read as two words. The line is read by docket's `shell.shell_words`
+# now, the one reading of how a shell command splits (`PL-PVW2`).
+
+
+def test_workflow_paths_reads_a_quoted_path_as_one_word(tmp_path: Path) -> None:
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n", '      - run: python3 "tools/harness/my file.py" check\n'
+    )
+    root = _with_workflow(_repo(tmp_path), body=body)
+    script = root / "tools" / "harness" / "my file.py"
+    script.write_text("", encoding="utf-8")
+
+    assert _errors(root) == []
+
+    script.unlink()
+
+    assert any(
+        "runs `tools/harness/my file.py`, which does not exist" in message
+        for message in _errors(root)
+    )
+
+
+def test_a_line_running_past_its_end_is_declined_rather_than_read(tmp_path: Path) -> None:
+    """A backslash continues the command onto the next line, which a one-line reading cannot place.
+
+    Read as it stands the line would be a guess at the command, so the check
+    says it did not read it rather than reporting it resolved.
+    """
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n",
+        "      - run: |\n          bin/runner \\\n            check\n",
+    )
+    report = doc_check.Report()
+
+    doc_check.check_workflow_paths(_with_workflow(_repo(tmp_path), body=body), report)
+
+    assert report.errors == []
+    assert any(
+        "`bin/runner \\`" in message and "were not resolved" in message
+        for message in report.declined
+    ), report.declined
+
+
 def test_a_repository_with_no_workflows_is_left_alone(tmp_path: Path) -> None:
     assert _errors(_repo(tmp_path)) == []
 
@@ -2791,6 +2884,18 @@ def test_how_a_script_is_invoked_is_not_a_drift(tmp_path: Path) -> None:
     )
 
     assert _parity(root) == []
+
+
+def test_gate_parity_reads_a_quoted_script_as_one_word(tmp_path: Path) -> None:
+    """`PL-CWBJ`'s other reader: split inside its quotes, the script was never seen at all."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=['python3 "tools/a check.py"', "python3 tools/b_check.py"],
+        workflows={"quality.yml": (GATING_WORKFLOW, ["python3 tools/b_check.py"])},
+    )
+    (root / "tools" / "a check.py").write_text("", encoding="utf-8")
+
+    assert any("runs tools/a check.py and no workflow" in message for message in _parity(root))
 
 
 def test_a_script_only_the_local_gate_runs_is_an_error(tmp_path: Path) -> None:
@@ -3716,6 +3821,26 @@ def test_math_fenced_sample_is_quiet(tmp_path: Path) -> None:
     body = "Before:\n\n```text\n\\(F_A\\) and \\[F = 0.02\\]\n```\n"
 
     assert _math_errors(tmp_path / "repo", "docs/NOTE.md", body) == []
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "The pattern\n``` `x` ``` cannot match.\nThe step \\(t\\) is read.\n\n```\ncode\n```\n",
+        "```text\nnever closed\nThe step \\(t\\) is read.\n",
+    ],
+    ids=["code span at a line start", "fence nothing closes"],
+)
+def test_math_below_a_line_that_opens_no_block_is_still_reported(tmp_path: Path, body: str) -> None:
+    """Neither line opens a fenced block, so the prose after it is read (`PL-92MY`).
+
+    Toggled on either, the delimiter below went unread. A fence nothing closes
+    costs at worst this loud error, which closing the fence repairs.
+    """
+    errors = _math_errors(tmp_path / "repo", "docs/NOTE.md", body)
+
+    assert len(errors) == 2
+    assert all("docs/NOTE.md:3" in error for error in errors)
 
 
 def test_math_shell_snippet_is_not_an_unclosed_expression(tmp_path: Path) -> None:
@@ -5012,6 +5137,30 @@ def test_an_item_may_quote_the_broken_citation_it_reports(tmp_path: Path) -> Non
     )
 
     assert _line_citation_errors(root) == []
+
+
+def test_a_code_span_at_a_line_start_hides_no_citation_below_it(tmp_path: Path) -> None:
+    """`PL-92MY`: a wrapped triple-backtick code span was read as a fence nothing closed.
+
+    `PL-6SRZ`'s brief wraps one to a line's start, and no line citation below it
+    was read while the check passed. A backtick fence's info string holds no
+    backtick, so the line is a code span and opens nothing.
+    """
+    body = "The pattern\n``` `(test_\\w+)` ```, which cannot match.\n\nSee `core/thing.py:900`.\n"
+    root = _items(_repo(tmp_path), {"PL-8888-open": _brief("ready", body)})
+
+    errors = _line_citation_errors(root)
+
+    assert len(errors) == 1
+    assert "core/thing.py:900" in errors[0]
+
+
+def test_a_fence_nothing_closes_hides_no_citation_below_it(tmp_path: Path) -> None:
+    """A fence nothing closes is not a fence, so what follows it is still held to the tree."""
+    body = "An example:\n\n```text\nnever closed\n\nSee `core/thing.py:900`.\n"
+    root = _items(_repo(tmp_path), {"PL-8888-open": _brief("ready", body)})
+
+    assert any("core/thing.py:900" in error for error in _line_citation_errors(root))
 
 
 def test_an_ambiguous_bare_filename_declines(tmp_path: Path) -> None:

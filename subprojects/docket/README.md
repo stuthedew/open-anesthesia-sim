@@ -658,7 +658,9 @@ A *status disposition* is a branch whose copy of an item has moved its
 `status:` away from both the fork's copy and the base's — a triage or grooming
 pass readying, blocking or dropping it — which `next` must not offer over. A
 *cut* is a release's notes file on an unlanded branch, and it always refuses a
-release. A *name* is a branch named for its item, `claude/pl-k7qx-slug`.
+release. A *name* is a branch named for its item, `claude/pl-k7qx-slug`, where
+the base's copy of the store or the branch's own holds that item: the id
+grammar fits a word too (`claims.named_id`, `PL-WK57`).
 `Holdings` keeps each apart from the claims, so a reader wanting claims is
 never handed one, and neither a disposition nor a name orders against a claim
 or holds arming.
@@ -763,9 +765,10 @@ to be left alone and to be recovered.
 
 **A ref naming nothing at all is the third outcome, and it is reported rather
 than dropped.** `unreadable` says the commits could not be read; `unattributed`
-says they were read and named no item — no id in the branch name, none at the
-front of any subject. Such a ref used to be dropped silently, so the report was
-complete about what it could not read and silent about work it could. It is
+says they were read and named no item — no id a copy of the store holds, in the
+branch name or at the front of any subject. Such a ref used to be dropped
+silently, so the report was complete about what it could not read and silent
+about work it could. It is
 named in `flight` and in the session digest with nothing suppressing it,
 because the steady state is empty: `tools/branch_id_check.py` fails a
 `claude/*` branch of one's own that names no id, and on 2026-09-14 none of this
@@ -876,7 +879,8 @@ beside a later live claim or disposition on the same item is not listed
 either, because `next` does not offer that item. And an `unclaimed:` row names
 each `claude/*` branch that has a non-merge commit changing a path outside the
 queue — the items, `roadmap_file` and `notes_file` — no claim of its own in
-any state, and no item id in its name. That is `claims.claims_nothing`, the
+any state, and no id in its name that a copy of the store holds (`PL-WK57`).
+That is `claims.claims_nothing`, the
 same function `tools/branch_id_check.py` refuses such a branch on in CI
 (`PL-FFR0`), so the count the design's pre-registered 1-in-20 threshold reads
 and the refusal cannot disagree. A claim counts in any state because closing
@@ -3196,7 +3200,9 @@ recorded such a command, four of them the same release-tag line, one per
 release; there is no hermetic substitute to prefer, because the work is the
 owner's and the remote is the only place it is visible.
 
-`verify.reaches_outside_tree` decides it by `shlex`-tokenizing the command and
+`verify.reaches_outside_tree` decides it by reading the command's words through
+`shell.shell_words`, docket's one reading of a `verify:` command, over the
+command and every substitution's body (`PL-P7J7`), and
 looking for a network command word — `curl`, `wget`, `gh`, `ssh`, `scp`,
 `rsync`, `nc`, or `git` immediately followed by `ls-remote`, `fetch`, `push`,
 `pull` or `clone`. Tokenized rather than searched because a hermetic command

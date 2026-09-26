@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
+from . import fences
 from .config import Config
 from .instructions import Assertion
 from .model import (
@@ -58,6 +59,7 @@ from .release import (
     version_key,
 )
 from .roadmap import MilestoneStates
+from .shell import Clause, Word, shell_words
 from .store import ID_PATTERN, ID_RE, filename_for
 from .vcs import (
     DEFAULT_BRANCHES,
@@ -133,50 +135,6 @@ STATUS_REQUIREMENTS: tuple[tuple[str, str], ...] = (
 # so bold text inside a paragraph does not end a section and a bold-opened
 # paragraph does.
 BRIEF_HEADING = re.compile(r"^\*\*", re.MULTILINE)
-
-# A fenced block's opening and closing lines, by CommonMark's rules: three or
-# more backticks or tildes, closed by a bare run of the same character at least
-# as long. A backtick opener's info string holds no backtick, which is what keeps
-# a triple-backtick code span wrapped to a line's start - `PL-6SRZ`'s brief has
-# one - from opening a block. Any indentation, as a fence under a list item is
-# indented to sit inside it.
-FENCE_OPEN_RE = re.compile(r"^[ \t]*(?P<fence>`{3,}(?=[^`]*$)|~{3,})")
-FENCE_CLOSE_RE = re.compile(r"^[ \t]*(?P<fence>`{3,}|~{3,})[ \t]*$")
-
-
-def _blank(line: str) -> str:
-    """`line` as spaces, its line break kept, so every offset past it still holds."""
-    text = line.rstrip("\r\n")
-    return " " * len(text) + line[len(text) :]
-
-
-def _without_fences(body: str) -> str:
-    """`body` with every closed fenced block blanked, offsets and line breaks kept.
-
-    A fence holds a literal: a brief quoting the capture template shows its
-    headings there, and read as headings they became the brief's own, so the
-    real sections below them were never judged (`PL-NQ3X`). Only a block that
-    closes is blanked. One left open is read as written rather than hiding
-    every section after it, which would report a brief the writer can see is
-    whole as missing them.
-    """
-    out: list[str] = []
-    held: list[str] = []
-    fence = ""
-    for line in body.splitlines(keepends=True):
-        text = line.rstrip("\r\n")
-        if fence:
-            held.append(line)
-            closing = FENCE_CLOSE_RE.match(text)
-            if closing and closing["fence"].startswith(fence):
-                out.extend(_blank(fenced) for fenced in held)
-                held, fence = [], ""
-        elif opening := FENCE_OPEN_RE.match(text):
-            fence, held = opening["fence"], [line]
-        else:
-            out.append(line)
-    return "".join(out + held)
-
 
 # An item file's whole name, as `store.filename_for` writes one: the id, then a
 # slug, then the suffix. This is what tells a `touches` entry that names *an
@@ -293,9 +251,14 @@ def _sections(body: str, marker: str) -> list[tuple[int, str]]:
     """Each heading opening with `marker`'s words: where it ends, and the text under it.
 
     Found in `body` with its fences blanked, so the one reading of where a
-    heading stands serves `_section_text` and `_stub_above_brief` alike.
+    heading stands serves `_section_text` and `_stub_above_brief` alike. A
+    brief quoting the capture template shows its headings in a fence, and read
+    as headings they became the brief's own, so the real sections below them
+    were never judged (`PL-NQ3X`). `fences` decides where a fence is, and an
+    opener nothing closes blanks nothing, so a fence left open never reports
+    the sections a writer can see below it as missing.
     """
-    scan = _without_fences(body)
+    scan = fences.without_fences(body)
     sections = []
     for heading in _heading_words(marker).finditer(scan):
         # Past the heading's own closing `**`, so that an elaborated heading is
@@ -337,7 +300,7 @@ def _stub_above_brief(body: str) -> str | None:
     less can never trigger it. Only writing a brief and leaving the template
     above it can.
     """
-    scan = _without_fences(body)
+    scan = fences.without_fences(body)
     problem = _heading_words(REQUIRED_BRIEF[0])
     for marker in (*REQUIRED_BRIEF, DONE_WHEN):
         for end, text in _sections(body, marker):
@@ -965,20 +928,20 @@ _PYTEST_VALUE_OPTIONS = frozenset(
 _STATUS_REPLACED = frozenset({"|", "|&", "||", ";", "&"})
 
 
-def _after_pytest(tokens: Sequence[_Word | str]) -> list[_Word | str] | None:
+def _after_pytest(tokens: Sequence[Word | str]) -> list[Word | str] | None:
     """The tokens following the pytest executable, or `None` if nothing runs it.
 
     Only a word can be the executable, since an operator is never a command.
     """
     for index, token in enumerate(tokens):
-        if isinstance(token, _Word) and (token.text == "pytest" or token.text.endswith("/pytest")):
+        if isinstance(token, Word) and (token.text == "pytest" or token.text.endswith("/pytest")):
             return list(tokens[index + 1 :])
     return None
 
 
-def _texts(tokens: Sequence[_Word | str]) -> list[str]:
+def _texts(tokens: Sequence[Word | str]) -> list[str]:
     """Each token as it reads: a word with its quotes removed, or the operator itself."""
-    return [token.text if isinstance(token, _Word) else token for token in tokens]
+    return [token.text if isinstance(token, Word) else token for token in tokens]
 
 
 def _run_targets(arguments: Sequence[str]) -> list[str]:
@@ -1002,14 +965,14 @@ def _inside(target: str, collected: Sequence[str]) -> bool:
     return any(target == root or target.startswith(f"{root}/") for root in collected)
 
 
-def _pytest_targets(clause: _Clause) -> list[str] | None:
+def _pytest_targets(clause: Clause) -> list[str] | None:
     """The paths a pytest clause runs, or `None` if it is not one to read.
 
     `None` covers two cases that are both "this is not a redundant health
     check": the clause does not invoke pytest at all, or it carries a
     selector, which makes the run something narrower than a proof that a
     file's suite is green. A command with an unbalanced quote has no clauses
-    to ask about, because `_shell_words` cannot read it.
+    to ask about, because `shell_words` cannot read it.
 
     An operator after the run - a pipe, a `;`, a redirection - stays among the
     arguments as it stands, where no collected tree holds it, so a run with
@@ -1053,13 +1016,13 @@ def _redundant_pytest_clause(command: str, collected: Sequence[str]) -> str | No
     the pytest run says the opposite and is left alone.
 
     Cut at `&&` alone, which is what every command in this store uses and the
-    only separator that carries the "and then" this reads - by `_shell_words`,
+    only separator that carries the "and then" this reads - by `shell_words`,
     the reading every rule over a command takes, so an `&&` inside quotes is
     part of an argument rather than the end of a clause.
     """
     if not collected:
         return None
-    clauses = _shell_words(command).clauses
+    clauses = shell_words(command).clauses
     if len(clauses) < 2:
         return None
     pytest_clauses = [clause for clause in clauses if _pytest_targets(clause) is not None]
@@ -1106,13 +1069,13 @@ def _k_selector_clause(command: str, collected: Sequence[str]) -> str | None:
 
     `-m` narrows the same way and would fail the same way, but no command in
     this store has ever carried one, so this reads `-k` alone rather than a
-    shape nobody writes. Clauses are read by `_shell_words`, as
+    shape nobody writes. Clauses are read by `shell_words`, as
     `_redundant_pytest_clause` reads them, so only an operator the shell would
     act on replaces the status: a `|` inside quotes is part of a word.
     """
     if not collected:
         return None
-    for clause in _shell_words(command).clauses:
+    for clause in shell_words(command).clauses:
         rest = _after_pytest(clause.tokens)
         if rest is None or any(
             isinstance(token, str) and token in _STATUS_REPLACED for token in rest
@@ -1184,214 +1147,12 @@ def _verify_prerequisite_refused(item: Item, config: Config) -> bool:
 #: not read it.
 _GREP_FLAGS = frozenset("qFEri")
 
-#: What a word may hold outside quotes with the shell doing nothing to it. `*`
-#: and `?` are the exception, admitted in a path to read, where they choose
-#: files - item files are named after a title that can change, so
-#: `docs/items/PL-K7QX-*.md` outlives a retitle that the full name would not.
-_PLAIN = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_./-+=@%,:")
-_GLOB = frozenset("*?")
-_SHELL_OPERATORS = frozenset("|&;<>()")
-
-#: Bash's operators, longest first, so that none is read as two shorter ones:
-#: `>|` is a redirection rather than a pipe, and `&>` one rather than a
-#: background `&` (Bash Reference Manual, §2 "Definitions"). The hooks read a
-#: command by the same table, in `.claude/hooks/shell_split.py`.
-_OPERATORS = (
-    ";;&",
-    "<<<",
-    "&>>",
-    "&&",
-    "||",
-    ";;",
-    ";&",
-    "|&",
-    "<<",
-    ">>",
-    "<&",
-    ">&",
-    "<>",
-    ">|",
-    "&>",
-    "&",
-    "|",
-    ";",
-    "(",
-    ")",
-    "<",
-    ">",
-)
 _DOTTED_MODULE_RE = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
 _PERCENT_RE = re.compile(r"(?:100|[1-9]?[0-9])(?:\.[0-9]+)?")
 _COVERAGE_RUN = ("uv", "run", "pytest")
 
 
-@dataclass(frozen=True)
-class _Word:
-    """One shell word: its text once quotes are removed, and what the shell does to it."""
-
-    text: str
-    #: Some character of it stood inside quotes or after a backslash.
-    quoted: bool = False
-    #: An unquoted `*` or `?` stood in it, so the shell may replace it with file names.
-    globbed: bool = False
-    #: An unquoted `!` stood in it - the negation when it is the whole word.
-    bang: bool = False
-
-
-@dataclass(frozen=True)
-class _Clause:
-    """What runs between two `&&`s: its words and other operators, and its text as written."""
-
-    #: The clause as the command spells it, quotes and all, for a message to name.
-    text: str
-    #: Its words, as `_Word`, and any operator but `&&`, as the string that spells it.
-    tokens: tuple[_Word | str, ...]
-
-
-@dataclass(frozen=True)
-class _Reading:
-    """A `verify:` command read once, for every rule here that reads one."""
-
-    #: Its clauses, cut at each `&&`; none where the shell could not read it at all.
-    clauses: tuple[_Clause, ...]
-    #: The first thing in it the admitted shapes never use, or `None` where there is none.
-    refusal: str | None
-
-
-def _shell_words(command: str) -> _Reading:
-    """The command's clauses and words, and the first thing in it the admitted shapes never use.
-
-    The one reading of a `verify:` command, taken by every rule here that reads
-    one (`PL-B5VZ`). The prerequisite and `-k` rules above used to cut the
-    command at each `&&` as text, inside quotes too, and then split each piece
-    with `shlex` two ways, so `t/a.py|tail` was one word to one of them and
-    three to the other.
-
-    A lexer rather than `shlex`, because `shlex` drops the one fact the
-    admitted shapes need: whether a character was quoted. `grep -q '$x' f`
-    searches for a dollar sign, and `grep -q $x f` searches for whatever the
-    shell has in `x`. The rules are bash's (Bash Reference Manual §3.1.2
-    "Quoting", §3.1.3 "Comments"): `'...'` is literal; in `"..."` a backslash
-    escapes only `"`, a backslash, `$` and a backtick; outside quotes it
-    escapes the next character; an operator is the longest match in
-    `_OPERATORS`; and `#` opens a comment only where no word is in progress.
-    The hooks read a command by the same rules with
-    `.claude/hooks/shell_split.py`, which docket cannot import - `bin/docket`
-    puts this package alone on the path, and those words drop their quoting.
-
-    Every operator is read rather than stopped at, because a pipe answering
-    with another command's status is what the `-k` rule looks for. Every one
-    but `&&` is also a refusal where it comes first: a pipe answers with
-    another command's status, `||` and `;` replace or discard a failure, a
-    redirection or a subshell is a shape nobody has argued for. So are an
-    unquoted character outside `_PLAIN` and a `$` or backtick inside double
-    quotes, where the shell expands it. A command the shell cannot read - an
-    unbalanced quote, a trailing backslash - has no clauses, and its refusal
-    says why unless something earlier already had.
-    """
-    tokens: list[_Word | str] = []
-    spans: list[tuple[int, int]] = []
-    text: list[str] = []
-    begin = -1
-    quoted = globbed = bang = False
-    refusal: str | None = None
-    index, length = 0, len(command)
-
-    def refuse(reason: str) -> None:
-        nonlocal refusal
-        if refusal is None:
-            refusal = reason
-
-    def start() -> None:
-        nonlocal begin
-        if begin < 0:
-            begin = index
-
-    def finish() -> None:
-        nonlocal begin, quoted, globbed, bang
-        if begin >= 0:
-            tokens.append(_Word("".join(text), quoted, globbed, bang))
-            spans.append((begin, index))
-        text.clear()
-        begin = -1
-        quoted = globbed = bang = False
-
-    def unreadable(reason: str) -> _Reading:
-        return _Reading((), refusal or reason)
-
-    while index < length:
-        char = command[index]
-        if char in " \t":
-            finish()
-            index += 1
-        elif char == "#" and begin < 0:
-            refuse("carries an unquoted `#`, which no admitted shape uses")
-            break  # a comment runs to the end of its line, and a field is one line
-        elif char == "'":
-            end = command.find("'", index + 1)
-            if end < 0:
-                return unreadable("has an unbalanced quote")
-            start()
-            text.append(command[index + 1 : end])
-            quoted = True
-            index = end + 1
-        elif char == '"':
-            start()
-            index += 1
-            while True:
-                if index >= length:
-                    return unreadable("has an unbalanced quote")
-                inner = command[index]
-                if inner == '"':
-                    index += 1
-                    break
-                if inner in "$`":
-                    refuse(f"has a `{inner}` inside double quotes, where the shell expands it")
-                if inner == "\\" and index + 1 < length and command[index + 1] in '"\\$`':
-                    index += 1
-                    inner = command[index]
-                text.append(inner)
-                index += 1
-            quoted = True
-        elif char == "\\":
-            if index + 1 >= length:
-                return unreadable("ends in a backslash")
-            start()
-            text.append(command[index + 1])
-            quoted = True
-            index += 2
-        elif char in _SHELL_OPERATORS:
-            finish()
-            operator = next(each for each in _OPERATORS if command.startswith(each, index))
-            if operator != "&&":
-                refuse(f"carries `{operator}`, which no admitted shape uses")
-            tokens.append(operator)
-            spans.append((index, index + len(operator)))
-            index += len(operator)
-        else:
-            if char in _GLOB:
-                globbed = True
-            elif char == "!":
-                bang = True
-            elif char not in _PLAIN:
-                shown = repr(char) if char.isspace() else f"`{char}`"
-                refuse(f"carries an unquoted {shown}, which no admitted shape uses")
-            start()
-            text.append(char)
-            index += 1
-    finish()
-
-    clauses: list[_Clause] = []
-    first = 0
-    cuts = [at for at, token in enumerate(tokens) if isinstance(token, str) and token == "&&"]
-    for cut in [*cuts, len(tokens)]:
-        spelled = command[spans[first][0] : spans[cut - 1][1]] if cut > first else ""
-        clauses.append(_Clause(spelled, tuple(tokens[first:cut])))
-        first = cut + 1
-    return _Reading(tuple(clauses), refusal)
-
-
-def _coverage_refusal(words: Sequence[_Word]) -> str | None:
+def _coverage_refusal(words: Sequence[Word]) -> str | None:
     """Why a `uv run pytest` clause is not the whole-suite coverage run, if it is not.
 
     The one `pytest` shape with an exit status of its own to give. A run of
@@ -1431,7 +1192,7 @@ def _coverage_refusal(words: Sequence[_Word]) -> str | None:
     return None
 
 
-def _grep_refusal(words: Sequence[_Word]) -> str | None:
+def _grep_refusal(words: Sequence[Word]) -> str | None:
     """Why a clause is not a `grep -q` or `! grep -q` for a pattern in named files, if it is not.
 
     `! grep` is admitted, and the reason is the direction it fails in. A
@@ -1519,12 +1280,12 @@ def verify_shape_refusal(command: str) -> str | None:
     it will refuse the next one - `-m`, which `_k_selector_clause` names as
     unread, among them.
     """
-    reading = _shell_words(command)
+    reading = shell_words(command)
     if reading.refusal is not None:
         return reading.refusal
     # Nothing refused, so `&&` was the only operator, and the cut took each one.
     clauses = [
-        [token for token in clause.tokens if isinstance(token, _Word)] for clause in reading.clauses
+        [token for token in clause.tokens if isinstance(token, Word)] for clause in reading.clauses
     ]
     if any(not clause for clause in clauses):
         return "has an `&&` with no clause on one side of it"

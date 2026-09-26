@@ -312,6 +312,50 @@ def test_a_loop_refusal_says_the_next_pass_replaced_the_status() -> None:
     assert 'echo "exit=$?"; done' in reason
 
 
+FALLBACKS = (
+    # `PL-KQ4Q`'s reproductions: each fallback fails too, so a failing gate
+    # still exits non-zero, and each was refused as one that succeeds. The
+    # comment is the exit bash 5.2.21 gave with the gate failing.
+    ("make check || exit 1", False),  # 1
+    ("make check || exit", False),  # the gate's own, as nothing ran since the `||`
+    ("make check || false", False),  # 1
+    ("make check || { echo red; exit 1; }", False),  # 1
+    ("for t in a b; do make check || exit 1; done", False),  # 1, before the next pass
+    # The rest of the line bash draws.
+    ("make check || { exit; }", False),  # the gate's own
+    ("make check || (echo red; exit 1)", False),  # 1
+    ("make check || { echo red; false; }", False),  # 1
+    ("make check || exit 1; echo after", False),  # 1, and the `echo` never runs
+    ("make check || exit -1", False),  # 255
+    ("make check && echo ok || exit 1", False),  # 1
+    ("( make check || exit 1 )", False),  # 1
+    ("set -o pipefail; make check || exit 1 | tail -1", False),  # 1
+    ("make check || { echo red; exit; }", True),  # 0, the status of the `echo`
+    ("make check || exit 0", True),  # 0
+    ("make check || exit 256", True),  # 0, as the status is N modulo 256
+    ("make check || { echo red || exit 1; }", True),  # 0
+    ("make check || false; echo after", True),  # 0
+    ("make check || false || true", True),  # 0
+    ("make check || exit 1 | tail -1", True),  # 0: a pipeline stage is a subshell
+    ("( make check || exit 1 ); echo after", True),  # 0: the `exit` leaves the subshell
+    ("for t in a b; do make check || exit 1; done | tail -1", True),  # 0: so is a piped loop
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), FALLBACKS)
+def test_a_fallback_that_fails_too_keeps_the_status(command: str, refused: bool) -> None:
+    """An `||` fallback that exits non-zero hands the failure on, read as bash runs it (`PL-KQ4Q`).
+
+    Every fallback was read as one that succeeds, so `make check || exit 1`,
+    the ordinary way to stop on a red gate, was refused for losing what it
+    keeps. A fallback passes only where it provably fails, and an `exit` ends
+    only the shell running it, which is not the whole string inside a subshell
+    or a piped loop.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 PRESERVED = (
     # The bare gate, which is what the permissions allowlist names.
     "make check",
@@ -483,6 +527,7 @@ def test_the_refusal_names_the_separator_that_lost_the_status() -> None:
     assert "after the `;`" in _decision("make check; echo hi")["permissionDecisionReason"]
     assert "backgrounded" in _decision("make check &")["permissionDecisionReason"]
     assert "fallback succeeds" in _decision("make check || true")["permissionDecisionReason"]
+    assert "`exit 1` or `false`" in _decision("make check || true")["permissionDecisionReason"]
 
 
 def test_the_refusal_names_the_gate_it_caught() -> None:
