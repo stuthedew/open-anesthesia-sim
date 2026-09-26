@@ -47,7 +47,9 @@ if not isinstance(command, str):
 
 # Where each command starts is the answer `shell_split.py` gives, which the
 # three Bash guards share (`PL-PVW2`), and this guard reads every command it
-# finds: those in a subshell or a `$( )` too, quoted or not, since each runs. A
+# finds: those in a subshell or a `$( )` too, quoted or not, since each runs,
+# and the git a wrapper runs, so `timeout 60 git fetch --prune` is the prune it
+# is (`PL-TRMN`). A
 # quoted argument stays one word, so a `;` or a flag inside it is the text it
 # is, where the regex this file used took a `;` inside quotes for a separator
 # (`PL-WGFY`). Heredoc bodies and comments are gone, which is what lets this
@@ -151,8 +153,9 @@ def in_order(words, steps):
     return True
 
 
+# A path to git is git: `/usr/bin/git fetch --prune` prunes (`PL-TRMN`).
 if not any(
-    words[0] == "git"
+    words[0].rsplit("/", 1)[-1] == "git"
     and (sets_pruning(words) or any(in_order(words[1:], shape) for shape in SHAPES))
     for words in shell_split.commands(command)
 ):

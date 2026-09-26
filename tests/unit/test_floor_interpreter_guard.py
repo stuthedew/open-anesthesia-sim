@@ -231,6 +231,35 @@ def test_a_reserved_word_opens_the_command_after_it(command: str) -> None:
     assert decision["permissionDecision"] == "deny"
 
 
+WRAPPED = (
+    # `PL-TRMN`'s reproduction, verbatim. Each wrapper finds `python3` on PATH,
+    # which here is the 3.11 floor, exactly as the bare call does.
+    ("timeout 60 python3 -m compileall -q src/anesthesia_sim/", True),
+    ("env PYTHONPATH=. python3 -m compileall src/", True),
+    ("/usr/bin/env python3 src/a.py", True),
+    ("command -p python3 src/a.py", True),
+    ("nice -5 nohup python3 -m compileall src/", True),
+    ("exec python3 src/a.py", True),
+    ("xargs -I {} python3 -m py_compile src/{}", True),
+    # The correct invocation and the deliberate one stay admitted under one.
+    ("timeout 60 uv run python -m compileall src/", False),
+    ("timeout 60 /usr/bin/python3.11 -m compileall src/", False),
+    ("command -v python3", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), WRAPPED)
+def test_a_wrapper_runs_the_command_after_it(command: str, refused: bool) -> None:
+    """A floor parse run through `timeout`, `env` or another wrapper is the floor parse (`PL-TRMN`).
+
+    The guard read the wrapper as the command, so the interpreter after it was
+    never checked, while an interpreter named by path is still the deliberate
+    spelling whatever runs it.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 GLUED = (
     # `PL-63TT`'s reproduction, and the same `)` glued to a pipe.
     ("(true); python3 src/a.py", True),
