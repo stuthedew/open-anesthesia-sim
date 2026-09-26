@@ -8,6 +8,7 @@ classes: docs
 touches: subprojects/docket/README.md
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1073
 payoff: a reader deciding whether a stale wait in a brief will be caught learns that a closed item named as a prerequisite draws the ended-wait advisory, instead of reading that it is never reported
 verify: ! grep -qF 'Closed blockers never fire, since' subprojects/docket/README.md
 ---
