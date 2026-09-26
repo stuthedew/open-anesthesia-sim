@@ -3,11 +3,13 @@ id: PL-LJVD
 title: Name the rolling-wave model in ROADMAP.md and state the prohibition on a second long-range plan
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: planning-cadence
-touches: ROADMAP.md
+touches: ROADMAP.md, docs/items/PL-5XG1-roadmap-md-s-development-pathway-still-says.md
 added: 2026-08-26
+closed: 2026-09-26
+pr: 1117
 payoff: ROADMAP.md says which section holds the order of each release and why later rows carry no detail, so the pathway's stale Phase 1 sentence stops reading as a second order and no second plan of releases is started beside the file
 verify: grep -qiF 'rolling-wave planning' ROADMAP.md && grep -qF 'No second plan of releases is kept beside this one' ROADMAP.md && grep -qF 'The order is held once, by horizon.' ROADMAP.md
 ---

@@ -31,7 +31,9 @@ paragraphs underneath still assert the old one.
 1. Rewrite the pathway to the part it holds: what lies past the timeline's
    last named release. Sentences about releases the timeline has placed are
    dropped or dated as history, not re-pointed at new version numbers, since
-   re-pointing makes the next copy of the order.
+   re-pointing makes the next copy of the order. Then delete the sentence
+   `PL-LJVD` added to the pathway's opening, "The phases below still read as
+   the whole order", which marks them stale until this lands.
 2. Whether the known-risk argument still stands against the order the
    timeline holds is the order features come in, which is the owner's. The
    rows record each move's reason (item 34's placement rounds, `PL-NMTF` and
