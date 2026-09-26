@@ -1,5 +1,9 @@
 """Tests for `.claude/hooks/no-prune-guard.sh`, the remote-ref prune refusal.
 
+It refuses the push that deletes branches on the remote beside the prune
+(`PL-M2NV`), since that deletes the branches themselves rather than this
+clone's copies of them.
+
 `PL-JK0M` routed this rule out of `CLAUDE.md`, where it was ten resident lines
 every session carried before it had read anything, into the hook that decides
 it. What the prose bought was a session remembering; what this buys is a
@@ -281,6 +285,93 @@ def test_a_redirection_is_not_a_word_of_the_command(command: str, refused: bool)
     """
     decision = _decision(command)
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+# Each deleted `other-session-branch` on a scratch remote holding it and `main`,
+# pushed to from a clone holding only `main`, on git 2.43.0 (`PL-M2NV`).
+DELETING_PUSHES = (
+    # The item's reproductions, verbatim.
+    "git push --prune origin 'refs/heads/*:refs/heads/*'",
+    "git push --mirror origin",
+    # git reads an option after the repository and the refspecs too.
+    "git push origin --mirror",
+    "git push origin 'refs/heads/*:refs/heads/*' --prune",
+    # `--prune` deletes through every refspec that reaches the branch.
+    "git push --prune origin 'refs/heads/*'",
+    "git push --all --prune origin",
+    "git push --prune origin :",
+    "git -c push.default=matching push --prune origin",
+    # `remote.<name>.mirror` makes a push to that remote a mirror push, read as
+    # a prune setting is: on unless it reads as false, named in any case, and
+    # written by `config` for every later push.
+    "git -c remote.origin.mirror=true push origin",
+    "git -c remote.origin.mirror push origin",
+    "git -c REMOTE.origin.MIRROR=yes push origin",
+    "MIRROR=true git --config-env=remote.origin.mirror=MIRROR push origin",
+    "git config remote.origin.mirror true",
+    # Read wherever a fetch is: run by a wrapper, past a redirection, past
+    # git's own options.
+    "timeout 60 git push --mirror origin",
+    "2>/dev/null git push --prune origin 'refs/heads/*'",
+    "git -C . push --mirror origin",
+    # Each deleted nothing there and is refused all the same: a push naming no
+    # refspec takes one from a config file the hook never reads, so either flag
+    # is refused whatever the rest of the push holds, a dry run included.
+    "git push --prune origin main",
+    "git push --mirror --dry-run origin",
+)
+
+
+@pytest.mark.parametrize("command", DELETING_PUSHES)
+def test_a_push_that_prunes_the_remote_is_refused(command: str) -> None:
+    """A push that deletes branches on the remote is refused (`PL-M2NV`).
+
+    The guard had no shape for `git push`, so each of these ran unrefused,
+    and a prune of this clone's copies was refused while the push deleting
+    the branches themselves, for every session at once, was not.
+    """
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert decision["permissionDecision"] == "deny"
+
+
+# Each deleted nothing on the same scratch remote, so none is refused: the
+# pushes a session makes, a mirror setting that reads as false, and a flag
+# that is only named.
+PUSHES_THAT_DELETE_NOTHING = (
+    "git push -u origin claude/pl-m2nv-kz12da",
+    "git push origin HEAD",
+    "git push --force-with-lease origin claude/pl-m2nv-kz12da",
+    "git push origin v0.5.13",
+    "git push --tags origin",
+    "git -c remote.origin.mirror=false push origin",
+    "git push --no-mirror origin main",
+    'git commit -m "never git push --mirror"',
+    "echo git push --mirror origin",
+    "grep -n -- --mirror .claude/hooks/no-prune-guard.sh",
+)
+
+
+@pytest.mark.parametrize("command", PUSHES_THAT_DELETE_NOTHING)
+def test_a_push_that_deletes_nothing_is_untouched(command: str) -> None:
+    """The push every session runs, and writing about the flags, pass (`PL-M2NV`)."""
+    assert _decision(command) is None, f"{command!r} was denied"
+
+
+def test_the_push_refusal_answers_the_question_the_caller_had() -> None:
+    """A push is refused with its own recipe, since the fetch one is not true of it.
+
+    A session reaching for `--mirror` or `--prune` on a push wants its branch on
+    the remote, or other branches gone from it: the first is a push by name, and
+    the second is the project owner's to do (`PL-M2NV`).
+    """
+    reason = _decision("git push --mirror origin")["permissionDecisionReason"]
+    assert "git push -u origin <branch>" in reason
+    assert "project owner" in reason
+    assert "git branch -dr" not in reason
+    both = _decision("git fetch --prune && git push --mirror origin")["permissionDecisionReason"]
+    assert "git push -u origin <branch>" in both
+    assert "git branch -dr origin/<branch>" in both
 
 
 def test_a_prune_before_a_line_bash_cannot_read_is_refused() -> None:
