@@ -32,6 +32,7 @@ from docket.claims import CUTOVER_MARKER, SESSION_VARIABLE, Holdings
 from docket.cli import build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
+from docket.release import tag_commands
 from docket.vcs import FETCHED, Fetch, commands_written_here, lost, records_on_base
 from docket.verify import LANDED_GUARD, GitUnanswered
 
@@ -1637,8 +1638,39 @@ def test_a_release_is_refused_while_the_previous_one_is_untagged(
     root = _release_repo(tmp_path, "v0.2.3")
 
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
-    assert "v0.2.5 shipped and carries no tag" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "v0.2.5 shipped and carries no tag" in out
+    assert all(f"  {command}" in out for command in tag_commands("v0.2.5")), out
+    assert "main has no commit adding docs/releases/v0.2.5.md" in out
     assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text()
+
+
+def test_the_untagged_warning_names_the_commit_its_tag_line_will_find(tmp_path: Path) -> None:
+    """`PL-QHCW`: the lookup is printed, and the commit it resolves to here is named under it.
+
+    The cut is followed by another merge, which is the commit `origin/main` -
+    what the warning once had a reader tag - would have named instead.
+    """
+    root = _release_repo(tmp_path, "v0.2.3")
+
+    def git(*args: str) -> str:
+        done = subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, text=True)
+        return done.stdout.strip()
+
+    git("checkout", "-q", "main")
+    notes = root / "docs" / "releases" / "v0.2.5.md"
+    notes.parent.mkdir(parents=True)
+    notes.write_text("## v0.2.5\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "PL-TR4N: cut v0.2.5")
+    cut = git("rev-parse", "--short", "HEAD")
+    git("commit", "-q", "--allow-empty", "-m", "PL-D1D1: the next merge")
+    git("checkout", "-q", TRAIN_BRANCH)
+
+    warning = cli._untagged_warning("0.2.5", root, vcs._run_git)
+
+    assert all(f"  {command}" in warning for command in tag_commands("v0.2.5")), warning
+    assert f"From main here, that is {cut} PL-TR4N: cut v0.2.5." in warning
 
 
 def test_a_release_is_refused_where_git_will_not_say_which_tags_exist(
@@ -2245,7 +2277,8 @@ def test_a_cut_release_names_the_roadmap_edits_it_did_not_write(
     assert "still marked" in out
     assert "still names v0.2.5" in out
     assert "make check" in out
-    assert 'git tag -a v0.2.6 MERGE_COMMIT -m "v0.2.6"' in out
+    assert all(f"  {command}" in out for command in tag_commands("v0.2.6")), out
+    assert "MERGE_COMMIT" not in out
 
 
 def test_no_command_the_release_prints_carries_a_shell_redirection(

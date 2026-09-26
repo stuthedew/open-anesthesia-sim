@@ -3,11 +3,13 @@ id: PL-VYK1
 title: The docket skill's release handover tags at origin/main rather than at the cut's own merge commit, so a re-run of the three commands tags whatever merged next
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: release-process
 touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/cli.py
 added: 2026-09-07
+closed: 2026-09-26
+pr: 1065
 verify: grep -rq 'git tag -a' .claude/skills/docket/ && ! grep -rq 'git tag -a v0.3.0 origin/main' .claude/skills/docket/ && python3 tools/doc_check.py check
 recurrences: 2026-09-25 PL-53Y6
 ---
@@ -76,3 +78,10 @@ lookup cannot resolve there. `git log --reverse -S'version = "X.Y.Z"' --
 pyproject.toml` finds the cut from the version alone, and was checked for
 v0.5.4 to v0.5.6. `touches` moved from `SKILL.md` to the release mode's own
 file when the skill was split.
+
+**Closed 2026-09-26 under `PL-QHCW`.** The block in `release.md` and `bin/docket
+release`'s hand-off both print `release.tag_commands`: the tag line finds the
+commit that added the release's notes, from `origin/main`, when it runs. Run
+late it still tags the cut; run before the merge it names nothing and `git tag`
+refuses. `test_the_printed_tag_commands_tag_the_cut_however_late_they_run` runs
+the printed lines in a clone.

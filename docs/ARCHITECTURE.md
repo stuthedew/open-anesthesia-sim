@@ -1083,7 +1083,10 @@ its predecessor, which happened on two consecutive releases.
 
 Tags *are* compared, in three directions: a completed release git holds no tag
 for is an error, a release tag no version-table row names is an error, and the
-roadmap's own count of deliberately untagged versions is held to git. What the
+roadmap's own count of deliberately untagged versions is held to git. A tag
+that is present is also held to where it points: on the commit that added its
+release's notes, which is that release's cut, or, for a release cut before
+notes were written, on a tree declaring its version (`PL-YKSD`, `PL-QHCW`). What the
 check will not do is speak when it cannot tell a missing tag from an unfetched
 one — a check that fails on how somebody fetched the repository gets switched
 off. So it says nothing when the checkout holds no tags at all, withholds the
