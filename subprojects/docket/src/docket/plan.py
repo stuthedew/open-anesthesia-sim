@@ -18,7 +18,7 @@ from branch names, so it is checked rather than left to memory.
 from __future__ import annotations
 
 from collections.abc import Collection, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 
 from .model import (
@@ -32,6 +32,7 @@ from .model import (
     impairs_generators_soundly,
     is_generator,
     ranks_as_generator,
+    ranks_as_generator_defect,
     recurrence_count,
 )
 from .roadmap import EXCLUDED, IN_SCOPE, OUT_OF_SCOPE, UNPLACED, MilestoneStates, Scope
@@ -393,6 +394,9 @@ class Recommendation:
     #: `generator` is: the digest's `Top:` line has only the `Recommendation`,
     #: and the build item a design round filed would lead it as a bare `P2`.
     unblocks: tuple[str, ...] = ()
+    #: The same for blocked machinery defects, kept apart so neither mark calls
+    #: a defect a generator (`PL-Q4DF`).
+    unblocks_defects: tuple[str, ...] = ()
     #: Whether a cheaper model may take this item, from `Item.delegability`.
     #: Carried here for the reason `scoped_to` and `generator` are: the answer
     #: needs `protected_paths` and `gate_paths`, which `describe` cannot
@@ -419,6 +423,8 @@ class Recommendation:
             marks.append("defect in the generator machinery")
         if self.unblocks:
             marks.append(f"unblocks generator {', '.join(self.unblocks)}")
+        if self.unblocks_defects:
+            marks.append(f"unblocks machinery defect {', '.join(self.unblocks_defects)}")
         if self.scoped_to:
             marks.append(f"scoped to {self.scoped_to}, not this step")
         head = f"{self.item.priority} {self.item.identifier} {self.item.title}"
@@ -512,12 +518,21 @@ def _startable(
     return [
         item
         for item in items
-        if item.is_open
-        and not item.is_untriaged
-        and item.status != "blocked"
+        if not _unseated_by(item)
         and item.identifier not in flight
         and (effort is None or item.effort == effort)
     ]
+
+
+def _unseated_by(item: Item) -> str:
+    """The status keeping this item from holding a rank now, or `""` where it can start.
+
+    Shared by `_startable` and `tier_standings`, so what `next` offers and what
+    the generator tier says is ranked cannot disagree about a status.
+    """
+    if item.is_open and not item.is_untriaged and item.status != "blocked":
+        return ""
+    return item.status
 
 
 def promotable(items: list[Item]) -> list[Item]:
@@ -568,54 +583,152 @@ def promotable(items: list[Item]) -> list[Item]:
     )
 
 
-def generator_blockers(items: list[Item]) -> dict[str, tuple[Item, ...]]:
-    """Open items a blocked live generator waits on, each with the heads it unblocks.
+#: Where an item's generator-tier rank stands, as `tier_standings` answers it.
+#: It can start, so `recommend` ranks it on the tier itself.
+HELD = "held"
+#: It is blocked on open items the store holds, and its rank passes to them.
+PASSED = "passed"
+#: It is blocked on nothing the store holds open, so `unranked_generators`
+#: names it rather than anything carrying its rank.
+UNRANKED = "unranked"
+#: Its status seats no rank: untriaged, or blocked while holding only a rank
+#: passed to it, which goes no further.
+NOWHERE = "nowhere"
 
-    A head at `blocked` is startable by nothing, so `recommend` never ranks it
-    and its `generator: live` lifts nothing - and the items it waits on carry no
-    claim of their own, so each ranks on its band. That is the shape a design
-    round leaves when it decomposes a generator's fix, because `status: ready`
-    may not declare an open blocker: `PL-MB2W`'s round blocked the head on
-    eight build items, and the one startable among them dropped to an ordinary
-    `P2` among 149 (`PL-QFWF`). The rank is the head's, and it passes to what
-    the head waits on, since that is the work paying the generator down now.
 
-    **Only what the head holds itself.** The test is `ranks_as_generator`, so a
-    spent or unqualified head passes nothing and its blockers rank on their
-    bands, as it would. Only a `blocked` head passes it, since blocking is what
-    took it off the tier: a `ready` or `needs-decision` head is startable and
-    holds the rank itself, and an untriaged one has not been seated to hold any.
+@dataclass(frozen=True)
+class Standing:
+    """Where one item's generator-tier rank stands now - see `tier_standings`."""
+
+    #: `HELD`, `PASSED`, `UNRANKED` or `NOWHERE`.
+    state: str
+    #: The status keeping it from holding the rank itself - `blocked` or
+    #: `untriaged` - or `""` where it is `HELD`.
+    why: str = ""
+    #: Where `state` is `PASSED`: the open items the store holds that its own
+    #: `blocked-by` names, in the order written.
+    passes_to: tuple[str, ...] = ()
+    #: The blocked items on the tier whose rank passes to this one, in id order.
+    lifted_by: tuple[Item, ...] = ()
+    #: Which entrance its own claim came by: a sound live `root-cause-of:`, a
+    #: sound `impairs-generators:`, both, or neither for an item on the tier
+    #: only by a rank passed to it.
+    generator: bool = False
+    defect: bool = False
+
+
+def tier_standings(items: list[Item], generator_paths: tuple[str, ...] = ()) -> dict[str, Standing]:
+    """Where every item on the generator tier stands now, by id.
+
+    The one place a status is read against the tier. Each reader used to test
+    status for itself, one status per fix - `closed` for `PL-BBT8`, `blocked`
+    for `PL-QFWF` and `PL-4RK2` - and none handled `untriaged`, so `docket show`
+    and `docket generators` called untriaged tier items ranked while `next`
+    offered none of them. `recommend`, `generator_blockers`,
+    `unranked_generators`, `docket show` and `docket generators` read this
+    instead (`PL-Q4DF`).
+
+    **Both entrances.** An item is on the tier by its own claim -
+    `ranks_as_generator` or `ranks_as_generator_defect`, each of which already
+    leaves out a closed item - and each open status gives one answer: `HELD`
+    where it can start, `NOWHERE` where it is untriaged and has not been seated
+    to hold any rank, and at `blocked` either `PASSED` or `UNRANKED`.
+
+    **A blocked item passes its rank one edge down, by either entrance.** The
+    open items its own `blocked-by` names carry it, since that is the work
+    paying it down now (`PL-QFWF`). A machinery defect passed nothing until
+    `PL-Q4DF`, and nothing named it either: `CLAUDE.md` gives the tier's second
+    entrance the "Same tier", and neither `PL-QFWF` nor `PL-4RK2` recorded the
+    heads-only scope as the owner's decision. Each item carrying a passed rank
+    is listed too, with `lifted_by`, and holds it only where it can start: a
+    blocker that is blocked or untriaged itself stands `NOWHERE`, since the
+    rank goes no further, and `unranked_generators` names the item whose rank
+    reaches nothing offered.
+    """
+    known = {item.identifier for item in items if item.identifier}
+    by_id = {item.identifier: item for item in items if item.identifier}
+    standings: dict[str, Standing] = {}
+    lifted: dict[str, list[Item]] = {}
+    for item in sorted(items, key=lambda i: i.identifier):
+        generator = ranks_as_generator(item, known)
+        defect = ranks_as_generator_defect(item, generator_paths)
+        if not (generator or defect):
+            continue
+        why = _unseated_by(item)
+        passes_to: tuple[str, ...] = ()
+        if why == "blocked":
+            passes_to = tuple(
+                blocker
+                for blocker in dict.fromkeys(item.blocking_items)
+                if blocker != item.identifier and blocker in by_id and by_id[blocker].is_open
+            )
+            state = PASSED if passes_to else UNRANKED
+        else:
+            state = NOWHERE if why else HELD
+        standings[item.identifier] = Standing(
+            state, why=why, passes_to=passes_to, generator=generator, defect=defect
+        )
+        for blocker in passes_to:
+            lifted.setdefault(blocker, []).append(item)
+    for blocker, owners in lifted.items():
+        standing = standings.get(blocker)
+        if standing is None:
+            why = _unseated_by(by_id[blocker])
+            standing = Standing(NOWHERE if why else HELD, why=why)
+        standings[blocker] = replace(standing, lifted_by=tuple(owners))
+    return standings
+
+
+def generator_blockers(
+    items: list[Item], generator_paths: tuple[str, ...] = ()
+) -> dict[str, tuple[Item, ...]]:
+    """Open items a blocked generator-tier item waits on, each with the items it unblocks.
+
+    A blocked item is startable by nothing, so `recommend` never ranks it and
+    its claim lifts nothing - and the items it waits on carry no claim of their
+    own, so each ranks on its band. That is the shape a design round leaves
+    when it decomposes a generator's fix, because `status: ready` may not
+    declare an open blocker: `PL-MB2W`'s round blocked the head on eight build
+    items, and the one startable among them dropped to an ordinary `P2` among
+    149 (`PL-QFWF`). The rank is the item's, and it passes to what the item
+    waits on, since that is the work paying it down now.
+
+    **Only what the item holds itself, and by either entrance** - the edges
+    `tier_standings` records as `PASSED`. A spent or unqualified head passes
+    nothing, and a machinery defect passes its rank as a head does
+    (`PL-Q4DF`). Only a `blocked` item passes it, since blocking is what took
+    it off the tier: a `ready` or `needs-decision` one is startable and holds
+    the rank itself, and an untriaged one has not been seated to hold any.
 
     **Direct blockers only.** A blocker that is blocked itself passes nothing
     further down. The tier is the one rank above a `safety`-classed `P1`, and
-    each edge between a head and what it lifts is a hand-written `blocked-by`
-    nothing checks for this purpose, so one edge from a head whose claim
-    `docket check` validates is the narrowest reading covering the recorded
-    shape - a head blocked on each of its build items. A chain, or a head
-    waiting on a milestone alone, still lifts nothing, and `unranked_generators`
-    names the head instead of ranking further down (`PL-4RK2`).
+    each edge between an item and what it lifts is a hand-written `blocked-by`
+    nothing checks for this purpose, so one edge from a claim `docket check`
+    validates is the narrowest reading covering the recorded shape - a head
+    blocked on each of its build items. A chain, or an item waiting on a
+    milestone alone, still lifts nothing, and `unranked_generators` names the
+    item instead of ranking further down (`PL-4RK2`).
 
-    Keyed by blocker id, heads in id order. Every open blocker is listed,
-    startable or not: `recommend` ranks only what it can start, and `docket
-    show` asks about the one item it was handed, where a blocker still waiting
-    on another is on the tier as a blocked head is - from the moment it can
-    be started.
+    Keyed by blocker id, blocked items in id order. Every open blocker is
+    listed, startable or not: `recommend` ranks only what it can start, and
+    `docket show` asks about the one item it was handed, where a blocker still
+    waiting on another is on the tier as a blocked head is - from the moment
+    it can be started.
     """
-    known = {item.identifier for item in items if item.identifier}
-    open_ids = {item.identifier for item in items if item.identifier and item.is_open}
-    lifted: dict[str, list[Item]] = {}
-    for head in sorted(items, key=lambda i: i.identifier):
-        if head.status != "blocked" or not ranks_as_generator(head, known):
-            continue
-        for blocker in dict.fromkeys(head.blocking_items):
-            if blocker in open_ids and blocker != head.identifier:
-                lifted.setdefault(blocker, []).append(head)
-    return {blocker: tuple(heads) for blocker, heads in lifted.items()}
+    return {
+        identifier: standing.lifted_by
+        for identifier, standing in tier_standings(items, generator_paths).items()
+        if standing.lifted_by
+    }
 
 
 @dataclass(frozen=True)
 class UnrankedGenerator:
-    """A blocked live generator head whose rank reaches nothing `next` can offer."""
+    """A blocked generator-tier item whose rank reaches nothing `next` can offer.
+
+    A live generator head, or a machinery defect (`PL-Q4DF`); `head` is the
+    item either way, so the one field serves both entrances.
+    """
 
     head: Item
     #: What the head waits on and cannot start: its open item blockers in the
@@ -627,6 +740,9 @@ class UnrankedGenerator:
     #: blockers that are themselves `blocked`, by id. The work the rank would
     #: reach if the head's own `blocked-by` named it, which is the remedy.
     behind: tuple[str, ...]
+    #: Whether it is on the tier by a sound live `root-cause-of:`; `False` for
+    #: a machinery defect alone, which names no members to count.
+    generator: bool = True
 
 
 def unranked_generators(
@@ -634,8 +750,9 @@ def unranked_generators(
     in_flight: Collection[str] | None = None,
     *,
     milestones: MilestoneStates | None = None,
+    generator_paths: tuple[str, ...] = (),
 ) -> list[UnrankedGenerator]:
-    """Blocked live generator heads whose rank reaches no item `next` could offer.
+    """Blocked generator-tier items whose rank reaches no item `next` could offer.
 
     `generator_blockers` passes a blocked head's rank one edge down, to the
     open items its own `blocked-by` names, and deliberately no further. So a
@@ -672,9 +789,13 @@ def unranked_generators(
     closed or unknown id into `blocked-by` would pass the rank to nothing.
     `in_flight` is the ids the ranking excluded, exactly as in `recommend`;
     `None` excludes nothing and counts nothing as in flight.
+
+    Which items are blocked on the tier is `tier_standings`' answer, so a
+    machinery defect is named here as a head is (`PL-Q4DF`); `generator_paths`
+    is what that answer needs to read an `impairs-generators:` claim.
     """
     flight = set(in_flight or ())
-    known = {item.identifier for item in items if item.identifier}
+    standings = tier_standings(items, generator_paths)
     by_id = {item.identifier: item for item in items if item.identifier}
     offered = {item.identifier for item in _startable(items, flight)} | flight
 
@@ -686,11 +807,10 @@ def unranked_generators(
 
     unranked: list[UnrankedGenerator] = []
     for head in sorted(items, key=lambda i: i.identifier):
-        if (
-            head.status != "blocked"
-            or head.identifier in flight
-            or not ranks_as_generator(head, known)
-        ):
+        standing = standings.get(head.identifier)
+        if standing is None or standing.state not in (PASSED, UNRANKED):
+            continue
+        if head.identifier in flight:
             continue
         direct = [
             b for b in dict.fromkeys(head.blocking_items) if b != head.identifier and still_open(b)
@@ -722,7 +842,10 @@ def unranked_generators(
         ]
         unranked.append(
             UnrankedGenerator(
-                head=head, waiting_on=(*direct, *pending), behind=tuple(sorted(behind))
+                head=head,
+                waiting_on=(*direct, *pending),
+                behind=tuple(sorted(behind)),
+                generator=standing.generator,
             )
         )
     return unranked
@@ -817,6 +940,7 @@ def placement_line(
     ranks_above_bands: bool = False,
     closed: bool = False,
     blocked: bool = False,
+    untriaged: bool = False,
 ) -> str:
     """One short phrase saying where the plan places an id, or `""`.
 
@@ -852,6 +976,12 @@ def placement_line(
     live head blocked on its build items, while `next` ranked those items and
     not the head (`PL-4RK2`). A blocked item off the tier keeps "on its band
     alone", which names the band it will rank on, and is not changed here.
+
+    `untriaged` qualifies it the same way: an untriaged item has not been
+    seated to hold any rank, so `next` offers it nowhere until triage does.
+    `docket show` said "it ranks above every band but P0" of four untriaged
+    tier items on 2026-09-25 while `next` offered none of them (`PL-Q4DF`).
+    The caller reads both from `tier_standings` rather than from the status.
     """
 
     if scope is None or not scope.anchor:
@@ -882,6 +1012,11 @@ def placement_line(
         return (
             f"placed by no section of {scope.anchor} - it is blocked, so it ranks nowhere "
             f"until it can start, and then above every band but P0"
+        )
+    if ranks_above_bands and untriaged:
+        return (
+            f"placed by no section of {scope.anchor} - it is untriaged, so it ranks nowhere "
+            f"until triage seats it, and then above every band but P0"
         )
     if ranks_above_bands:
         return f"placed by no section of {scope.anchor} - it ranks above every band but P0"
@@ -1173,13 +1308,15 @@ def recommend(
     notices by hand. `generator_paths` is what refutes a false claim; see
     `model.generator_defect_faults` for why it cannot establish a true one.
 
-    A head the tier would rank but that is `blocked` hands its rank to the open
+    An item the tier would rank but that is `blocked` hands its rank to the open
     items it waits on (`generator_blockers`), so a generator whose fix a design
     round decomposed keeps the tier instead of sinking into its band
-    (`PL-QFWF`). That is not a third entrance: the claim is still the head's,
-    and the blocker's reason line names the head it unblocks. A head whose rank
+    (`PL-QFWF`), and a machinery defect does the same by the tier's other
+    entrance (`PL-Q4DF`). That is not a third entrance: the claim is still the
+    blocked item's, and the blocker's reason line names it. An item whose rank
     reaches nothing startable that way is not ranked further down but named,
-    by `unranked_generators` (`PL-4RK2`).
+    by `unranked_generators` (`PL-4RK2`). Which items stand where is
+    `tier_standings`' answer, read here rather than re-derived.
 
     **Two tests, on different axes, and only the second one ranks.** The
     count - three or more items standing on one mechanism - decides whether a
@@ -1226,19 +1363,25 @@ def recommend(
         for item in _startable(items, in_flight, effort=effort)
         if lane is None or item.lane(workflow_paths) == lane
     ]
-    known = {item.identifier for item in items if item.identifier}
+    # From every item rather than from `startable`: an item passing its rank
+    # down is blocked, so the startable set is exactly what cannot contain it.
+    standings = tier_standings(items, generator_paths)
     generating = {
-        item.identifier: item.root_cause_of for item in startable if ranks_as_generator(item, known)
+        item.identifier: item.root_cause_of
+        for item in startable
+        if item.identifier in standings and standings[item.identifier].generator
     }
     impairing = {
         item.identifier: item.impairs_generators
         for item in startable
-        if impairs_generators_soundly(item, generator_paths)
+        if item.identifier in standings and standings[item.identifier].defect
     }
-    # From every item rather than from `startable`: the heads are blocked, so
-    # the startable set is exactly what cannot contain them.
-    unblocking = generator_blockers(items)
-    on_tier = generating.keys() | impairing.keys() | unblocking.keys()
+    unblocking = {
+        identifier: standing.lifted_by
+        for identifier, standing in standings.items()
+        if standing.lifted_by
+    }
+    on_tier = {identifier for identifier, standing in standings.items() if standing.state == HELD}
     underway = {
         item.identifier: feature
         for feature in features(items).values()
@@ -1331,20 +1474,29 @@ def recommend(
             # The head's own evidence, count and all, because the rank is the
             # head's: a reader checking why a `P2` leads the list checks that
             # head's claim, and this is the line that has to point at it.
-            if len(heads) == 1:
+            if len(heads) == 1 and standings[heads[0].identifier].generator:
                 (head,) = heads
                 blocked_on_it = (
                     f"{head.identifier}, a live generator - the recorded root cause of "
                     f"{len(head.root_cause_of)} items - that is blocked on it"
                 )
-            else:
+            elif len(heads) == 1:
                 blocked_on_it = (
-                    f"{_named_ids(tuple(h.identifier for h in heads))}, live generators "
+                    f"{heads[0].identifier}, a defect in the generator machinery that is "
                     f"blocked on it"
+                )
+            else:
+                kind = (
+                    "live generators"
+                    if all(standings[h.identifier].generator for h in heads)
+                    else "items on the generator tier"
+                )
+                blocked_on_it = (
+                    f"{_named_ids(tuple(h.identifier for h in heads))}, {kind} blocked on it"
                 )
             reason = (
                 f"Ranked on the generator tier as a blocker of {blocked_on_it}. A blocked "
-                f"head is startable by nothing, so its rank passes to the work it waits "
+                f"item is startable by nothing, so its rank passes to the work it waits "
                 f"on - above every band but P0 - or a generator whose fix was decomposed "
                 f"into build items would be ranked by nothing."
             )
@@ -1379,12 +1531,22 @@ def recommend(
                 scoped_to=scoped_to,
                 generator=len(generating.get(item.identifier, ())),
                 impairs_generators=item.identifier in impairing,
-                unblocks=tuple(h.identifier for h in unblocking.get(item.identifier, ())),
+                unblocks=_unblocked(unblocking.get(item.identifier, ()), standings, heads=True),
+                unblocks_defects=_unblocked(
+                    unblocking.get(item.identifier, ()), standings, heads=False
+                ),
                 delegable=item.delegability(protected_paths, gate_paths) is None,
             )
         )
 
     return ranked[:limit]
+
+
+def _unblocked(
+    lifted_by: tuple[Item, ...], standings: Mapping[str, Standing], *, heads: bool
+) -> tuple[str, ...]:
+    """The blocked tier items given, by id: the generator heads, or the machinery defects."""
+    return tuple(h.identifier for h in lifted_by if standings[h.identifier].generator == heads)
 
 
 def waiting_since(item: Item, today: date) -> str:
@@ -1467,7 +1629,8 @@ def longest_waiting(
     ]
     owed = [item for item in startable if not is_new_work(item, new_work_classes, debt_classes)]
     known = {item.identifier for item in items if item.identifier}
-    unblocking = generator_blockers(items)
+    standings = tier_standings(items, generator_paths)
+    unblocking = {i: s.lifted_by for i, s in standings.items() if s.lifted_by}
 
     def rank(item: Item) -> tuple[int, int, date, int, str]:
         hotfix = 0 if item.priority == "P0" else 1
@@ -1494,7 +1657,10 @@ def longest_waiting(
                 scoped_to=scoped_to,
                 generator=len(item.root_cause_of) if ranks_as_generator(item, known) else 0,
                 impairs_generators=impairs_generators_soundly(item, generator_paths),
-                unblocks=tuple(h.identifier for h in unblocking.get(item.identifier, ())),
+                unblocks=_unblocked(unblocking.get(item.identifier, ()), standings, heads=True),
+                unblocks_defects=_unblocked(
+                    unblocking.get(item.identifier, ()), standings, heads=False
+                ),
                 delegable=item.delegability(protected_paths, gate_paths) is None,
             )
         )
