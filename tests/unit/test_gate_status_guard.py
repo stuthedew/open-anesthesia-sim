@@ -299,6 +299,44 @@ def test_a_wrapper_runs_the_command_after_it(command: str, refused: bool) -> Non
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
 
 
+UV_RUN = (
+    # `PL-QMN0`'s reproductions, verbatim: options of `run`, and of `uv` ahead of it.
+    ("uv run --with pytest-xdist pytest -n 4 2>&1 | tail", True),
+    ("uv run --frozen mypy | tail", True),
+    ("uv run -m pytest | tail", True),
+    ("uv -q run pytest -q 2>&1 | tail", True),
+    # Options of `uv` on either side of `run`, a value after `=`, beside its
+    # short option, bundled with it or as the next word, and a `--`.
+    ("uv --directory sub --native-tls run --no-sync pytest | tail", True),
+    ("uv run --directory sub --offline pytest | tail", True),
+    ("uv run --with=pytest-xdist pytest | tail", True),
+    ("uv run -w pytest-xdist -p 3.14 pytest | tail", True),
+    ("uv run -qwpytest-xdist pytest | tail", True),
+    ("uv run --no-sync -- pytest -q | tail", True),
+    # A wrapper on either side, and `uv` named by path.
+    ("timeout 600 uv run --frozen pytest -q 2>&1 | tail -5", True),
+    ("uv run --no-sync timeout 60 pytest -q | tail", True),
+    ("/root/.local/bin/uv run --frozen pytest | tail", True),
+    # The value of `--with` is not the program, `--help` runs nothing, and a
+    # pipe that keeps the status keeps it after the options too.
+    ("uv run --with pytest python -c pass | tail", False),
+    ("uv run --help pytest | head", False),
+    ("set -o pipefail; uv run --with pytest-xdist pytest -n 4 2>&1 | tail", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), UV_RUN)
+def test_uv_run_runs_the_command_after_its_own_options(command: str, refused: bool) -> None:
+    """A gate after the options of `uv` or of `uv run` is the gate (`PL-QMN0`).
+
+    The guard read past `uv run` only where `run` was the word after `uv` and
+    the program the word after `run`, so an option on either side hid the gate
+    and each refused pipe here passed, while the same pipe without it was refused.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 REDIRECTED = (
     # `PL-K9QL`'s reproductions, verbatim: ahead of the command, and among a
     # wrapper's words.

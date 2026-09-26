@@ -102,9 +102,13 @@
 # `timeout`, `env`, `nice`, `nohup`, `xargs`, `command` and `exec`, each by its
 # own grammar, so reading past one refuses nothing the bare command would not.
 # `uv run` is read past here rather than there, because it is how this project
-# spells most of the list and the floor guard must not read past it. Still
-# unmatched on purpose: a gate built out of a variable, and a wrapper that list
-# does not name.
+# spells most of the list and the floor guard must not read past it - and past
+# the options of `uv` and of `run` on either side of it, by
+# `shell_split.uv_run_words`, since `uv run --frozen pytest | tail` loses
+# `pytest`'s status as `uv run pytest | tail` does (`PL-QMN0`). Still unmatched
+# on purpose: a gate built out of a variable, a wrapper that list does not name,
+# and an option of a uv newer than the one `shell_split.py`'s grammar was read
+# from.
 #
 # **So is a gate written around a redirection** (`PL-K9QL`). Bash lifts a
 # redirection out of a command wherever it stands, so `2>/dev/null make check |
@@ -178,7 +182,7 @@ def base(token):
 
 
 def strip_prefixes(tokens):
-    """Drop what runs ahead of the program: grouping, assignments, a wrapper, a `uv run`.
+    """Drop what runs ahead of the program: grouping, assignments, a wrapper, a `uv run` and its options.
 
     `gate` and `sets_pipefail` both start from `shell_split.command_words`,
     so they cannot disagree about where a command starts - which they did, and
@@ -186,12 +190,13 @@ def strip_prefixes(tokens):
     wrapper to the program it runs (`PL-TRMN`), and `sets_pipefail` reads past
     only `command` and `builtin`, which run the `set` builtin in this shell
     (`PL-9RSP`): `timeout 5 set -o pipefail` runs `set` as a program, which is
-    not found.
+    not found. A `uv run` is read past with the options of `uv` and of `run` on
+    either side of it, by `shell_split.uv_run_words`: `uv run --with
+    pytest-xdist pytest` runs `pytest`, not a command named `--with` (`PL-QMN0`).
     """
     rest = shell_split.program_words(tokens)
-    if len(rest) >= 2 and base(rest[0]) == "uv" and rest[1] == "run":
-        rest = shell_split.program_words(rest[2:])
-    return rest
+    after = shell_split.uv_run_words(rest)
+    return rest if after is None else shell_split.program_words(after)
 
 
 def check_script(arguments):

@@ -64,7 +64,10 @@ guard that refuses the same pipe without `timeout` (`PL-TRMN`). `WRAPPERS`
 names the programs read past, each by its own option grammar, bare or by path.
 Each finds its command on PATH as bash would, which is what lets the floor
 guard read `timeout 60 python3` as the bare interpreter it is. `uv run` does
-not, so it is the gate guard's to read past, not this module's.
+not - it looks in the project's environment first - so `program_words` stops
+at it, and `uv_run_words` reads past it, and past the options of `uv` and of
+`run` on either side of it, for a guard that chooses to: the gate guard alone
+(`PL-QMN0`).
 
 **And which builtin a command runs in this shell**, by `builtin_words`, which
 reads past `command` and `builtin` only: they run a builtin in the shell itself,
@@ -261,6 +264,68 @@ WRAPPERS = {
 # which refuses any option but `--`. Named bare, since a path names a program.
 RUN_A_BUILTIN = {"command": WRAPPERS["command"], "builtin": Grammar()}
 
+# The options `uv` reads as its own, which it takes ahead of its subcommand and,
+# being global, after `run` too, and then those `run` adds. From `uv --help` and
+# `uv run --help` in uv 0.12.19 and the clap definitions behind them, hidden
+# ones included (`crates/uv-cli/src/lib.rs` and `crates/uv-cache/src/cli.rs` at
+# tag 0.12.19), each run as `uv OPTION --help` and `uv run OPTION --help`: clap
+# answers a flag with its help, an option taking a value with "a value is
+# required", and one it does not know with "unexpected argument" (`PL-QMN0`).
+# `-h`, `-V` and anything not listed run nothing, as in uv.
+#
+# Clap is not getopt in two ways `_run_by` does not model: it takes no
+# abbreviation of a long option, and no value that starts with a dash. Either
+# is a command uv refuses to run, so reading it the getopt way can refuse a
+# command that fails anyway and passes none that runs a gate. An option a later
+# uv adds reads as one it does not know, so a gate after it passes, as one
+# behind a wrapper `WRAPPERS` does not name does.
+_UV_FLAGS = tuple(
+    """
+    allow-python-downloads isolated managed-python native-tls no-cache
+    no-cache-dir no-color no-config no-installer-metadata no-managed-python
+    no-native-tls no-offline no-preview no-progress no-python-downloads
+    no-system-certs offline preview quiet show-settings system-certs verbose
+    """.split()
+)
+_UV_VALUED = tuple(
+    """
+    allow-insecure-host cache-dir color config-file directory preview-feature
+    preview-features project python-fetch python-preference trusted-host
+    """.split()
+)
+UV = {
+    "uv": Grammar(flags="nqv", long_valued=_UV_VALUED, long_other=_UV_FLAGS),
+    "run": Grammar(
+        valued="CPfipw",
+        flags="Umnqsv",
+        long_valued=(
+            *_UV_VALUED,
+            *"""
+            config-setting config-settings config-settings-package default-index
+            env-file exclude-newer exclude-newer-package extra extra-index-url
+            find-links fork-strategy group index index-strategy index-url
+            keyring-provider link-mode max-recursion-depth no-binary-package
+            no-build-isolation-package no-build-package no-editable-package no-extra
+            no-group no-sources-package only-group package prerelease prerelease-package
+            python python-platform refresh-package reinstall-package resolution
+            upgrade-group upgrade-package with with-editable with-requirements
+            """.split(),
+        ),
+        long_other=(
+            *_UV_FLAGS,
+            *"""
+            active all-extras all-groups all-packages binary build build-isolation
+            compile compile-bytecode dev editable exact force-reinstall frozen
+            gui-script inexact locked module no-active no-all-extras no-binary no-build
+            no-build-isolation no-compile no-compile-bytecode no-default-groups no-dev
+            no-editable no-env-file no-exact no-frozen no-index no-locked no-project
+            no-refresh no-reinstall no-sources no-sync no-upgrade no_workspace only-dev
+            pre refresh reinstall script show-resolution upgrade
+            """.split(),
+        ),
+    ),
+}
+
 # `nice`'s older spelling of an adjustment: `nice -5` and `nice --5`.
 NICE_ADJUSTMENT = re.compile(r"^-[-+]?\d")
 
@@ -353,6 +418,28 @@ def builtin_words(segment: list[str]) -> list[str]:
     while rest and rest[0] in RUN_A_BUILTIN:
         rest = _run_by(rest, RUN_A_BUILTIN)
     return rest
+
+
+def uv_run_words(words: list[str]) -> list[str] | None:
+    """`words` from the command the `uv run` opening them runs, or None where they open none.
+
+    `uv run --with pytest-xdist pytest -n 4` runs `pytest`, and read from the
+    word after `run` it was a command named `--with` (`PL-QMN0`). uv takes its
+    own options ahead of `run` as well - `uv -q run pytest` - so the options on
+    both sides are read, each by its grammar in `UV`. Empty where the `uv run`
+    runs nothing: `uv run --help`, an option uv does not know, or no command.
+
+    `words` are a program's, as `program_words` returns them, which does not
+    call this: uv looks for the command in the project's environment first, so
+    `uv run python3` is the project's interpreter and not the bare one the floor
+    guard refuses, and which guard reads past `uv run` is that guard's choice.
+    """
+    if not words or _basename(words[0]) != "uv":
+        return None
+    rest = _run_by(words, UV)
+    if rest[:1] != ["run"]:
+        return None
+    return _run_by(rest, UV)
 
 
 def redirections(segment: list[str]) -> list[tuple[str, str, str]]:

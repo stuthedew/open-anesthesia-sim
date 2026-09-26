@@ -3,11 +3,12 @@ id: PL-QMN0
 title: gate-status-guard.sh unwraps uv run only where the program follows it directly, so a gate after uv run's own options - uv run --with pytest-xdist pytest -n 4 2>&1 | tail - is read as a command named --with and loses its status unrefused
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py, docs/items/PL-TRMN-the-three-bash-guards-read-a-command-only-where.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
 payoff: a gate run by uv run after options of uv's own - uv run --with pytest-xdist pytest -n 4 2>&1 | tail, uv -q run pytest | tail - is refused like the same gate after a bare uv run, so a red suite run with an extra package or a frozen lockfile no longer reaches a session as exit 0
 verify: grep -q 'def test_uv_run_runs_the_command_after_its_own_options' tests/unit/test_gate_status_guard.py
 ---
