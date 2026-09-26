@@ -3,12 +3,13 @@ id: PL-XGYH
 title: doc_check's math-delimiter check fails a Markdown-escaped bracket pair around WIP and a regex inside an indented code block, in documents and in items
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: exact-gates
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
+closed: 2026-09-26
 payoff: a regex shown in an indented code block passes make check, instead of being refused as math GitHub does not render
 verify: grep -q 'def test_math_in_an_indented_code_block_is_quiet' tests/unit/test_doc_check.py
 ---
@@ -28,3 +29,5 @@ Re-confirmed 2026-09-25 against 46954a81: `check_math_delimiters` over a scratch
 **Done when.** Indented code blocks are blanked before the delimiter scan, as fences already are; a test holds the indented regex through a clean run.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+**Built 2026-09-26, as step 2 of `PL-GPJ7`'s split.** `_without_code` blanks an indented code block by CommonMark's rule: a line four columns past the innermost open list item's content column, or past column 0 outside a list, that does not continue a paragraph. Where the reading is unsure it keeps a list item open or a line as prose, so a doubt costs a false refusal, which a fence repairs, and never a delimiter left unread. On this tree it newly blanks 206 lines in 62 markdown files, each a genuine block - command output, shell, tables of measured values - and none held a delimiter, so no finding was lost. The escaped-bracket half stays a hard error, as `PL-GPJ7` decided.

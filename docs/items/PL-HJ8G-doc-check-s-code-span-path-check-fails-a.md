@@ -3,12 +3,13 @@ id: PL-HJ8G
 title: doc_check's code-span path check fails a document that names a file which deliberately does not exist - 'This project has no `setup.py`', a planned tool in ROADMAP.md, a deleted file - the documents' twin of PL-3NKZ
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: exact-gates
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
+closed: 2026-09-26
 payoff: a document can name a file that is absent, planned or deleted, in the backticks a path deserves, without failing make check
 verify: grep -q 'def test_a_file_named_as_absent_is_not_a_missing_citation' tests/unit/test_doc_check.py
 ---
@@ -26,3 +27,5 @@ Re-confirmed 2026-09-25 against 46954a81 in a scratch root: a document saying th
 **Done when.** A documented marker, or a negation/plan cue read as an advisory rather than an error, lets these pass; a test holds each.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+**Built 2026-09-26, as step 2 of `PL-GPJ7`'s split.** The documented marker: `<!-- absent: setup.py -->` under a paragraph, read the way `provenance:` markers are, exempts the paths it names in that paragraph from the path-citation check, and is itself held to its claim - each path must be absent, a path `.gitignore` covers aside, and cited in the paragraph it sits under. The unresolved-path error names the marker, so the rule reaches a writer where the refusal does. No document needs one today. `PL-3NKZ` is not folded in: settling it means measuring `touches` against the briefs' dangling path citations, which this change does not do for nothing, though the marker is now one answer that item can weigh.

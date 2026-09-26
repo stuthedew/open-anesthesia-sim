@@ -1012,9 +1012,11 @@ LaTeX's `\(...\)` and `\[...\]`, which CommonMark strips to bare
 parentheses before any math parser sees them, and an expression split across a
 source line break, which renders as literal text on both sides because inline
 math is parsed within a line. `docs/MODEL.md` carried 97 of the first and
-three of the second, its whole symbol table among them. Fences, code spans and
-well-formed expressions are blanked before either rule runs, so writing
-*about* the broken syntax is not writing it. Every markdown file is read
+three of the second, its whole symbol table among them. Fences, indented code
+blocks, code spans and well-formed expressions are blanked before either rule
+runs, so writing *about* the broken syntax is not writing it; an indented block
+is recognised by CommonMark's rule, four columns past a list item's content
+where it sits in one, so an item's own prose indented four is still read. Every markdown file is read
 because rendering is not a claim held to the tree: a queue item renders on
 GitHub like anything else, and seven of them had copied the broken form out of
 `docs/MODEL.md`.
