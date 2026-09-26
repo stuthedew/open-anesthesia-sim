@@ -142,6 +142,27 @@ def test_a_quoted_separator_starts_no_command() -> None:
     assert _decision("echo a; git fetch --prune") is not None
 
 
+def test_a_reserved_word_opens_the_command_after_it() -> None:
+    """A prune after `do`, `then`, `else` or `time` is the prune it is (`PL-0X0G`).
+
+    `shell_split.command_words` read the reserved word as the command's name,
+    so each of these read as a command named `do` or `then` rather than `git`.
+    The first two are the item's reproductions, verbatim.
+    """
+    for reserved in (
+        "for x in a; do git fetch --prune; done",
+        "if true; then git fetch --prune; fi",
+        "if git fetch --prune; then :; fi",
+        "if false; then :; else git remote prune origin; fi",
+        "until git fetch --prune; do sleep 1; done",
+        "time -p git fetch --prune",
+        "(if true; then git fetch --prune; fi)",
+    ):
+        assert _decision(reserved) is not None, f"{reserved!r} was allowed"
+    # Written as an argument, a reserved word is a word and starts nothing.
+    assert _decision("echo then git fetch --prune") is None
+
+
 def test_a_prune_before_a_line_bash_cannot_read_is_refused() -> None:
     """Bash runs every line before a syntax error, so the hook reads them.
 

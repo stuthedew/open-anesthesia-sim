@@ -42,19 +42,25 @@ unquoted. So the rules are bash's own, from the Bash Reference Manual (§2
   substitution's parentheses reach a walker counting subshells as they did.
 
 **Where a command's words start is answered here too**, by `command_words`,
-so no guard can disagree with another about which word is the command. And
-`commands` finds every command a string runs, those inside `( )` and `$( )`
-included, for a guard that must see one wherever bash would run it.
-`no-prune-guard.sh` read that with a regex of its own, which took a `;` inside
-quotes for a separator (`PL-WGFY`).
+so no guard can disagree with another about which word is the command. It
+drops everything bash reads ahead of a command's name, the reserved words that
+open a command included: `do make check` runs `make`, where it once read as a
+command named `do` and passed all three guards (`PL-0X0G`). And `commands`
+finds every command a string runs, those inside `( )` and `$( )` included, for
+a guard that must see one wherever bash would run it. `no-prune-guard.sh` read
+that with a regex of its own, which took a `;` inside quotes for a separator
+(`PL-WGFY`).
 
 **What it does not read**, none of which a guard here has needed: arithmetic
 (`$(( ))` and `(( ))`, where a `<<` shift reads as a heredoc here), the `&&`,
 `||`, `<` and `>` inside `[[ ]]`, which read as a separator or a redirection,
 the `)` that ends a `case` pattern, a backtick's contents, which split at
-spaces as `shlex` split them, and a reserved word such as `do`, `then` or
-`time` in front of a command, which `command_words` reads as its name
-(`PL-0X0G`).
+spaces as `shlex` split them, and the command a `coproc` runs. A reserved word
+opens a command here only at the head of its segment, so `command_words` does
+not reach the `make check` in `if (true) then make check; fi` or in `for f do
+make check; done`; `commands` reads the first, splitting at its `)`. And a
+quoted `if` or `{`, or a `time` after a `|`, reads as the reserved word, where
+bash reads a command's name.
 
 A command bash would refuse - an unclosed quote or substitution, a `<<` with no
 word after it - is unreadable. `words` and `segments` answer None for it, and
@@ -107,6 +113,18 @@ ESCAPED_IN_DOUBLE_QUOTES = frozenset('$`"\\\n')
 # A subshell's `(`, a group's `{` and a negation's `!` open the command after them.
 GROUPING = frozenset(("(", "{", "!"))
 
+# The reserved words bash reads with a command after them: `if`, `while` and
+# `until` open a test, `then`, `else` and `do` a body, `elif` another test, and
+# `time` a pipeline it times (`help if`, `help while`, `help until`, `help for`
+# and `help time` in bash 5.2.21). The rest of `compgen -k` opens none: `for`,
+# `select`, `case` and `function` are followed by a name or a word, `in` by
+# words, and `fi`, `done`, `esac`, `}` and `]]` close what came before.
+OPENS_A_COMMAND = frozenset(("if", "then", "elif", "else", "while", "until", "do", "time"))
+
+# The options `time` takes ahead of its pipeline, each at most once and in this
+# order: `time -p -- make check` times `make check`.
+TIME_OPTIONS = ("-p", "--")
+
 # A leading `NAME=value` sets the command's environment, and is not its name.
 ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
 
@@ -139,15 +157,24 @@ def segments(command: str) -> list[tuple[list[str], str | None]] | None:
 
 
 def command_words(segment: list[str]) -> list[str]:
-    """`segment` from its command word on, with its grouping and assignments dropped.
+    """`segment` from its command word on, with what bash reads ahead of it dropped.
+
+    That is any run of grouping and of the reserved words that open a command,
+    `time`'s options with it - `then ! time -p make check` runs `make` - and
+    then any assignments. Assignments come last because bash reads a reserved
+    word only as a command's first word: after `FOO=1`, `if` and `time` are
+    the names of programs, which bash 5.2.21 reports it cannot find (`PL-0X0G`).
 
     Every guard reads the head of a command through this, so none can disagree
     with another about which word is the command - as two readers inside one
     hook once did, and a `set` opening a group went unseen (`PL-1SFZ`).
     """
     rest = list(segment)
-    while rest and rest[0] in GROUPING:
-        rest.pop(0)
+    while rest and (rest[0] in GROUPING or rest[0] in OPENS_A_COMMAND):
+        if rest.pop(0) == "time":
+            for option in TIME_OPTIONS:
+                if rest and rest[0] == option:
+                    rest.pop(0)
     while rest and ASSIGNMENT.match(rest[0]):
         rest.pop(0)
     return rest
