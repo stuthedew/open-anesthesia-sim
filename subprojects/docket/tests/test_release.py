@@ -388,8 +388,7 @@ def test_an_angle_bracket_placeholder_in_a_title_survives_the_rendered_notes() -
     from docket.release import NOTES_ENTRY_RE
 
     title = (
-        "PL-VV4D's check rests on refs/pull/<n>/head, and `git show <base>:<path>` "
-        "reads v<version>"
+        "PL-VV4D's check rests on refs/pull/<n>/head, and `git show <base>:<path>` reads v<version>"
     )
     item = replace(_item("PL-LF2C"), title=title)
 
