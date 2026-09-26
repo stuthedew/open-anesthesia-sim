@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-24
 closed: 2026-09-26
+pr: 1044
 payoff: A session-start digest that offers a release walks the branch refs once instead of twice, and a release reads who holds the train from the one cached answer every other command shares
 verify: ! grep -qF 'holdings(root, now=_now(args), items_dir=tracked, runner=' subprojects/docket/src/docket/cli.py
 ---
