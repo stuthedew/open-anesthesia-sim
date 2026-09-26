@@ -3,13 +3,15 @@ id: PL-SQTR
 title: The review hold on non-store pull requests is not delivering review - the owner armed many in the browser unread because the manual merge felt slow, and 22 more carry the API-armed signature, 11 of those touching src/, tests/, CLAUDE.md or .github/
 priority: P1
 effort: M
-status: blocked
+status: done
 classes: defect
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md
 blocked-by: PL-CBDX, PL-K6B2
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
+closed: 2026-09-26
+verify: grep -q '^status: done' docs/items/PL-CBDX-*.md && grep -q '^status: done' docs/items/PL-K6B2-*.md
 ---
 
 **Problem.** `bin/docket arm` answers `hold` for any pull request that changes a path outside `docs/items/`, so that the owner's merge is a read before code reaches `main`. In practice it was a click.
