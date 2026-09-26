@@ -737,9 +737,15 @@ def _close(process: subprocess.Popen[bytes]) -> None:
             pass
 
 
-BRANCH_ID_RE = re.compile(
-    r"(?:^|[/_-])(pl-(?:\d{3}|[0-9bcdfghjklmnpqrstvwxyz]{4}))(?:$|[/_-])", re.I
-)
+# The id a branch is named for - `claude/pl-k7qx-short-slug` - read with the
+# store's own grammar, case-insensitively because branch names are lower case.
+# It used to spell the grammar out a second time in lower case, which
+# `tools/fixture_id_check.py` matched case-sensitively and so could not see: a
+# change to `store.ID_ALPHABET` would have moved the store and that check
+# together and left this matching the old alphabet (`PL-PB8V`). The segment
+# boundaries on either side are stricter than `ID_PATTERN`'s own lookahead, so
+# the id is still read only where a separator or the end of the name closes it.
+BRANCH_ID_RE = re.compile(rf"(?:^|[/_-])({ID_PATTERN})(?:$|[/_-])", re.I)
 
 # The ids at the *front* of a commit subject, and only there. `CLAUDE.md`
 # requires the id of the work to lead every implementation subject, so an id
