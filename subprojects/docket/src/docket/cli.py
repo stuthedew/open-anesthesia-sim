@@ -65,6 +65,7 @@ from .model import (
     is_under,
     live_recurrences,
     misread_faults,
+    parse_item,
     recurrence_count,
     recurrences_of,
 )
@@ -131,6 +132,8 @@ from .vcs import (
     CURRENT,
     DEFAULT_BRANCHES,
     UNASKED,
+    BaseCopies,
+    BaseCopy,
     BranchCut,
     Churn,
     ClosureReport,
@@ -146,6 +149,7 @@ from .vcs import (
     WrittenReport,
     _head_name,
     _remotes,
+    base_copies,
     changed_items,
     churn,
     closed_by,
@@ -325,9 +329,12 @@ class Invocation:
     and nothing has to be remembered to reset. That lifetime is what makes the
     runner's memo safe - `cmd_branch` fetches in-process - and what lets
     `main` close its `cat-file` batch. `snapshot`, `holdings` and `flight` are
-    the three fields written after construction, by `_snapshot`, `_holdings`
-    and `_flight`, once each - and in that order, because a hold is read from
-    refs the snapshot has already fetched and dated (`PL-XBV4`).
+    three of the four fields written after construction, by `_snapshot`,
+    `_holdings` and `_flight`, once each - and in that order, because a hold is
+    read from refs the snapshot has already fetched and dated (`PL-XBV4`).
+    `base_copies` is the fourth, by `_base_copies`, and it too is read against
+    the snapshot's refs, for the commands that answer from an item's newer
+    copy on the default branch (`PL-Y48N`).
 
     The store itself is not held here: `_load` reads it on every call, because
     `set`, `new` and `withdraw` write between reads.
@@ -342,6 +349,7 @@ class Invocation:
     snapshot: Snapshot | None = None
     holdings: Holdings | None = None
     flight: FlightReport | None = None
+    base_copies: BaseCopies | None = None
 
 
 #: Where the command's invocation is kept, for the lifetime `Invocation` gives.
@@ -507,6 +515,133 @@ def _snapshot(args: argparse.Namespace, *, refresh: bool = True) -> Snapshot:
         made = snapshot(inv.root, now=_now(args), fetch=fetch, runner=inv.git)
     inv.snapshot = made
     return made
+
+
+def _base_copies(args: argparse.Namespace) -> BaseCopies:
+    """The default branch's copy of each item it changed after this checkout forked (`PL-Y48N`).
+
+    Read against the snapshot's refs, so the copies are from the moment the
+    holds are, and only where the snapshot places the working tree behind the
+    base: a current one has nothing newer to read, and pays nothing. Cached on
+    the invocation for `_snapshot`'s reason. Nothing is asked under `--no-git`,
+    or where no comparison exists - a detached `HEAD`, no base to compare
+    with - and the working tree answers as it always has. A position that
+    exists and could not be read is carried as `declined`, since the working
+    tree then answers without anybody knowing whether it is behind.
+    """
+    inv = _invocation(args)
+    if inv.base_copies is not None:
+        return inv.base_copies
+    state = _snapshot(args).branch
+    if inv.git is None or not inv.tracked:
+        made = BaseCopies()
+    elif state.declined:
+        made = BaseCopies(base=state.base, declined="" if state.absent else state.declined)
+    elif not state.behind:
+        made = BaseCopies(base=state.base)
+    else:
+        made = base_copies(inv.root, state.base, items_dir=inv.tracked, runner=inv.git)
+    inv.base_copies = made
+    return made
+
+
+def _from_base(
+    args: argparse.Namespace, items: list[Item]
+) -> tuple[list[Item], dict[str, tuple[Item, BaseCopy]]]:
+    """`items` with the default branch's copy in place of each one it supersedes.
+
+    Beside them, what each replaced, by id: the working tree's copy and the
+    base's, which `next` and `show` name so that an answer taken from a copy
+    the working tree does not hold says so (`PL-Y48N`). Read commands only -
+    a command writing the store must never write the base's copy over the
+    working tree's, which is a merge nobody asked for.
+    """
+    copies = _base_copies(args)
+    # A partial read answers from the working tree alone, which is what
+    # `_base_unread_line` then says: a copy half-read can take a branch's own
+    # edit for the base's, and a line saying so could not say which.
+    if not copies.copies or copies.declined:
+        return items, {}
+    answered: list[Item] = []
+    replaced: dict[str, tuple[Item, BaseCopy]] = {}
+    for item in items:
+        copy = copies.of(item.identifier)
+        if copy is None or not copy.supersedes(item.status):
+            answered.append(item)
+            continue
+        answered.append(parse_item(copy.text, copy.path.rsplit("/", 1)[-1]))
+        replaced[item.identifier] = (item, copy)
+    return answered, replaced
+
+
+def _commits(count: int) -> str:
+    """`count` commits, in the singular where there is one."""
+    return f"{count} commit{'' if count == 1 else 's'}"
+
+
+def _base_unread_line(args: argparse.Namespace) -> str:
+    """Why the default branch's newer copies could not be read, or nothing where they were."""
+    copies = _base_copies(args)
+    if not copies.declined:
+        return ""
+    return (
+        f"Whether {copies.base} holds a newer copy of these items could not be read"
+        f" - {copies.declined} - so they were read from the working tree alone."
+    )
+
+
+def _say_read_from_base(
+    args: argparse.Namespace, replaced: dict[str, tuple[Item, BaseCopy]]
+) -> None:
+    """Say that `next` answered from the default branch's copy, naming what closed there.
+
+    Counted where the status moved, and named where it moved to closed: a
+    closure is what the working tree's copy would have offered, and a triage
+    pass on the base moves twenty statuses at once, which a line naming each
+    one buries (measured 2026-09-26, one commit behind `origin/main`). A copy
+    that moved only another field is simply the newer one. Silent where no
+    status moved, so the line prints only when another session has moved an
+    item this working tree has not caught up with.
+    """
+    if line := _base_unread_line(args):
+        print(line)
+    moved = [(item, copy) for item, copy in replaced.values() if copy.status != item.status]
+    if not moved:
+        return
+    base = _base_copies(args).base
+    behind = _snapshot(args).branch.behind
+    closed = [
+        f"{item.identifier} (`{copy.status}`)"
+        for item, copy in moved
+        if copy.status in CLOSED_STATUSES
+    ]
+    if len(moved) == 1:
+        said = "1 item has changed status since; its copy was read from there"
+        shut = f", and it is closed: {closed[0]}" if closed else ""
+    else:
+        said = f"{len(moved)} items have changed status since; their copies were read from there"
+        verb = "is" if len(closed) == 1 else "are"
+        shut = f", and {len(closed)} {verb} closed: {', '.join(closed)}" if closed else ""
+    print(
+        f"This working tree is {_commits(behind)} behind {base}, where {said}{shut}. "
+        "`bin/docket branch` says how to bring it in."
+    )
+
+
+def _read_from_base_line(args: argparse.Namespace, item: Item, copy: BaseCopy) -> str:
+    """`show`'s line for an item answered from the default branch's copy (`PL-Y48N`)."""
+    base = _base_copies(args).base
+    behind = _commits(_snapshot(args).branch.behind)
+    if copy.changed_here:
+        return (
+            f"  read from {base}, which has closed it: this branch changed it too and has it"
+            f" `{item.status}`, {behind} behind - a claim on it is released as soon as it is"
+            f" written, and `bin/docket branch` says how to bring {base} in"
+        )
+    return (
+        f"  read from {base}, whose copy is newer: this working tree has it `{item.status}`"
+        f" and is {behind} behind - `bin/docket branch` says how to bring {base} in"
+    )
 
 
 def _refs_line(args: argparse.Namespace) -> str:
@@ -1888,6 +2023,9 @@ def cmd_show(args: argparse.Namespace) -> int:
     (`PL-C97K`).
     """
     _, items, config = _load(args)
+    # Before the item is found, so every line below - the band, the placement,
+    # the generator a member names - reads the copy `next` ranked (`PL-Y48N`).
+    items, replaced = _from_base(args, items)
     item = find_item(items, args.item)
     if item is None:
         print(f"no item matching '{args.item}'")
@@ -1896,6 +2034,8 @@ def cmd_show(args: argparse.Namespace) -> int:
     flight = _flight(args)
     print(f"{item.identifier} {item.title}")
     print(f"  {item.priority or '-'} · {item.effort or '-'} · {item.status}")
+    if (swapped := replaced.get(item.identifier)) is not None:
+        print(_read_from_base_line(args, *swapped))
     # Directly under the band, above the mechanics. `show` is how an item
     # named by the project owner is read, and it is the one path that skips
     # `next` entirely - so without this the surface they reach most carries
@@ -2053,6 +2193,8 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(_since_filed(args, item, root, config))
     print()
     print(item.body.strip())
+    if line := _base_unread_line(args):
+        print(line)
     _say_unread(args, flight)
     return 0
 
@@ -2322,13 +2464,17 @@ def cmd_next(args: argparse.Namespace) -> int:
         )
         return 1
     root = _invocation(args).root
+    # Ranked from the default branch's copy of any item it moved since this
+    # working tree forked, so an item another session closed and merged is not
+    # offered from a copy that predates it (`PL-Y48N`).
+    items, replaced = _from_base(args, items)
     # The grooming count printed at the foot of a pick is the same claim the
     # digest's is, so it is built from the same inputs (`_complete_report`).
     report = _complete_report(root, items, config, args)
     plan = _plan(root, items, config)
     flight = _flight(args)
     if args.oldest:
-        return _next_oldest(items, flight, config, args, plan, lane, report)
+        return _next_oldest(items, flight, config, args, plan, lane, report, replaced)
     picks = recommend(
         items,
         flight.ids,
@@ -2352,6 +2498,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         )
         _say_recurring(items, flight.ids)
         _say_lane_holdouts(items, flight, config, args, lane)
+        _say_read_from_base(args, replaced)
         _say_unread(args, flight)
         return 0
     print(f"{render.open_count(report)} open. Suggested next{where}:\n")
@@ -2368,6 +2515,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         print(
             f"{len(report.advisories)} grooming advisory(ies) pending; `docket check` to see them."
         )
+    _say_read_from_base(args, replaced)
     _say_unread(args, flight)
     return 0
 
@@ -2380,6 +2528,7 @@ def _next_oldest(
     plan: Wave | None,
     lane: str | None,
     report: Report,
+    replaced: dict[str, tuple[Item, BaseCopy]],
 ) -> int:
     """`docket next --oldest`: owed work in the order it has waited.
 
@@ -2427,6 +2576,7 @@ def _next_oldest(
     owed = [i for i in items if not is_new_work(i, config.new_work_classes, config.debt_classes)]
     _say_lane_holdouts(owed, flight, config, args, lane)
     _say_plan_pick(items, flight, config, args, scope, lane)
+    _say_read_from_base(args, replaced)
     _say_unread(args, flight)
     return 0
 
