@@ -66,6 +66,13 @@ Each finds its command on PATH as bash would, which is what lets the floor
 guard read `timeout 60 python3` as the bare interpreter it is. `uv run` does
 not, so it is the gate guard's to read past, not this module's.
 
+**And which builtin a command runs in this shell**, by `builtin_words`, which
+reads past `command` and `builtin` only: they run a builtin in the shell itself,
+so `command set -o pipefail` holds for the pipe after it, where `timeout 5 set`
+looks for a program named `set` and finds none (`PL-9RSP`). Each is read bare,
+because a `command` named by path is a program, and `command` by the grammar
+`WRAPPERS` holds for it, so the two readers cannot disagree about its options.
+
 **What it does not read**, none of which a guard here has needed: arithmetic
 (`$(( ))` and `(( ))`, where a `<<` shift reads as a heredoc here), the `&&`,
 `||`, `<` and `>` inside `[[ ]]`, which read as a separator or a redirection,
@@ -249,6 +256,11 @@ WRAPPERS = {
     "exec": Grammar(valued="a", flags="cl"),
 }
 
+# The builtins that run another builtin in this shell (`help command` and `help
+# builtin` in bash 5.2.21): `command` by its grammar as a wrapper, and `builtin`,
+# which refuses any option but `--`. Named bare, since a path names a program.
+RUN_A_BUILTIN = {"command": WRAPPERS["command"], "builtin": Grammar()}
+
 # `nice`'s older spelling of an adjustment: `nice -5` and `nice --5`.
 NICE_ADJUSTMENT = re.compile(r"^-[-+]?\d")
 
@@ -324,7 +336,22 @@ def program_words(segment: list[str]) -> list[str]:
     """
     rest, _ = _lift(command_words(segment))
     while rest and _basename(rest[0]) in WRAPPERS:
-        rest = _run_by(rest)
+        rest = _run_by(rest, WRAPPERS)
+    return rest
+
+
+def builtin_words(segment: list[str]) -> list[str]:
+    """`segment` from the builtin it runs in this shell, past each `command` and `builtin`.
+
+    Those two run a builtin in the shell itself, so `command set -o pipefail`
+    holds for the pipe after it, where a wrapper in `WRAPPERS` runs a program
+    and `timeout 5 set` finds none named `set` (`PL-9RSP`). Redirections are
+    gone, as from `program_words`. Empty where `command -v` describes the
+    builtin rather than running it, or `builtin` is given an option it refuses.
+    """
+    rest, _ = _lift(command_words(segment))
+    while rest and rest[0] in RUN_A_BUILTIN:
+        rest = _run_by(rest, RUN_A_BUILTIN)
     return rest
 
 
@@ -390,10 +417,13 @@ def _long_option(grammar: Grammar, written: str) -> str | None:
     return matching[0] if len(matching) == 1 else None
 
 
-def _run_by(words: list[str]) -> list[str]:
-    """The words of the command the wrapper opening `words` runs, or [] as `program_words` says."""
+def _run_by(words: list[str], grammars: dict[str, Grammar]) -> list[str]:
+    """The words of the command the word opening `words` runs, read by its grammar in `grammars`.
+
+    Or [] where it runs none, as `program_words` and `builtin_words` say.
+    """
     name = _basename(words[0])
-    grammar = WRAPPERS[name]
+    grammar = grammars[name]
     at = 1
     while at < len(words):
         word = words[at]
