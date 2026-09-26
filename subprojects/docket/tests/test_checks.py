@@ -3425,6 +3425,75 @@ def test_a_sound_recurrence_is_accepted() -> None:
     assert not _has(errors, "recurrences")
 
 
+_SPENT = "spent - the hook that let a claim ride a work push was removed in v0.4.30"
+
+
+def _spent_advisories(head: Item, *others: Item) -> list[str]:
+    return analyze([head, *others, *_explained()], TODAY).advisories
+
+
+def test_a_spent_generator_the_store_still_feeds_is_reported() -> None:
+    """`PL-5DPF`: a spent verdict is the one field a later fact can contradict.
+
+    The head's cluster is `PL-G1G1`..`PL-G3G3`; a live recurrence naming
+    `PL-N4N4` is a filing the verdict never weighed, and the store's own record
+    of the mechanism firing again. The line names the verdict, the entry and
+    both honest repairs, and is an advisory because which repair is judgment.
+    """
+    head = _item(
+        "PL-K7QX",
+        root_cause_of=_EXPLAINS,
+        generator=_SPENT,
+        misread=_MISREAD,
+        recurrences=("2026-09-20 PL-G1G1", "2026-09-25 PL-N4N4"),
+    )
+
+    advisories = _spent_advisories(head, _item("PL-N4N4"))
+
+    assert _has(advisories, "`generator:` reads spent")
+    assert _has(advisories, "1 filing its `root-cause-of:` never weighed (PL-N4N4 (2026-09-25))")
+    assert _has(advisories, "set `generator:` to `live`")
+    assert _has(advisories, "add the id to `root-cause-of:`")
+
+
+def test_a_spent_generator_whose_recurrences_its_cluster_carries_is_silent() -> None:
+    """The rule fires on nothing this store holds today: `PL-8FJK` and `PL-YRYR`
+    each record the one filing their cluster already names, and a withdrawn
+    match is not evidence the mechanism fired."""
+    head = _item(
+        "PL-K7QX",
+        root_cause_of=_EXPLAINS,
+        generator=_SPENT,
+        misread=_MISREAD,
+        recurrences=("2026-09-20 PL-G1G1", "2026-09-25 PL-N4N4 withdrawn 2026-09-26 PL-G2G2"),
+    )
+
+    assert not _has(_spent_advisories(head, _item("PL-N4N4")), "`generator:` reads spent")
+
+
+def test_only_an_open_spent_head_is_held_to_its_recurrences() -> None:
+    """A live head is ranked already, and a closed head can be re-ranked by nothing."""
+    live = _item(
+        "PL-K7QX",
+        root_cause_of=_EXPLAINS,
+        generator=_LIVE,
+        misread=_MISREAD,
+        recurrences=("2026-09-25 PL-N4N4",),
+    )
+    closed = _item(
+        "PL-K7QX",
+        root_cause_of=_EXPLAINS,
+        generator=_SPENT,
+        misread=_MISREAD,
+        status="done",
+        closed=date(2026, 9, 22),
+        recurrences=("2026-09-25 PL-N4N4",),
+    )
+
+    assert not _has(_spent_advisories(live, _item("PL-N4N4")), "`generator:` reads spent")
+    assert not _has(_spent_advisories(closed, _item("PL-N4N4")), "`generator:` reads spent")
+
+
 def test_the_root_cause_error_says_the_generator_is_not_being_ranked() -> None:
     """The repair is the point: an unsound claim is recorded and inert."""
     errors = _errors(_item("PL-K7QX", root_cause_of=_EXPLAINS[:1]), *_explained())

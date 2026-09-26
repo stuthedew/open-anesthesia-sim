@@ -39,10 +39,13 @@ from .model import (
     Item,
     generator_defect_faults,
     generator_faults,
+    is_generator,
+    live_recurrences,
     misread_faults,
     recurrence_faults,
     root_cause_faults,
     split_deferred_from,
+    split_generator_verdict,
 )
 from .notes import Thread
 from .plan import OfferedReport, promotable
@@ -2080,6 +2083,7 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
     _check_generator_verdicts(report, known)
     _check_misread(report, known)
     _check_recurrences(report, known)
+    _check_spent_verdicts(report, known)
 
     known_items = {i.identifier: i for i in report.items}
     _outranks_its_blocker(report, known_items)
@@ -2338,6 +2342,72 @@ def _check_recurrences(report: Report, known: set[str]) -> None:
             f"{_where(item)}: `recurrences:` {'; '.join(faults)}. The count is what "
             f"surfaces this item as a generator-tier candidate, so an entry nothing can "
             f"read is a filing the store will not show you"
+        )
+
+
+def _check_spent_verdicts(report: Report, known: set[str]) -> None:
+    """Report a `spent` head whose store record shows the mechanism still firing.
+
+    `spent` is the verdict that *demotes*: the head ranks on its band like any
+    other item, on a session's judgment that the mechanism can produce no
+    further member. It is the one field a later fact can flatly contradict,
+    and `recurrences:` is that fact - `bin/docket new` appends an entry every
+    time a capture matches the item, so a filing arriving after the verdict is
+    the mechanism firing again with the store's own record saying so. Nothing
+    else in the project would ever say the judgment has been overtaken
+    (`PL-5DPF`). The opposite error is loud - a wrong `live` sits above a
+    `safety`-classed `P1` where the next reader of `docket next` sees it.
+
+    **"After" is read from the cluster, not from a date.** `generator:` carries
+    no date, and giving a judgment field one would be a second thing to keep
+    truthful. What the head does record is the cluster the verdict was about:
+    `root-cause-of:` names every member the session judged. A live recurrence
+    naming an item outside that cluster is a member the verdict never weighed,
+    which is decidable, and is silent for a head whose recurrences its cluster
+    already carries - on this store, both spent heads carrying recurrences
+    (`PL-8FJK`, `PL-YRYR`) name the filing in their cluster, so the rule fires
+    on neither. A session writing `spent` over an already-recurring history it
+    left out of the cluster sees this once, and folds the ids in.
+
+    Open heads only, as the verdict check above: a closed head is startable by
+    nothing, so nothing here could re-rank it, and `docket new` records a
+    recurrence onto the open item it matched. A head whose claim is unsound is
+    already an error beside this and is not reported twice.
+
+    An advisory rather than an error, because the response is judgment: the
+    filing may be the same mechanism, which re-verdicts the head `live`, or a
+    match the session disowns with `docket withdraw`, or a member the verdict
+    stands over once it is named. The rule that decides the report is exact;
+    what to do about it is not, which is the line `CLAUDE.md` draws.
+    """
+    for item in report.items:
+        if item.status not in OPEN_STATUSES or not is_generator(item, known):
+            continue
+        verdict, _reason = split_generator_verdict(item.generator)
+        if verdict != "spent":
+            continue
+        recorded = set(item.root_cause_of)
+        unweighed = [
+            found
+            for found in live_recurrences(item)
+            if found.identifier and found.identifier not in recorded
+        ]
+        if not unweighed:
+            continue
+        entries = ", ".join(
+            f"{found.identifier} ({found.when.isoformat() if found.when else found.raw})"
+            for found in unweighed
+        )
+        one = len(unweighed) == 1
+        report.advisories.append(
+            f"{_where(item)}: `generator:` reads spent, and `recurrences:` records "
+            f"{len(unweighed)} filing{'' if one else 's'} its `root-cause-of:` never weighed "
+            f"({entries}) - the store handed this mechanism a member after the verdict "
+            "said it could not produce one, so the verdict is falsified until it is "
+            "re-judged; read each capture beside this head and either set `generator:` "
+            "to `live` with the reason, which ranks it above every band but P0, add the "
+            "id to `root-cause-of:` with a reason that still reads spent, or withdraw the "
+            "match with `docket withdraw`"
         )
 
 
