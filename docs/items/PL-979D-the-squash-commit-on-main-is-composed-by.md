@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: pr-body-integrity
-touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py
+touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, .github/workflows/pr-title.yml, Makefile, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py, docs/maintainer.md, docs/ARCHITECTURE.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/capture.md, docs/pr-bodies
 blocked-by: PL-HMZZ
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
@@ -176,3 +176,66 @@ check are what this rides; nothing holds this item now.
 **Done when.** One of the two is recorded here as the answer, and each open member is re-scoped or closed against it.
 
 **Generator check.** This is a head: `PL-WFFX`'s `misread:`, restated word for word so the two sort together, with three instances filed after `PL-WFFX` closed.
+
+**Build plan, 2026-09-26** (the build thread on `claude/pl-979d-build-1y2bjk`,
+which holds the claim on this item and on `PL-BZHX`, `PL-PNJF`, `PL-73G8` and
+`PL-M7W1`, and stopped at the context budget before writing code). Each choice
+below is the build's own, inside the form decided above:
+
+1. **`tools/pr_body_check.py` gains three modes and a new header.**
+   - `--record [N]` reads `GET /pulls/N`, with `GH_TOKEN` or `GITHUB_TOKEN`
+     where set, as `tools/open_pull_requests.py` does, and unauthenticated
+     otherwise. A bare `--record` finds N through
+     `pr_title_check.open_pull_request`. For an open pull request it writes
+     `docs/pr-bodies/N.md` as front matter (`pr:`, `recorded: DATE`), one blank
+     line, then the body verbatim, with `\r\n` made `\n` and whitespace at the
+     end of the body cut to one newline. There is no HTML comment above the
+     body, because this repository's bodies open with the harness's own
+     `<!-- ccr-projects-attribution ... -->` marker, and a parser could not tell
+     a tool's comment from the body's. For a merged pull request it writes
+     `recovered: DATE`, `commit:`, `merged:`, `items:`, `subject:` and
+     `squash:`, the shape `verdict()` names (empty, GitHub's trailer only, the
+     message auto-merge was armed with, differs, or matches). It refuses where
+     the squash commit is not on the local default branch, and refuses a pull
+     request closed without merging. For an open pull request with an empty
+     body it writes nothing, removes any stale file, and says so. An
+     unreadable pull request exits 1.
+   - `--check` is the required step. It reads `PR_NUMBER` and `PR_BODY` from
+     the environment, never interpolated, and `PR_HEAD` (default `HEAD`). It
+     passes where the body is blank, or where
+     `git show HEAD:docs/pr-bodies/N.md` holds the same body once `\r\n` and
+     the whitespace at the body's end are normalised. Otherwise it fails and
+     names the command to run.
+   - `--anchors` checks that every record's `commit:` is a first-parent
+     commit of the default branch. It exits 1 naming each one that is not, and
+     how to re-derive it. On a shallow clone, or with no default branch, it
+     says the anchors were not checked and exits 0. It runs in `make check`,
+     which is `PL-73G8`'s "fails".
+   - `--recover` writes the recovered header, so the untrue "landed with an
+     empty message body" sentence is gone (`PL-PNJF`, `PL-73G8`). `--compare`
+     stays as a hand-run measurement of drift before this rule, since it is
+     what sizes the backfill the owner kept as a separate decision, and its
+     docstring is reframed. The default advisory is unchanged.
+2. **`pr-title.yml`** gets a third step, `python3 tools/pr_body_check.py
+   --check`, with `PR_BODY: ${{ github.event.pull_request.body }}` passed
+   through `env:`.
+3. **`arming.py`** gets `RECORDS = "docs/pr-bodies/"` beside `TOOLING`, so
+   `PL-QFCR` has a third constant to move. A record arms on green. The `arm`
+   and `hold` lines name all three directories, which changes strings that
+   four tests in `test_cli.py` assert. That produces the close-out's expected
+   `PL-K4R5` REJECT.
+4. **`verify.py`** gets a sanctioned kind, `record`: a file the branch added
+   under `docs/pr-bodies/`, named `N.md`, whose front matter carries `pr: N`
+   and `recorded:`. `RECORDS` is imported from `arming`.
+5. **Docs.** The module docstring, `docs/maintainer.md` § "Merge on the Mac
+   or by auto-merge, never in the GitHub app", `docs/ARCHITECTURE.md`'s line
+   for the tool, close-out step 1 (run `--record` once the pull request is
+   open, and again after any edit to its body), and `capture.md` where a
+   capture opens its pull request.
+6. **Closes.** `PL-BZHX` closes once the docstring stops calling the squash
+   body the record. `PL-PNJF` and `PL-73G8` close with the header, a test per
+   `squash:` shape and an anchor test. `PL-M7W1` closes its body half, and
+   this item closes with them. Then `bin/docket record N`, and `--record` for
+   this pull request's own body. Once this merges, every open pull request
+   fails `pr-title` until it records its body. The pull request body says so,
+   as `#1056`'s did.
