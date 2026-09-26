@@ -2612,6 +2612,23 @@ def _cue_pattern(cues: tuple[str, ...]) -> re.Pattern[str]:
 PROSE_DEPENDENCY = _cue_pattern(PREREQUISITE_CUES)
 CLOSED_DEPENDENCY = _cue_pattern(CLOSED_PREREQUISITE_CUES)
 
+# A negation standing directly before the cue, which makes the sentence the
+# opposite claim: "This is not blocked by", "doesn't depend on", "no longer
+# waits on", "Nothing waiting on". Read as a prerequisite, it drew advice to
+# declare the edge and set `status: blocked`, which would hide the item from
+# `docket next` behind work its brief says it is free of (`PL-YKBF`). Directly
+# before and no wider: a negation earlier in the clause is usually about
+# something else - the one such clause in the store on 2026-09-26, `PL-RTG9`'s
+# "not so the line is written now - which is why it waits on `PL-W9P6`", is a
+# real wait - and "not only depends on" states the prerequisite twice over.
+# One line break may fall between the two, where the prose wraps, and a blank
+# line may not: a paragraph ending on "no" says nothing about the next one.
+NEGATED_CUE = re.compile(
+    r"(?:\b(?:not|cannot|never|nothing|neither|nor|without|no(?:\s+longer)?)|n['’]t)"
+    r"[*_]{0,2}(?:[ \t]+|[ \t]*\n[ \t]*)\Z",
+    re.IGNORECASE,
+)
+
 # A *second* blocker written as a continuation of the first - "blocked on A and
 # on B" - which the cue-then-id form above reads only the first half of. It is a
 # separate pattern rather than another entry in the cue list because "and on" is
@@ -2946,13 +2963,19 @@ def _prerequisite_matches(body: str, cue: re.Pattern[str]) -> list[re.Match[str]
     paragraph, which is what keeps "and on" from matching ordinary prose.
 
     A match that is not the brief's own current claim - quoted, or in a passage
-    marked superseded - is dropped here, so no reading of it sees one.
+    marked superseded - is dropped here, so no reading of it sees one. So is a
+    cue under `NEGATED_CUE`, with the continuation and the list that would run
+    on from it: "not blocked by A and B" says the item waits on neither.
 
     Ordered by position so the advisories for one item read in the order a
     person meets them in the file.
     """
-    cued = _cued_paragraphs(body, cue)
-    matches = list(cue.finditer(body))
+    matches = [
+        match
+        for match in cue.finditer(body)
+        if not NEGATED_CUE.search(body, max(0, match.start() - 24), match.start())
+    ]
+    cued = _cued_paragraphs(body, matches)
     matches += [
         match
         for match in PROSE_DEPENDENCY_CONTINUATION.finditer(body)
@@ -2969,7 +2992,7 @@ def _prerequisite_matches(body: str, cue: re.Pattern[str]) -> list[re.Match[str]
     return sorted(standing, key=lambda match: match.start())
 
 
-def _cued_paragraphs(body: str, cue: re.Pattern[str]) -> list[tuple[int, int]]:
+def _cued_paragraphs(body: str, cues: list[re.Match[str]]) -> list[tuple[int, int]]:
     """The blank-line-delimited blocks in which a prerequisite cue fired.
 
     The paragraph rather than the line, because the item format wraps at 80
@@ -2980,7 +3003,7 @@ def _cued_paragraphs(body: str, cue: re.Pattern[str]) -> list[tuple[int, int]]:
     in the rest of the file.
     """
     bounds: list[tuple[int, int]] = []
-    for match in cue.finditer(body):
+    for match in cues:
         opened = body.rfind("\n\n", 0, match.start())
         start = 0 if opened < 0 else opened + 2
         closed = body.find("\n\n", match.start())

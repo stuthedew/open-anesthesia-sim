@@ -3,12 +3,13 @@ id: PL-YKBF
 title: docket check's prose-prerequisite rule reads an item id after a negated 'not blocked by' as a prerequisite and refuses the brief with an error - this item's own first draft was refused by it
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: exact-gates
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
+closed: 2026-09-26
 payoff: a brief saying it is not held up by an item stops drawing advice to block it on that item
 verify: grep -q 'def test_a_negated_blocked_by_is_not_read_as_a_prerequisite' subprojects/docket/tests/test_checks.py
 ---
@@ -26,3 +27,26 @@ Re-confirmed 2026-09-25 against 46954a81, at a lower severity than the title sta
 **Done when.** A negation cue before the id suppresses it; a test holds the reproduction.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+**Worked.** Re-confirmed on 818caeb4 before the fix: "This is not blocked
+by" and an open item's id still drew the advisory, as did seven other negated
+forms tried. The negation is read only where it stands directly before the
+cue - one wrapped line break allowed, a blank line not - from `not`, `cannot`,
+`never`, `nothing`, `neither`, `nor`, `without`, `no`, `no longer` and a `n't`
+contraction, straight or curly, with a closing `**` or `*` allowed. A reading
+anywhere earlier in the clause was measured and refused: the one such clause in
+the store, `PL-RTG9`'s "not so the line is written now - which is why it waits
+on `PL-W9P6`", is a real wait, and "not only depends on" states the
+prerequisite twice. `NEGATED_CUE` is applied in `_prerequisite_matches`, so it
+covers the closed-item reading (`_ended_waits`) too, which reads the same cues
+and told a reader of the same negated sentence that it was a condition still to
+meet. A negated cue licenses no continuation in its paragraph and carries no
+list, so `_cued_paragraphs` now takes the stated cue matches rather than the
+pattern. Left as it was: a paragraph holding a stated cue and, after it, a
+negated one followed by "and on X" still reads X, because a continuation is
+anchored to its paragraph rather than to the cue it continues; nothing in the
+store has that shape. Counted over the store with and without the change,
+`brief_contradictions` returns the same single advisory, so the fix suppresses
+nothing that fires today. Two tests beyond the one `verify:` names: one pins
+that positive sentences with a negation elsewhere still fire, and one that the
+list and the continuation share the cue's negation.
