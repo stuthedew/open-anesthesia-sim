@@ -3352,12 +3352,19 @@ disabled - had no entry until `PL-5B88`, so the check reported `none` with
 one in the diff. The widening owed the count a narrowing does: replayed over
 `main`'s 1,115 non-merge commits, it flags one added line, a
 `@pytest.mark.skipif` on a test that needs `bash` - a real directive, which a
-reviewer should see - and no prose in any suffix the check reads. Not read,
-and absent from that history too: `pytest.importorskip`,
-`unittest.expectedFailure`, `self.skipTest`, a raised `unittest.SkipTest`, and
-`collect_ignore` in a `conftest.py` (`PL-DNZ0`). A deselection in `addopts` is
-configuration: in `pyproject.toml`, one of `gate_paths`' defaults, the gate
-check reads it, and in a `.cfg` or `.ini` file nothing does.
+reviewer should see - and no prose in any suffix the check reads. The rarer
+forms followed in `PL-DNZ0`: `importorskip` reads `pytest.importorskip`,
+which skips a module whose import fails; `expectedFailure` reads
+`@unittest.expectedFailure`, unittest's `xfail`; `skipTest` the imperative
+`self.skipTest`; `SkipTest` a raised `unittest.SkipTest`, the exception both
+frameworks skip on; and `collect_ignore` and `pytest_ignore_collect` the list
+and the hook a `conftest.py` drops a file from collection with,
+`collect_ignore_glob` included. Replayed over `main`'s 1,237 non-merge commits
+on 2026-09-25, the six flag no added line: `importorskip` has a common
+legitimate use, an optional dependency, and when one arrives a reviewer sees it
+as they see the `bash` guard. A deselection in `addopts` is configuration: in
+`pyproject.toml`, one of `gate_paths`' defaults, the gate check reads it, and
+in a `.cfg` or `.ini` file nothing does.
 
 What counts as a *removed assertion* is decided by the parser rather than by a
 line (`PL-4W2L`): an assertion the base's copy of a `.py` file holds - an

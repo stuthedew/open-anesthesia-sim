@@ -3,12 +3,13 @@ id: PL-DNZ0
 title: verify's suppression check still reads none of pytest.importorskip, unittest.expectedFailure, self.skipTest, a raised unittest.SkipTest or a conftest collect_ignore, so 'no suppression added' reports none with any of them in the diff
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22
+closed: 2026-09-25
 payoff: a session that silences a test with self.skipTest, a raised SkipTest, expectedFailure, importorskip, or a conftest collect_ignore or pytest_ignore_collect gets it put in front of a reviewer, instead of the clean 'no suppression added: none' an integrity check --self may never relax now prints
 verify: grep -q 'importorskip' subprojects/docket/tests/test_verify.py && grep -q 'expectedFailure' subprojects/docket/tests/test_verify.py && grep -q 'skipTest' subprojects/docket/tests/test_verify.py && grep -q 'SkipTest' subprojects/docket/tests/test_verify.py && grep -q 'collect_ignore' subprojects/docket/tests/test_verify.py && grep -q 'pytest_ignore_collect' subprojects/docket/tests/test_verify.py
 ---
@@ -99,3 +100,20 @@ are that list's known remainder, drawn from the frameworks' documented ways to
 skip, fail or ignore a test. That set is small and fixed, so the tail is
 bounded, not generating. It widens an existing list and an existing test, so
 the pause on new mechanisms does not reach it.
+
+**Worked.** Each new case keeps the existing test's shape, so its marker is
+one line above `def test_b()` in `tests/test_thing.py`: the imperative
+`self.skipTest` and the raised `SkipTest` sit at module level there, and the two
+collection forms are not in a `conftest.py`, since the check reads a line's
+text and its file's suffix and never the file's name. The marker strings are
+mine: `numpy = pytest.importorskip("numpy")`, `@unittest.expectedFailure`,
+`self.skipTest("broken")`, `raise unittest.SkipTest("broken")`,
+`collect_ignore = ["test_thing.py"]` and
+`def pytest_ignore_collect(collection_path, config):`. With the six entries
+reverted, those six cases fail and the five older ones pass. The replay was a
+scratch script mirroring `_net_line_changes`'s per-file fold over each
+non-merge commit on `origin/main`, 1,237 of 1,354: the six match no added line,
+and the six older entries still match only the `bash` guard. I also named
+`collect_ignore_glob` in `_SUPPRESSION_RE`'s comment on the open right-hand
+side, and added a paragraph to the test's docstring naming the six forms in
+backticks, so the item's own close-out does not read them as suppressions.
