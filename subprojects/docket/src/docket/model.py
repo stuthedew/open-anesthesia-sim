@@ -551,11 +551,8 @@ class Item:
     #: it, is `subprojects/docket/README.md` § "What the front matter is,
     #: exactly" (`PL-5MYR`).
     #:
-    #: **Required on a closed head too, unlike `generator`.** A verdict on a
-    #: closed head moves no ranking; a closed head's stated fact is exactly
-    #: what a later capture is compared against, and "an instance of a closed
-    #: head's mechanism, filed after the head closed" is triage's first
-    #: landing - `PL-7TVT` closed spent with four members filed after it.
+    #: **Required on a closed head too, unlike `generator`**, for the reason
+    #: that section gives.
     #:
     #: Presence, the missing-cluster case and `MISREAD_LIMIT` are decidable and
     #: live in `misread_faults`. Whether the line names the right fact, and
@@ -1008,14 +1005,7 @@ def misread_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     cannot disagree about what the field owes.
 
     **Required on every sound head, closed ones included** - which is where
-    this parts from `generator_faults`, and on purpose. A verdict on a closed
-    head moves no ranking, so demanding one would invent a judgment nothing
-    reads. A closed head's stated fact is read: it is exactly what a later
-    capture is compared against, and "an instance of a closed head's
-    mechanism, filed after the head closed" is triage's first landing -
-    `PL-7TVT` closed spent with four members filed after it. Nor does the
-    backfill invent anything: `PL-T7Y1`'s audit compared every head, and
-    `PL-5MYR` wrote each line from it and checked it against its head.
+    this parts from `generator_faults`, and on purpose (`PL-5MYR`).
 
     A line with no cluster under it is faulted from the other end, as a verdict
     without one is: it states what a cluster misread and records none, so the
