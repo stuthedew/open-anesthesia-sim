@@ -323,11 +323,16 @@ changes nothing.
    UPDATE_BRANCH_TOKEN --repo stuthedew/open-anesthesia-sim` does steps 5 and 6
    and prompts for the value.
 
-**Why those permissions.** GitHub's API reference lists *Pull requests* for the
-update call. The update is a merge written onto the branch, which is the
-*Contents* write, and GitHub refuses one that brings in a change to a workflow
-file without *Workflows*: Mergify's app met that refusal updating branches
-behind a workflow change
+**Why those permissions.** GitHub's permission table lists only *Pull
+requests* for the update call
+([Permissions required for fine-grained personal access tokens](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens)).
+Its reference for the call adds that a GitHub App must also be able to write
+the head repository's contents
+([Update a pull request branch](https://docs.github.com/en/rest/pulls/pulls#update-a-pull-request-branch))
+and does not say whether that holds for a token, so *Contents* is included
+rather than found missing at the first update. GitHub refuses an update that
+brings in a change to a workflow file without *Workflows*: Mergify's app met
+that refusal updating branches behind a workflow change
 ([Mergifyio/mergify#5055](https://github.com/Mergifyio/mergify/issues/5055)). A
 run GitHub refuses turns red, and its summary names the permission GitHub asked
 for.
