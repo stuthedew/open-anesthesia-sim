@@ -9,6 +9,7 @@ feature: release-process
 touches: subprojects/docket/README.md
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1061
 payoff: a reader who learns resource: from the README knows the release item ships in no release, instead of expecting it in the next release's count and notes
 verify: grep -qF 'PL-KRS6' subprojects/docket/README.md
 ---

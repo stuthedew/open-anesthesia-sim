@@ -9,6 +9,7 @@ feature: carrier-detection
 touches: subprojects/docket/README.md
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1061
 payoff: a README reader expects every branch that edited an item's file to be named and knows show and triage leave out their own, matching what those commands print
 verify: grep -qF '_elsewhere' subprojects/docket/README.md && ! grep -qF 'names, per item, a ref that has changed' subprojects/docket/README.md
 ---

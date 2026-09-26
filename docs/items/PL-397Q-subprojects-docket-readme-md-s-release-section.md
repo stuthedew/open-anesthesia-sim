@@ -9,6 +9,7 @@ feature: release-process
 touches: subprojects/docket/README.md
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1061
 payoff: the docket README stops telling a reader that the cut walk runs only under a release offer and that only release and check report an interrupted cut, both now contradicted by the digest and status
 verify: grep -qF 'is_worth_cutting' subprojects/docket/README.md && grep -qF '_interrupted' subprojects/docket/README.md
 ---
