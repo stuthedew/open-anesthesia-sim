@@ -3,14 +3,14 @@ id: PL-CH3Z
 title: Delete the legacy claim reading once bin/docket flight prints legacy refs: 0
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: claim-record
 touches: subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py, tools/branch_id_check.py
-blocked-by: PL-N162, PL-J9S0
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24
 payoff: part of the claim record that ends PL-MB2W's generator: one recorded fact decides who holds an item
+verify: ! grep -q -i legacy subprojects/docket/src/docket/claims.py && ! grep -q -i legacy tools/branch_id_check.py
 ---
 
 **Problem.** Delete the legacy claim reading once bin/docket flight prints legacy refs: 0
@@ -26,3 +26,5 @@ Remove the legacy reading and the CI skip for legacy commits. Starts only once `
 - No legacy reading remains in `claims.py` or `tools/branch_id_check.py`.
 
 **Build order.** After `PL-N162`, `PL-J9S0`.
+
+**Readied 2026-09-26.** `bin/docket flight` on `origin/main` `35532902` prints `legacy refs: 0`, and `PL-N162` and `PL-J9S0` are both done, so the start condition holds and the `blocked-by` edge is cleared.
