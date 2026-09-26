@@ -3532,6 +3532,84 @@ def test_show_calls_an_edited_item_startable_only_when_its_status_allows(
     assert "startable" not in out
 
 
+#: A second branch writing `PL-0001`'s file, named the way the harness names one
+#: so that it lists ahead of `BRANCH`: the order `PL-1X2C`'s pair was read in.
+OWN = "claude/second-promotion-k2v7qd"
+
+
+def _carry(root: Path, name: str, *, new: bool = True) -> None:
+    """Check `name` out and commit a valid edit to `PL-0001`'s file on it, leaving it checked out.
+
+    Cut from `main` when `new`, so it edits the file independently of `BRANCH`,
+    as the two promotions of `PL-B8MK` did (`PL-1X2C`). The file is written
+    whole, since `_flight_repo`'s branch leaves it holding no item at all and
+    `show` reads the store from whichever branch is checked out.
+    """
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-22T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-22T12:00:00+00:00",
+    }
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
+
+    git("checkout", "-q", *(("-b", name, "main") if new else (name,)))
+    item = root / "items" / "PL-0001-on-main.md"
+    item.write_text(READY.replace("PL-B1B1", "PL-0001") + "\nPromoted here too.\n")
+    git("commit", "-qam", "PL-0001 Promote it")
+
+
+def test_the_carrier_line_names_the_other_branch_not_the_readers_own(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-1X2C: run on the second of two branches editing one item file, `show` named its own.
+
+    The reader knows what its own branch wrote; the branch it will collide with
+    is the one it cannot see, and that was the one left out.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Capture a note", wrote="items/PL-0001-on-main.md")
+    _carry(root, OWN)
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"Its file is already edited on {BRANCH} (last commit 3 days ago)." in out
+    assert f"edited on {OWN}" not in out
+    assert "PL-0001 is startable" in out
+
+
+def test_the_carrier_line_names_every_other_branch_that_edited_the_item(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Every other carrier is a collision, so naming the first alone hid the rest (`PL-1X2C`)."""
+    root = _flight_repo(tmp_path, "PL-0001 Capture a note", wrote="items/PL-0001-on-main.md")
+    _carry(root, "claude/third-promotion-m4r8wt")
+    _carry(root, OWN)
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"Its file is already edited on {BRANCH} (last commit 3 days ago)." in out
+    assert "Its file is already edited on claude/third-promotion-m4r8wt (" in out
+    assert f"edited on {OWN}" not in out
+    assert out.count("Not work in flight") == 1
+
+
+def test_the_carrier_line_is_silent_where_the_only_carrier_is_the_readers_own(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The only branch that edited the file is the reader's, with nothing to tell it (`PL-1X2C`)."""
+    root = _flight_repo(tmp_path, "PL-0001 Capture a note", wrote="items/PL-0001-on-main.md")
+    _carry(root, BRANCH, new=False)
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert out.splitlines()[0].startswith("PL-0001"), "the premise: show read the item"
+    assert "already edited" not in out
+    assert "collides at merge" not in out
+
+
 def test_show_names_a_round_that_retitled_the_item_file_as_editing_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
