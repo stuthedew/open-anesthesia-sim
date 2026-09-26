@@ -175,6 +175,80 @@ def test_a_spelling_that_prunes_nothing_is_untouched(command: str) -> None:
     assert _decision(command) is None, f"{command!r} was denied"
 
 
+# Each read a prune or mirror setting and wrote nothing, run on git 2.43.0 in a
+# scratch repository on 2026-09-26 (`PL-YFT4`). The first is the read the
+# project owner met in ordinary work, verbatim.
+CONFIG_READS = (
+    "git config --get fetch.prune",
+    "git config --get remote.origin.mirror",
+    "git config --get-all remote.origin.prune",
+    "git config --get-regexp 'remote.*.prune'",
+    "git config --get-urlmatch fetch.prune https://example.com",
+    # `--list` takes no name, so one reaches it only as a file named for one.
+    "git config -f fetch.prune.cfg --list",
+    "git config -l --file remote.origin.mirror.cfg",
+    # After `--get`, a second word is a pattern the value must match, not a value.
+    "git config --get fetch.prune true",
+    # With no action, a name alone is read.
+    "git config fetch.prune",
+    "git config remote.origin.mirror",
+    # Beside a location, a type or a display option, its value stuck or not.
+    "git config --global --get fetch.prune",
+    "git config --type=bool --get fetch.prune",
+    "git config -t bool --get fetch.prune",
+    "git config --file=.git/config --show-origin --get-all fetch.prune",
+    "git config --default false --get fetch.prune",
+    "git config --get -- fetch.prune",
+    # Wherever the call runs.
+    'echo "$(git config --get fetch.prune)"',
+    "git config --get fetch.prune || echo unset",
+)
+
+
+@pytest.mark.parametrize("command", CONFIG_READS)
+def test_a_read_that_prunes_nothing_is_admitted(command: str) -> None:
+    """A `config` that only reads a prune or mirror setting passes (`PL-YFT4`).
+
+    The guard refused every `config` naming either setting, read or write, so
+    `git config --get fetch.prune`, met in ordinary work, was refused with a
+    reason saying it prunes.
+    """
+    assert _decision(command) is None, f"{command!r} was denied"
+
+
+# Each wrote the setting it names on the same scratch repository, though a read
+# action or a read's shape is among its words, so each stays refused.
+CONFIG_WRITES = (
+    "git config fetch.prune true",
+    # git reads options only up to the first word that is not one, so this
+    # writes the value `--get`.
+    "git config fetch.prune --get",
+    # A `--no-` form clears the action before it, leaving a name and a value.
+    "git config --get --no-get fetch.prune true",
+    "git config --list --no-list fetch.prune true",
+    # After `--`, or beside a type alone, a name and a value are written.
+    "git config -- fetch.prune true",
+    "git config --bool fetch.prune true",
+    "git config --add fetch.prune true",
+    "git config --unset fetch.prune",
+    "git config --replace-all remote.origin.mirror true",
+    # Bash makes new words of these after the hook has read the call, an option
+    # among them, so a call holding one is read as a write.
+    'x=--no-get; git config --get "$x" fetch.prune true',
+    'git config --get "$(echo --no-get)" fetch.prune true',
+    "git config --get `echo --no-get` fetch.prune true",
+    "git config --get {--no-get,} fetch.prune true",
+)
+
+
+@pytest.mark.parametrize("command", CONFIG_WRITES)
+def test_a_config_that_writes_is_refused_whatever_it_reads_like(command: str) -> None:
+    """A `config` write stays refused beside a read action or a read's shape (`PL-YFT4`)."""
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert decision["permissionDecision"] == "deny"
+
+
 def test_only_a_heredoc_body_is_removed() -> None:
     """The prose in a body stays allowed, and a prune after its terminator is refused (`PL-39LD`).
 
@@ -398,6 +472,11 @@ BY_SHELL = (
     "a command handed to another shell as a string, which the hook reads as one quoted "
     "word, and which no session has written: out of reach since `PL-WGFY`"
 )
+UNREAD_CONFIG = (
+    "a `config` read the hook cannot read whole - an option it does not know, or a word "
+    "bash expands after the hook has read it - which it takes for a write rather than "
+    "guess, found building `PL-YFT4`"
+)
 
 # Spellings outside the promise, each read wrongly today (`PL-61FT`): the
 # command, whether it is refused today, what git does with it, and why it is
@@ -419,6 +498,18 @@ KNOWN_GAPS = (
         True,
         "prunes nothing: a search of commit messages for `pull`, printed with patches",
         PROBED_READ,
+    ),
+    (
+        "git config --get-a fetch.prune",
+        True,
+        "reads `fetch.prune`, since git takes `--get-a` for `--get-all`",
+        UNREAD_CONFIG,
+    ),
+    (
+        'repo=.; git -C "$repo" config --get fetch.prune',
+        True,
+        "reads `fetch.prune`, once bash expands `$repo`",
+        UNREAD_CONFIG,
     ),
     (
         "git -c alias.fp='fetch --prune' fp",
