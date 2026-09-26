@@ -3,12 +3,14 @@ id: PL-WG7Q
 title: _merges_naming's subject scan applies only the closed-here test and never the carried-work one, so a closure split from its work is recorded whenever its own subject leads with the id
 priority: P2
 effort: S
-status: blocked
+status: dropped
 classes: defect
 feature: commit-provenance
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 blocked-by: PL-GJPD
 added: 2026-09-19
+closed: 2026-09-26
+reason: the subject-scan hit it would have held to carried work was deleted with the rest of the inference by the PL-HMZZ build (#1056); the number is recorded by the closing branch and held by CI, and nothing scans subjects any more
 payoff: closes the half of the pull-request-provenance guard that holds only when an unrelated later commit happens to exist
 verify: grep -q 'def test_a_subject_scan_hit_is_held_to_carried_work' subprojects/docket/tests/test_vcs.py
 ---
@@ -66,6 +68,7 @@ scan would have answered `712` with no guard applied and `PL-YFXG` would never
 have been visible. A guard that holds only when an unrelated later commit
 happens to exist is not a guard.
 
+[superseded 2026-09-26: both dropped with the inference they were about, #1056]
 **Sequenced behind `PL-GJPD` rather than merged into it** (triage,
 2026-09-20). Both items are about what evidence proves a commit carried an
 item's work, and `PL-GJPD` proposes replacing that evidence wholesale - reading

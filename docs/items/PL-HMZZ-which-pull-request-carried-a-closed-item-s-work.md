@@ -3,16 +3,18 @@ id: PL-HMZZ
 title: Which pull request carried a closed item's work is inferred from commit history after the merge and never recorded when the merge happens - ten items, four open
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: commit-provenance
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/README.md, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_vcs_silence.py, tools/pr_record_check.py, tools/pr_title_check.py, tools/doc_check.py, tests/unit/test_pr_record_check.py, .github/workflows/pr-title.yml, Makefile, docs/ARCHITECTURE.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/release.md
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/README.md, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_vcs_silence.py, tools/pr_record_check.py, tools/pr_title_check.py, tools/doc_check.py, tests/unit/test_pr_record_check.py, .github/workflows/pr-title.yml, Makefile, docket.toml, docs/ARCHITECTURE.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/release.md, docs/items/PL-M7W1-arming-auto-merge-freezes-the-squash-subject-at.md, docs/items/PL-0JDP-bin-docket-claim-refuses-a-blocked-item-because.md, docs/items/PL-979D-the-squash-commit-on-main-is-composed-by.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
+closed: 2026-09-26
+pr: 1056
 payoff: Which pull request carried an item becomes one recorded fact, so a new shape of history stops costing an item
 verify: grep -q 'def test_a_closure_on_this_branch_is_written_the_pull_request_number' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-2XTF, PL-GW37, PL-YDL6, PL-S5LB, PL-KX9N, PL-YFXG, PL-LPWK, PL-QNYF, PL-GJPD, PL-WG7Q
-generator: live - closures_on_base still infers the carrying pull request from merge subjects and _number_closing after the merge, and four members are open (PL-LPWK, PL-QNYF, PL-GJPD, PL-WG7Q)
+generator: spent - closures_on_base reads what the base holds and records and infers nothing; the number is written by bin/docket record N on the closing branch and held by tools/pr_record_check.py in the required pr-title job (#1056), so there is no reading left for a new shape of history to mislead
 misread: Which pull request carried an item's work
 ---
 
@@ -146,3 +148,39 @@ with the count above as the evidence.
 a point that can record it, and the readers use that record. Or the owner
 decides inference stays, and this head is closed spent with that recorded.
 `PL-LPWK` is the open design question closest to this, so read it first.
+
+**Closed 2026-09-26 in #1056**, built as decided above, with these choices taken
+inside the approach rather than put back to the owner:
+
+- `closures_on_base` keeps its name and returns a `ClosureReport` of five
+  fields - `base`, `landed`, `unlanded`, `recorded` (id, number pairs) and
+  `declined` - read off one `git show <base>:<path>` per closure in question,
+  with an `ls-tree` of the base's items only when a name fails to resolve (an
+  item the base holds under another name). No history, so no `is_shallow` and
+  no decline in a shallow clone; it declines only when no default branch
+  resolves.
+- `cmd_check` asks about done items recording no number and done items this
+  checkout changed (`_closures_in_question`), so a healthy store costs one
+  read per closure in flight and none per settled one.
+- `_check_closures` raises one error: a landed closure recording none where
+  the base's copy records none either. A landed closure whose copy here is
+  stale while the base records the number is passed over, and so is every
+  unlanded closure. `_check_provenance` passes over unlanded closures' numbers.
+- `record N` is the branch form, writing onto unlanded closures the checkout
+  changed and replacing a number only there; `record N --merge SHA` is kept
+  as the explicit form and now restates shipped bullets for what that merge
+  closed. `number` is required; bare `record` and the cut's number-writing
+  pass are gone, as is `make fix`'s call.
+- The CI step reads the committed tree at `HEAD`, so a closure counts once
+  committed; `--discover` skips silently only on a lookup failure.
+- Only `done` closures are held to `pr`; a `dropped` one records none, as the
+  204 released drops do.
+- Retired with their tests: `_merges_naming`, `_number_closing`,
+  `_carried_work`, `_declares_queue_only`, `_walk_following_renames`,
+  `_closed_at`, `_numbers_before_notes`, `_record_owed`. `PL-GJPD` and
+  `PL-WG7Q`, defects in that code, are dropped. `PL-M7W1`'s title half rides
+  here: `tools/pr_title_check.py`'s docstring stops claiming provenance
+  protection.
+- The count that let the inference go: 1,143 of 1,143 done items carried `pr`
+  when it was deleted, the last 43 written by the old reading in two commits on
+  this branch, and the five that merged during the build by the explicit form.
