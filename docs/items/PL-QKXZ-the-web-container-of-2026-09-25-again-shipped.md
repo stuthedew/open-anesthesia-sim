@@ -9,6 +9,7 @@ feature: projects-trial
 touches: docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-26
+recurrences: 2026-09-26 PL-7TH9
 ---
 
 **Problem.** The web container of 2026-09-25 again shipped uv 0.8.17 and no
