@@ -3,12 +3,14 @@ id: PL-P7J7
 title: docket's verify.py reads a verify: command through its own quote regexes and shlex - _outside_quotes, _blanked, PIPELINE_END_RE and TRAILING_COMMENT_RE, and reaches_outside_tree's shlex.split - beside checks.py's _shell_words, so a ' inside double quotes blanks a real bin/docket verify and reenters_verify misses it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/shell.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, docs/items/PL-PVW2-predicates-the-apparatus-asks-repeatedly-which.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a member of PL-PVW2, docket's reading of a verify: command
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1098
 payoff: every rule in docket that reads a verify: command reads it through one quote-aware lexer, so none misses a command behind an apostrophe, a glued pipe or a quoted &&
 verify: grep -q 'def test_an_apostrophe_in_double_quotes_hides_no_command' subprojects/docket/tests/test_verify.py
 ---
@@ -98,6 +100,20 @@ length before building it; a later session builds it as written or says why not.
 - **Checked the way `PL-B5VZ` checked:** every rule in `checks.py` and each of
   the five readers over the store's 1,356 `verify:` commands, before and after,
   with any difference named in the pull request.
+
+**Built 2026-09-26, as designed.** `subprojects/docket/src/docket/shell.py`
+holds the reading; `checks.py` and `verify.py` import it, and neither keeps a
+quote regex or `shlex`. Over the store's 1,353 `verify:` commands (1,340
+distinct), before and after: `verify_shape_refusal`, both pytest rules,
+`never_fails`, `reenters_verify` and `reads_check_output` answer exactly as
+before. `reaches_outside_tree` changes one, `PL-SRBR`'s `test "$(git ls-remote
+...)"`, now read as asking the remote. `command_paths` changes 16, each by
+dropping a word that is a program: in 15 the program a substitution's body runs
+(`grep`, `ls`, `sed`, `wc`, `git`, and `PL-DNHM`'s backquoted `hoverable` and
+`False`, which bash runs as commands inside double quotes), and in `PL-KWCY`'s
+the second `grep`, behind an apostrophe inside double quotes. Of the 16 items,
+only `PL-2C53` is open, and what it loses is the bare word `grep`, which
+matches no path in the tree.
 
 **Why it matters.** One reader of a `verify:` command misses a real
 `bin/docket verify` behind an apostrophe inside double quotes, the unsafe

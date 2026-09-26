@@ -28,7 +28,6 @@ from __future__ import annotations
 import ast
 import os
 import re
-import shlex
 import subprocess
 import tempfile
 import time
@@ -43,6 +42,7 @@ from . import vcs
 from .arming import RECORDS
 from .config import Config
 from .model import CLOSED_STATUSES, WITHDRAWN_MARKER, Item, _split_list, parse_front_matter
+from .shell import Clause, Word, shell_words
 
 # Suppressions matched as text. `noqa` is deliberately absent: a project whose
 # ruff configuration does not enable a rule carries `noqa` directives that
@@ -988,36 +988,33 @@ def selects_no_test(command: str, status: int) -> bool:
     return status == NO_TESTS_COLLECTED and bool(PYTEST_RE.search(command))
 
 
-# The one `docket` subcommand a `verify:` command must never name. Matched as
-# text for the same reason as `PYTEST_RE` above - a `verify:` line is a shell
-# command rather than a parsed argv, so `bin/docket verify`, `uv run docket
-# verify` and a compound command whose third clause is one of those all arrive
-# here as a string. `docket` takes no options before its subcommand, so the two
-# words are adjacent in every spelling of it.
-#
-# Matched against `_outside_quotes` rather than the raw line, which is what
-# keeps the shape this rule leaves allowed from tripping it: `grep -q 'docket
-# verify' docs/items/` reads the store rather than running it, and the pattern
-# is the only place the words appear.
-DOCKET_VERIFY_RE = re.compile(r"\bdocket\s+verify\b")
-SINGLE_QUOTED_RE = re.compile(r"'[^']*'")
-DOUBLE_QUOTED_RE = re.compile(r'"[^"]*"')
+# The one `docket` subcommand a `verify:` command must never name, and the other
+# one that executes a `verify:`. Both are read as words off `shell_words`, the
+# one reading every rule over a command takes (`PL-P7J7`), rather than matched
+# as text. That is what keeps the shape the recursion rule leaves allowed from
+# tripping it: `grep -q 'docket verify' docs/items/` reads the store rather than
+# running it, and the pattern is one quoted word. A substitution's body is a
+# command the shell runs, so `test -z "$(bin/docket check)"` runs one too.
 
 
-def _outside_quotes(command: str) -> str:
-    """The command with quoted literals blanked, leaving what the shell would run.
+def _docket_runs(tokens: Sequence[Word | str], subcommand: str) -> list[int]:
+    """Where `docket <subcommand>` runs among a clause's tokens, as the index of each `docket`.
 
-    Single quotes suppress every expansion, so their contents are always
-    literal text - `grep -q 'docket verify'` reads the store rather than
-    running it. Double quotes do not: `$(...)` and backticks still run inside
-    them, so a double-quoted span is blanked only when it carries neither.
-    Blanking it unconditionally hid `test -z "$(bin/docket check)"`, which is a
-    command being run rather than a string being matched.
+    `docket` is the word itself or a path ending in it - `bin/docket`, `uv run
+    docket`, `python3 -m docket` - and it takes no options before its
+    subcommand, so the subcommand is the very next word.
     """
-    text = SINGLE_QUOTED_RE.sub(" ", command)
-    return DOUBLE_QUOTED_RE.sub(
-        lambda m: m.group() if ("$(" in m.group() or "`" in m.group()) else " ", text
-    )
+    found: list[int] = []
+    for at, token in enumerate(tokens[:-1]):
+        following = tokens[at + 1]
+        if (
+            isinstance(token, Word)
+            and (token.text == "docket" or token.text.endswith("/docket"))
+            and isinstance(following, Word)
+            and following.text == subcommand
+        ):
+            found.append(at)
+    return found
 
 
 #: The shell lines that exit 0 against every tree there has ever been. Exact
@@ -1029,10 +1026,6 @@ def _outside_quotes(command: str) -> str:
 #: are the same program under another name, and `:` because it is the shell
 #: built-in whose whole purpose is to succeed.
 NEVER_FAILS = frozenset({"true", "/bin/true", "/usr/bin/true", ":", "exit 0"})
-
-#: A trailing `#` comment, outside quotes. Stripped before the comparison so
-#: that `true  # placeholder, PL-K7QX` is read as the `true` it is.
-TRAILING_COMMENT_RE = re.compile(r"#.*$")
 
 
 def never_fails(command: str) -> bool:
@@ -1054,11 +1047,20 @@ def never_fails(command: str) -> bool:
     only answerable by running it, and that question stays where it is
     (`PL-J3WK`).
 
-    One normalization each side: a trailing comment is stripped, and a trailing
-    `;` is, because neither changes what the line does.
+    The command is read by `shell_words` and must be one clause of words, a
+    trailing `;` dropped: a trailing comment is gone and quotes are removed as
+    bash removes them, so `'true'` is the program `true`, and none of the
+    three changes what the line does. Any other operator makes it a line
+    `NEVER_FAILS` does not spell.
     """
-    stripped = TRAILING_COMMENT_RE.sub("", _outside_quotes(command))
-    return " ".join(stripped.strip().rstrip(";").split()) in NEVER_FAILS
+    reading = shell_words(command)
+    if len(reading.clauses) != 1:
+        return False
+    tokens = list(reading.clauses[0].tokens)
+    if tokens and tokens[-1] == ";":
+        tokens.pop()
+    words = [token.text for token in tokens if isinstance(token, Word)]
+    return len(words) == len(tokens) and " ".join(words) in NEVER_FAILS
 
 
 def reenters_verify(command: str) -> bool:
@@ -1081,20 +1083,24 @@ def reenters_verify(command: str) -> bool:
     is told not to ask, so `bin/docket check && grep -q ...` - the shape the
     older commands record, before `PL-6TP8` retired the clause ahead of the
     `grep` - is bounded at one level and proves what it claims.
+
+    Read over the command and every substitution's body, so the run is found
+    wherever bash would make it: behind an apostrophe inside double quotes,
+    which a quote regex once read as the start of a quoted span running to
+    the next one (`PL-P7J7`), or inside a `$( )` or backquotes.
     """
-    return bool(DOCKET_VERIFY_RE.search(_outside_quotes(command)))
+    return any(
+        _docket_runs(clause.tokens, "verify") for clause in shell_words(command).every_clause()
+    )
 
 
-# The other subcommand that executes a `verify:`, and the reason it is treated
-# differently. Re-entering it is bounded, so it is not refused; what is worth
-# saying is that a nested run cannot answer the one question such a command is
-# usually written to ask.
-DOCKET_CHECK_RE = re.compile(r"\bdocket\s+check\b")
-
-# What ends the pipeline a command sits in. A single `|` inside the span before
-# one of these is a pipe reading the command's output; `&&`, `||` and `;` all
-# start a new command, so a `|` after one of them belongs to something else.
-PIPELINE_END_RE = re.compile(r"&&|\|\||;")
+#: What ends a command inside an `&&` clause, as `shell_words` spells the
+#: operators - `&&` itself cuts the clauses, so never stands inside one. A `|`
+#: or `|&` after `docket check` and before one of these is a pipe reading its
+#: output; after one, it belongs to the next command. `>|` is a redirection,
+#: and the lexer reads it as one operator rather than as a pipe.
+COMMAND_ENDS = frozenset({"||", ";", "&", ";;", ";&", ";;&"})
+PIPES = frozenset({"|", "|&"})
 
 
 def reads_check_output(command: str) -> str:
@@ -1112,26 +1118,33 @@ def reads_check_output(command: str) -> str:
     An advisory rather than an error, because "reads the output" is a judgment
     about a shell line rather than an exact rule, and `CLAUDE.md` reserves hard
     failure for the exact ones. The returned string is the shape found, so the
-    advisory can name it.
+    advisory can name it: a `docket check` inside a substitution's body
+    captures it, and one followed by a pipe before its command ends pipes it.
+    Where a command does both, the one standing first names the shape.
     """
-    bare = _outside_quotes(command)
-    for match in DOCKET_CHECK_RE.finditer(bare):
-        before, after = bare[: match.start()], bare[match.end() :]
-        if before.count("$(") > before.count(")") or before.count("`") % 2:
-            return "captures its output in a command substitution"
-        end = PIPELINE_END_RE.search(after)
-        if "|" in (after[: end.start()] if end else after):
-            return "pipes its output into another command"
-    return ""
+    reading = shell_words(command)
+    found: list[tuple[int, str]] = []
+    for body in reading.substitutions:
+        for clause in body:
+            for at in _docket_runs(clause.tokens, "check"):
+                found.append((clause.spans[at][0], "captures its output in a command substitution"))
+    for clause in reading.clauses:
+        for at in _docket_runs(clause.tokens, "check"):
+            for token in clause.tokens[at + 2 :]:
+                if isinstance(token, str) and token in COMMAND_ENDS:
+                    break
+                if isinstance(token, str) and token in PIPES:
+                    found.append((clause.spans[at][0], "pipes its output into another command"))
+                    break
+    return min(found)[1] if found else ""
 
 
-# Every word of a clause, and the shape a path is written in. The second is
-# deliberately loose: it runs over the *raw* clause, quoted spans included, so
-# a path inside a `python3 -c "..."` body or a `grep` pattern is a candidate
-# like any other. Nothing is decided from the shape alone - a candidate only
-# matters where it matches a path the branch actually changed - so a loose
-# pattern costs a wasted comparison and a strict one costs a missed replay.
-WORD_RE = re.compile(r"\S+")
+# The shape a path is written in, and deliberately loose: it runs over the
+# *raw* clause, quoted spans included, so a path inside a `python3 -c "..."`
+# body or a `grep` pattern is a candidate like any other. Nothing is decided
+# from the shape alone - a candidate only matters where it matches a path the
+# branch actually changed - so a loose pattern costs a wasted comparison and a
+# strict one costs a missed replay.
 PATH_TOKEN_RE = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_./+-]*")
 
 # What a clause *runs*, as against what it reads, and this distinction is the
@@ -1143,7 +1156,7 @@ PATH_TOKEN_RE = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_./+-]*")
 # tests/unit/test_x.py` - is what the clause reads, and is what can change the
 # command's outcome while nobody touches the item.
 #
-# The first word of a clause is its program. These come before it and are not.
+# The first word of a command is its program. These come before it and are not.
 SHELL_PREFIXES = frozenset({"!", "(", "{", "then", "do", "else"})
 
 #: Programs whose first non-flag argument is a script they execute, so that
@@ -1157,43 +1170,44 @@ INTERPRETERS = frozenset({"python", "python3", "bash", "sh", "zsh", "dash", "nod
 INLINE_CODE = frozenset({"-c", "-m"})
 
 
-def _blanked(command: str) -> str:
-    """`_outside_quotes`, with each blanked span keeping its own length.
+def _commands(clause: Clause) -> list[list[tuple[Word, tuple[int, int]]]]:
+    """The words of each command in an `&&` clause, with their spans, cut at `COMMAND_ENDS`.
 
-    The same rule about which quotes hide a command, in the shape a slice can
-    use. `_outside_quotes` collapses a quoted span to one space, which is right
-    for searching it and wrong for reading offsets back off it: everything
-    after the span shifts. `command_paths` splits on the blanked text and then
-    reads each clause out of the *raw* command, so the two have to agree
-    character for character.
+    `|` does not cut: the command after a pipe reads the previous one's output
+    rather than a file of its own, so its name is read like any other word.
     """
+    commands: list[list[tuple[Word, tuple[int, int]]]] = [[]]
+    for token, span in zip(clause.tokens, clause.spans, strict=True):
+        if isinstance(token, Word):
+            commands[-1].append((token, span))
+        elif token in COMMAND_ENDS:
+            commands.append([])
+    return commands
 
-    def blank(match: re.Match[str]) -> str:
-        return " " * len(match.group())
 
-    text = SINGLE_QUOTED_RE.sub(blank, command)
-    return DOUBLE_QUOTED_RE.sub(
-        lambda m: m.group() if ("$(" in m.group() or "`" in m.group()) else blank(m), text
-    )
-
-
-def _programs(words: Sequence[tuple[int, str]]) -> set[int]:
-    """The offsets of the words this clause runs rather than reads."""
+def _programs(command: str, words: Sequence[tuple[Word, tuple[int, int]]]) -> set[int]:
+    """Where each path this command runs rather than reads starts, as an offset into `command`."""
     index = 0
-    while index < len(words) and words[index][1] in SHELL_PREFIXES:
+    while index < len(words) and words[index][0].text in SHELL_PREFIXES:
         index += 1
     if index >= len(words):
         return set()
-    offsets = {words[index][0]}
-    if words[index][1] in INTERPRETERS:
-        for offset, word in words[index + 1 :]:
-            if word in INLINE_CODE:  # what follows is code, not a script
+    runs = [words[index][1]]
+    if words[index][0].text in INTERPRETERS:
+        for word, span in words[index + 1 :]:
+            if word.text in INLINE_CODE:  # what follows is code, not a script
                 break
-            if word.startswith("-"):
+            if word.text.startswith("-"):
                 continue
-            offsets.add(offset)
+            runs.append(span)
             break
-    return offsets
+    starts: set[int] = set()
+    for start, end in runs:
+        # A quoted word's path starts inside its quote rather than at the word.
+        match = PATH_TOKEN_RE.search(command, start, end)
+        if match is not None:
+            starts.add(match.start())
+    return starts
 
 
 def command_paths(command: str) -> frozenset[str]:
@@ -1205,9 +1219,13 @@ def command_paths(command: str) -> frozenset[str]:
     of their items. Six recorded breaks were that case, and each was reported
     only by the whole-store sweep after the merge (`PL-XMNC`).
 
-    Read clause by clause, split on `&&`, `||` and `;` outside quotes, because
-    only the discriminating clauses count. `|` does not split: the command
-    after a pipe reads the previous one's output rather than a file of its own.
+    Read by `shell_words`, and cut into commands at `&&` and at each of
+    `COMMAND_ENDS`, because a command's first word is its program rather than
+    a path it reads, and a substitution's body is cut the same way. `|` does
+    not cut: the command after a pipe reads the previous one's output rather
+    than a file of its own. Each clause is then scanned as written, from its
+    first token to its last, so a trailing comment, which bash never reads,
+    names no path.
 
     Deliberately textual, and deliberately loose. Nothing here is asked of the
     filesystem, so a path a branch is *creating* is matched like any other -
@@ -1219,23 +1237,24 @@ def command_paths(command: str) -> frozenset[str]:
 
     What it cannot read it over-reports rather than skipping. A quoted span is
     scanned for paths even though the clause may only be matching the text; a
-    wrapped interpreter's script counts as read. Both put an extra command in
-    a replay, which costs a second; the other direction costs the finding.
+    wrapped interpreter's script counts as read; and a command the shell
+    cannot read at all reports every path-shaped token in it, its programs
+    included. Each puts an extra command in a replay, which costs a second;
+    the other direction costs the finding.
     """
-    blanked = _blanked(command)
-    spans: list[tuple[int, int]] = []
-    cut = 0
-    for match in PIPELINE_END_RE.finditer(blanked):
-        spans.append((cut, match.start()))
-        cut = match.end()
-    spans.append((cut, len(blanked)))
-
+    reading = shell_words(command)
+    if not reading.clauses:  # unreadable, so there is no program to tell apart
+        return frozenset(PATH_TOKEN_RE.findall(command))
+    runs: set[int] = set()
+    for clause in reading.every_clause():
+        for words in _commands(clause):
+            runs |= _programs(command, words)
     found: set[str] = set()
-    for start, end in spans:
-        words = [(start + m.start(), m.group()) for m in WORD_RE.finditer(blanked[start:end])]
-        run = _programs(words)
-        for match in PATH_TOKEN_RE.finditer(command[start:end]):
-            if start + match.start() not in run:
+    for clause in reading.clauses:
+        if not clause.spans:
+            continue
+        for match in PATH_TOKEN_RE.finditer(command, clause.spans[0][0], clause.spans[-1][1]):
+            if match.start() not in runs:
                 found.add(match.group())
     return frozenset(found)
 
@@ -1260,20 +1279,21 @@ def reaches_outside_tree(command: str) -> bool:
     they record is the project owner's and the remote is the only place it is
     visible, so there is no hermetic substitute to prefer (`PL-205P`).
 
-    `comments=True`, so a trailing `# …` is stripped as a shell would strip it
-    rather than scanned for verbs.
+    Read by `shell_words`, every word in any position, over the command and
+    every substitution's body, and a trailing `# …` is gone as bash drops it
+    rather than scanned for verbs. A pipe ends a word, so `a.md|curl` runs
+    `curl` (`PL-P7J7`).
 
     **Tokenized rather than searched, which is the whole difficulty.** A
     `verify:` may carry a network verb as a *search string* and be perfectly
     hermetic: `PL-K2C8`'s is `grep -q 'git push origin --delete'
     .claude/skills/docket/SKILL.md && …`, which reads one file and no socket.
-    `shlex.split` collapses that quoted argument into a single token, so it
-    never matches the bare `git` this looks for, where a substring scan calls
-    it non-hermetic and silently downgrades a finding that should stay an
-    error.
+    The lexer reads that quoted argument as a single word, so it never matches
+    the bare `git` this looks for, where a substring scan calls it
+    non-hermetic and silently downgrades a finding that should stay an error.
 
-    **Wrong in the safe direction by construction.** An unparseable command -
-    unbalanced quotes, which `shlex` raises on - answers `False`, and so does
+    **Wrong in the safe direction by construction.** An unreadable command -
+    an unbalanced quote, which bash refuses - answers `False`, and so does
     anything this does not recognize. False means hermetic, which means the
     finding keeps today's severity; only a command this is sure about is
     softened. A predicate that guessed the other way would quietly turn real
@@ -1290,19 +1310,20 @@ def reaches_outside_tree(command: str) -> bool:
     reach the remote, or whether reaching it is correct. That is the judgment
     half, and it stays with the reader.
     """
-    try:
-        tokens = shlex.split(command, comments=True)
-    except ValueError:  # unbalanced quotes; unparseable is not a licence to soften
-        return False
-    for position, token in enumerate(tokens):
-        if token in NETWORK_COMMANDS:
-            return True
-        if (
-            token == "git"
-            and tokens[position + 1 : position + 2]
-            and (tokens[position + 1] in GIT_NETWORK_SUBCOMMANDS)
-        ):
-            return True
+    for clause in shell_words(command).every_clause():
+        tokens = clause.tokens
+        for position, token in enumerate(tokens):
+            if not isinstance(token, Word):
+                continue
+            if token.text in NETWORK_COMMANDS:
+                return True
+            following = tokens[position + 1] if position + 1 < len(tokens) else None
+            if (
+                token.text == "git"
+                and isinstance(following, Word)
+                and following.text in GIT_NETWORK_SUBCOMMANDS
+            ):
+                return True
     return False
 
 
