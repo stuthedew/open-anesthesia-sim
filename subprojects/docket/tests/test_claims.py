@@ -972,6 +972,24 @@ def test_flight_names_a_branch_attributed_to_nothing(tmp_path: Path) -> None:
     assert report.known
 
 
+def test_a_subject_leading_with_an_id_no_copy_holds_attributes_nothing(tmp_path: Path) -> None:
+    """An id attributes a branch only where the store holds it, in a subject as in a name.
+
+    `PL-HTML export` leads with an id by its grammar and names no item
+    (`PL-WK57`). A capture leads with one only its own copy holds, and that
+    one counts.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/export-a1b2c3")
+    repo.commit("PL-HTML export", when=T0, files={"src/export.py": "x\n"})
+    repo.branch("claude/capture-d4e5f6", "main")
+    repo.commit("PL-D4D4: capture", when=T0, files={"docs/items/PL-D4D4-new.md": _item("PL-D4D4")})
+
+    report = holdings(repo.root, now=T0 + HOUR).flight()
+
+    assert report.unattributed == ("claude/export-a1b2c3",)
+
+
 def test_a_branch_named_for_its_item_holds_it_behind_any_claim_and_lapses_with_the_branch(
     tmp_path: Path,
 ) -> None:
@@ -1180,10 +1198,16 @@ def test_a_branch_named_for_a_capture_it_closed_is_settled_by_its_name(tmp_path:
 
 
 def test_a_branch_named_for_an_item_it_holds_no_copy_of_is_not_settled(tmp_path: Path) -> None:
-    """Its copy has no status, so nothing says it finished: the silence reads as live."""
+    """Its copy has no status, so nothing says it finished: the silence reads as live.
+
+    The item is filed on the base after the branch forked, so the base's copy
+    is the only one: a name holds only an item some copy holds (`PL-WK57`).
+    """
     repo = _Repo(tmp_path / "repo")
     repo.branch("claude/pl-d4d4-thing")
     repo.commit("tidy", when=T0, files={"src/tidy.py": "x\n"})
+    repo.git("checkout", "-q", "main")
+    repo.commit("file it", when=T0, files={"docs/items/PL-D4D4-thing.md": _item("PL-D4D4")})
 
     read = holdings(repo.root, now=T0 + HOUR)
 
@@ -1404,6 +1428,29 @@ def test_unclaimed_names_a_work_branch_that_never_claimed_and_no_other(tmp_path:
     assert [(hold.ref, hold.state) for hold in read.holds] == [("claude/finished-d4e5f6", RELEASED)]
 
 
+def test_a_name_holds_only_an_item_a_copy_of_the_store_holds(tmp_path: Path) -> None:
+    """The id grammar fits a word as well as an id, so the store decides (`PL-WK57`).
+
+    `HTML` is in the alphabet, so `claude/fix-pl-html-export-abc123` carries
+    `PL-HTML` by its position and names no item. The name holds nothing, the
+    branch's unclaimed work is asked for its claim like any other, and its
+    leading id still attributes it. `PL-SN2T` gave `tools/branch_id_check.py`
+    the same rule.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/fix-pl-html-export-abc123")
+    repo.commit("PL-B1B1: the work", when=T0, files={"src/work.py": "WORK = 1\n"})
+
+    read = holdings(repo.root, now=T0 + HOUR)
+
+    assert read.named == ()
+    assert read.flight().ids == frozenset()
+    assert read.unattributed == ()
+    assert unclaimed(repo.root, read, QUEUE) == Unclaimed(
+        branches=("claude/fix-pl-html-export-abc123",)
+    )
+
+
 def test_unclaimed_names_a_branch_git_did_not_answer_about_apart(tmp_path: Path) -> None:
     """A silence is not "claims something": the branch is named as unknown, not dropped."""
     repo = _Repo(tmp_path / "repo")
@@ -1533,6 +1580,8 @@ def test_flight_s_rows_carry_the_kind_and_state_of_the_hold_behind_each(tmp_path
         when=T0,
         files={"docs/items/PL-C2C2-other.md": _item("PL-C2C2", "blocked")},
     )
+    repo.git("checkout", "-q", "main")
+    repo.commit("file it", when=T0, files={"docs/items/PL-F5F5-named.md": _item("PL-F5F5")})
     repo.branch("claude/pl-f5f5-named", "main")
     repo.commit("the work", when=T0, files={"src/named.py": "NAMED = 1\n"})
 
