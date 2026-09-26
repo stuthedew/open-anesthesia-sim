@@ -17,8 +17,8 @@ every later push while a pull request is open.
   the store, the queue's own tooling, `subprojects/docket/`, or the pull
   requests' body records, `docs/pr-bodies/`, and leaves this module alone,
   which `arms_on_green` answers path by path; no
-  claim bound to this branch is unreleased; and the branch contains the base's
-  tip.
+  claim bound to this branch is unreleased; HEAD holds every commit of the
+  branch's copy on the remote; and the branch contains the base's tip.
 - `hold` (1), naming what holds it. A claim holds the pull request unarmed and
   a draft, whichever push carried it, until the branch's own copy closes or
   blocks the item or the branch yields it: merged, the branch and its claim go
@@ -31,11 +31,14 @@ every later push while a pull request is open.
   brings the base in (`PL-S5MF`). So the base is brought in first.
 - `unknown` (2): something the answer rests on could not be read - no branch,
   no established base, a history git would not walk, a claim trailer that
-  does not parse, a fetch that failed. Never `arm` from a partial read.
+  does not parse, a fetch that failed - or the branch's copy on the remote
+  holds commits HEAD lacks, so HEAD is not what its pull request lands. Never
+  `arm` from a partial read.
 
 **`hold` outranks `unknown`.** A claim or a path that waits on a read is
 reason enough whatever else went unread, so it is said, with what went unread beside
-it, rather than withheld.
+it, rather than withheld. Commits the remote's copy holds and HEAD lacks are
+said first under either, since everything else was read from HEAD (`PL-21KN`).
 
 **The decisions the rule rests on**, moved here from `CLAUDE.md` with it:
 
@@ -74,6 +77,7 @@ from pathlib import Path
 from .claiming import REMOTE, _git
 from .claims import LAPSED, RELEASED, Hold, holdings
 from .vcs import (
+    RemoteHeads,
     Runner,
     _head_name,
     _remotes,
@@ -83,6 +87,7 @@ from .vcs import (
     changed_path_args,
     default_base,
     listed_paths,
+    remote_heads,
     resolved,
 )
 
@@ -150,8 +155,10 @@ class Verdict:
     `claims` are the unreleased claims bound to this branch, `outside` the
     paths a merge would land outside the store, the tooling and the records,
     `gate` whether it would change this module, and `behind` how many of the
-    base's commits the branch lacks. `unread` is why the answer is `unknown`,
-    or what went unread beside a `hold`.
+    base's commits the branch lacks. `unpulled` is what the branch's copy on
+    the remote holds that HEAD lacks, with what brings it in, or why that
+    could not be read, said before anything else. `unread` is why the answer
+    is `unknown`, or what went unread beside a `hold`.
     """
 
     answer: str
@@ -162,6 +169,7 @@ class Verdict:
     outside: tuple[str, ...] = ()
     gate: bool = False
     behind: int = 0
+    unpulled: str = ""
     unread: tuple[str, ...] = ()
 
     @property
@@ -173,7 +181,8 @@ class Verdict:
         """What `bin/docket arm` prints: the answer first, then what to do."""
         notes = tuple(f"  note: {reason}" for reason in self.unread)
         if self.answer == UNKNOWN:
-            first, *rest = self.unread or ("nothing the answer rests on could be read",)
+            reasons = (self.unpulled, *self.unread) if self.unpulled else self.unread
+            first, *rest = reasons or ("nothing the answer rests on could be read",)
             return (f"unknown - {first}", *(f"  {reason}" for reason in rest))
         if self.answer == BEHIND:
             commits = "commit" if self.behind == 1 else "commits"
@@ -191,6 +200,8 @@ class Verdict:
             )
         read = ", so its pull request waits on a read" if self.outside or self.gate else ""
         said = [f"hold - {self.branch}: " + " and ".join(self._holding()) + read]
+        if self.unpulled:
+            said.append(f"  {self.unpulled}")
         for hold in self.claims:
             said.append(f"  {_described(hold)}")
         if self.outside:
@@ -237,15 +248,27 @@ def arm(
     base is a confident wrong answer; a fetch that fails leaves every answer
     but `hold` unknown. `now` judges the claims' leases, as it does for
     `claims.holdings`, and must carry its offset.
+
+    **HEAD is the pull request only while it holds the branch's copy on the
+    remote.** Another writer - GitHub's *Update branch*, a second session - can
+    push commits HEAD lacks, and everything read from HEAD is then read from a
+    commit the pull request has moved past: `arm` said `behind 1` of a pull
+    request already level with its base, and armed one landing a path outside
+    the store (`PL-21KN`). So that copy is read before anything else, by
+    `_unpulled`, from the remote's listing where the fetch answered - taken
+    once and handed to `holdings` too, so a tracking ref for a branch the
+    remote deleted is neither the copy nor a holder (`PL-MT3R`).
     """
     unread: list[str] = []
     ran = runner or _run_git
+    heads: RemoteHeads | None = None
     if fetch:
         fetched = _git(["fetch", "--quiet", REMOTE], root)
         if fetched.code == 0:
             # The refs just moved, and a runner that remembers answers would
             # give the ones from before the fetch.
             ran = _run_git
+            heads = remote_heads(root, runner=ran)
         else:
             said = " ".join(fetched.err.split()) or f"exit {fetched.code}"
             unread.append(
@@ -268,6 +291,7 @@ def arm(
     if branch == _head_name(base, remotes):
         reason = f"HEAD is on {name}, the default branch, which opens no pull request of its own"
         return Verdict(UNKNOWN, branch=name, base=base, unread=(reason,))
+    unpulled = _unpulled(root, run, heads, name, branch)
 
     prefix = items_dir.strip("/") + "/"
     # Both sides of a rename, so a file moved into the store shows the deletion
@@ -284,7 +308,7 @@ def arm(
     else:
         unread.append(f"git would not diff {name} against {base}, so what a merge lands is unknown")
 
-    read = holdings(root, now=now, items_dir=items_dir, runner=ran)
+    read = holdings(root, now=now, items_dir=items_dir, remote=heads, runner=ran)
     if not read.known:
         unread.append(f"who holds what could not be read - {read.declined}")
     claims = tuple(
@@ -318,15 +342,75 @@ def arm(
         outside=outside,
         gate=gate,
         behind=behind,
+        unpulled=unpulled,
         unread=tuple(unread),
     )
     if claims or outside or gate:
         return found
-    if unread:
-        return Verdict(UNKNOWN, branch=name, base=base, unread=tuple(unread))
+    if unpulled or unread:
+        return Verdict(UNKNOWN, branch=name, base=base, unpulled=unpulled, unread=tuple(unread))
     if behind:
         return Verdict(BEHIND, branch=name, base=base, items_dir=found.items_dir, behind=behind)
     return Verdict(ARM, branch=name, base=base, items_dir=found.items_dir)
+
+
+def _unpulled(root: Path, run: Runner, heads: RemoteHeads | None, name: str, branch: str) -> str:
+    """What the branch's copy on the remote holds that HEAD lacks, and what brings it in.
+
+    `""` where HEAD holds all of it, or the remote has no copy. The copy is
+    the listing's where the command's fetch answered, since no fetch here
+    prunes and a tracking ref outlives a branch the remote deleted - one a
+    session restarted from the base would otherwise be sent to pull back in
+    (`PL-MT3R`). With no listing - `--no-fetch`, or a fetch that failed - it
+    is the tracking ref, read as it is, and named as that.
+
+    `merge-base --is-ancestor` answers 0 for "holds it" and 1 for "does not";
+    anything else is git unable to say, most often a tip the listing names
+    that this clone has not fetched, where it exits 128. That is said as
+    unread and never read as "holds it", which would give back the answer
+    from HEAD (`PL-C3MN`). The remedies are `git pull` from the remote's copy,
+    never the tracking ref, so one run against a branch the remote deleted
+    fails loudly rather than merging a stale ref.
+    """
+    if heads is not None:
+        where = f"{REMOTE}'s copy of {name}"
+        tip = heads.tip(branch)
+        if tip is None:
+            unknown = f"whether {where} has commits {name} lacks is not known"
+            return f"{heads.failed}, so {unknown}; ask again"
+    else:
+        where = f"the tracking ref {REMOTE}/{branch}"
+        ref = f"refs/remotes/{REMOTE}/{branch}^{{commit}}"
+        tip = run(["rev-parse", "--verify", "--quiet", ref], root).strip()
+    if not tip:
+        return ""
+    held = _git(["merge-base", "--is-ancestor", tip, "HEAD"], root).code
+    if held == 0:
+        return ""
+    if held != 1:
+        return (
+            f"{where} is at {tip[:12]}, a commit git could not compare with HEAD - most often one "
+            "this clone has not fetched - so whether HEAD is what its pull request lands is not "
+            f"known; bring it in with `git pull --no-rebase {REMOTE} {branch}` and ask again"
+        )
+    lacks = run(["rev-list", "--count", f"HEAD..{tip}"], root).strip()
+    own = run(["rev-list", "--count", f"{tip}..HEAD"], root).strip()
+    said = f"{where} has {_counted(lacks)} {name} lacks"
+    pull = f"bring them in with `git pull --ff-only {REMOTE} {branch}`"
+    # A fast-forward cannot bring them in past a commit of HEAD's own, and
+    # where git would not count those, the merge serves either way.
+    if own != "0":
+        pull = f"merge them with `git pull --no-rebase {REMOTE} {branch}`"
+        if own.isdigit():
+            said += f", and {name} has {_counted(own)} that copy lacks"
+    return f"{said}, so HEAD is not what its pull request lands; {pull} and ask again"
+
+
+def _counted(count: str) -> str:
+    """`1 commit`, `2 commits`, or `commits` where git gave no count."""
+    if not count.isdigit():
+        return "commits"
+    return f"{count} commit" + ("" if count == "1" else "s")
 
 
 def _described(hold: Hold) -> str:
