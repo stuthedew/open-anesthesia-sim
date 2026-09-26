@@ -3415,6 +3415,49 @@ def test_show_names_the_branch_that_has_already_edited_the_item_file(
     assert "IN FLIGHT" not in out
 
 
+@pytest.mark.parametrize(
+    ("status", "extra"),
+    [("done", "\nclosed: 2026-08-21"), ("blocked", "")],
+    ids=["done", "blocked"],
+)
+def test_show_calls_an_edited_item_startable_only_when_its_status_allows(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], status: str, extra: str
+) -> None:
+    """The edit says nothing about the item's status, so the line may not either (`PL-9F8B`).
+
+    `PL-6T44` (`done`) and `PL-MB2W` (`blocked`) were both called startable,
+    from the command a session runs to learn about one item. The collision
+    is still true of either, so the warning stays; the invitation goes.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Capture a note", wrote="items/PL-0001-on-main.md")
+    # The default branch moves the item on after the branch forked, as a
+    # closure or a block lands while somebody's edit to its file sits unmerged.
+    (root / "items" / "PL-0001-on-main.md").write_text(
+        READY.replace("PL-B1B1", "PL-0001")
+        .replace("status: ready", f"status: {status}")
+        .replace("added: 2026-08-01", f"added: 2026-08-01{extra}")
+    )
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-21T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-21T12:00:00+00:00",
+    }
+    subprocess.run(
+        ["git", "commit", "-qam", f"PL-0001 {status}"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        env=dated,
+    )
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert out.splitlines()[1].endswith(f"· {status}"), "the premise: show read the status"
+    assert f"Its file is already edited on {BRANCH} (last commit 3 days ago)." in out
+    assert "a second edit to the same file collides" in out
+    assert "startable" not in out
+
+
 def test_show_names_a_round_that_retitled_the_item_file_as_editing_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

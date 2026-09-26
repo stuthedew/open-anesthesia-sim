@@ -1754,7 +1754,7 @@ def format_notes_threads(threads: Sequence[Thread], identifier: str, notes_path:
     return "\n".join(lines)
 
 
-def format_queue_edit(edit: QueueEdit, now: datetime) -> str:
+def format_queue_edit(edit: QueueEdit, now: datetime, *, startable: bool) -> str:
     """That an item's file has already been edited, which is not that it is in flight.
 
     **The line exists to be different from `IN FLIGHT`, so it does not open
@@ -1766,14 +1766,27 @@ def format_queue_edit(edit: QueueEdit, now: datetime) -> str:
     false, but "the file you are about to write to has already been written
     to", which is true and is a different sentence.
 
-    So it says what was observed and what follows, and it says the item is
-    startable in as many words. A weaker signal worded like a stronger one is
-    read as the stronger one, and the cost lands on the wrong side: an item
-    nobody is working left unstarted because a capture commit touched its file.
+    So it says what was observed and what follows, and where the item can be
+    started it says so in as many words. A weaker signal worded like a
+    stronger one is read as the stronger one, and the cost lands on the wrong
+    side: an item nobody is working left unstarted because a capture commit
+    touched its file.
+
+    **`startable` is the caller's, read from the item's status, because the
+    edit cannot say it** (`PL-9F8B`). A branch edits a closed or blocked
+    item's file as readily as a ready one's, and the line called `PL-6T44`
+    (`done`) and `PL-MB2W` (`blocked`) startable alike. Where the status does
+    not allow a start, the line says nothing about starting at all: the
+    collision is still true, and it is the only thing this line knows.
     """
+    edited = f"  Its file is already edited on {edit.name} ({_since(edit.last_commit, now)}).\n"
+    if not startable:
+        return (
+            f"{edited}  Not work in flight - but a second edit to the same file collides\n"
+            "  at merge, so land the smaller change first."
+        )
     return (
-        f"  Its file is already edited on {edit.name} ({_since(edit.last_commit, now)}).\n"
-        f"  Not work in flight - {edit.item_id} is startable - but a second edit to the\n"
+        f"{edited}  Not work in flight - {edit.item_id} is startable - but a second edit to the\n"
         "  same file collides at merge, so land the smaller change first."
     )
 
