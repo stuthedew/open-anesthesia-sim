@@ -1,10 +1,16 @@
 ---
 id: PL-R5RF
 title: gate-status-guard.sh reads a backslash-newline line continuation as a separator, so a pipefail gate whose command is continued onto a second line is refused although it keeps the status
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: one-answer
-touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py
+touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a member of PL-PVW2, worked with its step 2
 added: 2026-09-26
+payoff: a pipefail gate continued onto a second line runs the first time, and no refusal blames a semicolon the command does not contain
+verify: grep -q 'def test_a_backslash_newline_continues_the_command' tests/unit/test_gate_status_guard.py
 ---
 
 **Problem.** gate-status-guard.sh reads a backslash-newline line continuation as a separator, so a pipefail gate whose command is continued onto a second line is refused although it keeps the status
