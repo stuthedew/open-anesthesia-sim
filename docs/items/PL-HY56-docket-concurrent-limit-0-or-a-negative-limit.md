@@ -3,11 +3,13 @@ id: PL-HY56
 title: docket concurrent --limit 0 or a negative limit offers a one-item batch instead of refusing the value, the off-by-one PL-RMN8's brief recorded and left outside its done-when
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1059
 payoff: concurrent answers a zero or negative --limit with a refusal instead of a one-item batch that reads as a real answer
 verify: grep -q 'def test_concurrent_refuses_a_limit_below_one' subprojects/docket/tests/test_cli.py
 ---

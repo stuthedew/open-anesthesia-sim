@@ -1,8 +1,14 @@
 ---
 id: PL-WXPR
 title: subprojects/docket/README.md says closed blockers never fire the prose-dependency advisory, since most in-body mentions name landed work - but PL-8YXJ's count refuted that prediction and docket check now advises on a brief still waiting on a closed item
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+touches: subprojects/docket/README.md
 added: 2026-09-26
+payoff: a reader deciding whether a stale wait in a brief will be caught learns that a closed item named as a prerequisite draws the ended-wait advisory, instead of reading that it is never reported
+verify: ! grep -qF 'Closed blockers never fire, since' subprojects/docket/README.md
 ---
 
 **Problem.** subprojects/docket/README.md says closed blockers never fire the prose-dependency advisory, since most in-body mentions name landed work - but PL-8YXJ's count refuted that prediction and docket check now advises on a brief still waiting on a closed item
@@ -27,3 +33,12 @@ caught reads the passage about the advisory, which says it will not be.
 **Done when.** The sentence says what the check does today: a closed item named
 as a prerequisite draws the ended-wait advisory rather than the
 undeclared-prerequisite one, and why.
+
+**Generator check.** A one-off, which the close-out docs sweep caught as
+designed. The fact misread is the link between a document sentence and the tree
+fact it restates (`PL-4FBP`, `PL-G424`, both closed 2026-09-19), but neither
+head's route claims this kind. `PL-4FBP` leaves a claim outside a bound family
+to the close-out sweep, and `PL-G424` leaves prose drift that is not a citation
+to judgment and the capture rule. Here the drift is a prediction the README gave
+as the reason for a rule, which `PL-8YXJ` counted and refuted while this
+sentence stayed as it was.

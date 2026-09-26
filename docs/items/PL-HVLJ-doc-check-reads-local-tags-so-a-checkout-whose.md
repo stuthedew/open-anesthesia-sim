@@ -3,11 +3,13 @@ id: PL-HVLJ
 title: doc_check reads local tags, so a checkout whose tags were fetched ahead of its working tree errors on a clean main - observed 2026-09-21 as 'git holds v0.4.35, but no row of the version table marks v0.4.35 completed' when the row and the tag are the same commit
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: tag-error-names-its-cause
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/items/PL-LT77-git-fetch-tags-does-not-prune-so-a-tag-deleted.md
 added: 2026-09-21
+closed: 2026-09-26
+pr: 1063
 payoff: a checkout that is merely behind is told to pull, instead of being told a correct ROADMAP.md is wrong and to fix it before committing
 verify: grep -q 'def test_a_tag_ahead_of_the_working_tree_names_its_own_remedy' tests/unit/test_doc_check.py
 ---
@@ -61,3 +63,20 @@ name is reported as a checkout that is behind - naming `git pull` as the remedy
 - rather than as an error against `ROADMAP.md`; and a test in
 `tests/unit/test_doc_check.py` drives a tag set that is ahead of the tree it is
 read against.
+
+**Closed 2026-09-26.** `check_tags` asks `_ahead_of_the_tree` which of the tags
+the version table does not name the default branch holds and `HEAD` does not,
+and declines those as a checkout that is behind: "git holds v0.4.35, which
+origin/main has and this checkout's HEAD does not, so the working tree predates
+that release rather than leaving it out of ROADMAP.md; `git pull` brings it in
+on main, and `bin/docket branch` says how on any other branch". **Done when.**
+is read by the problem it states rather than by its first clause alone: taken
+literally, every tag the table does not name would read as a checkout behind,
+which retires the error for a release whose row really is missing - the case
+`test_a_tag_the_version_table_does_not_name_is_an_error` pins. So a tag whose
+commit `HEAD` holds keeps the error, and so does one the default branch lacks
+too, since no pull brings its row in
+(`test_a_tag_the_default_branch_does_not_hold_either_is_still_an_error`). In a
+shallow clone a merge base not found may be history never fetched, so the line
+says so and names `git fetch --unshallow`. The wording of the error that
+remains is `PL-LT77`'s.
