@@ -113,6 +113,12 @@
 # subcommand, and both lost the status unrefused. `shell_split.py` takes a
 # redirection out of the words for all three guards.
 #
+# **And a `set` run by `command` or `builtin` is the `set`** (`PL-9RSP`). Both
+# run the builtin in this shell, so `command set -o pipefail; make check 2>&1 |
+# tail` keeps the status, and it was refused as setting nothing. A `set` behind
+# `timeout`, `env` or `exec` is still refused, since each of those looks for a
+# program named `set`; `shell_split.builtin_words` reads past the two alone.
+#
 # **Where one command ends is `shell_split.py`'s answer, not this file's.** The
 # three Bash guards import it, so a shape one of them read differently from bash
 # - a `)` glued to the `;` after it (`PL-63TT`), a backslash-newline
@@ -177,8 +183,10 @@ def strip_prefixes(tokens):
     `gate` and `sets_pipefail` both start from `shell_split.command_words`,
     so they cannot disagree about where a command starts - which they did, and
     a `set` opening a group went unseen (`PL-1SFZ`). `gate` then reads past a
-    wrapper to the program it runs (`PL-TRMN`), and `sets_pipefail` must not:
-    `timeout 5 set -o pipefail` runs `set` as a program, which is not found.
+    wrapper to the program it runs (`PL-TRMN`), and `sets_pipefail` reads past
+    only `command` and `builtin`, which run the `set` builtin in this shell
+    (`PL-9RSP`): `timeout 5 set -o pipefail` runs `set` as a program, which is
+    not found.
     """
     rest = shell_split.program_words(tokens)
     if len(rest) >= 2 and base(rest[0]) == "uv" and rest[1] == "run":
@@ -218,8 +226,11 @@ def gate(segment):
 
 
 def sets_pipefail(segment):
-    """True for `set -o pipefail` in any of its spellings, false for `set +o`."""
-    rest = shell_split.command_words(segment)
+    """True for `set -o pipefail` in any of its spellings, false for `set +o`.
+
+    A `set` run by `command` or `builtin` is one of them (`PL-9RSP`).
+    """
+    rest = shell_split.builtin_words(segment)
     if not rest or rest[0] != "set" or "pipefail" not in rest[1:]:
         return False
     flag = rest[rest.index("pipefail") - 1]
