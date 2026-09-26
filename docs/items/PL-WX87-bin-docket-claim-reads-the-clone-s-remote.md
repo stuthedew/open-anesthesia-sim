@@ -3,12 +3,13 @@ id: PL-WX87
 title: bin/docket claim reads the clone's remote-tracking ref as the remote's copy of the branch, so on a session branch whose tracking ref the harness created at startup with nothing pushed, claim skips its push-at-once and says the branch is on the remote when ls-remote shows it is not
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: claim-record
-touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_claiming.py
+touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_claiming.py, .claude/skills/docket/modes/start.md, subprojects/docket/src/docket/cli.py
 deferred-from: v0.6.0 - filed after the freeze by PL-NLXK's cut (2026-09-24), and not safety or science; a defect in PL-0TD9's claim writer, which merged after the freeze
 added: 2026-09-24
+closed: 2026-09-25
 payoff: a claim written in a fresh session reaches the remote at once, which is the window claim's push-at-once exists to close
 verify: grep -q "stale_tracking_ref" subprojects/docket/tests/test_claiming.py
 ---
@@ -70,3 +71,32 @@ named for the stale tracking ref pinning it.
 closed on 2026-09-19: "The remote's current refs and tags, and whether the
 clone's local copies still match them". It is the first post-close instance on
 record; three would count as a generator whose fix did not hold.
+
+**Resolved, 2026-09-25: the remote is asked.** `claiming._on_remote` runs
+`git ls-remote origin refs/heads/<branch>` and `_publish` decides on that
+answer alone, so neither the tracking setting nor the clone's tracking ref
+decides whether a claim is pushed; `_Branch.upstream`, read by nothing else, is
+gone. `--prune` was the other remedy and was not taken: `vcs.fetch_remote`
+refuses it deliberately, because a deleted branch's tracking ref can be the
+only surviving copy of its work, which `stranded` exists to catch. The same
+misreading sat in `_published`, the retry's test of whether the claim is
+already on the remote: a branch the remote had deleted still read as carrying
+the claim, so `claim` said "already holds it first; nothing written" of a
+claim no other session could see. It now reads the remote's tip too. Where the
+remote cannot be asked, nothing is pushed and the answer is `LOCAL_ONLY` with
+git's words, rather than an "on the remote" nobody established. Reproduced
+live at pickup: this session's own branch, `claude/eager-johnson-8v3qgw`, held
+a tracking ref at `main`'s commit with no upstream configured, and `claim
+PL-WX87` printed "not pushed: the branch is on the remote" while `git
+ls-remote` listed nothing; the push by hand reported `[new branch]`. Three
+sessions of three now.
+
+**Merged over `PL-ZLJ9` (#1028), 2026-09-26.** `_displaced` reads this
+branch's own claims through the remote's answer, asked once per `claim` run,
+as #1028 asked of whichever of the two landed second; a rival's copy is still
+the fetched ref it reads, which is `PL-C3MN`. Where the remote cannot be asked
+the check is skipped rather than guessed, since nothing is pushed until a run
+that can ask, and that run withdraws:
+`test_a_remote_that_cannot_be_asked_withdraws_nothing_until_it_answers`, shown
+failing with the skip removed. The unanswered-remote message names `claim`
+rather than `git push`, as #1028 has every message asking for a claim's push.
