@@ -305,6 +305,109 @@ def test_a_glued_punctuation_run_splits_into_bash_operators(command: str, refuse
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
 
 
+BARE_TREE = (
+    # `PL-R5N0`'s reproductions, verbatim, and the tree ending an absolute path
+    # or beside docket's own.
+    ("python3 -m compileall src", True),
+    ("python3 -m compileall ./src", True),
+    ("python3 -m pytest tests", True),
+    ("python3 -m compileall /home/user/open-anesthesia-sim/src", True),
+    ("python3 -m compileall subprojects/docket/src src", True),
+    # Docket's trees stay admitted with no slash, as they are with one.
+    ("python3 -m compileall -q subprojects/docket/src subprojects/docket/tests", False),
+    ("python3 -m compileall /home/user/open-anesthesia-sim/subprojects/docket/src", False),
+    # The word in code, or a name that merely ends in it, is no path to a tree.
+    ("python3 -c \"import json, sys; print(json.load(sys.stdin)['tests'])\"", False),
+    ("python3 -c 'print(\"src\")'", False),
+    ("python3 -m compileall mysrc", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), BARE_TREE)
+def test_a_bare_tree_name_is_a_floor_parse(command: str, refused: bool) -> None:
+    """`src` or `tests` named with no slash is the whole tree, as a whole argument (`PL-R5N0`).
+
+    The guard wanted a slash after the tree name, so `python3 -m compileall
+    src` and `python3 -m pytest tests` passed while `src/` was refused. With no
+    slash, the word is read as a tree only where it is an argument of its own:
+    inside a `-c` string it is as likely code as a path.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+# Why each spelling below is outside the promise the hook's header opens with,
+# naming what found it.
+THROUGH_CD = (
+    "a tree reached through a `cd`, which no session has been seen writing: paths are "
+    "read as written and no `cd` is followed, as `PL-GVFC` recorded"
+)
+BY_ANOTHER_PROGRAM = (
+    "a tree handed to the interpreter by `find -exec` or as a list on standard input, "
+    "which no session has been seen writing: put outside the promise by `PL-61FT`"
+)
+IN_CODE = (
+    "a tree named with no slash inside a `-c` string, where the word is as likely code as a "
+    "path: `PL-R5N0` reads it as a tree only where it is a whole argument"
+)
+FLOOR_PARSE_ERROR = (
+    "parses 3.14 source with the 3.11 floor, and reports a SyntaxError in correct code"
+)
+
+# Spellings outside the promise, each read wrongly today (`PL-61FT`): the
+# command, whether it is refused today, what the bare `python3` does with it,
+# and why it is outside. A session probing the guard records what it finds here
+# rather than filing it, and a row becomes an item only once a session is seen
+# writing it. Each was run with the 3.11.15 floor on 2026-09-26.
+KNOWN_GAPS = (
+    ("cd src && python3 -m compileall -q anesthesia_sim", False, FLOOR_PARSE_ERROR, THROUGH_CD),
+    (
+        "cd subprojects/docket && python3 -m compileall -q src/",
+        True,
+        "compiles the docket subproject's own tree, floor code, without an error",
+        THROUGH_CD,
+    ),
+    (
+        "find src -name '*.py' -exec python3 -m py_compile {} +",
+        False,
+        FLOOR_PARSE_ERROR,
+        BY_ANOTHER_PROGRAM,
+    ),
+    (
+        "git ls-files src | xargs python3 -m py_compile",
+        False,
+        FLOOR_PARSE_ERROR,
+        BY_ANOTHER_PROGRAM,
+    ),
+    (
+        "python3 -c \"import compileall; compileall.compile_dir('src', quiet=1)\"",
+        False,
+        FLOOR_PARSE_ERROR,
+        IN_CODE,
+    ),
+)
+
+
+@pytest.mark.parametrize(("command", "refused", "effect", "outside"), KNOWN_GAPS)
+def test_a_known_gap_keeps_todays_verdict(
+    command: str, refused: bool, effect: str, outside: str
+) -> None:
+    """A spelling outside the promise gets the verdict it was recorded with (`PL-61FT`).
+
+    What is pinned is the record, not the behaviour - and not as `xfail`, which
+    `bin/docket verify --self` counts as a suppressed test. A change that closes
+    a gap, meant or not, fails here: the row then moves into the tables above,
+    and the promise in the hook's header is widened to hold it.
+    """
+    assert "PL-" in outside, f"{command!r}: name the item or branch that found it"
+    decision = _decision(command)
+    assert (decision is not None) is refused, (
+        f"{command!r} is a known gap recorded as {'refused' if refused else 'admitted'} "
+        f"({outside}), and it no longer is. Run, it {effect}. Move the row into the tables "
+        "above, and widen the promise in the hook's header to hold it."
+    )
+
+
 def test_prose_about_the_rule_in_a_heredoc_is_not_matched() -> None:
     """The repository documents this rule by writing the refused command down."""
     command = "cat > docs/note.md <<'EOF'\npython3 -m compileall src/\nEOF"

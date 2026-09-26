@@ -3,13 +3,15 @@ id: PL-DCHW
 title: gate-status-guard.sh reads a segment's head twice before looking for a set, so FOO=1 time set -o pipefail; make check 2>&1 | tail -5 passes, though after an assignment or a redirection bash runs time as a program and pipefail is never set
 priority: P3
 effort: S
-status: blocked
+status: dropped
 classes: defect
 feature: bash-guard-bound
 touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py
 blocked-by: PL-61FT
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
+reason: Outside the bound PL-61FT set (#1128): time or ! after an assignment or a redirection, ahead of a set, is written nowhere to be run in this repository and no session has been seen writing it. Recorded instead as rows of KNOWN_GAPS in tests/unit/test_gate_status_guard.py, held to the verdict it gets today, and filed again only once a session is seen writing it.
 ---
 
 **Problem.** gate-status-guard.sh reads a segment's head twice before looking for a set, so FOO=1 time set -o pipefail; make check 2>&1 | tail -5 passes, though after an assignment or a redirection bash runs time as a program and pipefail is never set
