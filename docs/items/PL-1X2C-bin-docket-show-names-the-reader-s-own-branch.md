@@ -57,3 +57,30 @@ reader's own that carry an edit to the item's file, names all of them rather
 than one, and says nothing where the only carrier is the branch the reader is
 standing on - with a test under `subprojects/docket/tests/test_cli.py` driving
 a store whose item file is edited on two branches, one of them the current one.
+
+**Blocked.** 2026-09-26, on the slam-dunk run's `claude/pl-batch-03-viadw6`.
+Still real on `origin/main` at `a01d64a6`, but not doable in the files this item
+declares:
+
+1. The carrier is chosen in `subprojects/docket/src/docket/claims.py`, not in
+   `vcs.py`. Since `PL-NST2` (`#988`) the edit read is `claims._editing`,
+   inside `claims.holdings`: it builds `FlightReport.editing`, keeps the first
+   branch per item (`edited.setdefault(key, ...)`), and is never handed the
+   checked-out branch, which `holdings` already reads as `here` for
+   `Hold.mine`. `vcs.py` now holds only the `QueueEdit` type, which needs no
+   change.
+2. `cmd_show` in `subprojects/docket/src/docket/cli.py` takes one edit with
+   `next((e for e in flight.editing if e.item_id == item.identifier), None)`, so
+   even a report carrying every carrier would print one.
+
+Both halves of **Done when** (every other carrier named, the reader's own left
+out) therefore need `claims.py` and `cli.py`, and neither is in `touches`.
+
+**Decision needed: widen `touches` to the files the fix now lives in?**
+`subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/cli.py,
+subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py`,
+dropping `vcs.py`, with the brief otherwise as written.
+
+**Recommendation:** yes. The defect is unchanged and only moved with its code,
+so the item stays `S` and delegable once `touches` matches, and a triage pass
+can make that edit without reopening the brief.
