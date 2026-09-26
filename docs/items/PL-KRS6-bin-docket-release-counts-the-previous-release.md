@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect, infra
 feature: release-process
-touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py, .claude/skills/docket/modes/release.md
 added: 2026-09-07
 verify: grep -q 'def test_a_release_cut_item_belongs_to_the_version_it_cut' subprojects/docket/tests/test_release.py && uv run pytest -q subprojects/docket/tests/test_release.py
 ---
@@ -47,7 +47,10 @@ matching the title.
 
 **Done when.** With `main` at a freshly merged release and nothing else closed
 since, `bin/docket release --dry-run` reports no releasable work and the digest
-prints its `No release to offer` line instead.
+prints no `Releasable:` line; and `.claude/skills/docket/modes/release.md` no
+longer says the next release ships the cut's own item. (Rewritten 2026-09-26 with
+the decision below: the line this named, `No release to offer`, is the
+reserved-version sentence and does not print in this state.)
 
 **Blocked.** 2026-09-25, on the slam-dunk run's `claude/pl-batch-01-s8d258`.
 Still real on `origin/main` at `7018ef1d`: `bin/docket release --dry-run
@@ -93,3 +96,10 @@ for three reasons:
 
 **Recommendation: A**, the smallest change that makes the rule structural, on a
 field the cut already requires, with one sentence of `release.md` to change.
+
+**Decided: A** (project owner, 2026-09-26, ratified, over B, stamping the item
+with the version it cuts, and C, matching its `Cut vX.Y.Z` title). `unreleased()`
+leaves out a `done` item carrying `resource: release-train`, so a cut's own item
+belongs to no release's count and appears in no release's notes. `touches` and
+**Done when** above are widened and rewritten to match. The brief is no longer
+blocked; the work is `S` and ready for a session to claim.
