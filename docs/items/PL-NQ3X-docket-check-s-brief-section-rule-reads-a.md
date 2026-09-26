@@ -3,12 +3,14 @@ id: PL-NQ3X
 title: docket check's brief-section rule reads a fenced copy of the capture template above the real sections and reports 'brief has nothing under Why it matters', under --verify too
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: exact-gates
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
+closed: 2026-09-26
+pr: 1089
 payoff: a brief can quote the capture template in a fenced example without docket check refusing the real sections beneath it
 verify: grep -q 'def test_a_fenced_copy_of_the_capture_template_is_not_the_brief' subprojects/docket/tests/test_checks.py
 ---
@@ -28,3 +30,5 @@ Re-confirmed 2026-09-25 against 46954a81: a scratch store holding one `ready` it
 **Done when.** Fenced blocks are blanked before the section scan; a test holds the reproduction.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+**Closed 2026-09-26, in `PL-GPJ7`'s step 3.** `_section_text` and `_stub_above_brief` find headings through `_without_fences`, which blanks every closed fenced block by CommonMark's rules. A backtick opener's info string holds no backtick, so the triple-backtick code span wrapped to a line's start in `PL-6SRZ` opens nothing, and a fence left unclosed is read as written rather than hiding every section below it. The text under a heading is still sliced from the brief, so a fence under a heading is text under it. Measured on the store, one reading changed, a closed item's `**Decision needed.**` that stands only inside a fence (`PL-VJ1X`). `test_a_fenced_copy_of_the_capture_template_is_not_the_brief` holds the reproduction.
