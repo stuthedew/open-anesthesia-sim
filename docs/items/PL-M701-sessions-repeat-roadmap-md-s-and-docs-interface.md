@@ -3,10 +3,12 @@ id: PL-M701
 title: Sessions repeat ROADMAP.md's and docs/interface-provenance.md's claim that blender.org is blocked without probing it, though every blender.org host answers through the proxy on 2026-09-26 and the owner has it on the allowed domains
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
-touches: .claude/rules/instruction-writing.md, ROADMAP.md, docs/interface-provenance.md, docs/items/PL-PV5Q-docs-interface-provenance-md-s-stated-rationale.md
+touches: .claude/rules/instruction-writing.md, ROADMAP.md, docs/interface-provenance.md, docs/items/PL-PV5Q-docs-interface-provenance-md-s-stated-rationale.md, docs/worker.md, docs/resident-instructions.md, docs/items/PL-P5NB-docs-references-readme-md-records-doi-org-as.md
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1125
 payoff: a session probes a host before calling it blocked, so work that needs blender.org or any other allowed host is attempted rather than skipped on a dated note
 verify: grep -qi 'reachab' .claude/rules/instruction-writing.md && ! grep -qE '(is|are) refused by this environment' docs/interface-provenance.md && ! grep -qF 'is blocked by the session egress proxy' ROADMAP.md
 ---
