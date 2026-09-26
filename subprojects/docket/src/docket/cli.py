@@ -3890,6 +3890,21 @@ def _instant(text: str) -> datetime:
     return value
 
 
+def _at_least_one(text: str) -> int:
+    """A count of picks, for `next --limit`, refused below one.
+
+    The ranking is sliced with the value as given, so zero printed "Nothing is
+    ready to start" at exit 0 over a queue holding work, and a negative value
+    sliced from the end - `--limit -2` printed all but the last two picks
+    (`PL-RMN8`). "Nothing is ready" is the answer that ends a session's search
+    for work, so a count that cannot be honoured is refused instead.
+    """
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"must be 1 or more, got {value}")
+    return value
+
+
 def _now(args: argparse.Namespace) -> datetime:
     """The instant a branch's age is measured to.
 
@@ -4521,7 +4536,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="only work that fits the time available",
     )
-    nxt.add_argument("--limit", type=int, default=3)
+    nxt.add_argument("--limit", type=_at_least_one, default=3)
     nxt.add_argument(
         "--oldest",
         action="store_true",

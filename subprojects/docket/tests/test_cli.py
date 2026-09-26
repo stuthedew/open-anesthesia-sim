@@ -5867,6 +5867,30 @@ def test_next_without_oldest_still_ranks_new_work(
     assert "Left out as new work, classed feature or planning: 1 item(s)" in oldest
 
 
+@pytest.mark.parametrize("oldest", [(), ("--oldest",)], ids=["plan", "oldest"])
+@pytest.mark.parametrize("limit", ["0", "-2"])
+def test_next_refuses_a_limit_below_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], oldest: tuple[str, ...], limit: str
+) -> None:
+    """A limit that cannot be honoured is refused, never sliced into a false answer.
+
+    Zero said "Nothing is ready to start" over a queue holding work, and a
+    negative value sliced the ranking from its end (`PL-RMN8`).
+    """
+    store = str(_store(tmp_path, READY))
+
+    with pytest.raises(SystemExit) as stop:
+        _run("next", *oldest, "--limit", limit, "--items", store)
+
+    assert stop.value.code != 0
+    captured = capsys.readouterr()
+    assert f"argument --limit: must be 1 or more, got {limit}" in captured.err
+    assert "Nothing is ready to start" not in captured.out
+    assert "No owed work is ready to start" not in captured.out
+    assert _run("next", *oldest, "--limit", "1", "--items", store) == 0
+    assert "PL-B1B1" in capsys.readouterr().out
+
+
 def test_next_oldest_reads_what_counts_as_new_work_from_the_config(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
