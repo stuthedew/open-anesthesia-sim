@@ -711,7 +711,7 @@ def test_a_remote_that_cannot_be_asked_leaves_the_claim_local_and_says_so(
     assert _claim(monkeypatch, work, "PL-B1B1", "--no-fetch") == claiming.LOCAL_ONLY
 
     out = capsys.readouterr().out
-    assert "`git ls-remote origin` failed" in out and "It is local" in out
+    assert "`git ls-remote --heads origin` failed" in out and "It is local" in out
     assert "on the remote as" not in out
     assert _trailer(work, "Claim") == f"PL-B1B1 {BRANCH}"
     claimed = work.head()
@@ -752,7 +752,7 @@ def test_a_remote_that_cannot_be_asked_withdraws_nothing_until_it_answers(
     )
 
     out = capsys.readouterr().out
-    assert "`git ls-remote origin` failed" in out and "Withdrawn by" not in out
+    assert "`git ls-remote --heads origin` failed" in out and "Withdrawn by" not in out
     assert "`bin/docket claim PL-B1B1` again" in out and "git push" not in out
     assert work.head() == unpublished
 

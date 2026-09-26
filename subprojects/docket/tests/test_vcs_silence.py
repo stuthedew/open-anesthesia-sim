@@ -68,6 +68,7 @@ from docket.vcs import (
     records_on_base,
     ref_walk,
     released_on_base,
+    remote_heads,
     resolved,
     since_filed,
     snapshot,
@@ -126,7 +127,9 @@ def repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
     Remote-tracking refs are written with `update-ref` rather than pushed to a
     second repository: `default_base` wants `origin/main` to resolve and nothing
     here needs a remote behind it, so a fabricated ref is the same fact at a
-    fraction of the setup.
+    fraction of the setup. The one read that asks a remote, `remote_heads`, is
+    given the checkout itself as `origin`, so its own branches are what the
+    remote lists.
     """
     root = tmp_path_factory.mktemp("silence")
     _git(root, "init", "--quiet", "--initial-branch=main")
@@ -230,6 +233,7 @@ def repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
     _git(root, "update-ref", "refs/remotes/origin/main", "main")
 
     _git(root, "checkout", "--quiet", "claude/pl-k7qx-carried")
+    _git(root, "remote", "add", "origin", str(root))
     return root
 
 
@@ -392,6 +396,9 @@ READS: tuple[Read, ...] = (
         _findings("branches", "unreadable"),
     ),
     Read("working_paths", lambda r, g: working_paths(r, runner=g), _findings("paths")),
+    # Every branch the remote lists is a finding (`PL-MT3R`): a silence read as
+    # a remote with no branches would read every tracking ref as one it deleted.
+    Read("remote_heads", lambda r, g: remote_heads(r, runner=g), _findings("tips")),
     Read(
         "ref_walk",
         lambda r, g: ref_walk(r, "docs/items", runner=g),

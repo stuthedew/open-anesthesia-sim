@@ -3,12 +3,14 @@ id: PL-MT3R
 title: The remote's current heads have been read from the clone's own copies by four readers since PL-4Q9B closed - a harness-written tracking ref, the upstream setting, a rival's unpruned tracking ref, the local branch - so what the remote holds wants one record per command, consulted by claim, yield and arm
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: remote-copy
-touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_claiming.py, subprojects/docket/tests/test_claims.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_claiming.py, subprojects/docket/tests/test_claims.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1116
 payoff: what the remote holds is one record every command reads, so a new reader stops taking a clone's copy for the remote's and costing an item
 verify: grep -q 'def test_holdings_reads_no_hold_from_a_branch_the_remote_deleted' subprojects/docket/tests/test_claims.py
 root-cause-of: PL-WX87, PL-KX73, PL-C3MN, PL-21KN

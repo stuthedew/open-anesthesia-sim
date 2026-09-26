@@ -3,13 +3,15 @@ id: PL-C3MN
 title: claim's withdrawal check reads a rival branch's tracking ref as the remote's copy of it, so a rival branch deleted on the remote but never pruned here still withdraws this branch's unpublished claim, in favour of a claim no fresh clone can see
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: claim-integrity
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_claiming.py
 blocked-by: PL-MT3R
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-26
+payoff: a claim is never withdrawn in favour of a rival branch GitHub has deleted, so no item is left held by nobody
+verify: grep -q 'def test_a_rival_whose_branch_the_remote_deleted_does_not_withdraw_the_claim' subprojects/docket/tests/test_claiming.py
 ---
 
 **Problem.** claim's withdrawal check reads a rival branch's tracking ref as the remote's copy of it, so a rival branch deleted on the remote but never pruned here still withdraws this branch's unpublished claim, in favour of a claim no fresh clone can see
