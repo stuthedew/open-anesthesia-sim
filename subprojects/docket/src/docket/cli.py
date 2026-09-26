@@ -1786,6 +1786,7 @@ def cmd_show(args: argparse.Namespace) -> int:
     item = find_item(items, args.item)
     if item is None:
         print(f"no item matching '{args.item}'")
+        _say_held_elsewhere(args, items)
         return 1
     flight = _flight(args)
     print(f"{item.identifier} {item.title}")
@@ -1953,6 +1954,36 @@ def cmd_show(args: argparse.Namespace) -> int:
     print(item.body.strip())
     _say_unread(flight)
     return 0
+
+
+def _say_held_elsewhere(args: argparse.Namespace, items: list[Item]) -> None:
+    """Which branch holds an id this store lacks, and how to read its file there.
+
+    An item captured and claimed on another branch is absent from this store
+    until that branch merges, while `next` and `flight` already name it as a
+    live claim - so the bare not-found line was a dead end at the moment a
+    session asked about work another session holds (`PL-140X`). The holds are
+    the lines `show` prints for an item it has. The file is found by the read
+    `stranded` makes, without its fetch, as the holds were read without one.
+    Silent where nothing holds the id, which is the ordinary typo.
+    """
+    held = render.format_holds(_holdings(args), args.item, _now(args))
+    if not held:
+        return
+    print("It is held on a branch, and this checkout's store has no copy of it:")
+    print(held)
+    key = args.item.upper()
+    report = _stranded(items, args)
+    found = next(
+        (entry for entry in (report.items if report else ()) if entry.identifier.upper() == key),
+        None,
+    )
+    if found is None:
+        print("  Its file was not found on a ref this checkout holds; `bin/docket stranded`")
+        print("  fetches and names every item that exists only on a branch.")
+        return
+    for branch in found.branches:
+        print(f"  read it: git show {branch}:{found.path}")
 
 
 def _since_filed(args: argparse.Namespace, item: Item, root: Path, config: Config) -> str:

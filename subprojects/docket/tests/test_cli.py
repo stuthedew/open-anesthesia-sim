@@ -3679,6 +3679,44 @@ def test_show_names_a_branch_holding_an_item_only_by_its_name(
     assert "records no claim" in out
 
 
+def test_show_names_the_branch_holding_an_item_absent_here(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A capture claimed on another branch is absent here, and `show` says where it is.
+
+    `next` and `flight` named such an item as a live claim while `show` printed
+    only "no item matching": a dead end at the moment a session asks about work
+    another session holds (`PL-140X`).
+    """
+    from docket.claims import CUTOVER_MARKER
+
+    when = "2026-08-20T12:00:00+00:00"
+    root = _flight_repo(tmp_path, "Tidy up", when=when)
+    _commit_on(root, "main", {CUTOVER_MARKER: "# the claim writer\n"}, "claims", when)
+    held = "claude/capture-k7qx"
+    captured = "items/PL-K7QX-captured-there.md"
+    _commit_on(root, held, {captured: READY.replace("PL-B1B1", "PL-K7QX")}, "capture", when)
+    dated = os.environ | {"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when}
+    for args in (
+        ["checkout", "-q", held],
+        ["commit", "-q", "--allow-empty", "-m", f"PL-K7QX: start\n\nClaim: PL-K7QX {held}"],
+        ["checkout", "-q", "main"],
+    ):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
+    ran = ["--items", str(root / "items"), "--today", "2026-08-23", "show"]
+
+    assert main([*ran, "PL-K7QX"]) == 1
+
+    out = capsys.readouterr().out
+    assert out.startswith("no item matching 'PL-K7QX'\n")
+    assert f"IN FLIGHT on {held}" in out
+    assert f"  read it: git show {held}:{captured}\n" in out
+
+    # An id nothing holds is the ordinary typo, and gets the one line it always did.
+    assert main([*ran, "PL-Q9Q9"]) == 1
+    assert capsys.readouterr().out == "no item matching 'PL-Q9Q9'\n"
+
+
 def test_show_says_a_lapsed_claim_on_an_open_item_holds_nothing(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
