@@ -4055,3 +4055,110 @@ def test_orphaned_still_reports_work_pushed_after_the_merge_beside_such_a_port(
     [branch] = report.branches
     assert [commit.commit for commit in branch.commits] == [lost]
     assert port not in {commit.commit for commit in branch.commits}
+
+
+# --- a subject is one line, whatever it holds (`PL-139L`) --------------------
+#
+# `str.splitlines` breaks at `\x0b`, `\x0c`, `\x1c`-`\x1e`, `\x85`, U+2028 and
+# U+2029 as well as at a newline, and git prints every one of them unchanged
+# inside `%s`. So each reader of subject-bearing log output splits on `\n`
+# alone, and the text after a pasted form feed cannot read as a subject of its
+# own - one opening with an id, or ending with a pull request's number.
+
+#: Every character `str.splitlines` breaks at that git does not.
+LINE_BREAKS_GIT_DOES_NOT_MAKE = ("\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
+
+
+@pytest.mark.parametrize("separator", LINE_BREAKS_GIT_DOES_NOT_MAKE)
+def test_a_line_separator_inside_a_subject_does_not_start_another_subject(
+    tmp_path: Path, separator: str
+) -> None:
+    """Read through git itself, which is what puts the separator in the subject.
+
+    The first two subjects name a number only past the separator, or only
+    before it, so a reader cutting there finds merges git never recorded. The
+    third is the control: the number a whole subject ends with is found.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", seed_txt="0\n")
+    repo.commit(f"PL-0001: quote a title{separator}Merge pull request #99 from a/b", seed_txt="1\n")
+    repo.commit(f"PL-0002: land the fix (#12){separator}and say why", seed_txt="2\n")
+    repo.commit(f"PL-0003: quote a title{separator}and land it (#34)", seed_txt="3\n")
+
+    history = merged_pull_requests(repo.root)
+
+    assert history.known, history.declined
+    assert history.numbers == frozenset({34})
+
+
+def test_an_id_past_a_line_separator_is_not_read_as_landed_on_the_base() -> None:
+    branch = _branch_runner(behind=1, ahead=1)
+
+    def run(args: list[str], root: Path) -> str:
+        if _bare(args)[0] == "log" and "--format=%s" in args:
+            return "PL-K7QX: quote a pasted title\u2028PL-9Y42 is mentioned, not landed\n"
+        return branch(args, root)
+
+    assert branch_state(ROOT, runner=run).landed == ("PL-K7QX",)
+
+
+def test_a_subject_differing_only_past_a_line_separator_is_not_duplicated_history() -> None:
+    """Cut there, two commits share a date and a subject, and this side's own work hides.
+
+    Under-reporting what is held only here is the failure that costs commits.
+    """
+    divergence = _commits(
+        ("<", "aaa1111", "1788256800", "p0", "PL-0001 The first commit"),
+        (">", "bbb1111", "1788256800", "p0", "PL-0001 The first commit"),
+        ("<", "aaa2222", "1788343200", "aaa1111", "PL-K7QX Record\u2028what the base took"),
+        (">", "bbb2222", "1788343200", "bbb1111", "PL-K7QX Record\u2028what only this holds"),
+    )
+    state = branch_state(ROOT, runner=_branch_runner(behind=2, ahead=2, divergence=divergence))
+
+    assert state.rewrite is not None
+    assert state.rewrite.own == (("bbb2222", "PL-K7QX Record\u2028what only this holds"),)
+
+
+def test_a_filing_subject_holding_a_line_separator_keeps_its_pull_request() -> None:
+    subject = "PL-0J9K: file the item\u2028and fix the reader it names (#635)"
+    log = f"\x00ff4be610\x01{subject}\n\nA\tdocs/items/PL-0J9K-git-cat-file-batch.md\n"
+    changed = {
+        "ff4be610": [
+            "docs/items/PL-0J9K-git-cat-file-batch.md",
+            "subprojects/docket/src/docket/vcs.py",
+        ]
+    }
+
+    report = filed_with_work(
+        frozenset({"PL-0J9K"}),
+        ROOT,
+        prefix="docs/items",
+        runner=_filing_runner("false", log, changed),
+    )
+
+    filing = report.filings["PL-0J9K"]
+    assert filing.subject == subject
+    assert filing.pull_request == 635
+
+
+def test_a_closure_subject_holding_a_line_separator_names_its_pull_request() -> None:
+    run = _closure_runner(
+        {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
+        ("PL-K7QX Do the thing\u2028and say why (#148)",),
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
+        "PL-K7QX": 148
+    }
+
+
+def test_a_landing_subject_holding_a_line_separator_names_its_pull_request(tmp_path: Path) -> None:
+    repo, port = _ported(tmp_path)
+    repo.commit(
+        "PL-0002: the same fix\u2028and a pasted note (#934)", f_txt=_edit(_LINES, n10="ten")
+    )
+
+    found = change_landed(port, "main", repo.root)
+
+    assert found is not None
+    assert found.pull_request == 934
