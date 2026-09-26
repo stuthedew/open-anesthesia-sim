@@ -260,6 +260,33 @@ def test_a_wrapper_runs_the_command_after_it(command: str, refused: bool) -> Non
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
 
 
+REDIRECTED = (
+    # `PL-K9QL`'s reproductions, verbatim: ahead of the interpreter, and among
+    # a wrapper's words.
+    ("2>/dev/null python3 -m compileall -q src/", True),
+    ("timeout 60 2>/dev/null python3 -m compileall -q src/", True),
+    # A file or text on standard input is the script the interpreter parses.
+    ("python3 < src/anesthesia_sim/app_metadata.py", True),
+    ("python3 - <<< \"exec(open('src/a.py').read())\"", True),
+    # A path it only writes to, or opens on another descriptor, it never parses.
+    ("python3 tools/doc_check.py > src/out.txt", False),
+    ("python3 x.py 3< src/a.py", False),
+    ("2>/dev/null uv run python -m compileall src/", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), REDIRECTED)
+def test_a_redirection_is_not_a_word_of_the_command(command: str, refused: bool) -> None:
+    """Bash lifts a redirection out wherever it stands, so it hides no interpreter (`PL-K9QL`).
+
+    The guard read `2>/dev/null` as the word `2` and took it for the command,
+    and a wrapper stopped reading at the `>`. Lifted out, a redirection is no
+    argument either, so only one onto standard input reaches the paths read.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 GLUED = (
     # `PL-63TT`'s reproduction, and the same `)` glued to a pipe.
     ("(true); python3 src/a.py", True),

@@ -3,11 +3,12 @@ id: PL-K9QL
 title: The three Bash guards read a redirection written ahead of a command as the command's name, so 2>/dev/null make check | tail -5, 2>/dev/null python3 -m compileall -q src/ and 2>/dev/null git fetch --prune pass all three, though bash runs make, python3 and git
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/no-prune-guard.sh, tests/unit/test_gate_status_guard.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
 payoff: a gate, a floor parse or a prune is refused however a redirection is placed around it - 2>/dev/null ahead of it, >x among a wrapper's words, 2>/dev/null among its own - so a red make check written that way no longer reaches a session as exit 0
 verify: grep -q 'def test_a_redirection_is_not_a_word_of_the_command' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_redirection_is_not_a_word_of_the_command' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_a_redirection_is_not_a_word_of_the_command' tests/unit/test_no_prune_guard.py
 ---
