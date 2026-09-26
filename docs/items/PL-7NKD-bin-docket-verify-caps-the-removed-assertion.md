@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: verify-assertion-evidence
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-20
 closed: 2026-09-25

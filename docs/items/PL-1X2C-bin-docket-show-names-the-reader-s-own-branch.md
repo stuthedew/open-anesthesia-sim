@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: carrier-detection
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
 closed: 2026-09-26

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: verify-false-reject
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: generator-identification
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; recorded as a generator head by the 2026-09-25 triage pass
 added: 2026-09-24

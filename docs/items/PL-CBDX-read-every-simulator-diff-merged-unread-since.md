@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety
 feature: review-hold
+milestone: v0.5.12
 touches: docs/items, src/anesthesia_sim
 added: 2026-09-25
 closed: 2026-09-26

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: projects-trial
+milestone: v0.5.12
 touches: .claude/rules/instruction-writing.md, .claude/skills/docket/modes/start.md, docs/resident-instructions.md
 added: 2026-09-25
 closed: 2026-09-25
