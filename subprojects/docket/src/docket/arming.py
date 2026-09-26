@@ -158,9 +158,9 @@ class Verdict:
             )
         if self.answer == ARM:
             return (
-                f"arm - {self.branch} changes nothing outside {self.items_dir} and "
-                f"{TOOLING.rstrip('/')}, leaves {GATE.rpartition('/')[2]} alone, holds no open "
-                f"claim, and contains {self.base}'s tip: mark its pull request ready and arm it",
+                f"arm - {self.branch} changes nothing outside {self._arming}, leaves "
+                f"{GATE.rpartition('/')[2]} alone, holds no open claim, and contains "
+                f"{self.base}'s tip: mark its pull request ready and arm it",
             )
         read = ", so its pull request waits on a read" if self.outside or self.gate else ""
         said = [f"hold - {self.branch}: " + " and ".join(self._holding()) + read]
@@ -181,6 +181,11 @@ class Verdict:
         )
         return (*said, *notes)
 
+    @property
+    def _arming(self) -> str:
+        """The directories a change arms on green under, as `arm` and `hold` both name them."""
+        return f"{self.items_dir}, {TOOLING.rstrip('/')} and {RECORDS.rstrip('/')}"
+
     def _holding(self) -> list[str]:
         """The one-clause reasons a `hold` names: claims, then paths, then the gate."""
         reasons = []
@@ -190,9 +195,7 @@ class Verdict:
         if self.outside:
             count = len(self.outside)
             noun = "path" if count == 1 else "paths"
-            reasons.append(
-                f"it changes {count} {noun} outside {self.items_dir} and {TOOLING.rstrip('/')}"
-            )
+            reasons.append(f"it changes {count} {noun} outside {self._arming}")
         if self.gate:
             reasons.append(f"it changes {GATE}, the gate itself")
         return reasons
@@ -247,7 +250,9 @@ def arm(
     gate = False
     if answered(changed):
         paths = {path for path in changed.splitlines() if path.strip()}
-        outside = tuple(sorted(path for path in paths if not path.startswith((prefix, TOOLING))))
+        outside = tuple(
+            sorted(path for path in paths if not path.startswith((prefix, TOOLING, RECORDS)))
+        )
         gate = GATE in paths
     else:
         unread.append(f"git would not diff {name} against {base}, so what a merge lands is unknown")
