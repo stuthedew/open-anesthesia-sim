@@ -3,11 +3,13 @@ id: PL-73G8
 title: The recovery file header claims the body verbatim, but it is the body as GitHub serves it today rather than at merge time, and its commit: sha silently dangles after a history rewrite with nothing checking it
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: pr-body-integrity
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, docs/pr-bodies
 added: 2026-09-20
+closed: 2026-09-26
+pr: 1068
 payoff: a recovery file says when its body was fetched and fails loudly when its anchor sha stops resolving, so the archive's provenance claim is one the repository can honour
 verify: grep -q 'def test_a_recovery_file_whose_commit_sha_no_longer_resolves_is_reported' tests/unit/test_pr_body_check.py
 ---
@@ -34,3 +36,12 @@ a recovery file's `commit:` sha, and no test under
 than claiming it verbatim from the merge, and `tools/pr_body_check.py` fails on
 a `commit:` sha that no longer resolves, with a test under
 `tests/unit/test_pr_body_check.py` holding it.
+
+**Closed 2026-09-26 with `PL-979D`'s build (#1068).** A recovered file's header
+carries `recovered: DATE`, the day the body was fetched, and no longer claims it
+verbatim from the merge. `python3 tools/pr_body_check.py --anchors` runs in
+`make check` and fails on a `commit:` that is not a first-parent commit of the
+default branch, which covers a sha that no longer resolves; the test is
+`test_a_recovery_file_whose_commit_sha_no_longer_resolves_is_reported`. Forward
+only: the 201 files written before this rule keep their old header, and the
+commit that added each one dates its fetch.
