@@ -112,9 +112,7 @@ cut = shell_split.segments(command)
 if cut is None:
     sys.exit(0)
 
-ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
 INTERPRETER = re.compile(r"^python(?:3(?:\.\d+)?)?$")
-GROUPING = ("(", "{", "!")
 CLOSERS = (")", "}")
 
 MAKE_GATES = ("check", "test", "docket", "doc-check", "prebuild", "pr-title")
@@ -126,27 +124,18 @@ def base(token):
     return token.rsplit("/", 1)[-1]
 
 
-def command_words(tokens):
-    """The segment from its command word on, grouping and assignments dropped.
-
-    `gate` and `sets_pipefail` both read a segment head through this, so they
-    cannot disagree about where its command starts - which they did, and a
-    `set` opening a group went unseen (`PL-1SFZ`).
-    """
-    rest = list(tokens)
-    while rest and rest[0] in GROUPING:
-        rest.pop(0)
-    while rest and ASSIGNMENT.match(rest[0]):
-        rest.pop(0)
-    return rest
-
-
 def strip_prefixes(tokens):
-    """Drop grouping, leading assignments and a `uv run` wrapper."""
-    rest = command_words(tokens)
+    """Drop grouping, leading assignments and a `uv run` wrapper.
+
+    `gate` and `sets_pipefail` both read a segment head through
+    `shell_split.command_words`, so they cannot disagree about where its
+    command starts - which they did, and a `set` opening a group went unseen
+    (`PL-1SFZ`).
+    """
+    rest = shell_split.command_words(tokens)
     if len(rest) >= 2 and base(rest[0]) == "uv" and rest[1] == "run":
         rest = rest[2:]
-        while rest and ASSIGNMENT.match(rest[0]):
+        while rest and shell_split.ASSIGNMENT.match(rest[0]):
             rest.pop(0)
     return rest
 
@@ -184,7 +173,7 @@ def gate(segment):
 
 def sets_pipefail(segment):
     """True for `set -o pipefail` in any of its spellings, false for `set +o`."""
-    rest = command_words(segment)
+    rest = shell_split.command_words(segment)
     if not rest or rest[0] != "set" or "pipefail" not in rest[1:]:
         return False
     flag = rest[rest.index("pipefail") - 1]
@@ -204,7 +193,7 @@ def pipefail_by_separator(segments, separators):
         piped = index > 0 and separators[index - 1] == "|"
         forked = separators[index] in ("|", "&")
         rest = list(segment)
-        while rest and rest[0] in GROUPING:
+        while rest and rest[0] in shell_split.GROUPING:
             opener = rest.pop(0)
             if opener != "!":
                 # A group takes the pipe into it; its first command does not.
