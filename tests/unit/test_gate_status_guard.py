@@ -112,6 +112,83 @@ def test_pipefail_set_after_the_pipeline_does_not_count() -> None:
     assert _decision("set +o pipefail; make check | tail") is not None
 
 
+GROUPED = (
+    # The command the item was found with, verbatim. The `set` opening the
+    # group covers the pipe, and the `echo` reads the status straight after.
+    "cd /r && git status -s && git stash -q && { set -o pipefail; uv run pytest -q "
+    '-p no:randomly t.py -k "name" 2>&1 | tail -12; echo "exit=$?"; }; '
+    "git stash pop -q && git status -s",
+    # Both group spellings, with nothing after the pipe but the group's end.
+    "{ set -o pipefail; uv run pytest -q t.py 2>&1 | tail -12; }",
+    "( set -o pipefail; uv run pytest -q t.py 2>&1 | tail -12 )",
+    "(set -o pipefail; cd sub && make check 2>&1 | tail -45)",
+    "{\n  set -o pipefail\n  make check 2>&1 | tail -45\n}",
+    # A brace group run on its own is this shell, so its `set` outlives it.
+    "{ set -o pipefail; }; make check 2>&1 | tail -45",
+    # A substitution is a subshell of its own; its `)` must not end the group.
+    "( set -o pipefail; cd $(git rev-parse --show-toplevel) && make check 2>&1 | tail -45 )",
+    # A group on the right of a pipe runs its `set` for its own pipes.
+    "true | { set -o pipefail; make check 2>&1 | tail -45; }",
+)
+
+
+@pytest.mark.parametrize("command", GROUPED)
+def test_pipefail_set_inside_a_group_keeps_the_status(command: str) -> None:
+    """A `set` opening a group covers the pipes after it, for as long as bash says it does.
+
+    `PL-1SFZ`: the `{` or `(` hid the `set` from `sets_pipefail`, so the first
+    command here was refused while it kept the status, and the remedy the
+    refusal offered was the token the command already carried.
+    """
+    assert _decision(command) is None, f"{command!r} was refused"
+
+
+def test_the_semicolon_that_ends_a_group_hands_the_status_to_nothing() -> None:
+    """A group exits with its last command's status; the separator after it decides the rest.
+
+    The `;` a brace group needs before its `}` read as handing the status on,
+    so `{ make check; }` was refused although nothing runs after the gate.
+    """
+    assert _decision("{ make check; }") is None
+    assert _decision("( make check; )") is None
+    assert _decision("set -o pipefail; { uv run pytest -q t.py 2>&1 | tail -12; }") is None
+    assert "LAST stage" in _decision("{ make check; } | tail")["permissionDecisionReason"]
+    assert "after the `;`" in _decision("{ make check; }; echo done")["permissionDecisionReason"]
+
+
+ESCAPED = (
+    # The `set` dies with its subshell, so the outer pipe runs without it.
+    "(set -o pipefail; make check 2>&1) | tail -45",
+    "( set -o pipefail; true ) && make check 2>&1 | tail -45",
+    "(\n  set -o pipefail\n  true\n)\nmake check 2>&1 | tail -45",
+    # A brace group that is piped or backgrounded is a subshell too.
+    "{ set -o pipefail; make check 2>&1; } | tail -45",
+    "{ set -o pipefail; } & make check 2>&1 | tail -45",
+    # So is a `set` that is itself a pipeline stage.
+    "set -o pipefail | cat; make check 2>&1 | tail -45",
+    # The lexer glues `;)` into one token, and the `)` in it still ends the group.
+    "( set -o pipefail; true;) && make check 2>&1 | tail -45",
+)
+
+
+@pytest.mark.parametrize("command", ESCAPED)
+def test_pipefail_set_in_a_subshell_ends_with_it(command: str) -> None:
+    """Crediting a `set` to everything after it would pass each of these, and each loses the status.
+
+    The refusal says why, because a command that visibly sets `pipefail` and
+    is refused anyway reads as the guard being wrong.
+    """
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert "not in the shell that runs this pipe" in decision["permissionDecisionReason"]
+
+
+def test_only_a_command_that_sets_pipefail_is_told_where_it_ended() -> None:
+    """The note is true only of a command carrying the `set`, so no other refusal carries it."""
+    reason = _decision("make check 2>&1 | tail -45")["permissionDecisionReason"]
+    assert "does set `pipefail`" not in reason
+
+
 PRESERVED = (
     # The bare gate, which is what the permissions allowlist names.
     "make check",
