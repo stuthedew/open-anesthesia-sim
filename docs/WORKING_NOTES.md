@@ -445,7 +445,7 @@ One correction the resumption is worth recording. The assessment below is of
 "the current v0.1.0 interface", and it was accurate then; ten interface-changing
 releases later it is a statement about a baseline rather than about today, and
 quoting it as a live objection would be quoting a stale measurement. What
-survives unchanged is the principle in "Long-term vision" below — UI/UX ambition
+survives unchanged is the principle in § "Long-term vision" below — UI/UX ambition
 follows scientific-core maturity — and that principle is what places item 33
 after the MVP rather than before it.
 
@@ -460,7 +460,7 @@ layout) — https://claude.ai/code/artifact/cb5e540b-5e87-4812-ae29-ec2d1a45ef5e
 The project owner's assessment: the current v0.1.0 interface is
 intentionally minimal ("hello world"), and the three mockups were just
 better-organized versions of that same shallow functionality. A mature
-UI cannot be designed on top of functionality this early — see "Long-term
+UI cannot be designed on top of functionality this early — see § "Long-term
 vision" below. The artifact link is kept here only as a record of what
 was tried; it is not a starting point to resume from, since real UI work
 later should be informed by whatever the scientific core looks like at
