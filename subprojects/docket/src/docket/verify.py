@@ -1710,8 +1710,8 @@ RECURRENCE_LINE_RE = re.compile(
     rf"^recurrences:\s*{RECURRENCE_ENTRY}(?:,\s*{RECURRENCE_ENTRY})*\s*$"
 )
 
-#: A body record's file name as `tools/pr_body_check.py --record` writes it:
-#: the pull request's number, and nothing else (`PL-979D`).
+#: A body file's name as `tools/pr_body_check.py` writes it: the pull
+#: request's number, and nothing else.
 RECORD_NAME_RE = re.compile(r"[0-9]+\.md")
 
 
@@ -1761,19 +1761,21 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     must begin with the removed one - which is an append and cannot be an edit
     of what was already recorded.
 
-    **`"record"`** - a pull request's body record the branch added: `<N>.md`
-    directly under `RECORDS`, which the base does not hold and whose copy at
-    `HEAD` carries `pr: N` and a `recorded:` line. `tools/pr_body_check.py
-    --record` writes it while the pull request is open, and the pull request's
-    required check holds the merge until it matches the body, so every pull
-    request's branch carries one (`PL-979D`). It is the one kind outside the
-    store, and the one read off the base and `HEAD` rather than the diff: the
-    record is written again after any edit to the body, which read commit by
-    commit is a removal like any other. Like a capture it cannot weaken
-    anything, since the base holds no prior content for it to have changed. A
-    record the base holds is a merged pull request's history, and a file there
-    under another name or with no `recorded:` - a recovery written after a
-    merge has none - is not the write the workflow asked for.
+    **`"record"`** - a pull request's body the branch added: `<N>.md` directly
+    under `RECORDS`, which the base does not hold and whose copy at `HEAD`
+    carries `pr: N` and a `recovered:` line. `tools/pr_body_check.py
+    --recover` writes it for a squash commit that reached the default branch
+    with no body, and the release step runs it and lets the files ride the
+    release's pull request (`PL-3PH2`). A `recorded:` line stands in for
+    `recovered:`: `--record` wrote one on every pull request's branch while
+    `PL-979D`'s per-pull-request record stood, and a branch opened before
+    `PL-3PH2` retired it may still carry one. It is the one kind outside the
+    store, and the one read off the base and `HEAD` rather than the diff: a
+    file the branch rewrites reads, commit by commit, as a removal like any
+    other. Like a capture it cannot weaken anything, since the base holds no
+    prior content for it to have changed. A file the base holds is a merged
+    pull request's history, and a file there under another name, or with
+    neither line, is not the write the workflow asked for.
 
     Nothing else is exempt. An item file this branch edited in any other way -
     a `status`, a `touches`, a `verify:` command - is still outside `touches`
@@ -1850,7 +1852,8 @@ def _added_record(root: Path, base: str, path: str) -> bool:
         return False
     fields, _ = parse_front_matter(text)
     number = name.removesuffix(".md")
-    return fields.get("pr", "").strip() == number and bool(fields.get("recorded", "").strip())
+    dated = any(fields.get(key, "").strip() for key in ("recovered", "recorded"))
+    return fields.get("pr", "").strip() == number and dated
 
 
 @dataclass(frozen=True)
@@ -2436,7 +2439,7 @@ def _check_item(
     # An edit the workflow itself asked for is separated from the rest rather
     # than excused silently: the audit says which paths it declined to count
     # and why, so a reader can disagree with the exemption (`PL-66PR`,
-    # `PL-ZYQC`). Only paths under the store and the body records (`PL-979D`)
+    # `PL-ZYQC`). Only paths under the store and the body files (`PL-3PH2`)
     # are even considered.
     sanctioned = {
         path: kind
