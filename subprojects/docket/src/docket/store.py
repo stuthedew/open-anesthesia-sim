@@ -90,36 +90,36 @@ def read_items(directory: Path) -> list[Item]:
     ]
 
 
-def write_item(directory: Path, item: Item, *, replace: Path | None = None) -> Path:
-    """Write an item, removing the file it used to live in if it was renamed.
+def write_item(directory: Path, item: Item) -> Path:
+    """Write a new item under the name its title gives it.
 
-    A title edit changes the slug and so changes the filename. Writing the new
-    name without removing the old one would leave two files claiming the same
-    id, which `checks.py` reports as a duplicate - correctly, but confusingly,
-    since the cause is a rename rather than a collision.
+    This is the writer for creating an item, and it removes nothing: written
+    over an item whose file has another name, it leaves two files claiming one
+    id, which `checks.py` reports as a duplicate. A command writing a field
+    reaches for `rewrite_item` instead, whatever it finds the name to be: see
+    there for why a rename arriving as a side effect is worse than a stale slug.
 
-    So this is for creating an item and for a pass whose *subject* is the
-    rename. A command writing a field reaches for `rewrite_item` instead,
-    whatever it finds the name to be: see there for why a rename arriving as a
-    side effect is worse than a stale slug.
+    A rename is a pass of its own, made with `git mv` (`PL-YTDN`), which is the
+    route `docket check`'s stale-slug advisory names. This function used to take
+    a `replace=` path and delete it, a rename branch with no caller left that
+    the next field writer could have reached for without anything failing to
+    say so (`PL-9KSY`).
     """
     directory.mkdir(parents=True, exist_ok=True)
     target = directory / filename_for(item)
     target.write_text(render_item(item), encoding="utf-8")
-    if replace is not None and replace.resolve() != target.resolve() and replace.exists():
-        replace.unlink()
     return target
 
 
 def rewrite_item(directory: Path, item: Item) -> Path:
     """Write an item back to the file it was read from, whatever its title now says.
 
-    `write_item` names the file from the title, which is right when the title
-    was the edit and wrong as a side effect of any other one: the rename lands
-    in a diff about something else, where nobody is looking for it, and
-    conflicts against a branch holding the file instead of merging with it
-    (`PL-LBR6`). So a field write keeps the name, and bringing a drifted name
-    back into line stays a pass of its own (`PL-YTDN`).
+    `write_item` names the file from the title, which is right for a new item
+    and wrong for a write to an existing one: a rename arriving as a side
+    effect lands in a diff about something else, where nobody is looking for
+    it, and conflicts against a branch holding the file instead of merging with
+    it (`PL-LBR6`). So a field write keeps the name, and bringing a drifted name
+    back into line stays a pass of its own, made with `git mv` (`PL-YTDN`).
 
     The front matter is still rendered in canonical order, which is right for
     a command that was asked to change a field and wrong for one that was
