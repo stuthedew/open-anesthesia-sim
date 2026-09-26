@@ -419,7 +419,16 @@ class RefWalk:
     merged: int = 0
     unmerged: int = 0
     commits: int = 0
+    #: Each unmerged ref's item files, summed across refs: an item file edited
+    #: on ten refs counts ten.
     item_edits: int = 0
+    #: The distinct item files those refs edit between them, so the same file
+    #: counts once however many refs edit it. Printed beside the sum rather than
+    #: in place of it, because the gap between the two is the overlap: on a clone
+    #: of long-lived branches all editing one store the sum ran 2.6x the files,
+    #: and a per-edit rate divided by the sum over-predicted by as much
+    #: (`PL-3BYK`).
+    item_files: int = 0
     #: Per unmerged ref: its name, the commits it holds that the base does not,
     #: and how many item files it touches. The per-ref detail rather than the
     #: totals alone, because that is what makes two machines comparable by
@@ -4785,6 +4794,7 @@ def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> Ref
     prefix = items_dir.strip("/") + "/"
     walked: list[tuple[str, int, int]] = []
     unread: list[str] = []
+    distinct: set[str] = set()
     for name in listing:
         if name in merged:
             continue
@@ -4804,12 +4814,14 @@ def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> Ref
             if line.strip()
         ]
         walked.append((name, int(ahead) if ahead.isdigit() else 0, len(touched)))
+        distinct.update(touched)
     return RefWalk(
         listed=len(listing),
         merged=len(merged),
         unmerged=len(walked) + len(unread),
         commits=sum(ahead for _, ahead, _ in walked),
         item_edits=sum(edits for _, _, edits in walked),
+        item_files=len(distinct),
         refs=tuple(walked),
         unread=tuple(sorted(unread)),
         declined=run.reason,

@@ -2648,6 +2648,50 @@ def test_stranded_reports_nothing_when_every_branch_has_landed(
     assert "No item exists only on a branch" in capsys.readouterr().out
 
 
+def test_stranded_states_both_halves_of_its_predicate(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The store half is part of the claim, so the sentence carries it (`PL-Z6M3`).
+
+    An item this checkout's store holds is never reported, so that a session
+    is not told about its own capture - which also silences the session that
+    has just recovered a stranded item while the default branch still lacks
+    it. Checked out on the branch that carries it, `PL-K7QX` is in the store
+    and absent from `main`: the answer is empty, and says what it is empty of.
+    """
+    root = _branched_repo(tmp_path)
+    subprocess.run(
+        ["git", "checkout", "-q", "abandoned"], cwd=root, check=True, capture_output=True
+    )
+    # The premise, read from git rather than assumed: the store holds the item
+    # and the default branch does not.
+    on_main = subprocess.run(
+        ["git", "ls-tree", "--name-only", "main", "items/"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "PL-K7QX" not in on_main
+    assert (root / "items" / "PL-K7QX-lost.md").is_file()
+
+    assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "No item exists only on a branch and outside this checkout's store" in out
+    assert "not listed even where the default branch lacks it" in out
+    assert "No item exists only on a branch," not in out, "the one-part claim is gone"
+
+    # The finding case names both halves too, from a checkout whose store lacks it.
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
+
+    assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "1 item exists only on a branch and outside this checkout's store" in out
+    assert "no item missing from both the default branch and this checkout's store" in out
+
+
 def test_stranded_refreshes_the_base_before_deciding_anything_is_lost(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -3443,6 +3487,49 @@ def test_show_names_the_branch_that_has_already_edited_the_item_file(
     assert f"Its file is already edited on {BRANCH} (last commit 3 days ago)." in out
     assert "PL-0001 is startable" in out
     assert "IN FLIGHT" not in out
+
+
+@pytest.mark.parametrize(
+    ("status", "extra"),
+    [("done", "\nclosed: 2026-08-21"), ("blocked", "")],
+    ids=["done", "blocked"],
+)
+def test_show_calls_an_edited_item_startable_only_when_its_status_allows(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], status: str, extra: str
+) -> None:
+    """The edit says nothing about the item's status, so the line may not either (`PL-9F8B`).
+
+    `PL-6T44` (`done`) and `PL-MB2W` (`blocked`) were both called startable,
+    from the command a session runs to learn about one item. The collision
+    is still true of either, so the warning stays; the invitation goes.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Capture a note", wrote="items/PL-0001-on-main.md")
+    # The default branch moves the item on after the branch forked, as a
+    # closure or a block lands while somebody's edit to its file sits unmerged.
+    (root / "items" / "PL-0001-on-main.md").write_text(
+        READY.replace("PL-B1B1", "PL-0001")
+        .replace("status: ready", f"status: {status}")
+        .replace("added: 2026-08-01", f"added: 2026-08-01{extra}")
+    )
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-21T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-21T12:00:00+00:00",
+    }
+    subprocess.run(
+        ["git", "commit", "-qam", f"PL-0001 {status}"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        env=dated,
+    )
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert out.splitlines()[1].endswith(f"· {status}"), "the premise: show read the status"
+    assert f"Its file is already edited on {BRANCH} (last commit 3 days ago)." in out
+    assert "a second edit to the same file collides" in out
+    assert "startable" not in out
 
 
 def test_show_names_a_round_that_retitled_the_item_file_as_editing_it(
@@ -5408,6 +5495,44 @@ def test_no_git_read_in_the_cli_takes_the_store_from_the_settings() -> None:
         f"cli.py line(s) {from_settings} hand a git read the store the settings name, "
         f"not the one `--items` pointed at; `_tracked` is what resolves it"
     )
+
+
+def test_the_ref_set_block_names_distinct_item_files(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Two refs editing one item file are two edits and one file, and the block says both.
+
+    The `ref set` block summed each ref's item files, so an item file edited
+    on ten refs counted ten, and it printed the sum as though it counted
+    files. On a clone of long-lived branches editing one store the sum ran
+    2.6x the files, and a rate divided by it over-predicted by as much
+    (`PL-3BYK`). So the sum is named for what it is, beside the distinct count.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    item = root / "items" / "PL-0001-on-main.md"
+    item.write_text(READY.replace("PL-B1B1", "PL-0001"), encoding="utf-8")
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    git("-c", "init.defaultBranch=main", "init", "-q")
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    for branch in ("first-edit", "second-edit"):
+        git("checkout", "-qb", branch, "main")
+        item.write_text(item.read_text(encoding="utf-8") + f"A note from {branch}.\n")
+        git("commit", "-qam", f"PL-0001: {branch}")
+    git("checkout", "-q", "main")
+
+    argv = ["--items", str(root / "items"), "--today", "2026-08-23", "digest", "--profile"]
+    assert main(argv) == 0
+
+    out = capsys.readouterr().out
+    assert "2 unmerged, carrying 2 commits and 2 item-file edits summed per ref" in out
+    assert "summed per ref, 1 distinct item file" in out
 
 
 def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
