@@ -319,6 +319,14 @@ value:
   does this repository. Take a Gas Man tissue/gas coefficient from the first
   table or from Appendix C, and no isoflurane tissue/blood ratio from the
   second.
+- **Appendix B names intertissue diffusion as omitted**, pp. 169-70. Gas Man
+  "does not include the effects of shunts and dead space, intertissue
+  diffusion, incomplete tissue mixing, drug metabolism, or nonpulmonary drug
+  excretion"; under "Inter-tissue Diffusion", the effect "may occur between fat
+  and muscle" and "has been ignored in the Gas Man model", complete mixing in
+  each organ being assumed instead and called "a close approximation". Read
+  2026-09-26 for `PL-WMCJ`; `docs/MODEL.md` § "Known limitations" carries what
+  the omission costs the fat compartment.
 
 Its bibliography's reference 45 is "Yasuda, N, Targ, AG and Eger, EI II.
 Solubility of I-653, Sevoflurane, Isoflurane and Halothane in human tissues.
@@ -393,4 +401,43 @@ Route and depth, as `.claude/rules/citing-sources.md` requires: the corpus's
 section PDFs, read with `pdftotext -layout` on 2026-09-15 for the front matter,
 the full table of contents and every section's boundary pages, plus PubMed
 metadata and abstracts for all 22 chapters. **No chapter has been read at full
-text**, so nothing here may yet be cited for a value.
+text**, so nothing here may yet be cited for a value. Two pages have been read
+since, for `PL-WMCJ` on 2026-09-26: Hendrickx and De Wolf's p. 163, where
+Eger's five-compartment model adds a lung and an "intertissue diffusion"
+compartment, "hypothesized to be fat adjacent to well-perfused tissues", citing
+Carpenter et al. 1986; and p. 166, which reads Yasuda et al.'s fourth
+compartment as intertissue diffusion and quotes Hull against assigning any
+tissue to a fitted compartment. `docs/MODEL.md` § "Known limitations" cites
+them for that description and that caution, and for no value.
+
+### Yasuda et al. 1991 — the two human kinetics papers
+
+**Not held here. Held in the private corpus**, like every other owner-supplied
+full text; the corpus's own index carries the file names and checksums.
+
+> Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S,
+> Peterson NA. *Comparison of kinetics of sevoflurane and isoflurane in
+> humans.* Anesth Analg 1991;72(3):316-24. PMID
+> [1994760](https://pubmed.ncbi.nlm.nih.gov/1994760/), DOI
+> [10.1213/00000539-199103000-00007](https://doi.org/10.1213/00000539-199103000-00007).
+>
+> Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Johnson BH, Freire BA,
+> Fassoulaki A. *Kinetics of desflurane, isoflurane, and halothane in humans.*
+> Anesthesiology 1991;74(3):489-98. PMID
+> [2001028](https://pubmed.ncbi.nlm.nih.gov/2001028/), DOI
+> [10.1097/00000542-199103000-00017](https://doi.org/10.1097/00000542-199103000-00017).
+
+**What has been taken from them, and where it is recorded**, so neither needs
+reopening for these values. Their 30-minute wash-in and five-minute elimination
+ratios are the reference values in
+`tests/reference/test_published_wash_in_and_elimination.py`. Their
+five-compartment fits - each fourth compartment's and fat group's mammillary
+time constant and volume (Tables 4 and 5), the hybrid coefficients and time
+constants (Tables 1 and 2), and each paper's reading of the fourth compartment
+as fat reached by intertissue diffusion - are in `docs/MODEL.md` § "Known
+limitations" with their pages, taken 2026-09-26 for `PL-WMCJ`.
+
+Route and depth: the *Anesth Analg* paper through the corpus's text layer, pp.
+319-23; the *Anesthesiology* paper is a scan with no text layer, read as page
+images of pp. 493-96 only. Neither paper's methods for the wash-in apparatus
+were read in that pass.

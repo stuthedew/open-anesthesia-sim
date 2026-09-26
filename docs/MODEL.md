@@ -8034,7 +8034,10 @@ against a real run.
 Version v0.1.0 assumes:
 
 - every modeled compartment is perfectly mixed;
-- each tissue group is perfusion limited;
+- each tissue group is perfusion limited, and exchanges agent only with the
+  blood flowing through it — no agent passes directly from one tissue group
+  to another, which is the intertissue diffusion "Known limitations" records
+  as omitted;
 - partition coefficients are constant;
 - tissue volumes and flow fractions are constant;
 - outgoing pulmonary blood equilibrates with alveolar gas;
@@ -8122,6 +8125,10 @@ This model does not model:
 - shunt;
 - ventilation-perfusion mismatch;
 - diffusion limitation;
+- intertissue diffusion — agent passing directly from a lean tissue into fat
+  lying against it, a route between two tissues rather than the
+  blood-to-tissue limitation above (the note below this list measures what it
+  leaves out of the fat compartment);
 - metabolism;
 - compound A or other degradation products;
 - renal or hepatic dysfunction;
@@ -8362,6 +8369,135 @@ trace as a physiologic prediction rather than as this parameter set's
 behaviour would over-estimate fat loading. The measurement does not settle it
 — one depot in six subjects against a whole-body lumped compartment — which is
 why nothing was changed and the gap is recorded instead.
+
+**Fat fills here only through its own blood supply, and human washout finds a
+second, faster fat-like store this model does not have** (`PL-WMCJ`). Every
+tissue group exchanges agent with the blood flowing through it and with nothing
+else (§ "Tissue uptake and return"), so no agent passes directly from a lean
+tissue into fat lying against it. Gas Man omits that route too and says so:
+"Inter-tissue diffusion may occur between fat and muscle; this effect has been
+ignored in the Gas Man model" (Workbook, Appendix B, p. 170). Carpenter et al.
+needed a fifth compartment to fit human washout in 27 of 36 data sets, one whose
+time constant "lies between the time constants predicted for muscle and fat".
+Both Yasuda papers this model is validated against found five compartments in
+every washout they fitted and, "following the suggestion of Carpenter et al.",
+read the fourth as "a layer of fat that receives anesthetic from adjacent
+vessel-rich organs by intertissue diffusion" (*Anesth Analg* p. 320,
+*Anesthesiology* p. 493); the first computes its volume on the assumption that
+it is fat (p. 319). Their mammillary time constants and estimated volumes
+(Tables 4 and 5 of each), mean ± SD, beside this model's fat group at the
+default cardiac output:
+
+| Cohort | Fourth compartment: time constant (min) | Fourth compartment: volume (L) | Fat group: time constant (min) | Fat group: volume (L) | This model's fat group: time constant (min) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Sevoflurane, Anesth Analg 1991;72:316-24 | 377 ± 123 | 2.5 ± 0.6 | 2,120 ± 690 | 4.1 ± 3.0 | 2,528 |
+| Isoflurane, Anesth Analg 1991;72:316-24 | 383 ± 119 | 3.0 ± 0.7 | 2,130 ± 680 | 5.1 ± 4.1 | 2,603 |
+| Isoflurane, Anesthesiology 1991;74:489-98 | 435 ± 131 | 5 ± 2 | 2,090 ± 230 | 6 ± 3 | 2,603 |
+| Desflurane, Anesthesiology 1991;74:489-98 | 273 ± 88 | 6 ± 3 | 1,340 ± 230 | 5 ± 3 | 1,496 |
+
+**So the fat trace is the fitted fat group, and the fourth compartment is what
+is missing.** This model's $`\tau_i = V_i\lambda_{i:b}/Q_i`$ for fat sits within
+one standard deviation of the fitted fat group's in three cohorts and 2.2 above
+it in the fourth, and is 5.5 to 6.8 times the fourth compartment's. Nothing
+here has a time constant on that compartment's scale — the muscle group
+equilibrates in 85 to 135 minutes — so whatever the compartment is, it has no
+counterpart in this model. Leaving it out biases three things, each read from
+that structure rather than from a run:
+
+- **Fat holds too little agent.** Taking the fourth compartment as fat at this
+  model's stored fat solubility, and filling it and the fat group from a
+  constant arterial partial pressure, it takes up 0.9 to 2.2 times as much
+  agent as this model's whole fat group over any case from half an hour to four
+  hours, and 2.6 to 5.6 times the fitted fat group within the studies' own
+  fits. The two ranges differ because the fitted volumes are too small — the
+  analysis "only accounts for about 25 L of the body volume" (*Anesth Analg*
+  p. 323) — so the size is an order of magnitude and no more: the missing store
+  is as large as the modelled fat group's uptake or larger, not a small
+  correction to it.
+- **The fat trace draws the slow fat alone.** On the fitted time constants,
+  fat lying against well-perfused tissue stands four to six and a half times
+  higher than the trace, as a fraction of the arterial partial pressure,
+  throughout a case of that length — after an hour, 13 to 20% of arterial
+  against the trace's 2.3 to 3.9% — while staying below the lean tissue
+  feeding it, that being the gradient the route runs down.
+- **The late washout loses its largest measured term.** On the published mean
+  hybrid coefficients (Tables 1 and 2 of each), the fourth compartment's term
+  is the largest in the measured washout from 1.8 to 3.1 hours after a
+  30-minute administration until 20.7 to 29.4 hours — inside the 24 hours a
+  run is supported for (§ "Supported run length"). All else equal, leaving the
+  store out makes the modelled tail fall faster. Whether it does fall below the
+  measured tail over those hours has not been measured, because this model
+  meets human washout only at five minutes (§ "Published wash-in and
+  elimination validation test").
+
+**Eger and Saidman put the effect on late recovery rather than on emergence**,
+in the review whose title names the route: "Such anesthetic returns to the
+circulation to delay recovery in healthy and obese patients, particularly with
+more soluble anesthetics. However, the increased anesthetic in fat occurs at a
+lower partial pressure and thus might not influence emergence materially." That
+is the direction above — what the model misses is the tail, not the early fall
+— and the review's emphasis is obesity, which this model's one reference adult
+does not represent.
+
+**Two cautions keep this a limitation rather than a missing parameter.** What
+the fits establish is a time constant, not an anatomy: the authors write that
+intertissue diffusion is what "we believe provides the explanation for the
+fourth compartment" (*Anesth Analg* p. 323), and Hendrickx and De Wolf quote
+Hull that assigning a tissue to a fitted compartment is "ill-founded because
+parameters of the fit to the uptake data contain no information that might
+support such assumptions" (*Modern Anesthetics*, p. 166). And the fat-perfusion
+note above acts the other way on how much agent fat holds; nothing here
+measures whether the two cancel, and neither may be read as correcting the
+other. The same authors suggest the route may also enlarge the apparent
+delivery to muscle from the vessel-rich organs beside it (*Anesth Analg*
+p. 323), so the muscle trace is not exempt. Nothing in `ROADMAP.md` plans a
+fourth tissue compartment.
+
+The time constants in the last column, the ratios and the crossing times were
+computed 2026-09-26 from the published means above and this model's stored
+parameters. Sources, none of them the authority for a stored value:
+
+- Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S,
+  Peterson NA. *Comparison of kinetics of sevoflurane and isoflurane in
+  humans.* Anesth Analg 1991;72(3):316-24. PMID 1994760,
+  doi:10.1213/00000539-199103000-00007. **Full text**, read from the private
+  reference corpus 2026-09-26: the compartment assumptions on p. 319, the
+  interpretation on p. 320, Tables 1, 2 and 4 on p. 321, Table 5 on p. 322,
+  and the volume and muscle remarks on p. 323. Seven volunteers, 30 minutes'
+  administration, six to seven days' elimination.
+- Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Johnson BH, Freire BA,
+  Fassoulaki A. *Kinetics of desflurane, isoflurane, and halothane in humans.*
+  Anesthesiology 1991;74(3):489-98. PMID 2001028,
+  doi:10.1097/00000542-199103000-00017. **Full text**, a scan with no text
+  layer, read as page images from the private reference corpus 2026-09-26: the
+  interpretation on p. 493, Table 1 on p. 494, Table 2 on p. 495, Tables 4 and
+  5 on p. 496. Eight volunteers, 30 minutes' administration, five to seven
+  days' elimination.
+- Carpenter RL, Eger EI 2nd, Johnson BH, Unadkat JD, Sheiner LB.
+  *Pharmacokinetics of inhaled anesthetics in humans: measurements during and
+  after the simultaneous administration of enflurane, halothane, isoflurane,
+  methoxyflurane, and nitrous oxide.* Anesth Analg 1986;65(6):575-82. PMID
+  3706798; PubMed records no DOI. **Abstract read**, through PubMed
+  2026-09-26: nine patients, 2 hours' administration. The abstract does not
+  name intertissue diffusion; the Yasuda papers credit that reading to this
+  paper, whose full text is unread here.
+- Eger EI 2nd, Saidman LJ. *Illustrations of inhaled anesthetic uptake,
+  including intertissue diffusion to and from fat.* Anesth Analg
+  2005;100(4):1020-33. PMID 15781517, doi:10.1213/01.ANE.0000146961.70058.A1.
+  **Abstract read**, through PubMed 2026-09-23 and 2026-09-26. It is not in
+  PubMed Central or the private corpus and the publisher's site is blocked
+  from this environment, so nothing above is sized from it.
+- Perl W, Rackow H, Salanitre E, Wolf GL, Epstein RM. *Intertissue diffusion
+  effect for inert fat-soluble gases.* J Appl Physiol 1965;20(4):621-7. PMID
+  5838712, doi:10.1152/jappl.1965.20.4.621. The Workbook's reference 32, which
+  prints the year as 1964. PubMed returns "[Abstract not available]", so
+  nothing is taken from it.
+- Philip JH. *Workbook for Gas Man®*, Appendix B, pp. 169-70, and Hendrickx
+  JFA, De Wolf A, *Special aspects of pharmacokinetics of inhalation
+  anesthesia*, Handb Exp Pharmacol 2008;(182):159-86, PMID 18175091,
+  doi:10.1007/978-3-540-74806-9_8, pp. 163 and 166. Both read from the private
+  reference corpus 2026-09-26, and both tier 3; `docs/references/README.md`
+  carries their entries.
 
 **Cardiac output does not scale with the patient, and the reference weight is
 a label rather than an input.** `default_cardiac_output_l_min` is a stored
