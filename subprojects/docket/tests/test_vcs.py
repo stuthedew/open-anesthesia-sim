@@ -290,6 +290,8 @@ def test_the_branch_id_pattern_is_the_stores_grammar() -> None:
         "claude/pl-12-slug",
         "claude/xpl-k7qx-slug",
         "claude/pl-k7qxslug",
+        "claude/pl-k7qxa-slug",
+        "claude/pl-k7qx.slug",
         "claude/eager-gauss-3kxw0u",
     ):
         assert BRANCH_ID_RE.search(name) is None, name

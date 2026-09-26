@@ -49,7 +49,8 @@ rather than from this brief. The prefix now lives in one constant,
 `store.ID_PREFIX`, and `store.ID_PATTERN` derives from it. About twenty regular
 expressions compile from `ID_PATTERN` when their module is imported: in
 `checks`, `claiming`, `claims`, `notes`, `release`, `roadmap` and `vcs`, and in
-`tools/dead_ends.py`, `tools/doc_check.py` and `tools/generator_check.py`.
+`tools/dead_ends.py`, `tools/doc_check.py`, `tools/generator_check.py` and
+`tools/item_reads.py`; `tools/pr_body_check.py` applies it at run time.
 `config.load` needs a project root, and those patterns are compiled before one
 is known. So a configurable prefix means either threading `Config` to each of
 them, or a global set on load, which two roots in one process (the test suite)
