@@ -157,8 +157,8 @@ def _docket(monkeypatch: pytest.MonkeyPatch, clone: _Clone, *argv: str, when: da
     return main([*argv, "--items", str(clone.items), "--now", (when + MINUTE).isoformat()])
 
 
-def _claim(monkeypatch: pytest.MonkeyPatch, clone: _Clone, *argv: str) -> int:
-    return _docket(monkeypatch, clone, "claim", *argv, "--trailer", ATTRIBUTION)
+def _claim(monkeypatch: pytest.MonkeyPatch, clone: _Clone, *argv: str, when: datetime = T0) -> int:
+    return _docket(monkeypatch, clone, "claim", *argv, "--trailer", ATTRIBUTION, when=when)
 
 
 def _trailer(clone: _Clone, key: str, rev: str = "HEAD") -> str:
@@ -314,7 +314,8 @@ def test_a_push_that_fails_exits_4_and_says_the_claim_is_local(
 
     out = capsys.readouterr().out
     assert "it is local" in out and "refused by the test" in out
-    assert f"git push --set-upstream origin {BRANCH}" in out
+    assert "Run `bin/docket claim PL-B1B1` again" in out
+    assert f"git push --set-upstream origin {BRANCH}" not in out
     assert work.git("rev-parse", "HEAD~1").strip() == before
     assert _trailer(work, "Claim") == f"PL-B1B1 {BRANCH}"
     assert remote.tip(BRANCH) == ""
@@ -329,7 +330,8 @@ def test_a_claim_left_unpushed_on_a_branch_the_remote_has_exits_4_because_no_oth
     until the session pushes, a second clone's read finds no hold, so the exit
     is the one a failed push gives rather than the one a pushed claim gets.
     Running `claim` again is not the retry it is after a failed push, since
-    the branch is still on the remote: it names the same push and exits 4.
+    the branch is still on the remote: it names the same `claim --push` and
+    exits 4. That, run once auto-merge is disarmed, publishes the claim.
     """
     remote = _Remote(tmp_path)
     work = remote.clone("work", BRANCH)
@@ -343,7 +345,7 @@ def test_a_claim_left_unpushed_on_a_branch_the_remote_has_exits_4_because_no_oth
 
     out = capsys.readouterr().out
     assert "not pushed, so only this checkout can see it" in out
-    assert "Disarm auto-merge" in out and f"git push --set-upstream origin {BRANCH}" in out
+    assert "Disarm auto-merge" in out and "`bin/docket claim PL-F4F4 --push`, not `git push`" in out
     assert remote.tip(BRANCH) == pushed != work.head()
     assert [hold.key for hold in holdings(work.root, now=T0 + HOUR).holds] == ["PL-F4F4"]
     other = remote.clone("other")
@@ -352,8 +354,12 @@ def test_a_claim_left_unpushed_on_a_branch_the_remote_has_exits_4_because_no_oth
     assert _claim(monkeypatch, work, "PL-F4F4") == claiming.LOCAL_ONLY
 
     out = capsys.readouterr().out
-    assert "already holds it first" in out and f"git push --set-upstream origin {BRANCH}" in out
-    work.git("push", "-q")
+    assert "already holds it first" in out and "`bin/docket claim PL-F4F4 --push`" in out
+    claimed = work.head()
+    assert _claim(monkeypatch, work, "PL-F4F4", "--push") == claiming.CLAIMED
+
+    assert "and pushed" in capsys.readouterr().out
+    assert remote.tip(BRANCH) == claimed == work.head()
     other.git("fetch", "-q", "origin")
     assert [hold.key for hold in holdings(other.root, now=T0 + HOUR).holds] == ["PL-F4F4"]
 
@@ -493,6 +499,107 @@ def test_running_claim_again_after_a_failed_push_is_the_retry_not_a_success(
     assert work.head() == claimed == remote.tip(BRANCH)
 
 
+def _order(clone: _Clone, key: str = "PL-B1B1") -> list[str]:
+    """Who holds `key` as a fresh fetch of this clone reads it, first first."""
+    clone.git("fetch", "-q", "origin")
+    return [hold.ref for hold in holdings(clone.root, now=T0 + HOUR).order(key)]
+
+
+def test_a_claim_confirmed_first_is_not_displaced_by_one_published_later_through_push(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The stress test's scenario i2 (`PL-ZLJ9`): claims order by author date, not push time.
+
+    This branch is on the remote, so its claim is left unpushed and exits 4.
+    Another session then claims and reads back as holding, since nothing it
+    can fetch says otherwise. Published now, this branch's earlier claim would
+    order first and take the item from it; `claim --push` withdraws it with a
+    yield instead, left unpushed, which rides whatever push publishes the claim.
+    """
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    work.commit("groundwork", when=T0 - HOUR, files={"src/w.py": "w = 1\n"})
+    work.git("push", "-q", "-u", "origin", BRANCH)
+    pushed = work.head()
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.LOCAL_ONLY
+    claimed = work.head()
+    rival = remote.clone("rival", RIVAL)
+    assert _claim(monkeypatch, rival, "PL-B1B1", when=T0 + 5 * MINUTE) == claiming.CLAIMED
+    capsys.readouterr()
+
+    code = _claim(monkeypatch, work, "PL-B1B1", "--push", when=T0 + 10 * MINUTE)
+
+    assert code == claiming.HELD_ELSEWHERE
+    out = capsys.readouterr().out
+    assert f"origin/{RIVAL} holds it (claimed" in out and f"claim, {claimed[:12]}, was not" in out
+    assert f"Withdrawn by {work.head()[:12]}" in out and "no claim was written" in out
+    assert work.git("rev-parse", "HEAD~1").strip() == claimed
+    assert _trailer(work, "Yield") == f"PL-B1B1 {BRANCH}"
+    assert _trailer(work, "Co-Authored-By") == "T <t@example.com>"
+    assert remote.tip(BRANCH) == pushed
+
+    work.git("push", "-q")
+    assert _order(rival) == [RIVAL]
+    assert _order(remote.clone("observer")) == [f"origin/{RIVAL}"]
+
+
+def test_a_retry_withdraws_a_claim_a_rival_published_over_while_it_was_unpublished(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The stress test's scenario a3 (`PL-ZLJ9`): the retry after a failed push.
+
+    Running `claim` again is how a failed push is retried, and it used to find
+    this branch holding first and push, revoking the claim another session
+    made and was told it held while this one was unpublished.
+    """
+    remote = _Remote(tmp_path)
+    remote.hook("pre-receive", "exit 1")
+    work = remote.clone("work", BRANCH)
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.LOCAL_ONLY
+    (remote.path / "hooks" / "pre-receive").unlink()
+    rival = remote.clone("rival", RIVAL)
+    assert _claim(monkeypatch, rival, "PL-B1B1", when=T0 + 5 * MINUTE) == claiming.CLAIMED
+    capsys.readouterr()
+
+    assert _claim(monkeypatch, work, "PL-B1B1", when=T0 + 10 * MINUTE) == claiming.HELD_ELSEWHERE
+
+    out = capsys.readouterr().out
+    assert "Withdrawn by" in out and f"--over origin/{RIVAL}" in out
+    assert _trailer(work, "Yield") == f"PL-B1B1 {BRANCH}"
+    assert remote.tip(BRANCH) == ""
+    work.git("push", "-q", "-u", "origin", BRANCH)
+    assert _order(rival) == [RIVAL]
+    assert _order(remote.clone("observer")) == [f"origin/{RIVAL}"]
+
+
+def test_a_claim_on_another_item_withdraws_a_displaced_claim_its_push_would_publish(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A push publishes every claim on the branch, so the check covers every one.
+
+    The claim asked for goes ahead, and the push carries the withdrawn claim
+    with the yield that ends it.
+    """
+    remote = _Remote(tmp_path)
+    remote.hook("pre-receive", "exit 1")
+    work = remote.clone("work", BRANCH)
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.LOCAL_ONLY
+    (remote.path / "hooks" / "pre-receive").unlink()
+    rival = remote.clone("rival", RIVAL)
+    assert _claim(monkeypatch, rival, "PL-B1B1", when=T0 + 5 * MINUTE) == claiming.CLAIMED
+    capsys.readouterr()
+
+    assert _claim(monkeypatch, work, "PL-C2C2", when=T0 + 10 * MINUTE) == claiming.CLAIMED
+
+    out = capsys.readouterr().out
+    assert "PL-B1B1: " in out and "Withdrawn by" in out and "no claim was written" not in out
+    assert "PL-C2C2: claim written on" in out and "and pushed" in out
+    assert remote.tip(BRANCH) == work.head()
+    observer = remote.clone("observer")
+    assert _order(observer) == [f"origin/{RIVAL}"]
+    assert _order(observer, "PL-C2C2") == [f"origin/{BRANCH}"]
+
+
 def test_a_branch_on_the_remote_without_tracking_is_not_pushed_onto(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -540,7 +647,8 @@ def test_a_branch_tracking_the_default_branch_already_on_the_remote_is_given_its
     """Pushed without `-u`, it may carry an armed pull request, so it is not pushed onto.
 
     A bare `git push` there goes to the default branch or is refused, so the
-    message names the one command that pushes the branch to its own copy.
+    message names `claim --push`, which pushes the branch to its own copy and
+    gives it its own upstream.
     """
     remote = _Remote(tmp_path)
     work = remote.clone("work")
@@ -550,13 +658,20 @@ def test_a_branch_tracking_the_default_branch_already_on_the_remote_is_given_its
     )
     work.git("push", "-q", "origin", BRANCH)
     pushed = work.head()
+    main = remote.tip("main")
 
     assert _claim(monkeypatch, work, "PL-F4F4") == claiming.LOCAL_ONLY
 
     out = capsys.readouterr().out
     assert f"on the remote as origin/{BRANCH}" in out
-    assert f"git push --set-upstream origin {BRANCH}" in out
+    assert "`bin/docket claim PL-F4F4 --push`" in out
     assert remote.tip(BRANCH) == pushed != work.head()
+
+    assert _claim(monkeypatch, work, "PL-F4F4", "--push") == claiming.CLAIMED
+
+    assert remote.tip(BRANCH) == work.head()
+    assert remote.tip("main") == main
+    assert work.git("rev-parse", "--abbrev-ref", "@{u}").strip() == f"origin/{BRANCH}"
 
 
 def test_a_legacy_claim_shared_by_merging_the_holder_is_continued_not_tied(
