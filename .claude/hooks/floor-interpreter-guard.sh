@@ -103,16 +103,28 @@ GUARDED = re.compile(r"(?<![\w-])(?<!subprojects/docket/)(?:src|tests)/")
 # A whole-tree parse reaches both without naming either.
 WHOLE_TREE = ("compileall", "py_compile")
 
+# What a redirection onto standard input hands the interpreter: a file it reads,
+# or with `<<<` the text itself.
+READS = ("<", "<>", "<<<")
+
 offender = None
 for segment, _ in cut:
     # A subshell, a brace group, a negation, a reserved word such as `do` or
-    # `time`, or an assignment opens the command (`PL-0X0G`), and a wrapper
-    # such as `timeout` or `env` finds the interpreter it names on PATH, as the
-    # bare call does (`PL-TRMN`).
+    # `time`, an assignment or a redirection opens the command (`PL-0X0G`,
+    # `PL-K9QL`), and a wrapper such as `timeout` or `env` finds the
+    # interpreter it names on PATH, as the bare call does (`PL-TRMN`).
     rest = shell_split.program_words(segment)
     if not rest or not INTERPRETER.match(rest[0]):
         continue
-    arguments = rest[1:]
+    # A redirection is no argument, since bash lifts it out wherever it
+    # stands, so a guarded path the interpreter only writes to is not read. A
+    # file redirected onto its standard input is the script it parses, so that
+    # is read beside the arguments (`PL-K9QL`).
+    arguments = rest[1:] + [
+        word
+        for descriptor, operator, word in shell_split.redirections(segment)
+        if descriptor in ("", "0") and operator in READS
+    ]
     if any(GUARDED.search(argument) for argument in arguments):
         offender = " ".join(rest)
         break

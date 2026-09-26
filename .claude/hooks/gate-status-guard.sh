@@ -106,6 +106,13 @@
 # unmatched on purpose: a gate built out of a variable, and a wrapper that list
 # does not name.
 #
+# **So is a gate written around a redirection** (`PL-K9QL`). Bash lifts a
+# redirection out of a command wherever it stands, so `2>/dev/null make check |
+# tail` runs `make`, and `bin/docket 2>/dev/null check | tail` hands it `check`;
+# read as words, the first took `2` for the command and the second `2` for the
+# subcommand, and both lost the status unrefused. `shell_split.py` takes a
+# redirection out of the words for all three guards.
+#
 # **Where one command ends is `shell_split.py`'s answer, not this file's.** The
 # three Bash guards import it, so a shape one of them read differently from bash
 # - a `)` glued to the `;` after it (`PL-63TT`), a backslash-newline

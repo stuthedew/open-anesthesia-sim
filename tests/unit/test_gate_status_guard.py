@@ -299,6 +299,38 @@ def test_a_wrapper_runs_the_command_after_it(command: str, refused: bool) -> Non
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
 
 
+REDIRECTED = (
+    # `PL-K9QL`'s reproductions, verbatim: ahead of the command, and among a
+    # wrapper's words.
+    ("2>/dev/null make check | tail -5", True),
+    ("timeout 5 >x make check | tail", True),
+    # Among assignments in any order, and among the program's own words.
+    ("FOO=1 2>/dev/null BAR=2 make check | tail", True),
+    ("{ >/tmp/gate.log make check; } | tail", True),
+    ("bin/docket 2>/dev/null check | tail -5", True),
+    ("uv 2>&1 run pytest -q | tail", True),
+    # A number written against the operator is its descriptor, so this hands
+    # `timeout` the duration `make`, which it refuses, and runs no gate. Quoted
+    # or spaced, as in the second line above, a number is a word.
+    ("timeout 5>x make check | tail", False),
+    ("timeout '5'>x make check | tail", True),
+    # A `set` after a redirection still runs in this shell.
+    ("2>/dev/null set -o pipefail; make check 2>&1 | tail -5", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), REDIRECTED)
+def test_a_redirection_is_not_a_word_of_the_command(command: str, refused: bool) -> None:
+    """Bash lifts a redirection out wherever it stands, so it hides no gate (`PL-K9QL`).
+
+    The guard read `2>/dev/null` as the word `2` and took it for the command,
+    or for the subcommand after `bin/docket`, and a wrapper stopped reading at
+    the `>`: each refused pipe here lost its status unrefused.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 COMPOUND = (
     # A gate ending an `if` branch leaves with the `if`, whose status is "the
     # exit status of the last command executed" (`help if`, bash 5.2.21). The

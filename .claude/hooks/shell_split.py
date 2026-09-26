@@ -45,7 +45,13 @@ unquoted. So the rules are bash's own, from the Bash Reference Manual (§2
 so no guard can disagree with another about which word is the command. It
 drops everything bash reads ahead of a command's name, the reserved words that
 open a command included: `do make check` runs `make`, where it once read as a
-command named `do` and passed all three guards (`PL-0X0G`). And `commands`
+command named `do` and passed all three guards (`PL-0X0G`). A redirection is
+among them, and is no word of the command wherever it stands: bash lifts it out
+before it runs anything, so `2>/dev/null make check` runs `make` and `echo a
+2>&1 b` prints `a b` (`PL-K9QL`). It takes its operator, the word after it, and
+the descriptor written against it - a number or a `{name}` with no space before
+a `<` or `>` operator, unquoted - so `timeout 5>x make check` hands `timeout` no
+duration, where `timeout 5 >x` and `timeout '5'>x` do. And `commands`
 finds every command a string runs, those inside `( )` and `$( )` included, for
 a guard that must see one wherever bash would run it. `no-prune-guard.sh` read
 that with a regex of its own, which took a `;` inside quotes for a separator
@@ -73,12 +79,15 @@ make check; done`; `commands` reads the first, splitting at its `)`. And a
 quoted `if` or `{`, or a `time` after a `|`, reads as the reserved word, where
 bash reads a command's name.
 
-A command bash would refuse - an unclosed quote or substitution, a `<<` with no
-word after it - is unreadable. `words` and `segments` answer None for it, and
-the gate and floor guards fail open on that, as they always have. `commands`
-still reads it as far as it can, because bash runs every line before the one it
-cannot finish. Standard library only, and it parses at the floor
-`tests/unit/test_tools_portability.py` holds `.claude/hooks/` to.
+A redirection with no word after it, which bash refuses, is read as taking only
+its operator, and a `<(` or `>(` as the process substitution it is rather than
+a redirection. A command bash would refuse - an unclosed quote or
+substitution, a `<<` with no word after it - is unreadable. `words` and
+`segments` answer None for it, and the gate and floor guards fail open on that,
+as they always have. `commands` still reads it as far as it can, because bash
+runs every line before the one it cannot finish. Standard library only, and it
+parses at the floor `tests/unit/test_tools_portability.py` holds
+`.claude/hooks/` to.
 """
 
 from __future__ import annotations
@@ -97,9 +106,25 @@ class Operator(str):
     __slots__ = ()
 
 
+class Descriptor(str):
+    """The descriptor a redirection names ahead of its operator: `2` in `2>&1`, `fd` in `{fd}>x`.
+
+    POSIX calls it IO_NUMBER (XCU §2.10.1), and bash also takes a `{name}` there
+    (Bash Reference Manual §3.6 "Redirections"). Spaced from the operator or
+    quoted it is an ordinary word, so it cannot be a plain string either.
+    """
+
+    __slots__ = ()
+
+
 # Bash's control and redirection operators, matched longest first.
 OPERATORS = frozenset("; ;; ;& ;;& & && &> &>> | || |& ( ) < << <<- <<< <& <> > >> >& >|".split())
 OPERATOR_CHARACTERS = frozenset("&|;()<>")
+
+# The operators that redirect, each taking the word after it. Only those opening
+# with `<` or `>` take a descriptor: in `echo hi 2&>x` the `2` is a word.
+REDIRECTIONS = frozenset("< << <<- <<< <& <> > >> >& >| &> &>>".split())
+DESCRIPTOR = re.compile(r"[0-9]+|\{[A-Za-z_][A-Za-z0-9_]*\}")
 
 # The operators that end a command, and the one each is read as: `|&` is a pipe
 # that carries stderr too, and `;;`, `;&` and `;;&` end a `case` clause as `;`
@@ -231,9 +256,9 @@ NICE_ADJUSTMENT = re.compile(r"^-[-+]?\d")
 def words(command: str) -> list[str] | None:
     """The tokens bash reads in `command`, or None where bash would refuse it.
 
-    Words come with their quotes removed and operators as `Operator`, with each
-    newline that ends a command read as `;` and every comment, continuation and
-    heredoc body gone.
+    Words come with their quotes removed, operators as `Operator` and a
+    redirection's descriptor as `Descriptor`, with each newline that ends a
+    command read as `;` and every comment, continuation and heredoc body gone.
     """
     reader = _Reader(command, [], 0, nested=False)
     try:
@@ -260,9 +285,12 @@ def command_words(segment: list[str]) -> list[str]:
 
     That is any run of grouping and of the reserved words that open a command,
     `time`'s options with it - `then ! time -p make check` runs `make` - and
-    then any assignments. Assignments come last because bash reads a reserved
-    word only as a command's first word: after `FOO=1`, `if` and `time` are
-    the names of programs, which bash 5.2.21 reports it cannot find (`PL-0X0G`).
+    then any assignments and redirections, in any order (POSIX.1-2017 XCU
+    §2.9.1). Those come last because bash reads a reserved word only as a
+    command's first word: after `FOO=1` or `2>/dev/null`, `if` and `time` are
+    the names of programs, which bash 5.2.21 reports it cannot find (`PL-0X0G`,
+    `PL-K9QL`). A redirection after the command word is left where it stands,
+    so the words dropped are always the ones ahead of what is returned.
 
     Every guard reads the head of a command through this, so none can disagree
     with another about which word is the command - as two readers inside one
@@ -274,8 +302,11 @@ def command_words(segment: list[str]) -> list[str]:
             for option in TIME_OPTIONS:
                 if rest and rest[0] == option:
                     rest.pop(0)
-    while rest and ASSIGNMENT.match(rest[0]):
-        rest.pop(0)
+    while rest:
+        taken = 1 if ASSIGNMENT.match(rest[0]) else _redirection(rest, 0)
+        if not taken:
+            break
+        del rest[:taken]
     return rest
 
 
@@ -283,15 +314,67 @@ def program_words(segment: list[str]) -> list[str]:
     """`segment` from the program it runs: its command word, or past each wrapper ahead of it.
 
     `timeout 60 nice -n 5 git fetch --prune` runs `git`, so that is where the
-    words start (`PL-TRMN`). Empty where the wrapper runs nothing - `command -v
-    git` describes it, a wrapper given no command runs none, and one refusing
-    an option it does not know stops there - or runs a string this does not
-    read, as `env -S` does.
+    words start (`PL-TRMN`). Every redirection is gone from what is returned,
+    since bash passes none of them to the program: `env 2>/dev/null git fetch
+    --prune` runs `git`, and `bin/docket 2>/dev/null check` hands `bin/docket`
+    the word `check` first (`PL-K9QL`). Empty where the wrapper runs nothing -
+    `command -v git` describes it, a wrapper given no command runs none, and
+    one refusing an option it does not know stops there - or runs a string this
+    does not read, as `env -S` does.
     """
-    rest = command_words(segment)
+    rest, _ = _lift(command_words(segment))
     while rest and _basename(rest[0]) in WRAPPERS:
         rest = _run_by(rest)
     return rest
+
+
+def redirections(segment: list[str]) -> list[tuple[str, str, str]]:
+    """Each redirection in `segment`, wherever it stands: its descriptor, its operator and its word.
+
+    A descriptor not written is "", and so is the word of an operator bash
+    would refuse for having none. For a guard reading what a command is handed
+    apart from its words, as the floor guard reads a file redirected onto an
+    interpreter's standard input (`PL-K9QL`).
+    """
+    _, lifted = _lift(segment)
+    return lifted
+
+
+def _redirection(words: list[str], at: int) -> int:
+    """How many of `words` the redirection starting at `at` takes, or 0 where none starts there.
+
+    Its descriptor where one is written against it, its operator, and the word
+    it names. A `<(` or `>(` starts a process substitution, not a redirection,
+    and an operator with no word after it takes only itself.
+    """
+    end = at + 1 if isinstance(words[at], Descriptor) else at
+    if end == len(words) or not (isinstance(words[end], Operator) and words[end] in REDIRECTIONS):
+        return 0
+    operator, end = words[end], end + 1
+    if end < len(words) and not isinstance(words[end], Operator):
+        return end + 1 - at
+    if end < len(words) and words[end] == "(" and operator in ("<", ">"):
+        return 0
+    return end - at
+
+
+def _lift(words: list[str]) -> tuple[list[str], list[tuple[str, str, str]]]:
+    """`words` apart from their redirections, and the redirections, as bash lifts them out."""
+    kept: list[str] = []
+    lifted: list[tuple[str, str, str]] = []
+    at = 0
+    while at < len(words):
+        taken = _redirection(words, at)
+        if not taken:
+            kept.append(words[at])
+            at += 1
+            continue
+        parts = words[at : at + taken]
+        descriptor = parts.pop(0) if isinstance(parts[0], Descriptor) else ""
+        operator = parts.pop(0)
+        lifted.append((descriptor, operator, parts[0] if parts else ""))
+        at += taken
+    return kept, lifted
 
 
 def _basename(word: str) -> str:
@@ -426,6 +509,18 @@ def _operator_at(text: str, at: int) -> str:
     return text[at]
 
 
+def _takes_a_descriptor(text: str, at: int) -> bool:
+    """Whether the operator at `at` is a redirection a descriptor can be written against.
+
+    One opening with `<` or `>`, and not a process substitution's `<(` or `>(`:
+    bash 5.2.21 prints `2/dev/fd/63` for `echo 2>(cat)`, the `2` a word.
+    """
+    operator = _operator_at(text, at)
+    if operator not in REDIRECTIONS or operator[0] not in "<>":
+        return False
+    return not (operator in ("<", ">") and text[at + 1 : at + 2] == "(")
+
+
 def _backquote_end(text: str, opening: int) -> int:
     """Where the backquote closing the one at `opening` stands, or -1."""
     at = opening + 1
@@ -460,6 +555,9 @@ class _Reader:
         self.tokens: list[str] = []
         self.word: list[str] = []
         self.in_word = False
+        # Whether any of the word in progress was quoted or escaped, which
+        # keeps a number written against a redirection a word.
+        self.quoted = False
         # The heredocs whose bodies start at the next unquoted newline: each
         # delimiter, and whether `<<-` strips its lines' leading tabs.
         self.pending: list[tuple[str, bool]] = []
@@ -484,7 +582,7 @@ class _Reader:
                     self._remove(self.at, self.at + 2)
                 else:
                     self.word.append(following or character)
-                    self.in_word = True
+                    self.in_word = self.quoted = True
                 self.at += 2
             elif character == "\n":
                 self._end_word()
@@ -501,7 +599,7 @@ class _Reader:
             elif character == "$" and following == "'":
                 self._ansi_c_quoted()
             elif character in OPERATOR_CHARACTERS:
-                self._end_word()
+                self._end_word(redirected=_takes_a_descriptor(text, self.at))
                 if self._operator() == ")" and self.nested:
                     if self.depth == 0:
                         return self.at
@@ -518,13 +616,19 @@ class _Reader:
     def _remove(self, start: int, end: int) -> None:
         self.removed.append((start, end))
 
-    def _end_word(self) -> None:
+    def _end_word(self, *, redirected: bool = False) -> None:
+        """End the word in progress; `redirected` where a redirection follows it unspaced."""
         if not self.in_word:
             return
         word = "".join(self.word)
+        # Unquoted, and not the delimiter a `<<` is waiting for, which takes
+        # this word whatever follows it.
+        descriptor = redirected and not self.quoted and self.introducer is None
+        if descriptor and DESCRIPTOR.fullmatch(word):
+            word = Descriptor(word)
         self.tokens.append(word)
         self.word.clear()
-        self.in_word = False
+        self.in_word = self.quoted = False
         if self.introducer is not None:
             self.pending.append((word, self.introducer))
             self.introducer = None
@@ -572,7 +676,7 @@ class _Reader:
         if close < 0:
             raise _Unreadable
         self.word.append(self.text[self.at + 1 : close])
-        self.in_word = True
+        self.in_word = self.quoted = True
         self.at = close + 1
 
     def _ansi_c_quoted(self) -> None:
@@ -584,7 +688,7 @@ class _Reader:
             raise _Unreadable
         # Its escapes are kept as written: no guard reads what they decode to.
         self.word.append(text[self.at + 2 : at])
-        self.in_word = True
+        self.in_word = self.quoted = True
         self.at = at + 1
 
     def _double_quoted(self) -> None:
@@ -594,7 +698,7 @@ class _Reader:
             character = text[at]
             following = text[at + 1 : at + 2]
             if character == '"':
-                self.in_word = True
+                self.in_word = self.quoted = True
                 self.at = at + 1
                 return
             if character == "\\" and following in ESCAPED_IN_DOUBLE_QUOTES:

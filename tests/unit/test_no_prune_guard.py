@@ -259,6 +259,30 @@ def test_a_wrapper_runs_the_command_after_it(command: str, refused: bool) -> Non
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
 
 
+REDIRECTED = (
+    # `PL-K9QL`'s reproductions, verbatim: ahead of git, and among a wrapper's
+    # words.
+    ("2>/dev/null git fetch --prune", True),
+    ("env 2>/dev/null git fetch --prune", True),
+    # Among git's own words, ahead of the setting it reads for the whole call.
+    ("git 2>/dev/null -c fetch.prune=true fetch origin", True),
+    # A redirection's word is a file, never a flag.
+    ("git fetch origin 2>-p", False),
+    ("2>/dev/null git fetch origin", False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), REDIRECTED)
+def test_a_redirection_is_not_a_word_of_the_command(command: str, refused: bool) -> None:
+    """Bash lifts a redirection out wherever it stands, so it hides no prune (`PL-K9QL`).
+
+    The guard read `2>/dev/null` as the word `2` and took it for the command,
+    a wrapper stopped reading at the `>`, and git's own options stopped at it.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 def test_a_prune_before_a_line_bash_cannot_read_is_refused() -> None:
     """Bash runs every line before a syntax error, so the hook reads them.
 
