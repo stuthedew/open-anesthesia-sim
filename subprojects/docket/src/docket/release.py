@@ -37,6 +37,13 @@ if TYPE_CHECKING:  # `roadmap` reads this module's version grammar, so the
 VERSION_RE = re.compile(r'^(version\s*=\s*")([^"]+)(")', re.M)
 SEMVER_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 
+#: What `SEMVER_RE` accepts, in the words a refusal of anything else uses, so
+#: the grammar a reader is told and the one enforced sit on adjacent lines.
+SEMVER_GRAMMAR = (
+    "three whole numbers joined by dots, MAJOR.MINOR.PATCH, with an optional "
+    "leading v, such as 0.5.12 or v0.5.12"
+)
+
 #: Where the generated notes are written, and therefore where a release
 #: already cut can be read back from. A constant rather than a setting: it is
 #: one directory, written in one place and read in one, and the value of
