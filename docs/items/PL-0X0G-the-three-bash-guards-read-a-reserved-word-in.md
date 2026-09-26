@@ -9,6 +9,7 @@ touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .clau
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1093
 payoff: a gate, a floor parse or a prune written inside an if or a loop, or after time, is refused like the same command on its own, so a red make check piped to tail there no longer reaches a session as exit 0
 verify: grep -q 'def test_a_reserved_word_opens_the_command_after_it' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_reserved_word_opens_the_command_after_it' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_a_reserved_word_opens_the_command_after_it' tests/unit/test_no_prune_guard.py
 ---
