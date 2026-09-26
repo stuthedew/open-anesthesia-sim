@@ -1,8 +1,14 @@
 ---
 id: PL-X8SV
 title: Stale claude/ branches stop accumulating and today's 14 are cleared once: nothing deletes a branch whose own pull request never merges, so each hand-off between sessions leaves one behind
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: infra
+touches: tools/branch_sweep.py, tools/open_pull_requests.py, tests/unit/test_branch_sweep.py, .github/workflows/branch-sweep.yml, subprojects/docket/src/docket/claims.py, docket.toml, docs/worker.md, docs/maintainer.md, CLAUDE.md, docs/items, docs/pr-bodies
 added: 2026-09-26
+payoff: the remote holds main and live work only, and nobody deletes a branch by hand: a daily job archives each finished claude/ branch under refs/archive and deletes it
+verify: grep -q 'tools/branch_sweep.py --apply' .github/workflows/branch-sweep.yml && grep -q 'refs/archive' tools/branch_sweep.py && grep -q 'branch-sweep.yml' CLAUDE.md
 ---
 
 **Problem.** Stale claude/ branches stop accumulating and today's 14 are cleared once: nothing deletes a branch whose own pull request never merges, so each hand-off between sessions leaves one behind
@@ -53,7 +59,52 @@ via #1102.
 3. **Delete the head branch when a pull request closes unmerged.** This would
    have covered 2 of the 14 (#1045, #1101), which is not enough on its own.
 
-**Deleting branches automatically risks deleting work nobody carried forward.**
-So the chosen route goes to the owner before it is built, as a material risk of
-breaking what works (`CLAUDE.md` § "The queue"). If route 1 lands, `PL-S8LZ`'s
-cleanup sentences become a fallback and are a candidate for retirement.
+**The owner asked for the fix now, 2026-09-26** ("Finish doing research etc. I
+want to fix this now not file it for later"), so route 1 was researched and
+built in the same session. The deletion risk is answered by making every
+deletion reversible, and merging the pull request is the owner's decision
+point, since nothing runs from a branch.
+
+**What the research found.**
+
+- **A workflow token can do it.** `permissions: contents: write` raises the
+  `GITHUB_TOKEN` above a read-only default ("You can use `permissions` to modify
+  the default permissions granted to the `GITHUB_TOKEN`, adding or removing
+  access as required", GitHub Docs, *Workflow syntax for GitHub Actions*).
+  GitHub's receive-pack advertises `atomic` and `delete-refs`: measured
+  2026-09-26 with `GIT_TRACE_PACKET=1` on a dry-run push, agent
+  `github/spokes-receive-pack`.
+- **A tip can be kept without a branch.** GitHub accepts pushes to ref
+  namespaces outside `refs/heads` and `refs/tags` and does not list them in its
+  web interface (GitHub Community discussion #30507), and the REST "Create a
+  reference" endpoint takes any name that starts with `refs` and has two
+  slashes. A default fetch reads neither, so an archive ref clutters no clone.
+- **Settled plus stranded is not a safe test on its own.** `settled_branches`
+  asks only about refs in flight, and `stranded` also lists edits: four of the
+  14 carry one (`PL-N162` on three hand-off drafts, `PL-PNJF` on
+  `claude/project-thread-f3ybg7`), both items closed on `main`. The rule below
+  composes every detector the digest reads, and an edit keeps a branch only
+  while its item is open on `main`.
+- **Route 2 removes one source at most.** `create_session`'s `outcome_branch`
+  lets a spawning session name the branch its child pushes to, but Projects
+  threads get harness-named branches this repository does not control, and an
+  abandoned session or a pull request closed unmerged leaves a branch with no
+  successor at all. Route 3 is what route 1 does after its grace period.
+
+**The design, as built.** `tools/branch_sweep.py`, run daily by
+`.github/workflows/branch-sweep.yml`. A `claude/` branch is kept while a pull
+request is open from it or onto it, `docket` reads unfinished work or a release
+cut on it, it holds the only copy of an item or an edit to an open one,
+`vcs.orphaned` or `tools/left_behind_check.py` finds commits a merged pull
+request left behind, or its last commit is under 72 hours old. Otherwise one
+atomic push copies its tip to `refs/archive/<branch>/<tip>` and deletes it,
+leased on the tip it was judged at. Any reading that fails archives nothing and
+turns the run red. The first run is the one-time cleanup.
+
+**Why it matters.** Every stale branch is re-read by `git branch -r`, `flight`,
+`stranded` and the session-start digest, and today the only remedy is the
+owner deleting them by hand, again each time they build up.
+
+**Done when.** The sweep and its workflow are on `main`, its rule and its
+archive-then-delete push are tested, and `PL-S8LZ`'s cleanup sentence in
+`CLAUDE.md` points at the sweep rather than at a hand-made list.
