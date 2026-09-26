@@ -3,10 +3,11 @@ id: PL-WXPR
 title: subprojects/docket/README.md says closed blockers never fire the prose-dependency advisory, since most in-body mentions name landed work - but PL-8YXJ's count refuted that prediction and docket check now advises on a brief still waiting on a closed item
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: subprojects/docket/README.md
 added: 2026-09-26
+closed: 2026-09-26
 payoff: a reader deciding whether a stale wait in a brief will be caught learns that a closed item named as a prerequisite draws the ended-wait advisory, instead of reading that it is never reported
 verify: ! grep -qF 'Closed blockers never fire, since' subprojects/docket/README.md
 ---

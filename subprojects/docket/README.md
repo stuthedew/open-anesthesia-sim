@@ -2782,8 +2782,15 @@ brief. So where an open item's body names another *open* item in an explicit
 dependency sentence — `depends on`, `blocked on`, `blocked by`, `waits on`,
 `requires` — and `blocked-by` does not carry it, the advisory names the item,
 the blocker and the sentence. Either answer clears it: declare the edge, or
-reword a sentence that was not claiming one. Closed blockers never fire, since
-most in-body mentions name work that has since landed.
+reword a sentence that was not claiming one. A *closed* item the brief still
+waits on or lands with draws a different advisory, `_ended_waits`, because a
+closed item is no edge to declare but a brief worded as waiting on one reads,
+cold, as a condition still to meet: it names the passage, and either rewording
+it as history or opening it with `[superseded YYYY-MM-DD]` clears it.
+`CLOSED_PREREQUISITE_CUES` says which phrases it reads, and why `requires` is
+not one. Closed blockers used to go unreported, on the prediction that most
+such mentions name work that has since landed; counted on 2026-09-22 they fired
+7 times, 5 of them live waits worded as current (`PL-8YXJ`).
 
 It is an advisory rather than an error because only half of this is decidable:
 whether the id is declared is a fact, whether the sentence states a
