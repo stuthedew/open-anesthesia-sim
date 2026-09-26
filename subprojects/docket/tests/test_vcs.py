@@ -738,25 +738,28 @@ def test_a_merged_and_deleted_branch_is_not_reported_as_stranded() -> None:
     What separates them is whether the base holds the item, which is only a
     true answer on a base something refreshed. Both halves are asserted here
     because the second is the finding: the same trees give opposite answers
-    across one fetch, so how fresh the base is belongs in the report.
+    across one fetch, so how fresh the base is belongs in the answer - which
+    the snapshot the report is read against carries, as `Snapshot.fresh`.
     """
     stale = _tree_runner({"origin/main": MAIN, DELETED_ON_MERGE: MERGED})
     fresh = _tree_runner({"origin/main": MERGED, DELETED_ON_MERGE: MERGED})
 
     assert [i.identifier for i in stranded(ROOT, {"PL-0001"}, runner=stale).items] == ["PL-XLQ5"]
-    assert stranded(ROOT, {"PL-0001"}, runner=fresh, fetched=True).items == ()
+    assert stranded(ROOT, {"PL-0001"}, runner=fresh).items == ()
 
 
 def test_whether_the_comparison_point_was_refreshed_is_part_of_the_answer() -> None:
-    """Reported only in the negative, for the reason `BranchState` gives.
+    """Said once, by the snapshot the report is read against (`PL-Z909`).
 
-    A quiet `git fetch` prints nothing whether it reached the remote or not, so
-    what can be claimed is that a caller tried - never that a refresh arrived.
+    `stranded` takes no word for it and its report carries no copy of it, so no
+    report can say its refs are this command's own fetch when the snapshot says
+    they are not: a fetch that answered is fresh, and no fetch is not.
     """
     runner = _tree_runner({"origin/main": MAIN, DELETED_ON_MERGE: MERGED})
+    now = datetime(2026, 9, 26, 2, 0, tzinfo=UTC)
 
-    assert not stranded(ROOT, {"PL-0001"}, runner=runner).fetched
-    assert stranded(ROOT, {"PL-0001"}, runner=runner, fetched=True).fetched
+    assert not snapshot(ROOT, now=now, runner=runner).fresh
+    assert snapshot(ROOT, now=now, fetch=Fetch(FETCHED), runner=runner).fresh
 
 
 # An item file `main` holds and a branch has written to. This is the commoner
@@ -1229,7 +1232,6 @@ def test_the_rewritten_branch_line_replaces_the_advice_that_would_lose_the_work(
             base=BASE,
             behind=699,
             ahead=703,
-            fetched=True,
             rewrite=RewriteReport(
                 duplicated=702, own=(("2966d9b", "PL-8PS6 Capture the fresh gas flow range"),)
             ),
@@ -1264,7 +1266,6 @@ def test_every_commit_held_only_here_is_listed_and_picked() -> None:
             base=BASE,
             behind=40,
             ahead=49,
-            fetched=True,
             rewrite=RewriteReport(duplicated=40, own=own),
         )
     )
@@ -1285,7 +1286,6 @@ def test_a_merge_commit_held_only_here_says_what_cherry_pick_needs() -> None:
             base=BASE,
             behind=9,
             ahead=11,
-            fetched=True,
             rewrite=RewriteReport(
                 duplicated=9,
                 own=(("2966d9b", "Merge origin/main into claude/pl-k7qx-live"),),
@@ -1303,12 +1303,7 @@ def test_a_rewrite_the_branch_added_nothing_to_is_moved_across_whole() -> None:
 
     printed = format_branch_state(
         BranchState(
-            branch="main",
-            base=BASE,
-            behind=700,
-            ahead=699,
-            fetched=True,
-            rewrite=RewriteReport(duplicated=699),
+            branch="main", base=BASE, behind=700, ahead=699, rewrite=RewriteReport(duplicated=699)
         )
     )
 
@@ -1338,7 +1333,7 @@ def test_the_branch_state_line_prints_the_command_for_each_state() -> None:
 
     restart = format_branch_state(BranchState(branch="claude/pl-k7qx-live", base=BASE, behind=4))
     merge = format_branch_state(
-        BranchState(branch="claude/pl-k7qx-live", base=BASE, behind=4, ahead=2, fetched=True)
+        BranchState(branch="claude/pl-k7qx-live", base=BASE, behind=4, ahead=2)
     )
 
     assert "git checkout -B claude/pl-k7qx-live origin/main" in restart
@@ -1359,7 +1354,7 @@ def test_the_branch_state_line_says_when_nothing_refreshed_the_base() -> None:
     state = BranchState(branch="main", base=BASE, behind=1)
     caveat = "Nothing refreshed the refs for this answer (`--no-fetch`): read from the clone."
     stale = format_branch_state(state, rests_on=caveat)
-    fresh = format_branch_state(BranchState(branch="main", base=BASE, behind=1, fetched=True))
+    fresh = format_branch_state(BranchState(branch="main", base=BASE, behind=1))
 
     assert f"  {caveat}" in stale
     assert "refreshed" not in fresh
@@ -2786,14 +2781,7 @@ def test_the_landed_branch_line_refuses_the_merge_it_replaces() -> None:
     from docket.render import format_branch_state
 
     printed = format_branch_state(
-        BranchState(
-            branch="claude/pl-k7qx-live",
-            base=BASE,
-            behind=2,
-            ahead=1,
-            landed_whole=True,
-            fetched=True,
-        )
+        BranchState(branch="claude/pl-k7qx-live", base=BASE, behind=2, ahead=1, landed_whole=True)
     )
 
     assert f"git merge {BASE}" not in printed
@@ -3633,22 +3621,12 @@ def test_snapshot_dates_the_refs_it_did_not_fetch(tmp_path: Path) -> None:
     now = datetime(2026, 9, 26, 2, 0, tzinfo=UTC)
 
     fresh = snapshot(work, now=now, fetch=Fetch(FETCHED))
-    assert (fresh.fetch, fresh.refs_at, fresh.fresh, fresh.branch.fetched) == (
-        FETCHED,
-        now,
-        True,
-        True,
-    )
+    assert (fresh.fetch, fresh.refs_at, fresh.fresh) == (FETCHED, now, True)
     assert fresh.branch.branch == "main" and fresh.branch.base == "origin/main"
     assert not fresh.declined
 
     undated = snapshot(work, now=now)
-    assert (undated.fetch, undated.refs_at, undated.fresh, undated.branch.fetched) == (
-        UNFETCHED,
-        None,
-        False,
-        False,
-    )
+    assert (undated.fetch, undated.refs_at, undated.fresh) == (UNFETCHED, None, False)
 
     subprocess.run(["git", "fetch", "-q", "origin"], cwd=work, check=True, capture_output=True)
     at = datetime(2026, 9, 26, 1, 30, tzinfo=UTC)
