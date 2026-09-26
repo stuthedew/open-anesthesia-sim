@@ -3,7 +3,7 @@ id: PL-HZ0M
 title: #1044 landed on main with an empty squash body (6d2f0531) although a session armed its auto-merge, the path PL-WFFX's spent verdict credits with losing none since #918, and PL-WFFX says a new empty body reopens it
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: pr-body-integrity
 touches: docs/pr-bodies/1015.md, docs/pr-bodies/1044.md, docs/items/PL-WFFX-name-the-merge-client-that-sends-an-empty.md, docs/items/PL-979D-the-squash-commit-on-main-is-composed-by.md
@@ -36,7 +36,7 @@ path is not established, and #1044 (`6d2f0531`, 20:51 -0500), which a session
 armed. So the record a later session reads calls a path safe that is not, and
 the reasoning for two pull requests exists only on GitHub.
 
-**Why it waits on `PL-979D`.** `PL-979D` states the same fact as `PL-WFFX`, and
+[superseded 2026-09-26] **Why it waits on `PL-979D`.** `PL-979D` states the same fact as `PL-WFFX`, and
 it is live. On 2026-09-26 its build held a claim on `claude/pl-979d-build-1y2bjk`,
 with `PL-BZHX`, `PL-PNJF`, `PL-73G8` and `PL-M7W1`. That build records each pull
 request's body before the merge, so which step emptied #1044's squash body stops
@@ -45,7 +45,10 @@ mattering: no answer would change what anyone does. It also changes the header
 "should have carried, verbatim", which is the sentence `PL-73G8` and `PL-PNJF`
 found untrue, so recovering now would write that sentence twice more. Adding this
 item to `PL-979D`'s `root-cause-of:` edits a file that branch holds, so that
-waits too.
+waits too. `PL-979D` closed 2026-09-26 (#1068) with
+`generator: spent`, and its build put this item in its `root-cause-of:`. Its
+header reaches `main` with #1068, so nothing holds this item, and the "live
+head" in "Done when" now reads as the head that holds the fact, spent.
 
 **Done when.** #1015's and #1044's bodies are recovered under the header
 `PL-979D`'s build writes. `PL-WFFX`'s `generator:` line no longer says no squash
