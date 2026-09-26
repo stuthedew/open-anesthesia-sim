@@ -1298,7 +1298,12 @@ def change_landed(
         ],
         root,
     )
-    for line in listed.splitlines():
+    # On git's own line ends alone, never `splitlines()`: that also breaks at
+    # `\x0b`, `\x0c`, `\x1c`-`\x1e`, `\x85`, U+2028 and U+2029, and git prints
+    # every one of them unchanged inside `%s`, so one pasted form feed read one
+    # subject as two - the second opening with whatever id or `(#N)` followed
+    # it (`PL-139L`).
+    for line in listed.split("\n"):
         fields = line.split("\x1f", 2)
         if len(fields) != 3:
             continue
@@ -1945,7 +1950,8 @@ def _landed_since(
     """
     output = run(["log", f"-n{limit}", "--format=%s", f"{fork}..{base}", "--"], root)
     found: list[str] = []
-    for line in output.splitlines():
+    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
+    for line in output.split("\n"):
         for identifier in leading_ids(line):
             if identifier not in found:
                 found.append(identifier)
@@ -2006,7 +2012,10 @@ def _duplicated_history(
     )
     ours: list[tuple[str, str, str, bool]] = []
     theirs: Counter[str] = Counter()
-    for line in output.splitlines():
+    # On `\n` alone, for the reason `change_landed` gives: cut at a separator,
+    # two different subjects share a key and this side's own work reads as the
+    # base's (`PL-139L`).
+    for line in output.split("\n"):
         parts = line.split("\0")
         if len(parts) != 5:
             continue
@@ -2778,7 +2787,8 @@ def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> PullReq
     if not subjects.strip():
         return PullRequestHistory(declined="no default branch this checkout can read")
     found: set[int] = set()
-    for subject in subjects.splitlines():
+    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
+    for subject in subjects.split("\n"):
         match = PR_SUBJECT_RE.search(subject.strip())
         if match is not None:
             found.add(int(match.group(1) or match.group(2)))
@@ -2906,7 +2916,8 @@ def filed_with_work(
     # opening it would find.
     filed: dict[str, tuple[str, str]] = {}
     commit = subject = ""
-    for line in log.splitlines():
+    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
+    for line in log.split("\n"):
         if line.startswith("\x00"):
             commit, _, subject = line[1:].partition("\x01")
             continue
@@ -3103,7 +3114,8 @@ def _merges_naming(
         return ()
     found: dict[str, int] = {}
     candidates: dict[str, tuple[str, int]] = {}
-    for line in run(["log", "--format=%H%x1f%s", base], root).splitlines():
+    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
+    for line in run(["log", "--format=%H%x1f%s", base], root).split("\n"):
         revision, _, subject = line.partition("\x1f")
         subject = subject.strip()
         match = PR_SUBJECT_RE.search(subject)
