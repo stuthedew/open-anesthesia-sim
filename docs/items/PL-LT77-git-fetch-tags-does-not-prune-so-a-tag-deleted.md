@@ -120,7 +120,7 @@ against the remote, so each staleness condition is repaired where it surfaces.
 This one surfaces in `doc_check`'s own output, which is where the reader is
 standing when they need to know.
 
-The message is at `tools/doc_check.py:2320`. It should name the possibility -
+The message is `check_tags`'s version-table error. It should name the possibility -
 that the tag may have been withdrawn on origin and survive locally - and the
 one command that clears it, `git tag -d v<version>` by name. Not
 `--prune-tags`, which implies `--prune` and is refused by
@@ -147,3 +147,10 @@ trips `_check_tag_versions`, and that error names this cause and its repair:
 `git ls-remote --tags origin` to tell, `git tag -d` for the tag it names. The
 version-table error ("git holds vX, but no row of the version table marks vX
 completed") still names neither, and is what is left here.
+
+**Narrowed by `PL-HVLJ`, 2026-09-26.** A tag `origin/main` holds and `HEAD`
+does not is now declined as a checkout that is behind, naming `git pull`,
+instead of reaching the version-table error, which still fires on a tag whose
+commit `HEAD` holds or the default branch lacks too. A withdrawn tag reaches it
+at once where the default branch never held its commit, and otherwise once the
+checkout does, so what is left here is unchanged.
