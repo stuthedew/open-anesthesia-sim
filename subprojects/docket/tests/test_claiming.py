@@ -705,6 +705,102 @@ def test_a_rival_tip_this_clone_has_not_fetched_is_read_through_its_tracking_ref
     assert _trailer(work, "Yield") == f"PL-B1B1 {BRANCH}"
 
 
+def _pushed_onto_by_another_writer(remote: _Remote) -> str:
+    """One more commit on this branch's copy on the remote, from another clone: the shape
+    GitHub's *Update branch* leaves. The clone that pushed the branch has not fetched it."""
+    other = remote.clone("other")
+    other.git("checkout", "-q", BRANCH)
+    other.commit("another writer", when=T0 + 5 * MINUTE, files={"src/o.py": "o = 1\n"})
+    other.git("push", "-q")
+    return other.head()
+
+
+def test_a_claim_under_a_commit_this_clone_has_not_fetched_is_not_reported_local(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The remote's copy carries the claim under a tip this clone lacks, and git cannot say
+    what that tip carries (`PL-20DL`). Read as "does not", the claim every clone can fetch was
+    reported as only in this checkout, with a `claim --push` git would refuse. So it is said
+    as not known, nothing is pushed, and the run that has fetched the tip answers.
+    """
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
+    claimed = work.head()
+    tip = _pushed_onto_by_another_writer(remote)
+    capsys.readouterr()
+
+    code = _claim(monkeypatch, work, "PL-B1B1", "--no-fetch", when=T0 + 10 * MINUTE)
+
+    assert code == claiming.LOCAL_ONLY
+    out = capsys.readouterr().out
+    assert "only this checkout" not in out and "--push" not in out
+    assert f"is at {tip[:12]}" in out and "is not known" in out
+    assert "Run `bin/docket claim PL-B1B1` again, which fetches it first" in out
+    assert work.head() == claimed and remote.tip(BRANCH) == tip
+
+    assert _claim(monkeypatch, work, "PL-B1B1", when=T0 + 10 * MINUTE) == claiming.CLAIMED
+    assert "already holds it first" in capsys.readouterr().out
+    assert work.head() == claimed and remote.tip(BRANCH) == tip
+
+
+def test_a_published_claim_under_a_commit_this_clone_has_not_fetched_is_not_withdrawn(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`_displaced` asked the same question, and took the claim holding first for unpublished,
+    so it withdrew it in favour of a later one (`PL-20DL`). `claim` refuses such a rival
+    wherever it can see this branch's claim, so this one is written by hand, as a session
+    that had not fetched the branch could.
+    """
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
+    claimed = work.head()
+    rival = remote.clone("rival", RIVAL)
+    rival.claim_by_hand("PL-B1B1", when=T0 + 5 * MINUTE)
+    rival.git("push", "-q", "-u", "origin", RIVAL)
+    work.git("fetch", "-q", "origin")
+    _pushed_onto_by_another_writer(remote)
+    capsys.readouterr()
+
+    code = _claim(monkeypatch, work, "PL-B1B1", "--no-fetch", when=T0 + 10 * MINUTE)
+
+    assert code == claiming.LOCAL_ONLY
+    out = capsys.readouterr().out
+    assert "Withdrawn by" not in out and "is not known" in out
+    assert work.head() == claimed
+    assert _claim(monkeypatch, work, "PL-B1B1", when=T0 + 10 * MINUTE) == claiming.CLAIMED
+    assert work.head() == claimed
+    assert _order(remote.clone("observer")) == [f"origin/{BRANCH}", f"origin/{RIVAL}"]
+
+
+def test_yield_under_a_commit_this_clone_has_not_fetched_is_not_reported_local(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A yield run again asks the same question of its own record, and `yield` does not fetch,
+    so a tip pushed since the last fetch is the ordinary case there (`PL-20DL`)."""
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
+    yield_ = ("yield", "PL-B1B1", "--trailer", ATTRIBUTION)
+    assert _docket(monkeypatch, work, *yield_, when=T0 + HOUR) == claiming.LOCAL_ONLY
+    work.git("push", "-q")
+    yielded = work.head()
+    tip = _pushed_onto_by_another_writer(remote)
+    capsys.readouterr()
+
+    assert _docket(monkeypatch, work, *yield_, when=T0 + HOUR) == claiming.LOCAL_ONLY
+
+    out = capsys.readouterr().out
+    assert "only this checkout" not in out and "git push" not in out
+    assert f"is at {tip[:12]}" in out and "is not known" in out
+    assert "`git fetch origin`, then run `bin/docket yield PL-B1B1` again" in out
+    work.git("fetch", "-q", "origin")
+    assert _docket(monkeypatch, work, *yield_, when=T0 + HOUR) == claiming.CLAIMED
+    assert "has already ended; nothing written" in capsys.readouterr().out
+    assert work.head() == yielded
+
+
 def test_a_branch_on_the_remote_without_tracking_is_not_pushed_onto(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

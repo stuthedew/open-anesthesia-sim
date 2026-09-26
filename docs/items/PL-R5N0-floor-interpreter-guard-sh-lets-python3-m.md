@@ -3,12 +3,15 @@ id: PL-R5N0
 title: floor-interpreter-guard.sh lets 'python3 -m compileall src' and 'python3 -m pytest tests' through, because GUARDED needs a slash after the tree name, so the commonest spelling of a floor parse of the 3.14 trees is not refused
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: bash-guard-bound
+milestone: v0.5.13
 touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpreter_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1139
 payoff: python3 -m pytest tests and python3 -m compileall src meet the guard's refusal, which names the 3.11 floor, instead of a false SyntaxError
 verify: grep -q 'def test_a_bare_tree_name_is_a_floor_parse' tests/unit/test_floor_interpreter_guard.py
 ---
@@ -53,3 +56,13 @@ its reading of bash. Owed under any bound `PL-61FT` sets, since `python3 -m
 pytest tests` is the canonical spelling, so it is left ready. Reproduced as
 filed on `origin/main` (`6efd8c41`) at triage, beside `python3 -m
 compileall src/`, which is refused.
+
+**Fixed 2026-09-26 (`#1139`).** The hook keeps `GUARDED`, which wants the
+slash, and adds `TREE`, which reads `src` or `tests` with no slash only where
+it is the whole argument - bare, after `./`, or ending an absolute path - with
+the same lookbehind keeping `subprojects/docket/` out. Inside a `-c` string the
+word is as likely code as a path, so a tree named there with no slash is
+outside the promise and is a `KNOWN_GAPS` row (`compile_dir('src')` inside
+`-c`), per `PL-61FT`'s rule for a spelling found by probing, rather than an
+item. The five refused rows of `test_a_bare_tree_name_is_a_floor_parse` fail
+against the unfixed hook; no existing `KNOWN_GAPS` row closed.
