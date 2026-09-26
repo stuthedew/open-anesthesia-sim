@@ -25,6 +25,19 @@ no check at all: the guarantee would be void while the gate stayed green. So
 `BRANCH_ID_RE` and `leading_ids` are imported from the module under protection,
 and a change to either moves both together.
 
+**And it asks the store whether an id names an item (`PL-SN2T`).** The grammar
+passes an English word - `CTRL` and `HTML` fit its alphabet - so a branch named
+`claude/pl-ctrl-hotkeys`, or a subject reading `PL-HTML export`, carried an id
+by its position and named no item at all. An id attributes work here only where
+the base's copy of the store or this branch's holds it, which `held` reads from
+each tree's listing. The name is still read as `claims.holdings` reads it, first
+match only, so this is never looser than `docket flight`. What that leaves,
+stated rather than left to be found: `claims.holdings` still takes a name on the
+grammar alone, so `flight` lists such a branch under an item that does not
+exist and `claims_nothing` exempts its unclaimed work from the refusal below,
+which `--hint` mirrors so that the two agree. `PL-WK57` carries it, because
+every in-flight guard reads the one answer it changes.
+
 **Deliberately not decided here: how small is too small to file.** A rule
 demanding an item for a one-line typo fix converts the queue into a log, which
 is worse than the collisions it prevents - so the question this asks is not
@@ -132,7 +145,9 @@ from docket.vcs import (  # noqa: E402
     DEFAULT_BRANCHES,
     SILENT,
     _head_name,
+    _item_paths_on,
     _remotes,
+    _Silences,
     answered,
     default_base,
     leading_ids,
@@ -244,14 +259,46 @@ def in_agent_namespace(name: str) -> bool:
     return name.lower().startswith(AGENT_BRANCH_PREFIX)
 
 
-def attribution(name: str, subjects: list[str]) -> list[str]:
-    """What names this branch's work, in the forms a guard actually reads."""
+def held(base: str) -> tuple[frozenset[str], str]:
+    """The ids the store holds in `base`'s copy or this branch's, and why the read is partial.
+
+    Both copies, because either can be the only one: an item captured on this
+    branch is in its own copy alone, and one filed on the base since the
+    branch forked is in the base's alone. `claim` refuses an item `HEAD` does
+    not hold, so a third branch's copy is never where a branch's own item
+    lives. Read from each tree's listing with `docket`'s own reader, for the
+    reason the ids are, through `_Silences`, so a listing git did not answer
+    is a partial read rather than an empty store. The reason is `""` where
+    both were answered.
+    """
+    run = _Silences(_runner)
+    items_dir = load_config(ROOT).items_dir
+    ids = {
+        *_item_paths_on(base, items_dir, ROOT, run),
+        *_item_paths_on("HEAD", items_dir, ROOT, run),
+    }
+    return frozenset(ids), run.reason
+
+
+def attribution(name: str, subjects: list[str], store: frozenset[str] | None) -> list[str]:
+    """What names this branch's work, in the forms a guard actually reads.
+
+    An id counts only where `store` holds it (`PL-SN2T`); `None` is a store
+    that could not be read, where the grammar alone decides and the caller
+    says so. The name is read by `search`, first match only, as
+    `claims.holdings` reads it: crediting a later match no guard reads would
+    certify a branch that `docket flight` cannot see.
+    """
+
+    def names_an_item(key: str) -> bool:
+        return store is None or key in store
+
     found: list[str] = []
     match = BRANCH_ID_RE.search(name)
-    if match is not None:
+    if match is not None and names_an_item(match.group(1).upper()):
         found.append(f"branch name carries {match.group(1).upper()}")
     for subject in subjects:
-        ids = leading_ids(subject)
+        ids = [key for key in leading_ids(subject) if names_an_item(key)]
         if ids:
             found.append(f"a commit subject leads with {', '.join(ids)}")
             break
@@ -259,6 +306,18 @@ def attribution(name: str, subjects: list[str]) -> list[str]:
         if RELEASE_RE.match(subject):
             found.append("a release commit, which owes no id")
             break
+    return found
+
+
+def unheld(name: str, subjects: list[str], store: frozenset[str]) -> list[str]:
+    """The ids a guard would read as this branch's that name no item `store` holds."""
+    found: list[str] = []
+    match = BRANCH_ID_RE.search(name)
+    if match is not None and match.group(1).upper() not in store:
+        found.append(f"the branch name carries {match.group(1).upper()}")
+    keys = sorted({key for subject in subjects for key in leading_ids(subject) if key not in store})
+    if keys:
+        found.append(f"a commit subject leads with {', '.join(keys)}")
     return found
 
 
@@ -472,8 +531,14 @@ def main() -> int:
         return 0
 
     name = branch_name()
-    found = attribution(name, subjects)
+    store, partial = held(base)
+    found = attribution(name, subjects, None if partial else store)
     refusals, notes = check_claims(base, name, now)
+    if partial:
+        notes.append(
+            f"branch-id: the store's ids were not read in full - {partial} - so an id here was "
+            f"taken on its grammar alone"
+        )
     for note in notes:
         print(note)
     for refusal in refusals:
@@ -485,16 +550,26 @@ def main() -> int:
         print(f"branch-id: {name} is outside `{AGENT_BRANCH_PREFIX}`; no id is owed")
         return 1 if refusals else 0
 
+    stray = [] if partial else unheld(name, subjects, store)
+    unnamed = (
+        f"  An id here names no item in {base}'s copy of the store or this branch's: "
+        f"{'; '.join(stray)}. The id grammar alone passes an English word - `CTRL` and `HTML` "
+        f"both fit its alphabet - so an id attributes work only where the store holds it "
+        f"(`PL-SN2T`).\n"
+        if stray
+        else ""
+    )
     print(
         f"branch-id: {len(subjects)} commit(s) ahead of {base}, and no item id names any of "
         f"them.\n"
         f"  branch: {name or '(detached)'}\n"
+        f"{unnamed}"
         f"  Only a branch in the `{AGENT_BRANCH_PREFIX}` namespace owes one; a contributor's "
         f"does not.\n"
         f"  Every in-flight guard - `docket flight`, `show`, `next`, `concurrent`, the "
         f"session-start digest - matches an id in a branch name or at the front of a commit "
-        f"subject, so this work is invisible to all of them and to the next session that "
-        f"asks.\n"
+        f"subject, so work that no item's id names is invisible to every one of them asked "
+        f"about the item it is for, and to the next session that asks.\n"
         f"  File it, then put the id at the front of a commit subject:\n"
         f"    bin/docket new '<what this work is>'\n"
         f"    git commit --amend -m '<PL-XXXX>: <what this commit does>'",

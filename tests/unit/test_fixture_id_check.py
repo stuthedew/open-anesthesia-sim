@@ -11,10 +11,10 @@ have placed (`PL-GXPP`).
 So the shape here is the one `test_glyph_check.py` uses: each rule puts a
 literal into a miniature tree and asserts the tool notices, with a matching test
 that a correct tree stays quiet. A checker that fires on correct work gets
-switched off, which is the same as not having it - and the two false-positive
-sources this tool has are both regressions below: an f-string's format spec
-(`PL-K{n:03d}` mints a four-character id, not a two-character one) and the
-`GPL-3.0` in a licence string.
+switched off, which is the same as not having it - and the three false-positive
+sources this tool has are all regressions below: an f-string's format spec
+(`PL-K{n:03d}` mints a four-character id, not a two-character one), the
+`GPL-3.0` in a licence string, and prose naming the prefix (`PL-VH5V`).
 
 **This file is inside the tool's own scan**, so every deliberately malformed
 fixture below is a named constant carrying the `not-an-id` marker the tool
@@ -108,6 +108,11 @@ CLAUDE_HOOK = 'echo "see PL-A1B2"\n'  # not-an-id
 
 CLAUDE_MARKED = """`PL-A1B2` is unmintable. <!-- not-an-id -->
 """
+
+#: Prose naming the prefix, which the fuzz harness wrote into a `.claude/`
+#: document and a Python message alike (`PL-VH5V`). Unmarked on purpose: no
+#: word here is written the way an id is, so there is nothing to exempt.
+PREFIX_PROSE = "## PL-Prefixed tokens\n\nEvery PL-prefixed token is judged by the grammar.\n"
 
 #: An id spelled as a keyword argument, which is the only way to key a helper
 #: by one: `PL-AAAA` is not an identifier, so the caller writes underscores and
@@ -375,6 +380,37 @@ def test_a_claude_document_takes_the_marker_as_well(tmp_path: Path) -> None:
     _write(tmp_path, ".claude/rules/thing.md", CLAUDE_MARKED)
 
     assert fixture_id_check.collect(tmp_path) == []
+
+
+def test_the_prose_token_pl_prefixed_is_not_read_as_an_id(tmp_path: Path) -> None:
+    """`PL-VH5V`: the prefix alone made an English word a finding.
+
+    An id is written as `PL-` and one whole word of capitals and digits, and
+    that shape - not the prefix - is what makes a token an attempted id
+    (`PL-GPJ7`'s rule that a hard gate recognises by explicit syntax). So
+    prose naming the prefix reads as prose, in a `.claude/` document and in a
+    Python message both, where the prefix rule refused each.
+    """
+    _write(tmp_path, ".claude/rules/thing.md", PREFIX_PROSE)
+    _write(tmp_path, "pkg/thing.py", f"MESSAGE = {PREFIX_PROSE!r}\n")
+
+    assert list(fixture_id_check.malformed(PREFIX_PROSE)) == []
+    assert fixture_id_check.collect(tmp_path) == []
+
+
+def test_the_shape_still_reads_a_malformed_id_beside_the_prose(tmp_path: Path) -> None:
+    """The shape narrows what is read as an id, and nothing the grammar judges.
+
+    Recognising only what `ID_RE` passes would switch the check off, since
+    `malformed()` could then never yield - the trap `PL-VH5V`'s triage named.
+    Every unmintable literal is still an id-shaped word, so one standing in
+    the same sentence as the prose is still found.
+    """
+    _write(tmp_path, ".claude/rules/thing.md", f"Every PL-prefixed token, and {UNMINTABLE[1]}.\n")
+
+    assert _tokens(tmp_path) == [UNMINTABLE[1]]
+    for candidate in UNMINTABLE:
+        assert list(fixture_id_check.malformed(f"see {candidate}.")) == [candidate]
 
 
 # --- keyword names: an id that cannot be spelled as one ----------------------
