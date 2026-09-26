@@ -4,10 +4,11 @@
 # Two interpreters are in play here and both halves are deliberate. `src/` and
 # `tests/` target 3.14 - `pyproject.toml` declares `requires-python =
 # ">=3.14,<3.15"` and `.python-version` pins 3.14.7. Everything under `tools/`
-# and `.claude/hooks/`, plus `bin/docket`, runs under whatever bare `python3`
-# is on PATH, with no virtualenv and no install step, which is what lets a hook
-# and a bare checkout work at all; `tools/ruff.toml` pins that floor at the
-# 3.11 `subprojects/docket/pyproject.toml` declares. `make check` and the floor
+# and `.claude/hooks/`, plus `bin/docket` and the `subprojects/docket/` tree it
+# runs, runs under whatever bare `python3` is on PATH, with no virtualenv and
+# no install step, which is what lets a hook and a bare checkout work at all;
+# `tools/ruff.toml` pins that floor at the 3.11
+# `subprojects/docket/pyproject.toml` declares. `make check` and the floor
 # section of `.github/workflows/quality.yml` both *perform* the bare run on
 # purpose, so the 3.11 on PATH is a tested guarantee rather than a stale
 # default.
@@ -70,26 +71,52 @@ if not isinstance(command, str):
 # and blocking that would be the guard eating its own documentation.
 command = command.split("<<", 1)[0]
 
+# A backslash ending a line continues the command onto the next, so that pair
+# goes first. A newline left after it separates two commands exactly as `;`
+# does, and shlex would otherwise discard it as whitespace and read a two-line
+# script as one command. Substituting inside a quoted string is harmless: the
+# string stays one token either way, so only the tokenizer sees the change.
+command = command.replace("\\\n", "").replace("\n", " ; ")
+
 # Tokenised rather than split with a regex, because the failing shape puts the
 # path inside a quoted argument: `python3 -c "import ast; ast.parse(open(
 # \"src/a.py\").read())"` is one command with one `;` that is not a separator.
 # shlex keeps the quoted string whole, so the path is visible and the `;` is
-# not mistaken for the end of the invocation. Anything it cannot tokenise -
-# unbalanced quotes, a partial line - fails open.
+# not mistaken for the end of the invocation.
+#
+# **`punctuation_chars` is what makes an unquoted separator one, whatever the
+# spacing.** Plain `shlex.split` returned `print(1);` as one word, so a path in
+# the command after it was read as an argument to this interpreter, and
+# `true;python3` as one word, which hid the interpreter from the refusal
+# (`PL-GVFC`, `PL-BBV7`). These are the settings `gate-status-guard.sh` uses,
+# which had already met the `check|tail` form of the same fault; that hook
+# has no line-continuation step, and one splitter both import is for `PL-PVW2`
+# to build. `commenters` stays at the default, so a `# note` ends the parse:
+# that can only drop a path, never invent one, the safe direction here.
+# Anything it cannot tokenise - unbalanced quotes, a partial line - fails open.
 try:
-    tokens = shlex.split(command)
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    tokens = list(lexer)
 except ValueError:
     sys.exit(0)
 
 SEPARATORS = {";", "&&", "||", "|", "&"}
 ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
+# A subshell, a brace group or a negation opens the command it precedes.
+GROUPING = ("(", "{", "!")
 # Bare, and bare is the whole point: a name with no slash in it is the one
 # resolved through PATH, where this container answers 3.11.
 INTERPRETER = re.compile(r"^python(?:3(?:\.\d+)?)?$")
 # `src/anesthesia_sim/app/` sits under `src/`, so naming it again would only
-# widen the pattern. The lookbehind lets a leading `./` or an absolute path
-# through while keeping `mysrc/` out.
-GUARDED = re.compile(r"(?<![\w-])(?:src|tests)/")
+# widen the pattern. The first lookbehind lets a leading `./` or an absolute
+# path through while keeping `mysrc/` out. The second keeps out
+# `subprojects/docket/src/` and `subprojects/docket/tests/`, which are floor
+# code rather than the 3.14 trees - `subprojects/docket/pyproject.toml` is the
+# file declaring 3.11 - and so the right trees to aim a bare interpreter at. A
+# relative `src/` after a `cd` into that subproject is still read as the
+# product tree: paths are read as written, and no `cd` is followed.
+GUARDED = re.compile(r"(?<![\w-])(?<!subprojects/docket/)(?:src|tests)/")
 # A whole-tree parse reaches both without naming either.
 WHOLE_TREE = ("compileall", "py_compile")
 
@@ -105,6 +132,8 @@ segments.append(current)
 offender = None
 for segment in segments:
     rest = list(segment)
+    while rest and rest[0] in GROUPING:
+        rest.pop(0)
     while rest and ASSIGNMENT.match(rest[0]):
         rest.pop(0)
     if not rest or not INTERPRETER.match(rest[0]):

@@ -118,7 +118,7 @@ try:
     from docket.config import Config
     from docket.config import load as load_docket_config
     from docket.model import CLOSED_STATUSES, Item
-    from docket.release import NOTES_DIR, SPAN_HEADING
+    from docket.release import NOTES_DIR, SPAN_HEADING, notes_path
     from docket.roadmap import (
         BASELINE_MARK,
         DECLARATION_RE,
@@ -151,13 +151,23 @@ try:
     # blob batch, which answers every tag's `pyproject.toml` from one process,
     # and `answered` for telling git's silence from an empty file.
     # `changed_path_args` is borrowed so the close-out sweep lists a renamed
-    # file's old name, the one stale prose still cites (`PL-KR69`).
+    # file's old name, the one stale prose still cites (`PL-KR69`), and
+    # `default_base` so a tag the working tree predates is placed against the
+    # branch every docket command compares with (`PL-HVLJ`). `find_cut` and
+    # `notes_added` are the one definition of a release's cut, which the
+    # printed tag commands use too (`PL-QHCW`).
     from docket.vcs import (
         DEFAULT_BRANCHES,
+        Cut,
         GitRunner,
+        Runner,
         answered,
         changed_path_args,
+        default_base,
+        find_cut,
         is_shallow,
+        notes_added,
+        resolved,
         tags,
     )
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
@@ -2657,7 +2667,7 @@ def check_tags(root: Path, report: Report) -> None:
     never in doubt, so those inferences are untouched.
 
     The release being cut right now is the third, and it is now silent. It was
-    never an error - its tag goes on the merge commit, so there is a window in
+    never an error - its tag goes on its cut once that lands, so there is a window in
     which the newest version is completed and untagged, and failing it would
     turn `make check` red on every release branch, the failure `make release`
     was repaired to stop causing. It was an advisory, and that advisory was
@@ -2682,6 +2692,16 @@ def check_tags(root: Path, report: Report) -> None:
     All of that turns on whether a tag *exists*. Whether a present tag sits on
     its own release's commit is the other question, and `_check_tag_versions`
     below answers it (`PL-YKSD`).
+
+    The converse - a tag the version table does not name - is an error only
+    against a working tree that holds the tag's commit (`PL-HVLJ`). A release's
+    tag goes on the commit that adds its row, and `git fetch --tags` brings the
+    tag without moving the tree, so a checkout that fetched after a release
+    merged holds the one and not the other until it pulls. That was reported as
+    a wrong `ROADMAP.md` to fix before committing, against a correct file.
+    `_ahead_of_the_tree` tells the two apart: a tag the default branch holds and
+    `HEAD` does not is declined as a checkout that is behind, naming the pull,
+    and one `HEAD` holds, or the default branch lacks too, keeps the error.
     """
     roadmap = root / ROADMAP
     if not roadmap.is_file():
@@ -2775,16 +2795,21 @@ def check_tags(root: Path, report: Report) -> None:
                 "tag for it"
             )
 
-    for name in sorted(existing):
-        match = RELEASE_TAG_RE.match(name)
-        if match is None:
-            continue
-        version = match.group("version")
-        if version not in completed:
+    unnamed = {
+        name: match.group("version")
+        for name in sorted(existing)
+        if (match := RELEASE_TAG_RE.match(name)) is not None
+        and match.group("version") not in completed
+    }
+    base, ahead = _ahead_of_the_tree(root, tuple(unnamed)) if unnamed else ("", ())
+    for name, version in unnamed.items():
+        if name not in ahead:
             report.errors.append(
                 f"{ROADMAP}: git holds {name}, but no row of the version table marks v{version} "
                 "completed; a release that shipped is one this table has to name"
             )
+    if ahead:
+        report.declined.append(_behind_the_tags(ahead, base, truncated))
 
     _check_tag_versions(
         root,
@@ -2793,6 +2818,69 @@ def check_tags(root: Path, report: Report) -> None:
         {version: row.line for version, row in completed.items()},
         stale,
         stale_line,
+    )
+
+
+def _ahead_of_the_tree(root: Path, names: Sequence[str]) -> tuple[str, tuple[str, ...]]:
+    """The tags among `names` the default branch holds and `HEAD` does not, and that branch.
+
+    Placed against the default branch because "behind" means behind it: a tag
+    that branch does not hold either is left to the error, since pulling would
+    not bring it in. A base that is only a guess places nothing, and nor does a
+    read git did not answer, so each of those tags keeps the error it had.
+
+    Ancestry is read as a merge base equal to the tag's commit rather than as
+    `merge-base --is-ancestor`, whose two verdicts `_run_git` returns as the
+    same empty string. A merge base that is found is always a true answer; in
+    a shallow clone one that is not found may only be history this checkout
+    never fetched, which `_behind_the_tags` says rather than rules out.
+    """
+    with GitRunner() as run:
+        base = default_base(root, runner=run)
+        if not resolved(base):
+            return str(base), ()
+        ahead: list[str] = []
+        for name in names:
+            commit = run(
+                ["rev-parse", "--verify", "--quiet", f"refs/tags/{name}^{{commit}}"], root
+            ).strip()
+            if (
+                commit
+                and _holds(run, root, base, commit)
+                and _holds(run, root, "HEAD", commit) is False
+            ):
+                ahead.append(name)
+    return str(base), tuple(ahead)
+
+
+def _holds(run: Callable[[list[str], Path], str], root: Path, ref: str, commit: str) -> bool | None:
+    """Whether `ref`'s history holds `commit`, or `None` where git did not answer."""
+    fork = run(["merge-base", commit, ref], root)
+    return fork.strip() == commit if answered(fork) else None
+
+
+def _behind_the_tags(ahead: Sequence[str], base: str, truncated: bool | None) -> str:
+    """The `declined` line for tags the working tree predates, naming what brings them in."""
+    one = len(ahead) == 1
+    names = ahead[0] if one else f"{', '.join(ahead[:-1])} and {ahead[-1]}"
+    them = "it" if one else "them"
+    line = (
+        f"release tags: git holds {names}, which {base} has and this checkout's HEAD does "
+        f"not, so the working tree predates {'that release' if one else 'those releases'} "
+        f"rather than leaving {them} out of {ROADMAP}; `git pull` brings {them} in on "
+        f"{base.rsplit('/', 1)[-1]}, and `bin/docket branch` says how on any other branch"
+    )
+    if truncated is False:
+        return line
+    commits = "that commit" if one else "those commits"
+    if truncated:
+        return (
+            f"{line} - unless this shallow clone's history stops short of {commits}, which "
+            "reads the same way; `git fetch --unshallow` tells the two apart"
+        )
+    return (
+        f"{line} - unless this checkout's history stops short of {commits}, which reads the "
+        "same way, and git cannot say here whether it does"
     )
 
 
@@ -2821,7 +2909,51 @@ def _check_tag_versions(
     declares. A tree that yields none - the file absent at that commit, or git
     not answering - is declined rather than refused: an empty read cannot say
     whether the file was never there or is only missing from this clone.
+
+    **A tag with notes is held to its cut first, and the version asks nothing
+    more of one that fails it** (`PL-QHCW`). The version catches a tag only
+    where the commit it landed on declares another number, and a tag pushed
+    one merge late declares the right one: `v0.5.3`'s error was the version,
+    but a tag on the merge *after* a cut passed it (`PL-KFWL`). The cut is the
+    exact question, and its error names the commit to move the tag to, which
+    the version's could not. The releases cut before notes were written have
+    no cut to be held to and keep the version check alone.
     """
+    with GitRunner() as run:
+        cuts = _release_cuts(root, existing, run)
+        if cuts is None:
+            report.declined.append(
+                "release tags: git would not say which commit added each release's notes, so "
+                "whether each tag sits on the commit that cut its release is unknown"
+            )
+        else:
+            for name in sorted(cuts.off_cut, key=lambda name: _release_order(name.lstrip("v"))):
+                version = name.lstrip("v")
+                where = f"{ROADMAP}:{rows[version]}" if version in rows else str(ROADMAP)
+                report.errors.append(_off_cut_error(where, name, cuts, root, run))
+        _check_tag_version_files(
+            root,
+            report,
+            existing,
+            rows,
+            stale,
+            stale_line,
+            cuts.off_cut if cuts else frozenset(),
+            run,
+        )
+
+
+def _check_tag_version_files(
+    root: Path,
+    report: Report,
+    existing: frozenset[str],
+    rows: Mapping[str, int],
+    stale: frozenset[str],
+    stale_line: int,
+    off_cut: frozenset[str],
+    run: Runner,
+) -> None:
+    """Hold each release tag not already reported off its cut to its tree's version."""
     version_file = root / "pyproject.toml"
     if not version_file.is_file() or not _project_version(version_file):
         return
@@ -2829,12 +2961,12 @@ def _check_tag_versions(
         (
             (match.group("version"), name)
             for name in existing
-            if (match := RELEASE_TAG_RE.match(name)) is not None
+            if (match := RELEASE_TAG_RE.match(name)) is not None and name not in off_cut
         ),
         key=lambda release: _release_order(release[0]),
     )
     unread: list[str] = []
-    with GitRunner() as run:
+    if releases:
         for version, name in releases:
             text = run(["show", f"refs/tags/{name}:pyproject.toml"], root)
             declared = _declared_version(text) if answered(text) else ""
@@ -2866,6 +2998,108 @@ def _check_tag_versions(
             f"{', '.join(unread)} - the file is absent or declares none at that commit, or git "
             "did not answer - so whether each sits on its own release's commit is unknown"
         )
+
+
+@dataclass(frozen=True)
+class _ReleaseCuts:
+    """Where each release tag with notes in this tree sits against its cut."""
+
+    #: Tag name -> the commit it points at, in full.
+    tagged: Mapping[str, str]
+    #: Tag name -> the commit that cut its release, as the tag's own history
+    #: records it. A tag on its cut is its own answer and costs no lookup.
+    cut: Mapping[str, Cut]
+    #: The tags whose commit did not add their own release's notes.
+    off_cut: frozenset[str]
+    #: Whether a cut was left unnamed because the clone is truncated.
+    truncated: bool = False
+
+
+def _release_cuts(root: Path, names: Iterable[str], run: Runner) -> _ReleaseCuts | None:
+    """Each release tag whose notes are in this tree, read against its own cut.
+
+    `release.CUT_FLAGS` applied to the tags themselves: a tag is on its cut
+    when its own commit added its own notes file, compared with its first
+    parent, and one `notes_added` read answers that for every tag at once. It
+    is read from the tags rather than from `HEAD`, because a branch that merged
+    the default branch in after a release carries a merge of its own that added
+    that release's notes (`release.CUT_FLAGS`, measured).
+
+    A truncated clone is not declined. Its oldest commit reads as adding every
+    file, which can pass a tag that is off its cut but can never fail one that
+    is on it, so every finding stands. What it can get wrong is *naming* the
+    cut, so a tag's own history is asked only where the clone is whole. `None`
+    where git would not answer.
+    """
+    releases = sorted(
+        name
+        for name in names
+        if (match := RELEASE_TAG_RE.match(name)) is not None
+        and (root / notes_path(match.group("version"))).is_file()
+    )
+    if not releases:
+        return _ReleaseCuts({}, {}, frozenset())
+    resolved = run(["rev-parse", *(f"refs/tags/{name}^{{commit}}" for name in releases)], root)
+    commits = resolved.split()
+    if not answered(resolved) or len(commits) != len(releases):
+        return None
+    tagged = dict(zip(releases, commits, strict=True))
+    added = notes_added(set(commits), root, runner=run)
+    if added is None:
+        return None
+    off_cut = frozenset(
+        name for name, commit in tagged.items() if notes_path(name) not in added.get(commit, ())
+    )
+    truncated = bool(off_cut) and is_shallow(root, runner=run) is not False
+    cut = {
+        name: (
+            Cut((commit,))
+            if name not in off_cut
+            else Cut(declined="the clone is shallow")
+            if truncated
+            else find_cut(name, f"refs/tags/{name}", root, runner=run)
+        )
+        for name, commit in tagged.items()
+    }
+    return _ReleaseCuts(tagged, cut, off_cut, truncated)
+
+
+def _off_cut_error(where: str, name: str, cuts: _ReleaseCuts, root: Path, run: Runner) -> str:
+    """Name a tag that is not on its cut, and the commit it belongs on."""
+
+    def described(commit: str) -> str:
+        subject = run(["log", "-1", "--format=%h %s", commit], root).strip()
+        return f"`{subject}`" if subject else commit[:8]
+
+    notes = notes_path(name)
+    cut = cuts.cut[name]
+    if cut.commit:
+        belongs = f"Its own history says that is {described(cut.commit)}, so move it there"
+    elif cuts.truncated:
+        belongs = (
+            "This clone is shallow, so which commit did is not named here - `git fetch "
+            "--unshallow` names it - and the tag moves there"
+        )
+    elif not cut.known:
+        belongs = "git would not say which commit did, and the tag moves there"
+    elif not cut.commits:
+        belongs = (
+            "None in its own history did, so it sits before its release was cut: move it to "
+            f"the commit that added {notes} on the default branch"
+        )
+    else:
+        belongs = (
+            f"Its own history added that file {len(cut.commits)} times "
+            f"({', '.join(commit[:8] for commit in cut.commits)}), so the cut is whichever of "
+            "those the release shipped from, and the tag moves there"
+        )
+    return (
+        f"{where}: {name} points at {described(cuts.tagged[name])}, which did not add {notes}. "
+        "A release tag goes on the commit that cut its release, the one that added its notes "
+        f"(`PL-QHCW`). {belongs} - unless `git ls-remote --tags origin` no longer lists it, "
+        f"when this clone is keeping a tag deleted on the remote and `git tag -d {name}` is "
+        "the repair"
+    )
 
 
 # --- what a tag's span covers -----------------------------------------------
@@ -2907,8 +3141,9 @@ class _TagSpans:
     version: Mapping[str, str]
     #: Commit hash -> the pull request number its squash subject names.
     pull_request: Mapping[str, str]
-    #: Release version -> the commit that added its notes file. That commit is
-    #: the cut, and its squash lands on the default branch carrying the tag.
+    #: Release version -> the commit that cut it, from `_release_cuts`: the tag's
+    #: own commit where it added the notes, as it should, and otherwise the one
+    #: the tag's history says did (`PL-QHCW`).
     cut: Mapping[str, str]
     #: The newest release version reachable here, whose span is not judged.
     newest: str
@@ -2929,20 +3164,25 @@ def _tag_spans(root: Path) -> _TagSpans | None:
     commit cut a release is read off the one that *added* its notes file. The
     second is deliberately not inferred from the subject line - "cut v0.4.28"
     is prose, and a release whose subject is worded another way would silently
-    lose its exemption.
+    lose its exemption. Nor is it read from `HEAD`, where it once was: a branch
+    that merged the default branch in has a merge that added every notes file
+    since its fork, so it is `_release_cuts`, the one reading of a cut there is.
     """
     history = _git_text(root, "log", "--format=%H%x09%D%x09%s", "--decorate=full", "HEAD")
     if history is None:
         return None
     version: dict[str, str] = {}
     pull_request: dict[str, str] = {}
+    names: set[str] = set()
     current = ""
     for line in history.splitlines():
         commit, _, rest = line.partition("\t")
         decoration, _, subject = rest.partition("\t")
+        refs = TAG_REF_RE.findall(decoration)
+        names.update(refs)
         tagged = [
             match.group("version")
-            for name in TAG_REF_RE.findall(decoration)
+            for name in refs
             if (match := RELEASE_TAG_RE.match(name)) is not None
         ]
         if tagged:
@@ -2958,23 +3198,11 @@ def _tag_spans(root: Path) -> _TagSpans | None:
     if not version:
         return None
 
-    added = _git_text(
-        root, "log", "--diff-filter=A", "--format=%x00%H", "--name-only", "HEAD", "--", NOTES_DIR
-    )
-    if added is None:
+    with GitRunner() as run:
+        cuts = _release_cuts(root, names, run)
+    if cuts is None:
         return None
-    cut: dict[str, str] = {}
-    commit = ""
-    for line in added.splitlines():
-        if line.startswith("\x00"):
-            commit = line[1:].strip()
-        elif commit and line.strip().endswith(".md"):
-            match = RELEASE_TAG_RE.match(PurePosixPath(line.strip()).stem)
-            if match is not None:
-                # `setdefault` under a newest-first log keeps the most recent
-                # add, which is the cut a notes file deleted and rewritten
-                # still has.
-                cut.setdefault(match.group("version"), commit)
+    cut = {name.lstrip("v"): release.commit for name, release in cuts.cut.items() if release.commit}
     return _TagSpans(version, pull_request, cut, max(version.values(), key=_release_order))
 
 
