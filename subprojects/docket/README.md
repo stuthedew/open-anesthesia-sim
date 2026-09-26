@@ -1788,10 +1788,13 @@ way `flight` and `stranded` do.
 questions is worth asking. This is the rarest command here and the most expensive to get
 wrong, which is what makes one network read proportionate where the digest's
 would not be; `--no-fetch` is there for a caller that has already refreshed or
-cannot. The digest carries the same answer on its `Releasable:` line, because
-the offer is where a duplicate release starts - refusing at `release` alone
-leaves the second session having already raised it and been approved. The
-digest reads the refs for it wherever `Readiness.is_worth_cutting` holds, which
+cannot. The digest's `Releasable:` line and `status`'s `Unreleased:` line
+carry the same answer in the same words (`render._cut_elsewhere`), because the
+offer is where a duplicate release starts - refusing at `release` alone leaves
+the second session having already raised it and been approved - and where
+versions are chosen by hand, a `release` naming none prints the refusal in
+place of asking for a version it would then refuse (`PL-53Y6`). The digest
+reads the refs for it wherever `Readiness.is_worth_cutting` holds, which
 means there is finished work to cut, not that a release is being offered: where
 the roadmap has reserved the number a bump would reach, the line says
 `No release to offer` and the read still runs, which between milestones is the
@@ -1948,7 +1951,12 @@ which tags name no release, and which tag sits off its release's cut - the
 commit that added its notes, which the tag commands `release` prints look up
 rather than leave to be filled in (`PL-QHCW`). `docket release` still enforces the tag at the
 one moment tags are certainly to hand: it refuses to cut the next release while
-the current one is untagged.
+the current one is untagged. `status` reads a present tag the other way: a tag
+step filed as `Tag vX.Y.Z on ...`, the title every one has carried, is marked
+`[TAGGED: vX.Y.Z exists - close it]` once the clone holds its tag, rather than
+offered as work (`release.asked_tag`, `PL-53Y6`). A tag not yet fetched leaves
+the step offered as before, so the mark is only ever drawn from a tag that is
+there.
 
 ## The item format
 
