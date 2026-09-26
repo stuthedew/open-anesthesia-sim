@@ -6867,6 +6867,75 @@ def test_set_refuses_a_write_the_checker_would_fail_and_says_why(
     assert _item_text(store) == CAPTURED
 
 
+# The least a roadmap needs to record a current gate: a baseline row, and the
+# next milestone's frozen list, which names an id other than the capture's.
+GATE_ROADMAP = """# Plan
+
+## Versioning decision
+
+| Version | Status | Milestone |
+| --- | --- | --- |
+| v0.4.0 | Completed / current baseline | The teachable case |
+
+## The plan
+
+### The timeline
+
+| # | Step | Notes | Effort |
+| --- | --- | --- | --- |
+| 1 | **v0.5.0 — the case you can branch** | scoped below | - |
+
+## v0.5.0 - the case you can branch
+
+### Goal
+
+Make the comparison possible.
+
+### Debt gate: the frozen list
+
+- PL-B1B1 (S) On the list
+
+### Required scope
+
+Both branches.
+
+### Definition of done
+
+Both branches read.
+
+### Explicitly out of scope for v0.5.0
+
+Three branches.
+"""
+
+
+def test_set_refuses_a_debt_capture_with_no_gate_disposition(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A rule that needs the roadmap refuses the write too, as `check` would.
+
+    `set` validated without the milestones, so a capture classed as debt was
+    written at a triaged status and failed the next `check` for having no gate
+    disposition (`PL-BB5W`).
+    """
+    store = _store(tmp_path, CAPTURED)
+    (tmp_path / "ROADMAP.md").write_text(GATE_ROADMAP, encoding="utf-8")
+    fields = ("--status", "ready", "--priority", "P3", "--effort", "S", "--classes", "defect")
+
+    assert _run("set", "PL-D4D4", *fields, "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert "nothing was written" in out
+    assert "open debt (classed defect) that v0.5.0's gate neither places nor defers" in out
+    assert 'bin/docket set PL-D4D4 --deferred-from "v0.5.0 - <why>"' in out
+    assert _item_text(store) == CAPTURED
+
+    deferral = ("--deferred-from", "v0.5.0 - captured after the freeze")
+    assert _run("set", "PL-D4D4", *fields, *deferral, "--items", str(store)) == 0
+    assert "deferred-from: v0.5.0 - captured after the freeze" in _item_text(store)
+    assert _run("check", "--items", str(store)) == 0
+
+
 def test_set_holds_a_command_it_writes_to_the_admitted_shapes_whatever_the_item_s_age(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

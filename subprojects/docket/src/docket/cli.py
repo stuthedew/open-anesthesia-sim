@@ -1586,13 +1586,17 @@ def cmd_set(args: argparse.Namespace) -> int:
     written = (
         WrittenReport(identifiers=frozenset({item.identifier})) if "verify" in changes else None
     )
-    introduced = analyze(after, today, config, written=written).errors
+    # The roadmap `check` reads, so the rules that need it - a debt item's gate
+    # disposition among them - refuse the write too, rather than surfacing one
+    # `check` later (`PL-BB5W`). Unreadable, it declines as it does for `check`.
+    milestones = _milestones(_invocation(args).root, config)
+    introduced = analyze(after, today, config, milestones=milestones, written=written).errors
     if introduced:
         # Only what this write adds counts against it. An error the store
         # already carries is somebody else's, and blocking every write until
         # the whole store is clean would refuse the command on exactly the
         # days it is needed.
-        already = set(analyze(items, today, config).errors)
+        already = set(analyze(items, today, config, milestones=milestones).errors)
         introduced = [error for error in introduced if error not in already]
     if introduced:
         print(f"{item.identifier}: nothing was written; `docket check` would then report:")
