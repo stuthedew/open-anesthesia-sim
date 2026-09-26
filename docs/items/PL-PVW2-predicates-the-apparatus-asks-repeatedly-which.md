@@ -11,7 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-25
 payoff: the next tool or hook imports the one answer to each question the apparatus keeps asking instead of copying a spelling that disagrees, the way PL-KR69's and PL-8HSX's did on the protected-path audit
 verify: grep -q 'def test_creation_parents_reads_leading_ids_as_docket_does' tests/unit/test_generator_check.py && grep -q 'def test_a_non_ascii_protected_path_is_rejected' subprojects/docket/tests/test_verify.py && grep -q 'def test_repo_slug_reads_a_token_bearing_url' tests/unit/test_open_pull_requests.py && grep -q 'def test_default_branch_ref_follows_docket_on_a_master_only_clone' tests/unit/test_pr_body_check.py && grep -q 'def test_pull_request_number_reads_both_subject_shapes' subprojects/docket/tests/test_vcs.py && grep -q 'def test_an_unspaced_separator_still_ends_a_command' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_a_path_listing_is_read_one_way' subprojects/docket/tests/test_vcs.py && grep -q 'def test_digest_counts_this_branch_as_here' subprojects/docket/tests/test_cli.py && grep -q 'def test_a_roadmap_only_branch_is_queue_work_but_not_armable' subprojects/docket/tests/test_claims.py
-root-cause-of: PL-KR69, PL-YYDT, PL-2TV9, PL-GNCB, PL-0JGZ, PL-BBV7, PL-6P0F, PL-8HSX, PL-GVFC, PL-GJPD, PL-LFNK, PL-0T5X, PL-NK1L, PL-Y2L6, PL-PQ0R
+root-cause-of: PL-KR69, PL-YYDT, PL-2TV9, PL-GNCB, PL-0JGZ, PL-BBV7, PL-6P0F, PL-8HSX, PL-GVFC, PL-GJPD, PL-LFNK, PL-0T5X, PL-NK1L, PL-Y2L6, PL-PQ0R, PL-R5RF, PL-63TT, PL-39LD
 generator: live - PL-8HSX arrived after the audit, found while fixing PL-KR69, whose fix single-sourced the rename flag and left core.quotePath spelled at one caller; tools/ and .claude/hooks/ still spell each listed predicate locally, so each new caller copies whichever spelling it finds
 misread: Which spelling of a repeated predicate is the answer, when tools, hooks and docket each spell it
 ---
@@ -37,7 +37,7 @@ The audit enumerated the questions the apparatus asks and found every implementa
 **Split, 2026-09-26.** The `L` is built one question per pull request, and its members already are that decomposition, so no item is added. In order:
 
 1. The tools' own spellings of the pull-request number, the default branch, the origin slug and the GitHub token (`PL-YYDT`, `PL-GNCB`, `PL-2TV9`), onto `vcs.subject_pull_request`, `vcs.default_base`, `vcs.github_slug` and `vcs.github_token`.
-2. How a shell command splits, for the three Bash guard hooks (`PL-BBV7`, `PL-GVFC`). Landed in #1064 while the first was being built.
+2. How a shell command splits, for the three Bash guard hooks (`PL-BBV7`, `PL-GVFC`). Landed in #1064 while the first was being built - as matching lexer settings, not as a splitter the hooks import, and it is being handed members again: `PL-R5RF`, `PL-63TT` and `PL-39LD` arrived on 2026-09-26, each a place where the hooks' copies of the split still diverge from bash or from each other. Reopened for that splitter, which takes all three.
 3. How a changed-path listing is read (`PL-NK1L`, `PL-PQ0R`, `PL-Y2L6`, `PL-0T5X`). It is the one question still being handed members, four since `PL-8HSX`, and it goes third rather than first because it is the widest, 19 call sites across five files, and its four members are untriaged; the first two are what `verify:` below names, which passes once both have landed.
 4. `PL-LFNK`, then `PL-0JGZ`, whose decision the owner answered on 2026-09-26.
 
