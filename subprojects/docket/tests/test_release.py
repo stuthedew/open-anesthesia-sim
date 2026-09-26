@@ -17,6 +17,7 @@ from docket.release import (
     SPAN_HEADING,
     Readiness,
     already_released,
+    below_current,
     is_untagged,
     milestones,
     notes_claims,
@@ -337,6 +338,30 @@ def test_a_base_a_release_ahead_does_not_report_the_version_being_cut() -> None:
 def test_an_empty_version_reports_nothing_rather_than_matching_an_empty_base() -> None:
     """A store with no version must not read as a duplicate of a base with none."""
     assert not already_released("", frozenset(), "", "pyproject.toml")
+
+
+def test_versions_are_ordered_as_numbers_not_as_text() -> None:
+    """PL-3DN1: 0.10.0 is ahead of 0.9.3, though it sorts below it as a string."""
+    assert below_current("0.10.0", "0.9.3", "pyproject.toml") == ""
+    assert below_current("v0.9.3", "0.10.0", "pyproject.toml") == (
+        "0.9.3 is below 0.10.0, the version pyproject.toml declares"
+    )
+
+
+def test_the_current_version_is_not_below_itself() -> None:
+    """PL-3DN1: equal is decided, not left to fall out of the comparison.
+
+    The resume of a cut interrupted after its bump asks for exactly the current
+    number and has to get through; a re-cut of a shipped one is left to
+    `already_released`, which names its evidence.
+    """
+    assert below_current("0.2.5", "0.2.5", "pyproject.toml") == ""
+    assert below_current("v0.2.5", "0.2.5", "pyproject.toml") == ""
+
+
+def test_a_number_that_does_not_parse_is_not_compared() -> None:
+    """A version field with no version in it stays `prepare_bump`'s to refuse."""
+    assert below_current("0.2.0", "", "pyproject.toml") == ""
 
 
 def test_notes_cite_the_pull_request_in_preference_to_the_commit() -> None:
@@ -1943,3 +1968,74 @@ def test_the_digest_reads_a_release_train_holder_from_the_refs(
     out = capsys.readouterr().out
     assert "PL-TR4N holds the release train, nothing cut yet (claude/pl-tr4n-cut)" in out
     assert "Offer" not in out
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_version_below_the_current_one_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-3DN1: a typed 0.2.0 over 0.2.5 used to be cut, bumping the version backwards.
+
+    Refused in a dry run too, which used to print `0.2.5 -> 0.2.0` and exit 0:
+    it is the wrong number, not a state a dry run exists to review.
+    """
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    shipped = repo.items / "PL-D1D1-shipped.md"
+    before = shipped.read_text(encoding="utf-8")
+
+    assert repo.run("release", "0.2.0", "--no-fetch", "--dry-run") == 1
+    assert repo.run("release", "0.2.0", "--no-fetch") == 1
+
+    out = capsys.readouterr().out
+    assert (
+        "Cannot cut v0.2.0: 0.2.0 is below 0.2.5, the version pyproject.toml declares. "
+        "Nothing was stamped and nothing was written." in out
+    )
+    assert "name a number above 0.2.5" in out
+    assert "0.2.5 -> 0.2.0" not in out
+    assert 'version = "0.2.5"' in repo.version()
+    assert shipped.read_text(encoding="utf-8") == before
+    assert not (repo.root / "docs" / "releases" / "v0.2.0.md").exists()
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_cut_of_the_current_version_is_left_to_the_guard_that_names_its_evidence(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The equal case end to end: refused as already out, not as below itself."""
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+
+    assert repo.run("release", "0.2.5", "--no-fetch") == 1
+
+    out = capsys.readouterr().out
+    assert "its pyproject.toml already reads 0.2.5" in out
+    assert "Cannot cut v0.2.5" not in out
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_cut_interrupted_after_its_bump_is_resumed_rather_than_refused_as_current(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The resume the ordering guard must let through: version field and stamps, no notes."""
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    shipped = _train_item("PL-D1D1", "done", resource="").replace(
+        "status: done\n", "status: done\nmilestone: v0.2.6\n"
+    )
+    repo.commit(
+        "cut v0.2.6, stopped before its notes",
+        when=TRAIN_T0 + timedelta(minutes=30),
+        files={
+            "items/PL-D1D1-shipped.md": shipped,
+            "pyproject.toml": '[project]\nversion = "0.2.6"\n',
+        },
+    )
+
+    assert repo.run("release", "0.2.6", "--no-fetch") == 0
+
+    out = capsys.readouterr().out
+    assert "Resuming an interrupted cut of v0.2.6" in out
+    assert "Cannot cut" not in out
+    assert (repo.root / "docs" / "releases" / "v0.2.6.md").exists()
