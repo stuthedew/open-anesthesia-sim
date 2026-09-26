@@ -3,10 +3,12 @@ id: PL-S8LZ
 title: Branch cleanup files no item and opens no pull request: deleting remote branches changes nothing in the repository, so the reply hands the owner the list and nothing is committed
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 touches: CLAUDE.md, .claude/rules/instruction-writing.md, .claude/skills/docket/modes/capture.md, docs/items/PL-P99G-delete-the-13-remote-branches-whose-work-main.md
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1110
 payoff: a session asked to clean up branches hands the owner the list in its reply and opens no pull request, so nothing waits to be merged or closed for work that changed nothing in the repository
 verify: grep -q 'Not for deleting remote branches' CLAUDE.md && grep -q 'remote branches to delete' .claude/rules/instruction-writing.md && grep -q 'deleting remote branches' .claude/skills/docket/modes/capture.md
 ---

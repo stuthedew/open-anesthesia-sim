@@ -425,7 +425,12 @@ deviating from a described deliverable, not acting without one.
   and work under its id. Not for a fix riding inside a commit an id already
   leads: the line is whether the work takes a commit of its own (`PL-CP74`) —
   and not for one the fix-now rule admits, which rides the current item's
-  claim.
+  claim. Not for deleting remote branches either, or clearing this clone's
+  tracking refs for them: that changes nothing in the repository, so nothing
+  is filed, claimed or committed and no pull request opens, and the reply
+  hands the owner the list and the command (project owner, 2026-09-26,
+  ratified, over filing branch cleanup as housekeeping with a pull request of
+  its own, `PL-S8LZ`).
 - **A root cause of more than two items is pulled, not queued** (project owner,
   2026-09-17). A mechanism a session identifies as the cause of three or more
   items is a *generator*. Record it on the causing item as `root-cause-of:`
