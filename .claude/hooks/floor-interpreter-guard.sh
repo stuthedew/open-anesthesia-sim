@@ -45,15 +45,20 @@
 # the pattern carrying it.
 #
 # Fails open in every error path - no python3, an unreadable payload, a command
-# it cannot tokenise - like `no-prune-guard.sh` beside it. A guard that breaks
-# the session costs more than the round it saves.
+# bash itself would refuse, `shell_split.py` missing from beside it - like
+# `no-prune-guard.sh` beside it. A guard that breaks the session costs more than
+# the round it saves.
 set -uo pipefail
 
 payload=$(cat)
 command -v python3 >/dev/null 2>&1 || exit 0
+hooks=$(dirname "${BASH_SOURCE[0]}")
 
-PAYLOAD="$payload" python3 -c '
-import json, os, re, shlex, sys
+PAYLOAD="$payload" HOOKS="$hooks" python3 -c '
+import json, os, re, sys
+
+sys.path.insert(0, os.environ["HOOKS"])
+import shell_split
 
 try:
     data = json.loads(os.environ["PAYLOAD"])
@@ -65,43 +70,21 @@ command = data.get("tool_input", {}).get("command")
 if not isinstance(command, str):
     sys.exit(0)
 
-# Only the text before the first heredoc introducer is a command; what follows
-# is document content. This repository writes prose *about* the floor through
-# heredocs routinely - this hook, the item, the commit message that landed it -
-# and blocking that would be the guard eating its own documentation.
-command = command.split("<<", 1)[0]
-
-# A backslash ending a line continues the command onto the next, so that pair
-# goes first. A newline left after it separates two commands exactly as `;`
-# does, and shlex would otherwise discard it as whitespace and read a two-line
-# script as one command. Substituting inside a quoted string is harmless: the
-# string stays one token either way, so only the tokenizer sees the change.
-command = command.replace("\\\n", "").replace("\n", " ; ")
-
-# Tokenised rather than split with a regex, because the failing shape puts the
-# path inside a quoted argument: `python3 -c "import ast; ast.parse(open(
-# \"src/a.py\").read())"` is one command with one `;` that is not a separator.
-# shlex keeps the quoted string whole, so the path is visible and the `;` is
-# not mistaken for the end of the invocation.
-#
-# **`punctuation_chars` is what makes an unquoted separator one, whatever the
-# spacing.** Plain `shlex.split` returned `print(1);` as one word, so a path in
-# the command after it was read as an argument to this interpreter, and
-# `true;python3` as one word, which hid the interpreter from the refusal
-# (`PL-GVFC`, `PL-BBV7`). These are the settings `gate-status-guard.sh` uses,
-# which had already met the `check|tail` form of the same fault; that hook
-# has no line-continuation step, and one splitter both import is for `PL-PVW2`
-# to build. `commenters` stays at the default, so a `# note` ends the parse:
-# that can only drop a path, never invent one, the safe direction here.
-# Anything it cannot tokenise - unbalanced quotes, a partial line - fails open.
-try:
-    lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
-    lexer.whitespace_split = True
-    tokens = list(lexer)
-except ValueError:
+# Split the way bash splits it, by `shell_split.py` beside this file, which the
+# three Bash guards share (`PL-PVW2`). A regex would not do, because the failing
+# shape puts the path inside a quoted argument: `python3 -c "import ast;
+# ast.parse(open(\"src/a.py\").read())"` is one command with one `;` that is
+# not a separator. The splitter keeps that string whole, so the path is visible
+# and the `;` does not end the invocation. It ends a command at an unquoted
+# separator however it is spaced - `true;python3` hid the interpreter and
+# `print(1);` joined the next command to this one (`PL-GVFC`, `PL-BBV7`), and a
+# `)` glued to the `;` hid it again (`PL-63TT`). A comment and a heredoc body
+# are removed, the body being document content this repository writes about the
+# floor routinely, and the lines after its terminator are read (`PL-39LD`).
+cut = shell_split.segments(command)
+if cut is None:
     sys.exit(0)
 
-SEPARATORS = {";", "&&", "||", "|", "&"}
 ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
 # A subshell, a brace group or a negation opens the command it precedes.
 GROUPING = ("(", "{", "!")
@@ -120,17 +103,8 @@ GUARDED = re.compile(r"(?<![\w-])(?<!subprojects/docket/)(?:src|tests)/")
 # A whole-tree parse reaches both without naming either.
 WHOLE_TREE = ("compileall", "py_compile")
 
-segments, current = [], []
-for token in tokens:
-    if token in SEPARATORS:
-        segments.append(current)
-        current = []
-    else:
-        current.append(token)
-segments.append(current)
-
 offender = None
-for segment in segments:
+for segment, _ in cut:
     rest = list(segment)
     while rest and rest[0] in GROUPING:
         rest.pop(0)
