@@ -94,7 +94,7 @@ EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, UNKNOWN: 2}
 SHOWN = 5
 
 #: The queue's own tooling, which arms on green beside the store. The path is
-#: this repository's layout, as `claims.CUTOVER_MARKER` is.
+#: this repository's layout.
 TOOLING = "subprojects/docket/"
 
 #: The one file under `TOOLING` that still waits on a read: this module, which

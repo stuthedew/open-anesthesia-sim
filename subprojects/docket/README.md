@@ -671,11 +671,11 @@ git declines: `holdings` returns no holds and says why in `Holdings.declined`,
 and each reader then says its reading is partial, or declines to answer,
 rather than reporting that nothing is held.
 
-A commit made before a session could write a claim is read by the old rule in
-the section below, with none of the promotions, and `PL-CH3Z` deletes that
-reading once no ref needs it, which `flight`'s `legacy refs:` count reports.
-`claims.py`'s module docstring carries the rest of the specification, and
-`PL-MB2W` § "Design round, 2026-09-24" the reasoning.
+Every commit is read by its trailers alone. The old rule in the section below
+was kept for commits made before a session could write a claim, and `PL-CH3Z`
+deleted that reading on 2026-09-26, once `flight` counted no ref still holding
+by it. `claims.py`'s module docstring carries the rest of the specification,
+and `PL-MB2W` § "Design round, 2026-09-24" the reasoning.
 
 ### In flight is read from the commits, not from the branch name
 
@@ -685,8 +685,8 @@ what a branch carries is in git beside it: `docket flight` reads both back,
 and `docket next` excludes what it finds.
 
 Before the claim record, the id was taken from **the front of the commit
-subjects**, and from the branch name where it carries one; attribution, and a
-commit made before the record, are still read that way. Reading names alone is
+subjects**, and from the branch name where it carries one; attribution, and
+the branch name, are still read that way. Reading names alone is
 what this replaced, and it
 went blind in exactly the case it existed for. A session names its own branch
 `claude/pl-k7qx-short-slug`, but a branch created for it by a web harness is
@@ -725,9 +725,9 @@ branch holds it open, as `#914` dropped three in queue-only commits
 intent never reached its diff, and those items carry the measurements each was
 adopted on. The claim record (`PL-MB2W`) removed the case instead: a commit
 made since a session could write a claim claims by its `Claim:` trailer and
-nothing else, whatever its diff. The path rule above still reads a commit made
-before then (`CUTOVER_MARKER`), without the promotions, until `PL-CH3Z`
-deletes it.
+nothing else, whatever its diff. The path rule above read a commit made before
+then, without the promotions, until `PL-CH3Z` deleted it on 2026-09-26, once
+`flight` counted no ref still holding by it; a leading id now claims nothing.
 
 **A claim on an item the default branch has no copy of is kept, and worded
 differently.** This was the opposite direction from the three promotions above,
@@ -860,23 +860,17 @@ request can and cannot establish, and into one that says plainly that nothing
 there is being worked.
 
 **Each row also says what kind of hold put the item there, and in what
-state** (`PL-N162`). Since the claim record, "in flight" is one of four
-things: a `claim`, a `legacy claim` read by the old rule from a commit made
-before a session could write one, a `status disposition` — a branch that moved
-the item's status, which is a decision about it rather than somebody working
-it — or a `branch name`. Three more readings follow the rows, each from the
-same `claims.holdings` read. Claims that have *lapsed* on items the default
+state** (`PL-N162`). Since the claim record, "in flight" is one of three
+things: a `claim`, a `status disposition` — a branch that moved the item's
+status, which is a decision about it rather than somebody working it — or a
+`branch name`. Two more readings follow the rows, each from the same
+`claims.holdings` read. Claims that have *lapsed* on items the default
 branch holds open, and that nothing else holds live, are listed apart, since
 they hold nothing and `next` offers the item, and `show` says what taking one
 involves; a lapsed claim on a closed item is spent and not listed, and one
 beside a later live claim or disposition on the same item is not listed
-either, because `next` does not offer that item. `legacy refs: N` counts the
-refs whose live hold is a legacy claim, and prints at zero too, because zero is
-when `PL-CH3Z` deletes the old rule — but only on a whole read: where git
-declined it prints `unknown`, and where a ref went unread it prints the count
-as a floor and names the ref, since an unread ref may still hold by the old
-rule. And an `unclaimed:` row names each `claude/*` branch
-that has a non-merge commit made under the record changing a path outside the
+either, because `next` does not offer that item. And an `unclaimed:` row names
+each `claude/*` branch that has a non-merge commit changing a path outside the
 queue — the items, `roadmap_file` and `notes_file` — no claim of its own in
 any state, and no item id in its name. That is `claims.claims_nothing`, the
 same function `tools/branch_id_check.py` refuses such a branch on in CI
@@ -1080,10 +1074,7 @@ than one branch has claimed the item. Where nothing claims it, `show` names the
 status disposition or branch name holding it instead, each with its kind and
 state, and worded so a triage or grooming pass that moved the item's status is
 not read as somebody working it, and then any lapsed claim on an item the base
-holds open, which holds nothing and which `claim` passes (`PL-N162`). One claim
-commit reached by two branches through a merge - a claim read by the old rules
-counts for each - prints as the one claim it is, with no verdict, and the order
-breaks that tie on the branch's name so it reads the same in every checkout.
+holds open, which holds nothing and which `claim` passes (`PL-N162`).
 
 **A claim holds for the branch its token names, and a local branch and its
 tracking ref are one holder.** `git log --source` credits a commit two refs

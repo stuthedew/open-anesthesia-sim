@@ -28,11 +28,11 @@ import pytest
 
 from docket import arming, claims, cli, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
-from docket.claims import CUTOVER_MARKER, SESSION_VARIABLE, Holdings
+from docket.claims import SESSION_VARIABLE, Holdings
 from docket.cli import build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
-from docket.vcs import FETCHED, Fetch, commands_written_here, lost, records_on_base
+from docket.vcs import FETCHED, Fetch, commands_written_here, leading_ids, lost, records_on_base
 from docket.verify import LANDED_GUARD, GitUnanswered
 
 READY = """---
@@ -1577,9 +1577,8 @@ def _hold_the_train(root: Path, store: str = "items") -> None:
 
     `bin/docket release` refuses a branch holding no train claim (`PL-331V`),
     so every fixture that cuts takes this step first, as release mode does.
-    The claim is the empty commit `claim` writes, made after the cutover marker
-    is in the tree so it is read by the current rules, and dated by the clock
-    so its lease is live when the command reads it.
+    The claim is the empty commit `claim` writes, dated by the clock so its
+    lease is live when the command reads it.
     """
 
     def git(*args: str) -> None:
@@ -1588,9 +1587,6 @@ def _hold_the_train(root: Path, store: str = "items") -> None:
     for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
         git("config", name, value)
     git("checkout", "-q", "-b", TRAIN_BRANCH)
-    marker = root / CUTOVER_MARKER
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text("# the claim reader\n", encoding="utf-8")
     (root / store / "PL-TR4N-cut-the-release.md").write_text(TRAIN_ITEM, encoding="utf-8")
     git("add", "-A")
     git("commit", "-qm", "PL-TR4N: file the release")
@@ -3118,7 +3114,10 @@ def _flight_repo(
     that commit was implementing the item its subject leads with or only
     recording something into the queue. It defaults outside the store, because
     a commit that reaches past the queue is what every test here but one means
-    by a branch mid-item.
+    by a branch mid-item. A commit modelled as implementing records a `Claim:`
+    trailer for each id its subject leads with, as `bin/docket claim` would
+    have; one modelled as a capture records none, and since `PL-CH3Z` a leading
+    id alone claims nothing.
 
     `store` is where the queue sits under the root, and defaults to the one
     level down every other test here happened to use - which is why `PL-P757`
@@ -3149,7 +3148,9 @@ def _flight_repo(
     written.parent.mkdir(parents=True, exist_ok=True)
     written.write_text("work in progress\n")
     git("add", "-A")
-    git("commit", "-qm", subject, env=dated)
+    ids = () if written.is_relative_to(root / store) else leading_ids(subject)
+    trailers = "\n".join(f"Claim: {key} {BRANCH}" for key in ids)
+    git("commit", "-qm", f"{subject}\n\n{trailers}" if trailers else subject, env=dated)
     git("checkout", "-q", "main")
     return root
 
@@ -3293,12 +3294,13 @@ def test_now_without_an_offset_is_refused_rather_than_guessed(
 def test_flight_ignores_a_branch_that_only_wrote_to_the_queue(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Against real git: `--name-only` output, parsed, decides the claim.
+    """Against real git: a commit that records no claim claims nothing, whatever its subject.
 
-    `test_vcs.py` asserts the rule against an injected runner. What this adds
-    is that git actually prints the paths under the commit they belong to in
-    the shape the walk parses, on this checkout's git - the half a fake cannot
-    prove (queue item PL-X3WZ).
+    A capture leads with the id it files and writes only the queue, and
+    `_flight_repo` models it without a `Claim:` trailer, as a session filing
+    one would have committed it. Once the old rule read its subject where the
+    tree predated the record; `PL-CH3Z` deleted that, so only the trailer is
+    asked (queue item PL-X3WZ).
     """
     root = _flight_repo(tmp_path, "PL-K7QX Do the thing", wrote="items/PL-K7QX-a-note.md")
 
@@ -3391,7 +3393,7 @@ def test_show_marks_an_item_a_branch_has_in_flight(
     assert f"IN FLIGHT on {BRANCH}" in out
     # What the branch holds, not that somebody holds it: a branch outlives its
     # session, so the line may not presume one (`PL-7TVT`).
-    assert "live legacy claim, made 2026-08-20 12:00 UTC; last commit 3 days ago" in out
+    assert "live claim, made 2026-08-20 12:00 UTC; last commit 3 days ago" in out
     assert "That branch has claimed PL-0001, so starting it here would redo its work." in out
     assert "does not say anybody is still on it" in out
     assert "do not start" not in out
@@ -3466,9 +3468,8 @@ def test_show_says_which_branch_holds_an_item_two_are_carrying(
     Real git rather than an injected runner, because what is being proved here
     is that two branches claiming one item produce one order git can actually
     be asked for - `Holdings.order`, on `(%aI, hash)` - against a checkout
-    whose HEAD is the later of the two. The second commit reaches outside the
-    queue, since these commits predate the claim writer and are read by the
-    old rule, under which a queue-only one claims nothing (`PL-N162`).
+    whose HEAD is the later of the two. The second commit records its claim
+    in a `Claim:` trailer naming its branch, as `bin/docket claim` writes one.
     """
     root = _flight_repo(tmp_path, "PL-0001 Do the thing")
     later = os.environ | {
@@ -3483,7 +3484,8 @@ def test_show_says_which_branch_holds_an_item_two_are_carrying(
     (root / "src").mkdir()
     (root / "src" / "second.txt").write_text("the other session\n")
     git("add", "-A")
-    git("commit", "-qm", "PL-0001 Do the thing as well", env=later)
+    message = "PL-0001 Do the thing as well\n\nClaim: PL-0001 claude/pl-0001-second"
+    git("commit", "-qm", message, env=later)
 
     assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
 
@@ -3956,11 +3958,8 @@ def test_show_names_the_branch_holding_an_item_absent_here(
     only "no item matching": a dead end at the moment a session asks about work
     another session holds (`PL-140X`).
     """
-    from docket.claims import CUTOVER_MARKER
-
     when = "2026-08-20T12:00:00+00:00"
     root = _flight_repo(tmp_path, "Tidy up", when=when)
-    _commit_on(root, "main", {CUTOVER_MARKER: "# the claim writer\n"}, "claims", when)
     held = "claude/capture-k7qx"
     captured = "items/PL-K7QX-captured-there.md"
     _commit_on(root, held, {captured: READY.replace("PL-B1B1", "PL-K7QX")}, "capture", when)
@@ -3995,11 +3994,8 @@ def test_show_names_the_branch_of_a_stranded_id_no_hold_names(
     the stranded read and prints the branch and the recover line `stranded`
     gives, and a typo still gets the one line it always did.
     """
-    from docket.claims import CUTOVER_MARKER
-
     when = "2026-08-20T12:00:00+00:00"
     root = _flight_repo(tmp_path, "Tidy up", when=when)
-    _commit_on(root, "main", {CUTOVER_MARKER: "# the claim writer\n"}, "claims", when)
     branch = "claude/notes-elsewhere"
     captured = "items/PL-K7QX-captured-there.md"
     _commit_on(root, branch, {captured: READY.replace("PL-B1B1", "PL-K7QX")}, "capture", when)
@@ -4042,7 +4038,7 @@ def test_show_says_a_lapsed_claim_on_an_open_item_holds_nothing(
     out = capsys.readouterr().out
     assert f"LAPSED on {BRANCH}" in out
     assert (
-        "lapsed legacy claim, made 2026-08-20 12:00 UTC; lapsed 2026-08-27 12:00 UTC,"
+        "lapsed claim, made 2026-08-20 12:00 UTC; lapsed 2026-08-27 12:00 UTC,"
         " 7 days after the last commit that renewed it"
     ) in out
     assert "That claim holds nothing, so `bin/docket claim PL-0001` takes the item." in out
@@ -4065,7 +4061,11 @@ def test_show_offers_no_takeover_of_a_lapsed_claim_where_another_claim_is_live(
     root = _flight_repo(tmp_path, "PL-0001 Do the thing")
     second = "claude/second-abc"
     _commit_on(
-        root, second, {"src/second.txt": "x\n"}, "PL-0001 Carry on", "2026-08-30T09:00:00+00:00"
+        root,
+        second,
+        {"src/second.txt": "x\n"},
+        f"PL-0001 Carry on\n\nClaim: PL-0001 {second}",
+        "2026-08-30T09:00:00+00:00",
     )
     ran = ["--items", str(root / "items"), "--today", "2026-09-01", "show", "PL-0001"]
 
@@ -4611,7 +4611,7 @@ def _unevenly_truncated_pair(tmp_path: Path) -> Path:
     # graft the depth leaves: `main~5` is `PL-M3NW`, and `--depth=5` reaches only
     # as far as `PL-M4RB` down this path.
     git("checkout", "-qb", BRANCH, "main~5")
-    commit("branch-work", "PL-K7QX Do the thing")
+    commit("branch-work", f"PL-K7QX Do the thing\n\nClaim: PL-K7QX {BRANCH}")
     git("checkout", "-q", "main")
 
     work = tmp_path / "work"
@@ -4685,7 +4685,7 @@ def test_flight_still_reports_a_branch_pushed_to_after_its_pull_request_squashed
     (root / "a.py").write_text("fixed\n")
     (root / "test_a.py").write_text("def test_a() -> None:\n    pass\n")
     git("add", "-A")
-    git("commit", "-qm", "PL-K7QX: the whole implementation")
+    git("commit", "-qm", "PL-K7QX: the whole implementation\n\nClaim: PL-K7QX work")
     git("checkout", "-q", "main")
 
     assert main(["--items", str(root / "items"), "flight"]) == 0
@@ -4711,10 +4711,10 @@ def test_flight_reads_below_an_uneven_horizon_by_the_landed_prefix(
     `flight` now answers from `claims.holdings`, and that read asks a different
     question the clone *can* answer: whether the branch's work up to a commit is
     content the base already holds (`claims._landed_through`). The default
-    branch's own commits, reached below the graft, wrote nothing the base lacks,
-    so every claim they carry is spent by landing, since each claim is its own
-    commit or an ancestor of a landed one, and the branch's own commit after
-    them is still read. The walk guard is unchanged and stays silent,
+    branch's own commits, reached below the graft, carry no `Claim:` trailer,
+    and since `PL-CH3Z` their leading ids claim nothing, while the branch's own
+    claim after them is still read. The walk guard is unchanged and stays
+    silent,
     since every emitted commit still has a parent; what changed is that the
     wrong ids no longer survive past it. `vcs._unmerged_commits` kept the limit
     until `PL-FX5Q` deleted it.
@@ -4744,7 +4744,7 @@ def test_flight_reads_below_an_uneven_horizon_by_the_landed_prefix(
 
     # The branch's own work, correctly reported.
     assert "PL-K7QX" in out
-    # A commit of `main`'s own, spent by the landed prefix rather than reported.
+    # A commit of `main`'s own, which claims nothing and is not reported.
     assert "PL-M3NW" not in out
     # And the guard stayed silent: the walk was not refused, its wrong ids were
     # answered after it.
@@ -8575,12 +8575,9 @@ def _item_document(identifier: str, status: str = "ready") -> str:
 def _arm_repo(tmp_path: Path) -> tuple[Path, Callable[..., str]]:
     """A clone of a bare `origin` whose `main` holds two items, checked out on `ARM_BRANCH`.
 
-    `main` carries the claim record's marker, so a `Claim:` trailer on the
-    branch is read as a claim rather than by the old rules. The returned `git`
-    dates every commit it makes at `when`, a month before `ARM_T0` by default.
+    The returned `git` dates every commit it makes at `when`, a month before
+    `ARM_T0` by default.
     """
-    from docket.claims import CUTOVER_MARKER
-
     remote = tmp_path / "origin.git"
     root = tmp_path / "work"
     for target in (["--bare", str(remote)], [str(root)]):
@@ -8603,7 +8600,6 @@ def _arm_repo(tmp_path: Path) -> tuple[Path, Callable[..., str]]:
         "docs/items/PL-B1B1-held.md": _item_document("PL-B1B1"),
         "docs/items/PL-C2C2-other.md": _item_document("PL-C2C2"),
         "docs/PL-D3D3-drafted.md": _item_document("PL-D3D3"),
-        CUTOVER_MARKER: "# the claim writer\n",
     }
     for path, text in files.items():
         (root / path).parent.mkdir(parents=True, exist_ok=True)
@@ -8920,8 +8916,7 @@ def test_flight_prints_each_hold_s_kind_and_state_the_lapsed_claims_and_the_uncl
     old on an open item has lapsed, holds nothing, and prints as its own row
     under a heading saying so. A `claude/` branch whose commit reaches outside
     the queue with no claim on it is an `unclaimed:` row, although its subject
-    leads with an id - attribution, which claims nothing - and `legacy refs:`
-    reads 0, because every commit here was made under the record.
+    leads with an id - attribution, which claims nothing.
 
     Three branches owe no row, from the review of this slice. The lapsed
     branch did work outside the queue, and a claim counts in any state
@@ -8963,70 +8958,11 @@ def test_flight_prints_each_hold_s_kind_and_state_the_lapsed_claims_and_the_uncl
         r"PL-C2C2  claude/gone-a1b2c3  lapsed  claim  last commit 12 days ago",
         _flight_row(out, "PL-C2C2"),
     )
-    assert "legacy refs: 0" in out
     assert "1 work branch claims nothing" in out
     assert [line for line in out.splitlines() if line.startswith("unclaimed:")] == [
         "unclaimed: claude/forgetful-d4e5f6  last commit 1 minute ago"
     ]
     assert "PL-H5H5" not in out
-
-
-def test_flight_counts_the_refs_still_holding_by_the_old_rule(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """Before the record a subject leading with an id claims it, and `PL-CH3Z` waits on the count.
-
-    `_flight_repo`'s commits predate `CUTOVER_MARKER`, so its branch holds by
-    the old rule: the row says `legacy claim`, the ref is counted, and the
-    branch is no `unclaimed:` row - the catch skips what was made before a
-    session could claim, and the harness's name is outside `claude/` anyway.
-    """
-    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
-
-    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "flight"]) == 0
-    out = capsys.readouterr().out
-
-    assert re.fullmatch(
-        rf"PL-0001  {BRANCH}  live  legacy claim  last commit 3 days ago",
-        _flight_row(out, "PL-0001"),
-    )
-    assert "legacy refs: 1 - 1 ref holds an item" in out
-    assert "unclaimed:" not in out
-    assert "lapsed" not in out
-
-
-def test_flight_counts_only_legacy_claims_still_live(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """A legacy claim past its lease holds nothing, so it no longer needs the old rule either."""
-    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
-
-    assert main(["--items", str(root / "items"), "--today", "2026-09-20", "flight"]) == 0
-    out = capsys.readouterr().out
-
-    assert "legacy refs: 0 - no ref holds an item" in out
-
-
-def test_flight_reads_legacy_refs_as_a_floor_where_a_ref_went_unread(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """`PL-CH3Z` starts on `legacy refs: 0`, and a truncated clone must not print it.
-
-    `_shallow_pair` is an agent container in miniature: its branch leads with
-    an id on commits made before the record, and the ref goes unread, so
-    whatever it holds by the old rule is never counted. The zero would be the
-    go-ahead to delete that rule over a ref still holding by it.
-    """
-    work = _shallow_pair(tmp_path)
-
-    assert main(["--items", str(work / "items"), "flight"]) == 0
-    out = capsys.readouterr().out
-
-    assert (
-        "legacy refs: at least 0 - 1 ref went unread and may hold by the old rule as well "
-        f"(origin/{BRANCH})" in out
-    )
-    assert "nothing here still needs the old rule" not in out
 
 
 def test_next_and_the_digest_say_what_holds_each_item_they_leave_out(

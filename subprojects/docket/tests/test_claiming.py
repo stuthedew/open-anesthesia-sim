@@ -20,15 +20,7 @@ from pathlib import Path
 import pytest
 
 from docket import claiming
-from docket.claims import (
-    BY_OVER,
-    BY_YIELD,
-    CUTOVER_MARKER,
-    LIVE,
-    RELEASED,
-    SESSION_VARIABLE,
-    holdings,
-)
+from docket.claims import BY_OVER, BY_YIELD, LIVE, RELEASED, SESSION_VARIABLE, holdings
 from docket.cli import main
 
 #: When this session claims. The base sits a month earlier, and a rival's claim
@@ -101,9 +93,9 @@ class _Clone:
 
 
 class _Remote:
-    """A bare `origin` whose `main` holds three items and, unless unmarked, the marker."""
+    """A bare `origin` whose `main` holds three items."""
 
-    def __init__(self, tmp_path: Path, *, marked: bool = True) -> None:
+    def __init__(self, tmp_path: Path) -> None:
         self.tmp = tmp_path
         self.path = tmp_path / "origin.git"
         _git(tmp_path, "-c", "init.defaultBranch=main", "init", "-q", "--bare", str(self.path))
@@ -113,8 +105,6 @@ class _Remote:
             "docs/items/PL-C2C2-other.md": _item("PL-C2C2"),
             "docs/items/PL-D3D3-stopped.md": _item("PL-D3D3", "blocked"),
         }
-        if marked:
-            files[CUTOVER_MARKER] = "# the claim writer\n"
         seed.commit("base", when=T0 - 30 * DAY, files=files)
         seed.git("push", "-q", "origin", "HEAD:refs/heads/main")
 
@@ -385,7 +375,6 @@ def test_a_fetch_that_fails_refuses_before_anything_is_written(
         ("default", "PL-B1B1", "the default branch"),
         ("unknown", "PL-Z9Z9", "HEAD holds no item PL-Z9Z9"),
         ("blocked", "PL-D3D3", "PL-D3D3 is `blocked` in HEAD's copy"),
-        ("unmarked", "PL-B1B1", "would be read by the old rules"),
         ("elsewhere", "PL-B1B1", f"{BRANCH} pushes to origin/other"),
     ],
 )
@@ -398,7 +387,7 @@ def test_a_claim_that_could_not_hold_is_refused_before_anything_is_written(
     said: str,
 ) -> None:
     """Each would print success over a claim no reader credits, which is worse than refusing."""
-    remote = _Remote(tmp_path, marked=case != "unmarked")
+    remote = _Remote(tmp_path)
     work = remote.clone("work", "" if case == "default" else BRANCH)
     if case == "detached":
         work.git("checkout", "-q", "--detach")
@@ -776,38 +765,6 @@ def test_a_branch_tracking_the_default_branch_already_on_the_remote_is_given_its
     assert remote.tip(BRANCH) == work.head()
     assert remote.tip("main") == main
     assert work.git("rev-parse", "--abbrev-ref", "@{u}").strip() == f"origin/{BRANCH}"
-
-
-def test_a_legacy_claim_shared_by_merging_the_holder_is_continued_not_tied(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """An old-rule claim counts for every branch reaching its commit, so after a merge two
-    branches hold it on one commit, and whichever a checkout lists first would win the tie.
-
-    Claiming again then writes nothing more, although the hold still reads as old-rule.
-    """
-    remote = _Remote(tmp_path, marked=False)
-    rival = remote.clone("rival", RIVAL)
-    rival.commit("PL-B1B1: start", when=T0 - HOUR)
-    rival.git("push", "-q", "-u", "origin", RIVAL)
-    landing = remote.clone("landing")
-    landing.commit("the claim writer lands", when=T0 - HOUR, files={CUTOVER_MARKER: "# w\n"})
-    landing.git("push", "-q", "origin", "main")
-    work = remote.clone("work", BRANCH)
-    work.git("merge", "-q", "--no-edit", f"origin/{RIVAL}", when=T0 - MINUTE)
-
-    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
-
-    assert _trailer(work, "Claim") == f"PL-B1B1 {BRANCH} over {RIVAL}@{rival.head()}"
-    observer = remote.clone("observer")
-    assert [hold.ref for hold in holdings(observer.root, now=T0 + HOUR).order("PL-B1B1")] == [
-        f"origin/{BRANCH}"
-    ]
-    claimed = work.head()
-    capsys.readouterr()
-    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
-    assert "already holds it first; nothing written" in capsys.readouterr().out
-    assert work.head() == claimed
 
 
 def test_a_claim_on_a_branch_whose_content_has_landed_names_that_as_the_cause(

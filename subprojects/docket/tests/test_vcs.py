@@ -3279,7 +3279,7 @@ def test_a_changed_path_read_prints_a_path_outside_ascii_as_written(tmp_path: Pa
     Left on, git printed `src/anesthesia_sim/core/café.py` as
     `"src/anesthesia_sim/core/caf\\303\\251.py"`, quotes included, and matched
     against that, `verify`'s protected-path audit passed the file as "none
-    touched". `claims.work_under_record` was the one reader spelling its own
+    touched". `claims.work_outside_queue` was the one reader spelling its own
     `-c`, and now relies on this one.
     """
     repo = _Repo(tmp_path / "repo")

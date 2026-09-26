@@ -71,7 +71,6 @@ from pathlib import Path
 from .claims import (
     BY_CLOSED,
     BY_YIELD,
-    CUTOVER_MARKER,
     LAPSED,
     LIVE,
     RELEASED,
@@ -79,7 +78,6 @@ from .claims import (
     SESSION_VARIABLE,
     Hold,
     Holdings,
-    _parse_claim,
     holdings,
 )
 from .model import CLOSED_STATUSES, parse_front_matter
@@ -185,9 +183,8 @@ def claim(
     have, since nothing here can ask for it. `push` pushes a branch the remote
     already has, which the caller says is safe: no pull request on it armed.
 
-    An item this branch already holds first by a recorded claim is left alone,
-    so running `claim` twice writes one commit. One held only by the old rules
-    is claimed again, which records it.
+    An item this branch already holds first is left alone, so running `claim`
+    twice writes one commit.
     """
     wanted, problem = _keys(keys)
     if problem:
@@ -246,23 +243,15 @@ def claim(
     takeovers: dict[str, Hold] = {}
     reasons: list[str] = [" ".join(reason.split())] if reason.strip() else []
     blocked: list[str] = []
-    #: Each item this branch already holds first by a recorded claim, and that claim.
+    #: Each item this branch already holds first, and the claim commit holding it.
     already: dict[str, str] = {}
     for key in wanted:
         live = read.order(key)
         mine = [hold for hold in live if _branch_of(hold, branch) == branch.name]
         others = [hold for hold in live if _branch_of(hold, branch) != branch.name]
         rival = others[0] if others else None
-        # A hold read by the old rules counts for every branch reaching its
-        # commit, so a branch that merged the holder's can tie with it on that
-        # one commit; a tie is not a lead, and goes the takeover's way.
-        if mine and (
-            rival is None
-            or (live.index(mine[0]) < live.index(rival) and rival.commit != mine[0].commit)
-        ):
-            recorded = _recorded(root, read.base, branch, key) if mine[0].legacy else mine[0].commit
-            if recorded:
-                already[key] = recorded
+        if mine and (rival is None or live.index(mine[0]) < live.index(rival)):
+            already[key] = mine[0].commit
             continue
         named = _named(read, key, over, branch) if over else None
         if over and named is None:
@@ -431,9 +420,7 @@ def _branch(
 
     Refused on a detached `HEAD`, on the default branch, whose own commits are
     never read for claims, and on a branch pushing to one of another name,
-    since the claim names its branch and would bind to neither. Refused too
-    where `HEAD`'s tree predates the claim record - a commit made there is read
-    by the old rules, which read no trailer at all.
+    since the claim names its branch and would bind to neither.
 
     A branch tracking the default branch is not pushing to one of another name.
     It has no upstream of its own yet - `git checkout -b <branch> --track
@@ -464,12 +451,6 @@ def _branch(
         return empty, (
             f"{command}: {name} pushes to {upstream}, and a claim names one branch; "
             "give them one name first",
-        )
-    if not run(["show", f"HEAD:{CUTOVER_MARKER}"], root).strip():
-        return empty, (
-            f"{command}: HEAD's tree has no {CUTOVER_MARKER}, so a claim record written here "
-            "would be read by the old rules and its trailers ignored; merge the default "
-            "branch first",
         )
     branch = _Branch(name=name, remotes=remotes)
     problems: list[str] = []
@@ -611,12 +592,11 @@ def _displaced(
     remote's copy of the branch, as the remote itself answered (`PL-WX87`),
     paired with the first live claim behind it that is on its own branch's copy
     there: the one every other session reads as holding the item, and whose
-    session was told it does (`PL-ZLJ9`). A hold read by the old rules predates
-    the record, and is left to them.
+    session was told it does (`PL-ZLJ9`).
     """
     found: dict[str, tuple[Hold, Hold]] = {}
     for hold in read.holds:
-        if hold.legacy or hold.state != LIVE or _branch_of(hold, branch) != branch.name:
+        if hold.state != LIVE or _branch_of(hold, branch) != branch.name:
             continue
         live = read.order(hold.key)
         if live[0] is not hold or _published(root, remote, hold.commit):
@@ -918,24 +898,6 @@ def _on_copy(root: Path, name: str, commit: str) -> bool:
     """Whether the remote's copy of another branch, as of the last fetch, carries `commit`."""
     ref = f"refs/remotes/{REMOTE}/{name}"
     return bool(commit) and _git(["merge-base", "--is-ancestor", commit, ref], root).code == 0
-
-
-def _recorded(root: Path, base: str, branch: _Branch, key: str) -> str:
-    """The newest recorded claim on `key` this branch made, or `""` where it made none.
-
-    Asked where the branch's hold is read by the old rules: a recorded claim
-    made after that one renews it rather than taking its place, so the hold
-    still reads as old-rule, and without this every run would write another.
-    """
-    fmt = "--format=%H%x1f%(trailers:key=Claim,valueonly,unfold,separator=%x1e)"
-    log = _git(["log", "--no-merges", fmt, f"^{base}", "HEAD", "--"], root)
-    for line in log.out.split("\n"):
-        commit, _, values = line.partition("\x1f")
-        for text in values.split("\x1e"):
-            parsed = _parse_claim(text.strip()) if text.strip() else None
-            if parsed and parsed[0] == key and _head_name(parsed[1], branch.remotes) == branch.name:
-                return commit
-    return ""
 
 
 def _claimed(
