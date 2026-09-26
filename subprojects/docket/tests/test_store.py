@@ -119,12 +119,21 @@ def test_write_then_read_round_trips(tmp_path: Path) -> None:
     assert restored.title == "Do the thing"
 
 
-def test_renaming_removes_the_file_the_item_used_to_live_in(tmp_path: Path) -> None:
-    original = write_item(tmp_path, _item(title="Old title"))
-    write_item(tmp_path, _item(title="New title"), replace=original)
+def test_writing_a_new_title_leaves_the_old_file_in_place(tmp_path: Path) -> None:
+    """A rename is `git mv`'s, in a pass whose subject it is, never this writer's.
 
-    assert not original.exists()
-    assert len(read_items(tmp_path)) == 1
+    `write_item` once took a `replace=` path and deleted it, the door the
+    renames `PL-LBR6`, `PL-5QLP` and `PL-QMC0` made as a side effect of a
+    field write came through, and lost it with no caller left (`PL-9KSY`). So
+    an item written under a new title lands beside its old file, and `check`
+    reports one id used twice rather than a file moving without anyone asking.
+    """
+    original = write_item(tmp_path, _item(title="Old title"))
+    written = write_item(tmp_path, _item(title="New title"))
+
+    assert original.exists()
+    assert written.exists()
+    assert len(read_items(tmp_path)) == 2
 
 
 def test_a_readme_in_the_store_is_not_an_item(tmp_path: Path) -> None:
