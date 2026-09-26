@@ -1,10 +1,29 @@
 #!/usr/bin/env bash
-# PreToolUse hook on Bash: refuse a git call that would prune remote refs.
+# PreToolUse hook on Bash: refuse a git call that would prune remote refs, or
+# push in a way that deletes branches on the remote itself.
+#
+# **What it promises** (`PL-61FT`), which is wider than what the other two
+# guards promise, because a deleted ref cannot be brought back: every spelling
+# git 2.43's own usage documents that deletes refs without naming them one by
+# one, whether or not anybody has written it - the prune flags and settings of
+# `fetch`, `pull` and `remote update` (`PL-R17X`), `remote prune`, a prune or
+# mirror setting written by `config`, and a push with `--prune` or `--mirror`
+# (`PL-M2NV`) - through every command shape `shell_split.py` reads. `remote
+# remove`, which deletes every remote-tracking ref of its remote, is inside the
+# promise and not yet read (`PL-R295`). Outside it is what "Matched on the
+# words" below puts out of reach, and a read that prunes nothing but is
+# refused, where probing rather than a session found it. Each is a known gap,
+# not a defect: a row of `KNOWN_GAPS` in `tests/unit/test_no_prune_guard.py`,
+# held to the verdict it gets today, and filed as an item only once a session
+# is seen writing it. A false refusal is worked when a session meets one, and
+# never probed for.
 #
 # A stale `origin/<branch>` ref can be the only surviving copy of an item
 # captured on a branch nobody merged. That is why `docket.vcs.fetch_remote`
 # fetches without `--prune`, and what `bin/docket stranded` exists to recover;
-# `PL-HKF4` came within one prune of losing exactly that.
+# `PL-HKF4` came within one prune of losing exactly that. A `git push` with
+# `--mirror` or `--prune` does worse: it deletes such a branch on the remote,
+# for every session at once (`PL-M2NV`).
 #
 # **This used to be ten lines of `CLAUDE.md`, resident in every session**
 # (`PL-JK0M`). A prohibition on a command string is decidable by reading the
@@ -60,9 +79,9 @@ if not isinstance(command, str):
 # read like any other line (`PL-39LD`).
 #
 # **What prunes is read from git 2.43 itself** (`PL-R17X`): its usage lines,
-# `git -h`, `git fetch -h`, `git pull -h` and `git remote -h`, and each
-# spelling run against a scratch remote, the one way to learn which spellings
-# delete a ref rather than which ones say they might. Two readings:
+# `git -h`, `git fetch -h`, `git pull -h`, `git remote -h` and `git config -h`,
+# and each spelling run against a scratch remote, the one way to learn which
+# spellings delete a ref rather than which ones say they might. Three readings:
 #
 # - A setting passed ahead of the command name, as `-c <name>=<value>` or
 #   `--config-env=<name>=<envvar>`, holds for the whole call. A prune setting
@@ -73,27 +92,76 @@ if not isinstance(command, str):
 #   --no-pager, and a `-c` after the command name is an option of that command
 #   (`git grep -c` counts), so only the options git reads as its own are
 #   read, stepping over each value a word of its own carries.
-# - Five shapes delete refs, each a `git` command whose words include these in
+# - Four shapes delete refs, each a `git` command whose words include these in
 #   this order. `fetch`, `pull` and `remote update` prune on a flag, spelled
 #   long or as a letter among bundled short flags - `-tp` is `-t -p` - up to
 #   the first letter taking a value, which takes the rest of the word: `-j4p`
-#   is jobs `4p`, an error, and prunes nothing. `remote prune` always prunes,
-#   and `config` writes a setting every later fetch reads.
+#   is jobs `4p`, an error, and prunes nothing. `remote prune` always prunes.
+# - A `config` naming a prune setting writes one that every later fetch reads,
+#   unless it only reads it, and until `PL-YFT4` a read was refused as a write.
+#   A read is told from a write as git 2.43 tells them, each spelling measured
+#   in a scratch repository: its options stop at the first word that is not
+#   one, so `git config fetch.prune --get` writes the value `--get`; a `--no-`
+#   form clears the action before it, so `git config --get --no-get
+#   fetch.prune true` writes; and with no action a name alone is read, and a
+#   name with a value written. So a call reads only where each option ahead of
+#   its first other word is one this hook knows - a read action, a location, a
+#   type or a display option, or the value one of those takes - with a read
+#   action among them, or none and a single name after them. An option it does
+#   not know, an abbreviation included, is read as a write rather than guessed
+#   at, and so is a call holding a `$`, a backtick or a brace, from which bash
+#   makes new words after this hook has read them: `--get "$x"` writes where
+#   `x` holds `--no-get`. Each costs a read spelled that way one call, and is
+#   a known gap.
 #
 # `--prune-tags`, `-P` and the `pruneTags` settings delete tags, and only where
 # pruning is on, which a config file this hook never reads may have turned on,
 # so they are refused beside the flags that turn it on.
 #
+# **A push can delete the branches themselves** (`PL-M2NV`): on the remote,
+# for every session at once, where a prune deletes only the copies this clone
+# tracks. Read from `git push -h` and the same scratch remote, pushed to from a
+# clone holding only `main`: `--mirror` deleted the branch the clone did not
+# hold, and so did `--prune` with `--all`, a wildcard refspec, the matching
+# refspec `:` or `push.default=matching`, where `--prune origin main` deleted
+# nothing. A push naming no refspec takes one from a config file this hook
+# never reads, so either flag is refused on any push, after the repository and
+# the refspecs as well as before them, since git reads an option in either
+# place. A `--dry-run` or a later `--no-mirror` beside it is not read, which
+# costs a session that wanted only the preview one call. `remote.<name>.mirror`
+# makes every push to that remote a mirror push - `--mirror` is "the default if
+# the configuration option `remote.<remote>.mirror` is set", in git v2.43.0
+# `Documentation/git-push.txt` - so it is read as the prune settings are: ahead
+# of the command name, or written by `config`. A branch deleted by name, with
+# `--delete` or a `:<branch>` refspec, is not refused: it names what it deletes.
+#
 # Matched on the words because that is what the hook is handed. Out of reach:
 # an alias; a setting passed in `GIT_CONFIG_PARAMETERS` or `GIT_CONFIG_COUNT`;
-# an abbreviated long option, though `git pull --pru` prunes; a shell that
-# builds the flag from a variable; and a command handed to another shell as a
-# string (`bash -c "..."`). None is how any session has written it.
+# an abbreviated long option, though `git pull --pru` prunes and `git push
+# --mir` mirrors; the mirror setting `git remote add --mirror` and `git clone
+# --mirror` write, which only a push to that new remote or from that new clone
+# reads; a shell that builds the flag from a variable; and a command handed to
+# another shell as a string (`bash -c "..."`). None is how any session has
+# written it, so each is a known gap, pinned by a row of `KNOWN_GAPS`.
 TAKES_A_WORD = frozenset(
     ("-C", "-c", "--config-env", "--git-dir", "--work-tree", "--namespace", "--attr-source")
 )
 PRUNE_SETTING = re.compile(r"\b(?:fetch|remote\.\S+)\.prune(?:tags)?\b", re.IGNORECASE)
+MIRROR_SETTING = re.compile(r"\bremote\.\S+\.mirror\b", re.IGNORECASE)
 FALSE = frozenset(("", "false", "no", "off", "0"))
+# The options of a `config` that reads, from `git config -h` (`PL-YFT4`).
+READS = frozenset(
+    ("--get", "--get-all", "--get-regexp", "--get-urlmatch", "--get-color", "--get-colorbool")
+    + ("--list", "-l")
+)
+BESIDE = frozenset(
+    ("--global", "--system", "--local", "--worktree", "--fixed-value", "--includes")
+    + ("--bool", "--int", "--bool-or-int", "--bool-or-str", "--path", "--expiry-date")
+    + ("-z", "--null", "--name-only", "--show-origin", "--show-scope")
+)
+VALUED = frozenset(("-f", "--file", "--blob", "-t", "--type", "--default"))
+EXPANDS = re.compile(r"[$`{]")
+GLOB = re.compile(r"[*?\[]")
 
 
 def flag(long_forms, prune, value):
@@ -119,12 +187,12 @@ SHAPES = (
     ("pull", flag(("--prune",), "p", "rsXSjo")),
     ("remote", "prune"),
     ("remote", "update", flag(("--prune",), "p", "")),
-    ("config", PRUNE_SETTING.search),
 )
+PUSH_SHAPES = (("push", flag(("--mirror", "--prune"), "", "")),)
 
 
-def sets_pruning(words):
-    """Whether the options git reads ahead of the command name pass a prune setting."""
+def sets(pattern, words):
+    """Whether the options git reads ahead of the command name pass a setting `pattern` names."""
     at = 1
     while at < len(words) and words[at].startswith("-"):
         option, equals, value = words[at].partition("=")
@@ -133,7 +201,7 @@ def sets_pruning(words):
             value = words[at] if at < len(words) else ""
             at += 1
         name, equals, setting = value.partition("=")
-        if not PRUNE_SETTING.fullmatch(name):
+        if not pattern.fullmatch(name):
             continue
         if option == "--config-env":
             return True
@@ -155,15 +223,81 @@ def in_order(words, steps):
     return True
 
 
-# A path to git is git: `/usr/bin/git fetch --prune` prunes (`PL-TRMN`).
-if not any(
-    words[0].rsplit("/", 1)[-1] == "git"
-    and (sets_pruning(words) or any(in_order(words[1:], shape) for shape in SHAPES))
-    for words in shell_split.commands(command)
-):
+def reads(words):
+    """Whether the words after `config` only read, as git 2.43 parses them (`PL-YFT4`).
+
+    Its options run to the first word that is not one, or to `--`, and each must
+    be one this hook knows, with a read action among them or none and a single
+    name after them. A glob where a second word would change what git does - in
+    an option value, or in that single name - reads as a write.
+    """
+    read, at = False, 0
+    while at < len(words) and words[at] not in ("-", "--") and words[at].startswith("-"):
+        word = words[at]
+        at += 1
+        option, equals, value = word.partition("=")
+        if word in VALUED:
+            value = words[at] if at < len(words) else ""
+            at += 1
+        elif word[:2] in ("-f", "-t"):
+            value = word[2:]
+        elif not (equals and option in VALUED) and word not in READS | BESIDE:
+            return False
+        if GLOB.search(value):
+            return False
+        read = read or word in READS
+    names = words[at:]
+    if names[:1] == ["--"]:
+        names = names[1:]
+    return read or (len(names) == 1 and not GLOB.search(names[0]))
+
+
+def writes(pattern, words):
+    """Whether a `config` among `words` names a setting `pattern` names, and does more than read it."""
+    if "config" not in words[1:]:
+        return False
+    after = words[words.index("config", 1) + 1 :]
+    if not any(pattern.search(word) for word in after):
+        return False
+    return any(EXPANDS.search(word) for word in words) or not reads(after)
+
+
+def runs(shapes, pattern, calls):
+    """Whether a git call in `calls` passes or writes a setting `pattern` names, or takes one of `shapes`."""
+    # A path to git is git: `/usr/bin/git fetch --prune` prunes (`PL-TRMN`).
+    return any(
+        words[0].rsplit("/", 1)[-1] == "git"
+        and (
+            sets(pattern, words)
+            or writes(pattern, words)
+            or any(in_order(words[1:], shape) for shape in shapes)
+        )
+        for words in calls
+    )
+
+
+calls = shell_split.commands(command)
+pushes = runs(PUSH_SHAPES, MIRROR_SETTING, calls)
+prunes = runs(SHAPES, PRUNE_SETTING, calls)
+if not (pushes or prunes):
     sys.exit(0)
 
-reason = (
+push_reason = (
+    "A push that can delete branches on the remote is refused in this "
+    "repository. `--mirror` deletes every branch on the remote that this clone "
+    "does not hold, and `--prune` every such branch its refspec reaches - the "
+    "unmerged branches of other sessions among them, for every session at once "
+    "- and a push to a remote whose `remote.<name>.mirror` setting is on is a "
+    "mirror push. A branch nobody merged can be the only copy of an item "
+    "captured on it. Which refspec a push uses can sit in a config file, so "
+    "either flag is refused whatever the rest of the push holds.\n\n"
+    "To push this branch, name it, without the flag or the setting:\n\n"
+    "    git push -u origin <branch>\n\n"
+    "Deleting branches on the remote is left to the project owner: list them in "
+    "the reply, with the command that deletes them (`CLAUDE.md`, the "
+    "housekeeping bullet)."
+)
+prune_reason = (
     "Pruning remote-tracking refs is refused in this repository. A stale "
     "`origin/<branch>` ref can be the only surviving copy of an item captured "
     "on a branch nobody merged (`PL-HKF4` came within one prune of losing "
@@ -177,6 +311,9 @@ reason = (
     "    git fetch origin main\n"
     "    git checkout -B <branch> origin/main\n\n"
     "To fetch without pruning, drop the flag or the setting: `git fetch origin`."
+)
+reason = "\n\n".join(
+    text for refused, text in ((pushes, push_reason), (prunes, prune_reason)) if refused
 )
 sys.stdout.write(
     json.dumps(

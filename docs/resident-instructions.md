@@ -610,3 +610,33 @@ one. That is the floor `.claude/rules/apparatus-standard.md` refuses.
 sentence goes when `list_sessions` lists a `hearth-thread` session or its
 `tags` filter answers inside a session. The second goes when `PL-NZC0`
 closes.
+
+## Rule 14's reachability sentence, added 2026-09-26
+
+Rule 14's re-verification bullet now ends by naming a host's reachability as
+external state: probe the host before a reply repeats that it is blocked, and
+count only a refusal at CONNECT as a block (`PL-M701`). A session asked what
+v0.6.0 holds had told the project owner that `blender.org` was blocked,
+repeating `ROADMAP.md` without probing. The owner had it on the environment's
+allowed domains, and every `blender.org` host answered a probe that day.
+
+**The carrier test.** The failure was in a reply about the release plan, and
+no read preceded it that a `paths:` scope could hang on.
+`.claude/rules/citing-sources.md` already says to check a host before
+concluding anything about a source, and it loads only on `docs/MODEL.md`,
+`docs/references/` and the stored parameter files. No check can carry it
+either: whether a host answers depends on the owner's settings on the day, not
+on the tree, and a script flagging present-tense block claims in prose would be
+scripting the judgment half. A skill has no trigger that precedes a reply.
+
+**Why nothing is cut.** The bullet's general sentence, that anything asserted
+about external state is checked before it is repeated, is the rule this one
+applies, and it did not fire: a block written into a checked-in file reads as a
+fact about the tree rather than about the environment. Nothing resident said
+otherwise, so nothing is superseded.
+
+**What it costs and what should retire it.** 326 characters of prose, 357 with
+its wrapping. It goes when a session can read the allowed domains, since a
+check could then compare a document's claim against the list;
+`$HTTPS_PROXY/__agentproxy/status` reports the proxy's state and not its
+policy, checked 2026-09-26.
