@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/rel
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1059
 payoff: a mistyped release version is refused before it reaches pyproject.toml, the notes file name and every milestone stamp, where Python packaging would reject it and the milestone check would go quiet
 verify: grep -q 'def test_a_version_that_is_not_semantic_is_refused' subprojects/docket/tests/test_release.py
 ---
