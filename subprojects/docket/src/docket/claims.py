@@ -69,9 +69,11 @@ notes file on the branch, `vcs.cuts_in_flight`'s read, and it always refuses a
 release. A *name* is a branch named for its item, `claude/pl-k7qx-slug`, which
 `flight` has always read as carrying it and which needs no history to read
 (`PL-TZ3R`); it runs on the branch's lease and never orders
-against a claim or holds arming. They are kept apart from the claims
-(`Holdings.dispositions`, `Holdings.cuts`, `Holdings.named`) so that a reader
-wanting claims cannot be handed one.
+against a claim or holds arming. It holds only an item the base's copy of the
+store or the branch's own holds (`named_id`), since the id grammar fits a word
+too: `claude/fix-pl-html-export-abc123` named no item (`PL-WK57`). They are
+kept apart from the claims (`Holdings.dispositions`, `Holdings.cuts`,
+`Holdings.named`) so that a reader wanting claims cannot be handed one.
 
 **Every commit is read by its trailers alone.** The old rule - a subject
 leading with ids claimed them where the commit's diff was empty or reached
@@ -290,7 +292,8 @@ class Holdings:
     holds: tuple[Hold, ...] = ()
     dispositions: tuple[Hold, ...] = ()
     cuts: tuple[Hold, ...] = ()
-    #: One per branch whose name carries an item id, in the order refs were listed.
+    #: One per branch whose name carries the id of an item some copy of the
+    #: store holds (`named_id`), in the order refs were listed.
     named: tuple[Hold, ...] = ()
     unreadable: tuple[str, ...] = ()
     malformed: tuple[str, ...] = ()
@@ -429,6 +432,24 @@ class _Yield:
     position: int
 
 
+def named_id(name: str, stored: Callable[[str], bool]) -> str:
+    """The item a branch's name holds, or `""`: its first id, where a copy of the store holds it.
+
+    Read by `search`, first match only, as every reader of a name has read one,
+    and `stored` answers whether the base's copy of the store or the branch's
+    own holds an id. The grammar alone is not enough, because it fits a word as
+    well as an id - `HTML`, like `CTRL`, is in its alphabet - so
+    `claude/fix-pl-html-export-abc123` held an item that does not exist
+    (`PL-WK57`). `PL-SN2T` gave `tools/branch_id_check.py`'s attribution the
+    same rule, which reads a name through this.
+    """
+    match = BRANCH_ID_RE.search(name)
+    if match is None:
+        return ""
+    key = match.group(1).upper()
+    return key if stored(key) else ""
+
+
 def holdings(
     root: Path,
     *,
@@ -514,6 +535,11 @@ def holdings(
 
     copies[base] = _item_paths_on(base, items_dir, root, run)
     on_base = set(copies[base])
+
+    def stored(ref: str) -> Callable[[str], bool]:
+        """Whether the base's copy of the store or `ref`'s holds an id: whether it names an item."""
+        return lambda key: key in on_base or key in _copy(ref, items_dir, root, run, copies)
+
     landed: dict[str, dict[int, bool]] = {}
     ranked: list[tuple[tuple[datetime, str, int, datetime, str], str, str, Hold]] = []
     for (key, branch), (episode, yielded) in episodes.items():
@@ -627,14 +653,19 @@ def holdings(
     # by that record and not by its name, so that its yield, takeover or
     # close-out ends the hold rather than leaving the name holding for a lease
     # more (`PL-N162`); a close-out in its own copy is a disposition, and stays
-    # in flight as one.
+    # in flight as one. The id must name an item the base's copy or the
+    # branch's own holds (`named_id`); an unread ref's own copy is its tip's,
+    # which a listing reads without the history.
     named: dict[str, Hold] = {}
+    by_name: set[str] = set()
     for name in candidates:
-        match = BRANCH_ID_RE.search(name)
-        if match is None or (name not in unlanded and name not in unreadable):
+        if name not in unlanded and name not in unreadable:
             continue
         branch = _head_name(name, remotes)
-        key = match.group(1).upper()
+        key = named_id(name, stored(tips.get(branch, name)))
+        if not key:
+            continue
+        by_name.add(branch)
         if f"{key} {branch}" in named or (key, branch) in episodes:
             continue
         history = histories.get(branch, [])
@@ -673,11 +704,16 @@ def holdings(
         base=base,
         now=moment,
         editing=editing,
+        # A subject's leading id attributes the branch by the name's rule: only
+        # where a copy of the store holds it (`PL-WK57`).
         unattributed=tuple(
             branches[branch][0]
             for branch, history in histories.items()
-            if BRANCH_ID_RE.search(branches[branch][0]) is None
-            and not any(entry.claims or leading_ids(entry.subject) for entry in history)
+            if branch not in by_name
+            and not any(
+                entry.claims or any(map(stored(tips[branch]), leading_ids(entry.subject)))
+                for entry in history
+            )
         ),
         last=last,
         declined=run.reason,
@@ -933,16 +969,18 @@ def claims_nothing(
 
     A `claude/` branch with a non-merge commit that changes a path outside the
     queue (`work_outside_queue`, walking `base..head`), no claim of its own in
-    any state (`claims_bound`), and no
-    item id in its name, which holds the item by the name (`PL-TZ3R`). The
-    question is per branch, never per id, so a capture or a triage pass is
-    never pushed into claiming the ids it leads with. A branch `read` did not
-    walk has nothing the base has not taken, and owes nothing.
+    any state (`claims_bound`), and no hold by its name in `read`, which a
+    branch named for an item holds it by (`PL-TZ3R`). Asked of `read` rather
+    than of the name, so a name `flight` reads as naming no item exempts
+    nothing (`PL-WK57`). The question is per branch, never per id, so a
+    capture or a triage pass is never pushed into claiming the ids it leads
+    with. A branch `read` did not walk has nothing the base has not taken, and
+    owes nothing.
     """
     if (
         claims_bound(read, branch, remotes)
         or not branch.lower().startswith(AGENT_BRANCH_PREFIX)
-        or BRANCH_ID_RE.search(branch) is not None
+        or any(_head_name(hold.ref, remotes) == branch for hold in read.named)
     ):
         return False
     if not any(_head_name(ref, remotes) == branch for ref in read.last):
@@ -1335,13 +1373,20 @@ def _fields_at(
     Found by the id at the head of the file name rather than by a path, so a
     branch that renamed the file is still read.
     """
-    if ref not in copies:
-        copies[ref] = _item_paths_on(ref, items_dir, root, run)
-    path = copies[ref].get(key, "")
+    path = _copy(ref, items_dir, root, run, copies).get(key, "")
     if not path:
         return {}
     fields, _ = parse_front_matter(run(["show", f"{ref}:{path}"], root))
     return {name: value.strip() for name, value in fields.items()}
+
+
+def _copy(
+    ref: str, items_dir: str, root: Path, run: Runner, copies: dict[str, dict[str, str]]
+) -> dict[str, str]:
+    """Each item id `ref`'s copy of the store holds, mapped to its path, listed once per read."""
+    if ref not in copies:
+        copies[ref] = _item_paths_on(ref, items_dir, root, run)
+    return copies[ref]
 
 
 def _touched(history: list[_Commit], prefix: str) -> dict[str, tuple[int, str]]:

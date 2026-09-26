@@ -3,12 +3,14 @@ id: PL-WK57
 title: claims.holdings reads a branch named claude/fix-pl-html-export-abc123 as holding PL-HTML, an item no copy of the store holds, so flight lists it as filed there and claims_nothing exempts the branch's unclaimed work from the branch-id refusal
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py, tools/branch_id_check.py, tests/unit/test_branch_id_check.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1100
 payoff: flight, the claims refusal and the first-edit hint read a branch name as holding an item only where a copy of the store holds its id, so a branch named for a word is asked for its claim like any other
 verify: grep -q 'def named_id' subprojects/docket/src/docket/claims.py
 ---
