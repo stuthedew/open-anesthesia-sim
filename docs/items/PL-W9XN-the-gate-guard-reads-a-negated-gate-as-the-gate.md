@@ -3,13 +3,15 @@ id: PL-W9XN
 title: The gate guard reads a negated gate as the gate, so ! make check, which exits 0 when the tree is red, passes unrefused, and so do ! make check && echo ok and ! make check || exit 1
 priority: P3
 effort: S
-status: blocked
+status: dropped
 classes: defect
 feature: bash-guard-bound
 touches: .claude/hooks/gate-status-guard.sh, .claude/hooks/shell_split.py, tests/unit/test_gate_status_guard.py
 blocked-by: PL-61FT
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
+reason: Outside the bound PL-61FT set (#1128): a ! ahead of a gate, which turns its answer over, is written nowhere to be run in this repository and no session has been seen writing it. Recorded instead as rows of KNOWN_GAPS in tests/unit/test_gate_status_guard.py, held to the verdict it gets today, and filed again only once a session is seen writing it.
 ---
 
 **Problem.** The gate guard reads a negated gate as the gate, so ! make check, which exits 0 when the tree is red, passes unrefused, and so do ! make check && echo ok and ! make check || exit 1

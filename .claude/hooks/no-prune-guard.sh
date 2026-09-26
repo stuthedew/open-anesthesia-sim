@@ -2,6 +2,22 @@
 # PreToolUse hook on Bash: refuse a git call that would prune remote refs, or
 # push in a way that deletes branches on the remote itself.
 #
+# **What it promises** (`PL-61FT`), which is wider than what the other two
+# guards promise, because a deleted ref cannot be brought back: every spelling
+# git 2.43's own usage documents that deletes refs without naming them one by
+# one, whether or not anybody has written it - the prune flags and settings of
+# `fetch`, `pull` and `remote update` (`PL-R17X`), `remote prune`, a prune or
+# mirror setting written by `config`, and a push with `--prune` or `--mirror`
+# (`PL-M2NV`) - through every command shape `shell_split.py` reads. `remote
+# remove`, which deletes every remote-tracking ref of its remote, is inside the
+# promise and not yet read (`PL-R295`). Outside it is what "Matched on the
+# words" below puts out of reach, and a read that prunes nothing but is
+# refused, where probing rather than a session found it. Each is a known gap,
+# not a defect: a row of `KNOWN_GAPS` in `tests/unit/test_no_prune_guard.py`,
+# held to the verdict it gets today, and filed as an item only once a session
+# is seen writing it. A false refusal is worked when a session meets one, and
+# never probed for.
+#
 # A stale `origin/<branch>` ref can be the only surviving copy of an item
 # captured on a branch nobody merged. That is why `docket.vcs.fetch_remote`
 # fetches without `--prune`, and what `bin/docket stranded` exists to recover;
@@ -111,7 +127,7 @@ if not isinstance(command, str):
 # --mirror` write, which only a push to that new remote or from that new clone
 # reads; a shell that builds the flag from a variable; and a command handed to
 # another shell as a string (`bash -c "..."`). None is how any session has
-# written it.
+# written it, so each is a known gap, pinned by a row of `KNOWN_GAPS`.
 TAKES_A_WORD = frozenset(
     ("-C", "-c", "--config-env", "--git-dir", "--work-tree", "--namespace", "--attr-source")
 )

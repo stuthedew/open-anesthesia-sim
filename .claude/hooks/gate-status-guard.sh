@@ -2,6 +2,20 @@
 # PreToolUse hook on Bash: refuse a gate command whose exit status the command
 # string throws away.
 #
+# **What it promises** (`PL-61FT`). The gates "What counts as a gate" names
+# below, spelled as this repository writes them to be run - in the `Makefile`,
+# the workflows, a skill or `README.md`, or a remedy this hook prints - and as
+# sessions have been seen writing them: bare or by path, through a bare `uv
+# run` or a wrapper `shell_split.WRAPPERS` names, after a `cd`, an assignment,
+# a redirection or a reserved word, and in every list, group and compound the
+# tests pin. A path's form, an option's order, a count or a target does not
+# make a spelling new, and a line a program's usage admits is not one anybody
+# writes. Every remedy it prints is admitted. A spelling outside that which it
+# misreads is a known gap, not a defect: a row of `KNOWN_GAPS` in
+# `tests/unit/test_gate_status_guard.py`, held to the verdict it gets today,
+# and filed as an item only once a session is seen writing it. A false refusal
+# is worked when a session meets one, and never probed for.
+#
 # A shell pipeline reports the status of its **last** stage. `make check 2>&1 |
 # tail -45` therefore exits with `tail`'s status, and `tail` succeeds on any
 # input, so a red tree arrives at the session as exit 0. Nothing in the harness
@@ -103,8 +117,8 @@
 # own grammar, so reading past one refuses nothing the bare command would not.
 # `uv run` is read past here rather than there, because it is how this project
 # spells most of the list and the floor guard must not read past it. Still
-# unmatched on purpose: a gate built out of a variable, and a wrapper that list
-# does not name.
+# unmatched on purpose, and each a known gap: a gate built out of a variable,
+# and a wrapper that list does not name.
 #
 # **So is a gate written around a redirection** (`PL-K9QL`). Bash lifts a
 # redirection out of a command wherever it stands, so `2>/dev/null make check |
