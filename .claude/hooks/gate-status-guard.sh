@@ -60,6 +60,24 @@
 # `&&`: in `make check && if true; then echo; fi; git status` the `then` reads
 # `true`, and the `;` after `fi` loses the gate's status.
 #
+# **An `||` fallback that fails too keeps the status, and only one that
+# provably does** (`PL-KQ4Q`). Every fallback used to read as one that
+# succeeds, so `make check || exit 1`, the ordinary way to stop on a red gate,
+# was refused for losing what it keeps. A fallback now passes where it is
+# `exit` with no argument as its first command, which returns the failure that
+# ran it (`help exit`); `exit N`, N a literal that is not 0 modulo 256, as its
+# first command or as the last of a `{ }` or `( )` group run after a `;`; or
+# `false`, alone or last in such a group. An `exit` ends the shell running it,
+# so the walk stops there, unless that shell is a subshell - a `( )`, or a
+# group, `if` or loop piped or backgrounded - where it resumes at the
+# subshell's end: `( make check || exit 1 ); git status` loses the status at
+# the `;`. After `false` it resumes where the fallback ends. Nothing else is
+# read, and all of it is refused as before - a variable (`exit $code`),
+# `return`, `! true`, `/bin/false`, an `if`, a loop or a nested group ending
+# the fallback, a last command run behind `&&`, `||`, `|` or `&` - because a
+# false refusal costs a retry, where a guess costs a red tree reported green.
+# bash 5.2.21 gave every exit the tests pin.
+#
 # **What counts as a gate is a list, not an inference.** The guarded commands
 # are the ones whose exit status *is* the evidence a session reports:
 # `make check|test|docket|doc-check|prebuild|pr-title`, `bin/docket
@@ -199,7 +217,7 @@ def sets_pipefail(segment):
 
 
 def pipefail_by_separator(segments, separators):
-    """Whether `pipefail` holds in the shell that runs each separator, and how deep it is.
+    """Whether `pipefail` holds in the shell that runs each separator, how deep it is, and which shell that is.
 
     A `set` lasts as long as the shell it runs in. `( ... )` and a
     substitution are subshells, and so is a command, `{ ...; }` group, `if`
@@ -208,9 +226,12 @@ def pipefail_by_separator(segments, separators):
     outlives it.
 
     The depth is how many groups, `if`s and loops are open at each separator,
-    which is where the walk below reads one of them ending.
+    which is where the walk below reads one of them ending. Last come the
+    groups each segment runs inside, innermost last, each as the segment that
+    ends it and whether it is a subshell. Both are filled in where it ends,
+    because a separator after its end can make it one.
     """
-    state, groups, held, depth = False, [], [], []
+    state, groups, held, depth, inside = False, [], [], [], []
     for index, segment in enumerate(segments):
         piped = index > 0 and separators[index - 1] == "|"
         forked = separators[index] in ("|", "&")
@@ -221,31 +242,34 @@ def pipefail_by_separator(segments, separators):
         for opener in opened:
             if opener in ("(", "{") or opener in COMPOUND:
                 # A group takes the pipe into it; its first command does not.
-                groups.append((state, opener == "(" or piped))
+                groups.append((state, [None, opener == "(" or piped]))
                 piped = False
+        inside.append([group for _, group in groups])
         if sets_pipefail(rest) and not piped and not forked:
             state = True
         for position, token in enumerate(rest):
             # A `(` or `)` the splitter read as an operator; a quoted one is a word.
             if isinstance(token, shell_split.Operator):
                 if token == "(":
-                    groups.append((state, True))
+                    groups.append((state, [None, True]))
                 elif token == ")" and groups:
-                    state = groups.pop()[0]
+                    state, group = groups.pop()
+                    group[0] = index
             # `}`, `fi` and `done` are words, and end a group only where a
             # command could start.
             elif token in ENDS and groups and (position == 0 or rest[position - 1] in CLOSERS):
-                before, subshell = groups.pop()
-                if subshell or forked:
+                before, group = groups.pop()
+                group[:] = [index, group[1] or forked]
+                if group[1]:
                     state = before
         held.append(state)
         depth.append(len(groups))
-    return held, depth
+    return held, depth, inside
 
 
 segments = [words for words, _ in cut]
 separators = [separator for _, separator in cut]
-pipefail, depth = pipefail_by_separator(segments, separators)
+pipefail, depth, inside = pipefail_by_separator(segments, separators)
 
 
 def ends(start, deepest):
@@ -261,6 +285,75 @@ def ends(start, deepest):
     return None
 
 
+# `exit N` leaves with N modulo 256, N read in base 10 (bash 5.2.21). Only a
+# literal, since a variable can hold 0.
+EXIT_STATUS = re.compile(r"^[+-]?\d{1,9}$")
+
+
+def exits_red(words):
+    """True for `exit N` with an N that bash exits non-zero on."""
+    return (
+        len(words) == 2
+        and words[0] == "exit"
+        and EXIT_STATUS.match(words[1]) is not None
+        and int(words[1]) % 256 != 0
+    )
+
+
+def bare(segment):
+    """`segment` without the `{` or `(` opening it or a `)` ending it."""
+    words = list(segment)
+    while words[:1] in (["{"], ["("]):
+        words.pop(0)
+    while words and words[-1] == ")" and isinstance(words[-1], shell_split.Operator):
+        words.pop()
+    return words
+
+
+def fallback(start, end):
+    """What the command an `||` runs, `start` to `end`, does with the failure that ran it.
+
+    `("exit", k)`: an `exit` in segment `k` ends the shell running it, with a
+    status that is not 0. `("false", k)`: segment `k` ends with a status that
+    is not 0, and the separators after it decide the rest. None: anything
+    else, which may exit 0.
+    """
+    first = bare(segments[start])
+    # With no argument `exit` returns the last status (`help exit`), which
+    # straight after the `||` is the failure that ran it.
+    if first == ["exit"] or exits_red(first):
+        # A pipeline stage or a background job is a subshell of its own.
+        if separators[start] in ("|", "&"):
+            return ("false", start)
+        return ("exit", start)
+    # Otherwise the last command decides, where it runs whatever came before
+    # it: the fallback itself, or the last of a group after a `;`. A bare
+    # `exit` there returns the status of the command before it.
+    if end == start:
+        last, where = first, start
+    elif segments[end][:1] == ["}"] and separators[end - 1] == ";" and (
+        end - 1 == start or separators[end - 2] == ";"
+    ):
+        last, where = bare(segments[end - 1]), end - 1
+    elif segments[end][-1:] == [")"] and separators[end - 1] == ";":
+        last, where = bare(segments[end]), end
+    else:
+        return None
+    if last == ["false"]:
+        return ("false", end)
+    if exits_red(last):
+        return ("exit", where)
+    return None
+
+
+def leaves(segment):
+    """The segment ending the subshell an `exit` in `segment` leaves, or None for the whole string."""
+    for closes, subshell in reversed(inside[segment]):
+        if subshell:
+            return closes
+    return None
+
+
 offender = swallowed_by = None
 for index, segment in enumerate(segments):
     name = gate(segment)
@@ -270,8 +363,7 @@ for index, segment in enumerate(segments):
     # one separator that propagates it - a failing gate short-circuits the rest
     # and the string exits non-zero. `|` propagates it only under pipefail, in
     # the shell that runs that pipe. `;` and `&` hand the status to whatever
-    # runs next, and `||` hands it to a fallback that succeeds, which is the
-    # same loss wearing a different face.
+    # runs next, and `||` to a fallback, which loses it unless it fails too.
     lost = None
     at = index
     while at < len(segments):
@@ -318,6 +410,22 @@ for index, segment in enumerate(segments):
             if after[:1] == ["done"]:
                 lost = "done"
                 break
+        if separator == "||":
+            # A fallback that fails too hands the failure on (`PL-KQ4Q`). An
+            # `exit` ends the shell running it, so the walk stops there, or
+            # resumes where that shell ends if it is a subshell; after
+            # `false` it resumes where the fallback ends.
+            end = ends(following, depth[at])
+            if end is None:
+                break
+            ran = fallback(following, end)
+            if ran is not None:
+                kind, at = ran
+                if kind == "exit":
+                    at = leaves(at)
+                    if at is None:
+                        break
+                continue
         # Unless the next thing the string does is *read* the status. `make
         # check > /tmp/gate.log 2>&1; echo "exit=$?"` prints the verdict into
         # the output, which is the same guarantee the exit code gives and a
@@ -345,7 +453,10 @@ LOSS = {
     ),
     ";": "The status of whatever runs after the `;` is what the string exits with",
     "&": "The gate is backgrounded, so the string exits before it has an answer",
-    "||": "The `||` fallback succeeds, so a failing gate still exits 0",
+    "||": (
+        "The status of the `||` fallback replaces that of the gate, and nothing "
+        "shows the fallback fails too (one ending in `exit 1` or `false` would)"
+    ),
     "done": (
         "The next pass of the loop replaces its status, and only the last pass "
         "reaches the exit"
