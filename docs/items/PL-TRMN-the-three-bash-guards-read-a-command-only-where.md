@@ -13,6 +13,9 @@ closed: 2026-09-26
 pr: 1107
 payoff: a gate, a floor parse or a prune run under timeout, env, nice, nohup, xargs, command or exec is refused like the same command on its own, so a red make check under timeout piped to tail no longer reaches a session as exit 0
 verify: grep -q 'def test_a_wrapper_runs_the_command_after_it' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_wrapper_runs_the_command_after_it' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_a_wrapper_runs_the_command_after_it' tests/unit/test_no_prune_guard.py
+root-cause-of: PL-9RSP, PL-QMN0, PL-BM3Z
+generator: spent - every reader of the fact in the three Bash guards is known: shell_split's tables read past a wrapper and past command or builtin, PL-QMN0 reads past uv and run, and PL-BM3Z is gate()'s reading of bin/docket's subcommand, the last at a fixed position; the prune guard reads git's own options, and the rest scan every word (make's target, an interpreter's script, the floor guard's paths). A wrapper no table names stays unmatched on purpose, as the gate guard's header says
+misread: Which word is the program, builtin or subcommand a guard reads, past the options ahead of it
 ---
 
 **Problem.** The three Bash guards read a command only where its name is the program itself, so a gate, a floor parse or a prune run through a wrapper passes all three: timeout 600 make check | tail -5, timeout 60 python3 -m compileall -q src/anesthesia_sim/, and timeout, env, command or a path to git ahead of git fetch --prune
@@ -54,10 +57,27 @@ with a wrapper on either side of it; the floor guard still admits an
 interpreter named by path, its deliberate spelling; the prune guard reads a
 path to `git` as `git`. The three hook suites pin each.
 
-**Generator check.** One-off. The fact misread is which program a command runs
+[superseded 2026-09-26: recorded as a spent head of three, below] **Generator
+check.** One-off. The fact misread is which program a command runs
 past a program that runs another, and no other item misreads it. `PL-0X0G`
 (done, #1093) misread its neighbour in the same function - which word bash
 reads as a command's name, past what bash reads ahead of it - and `PL-K9QL`,
 the redirections ahead of a name, is a re-entry of that fix rather than a
 member of this one. Each is a gap in the one answer the guards share, not a
 second spelling of it, so none is `PL-PVW2`'s.
+
+**Recorded as a head 2026-09-26, triaging `PL-QMN0`.** Three other items misread
+this fact, which the line above did not count: `PL-9RSP` (`command` ahead of a
+`set`) and `PL-QMN0` (uv's own options ahead of the program `uv run` runs), both
+filed by this item's own triage as the sites its scope left, and `PL-BM3Z`,
+found working `PL-QMN0`: `gate()` reads `bin/docket`'s subcommand past none of
+docket's options, a reader nobody had named. Put at the altitude that takes all
+four, the fact is which word a guard reads as the program, builtin or
+subcommand once the options ahead of it are read by their owner's grammar, and
+`shell_split.py`'s tables, which this item built, are the record every reader
+should consult. `generator:` is spent rather than live because the readers are
+enumerated: once `PL-QMN0` and `PL-BM3Z` land none is left at a fixed position,
+and a wrapper that no table names is left unmatched on purpose rather than
+misread. `PL-7PB9` (a listed gate run as a module, `python3 -m pytest`) was filed
+beside them and is not a member: it is which spellings of a gate the guard
+recognises, once it has the right word.
