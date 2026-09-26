@@ -95,6 +95,7 @@ from .plan import (
 )
 from .release import (
     NOTES_DIR,
+    SEMVER_GRAMMAR,
     SEMVER_RE,
     Readiness,
     already_released,
@@ -2207,19 +2208,34 @@ def _say_held_elsewhere(args: argparse.Namespace, items: list[Item]) -> None:
     session asked about work another session holds (`PL-140X`). The holds are
     the lines `show` prints for an item it has. The file is found by the read
     `stranded` makes, without its fetch, as the holds were read without one.
-    Silent where nothing holds the id, which is the ordinary typo.
+
+    **An id no hold names is looked for on the branches too** (`PL-PV6H`). A
+    capture on a branch nobody claims - one the digest lists under "Only on a
+    branch" - is where a session reaches for `show` next, and it met the same
+    dead end. So the miss pays the stranded read, which triage measured at
+    about 0.3 s on the error path, and a hit pays nothing. Found there, it
+    prints the branches and the recover line `stranded` gives, under the refs
+    line where the refs are not this command's own fetch, since the recovery
+    writes a file and a stale base is how that went wrong before (`PL-KBFN`).
+    Silent where no branch has the id either, which is the ordinary typo.
     """
     held = render.format_holds(_holdings(args), args.item, _now(args))
-    if not held:
-        return
-    print("It is held on a branch, and this checkout's store has no copy of it:")
-    print(held)
     key = args.item.upper()
     report = _stranded(items, args)
     found = next(
         (entry for entry in (report.items if report else ()) if entry.identifier.upper() == key),
         None,
     )
+    if not held:
+        if found is not None:
+            print("No branch holds it, but its file is only on a branch, not in this checkout:")
+            print(f"  only on: {', '.join(found.branches)}")
+            if refs := _refs_line(args):
+                print(f"  {refs}")
+            print(f"  recover: git checkout {found.branches[0]} -- {found.path}")
+        return
+    print("It is held on a branch, and this checkout's store has no copy of it:")
+    print(held)
     if found is None:
         print("  Its file was not found on a ref this checkout holds; `bin/docket stranded`")
         print("  fetches and names every item that exists only on a branch.")
@@ -3231,6 +3247,17 @@ def cmd_release(args: argparse.Namespace) -> int:
     is only as complete as somebody's memory of what to put in it, and the
     store already knows exactly which finished work has not gone out.
     """
+    # A typo in the number is refused before anything is read, in a dry run
+    # too. Nothing downstream asks the grammar: `prepare_bump` substitutes
+    # whatever string it is handed, `below_current` compares only numbers that
+    # parse, and `version_key` sorts an unparsable name below every release -
+    # so 0.5.12x would reach the version field, the notes file's name and
+    # every stamp (`PL-ZVG5`). `fullmatch`, because `$` also matches before a
+    # trailing newline, which would be carried into the bump with the rest.
+    if args.version is not None and SEMVER_RE.fullmatch(args.version) is None:
+        print(_malformed_version_refusal(args.version))
+        return 1
+
     directory, items, config = _load(args)
     root = _invocation(args).root
     git = _invocation(args).git
@@ -3538,6 +3565,21 @@ def _backwards_refusal(name: str, current: str, reason: str) -> str:
         [
             f"Cannot cut {name}: {reason}. Nothing was stamped and nothing was written.",
             f"A release moves the version forward, so name a number above {current.strip()}.",
+        ]
+    )
+
+
+def _malformed_version_refusal(requested: str) -> str:
+    """Say the argument is not a release version, and what one looks like.
+
+    Quoted, because the likely causes are a stray character or a space, and a
+    reader has to be able to see which.
+    """
+    return "\n".join(
+        [
+            f"Cannot cut {requested!r}: it is not a release version. "
+            "Nothing was stamped and nothing was written.",
+            f"A release version is {SEMVER_GRAMMAR}.",
         ]
     )
 
@@ -4165,13 +4207,15 @@ def _instant(text: str) -> datetime:
 
 
 def _at_least_one(text: str) -> int:
-    """A count of picks, for `next --limit`, refused below one.
+    """A count of picks, for `next --limit` and `concurrent --limit`, refused below one.
 
     The ranking is sliced with the value as given, so zero printed "Nothing is
     ready to start" at exit 0 over a queue holding work, and a negative value
     sliced from the end - `--limit -2` printed all but the last two picks
     (`PL-RMN8`). "Nothing is ready" is the answer that ends a session's search
     for work, so a count that cannot be honoured is refused instead.
+    `concurrent` answered the same values with a batch of one, which reads as
+    a real answer to a question nobody can ask (`PL-HY56`).
     """
     value = int(text)
     if value < 1:
@@ -4500,9 +4544,11 @@ def _write_pr(directory: Path, item: Item, number: str, dry_run: bool) -> None:
     `insert_field` rather than either of the writers that render from the
     parsed item, and the two reasons are the two defects this line has had.
     `write_item` derives the filename from the title, so on a file whose slug
-    has drifted it turns one added line into a delete-plus-add, which took a
-    modify/delete conflict against whoever else held the file and left one id
-    under two names once backed out (`PL-LBR6`, `PL-5QLP`). `rewrite_item` keeps
+    has drifted it writes a second file under the same id rather than adding
+    one line to the first. While it also removed the old name, that write was
+    a delete-plus-add, which took a modify/delete conflict against whoever
+    else held the file and left one id under two names once backed out
+    (`PL-LBR6`, `PL-5QLP`). `rewrite_item` keeps
     the name and still re-renders the block, so on a file whose keys are in
     some other order, or whose value runs over continuation lines, it removes
     lines as well as adding one - and `verify.sanctioned_queue_edit` reads a
@@ -4832,7 +4878,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     concurrent = add("concurrent", "what can be worked at once")
     concurrent.add_argument("item", nargs="?", help="check against this item")
-    concurrent.add_argument("--limit", type=int, default=None)
+    concurrent.add_argument("--limit", type=_at_least_one, default=None)
     concurrent.set_defaults(func=cmd_concurrent)
 
     milestone = add("milestone", "release membership and progress")

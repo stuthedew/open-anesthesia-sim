@@ -1095,7 +1095,7 @@ def test_an_item_file_the_base_does_not_hold_is_accepted_as_a_new_one(tmp_path: 
 
 
 def test_a_title_edit_that_renames_the_file_is_still_compared_by_id(tmp_path: Path) -> None:
-    """The rename is `store.write_item`'s, and the title is front matter.
+    """A title edit can move the file, by a `git mv` pass, and the title is front matter.
 
     Looked up by its current name, the renamed file has no copy at the base and
     reads as a new item - so the one edit that moves an item file would be the
