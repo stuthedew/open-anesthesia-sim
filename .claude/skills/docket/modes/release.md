@@ -165,6 +165,24 @@ stale, with its line number. Make those edits, then run `make check`: that is
 what proves they landed, and running it any earlier fails on edits nobody has
 been asked for yet.
 
+**Recover any pull request body a merge dropped, in the same pull request**
+(`PL-3PH2`). The squash commit's body on `main` is the record of each pull
+request's body, and a merge client can still send an empty one; the offline
+check names each squash commit that lost its body and has no file under
+`docs/pr-bodies/`, or says none did. Before `make check`, with `origin` just
+fetched:
+
+```bash
+python3 tools/pr_body_check.py            # the verdict
+python3 tools/pr_body_check.py --recover  # only where it named any
+```
+
+`--recover` reads the public API with no token and writes one file per body,
+which `make check`'s `--anchors` then holds to its squash commit. Commit them
+with the release's other edits: they ride its pull request, and `bin/docket
+verify` counts each as a `record` rather than as work outside `touches`. A body
+the API could not serve is named and left, and the next release picks it up.
+
 This project names its version rather than incrementing it, so `VERSION=` is
 required; `bin/docket release --dry-run` prints the mechanical guess for
 reference.

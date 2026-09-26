@@ -362,6 +362,58 @@ One timeline. Debt clearing and feature milestones are steps on the same
 plan, in the order they happen — the gates are not a background assumption
 behind the features, they are half the work.
 
+### The planning model: a rolling wave
+
+**This plan is a rolling wave, and the name is what turns its restrictions
+into a method.** Rolling-wave planning details the work of the near term and
+holds later work at a higher level; progressive elaboration is the adding of
+that detail as the work approaches and more is known (Project Management
+Institute, *PMI Lexicon of Project Management Terms*, entries *rolling wave
+planning* and *progressive elaboration*,
+https://www.pmi.org/pmbok-guide-standards/lexicon). Rows not yet scoped,
+catalogue entries with no definition of done and version numbers left
+provisional are the model working as intended, not gaps in it.
+
+Each horizon is detailed to one depth, in one place:
+
+| Horizon | Written in | Detailed to |
+| --- | --- | --- |
+| Near | the section of each milestone scoped and not yet shipped, below | its goal, frozen debt list, required scope, definition of done and explicit out-of-scope list; its tasks are the queue items that required scope names |
+| Middle | § "The timeline", in its rows not yet scoped | each a name, the catalogue items it takes and its place in the order, with no scope and no size |
+| Far | § "Development pathway", ordering § "Planned milestones" | intent: phases over a catalogue whose entries carry no goal, required scope or definition of done |
+
+**The order is held once, by horizon.** § "The timeline" holds the order of
+every release it names, and § "Development pathway" orders only what the
+timeline has not named yet, the work under its last row, Beyond. Where the two
+disagree about a release the timeline names, the timeline governs: it is where
+reorders are recorded, each dated on the row it moved.
+
+**Detail moves inward at two moments.** Placing a catalogue entry on the
+timeline gives it a row and a position; scoping the row, beat 1 of § "The
+cadence", writes its section here. A decision a nearer horizon depends on may
+be taken sooner, and is recorded where that horizon cites it - v0.7.0's
+display tier split, settled 2026-09-16 because it fixes the shape v0.6.0
+builds, is the instance - which is a decision taken early rather than detail
+planned ahead. § "What MVP means here" was the outer boundary of the first
+waves, and was reached 2026-09-21.
+
+**No second plan of releases is kept beside this one** (`PL-LJVD`). The order
+of the releases and each milestone's scope are written here and nowhere else:
+another document names the release it means and points at its section, and a
+dated record of a decision stays the history it is. A view generated from
+this file is not a second plan - `bin/docket wave` and the session digest's
+plan line are recomputed on every run, and cannot drift. Prose can, and
+nothing compares two prose plans, so a second one stays in step only while
+someone remembers it exists; a session remembers nothing. Pull requests #59
+and #60 are the instance, an external proposal closed unmerged on 2026-08-26
+and the source of this section's vocabulary: its `docs/PLANNING.md` stated
+this prohibition and, in the same file, restated the order as v0.3.0, v0.4.0,
+v0.5.0, v0.6.0 the schematic and v0.7.0 multi-substance. Four days later
+v0.2.8 was inserted ahead of it, and by 2026-09-16 the schematic had moved to
+v0.8.0 and multi-substance to v0.9.0.
+
+<!-- absent: docs/PLANNING.md -->
+
 ### What MVP means here
 
 **The MVP is complete when a learner can run a case, branch it at a decision
@@ -6403,9 +6455,13 @@ store already holds.
 
 ## Development pathway
 
-The numbered list below is the catalogue; this is the order it is intended to
-be worked in, and why. Phases are groupings of intent, not scoped milestones —
-each item still has to be specified individually before implementation, per
+The numbered list below is the catalogue; this is the order intended for the
+part of it § "The timeline" has not yet placed, and why. A release the
+timeline names takes the timeline's order, which governs where the two
+disagree (§ "The planning model: a rolling wave"). The phases below still read
+as the whole order, and where they disagree with the timeline they are the
+stale side (`PL-5XG1`). Phases are groupings of intent, not scoped milestones
+— each item still has to be specified individually before implementation, per
 the development rules above.
 
 The organizing goal is a mature inhalational simulator before any intravenous
@@ -6541,8 +6597,9 @@ single-agent assumption, and would have to be revisited afterwards.
 
 ## Planned milestones
 
-This section is the catalogue of intent; § "Development pathway" above gives
-the order the items are intended to be worked in. Each item is deliberately
+This section is the catalogue of intent; § "The timeline" gives the order of
+the releases it names, and § "Development pathway" above the order intended
+past them. Each item is deliberately
 left unspecified (no goal, required scope, or definition of done) until it
 is actually promoted into a scoped milestone per the development rules
 above — and each item is kept to one improvement, so scoping one does not

@@ -56,11 +56,7 @@ container is ephemeral; an uncommitted thought is one interruption from gone.
 Commit the new item on its own so it survives an abandoned branch.
 
 Where the branch carries only item files, `CLAUDE.md`'s commit-and-push rule
-opens its pull request at its first push and arms auto-merge. Before arming,
-record the body with `python3 tools/pr_body_check.py --record` and commit and
-push the file it writes, since `pr-title` holds a pull request until
-`docs/pr-bodies/<N>.md` holds its body; `bin/docket arm` still answers `arm`,
-a record arming on green like the item store (`PL-979D`).
+opens its pull request at its first push and arms auto-merge.
 
 **A diagnosis that produces more than one item files them under one
 `feature:`, in the same call.**
@@ -258,7 +254,8 @@ that commit leads with the current item's id, so every id-matcher still sees
 it. File it when it is the reason this session exists, or when it will take a
 branch of its own. Not deleting remote branches, even when that is why the
 session exists: it takes no commit at all, so there is nothing for an id to
-lead, and the reply hands the owner the list and the command (`PL-S8LZ`).
+lead, and the daily branch sweep deletes finished ones, so the reply hands the
+owner only a branch it keeps (`PL-S8LZ`, `PL-X8SV`).
 
 `tools/branch_id_check.py` catches the case where none of this happened: `make
 check` and CI fail a branch ahead of `main` that carries no id in its name and

@@ -16,7 +16,7 @@ pr: 1068
 payoff: the reasoning behind each merged change survives however it was merged, and a new merge path's rewrite stops producing an item
 verify: grep -q -- '--record' tools/pr_body_check.py
 root-cause-of: PL-Y1W0, PL-BZHX, PL-PNJF, PL-M7W1, PL-HZ0M
-generator: spent - the pull request's body is recorded in the tree at docs/pr-bodies/N.md before its merge by tools/pr_body_check.py --record, and the required pr-title job holds the merge until the record matches the body GitHub has (#1068), so however a merge path composes the squash body it changes only a derived copy, and a new rewrite has no record left to damage
+generator: spent - the squash commit on main is the record of a pull request's body (PL-3PH2, superseding this item's per-pull-request record), and each way a merge path rewrites it - hard-wrapped, frozen when auto-merge is armed, replaced by a shorter message - is accepted as a property of that record rather than filed; the one rewrite that loses reasoning, an emptied body, is recovered at each release by tools/pr_body_check.py --recover, and the client that sent it, the GitHub iPhone app, is no longer a merge path (2026-09-22)
 misread: The squash commit's subject and body as the merge sends them, not as the pull request shows them
 ---
 
@@ -267,3 +267,15 @@ and that the commit adding each one dates its fetch.
 and held there by the required `pr-title` job, so a merge path's rewrite
 changes only the squash copy and no longer produces an item. The backfill the
 owner left as its own decision is `PL-X2XP`.
+
+**Superseded 2026-09-26 by `PL-3PH2`** (project owner, 2026-09-26, ratified,
+over keeping this record behind `pr-title`'s required check and fixing
+`PL-K9XQ`, and over recording every body in one batch at each release). The
+squash commit's body on `main` is the record of a pull request's body again:
+`--record` and `--check` are gone, `pr-title` no longer holds a merge on the
+body, and a body a merge drops is recovered at each release with `--recover`.
+What retired it was measurement: the 27.4% loss this record answered came from
+the GitHub iPhone app, the owner stopped merging there on 2026-09-22, and 2 of
+the 149 squash commits merged after `#918` up to `#1068` lost a body, both
+recovered. The files this record wrote stay under `docs/pr-bodies/` with their
+`recorded:` header, and `PL-3PH2` carries the full case.

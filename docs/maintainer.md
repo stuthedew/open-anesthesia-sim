@@ -194,14 +194,12 @@ You merge by three routes: the Mac's browser, auto-merge armed through Claude,
 and the GitHub iPhone app (project owner, 2026-09-22). Squash-merge and arm
 auto-merge by the first two, and not in the app (project owner, 2026-09-22,
 ratified, over leaving after-the-fact detection as the whole remedy). A pull
-request's description is this repository's squash commit message, but that
-body is a copy, useful in `git log` and nothing more. The record of a change's
-reasoning is `docs/pr-bodies/<N>.md`, which the session commits on the pull
-request's own branch before the merge (`PL-979D`; project owner, 2026-09-25,
-ratified, over pinning every merge path to one that sends the body verbatim).
-The GitHub iPhone app submits the squash with an empty message, which GitHub
-honours over the repository's default, so a merge there empties that copy with
-nothing saying so. `#918`, merged in the app, reached `main` with no body.
+request's description is this repository's squash commit message, and that
+body on `main` is the record of the change's reasoning (`PL-3PH2`; project
+owner, 2026-09-26, ratified, over keeping `PL-979D`'s copy of every body in
+the tree behind `pr-title`'s required check). The GitHub iPhone app submits the
+squash with an empty message, which GitHub honours over the repository's
+default, so a merge there empties the record with nothing saying so. `#918`, merged in the app, reached `main` with no body.
 GitHub has acknowledged the defect since 2023, in community discussion
 [#51016](https://github.com/orgs/community/discussions/51016); `PL-WFFX` holds
 the measurements.
@@ -216,19 +214,19 @@ the measurements.
   and `#1015` did too that day by a merge path nobody established. Both bodies
   are recovered under `docs/pr-bodies/` (`PL-HZ0M`).
 - If the app is the only option, check the message behind its cog icon first.
-- `python3 tools/pr_body_check.py` still reports a body that reached neither
-  `main` nor `docs/pr-bodies/`, which since `PL-979D` can only be a merge from
-  before it or one that bypassed `pr-title`, and `--recover` fetches it back
-  from GitHub into `docs/pr-bodies/`. `--compare` reports a squash body that
-  says something other than its pull request, which is now drift in the copy.
+- A body a merge empties anyway is recovered at the next release: the release
+  step runs `python3 tools/pr_body_check.py`, which names every squash commit
+  that reached `main` with no body and no file under `docs/pr-bodies/`, and
+  `--recover` fetches each back from GitHub into that folder. `--compare`
+  reports a squash body that says something other than its pull request; that
+  drift is accepted rather than repaired, so it is a measurement you run by
+  hand.
 
-**A description you edit by hand on GitHub holds the merge until it is
-recorded again.** `pr-title` re-runs on the edit and fails, because the
-branch's `docs/pr-bodies/<N>.md` no longer holds the same body, and an armed
-auto-merge waits on it. To clear it, check out the pull request's branch, run
-`python3 tools/pr_body_check.py --record N` with `N` its number, commit the
-file it writes and push, or ask a session to. `pr-title` re-runs on the push
-and passes.
+**A description you edit on GitHub after auto-merge is armed does not reach
+`main`.** Auto-merge takes its message when it is armed, so the squash lands
+the body as it stood then (`PL-M7W1`), which is accepted as part of the record
+(`PL-3PH2`). To land the edit, disarm auto-merge and arm it again, or merge in
+the Mac's browser, where the message box shows what will land.
 
 ## Bring a stale base in when you merge, with Update branch
 
@@ -289,3 +287,27 @@ admin's merge passes the up-to-date check `main` holds everyone else to:
 merging directly, it would land a stale branch whenever another pull request
 merged between its read and its call. Merge it on the Mac, as step 1 says for
 a branch that is already current.
+
+## Sweep branches now, or restore one the sweep deleted
+
+`.github/workflows/branch-sweep.yml` deletes each finished `claude/*` branch at
+06:17 UTC daily, after copying its tip to `refs/archive/<branch>/<tip>`
+(`PL-X8SV`). A session cannot run it or undo it, since both push to branches
+other than its own, so both are yours.
+
+**To sweep now:** on the repository's page click **Actions**, then
+**branch-sweep** in the left sidebar, then **Run workflow** above the list of
+runs. Tick **dry_run** to list what would go and push nothing, then click
+**Run workflow**. The run's log, under its **sweep** job, lists each branch it
+swept and why each other one stayed.
+
+**To restore one:** the log prints the command beside each branch it swept. Run
+it on the Mac from any clone of this repository:
+
+```
+git fetch origin refs/archive/claude/NAME/TIP && git push origin FETCH_HEAD:refs/heads/claude/NAME
+```
+
+Success is `* [new branch]` on the last line. `git ls-remote origin
+'refs/archive/*'` lists every archived tip, if the log has expired. An archive
+ref is not shown on GitHub's Branches page and no clone fetches it unasked.
