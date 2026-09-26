@@ -151,8 +151,10 @@ try:
     # blob batch, which answers every tag's `pyproject.toml` from one process,
     # and `answered` for telling git's silence from an empty file.
     # `changed_path_args` is borrowed so the close-out sweep lists a renamed
-    # file's old name, the one stale prose still cites (`PL-KR69`). `find_cut`
-    # and `notes_added` are the one definition of a release's cut, which the
+    # file's old name, the one stale prose still cites (`PL-KR69`), and
+    # `default_base` so a tag the working tree predates is placed against the
+    # branch every docket command compares with (`PL-HVLJ`). `find_cut` and
+    # `notes_added` are the one definition of a release's cut, which the
     # printed tag commands use too (`PL-QHCW`).
     from docket.vcs import (
         DEFAULT_BRANCHES,
@@ -161,9 +163,11 @@ try:
         Runner,
         answered,
         changed_path_args,
+        default_base,
         find_cut,
         is_shallow,
         notes_added,
+        resolved,
         tags,
     )
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
@@ -2688,6 +2692,16 @@ def check_tags(root: Path, report: Report) -> None:
     All of that turns on whether a tag *exists*. Whether a present tag sits on
     its own release's commit is the other question, and `_check_tag_versions`
     below answers it (`PL-YKSD`).
+
+    The converse - a tag the version table does not name - is an error only
+    against a working tree that holds the tag's commit (`PL-HVLJ`). A release's
+    tag goes on the commit that adds its row, and `git fetch --tags` brings the
+    tag without moving the tree, so a checkout that fetched after a release
+    merged holds the one and not the other until it pulls. That was reported as
+    a wrong `ROADMAP.md` to fix before committing, against a correct file.
+    `_ahead_of_the_tree` tells the two apart: a tag the default branch holds and
+    `HEAD` does not is declined as a checkout that is behind, naming the pull,
+    and one `HEAD` holds, or the default branch lacks too, keeps the error.
     """
     roadmap = root / ROADMAP
     if not roadmap.is_file():
@@ -2781,16 +2795,21 @@ def check_tags(root: Path, report: Report) -> None:
                 "tag for it"
             )
 
-    for name in sorted(existing):
-        match = RELEASE_TAG_RE.match(name)
-        if match is None:
-            continue
-        version = match.group("version")
-        if version not in completed:
+    unnamed = {
+        name: match.group("version")
+        for name in sorted(existing)
+        if (match := RELEASE_TAG_RE.match(name)) is not None
+        and match.group("version") not in completed
+    }
+    base, ahead = _ahead_of_the_tree(root, tuple(unnamed)) if unnamed else ("", ())
+    for name, version in unnamed.items():
+        if name not in ahead:
             report.errors.append(
                 f"{ROADMAP}: git holds {name}, but no row of the version table marks v{version} "
                 "completed; a release that shipped is one this table has to name"
             )
+    if ahead:
+        report.declined.append(_behind_the_tags(ahead, base, truncated))
 
     _check_tag_versions(
         root,
@@ -2799,6 +2818,69 @@ def check_tags(root: Path, report: Report) -> None:
         {version: row.line for version, row in completed.items()},
         stale,
         stale_line,
+    )
+
+
+def _ahead_of_the_tree(root: Path, names: Sequence[str]) -> tuple[str, tuple[str, ...]]:
+    """The tags among `names` the default branch holds and `HEAD` does not, and that branch.
+
+    Placed against the default branch because "behind" means behind it: a tag
+    that branch does not hold either is left to the error, since pulling would
+    not bring it in. A base that is only a guess places nothing, and nor does a
+    read git did not answer, so each of those tags keeps the error it had.
+
+    Ancestry is read as a merge base equal to the tag's commit rather than as
+    `merge-base --is-ancestor`, whose two verdicts `_run_git` returns as the
+    same empty string. A merge base that is found is always a true answer; in
+    a shallow clone one that is not found may only be history this checkout
+    never fetched, which `_behind_the_tags` says rather than rules out.
+    """
+    with GitRunner() as run:
+        base = default_base(root, runner=run)
+        if not resolved(base):
+            return str(base), ()
+        ahead: list[str] = []
+        for name in names:
+            commit = run(
+                ["rev-parse", "--verify", "--quiet", f"refs/tags/{name}^{{commit}}"], root
+            ).strip()
+            if (
+                commit
+                and _holds(run, root, base, commit)
+                and _holds(run, root, "HEAD", commit) is False
+            ):
+                ahead.append(name)
+    return str(base), tuple(ahead)
+
+
+def _holds(run: Callable[[list[str], Path], str], root: Path, ref: str, commit: str) -> bool | None:
+    """Whether `ref`'s history holds `commit`, or `None` where git did not answer."""
+    fork = run(["merge-base", commit, ref], root)
+    return fork.strip() == commit if answered(fork) else None
+
+
+def _behind_the_tags(ahead: Sequence[str], base: str, truncated: bool | None) -> str:
+    """The `declined` line for tags the working tree predates, naming what brings them in."""
+    one = len(ahead) == 1
+    names = ahead[0] if one else f"{', '.join(ahead[:-1])} and {ahead[-1]}"
+    them = "it" if one else "them"
+    line = (
+        f"release tags: git holds {names}, which {base} has and this checkout's HEAD does "
+        f"not, so the working tree predates {'that release' if one else 'those releases'} "
+        f"rather than leaving {them} out of {ROADMAP}; `git pull` brings {them} in on "
+        f"{base.rsplit('/', 1)[-1]}, and `bin/docket branch` says how on any other branch"
+    )
+    if truncated is False:
+        return line
+    commits = "that commit" if one else "those commits"
+    if truncated:
+        return (
+            f"{line} - unless this shallow clone's history stops short of {commits}, which "
+            "reads the same way; `git fetch --unshallow` tells the two apart"
+        )
+    return (
+        f"{line} - unless this checkout's history stops short of {commits}, which reads the "
+        "same way, and git cannot say here whether it does"
     )
 
 

@@ -8840,9 +8840,25 @@ def test_arm_arms_a_docket_only_pull_request_on_green(
     assert _arm(root) == 0
     out = capsys.readouterr().out
     assert out.startswith(
-        f"arm - {ARM_BRANCH} changes nothing outside docs/items and subprojects/docket, "
-        "leaves arming.py alone, holds no open claim"
+        f"arm - {ARM_BRANCH} changes nothing outside docs/items, subprojects/docket and "
+        "docs/pr-bodies, leaves arming.py alone, holds no open claim"
     )
+
+
+def test_arm_arms_a_pull_request_body_record_on_green(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A body record is a copy of its pull request's body, never a change to read (`PL-979D`).
+
+    Every pull request writes one before its merge, so a record that held would
+    hold every capture with it.
+    """
+    root, git = _arm_repo(tmp_path)
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+    _put(git, root, "docs/pr-bodies/1059.md")
+
+    assert _arm(root) == 0
+    assert capsys.readouterr().out.startswith(f"arm - {ARM_BRANCH} changes nothing outside")
 
 
 @pytest.mark.parametrize(
@@ -8860,7 +8876,7 @@ def test_arm_arms_a_docket_only_pull_request_on_green(
 def test_arm_holds_for_a_read_a_path_outside_the_store_and_the_tooling(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
 ) -> None:
-    """Everything but the store and the tooling waits on a read, the simulator first of all.
+    """Everything but the store, the tooling and the records waits on a read, the simulator first.
 
     The branch also changes a docket module, which would arm alone, so the
     hold is the path's own. `subprojects/docketeer/` shares the tooling's
@@ -8873,8 +8889,8 @@ def test_arm_holds_for_a_read_a_path_outside_the_store_and_the_tooling(
     assert _arm(root) == 1
     out = capsys.readouterr().out
     assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes 1 path outside docs/items and subprojects/docket, "
-        "so its pull request waits on a read\n"
+        f"hold - {ARM_BRANCH}: it changes 1 path outside docs/items, subprojects/docket and "
+        "docs/pr-bodies, so its pull request waits on a read\n"
     )
     assert f"\n  {path}\n" in out
     assert "subprojects/docket/src/docket/render.py" not in out
@@ -8923,8 +8939,9 @@ def test_arm_names_the_gate_beside_the_paths_outside_the_tooling(
     assert _arm(root) == 1
     out = capsys.readouterr().out
     assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes 1 path outside docs/items and subprojects/docket "
-        f"and it changes {ARM_GATE}, the gate itself, so its pull request waits on a read\n"
+        f"hold - {ARM_BRANCH}: it changes 1 path outside docs/items, subprojects/docket and "
+        f"docs/pr-bodies and it changes {ARM_GATE}, the gate itself, so its pull request waits "
+        "on a read\n"
         "  src/anesthesia_sim/core/uptake.py\n"
     )
 
