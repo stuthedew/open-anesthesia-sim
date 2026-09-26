@@ -18,10 +18,12 @@ covered — but an item named by the project owner skips `next` entirely, and
 backwards: naming an item is the higher-confidence path and was the one with
 no check.
 
-**The fetch is not optional, and it is the half that was missed.** Only
-`docket branch` refreshes; `flight` and `show` read the refs this checkout
-already holds, deliberately, so that they answer in a bare or offline
-checkout. Without a fetch the answer is as old as the clone. Observed
+**The fetch is not optional, and it is the half that was missed.** Since
+`PL-XBV4` every read command - `show` and `flight` among them - fetches once
+before it reads, and prints which moment its refs are from whenever they are
+not its own fetch; `--no-fetch` is for a bare or offline checkout, and the
+line the command then prints says what the answer rests on. Read that line:
+without a fetch the answer is as old as the last one. Observed
 2026-09-01: a session checked, was told nothing was in flight, and a branch
 carrying the item was pushed four minutes later — the owner caught it, not the
 tooling. Even fetched, the answer is bounded to what has been *pushed*, so

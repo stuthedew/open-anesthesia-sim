@@ -8,6 +8,7 @@ classes: infra
 feature: refresh-before-reporting
 touches: subprojects/docket/src/docket/cli.py, .claude/rules/instruction-writing.md
 blocked-by: PL-QSGX
+deferred-from: v0.6.0 - filed 2026-09-19 as blocked and never on the frozen list; a closing-block convenience, not safety or science, and its decision opened only when PL-QSGX closed on 2026-09-26
 added: 2026-09-19
 ---
 
@@ -27,8 +28,8 @@ the default branch's tip after a fetch, whether this branch is contained in it
 reasons about the branch's relation to the base, so it may be the right home
 rather than a fifth command.
 
-**Blocked on `PL-QSGX`, and the decision waits rather than only the build**
-(declared 2026-09-20 by `PL-LDHD`). A combined command that calls a
+[superseded 2026-09-26] **Blocked on `PL-QSGX`, and the decision waits rather than only the build**
+(declared 2026-09-20 by `PL-LDHD`; `PL-QSGX` closed with `PL-XBV4` on 2026-09-26, so the target has stopped moving and the decision below is open: every read command now fetches once and prints which moment its refs are from, which is one of the four facts this command was to gather). A combined command that calls a
 non-fetching `flight` inherits the same staleness, so the obvious reading is
 that only the implementation waits. It is the `Decision needed.` above that
 waits: whether this is a new command or a flag on `bin/docket branch`, and
