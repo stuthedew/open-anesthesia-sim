@@ -96,6 +96,7 @@ from .release import (
     SEMVER_RE,
     Readiness,
     already_released,
+    below_current,
     is_untagged,
     milestones,
     notes_by_version,
@@ -914,7 +915,8 @@ def cmd_digest(args: argparse.Namespace) -> int:
     # because the two count lines below - errors, and the grooming total - are
     # read as the store's whole answer by a session that has run nothing yet.
     report = _complete_report(root, items, config, args)
-    ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
+    current = read_version(root / config.version_file)
+    ready = readiness(items, current, config.minor_classes)
     rendered = render.format_digest(
         report,
         _flight(args),
@@ -929,6 +931,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         gate_paths=config.gate_paths,
         now=_now(args),
         read=_holdings(args),
+        interrupted=_interrupted(root, items, current),
     )
     if rendered:
         print(rendered)
@@ -946,14 +949,31 @@ def cmd_digest(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight | None:
-    """Which refs are mid-release, read only where a release is being offered.
+def _interrupted(root: Path, items: list[Item], current: str) -> str:
+    """The release whose cut stopped before its notes, as `cmd_release` would resume it.
 
-    Gated on the offer rather than run for every digest: it costs a walk of the
-    unlanded refs (measured 103 ms on this repository), and a session not being
-    offered a release has nothing to be warned off. It does not fetch - the
-    digest's hook already did, and this must stay answerable in a checkout with
-    no network.
+    Read beside `readiness` rather than through it: `readiness` leaves the
+    stamps out by contract, since a caller other than `cmd_release` is asking
+    what is shippable now, so the digest and `status` read this separately
+    and say why their count is short (`PL-1BS2`). The newest, as the resume
+    takes it; `docket check` reports any other.
+    """
+    interrupted = unrecorded_milestones(items, notes_by_version(root), current)
+    return interrupted[-1] if interrupted else ""
+
+
+def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight | None:
+    """Which refs are mid-release, read only where the digest prints `Releasable:`.
+
+    Gated on `Readiness.is_worth_cutting` rather than run for every digest: it
+    costs a walk of the unlanded refs (measured 103 ms on this repository), and
+    a session shown no `Releasable:` line has nothing to be warned off. That
+    gate means there is finished work to cut, whether or not a version is free
+    to cut it at, so it is not the release offer: where the roadmap has
+    reserved the number a bump would reach, the line says `No release to offer`
+    and the walk still runs, which between milestones is the usual case
+    (`PL-FT3M`). It does not fetch - the digest's hook already did, and this
+    must stay answerable in a checkout with no network.
 
     A branch holding the release train with nothing cut yet is added beside the
     cuts (`_with_train`), so a session that has filed and claimed its release
@@ -2119,8 +2139,15 @@ def cmd_status(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
     root = _invocation(args).root
-    ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
-    rendered = render.format_status(report, ready, _flight(args), _plan(root, items, config))
+    current = read_version(root / config.version_file)
+    ready = readiness(items, current, config.minor_classes)
+    rendered = render.format_status(
+        report,
+        ready,
+        _flight(args),
+        _plan(root, items, config),
+        interrupted=_interrupted(root, items, current),
+    )
     print(rendered if rendered else "Nothing open.")
     return 0
 
@@ -3011,6 +3038,15 @@ def cmd_release(args: argparse.Namespace) -> int:
     version = (args.version or resuming or ready.suggested_version).lstrip("v")
     name = f"v{version}"
 
+    # A wrong number rather than a state a dry run exists to review, so it is
+    # refused outright as the unfinished-cut refusal above is: the bump, the
+    # notes and every stamp would carry it, and no re-run takes the stamps
+    # back (`PL-3DN1`).
+    backwards = below_current(version, current, config.version_file)
+    if backwards:
+        print(_backwards_refusal(name, current, backwards))
+        return 1
+
     # The widest write in the repository, and one whose own commits carry no
     # item id: a cut stamps other items' `milestone:` (`PL-66FP`). The id the
     # guard reads is the release item's, whose claim holds the release train
@@ -3220,6 +3256,20 @@ def _unfinished_cut_refusal(resuming: str, ready: Readiness, requested: str) -> 
             f"cuts all {len(ready.shippable)}:",
             "",
             f"  make release VERSION={resuming.lstrip('v')}",
+        ]
+    )
+
+
+def _backwards_refusal(name: str, current: str, reason: str) -> str:
+    """Say the number is below the tree's, and that nothing was touched.
+
+    Naming both versions is the whole of it: the likely cause is a typo, and
+    the reader corrects it by seeing the two side by side.
+    """
+    return "\n".join(
+        [
+            f"Cannot cut {name}: {reason}. Nothing was stamped and nothing was written.",
+            f"A release moves the version forward, so name a number above {current.strip()}.",
         ]
     )
 

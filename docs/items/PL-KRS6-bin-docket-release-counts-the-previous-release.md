@@ -48,3 +48,48 @@ matching the title.
 **Done when.** With `main` at a freshly merged release and nothing else closed
 since, `bin/docket release --dry-run` reports no releasable work and the digest
 prints its `No release to offer` line instead.
+
+**Blocked.** 2026-09-25, on the slam-dunk run's `claude/pl-batch-01-s8d258`.
+Still real on `origin/main` at `7018ef1d`: `bin/docket release --dry-run
+--no-fetch` lists `PL-DRRG` ("Cut v0.5.11 from the 16 items finished since
+v0.5.10") among the 14 finished items since 0.5.11, and of the 46 items titled
+as a cut, none carries the version it cut: 44 are stamped with the next one,
+`PL-DRRG` is unstamped and `PL-Z0C7` was dropped. It cannot be done as written,
+for three reasons:
+
+1. The structural rule the brief prefers, closed by the commit that wrote the
+   version, is a history read, and `release.py` reads no git; the declared
+   `touches` (`release.py`, `test_release.py`) do not reach `cli.py`, where the
+   git reads are.
+2. `.claude/skills/docket/modes/release.md` says of the release item, at line
+   100, "It carries no `milestone:`, so the next release ships it, like
+   anything else finished after a cut", which is the convention this item
+   reverses, in a file outside `touches`.
+3. The second half of **Done when** names a line that does not print in this
+   state: with nothing releasable the digest prints no `Releasable:` line at
+   all, and `No release to offer` is only the reserved-version sentence
+   (`render._reserved_refusal`).
+
+**Decision needed: which rule marks the cut's own item, and where it belongs.**
+
+- **A. The release-train claim.** Since `PL-331V` a cut refuses a branch
+  holding no train claim (`cli._no_train_refusal`), so every cut is made under
+  exactly one item carrying `resource: release-train`, and that item closes in
+  the cut's own pull request after the notes are written. `unreleased()` leaves
+  out a `done` item carrying the resource. Structural, on a field the cut
+  already requires; the item then carries no `milestone:`, so no release's
+  notes name it (today the next release's do, and never its own, since it
+  closes after they are written). Only `PL-DRRG` carries the field, so nothing
+  historical moves. Widens `touches` by `release.md`, and **Done when** becomes
+  "reports no releasable work, and the digest prints no `Releasable:` line".
+- **B. Stamp it at the cut.** `cmd_release` stamps the branch's own train item
+  with the version it cuts, so it belongs to that version literally. It is
+  still open then, so the notes do not name it, and
+  `checks._check_release_notes`, which holds each release's notes to the items
+  stamped with it, would report it; needs `cli.py`, `checks.py` and
+  `release.md`.
+- **C. Match the title** (`Cut vX.Y.Z ...`). The brief already prefers against
+  it: a title is prose.
+
+**Recommendation: A**, the smallest change that makes the rule structural, on a
+field the cut already requires, with one sentence of `release.md` to change.

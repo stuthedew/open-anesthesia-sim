@@ -2030,6 +2030,80 @@ def test_a_different_version_is_refused_while_a_cut_is_unfinished(
     assert not (root / "docs" / "releases" / "v0.2.7.md").exists()
 
 
+def _cut_stopped_after(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, count: int, stamped: int
+) -> Path:
+    """A repository whose cut of v0.2.6 stamped `stamped` of `count` items and wrote no notes."""
+    root = _interruptible_repo(tmp_path, count)
+    _interrupt_after(monkeypatch, stamped)
+    with pytest.raises(_ContainerLost):
+        main(["release", "0.2.6", "--items", str(root / "items")])
+    monkeypatch.undo()
+    return root
+
+
+def test_the_digest_names_an_interrupted_cut_behind_the_releasable_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-1BS2: the digest offered what an unfinished cut had not reached as a release.
+
+    `readiness` leaves the stamps out by contract, so a six-item cut stopped
+    after two read `Releasable: 4 finished item(s) since 0.2.5` with an offer
+    beside it, and nothing said a cut was half made. The line names the
+    version, the notes never written and the command that finishes it.
+    """
+    root = _cut_stopped_after(tmp_path, monkeypatch, 6, 2)
+    capsys.readouterr()
+
+    assert main(["digest", "--items", str(root / "items")]) == 0
+
+    out = capsys.readouterr().out
+    assert (
+        "Releasable: a cut of v0.2.6 was interrupted: 2 item(s) carry `milestone: v0.2.6` "
+        "and docs/releases/v0.2.6.md was never written. Finish it before offering another "
+        "- `make release VERSION=0.2.6` cuts all 6."
+    ) in out
+    assert "4 finished item(s)" not in out
+    assert "Offer" not in out
+
+
+def test_the_digest_names_an_interrupted_cut_that_left_nothing_unstamped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Stopped after its bump, a cut leaves no remainder, and the line used to be absent."""
+    root = _interruptible_repo(tmp_path, 3)
+
+    def stop(version: str) -> str:
+        raise _ContainerLost("the container went away")
+
+    monkeypatch.setattr(cli, "notes_name", stop)
+    with pytest.raises(_ContainerLost):
+        main(["release", "0.2.6", "--items", str(root / "items")])
+    monkeypatch.undo()
+    capsys.readouterr()
+
+    assert main(["digest", "--items", str(root / "items")]) == 0
+
+    out = capsys.readouterr().out
+    assert "Releasable: a cut of v0.2.6 was interrupted: 3 item(s) carry" in out
+    assert "`make release VERSION=0.2.6` cuts all 3." in out
+
+
+def test_status_names_an_interrupted_cut_the_way_the_digest_does(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-1BS2: `status` read the same short remainder as `Unreleased:`."""
+    root = _cut_stopped_after(tmp_path, monkeypatch, 6, 2)
+    capsys.readouterr()
+
+    assert main(["status", "--items", str(root / "items")]) == 0
+
+    out = capsys.readouterr().out
+    assert "Unreleased: a cut of v0.2.6 was interrupted: 2 item(s) carry" in out
+    assert "`make release VERSION=0.2.6` cuts all 6." in out
+    assert "Next version would be" not in out
+
+
 def test_check_reports_a_release_whose_notes_were_never_written(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

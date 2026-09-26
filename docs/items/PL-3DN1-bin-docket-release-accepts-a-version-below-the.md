@@ -3,11 +3,12 @@ id: PL-3DN1
 title: bin/docket release accepts a VERSION below the current one, so a typo silently downgrades pyproject.toml's version field
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: release-process
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-13
+closed: 2026-09-25
 verify: grep -rq 'def test_a_version_below_the_current_one_is_refused' subprojects/docket/tests/ && uv run pytest subprojects/docket/tests/test_release.py subprojects/docket/tests/test_cli.py -q
 ---
 
@@ -58,3 +59,22 @@ against the one in `version_file`" is not exhaustive: `already_released`
 (`release.py:264-301`) does, for **equality** only. Ordering is the gap, and it
 is a real one - so re-illustrate with a low number that never shipped, such as
 `0.2.0`.
+
+**Worked.** Equal to the current version is decided as not this refusal's
+(`release.below_current`): the resume of a cut interrupted after its bump asks
+for exactly the current number, and a re-cut of a shipped one stays with
+`already_released`, which names its evidence and lets a dry run preview it. A
+first draft refused equality outright and failed two existing tests in
+`subprojects/docket/tests/test_cli.py`
+(`test_a_base_already_bumped_to_the_version_refuses_it_too` and
+`test_a_dry_run_says_the_release_is_already_out_and_still_shows_the_notes`), so
+the change moved rather than the tests.
+
+Also decided here: a number below the current one is refused in a dry run too
+(exit 1), where the untagged and duplicate guards let a dry run through, since
+a wrong number is not a state to preview; a resume whose number is below the
+current one is refused like any other; the comparison asks no git, so it
+answers under `--no-git` too; and only numbers that parse are compared, so a
+requested `0.5.12x` still gets through, which is filed separately rather than
+widened into this item. Tests: three on `below_current` and three end to end
+through `_TrainRepo` in `subprojects/docket/tests/test_release.py`.
