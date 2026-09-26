@@ -6159,6 +6159,28 @@ def test_next_refuses_a_limit_below_one(
     assert "PL-B1B1" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("limit", ["0", "-1"])
+def test_concurrent_refuses_a_limit_below_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], limit: str
+) -> None:
+    """PL-HY56: a zero or negative count used to be answered with a batch of one.
+
+    It goes through `_at_least_one`, as `next`'s does, so it is refused when
+    the arguments are parsed.
+    """
+    store = str(_store(tmp_path, READY))
+
+    with pytest.raises(SystemExit) as stop:
+        _run("concurrent", "--limit", limit, "--items", store)
+
+    assert stop.value.code != 0
+    captured = capsys.readouterr()
+    assert f"argument --limit: must be 1 or more, got {limit}" in captured.err
+    assert "A batch that can be worked at once" not in captured.out
+    assert _run("concurrent", "--limit", "1", "--items", store) == 0
+    assert "A batch that can be worked at once (1 items, best-first)" in capsys.readouterr().out
+
+
 def test_next_oldest_reads_what_counts_as_new_work_from_the_config(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

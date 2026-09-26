@@ -4042,13 +4042,15 @@ def _instant(text: str) -> datetime:
 
 
 def _at_least_one(text: str) -> int:
-    """A count of picks, for `next --limit`, refused below one.
+    """A count of picks, for `next --limit` and `concurrent --limit`, refused below one.
 
     The ranking is sliced with the value as given, so zero printed "Nothing is
     ready to start" at exit 0 over a queue holding work, and a negative value
     sliced from the end - `--limit -2` printed all but the last two picks
     (`PL-RMN8`). "Nothing is ready" is the answer that ends a session's search
     for work, so a count that cannot be honoured is refused instead.
+    `concurrent` answered the same values with a batch of one, which reads as
+    a real answer to a question nobody can ask (`PL-HY56`).
     """
     value = int(text)
     if value < 1:
@@ -4709,7 +4711,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     concurrent = add("concurrent", "what can be worked at once")
     concurrent.add_argument("item", nargs="?", help="check against this item")
-    concurrent.add_argument("--limit", type=int, default=None)
+    concurrent.add_argument("--limit", type=_at_least_one, default=None)
     concurrent.set_defaults(func=cmd_concurrent)
 
     milestone = add("milestone", "release membership and progress")
