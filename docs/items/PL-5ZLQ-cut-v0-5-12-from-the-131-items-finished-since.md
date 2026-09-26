@@ -3,12 +3,13 @@ id: PL-5ZLQ
 title: Cut v0.5.12 from the 131 items finished since v0.5.11
 priority: P2
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 resource: release-train
 added: 2026-09-26
+closed: 2026-09-26
 payoff: the 131 items finished since v0.5.11 ship under their own number and stop being re-offered in every session digest
 verify: grep -q "^version = \"0.5.12\"" pyproject.toml
 ---
@@ -78,3 +79,14 @@ them, so the rule each suggestion follows is written here. It restates
   raises it once a feature completes or three finished items are unreleased.
   A cut is refused while the previous release is untagged, so 0.5.13 is
   suggested only once v0.5.12's tag is on origin.
+
+**Cut 2026-09-26.** 131 items, as the dry run said once `PL-9RSP`'s `#1112`
+had merged, and nothing else merged before the cut. Cut with `make release
+VERSION=0.5.12`, which stamped the 131 `milestone: v0.5.12`, wrote
+`docs/releases/v0.5.12.md`, bumped `pyproject.toml` and relocked `uv.lock`.
+Every item already carried its `pr:`, so the notes cite 79 pull requests,
+`#1003` to `#1112`, and nothing was read from history. The `ROADMAP.md` row and
+baseline section say what the release was for. `src/`, `tests/reference/` and
+`README.md` are byte-identical to v0.5.11, and `docs/MODEL.md` moved only in its
+cross-references. Filed while cutting: `PL-84Z4` (tag v0.5.12, the owner's
+step).
