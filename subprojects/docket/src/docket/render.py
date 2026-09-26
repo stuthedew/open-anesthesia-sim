@@ -64,10 +64,15 @@ from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, GateStat
 from .trend import APPARATUS, BY_DAY, EFFORT_POINTS, LANES, PRODUCT_BUCKETS, QUEUE, Trend
 from .vcs import (
     CURRENT,
+    FETCH_FAILED,
+    FETCHED,
     LANDED,
     PULL,
+    REMOTE,
     RESTART,
     REWRITTEN,
+    UNASKED,
+    UNFETCHABLE,
     BranchState,
     CutsInFlight,
     FilingCommit,
@@ -80,6 +85,7 @@ from .vcs import (
     RewriteReport,
     SettledReport,
     SinceFiled,
+    Snapshot,
     StrandedReport,
     TouchedPath,
 )
@@ -133,6 +139,47 @@ def _counts(report: Report) -> str:
     counts = report.counts
     bands = ", ".join(f"{n} {p}" for p, n in counts.items())
     return f"{bands}, {len(report.untriaged)} untriaged"
+
+
+def format_snapshot(snapshot: Snapshot, now: datetime) -> str:
+    """The one line saying what the refs behind an answer rest on, or nothing.
+
+    Printed by every read command (`PL-XBV4`), so "this may be stale" is
+    worded once wherever a session meets it. Nothing where there is nothing to
+    caveat: the command fetched and the remote answered, so the refs are its
+    own; there is no remote, so no fetch could make them fresher; or git was
+    asked nothing, which `NO_GIT` has already said.
+
+    The moment is given twice on purpose, as a clock time and as an age. The
+    digest is written once and resent on every turn of a session, where an age
+    goes stale and a clock time does not; a command read once wants the age.
+    Both are `now`-relative in the one way that can be replayed: `--now`.
+    """
+    if snapshot.fetch in {FETCHED, UNFETCHABLE, UNASKED}:
+        return ""
+    if snapshot.fetch == FETCH_FAILED:
+        return (
+            f"`git fetch {REMOTE}` failed, so nothing refreshed the refs for this answer: "
+            f"read {_refs_moment(snapshot.refs_at, now)}."
+        )
+    return (
+        "Nothing refreshed the refs for this answer (`--no-fetch`): "
+        f"read {_refs_moment(snapshot.refs_at, now)}."
+    )
+
+
+def _refs_moment(refs_at: datetime | None, now: datetime) -> str:
+    """When the refs were last refreshed, as the checkout records it, in words."""
+    if refs_at is None:
+        return (
+            "from refs this checkout does not date - the clone's, or a fetch's before one "
+            "that failed"
+        )
+    clock = refs_at.astimezone(UTC).strftime("%H:%M UTC")
+    age = _age(refs_at, now)
+    if age is None:
+        return f"from the last fetch, at {clock}"
+    return f"from the last fetch, at {clock}, {age} before it"
 
 
 def format_unread(flight: FlightReport) -> str:
@@ -652,7 +699,7 @@ def format_digest(
     return "\n".join(lines)
 
 
-def format_stranded(report: StrandedReport) -> str:
+def format_stranded(report: StrandedReport, rests_on: str = "") -> str:
     """What exists only on a branch, with the command that brings each one back.
 
     Organized by item rather than by branch, because the loss is of an item and
@@ -706,7 +753,7 @@ def format_stranded(report: StrandedReport) -> str:
             f"across the {refs} this checkout holds.",
             "An item in this checkout's store is not listed even where the default branch "
             "lacks it, and a branch not fetched here was not read, so this is bounded by both.",
-            *_stale_base(report),
+            *([rests_on] if rests_on else []),
         ]
         return "\n".join([*lines, *_edited_lines(report)])
 
@@ -715,9 +762,9 @@ def format_stranded(report: StrandedReport) -> str:
         f"{_plural(len(report.items), 'item exists', 'items exist')} only on a branch "
         f"and outside this checkout's store, across the {refs} this checkout holds:",
         "",
-        *_stale_base(report),
+        *([rests_on] if rests_on else []),
     ]
-    if not report.fetched:
+    if rests_on:
         lines.append("")
     for item in report.items:
         lines.append(f"{item.identifier}  {item.title or '(title unreadable)'}")
@@ -773,22 +820,6 @@ def _edited_lines(report: StrandedReport) -> list[str]:
         "and restoring the branch's over it discards whatever landed since."
     )
     return lines
-
-
-def _stale_base(report: StrandedReport) -> list[str]:
-    """The caveat a report read against an unrefreshed base owes, or nothing.
-
-    In the negative only, for the reason `StrandedReport.fetched` gives: a
-    quiet fetch prints nothing whether it reached the remote or not, so "we
-    tried" is the strongest claim available and "we did not" is the only one
-    worth a line.
-    """
-    if report.fetched:
-        return []
-    return [
-        "Nothing refreshed the default branch for this answer, so an item merged "
-        "since the last fetch reads as stranded here."
-    ]
 
 
 def format_orphaned(report: OrphanedReport) -> str:
@@ -2171,7 +2202,9 @@ def format_holds(read: Holdings, item_id: str, now: datetime) -> str:
     return "\n".join(lines)
 
 
-def format_branch_state(state: BranchState, flight: FlightReport | None = None) -> str:
+def format_branch_state(
+    state: BranchState, flight: FlightReport | None = None, rests_on: str = ""
+) -> str:
     """Where the branch stands, what to run about it, and what moved while it sat.
 
     The recovery command is printed rather than run, and that is the whole
@@ -2237,11 +2270,11 @@ def format_branch_state(state: BranchState, flight: FlightReport | None = None) 
 
     if state.landed:
         lines.append(f"  Landed on {base} since this branch forked: {', '.join(state.landed)}.")
-    # Only where the base is a remote-tracking ref: a local base is not made
-    # fresher by fetching, so the caveat would be describing a hazard that
-    # cannot arise and teaching the reader to discount the ones that can.
-    if not state.fetched and "/" in base:
-        lines.append(f"  Read from the last fetch; nothing refreshed {base} for this answer.")
+    # `rests_on` is `format_snapshot`'s line, and it is empty where a caveat
+    # would describe a hazard that cannot arise: a checkout with no remote is
+    # not made fresher by fetching (`PL-XBV4`).
+    if rests_on:
+        lines.append(f"  {rests_on}")
     if flight is not None and (extra := _flight_lines(flight)):
         lines.append(extra)
     return "\n".join(lines)

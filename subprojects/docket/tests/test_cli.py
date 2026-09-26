@@ -20,7 +20,7 @@ import subprocess
 import sys
 from collections.abc import Callable
 from dataclasses import replace as with_fields
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -32,7 +32,7 @@ from docket.claims import CUTOVER_MARKER, SESSION_VARIABLE, Holdings
 from docket.cli import build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
-from docket.vcs import commands_written_here, lost, records_on_base
+from docket.vcs import FETCHED, Fetch, commands_written_here, lost, records_on_base
 from docket.verify import LANDED_GUARD, GitUnanswered
 
 READY = """---
@@ -67,6 +67,16 @@ def _run(*args: str) -> int:
 def _run_with_git(*args: str) -> int:
     """`_run` for a test of a git read itself, which `--no-git` stops (`PL-NGBM`)."""
     return main([*args, "--today", "2026-08-24"])
+
+
+def _fetch_stub(fetched: list[Path]) -> Callable[..., Fetch]:
+    """A `fetch_remote` that records where it was asked and answers as a remote would."""
+
+    def fetch(where: Path, *, runner: object = None) -> Fetch:
+        fetched.append(where)
+        return Fetch(FETCHED)
+
+    return fetch
 
 
 @pytest.fixture(autouse=True)
@@ -1830,7 +1840,7 @@ def test_a_release_refreshes_the_refs_before_deciding(
     """
     root = _release_repo(tmp_path, "v0.2.5")
     fetched: list[Path] = []
-    monkeypatch.setattr("docket.cli.fetch_remote", lambda where, runner: fetched.append(where))
+    monkeypatch.setattr("docket.cli.fetch_remote", _fetch_stub(fetched))
 
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
     assert fetched == [root]
@@ -1841,7 +1851,7 @@ def test_no_fetch_is_honored_for_a_caller_that_refreshed_or_cannot(
 ) -> None:
     root = _release_repo(tmp_path, "v0.2.5")
     fetched: list[Path] = []
-    monkeypatch.setattr("docket.cli.fetch_remote", lambda where, runner: fetched.append(where))
+    monkeypatch.setattr("docket.cli.fetch_remote", _fetch_stub(fetched))
 
     assert main(["release", "0.2.6", "--no-fetch", "--items", str(root / "items")]) == 0
     assert fetched == []
@@ -2704,27 +2714,34 @@ def test_stranded_refreshes_the_base_before_deciding_anything_is_lost(
     """
     root = _branched_repo(tmp_path)
     fetched: list[Path] = []
-    monkeypatch.setattr("docket.cli.fetch_remote", lambda where, runner: fetched.append(where))
+    monkeypatch.setattr("docket.cli.fetch_remote", _fetch_stub(fetched))
 
     assert main(["--items", str(root / "items"), "stranded"]) == 0
 
     assert fetched == [root]
-    assert "Nothing refreshed the default branch" not in capsys.readouterr().out
+    assert "Nothing refreshed the refs" not in capsys.readouterr().out
 
 
 def test_stranded_says_so_when_told_not_to_refresh(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A checkout with no network still gets an answer, and is told what it rests on."""
+    """A checkout with no network still gets an answer, and is told what it rests on.
+
+    The repository has a remote, because a checkout without one has nothing a
+    fetch could refresh and the caveat stays silent there (`PL-XBV4`).
+    """
     root = _branched_repo(tmp_path)
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(root)], cwd=root, check=True, capture_output=True
+    )
     fetched: list[Path] = []
-    monkeypatch.setattr("docket.cli.fetch_remote", lambda where, runner: fetched.append(where))
+    monkeypatch.setattr("docket.cli.fetch_remote", _fetch_stub(fetched))
 
     assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
 
     out = capsys.readouterr().out
     assert fetched == []
-    assert "Nothing refreshed the default branch" in out
+    assert "Nothing refreshed the refs for this answer (`--no-fetch`)" in out
     # Above the recovery command, not under it: a reader who has reached the
     # `git checkout` has already made the decision the caveat informs.
     assert out.index("Nothing refreshed") < out.index("git checkout abandoned")
@@ -6960,6 +6977,7 @@ def test_every_set_flag_is_a_field_set_writes() -> None:
         "today",
         "now",
         "no_git",
+        "no_fetch",
     }
     assert flags == {attribute for _key, attribute in cli.SET_FIELDS}
 
@@ -8889,3 +8907,251 @@ def test_next_and_the_digest_say_what_holds_each_item_they_leave_out(
         r"In flight on a branch, by time since its last commit: PL-B1B1 [^,(]+ \(live claim\)\.",
         digest,
     )
+
+
+# --- one snapshot per read command (PL-XBV4) --------------------------------
+
+#: The commands that answer from the refs. Each is run by
+#: `test_every_read_command_names_what_its_snapshot_rests_on` once per shape
+#: of staleness, and the table is held to the parser there, so a read command
+#: added later cannot answer from unrefreshed refs in silence.
+READ_ARGV: tuple[tuple[str, ...], ...] = (
+    ("list",),
+    ("digest",),
+    ("flight",),
+    ("branch",),
+    ("stranded",),
+    ("next",),
+    ("next", "--oldest"),
+    ("show", "PL-B1B1"),
+    ("concurrent",),
+    ("status",),
+    ("triage",),
+    ("delegable",),
+)
+
+#: Read commands that read the refs as they are and say nothing about it:
+#: `check` alone, for the reason `cli._snapshot` gives.
+NO_FETCH_COMMANDS = frozenset({"check"})
+
+#: Commands that are not read commands here: they write, and fetch through
+#: `claiming`'s own checks (`claim`, `yield`, `arm`, `new --resource`), read
+#: nothing from the refs, or - `release` - fetch through the snapshot and are
+#: exercised by their own tests.
+NOT_READ_COMMANDS = frozenset(
+    {
+        "record",
+        "gate",
+        "feature",
+        "generators",
+        "milestone",
+        "release",
+        "verify",
+        "wave",
+        "trend",
+        "withdraw",
+        "set",
+        "new",
+        "claim",
+        "yield",
+        "arm",
+    }
+)
+
+NOW = "2026-09-26T02:00:00+00:00"
+LAST_FETCH = datetime(2026, 9, 26, 1, 30, tzinfo=UTC)
+
+
+def _snapshot_clone(tmp_path: Path) -> Path:
+    """A clone with a remote, a store, and a version, for every read command to answer from.
+
+    Real git and a real remote, because the question is what a command says
+    about a fetch it made or did not make, and only a checkout with an
+    `origin` has anything to fetch. The clone writes no `FETCH_HEAD`, so the
+    refs are undated until a fetch runs.
+    """
+    origin = tmp_path / "origin"
+    store = origin / "docs" / "items"
+    store.mkdir(parents=True)
+    for name, document in (
+        ("PL-B1B1-ready.md", READY),
+        ("PL-D1D1-done.md", DONE),
+        ("PL-D4D4-captured.md", CAPTURED),
+    ):
+        (store / name).write_text(document, encoding="utf-8")
+    (origin / "pyproject.toml").write_text('[project]\nversion = "0.2.5"\n', encoding="utf-8")
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(origin)],
+        check=True,
+        capture_output=True,
+    )
+    for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", key, value], cwd=origin, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=origin, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=origin, check=True, capture_output=True)
+    work = tmp_path / "work"
+    subprocess.run(["git", "clone", "-q", str(origin), str(work)], check=True, capture_output=True)
+    return work
+
+
+def _date_last_fetch(work: Path, at: datetime = LAST_FETCH) -> None:
+    """Fetch once, for real, and date the record git keeps of it."""
+    subprocess.run(["git", "fetch", "-q", "origin"], cwd=work, check=True, capture_output=True)
+    fetch_head = work / ".git" / "FETCH_HEAD"
+    assert fetch_head.read_text(encoding="utf-8").strip(), "a fetch that answered lists its refs"
+    os.utime(fetch_head, (at.timestamp(), at.timestamp()))
+
+
+def _break_remote(work: Path) -> None:
+    subprocess.run(
+        ["git", "remote", "set-url", "origin", str(work / "no-such-remote")],
+        cwd=work,
+        check=True,
+        capture_output=True,
+    )
+
+
+def test_every_read_command_names_what_its_snapshot_rests_on(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Every read command says which moment its refs are from, when that is not its own fetch.
+
+    `PL-XBV4`'s census. Read commands each assembled their own picture of the
+    world - `branch` and `stranded` fetched and said so, `flight`, `next`,
+    `show` and the digest never fetched and said nothing, and a fetch that
+    failed was discarded everywhere - so each answered from a different moment
+    and none said which. Now one `Snapshot` is built per command and every
+    read beneath it shares it, and this holds the two shapes of staleness to
+    one sentence each, in every command: told not to fetch, and a fetch that
+    the remote did not answer. A command that fetched and was answered says
+    nothing, because the fresh answer is the default.
+
+    Held to the parser, as `test_no_git_stops_every_git_read` is, so a command
+    added later is either here, in `NO_FETCH_COMMANDS` with its reason, or
+    named as not a read command - and never silently reading stale refs.
+    """
+    subcommands = next(
+        action
+        for action in build_parser()._actions
+        if isinstance(action, argparse._SubParsersAction)
+    )
+    named = {argv[0] for argv in READ_ARGV} | NO_FETCH_COMMANDS | NOT_READ_COMMANDS
+    assert named == set(subcommands.choices), "a command is unplaced in the census"
+
+    work = _snapshot_clone(tmp_path)
+    store = str(work / "docs" / "items")
+    _date_last_fetch(work)
+
+    unsaid: list[str] = []
+    for argv in READ_ARGV:
+        main([*argv, "--items", store, "--no-fetch", "--now", NOW])
+        out = capsys.readouterr().out
+        if (
+            "Nothing refreshed the refs for this answer (`--no-fetch`): read from the last "
+            "fetch, at 01:30 UTC, 30 minutes before it." not in out
+        ):
+            unsaid.append(" ".join(argv))
+    assert not unsaid, "told not to fetch, these said nothing about it: " + ", ".join(unsaid)
+
+    _break_remote(work)
+    unsaid = []
+    for argv in READ_ARGV:
+        main([*argv, "--items", store, "--now", NOW])
+        out = capsys.readouterr().out
+        if "`git fetch origin` failed, so nothing refreshed the refs for this answer" not in out:
+            unsaid.append(" ".join(argv))
+    assert not unsaid, "a failed fetch, and these read as fresh: " + ", ".join(unsaid)
+
+    # `check` reads the refs as they are, by design, and says nothing.
+    main(["check", "--items", store, "--now", NOW])
+    assert "refreshed the refs" not in capsys.readouterr().out
+
+
+def test_branch_after_a_failed_fetch_says_it_read_the_last_fetch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-8Z1T`: a fetch that failed is said, with the moment the refs are really from.
+
+    `fetch_remote` discarded git's exit status and `branch` passed
+    `fetched=not no_fetch`, so after a failed fetch `branch` printed `current
+    with origin/main` and `stranded` printed recovery commands with no caveat -
+    the session-start digest's first line read fresh when the fetch had
+    failed. Against an unreachable origin both now say the fetch failed and
+    date the refs from the last fetch that answered, which `fetch_remote`
+    reads *before* it tries, since a failed fetch truncates `FETCH_HEAD`.
+    """
+    work = _snapshot_clone(tmp_path)
+    store = str(work / "docs" / "items")
+    _date_last_fetch(work)
+    _break_remote(work)
+
+    assert main(["branch", "--items", store, "--now", NOW]) == 0
+    out = capsys.readouterr().out
+    assert "current with origin/main" in out
+    assert (
+        "`git fetch origin` failed, so nothing refreshed the refs for this answer: read from "
+        "the last fetch, at 01:30 UTC, 30 minutes before it." in out
+    )
+    # The failure truncated the record; the moment above came from reading it first.
+    assert (work / ".git" / "FETCH_HEAD").stat().st_size == 0
+
+    assert main(["stranded", "--items", store, "--now", NOW]) == 0
+    out = capsys.readouterr().out
+    assert "`git fetch origin` failed, so nothing refreshed the refs for this answer" in out
+    assert "the clone's, or a fetch's before one that failed" in out
+
+
+def test_flight_fetches_by_default_and_says_when_told_not_to(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-QSGX`: the command whose whole job is other sessions' branches refreshes them first.
+
+    `flight` read the refs as old as the clone while `stranded` and `branch`
+    fetched, so a session deciding whether an item was claimed got a clean
+    answer from stale refs. It fetches once now, through the one snapshot,
+    takes `--no-fetch` like every command, and says which happened.
+    """
+    work = _snapshot_clone(tmp_path)
+    store = str(work / "docs" / "items")
+    fetched: list[Path] = []
+    monkeypatch.setattr("docket.cli.fetch_remote", _fetch_stub(fetched))
+
+    assert main(["flight", "--items", store, "--now", NOW]) == 0
+    assert fetched == [work]
+    assert "refreshed the refs" not in capsys.readouterr().out
+
+    fetched.clear()
+    assert main(["flight", "--items", store, "--no-fetch", "--now", NOW]) == 0
+    assert fetched == []
+    assert "Nothing refreshed the refs for this answer (`--no-fetch`)" in capsys.readouterr().out
+
+
+def test_next_show_and_digest_do_not_read_unfetched_refs_as_fresh(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-D1P5`: the three commands a session reads first fetch once, or say they did not.
+
+    `next` offered an item another session had claimed since the last fetch,
+    `show` said it was ready, and the digest was fresh only by the accident of
+    the hook fetching through `docket branch` just before it. Each now fetches
+    once through the snapshot - one call per command, however many reads
+    beneath it ask - and, told not to, dates the refs it read instead.
+    """
+    work = _snapshot_clone(tmp_path)
+    store = str(work / "docs" / "items")
+    _date_last_fetch(work)
+    fetched: list[Path] = []
+    monkeypatch.setattr("docket.cli.fetch_remote", _fetch_stub(fetched))
+
+    for argv in (("next",), ("show", "PL-B1B1"), ("digest",)):
+        fetched.clear()
+        main([*argv, "--items", store, "--now", NOW])
+        assert fetched == [work], f"{argv[0]} fetched {len(fetched)} times"
+        assert "refreshed the refs" not in capsys.readouterr().out
+
+        main([*argv, "--items", store, "--no-fetch", "--now", NOW])
+        assert fetched == [work], f"{argv[0]} fetched under --no-fetch"
+        assert (
+            "Nothing refreshed the refs for this answer (`--no-fetch`): read from the last "
+            "fetch, at 01:30 UTC, 30 minutes before it." in capsys.readouterr().out
+        ), argv[0]

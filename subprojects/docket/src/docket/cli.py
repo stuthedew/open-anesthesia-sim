@@ -128,6 +128,7 @@ from .trend import analyze as analyze_trend
 from .vcs import (
     CURRENT,
     DEFAULT_BRANCHES,
+    UNASKED,
     BranchCut,
     Churn,
     CutsInFlight,
@@ -137,11 +138,11 @@ from .vcs import (
     OrphanedReport,
     Runner,
     SinceFiled,
+    Snapshot,
     StrandedReport,
     WrittenReport,
     _head_name,
     _remotes,
-    branch_state,
     changed_items,
     churn,
     closed_by,
@@ -162,6 +163,7 @@ from .vcs import (
     released_on_base,
     resolved,
     since_filed,
+    snapshot,
     stranded,
     tags,
     working_paths,
@@ -319,8 +321,10 @@ class Invocation:
     `argparse` builds a fresh one per parse, so the lifetime is the command's
     and nothing has to be remembered to reset. That lifetime is what makes the
     runner's memo safe - `cmd_branch` fetches in-process - and what lets
-    `main` close its `cat-file` batch. `holdings` and `flight` are the two
-    fields written after construction, by `_holdings` and `_flight`, once each.
+    `main` close its `cat-file` batch. `snapshot`, `holdings` and `flight` are
+    the three fields written after construction, by `_snapshot`, `_holdings`
+    and `_flight`, once each - and in that order, because a hold is read from
+    refs the snapshot has already fetched and dated (`PL-XBV4`).
 
     The store itself is not held here: `_load` reads it on every call, because
     `set`, `new` and `withdraw` write between reads.
@@ -332,6 +336,7 @@ class Invocation:
     tracked: str
     settings: SettingsSource
     git: GitRunner | None
+    snapshot: Snapshot | None = None
     holdings: Holdings | None = None
     flight: FlightReport | None = None
 
@@ -441,6 +446,9 @@ def _holdings(args: argparse.Namespace) -> Holdings:
     inv = _invocation(args)
     if inv.holdings is not None:
         return inv.holdings
+    # The refs are fetched and dated before a hold is read from them, so the
+    # holds and the refs line beneath them describe one moment.
+    _snapshot(args)
     now = _now(args)
     found = (
         Holdings(now=now)
@@ -451,21 +459,71 @@ def _holdings(args: argparse.Namespace) -> Holdings:
     return found
 
 
-def _say_unread(flight: FlightReport) -> None:
-    """Print the partial-answer line, for the commands that render their own output.
+def _snapshot(args: argparse.Namespace, *, refresh: bool = True) -> Snapshot:
+    """The moment this command answers from, fetched once and shared beneath it (`PL-XBV4`).
 
-    `list`, `status`, `delegable` and the digest get it from the renderer that
-    builds the rest of their answer; `next` and `concurrent` assemble theirs
-    here, so they say it here. One sentence either way - it is `render` that
-    owns the wording.
+    Every read command assembled its own picture: `branch` and `stranded`
+    fetched and the rest did not, a failed fetch was discarded, and none said
+    which moment its refs were from. This is the one place a read command
+    goes to the network, and it goes there once: the first reader - a hold, a
+    branch position, a stranded item - fetches unless `--no-fetch` said not
+    to, and every later reader in the same invocation gets the same answer.
+    Cached on the invocation for `_flight`'s reason: one process, one moment.
+
+    `refresh=False` is `check`'s: it validates the store, runs in CI's shallow
+    checkout and in every `make check`, and its one ref read is the in-flight
+    exclusion behind an advisory, so it reads the refs as they are and is the
+    one read command that does not say so - `NO_FETCH_COMMANDS` in the tests
+    holds that exemption by name. It takes effect only where this is the first
+    ask; a snapshot already made is what it is.
+
+    Under `--no-git` nothing is asked, nothing is dated, and the refs line
+    stays silent, as `NO_GIT` has already said.
     """
-    if line := render.format_unread(flight):
+    inv = _invocation(args)
+    if inv.snapshot is not None:
+        return inv.snapshot
+    if inv.git is None:
+        made = Snapshot(fetch=UNASKED)
+    else:
+        fetch = None if args.no_fetch or not refresh else fetch_remote(inv.root, runner=inv.git)
+        made = snapshot(inv.root, now=_now(args), fetch=fetch, runner=inv.git)
+    inv.snapshot = made
+    return made
+
+
+def _refs_line(args: argparse.Namespace) -> str:
+    """What this command's refs rest on, or nothing where they rest on its own fetch."""
+    return render.format_snapshot(_snapshot(args), _now(args))
+
+
+def _say_snapshot(args: argparse.Namespace) -> None:
+    """Print the refs line, for every command that answered from the refs.
+
+    Nothing where the command fetched and the remote answered: the fresh
+    answer is the default and needs no caveat. Otherwise one line saying what
+    the refs rest on - the last fetch and when, a fetch that failed, a clone
+    nothing has fetched since - so a stale answer never reads as a fresh one.
+    """
+    if line := _refs_line(args):
         print(line)
 
 
-def _stranded(
-    items: Sequence[Item], args: argparse.Namespace, *, fetched: bool = False
-) -> StrandedReport | None:
+def _say_unread(args: argparse.Namespace, flight: FlightReport) -> None:
+    """Print the partial-answer lines, for the commands that render their own output.
+
+    `list`, `status`, `delegable` and the digest get the unread line from the
+    renderer that builds the rest of their answer; `next` and `concurrent`
+    assemble theirs here, so they say it here. One sentence either way - it is
+    `render` that owns the wording. The refs line follows it for the same
+    reason: both say what bounds the answer, and neither is the answer.
+    """
+    if line := render.format_unread(flight):
+        print(line)
+    _say_snapshot(args)
+
+
+def _stranded(items: Sequence[Item], args: argparse.Namespace) -> StrandedReport | None:
     """What exists only on a branch, or `None` when the question cannot be asked.
 
     The store is passed in rather than re-read: what this session can already
@@ -476,11 +534,11 @@ def _stranded(
     can only be asked about paths it tracks, and searching the wrong path would
     find no items and report every branch as stranding all of its own.
 
-    `fetched` is the caller's, because the two callers refresh differently and
-    neither should refresh twice. `cmd_stranded` fetches for itself; the digest
-    is run by a hook that has just fetched through `docket branch`, and a
-    second fetch would cost every session start a network round trip for an
-    answer it already has.
+    `fetched` is the snapshot's answer rather than the caller's word: whether
+    the refs the report is read against are this command's own fetch. Two
+    callers used to say it for themselves and one of them said it wrong - the
+    digest, run by a hook that had just fetched through `docket branch`,
+    passed `False` and was right only by the hook's ordering (`PL-XBV4`).
     """
     inv = _invocation(args)
     if inv.git is None or not inv.tracked:
@@ -489,7 +547,7 @@ def _stranded(
         inv.root,
         {item.identifier for item in items},
         items_dir=inv.tracked,
-        fetched=fetched,
+        fetched=_snapshot(args).fresh,
         runner=inv.git,
     )
 
@@ -710,6 +768,8 @@ def cmd_check(args: argparse.Namespace) -> int:
     # directory, and the roadmap `_offered` reads sits a level above it.
     _, items, config = _load(args)
     inv = _invocation(args)
+    # A validation reads the refs as they are: see `_snapshot`.
+    _snapshot(args, refresh=False)
     root = inv.root
     # The pull-request replay's scope, in two halves, computed here rather than
     # inside `already_passing` so the cost line can name which half an id came
@@ -863,6 +923,7 @@ def cmd_list(args: argparse.Namespace) -> int:
     rendered = render.format_list(report, _flight(args), config.protected_paths, config.gate_paths)
     if rendered:
         print(rendered)
+    _say_snapshot(args)
     return 0
 
 
@@ -936,6 +997,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
     )
     if rendered:
         print(rendered)
+    _say_snapshot(args)
     if getattr(args, "profile", False):
         git = _invocation(args).git
         if git is None:
@@ -1009,6 +1071,7 @@ def cmd_triage(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
     print(render.format_triage(report, config, _flight(args), _filed(args, report.untriaged)))
+    _say_snapshot(args)
     return 0
 
 
@@ -1949,7 +2012,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(_since_filed(args, item, root, config))
     print()
     print(item.body.strip())
-    _say_unread(flight)
+    _say_unread(args, flight)
     return 0
 
 
@@ -2127,7 +2190,7 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
         if not free:
             print("    nothing")
         _print_observed(args, item, flight)
-        _say_unread(flight)
+        _say_unread(args, flight)
         return 0
 
     batch = parallel_batch(candidates, args.limit)
@@ -2158,7 +2221,7 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
         print(f"Outside the batch is not refused: {count} more items share a file with")
         print("something above, which orders the work rather than forbidding it.")
         print("`docket concurrent --limit N` fills the batch out with them.")
-    _say_unread(flight)
+    _say_unread(args, flight)
     return 0
 
 
@@ -2177,6 +2240,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         interrupted=_interrupted(root, items, current),
     )
     print(rendered if rendered else "Nothing open.")
+    _say_snapshot(args)
     return 0
 
 
@@ -2247,7 +2311,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         )
         _say_recurring(items, flight.ids)
         _say_lane_holdouts(items, flight, config, args, lane)
-        _say_unread(flight)
+        _say_unread(args, flight)
         return 0
     print(f"{render.open_count(report)} open. Suggested next{where}:\n")
     for index, pick in enumerate(picks, start=1):
@@ -2263,7 +2327,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         print(
             f"{len(report.advisories)} grooming advisory(ies) pending; `docket check` to see them."
         )
-    _say_unread(flight)
+    _say_unread(args, flight)
     return 0
 
 
@@ -2322,7 +2386,7 @@ def _next_oldest(
     owed = [i for i in items if not is_new_work(i, config.new_work_classes, config.debt_classes)]
     _say_lane_holdouts(owed, flight, config, args, lane)
     _say_plan_pick(items, flight, config, args, scope, lane)
-    _say_unread(flight)
+    _say_unread(args, flight)
     return 0
 
 
@@ -3151,8 +3215,7 @@ def cmd_release(args: argparse.Namespace) -> int:
     # is the rarest command here and the most expensive to get wrong, which is
     # what makes one network read proportionate where the digest's would not be.
     if git is not None:
-        if not args.no_fetch:
-            fetch_remote(root, runner=git)
+        _say_snapshot(args)
         base = released_on_base(
             root, version_file=config.version_file, notes_dir=NOTES_DIR, runner=git
         )
@@ -3591,6 +3654,7 @@ def cmd_delegable(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
     print(render.format_delegable(report, _flight(args), config.protected_paths, config.gate_paths))
+    _say_snapshot(args)
     return 0
 
 
@@ -3804,16 +3868,14 @@ def cmd_stranded(args: argparse.Namespace) -> int:
     if inv.git is None:
         print(NO_GIT)
         return 0
-    if not args.no_fetch:
-        fetch_remote(inv.root, runner=inv.git)
-    report = _stranded(items, args, fetched=not args.no_fetch)
+    report = _stranded(items, args)
     if report is None:
         print(
             "the store is not below the repository root, so git cannot be asked "
             "which items exist only on a branch"
         )
         return 0
-    print(render.format_stranded(report))
+    print(render.format_stranded(report, rests_on=_refs_line(args)))
     left = _orphaned(args)
     if left is not None:
         print()
@@ -3845,9 +3907,7 @@ def cmd_branch(args: argparse.Namespace) -> int:
         if not (args.brief or args.if_stale):
             print(NO_GIT)
         return 0
-    if not args.no_fetch:
-        fetch_remote(inv.root, runner=inv.git)
-    state = branch_state(inv.root, fetched=not args.no_fetch, runner=inv.git)
+    state = _snapshot(args).branch
     if state.absent and (args.brief or args.if_stale):
         # Nothing to compare against, and both callers here are printing into
         # something a session reads whether or not it asked: a line explaining
@@ -3856,7 +3916,11 @@ def cmd_branch(args: argparse.Namespace) -> int:
         return 0
     if args.if_stale and state.disposition == CURRENT:
         return 0
-    print(render.format_branch_state(state, None if args.brief else _flight(args)))
+    print(
+        render.format_branch_state(
+            state, None if args.brief else _flight(args), rests_on=_refs_line(args)
+        )
+    )
     return 0
 
 
@@ -3963,6 +4027,7 @@ def cmd_flight(args: argparse.Namespace) -> int:
     queue = with_fields(inv.config, items_dir=inv.tracked)
     forgetful = unclaimed(inv.root, read, queue, runner=inv.git)
     print(render.format_flight(report, _now(args), settled, reviews, read, forgetful))
+    _say_snapshot(args)
     return 0
 
 
@@ -4383,6 +4448,14 @@ def build_parser() -> argparse.ArgumentParser:
             help="ask git nothing: no branch detection, and none of the history reads "
             "behind a count",
         )
+        parser.add_argument(
+            "--no-fetch",
+            action="store_true",
+            default=False,
+            dest="no_fetch" + suffix,
+            help="read the refs as they are, and say so: the caller refreshed them, or "
+            "cannot. A write command's fetch after its push still runs",
+        )
 
     common = argparse.ArgumentParser(add_help=False)
     _shared(common, "_sub")
@@ -4435,12 +4508,6 @@ def build_parser() -> argparse.ArgumentParser:
     flight_cmd.set_defaults(func=cmd_flight)
     branch_cmd = add("branch", "where this branch stands against the default branch")
     branch_cmd.add_argument(
-        "--no-fetch",
-        action="store_true",
-        default=False,
-        help="read the refs as they are; the caller refreshed them, or cannot",
-    )
-    branch_cmd.add_argument(
         "--brief",
         action="store_true",
         default=False,
@@ -4454,12 +4521,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     branch_cmd.set_defaults(func=cmd_branch)
     stranded_cmd = add("stranded", "work that exists only on a branch")
-    stranded_cmd.add_argument(
-        "--no-fetch",
-        action="store_true",
-        default=False,
-        help="read the refs as they are; the caller refreshed them, or cannot",
-    )
     stranded_cmd.set_defaults(func=cmd_stranded)
 
     trailer_help = (
@@ -4483,13 +4544,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--trailer", action="append", default=[], metavar="'KEY: VALUE'", help=trailer_help
     )
     claim_cmd.add_argument(
-        "--no-fetch",
-        action="store_true",
-        default=False,
-        help="read the refs as they are before writing; the caller refreshed them, or cannot. "
-        "The fetch after a push still runs",
-    )
-    claim_cmd.add_argument(
         "--push",
         action="store_true",
         default=False,
@@ -4504,12 +4558,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     yield_cmd.set_defaults(func=cmd_yield)
     arm_cmd = add("arm", "whether this branch's pull request may be armed for auto-merge")
-    arm_cmd.add_argument(
-        "--no-fetch",
-        action="store_true",
-        default=False,
-        help="read the refs as they are; the caller refreshed them, or cannot",
-    )
     arm_cmd.set_defaults(func=cmd_arm)
 
     record = add("record", "write the pull request number onto the closures owed one")
@@ -4550,12 +4598,6 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="the shared thing whoever claims this item also holds; refused, with nothing "
         "written, while another claim holds it",
-    )
-    new.add_argument(
-        "--no-fetch",
-        action="store_true",
-        default=False,
-        help="with --resource, read the refs as they are; the caller refreshed them, or cannot",
     )
     new.set_defaults(func=cmd_new)
 
@@ -4684,12 +4726,6 @@ def build_parser() -> argparse.ArgumentParser:
     release = add("release", "cut a release from everything finished and unshipped")
     release.add_argument("version", nargs="?", help="override the inferred version")
     release.add_argument("--dry-run", action="store_true")
-    release.add_argument(
-        "--no-fetch",
-        action="store_true",
-        default=False,
-        help="read the refs as they are; the caller refreshed them, or cannot",
-    )
     release.set_defaults(func=cmd_release)
 
     add("delegable", "what a cheaper model may work, and what proves it").set_defaults(
@@ -4734,7 +4770,7 @@ def merge_shared(args: argparse.Namespace) -> argparse.Namespace:
     error, since they cannot disagree without the user having written the flag
     twice on purpose.
     """
-    for name in ("items", "today", "now", "no_git"):
+    for name in ("items", "today", "now", "no_git", "no_fetch"):
         sub = getattr(args, name + "_sub", None)
         if sub:
             setattr(args, name, sub)
