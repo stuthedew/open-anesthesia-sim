@@ -80,6 +80,23 @@ token under `.claude/` failing the grammar was a defect - 2 of 2, both
 `PL-A1B2`. `.claude/` is the resident instruction set a session reads to learn
 the conventions, so a malformed id in it is a template, not a discussion.
 
+**What makes a token an attempted id is its shape, not its prefix** (`PL-VH5V`,
+under `PL-GPJ7`'s rule that a hard gate recognises what it checks by explicit
+syntax). A token is judged only where it is written the way an id is: `PL-` and
+one whole word of capitals and digits, the only characters an id can hold. The
+grammar then judges what the shape admits - the alphabet's missing vowels and
+the length - so `PL-A1B2`, `PL-DEMO` and `PL-K7QX1` are still refused. Prose
+naming the prefix, `PL-prefixed`, is no id-shaped word and is not read, where the
+prefix alone made it a finding; nor is any word holding a lowercase letter,
+which no id does. Both halves share the rule, since a Python message is prose
+too. Measured 2026-09-26 over every file this tool walks, the shape and the
+prefix judge the same 4,798 tokens and find the same 34 malformed, every one
+marked, so the rule gives up nothing the tree holds. What it leaves, stated
+rather than found: an uppercase word after the prefix is judged whatever it
+means, so prose writing `PL-ID` is refused as `PL-DEMO` is. That is settled by
+cost - a code span or a rewording costs the sentence nothing, and a capitalised
+word after `PL-` is what a placeholder copied into an item looks like.
+
 **Keyword-argument names, translated back to the filename they become.** An id
 cannot be an identifier - `PL-8888` is not one - so a helper keyed by an id
 takes `PL_8888_open` and puts the hyphens back, which is what
@@ -136,15 +153,20 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.store import ID_RE  # noqa: E402
 
-#: A token that *looks* like an id, to be judged against `ID_RE`.
+#: A token written the way an id is written, to be judged against `ID_RE`: the
+#: prefix and then one whole word of capitals and digits, which is every
+#: character an id can hold and nothing else. See the module docstring for why
+#: the shape, and not the prefix, is what makes a token an attempted id.
 #:
 #: The lookbehind is load-bearing rather than tidiness: without it `GPL-3.0` and
 #: `LGPL-2.1` read as `PL-3` and `PL-2`, neither of which the store could mint.
 #: Latent while only Python values were scanned, and live the moment a text scan
 #: runs - `docs/ARCHITECTURE.md` carries three between them. A genuine id is
 #: always preceded by a quote, a backtick, a space or a path separator, so the
-#: lookbehind can only ever drop a false positive.
-CANDIDATE_RE = re.compile(r"(?<![A-Za-z0-9])PL-[A-Za-z0-9]+")
+#: lookbehind can only ever drop a false positive. The lookahead is the other
+#: end of the same word: `PL-prefixed` is not an id-shaped word with a tail but
+#: no id at all.
+CANDIDATE_RE = re.compile(r"(?<![A-Za-z0-9])PL-[A-Z0-9]+(?![A-Za-z0-9])")
 
 #: A `PL-` that opens a *restatement* of the grammar rather than naming an item:
 #: the prefix, an optional non-capturing group, then a character class or class

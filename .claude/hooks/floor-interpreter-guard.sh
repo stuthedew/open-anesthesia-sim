@@ -102,7 +102,8 @@ WHOLE_TREE = ("compileall", "py_compile")
 
 offender = None
 for segment, _ in cut:
-    # A subshell, a brace group, a negation or an assignment opens the command.
+    # A subshell, a brace group, a negation, a reserved word such as `do` or
+    # `time`, or an assignment opens the command (`PL-0X0G`).
     rest = shell_split.command_words(segment)
     if not rest or not INTERPRETER.match(rest[0]):
         continue

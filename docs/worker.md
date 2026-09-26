@@ -96,7 +96,10 @@ therefore exits with `tail`'s status, and `tail` succeeds on any input, so a red
 tree arrives as exit 0. `PL-2JRC` reported the gate green on exactly that
 reading and the false claim reached both a commit message and a pull request
 body. The same loss happens after a `;` (the next command's status wins), after
-`|| ...` (the fallback succeeds) and after `&` (the gate is backgrounded).
+`|| ...` (the fallback succeeds), after `&` (the gate is backgrounded) and at a
+loop's `done` (the next pass replaces the status, so a red pass before a green
+one exits 0). Inside a loop, read `$?` before `done`, or run the gate once over
+all its targets.
 
 Pipe freely — just keep the status while you do:
 

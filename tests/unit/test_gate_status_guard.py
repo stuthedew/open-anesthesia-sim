@@ -166,6 +166,9 @@ GROUPED = (
     "( set -o pipefail; cd $(git rev-parse --show-toplevel) && make check 2>&1 | tail -45 )",
     # A group on the right of a pipe runs its `set` for its own pipes.
     "true | { set -o pipefail; make check 2>&1 | tail -45; }",
+    # An `if` or a loop run on its own is this shell too (`PL-0X0G`).
+    "if true; then set -o pipefail; fi; make check 2>&1 | tail -45",
+    "for f in a; do set -o pipefail; done; make check 2>&1 | tail -45",
 )
 
 
@@ -205,6 +208,9 @@ ESCAPED = (
     "set -o pipefail | cat; make check 2>&1 | tail -45",
     # `;)` is two operators, and the `)` still ends the group.
     "( set -o pipefail; true;) && make check 2>&1 | tail -45",
+    # A piped `if` or loop is a subshell as a piped group is (`PL-0X0G`).
+    "if true; then set -o pipefail; fi | cat; make check 2>&1 | tail -45",
+    "for f in a; do set -o pipefail; done | cat; make check 2>&1 | tail -45",
 )
 
 
@@ -224,6 +230,86 @@ def test_only_a_command_that_sets_pipefail_is_told_where_it_ended() -> None:
     """The note is true only of a command carrying the `set`, so no other refusal carries it."""
     reason = _decision("make check 2>&1 | tail -45")["permissionDecisionReason"]
     assert "does set `pipefail`" not in reason
+
+
+RESERVED = (
+    # `PL-0X0G`'s reproductions, verbatim: the gate after `do`, `then` or `time`
+    # read as a command named for the reserved word, so the pipe that loses its
+    # status was never looked at.
+    "for f in a; do make check | tail; done",
+    "if true; then make check | tail; fi",
+    "time make check | tail",
+    # Every other reserved word bash reads with a command after it, and the two
+    # options `time` takes before its pipeline.
+    "if false; then :; elif true; then make check | tail; fi",
+    "if false; then :; else make check | tail; fi",
+    "while true; do uv run pytest -q 2>&1 | tail -5; break; done",
+    "until make check | tail; do sleep 1; done",
+    "if make check 2>&1 | tail -45; then echo green; fi",
+    "time -p -- make check 2>&1 | tail",
+    "! time make check | tail",
+)
+
+
+@pytest.mark.parametrize("command", RESERVED)
+def test_a_reserved_word_opens_the_command_after_it(command: str) -> None:
+    """`do`, `then`, `time` and the rest are bash's words, not the command's name (`PL-0X0G`).
+
+    `shell_split.command_words` dropped a leading `(`, `{`, `!` and assignments
+    and nothing else, so the guard read each gate here as a command named `do`
+    or `time` and let the pipe lose its status.
+    """
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert "LAST stage" in decision["permissionDecisionReason"]
+
+
+COMPOUND = (
+    # A gate ending an `if` branch leaves with the `if`, whose status is "the
+    # exit status of the last command executed" (`help if`, bash 5.2.21). The
+    # second was refused before `PL-0X0G`, by a `;` read as handing the status
+    # to the `fi`.
+    ("if true; then make check; fi", False),
+    ("if true; then\n  make check\nfi", False),
+    ("if true; then make check; else echo skipped; fi", False),
+    ("if false; then :; elif true; then make check; else echo a; echo b; fi", False),
+    ('if true; then make check; fi; echo "exit=$?"', False),
+    ("if true; then make check; fi | tail", True),
+    ("if true; then make check; else echo skipped; fi; git status", True),
+    ("if true; then make check; echo built; fi", True),
+    # A gate ending an `if`, `while` or `until` test is read by it, as `$?` is.
+    ("if make check > /tmp/gate.log 2>&1; then echo green; else echo RED; fi", False),
+    ("until make check; do sleep 5; done", False),
+    # A gate ending a loop body is not: the next pass replaces its status, so
+    # a red pass before a green one exits 0 (`help for`, `help while`).
+    ("for t in a b; do uv run pytest -q $t; done", True),
+    ("for t in a b; do set -o pipefail; uv run pytest -q $t 2>&1 | tail -5; done", True),
+    ('for t in a b; do uv run pytest -q $t; echo "exit=$?"; done', False),
+    # After `&&`, or a pipe under `pipefail`, the status travels to the end of
+    # the next command, and an `if`, a loop or a group ends where it closes,
+    # not at the first `;` inside it.
+    ("make check && if true; then echo ok; fi; git status", True),
+    ("make check && { echo a; echo b; }", False),
+    ("set -o pipefail; make check 2>&1 | while read -r l; do echo $l; done; git status", True),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), COMPOUND)
+def test_an_if_or_a_loop_hands_the_status_on_as_bash_runs_it(command: str, refused: bool) -> None:
+    """Once the guard can see a gate inside an `if` or a loop, it has to read the construct too.
+
+    Read as a plain `;`, every `if` branch ending in a gate would be refused
+    although it keeps the status, and every loop allowed although it loses it.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+def test_a_loop_refusal_says_the_next_pass_replaced_the_status() -> None:
+    """The `;` before `done` hands the status to another pass, not to a command the reader wrote."""
+    reason = _decision("for t in a b; do uv run pytest -q $t; done")["permissionDecisionReason"]
+    assert "next pass" in reason
+    assert 'echo "exit=$?"; done' in reason
 
 
 PRESERVED = (
