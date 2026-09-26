@@ -1,10 +1,16 @@
 ---
 id: PL-39LD
 title: The three Bash guard hooks drop everything after the first '<<', not only the heredoc body, so a command after the heredoc's terminator line is never checked: a 'make docket 2>&1 | tail -4; echo "exit=$?"' run after a python3 heredoc printed tail's exit=0 unrefused
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: one-answer
-touches: .claude/hooks/gate-status-guard.sh, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/no-prune-guard.sh, tests/unit/test_gate_status_guard.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py
+touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/floor-interpreter-guard.sh, .claude/hooks/no-prune-guard.sh, tests/unit/test_gate_status_guard.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a member of PL-PVW2, worked with its step 2
 added: 2026-09-26
+payoff: a check run after a heredoc in the same call is read by all three guards, so a lost status, a floor parse or a prune there is refused
+verify: grep -q 'def test_only_a_heredoc_body_is_removed' tests/unit/test_gate_status_guard.py && grep -q 'def test_only_a_heredoc_body_is_removed' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_only_a_heredoc_body_is_removed' tests/unit/test_no_prune_guard.py
 ---
 
 **Problem.** The three Bash guard hooks drop everything after the first '\<\<', not only the heredoc body, so a command after the heredoc's terminator line is never checked: a 'make docket 2>&1 | tail -4; echo "exit=$?"' run after a python3 heredoc printed tail's exit=0 unrefused
@@ -23,6 +29,13 @@ calls what follows "document content", which holds only up to the line that
 terminates the heredoc; the lines after it are commands again. This repository
 writes a file through a heredoc and then checks it in the same call routinely,
 which is exactly the shape this drops.
+
+**Why it matters.** Everything after the first `<<` is unguarded, and the
+command after a heredoc is where this repository puts the check on what the
+heredoc wrote: a gate whose status is thrown away there reaches the session as
+exit 0, `PL-2JRC`'s failure, and a floor parse or a prune there is never
+refused. The cut is not quote-aware either, so a `<<` inside a quoted argument
+hides the rest of the command the same way.
 
 **Done when.** A heredoc's body - from the line after its introducer to its
 terminator line, `<<-` and a quoted delimiter included - is removed, and the
