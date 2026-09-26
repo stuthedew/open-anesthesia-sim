@@ -1,8 +1,10 @@
 ---
 id: PL-9RJM
 title: The Projects run's web container had no libegl1 and uv 0.8.17 on 2026-09-25, so make check stopped at uv's required-version floor and then at the first PySide6 import until apt-get install -y libegl1 and python3 -m pip install --user --upgrade uv were run by hand
-status: untriaged
+status: dropped
 added: 2026-09-26
+closed: 2026-09-26
+reason: duplicate of PL-QKXZ, the same container finding filed by slam-dunk batch 1 in the same run and on main first
 ---
 
 **Problem.** The Projects run's web container had no libegl1 and uv 0.8.17 on 2026-09-25, so make check stopped at uv's required-version floor and then at the first PySide6 import until apt-get install -y libegl1 and python3 -m pip install --user --upgrade uv were run by hand
