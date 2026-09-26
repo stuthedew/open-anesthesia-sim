@@ -604,6 +604,36 @@ def test_an_item_that_says_it_depends_on_nothing_stays_silent() -> None:
     assert _prose("**Depends on.** Nothing. `PL-0002` should be re-read after this.") == []
 
 
+def test_a_negated_blocked_by_is_not_read_as_a_prerequisite() -> None:
+    """`PL-YKBF`: "This is not blocked by" and an id is the opposite claim. Read
+    as a prerequisite, it drew advice to declare the edge and set `status:
+    blocked`, which would hide the item from `docket next` behind work its
+    brief says it is free of - and the item reporting it had to reword its own
+    example to get past the check it reports."""
+    for text in (
+        "This is not blocked by `PL-0002`.",
+        "It isn't blocked by `PL-0002`.",
+        "It doesn’t depend on `PL-0002`.",
+        "It no longer waits on `PL-0002`.",
+        "Nothing waiting on `PL-0002`.",
+        "It is **not**\nblocked by `PL-0002`.",
+    ):
+        assert _prose(text) == [], text
+        # Nor is it a wait on a closed item, which reads the same cues.
+        assert _prose(text, blocker_status="done") == [], text
+
+
+def test_a_negation_reaches_only_the_cue_it_stands_before() -> None:
+    """Earlier in the clause a negation is usually about something else, and
+    "not only" states the prerequisite twice over."""
+    for text in (
+        "It not only depends on `PL-0002` but on the port.",
+        "It has no tests and depends on `PL-0002`.",
+        "It is not a docs change, and it depends on `PL-0002`.",
+    ):
+        assert _has(_prose(text), "names PL-0002 as a prerequisite in prose"), text
+
+
 def test_a_reversed_sequencing_sentence_is_not_reported_as_a_dependency() -> None:
     """`before` and `follows` name the edge backwards, so they are not cues.
     Telling an item to declare a blocker it actually blocks would be a wrong
@@ -688,6 +718,13 @@ def test_an_and_on_with_no_cue_in_its_paragraph_is_ordinary_prose() -> None:
     sentence that reports on two items as declaring a prerequisite on the
     second, which is a wrong answer in the tool's own voice."""
     assert _compound("The advisory reports on `PL-0002` and on `PL-0003` alike.") == []
+
+
+def test_a_negated_cue_carries_no_second_blocker() -> None:
+    """The list and the continuation run on from the cue, so they share its
+    negation: "not blocked by A and B" waits on neither."""
+    assert _compound("This is not blocked by `PL-0002` and `PL-0003`.") == []
+    assert _compound("It does not depend on `PL-0002` and on `PL-0003`.") == []
 
 
 def test_a_cue_does_not_license_an_and_on_in_a_later_paragraph() -> None:
