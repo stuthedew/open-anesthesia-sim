@@ -78,6 +78,8 @@ from .claims import (
     SESSION_VARIABLE,
     Hold,
     Holdings,
+    _parse_claim,
+    _parse_yield,
     holdings,
 )
 from .model import CLOSED_STATUSES, parse_front_matter
@@ -333,6 +335,13 @@ def yield_claims(
     which stops it being offered as a dead claim worth taking over. An item
     whose claim has already ended is left alone; one this branch never claimed
     is refused, since the id is more likely mistyped than meant.
+
+    **Run again, it is the retry of a yield an earlier run could not push**,
+    as `claim` is of a claim (`PL-NNLM`). The claim reads as ended from the
+    local branch, where that yield already stands, while every other session
+    reads the remote's copy and still sees the item held; so an ended claim
+    whose `Yield:` the remote's tip does not carry goes to `_publish` again,
+    rather than reporting a success nobody else can see.
     """
     wanted, problem = _keys(keys)
     if problem:
@@ -352,6 +361,8 @@ def yield_claims(
     notes: list[str] = []
     writing: list[str] = []
     unheld: list[str] = []
+    #: Each item whose claim here a yield of this branch's has already ended.
+    ended: list[str] = []
     for key in wanted:
         mine = [
             hold
@@ -362,6 +373,8 @@ def yield_claims(
             writing.append(key)
         elif mine:
             notes.append(f"{key}: {branch.name}'s claim on it has already ended; nothing written")
+            if any(hold.released_by == BY_YIELD for hold in mine):
+                ended.append(key)
         else:
             unheld.append(key)
     if unheld:
@@ -373,7 +386,32 @@ def yield_claims(
             ),
         )
     if not writing:
-        return Written(CLAIMED, tuple(notes))
+        if not ended:
+            return Written(CLAIMED, tuple(notes))
+        remote = _on_remote(root, branch.name)
+        unpushed = [
+            key
+            for key in ended
+            if (made := _recorded(root, read.base, branch, key, trailer="Yield"))
+            and not _published(root, remote, made)
+        ]
+        if not unpushed:
+            return Written(CLAIMED, tuple(notes))
+        # An earlier run wrote the yield and could not push it; this run is
+        # its retry, and a yield no other session can see ends nothing for them.
+        return _publish(
+            root,
+            branch,
+            unpushed,
+            _head(root),
+            remote=remote,
+            made_now=False,
+            command="yield",
+            now=now,
+            items_dir=items_dir,
+            said=notes,
+            check=_yielded,
+        )
     return _write(
         root,
         branch,
@@ -837,8 +875,8 @@ def _publish(
                     *said,
                     f"{what}, but `git push` failed, so it is local: no other session can see it.",
                     *_indented(pushed.err),
-                    # A `yield` run again finds the claim ended and pushes nothing, so it
-                    # is not offered (`PL-NNLM`).
+                    # A yield displaces nobody, so its push is named rather than a
+                    # rerun, though a rerun retries it as well (`PL-NNLM`).
                     f"  Run `{again}` again once what git says is dealt with, rather than "
                     "pushing by hand, which skips the check for a claim published meanwhile."
                     if command == "claim"
@@ -898,6 +936,26 @@ def _on_copy(root: Path, name: str, commit: str) -> bool:
     """Whether the remote's copy of another branch, as of the last fetch, carries `commit`."""
     ref = f"refs/remotes/{REMOTE}/{name}"
     return bool(commit) and _git(["merge-base", "--is-ancestor", commit, ref], root).code == 0
+
+
+def _recorded(root: Path, base: str, branch: _Branch, key: str, *, trailer: str = "Claim") -> str:
+    """The newest `trailer` record on `key` this branch made, or `""` where it made none.
+
+    Asked for a `Yield:` by a yield run again, which has nothing to push where
+    the remote's tip already carries the one it finds. The `Claim:` reading
+    once renewed a hold the old rule read from a subject; `PL-CH3Z` deleted
+    that rule, and a recorded claim is its own commit.
+    """
+    parse = _parse_yield if trailer == "Yield" else _parse_claim
+    fmt = f"--format=%H%x1f%(trailers:key={trailer},valueonly,unfold,separator=%x1e)"
+    log = _git(["log", "--no-merges", fmt, f"^{base}", "HEAD", "--"], root)
+    for line in log.out.split("\n"):
+        commit, _, values = line.partition("\x1f")
+        for text in values.split("\x1e"):
+            parsed = parse(text.strip()) if text.strip() else None
+            if parsed and parsed[0] == key and _head_name(parsed[1], branch.remotes) == branch.name:
+                return commit
+    return ""
 
 
 def _claimed(

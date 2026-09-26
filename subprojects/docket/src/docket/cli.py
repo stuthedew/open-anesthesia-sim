@@ -105,6 +105,7 @@ from .release import (
     milestones,
     notes_by_version,
     notes_name,
+    notes_path,
     outstanding_roadmap_edits,
     prepare_bump,
     read_version,
@@ -112,6 +113,7 @@ from .release import (
     release_notes,
     restate_references,
     stamp,
+    tag_commands,
     unrecorded_milestones,
     unreferenced_by_version,
 )
@@ -135,7 +137,6 @@ from .vcs import (
     BaseCopies,
     BaseCopy,
     BranchCut,
-    Churn,
     ClosureReport,
     CutsInFlight,
     FilingReport,
@@ -161,6 +162,8 @@ from .vcs import (
     fetch_remote,
     filed_with_work,
     files_in_flight,
+    find_cut,
+    is_shallow,
     lost,
     merged_pull_requests,
     open_pull_requests,
@@ -686,21 +689,22 @@ def _stranded(items: Sequence[Item], args: argparse.Namespace) -> StrandedReport
     can only be asked about paths it tracks, and searching the wrong path would
     find no items and report every branch as stranding all of its own.
 
-    `fetched` is the snapshot's answer rather than the caller's word: whether
-    the refs the report is read against are this command's own fetch. Two
-    callers used to say it for themselves and one of them said it wrong - the
-    digest, run by a hook that had just fetched through `docket branch`,
-    passed `False` and was right only by the hook's ordering (`PL-XBV4`).
+    Whether the refs the report is read against are this command's own fetch
+    is the snapshot's answer, `Snapshot.fresh`, and nothing here restates it.
+    Two callers used to say it for themselves and one of them said it wrong -
+    the digest, run by a hook that had just fetched through `docket branch`,
+    passed `False` and was right only by the hook's ordering (`PL-XBV4`) - and
+    the report field they wrote it into outlived that fix unread (`PL-Z909`).
+    The snapshot is still taken first, for its fetch: the report is read from
+    the refs it refreshed, and the refs line printed beneath it is that
+    moment's.
     """
     inv = _invocation(args)
     if inv.git is None or not inv.tracked:
         return None
+    _snapshot(args)
     return stranded(
-        inv.root,
-        {item.identifier for item in items},
-        items_dir=inv.tracked,
-        fetched=_snapshot(args).fresh,
-        runner=inv.git,
+        inv.root, {item.identifier for item in items}, items_dir=inv.tracked, runner=inv.git
     )
 
 
@@ -1759,7 +1763,15 @@ def cmd_set(args: argparse.Namespace) -> int:
       between the store's errors with and without the write, so an error the
       store already carries elsewhere blocks nothing and no rule is restated
       here - the vocabulary, the safety pin, what `ready` and `dropped` owe,
-      all arrive from `checks.py` in its own words.
+      all arrive from `checks.py` in its own words. A `verify:` command is
+      replayed too, as `check --verify` replays it, because an open item whose
+      command already passes is an error only running it can find
+      (`PL-FTDB`). It runs with the line already written, since a command that
+      reads the item's own file sees that line - a `grep` for a string the
+      command itself spells passes on it and nowhere else - so a refusal puts
+      the file back as it was. The write then costs whatever the command
+      costs, which is the price of refusing it here rather than a `make check`
+      later.
 
     A file the rewrite could not keep faithful is refused too: one spelling a
     key twice would be collapsed to the parser's pick, one carrying a field
@@ -1844,7 +1856,20 @@ def cmd_set(args: argparse.Namespace) -> int:
             print(f"  {error}")
         return 1
 
+    original = (directory / item.path).read_bytes()
     path = rewrite_item(directory, updated)
+    if "verify" in changes:
+        try:
+            replayed = _replayed(args, updated, after, today, config, milestones, written)
+        except BaseException:
+            path.write_bytes(original)
+            raise
+        if replayed:
+            path.write_bytes(original)
+            print(f"{item.identifier}: nothing was written; `docket check` would then report:")
+            for error in replayed:
+                print(f"  {error}")
+            return 1
     for key, attribute, value in requested:
         if attribute in changes:
             print(f"{item.identifier}: {key}: {_spelled(value) or '(removed)'}")
@@ -1852,6 +1877,35 @@ def cmd_set(args: argparse.Namespace) -> int:
     _say_unblocked(item, updated, changes, items, after)
     _say_contradicted(changes, items, after, today)
     return 0
+
+
+def _replayed(
+    args: argparse.Namespace,
+    updated: Item,
+    after: list[Item],
+    today: date,
+    config: Config,
+    milestones: MilestoneStates | None,
+    written: WrittenReport | None,
+) -> list[str]:
+    """What `check --verify`'s replay would report about the command `set` just wrote.
+
+    The replay's own run and its own words: `already_passing` scoped to this
+    one item, read by `analyze` as `check` reads it, and only the errors that
+    run adds. So an open item whose command already exits 0 is refused in the
+    replay's own sentence, the one the next `make check` would print, and
+    everything the replay reads as no finding - a command it could not run,
+    one killed at the limit, one that reads past the tree, an item at a status
+    it does not ask about - refuses nothing here either (`PL-FTDB`).
+    """
+    landed = already_passing(
+        _invocation(args).root, [updated], scoped_to=frozenset({updated.identifier})
+    )
+    before = set(analyze(after, today, config, milestones=milestones, written=written).errors)
+    replayed = analyze(
+        after, today, config, milestones=milestones, written=written, landed=landed
+    ).errors
+    return [error for error in replayed if error not in before]
 
 
 def _say_contradicted(
@@ -3304,7 +3358,7 @@ def cmd_release(args: argparse.Namespace) -> int:
         if not existing.known:
             refusal = _unreadable_tags_refusal(current, existing.declined)
         elif is_untagged(current, existing.names):
-            refusal = _untagged_warning(current)
+            refusal = _untagged_warning(current, root, git)
         if refusal:
             print(refusal)
             if not args.dry_run:
@@ -3513,14 +3567,14 @@ def _hand_off(root: Path, config: Config, name: str, plan: Wave | None = None) -
     lines.append("Then:")
     lines.append(f"  {config.check_command}")
     lines.append("  review the diff and commit")
-    # A bare token, never an angle-bracketed placeholder: a shell reads the
-    # opening bracket as input redirection from a file named `merge`, so pasting
-    # the line answered "no such file or directory: merge" and never reached git
-    # at all - naming neither git, nor the tag, nor the thing that is missing.
-    # `MERGE_COMMIT` fails as `fatal: Failed to resolve 'MERGE_COMMIT'`, which
-    # does (`PL-HKF4`).
-    lines.append(f'  git tag -a {name} MERGE_COMMIT -m "{name}"   # the merge commit on main')
-    lines.append(f"  git push origin {name}")
+    # No placeholder to fill: the tag line finds the cut itself when it runs.
+    # An angle-bracketed one was read by a shell as input redirection
+    # (`PL-HKF4`), and the bare `MERGE_COMMIT` that replaced it still left the
+    # commit to whoever pasted it, who reached for `origin/main` - the next
+    # merge as often as this one (`PL-VYK1`).
+    lines.append("")
+    lines.append("Once it has merged, tag the commit that cut it:")
+    lines.extend(f"  {command}" for command in tag_commands(name))
     return "\n".join(lines)
 
 
@@ -3754,24 +3808,53 @@ def _no_train_refusal(name: str, count: int, current: str, train: _Train, store:
     )
 
 
-def _untagged_warning(version: str) -> str:
+def _untagged_warning(version: str, root: Path, git: Runner) -> str:
     """Say which tag is missing and give the commands, not the instruction.
 
     Asking someone to "tag v0.2.5" makes them go and reconstruct three
-    commands at the moment they are trying to do something else.
+    commands at the moment they are trying to do something else. They are
+    `_hand_off`'s, which find the cut when they run; the line beneath says
+    which commit that is from here, so what is about to be tagged can be seen
+    before it is. It once printed a `--grep` for a subject no cut is written
+    with and a `RELEASE_COMMIT` to fill from it (`PL-QHCW`).
     """
     name = f"v{version.lstrip('v')}"
     return "\n".join(
         [
             f"{name} shipped and carries no tag, so no commit in its span can be",
             "mapped to the release it went out in. That gap cannot be closed later",
-            "with any confidence. Tag it first:",
+            "with any confidence. Tag the commit that cut it first:",
             "",
-            f'  git log --oneline --grep="Release {name}"   # find the commit',
-            f'  git tag -a {name} RELEASE_COMMIT -m "{name}"   # the commit found above',
-            f"  git push origin {name}",
+            *(f"  {command}" for command in tag_commands(name)),
+            "",
+            _cut_seen_here(name, root, git),
         ]
     )
+
+
+def _cut_seen_here(version: str, root: Path, git: Runner) -> str:
+    """Which commit the printed tag line will find, read from this checkout's base.
+
+    A shallow clone is not asked, because its oldest commit reads as adding
+    every file and would be named as the cut (`vcs.find_cut`).
+    """
+    base = default_base(root, runner=git)
+    notes = notes_path(version)
+    if is_shallow(root, runner=git) is not False:
+        return "This clone is shallow, or git will not say, so the commit is not named here."
+    cut = find_cut(version, base, root, runner=git)
+    if not cut.known:
+        return f"git did not answer for {base}, so the commit is not named here."
+    if not cut.commits:
+        return f"{base} has no commit adding {notes}, so that line will refuse as it stands."
+    if not cut.commit:
+        added = ", ".join(commit[:8] for commit in cut.commits)
+        return (
+            f"{base} added {notes} {len(cut.commits)} times ({added}), so that line will "
+            "refuse: the cut is whichever of those the release shipped from."
+        )
+    named = git(["log", "-1", "--format=%h %s", cut.commit], root).strip()
+    return f"From {base} here, that is {named or cut.commit[:8]}."
 
 
 def _unreadable_tags_refusal(version: str, declined: str) -> str:
@@ -3979,9 +4062,11 @@ def cmd_trend(args: argparse.Namespace) -> int:
         )
         return 1
     inv = _invocation(args)
-    history = Churn() if inv.git is None else churn(inv.root, runner=inv.git)
+    # `None` under `--no-git`, not a bare `Churn()`: whether git was asked is
+    # this command's to say, and an empty reading cannot say it (`PL-PWH6`).
+    history = None if inv.git is None else churn(inv.root, runner=inv.git)
     report = analyze_trend(items, history, config, by=args.by, today=args.today or date.today())
-    if history.declined:
+    if history is not None and history.declined:
         # A measurement with an unread stretch of history is not the measurement
         # it looks like, and the shape of a trend is exactly what a missing
         # stretch changes (`PL-Q9Z1`).

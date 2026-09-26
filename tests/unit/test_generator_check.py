@@ -28,6 +28,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from docket import vcs
 from docket.store import ID_RE
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
@@ -371,6 +372,33 @@ def test_a_commit_leading_with_a_three_digit_id_attributes_what_it_created(repo:
 
     assert parents["PL-8888"] == {"PL-001"}
     assert parents["PL-001"] == set()
+
+
+@pytest.mark.parametrize(
+    ("subject", "led_by"),
+    [
+        ("PL-4JHS backfill ... (#809)", {"PL-4JHS"}),
+        ("pl-b8hz: x", {"PL-B8HZ"}),
+        ("PL-4JHS & PL-B8HZ: work on both", {"PL-4JHS", "PL-B8HZ"}),
+        ("PL-4JHS and PL-B8HZ: work on both", {"PL-4JHS", "PL-B8HZ"}),
+    ],
+)
+def test_creation_parents_reads_leading_ids_as_docket_does(
+    repo: Path, subject: str, led_by: set[str]
+) -> None:
+    """The parent of a capture is whatever `vcs.leading_ids` reads off the subject.
+
+    This file kept its own grammar for the leading ids - case-sensitive, commas
+    only, a colon required - and found no parent in 74 of the 769 commits that
+    added an item on `main` by 2026-09-26, where `docket` found one. The first
+    two subjects are the item's reproductions; the separators are the rest of
+    the grammar the copy lacked (`PL-6P0F`).
+    """
+    _write(repo, "PL-8888", touches="src/a.py", status="ready")
+    _commit(repo, subject)
+
+    assert set(vcs.leading_ids(subject)) == led_by
+    assert generator_check.creation_parents(repo)["PL-8888"] == led_by
 
 
 def test_a_history_git_cannot_read_leaves_the_ratio_unmeasured_rather_than_zero(

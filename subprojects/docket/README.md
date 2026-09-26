@@ -1939,8 +1939,10 @@ only when there is one *and* truncation could account for it. A tag being
 **present** is never in doubt, so the conclusions drawn from that stand either
 way.
 
-What the check does say, when it can, is which completed releases carry no tag
-and which tags name no release. `docket release` still enforces the tag at the
+What the check does say, when it can, is which completed releases carry no tag,
+which tags name no release, and which tag sits off its release's cut - the
+commit that added its notes, which the tag commands `release` prints look up
+rather than leave to be filled in (`PL-QHCW`). `docket release` still enforces the tag at the
 one moment tags are certainly to hand: it refuses to cut the next release while
 the current one is untagged.
 

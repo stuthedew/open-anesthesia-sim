@@ -117,3 +117,16 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_BASE: origin/${{ github.event.pull_request.base.ref }}
         run: python3 tools/pr_record_check.py
+
+      # The body beside the number (`PL-979D`): the permanent record of this
+      # change's reasoning is `docs/pr-bodies/<N>.md` on the head, written by
+      # `pr_body_check.py --record` while the pull request is open, and the
+      # squash body is only its copy. `edited` is the trigger that matters here:
+      # a body edited after it was recorded re-runs this on the head and holds
+      # the merge until it is recorded again. The body comes through the
+      # environment for the reason the title does, and is "" when there is none.
+      - name: the pull request's body is recorded in the tree
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python3 tools/pr_body_check.py --check

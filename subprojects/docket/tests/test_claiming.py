@@ -488,6 +488,57 @@ def test_running_claim_again_after_a_failed_push_is_the_retry_not_a_success(
     assert work.head() == claimed == remote.tip(BRANCH)
 
 
+def test_yield_run_again_after_its_push_failed_is_the_retry_not_a_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The claim reads as ended here, and every other session still reads it held (`PL-NNLM`).
+
+    The reproduction: a claim pushed, then the remote lacking the branch and
+    refusing pushes. The rerun used to exit 0 saying the claim had ended,
+    with the remote still carrying no copy of the branch.
+    """
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
+    _git(remote.path, "update-ref", "-d", f"refs/heads/{BRANCH}")
+    remote.hook("pre-receive", "exit 1")
+    yield_ = ("yield", "PL-B1B1", "--trailer", ATTRIBUTION)
+    assert _docket(monkeypatch, work, *yield_, when=T0 + HOUR) == claiming.LOCAL_ONLY
+    yielded = work.head()
+
+    assert _docket(monkeypatch, work, *yield_, when=T0 + HOUR) == claiming.LOCAL_ONLY
+    (remote.path / "hooks" / "pre-receive").unlink()
+    capsys.readouterr()
+    assert _docket(monkeypatch, work, *yield_, when=T0 + HOUR) == claiming.CLAIMED
+
+    assert "and pushed" in capsys.readouterr().out
+    assert work.head() == yielded == remote.tip(BRANCH)
+    # Once the remote carries it, a rerun has nothing left to do.
+    assert _docket(monkeypatch, work, *yield_, when=T0 + HOUR) == claiming.CLAIMED
+    assert "has already ended; nothing written" in capsys.readouterr().out
+    assert work.head() == yielded == remote.tip(BRANCH)
+
+
+def test_yield_run_again_on_a_branch_the_remote_holds_without_it_exits_4_and_names_the_push(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A yield held back, since a pull request may be armed there, stays local and says so."""
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    assert _claim(monkeypatch, work, "PL-B1B1") == claiming.CLAIMED
+    claimed = work.head()
+    yield_ = ("yield", "PL-B1B1", "--trailer", ATTRIBUTION)
+    assert _docket(monkeypatch, work, *yield_, when=T0 + HOUR) == claiming.LOCAL_ONLY
+    yielded = work.head()
+    capsys.readouterr()
+
+    assert _docket(monkeypatch, work, *yield_, when=T0 + HOUR) == claiming.LOCAL_ONLY
+
+    assert f"git push --set-upstream origin {BRANCH}" in capsys.readouterr().out
+    assert work.head() == yielded
+    assert remote.tip(BRANCH) == claimed
+
+
 def _order(clone: _Clone, key: str = "PL-B1B1") -> list[str]:
     """Who holds `key` as a fresh fetch of this clone reads it, first first."""
     clone.git("fetch", "-q", "origin")

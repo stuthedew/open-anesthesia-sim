@@ -1,10 +1,11 @@
 """Tests for `.claude/hooks/floor-interpreter-guard.sh`, the bare-interpreter refusal.
 
 Two interpreters are in play in this repository and both halves are deliberate.
-`src/` and `tests/` target 3.14; `tools/`, `.claude/hooks/` and `bin/docket`
-run under whatever bare `python3` is on PATH, which `tools/ruff.toml` pins at
-the 3.11 floor `subprojects/docket/pyproject.toml` declares, so that a hook and
-a bare checkout need no virtualenv.
+`src/` and `tests/` target 3.14; `tools/`, `.claude/hooks/`, `bin/docket` and
+the `subprojects/docket/` tree it runs use whatever bare `python3` is on PATH,
+which `tools/ruff.toml` pins at the 3.11 floor
+`subprojects/docket/pyproject.toml` declares, so that a hook and a bare
+checkout need no virtualenv.
 
 `src/anesthesia_sim/app_metadata.py` uses PEP 758's unparenthesised `except`,
 which 3.14 added and 3.11 cannot parse. So a floor parse of `src/` reports a
@@ -66,6 +67,14 @@ FLOOR_PARSE = (
     "python3 -m compileall .",
     # An explicit minor version is still a PATH lookup, so it is still the floor.
     "python3.11 -m compileall src/",
+    # The docket subproject is excluded by its own path, not by any path with a
+    # slash before `src/`: the product tree is still refused however it is
+    # reached, and beside docket's.
+    "python3 -m compileall ./src/",
+    "python3 -m compileall /home/user/open-anesthesia-sim/src/",
+    "python3 -m compileall subprojects/docket/src/ src/",
+    # A line continued with a backslash is one command.
+    "python3 -m compileall \\\n    src/",
 )
 
 
@@ -97,6 +106,8 @@ ALLOWED = (
     "uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)')",
     "make check",
     "python3 -c 'print(1)'",
+    # A path in a comment is nobody's argument.
+    "python3 -c 'print(1)'  # src/ is the 3.14 tree",
 )
 
 
@@ -104,6 +115,83 @@ ALLOWED = (
 def test_a_correct_invocation_is_left_alone(command: str) -> None:
     """The guard is narrow: nothing here is a floor parse of 3.14 source."""
     assert _decision(command) is None, f"{command!r} was denied"
+
+
+DOCKET_FLOOR = (
+    "python3 -m py_compile subprojects/docket/src/docket/verify.py",
+    "python3 -m compileall -q subprojects/docket/src/ subprojects/docket/tests/",
+    "python3 subprojects/docket/tests/test_store.py",
+    "python3 -m py_compile /home/user/open-anesthesia-sim/subprojects/docket/src/docket/store.py",
+)
+
+
+@pytest.mark.parametrize("command", DOCKET_FLOOR)
+def test_the_docket_subproject_is_floor_code_and_is_admitted(command: str) -> None:
+    """`subprojects/docket/` is the tree the 3.11 floor exists for, not a 3.14 one.
+
+    Its `pyproject.toml` is the file declaring the floor, and `bin/docket` runs
+    it under the bare interpreter by design. Refusing it told a session the
+    bare interpreter was wrong for code that must run under it (`PL-GVFC`).
+    """
+    assert _decision(command) is None, f"{command!r} was denied"
+
+
+NEXT_COMMAND = (
+    "python3 -c 'print(1)'; sed -n 1p subprojects/docket/src/docket/verify.py",
+    "python3 -c 'print(1)'; sed -n 1p src/anesthesia_sim/app_metadata.py",
+    "python3 -c 'print(1)';sed -n 1p src/anesthesia_sim/app_metadata.py",
+    "python3 -c 'print(1)' && rg -n 'except OSError' src/",
+    "python3 -c 'print(1)'\nsed -n 1p src/anesthesia_sim/app_metadata.py",
+)
+
+
+@pytest.mark.parametrize("command", NEXT_COMMAND)
+def test_a_path_after_a_semicolon_is_another_commands_argument(command: str) -> None:
+    """A separator ends the invocation even where it touches a quoted word.
+
+    Plain `shlex.split` read `'print(1)';` as the one word `print(1);`, so the
+    `sed` and its path joined the `python3` command and were refused as its
+    argument (`PL-GVFC`). The first case is the triage reproduction.
+    """
+    assert _decision(command) is None, f"{command!r} was denied"
+
+
+UNSPACED = (
+    "cd /x&&python3 src/a.py",
+    "true;python3 -m compileall src/",
+    "true||python3 -m compileall src/",
+    "cd /x\npython3 -m compileall src/",
+)
+
+
+@pytest.mark.parametrize("command", UNSPACED)
+def test_an_unspaced_separator_still_ends_a_command(command: str) -> None:
+    """`true;python3` is two commands, and the second is a floor parse (`PL-BBV7`).
+
+    Plain `shlex.split` read it as one word, so the interpreter was never seen
+    and the spaced form was refused while this one passed. A newline separates
+    as `;` does.
+    """
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert decision["permissionDecision"] == "deny"
+
+
+GROUPED = (
+    "(python3 src/a.py)",
+    "( python3 src/a.py )",
+    "{ python3 -m compileall src/; }",
+    "cd /x && (python3 -m compileall src/)",
+    "! python3 -m compileall src/",
+)
+
+
+@pytest.mark.parametrize("command", GROUPED)
+def test_a_subshell_paren_does_not_hide_the_interpreter(command: str) -> None:
+    """A subshell, brace group or negation still runs the bare interpreter (`PL-BBV7`)."""
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert decision["permissionDecision"] == "deny"
 
 
 def test_prose_about_the_rule_in_a_heredoc_is_not_matched() -> None:

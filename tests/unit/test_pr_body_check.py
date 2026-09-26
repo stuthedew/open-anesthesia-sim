@@ -29,7 +29,11 @@ claude.ai footer do to every body must not be, or 654 bodies that match would
 bury the 27 that do not. And a listing that could not be read has to say so,
 because a comparison never made reads exactly like one that found nothing.
 
-`_git`, `fetch_body` and `_get_json` are substituted rather than a repository
+The record written before the merge (`PL-979D`) adds the case that matters
+most: what `--record` writes has to be exactly what `--check` accepts, and a
+body edited after it was recorded has to be refused.
+
+`_git`, `fetch_body`, `fetch_pull` and `_get_json` are substituted rather than a repository
 built and the network called, because what is under test is the reading of
 subjects and bodies, not git and not GitHub.
 """
@@ -553,3 +557,233 @@ def test_compare_is_its_own_mode_and_exits_zero(
     printed = capsys.readouterr().out
     assert "#768" in printed
     assert "--recover" not in printed
+
+
+# The record, written before the merge (`PL-979D`). What `--record` writes has
+# to be exactly what `--check` accepts, so the two are tested as one path; a
+# body edited after it was recorded has to be refused, or the file is a
+# snapshot rather than the record; and a header has to say truthfully which of
+# its two provenances it is.
+
+
+def _git_serving(
+    monkeypatch: pytest.MonkeyPatch,
+    records: list[tuple[str, str, str]],
+    shown: dict[str, str] | None = None,
+    shallow: str = "false",
+) -> None:
+    """`_install`'s history, plus the head tree `--check` reads and the line `--anchors` does."""
+    _install(monkeypatch, records)
+    served = pr_body_check._git
+
+    def fake(*args: str) -> str:
+        if args[0] == "show":
+            return (shown or {}).get(args[1].split(":", 1)[1], "")
+        if args[:2] == ("rev-parse", "--is-shallow-repository"):
+            return f"{shallow}\n"
+        if args[0] == "rev-list":
+            return "".join(f"{sha}\n" for sha, _, _ in records)
+        return served(*args)
+
+    monkeypatch.setattr(pr_body_check, "_git", fake)
+
+
+def test_a_recorded_body_is_what_the_check_holds_the_pull_request_to(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """The writer's file is the checker's input, so a format drift between them fails here.
+
+    The body arrives with Windows line endings and trailing blank lines, as one
+    edited in the browser does, and opens with the harness's own HTML comment,
+    which is why the record carries no comment of its own.
+    """
+    recovery = tmp_path / "pr-bodies"
+    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
+    monkeypatch.setattr(pr_body_check, "today", lambda: "2026-09-26")
+    body = "<!-- ccr-projects-attribution: {} -->\r\n| a | b |\r\n| --- | --- |\r\n\r\nWhy.\r\n\r\n"
+    _install(monkeypatch, [])
+    monkeypatch.setattr(
+        pr_body_check, "fetch_pull", lambda slug, pr: {"state": "open", "body": body}
+    )
+
+    assert pr_body_check.record(1059) == 0
+    written = (recovery / "1059.md").read_text(encoding="utf-8")
+    assert written == (
+        "---\npr: 1059\nrecorded: 2026-09-26\n---\n\n"
+        "<!-- ccr-projects-attribution: {} -->\n| a | b |\n| --- | --- |\n\nWhy.\n"
+    )
+
+    _git_serving(monkeypatch, [], shown={"docs/pr-bodies/1059.md": written})
+    monkeypatch.setenv("PR_NUMBER", "1059")
+    monkeypatch.setenv("PR_BODY", body)
+    assert pr_body_check.check() == 0
+
+
+def test_a_body_edited_after_it_was_recorded_holds_the_merge(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`edited` re-runs the check, and this is the answer it has to give.
+
+    A record that still passes an older body is the snapshot the rule exists to
+    refuse: the merge would carry reasoning the tree does not hold.
+    """
+    held = "---\npr: 1059\nrecorded: 2026-09-26\n---\n\nThe first draft.\n"
+    _git_serving(monkeypatch, [], shown={"docs/pr-bodies/1059.md": held})
+    monkeypatch.setenv("PR_NUMBER", "1059")
+    monkeypatch.setenv("PR_BODY", "The first draft, with a paragraph added.")
+
+    assert pr_body_check.check() == 1
+    err = capsys.readouterr().err
+    assert "edited after it was recorded" in err
+    assert "--record 1059" in err
+
+
+def test_a_body_with_no_record_is_refused_and_an_empty_one_owes_nothing(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Red from opening until the first record; a pull request with no body never is."""
+    _git_serving(monkeypatch, [])
+    monkeypatch.setenv("PR_NUMBER", "1059")
+    monkeypatch.setenv("PR_BODY", "Why this change.")
+    assert pr_body_check.check() == 1
+    assert "is not in the tree" in capsys.readouterr().err
+
+    monkeypatch.setenv("PR_BODY", "  \n")
+    assert pr_body_check.check() == 0
+
+
+def test_a_body_missing_from_the_environment_is_not_passed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The step always sets `PR_BODY`, so an unset one is a broken step, never a pass."""
+    _git_serving(monkeypatch, [])
+    monkeypatch.setenv("PR_NUMBER", "1059")
+    monkeypatch.delenv("PR_BODY", raising=False)
+
+    assert pr_body_check.check() == 1
+
+
+def test_recording_an_emptied_body_removes_the_stale_record(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """A file left from before the body was emptied would record text nobody can see."""
+    recovery = tmp_path / "pr-bodies"
+    recovery.mkdir()
+    (recovery / "1059.md").write_text("---\npr: 1059\nrecorded: 2026-09-25\n---\n\nOld.\n")
+    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
+    _install(monkeypatch, [])
+    monkeypatch.setattr(
+        pr_body_check, "fetch_pull", lambda slug, pr: {"state": "open", "body": None}
+    )
+
+    assert pr_body_check.record(1059) == 0
+    assert not (recovery / "1059.md").exists()
+
+
+@pytest.mark.parametrize(
+    ("squash_body", "armed", "shape"),
+    [
+        ("", None, "empty"),
+        ("Co-authored-by: Someone <someone@example.com>\n", None, "trailer-only"),
+        ("The body as armed.\n", "The body as armed.", "armed-message"),
+        ("Something else entirely.\n", None, "differs"),
+        ("The body as it stands.\n", None, "matches"),
+    ],
+)
+def test_recording_a_merged_pull_request_names_how_its_squash_copy_compares(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, squash_body: str, armed: str | None, shape: str
+) -> None:
+    """`PL-PNJF`: one case per shape, each named truthfully in a header dated when it was fetched.
+
+    The old header said every recovered commit "landed with an empty message
+    body", which was true of the one shape `--recover` wrote and false of the
+    27 `--compare` found; and it claimed the body verbatim from the merge,
+    where what the API serves is the body as it stands on the day (`PL-73G8`).
+    """
+    recovery = tmp_path / "pr-bodies"
+    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
+    monkeypatch.setattr(pr_body_check, "today", lambda: "2026-09-26")
+    monkeypatch.setattr(pr_body_check, "queue_backlinks", dict)
+    _install(monkeypatch, [("abc1234", "PL-8PS6: a title (#768)", squash_body)])
+    pull = {
+        "state": "closed",
+        "merged_at": "2026-09-20T00:00:00Z",
+        "body": "The body as it stands.",
+        "auto_merge": None if armed is None else {"commit_message": armed},
+    }
+    monkeypatch.setattr(pr_body_check, "fetch_pull", lambda slug, pr: pull)
+
+    assert pr_body_check.record(768) == 0
+    parsed = pr_body_check.parse_record((recovery / "768.md").read_text(encoding="utf-8"))
+    assert parsed is not None
+    header, body = parsed
+    assert (header["squash"], header["recovered"], header["commit"]) == (
+        shape,
+        "2026-09-26",
+        "abc1234",
+    )
+    assert "recorded" not in header
+    assert body == "The body as it stands.\n"
+
+
+@pytest.mark.parametrize(
+    ("pull", "records"),
+    [
+        ({"state": "closed", "merged_at": None, "body": "Closed unmerged."}, []),
+        ({"state": "closed", "merged_at": "2026-09-20T00:00:00Z", "body": "Not fetched here."}, []),
+        (None, []),
+    ],
+    ids=["closed-without-merging", "squash-commit-not-here", "unreadable"],
+)
+def test_record_refuses_what_it_cannot_anchor_rather_than_writing_it(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, pull: dict | None, records: list
+) -> None:
+    """A file here is read as the record, so a wrong one is worse than none."""
+    recovery = tmp_path / "pr-bodies"
+    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
+    monkeypatch.setattr(pr_body_check, "queue_backlinks", dict)
+    _install(monkeypatch, records)
+    monkeypatch.setattr(pr_body_check, "fetch_pull", lambda slug, pr: pull)
+
+    assert pr_body_check.record(768) == 1
+    assert not (recovery / "768.md").exists()
+
+
+def test_a_recovery_file_whose_commit_sha_no_longer_resolves_is_reported(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-73G8`: an anchor a history rewrite left naming nothing fails, and says what it is now.
+
+    The 2026-09-06 signing rewrite remapped every hash on `main` once, and
+    `PL-TDBT` counted 30 unresolvable shas across the corpus with nothing
+    reporting one as it was written. A record made before the merge has no
+    anchor to check.
+    """
+    recovery = tmp_path / "pr-bodies"
+    recovery.mkdir()
+    (recovery / "768.md").write_text(f"---\npr: 768\ncommit: {'0' * 40}\n---\n\nBody.\n")
+    (recovery / "769.md").write_text(f"---\npr: 769\ncommit: {'b' * 40}\n---\n\nBody.\n")
+    (recovery / "1059.md").write_text("---\npr: 1059\nrecorded: 2026-09-26\n---\n\nBody.\n")
+    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
+    _git_serving(
+        monkeypatch,
+        [("a" * 40, "PL-8PS6: a title (#768)", ""), ("b" * 40, "PL-8PS6: another (#769)", "")],
+    )
+
+    assert pr_body_check.anchors("origin/main") == 1
+    err = capsys.readouterr().err
+    assert "768.md: commit 000000000000; its squash commit there is " + "a" * 40 in err
+    assert "769.md" not in err
+    assert "1059.md" not in err
+
+
+def test_anchors_on_a_shallow_clone_say_nothing_was_checked(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A clone cut short cannot tell a dangling anchor from one past its graft, so it says so."""
+    recovery = tmp_path / "pr-bodies"
+    recovery.mkdir()
+    (recovery / "768.md").write_text(f"---\npr: 768\ncommit: {'0' * 40}\n---\n\nBody.\n")
+    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
+    _git_serving(monkeypatch, [("a" * 40, "PL-8PS6: a title (#768)", "")], shallow="true")
+
+    assert pr_body_check.anchors("origin/main") == 0
+    assert "not checked" in capsys.readouterr().out
