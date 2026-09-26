@@ -286,6 +286,111 @@ def test_moving_a_protected_file_out_is_rejected(tmp_path: Path, subject: str) -
     assert "src/core.py" in protected.detail
 
 
+def _audit_one_file(root: Path, name: str, subject: str) -> Check:
+    """The protected-path check, with one file added under a protected directory.
+
+    Committed under `subject`, or left uncommitted where it is empty. An item's
+    own commit is read with `show`, a commit naming no id through the branch
+    diff, and uncommitted work through `status`, so between them the three
+    cover each read `changed_paths` makes.
+    """
+    added = f"src/anesthesia_sim/core/{name}"
+    (root / "src" / "anesthesia_sim" / "core").mkdir(parents=True)
+    (root / added).write_text("VALUE = 2\n", encoding="utf-8")
+    if subject:
+        _git(root, "add", "-A")
+        _git(root, "commit", "-qm", subject)
+    report = verify(
+        root,
+        _item(touches=(added,)),
+        _config(protected_paths=("src/anesthesia_sim/core",)),
+        "HEAD~1" if subject else "HEAD",
+    )
+    return _check(report, "no protected path modified")
+
+
+@pytest.mark.parametrize(
+    "subject",
+    ["PL-K7QX add a core module", "add a core module", ""],
+    ids=["the item's own commits", "the branch diff", "uncommitted"],
+)
+def test_a_non_ascii_protected_path_is_rejected(tmp_path: Path, subject: str) -> None:
+    """A path outside ASCII is compared as written (`PL-8HSX`).
+
+    git printed `src/anesthesia_sim/core/café.py` as
+    `"src/anesthesia_sim/core/caf\\303\\251.py"`, quotes included, in all three
+    reads, and `_within` matched that against no protected path, so the audit
+    passed a new core module as "none touched".
+    """
+    protected = _audit_one_file(_repo(tmp_path), "café.py", subject)
+
+    assert not protected.passed
+    assert "src/anesthesia_sim/core/café.py" in protected.detail
+
+
+@pytest.mark.parametrize(
+    ("name", "subject"),
+    [("t\tab.py", "PL-K7QX add a core module"), ("t\tab.py", "add a core module"), ("a b.py", "")],
+    ids=["a tab, the item's own commits", "a tab, the branch diff", "a space, uncommitted"],
+)
+def test_a_path_git_quotes_whatever_quote_path_says_is_rejected(
+    tmp_path: Path, name: str, subject: str
+) -> None:
+    """`-z` is the one form git quotes nothing in, so every read asks for it (`PL-8HSX`).
+
+    `core.quotePath=false` leaves a tab, newline, `"` or `\\` quoted, and
+    `status` quotes a space as well: measured on git 2.43.0, an uncommitted
+    `src/anesthesia_sim/core/a b.py` was read as `"src/.../a b.py"` and passed.
+    """
+    protected = _audit_one_file(_repo(tmp_path), name, subject)
+
+    assert not protected.passed
+    assert f"src/anesthesia_sim/core/{name}" in protected.detail
+
+
+def test_an_untracked_file_the_status_config_hides_is_rejected(tmp_path: Path) -> None:
+    """`status.showUntrackedFiles=no` drops untracked files from the porcelain (`PL-8HSX`).
+
+    Set in a developer's git config, it passed a new, uncommitted core module as
+    "none touched" until `changed_paths` asked for `--untracked-files=all`.
+    """
+    root = _repo(tmp_path)
+    _git(root, "config", "status.showUntrackedFiles", "no")
+
+    protected = _audit_one_file(root, "new.py", "")
+
+    assert not protected.passed
+    assert "src/anesthesia_sim/core/new.py" in protected.detail
+
+
+def test_a_protected_path_that_is_not_utf8_stops_the_audit(tmp_path: Path) -> None:
+    """A path the audit cannot read as text ends it, rather than raising (`PL-8HSX`).
+
+    `-z` prints a Latin-1 `café.py` as the byte `\\351`, which no UTF-8 decode
+    reads. Uncaught, it was a traceback out of `verify`; caught, it is the read
+    that stops the audit, which never passes.
+    """
+    root = _repo(tmp_path)
+    blob = subprocess.run(
+        ["git", "hash-object", "-w", "src/core.py"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    # Through the index alone, so no filesystem is asked to hold the name.
+    cacheinfo = f"100644,{blob},".encode() + b"src/anesthesia_sim/core/caf\xe9.py"
+    subprocess.run(
+        [b"git", b"update-index", b"--add", b"--cacheinfo", cacheinfo], cwd=root, check=True
+    )
+    _git(root, "commit", "-qm", "PL-K7QX add a core module")
+
+    report = verify(root, _item(), _config(protected_paths=("src/anesthesia_sim/core",)), "HEAD~1")
+
+    assert not report.passed
+    assert not _check(report, "the diff could be read").passed
+
+
 def test_editing_the_gate_is_rejected(tmp_path: Path) -> None:
     """Changing the thing that measures the work invalidates the measurement."""
     root = _repo(tmp_path)
