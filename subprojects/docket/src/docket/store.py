@@ -100,7 +100,7 @@ def write_item(directory: Path, item: Item) -> Path:
     there for why a rename arriving as a side effect is worse than a stale slug.
 
     A rename is a pass of its own, made with `git mv` (`PL-YTDN`), which is the
-    route `docket check`'s stale-slug error names. This function used to take
+    route `docket check`'s stale-slug advisory names. This function used to take
     a `replace=` path and delete it, a rename branch with no caller left that
     the next field writer could have reached for without anything failing to
     say so (`PL-9KSY`).
