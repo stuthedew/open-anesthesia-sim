@@ -3,11 +3,12 @@ id: PL-3GKR
 title: Promote the stale-slug filename advisory to an error now the count is zero, once PL-Y5JX's touches-coupling warning exists to make renaming safe
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: slug-rename-on-write
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-19
+closed: 2026-09-26
 verify: grep -q 'def test_a_drifted_item_filename_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 
@@ -71,3 +72,5 @@ safe rename. The item is `ready` rather than `blocked`.
 **Done when.** The stale-slug drift is a hard failure from `bin/docket check`
 rather than an advisory, `PL-Y5JX`'s coupling warning is in place ahead of it,
 and a test drives a drifted file through the failure.
+
+**Worked.** The count was not zero when this started: `PL-843V` and `PL-8543` carried drift on origin/main, both closed, neither edited on any open branch, so both were renamed with `git mv` in this commit ahead of the promotion. The "worth deciding" question took its own default: a closed item's drift is an error too, and a test pins it. `store.py` and the `_declarers` docstring described the check as an advisory and now say error. No other file names the check as an advisory in live prose; the item files and pull-request bodies that do are records.

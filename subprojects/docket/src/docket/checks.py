@@ -2462,7 +2462,7 @@ def _declarers(report: Report, items_dir: str) -> dict[str, list[str]]:
     """Which items name each item file in their `touches`, keyed by filename.
 
     Read by both halves of `PL-Y5JX` - the error that holds a declaration to
-    naming a file some item lives in, and the stale-slug advisory that has to
+    naming a file some item lives in, and the stale-slug error that has to
     say when the rename it proposes would break one. One function, so the two
     cannot come to different views of what a declaration is.
     """
@@ -2539,21 +2539,28 @@ def _check_filenames(report: Report, config: Config) -> None:
     session finds an item by hand, so a stale slug sends it to the wrong
     mental model of what the item is about.
 
-    An advisory rather than an error, and the reason is the remedy rather
-    than the rule. Deriving the slug and comparing it is exactly decidable,
-    which is what `CLAUDE.md` reserves hard failure for; renaming the file is
-    not, because the session that would do it has to know who else is holding
-    that file first. A rename arriving as a side effect of an unrelated
-    command is how `PL-36R4` became a rename-against-edit conflict for
-    whoever merged second, on 2026-09-08, and an error here would force
-    exactly that: nine files on this store carry drift today, so `make check`
-    would fail until someone renamed all nine in one pass, against whatever
-    branches were open at the time.
+    An error, since `PL-3GKR`, and it was an advisory first for a reason the
+    store has since answered. Deriving the slug and comparing it is exactly
+    decidable, which is what `CLAUDE.md` reserves hard failure for; renaming
+    the file is not, because the session that would do it has to know who
+    else is holding that file first. A rename arriving as a side effect of an
+    unrelated command is how `PL-36R4` became a rename-against-edit conflict
+    for whoever merged second, on 2026-09-08, and while nine files carried
+    drift an error would have forced exactly that - nine renames in one pass,
+    against whatever branches were open. `PL-YTDN` made that pass and brought
+    the count to zero, `PL-Y5JX` made the coupling below name the declarations
+    a rename would break, and the advisory then fired for weeks with nobody
+    acting on it, which `CLAUDE.md` gives exactly two honest futures: promote
+    it or retire it. At zero an error keeps the count at zero for free - the
+    rename is one file, at the moment the title is edited - where an advisory
+    lets it drift back to the campaign that cleared it. A closed item's drift
+    fails too: findability by `ls docs/items/ | grep` is the slug's whole
+    point, and a closed item is what a later session looks up by name.
 
-    Named in one line rather than one per file. Nine advisory lines is the
-    disease `PL-CW14` describes in the same function - an advisory nobody can
-    clear in the moment, printed often enough to train a session to skim the
-    one below it.
+    Named in one line rather than one per file. Nine lines is the disease
+    `PL-CW14` describes in the same function - a finding nobody can clear in
+    the moment, printed often enough to train a session to skim the one below
+    it.
 
     Declines on an item carrying no path: those are built in memory rather
     than read from disk, and there is no filename to disagree with.
@@ -2582,7 +2589,7 @@ def _check_filenames(report: Report, config: Config) -> None:
         for item in in_order
         if item.path in declared
     ]
-    report.advisories.append(
+    report.errors.append(
         f"{len(drifted)} item file{'' if one else 's'} carr{'ies' if one else 'y'} a slug "
         f"{'its' if one else 'their'} title no longer generates "
         f"({', '.join(item.identifier for item in in_order)}); "
