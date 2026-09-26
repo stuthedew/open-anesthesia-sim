@@ -176,7 +176,12 @@ CANDIDATE_RE = re.compile(r"(?<![A-Za-z0-9])PL-[A-Z0-9]+(?![A-Za-z0-9])")
 #: nothing about the grammar and are left alone. Measured 2026-09-21 over every
 #: text file in the repository: the rule matches the six sites `PL-KYW3`
 #: repaired and nothing else outside `docs/items/`, which is not scanned.
-GRAMMAR_RE = re.compile(r"PL-(?:\(\?:)?(?:\[[^\]]*\]|\\[dwsDWS])\{\d+(?:,\d*)?\}")
+#:
+#: The prefix is matched in either case. A branch name carries its id in lower
+#: case, so a pattern for one is naturally spelled `pl-` under `re.I`, and
+#: `vcs.BRANCH_ID_RE` was exactly that: a second copy of the alphabet this
+#: rule could not see while it read `PL-` alone (`PL-PB8V`).
+GRAMMAR_RE = re.compile(r"PL-(?:\(\?:)?(?:\[[^\]]*\]|\\[dwsDWS])\{\d+(?:,\d*)?\}", re.I)
 
 #: `f"PL-B1B{n:03d}"` mints `PL-B1B000`, so a hole has to stand for the digits
 #: it will be given. This reads the width out of an explicit format spec; one
@@ -401,8 +406,9 @@ def _report(offenders: list[Offender], root: Path, rule: str) -> str:
         f"fixture-id: {len(offenders)} second spelling(s) of the id grammar:\n"
         f"{listed}\n"
         f"  A counted quantifier here is a copy of `store.ID_LENGTH` and of the alphabet beside "
-        f"it, and the copies drift: every one of these was looser than the store, so a tool and "
-        f"`bin/docket check` disagreed about what an id is (`PL-KYW3`).\n"
+        f"it, and the copies drift: the five `PL-KYW3` repaired were all looser than the store, "
+        f"so a tool and `bin/docket check` disagreed about what an id is, and an exact copy "
+        f"still stays behind when the alphabet changes (`PL-PB8V`).\n"
         f"  Import it instead - `from docket.store import ID_PATTERN` after inserting "
         f"`subprojects/docket/src` on `sys.path` - and interpolate it, the way `docket`'s own "
         f"`vcs.py` and `roadmap.py` do. Where the pattern is deliberately not the store's, say "

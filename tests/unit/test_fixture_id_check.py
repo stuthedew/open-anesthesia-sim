@@ -554,6 +554,20 @@ def test_a_restated_grammar_is_refused(tmp_path: Path) -> None:
     assert all(offender.token.startswith("PL-") for offender in offenders)
 
 
+def test_a_lower_cased_restatement_is_refused(tmp_path: Path) -> None:
+    """A branch-name pattern spells the prefix `pl-` under `re.I`, and is still a copy.
+
+    `vcs.BRANCH_ID_RE` was one, with the alphabet written out in lower case,
+    and this rule read `PL-` case-sensitively and passed it (`PL-PB8V`).
+    """
+    pattern = r"pl-(?:\d{3}|[0-9bcdfghjklmnpqrstvwxyz]{4})"  # not-an-id
+    _write(tmp_path, "pkg/branch.py", f"import re\n\nRE = re.compile({pattern!r}, re.I)\n")
+
+    offenders = fixture_id_check.collect(tmp_path)
+
+    assert [offender.rule for offender in offenders] == [fixture_id_check.GRAMMAR]
+
+
 def test_an_open_ended_pattern_is_left_alone(tmp_path: Path) -> None:
     """The exactness the hard failure rests on, and the tool's own escape route.
 
