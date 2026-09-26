@@ -71,3 +71,29 @@ safe rename. The item is `ready` rather than `blocked`.
 **Done when.** The stale-slug drift is a hard failure from `bin/docket check`
 rather than an advisory, `PL-Y5JX`'s coupling warning is in place ahead of it,
 and a test drives a drifted file through the failure.
+
+**Blocked, 2026-09-26.** The promotion was written and reverted on this branch
+(`b5665a6d`, on `claude/pl-fable-01-ljo8z8`): `_check_filenames` appending to
+`report.errors`, its docstring and `store.py`'s rewritten to say error, the
+seven `test_checks.py` tests moved from `.advisories` to `.errors`, a
+`test_a_drifted_item_filename_is_an_error` and a closed-item case added, and
+the two drifted files renamed. Its own tests pass. `make check` then fails 17
+tests in `subprojects/docket/tests/test_cli.py` (`test_check_exits_zero_on_a_clean_store`
+first): the `_store` fixture writes every document as `item-N.md`, so every
+store it builds now fails `check` with "1 item file carries a slug its title no
+longer generates (PL-B1B1)". Writing each document under `filename_for(parse_item(document))`
+instead clears those 17 and fails 20 others, because 7 sites in that file
+open the fixture's files by the positional name (`items / "item-0.md"`).
+
+**Kept on the branch:** the two renames (`PL-843V`, `PL-8543`), both closed
+items edited on no open branch, so the drift count on `origin/main` is zero
+once it merges. **Recommendation:** migrate `test_cli.py` first - a fixture
+that writes the natural name and returns the paths it wrote, with the 7
+positional reads moved onto it - as its own commit under this id, then land the
+promotion exactly as `b5665a6d` wrote it. Left at `ready` and yielded rather
+than `blocked`, since nothing outside this item holds it.
+
+**Worked.** Only the two renames stand: `PL-843V` and `PL-8543`, moved with
+`git mv` to the names `docket` writes, after a scan of every remote branch
+found neither file edited. The promotion itself is described under
+**Blocked** above, with the commit that holds a copy of it.

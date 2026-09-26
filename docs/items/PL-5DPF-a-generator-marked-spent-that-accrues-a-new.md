@@ -3,10 +3,12 @@ id: PL-5DPF
 title: A generator marked spent that accrues a new recurrence has had its verdict falsified, and nothing says so
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-21
+closed: 2026-09-26
+pr: 1072
 payoff: a generator whose spent verdict the store has since contradicted is named to a session that can re-rank it, instead of sitting demoted in silence
 verify: grep -q 'def test_a_spent_generator_the_store_still_feeds_is_reported' subprojects/docket/tests/test_checks.py
 ---
@@ -52,3 +54,5 @@ reader of `docket next` sees it.
 firing is reported to a session that could act on it, naming the verdict and the
 recurrence entries that contradict it, and the report is silent for a spent head
 the store has handed nothing since.
+
+**Worked.** The rule reads "after" from the cluster rather than from a date: a live `recurrences:` entry naming an item outside `root-cause-of:` is a filing the verdict never weighed. The brief preferred firing on any spent head carrying recurrences at all; on this store that would have fired every run on `PL-8FJK` and `PL-YRYR`, both closed and both naming their one recurrence inside their cluster, so it shipped as a check crying wolf. Open heads only, as `_check_generator_verdicts` (`PL-5MYR`): `docket new` records a recurrence onto the open item it matched, and a closed head can be re-ranked by nothing. Reported as a grooming advisory, not an error, because the repair is judgment; the line names all three repairs (`live`, fold the id into the cluster, `docket withdraw`). Tests use a `_SPENT` verdict constant and a `_spent_advisories` helper beside the existing `_LIVE`/`_explained()` fixtures, with `PL-N4N4` as the unweighed capture.
