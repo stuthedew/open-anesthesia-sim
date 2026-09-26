@@ -34,7 +34,10 @@
 # `/usr/bin/python3.11 -m compileall src/` is how you reproduce the floor
 # failure on purpose, and spelling the interpreter out is what separates the
 # deliberate act from the accidental one. `.venv/bin/python` and `uv run
-# python` pass for the same reason: they are the correct invocation.
+# python` pass for the same reason: they are the correct invocation. A wrapper
+# ahead of either changes neither half (`PL-TRMN`): `timeout 60 python3` finds
+# the floor on PATH as `python3` does, and `timeout 60 /usr/bin/python3.11` is
+# still the deliberate spelling.
 #
 # **Narrow on purpose: a guarded path in the command, nothing inferred.** A
 # tool under `tools/` that *parses* 3.14 source has the same exposure without
@@ -103,8 +106,10 @@ WHOLE_TREE = ("compileall", "py_compile")
 offender = None
 for segment, _ in cut:
     # A subshell, a brace group, a negation, a reserved word such as `do` or
-    # `time`, or an assignment opens the command (`PL-0X0G`).
-    rest = shell_split.command_words(segment)
+    # `time`, or an assignment opens the command (`PL-0X0G`), and a wrapper
+    # such as `timeout` or `env` finds the interpreter it names on PATH, as the
+    # bare call does (`PL-TRMN`).
+    rest = shell_split.program_words(segment)
     if not rest or not INTERPRETER.match(rest[0]):
         continue
     arguments = rest[1:]

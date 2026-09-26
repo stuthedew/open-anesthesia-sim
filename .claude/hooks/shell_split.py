@@ -51,11 +51,22 @@ a guard that must see one wherever bash would run it. `no-prune-guard.sh` read
 that with a regex of its own, which took a `;` inside quotes for a separator
 (`PL-WGFY`).
 
+**So is which program a command runs**, by `program_words`, because a program
+that runs another is not the one a guard is looking for: `timeout 600 make
+check | tail -5` runs `make`, and read from its first word it passed the gate
+guard that refuses the same pipe without `timeout` (`PL-TRMN`). `WRAPPERS`
+names the programs read past, each by its own option grammar, bare or by path.
+Each finds its command on PATH as bash would, which is what lets the floor
+guard read `timeout 60 python3` as the bare interpreter it is. `uv run` does
+not, so it is the gate guard's to read past, not this module's.
+
 **What it does not read**, none of which a guard here has needed: arithmetic
 (`$(( ))` and `(( ))`, where a `<<` shift reads as a heredoc here), the `&&`,
 `||`, `<` and `>` inside `[[ ]]`, which read as a separator or a redirection,
 the `)` that ends a `case` pattern, a backtick's contents, which split at
-spaces as `shlex` split them, and the command a `coproc` runs. A reserved word
+spaces as `shlex` split them, the command a `coproc` runs, a wrapper `WRAPPERS`
+does not name (`sudo`, `stdbuf`, a `time` run by path), and the string `env -S`
+splits, for which `program_words` reads no program at all. A reserved word
 opens a command here only at the head of its segment, so `command_words` does
 not reach the `make check` in `if (true) then make check; fi` or in `for f do
 make check; done`; `commands` reads the first, splitting at its `)`. And a
@@ -73,6 +84,7 @@ cannot finish. Standard library only, and it parses at the floor
 from __future__ import annotations
 
 import re
+from typing import NamedTuple
 
 
 class Operator(str):
@@ -129,6 +141,93 @@ TIME_OPTIONS = ("-p", "--")
 ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
 
 
+class Grammar(NamedTuple):
+    """How one wrapper reads the words ahead of the command it runs, as GNU getopt reads them."""
+
+    # Short options whose value is the rest of the word, or else the next word.
+    valued: str = ""
+    # Short options whose value is only ever the rest of the word.
+    optional: str = ""
+    # Short options taking no value, which a bundle may run on after.
+    flags: str = ""
+    # Long options whose value follows an `=`, or else is the next word; each
+    # may be abbreviated to any prefix no other long option shares.
+    long_valued: tuple[str, ...] = ()
+    # Long options taking a value only after an `=`, and those taking none.
+    long_other: tuple[str, ...] = ()
+    # Options after which no program is read: one that describes a command
+    # rather than running it, or one that runs a string this does not split.
+    stops: frozenset[str] = frozenset(("help", "version"))
+    # The words read between the options and the command: a duration.
+    operands: int = 0
+
+
+# The programs that run a command named after their own options, finding it on
+# PATH as bash would, from `timeout --help`, `env --help`, `nice --help` and
+# `nohup --help` in coreutils 9.4, `xargs --help` in findutils 4.9.0, and `help
+# command` and `help exec` in bash 5.2.21, each spelling run to see which word
+# it ran (`PL-TRMN`). Every one stops reading options at its first word that is
+# not one, so an option after the command is the command's: `timeout 5 echo -s
+# x` prints `-s x`.
+WRAPPERS = {
+    "timeout": Grammar(
+        valued="ks",
+        flags="v",
+        long_valued=("kill-after", "signal"),
+        long_other=("foreground", "preserve-status", "verbose"),
+        operands=1,
+    ),
+    "env": Grammar(
+        valued="uCS",
+        flags="i0v",
+        long_valued=("unset", "chdir", "split-string"),
+        long_other=(
+            "ignore-environment",
+            "null",
+            "block-signal",
+            "default-signal",
+            "ignore-signal",
+            "list-signal-handling",
+            "debug",
+        ),
+        stops=frozenset(("help", "version", "S", "split-string")),
+    ),
+    "nice": Grammar(valued="n", long_valued=("adjustment",)),
+    "nohup": Grammar(),
+    "xargs": Grammar(
+        valued="adEILnPs",
+        optional="eil",
+        flags="0oprtx",
+        long_valued=(
+            "arg-file",
+            "delimiter",
+            "max-lines",
+            "max-args",
+            "max-procs",
+            "max-chars",
+            "process-slot-var",
+        ),
+        long_other=(
+            "null",
+            "eof",
+            "replace",
+            "open-tty",
+            "interactive",
+            "no-run-if-empty",
+            "show-limits",
+            "verbose",
+            "exit",
+        ),
+    ),
+    # `command -v` and `-V` describe the command and run nothing.
+    "command": Grammar(flags="p", stops=frozenset(("help", "v", "V"))),
+    "exec": Grammar(valued="a", flags="cl"),
+}
+
+# `nice`'s older spelling of an adjustment: `nice -5` and `nice --5`.
+NICE_ADJUSTMENT = re.compile(r"^-[-+]?\d")
+
+
 def words(command: str) -> list[str] | None:
     """The tokens bash reads in `command`, or None where bash would refuse it.
 
@@ -180,8 +279,82 @@ def command_words(segment: list[str]) -> list[str]:
     return rest
 
 
+def program_words(segment: list[str]) -> list[str]:
+    """`segment` from the program it runs: its command word, or past each wrapper ahead of it.
+
+    `timeout 60 nice -n 5 git fetch --prune` runs `git`, so that is where the
+    words start (`PL-TRMN`). Empty where the wrapper runs nothing - `command -v
+    git` describes it, a wrapper given no command runs none, and one refusing
+    an option it does not know stops there - or runs a string this does not
+    read, as `env -S` does.
+    """
+    rest = command_words(segment)
+    while rest and _basename(rest[0]) in WRAPPERS:
+        rest = _run_by(rest)
+    return rest
+
+
+def _basename(word: str) -> str:
+    return word.rsplit("/", 1)[-1]
+
+
+def _long_option(grammar: Grammar, written: str) -> str | None:
+    """The long option `written` names, whole or as an abbreviation getopt accepts, or None."""
+    names = (*grammar.long_valued, *grammar.long_other, "help", "version")
+    if written in names:
+        return written
+    matching = [name for name in names if name.startswith(written)]
+    return matching[0] if len(matching) == 1 else None
+
+
+def _run_by(words: list[str]) -> list[str]:
+    """The words of the command the wrapper opening `words` runs, or [] as `program_words` says."""
+    name = _basename(words[0])
+    grammar = WRAPPERS[name]
+    at = 1
+    while at < len(words):
+        word = words[at]
+        if isinstance(word, Operator) or not word.startswith("-") or word == "-":
+            break
+        at += 1
+        if word == "--":
+            break
+        if name == "nice" and NICE_ADJUSTMENT.match(word):
+            continue
+        if word.startswith("--"):
+            written, equals, _ = word[2:].partition("=")
+            option = _long_option(grammar, written)
+            if option is None or option in grammar.stops:
+                return []
+            if option in grammar.long_valued and not equals:
+                at += 1
+            continue
+        for position, letter in enumerate(word[1:], 2):
+            if letter in grammar.stops:
+                return []
+            if letter in grammar.valued:
+                # The value is the rest of the word, or the next word if none is left.
+                if position == len(word):
+                    at += 1
+                break
+            if letter in grammar.optional:
+                break
+            if letter not in grammar.flags:
+                return []
+    if name == "env":
+        # A lone `-` is `-i`, and each `NAME=VALUE` sets the command's environment.
+        if at < len(words) and words[at] == "-":
+            at += 1
+        while at < len(words) and "=" in words[at] and not isinstance(words[at], Operator):
+            at += 1
+    at += grammar.operands
+    if at >= len(words) or isinstance(words[at], Operator):
+        return []
+    return words[at:]
+
+
 def commands(command: str) -> list[list[str]]:
-    """Every command in `command` that bash would run, each read through `command_words`.
+    """Every command in `command` that bash would run, each read through `program_words`.
 
     A segment ends only at a separator; a command also starts after each `(`
     or `)` read as an operator, so a subshell, a `$( )`, a `<( )` and the
@@ -204,7 +377,7 @@ def commands(command: str) -> list[list[str]]:
             piece: list[str] = []
             for token in [*segment, Operator(")")]:
                 if isinstance(token, Operator) and token in ("(", ")"):
-                    head = command_words(piece)
+                    head = program_words(piece)
                     if head:
                         found.append(head)
                     piece = []
