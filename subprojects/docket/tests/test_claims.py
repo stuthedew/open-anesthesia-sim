@@ -1449,6 +1449,43 @@ def test_the_gate_keeps_its_own_copy_of_the_body_records() -> None:
     assert RECORDS == arming.RECORDS
 
 
+def test_what_arms_on_green_is_the_store_the_tooling_and_the_records_but_the_gate() -> None:
+    items = QUEUE.items_dir
+    assert arming.arms_on_green("docs/items/PL-B1B1-held.md", items)
+    assert arming.arms_on_green("subprojects/docket/src/docket/render.py", items)
+    assert arming.arms_on_green("docs/pr-bodies/1066.md", items)
+    assert not arming.arms_on_green(arming.GATE, items)
+    assert not arming.arms_on_green("docs/items-archive.md", items)
+    assert not arming.arms_on_green("src/work.py", items)
+
+
+def test_a_roadmap_only_branch_is_queue_work_but_not_armable(tmp_path: Path) -> None:
+    """Whether a change owes a claim and whether it merges unread are two questions, answered apart.
+
+    A triage pass that puts an item on a gate list writes `ROADMAP.md` and
+    nothing else, so it owes no claim (`in_queue`, `PL-3CTW`), and it still
+    waits on the owner's read, because `arm` keeps to the store, the tooling
+    and the body records (project owner, 2026-09-26, ratified, over widening
+    it to the roadmap and the notes, `PL-0JGZ`). Both answers are pinned on one
+    branch, so that neither drifts into the other unseen.
+    """
+    assert in_queue("ROADMAP.md", QUEUE)
+    assert not arming.arms_on_green("ROADMAP.md", QUEUE.items_dir)
+    assert in_queue("docs/WORKING_NOTES.md", QUEUE)
+    assert not arming.arms_on_green("docs/WORKING_NOTES.md", QUEUE.items_dir)
+
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/gate-list-a1b2c3")
+    repo.commit("PL-B1B1: put it on the gate list", when=T0, files={"ROADMAP.md": "# Roadmap\n"})
+
+    assert work_outside_queue(repo.root, "main", "HEAD", QUEUE) is False
+    assert unclaimed(repo.root, holdings(repo.root, now=T0 + HOUR), QUEUE) == Unclaimed()
+
+    verdict = arming.arm(repo.root, items_dir=QUEUE.items_dir, now=T0 + HOUR, fetch=False)
+    assert verdict.answer == arming.HOLD
+    assert verdict.outside == ("ROADMAP.md",)
+
+
 def test_a_body_record_is_not_work_that_owes_a_claim(tmp_path: Path) -> None:
     """A pull request's body record is a queue record, so a queue-only pass still owes no claim.
 
