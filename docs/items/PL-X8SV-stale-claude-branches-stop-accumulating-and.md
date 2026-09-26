@@ -8,6 +8,7 @@ classes: infra
 touches: tools/branch_sweep.py, tools/open_pull_requests.py, tests/unit/test_branch_sweep.py, .github/workflows/branch-sweep.yml, subprojects/docket/src/docket/claims.py, docket.toml, docs/worker.md, docs/maintainer.md, docs/ARCHITECTURE.md, CLAUDE.md, .claude/skills/docket/modes/capture.md, docs/items, docs/pr-bodies
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1122
 payoff: the remote holds main and live work only, and nobody deletes a branch by hand: a daily job archives each finished claude/ branch under refs/archive and deletes it
 verify: grep -q 'tools/branch_sweep.py --apply' .github/workflows/branch-sweep.yml && grep -q 'refs/archive' tools/branch_sweep.py && grep -q 'branch-sweep.yml' CLAUDE.md
 ---
