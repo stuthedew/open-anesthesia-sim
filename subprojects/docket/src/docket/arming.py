@@ -15,7 +15,8 @@ every later push while a pull request is open.
 
 - `arm` (0): the net change a squash would land - `base...HEAD` - lies under
   the store, the queue's own tooling, `subprojects/docket/`, or the pull
-  requests' body records, `docs/pr-bodies/`, and leaves this module alone; no
+  requests' body records, `docs/pr-bodies/`, and leaves this module alone,
+  which `arms_on_green` answers path by path; no
   claim bound to this branch is unreleased; and the branch contains the base's
   tip.
 - `hold` (1), naming what holds it. A claim holds the pull request unarmed and
@@ -115,6 +116,31 @@ RECORDS = "docs/pr-bodies/"
 #: `test_cli` pins it to the module's own path, so a move cannot leave it
 #: naming a file nothing reads.
 GATE = TOOLING + "src/docket/arming.py"
+
+
+def arms_on_green(path: str, items_dir: str) -> bool:
+    """Whether a change to `path` may merge on green CI without the owner's read.
+
+    A path under the store, the tooling or the body records may, `GATE`
+    excepted; anything else waits on a read, `ROADMAP.md` and
+    `docs/WORKING_NOTES.md` included. `arm` holds a branch for each path this
+    answers no to.
+
+    It is not `claims.in_queue`, which asks whether a change owes a claim and
+    counts the roadmap and the notes as queue records, since a triage pass and
+    a design round write them and nothing else (`PL-3CTW`). Whether they arm
+    as well was asked and answered no (project owner, 2026-09-26, ratified,
+    over treating them as queue records here, `PL-0JGZ`): the roadmap is the
+    milestone map the owner sets direction in, and an unread merge of it is a
+    different risk from an item file's. A `ROADMAP.md`-only triage pass
+    therefore owes no claim and still waits on a read. The rule is spelt here,
+    in the one module the gate holds, rather than beside `in_queue`, so that
+    widening what arms still takes an edit the gate holds (same date,
+    ratified, over two named predicates in `claims`, `PL-0JGZ`), as `RECORDS`
+    is kept here for `PL-F6MM`.
+    """
+    prefix = items_dir.strip("/") + "/"
+    return path.startswith((prefix, TOOLING, RECORDS)) and path != GATE
 
 
 @dataclass(frozen=True)
@@ -251,10 +277,10 @@ def arm(
     gate = False
     if answered(changed):
         paths = set(listed_paths(changed))
-        outside = tuple(
-            sorted(path for path in paths if not path.startswith((prefix, TOOLING, RECORDS)))
-        )
+        # The gate is reported apart, and asked for directly rather than read
+        # back out of what `arms_on_green` holds.
         gate = GATE in paths
+        outside = tuple(sorted(path for path in paths - {GATE} if not arms_on_green(path, prefix)))
     else:
         unread.append(f"git would not diff {name} against {base}, so what a merge lands is unknown")
 

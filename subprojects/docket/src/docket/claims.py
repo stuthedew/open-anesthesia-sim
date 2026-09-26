@@ -856,6 +856,14 @@ def in_queue(path: str, config: Config) -> bool:
     buy a refusal for a pass with almost nothing left to do: every pull
     request with a body has recorded it since `PL-979D`, so `--recover` has
     only the bodies lost before it - two on 2026-09-26 (`PL-F6MM`).
+
+    It is not what arms. `arming.arms_on_green` asks whether a change may merge
+    on green CI without the owner's read, and keeps to the store, the tooling
+    and the body records, so a `ROADMAP.md`-only triage pass owes no claim here
+    and still waits on a read there (project owner, 2026-09-26, ratified, over
+    widening arming to the roadmap and the notes, `PL-0JGZ`). That answer is
+    spelt in the module the gate holds for a read rather than in this one, for
+    the reason `RECORDS` above gives.
     """
     return any(
         path.startswith(name) if name.endswith("/") else path == name
