@@ -97,13 +97,50 @@ def test_a_command_that_discards_a_gates_status_is_denied(command: str) -> None:
 
 
 def test_a_newline_separates_two_commands_as_a_semicolon_does() -> None:
-    """A two-line script hands the status to its last line, which shlex would not see.
+    """A two-line script hands the status to its last line.
 
-    `shlex` discards a newline as whitespace, so without the substitution the
-    hook reads both lines as one segment and finds nothing to the gate's right.
+    A reader that took the newline for whitespace would read both lines as one
+    command and find nothing to the gate's right.
     """
     assert _decision("make check 2>&1 | tail -45\ngit status") is not None
     assert _decision("set -o pipefail\nmake check | tail\necho done") is not None
+
+
+def test_a_newline_after_an_operator_is_a_linebreak() -> None:
+    """Bash reads a newline after `&&`, `||`, `|` or `;` as a linebreak, not another `;`.
+
+    The newline substitution read `make check &&` and a `tail` on the next line
+    as the gate handing its status to the `tail`, and refused a list that keeps it.
+    """
+    assert _decision("make check &&\ntail -5 /tmp/gate.log") is None
+    assert _decision("set -o pipefail; make check 2>&1 |\n  tail -45") is None
+    assert _decision("make check 2>&1 |\n  tail -45") is not None
+
+
+def test_a_comment_ends_at_its_line() -> None:
+    """A `#` hides the rest of its line and nothing after it.
+
+    The comment used to run to the end of the whole command, so a gate on any
+    line after one was never read.
+    """
+    assert _decision("git status  # a note\nmake check 2>&1 | tail -45") is not None
+    assert _decision("make check  # the | tail here is a comment") is None
+
+
+def test_a_backslash_newline_continues_the_command() -> None:
+    """A line ending in a backslash goes on, and separates nothing (`PL-R5RF`).
+
+    The newline substitution turned the pair into an escaped space and a `;`,
+    and read the gate as handing its status to the next line: the first command
+    here was refused although `pipefail` keeps the status, by a refusal blaming
+    a `;` the command does not contain.
+    """
+    assert (
+        _decision("set -o pipefail; uv run pytest -q \\\n  tests/unit/x.py 2>&1 | tail -5") is None
+    )
+    # Joined, a gate piped without `pipefail` still loses its status.
+    assert _decision("uv run pytest -q \\\n  tests/unit/x.py 2>&1 | tail -5") is not None
+    assert _decision('make check 2>&1 \\\n  | tail -5; echo "exit=$?"') is not None
 
 
 def test_pipefail_set_after_the_pipeline_does_not_count() -> None:
@@ -166,7 +203,7 @@ ESCAPED = (
     "{ set -o pipefail; } & make check 2>&1 | tail -45",
     # So is a `set` that is itself a pipeline stage.
     "set -o pipefail | cat; make check 2>&1 | tail -45",
-    # The lexer glues `;)` into one token, and the `)` in it still ends the group.
+    # `;)` is two operators, and the `)` still ends the group.
     "( set -o pipefail; true;) && make check 2>&1 | tail -45",
 )
 
@@ -236,6 +273,34 @@ def test_a_command_that_keeps_the_status_is_allowed(command: str) -> None:
     assert _decision(command) is None, f"{command!r} was refused"
 
 
+GLUED = (
+    # `PL-63TT`'s reproductions. A `)` touching the `;` or `|` after it arrived
+    # as one token that was no separator, so the gate after it read as an
+    # argument of the command before, and was never checked.
+    ("(true); make check 2>&1 | tail -45", True),
+    ("(make check)|tail", True),
+    ("(cd sub && uv run pytest -q); make check 2>&1 | tail -30", True),
+    # `|&` is a pipe that carries stderr too, and was no separator at all.
+    ("make check |& tail", True),
+    # Longest match keeps a redirection whole: `>|`, `&>` and `&>>` end no
+    # command, so the `echo` still reads the gate's own status.
+    ('make check >| /tmp/gate.log; echo "exit=$?"', False),
+    ('make check &> /tmp/gate.log; echo "exit=$?"', False),
+    ('make check &>> /tmp/gate.log; echo "exit=$?"', False),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), GLUED)
+def test_a_glued_punctuation_run_splits_into_bash_operators(command: str, refused: bool) -> None:
+    """A run of `();<>|&` is split into bash's operators, longest first (`PL-63TT`).
+
+    Split one character at a time instead, `>|` would be a pipe and `&>` a
+    background launch, and each of the last three would be refused.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 QUOTED = (
     # Writing *about* the hazard is most of what landed the fix, and the `|`
     # here is inside an argument rather than between two commands.
@@ -256,6 +321,53 @@ def test_a_heredoc_body_is_document_content() -> None:
     """This repository writes the rule through heredocs; blocking that is self-defeating."""
     command = 'cat > /tmp/note.md <<"EOF"\nRun make check 2>&1 | tail -45\nEOF'
     assert _decision(command) is None
+
+
+HEREDOCS = (
+    # `PL-39LD`'s shape: an item body written through a python3 heredoc.
+    "python3 - <<'EOF'\nprint('Run make check 2>&1 | tail -45')\nEOF\n",
+    # `<<-` strips the leading tabs of the body's lines and of the terminator.
+    "cat <<-EOF\n\tRun make check 2>&1 | tail -45\n\tEOF\n",
+    # A quoted delimiter is the word with its quotes removed.
+    'cat <<"EOF"\nRun make check 2>&1 | tail -45\nEOF\n',
+    "cat <<\\EOF\nRun make check 2>&1 | tail -45\nEOF\n",
+    # Two on one line: both bodies go, in order.
+    "cat <<A <<B\nRun make check | tail\nA\nRun make check | tail\nB\n",
+    # Inside a double-quoted `$( )`, whose quotes and heredoc are its own: the
+    # shape of every commit message this repository writes.
+    'git commit -m "$(cat <<\'EOF\'\nPL-D0W8: "make check | tail" loses it\nEOF\n)"\n',
+)
+
+
+@pytest.mark.parametrize("heredoc", HEREDOCS)
+def test_only_a_heredoc_body_is_removed(heredoc: str) -> None:
+    """The body is document content, and the lines after its terminator are commands again.
+
+    Each hook cut the command at its first `<<`, so a check run after a heredoc
+    in the same call was never read: `PL-39LD`'s session ran `make docket 2>&1
+    | tail -4` after a python3 heredoc, unrefused, and read `tail`'s exit 0.
+    """
+    assert _decision(heredoc + "git status") is None, "the body was read as commands"
+    after = heredoc + 'make docket 2>&1 | tail -4; echo "exit=$?"'
+    assert _decision(after) is not None, "the command after the terminator was not read"
+
+
+NOT_A_HEREDOC = (
+    'cat <<< "a here-string"; make check 2>&1 | tail -45',
+    'echo "a << b"; make check 2>&1 | tail -45',
+    "echo '<<EOF'; make check 2>&1 | tail -45",
+)
+
+
+@pytest.mark.parametrize("command", NOT_A_HEREDOC)
+def test_a_here_string_or_a_quoted_introducer_hides_nothing(command: str) -> None:
+    """`<<<` is a here-string and a quoted `<<` is text, so neither opens a body to remove."""
+    assert _decision(command) is not None, f"{command!r} was allowed"
+
+
+def test_an_unterminated_heredoc_runs_to_the_end() -> None:
+    """Bash reads a body with no terminator line to the end of the input, so this fails open."""
+    assert _decision("cat <<EOF\nmake check 2>&1 | tail -45") is None
 
 
 def test_only_bash_calls_are_considered() -> None:

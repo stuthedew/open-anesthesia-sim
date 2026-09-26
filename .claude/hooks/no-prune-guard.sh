@@ -19,15 +19,20 @@
 # is what makes a refusal cheaper than the prose was.
 #
 # Fails open in every error path - no python3, an unreadable payload, a
-# malformed command - because a guard that breaks the session costs more than
-# the ref it protects. `docs/resident-instructions.md` records the trade.
+# malformed command, `shell_split.py` missing from beside it - because a guard
+# that breaks the session costs more than the ref it protects.
+# `docs/resident-instructions.md` records the trade.
 set -uo pipefail
 
 payload=$(cat)
 command -v python3 >/dev/null 2>&1 || exit 0
+hooks=$(dirname "${BASH_SOURCE[0]}")
 
-PAYLOAD="$payload" python3 -c '
+PAYLOAD="$payload" HOOKS="$hooks" python3 -c '
 import json, os, re, sys
+
+sys.path.insert(0, os.environ["HOOKS"])
+import shell_split
 
 try:
     data = json.loads(os.environ["PAYLOAD"])
@@ -39,11 +44,14 @@ command = data.get("tool_input", {}).get("command")
 if not isinstance(command, str):
     sys.exit(0)
 
-# Only the text before the first heredoc introducer is a command; what follows
-# is document content, and this repository writes prose *about* pruning through
-# heredocs routinely - CLAUDE.md, this hook, the ledger. Blocking a session
-# from writing the word would be the guard eating its own documentation.
-command = command.split("<<", 1)[0]
+# A heredoc body is document content, and this repository writes prose *about*
+# pruning through heredocs routinely - CLAUDE.md, this hook, the ledger.
+# Blocking a session from writing the word would be the guard eating its own
+# documentation. So the patterns below read the command as `shell_split.py`
+# leaves it, which the three Bash guards share (`PL-PVW2`): every heredoc body,
+# comment and line continuation removed, and everything else as written, so a
+# prune after a heredoc terminator is read like any other line (`PL-39LD`).
+command = shell_split.command_text(command)
 
 # Four shapes delete remote-tracking refs, and nothing else in git does it as a
 # side effect. Each is anchored at a command position - the start of the string

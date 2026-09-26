@@ -3,12 +3,13 @@ id: PL-63TT
 title: The Bash guard hooks' lexer glues a run of punctuation into one token, so a ')' touching a ';' or '|' hides the separator: '(true); make check 2>&1 | tail -45' passes gate-status-guard.sh and '(true); python3 src/a.py' passes floor-interpreter-guard.sh, though each is what its guard exists to refuse
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_gate_status_guard.py, tests/unit/test_floor_interpreter_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a member of PL-PVW2, worked with its step 2
 added: 2026-09-26
+closed: 2026-09-26
 payoff: a gate or bare interpreter written after a closing parenthesis is refused like any other command, instead of passing the guard that exists to refuse it
 verify: grep -q 'def test_a_glued_punctuation_run_splits_into_bash_operators' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_glued_punctuation_run_splits_into_bash_operators' tests/unit/test_floor_interpreter_guard.py
 ---

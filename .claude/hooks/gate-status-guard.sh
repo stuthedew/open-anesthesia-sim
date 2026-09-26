@@ -72,16 +72,31 @@
 # meant it to. `uv run` is unwrapped because it is how this project spells most
 # of the list.
 #
+# **Where one command ends is `shell_split.py`'s answer, not this file's.** The
+# three Bash guards import it, so a shape one of them read differently from bash
+# - a `)` glued to the `;` after it (`PL-63TT`), a backslash-newline
+# (`PL-R5RF`), a command after a heredoc's terminator (`PL-39LD`) - is read
+# right by all three at once (`PL-PVW2`). It keeps a quoted argument whole, so
+# the `|` inside `git commit -m "... | tail ..."` reads as the text it is, and
+# it removes a heredoc's body, which is document content: this repository writes
+# prose *about* the hazard through heredocs routinely, and blocking that would be
+# the guard eating its own documentation.
+#
 # Fails open in every error path - no python3, an unreadable payload, a command
-# it cannot tokenise, a `#` that truncates the parse - like the two guards
-# beside it. A guard that breaks the session costs more than the round it saves.
+# bash itself would refuse, `shell_split.py` missing from beside it - like the
+# two guards beside it. A guard that breaks the session costs more than the
+# round it saves.
 set -uo pipefail
 
 payload=$(cat)
 command -v python3 >/dev/null 2>&1 || exit 0
+hooks=$(dirname "${BASH_SOURCE[0]}")
 
-PAYLOAD="$payload" python3 -c '
-import json, os, re, shlex, sys
+PAYLOAD="$payload" HOOKS="$hooks" python3 -c '
+import json, os, re, sys
+
+sys.path.insert(0, os.environ["HOOKS"])
+import shell_split
 
 try:
     data = json.loads(os.environ["PAYLOAD"])
@@ -93,40 +108,14 @@ command = data.get("tool_input", {}).get("command")
 if not isinstance(command, str):
     sys.exit(0)
 
-# Only the text before the first heredoc introducer is a command; what follows
-# is document content. This repository writes prose *about* the hazard through
-# heredocs routinely - this hook, the item, the commit message that landed it -
-# and blocking that would be the guard eating its own documentation.
-command = command.split("<<", 1)[0]
-
-# A newline separates two commands exactly as `;` does, and shlex would
-# otherwise discard it as whitespace and read a two-line script as one segment.
-# Substituting inside a quoted string is harmless: the string stays one token
-# either way, so only the tokenizer sees the change.
-command = command.replace("\n", " ; ")
-
-# `punctuation_chars` is what makes `make check|tail` tokenise - plain
-# `shlex.split` would return `check|tail` as one word and miss the pipe
-# entirely. It also keeps a quoted argument whole, so the `|` inside
-# `git commit -m "... | tail ..."` reads as the text it is. `commenters`
-# stays at the default, so a trailing `# note` truncates the parse: that can
-# only lose a separator, never invent one, which is the safe direction.
-try:
-    lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
-    lexer.whitespace_split = True
-    tokens = list(lexer)
-except ValueError:
+cut = shell_split.segments(command)
+if cut is None:
     sys.exit(0)
 
-SEPARATORS = {";", "&&", "||", "|", "&"}
 ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
 INTERPRETER = re.compile(r"^python(?:3(?:\.\d+)?)?$")
 GROUPING = ("(", "{", "!")
 CLOSERS = (")", "}")
-# The characters `punctuation_chars` splits on. It also glues a run of them
-# into one token - `;)`, `)|` - so a `)` is counted where it appears rather
-# than matched as a whole token.
-PUNCTUATION = frozenset("();<>|&")
 
 MAKE_GATES = ("check", "test", "docket", "doc-check", "prebuild", "pr-title")
 DOCKET_GATES = ("check", "verify")
@@ -224,16 +213,14 @@ def pipefail_by_separator(segments, separators):
         if sets_pipefail(rest) and not piped and not forked:
             state = True
         for position, token in enumerate(rest):
-            if PUNCTUATION.issuperset(token):
-                for character in token:
-                    if character == "(":
-                        groups.append((state, True))
-                    elif character == ")" and groups:
-                        state = groups.pop()[0]
+            # A `(` or `)` the splitter read as an operator; a quoted one is a word.
+            if isinstance(token, shell_split.Operator):
+                if token == "(":
+                    groups.append((state, True))
+                elif token == ")" and groups:
+                    state = groups.pop()[0]
             # `}` is a word, and ends a group only where a command could start.
-            elif token == "}" and groups and (
-                position == 0 or rest[position - 1].endswith(CLOSERS)
-            ):
+            elif token == "}" and groups and (position == 0 or rest[position - 1] in CLOSERS):
                 before, subshell = groups.pop()
                 if subshell or forked:
                     state = before
@@ -241,17 +228,8 @@ def pipefail_by_separator(segments, separators):
     return held
 
 
-segments, separators, current = [], [], []
-for token in tokens:
-    if token in SEPARATORS:
-        segments.append(current)
-        separators.append(token)
-        current = []
-    else:
-        current.append(token)
-segments.append(current)
-separators.append(None)
-
+segments = [words for words, _ in cut]
+separators = [separator for _, separator in cut]
 pipefail = pipefail_by_separator(segments, separators)
 
 offender = swallowed_by = None
