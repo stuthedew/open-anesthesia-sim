@@ -4379,9 +4379,11 @@ def _write_pr(directory: Path, item: Item, number: str, dry_run: bool) -> None:
     `insert_field` rather than either of the writers that render from the
     parsed item, and the two reasons are the two defects this line has had.
     `write_item` derives the filename from the title, so on a file whose slug
-    has drifted it turns one added line into a delete-plus-add, which took a
-    modify/delete conflict against whoever else held the file and left one id
-    under two names once backed out (`PL-LBR6`, `PL-5QLP`). `rewrite_item` keeps
+    has drifted it writes a second file under the same id rather than adding
+    one line to the first. While it also removed the old name, that write was
+    a delete-plus-add, which took a modify/delete conflict against whoever
+    else held the file and left one id under two names once backed out
+    (`PL-LBR6`, `PL-5QLP`). `rewrite_item` keeps
     the name and still re-renders the block, so on a file whose keys are in
     some other order, or whose value runs over continuation lines, it removes
     lines as well as adding one - and `verify.sanctioned_queue_edit` reads a

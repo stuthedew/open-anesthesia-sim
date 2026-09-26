@@ -5019,12 +5019,13 @@ def test_record_keeps_a_drifted_filename(tmp_path: Path) -> None:
     """A field write must not rename, however stale the slug it finds.
 
     The store names a file from its title, so re-rendering a drifted one
-    through `write_item` renames it. That turns the single added line two
-    sessions are told git will merge into a delete-plus-add, which takes a
-    modify/delete conflict against whoever else holds the file (`PL-LBR6`) -
-    and backing it out with `git checkout --` restores the tracked deletion
-    while leaving the untracked new name, so `check` then reports one id used
-    by two files (`PL-5QLP`).
+    through `write_item` writes a second file under the same id, which `check`
+    reports as one id used by two files. While `write_item` also removed the
+    old name, the same write turned the single added line two sessions are
+    told git will merge into a delete-plus-add, which took a modify/delete
+    conflict against whoever else held the file (`PL-LBR6`) - and backing it
+    out with `git checkout --` restored the tracked deletion while leaving the
+    untracked new name, the same two files (`PL-5QLP`).
     """
     root = _record_repo(tmp_path, name="PL-K7QX-an-older-title.md")
     items = root / "items"
