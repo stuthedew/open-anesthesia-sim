@@ -790,12 +790,7 @@ def settled_branches(
     for row in read.flight().branches:
         if row.name not in unread:
             shown.setdefault(row.name, set()).add(row.item_id)
-    # Every claim the ref recorded is asked, whether or not it won its item's
-    # row: a claim shadowed by another branch's is still a session working.
-    unfinished = {hold.ref for hold in read.holds if not _finished_claim(hold)}
-    for hold in (*read.dispositions, *read.named):
-        if hold.state == LIVE and hold.status not in CLOSED_STATUSES:
-            unfinished.add(hold.ref)
+    unfinished = unfinished_work(read)
 
     finished = sorted(
         (
@@ -820,6 +815,26 @@ def settled_branches(
         branches=tuple(entry for entry in finished if _head_name(entry.name, remotes) not in heads),
         declined=declined or run.reason,
     )
+
+
+def unfinished_work(read: Holdings) -> dict[str, tuple[str, ...]]:
+    """Each ref holding work that is not finished, and the items it holds it on.
+
+    `settled_branches`'s test, named so that `tools/branch_sweep.py` asks the
+    same one: a ref read here is never settled and never swept (`PL-X8SV`).
+    Every claim the ref recorded is asked, whether or not it won its item's
+    row, since a claim shadowed by another branch's is still a session working.
+    A disposition or a name counts while it is live on an item its copy has not
+    closed.
+    """
+    held: dict[str, set[str]] = {}
+    for hold in read.holds:
+        if not _finished_claim(hold):
+            held.setdefault(hold.ref, set()).add(hold.key)
+    for hold in (*read.dispositions, *read.named):
+        if hold.state == LIVE and hold.status not in CLOSED_STATUSES:
+            held.setdefault(hold.ref, set()).add(hold.key)
+    return {ref: tuple(sorted(keys)) for ref, keys in held.items()}
 
 
 def _finished_claim(hold: Hold) -> bool:

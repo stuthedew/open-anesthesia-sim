@@ -254,7 +254,8 @@ that commit leads with the current item's id, so every id-matcher still sees
 it. File it when it is the reason this session exists, or when it will take a
 branch of its own. Not deleting remote branches, even when that is why the
 session exists: it takes no commit at all, so there is nothing for an id to
-lead, and the reply hands the owner the list and the command (`PL-S8LZ`).
+lead, and the daily branch sweep deletes finished ones, so the reply hands the
+owner only a branch it keeps (`PL-S8LZ`, `PL-X8SV`).
 
 `tools/branch_id_check.py` catches the case where none of this happened: `make
 check` and CI fail a branch ahead of `main` that carries no id in its name and

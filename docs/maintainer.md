@@ -287,3 +287,27 @@ admin's merge passes the up-to-date check `main` holds everyone else to:
 merging directly, it would land a stale branch whenever another pull request
 merged between its read and its call. Merge it on the Mac, as step 1 says for
 a branch that is already current.
+
+## Sweep branches now, or restore one the sweep deleted
+
+`.github/workflows/branch-sweep.yml` deletes each finished `claude/*` branch at
+06:17 UTC daily, after copying its tip to `refs/archive/<branch>/<tip>`
+(`PL-X8SV`). A session cannot run it or undo it, since both push to branches
+other than its own, so both are yours.
+
+**To sweep now:** on the repository's page click **Actions**, then
+**branch-sweep** in the left sidebar, then **Run workflow** above the list of
+runs. Tick **dry_run** to list what would go and push nothing, then click
+**Run workflow**. The run's log, under its **sweep** job, lists each branch it
+swept and why each other one stayed.
+
+**To restore one:** the log prints the command beside each branch it swept. Run
+it on the Mac from any clone of this repository:
+
+```
+git fetch origin refs/archive/claude/NAME/TIP && git push origin FETCH_HEAD:refs/heads/claude/NAME
+```
+
+Success is `* [new branch]` on the last line. `git ls-remote origin
+'refs/archive/*'` lists every archived tip, if the log has expired. An archive
+ref is not shown on GitHub's Branches page and no clone fetches it unasked.
