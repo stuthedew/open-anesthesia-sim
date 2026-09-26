@@ -1,10 +1,12 @@
 ---
 id: PL-7TH9
 title: The setup-script line 'ln -sf /usr/local/bin/uv /root/.local/bin/uv' left uv a dangling link in this project's new default environment on 2026-09-26, because pip placed no uv at /usr/local/bin, so make check stops at uv: command not found
-status: untriaged
+status: dropped
 feature: projects-trial
 touches: docs/items
 added: 2026-09-26
+closed: 2026-09-26
+reason: does not reproduce: Default's setup snapshot was rebuilt at 2026-09-26 03:48 UTC, and a session started from it at 05:07 found /root/.local/bin/uv a regular file reading uv 0.12.19, no link and no /usr/local/bin/uv, and make check exiting 0 with no repair; the conditional link recommended here is now PL-QKXZ's step 4, and PL-QKXZ carries the rest
 ---
 
 **Problem.** The setup-script line 'ln -sf /usr/local/bin/uv /root/.local/bin/uv' left uv a dangling link in this project's new default environment on 2026-09-26, because pip placed no uv at /usr/local/bin, so make check stops at uv: command not found
@@ -46,3 +48,15 @@ at 0.12.5 or later.
 **Generator check.** Not a head: it is the second observation of one fact
 with `PL-QKXZ` (which environment's setup a thread gets, and what it
 installs), recorded there as a recurrence.
+
+**Does not reproduce, checked 2026-09-26 05:15 UTC.** `Default`'s setup
+snapshot was rebuilt at 03:48 UTC, 56 minutes after the container above.
+A web session started from it at 05:07 found `/root/.local/bin/uv` a regular
+file dated 03:48:10, reading `uv 0.12.19` from pip's user site, no
+`/usr/local/bin/uv` and no link to it, and `libegl1` installed at 03:48:15.
+`make check` exited 0 there with no repair. So whatever `Default`'s script now
+says, it no longer links over a user-site uv. A session cannot read the script
+itself, which is why this is dropped as not reproducing rather than closed as
+fixed. The conditional link recommended above replaced the unconditional one
+in `PL-QKXZ`'s step 4, replayed against scratch paths in its three cases: pip
+landing under `/usr/local/bin`, pip landing in the user site, and pip failing.
