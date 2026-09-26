@@ -9,6 +9,7 @@ feature: generator-identification
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1062
 payoff: the closed-head rule for misread: is argued in one place, so the next change to it cannot leave three source copies giving the old reason
 verify: ! grep -rqF --include=*.py 'an instance of a closed' subprojects/docket/src/docket
 ---
