@@ -4043,8 +4043,9 @@ def cmd_claim(args: argparse.Namespace) -> int:
     branch's unpushed claim would have taken from it, now withdrawn; exit 4 that
     the claim was written and did not reach the remote - its push failed, or the
     branch's copy on the remote meant none was tried - so only this checkout can
-    see it until the `claim` the message names publishes it. Neither is a
-    failure of the command; each is a different next step.
+    see it until the `claim` the message names publishes it - or that the remote
+    could not be asked whether it has the branch, so nothing was pushed. Neither
+    is a failure of the command; each is a different next step.
     """
     inv = _invocation(args)
     if inv.git is None:
