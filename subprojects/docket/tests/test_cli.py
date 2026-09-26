@@ -2648,6 +2648,50 @@ def test_stranded_reports_nothing_when_every_branch_has_landed(
     assert "No item exists only on a branch" in capsys.readouterr().out
 
 
+def test_stranded_states_both_halves_of_its_predicate(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The store half is part of the claim, so the sentence carries it (`PL-Z6M3`).
+
+    An item this checkout's store holds is never reported, so that a session
+    is not told about its own capture - which also silences the session that
+    has just recovered a stranded item while the default branch still lacks
+    it. Checked out on the branch that carries it, `PL-K7QX` is in the store
+    and absent from `main`: the answer is empty, and says what it is empty of.
+    """
+    root = _branched_repo(tmp_path)
+    subprocess.run(
+        ["git", "checkout", "-q", "abandoned"], cwd=root, check=True, capture_output=True
+    )
+    # The premise, read from git rather than assumed: the store holds the item
+    # and the default branch does not.
+    on_main = subprocess.run(
+        ["git", "ls-tree", "--name-only", "main", "items/"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "PL-K7QX" not in on_main
+    assert (root / "items" / "PL-K7QX-lost.md").is_file()
+
+    assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "No item exists only on a branch and outside this checkout's store" in out
+    assert "not listed even where the default branch lacks it" in out
+    assert "No item exists only on a branch," not in out, "the one-part claim is gone"
+
+    # The finding case names both halves too, from a checkout whose store lacks it.
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
+
+    assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "1 item exists only on a branch and outside this checkout's store" in out
+    assert "no item missing from both the default branch and this checkout's store" in out
+
+
 def test_stranded_refreshes_the_base_before_deciding_anything_is_lost(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -3445,6 +3489,49 @@ def test_show_names_the_branch_that_has_already_edited_the_item_file(
     assert "IN FLIGHT" not in out
 
 
+@pytest.mark.parametrize(
+    ("status", "extra"),
+    [("done", "\nclosed: 2026-08-21"), ("blocked", "")],
+    ids=["done", "blocked"],
+)
+def test_show_calls_an_edited_item_startable_only_when_its_status_allows(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], status: str, extra: str
+) -> None:
+    """The edit says nothing about the item's status, so the line may not either (`PL-9F8B`).
+
+    `PL-6T44` (`done`) and `PL-MB2W` (`blocked`) were both called startable,
+    from the command a session runs to learn about one item. The collision
+    is still true of either, so the warning stays; the invitation goes.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Capture a note", wrote="items/PL-0001-on-main.md")
+    # The default branch moves the item on after the branch forked, as a
+    # closure or a block lands while somebody's edit to its file sits unmerged.
+    (root / "items" / "PL-0001-on-main.md").write_text(
+        READY.replace("PL-B1B1", "PL-0001")
+        .replace("status: ready", f"status: {status}")
+        .replace("added: 2026-08-01", f"added: 2026-08-01{extra}")
+    )
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-21T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-21T12:00:00+00:00",
+    }
+    subprocess.run(
+        ["git", "commit", "-qam", f"PL-0001 {status}"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        env=dated,
+    )
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert out.splitlines()[1].endswith(f"· {status}"), "the premise: show read the status"
+    assert f"Its file is already edited on {BRANCH} (last commit 3 days ago)." in out
+    assert "a second edit to the same file collides" in out
+    assert "startable" not in out
+
+
 def test_show_names_a_round_that_retitled_the_item_file_as_editing_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -3677,6 +3764,44 @@ def test_show_names_a_branch_holding_an_item_only_by_its_name(
     assert f"IN FLIGHT on {named}, by its name" in out
     assert "live branch name, first commit 2026-08-21 09:00 UTC; last commit 2 days ago" in out
     assert "records no claim" in out
+
+
+def test_show_names_the_branch_holding_an_item_absent_here(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A capture claimed on another branch is absent here, and `show` says where it is.
+
+    `next` and `flight` named such an item as a live claim while `show` printed
+    only "no item matching": a dead end at the moment a session asks about work
+    another session holds (`PL-140X`).
+    """
+    from docket.claims import CUTOVER_MARKER
+
+    when = "2026-08-20T12:00:00+00:00"
+    root = _flight_repo(tmp_path, "Tidy up", when=when)
+    _commit_on(root, "main", {CUTOVER_MARKER: "# the claim writer\n"}, "claims", when)
+    held = "claude/capture-k7qx"
+    captured = "items/PL-K7QX-captured-there.md"
+    _commit_on(root, held, {captured: READY.replace("PL-B1B1", "PL-K7QX")}, "capture", when)
+    dated = os.environ | {"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when}
+    for args in (
+        ["checkout", "-q", held],
+        ["commit", "-q", "--allow-empty", "-m", f"PL-K7QX: start\n\nClaim: PL-K7QX {held}"],
+        ["checkout", "-q", "main"],
+    ):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
+    ran = ["--items", str(root / "items"), "--today", "2026-08-23", "show"]
+
+    assert main([*ran, "PL-K7QX"]) == 1
+
+    out = capsys.readouterr().out
+    assert out.startswith("no item matching 'PL-K7QX'\n")
+    assert f"IN FLIGHT on {held}" in out
+    assert f"  read it: git show {held}:{captured}\n" in out
+
+    # An id nothing holds is the ordinary typo, and gets the one line it always did.
+    assert main([*ran, "PL-Q9Q9"]) == 1
+    assert capsys.readouterr().out == "no item matching 'PL-Q9Q9'\n"
 
 
 def test_show_says_a_lapsed_claim_on_an_open_item_holds_nothing(
@@ -5410,6 +5535,44 @@ def test_no_git_read_in_the_cli_takes_the_store_from_the_settings() -> None:
     )
 
 
+def test_the_ref_set_block_names_distinct_item_files(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Two refs editing one item file are two edits and one file, and the block says both.
+
+    The `ref set` block summed each ref's item files, so an item file edited
+    on ten refs counted ten, and it printed the sum as though it counted
+    files. On a clone of long-lived branches editing one store the sum ran
+    2.6x the files, and a rate divided by it over-predicted by as much
+    (`PL-3BYK`). So the sum is named for what it is, beside the distinct count.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    item = root / "items" / "PL-0001-on-main.md"
+    item.write_text(READY.replace("PL-B1B1", "PL-0001"), encoding="utf-8")
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    git("-c", "init.defaultBranch=main", "init", "-q")
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    for branch in ("first-edit", "second-edit"):
+        git("checkout", "-qb", branch, "main")
+        item.write_text(item.read_text(encoding="utf-8") + f"A note from {branch}.\n")
+        git("commit", "-qam", f"PL-0001: {branch}")
+    git("checkout", "-q", "main")
+
+    argv = ["--items", str(root / "items"), "--today", "2026-08-23", "digest", "--profile"]
+    assert main(argv) == 0
+
+    out = capsys.readouterr().out
+    assert "2 unmerged, carrying 2 commits and 2 item-file edits summed per ref" in out
+    assert "summed per ref, 1 distinct item file" in out
+
+
 def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
     """Every read `cli.py` asks of `vcs` is handed the one runner the command holds.
 
@@ -5865,6 +6028,30 @@ def test_next_without_oldest_still_ranks_new_work(
     assert "longest-waiting" not in plain and "The plan's own pick" not in plain
     assert "PL-F3F3" not in oldest.split("The plan's own pick")[0]
     assert "Left out as new work, classed feature or planning: 1 item(s)" in oldest
+
+
+@pytest.mark.parametrize("oldest", [(), ("--oldest",)], ids=["plan", "oldest"])
+@pytest.mark.parametrize("limit", ["0", "-2"])
+def test_next_refuses_a_limit_below_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], oldest: tuple[str, ...], limit: str
+) -> None:
+    """A limit that cannot be honoured is refused, never sliced into a false answer.
+
+    Zero said "Nothing is ready to start" over a queue holding work, and a
+    negative value sliced the ranking from its end (`PL-RMN8`).
+    """
+    store = str(_store(tmp_path, READY))
+
+    with pytest.raises(SystemExit) as stop:
+        _run("next", *oldest, "--limit", limit, "--items", store)
+
+    assert stop.value.code != 0
+    captured = capsys.readouterr()
+    assert f"argument --limit: must be 1 or more, got {limit}" in captured.err
+    assert "Nothing is ready to start" not in captured.out
+    assert "No owed work is ready to start" not in captured.out
+    assert _run("next", *oldest, "--limit", "1", "--items", store) == 0
+    assert "PL-B1B1" in capsys.readouterr().out
 
 
 def test_next_oldest_reads_what_counts_as_new_work_from_the_config(
@@ -6841,6 +7028,75 @@ def test_set_refuses_a_write_the_checker_would_fail_and_says_why(
     assert _run("set", "PL-D4D4", *fields, "--items", str(store)) == 1
     assert "safety-critical work starts at P0 or P1" in capsys.readouterr().out
     assert _item_text(store) == CAPTURED
+
+
+# The least a roadmap needs to record a current gate: a baseline row, and the
+# next milestone's frozen list, which names an id other than the capture's.
+GATE_ROADMAP = """# Plan
+
+## Versioning decision
+
+| Version | Status | Milestone |
+| --- | --- | --- |
+| v0.4.0 | Completed / current baseline | The teachable case |
+
+## The plan
+
+### The timeline
+
+| # | Step | Notes | Effort |
+| --- | --- | --- | --- |
+| 1 | **v0.5.0 — the case you can branch** | scoped below | - |
+
+## v0.5.0 - the case you can branch
+
+### Goal
+
+Make the comparison possible.
+
+### Debt gate: the frozen list
+
+- PL-B1B1 (S) On the list
+
+### Required scope
+
+Both branches.
+
+### Definition of done
+
+Both branches read.
+
+### Explicitly out of scope for v0.5.0
+
+Three branches.
+"""
+
+
+def test_set_refuses_a_debt_capture_with_no_gate_disposition(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A rule that needs the roadmap refuses the write too, as `check` would.
+
+    `set` validated without the milestones, so a capture classed as debt was
+    written at a triaged status and failed the next `check` for having no gate
+    disposition (`PL-BB5W`).
+    """
+    store = _store(tmp_path, CAPTURED)
+    (tmp_path / "ROADMAP.md").write_text(GATE_ROADMAP, encoding="utf-8")
+    fields = ("--status", "ready", "--priority", "P3", "--effort", "S", "--classes", "defect")
+
+    assert _run("set", "PL-D4D4", *fields, "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert "nothing was written" in out
+    assert "open debt (classed defect) that v0.5.0's gate neither places nor defers" in out
+    assert 'bin/docket set PL-D4D4 --deferred-from "v0.5.0 - <why>"' in out
+    assert _item_text(store) == CAPTURED
+
+    deferral = ("--deferred-from", "v0.5.0 - captured after the freeze")
+    assert _run("set", "PL-D4D4", *fields, *deferral, "--items", str(store)) == 0
+    assert "deferred-from: v0.5.0 - captured after the freeze" in _item_text(store)
+    assert _run("check", "--items", str(store)) == 0
 
 
 def test_set_holds_a_command_it_writes_to_the_admitted_shapes_whatever_the_item_s_age(
@@ -7910,6 +8166,25 @@ def test_generators_on_a_head_prints_its_misread(
     assert _run("generators", "PL-4040", "--items", str(store)) == 0
 
     assert f"\n  misread: {_MISREAD}\n" in capsys.readouterr().out
+
+
+def test_generators_given_an_id_and_misread_does_not_ignore_the_flag(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The pair printed the cluster view at exit 0, as though the flag were honoured.
+
+    Refused instead, naming both commands that answer (`PL-SL4L`).
+    """
+    store = _overlapping_heads(tmp_path)
+
+    assert _run("generators", "PL-4040", "--misread", "--items", str(store)) == 1
+
+    output = capsys.readouterr().out
+    assert "`--misread` lists every head and takes no id" in output
+    assert "`bin/docket generators --misread`" in output
+    assert "`bin/docket generators PL-4040`" in output
+    assert "root cause of" not in output
+    assert f"misread: {_MISREAD}" not in output
 
 
 def test_show_on_a_head_prints_its_misread_beside_the_verdict(
