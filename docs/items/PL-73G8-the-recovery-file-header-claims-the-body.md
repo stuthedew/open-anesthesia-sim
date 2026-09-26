@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: pr-body-integrity
+milestone: v0.5.12
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, docs/pr-bodies
 added: 2026-09-20
 closed: 2026-09-26

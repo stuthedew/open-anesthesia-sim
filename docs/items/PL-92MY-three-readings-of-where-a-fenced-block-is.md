@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/fences.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/tests/test_fences.py, subprojects/docket/tests/test_instructions.py, tools/doc_check.py, tools/possessive_section_check.py, tests/unit/test_doc_check.py, .claude/rules/citation-drift.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26

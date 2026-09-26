@@ -134,6 +134,7 @@ from .trend import analyze as analyze_trend
 from .vcs import (
     CURRENT,
     DEFAULT_BRANCHES,
+    FETCHED,
     UNASKED,
     BaseCopies,
     BaseCopy,
@@ -145,6 +146,7 @@ from .vcs import (
     FlightReport,
     GitRunner,
     OrphanedReport,
+    RemoteHeads,
     Runner,
     SinceFiled,
     Snapshot,
@@ -173,6 +175,7 @@ from .vcs import (
     records_on_base,
     ref_walk,
     released_on_base,
+    remote_heads,
     resolved,
     since_filed,
     snapshot,
@@ -463,13 +466,15 @@ def _holdings(args: argparse.Namespace) -> Holdings:
     if inv.holdings is not None:
         return inv.holdings
     # The refs are fetched and dated before a hold is read from them, so the
-    # holds and the refs line beneath them describe one moment.
-    _snapshot(args)
+    # holds and the refs line beneath them describe one moment - and the
+    # remote's branch list taken with that fetch keeps a tracking ref for a
+    # branch it deleted from holding anything (`PL-MT3R`).
+    heads = _snapshot(args).heads
     now = _now(args)
     found = (
         Holdings(now=now)
         if inv.git is None
-        else holdings(inv.root, now=now, items_dir=inv.tracked, runner=inv.git)
+        else holdings(inv.root, now=now, items_dir=inv.tracked, remote=heads, runner=inv.git)
     )
     inv.holdings = found
     return found
@@ -500,6 +505,12 @@ def _snapshot(args: argparse.Namespace, *, refresh: bool = True) -> Snapshot:
     to, and every later reader in the same invocation gets the same answer.
     Cached on the invocation for `_flight`'s reason: one process, one moment.
 
+    A fetch that answered is followed by one listing of the remote's branches
+    (`PL-MT3R`), which no fetch here can give: it never prunes, so a branch
+    the remote deleted keeps its tracking ref, and the listing is how a
+    reader tells the two apart. No fetch, no listing - under `--no-fetch`, a
+    fetch that failed, or `refresh=False`, the refs are read as they are.
+
     `refresh=False` is `check`'s: it validates the store, runs in CI's shallow
     checkout and in every `make check`, and its one ref read is the in-flight
     exclusion behind an advisory, so it reads the refs as they are and is the
@@ -517,7 +528,12 @@ def _snapshot(args: argparse.Namespace, *, refresh: bool = True) -> Snapshot:
         made = Snapshot(fetch=UNASKED)
     else:
         fetch = None if args.no_fetch or not refresh else fetch_remote(inv.root, runner=inv.git)
-        made = snapshot(inv.root, now=_now(args), fetch=fetch, runner=inv.git)
+        heads = (
+            remote_heads(inv.root, runner=inv.git)
+            if fetch is not None and fetch.outcome == FETCHED
+            else None
+        )
+        made = snapshot(inv.root, now=_now(args), fetch=fetch, heads=heads, runner=inv.git)
     inv.snapshot = made
     return made
 
@@ -660,7 +676,8 @@ def _say_snapshot(args: argparse.Namespace) -> None:
     Nothing where the command fetched and the remote answered: the fresh
     answer is the default and needs no caveat. Otherwise one line saying what
     the refs rest on - the last fetch and when, a fetch that failed, a clone
-    nothing has fetched since - so a stale answer never reads as a fresh one.
+    nothing has fetched since, a branch list the remote would not give
+    (`PL-MT3R`) - so a stale answer never reads as a fresh one.
     """
     if line := _refs_line(args):
         print(line)
@@ -1215,7 +1232,9 @@ def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight 
     reserved the number a bump would reach, the line says `No release to offer`
     and the walk still runs, which between milestones is the usual case
     (`PL-FT3M`). It does not fetch - the digest's hook already did, and this
-    must stay answerable in a checkout with no network.
+    must stay answerable in a checkout with no network. The remote's branch
+    list it reads deleted branches out by is the snapshot's (`PL-MT3R`),
+    which the command has taken before asking.
 
     A branch holding the release train with nothing cut yet is added beside the
     cuts (`_with_train`), so a session that has filed and claimed its release
@@ -1229,7 +1248,9 @@ def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight 
     if run is None:
         return None
     base = released_on_base(root, version_file=config.version_file, notes_dir=NOTES_DIR, runner=run)
-    cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=run)
+    cuts = cuts_in_flight(
+        root, notes_dir=NOTES_DIR, on_base=base.notes, remote=_snapshot(args).heads, runner=run
+    )
     if not _invocation(args).tracked:
         return cuts
     return _with_train(cuts, _release_train(_holdings(args), root, run))
@@ -1368,6 +1389,7 @@ def _train_refusal(args: argparse.Namespace) -> int:
             "items; nothing was written"
         )
         return claiming.USAGE
+    heads: RemoteHeads | None = None
     if not args.no_fetch:
         fetched = claiming._git(["fetch", "--quiet", claiming.REMOTE], inv.root)
         if fetched.code != 0:
@@ -1379,7 +1401,10 @@ def _train_refusal(args: argparse.Namespace) -> int:
                 print(line)
             print("  Refresh the refs yourself and pass `--no-fetch`, or try again.")
             return claiming.REFUSED
-    read = holdings(inv.root, now=_now(args), items_dir=inv.tracked, runner=inv.git)
+        # With the fetch, as a read command's snapshot takes it, so a train
+        # claim on a branch the remote has deleted holds nothing (`PL-MT3R`).
+        heads = remote_heads(inv.root, runner=inv.git)
+    read = holdings(inv.root, now=_now(args), items_dir=inv.tracked, remote=heads, runner=inv.git)
     if not read.known:
         print(
             f"new: declined to read who holds the release train - {read.declined}; "
@@ -3352,7 +3377,9 @@ def _rival_cuts(
     is what a git that did not answer produces - so proceeding on one is the
     v0.3.7 collision arriving through the guard built to stop it.
     """
-    cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=git)
+    cuts = cuts_in_flight(
+        root, notes_dir=NOTES_DIR, on_base=base.notes, remote=_snapshot(args).heads, runner=git
+    )
     # The invocation's shared read, first asked here - after the caller's
     # fetch, so it is not a view older than the refs just fetched (`PL-1WV7`).
     # `_holdings` passes an empty prefix straight through, so the decline for a

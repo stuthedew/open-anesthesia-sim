@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: rendered-claim-accuracy
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 closed: 2026-09-26
