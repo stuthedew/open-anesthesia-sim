@@ -61,7 +61,16 @@ from .release import (
     release_offer,
 )
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, GateStatus, Scope, Wave
-from .trend import APPARATUS, BY_DAY, EFFORT_POINTS, LANES, PRODUCT_BUCKETS, QUEUE, Trend
+from .trend import (
+    APPARATUS,
+    BY_DAY,
+    CHURN_NOT_ASKED,
+    EFFORT_POINTS,
+    LANES,
+    PRODUCT_BUCKETS,
+    QUEUE,
+    Trend,
+)
 from .vcs import (
     CURRENT,
     LANDED,
@@ -1803,7 +1812,7 @@ def format_notes_threads(threads: Sequence[Thread], identifier: str, notes_path:
     return "\n".join(lines)
 
 
-def format_queue_edit(edit: QueueEdit, now: datetime, *, startable: bool) -> str:
+def format_queue_edit(edits: Sequence[QueueEdit], now: datetime, *, startable: bool) -> str:
     """That an item's file has already been edited, which is not that it is in flight.
 
     **The line exists to be different from `IN FLIGHT`, so it does not open
@@ -1827,15 +1836,24 @@ def format_queue_edit(edit: QueueEdit, now: datetime, *, startable: bool) -> str
     (`done`) and `PL-MB2W` (`blocked`) startable alike. Where the status does
     not allow a start, the line says nothing about starting at all: the
     collision is still true, and it is the only thing this line knows.
+
+    **One line per branch, and `edits` never holds the reader's own**
+    (`PL-1X2C`). Every other branch that wrote to the file is one a second edit
+    collides with, so naming only the first left out whichever came later; and
+    `cli._elsewhere` leaves the checked-out branch out before this is called.
     """
-    edited = f"  Its file is already edited on {edit.name} ({_since(edit.last_commit, now)}).\n"
+    edited = "".join(
+        f"  Its file is already edited on {edit.name} ({_since(edit.last_commit, now)}).\n"
+        for edit in edits
+    )
     if not startable:
         return (
             f"{edited}  Not work in flight - but a second edit to the same file collides\n"
             "  at merge, so land the smaller change first."
         )
+    item_id = edits[0].item_id
     return (
-        f"{edited}  Not work in flight - {edit.item_id} is startable - but a second edit to the\n"
+        f"{edited}  Not work in flight - {item_id} is startable - but a second edit to the\n"
         "  same file collides at merge, so land the smaller change first."
     )
 
@@ -2370,14 +2388,16 @@ def format_triage(
     # The weaker mark, for the case the stronger one cannot reach at all: a
     # triage pass records no claim, so two passes on one item are invisible to
     # each other however carefully each fetches (`PL-N1JK`).
-    editing = {edit.item_id: edit.name for edit in flight.editing}
+    editing: dict[str, list[str]] = {}
+    for edit in flight.editing:
+        editing.setdefault(edit.item_id, []).append(edit.name)
     lines = [f"{_plural(len(report.untriaged), 'item is', 'items are')} untriaged.", ""]
     for item in sorted(report.untriaged, key=lambda i: i.sort_key()):
         lines.append(f"{item.identifier}  {item.title}")
         if held_by := carrying.get(item.identifier):
             lines.append(f"  IN FLIGHT on {held_by} - triaging it here as well collides at merge.")
         elif edited_on := editing.get(item.identifier):
-            lines.append(f"  Its file is already edited on {edited_on}.")
+            lines.extend(f"  Its file is already edited on {name}." for name in edited_on)
             lines.append(
                 "  A capture or another triage pass, not work in flight - but a second answer"
             )
@@ -3243,7 +3263,7 @@ def format_trend(report: Trend) -> str:
     docstring carries which. A single number here would be the tool guessing at
     the judgment half, which is the one thing it must not do.
     """
-    if not report.periods:
+    if not report.periods or report.anchor is None:
         return "Nothing closed and no history to read: there is no trend yet."
 
     churn_width = _CHURN + _PCT if report.has_churn else 0
@@ -3272,10 +3292,30 @@ def format_trend(report: Trend) -> str:
 
     window = "day" if report.by == BY_DAY else "7-day period"
     ladder = ", ".join(f"{size}={points}" for size, points in EFFORT_POINTS.items())
+    anchored = f"One row per {window}, anchored at {report.anchor.isoformat()}"
+    if report.has_churn:
+        opening = [
+            f"{anchored}, the first day that changed a line",
+            "or closed an item. Three measures, because no one of them is honest alone:",
+        ]
+    elif report.by == BY_DAY:
+        # A day is a day whatever it is counted from, so a daily run owes no
+        # caveat for starting somewhere else.
+        opening = [
+            f"{anchored}, the first closure. Three measures,",
+            "because no one of them is honest alone:",
+        ]
+    else:
+        # Without git the first commit is unknown, so the windows start later
+        # and the same closures land in different periods (`PL-F5NV`).
+        opening = [
+            f"{anchored}, the first closure. A run that",
+            "reads git anchors at the first commit to change a line instead, so its periods",
+            "can start on other days. Three measures, because no one of them is honest alone:",
+        ]
     lines += [
         "",
-        f"One row per {window}, anchored at the first day of the history. Three measures,",
-        "because no one of them is honest alone:",
+        *opening,
         "  wf/prod  items closed, by the lane their `touches` place them in.",
         "  +x       crossing: reaches both halves, so neither lane offers it.",
         "  +u       unplaced: declares no `touches`, so nothing can place it.",
@@ -3291,6 +3331,8 @@ def format_trend(report: Trend) -> str:
             f"           while doing something else would count as {APPARATUS} work.",
             f"           Product churn is {', '.join(PRODUCT_BUCKETS)} together.",
         ]
+    elif report.churn_reading == CHURN_NOT_ASKED:
+        lines.append("  churn    not shown: not asked for, so this run read nothing from git.")
     else:
         lines.append("  churn    not shown: git could not be read in this checkout.")
 

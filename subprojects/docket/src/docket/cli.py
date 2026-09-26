@@ -453,6 +453,20 @@ def _holdings(args: argparse.Namespace) -> Holdings:
     return found
 
 
+def _elsewhere(args: argparse.Namespace, flight: FlightReport) -> FlightReport:
+    """`flight` with the reader's own branch left out of `editing` (`PL-1X2C`).
+
+    `FlightReport.editing` measures every ref that wrote an item's file, the
+    checked-out one included. A command answering the reader has no news in its
+    own branch, and naming it reads as somebody else being there, so `show` and
+    `triage` ask this instead. `Holdings.head` names that branch the way
+    `QueueEdit.name` does, from the read `_flight` made; where `HEAD` is
+    detached it is empty and nothing is left out.
+    """
+    head = _holdings(args).head
+    return with_fields(flight, editing=tuple(e for e in flight.editing if e.name != head))
+
+
 def _say_unread(flight: FlightReport) -> None:
     """Print the partial-answer line, for the commands that render their own output.
 
@@ -1031,7 +1045,8 @@ def cmd_triage(args: argparse.Namespace) -> int:
     """
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
-    print(render.format_triage(report, config, _flight(args), _filed(args, report.untriaged)))
+    flight = _elsewhere(args, _flight(args))
+    print(render.format_triage(report, config, flight, _filed(args, report.untriaged)))
     return 0
 
 
@@ -1954,8 +1969,8 @@ def cmd_show(args: argparse.Namespace) -> int:
     # are what `FlightReport` has no room for. Empty under `--no-git`.
     if held := render.format_holds(_holdings(args), item.identifier, _now(args)):
         print(held)
-    edit = next((e for e in flight.editing if e.item_id == item.identifier), None)
-    if edit is not None and item.identifier not in flight.ids:
+    edits = tuple(e for e in _elsewhere(args, flight).editing if e.item_id == item.identifier)
+    if edits and item.identifier not in flight.ids:
         # The weaker mark, and only where no hold is live: a lapsed claim above
         # holds nothing, so it does not silence this. A session that names an
         # item reaches `show` and nothing else, so before this the one thing it
@@ -1965,7 +1980,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         # flight, which the condition above already holds - so a closed or
         # blocked item is not invited to start (`PL-9F8B`).
         startable = item.is_open and not item.is_untriaged and item.status != "blocked"
-        print(render.format_queue_edit(edit, _now(args), startable=startable))
+        print(render.format_queue_edit(edits, _now(args), startable=startable))
     if threads := _notes_threads(root, config, item.identifier):
         print(render.format_notes_threads(threads, item.identifier, config.notes_file))
     # Last before the brief, because the line it ends on past the threshold
