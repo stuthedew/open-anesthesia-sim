@@ -208,10 +208,13 @@ the measurements.
 
 - In the Mac's browser, the commit message box should hold the pull request's
   description before you confirm.
-- Auto-merge is safe when nothing sets its message: all 49 auto-merges armed
-  that way kept their body. The nine that lost theirs carried an explicitly
-  empty message, six of them armed in the away-from-desk hours when the app is
-  in use.
+- Auto-merge is the safer route when nothing sets its message: all 49
+  auto-merges armed that way by 2026-09-22 kept their body. The nine that lost
+  theirs carried an explicitly empty message, six of them armed in the
+  away-from-desk hours when the app is in use. It is not a guarantee: `#1044`,
+  armed by a session with nothing set, landed with an empty body on 2026-09-25,
+  and `#1015` did too that day by a merge path nobody established. Both bodies
+  are recovered under `docs/pr-bodies/` (`PL-HZ0M`).
 - If the app is the only option, check the message behind its cog icon first.
 - `python3 tools/pr_body_check.py` still reports a body that reached neither
   `main` nor `docs/pr-bodies/`, which since `PL-979D` can only be a merge from

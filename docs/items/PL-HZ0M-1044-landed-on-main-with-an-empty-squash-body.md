@@ -3,13 +3,14 @@ id: PL-HZ0M
 title: #1044 landed on main with an empty squash body (6d2f0531) although a session armed its auto-merge, the path PL-WFFX's spent verdict credits with losing none since #918, and PL-WFFX says a new empty body reopens it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: pr-body-integrity
-touches: docs/pr-bodies/1015.md, docs/pr-bodies/1044.md, docs/items/PL-WFFX-name-the-merge-client-that-sends-an-empty.md, docs/items/PL-979D-the-squash-commit-on-main-is-composed-by.md
+touches: docs/pr-bodies/1015.md, docs/pr-bodies/1044.md, docs/items/PL-WFFX-name-the-merge-client-that-sends-an-empty.md, docs/items/PL-979D-the-squash-commit-on-main-is-composed-by.md, docs/maintainer.md
 blocked-by: PL-979D
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass
 added: 2026-09-26
+closed: 2026-09-26
 payoff: the two lost pull-request bodies are in the checkout, and PL-WFFX's record stops telling a session that a session-armed auto-merge never loses a body
 verify: grep -qF 'commit: 6d2f0531' docs/pr-bodies/1044.md && grep -qF 'commit: fdc76b16' docs/pr-bodies/1015.md && grep -qF '#1044' docs/items/PL-WFFX-*.md
 ---
@@ -62,3 +63,17 @@ them. It was filed 2026-09-26, after that head closed on 2026-09-22, and it is
 the case that head's own `generator:` line says reopens it. `PL-979D` states the
 same fact and is live, so this joins `PL-979D` instead of reopening `PL-WFFX` as
 a second live head for one fact.
+
+**Built 2026-09-26.** `python3 tools/pr_body_check.py --recover` wrote
+`docs/pr-bodies/1015.md` and `docs/pr-bodies/1044.md` under the header
+`PL-979D`'s build writes (`recovered:`, `commit:`, `merged:`, `items:`,
+`subject:`, `squash: empty`), each fetched from GitHub that day. `PL-WFFX`'s
+`generator:` now names #1015 and #1044, says no merge path is known never to
+lose a body, and hands the fact to `PL-979D`, spent since #1068 records every
+body in the tree before its merge. It stays `spent` rather than reopening,
+since a second live head for one fact is what the generator check above
+refused. `PL-979D`'s `root-cause-of:` already carried this item, so that file
+is unchanged. The docs sweep found the same claim in `docs/maintainer.md`
+("Auto-merge is safe when nothing sets its message: all 49 auto-merges armed
+that way kept their body"), and that bullet now dates the 49 and names the two
+exceptions. Which step emptied #1044's body stays out of scope.

@@ -14,7 +14,7 @@ pr: 921
 payoff: turns a 27% silent loss of design reasoning from something detected after the fact into something that stops happening, by naming the one variable only the owner can see
 verify: grep -q 'PL-WFFX' docs/maintainer.md
 root-cause-of: PL-843V, PL-M7W1, PL-G7ST, PL-BXNH, PL-F8Q7
-generator: spent - the empty commit_message came from the GitHub iPhone app, which the owner stopped merging in on 2026-09-22 (docs/maintainer.md), and sessions arm auto-merge with a tool that sends no title or message, so none of the 47 squash merges since #918 lost its body; a new empty body reopens it
+generator: spent - the empty commit_message it named came from the GitHub iPhone app, which the owner stopped merging in on 2026-09-22 (docs/maintainer.md), but #1015 (fdc76b16, merge path not established) and #1044 (6d2f0531, auto-merge armed by a session, body edited after arming) have since landed with empty squash bodies, so no merge path is known never to lose one; the fact is PL-979D's, spent because each body is recorded in the tree before its merge (#1068), and PL-HZ0M recovered those two
 misread: The squash commit's subject and body as the merge sends them, not as the pull request shows them
 ---
 
