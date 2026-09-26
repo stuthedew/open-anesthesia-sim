@@ -3,11 +3,12 @@ id: PL-PRSF
 title: Release notes copy an item's title verbatim, so an angle-bracket placeholder in it renders on GitHub as an HTML tag and vanishes: six bullets across six notes files, v0.2.10 to v0.5.9
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-24
+closed: 2026-09-26
 payoff: release notes and item pages keep the command shapes their titles give, instead of printing a wrong command
 verify: grep -q 'def test_an_angle_bracket_placeholder_in_a_title_survives_the_rendered_notes' subprojects/docket/tests/test_release.py && grep -q 'def test_a_captures_problem_line_keeps_an_angle_bracket_placeholder' subprojects/docket/tests/test_cli.py
 ---
@@ -64,3 +65,24 @@ angle-bracket tag outside a code span. `PL-TDBT` misreads it for
 pull request body gets rewritten when it is written. `PL-DMNX` found `<id>`
 intact inside a code span in `#779`, so that is a different mechanism. That
 leaves two items and no head. A third instance at render time would make one.
+
+**Worked.** 2026-09-26, on `claude/pl-batch-07-nxa7vx`. The escape is a
+backslash before every `<` outside a code span, written by a new
+`release.markdown_title` with two module regexes, `CODE_SPAN_RE` and
+`UNESCAPED_LT_RE`, and imported by `cli.py` for the capture's Problem line.
+Chosen over `&lt;`, which renders the same and reads worse in a raw item file,
+and over wrapping the placeholder in backticks, which would need to find where
+a command shape begins and ends. Only `<` is escaped: it opens every tag,
+comment and autolink, and escaping `>` too would turn each `->` in a title into
+`-\>`. A `<` a backslash already escapes is left alone, since escaping it again
+prints the backslash and brings the tag back. The front matter keeps the title
+as typed, and nothing reads a title back out of a bullet or a Problem line,
+since `NOTES_ENTRY_RE` and `REFERENCED_RE` match the leader and the tail. The
+brief counted twelve titles; `origin/main` holds fifteen on 2026-09-26, and
+`PL-SL16`'s `<noreply@anthropic.com>` is one, which GitHub reads as an autolink
+and prints without its brackets. The six notes files already shipped are left
+as the brief says. Tests: the two the verify names, plus
+`test_a_title_escaped_by_hand_or_holding_no_placeholder_is_left_as_it_stands`
+for a hand escape, an arrow, an unclosed backtick and a double-backtick span.
+Both named tests fail with the two call sites reverted, checked on a scratch
+edit.
