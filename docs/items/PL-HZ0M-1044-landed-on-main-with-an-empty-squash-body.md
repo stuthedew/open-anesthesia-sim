@@ -16,4 +16,6 @@ added: 2026-09-26
 - `checks` went green at 01:50:53Z and the squash commit is stamped 01:51:21Z, 28 seconds later, which reads as auto-merge firing rather than a merge by hand. Owner-local time was 20:51 (-0500).
 - `tools/pr_body_check.py` now reports two lost bodies, #1015 and #1044, and neither has a `docs/pr-bodies/` file yet; `--recover` writes them.
 
+**A control, 2026-09-26 02:06 UTC.** #1050, this item's own capture, was armed the same way (`enable_pr_auto_merge`, SQUASH, no title or message) by the same session, called once, with its body left as created and one `update_pull_request_branch` merge. It landed as `ebfdefd3` with its body. So the arming tool alone does not empty a body; what #1044 had that #1050 did not is the body edit after arming, the second `enable_pr_auto_merge` call, and a second server-side branch update. One pair does not say which.
+
 `PL-979D`, the live generator whose title says the squash commit is composed by whichever merge path lands it, is where this lands as an instance.
