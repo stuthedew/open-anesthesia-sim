@@ -47,3 +47,34 @@ until the owner answers. `PL-MT3R` is at `needs-decision`, so waiting holds the
 pushes to, and cutting while claim and arm are being rewritten is the riskier
 order. What waiting would buy is a v0.5.12 with no generator head live; 0.5.13
 can carry that instead.
+
+**Answered: cut now** (project owner, 2026-09-26, ratified, over waiting for
+`PL-MT3R`'s build and its two members), on the thread's decision card.
+
+**How the next version number is chosen.** The owner asked the same day for
+versions to be suggested as fixes land, and the trial's coordinator posts
+them, so the rule each suggestion follows is written here. It restates
+`ROADMAP.md` § "Versioning decision", which stays the authority, and
+`docket.toml`'s `version_policy = "manual"`; it adds nothing to either.
+
+- **Minor, 0.N.0**, only for the release that completes the milestone §
+  "The timeline" gives that number, its `Required scope` closed. Every minor
+  from v0.6.0 up is already given to one, and the next is v0.6.0, "the layout
+  is the reader's". v0.3.0 is the one exception and is recorded as no
+  precedent.
+- **Patch, 0.5.N to 0.5.N+1, for everything else**: fixes, workflow tooling,
+  documentation, hardening on the same model. It stays a patch when a learner
+  can reach something new, because that minor is spent on its milestone:
+  v0.4.35 shipped `PL-CTD7`, one entry of v0.5.0, as a patch, since naming
+  the milestone for a release holding one item of it is the worse error. A
+  milestone the timeline itself numbers as a patch (v0.2.8, v0.4.26) ships
+  under that number.
+- **Major: never suggested.** `ROADMAP.md` names no v1.0.0.
+- **Not the dry run's guess.** `bin/docket release --dry-run` bumps the minor
+  for any `feature`-classed item (`minor_classes`); that is a reference point,
+  and the rule above names the number.
+- **When it is worth raising** is the digest's `Releasable:` line:
+  `Readiness.is_worth_cutting` in `subprojects/docket/src/docket/release.py`
+  raises it once a feature completes or three finished items are unreleased.
+  A cut is refused while the previous release is untagged, so 0.5.13 is
+  suggested only once v0.5.12's tag is on origin.
