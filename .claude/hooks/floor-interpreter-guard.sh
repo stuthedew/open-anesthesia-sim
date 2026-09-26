@@ -85,9 +85,6 @@ cut = shell_split.segments(command)
 if cut is None:
     sys.exit(0)
 
-ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
-# A subshell, a brace group or a negation opens the command it precedes.
-GROUPING = ("(", "{", "!")
 # Bare, and bare is the whole point: a name with no slash in it is the one
 # resolved through PATH, where this container answers 3.11.
 INTERPRETER = re.compile(r"^python(?:3(?:\.\d+)?)?$")
@@ -105,11 +102,8 @@ WHOLE_TREE = ("compileall", "py_compile")
 
 offender = None
 for segment, _ in cut:
-    rest = list(segment)
-    while rest and rest[0] in GROUPING:
-        rest.pop(0)
-    while rest and ASSIGNMENT.match(rest[0]):
-        rest.pop(0)
+    # A subshell, a brace group, a negation or an assignment opens the command.
+    rest = shell_split.command_words(segment)
     if not rest or not INTERPRETER.match(rest[0]):
         continue
     arguments = rest[1:]
