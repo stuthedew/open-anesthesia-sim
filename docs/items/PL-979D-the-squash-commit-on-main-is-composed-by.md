@@ -3,7 +3,7 @@ id: PL-979D
 title: The squash commit on main is composed by whichever merge path lands it and nothing records the pull request's body at the merge, so each new way a path rewrites it - emptied, replaced, hard-wrapped, a subject frozen at arming - arrives as its own item: PL-WFFX's fact, reopened by three instances filed after it closed
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: defect
 feature: pr-body-integrity
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py
@@ -11,6 +11,7 @@ blocked-by: PL-HMZZ
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 payoff: the reasoning behind each merged change survives however it was merged, and a new merge path's rewrite stops producing an item
+verify: grep -q -- '--record' tools/pr_body_check.py
 root-cause-of: PL-Y1W0, PL-BZHX, PL-PNJF, PL-M7W1
 generator: live - the merge paths still compose the squash body their own way (a hard-wrapping path landed 9 of 10 table bodies broken since 2026-09-22) and nothing records the pull request's body, so each new rewrite arrives as its own item
 misread: The squash commit's subject and body as the merge sends them, not as the pull request shows them
@@ -26,7 +27,8 @@ Found 2026-09-25 by the triage pass, from the post-close test in `.claude/skills
 
 **Recommendation:** the copy recorded before the merge, built with `PL-HMZZ`, whose design round (#1011) already chose to record the carrying pull request before the merge, enforced by the pull request's own check. The body can ride the same record. That ends the whole family instead of chasing each merge path, and it turns `PL-BZHX` and `PL-PNJF` into recovery work against the record. It is the owner's call because it changes where the project's permanent history lives.
 
-**Answered 2026-09-25** (project owner, 2026-09-25, ratified, over pinning every merge path to one that sends the body verbatim): a copy recorded in the tree before the merge, built with `PL-HMZZ`. Blocked by `PL-HMZZ` until its design is answered and built.
+**Answered 2026-09-25** (project owner, 2026-09-25, ratified, over pinning every merge path to one that sends the body verbatim): a copy recorded in the tree before the merge, built with `PL-HMZZ`. `PL-HMZZ`'s build (#1056, 2026-09-26) is the writer and
+check this rides.
 
 **What the answer leaves to decide: the form of the copy, and who writes and
 checks it.** `PL-HMZZ`'s record is one number on each closure, written by the
@@ -168,7 +170,8 @@ pull request is open, held by a step in `pr-title.yml`'s required job, with
 the squash body on `main` a derived copy; forward only, the backfill left as
 its own decision. The members take the dispositions written above. The
 build's touches are named under "What it costs" and are declared when it
-starts. Still blocked by `PL-HMZZ`'s build, whose writer and check this rides.
+starts. `PL-HMZZ`'s build landed in #1056 on 2026-09-26, and its writer and
+check are what this rides; nothing holds this item now.
 
 **Done when.** One of the two is recorded here as the answer, and each open member is re-scoped or closed against it.
 

@@ -3,11 +3,14 @@ id: PL-LPWK
 title: A release note cites the pull request that closed an item, not the one that carried its code, whenever the two differ
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, docs
 feature: commit-provenance
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/README.md, subprojects/docket/tests/test_release.py
 added: 2026-09-06
+closed: 2026-09-26
+pr: 1056
+verify: grep -q 'names the pull request whose merge closed the item' subprojects/docket/README.md
 ---
 
 **Problem.** `release_notes()` in `subprojects/docket/src/docket/release.py`
@@ -88,3 +91,8 @@ drifts, and the same-commit rule and review carry that shape today.
 **Decided 2026-09-25: the second option, with the field's meaning stated**
 (project owner, 2026-09-25, ratified, with `PL-HMZZ`, over recording a second
 field and over preferring the oldest subject).
+
+**Closed 2026-09-26 in #1056**, as decided: `subprojects/docket/README.md`
+§ "Provenance survives the merge strategy" states that `pr` names the pull
+request whose merge closed the item, with the split-closure case and
+`PL-HB58`'s bullet recorded beside it, and `release.py` is untouched.

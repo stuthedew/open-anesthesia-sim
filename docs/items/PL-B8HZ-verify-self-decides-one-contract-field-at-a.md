@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
 closed: 2026-09-25
+pr: 1017
 payoff: One stated rule for which copy each contract field is read from, so a new field stops costing an item per wrong direction
 verify: grep -q 'def test_a_widened_touches_is_measured_against_the_commission_and_named' subprojects/docket/tests/test_verify.py
 root-cause-of: PL-KSV2, PL-PZ6T, PL-TKFD, PL-ZMGR, PL-K4R5, PL-YZJD

@@ -1,23 +1,26 @@
 """Refuse a pull request whose title does not lead with the ids it closes.
 
 A squash merge takes its subject from the pull request title, and that subject
-is what reaches the default branch. `docket check` reads it to recover which
-pull request closed an item, and `docket flight` reads it to know what is in
-flight, so a title that names no id is not a style lapse - it destroys
-provenance that cannot be reconstructed from anywhere else.
+is what reaches the default branch: the one line of `main`'s history that says
+which items a change was about, read by `git log --oneline`, by `docket trend`
+and by `filed_with_work`, and the line `CLAUDE.md` asks every commit subject to
+open with. A title naming no id lands a subject that says nothing, and a
+subject cannot be edited once it has landed.
 
-`#220` is the case that produced this check. It was created from the Claude
-Code UI, whose generated title named none of the three items it closed. The
-squash landed that title verbatim, `docket check` had nothing to recover from,
-and `main` went red with three errors that blocked the v0.3.0 release until the
-numbers were read off the GitHub UI by hand (`PL-2XTF`).
-
-`PL-2XTF`'s other half made the recovery robust, by falling back to the item's
-own file history. This is the half that stops the damage instead of repairing
-it: the title is checked while it can still be edited, which is the only moment
-anyone can fix it. Both are wanted. Recovery alone leaves the wrong subject on
-`main` forever; this check alone leaks whenever a merger retypes the subject in
-the squash dialog, which GitHub allows and this cannot see.
+It is not what provenance rests on, since `PL-HMZZ`. Which pull request closed
+an item is recorded on the item before the merge, by `bin/docket record N` on
+the closing branch, and `pr_record_check.py` beside this script refuses the
+pull request until every closure carries its number; nothing reads a subject
+to recover a number any more. This check once carried that weight - `#220`
+closed three items under a UI-generated title naming none of them, the squash
+landed it verbatim, and `main` went red until the numbers were read off the
+GitHub UI by hand (`PL-2XTF`) - and its docstring went on promising provenance
+protection after two things had quietly limited it: a merger retyping the
+subject in the squash dialog, which GitHub allows and this cannot see, and
+auto-merge freezing the subject at the moment it is armed, so a rename made to
+satisfy this very check never landed (`PL-M7W1`, on `#868`). Both now cost a
+`git log` reader a stale line and nothing else, which is the claim this
+docstring is kept to.
 
 Deliberately not checked: whether the title says anything *else* useful, and
 whether ids appear that the branch does not close. A pull request may lead with
@@ -69,7 +72,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.model import CLOSED_STATUSES, parse_item  # noqa: E402
+from docket.model import CLOSED_STATUSES, Item, parse_item  # noqa: E402
 from docket.vcs import ITEM_FILE_RE, leading_ids  # noqa: E402
 
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
@@ -106,9 +109,13 @@ def _git(args: list[str]) -> str:
     return result.stdout
 
 
-def _closed_ids_at(ref: str) -> dict[str, str]:
-    """Every item closed in that tree, as id to file name, or `GitUnanswered`."""
-    closed: dict[str, str] = {}
+def closed_items_at(ref: str) -> dict[str, Item]:
+    """Every item closed in that tree, by id, or `GitUnanswered`.
+
+    `pr_record_check.py` reads it too, for what each closure records, so the
+    two checks cannot disagree about what a tree holds closed.
+    """
+    closed: dict[str, Item] = {}
     listing = _git(["ls-tree", "-r", "--name-only", ref, "--", ITEMS_DIR])
     for path in listing.splitlines():
         name = path.strip().split("/")[-1]
@@ -117,7 +124,7 @@ def _closed_ids_at(ref: str) -> dict[str, str]:
         text = _git(["show", f"{ref}:{path.strip()}"])
         item = parse_item(text, name)
         if item.status in CLOSED_STATUSES and item.identifier:
-            closed[item.identifier] = name
+            closed[item.identifier] = item
     return closed
 
 
@@ -132,7 +139,7 @@ def closes(base: str, head: str) -> list[str]:
     It also means neither end may be missing: raises `GitUnanswered` where git
     cannot read either tree, rather than comparing against nothing.
     """
-    return sorted(set(_closed_ids_at(head)) - set(_closed_ids_at(base)))
+    return sorted(set(closed_items_at(head)) - set(closed_items_at(base)))
 
 
 def _branch() -> str | None:
@@ -228,8 +235,8 @@ def main() -> int:
         f"pr-title: this branch closes {', '.join(closing)}, but {which} does not "
         f"lead with {', '.join(missing)}.\n"
         f"  title: {title}\n"
-        f"  The squash-merge subject is taken from this title, and it is what "
-        f"`docket check` reads to recover which pull request closed an item.\n"
+        f"  The squash-merge subject is taken from this title, and it is the one line "
+        f"of `main`'s history that says which items this change was about.\n"
         f"  Rename the pull request to lead with the ids, comma-separated:\n"
         f"    {', '.join(closing)}: <what it does>",
         file=sys.stderr,

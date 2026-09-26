@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docke
 deferred-from: v0.6.0 - filed 2026-09-25 by PL-P0FP's stress test, after the freeze, and not safety or science; a defect in the claim writer, which merged after the freeze
 added: 2026-09-25
 closed: 2026-09-25
+pr: 1026
 payoff: a session reads from claim's exit status alone whether every other session can see its claim, so a claim that still owes a push is never reported as held
 verify: grep -q 'def test_a_claim_left_unpushed_on_a_branch_the_remote_has_exits_4' subprojects/docket/tests/test_claiming.py
 recurrences: 2026-09-25 PL-NNLM

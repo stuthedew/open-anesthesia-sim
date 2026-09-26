@@ -9,6 +9,7 @@ feature: rendered-claim-accuracy
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 closed: 2026-09-26
+pr: 1036
 verify: grep -q 'def test_stranded_states_both_halves_of_its_predicate' subprojects/docket/tests/test_cli.py
 recurrences: 2026-09-25 PL-LFNK, 2026-09-26 PL-PV6H
 ---

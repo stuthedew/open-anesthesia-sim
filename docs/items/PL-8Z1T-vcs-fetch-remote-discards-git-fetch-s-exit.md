@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-snapshot batch
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1054
 payoff: a session whose fetch failed is told its branch was read from the last fetch instead of 'current with origin/main', before it builds on a base that moved or a release guard reads stale refs
 verify: grep -q 'def test_branch_after_a_failed_fetch_says_it_read_the_last_fetch' subprojects/docket/tests/test_cli.py
 ---

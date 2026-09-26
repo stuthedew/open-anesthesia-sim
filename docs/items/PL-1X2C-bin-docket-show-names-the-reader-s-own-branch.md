@@ -9,6 +9,7 @@ feature: carrier-detection
 touches: subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
 closed: 2026-09-26
+pr: 1046
 payoff: the one guard that fires when the owner names an item points at the branch that will collide instead of at the reader's own
 verify: grep -q 'def test_the_carrier_line_names_the_other_branch_not_the_readers_own' subprojects/docket/tests/test_cli.py
 ---

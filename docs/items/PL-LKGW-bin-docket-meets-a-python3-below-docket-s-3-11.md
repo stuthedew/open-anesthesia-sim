@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/__main__.py, subprojects/docket/tests/test_portability.py
 added: 2026-09-14
 closed: 2026-09-26
+pr: 1052
 verify: grep -q 'def test_an_interpreter_below_the_floor_names_the_floor_and_itself' subprojects/docket/tests/test_portability.py && uv run pytest subprojects/docket/tests/test_portability.py
 recurrences: 2026-09-26 PL-QHCP
 ---

@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-24
 closed: 2026-09-26
+pr: 1037
 payoff: bin/docket generators stops accepting a flag it then ignores, so its output means what was asked for
 verify: grep -q 'def test_generators_given_an_id_and_misread_does_not_ignore_the_flag' subprojects/docket/tests/test_cli.py
 ---

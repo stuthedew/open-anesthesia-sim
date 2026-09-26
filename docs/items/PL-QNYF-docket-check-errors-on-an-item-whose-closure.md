@@ -3,12 +3,14 @@ id: PL-QNYF
 title: docket check errors on an item whose closure landed in a queue-only commit, and the error names no remedy the session can reach
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-13
-verify: grep -q 'def test_a_declined_recovery_names_the_explicit_record_form' subprojects/docket/tests/test_checks.py && uv run pytest subprojects/docket/tests/test_checks.py
+closed: 2026-09-26
+pr: 1056
+verify: grep -q 'def test_a_landed_closure_without_a_number_names_the_explicit_record_form' subprojects/docket/tests/test_checks.py
 recurrences: 2026-09-21 PL-N0MH withdrawn 2026-09-21 PL-N0MH
 ---
 
@@ -61,3 +63,8 @@ commit>` named as the way to supply the number - rather than being told its
 provenance is lost. The error for a closure no commit names a number for is
 unchanged, and `subprojects/docket/tests/test_checks.py` carries a test for each of
 the two.
+
+**Closed 2026-09-26 in #1056**, by `PL-HMZZ`'s rewrite of `_check_closures`:
+the one error left about `pr` names `docket record N --merge SHA`, with what
+goes in each place and which branch the merge commit is on. Nothing reads
+history now, so the bare form that could not supply the number is gone.

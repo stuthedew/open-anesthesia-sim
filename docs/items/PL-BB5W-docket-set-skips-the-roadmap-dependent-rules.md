@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1037
 payoff: a triage pass learns the gate rule from the write that breaks it rather than from a later docket check, so set's promise to refuse what check would fail holds for every rule
 verify: grep -q 'def test_set_refuses_a_debt_capture_with_no_gate_disposition' subprojects/docket/tests/test_cli.py
 ---

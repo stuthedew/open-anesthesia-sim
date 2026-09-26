@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/
 deferred-from: v0.6.0 - filed after the freeze by the 2026-09-24 triage pass, and not safety or science
 added: 2026-09-24
 closed: 2026-09-26
+pr: 1036
 payoff: docket show stops inviting work on an item that is closed or blocked
 verify: grep -q 'def test_show_calls_an_edited_item_startable_only_when_its_status_allows' subprojects/docket/tests/test_cli.py
 recurrences: 2026-09-24 PL-TS8G

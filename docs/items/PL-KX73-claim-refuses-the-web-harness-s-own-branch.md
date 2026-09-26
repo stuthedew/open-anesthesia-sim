@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/tes
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) by PL-P0FP's stress test (2026-09-25), and not safety or science; a defect in PL-0TD9's claim writer, which merged after the freeze
 added: 2026-09-25
 closed: 2026-09-25
+pr: 1020
 payoff: a web session's first claim on a branch the harness made tracking main is written and pushed at once, instead of refused until the session repairs the branch's upstream by hand
 verify: grep -q 'def test_a_branch_tracking_the_default_branch_is_pushed_with_an_upstream_of_its_own' subprojects/docket/tests/test_claiming.py
 ---

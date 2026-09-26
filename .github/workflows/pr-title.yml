@@ -69,10 +69,10 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      # `fetch-depth: 0` because the script compares the items closed at
+      # `fetch-depth: 0` because both scripts compare the items closed at
       # `PR_BASE` with those closed at `HEAD`, and a depth-1 clone holds no base
-      # tree to read. Without it every run fails as not checked: the script
-      # will not read a missing tree as an empty one, which made every closed
+      # tree to read. Without it every run fails as not checked: neither script
+      # will read a missing tree as an empty one, which made every closed
       # item this branch's for a missing base and passed any title for a
       # missing head (`PL-1PBV`).
       - uses: actions/checkout@v7.0.1
@@ -104,3 +104,16 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BASE: origin/${{ github.event.pull_request.base.ref }}
         run: python3 tools/pr_title_check.py
+
+      # The same two trees, asked the question provenance rests on (`PL-HMZZ`):
+      # every item this pull request closes records `pr:` equal to its own
+      # number, which this event is the one point in the workflow that knows.
+      # The number is written on the closing branch by `bin/docket record N`
+      # before the merge, and because this job is required, a merge cannot land
+      # between the closure's push and the number's. `synchronize` re-runs it
+      # on the push that carries the number, which is how it clears.
+      - name: every closure records this pull request's number
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BASE: origin/${{ github.event.pull_request.base.ref }}
+        run: python3 tools/pr_record_check.py

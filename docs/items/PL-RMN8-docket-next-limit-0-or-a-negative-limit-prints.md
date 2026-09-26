@@ -9,6 +9,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22
 closed: 2026-09-26
+pr: 1037
 payoff: docket next stops telling a session nothing is ready to start when it was only asked for zero picks, so a zero or negative limit fails loudly instead of ending a session's search for work
 verify: grep -q 'def test_next_refuses_a_limit_below_one' subprojects/docket/tests/test_cli.py
 ---

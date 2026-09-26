@@ -11,6 +11,7 @@ blocked-by: PL-CBDX, PL-K6B2
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1043
 verify: grep -q '^status: done' docs/items/PL-CBDX-*.md && grep -q '^status: done' docs/items/PL-K6B2-*.md
 ---
 

@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/tes
 deferred-from: v0.6.0 - filed after the freeze by PL-NLXK's cut (2026-09-24), and not safety or science; a defect in PL-0TD9's claim writer, which merged after the freeze
 added: 2026-09-24
 closed: 2026-09-25
+pr: 1024
 payoff: a claim written in a fresh session reaches the remote at once, which is the window claim's push-at-once exists to close
 verify: grep -q "stale_tracking_ref" subprojects/docket/tests/test_claiming.py
 ---

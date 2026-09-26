@@ -9,6 +9,7 @@ feature: verify-assertion-evidence
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-20
 closed: 2026-09-25
+pr: 1033
 payoff: a reader asked to account for every removed assertion can see every one of them, instead of reading a count of six above five lines
 verify: grep -q 'def test_the_removed_assertion_evidence_names_the_lines_it_omits' subprojects/docket/tests/test_verify.py
 ---
