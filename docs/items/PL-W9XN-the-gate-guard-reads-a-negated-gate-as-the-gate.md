@@ -1,7 +1,14 @@
 ---
 id: PL-W9XN
 title: The gate guard reads a negated gate as the gate, so ! make check, which exits 0 when the tree is red, passes unrefused, and so do ! make check && echo ok and ! make check || exit 1
-status: untriaged
+priority: P3
+effort: S
+status: blocked
+classes: defect
+feature: bash-guard-bound
+touches: .claude/hooks/gate-status-guard.sh, .claude/hooks/shell_split.py, tests/unit/test_gate_status_guard.py
+blocked-by: PL-61FT
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
 ---
 
@@ -19,3 +26,13 @@ string                        guard   bash exit with the gate failing
 It is a false allowance: a red tree arrives as exit 0, the failure the guard exists for. The first two predate `PL-KQ4Q`. The third was refused before it, only because every `||` then read as a loss; once a fallback that fails too keeps the status, the `!` ahead of the gate is what loses it. A fix reads a `!` ahead of a gate as losing the status at once, with a refusal saying the `!` inverts the verdict. No session is known to have written one, since a `!` in front of a gate turns its answer over, which is why this was filed rather than fixed inside `PL-KQ4Q`.
 
 **Not a recurrence of `PL-KQ4Q`**, which `bin/docket new` matched on the shared files: that item was a false refusal of an `||` fallback, and this is a false allowance of a negated gate, read wrongly by a different step of the same walk.
+
+**Why it matters.** A red tree arrives as exit 0, which is the failure the
+guard exists for, though a `!` ahead of a gate inverts its answer and no
+session is known to have written one. Reproduced as filed on `origin/main`
+(`6efd8c41`) at triage, 2026-09-26.
+
+**Generator check.** A member of `PL-61FT` (the Bash guards read what a
+command does from its spelling): filed by `PL-KQ4Q`'s close. Blocked on it,
+because the bound it sets decides whether this spelling is worked, dropped or
+kept as a known gap.
