@@ -3,12 +3,14 @@ id: PL-YFT4
 title: no-prune-guard.sh refuses reads that prune nothing: git config --get fetch.prune, since its config shape matches the setting's name in any config call; git remote prune -n, a dry run; and git log -S fetch -p or git log --grep pull -p, since a command word is matched anywhere in the call
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: bash-guard-bound
 touches: .claude/hooks/no-prune-guard.sh, tests/unit/test_no_prune_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1140
 payoff: reading the prune setting, a remote-prune dry run and a git log search that mentions fetch or pull pass the guard instead of costing a session a call and an untrue reason
 verify: grep -q 'def test_a_read_that_prunes_nothing_is_admitted' tests/unit/test_no_prune_guard.py
 ---
@@ -45,6 +47,11 @@ at triage, 2026-09-26: all four refused.
 `git submodule foreach git fetch --prune` stays refused is the fix's to settle
 and record.
 
+**Since `PL-M2NV` (2026-09-26)** a second `config` shape sits in
+`PUSH_SHAPES`, reading `remote.<name>.mirror` as the first reads a prune
+setting, so `git config --get remote.origin.mirror` is refused for the same
+first cause, and the fix to that cause is owed on both.
+
 **Generator check.** A member of `PL-61FT` (the Bash guards read what a
 command does from its spelling): filed by `PL-R17X`'s close, whose `pull`
 shape brought the `git log --grep pull -p` refusal. Owed under any bound
@@ -71,3 +78,23 @@ stays refused, pinned in `tests/unit/test_no_prune_guard.py`. The three
 unmet spellings above are recorded as `KNOWN_GAPS` rows there under
 `PL-61FT`'s build, or closed in the same change where that costs no reading
 of their own; the four-spelling "Done when" above is superseded for them.
+
+**Fixed 2026-09-26 (`#1140`).** The `config` shape left `SHAPES` and
+`PUSH_SHAPES` for `writes`, which finds the `config` word where the shape did
+and asks `reads` whether git 2.43 would only read: options up to the first
+other word or `--`, each one the hook knows - a read action, a location, a
+type or a display option, or the value one of those takes - with a read
+action among them, or none and a single name. `git config fetch.prune --get`
+(options stop at the first other word, so it writes the value `--get`) and
+`git config --get --no-get fetch.prune true` (the `--no-` form clears the
+action) wrote the setting in a scratch repository and stay refused. So does a
+read action beside a `$`, a backtick or a brace, from which bash can build
+`--no-get` after the hook has read the words; each of the four such
+spellings pinned wrote `fetch.prune` once expanded. An option the hook does
+not know, an abbreviation among them, reads as a write, so `git config
+--get-a fetch.prune` and `git -C "$repo" config --get fetch.prune` are new
+`KNOWN_GAPS` rows. The three unmet spellings keep their rows, as the
+re-scoped "Done when" allows, since closing any costs a reading of its own.
+All 18 rows of `test_a_read_that_prunes_nothing_is_admitted` fail against the
+unfixed hook. Filed while here: `PL-VM7C`, a section write that drops a local
+`fetch.prune = false` and passes today.

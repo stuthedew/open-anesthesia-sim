@@ -272,10 +272,15 @@ and the owner's attention.
 **Run it and watch it fail, not merely run it.** A command that passes on a
 tree without the work proves nothing: `docket verify` accepts a delegated
 branch that did none of it, and nothing distinguishes a finished item from an
-unstarted one. `docket check --verify` runs every open item's command and
-raises an advisory for the ones that pass, so this is caught — but CI is what
-passes that flag, so it is caught after the item is written *and* after it is
-pushed. The fix is still to see the command fail first.
+unstarted one. The tools refuse that case before the push rather than after
+it. Since `PL-FTDB`, `bin/docket set --verify` runs the command it is writing
+and refuses one the replay would report as already passing; a line written
+by hand is an error at the next `make check`, which replays the items the
+branch has edited (`PL-0HPV`, `PL-71P4`). What neither reads is an ordinary
+failure's cause: a pattern misspelt so that it never matches exits 1 exactly
+as an unstarted item does, and goes on exiting 1 after the work. So the step
+is still to see the command fail first, and to see that it fails for the
+reason you meant.
 
 **Then reproduce the fault, because the command cannot.** Watching the
 `verify:` fail proves the *fix* is absent. It does not prove the *fault* is
