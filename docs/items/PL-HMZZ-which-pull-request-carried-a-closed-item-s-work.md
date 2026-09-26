@@ -121,8 +121,10 @@ pull request closed unmerged and reopened under a new number - never on a
 landed one. `_check_provenance` must pass over an unlanded closure's number:
 today it passes over only numbers above the high-water mark, so a branch that
 opened #1010 while #1011 merged would fail `docket check` in CI. The close-out
-mode's "Leave `pr` empty" and `subprojects/docket/README.md` § "When the `pr`
-is owed" are rewritten, since neither stays true. `PL-XYQW`'s ratified "owed
+mode's instruction to leave `pr` empty, and the README section that said when
+the `pr` is owed, are rewritten, since neither stays true: the latter is now
+`subprojects/docket/README.md` § "The number is written before the merge, by
+the branch that closes the item". `PL-XYQW`'s ratified "owed
 only once shipped" is superseded rather than reopened: nothing is owed after
 the merge because nothing can merge without it.
 
