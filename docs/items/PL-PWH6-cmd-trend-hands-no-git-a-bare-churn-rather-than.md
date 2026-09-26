@@ -9,6 +9,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/tre
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1071
 payoff: trend's key says churn was not asked for only when --no-git stopped it, and the test a reader takes for the unreadable-git path is named for the --no-git path it actually runs
 verify: grep -q 'def test_trend_omits_the_churn_columns_under_no_git' subprojects/docket/tests/test_cli.py && grep -q 'def test_a_history_git_answered_with_no_line_counts_is_not_read_as_not_asked' subprojects/docket/tests/test_trend.py
 ---

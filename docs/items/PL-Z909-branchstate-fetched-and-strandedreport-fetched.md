@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1071
 payoff: freshness is carried by one field, Snapshot.fresh, so no report can say its refs are this command's own fetch when the snapshot says they are not
 verify: ! grep -qF 'fetched: bool = False' subprojects/docket/src/docket/vcs.py
 ---

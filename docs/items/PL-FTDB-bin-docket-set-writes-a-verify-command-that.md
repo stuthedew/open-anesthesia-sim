@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1071
 payoff: a verify: command that proves nothing is refused as it is written rather than a make check later, so docket verify never holds one that would accept a branch that did none of the work
 verify: grep -q 'def test_set_refuses_a_verify_that_already_passes' subprojects/docket/tests/test_cli.py
 ---
