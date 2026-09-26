@@ -1778,10 +1778,14 @@ way `flight` and `stranded` do.
 questions is worth asking. This is the rarest command here and the most expensive to get
 wrong, which is what makes one network read proportionate where the digest's
 would not be; `--no-fetch` is there for a caller that has already refreshed or
-cannot. The digest carries the same answer on its `Releasable:` line, computed
-only where a release is actually being offered, because the offer is where a
-duplicate release starts - refusing at `release` alone leaves the second
-session having already raised it and been approved.
+cannot. The digest carries the same answer on its `Releasable:` line, because
+the offer is where a duplicate release starts - refusing at `release` alone
+leaves the second session having already raised it and been approved. The
+digest reads the refs for it wherever `Readiness.is_worth_cutting` holds, which
+means there is finished work to cut, not that a release is being offered: where
+the roadmap has reserved the number a bump would reach, the line says
+`No release to offer` and the read still runs, which between milestones is the
+usual case (`PL-FT3M`).
 
 **A release that cannot finish writing itself is resumable, and one that is
 not resumed is reported.** Three things reach disk — the `milestone:` stamp on
@@ -1811,7 +1815,12 @@ defines an interrupted cut once — a milestone stamped in the store that no
 notes file records — and both halves of the repair read it: `cmd_release`
 folds those items back in and re-cuts the whole release, and
 `checks._check_release_notes` reports the state as an error wherever the
-re-run has not happened. A run asked for a *different* version while a cut is
+re-run has not happened. The digest's `Releasable:` line and `status`'s
+`Unreleased:` line read it too, through `cli._interrupted`, and name the
+interrupted cut and the command that finishes it in place of an offer: the
+count `readiness` gives leaves the stamped items out by contract, so without
+it they would print the short remainder with nothing saying why (`PL-1BS2`).
+A run asked for a *different* version while a cut is
 unfinished is refused, since two numbers over one unfinished cut make both
 sets of notes permanently wrong. Its floor is the lower of the oldest version
 with a notes file and the current version: the first exempts releases cut

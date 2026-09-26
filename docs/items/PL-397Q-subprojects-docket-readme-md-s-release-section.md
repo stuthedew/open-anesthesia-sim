@@ -3,11 +3,12 @@ id: PL-397Q
 title: subprojects/docket/README.md's release section says the digest's cut read is computed only where a release is being offered, the claim PL-FT3M corrected in cli._cuts's docstring, and names only cmd_release and the check as readers of an interrupted cut, which the digest and status now name too (PL-1BS2)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: release-process
 touches: subprojects/docket/README.md
 added: 2026-09-25
+closed: 2026-09-26
 payoff: the docket README stops telling a reader that the cut walk runs only under a release offer and that only release and check report an interrupted cut, both now contradicted by the digest and status
 verify: grep -qF 'is_worth_cutting' subprojects/docket/README.md && grep -qF '_interrupted' subprojects/docket/README.md
 ---
@@ -63,3 +64,12 @@ bound family to the close-out sweep "by decision rather than by oversight".
 `PL-G424` leaves prose drift that is not a citation to judgment and the
 capture rule, on purpose. `doc_check` decides whether a cited path exists,
 never whether the sentence around it is still true.
+
+**Worked.** Both sentences still stood on `17c9f3ed` when picked up, and
+`cmd_digest` and `cmd_status` still read as the brief says. The cut-read
+sentence now names `Readiness.is_worth_cutting` and the `No release to offer`
+case in `cli._cuts`'s own words, with `PL-FT3M`. The interrupted-cut paragraph
+now names the digest's `Releasable:` line and `status`'s `Unreleased:` line as
+readers through `cli._interrupted`, and says what they print instead of an
+offer (the version and the command that finishes it, `render._interrupted_cut`)
+and why (`PL-1BS2`). Nothing else the brief did not specify.
