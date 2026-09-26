@@ -243,3 +243,15 @@ how every session works, so it is the owner's to answer.
 the count above says does not converge - nine members from six fixes, each
 read by the queue as work owed - and over (2) fail-closed, counted and refused
 above.
+
+**Answered 2026-09-26: yes** (project owner, 2026-09-26, ratified, "Agree
+with recs", over filing every probed spelling as today and over fail-closed).
+Both recommendations: the bound above, and holding `PL-YFT4` so no thread
+starts it before the build records it as a known gap. The build follows the
+plan under "The build": one thread after `PL-M2NV` merges, writing the promise
+paragraphs, the three `KNOWN_GAPS` tables and their test, and the close-outs of
+`PL-DCHW`, `PL-QMN0`, `PL-W9XN`, `PL-YFT4`, `PL-BM3Z` and `PL-7PB9`; `PL-R295`
+and `PL-N6JP` are worked at their own ranks. Left at `needs-decision` by the
+design thread, which moves no status; the build thread readies it when it
+takes it, and `bin/docket generators` should report this head drained when
+the last of those close-outs lands.
