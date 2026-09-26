@@ -3916,11 +3916,12 @@ def _now(args: argparse.Namespace) -> datetime:
 def cmd_claim(args: argparse.Namespace) -> int:
     """Record that this branch holds the items named: `claiming.claim`, which says how.
 
-    Exit 3 means another branch holds one of them first, and exit 4 that the
-    claim was written and did not reach the remote - its push failed, or the
+    Exit 3 means another branch holds one of them first, or holds one that this
+    branch's unpushed claim would have taken from it, now withdrawn; exit 4 that
+    the claim was written and did not reach the remote - its push failed, or the
     branch's copy on the remote meant none was tried - so only this checkout can
-    see it until the push the message names. Neither is a failure of the
-    command; each is a different next step.
+    see it until the `claim` the message names publishes it. Neither is a
+    failure of the command; each is a different next step.
     """
     inv = _invocation(args)
     if inv.git is None:
@@ -3938,6 +3939,7 @@ def cmd_claim(args: argparse.Namespace) -> int:
         reason=args.reason or "",
         trailers=args.trailer,
         fetch=not args.no_fetch,
+        push=args.push,
         runner=inv.git,
     )
     for line in written.lines:
@@ -4386,6 +4388,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=False,
         help="read the refs as they are before writing; the caller refreshed them, or cannot. "
         "The fetch after a push still runs",
+    )
+    claim_cmd.add_argument(
+        "--push",
+        action="store_true",
+        default=False,
+        help="push the claim even where the remote already has the branch, which is left "
+        "unpushed otherwise; only once auto-merge is disarmed on its pull request",
     )
     claim_cmd.set_defaults(func=cmd_claim)
     yield_cmd = add("yield", "end this branch's claim on an item without closing it")
