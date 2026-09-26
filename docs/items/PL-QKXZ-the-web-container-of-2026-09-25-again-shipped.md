@@ -3,12 +3,15 @@ id: PL-QKXZ
 title: The web container of 2026-09-25 again shipped uv 0.8.17 and no libegl1, so a session there has to repair both before make check will run; only the owner's environment setup script can fix it for every container
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: infra, session-cost
 feature: projects-trial
 touches: docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1111
+not-delegable: the fix is a Projects setting, which cloud environment a project's threads start in, outside this repository; the proof is get_session's environment_id for a thread and a Default container's own uv and libegl1, and CI runs in GitHub Actions, in neither environment, so no command run from the tree can prove it
 recurrences: 2026-09-26 PL-7TH9
 ---
 
@@ -101,10 +104,12 @@ link, and step 1 is what is left. That the script was edited between 02:52 and
 03:48 is inferred from the rebuild and the missing link; no session can read
 the script itself.
 
-**Decision needed.** Point "Fix generators" at `Default` as well, or leave its
-threads on Anthropic's default and make the repair each thread's, which is
-`PL-SPZT`'s `docs/worker.md` route. "Clean up PL" is answered: the owner moved
-it to `Default` on 2026-09-26. Only the owner can reach **Project settings**.
+**Decision needed.** [answered 2026-09-26: "Fix generators" points at
+`Default` too, read back in the closing note below] Point "Fix generators" at
+`Default` as well, or leave its threads on Anthropic's default and make the
+repair each thread's, which is `PL-SPZT`'s `docs/worker.md` route. "Clean up
+PL" is answered: the owner moved it to `Default` on 2026-09-26. Only the owner
+can reach **Project settings**.
 
 **Recommendation:** point "Fix generators" at `Default`. It fixes every later
 thread in it with no script edit, because `Default` carries both tools and
@@ -113,8 +118,9 @@ owed again by any new project, and the coordinator and threads already running
 keep the old environment until they end. The steps, checked against the
 Projects and cloud-environments docs on 2026-09-26:
 
-1. At claude.ai/code or in the desktop app, open the "Fix generators"
-   project, click the gear icon in the project header (or **Settings** in the
+1. [done 2026-09-26, between 04:34 and 05:57 UTC: read back from
+   `get_session` in the closing note below] At claude.ai/code or in the
+   desktop app, open the "Fix generators" project, click the gear icon in the project header (or **Settings** in the
    project's sidebar menu) to open **Project settings**, go to
    **Environment**, and set **Cloud environment** to **Default**: the
    account's one environment, the name the cloud icon above an ordinary
@@ -151,3 +157,35 @@ answer. "Clean up PL" meets it as far as a session can read: its new threads
 start in `Default`, and `Default`'s current snapshot runs `make check` with no
 repair. No "Clean up PL" thread has started since the 03:48 rebuild to read it
 from inside one.
+
+**Closed 2026-09-26: both projects start threads in `Default`, and `Default`
+runs `make check` with no repair** (project owner, 2026-09-26, ratified, over
+leaving the repair each thread's under `PL-SPZT`'s `docs/worker.md` route;
+read back from the setting's effect, not stated). `get_session` reads
+`env_01JWikdPctorEBXoFK7bJnCq` for both coordinators titled
+`Project coordinator ("Fix generators")` started since the 05:15 reading -
+`session_01Xknh698vdbZU71Xpvh1VuC`, created 05:57:24 UTC and archived at
+13:47, and `session_019m2w2z86mi3imCb3PUrpyF`, created 15:03:01 - and for all
+four threads whose `parent_session_id` names one of them and which claimed an
+item: "PL-53Y6, then PL-HZ0M" (`claude/pl-53y6-57cch9`, created 08:04:52),
+"PL-0X0G: guards and bash keywords" (`claude/pl-0x0g-8kokh9`, 08:27:15),
+"Seven filed findings" (`claude/filed-findings-g90x9s`, 09:58:58) and "Guard
+gaps: K9QL, 9RSP, QMN0" (`claude/project-thread-b0rwn0`, 15:49:30). So the
+switch fell between 04:34:03, when "Stream A: PL-PVW2, continued" still started
+in `env_011111111111111111111119`, and 05:57:24. `list_sessions` holds no
+Projects thread, so the threads were found through the `Claim:` trailers
+pushed since 03:00 UTC, whose `cse_` session token reads as `session_` in
+`get_session`.
+
+No repair: this session, a web session in `Default` started at 16:29 UTC,
+found `/root/.local/bin/uv` a regular file reading `uv 0.12.19`, no
+`/usr/local/bin/uv`, and `libegl1 1.7.0-1build1` installed at 08:47:06 -
+`Default`'s snapshot rebuilt again at about 08:46, still carrying both - and
+`make check` ran `uv sync --locked`, `ruff`, `mypy` and 5,041 tests at 100%
+coverage with no repair step. None of the recorded bodies of the pull requests
+those threads opened (`#1090`, `#1091`, `#1093`, `#1096` to `#1106`, `#1109`)
+mentions a `libegl1` install, `uv 0.8.17` or a `uv` upgrade.
+
+What stays open is what the recommendation priced: one setting, owed again by
+every new project, which is `PL-877T`'s (untriaged), and `PL-SPZT`, which
+still holds for a container outside `Default`. This closure changes neither.
