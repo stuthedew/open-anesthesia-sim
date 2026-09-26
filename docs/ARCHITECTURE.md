@@ -1354,8 +1354,9 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
 
   *The supersession has a release, as of 2026-09-16*: v0.6.0, "the layout is the
   reader's", which builds the Areas, the Editor contract, the Workspaces and the
-  persistence; v0.7.0 adds break-out into a second top-level window, and from
-  then the routing question gains a second half - *which window* a surface is
+  persistence. Break-out into a second top-level window is item 34's second
+  half, wanted but unscheduled since 2026-09-26; once it is built, the
+  routing question gains a second half - *which window* a surface is
   instantiated in - answered by `docs/MODEL.md` § "Minimum displayed outputs"
   rather than by this bullet.
 - A new way of *rendering* a value a reader interprets — a unit, a decimal

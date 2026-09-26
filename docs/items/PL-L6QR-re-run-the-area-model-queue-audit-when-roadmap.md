@@ -6,8 +6,8 @@ effort: M
 status: blocked
 classes: planning
 feature: interface-areas
-blocked-by: v0.8.0
 touches: docs/items
+blocked-by: v0.7.0
 added: 2026-09-16
 ---
 
@@ -49,6 +49,11 @@ re-briefed on a decided premise rather than on a guess.
 **Scope note.** This is not a standing obligation to re-audit on every change.
 Its trigger is one event: item 36 being scoped. If item 36 is dropped or folded
 into item 34, this item is dropped with it.
+
+**What `blocked-by` names.** v0.8.0 from 2026-09-16 (#629), the first release
+after item 34's two, which the schematic held. Since 2026-09-26, when break-out
+came off the timeline (`PL-V1Y7`), that release is v0.7.0, and the field says
+so. The trigger is unchanged: item 36 being scoped.
 
 ## Area-model audit (PL-BNYF)
 

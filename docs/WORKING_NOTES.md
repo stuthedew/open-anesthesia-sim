@@ -416,12 +416,10 @@ noted now so they aren't lost:
 
 **The project owner asked again on 2026-09-08, so the condition below is met
 and this thread now lives in `ROADMAP.md`** — Planned-milestone item 33, "Run
-the interface pass", with the interface-pass row of "The
-timeline" giving it a position - written `v0.5.x` and sitting between v0.5.0 and
-v0.6.0 then, and `v0.7.x` sitting after item 34's two releases since 2026-09-16
-(`PL-PHKP`). What was decided that
-day: the placement above, and that the structural half of an overhaul is not
-polish and does not wait for it (`PL-2CS8` consolidates the display constants,
+the interface pass", with the interface-pass row of "The timeline" giving it a
+position. What was decided that day: that position, written `v0.5.x` and
+sitting between v0.5.0 and v0.6.0, and that the structural half of an
+overhaul is not polish and does not wait for it (`PL-2CS8` consolidates the display constants,
 `PL-NGF7` decides the theme object, `PL-B9PY` is the component seam). No design
 round was authorised, so the paragraph below still governs the mockups
 themselves: they are a record of what was tried, not a starting point.
@@ -440,6 +438,13 @@ three named above, `PL-2CS8` (consolidate the scattered display constants)
 closed in `v0.4.11`; `PL-NGF7` (`contrast_check.py` can see no disabled-state
 colour) is deferred to the Qt port, which dissolves it rather than fixing it, and
 its expected disposition is `dropped`.
+
+**The interface-pass row moved twice after 2026-09-08, and each move was its
+own decision.** On 2026-09-16 it moved after item 34 and became `v0.7.x`, behind
+item 34's two releases (project owner, ratified on `PL-PHKP`, over leaving it
+between MVP and Gate 2). On 2026-09-26 it became `v0.6.x`, when break-out,
+the second of those releases, came off the timeline (`PL-V1Y7`); it still
+follows item 34, whose tiled half is v0.6.0.
 
 One correction the resumption is worth recording. The assessment below is of
 "the current v0.1.0 interface", and it was accurate then; ten interface-changing
@@ -1270,6 +1275,14 @@ persistence, the unconditional display region and every layout operation) and
 **v0.7.0 "the second screen"** (break-out of an Area into its own top-level
 window). The schematic moved to v0.8.0 and multi-substance to v0.9.0.
 
+**Break-out came off the timeline on 2026-09-26** (project owner, 2026-09-26:
+wanted eventually, not soon; `PL-V1Y7`). Item 34's tiled half is still v0.6.0
+as scoped, and break-out is its unscheduled second half: the schematic moved
+back to v0.7.0, multi-substance to v0.8.0 and the interface pass to `v0.6.x`.
+v0.6.0 keeps both reservations break-out needs - the window set in the saved
+layout root and the region's per-window shape - and `PL-Y04W`, the break-out
+build item, was dropped.
+
 Three decisions are recorded where they belong and are not repeated here:
 v0.6.0's section carries the goal, scope and definition of done; § "The debt
 gate" -> "The cadence" carries why this scoping froze no gate; and
@@ -1297,12 +1310,14 @@ widget identity at all - and `restoreState()` returns `True` restoring a
 three-pane state into a two-pane splitter and a two-pane state into a
 three-pane one, leaving the third at zero. That is stronger than the form
 `PL-C842` recorded and is why the layout model owns persistence. Second, and
-the trap for v0.7.0: a secondary window built the obvious way,
+the trap for break-out: a secondary window built the obvious way,
 `QWidget(main, Qt.Window)`, has `main` as its *transient parent*, and Qt counts
 only primary windows - top-level, no transient parent - when deciding the last
 window has closed, so closing the main window quits the application while the
 break-out window is still visible. The rule v0.6.0's region is built for needs
-the main window to *veto its own close* instead; `PL-Y04W` carries it.
+the main window to *veto its own close* instead. `PL-Y04W`'s brief records
+it, and `ROADMAP.md` item 34 cites that brief since the item was dropped on
+2026-09-26.
 
 **A third, filed rather than left here**: PySide6 6.11.2 segfaults on
 `QDataStream` over a temporary `QByteArray`, which the persistence work will

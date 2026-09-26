@@ -34,7 +34,7 @@ that gives a wrong answer silently.
 
 **Split from `PL-W54S`** on 2026-09-16: that item is the window-obligation
 decision and this is the predicate, which breaks at Area close and join rather
-than at break-out and is therefore v0.6.0's rather than v0.7.0's.
+than at break-out and is therefore v0.6.0's rather than break-out's.
 
 **Done when.** One predicate spans every Area and every top-level window the
 application owns, distinguishes present-in-the-tree from visible-to-the-reader,

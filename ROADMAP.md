@@ -391,7 +391,7 @@ reorders are recorded, each dated on the row it moved.
 **Detail moves inward at two moments.** Placing a catalogue entry on the
 timeline gives it a row and a position; scoping the row, beat 1 of § "The
 cadence", writes its section here. A decision a nearer horizon depends on may
-be taken sooner, and is recorded where that horizon cites it - v0.7.0's
+be taken sooner, and is recorded where that horizon cites it - break-out's
 display tier split, settled 2026-09-16 because it fixes the shape v0.6.0
 builds, is the instance - which is a decision taken early rather than detail
 planned ahead. § "What MVP means here" was the outer boundary of the first
@@ -409,8 +409,9 @@ and #60 are the instance, an external proposal closed unmerged on 2026-08-26
 and the source of this section's vocabulary: its `docs/PLANNING.md` stated
 this prohibition and, in the same file, restated the order as v0.3.0, v0.4.0,
 v0.5.0, v0.6.0 the schematic and v0.7.0 multi-substance. Four days later
-v0.2.8 was inserted ahead of it, and by 2026-09-16 the schematic had moved to
-v0.8.0 and multi-substance to v0.9.0.
+v0.2.8 was inserted ahead of it, by 2026-09-16 the schematic had moved to
+v0.8.0 and multi-substance to v0.9.0, and on 2026-09-26 both moved back one
+when break-out came off the timeline.
 
 <!-- absent: docs/PLANNING.md -->
 
@@ -449,19 +450,17 @@ adds no capability and exists to clear the ground they are built on:
 | 3 | **v0.4.0 — the teachable case** | **Shipped 2026-09-05.** Scoped below. 13 items, of which 6 are gate-0 debt the milestone cleared itself. Twelve landed and the thirteenth, `PL-011`'s retention rule, was dropped as superseded; its Required-scope entry records why. | 7 M, 6 S |
 | — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. A patch, not a milestone. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. (Written `v0.4.1` until 2026-09-06, which contradicted this row's own rule that the track promises no particular patch number; v0.4.1 and v0.4.2 both shipped without the exact step, as that rule predicted.) **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** The cadence's four beats run for *milestones*; Gate 1 is frozen when v0.5.0 is scoped, as row 4 records and as three of v0.4.0's own deferrals assume; and no patch in this project has ever had a section — v0.2.1 through v0.3.9 each took a version-table row and a baseline section at ship time and nothing more. That this was ever in question is a tooling artefact worth recording: `bin/docket wave` read this row as a milestone because it was written `v0.4.1` where item 29 already called it the `v0.4.x` row, and the gate it therefore asked to freeze was 105 entries against Gate 0's 21 — five times the largest gate this project has cleared, and 62% of the open queue. The row is now written `v0.4.x`, which is what makes the beat agree with the plan. **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. Swapping `PL-P0BB` out for `PL-X2XX` leaves the effort totals unchanged. `PL-3TLK` leads; the rest of the naming work follows the exact step. `PL-011` was carried here at the v0.4.0 cut and is **not** part of this step: it was dropped 2026-09-05, superseded by `PL-T691` and `PL-2FM6`. Those two, with `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, are the score architecture the 2026-09-05 design round filed into `numerical-domain` behind `PL-GS5X`, and they are **v0.5.0's, not this track's** (project owner, 2026-09-05) — row 5 carries the reasoning. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. Saying "ships as v0.4.1" would be a promise the release path cannot keep — `docket release` offers the next free number to whatever is finished, so any patch cut before the exact step lands would take it — any number that is genuinely *free*, which since 2026-09-16 excludes one this file has given to a milestone section ahead of the current one (project owner, ratified, on `PL-KQHN`). | 1 L, 6 M, 2 S |
 | 4 | **Gate 1** | **Frozen 2026-09-06**, the day v0.5.0 was scoped, and recorded in that milestone's own section below rather than here. Contents were unknown by construction and are now the list: v0.4.0's findings, the queue's own defects, and the model-specification debt. Ships inside v0.5.0, not as its own release — except for the three items "The timeline" had already placed on the `v0.4.x` step, which that patch carries. | — |
-| — | **v0.4.26 — the interface moves to Qt** | **Shipped 2026-09-17**, all 28 Required-scope ids closed (`PL-06YW`). **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. **It absorbed planned-milestone item 33, the interface pass, and that absorption was reversed on 2026-09-16** (project owner, on `PL-L9RD`). The argument was that a restyle of a dashboard about to be rewritten is the same work twice, since porting redecides palette, type scale, spacing and layout regardless. The port that landed did not redecide them: its whole effect on `app/theme.py` is 10 insertions and 29 deletions, and the only constant whose value it touched is `ELAPSED_VALUE_WIDTH`, removed as a Flet layout width with no Qt equivalent - no palette entry, type size, padding or radius has moved since 2026-09-10. The port re-expressed the *widgets* and carried the *visual language* across intact, so the premise of the absorption did not come true and item 33 returns to the interface-pass row it held, which moved after item 34 on 2026-09-16 and is now `v0.7.x` (`PL-PHKP`). What the port keeps is the **reservation** rather than the pass: the layout containers are built once here with their splitter handles inert, which is Required scope item 2 and is unaffected. **Moved ahead of v0.5.0 on 2026-09-14** (project owner, on `PL-RKWB`), from the row it held after MVP. The question put was whether v0.5.0's work would be redone after the port, and **the count says mostly not**: of v0.5.0's eight open Required-scope ids, one is wholly inside the rewritten surface (`PL-8PSW`, the two-branch overlay), two have a slice there, and five never touch it - because `tools/import_boundary_check.py` confines Flet to three modules and the milestone's landed work (`PL-T691`, `PL-J2TD`, `PL-TFX5`, `PL-B9PY`) all sits on the surviving side. **Three other grounds carried it, and they are the reasons of record.** `PL-8PSW` is the most presentation-safety-loaded item in the milestone and on Flet it is built where no session can look at it (`PL-2QMK`), while the spike already screenshots offscreen in that same container and `PL-YCWZ` adds headless rendering tests over the real interface. `PL-GS3R` and `PL-YVHK` are both `P1` and `safety`-classed and both sat blocked behind this port for the whole of a milestone. And this port's definition of done is parity against a **closed** enumeration, which is cheapest to check before compare mode - the largest new visual surface in the project - joins the list. **The operative form of the decision is narrower than the move**: nothing new is built in `app/simulation_view.py` or the Flet chart-series module before the port, and v0.5.0's port-neutral spine (`PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8`) is untouched by it. **A patch number for a 5 133-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It no longer needs a section for the mechanical reason it had one** - every item that waited on it now names the port item doing the work rather than a version, so `blocked-by` resolves with no placed version - and it keeps one because a rewrite this size is not a patch-track row. **Gate 2's freeze is unchanged**: still when v0.5.0 ships, because that gate holds v0.5.0's findings and this port takes no gate of its own. | 2 L, 2 M, 3 S |
+| — | **v0.4.26 — the interface moves to Qt** | **Shipped 2026-09-17**, all 28 Required-scope ids closed (`PL-06YW`). **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. **It absorbed planned-milestone item 33, the interface pass, and that absorption was reversed on 2026-09-16** (project owner, on `PL-L9RD`). The argument was that a restyle of a dashboard about to be rewritten is the same work twice, since porting redecides palette, type scale, spacing and layout regardless. The port that landed did not redecide them: its whole effect on `app/theme.py` is 10 insertions and 29 deletions, and the only constant whose value it touched is `ELAPSED_VALUE_WIDTH`, removed as a Flet layout width with no Qt equivalent - no palette entry, type size, padding or radius has moved since 2026-09-10. The port re-expressed the *widgets* and carried the *visual language* across intact, so the premise of the absorption did not come true and item 33 returns to the interface-pass row it held, which moved after item 34 on 2026-09-16 (`PL-PHKP`). What the port keeps is the **reservation** rather than the pass: the layout containers are built once here with their splitter handles inert, which is Required scope item 2 and is unaffected. **Moved ahead of v0.5.0 on 2026-09-14** (project owner, on `PL-RKWB`), from the row it held after MVP. The question put was whether v0.5.0's work would be redone after the port, and **the count says mostly not**: of v0.5.0's eight open Required-scope ids, one is wholly inside the rewritten surface (`PL-8PSW`, the two-branch overlay), two have a slice there, and five never touch it - because `tools/import_boundary_check.py` confines Flet to three modules and the milestone's landed work (`PL-T691`, `PL-J2TD`, `PL-TFX5`, `PL-B9PY`) all sits on the surviving side. **Three other grounds carried it, and they are the reasons of record.** `PL-8PSW` is the most presentation-safety-loaded item in the milestone and on Flet it is built where no session can look at it (`PL-2QMK`), while the spike already screenshots offscreen in that same container and `PL-YCWZ` adds headless rendering tests over the real interface. `PL-GS3R` and `PL-YVHK` are both `P1` and `safety`-classed and both sat blocked behind this port for the whole of a milestone. And this port's definition of done is parity against a **closed** enumeration, which is cheapest to check before compare mode - the largest new visual surface in the project - joins the list. **The operative form of the decision is narrower than the move**: nothing new is built in `app/simulation_view.py` or the Flet chart-series module before the port, and v0.5.0's port-neutral spine (`PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8`) is untouched by it. **A patch number for a 5 133-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It no longer needs a section for the mechanical reason it had one** - every item that waited on it now names the port item doing the work rather than a version, so `blocked-by` resolves with no placed version - and it keeps one because a rewrite this size is not a patch-track row. **Gate 2's freeze is unchanged**: still when v0.5.0 ships, because that gate holds v0.5.0's findings and this port takes no gate of its own. | 2 L, 2 M, 3 S |
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **Shipped 2026-09-21**, all 20 Required-scope ids closed (`PL-4B1G`), and its own section below records what each one delivered. **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 185 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. **Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`): `PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port; the scope list is unchanged and they are closed against it. **`PL-8PSW` makes a sixth**, in v0.4.26 (2026-09-17, `PL-06YW`): the two-branch overlay, asked for by id and built on the port's own chart rather than twice, on the same disposition - its Required-scope entry below records what shipped and is unchanged. **`PL-MN4J` makes a seventh**, in v0.4.28 (2026-09-19, `PL-T2LH`): the chart hover naming which of two drawn runs it reads, on the same disposition - its Required-scope entry below records what shipped and is unchanged too. | — |
 | — | **MVP complete** | **Reached 2026-09-21, with v0.5.0.** A learner can run, branch, and compare a case. | — |
 | 6 | **Gate 2** | **Frozen 2026-09-21, the day v0.5.0 shipped, not when the milestone below was scoped** (project owner, 2026-09-16, ratified - chosen over freezing it on the scoping day as beat 1 says, and over deferring the whole scoping round until v0.5.0 ships). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" records the exception and the item that re-examines the trigger; v0.6.0's own section says where the frozen list goes when the moment comes. Ships inside v0.6.0. | — |
-| 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out is row 9, deliberately — see that section's "Explicitly out of scope" for why the split costs nothing structural. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away): v0.5.0's Required scope is 13 of 20 `done` and the compare surface is among the closed, so the tail a re-order would protect is 4 M and 3 S against this row's own 4 L, 16 M, 3 S. Planned-milestone item 34's entry carries the count, and the standing rule that round produced - **no new display surface is built before this release**, until item 34's View contract and view registry ship. | 4 L, 16 M, 3 S |
+| 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out, item 34's second half, is on no row: it is wanted eventually and not soon (project owner, 2026-09-26), and came off the timeline that day, having been the next release, "the second screen", since 2026-09-16 (`PL-V1Y7`) — see that section's "Explicitly out of scope" for why the split costs nothing structural, and why v0.6.0 keeps what break-out needs. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away): v0.5.0's Required scope is 13 of 20 `done` and the compare surface is among the closed, so the tail a re-order would protect is 4 M and 3 S against this row's own 4 L, 16 M, 3 S. Planned-milestone item 34's entry carries the count, and the standing rule that round produced - **no new display surface is built before this release**, until item 34's View contract and view registry ship. | 4 L, 16 M, 3 S |
+| — | **v0.6.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. **Renumbered `v0.6.x` on 2026-09-26** by the same rule, when break-out came off the timeline and this row came to follow v0.6.0 (`PL-V1Y7`); the entry for item 33 records why the argument that placed it still holds. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
 | 8 | **Gate 3** | Frozen when v0.6.0 ships; ships inside v0.7.0. | — |
-| 9 | **v0.7.0 — the second screen** | Planned-milestone item 34's break-out half: an area taken into its own top-level window, itself a full window with its own areas. Not yet scoped. What it owes the display is already decided rather than left to its scoping — `docs/MODEL.md` § "Minimum displayed outputs" → "What this list requires once the layout is the reader's" carries the tier split (project owner, 2026-09-16, ratified - chosen over `PL-W54S`'s own two live readings, every window carrying the whole region and the main window carrying it alone), because it decides the shape v0.6.0 builds the unconditional region in. | — |
-| — | **v0.7.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
+| 9 | **v0.7.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) | — |
 | 10 | **Gate 4** | Frozen when v0.7.0 ships; ships inside v0.8.0. | — |
-| 11 | **v0.8.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two.) | — |
-| 12 | **Gate 5** | Frozen when v0.8.0 ships; ships inside v0.9.0. | — |
-| 13 | **v0.9.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. (Written `v0.7.0` until 2026-09-16, for the same reason as row 11.) | — |
-| 14+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. **Item 40 is no longer among them** - the machine-profile framework was split out of item 1 on 2026-09-20 (project owner) and is patch-track work that may be cut whenever its items finish, taking no version of its own and freezing no gate. What stays here is the interlock baseline and the machine behaviors that need solver work item 40 defers. | — |
+| 11 | **v0.8.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. (Written `v0.7.0` until 2026-09-16 and `v0.9.0` from then until 2026-09-26, for the same reasons as row 9.) | — |
+| 12+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. **Item 40 is no longer among them** - the machine-profile framework was split out of item 1 on 2026-09-20 (project owner) and is patch-track work that may be cut whenever its items finish, taking no version of its own and freezing no gate. What stays here is the interlock baseline and the machine behaviors that need solver work item 40 defers. | — |
 
 **Rows 1 and 2 are the only releases whose whole content is a frozen list,
 and they are not the same kind of thing.** Row 2 is Gate 0's release: that
@@ -473,11 +472,11 @@ a gate heading because that subsection is what `bin/docket wave` reads, and
 the second of the two groups it lists is new workflow capability rather than
 debt.
 Gates 1 onward hold one milestone's findings and ship inside the milestone
-they gate, which is why rows 4, 6, 8, 10 and 12 carry no version.
+they gate, which is why rows 4, 6, 8 and 10 carry no version.
 
 Rows 5 and 7 are scoped and have their own sections below, as does the
 `v0.4.26` row above them — v0.5.0 on 2026-09-06, the Qt port on 2026-09-10 and
-moved ahead of row 5 on 2026-09-14, and v0.6.0 on 2026-09-16. Rows 9, 11 and 13
+moved ahead of row 5 on 2026-09-14, and v0.6.0 on 2026-09-16. Rows 9 and 11
 are the intended order and are not yet scoped; each becomes real only when it
 gets its own goal, required scope, definition of done and out-of-scope list
 here, per the development rules.
@@ -507,7 +506,7 @@ out of scope. That is a deliberate departure from "Development pathway"'s Phase
 A gate that lives in a separate document, or in a session's memory, is
 renegotiated every time it is inconvenient. Put on the timeline it is a step
 with a size, and skipping it is visible as skipping a step. The cadence that
-generates rows 2, 4, 6, 8, 10 and 12 is specified under § "The debt gate" below;
+generates rows 2, 4, 6, 8 and 10 is specified under § "The debt gate" below;
 the rule is that scoping a milestone freezes its gate, and the gate clears
 before that milestone's implementation begins. Row 6 is where that rule has an
 exception rather than an application, and § "The cadence" states it: a
@@ -1636,8 +1635,8 @@ and still ships on its own schedule; only its display half waits. `PL-8PSW` and
 dashboard.** § "Versioning decision" chooses the number for the capability
 boundary a release crosses, and a learner can do nothing after this port that
 they could not do before - the same argument the interface-pass row made for the
-restyle it replaces (that row was written `v0.5.x` until 2026-09-16 and is
-`v0.7.x` since, having moved after item 34). v0.2.8 is the precedent for machinery at this scale taking
+restyle it replaces (that row was written `v0.5.x` until 2026-09-16, and has
+followed item 34 since). v0.2.8 is the precedent for machinery at this scale taking
 a patch: thirty-eight frozen entries, no simulator change.
 
 **Why it takes a section, which no patch in this project ever has - and the
@@ -1728,7 +1727,7 @@ nothing in `BACKGROUND`, `PANEL`, `PRIMARY`, `ACCENT`, `INK`, `MUTED`,
 re-expressed the **widgets** and carried the **visual language** across intact.
 
 So item 33 returns to the interface-pass row of "The timeline" (written
-`v0.5.x` then and `v0.7.x` since 2026-09-16, when it moved after item 34),
+`v0.5.x` then, and following item 34 since 2026-09-16),
 where it was placed on 2026-09-08, and this milestone keeps two things that are
 not the pass itself. The first is `app/theme.py` expressed for Qt, which is
 `Required scope` item 3. The second is the **reservation** described at item 2:
@@ -1851,7 +1850,7 @@ Four grounds survive:
    with the six compartment colours and their dash patterns intact and both
    tools that read the file still describing it. **The visual pass is not
    here** - item 33 was un-absorbed on 2026-09-16 and is the interface-pass row
-   again, which moved after item 34 later the same day and is now `v0.7.x`
+   again, which moved after item 34 later the same day
    (`PL-PHKP`); see the note above for the measurement that reversed it, and for the
    styling-layer question this port deliberately leaves open.
 4. **The two checks that read the theme** (queue items `PL-BXB2`, `PL-V53R`
@@ -2038,7 +2037,7 @@ and say why. `PL-B9PY` is not moved, for the reason in its entry above.
   untouched - `tools/import_boundary_check.py` enforces that boundary and the
   spike proved it by driving the real `SimulationController` with no adaptation
   whatever.
-- **The schematic** (planned-milestone item 27, v0.8.0), which this makes
+- **The schematic** (planned-milestone item 27), which this makes
   affordable and does not begin.
 - **The area system** (planned-milestone item 34, v0.6.0), which Required scope
   item 2 reserves for - nested splitters with inert handles - and does not
@@ -5469,6 +5468,19 @@ no window today that could be left showing without the invariant display tier.
 That is what its `anticipated` class already records, and what v0.6.0's Goal
 section calls a violation pre-loaded rather than present.
 
+**It was dropped instead, on 2026-09-26, when break-out came off the
+timeline** (project owner, 2026-09-26: wanted eventually, not soon;
+`PL-V1Y7`). No release builds break-out now, so the deferral has no release
+to clear before, and an eventual feature is intent in planned-milestone item
+34 rather than an `L` item waiting in the queue. A dropped entry clears this
+gate as a fixed one does, per § "What counts". The paragraph above and the
+group heading below are left as the freeze wrote them: their v0.7.0 is the
+break-out row as it then stood, and v0.7.0 has been the schematic since.
+Nothing the entry guarded is lost with it - the rule a break-out build must
+satisfy is `docs/MODEL.md` § "Minimum displayed outputs" -> "What this list
+requires once the layout is the reader's", and item 34's entry cites the
+brief for the Qt measurement that build will need first.
+
 **The other disagreement is `PL-NDKC`**, a `defect`/`infra` item about a
 PySide6 `QDataStream` segfault the layout persistence work will meet. It
 carries the milestone's feature and is not in `Required scope`, so it clears
@@ -5795,7 +5807,7 @@ removed, and this file's history before that change holds their text.
    invariant tier and the name of the run it shows; the per-substance tier lives
    once, in a main window that cannot be closed while any other window is open.
    v0.6.0 opens one window, and building the region in that shape now is what
-   stops v0.7.0 rebuilding it.
+   stops break-out, item 34's unscheduled second half, rebuilding it.
 
 8. **An Area that cannot honour a size says so** (queue item `PL-K285`). The
    second of the three properties `docs/interface-provenance.md` records Blender
@@ -5983,12 +5995,20 @@ removed, and this file's history before that change holds their text.
 ### Explicitly out of scope for v0.6.0
 
 - **Break-out into a top-level window** - planned-milestone item 34's second
-  half, and row 9 of the timeline, v0.7.0 (queue item `PL-Y04W`). Nothing in
+  half, wanted eventually and not soon, and so on no row of the timeline
+  (project owner, 2026-09-26; from 2026-09-16 until then it was the next
+  release, "the second screen", with `PL-Y04W` its build item, dropped the
+  same day). Nothing in
   this release creates a second window. The split costs nothing structural
   because the two things break-out would otherwise force a rewrite of are both
   built here: the serialized root carries a window set from version 1 (entry 1),
   and the unconditional region is built in its per-window shape (entry 7). What
-  v0.7.0 adds is the window, its lifetime and the test that drives it.
+  break-out adds, when it is built, is the window, its lifetime and the test
+  that drives it. **Both reservations stay although break-out is unscheduled**:
+  they are what keeping it possible costs, because a root that gains a window
+  set later is a schema migration against every Workspace a learner has saved,
+  and entry 7's tiering is also what keeps a later intravenous run from being
+  asked for a vaporizer dial it does not have.
 - **The View catalogue** - planned-milestone item 36, which stays after this
   milestone for the reason item 34 records: a View's contract is whatever the
   area system requires of its contents, so Views built first are built against
@@ -6627,7 +6647,8 @@ specified.
    from the interlocks. But interlocks are what put this item in Phase 1 - a
    single-halogenated-agent interlock is a statement about holding more than one
    agent, which is the multi-substance generalization - so the bundle carried the
-   *data* half to timeline row 14+ with it, after v0.9.0. Nothing about a config
+   *data* half to the timeline's Beyond row with it, after multi-substance.
+   Nothing about a config
    file needed to wait that long, and the cost of the bundle was being paid in
    the queue rather than in the code: items scoped against this line were written
    as though the deliverable were the fleet of machines the survey found. Item 40
@@ -7406,9 +7427,10 @@ once someone is ready to scope it.
     this after MVP. The three artefacts from that round are explicitly not a
     starting point, per the note.
 
-    *Placement (project owner, 2026-09-08, and moved 2026-09-16).* After
-    v0.7.0, as the `v0.7.x — the interface pass` row of "The timeline". A patch
-    track rather than a numbered milestone, for the reason that row gives.
+    *Placement (project owner, 2026-09-08; moved 2026-09-16; renumbered
+    2026-09-26).* After v0.6.0, as the `v0.6.x — the interface pass` row of
+    "The timeline". A patch track rather than a numbered milestone, for the
+    reason that row gives.
 
     *It runs after item 34 rather than before it* (project owner, 2026-09-16,
     ratified on `PL-PHKP` - chosen over leaving it between MVP and Gate 2,
@@ -7421,12 +7443,23 @@ once someone is ready to scope it.
     from the source. A pass run first would decide palette, type scale and
     spacing for a set of surfaces, and then meet four more.
 
+    *Renumbered `v0.6.x`, 2026-09-26* (`PL-V1Y7`), when break-out came off
+    the timeline (project owner, 2026-09-26) and this row came to follow
+    v0.6.0 directly, as `v0.7.x` had followed break-out's release. The reason
+    above survives it, because all four surfaces it names arrive in item 34's
+    tiled half: the live splitter handle, the drag affordance and the Workspace
+    tab strip are v0.6.0's Required scope entry 14, and the area header comes
+    with the View contract and each Area's own chooser, entries 5 and 16.
+    Break-out, whenever it is built, adds windows carrying that same chrome,
+    and styling anything else it adds is that build's own work. What moved is
+    the cost recorded below, which is now one release rather than two.
+
     **What the other side bought, recorded because it was real.** Running first
     would have given a styled interface two releases sooner, and `PL-BNYF`
     already separated the two questions - arrangement is item 34's, appearance is
     this row's - so the visual composition of each *existing* surface would
     mostly have survived being rearranged. The cost accepted is that the
-    interface keeps its current visual language until after v0.7.0. Nothing in
+    interface keeps its current visual language until after item 34. Nothing in
     either release was blocked on the answer either way, which is why the row was
     left in place while the question was open rather than moved on a guess.
 
@@ -7551,7 +7584,8 @@ once someone is ready to scope it.
     2026-09-15). **Scoped across two releases on 2026-09-16**: § "v0.6.0 - the
     layout is the reader's" (ratified 2026-09-16) builds the tiled no-overlap invariant, the View
     contract, the registry, workspaces, persistence and the unconditional
-    region, and the v0.7.0 row - "the second screen" - adds break-out. The
+    region, and break-out held the release after it, "the second screen",
+    until it came off the timeline on 2026-09-26 (below). The
     split costs nothing structural because the two things break-out would
     otherwise force a rewrite of are both built in v0.6.0: the serialized
     layout root carries a set of windows from version 1, and the unconditional
@@ -7698,6 +7732,28 @@ once someone is ready to scope it.
     structural. The schematic (item 27) moves to v0.8.0 and multi-substance
     (items 6 and 7) to v0.9.0 as a consequence.
 
+    *Break-out unscheduled, 2026-09-26* (project owner, 2026-09-26: "This is
+    something I don't want to rule out doing eventually. Not something that
+    needs done soon."). Break-out stays this item's second half and stays
+    wanted, but it holds no row on § "The timeline": its row, "the second
+    screen", came off it, and the schematic (item 27) moved back to v0.7.0 and multi-substance (items
+    6 and 7) to v0.8.0 as a consequence (`PL-V1Y7`). It is placed when the owner
+    asks for it, as any catalogue entry is. **What keeps it possible stays in
+    v0.6.0, unchanged**: the saved layout root carries a set of windows from
+    version 1 (Required scope entry 1, `PL-HJPY`), because a root that gains one
+    later is a schema migration against every Workspace a learner has saved, and
+    the unconditional region is built in the per-window shape settled above
+    (entry 7, `PL-W54S`). Its build item, `PL-Y04W`, was dropped the same day,
+    since an eventual feature is intent here rather than an item in the queue,
+    and its brief keeps the measurement that build will need first, measured on
+    PySide6 6.11.2 / Qt 6.11.2 on 2026-09-16: a secondary window built as
+    `QWidget(main, Qt.Window)` has `main` as its transient parent, Qt counts
+    only primary windows when deciding the last window has closed, and so
+    closing the main window quits the application while the broken-out window is
+    still visible. The rule the build must satisfy is `docs/MODEL.md` § "Minimum
+    displayed outputs" -> "What this list requires once the layout is the
+    reader's".
+
     *Reopened and re-affirmed, 2026-09-17* (project owner, ratified - chosen
     over moving item 34 ahead of v0.5.0, which is the alternative that was put).
     The placement above was reopened on an argument the `PL-NMTF` round had not
@@ -7729,9 +7785,9 @@ once someone is ready to scope it.
     position). A surface built before the area system is built against whatever
     layout exists at the time and against no view contract, so it is built
     twice: once into a fixed parent, and again as a View. Every remaining one
-    is already behind this item - the schematic (item 27, v0.8.0),
-    multi-substance and its readouts (items 6 and 7, v0.9.0), the interface pass
-    (item 33, `v0.7.x`) - so the rule costs nothing today and exists so that the
+    is already behind this item - the schematic (item 27),
+    multi-substance and its readouts (items 6 and 7), the interface pass
+    (item 33) - so the rule costs nothing today and exists so that the
     next row move cannot reopen the question by accident. **It binds a new
     surface, not a new value.** A reading `docs/MODEL.md` -> "Minimum displayed
     outputs" already owes, or a correction to one on screen, is not deferred by
