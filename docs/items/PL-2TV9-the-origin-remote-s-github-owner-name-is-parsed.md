@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-answer
-touches: tools/open_pull_requests.py, tools/main_ci_status.py, tools/pr_body_check.py, tools/required_checks_check.py, tests/unit/test_open_pull_requests.py, tests/unit/test_required_checks_check.py
+touches: tools/open_pull_requests.py, tools/main_ci_status.py, tools/pr_body_check.py, tools/required_checks_check.py, tests/unit/test_open_pull_requests.py, tests/unit/test_required_checks_check.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_portability.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-answer batch
 added: 2026-09-25
 closed: 2026-09-26
