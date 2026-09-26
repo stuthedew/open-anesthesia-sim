@@ -658,11 +658,8 @@ def _unpublished_under_a_rival(
 
 
 @pytest.mark.parametrize("local", [False, True], ids=["tracking-ref", "and-local-branch"])
-def test_a_rival_whose_branch_the_remote_deleted_withdraws_no_claim(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-    local: bool,
+def test_a_rival_whose_branch_the_remote_deleted_does_not_withdraw_the_claim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], local: bool
 ) -> None:
     """A deleted rival's claim is on no copy another session can fetch (`PL-C3MN`).
 
