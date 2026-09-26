@@ -122,6 +122,7 @@ from .vcs import (
     changed_path_args,
     default_base,
     leading_ids,
+    listed_paths,
 )
 
 #: How long a claim survives with no commit on its branch. Seven days clears the
@@ -870,9 +871,9 @@ def work_outside_queue(
     `None` where git did not answer. A merge is how the base arrives rather than
     the branch's own work, and `holdings` reads none either. Every commit
     counts: `PL-CH3Z` deleted the old rule that read a commit made before the
-    record by its subject and had this skip it. `changed_path_args` turns
-    `core.quotePath` off, so a path outside ASCII is compared as written rather
-    than in git's quoted form, which no queue path would match.
+    record by its subject and had this skip it. `changed_path_args` asks for
+    `-z`, so a path is compared as written rather than in git's quoted form,
+    which no queue path would match.
     """
     run = runner or _run_git
     log = run(
@@ -884,10 +885,12 @@ def work_outside_queue(
     if not answered(log):
         return None
     for record in log.split("\x1e"):
-        lines = [line for line in record.split("\n") if line]
-        # Nothing at all, or the queue alone, is a claim or a yield, which are
-        # empty, a capture or a triage pass; anything else is work.
-        if lines and not all(in_queue(path, config) for path in lines[1:]):
+        # The hash, then the commit's paths, each ended by NUL; git opens the
+        # paths with one `\n`, which belongs to none of them. Nothing at all, or
+        # the queue alone, is a claim or a yield, which are empty, a capture or
+        # a triage pass; anything else is work.
+        paths = listed_paths(record.partition("\0")[2].removeprefix("\n"))
+        if paths and not all(in_queue(path, config) for path in paths):
             return True
     return False
 
@@ -1081,22 +1084,26 @@ def _history(names: list[str], base: str, root: Path, run: Runner) -> list[_Comm
         root,
     )
     entries: list[tuple[list[str], list[str], list[str]]] = []
-    # Split on the newline git ends each line with, never `splitlines()`: that
+    # Split on the NUL `-z` ends every field with, never `splitlines()`: that
     # also breaks at `\x1e`, the separator between one key's values, and read
-    # that way a commit claiming two items lost both claims and itself.
-    for line in output.split("\n"):
-        fields = line.split("\x1f", _FIELDS - 1)
+    # that way a commit claiming two items lost both claims and itself. Git
+    # opens a commit's changes with one `\n`, which belongs to no field.
+    words = iter(output.split("\0"))
+    for word in words:
+        word = word.removeprefix("\n")
+        if word.startswith(":"):
+            # `:<mode> <mode> <blob> <blob> <status>`, then the path as a field
+            # of its own, written as it is whatever it holds (`PL-PQ0R`).
+            path = next(words, "")
+            parts = word.split()
+            if entries:
+                entries[-1][1].append(path)
+                if len(parts) == 5 and set(parts[3]) != {"0"}:
+                    entries[-1][2].append(parts[3])
+            continue
+        fields = word.split("\x1f", _FIELDS - 1)
         if len(fields) == _FIELDS:
             entries.append((fields, [], []))
-        elif line.startswith(":") and entries:
-            # `:<mode> <mode> <blob> <blob> <status>\t<path>`; the path is
-            # everything after the first tab. Anything else is the blank line
-            # git writes between a commit and its changes.
-            head, _, path = line.partition("\t")
-            parts = head.split()
-            entries[-1][1].append(path)
-            if len(parts) == 5 and set(parts[3]) != {"0"}:
-                entries[-1][2].append(parts[3])
     history: list[_Commit] = []
     for fields, paths, added in entries:
         commit, authored, committed, parents, claims, yields, subject = fields

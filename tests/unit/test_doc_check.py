@@ -5074,3 +5074,53 @@ def test_a_repository_that_writes_no_release_notes_is_told_nothing(tmp_path: Pat
     report = _span_report(root)
 
     assert (report.errors, report.declined) == ([], [])
+
+
+def _seeded(root: Path) -> Path:
+    """A real checkout holding one committed file, `seed.txt`."""
+    (root / "seed.txt").write_text("seed\n", encoding="utf-8")
+    _git_init(root)
+    return root
+
+
+def test_changed_paths_names_an_untracked_non_ascii_file_as_written(tmp_path: Path) -> None:
+    """`ls-files` quoted an untracked `new é.py` that the diff beside it did not (`PL-Y2L6`).
+
+    Read bare, the sweep's untracked half named it `"new \\303\\251.py"`, a file
+    no document can cite, so a stale citation of it was never searched for.
+    """
+    root = _seeded(tmp_path)
+    (root / "seed.txt").write_text("changed\n", encoding="utf-8")
+    (root / "new é.py").write_text("VALUE = 1\n", encoding="utf-8")
+
+    assert doc_check._changed_paths(root, "HEAD") == ["new é.py", "seed.txt"]
+
+
+def test_git_names_a_failed_read_by_its_subcommand(tmp_path: Path) -> None:
+    """An argv opening with an option named its failure `git -c` (`PL-0T5X`)."""
+    root = _seeded(tmp_path)
+
+    with pytest.raises(doc_check.GitUnanswered, match=r"^`git diff` exited 128: "):
+        doc_check._git_output(root, "-c", "core.quotePath=false", "diff", "--name-only", "nowhere")
+
+
+def test_git_answers_an_undecodable_path_as_unanswered(tmp_path: Path) -> None:
+    """A path git writes in bytes that are not UTF-8 is unread, not a traceback (`PL-0T5X`).
+
+    Under `-z` git prints a Latin-1 `café.py` as the byte `\\351`, which the
+    decode `subprocess.run(text=True)` makes raises on; `vcs._run_git` already
+    answered it as a silence (`PL-8HSX`).
+    """
+    root = _seeded(tmp_path)
+    blob = _git(root, "hash-object", "-w", "seed.txt").encode()
+    # Through the index alone, so no filesystem is asked to hold the name.
+    cacheinfo = b"100644," + blob + b",caf\xe9.py"
+    subprocess.run(
+        [b"git", b"update-index", b"--add", b"--cacheinfo", cacheinfo], cwd=root, check=True
+    )
+    _git(root, "commit", "-qm", "add a Latin-1 name")
+
+    with pytest.raises(
+        doc_check.GitUnanswered, match=r"^`git diff` printed a path this cannot read"
+    ):
+        doc_check._git_output(root, "diff", "--no-renames", "-z", "--name-only", "HEAD~1", "HEAD")
