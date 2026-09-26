@@ -3,13 +3,15 @@ id: PL-21KN
 title: bin/docket arm answers for the checkout's HEAD even where the pull request's own branch on origin is ahead of it, so once someone else has brought main into the pull request it still reports behind N and advises update_pull_request_branch or a merge and push, both of which misfire
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: remote-copy
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 blocked-by: PL-MT3R
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1126
 payoff: arm stops advising an update for a pull request already level with main, so neither misfiring remedy gets run
 verify: grep -q 'def test_arm_reads_the_pull_requests_branch_on_the_remote_not_head' subprojects/docket/tests/test_cli.py
 ---
@@ -90,3 +92,21 @@ and a fresher fetch would not have moved that local branch.
 **Blocked, triage 2026-09-26, on `PL-MT3R`'s decision.** The record that head
 recommends is where `arm` would read the branch's copy on the remote from, so
 the direction above waits on it rather than reading `origin/<branch>` alone.
+
+**Done, 2026-09-26 (#1126).** `arm` reads the branch's copy on the remote
+before anything else, in `arming._unpulled`. Where its fetch answered, the copy
+comes from the command's one `ls-remote --heads` listing, which `holdings` is
+now handed too. Under `--no-fetch` or a failed fetch it is the tracking ref,
+named as that. Where HEAD lacks any commit of it, the answer is `unknown`, or
+`hold` where one stands, and its first line after the answer counts the
+commits. It then names `git pull --ff-only` or, where HEAD has commits of its
+own, `git pull --no-rebase`. Both pull from the remote, so a branch the remote
+deleted fails loudly rather than merging a stale ref. The second writer's case
+under **Not yet checked.** did arise: before this change, the test's
+second-writer shape had `arm` answer `arm` for a pull request landing
+`src/x.py`, and the same read covers it. A tip the listing names that this clone has not fetched makes
+`merge-base --is-ancestor` exit 128, which is said as unread, never as "HEAD
+holds it". The real-git tests are the `verify:` one, parametrized over the
+*Update branch*, second-writer and diverged shapes, and two beside it, one for
+the unfetched tip and one for a branch restarted after its old copy was
+deleted.
