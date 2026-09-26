@@ -97,6 +97,7 @@ from .vcs import (
     Snapshot,
     StrandedReport,
     TouchedPath,
+    only_on_a_branch,
 )
 
 
@@ -540,20 +541,27 @@ def format_digest(
     if lane_line := _by_lane(report, flight, plan, workflow_paths, generator_paths):
         lines.append(f"  {lane_line}")
 
+    # **Split on whether the item is only on a branch, because the two halves
+    # want opposite advice** (`PL-3CTW`). A claim on an item the base has no
+    # copy of is a capture commit's, nine times in ten, and the item is in no
+    # other session's store to be started - so refusing it refuses work nobody
+    # was offered, about the branch the `stranded` line directly below is
+    # telling the reader to recover it from. Neither claim is withdrawn: that
+    # was measured at three widths and refused at every one, per
+    # `Branch.on_base`. Only on a branch is `only_on_a_branch`'s answer, the
+    # one `stranded` gives, and not the base's alone: this branch's own claimed
+    # capture is in this store, and was told it had no copy here (`PL-LFNK`).
+    here = frozenset(item.identifier for item in report.items)
+    filed = sorted(
+        branch.item_id
+        for branch in flight.branches
+        if only_on_a_branch(branch.item_id, on_base=branch.on_base, here=here)
+    )
     if flight.ids:
-        # **Split on whether the default branch holds the item, because the
-        # two halves want opposite advice** (`PL-3CTW`). A claim on an item the
-        # base has no copy of is a capture commit's, nine times in ten, and the
-        # item is in no session's store to be started - so refusing it refuses
-        # work nobody was offered, about the branch the `stranded` line
-        # directly below is telling the reader to recover it from. Neither
-        # claim is withdrawn: that was measured at three widths and refused at
-        # every one, per `Branch.on_base`.
         landed = sorted(
-            (branch for branch in flight.branches if branch.on_base),
+            (branch for branch in flight.branches if branch.item_id not in filed),
             key=lambda branch: branch.item_id,
         )
-        filed = sorted(branch.item_id for branch in flight.branches if not branch.on_base)
         if landed:
             # **What the branches hold and how long each has sat, not an order**
             # (`PL-7TVT`). This line ended "do not start these again", which
@@ -565,7 +573,7 @@ def format_digest(
             # because it runs on every session start and must answer offline.
             if now is None:
                 named = ", ".join(
-                    f"{branch.item_id}{held_as(branch.item_id, read)}" for branch in landed
+                    f"{branch.item_id}{_held_here(branch.item_id, read)}" for branch in landed
                 )
                 lines.append(
                     f"  In flight on a branch: {named}. A branch outlives its session, so this "
@@ -575,7 +583,7 @@ def format_digest(
             else:
                 named = ", ".join(
                     f"{branch.item_id} {_digest_age(branch.last_commit, now)}"
-                    f"{held_as(branch.item_id, read)}"
+                    f"{_held_here(branch.item_id, read)}"
                     for branch in landed
                 )
                 lines.append(
@@ -601,11 +609,13 @@ def format_digest(
             f"  Unlanded and attributable to no item: {', '.join(sorted(flight.unattributed))}. "
             "Nothing names it, so no guard here can see it - file an item or delete the branch."
         )
-    if stranded is not None and stranded.items:
-        named = ", ".join(
-            f"{item.identifier} ({_gloss(item.title)})" for item in stranded.items[:2]
-        )
-        rest = f", +{len(stranded.items) - 2} more" if len(stranded.items) > 2 else ""
+    # Not the ids the filed line already named: both lines ask
+    # `only_on_a_branch`, so naming one there again repeats its answer two lines
+    # on, as `PL-LFNK`'s live digest did.
+    unnamed = [item for item in stranded.items if item.identifier not in filed] if stranded else []
+    if unnamed:
+        named = ", ".join(f"{item.identifier} ({_gloss(item.title)})" for item in unnamed[:2])
+        rest = f", +{len(unnamed) - 2} more" if len(unnamed) > 2 else ""
         lines.append(
             f"  Only on a branch, not in this checkout: {named}{rest}. "
             "`bin/docket stranded` to recover."
@@ -987,6 +997,7 @@ def format_flight(
     reviews: OpenPullRequests | None = None,
     read: Holdings | None = None,
     unclaimed: Unclaimed | None = None,
+    here: Collection[str] = (),
 ) -> str:
     """Which items are on a branch, how long each has sat, and what went unread.
 
@@ -1053,6 +1064,11 @@ def format_flight(
     (`claims.claims_nothing`), and the design's pre-registered 1-in-20
     threshold for a weak hold is counted from them, so they print wherever one
     exists and nowhere else.
+
+    `here` is the ids in this checkout's store, which `filed there` asks
+    `only_on_a_branch` about beside the base, as the digest and `stranded` do:
+    asked of the base alone, it told a session its own claimed capture was in
+    no queue here (`PL-LFNK`). Left empty, every item the base lacks is marked.
     """
     lines: list[str] = []
     finished = {entry.name for entry in settled.branches} if settled else set()
@@ -1072,7 +1088,8 @@ def format_flight(
             # `filed there` rather than a second table: the fact belongs to the
             # row it qualifies, and a reader scanning for their own id meets it
             # without being sent anywhere (`PL-3CTW`).
-            mark = "" if branch.on_base else "  filed there"
+            filed = only_on_a_branch(branch.item_id, on_base=branch.on_base, here=here)
+            mark = "  filed there" if filed else ""
             row = (
                 f"{branch.item_id}  {branch.name:<{width}}  {kind}"
                 f"{ages[branch.name]:<{age_width}}{_review(branch.name, reviews)}{mark}"
@@ -1095,7 +1112,9 @@ def format_flight(
                 "Whether a pull request is open for any of them could not be read here, so "
                 "work waiting on review reads the same as work still being written."
             )
-        if any(not branch.on_base for branch in live):
+        if any(
+            only_on_a_branch(branch.item_id, on_base=branch.on_base, here=here) for branch in live
+        ):
             lines.append(
                 "An item marked `filed there` is not in this checkout's queue at all: that "
                 "branch holds the only copy, and `bin/docket stranded` recovers it."
@@ -1164,6 +1183,19 @@ def held_as(key: str, read: Holdings | None) -> str:
     """
     hold = read.holding().get(key) if read is not None else None
     return f" ({hold.state} {_kind(hold)})" if hold is not None else ""
+
+
+def _held_here(key: str, read: Holdings | None) -> str:
+    """`held_as`, adding `this branch` where the hold is on the branch `HEAD` is on.
+
+    The digest's, since a session reads it before anything else: its own claim
+    otherwise reads as somebody else's branch in flight, while `show` calls the
+    same claim this session's own work (`PL-LFNK`).
+    """
+    if read is None or (hold := read.holding().get(key)) is None:
+        return ""
+    where = ", this branch" if _on_head(hold, read) else ""
+    return f" ({hold.state} {_kind(hold)}{where})"
 
 
 def format_excluded(ids: Iterable[str], read: Holdings | None) -> str:
