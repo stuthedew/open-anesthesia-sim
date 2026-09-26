@@ -3,11 +3,13 @@ id: PL-YKXQ
 title: This container's initial clone had local main diverged 407 commits into pre-rewrite history, so a session that checks out main gets a stale tree and an old bin/docket
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, infra
 feature: dev-tooling
 touches: .claude/hooks/docket-digest.sh, tests/unit/test_docket_digest_hook.py, docs/worker.md
 added: 2026-09-06
+closed: 2026-09-26
+reason: not reproduced in a second fresh container, which is the evidence the 2026-09-19 note named for dropping this rather than building the check. On 2026-09-26 local `main` was created from `origin/main` when the container was provisioned (reflog: `branch: Created from refs/remotes/origin/main`, 03:48 UTC, 80 minutes before the session began) and is a clean ancestor - `git rev-list --count origin/main..main` 0, `main..origin/main` 12 - so it lags by what merges during provisioning and can diverge only if the history of `main` is rewritten inside that window; the one rewrite (`PL-SHG5`) predates both clean containers. The lag is announced where a session would step onto it (`git checkout main` printed `Your branch is behind 'origin/main' by 13 commits, and can be fast-forwarded.`), and no docket read takes the local branch where `origin/main` resolves (`DEFAULT_BRANCHES` in `subprojects/docket/src/docket/vcs.py`). Reopen on a second rewrite of `main`, or on a container where `git rev-list --count origin/main..main` is not 0.
 verify: grep -q 'rev-list --count main' .claude/hooks/docket-digest.sh && uv run pytest tests/unit/test_docket_digest_hook.py
 ---
 
@@ -77,3 +79,18 @@ rewriting this command before the work rather than after.
 operations), which closed with the finding that its ten members are not one
 mechanism. This item keeps the cheap session-start check it was already `ready` on. Worth knowing for whoever takes it: the pathology is **not** reproduced in the 2026-09-19 container - `git rev-list --count origin/main..main` returns 0, so local `main` is a clean ancestor rather than diverged. That is one more container, not a disproof, and it is the evidence candidate 3 asked for; a second clean one would justify dropping this instead of building the check. Nothing here is blocked on that head; this item stands on
 its own merits at its own band.
+
+**Dropped 2026-09-26, on the second clean container.** Measured at the start of
+the session that took this item. `git reflog main` holds one entry, `branch:
+Created from refs/remotes/origin/main` at 03:48:07 UTC, and the session's own
+branch was cut from a fresh fetch at 05:08:29. So a container is cloned ahead of
+its session, and its local `main` is `origin/main` as of that clone - here a
+current one, since the tip `49aa759d` merged at 03:45:00 and the next merge,
+`9bd852c0`, at 03:51:43. A clone like that falls behind by whatever merges while
+it waits, which git states on checkout, and cannot diverge unless the history of
+`main` is rewritten during the wait. The 2026-09-06 container's `main` sat at
+`9a10124`, "Merge pull request #102", while the remote was merging `#399`: it came
+from a copy older than the `PL-SHG5` rewrite, and neither container since has
+shown one. The check would guard a condition that needs a second rewrite of
+`main` to recur, and `CLAUDE.md`'s gate for new tooling - build where the work
+recurs - declines it.
