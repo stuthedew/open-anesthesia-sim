@@ -662,29 +662,7 @@ def format_digest(
             if ready.completed_features
             else ""
         )
-        # The offer is where a duplicate release *starts*, so this is where
-        # saying so is worth most: the second session never raises it, rather
-        # than being refused after the owner has already approved one
-        # (`PL-66FP`). The advice is replaced rather than appended - "offer
-        # 0.3.9" and "0.3.9 is already being cut" in one line is two answers.
-        #
-        # A holder with no versions has claimed the release train and cut
-        # nothing yet, which is the same answer arriving earlier (`PL-331V`).
-        held = [branch for branch in (cuts.branches if cuts else ()) if not branch.mine]
-        cutting = ", ".join(
-            f"{branch.ref} (v{', v'.join(branch.versions)})" for branch in held if branch.versions
-        )
-        said = [f"A release is already being cut on {cutting}"] if cutting else []
-        said.extend(
-            f"{branch.item} holds the release train, nothing cut yet ({branch.ref})"
-            for branch in held
-            if not branch.versions
-        )
-        advice = (
-            "; ".join(said) + "; do not offer another until it merges."
-            if held
-            else _release_advice(ready, plan)
-        )
+        advice = _cut_elsewhere(cuts) or _release_advice(ready, plan)
         lines.append(
             f"  Releasable: {len(ready.shippable)} finished item(s) since "
             f"{ready.current_version}{completes}. {advice}"
@@ -2711,6 +2689,8 @@ def format_status(
     in_flight: FlightReport | None = None,
     plan: Wave | None = None,
     interrupted: str = "",
+    cuts: CutsInFlight | None = None,
+    tagged: Mapping[str, str] | None = None,
 ) -> str:
     """The whole project at feature altitude, which is the altitude decisions happen at.
 
@@ -2720,6 +2700,11 @@ def format_status(
     have not started, and what is urgent enough to ignore all of that. So this
     leads with features, names only the next item inside each, and keeps the
     individually-urgent work in a section of its own.
+
+    `tagged` maps an open item to the tag its title asks for, where the clone
+    already holds that tag (`cli._tagged`). Such an item is done and unclosed,
+    so its row says so rather than offering it as work: `PL-08D4` was offered
+    as `release-process`'s next item after v0.5.10 was tagged (`PL-53Y6`).
     """
     from .plan import features as group_features
 
@@ -2738,6 +2723,11 @@ def format_status(
         used.setdefault(mark, None)
         return f" {mark}"
 
+    def tag_held(identifier: str) -> str:
+        """The mark on an item whose asked-for tag the clone already holds, or `""`."""
+        tag = (tagged or {}).get(identifier)
+        return f" [TAGGED: {tag} exists - close it]" if tag else ""
+
     underway = [f for f in grouped.values() if f.is_underway]
     not_started = [f for f in grouped.values() if f.open_items and not f.done]
     complete = [f for f in grouped.values() if f.is_complete]
@@ -2749,7 +2739,7 @@ def format_status(
         if not candidates:
             return "all remaining work is blocked"
         item = candidates[0]
-        mark = " [IN FLIGHT]" if item.identifier in flight.ids else ""
+        mark = " [IN FLIGHT]" if item.identifier in flight.ids else tag_held(item.identifier)
         return (
             f"next: {item.identifier}{placed(item.identifier)} {item.title} ({item.effort}){mark}"
         )
@@ -2779,7 +2769,7 @@ def format_status(
             note = f" - {item.model_guidance}" if item.model_guidance else ""
             lines.append(
                 f"  {item.priority} {item.identifier}{placed(item.identifier)} "
-                f"{item.title} ({item.effort}{note})"
+                f"{item.title} ({item.effort}{note}){tag_held(item.identifier)}"
             )
 
     if complete:
@@ -2801,7 +2791,9 @@ def format_status(
             f"{ready.current_version}{done_note}."
         )
         offer = release_offer(ready, plan)
-        if offer.kind == RESERVED:
+        if elsewhere := _cut_elsewhere(cuts):
+            lines.append(f"  {elsewhere}")
+        elif offer.kind == RESERVED:
             lines.append(f"  {_reserved_refusal(offer, '`docket wave` for what is due')}")
         else:
             lines.append(f"  Next version would be {offer.version}.")
@@ -3080,6 +3072,37 @@ def _interrupted_cut(report: Report, ready: Readiness | None, version: str) -> s
         f"Finish it before offering another - `make release VERSION={version.lstrip('v')}` "
         f"cuts all {total}."
     )
+
+
+def _cut_elsewhere(cuts: CutsInFlight | None) -> str:
+    """The sentence another ref's release says in place of an offer, or `""`.
+
+    The offer is where a duplicate release *starts*, so this is where saying
+    so is worth most: the second session never raises it, rather than being
+    refused after the owner has already approved one (`PL-66FP`). The offer is
+    replaced rather than appended - "offer 0.3.9" and "0.3.9 is already being
+    cut" in one line is two answers. A holder with no versions has claimed the
+    release train and cut nothing yet, which is the same answer arriving
+    earlier (`PL-331V`).
+
+    The digest's `Releasable:` line and `status`'s `Unreleased:` line both say
+    it, for `_reserved_refusal`'s reason. `status` read no cut at all until
+    `PL-53Y6`, so it said `Next version would be 0.5.11` beneath a digest
+    saying another branch was cutting 0.5.11.
+    """
+    held = [branch for branch in (cuts.branches if cuts else ()) if not branch.mine]
+    if not held:
+        return ""
+    cutting = ", ".join(
+        f"{branch.ref} (v{', v'.join(branch.versions)})" for branch in held if branch.versions
+    )
+    said = [f"A release is already being cut on {cutting}"] if cutting else []
+    said.extend(
+        f"{branch.item} holds the release train, nothing cut yet ({branch.ref})"
+        for branch in held
+        if not branch.versions
+    )
+    return "; ".join(said) + "; do not offer another until it merges."
 
 
 def _reserved_refusal(offer: ReleaseOffer, pointer: str) -> str:

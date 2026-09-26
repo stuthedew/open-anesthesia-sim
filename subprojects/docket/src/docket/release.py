@@ -172,6 +172,19 @@ def is_untagged(version: str, existing: frozenset[str]) -> bool:
     return f"v{name}" not in existing and name not in existing
 
 
+#: How a cut's tag step is titled when it is filed for the owner, as all seven
+#: filed by 2026-09-26 were: `Tag v0.5.11 on the merge commit of ...`. A title
+#: is not a field, so this finds only the items that keep the shape; one that
+#: does not is offered as work exactly as it was before `PL-53Y6`.
+TAG_STEP_RE = re.compile(r"^Tag (v\d+\.\d+\.\d+)\b")
+
+
+def asked_tag(title: str) -> str:
+    """The release tag an item's title asks the owner to push, as `vX.Y.Z`, or `""`."""
+    match = TAG_STEP_RE.match(title)
+    return match.group(1) if match else ""
+
+
 def notes_name(version: str) -> str:
     """The notes file a version's release is written to, with no leading path."""
     return f"v{version.strip().lstrip('v')}.md"
