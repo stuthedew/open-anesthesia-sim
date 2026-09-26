@@ -84,3 +84,6 @@ dropping `vcs.py`, with the brief otherwise as written.
 **Recommendation:** yes. The defect is unchanged and only moved with its code,
 so the item stays `S` and delegable once `touches` matches, and a triage pass
 can make that edit without reopening the brief.
+
+`PL-M1C4`, captured by slam-dunk batch 2 the same night, records this finding
+as an untriaged item of its own; one answer here settles both.
