@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: claim-record
+milestone: v0.5.12
 touches: subprojects/docket/README.md, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_claiming.py, subprojects/docket/tests/test_claims.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_git_runner.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_vcs.py, tests/unit/test_branch_id_check.py, tools/branch_id_check.py
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-24

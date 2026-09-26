@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests, tools/generator_check.py, tools/pr_body_check.py, tools/doc_check.py, tools/open_pull_requests.py, tools/main_ci_status.py, tools/required_checks_check.py, tools/pr_title_check.py, tools/left_behind_check.py, .claude/hooks/, tests/unit/test_generator_check.py, tests/unit/test_open_pull_requests.py, tests/unit/test_required_checks_check.py, tests/unit/test_pr_body_check.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_gate_status_guard.py, tests/unit/test_no_prune_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head, triaged 2026-09-25 with the one-answer batch
 added: 2026-09-25

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: claim-record
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/checks.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py, tools/branch_id_check.py, .claude/hooks/docket-digest.sh, tests/unit/test_branch_id_check.py, tests/unit/test_docket_digest_hook.py, docs/items/PL-MB2W-who-holds-an-item-is-derived-by-every-reader.md, docs/items/PL-SVRW-roadmap-py-spells-the-leading-id-grammar-a.md, docs/items/PL-HMZZ-which-pull-request-carried-a-closed-item-s-work.md
 blocked-by: PL-N162
 deferred-from: v0.6.0 - filed after the freeze by PL-MB2W's design round (2026-09-24), and not safety or science; generator work, which the pause on new mechanisms exists for

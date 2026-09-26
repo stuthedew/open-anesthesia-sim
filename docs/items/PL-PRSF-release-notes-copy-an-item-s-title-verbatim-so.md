@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-24

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: release-process
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py, tools/doc_check.py, .claude/skills/docket/SKILL.md
 added: 2026-09-07
 closed: 2026-09-26
