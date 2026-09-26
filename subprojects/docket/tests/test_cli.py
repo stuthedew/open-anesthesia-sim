@@ -7694,7 +7694,7 @@ def test_generators_does_not_list_a_head_as_naming_no_members(
     assert "name no members" not in out and "names no members" not in out
 
 
-def test_generators_says_an_untriaged_live_head_ranks_nowhere(
+def test_an_untriaged_generator_tier_item_is_not_called_ranked(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """`next` offers an untriaged head nowhere, so the table must not call it on the tier."""

@@ -1476,11 +1476,11 @@ def test_tier_standings_answers_for_every_status_at_both_entrances(
     """
     if entrance == "generator":
         claim = _item(
-            "PL-AAAA", status=status, blocked_by=blocked_by, root_cause_of=GENERATOR, generator=LIVE
+            "PL-DDDD", status=status, blocked_by=blocked_by, root_cause_of=GENERATOR, generator=LIVE
         )
     else:
         claim = _item(
-            "PL-AAAA",
+            "PL-DDDD",
             status=status,
             blocked_by=blocked_by,
             touches=MACHINERY,
@@ -1490,10 +1490,10 @@ def test_tier_standings_answers_for_every_status_at_both_entrances(
     standings = tier_standings([claim, _item("PL-BBBB"), *_explained()], MACHINERY)
 
     if state is None:
-        assert "PL-AAAA" not in standings
+        assert "PL-DDDD" not in standings
         return
-    assert standings["PL-AAAA"].state == state
-    assert standings["PL-AAAA"].passes_to == (("PL-BBBB",) if state == PASSED else ())
+    assert standings["PL-DDDD"].state == state
+    assert standings["PL-DDDD"].passes_to == (("PL-BBBB",) if state == PASSED else ())
 
 
 def test_a_rank_passed_to_a_blocker_that_cannot_start_is_held_nowhere() -> None:
@@ -1516,7 +1516,7 @@ def test_a_rank_passed_to_a_blocker_that_cannot_start_is_held_nowhere() -> None:
     assert "PL-B3B3" not in standings
 
 
-def test_a_blocked_machinery_defect_passes_its_rank_to_its_open_blockers() -> None:
+def test_a_blocked_impairs_generators_item_passes_its_rank_to_its_open_blockers() -> None:
     """The tier's second entrance hands its rank down as a head does (`PL-Q4DF`).
 
     The brief's reproduction: before the fix `generator_blockers` passed the
@@ -1526,7 +1526,7 @@ def test_a_blocked_machinery_defect_passes_its_rank_to_its_open_blockers() -> No
     items = [
         _item("PL-1111", priority="P1", classes=("safety",)),
         _item(
-            "PL-AAAA",
+            "PL-DDDD",
             status="blocked",
             touches=MACHINERY,
             impairs_generators=IMPAIRS,
@@ -1538,8 +1538,8 @@ def test_a_blocked_machinery_defect_passes_its_rank_to_its_open_blockers() -> No
     picks = recommend(items, limit=2, generator_paths=MACHINERY)
 
     assert [p.item.identifier for p in picks] == ["PL-BBBB", "PL-1111"]
-    assert "PL-AAAA, a defect in the generator machinery that is blocked on it" in picks[0].reason
-    assert "unblocks PL-AAAA on the generator tier" in picks[0].describe()
+    assert "PL-DDDD, a defect in the generator machinery that is blocked on it" in picks[0].reason
+    assert "unblocks PL-DDDD on the generator tier" in picks[0].describe()
     assert unranked_generators(items, generator_paths=MACHINERY) == []
 
 
@@ -1547,7 +1547,7 @@ def test_a_blocked_machinery_defect_nothing_offered_carries_is_named() -> None:
     """Named as a head is, and marked as not a generator, so no count is invented."""
     items = [
         _item(
-            "PL-AAAA",
+            "PL-DDDD",
             status="blocked",
             touches=MACHINERY,
             impairs_generators=IMPAIRS,
@@ -1559,7 +1559,7 @@ def test_a_blocked_machinery_defect_nothing_offered_carries_is_named() -> None:
 
     (found,) = unranked_generators(items, generator_paths=MACHINERY)
 
-    assert found.head.identifier == "PL-AAAA"
+    assert found.head.identifier == "PL-DDDD"
     assert (found.waiting_on, found.behind, found.generator) == (("PL-BBBB",), ("PL-CCCC",), False)
 
 
