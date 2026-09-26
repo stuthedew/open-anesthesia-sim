@@ -64,7 +64,11 @@ fi
 # careful about.
 "$root/bin/docket" branch --brief 2>/dev/null || true
 
-"$root/bin/docket" digest 2>/dev/null || true
+# `--no-fetch` because `branch` above has just fetched, and every read command
+# fetches for itself otherwise (PL-XBV4): a second network round trip would buy
+# nothing. The digest then says which moment its refs are from, with the clock
+# time rather than only an age, because this text is resent on every turn.
+"$root/bin/docket" digest --no-fetch 2>/dev/null || true
 
 # The dead ends, immediately after the queue state and before the exception
 # line below. Placed here because it answers a different question from
