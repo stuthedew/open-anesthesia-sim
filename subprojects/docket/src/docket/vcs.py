@@ -1850,11 +1850,13 @@ class BranchState:
     session actually wants to know, and it costs one `git log` over a range
     already computed.
 
-    `fetched` is not about git's answer but about how old the refs behind it
-    are. This reads what the checkout holds and never fetches - the decision
-    has to stay answerable from a bare checkout with no network - so a caller
-    that did not refresh `origin/main` first gets an answer as stale as its
-    last fetch, and saying so is the difference between a report and a guess.
+    How old the refs behind it are is not a field here. This reads what the
+    checkout holds and never fetches - the decision has to stay answerable
+    from a bare checkout with no network - so a caller that did not refresh
+    `origin/main` first gets an answer as stale as its last fetch, and saying
+    so is the difference between a report and a guess. `Snapshot.fresh` says
+    it, once for every report read from the same refs; the `fetched` field
+    that repeated it here could disagree with it, and was retired (`PL-Z909`).
 
     `absent` separates the two shapes of "no position" that the session-start
     hook has always distinguished by staying silent. A detached HEAD, a
@@ -1893,7 +1895,6 @@ class BranchState:
     #: lines apart, and it still must not be the detector.
     landed_whole: bool = False
     rewrite: RewriteReport | None = None
-    fetched: bool = False
     declined: str = ""
     absent: bool = False
 
@@ -2205,7 +2206,7 @@ def snapshot(
         refs_at = _fetch_head_at(root, run)
     else:
         refs_at = None
-    branch = _branch_state(root, run, fetched=outcome == FETCHED)
+    branch = _branch_state(root, run)
     if run.reason:
         return Snapshot(
             fetch=outcome,
@@ -2216,7 +2217,7 @@ def snapshot(
     return Snapshot(fetch=outcome, refs_at=refs_at, branch=branch)
 
 
-def branch_state(root: Path, *, runner: Runner | None = None, fetched: bool = False) -> BranchState:
+def branch_state(root: Path, *, runner: Runner | None = None) -> BranchState:
     """Where the working branch stands against the default branch.
 
     This was fifty lines of bash in the session-start hook, which is the only
@@ -2232,10 +2233,10 @@ def branch_state(root: Path, *, runner: Runner | None = None, fetched: bool = Fa
 
     **It never fetches.** The rule the rest of this module follows - a read
     that must work from a bare checkout with no network - applies to the
-    decision, so refreshing `origin/main` is the caller's, and `fetched` says
-    whether the caller did it. What is reported is therefore stale by exactly
-    one fetch at worst, which is an acceptable error for a report and would be
-    an unacceptable one for a claim.
+    decision, so refreshing `origin/main` is the caller's, and whether it did
+    is `Snapshot.fresh`'s to say (`PL-Z909`). What is reported is therefore
+    stale by exactly one fetch at worst, which is an acceptable error for a
+    report and would be an unacceptable one for a claim.
 
     **A silence outranks whatever the body concluded while git was quiet**
     (`PL-Q9Z1`). This declined under a total git failure before the channel
@@ -2246,29 +2247,24 @@ def branch_state(root: Path, *, runner: Runner | None = None, fetched: bool = Fa
     reason - here by looking for a branch that is in fact there.
     """
     run = _Silences(runner or _run_git)
-    state = _branch_state(root, run, fetched=fetched)
+    state = _branch_state(root, run)
     if run.reason:
         return replace(state, absent=True, declined=run.reason)
     return state
 
 
-def _branch_state(root: Path, run: Runner, *, fetched: bool) -> BranchState:
+def _branch_state(root: Path, run: Runner) -> BranchState:
     """`branch_state`'s reading, against a runner whose silences are watched."""
     branch = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
     if not branch or branch == "HEAD":
         return BranchState(
-            fetched=fetched,
-            absent=True,
-            declined="no branch is checked out here, so there is nothing to compare",
+            absent=True, declined="no branch is checked out here, so there is nothing to compare"
         )
 
     base = default_base(root, runner=run)
     if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
         return BranchState(
-            branch=branch,
-            fetched=fetched,
-            absent=True,
-            declined=f"this checkout has no {base} to compare against",
+            branch=branch, absent=True, declined=f"this checkout has no {base} to compare against"
         )
 
     # The default branch with no remote copy of it: `default_base` fell all the
@@ -2279,7 +2275,6 @@ def _branch_state(root: Path, run: Runner, *, fetched: bool) -> BranchState:
         return BranchState(
             branch=branch,
             base=base,
-            fetched=fetched,
             absent=True,
             declined=f"{branch} is the default branch and has no remote copy to compare with",
         )
@@ -2293,11 +2288,7 @@ def _branch_state(root: Path, run: Runner, *, fetched: bool) -> BranchState:
     counts = run(["rev-list", "--left-right", "--count", f"{base}...HEAD"], root).split()
     if len(counts) != 2 or not all(part.isdigit() for part in counts):
         return BranchState(
-            branch=branch,
-            base=base,
-            fetched=fetched,
-            absent=True,
-            declined="git would not count the two sides",
+            branch=branch, base=base, absent=True, declined="git would not count the two sides"
         )
 
     behind, ahead = int(counts[0]), int(counts[1])
@@ -2315,7 +2306,6 @@ def _branch_state(root: Path, run: Runner, *, fetched: bool) -> BranchState:
         return BranchState(
             branch=branch,
             base=base,
-            fetched=fetched,
             declined=(
                 f"this clone shares no readable history with {base}, so its position "
                 "cannot be counted - something ran a `--depth` fetch, and "
@@ -2340,7 +2330,6 @@ def _branch_state(root: Path, run: Runner, *, fetched: bool) -> BranchState:
         landed=_landed_since(fork, base, root, run) if behind and fork else (),
         landed_whole=says_merge and landed_whole(base, root, run),
         rewrite=rewrite,
-        fetched=fetched,
     )
 
 
@@ -3386,10 +3375,10 @@ class StrandedReport:
     `declined` carries the same meaning it does for `PullRequestHistory`: a
     check that could not run, reported as such rather than as a clean result.
 
-    `fetched` is how old the *comparison point* is, and it is part of the
-    answer for the same reason `refs_read` is. Every finding here rests on the
-    default branch not holding the item, so a base nobody refreshed reports
-    whatever merged since the last fetch as lost. That is not hypothetical:
+    How old the *comparison point* is belongs to the answer for the same
+    reason `refs_read` does. Every finding here rests on the default branch
+    not holding the item, so a base nobody refreshed reports whatever merged
+    since the last fetch as lost. That is not hypothetical:
     `PL-XLQ5` merged at 01:13 on 2026-09-05, this checkout's `origin/main` was
     from 01:05, and at 01:16 the item read as stranded and the recovery command
     restored its pre-triage copy over the triaged one the merge had just landed
@@ -3397,9 +3386,11 @@ class StrandedReport:
     deletes the branch too - so freshness is the whole of what separates a hole
     from a merge.
 
-    It records that a refresh *arrived*, for `BranchState`'s reason: the caller
-    sets it from `fetch_remote`'s outcome, so a fetch that failed leaves it
-    `False` and the report says what the refs rest on (`PL-XBV4`).
+    It is not a field here, for `BranchState`'s reason: `Snapshot.fresh` says
+    whether a refresh *arrived*, from `fetch_remote`'s outcome, once for every
+    report read from those refs, so a fetch that failed reads as one and the
+    report says what the refs rest on (`PL-XBV4`). The `fetched` field that
+    copied it could disagree with it, and was retired (`PL-Z909`).
     """
 
     items: tuple[StrandedItem, ...] = ()
@@ -3413,7 +3404,6 @@ class StrandedReport:
     base: str = ""
     refs_read: int = 0
     declined: str = ""
-    fetched: bool = False
 
     @property
     def known(self) -> bool:
@@ -3952,12 +3942,7 @@ def _title_at(ref: str, path: str, root: Path, run: Runner) -> str:
 
 
 def stranded(
-    root: Path,
-    known_ids: set[str],
-    *,
-    items_dir: str = "docs/items",
-    runner: Runner | None = None,
-    fetched: bool = False,
+    root: Path, known_ids: set[str], *, items_dir: str = "docs/items", runner: Runner | None = None
 ) -> StrandedReport:
     """Items that exist on some branch and in neither the store nor the default branch.
 
@@ -3980,12 +3965,13 @@ def stranded(
     ids are added to that, because a branch forked before an item landed has a
     working tree missing it and would otherwise report it as stranded.
 
-    **It never fetches, and `fetched` is what the caller says it did.** The
-    rule the rest of this module follows - a read that must work from a bare
+    **It never fetches, and takes no word for whether anything did.** The rule
+    the rest of this module follows - a read that must work from a bare
     checkout with no network - applies here too, so refreshing the base is
     `cmd_stranded`'s and it is not optional there: every finding is a claim
     about what the base does *not* hold, and that claim is only as old as the
-    last fetch. `StrandedReport.fetched` carries what happened into the output.
+    last fetch. `Snapshot.fresh` carries what happened into the output
+    (`PL-Z909`).
 
     **The second half: an item the base holds whose substance is on a
     branch.** An item file is created once and appended to by every session
@@ -4021,7 +4007,7 @@ def stranded(
         if line.strip()
     ]
     if not refs:
-        return StrandedReport(declined="no branch refs this checkout can read", fetched=fetched)
+        return StrandedReport(declined="no branch refs this checkout can read")
 
     base = default_base(root, runner=run)
     on_base = _item_blobs(base, root, items_dir, run)
@@ -4037,8 +4023,7 @@ def stranded(
         return StrandedReport(
             declined=run.reason
             if run.guessed_base
-            else f"no items found on {base}, so every branch would read as stranding its own",
-            fetched=fetched,
+            else f"no items found on {base}, so every branch would read as stranding its own"
         )
 
     known = {identifier.upper() for identifier in known_ids} | set(on_base)
@@ -4097,12 +4082,7 @@ def stranded(
         for identifier, (path, base_path, title, branches) in sorted(edited.items())
     ]
     return StrandedReport(
-        items=tuple(found),
-        edits=tuple(edits),
-        base=base,
-        refs_read=len(refs),
-        fetched=fetched,
-        declined=run.reason,
+        items=tuple(found), edits=tuple(edits), base=base, refs_read=len(refs), declined=run.reason
     )
 
 

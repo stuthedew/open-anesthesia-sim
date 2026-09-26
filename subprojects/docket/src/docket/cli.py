@@ -686,21 +686,22 @@ def _stranded(items: Sequence[Item], args: argparse.Namespace) -> StrandedReport
     can only be asked about paths it tracks, and searching the wrong path would
     find no items and report every branch as stranding all of its own.
 
-    `fetched` is the snapshot's answer rather than the caller's word: whether
-    the refs the report is read against are this command's own fetch. Two
-    callers used to say it for themselves and one of them said it wrong - the
-    digest, run by a hook that had just fetched through `docket branch`,
-    passed `False` and was right only by the hook's ordering (`PL-XBV4`).
+    Whether the refs the report is read against are this command's own fetch
+    is the snapshot's answer, `Snapshot.fresh`, and nothing here restates it.
+    Two callers used to say it for themselves and one of them said it wrong -
+    the digest, run by a hook that had just fetched through `docket branch`,
+    passed `False` and was right only by the hook's ordering (`PL-XBV4`) - and
+    the report field they wrote it into outlived that fix unread (`PL-Z909`).
+    The snapshot is still taken first, for its fetch: the report is read from
+    the refs it refreshed, and the refs line printed beneath it is that
+    moment's.
     """
     inv = _invocation(args)
     if inv.git is None or not inv.tracked:
         return None
+    _snapshot(args)
     return stranded(
-        inv.root,
-        {item.identifier for item in items},
-        items_dir=inv.tracked,
-        fetched=_snapshot(args).fresh,
-        runner=inv.git,
+        inv.root, {item.identifier for item in items}, items_dir=inv.tracked, runner=inv.git
     )
 
 
