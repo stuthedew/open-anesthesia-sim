@@ -45,6 +45,7 @@ from docket.vcs import (
     _run_git,
     _standing,
     _superseded,
+    base_copies,
     behind_remote,
     branch_state,
     change_landed,
@@ -3654,3 +3655,86 @@ def test_snapshot_dates_the_refs_it_did_not_fetch(tmp_path: Path) -> None:
     subprocess.run(["git", "remote", "remove", "origin"], cwd=work, check=True, capture_output=True)
     alone = snapshot(work, now=now)
     assert (alone.fetch, alone.refs_at) == (UNFETCHABLE, None)
+
+
+# --- the default branch's newer copy of an item (PL-Y48N) --------------------
+
+
+def _item_document(identifier: str, status: str, note: str = "") -> str:
+    return f"---\nid: {identifier}\ntitle: {identifier}\nstatus: {status}\n---\n\nx\n{note}"
+
+
+def test_base_copies_reads_the_bases_copy_of_each_item_it_moved_after_the_fork(
+    tmp_path: Path,
+) -> None:
+    """`PL-Y48N`: which copy is newer is read off the fork, one item at a time.
+
+    A branch behind `main`, where `main` closed one item the branch never
+    touched, closed another the branch had edited, blocked a third the branch
+    had edited, and retitled and closed a fourth; the branch edited a fifth,
+    and `main` blocked a sixth that the working tree has edited without
+    committing. Only the base's side counts as moved, the working tree's
+    uncommitted edit counts as the checkout's own, and a checkout's own edit
+    stands everywhere except over a closure, which `holdings` releases every
+    claim on whatever the branch's copy says.
+    """
+    repo = _Repo(tmp_path / "repo")
+    items = repo.root / "docs" / "items"
+    items.mkdir(parents=True)
+
+    def write(name: str, status: str, note: str = "") -> None:
+        (items / name).write_text(_item_document(name[:7], status, note), encoding="utf-8")
+
+    for name in (
+        "PL-B1B1-a.md",
+        "PL-C2C2-b.md",
+        "PL-D3D3-c.md",
+        "PL-F4F4-d.md",
+        "PL-G5G5-e.md",
+        "PL-H6H6-old.md",
+    ):
+        write(name, "ready")
+    repo.commit("seed")
+    repo.git("checkout", "-qb", "work")
+    for name in ("PL-C2C2-b.md", "PL-D3D3-c.md", "PL-F4F4-d.md"):
+        write(name, "ready", "a note from the branch\n")
+    repo.commit("PL-C2C2: notes")
+    repo.git("checkout", "-q", "main")
+    write("PL-B1B1-a.md", "done")
+    write("PL-D3D3-c.md", "done")
+    write("PL-F4F4-d.md", "blocked")
+    write("PL-G5G5-e.md", "blocked")
+    (items / "PL-H6H6-old.md").unlink()
+    write("PL-H6H6-new.md", "done")
+    repo.commit("PL-B1B1: close-outs landing")
+    repo.git("checkout", "-q", "work")
+    write("PL-G5G5-e.md", "ready", "not committed yet\n")
+
+    copies = base_copies(repo.root, "main", items_dir="docs/items")
+
+    assert not copies.declined
+    assert sorted(copies.copies) == ["PL-B1B1", "PL-D3D3", "PL-F4F4", "PL-G5G5", "PL-H6H6"]
+    decided = {
+        key: (copy.status, copy.changed_here, copy.supersedes("ready"))
+        for key, copy in copies.copies.items()
+    }
+    assert decided == {
+        "PL-B1B1": ("done", False, True),
+        "PL-D3D3": ("done", True, True),
+        "PL-F4F4": ("blocked", True, False),
+        "PL-G5G5": ("blocked", True, False),
+        "PL-H6H6": ("done", False, True),
+    }
+    retitled = copies.of("pl-h6h6")
+    assert retitled is not None and retitled.path == "docs/items/PL-H6H6-new.md"
+    assert "status: done" in retitled.text
+    # A closure in this checkout's own copy stands: the base's is not newer there.
+    closed = copies.of("PL-D3D3")
+    assert closed is not None and not closed.supersedes("dropped")
+
+    narrowed = base_copies(repo.root, "main", items_dir="docs/items", keys=["PL-B1B1"])
+    assert list(narrowed.copies) == ["PL-B1B1"]
+
+    repo.git("stash", "-q")
+    repo.git("checkout", "-q", "main")
+    assert base_copies(repo.root, "main", items_dir="docs/items").copies == {}

@@ -44,6 +44,7 @@ from docket.vcs import (
     Runner,
     _run_git,
     answered,
+    base_copies,
     behind_remote,
     branch_state,
     change_landed,
@@ -410,6 +411,15 @@ READS: tuple[Read, ...] = (
         "changed_items",
         lambda r, g: changed_items(r, "origin/main", runner=g),
         _findings("identifiers"),
+    ),
+    Read(
+        # The checkout forked before `PL-L8TR` landed on the base, so the base
+        # holds a copy the checkout does not. That copy is the finding, and so
+        # is whether the checkout changed it too: a silence taking the
+        # checkout's own edit for the base's is the wrong answer (`PL-Y48N`).
+        "base_copies",
+        lambda r, g: base_copies(r, "origin/main", runner=g),
+        lambda a: frozenset((key, copy.changed_here) for key, copy in a.copies.items()),
     ),
     # Its finding is the ref itself, and a guessed one is no finding: `_declined`
     # reads the mark, so a silence that stops every candidate resolving declines

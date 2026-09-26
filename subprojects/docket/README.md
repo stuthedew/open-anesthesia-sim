@@ -499,6 +499,21 @@ command against a real clone in both shapes and is held to the parser, so a
 command added later is either in the census, named as reading the refs as
 they are, or named as not a read command.
 
+**An item the default branch moved after the fork is read from there**
+(`PL-Y48N`). A working tree behind `origin/main` holds every item as it stood
+at the fork, so `next` offered, and `show` called ready, an item another
+session had closed and merged since. Where the snapshot places the working
+tree behind, `next` and `show` read the base's copy of each item the base
+changed after the fork (`vcs.base_copies`) in place of the working tree's -
+unless this branch changed the item too, when its own edit stands except over
+a closure, since `holdings` releases every claim on an item the base has
+closed. `next` counts the items whose status it took from there and names the
+closed ones; `show` says so under the band. `claim` reads the base's copy
+after its fetch and refuses, writing nothing, an item the base has closed,
+which is the rule its read-back would have released the claim by. A command
+that writes the store never reads the base's copy, and the digest, `list` and
+`status` still answer from the working tree.
+
 **When the refs were last refreshed is read from `FETCH_HEAD`, and read before
 a fetch.** Git writes it on every fetch that reaches the remote - a fetch that
 found nothing new still lists the refs it compared - and truncates it to

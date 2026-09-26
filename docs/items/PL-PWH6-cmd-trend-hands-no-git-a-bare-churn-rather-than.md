@@ -1,9 +1,15 @@
 ---
 id: PL-PWH6
 title: cmd_trend hands --no-git a bare Churn() rather than saying it asked git nothing, so trend infers 'not asked for' from an empty undeclined reading - a history git answered with no line counts reads the same - and test_cli.py's test_trend_omits_the_churn_columns_when_git_cannot_be_read runs --no-git under the other cause's name
-status: untriaged
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_cli.py
+priority: P3
+effort: S
+status: ready
+classes: defect
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_trend.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass
 added: 2026-09-26
+payoff: trend's key says churn was not asked for only when --no-git stopped it, and the test a reader takes for the unreadable-git path is named for the --no-git path it actually runs
+verify: grep -q 'def test_trend_omits_the_churn_columns_under_no_git' subprojects/docket/tests/test_cli.py && grep -q 'def test_a_history_git_answered_with_no_line_counts_is_not_read_as_not_asked' subprojects/docket/tests/test_trend.py
 ---
 
 **Problem.** cmd_trend hands --no-git a bare Churn() rather than saying it asked git nothing, so trend infers 'not asked for' from an empty undeclined reading - a history git answered with no line counts reads the same - and test_cli.py's test_trend_omits_the_churn_columns_when_git_cannot_be_read runs --no-git under the other cause's name
@@ -28,3 +34,12 @@ unreadable path the key now words differently.
 **Done when.** The key names the cause from what `cmd_trend` did rather than
 from the shape of an empty reading, and the `test_cli.py` trend test is named
 for the cause it runs.
+
+**Generator check.** A one-off: the half of `PL-F5NV`'s work its `touches`
+could not reach, filed in that item's closing commit (`2c768de5`, #1051). The
+fact is whether git was asked at all. The invocation already holds it once:
+`--no-git` is `git` being `None` (`cli.py`, beside `NO_GIT`). `cmd_trend` drops
+it into a bare `Churn()`, so `trend._churn_reading` re-derives it from the shape
+of an empty reading. It sits next to `PL-9RFP`'s fact, whether a git read
+answered or failed, but it is not that fact: a read that was never made did
+neither.
