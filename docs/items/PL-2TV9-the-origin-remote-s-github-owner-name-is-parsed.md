@@ -10,6 +10,7 @@ touches: tools/open_pull_requests.py, tools/main_ci_status.py, tools/pr_body_che
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-answer batch
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1074
 payoff: every tool that reads the origin's owner/name gets the same answer from one parser, so a new remote URL shape breaks all of them loudly or none of them
 verify: grep -q 'def test_repo_slug_reads_a_token_bearing_url' tests/unit/test_open_pull_requests.py && grep -q 'def test_token_is_read_in_one_precedence' tests/unit/test_required_checks_check.py
 ---

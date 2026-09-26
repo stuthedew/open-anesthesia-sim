@@ -10,6 +10,7 @@ touches: tools/pr_body_check.py, tools/doc_check.py, subprojects/docket/src/dock
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-answer batch
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1074
 payoff: the next tool that needs a commit's pull-request number imports one parser that names the subject shape, instead of copying a squash-only spelling that cannot see the 99 merge-commit pull requests on main
 verify: grep -q 'def test_pull_request_number_reads_both_subject_shapes' subprojects/docket/tests/test_vcs.py
 ---

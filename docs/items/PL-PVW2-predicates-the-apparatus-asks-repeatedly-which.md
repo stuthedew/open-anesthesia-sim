@@ -37,8 +37,8 @@ The audit enumerated the questions the apparatus asks and found every implementa
 **Split, 2026-09-26.** The `L` is built one question per pull request, and its members already are that decomposition, so no item is added. In order:
 
 1. The tools' own spellings of the pull-request number, the default branch, the origin slug and the GitHub token (`PL-YYDT`, `PL-GNCB`, `PL-2TV9`), onto `vcs.subject_pull_request`, `vcs.default_base`, `vcs.github_slug` and `vcs.github_token`.
-2. How a shell command splits, for the three Bash guard hooks (`PL-BBV7`, `PL-GVFC`).
-3. How a changed-path listing is read (`PL-NK1L`, `PL-PQ0R`, `PL-Y2L6`, `PL-0T5X`). It is the one question still being handed members, four since `PL-8HSX`, and it goes third rather than first because it is the widest, 19 call sites across five files, and its four members are untriaged; the first two are what `verify:` below names.
+2. How a shell command splits, for the three Bash guard hooks (`PL-BBV7`, `PL-GVFC`). Landed in #1064 while the first was being built.
+3. How a changed-path listing is read (`PL-NK1L`, `PL-PQ0R`, `PL-Y2L6`, `PL-0T5X`). It is the one question still being handed members, four since `PL-8HSX`, and it goes third rather than first because it is the widest, 19 call sites across five files, and its four members are untriaged; the first two are what `verify:` below names, which passes once both have landed.
 4. `PL-LFNK`, then `PL-0JGZ`, whose decision the owner answered on 2026-09-26.
 
 The head closes with the last of them, when `verify:` passes and `generator:` can say spent.

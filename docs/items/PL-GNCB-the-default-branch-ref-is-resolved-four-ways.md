@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/vcs.py, tools/pr_body_check.py, tools/pr_
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-answer batch
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1074
 payoff: a clone whose default branch is not main gets the same base from every tool as from docket, instead of a silent skip from some and a wrong comparison from others
 verify: grep -q 'def test_default_branch_ref_follows_docket_on_a_master_only_clone' tests/unit/test_pr_body_check.py
 ---
