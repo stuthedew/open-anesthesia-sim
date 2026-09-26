@@ -854,18 +854,15 @@ def work_under_record(
     tree lacks `CUTOVER_MARKER` was made before a session could write a claim,
     and the claim clauses skip it, as the design's migration requires. Newest
     first, so a branch made under the record answers in one `ls-tree`.
-    `core.quotePath` off so a path outside ASCII is compared as written rather
-    than in git's quoted form, which no queue path would match.
+    `changed_path_args` turns `core.quotePath` off, so a path outside ASCII is
+    compared as written rather than in git's quoted form, which no queue path
+    would match.
     """
     run = runner or _run_git
     log = run(
-        [
-            "-c",
-            "core.quotePath=false",
-            *changed_path_args(
-                "log", "--no-merges", "--format=%x1e%H", "--name-only", f"{base}..{head}", "--"
-            ),
-        ],
+        changed_path_args(
+            "log", "--no-merges", "--format=%x1e%H", "--name-only", f"{base}..{head}", "--"
+        ),
         root,
     )
     if not answered(log):
