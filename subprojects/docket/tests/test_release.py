@@ -1063,6 +1063,33 @@ def test_this_checkouts_own_cut_does_not_withhold_the_digest_offer() -> None:
     assert "Offer 0.3.0" in digest
 
 
+def test_status_names_a_release_cut_in_flight() -> None:
+    """PL-53Y6: `status` said `Next version would be 0.5.12` while the digest
+    above it said another branch was cutting 0.5.12.
+
+    Both surfaces say one sentence now, so both are checked against the same
+    expected clause rather than a literal each (`PL-C6XD`).
+    """
+    from docket.checks import Report
+    from docket.render import format_digest, format_status
+    from docket.vcs import BranchCut, CutsInFlight
+
+    report = Report(items=[_item("PL-4444")])
+    ready, plan = _ready("0.2.8", "0.2.9"), _plan("0.2.8", KNOWN_IDS)
+    cuts = CutsInFlight(branches=(BranchCut(ref="origin/claude/a", versions=("0.2.9",)),))
+    said = (
+        "A release is already being cut on origin/claude/a (v0.2.9); "
+        "do not offer another until it merges."
+    )
+
+    status = format_status(report, ready, None, plan, cuts=cuts)
+    digest = format_digest(report, None, ready, plan, cuts=cuts)
+
+    assert f"\n  {said}" in status
+    assert f"completing alpha. {said}" in digest
+    assert "Next version would be" not in status
+
+
 def test_the_digest_offers_the_planned_version_over_the_bumps_guess() -> None:
     from docket.checks import Report
     from docket.render import format_digest
@@ -1904,6 +1931,107 @@ def test_a_dry_run_warns_that_head_holds_no_release_train_and_still_shows_the_no
     assert "this branch holds no claim on the release train" in out
     assert "PL-D1D1" in out
     assert "Dry run: nothing was changed." in out
+
+
+def _cut_elsewhere(repo: _TrainRepo) -> None:
+    """Another branch carrying v0.2.6's notes, unmerged, with `main` checked out again."""
+    repo.git("checkout", "-q", "-b", "claude/other-cut", "main")
+    repo.commit("cut v0.2.6", when=TRAIN_T0, files={"docs/releases/v0.2.6.md": "# v0.2.6\n"})
+    repo.git("checkout", "-q", "main")
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_status_reads_the_cut_another_branch_is_making(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The wiring half of PL-53Y6: `cmd_status` asks `_cuts`, as the digest does."""
+    repo = _TrainRepo(tmp_path / "repo")
+    _cut_elsewhere(repo)
+
+    assert repo.run("status", "--no-fetch") == 0
+
+    out = capsys.readouterr().out
+    assert "A release is already being cut on claude/other-cut (v0.2.6)" in out
+    assert "Next version would be" not in out
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_release_naming_no_version_names_the_cut_another_branch_is_making(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-53Y6: under the manual version policy an unnamed dry run stopped at
+    `Name the version to cut it`, ahead of the guard, and never said another
+    branch was cutting - so the version it asked for was then refused.
+    """
+    repo = _TrainRepo(tmp_path / "repo")
+    _cut_elsewhere(repo)
+    manual = '[docket]\nversion_policy = "manual"\n'
+    (repo.root / "docket.toml").write_text(manual, encoding="utf-8")
+
+    assert repo.run("release", "--dry-run", "--no-fetch") == 1
+
+    out = capsys.readouterr().out
+    assert "A release is already being cut on a branch nothing has merged:" in out
+    assert "claude/other-cut is cutting v0.2.6" in out
+    assert "PL-D1D1" in out
+    assert "Name the version to cut it" not in out
+
+
+def _tag_step(identifier: str, version: str, feature: str = "") -> str:
+    """A cut's tag step as release sessions file it for the owner."""
+    grouping = f"feature: {feature}\n" if feature else ""
+    return (
+        f"---\nid: {identifier}\ntitle: Tag {version} on the merge commit of #1: the release "
+        f"is cut\npriority: P2\neffort: S\nstatus: ready\n{grouping}added: 2026-08-01\n---\n\n"
+        "**Problem.** Tag it\n"
+    )
+
+
+def test_a_tag_step_is_read_from_its_title_and_nothing_else_is() -> None:
+    """`Tag releases so ...` is in the store, and asks for no tag."""
+    from docket.release import asked_tag
+
+    assert asked_tag("Tag v0.5.11 on the merge commit of PL-DRRG's cut: the") == "v0.5.11"
+    assert asked_tag("Tag releases so a commit can be mapped to the version it shipped in") == ""
+    assert asked_tag("Retag v0.5.11 on its cut") == ""
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_status_marks_a_tag_step_whose_tag_the_clone_holds(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-53Y6: a tag step has no `verify:`, so `status` offered PL-08D4 (Tag
+    v0.5.10) as work after v0.5.10 was tagged. Both rows an item can be
+    offered from are marked, and a tag the clone lacks leaves its item as it was.
+    """
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.git("tag", "v0.2.4")
+    repo.commit(
+        "file the tag steps",
+        when=TRAIN_T0,
+        files={
+            "items/PL-FTR1-done.md": (
+                "---\nid: PL-FTR1\ntitle: Done work\nstatus: done\nfeature: release-process\n"
+                "added: 2026-08-01\nclosed: 2026-09-01\ncommit: abc1234\n---\n\n**Problem.** x\n"
+            ),
+            "items/PL-TGV5-tag.md": _tag_step("PL-TGV5", "v0.2.5", "release-process"),
+            "items/PL-TGV4-tag.md": _tag_step("PL-TGV4", "v0.2.4"),
+            "items/PL-TGV6-tag.md": _tag_step("PL-TGV6", "v0.2.6"),
+        },
+    )
+
+    assert repo.run("status", "--no-fetch") == 0
+
+    rows = {
+        identifier: line
+        for line in capsys.readouterr().out.splitlines()
+        for identifier in ("PL-TGV5", "PL-TGV4", "PL-TGV6")
+        if identifier in line
+    }
+    assert "next: PL-TGV5" in rows["PL-TGV5"]
+    assert rows["PL-TGV5"].endswith("(S) [TAGGED: v0.2.5 exists - close it]")
+    assert rows["PL-TGV4"].endswith("(S) [TAGGED: v0.2.4 exists - close it]")
+    assert rows["PL-TGV6"].endswith("(S)")
 
 
 @pytest.mark.usefixtures("_no_session")

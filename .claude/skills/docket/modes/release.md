@@ -219,8 +219,10 @@ refused, because two numbers over one unfinished cut leave both sets of notes
 permanently wrong about the same items. Where nobody re-runs it, `docket check`
 reports the release whose notes were never written (`PL-1MKQ`).
 
-The digest says the same thing on its `Releasable:` line instead of offering
-a release, so the second session never raises one. **No read here sees a
+The digest's `Releasable:` line and `status`'s `Unreleased:` line say the same
+thing instead of offering a release, so the second session never raises one,
+and a `release` naming no version says it in place of asking for one
+(`PL-53Y6`). **No read here sees a
 session that has pushed nothing**, so a clean answer still means "nothing
 visible", never "nothing" — which is why the session check under **Mode: start an item**, in
 `.claude/skills/docket/modes/start.md`, is worth running before offering a release too.
@@ -260,3 +262,9 @@ previous one is untagged, and `tools/doc_check.py` will not catch the gap - the
 baseline-tag advisory was removed in v0.3.4 because a local checkout cannot
 tell a release never tagged from one tagged since it last fetched. So nothing
 in the tree reports it; `git ls-remote --tags origin` is what answers.
+
+File the outstanding tag as `Tag v0.3.0 on ...`, the title every tag step has
+carried. `status` reads that title, and once the clone holds the tag it marks
+the item `[TAGGED: v0.3.0 exists - close it]` rather than offering it as work;
+a tag step titled otherwise is offered as work after the tag exists
+(`PL-53Y6`).
