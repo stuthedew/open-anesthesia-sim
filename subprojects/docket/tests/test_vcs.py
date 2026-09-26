@@ -30,8 +30,10 @@ from docket.vcs import (
     BranchCut,
     BranchState,
     Fetch,
+    FilingCommit,
     FlightFiles,
     FlightReport,
+    Landing,
     OpenPullRequests,
     OrphanedBranch,
     OrphanedReport,
@@ -41,6 +43,7 @@ from docket.vcs import (
     SettledReport,
     StrandedItem,
     StrandedReport,
+    SubjectPullRequest,
     _pathspec_chunks,
     _run_git,
     _standing,
@@ -59,6 +62,8 @@ from docket.vcs import (
     fetch_remote,
     filed_with_work,
     files_in_flight,
+    github_slug,
+    github_token,
     lost,
     merged_pull_requests,
     open_pull_requests,
@@ -69,6 +74,7 @@ from docket.vcs import (
     since_filed,
     snapshot,
     stranded,
+    subject_pull_request,
     tags,
 )
 
@@ -3716,3 +3722,70 @@ def test_base_copies_reads_the_bases_copy_of_each_item_it_moved_after_the_fork(
     repo.git("stash", "-q")
     repo.git("checkout", "-q", "main")
     assert base_copies(repo.root, "main", items_dir="docs/items").copies == {}
+
+
+# --- one reading of each repeated predicate (PL-PVW2) ---------------------------
+
+
+def test_pull_request_number_reads_both_subject_shapes() -> None:
+    """Both of GitHub's shapes give the number, and say which shape gave it (`PL-YYDT`).
+
+    `Landing.pull_request` read the squash shape alone and gave None to the 99
+    `Merge pull request #N from` subjects on `main`, while `FilingCommit` gave N.
+    """
+    merge = "Merge pull request #71 from owner/branch"
+    squash = "PL-6P0F: generator_check reads a subject's leading ids (#1069)"
+    assert subject_pull_request(merge) == SubjectPullRequest(71, squash=False)
+    assert subject_pull_request(squash) == SubjectPullRequest(1069, squash=True)
+    assert subject_pull_request(f"  {squash}  ") == SubjectPullRequest(1069, squash=True)
+    assert subject_pull_request("PL-6P0F: a direct push names no pull request") is None
+    assert subject_pull_request("PL-6P0F: (#12) mid-subject is not a squash") is None
+    for subject, number in ((merge, 71), (squash, 1069)):
+        assert Landing("abc1234", subject).pull_request == number
+        assert FilingCommit("PL-B1B1", "abc1234", subject, ()).pull_request == number
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://github.com/o/r.git",
+        "https://github.com/o/r",
+        "https://github.com/o/r.git/",
+        "https://GitHub.com/o/r",
+        "https://x-access-token:abc@github.com/o/r.git",
+        "git@github.com:o/r.git",
+        "github.com:o/r",
+        "ssh://git@github.com/o/r.git",
+        "ssh://git@github.com:22/o/r.git",
+        "  https://github.com/o/r.git\n",
+    ],
+)
+def test_github_slug_reads_every_shape_the_parsers_disagreed_on(url: str) -> None:
+    """A token, a port, a trailing slash and scp form all fall away to `o/r` (`PL-2TV9`)."""
+    assert github_slug(url) == "o/r"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "",
+        "https://gitlab.com/o/r.git",
+        "https://github.com.evil.example/o/r.git",
+        "https://github.com/o",
+        "https://github.com/o/r/pulls",
+        "/srv/mirrors/bare.git",
+        "file:///srv/mirrors/o/r.git",
+        "http://proxy@127.0.0.1:8080/git/o/r",
+    ],
+)
+def test_github_slug_declines_what_is_not_one_github_repository(url: str) -> None:
+    """Anything but exactly `owner/name` on github.com is None, never a guess."""
+    assert github_slug(url) is None
+
+
+def test_github_token_prefers_gh_token_and_skips_an_empty_one() -> None:
+    """`gh`'s own precedence; an empty variable counts as unset, as `or` read it before."""
+    assert github_token({"GH_TOKEN": "a", "GITHUB_TOKEN": "b"}) == "a"
+    assert github_token({"GH_TOKEN": "", "GITHUB_TOKEN": "b"}) == "b"
+    assert github_token({"GITHUB_TOKEN": "b"}) == "b"
+    assert github_token({}) is None

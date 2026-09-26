@@ -208,6 +208,13 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.store import ID_PATTERN  # noqa: E402
+from docket.vcs import (  # noqa: E402
+    default_base,
+    github_slug,
+    github_token,
+    resolved,
+    subject_pull_request,
+)
 
 #: Relative for `git show`, which `--check` reads because the question is what
 #: the head commit holds, not what this working tree does.
@@ -215,12 +222,6 @@ RECORD_PATH = "docs/pr-bodies"
 RECOVERY_DIR = ROOT / RECORD_PATH
 API = "https://api.github.com"
 TIMEOUT_S = 15
-
-#: A squash subject as GitHub writes it under `squash_merge_commit_title:
-#: PR_TITLE`: the pull request title with its number appended. Anchored to the
-#: end so that `Merge pull request #101 from ...` - the pre-2026-08-31 merge
-#: shape, which legitimately carries no body - cannot match.
-SQUASH_SUBJECT_RE = re.compile(r"\(#(\d+)\)\s*$")
 
 #: Separates the two records inside one recovery file. `---` on its own line is
 #: YAML frontmatter, which is what `docs/items/` uses, so a reader meeting one
@@ -280,17 +281,17 @@ def _git(*args: str) -> str:
 
 
 def default_branch_ref() -> str | None:
-    """Name a ref for the default branch, preferring the remote's copy.
+    """Name a ref for the default branch: `docket`'s own answer, `vcs.default_base`.
 
-    `origin/main` is what a session's checkout has after a fetch and is the
-    branch the squash lands on. A bare or offline checkout may have only the
-    local `main`; a shallow CI checkout may have neither deep enough to read,
-    which is why every caller treats "" as "say nothing".
+    It prefers the remote's copy and knows a default named `master`, which the
+    `origin/main`-then-`main` list spelled here before did not (`PL-GNCB`). A
+    bare or offline checkout may have only a local branch; a shallow CI
+    checkout may have none deep enough to read, and `default_base` then answers
+    with a ref nothing established, which is None here because every caller
+    treats that as "say nothing".
     """
-    for ref in ("origin/main", "main"):
-        if _git("rev-parse", "--verify", "--quiet", ref).strip():
-            return ref
-    return None
+    base = default_base(ROOT, runner=lambda args, _root: _git(*args))
+    return str(base) if resolved(base) else None
 
 
 def squash_commits(ref: str) -> list[tuple[str, int, str, str]]:
@@ -307,10 +308,12 @@ def squash_commits(ref: str) -> list[tuple[str, int, str, str]]:
         if len(parts) != 3:
             continue
         sha, subject, body = parts
-        match = SQUASH_SUBJECT_RE.search(subject)
-        if match is None:
+        # The squash shape alone: `Merge pull request #101 from ...`, the
+        # pre-2026-08-31 merge shape, legitimately carries no body.
+        named = subject_pull_request(subject)
+        if named is None or not named.squash:
             continue
-        rows.append((sha, int(match.group(1)), subject, body))
+        rows.append((sha, named.number, subject, body))
     return rows
 
 
@@ -336,11 +339,8 @@ def missing(ref: str) -> list[tuple[str, int, str]]:
 
 
 def repo_slug() -> str | None:
-    """`owner/repo` from origin's URL, or None if it is not a GitHub remote."""
-    match = re.search(
-        r"github\.com[:/]+([^/]+/[^/]+?)(?:\.git)?\s*$", _git("remote", "get-url", "origin")
-    )
-    return match.group(1) if match else None
+    """`owner/repo` from origin's URL, or None if it is not a GitHub remote (`vcs.github_slug`)."""
+    return github_slug(_git("remote", "get-url", "origin"))
 
 
 #: `fetch_body` answers in three states, and the difference decides whether a
@@ -667,8 +667,7 @@ def recover(ref: str) -> int:
 
 def fetch_pull(slug: str, pr: int) -> dict[str, object] | None:
     """One pull request as the API serves it, or None if it could not be read."""
-    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
-    payload = _get_json(f"{API}/repos/{slug}/pulls/{pr}", token)
+    payload = _get_json(f"{API}/repos/{slug}/pulls/{pr}", github_token())
     return payload if isinstance(payload, dict) else None
 
 

@@ -110,6 +110,12 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
+
+sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
+
+from docket.vcs import github_slug, github_token  # noqa: E402
+
 API_ROOT = "https://api.github.com"
 API_VERSION = "2022-11-28"
 
@@ -394,10 +400,10 @@ def _repo_from_git(root: Path) -> str:
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError) as exc:
         raise RuntimeError("no --repo given and no origin remote to read one from") from exc
-    match = re.search(r"github\.com[:/]+(?P<slug>[^/]+/[^/]+?)(?:\.git)?/?$", url)
-    if not match:
+    slug = github_slug(url)
+    if slug is None:
         raise RuntimeError(f"cannot read owner/name out of the origin remote: {url}")
-    return match.group("slug")
+    return slug
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -420,7 +426,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     repo = args.repo or _repo_from_git(root)
-    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    token = github_token()
 
     try:
         jobs = reporting_jobs(root / ".github" / "workflows")
