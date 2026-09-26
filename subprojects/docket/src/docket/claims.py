@@ -790,12 +790,7 @@ def settled_branches(
     for row in read.flight().branches:
         if row.name not in unread:
             shown.setdefault(row.name, set()).add(row.item_id)
-    # Every claim the ref recorded is asked, whether or not it won its item's
-    # row: a claim shadowed by another branch's is still a session working.
-    unfinished = {hold.ref for hold in read.holds if not _finished_claim(hold)}
-    for hold in (*read.dispositions, *read.named):
-        if hold.state == LIVE and hold.status not in CLOSED_STATUSES:
-            unfinished.add(hold.ref)
+    unfinished = unfinished_work(read)
 
     finished = sorted(
         (
@@ -820,6 +815,26 @@ def settled_branches(
         branches=tuple(entry for entry in finished if _head_name(entry.name, remotes) not in heads),
         declined=declined or run.reason,
     )
+
+
+def unfinished_work(read: Holdings) -> dict[str, tuple[str, ...]]:
+    """Each ref holding work that is not finished, and the items it holds it on.
+
+    `settled_branches`'s test, named so that `tools/branch_sweep.py` asks the
+    same one: a ref read here is never settled and never swept (`PL-X8SV`).
+    Every claim the ref recorded is asked, whether or not it won its item's
+    row, since a claim shadowed by another branch's is still a session working.
+    A disposition or a name counts while it is live on an item its copy has not
+    closed.
+    """
+    held: dict[str, set[str]] = {}
+    for hold in read.holds:
+        if not _finished_claim(hold):
+            held.setdefault(hold.ref, set()).add(hold.key)
+    for hold in (*read.dispositions, *read.named):
+        if hold.state == LIVE and hold.status not in CLOSED_STATUSES:
+            held.setdefault(hold.ref, set()).add(hold.key)
+    return {ref: tuple(sorted(keys)) for ref, keys in held.items()}
 
 
 def _finished_claim(hold: Hold) -> bool:
@@ -847,10 +862,10 @@ def _finished_claim(hold: Hold) -> bool:
 # waiting to disagree, and the pre-registered 1-in-20 threshold is counted from
 # the row while CI refuses on the check.
 
-#: The pull requests' body records. `tools/pr_body_check.py --record` writes
-#: `<N>.md` here on every pull request's branch before its merge, since
-#: `pr-title`'s required job fails without it (`PL-979D`), and `--recover`
-#: writes one for a pull request already merged. `arming.RECORDS` spells the
+#: The pull requests' body files. `tools/pr_body_check.py --recover` writes
+#: `<N>.md` here for a squash commit that landed with no body, at each release
+#: (`PL-3PH2`); from 2026-09-25 to 2026-09-26 `--record` also wrote one on every
+#: pull request's branch (`PL-979D`). `arming.RECORDS` spells the
 #: same directory for what arms on green, in the one module the gate holds for
 #: a read, and is kept there rather than imported from here, so that widening
 #: what arms still takes an edit the gate holds; `test_claims` pins the two
@@ -885,22 +900,19 @@ def in_queue(path: str, config: Config) -> bool:
     The items, the roadmap, the working notes and the pull requests' body
     records (`queue_records`). A capture, a triage pass or a design round writes
     these and nothing else - triage puts an item on the debt gate's list in the
-    roadmap, a design round keeps its thread in the notes, and every pull
-    request records its body before its merge - and owes no claim, since the
-    ids it leads with are never pushed into one (`PL-3CTW`). Read as the items
+    roadmap, a design round keeps its thread in the notes, and a recovery
+    writes a lost body - and owes no claim, since the ids it leads with are
+    never pushed into one (`PL-3CTW`). Read as the items
     directory alone, as the spec's "outside `items_dir`" says, it refused 12
     such passes merged in the week to 2026-09-24, and would have made each
     claim the ids it triaged. Without the body records it refused every such
     pass once recorded, so `pr-title` and `checks` could not both pass on it
     (`PL-F6MM`).
 
-    The whole records directory counts, a `--recover` pass's bodies included,
-    so CI no longer refuses such a pass that claims nothing, though
-    `CLAUDE.md`'s housekeeping rule still files and claims one. Telling a
-    branch's own record from a recovery takes more than the path, and would
-    buy a refusal for a pass with almost nothing left to do: every pull
-    request with a body has recorded it since `PL-979D`, so `--recover` has
-    only the bodies lost before it - two on 2026-09-26 (`PL-F6MM`).
+    The whole records directory counts, so CI does not refuse a `--recover`
+    pass that claims nothing, though `CLAUDE.md`'s housekeeping rule still
+    files and claims one, and a release, which runs it (`PL-3PH2`), holds a
+    claim already (`PL-F6MM`).
 
     It is not what arms. `arming.arms_on_green` asks whether a change may merge
     on green CI without the owner's read, and keeps to the store, the tooling

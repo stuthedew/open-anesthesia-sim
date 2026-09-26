@@ -1,0 +1,64 @@
+name: branch-sweep
+
+# Archives, then deletes, every `claude/` branch whose work is finished
+# (`PL-X8SV`). GitHub deletes a head branch only when its own pull request
+# merges, and a session cannot delete a branch at all, so without this a
+# hand-off, an abandoned session or a pull request closed unmerged leaves its
+# branch behind for good. `tools/branch_sweep.py` holds the rule. Each branch
+# it deletes is first kept under `refs/archive/<branch>/<tip>` in the same
+# atomic push, so a wrong call costs a restore rather than work, and the log
+# prints the restore command beside each one.
+#
+# Red means nothing was swept because a reading failed, or a push was refused;
+# the log says which. It never runs on a pull request, so it gates nothing.
+on:
+  schedule:
+    # 06:17 UTC daily: off the hour, since GitHub delays scheduled runs at the
+    # start of every hour under load.
+    - cron: '17 6 * * *'
+  # To sweep now, or with `dry_run` to list what would go and push nothing.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: List what would be swept, and push nothing
+        type: boolean
+        default: false
+
+# `contents: write` is the push that archives and deletes. `pull-requests:
+# read` is the listing that keeps any branch a pull request is open from or
+# onto, and the one `left_behind_check` reads.
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: branch-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # Every branch with its whole history: each detector compares a branch
+      # with `main`, and `left_behind_check` declines a shallow clone.
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      # The floor `subprojects/docket/pyproject.toml` declares, as in `pr-title.yml`.
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      - name: sweep finished claude/ branches
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = true ]; then
+            python3 tools/branch_sweep.py
+          else
+            python3 tools/branch_sweep.py --apply
+          fi
