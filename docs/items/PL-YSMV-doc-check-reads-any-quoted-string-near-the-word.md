@@ -3,10 +3,12 @@ id: PL-YSMV
 title: doc_check reads any quoted string near the word section as a section citation, so prose quoting a command's own output fails make check
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md, docs/MODEL.md, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md, docs/machine-survey.md, docs/resident-instructions.md, subprojects/docket/README.md, docs/items/PL-GPJ7-hard-gates-recognise-what-they-check-by-wording.md
 added: 2026-09-21
+closed: 2026-09-26
+pr: 1067
 payoff: prose quoting what a command printed passes make check, instead of being reworded to satisfy a check that misread it
 verify: grep -q 'def test_a_quoted_command_output_is_not_a_section_citation' tests/unit/test_doc_check.py
 recurrences: 2026-09-25 PL-L8VP
@@ -43,3 +45,5 @@ two forms are narrowed so that quoted tool output does not match; and a test in
 clean run.
 
 **Stress test, 2026-09-25 (PL-P0FP).** Two corrections and a number. `check_citations` reads the documents in `DOC_GLOBS` only - README, ROADMAP, `CLAUDE.md`, `AGENTS.md`, `docs/*.md`, `.claude/rules` and `.claude/skills` - not `docs/items/`, so an item quoting tool output does not reach this wall; a document does. And the false refusals reach past quoted output: UI labels, text in code spans and fences, an em dash against a hyphen, a heading carrying backticks (11 reproduced). The number: on all 1,647 item briefs, which this check has never filtered, the see and above/below forms matched 10 times and found 0 real stale citations. In the documents, going `§`-only costs 150 one-time rewrites and brings 264 bare `§` citations under checking, 2 of them stale today (PL-QQCD). **Recommendation:** close this under PL-GPJ7 by narrowing `CITATION_RE` to the explicit `§ "X"` form, with the rewrite scripted.
+
+**Closed 2026-09-26, by the done-when's second route in the stress test's syntax.** `CITATION_RE` reads a quotation after `see` or `under`, or before `above` or `below`, as a section citation only where the section mark stands before it, so both reproductions above pass with no error and no advisory, and `test_a_quoted_command_output_is_not_a_section_citation` holds them. The same positions without the mark are an advisory, raised only where the quotation names a heading - the direction that is a fact about the tree, as `tools/possessive_section_check.py` already reads it - so a citation written the old way is told its `§` form rather than passing unread. The documents held 147 of those, marked by script: that is why this touched `docs/MODEL.md`, `ROADMAP.md` and five other documents, and every change in them is one `§ ` inserted before a quote. Of the other refusals the stress test reproduced, UI labels pass for the same reason as command output, fences and code spans are read as literals, and a title quoted with the other dash resolves; the heading carrying backticks was not re-examined. Reading every bare `§`, which needs a rule for citing an outside source's section first, stays PL-GPJ7's, and its brief now carries the count.
