@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/tes
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by its own thread's triage, 2026-09-26
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1136
 payoff: a session whose branch someone else pushed to is told its claim's visibility is unknown and to run claim again, not that the claim is local, and a published claim is never withdrawn for a later one
 verify: grep -q 'def test_a_claim_under_a_commit_this_clone_has_not_fetched_is_not_reported_local' subprojects/docket/tests/test_claiming.py && grep -q 'def test_a_published_claim_under_a_commit_this_clone_has_not_fetched_is_not_withdrawn' subprojects/docket/tests/test_claiming.py
 ---
