@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-23
 payoff: a pipefail command spelt correctly inside a group runs first time, and the guard's refusals stay ones a session obeys rather than learns to doubt
 verify: grep -q 'def test_pipefail_set_inside_a_group_keeps_the_status' tests/unit/test_gate_status_guard.py
+recurrences: 2026-09-26 PL-R5RF
 ---
 
 **Problem.** gate-status-guard.sh refuses a command that keeps pytest's status - set -o pipefail inside a { ...; } group followed by echo "exit=$?" - while a near-identical group passes, so a correct spelling costs a retry and teaches that the refusal can be wrong
