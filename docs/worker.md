@@ -246,6 +246,16 @@ So a session **cannot delete a remote branch**, and cannot push a tag. There is
 no second route: the GitHub MCP server offers `create_branch` and
 `list_branches` and no deletion tool.
 
+**Finished `claude/*` branches are deleted by the branch sweep instead**
+(`PL-X8SV`). `.github/workflows/branch-sweep.yml` runs `tools/branch_sweep.py`
+daily with a token that may delete branches. It keeps any branch a pull
+request, a claim, a stranded item or left-behind commits still hold, or one
+under 72 hours old, and copies each one it deletes to
+`refs/archive/<branch>/<tip>` first. So a cleanup request is answered by
+running `python3 tools/branch_sweep.py`, which pushes nothing and prints what
+the next run sweeps and why each other branch stays. Only a branch it keeps
+that should go anyway reaches the owner.
+
 **The 403 and the disconnect are one failure, not two.** `PL-TFWR` recorded a
 silent drop and `PL-XQRK` an `HTTP 403` for the same operation on the same day,
 and `PL-3V6C` reasoned from that pair that at most one of them could be the
