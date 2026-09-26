@@ -3,16 +3,18 @@ id: PL-61FT
 title: The Bash guard hooks decide what a command does from its spelling and pass whatever their model of bash and git does not cover, so each fix's session probes the next spelling and files it: the six guard fixes merged on 2026-09-26 filed nine more, and none of the twelve records a session meeting it in ordinary work
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: bash-guard-bound
 touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/no-prune-guard.sh, .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_gate_status_guard.py, tests/unit/test_no_prune_guard.py, tests/unit/test_floor_interpreter_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head at triage
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1138
 payoff: each Bash guard's header says what it promises, and a spelling found only by probing is recorded as a known gap beside its tests instead of filed, so fixing one guard spelling stops filing the next as work owed
 verify: grep -q 'def test_a_known_gap_keeps_todays_verdict' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_known_gap_keeps_todays_verdict' tests/unit/test_no_prune_guard.py && grep -q 'def test_a_known_gap_keeps_todays_verdict' tests/unit/test_floor_interpreter_guard.py && grep -q 'What it promises' .claude/hooks/gate-status-guard.sh && grep -q 'What it promises' .claude/hooks/no-prune-guard.sh && grep -q 'What it promises' .claude/hooks/floor-interpreter-guard.sh
-root-cause-of: PL-0X0G, PL-K9QL, PL-TRMN, PL-9RSP, PL-KQ4Q, PL-R17X, PL-DCHW, PL-QMN0, PL-W9XN, PL-M2NV, PL-YFT4, PL-R5N0, PL-R295, PL-N6JP
-generator: live - each fix reads one more spelling as bash or git reads it, and the session making it probes the spellings beside it and files each gap: the six member fixes merged on 2026-09-26 filed nine more members in their own closing commits
+root-cause-of: PL-0X0G, PL-K9QL, PL-TRMN, PL-9RSP, PL-KQ4Q, PL-R17X, PL-DCHW, PL-QMN0, PL-W9XN, PL-M2NV, PL-YFT4, PL-R5N0, PL-R295, PL-N6JP, PL-BM3Z, PL-7PB9
+generator: spent - each guard's header now says what it promises and a KNOWN_GAPS table beside its tests holds what it misreads outside that, so a spelling found by probing is recorded as a row rather than filed, and only a spelling a session is seen writing, or one that deletes a ref, becomes an item; the five members outside the promise are rows, and the four inside it are worked at their own ranks
 misread: What a shell command does when run: which program it runs, on what, and whether its status survives
 ---
 
@@ -257,3 +259,46 @@ and `PL-N6JP` are worked at their own ranks. The design thread moved no
 status, and the build thread readied the item on taking it; `bin/docket
 generators` should report this head drained when the last of those
 close-outs lands.
+
+**Build, 2026-09-26 (`#1138`).** The promise is the first paragraph of each
+guard's header after its one-line purpose, and names the guard's table.
+`shell_split.py`'s "What it does not read" list now says it is the construct
+side of the known gaps, so a construct found missing only by probing is added
+there rather than filed. `KNOWN_GAPS` and `test_a_known_gap_keeps_todays_verdict`
+are in each guard's test file, 34 rows in all:
+
+- The gate guard, 19: `PL-W9XN`'s three; `PL-QMN0`'s four, the parked fix's
+  verbatim reproductions, naming `59ea9d1c`, the head of `#1127`; `PL-DCHW`'s
+  two and the `!` after an assignment the design round named; `PL-7PB9`'s four;
+  `PL-BM3Z`'s three; and the two its header has left unmatched on purpose
+  since `PL-TRMN`, a gate built from a variable and a wrapper `WRAPPERS` does
+  not name.
+- The prune guard, 11: `PL-YFT4`'s three unmet reads, and one row for each
+  entry its header puts out of reach (`PL-R17X`, `PL-M2NV`, `PL-JK0M`,
+  `PL-WGFY`).
+- The floor guard, 4: a tree reached through `cd`, both ways, by `find -exec`,
+  and as a list on standard input.
+
+Every verdict was read by piping the command to the hook. Every effect was
+measured on 2026-09-26: bash 5.2.21 with the gate a stub exiting 3, git
+2.43.0 against a scratch remote, and the 3.11.15 floor against the tree. The
+rows for the headers' own out-of-reach lists go past the six members the
+round named. Without them the floor guard's table would be empty and those
+lists would be prose nothing checks; they are the round's "outside it" lists
+pinned, not new findings.
+
+- **`PL-YFT4` is not closed.** `#1130` recorded the owner meeting `git config
+  --get fetch.prune` in ordinary work, and merged before this round's answer
+  did, so by the round's own rule the item stays `ready` for the config reads.
+  Only its three unmet spellings became rows.
+- **`PL-BM3Z` and `PL-7PB9`** were recovered from
+  `claude/project-thread-qt3onr`, dropped here, and join `root-cause-of`,
+  since `PL-QMN0`'s work filed them.
+- **Open members**, each inside the promise and worked at its own rank:
+  `PL-R5N0` and `PL-YFT4` (ready), `PL-R295` and `PL-N6JP` (untriaged).
+- **Met the day the bound was set:** two false refusals and no row -
+  `PL-1DW7`, filed by this session after the gate guard refused `make docket
+  2>&1 | tail -4; echo "exit=${PIPESTATUS[0]}"`, and `PL-7LCY`, a floor-guard
+  refusal of a `python3 -c` reading a JSON file under `src/`, filed on
+  `claude/stoic-cannon-47p9qg`. Each is worked at its own rank; neither moves
+  the reopening number, which counts rows met.

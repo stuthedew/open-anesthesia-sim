@@ -305,6 +305,68 @@ def test_a_glued_punctuation_run_splits_into_bash_operators(command: str, refuse
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
 
 
+# Why each spelling below is outside the promise the hook's header opens with,
+# naming what found it.
+THROUGH_CD = (
+    "a tree reached through a `cd`, which no session has been seen writing: paths are "
+    "read as written and no `cd` is followed, as `PL-GVFC` recorded"
+)
+BY_ANOTHER_PROGRAM = (
+    "a tree handed to the interpreter by `find -exec` or as a list on standard input, "
+    "which no session has been seen writing: put outside the promise by `PL-61FT`"
+)
+FLOOR_PARSE_ERROR = (
+    "parses 3.14 source with the 3.11 floor, and reports a SyntaxError in correct code"
+)
+
+# Spellings outside the promise, each read wrongly today (`PL-61FT`): the
+# command, whether it is refused today, what the bare `python3` does with it,
+# and why it is outside. A session probing the guard records what it finds here
+# rather than filing it, and a row becomes an item only once a session is seen
+# writing it. Each was run with the 3.11.15 floor on 2026-09-26.
+KNOWN_GAPS = (
+    ("cd src && python3 -m compileall -q anesthesia_sim", False, FLOOR_PARSE_ERROR, THROUGH_CD),
+    (
+        "cd subprojects/docket && python3 -m compileall -q src/",
+        True,
+        "compiles the docket subproject's own tree, floor code, without an error",
+        THROUGH_CD,
+    ),
+    (
+        "find src -name '*.py' -exec python3 -m py_compile {} +",
+        False,
+        FLOOR_PARSE_ERROR,
+        BY_ANOTHER_PROGRAM,
+    ),
+    (
+        "git ls-files src | xargs python3 -m py_compile",
+        False,
+        FLOOR_PARSE_ERROR,
+        BY_ANOTHER_PROGRAM,
+    ),
+)
+
+
+@pytest.mark.parametrize(("command", "refused", "effect", "outside"), KNOWN_GAPS)
+def test_a_known_gap_keeps_todays_verdict(
+    command: str, refused: bool, effect: str, outside: str
+) -> None:
+    """A spelling outside the promise gets the verdict it was recorded with (`PL-61FT`).
+
+    What is pinned is the record, not the behaviour - and not as `xfail`, which
+    `bin/docket verify --self` counts as a suppressed test. A change that closes
+    a gap, meant or not, fails here: the row then moves into the tables above,
+    and the promise in the hook's header is widened to hold it.
+    """
+    assert "PL-" in outside, f"{command!r}: name the item or branch that found it"
+    decision = _decision(command)
+    assert (decision is not None) is refused, (
+        f"{command!r} is a known gap recorded as {'refused' if refused else 'admitted'} "
+        f"({outside}), and it no longer is. Run, it {effect}. Move the row into the tables "
+        "above, and widen the promise in the hook's header to hold it."
+    )
+
+
 def test_prose_about_the_rule_in_a_heredoc_is_not_matched() -> None:
     """The repository documents this rule by writing the refused command down."""
     command = "cat > docs/note.md <<'EOF'\npython3 -m compileall src/\nEOF"

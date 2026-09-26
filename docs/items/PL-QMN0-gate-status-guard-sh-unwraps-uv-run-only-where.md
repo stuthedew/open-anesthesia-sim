@@ -3,13 +3,15 @@ id: PL-QMN0
 title: gate-status-guard.sh unwraps uv run only where the program follows it directly, so a gate after uv run's own options - uv run --with pytest-xdist pytest -n 4 2>&1 | tail - is read as a command named --with and loses its status unrefused
 priority: P3
 effort: S
-status: blocked
+status: dropped
 classes: defect
 feature: bash-guard-bound
 touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py
 blocked-by: PL-61FT
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
+reason: Outside the bound PL-61FT set (#1128): uv run with options of its own is written nowhere to be run in this repository and no session has been seen writing it. Recorded instead as rows of KNOWN_GAPS in tests/unit/test_gate_status_guard.py, held to the verdict it gets today, and filed again only once a session is seen writing it. The fix stays at 59ea9d1c, the head of #1127 on claude/project-thread-qt3onr, which the rows name, ready to rebase if the spelling is met.
 ---
 
 **Problem.** gate-status-guard.sh unwraps uv run only where the program follows it directly, so a gate after uv run's own options - uv run --with pytest-xdist pytest -n 4 2>&1 | tail - is read as a command named --with and loses its status unrefused
