@@ -3,11 +3,13 @@ id: PL-HZWB
 title: Tag v0.5.11 on the merge commit of PL-DRRG's cut: the release is cut and only the project owner can push a tag ref from this environment
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning
 feature: release-process
 touches: docs/items/
 added: 2026-09-25
+closed: 2026-09-26
+pr: 1096
 payoff: v0.5.11 carries its annotated tag, so the next cut is not refused and git describe resolves across it
 not-delegable: Proving this means pushing a tag ref to the remote, which no session in this environment can do: PL-N936 measured the failure, a dry run reporting [new tag] and the real push dying on an unexpected disconnect
 ---
@@ -43,3 +45,16 @@ commit of `#1003`.
 `PL-N936` measured that no session in this environment can push a tag ref.
 `docket new` recorded this filing as a recurrence of `PL-08D4`, the same step
 for v0.5.10, which is that design recurring rather than a defect firing again.
+
+**Joined the Fix generators project's list 2026-09-26** (project owner,
+2026-09-26). Asked in the project timeline whether anything else was left for
+generators, the coordinator named the seven items filed overnight, this one
+among them, as staying out of scope unless he added them, and the owner
+answered "Add them". Recorded here by the thread that took it.
+
+**Closed 2026-09-26: the tag was already on the remote.** `git ls-remote --tags
+origin v0.5.11` resolves to the annotated tag object `8f10ff861d24`, which
+peels to `fe2046f714d9`, the squash merge of `#1003` and a first-parent commit
+of `main`. Its tagger line dates it 2026-09-25 13:22 UTC, 24 seconds after
+that merge, so the done-when held from the day this item was filed; nothing in
+the tree could say so, because the tag lives on the remote alone.
