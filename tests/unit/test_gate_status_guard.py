@@ -331,6 +331,45 @@ def test_a_redirection_is_not_a_word_of_the_command(command: str, refused: bool)
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
 
 
+RUN_A_BUILTIN = (
+    # `PL-9RSP`'s reproduction, verbatim, and the two spellings found beside it.
+    ("command set -o pipefail; make check 2>&1 | tail -45", False),
+    ("command -p set -o pipefail; make check 2>&1 | tail -45", False),
+    ("builtin set -o pipefail; make check 2>&1 | tail -45", False),
+    # The one option each takes, the two nested either way round, and each
+    # after an assignment or around a redirection.
+    ("command -p -- set -o pipefail; make check 2>&1 | tail -45", False),
+    ("builtin -- set -o pipefail; make check 2>&1 | tail -45", False),
+    ("command builtin set -o pipefail; make check 2>&1 | tail -45", False),
+    ("builtin command set -o pipefail; make check 2>&1 | tail -45", False),
+    ("FOO=1 command set -o pipefail; make check 2>&1 | tail -45", False),
+    ("command 2>/dev/null set -o pipefail; make check 2>&1 | tail -45", False),
+    # None of these runs `set` in this shell: `-v` describes it, `builtin`
+    # refuses `-p`, and the rest look for a program and find none.
+    ("command -v set; make check 2>&1 | tail -45", True),
+    ("builtin -p set -o pipefail; make check 2>&1 | tail -45", True),
+    ("exec set -o pipefail; make check 2>&1 | tail -45", True),
+    ("timeout 5 set -o pipefail; make check 2>&1 | tail -45", True),
+    ("/usr/bin/command set -o pipefail; make check 2>&1 | tail -45", True),
+    # And a `set +o` run by `command` turns it off, as a bare one does.
+    ("command set +o pipefail; make check 2>&1 | tail -45", True),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), RUN_A_BUILTIN)
+def test_pipefail_set_through_command_or_builtin_keeps_the_status(
+    command: str, refused: bool
+) -> None:
+    """`command` and `builtin` run the `set` builtin in this shell (`PL-9RSP`).
+
+    The guard read neither, so each spelling here that bash 5.2.21 holds
+    pipefail after was refused as setting nothing, while `timeout 5 set` is
+    rightly refused: it looks for a program named `set`.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
 COMPOUND = (
     # A gate ending an `if` branch leaves with the `if`, whose status is "the
     # exit status of the last command executed" (`help if`, bash 5.2.21). The
