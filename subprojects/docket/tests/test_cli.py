@@ -9243,3 +9243,92 @@ def test_next_show_and_digest_do_not_read_unfetched_refs_as_fresh(
             "Nothing refreshed the refs for this answer (`--no-fetch`): read from the last "
             "fetch, at 01:30 UTC, 30 minutes before it." in capsys.readouterr().out
         ), argv[0]
+
+
+# --- origin/main's newer copy of an item (PL-Y48N) ---------------------------
+
+
+def _behind_a_closure(tmp_path: Path) -> Path:
+    """A work branch forked before another session's closure of PL-B1B1 reached origin/main.
+
+    `PL-Y48N`'s scenario b: this session branches; another claims PL-B1B1,
+    closes it and is squash-merged; this session's commands fetch. The working
+    tree holds PL-B1B1 as it stood at the fork, and every read command's own
+    fetch brings origin/main's closure into the refs.
+    """
+    work = _snapshot_clone(tmp_path)
+    subprocess.run(
+        ["git", "checkout", "-qb", "claude/work-b7xq2n"], cwd=work, check=True, capture_output=True
+    )
+    origin = tmp_path / "origin"
+    closed = READY.replace("status: ready\n", "status: done\n").replace(
+        "added: 2026-08-01\n", "added: 2026-08-01\nclosed: 2026-09-25\n"
+    )
+    (origin / "docs" / "items" / "PL-B1B1-ready.md").write_text(closed, encoding="utf-8")
+    subprocess.run(
+        ["git", "commit", "-qam", "PL-B1B1: the work (#9)"],
+        cwd=origin,
+        check=True,
+        capture_output=True,
+    )
+    return work
+
+
+def test_next_does_not_offer_an_item_origin_main_has_closed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-Y48N`: an item closed on origin/main since the fork is not offered from the fork's copy.
+
+    `next` ranked the working tree's copy while its holds came from refs its
+    own fetch had just refreshed, so a session whose working tree was behind
+    was offered PL-B1B1 first - closed and merged by another session - and
+    `claim` then pushed a claim its own read-back called a defect in docket.
+    The ranking now reads origin/main's copy of every item origin/main moved
+    since the fork, names each whose status it took from there, and leaves
+    the working tree's file alone. Silent once the working tree is current.
+    """
+    work = _behind_a_closure(tmp_path)
+    store = str(work / "docs" / "items")
+
+    assert main(["next", "--items", store, "--now", NOW]) == 0
+    out = capsys.readouterr().out
+
+    assert "Nothing is ready to start." in out
+    assert (
+        "This working tree is 1 commit behind origin/main, where 1 item has changed status "
+        "since; its copy was read from there, and it is closed: PL-B1B1 (`done`). "
+        "`bin/docket branch` says how to bring it in." in out
+    )
+    assert "status: ready" in (work / "docs" / "items" / "PL-B1B1-ready.md").read_text()
+
+    subprocess.run(
+        ["git", "merge", "-q", "--ff-only", "origin/main"],
+        cwd=work,
+        check=True,
+        capture_output=True,
+    )
+    assert main(["next", "--items", store, "--now", NOW]) == 0
+    assert "newer copy" not in capsys.readouterr().out
+
+
+def test_show_reads_an_item_from_origin_main_where_its_copy_is_newer(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-Y48N`: `show` answers from the copy `next` ranked, and says where it came from.
+
+    It said `ready` with no note about an item origin/main had closed, which
+    is how a session named the item, found it startable and claimed it.
+    """
+    work = _behind_a_closure(tmp_path)
+    store = str(work / "docs" / "items")
+
+    assert main(["show", "PL-B1B1", "--items", store, "--now", NOW]) == 0
+    out = capsys.readouterr().out
+
+    assert (
+        "  P1 · S · done\n"
+        "  read from origin/main, whose copy is newer: this working tree has it `ready` and is "
+        "1 commit behind - `bin/docket branch` says how to bring origin/main in\n"
+    ) in out
+    # Closed, so no invitation to re-confirm the brief before starting it.
+    assert "re-confirm" not in out

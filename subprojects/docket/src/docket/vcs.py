@@ -38,7 +38,7 @@ import re
 import subprocess
 import time
 from collections import Counter
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -2342,6 +2342,118 @@ def _branch_state(root: Path, run: Runner, *, fetched: bool) -> BranchState:
         rewrite=rewrite,
         fetched=fetched,
     )
+
+
+@dataclass(frozen=True)
+class BaseCopy:
+    """The default branch's copy of one item it changed after this checkout forked (`PL-Y48N`).
+
+    A read command takes the store from the working tree and the holds from
+    refs its own fetch has just refreshed, and since `PL-XBV4` it says which
+    moment the refs are from - but a working tree behind `origin/main` still
+    holds every item as it stood at the fork. So `next` offered, and `show`
+    called ready, an item another session had closed and merged since, and
+    `claim` pushed a claim its own read-back then found dead. This is the newer
+    copy, read from the base through the command's runner, and `supersedes`
+    says whether it is the one to answer from.
+    """
+
+    identifier: str
+    #: Its path on the base, which a retitle can have moved.
+    path: str
+    #: The base's copy, whole.
+    text: str
+    #: Whether this checkout changed the item after the fork as well, committed
+    #: on the branch or only in the working tree.
+    changed_here: bool = False
+
+    @property
+    def status(self) -> str:
+        """The `status:` the base's copy records."""
+        return parse_front_matter(self.text)[0].get("status", "")
+
+    def supersedes(self, here: str) -> bool:
+        """Whether this copy is the one to answer from, given the status read here.
+
+        Where only the base changed the item, its copy is the newer one and
+        nothing in this checkout adds to it. Where this checkout changed it
+        too, the checkout's own edit stands - it is work the base has not seen
+        - except over a closure: `claims.holdings` releases every claim on an
+        item the base has closed, whatever the branch's copy says, so
+        answering from the branch's copy there offers an item no claim on can
+        hold.
+        """
+        if not self.changed_here:
+            return True
+        return self.status in CLOSED_STATUSES and here not in CLOSED_STATUSES
+
+
+@dataclass(frozen=True)
+class BaseCopies:
+    """The items the default branch changed after this checkout forked, or why that is unread."""
+
+    base: str = ""
+    #: Each such item's copy on the base, by id.
+    copies: Mapping[str, BaseCopy] = field(default_factory=dict)
+    declined: str = ""
+
+    def of(self, identifier: str) -> BaseCopy | None:
+        """The base's copy of `identifier`, where the base changed it after the fork."""
+        return self.copies.get(identifier.upper())
+
+
+def base_copies(
+    root: Path,
+    base: str,
+    *,
+    items_dir: str = "docs/items",
+    keys: Collection[str] | None = None,
+    runner: Runner | None = None,
+) -> BaseCopies:
+    """The items `base` changed after `HEAD` forked from it, each with the base's copy.
+
+    A three-dot diff, as `_changed_items` reads this checkout's side, so what
+    the base changed is measured from where `HEAD` left it and a file only
+    this branch touched is not counted as the base's. A checkout current with
+    the base gets nothing, since the diff is then empty, so a caller already
+    told it is not behind need not ask. `keys` narrows the copies read to the
+    ids a caller asked about, which is all `claim` needs.
+
+    By id rather than by path, for the reason `records_on_base` gives: a
+    retitle renames the file, and the base's copy is read from wherever the
+    base keeps it.
+
+    A silence marks the answer partial rather than empty, `_Silences`' rule: a
+    diff git would not give reports no newer copy, and `declined` says so.
+    """
+    run = _Silences(runner or _run_git)
+    listing = run(changed_path_args("diff", "--name-only", f"HEAD...{base}", "--", items_dir), root)
+    moved = _item_ids(listing)
+    if keys is not None:
+        moved &= {key.upper() for key in keys}
+    if not moved:
+        return BaseCopies(base=base, declined=run.reason)
+    here = {key.upper() for key in _changed_items(root, base, items_dir, run)}
+    paths = _item_paths_on(base, items_dir, root, run)
+    copies: dict[str, BaseCopy] = {}
+    for key in sorted(moved):
+        path = paths.get(key, "")
+        text = run(["show", f"{base}:{path}"], root) if path else ""
+        if text:
+            copies[key] = BaseCopy(identifier=key, path=path, text=text, changed_here=key in here)
+    return BaseCopies(base=base, copies=copies, declined=run.reason)
+
+
+def _item_ids(listing: str) -> set[str]:
+    """The item ids a `--name-only` listing names, by the store's file names."""
+    found: set[str] = set()
+    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
+    for line in listing.split("\n"):
+        path = line.strip()
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1]) if path else None
+        if match is not None:
+            found.add(match.group(1).upper())
+    return found
 
 
 def is_shallow(root: Path, *, runner: Runner | None = None) -> bool | None:

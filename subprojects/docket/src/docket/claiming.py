@@ -69,6 +69,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .claims import (
+    BY_CLOSED,
     BY_YIELD,
     CUTOVER_MARKER,
     LAPSED,
@@ -81,7 +82,7 @@ from .claims import (
     _parse_claim,
     holdings,
 )
-from .model import parse_front_matter
+from .model import CLOSED_STATUSES, parse_front_matter
 from .store import ID_PATTERN
 from .vcs import (
     Runner,
@@ -90,6 +91,7 @@ from .vcs import (
     _remotes,
     _run_git,
     _unlanded_refs,
+    base_copies,
     default_base,
 )
 
@@ -225,6 +227,9 @@ def claim(
             ),
         )
     notes = _unread(read)
+    closed = _closed_on_base(root, read.base, wanted, items_dir, run)
+    if closed:
+        return Written(REFUSED, (*notes, *closed))
     # Asked once, since nothing before the push `_publish` decides on moves the
     # remote's copy of this branch.
     remote = _on_remote(root, branch.name)
@@ -484,6 +489,60 @@ def _branch(
                 "as it is written; set its status first"
             )
     return branch, tuple(problems)
+
+
+def _closed_on_base(
+    root: Path, base: str, keys: Sequence[str], items_dir: str, run: Runner
+) -> tuple[str, ...]:
+    """Why each item asked for is refused because the default branch has closed it.
+
+    `holdings` releases a claim on an item the base has closed whatever the
+    branch's own copy says (`BY_CLOSED`), and `_branch` reads only `HEAD`'s
+    copy. So a branch forked before another session's close-out landed wrote
+    the claim, pushed it, and read it back dead - reported as a defect in
+    docket (`PL-Y48N`). Read after the fetch, from the base the read-back
+    uses, so the rule refusing a claim here is the rule that would have
+    released it there.
+
+    The base's copy is read whether or not the base changed it since the
+    fork, because the release does not ask; which of the two it was only
+    decides what the refusal tells the session to do, and where that could
+    not be read the refusal says only what it knows.
+    """
+    newer = base_copies(root, base, items_dir=items_dir, keys=keys, runner=run)
+    paths = _item_paths_on(base, items_dir, root, run)
+    refused: list[str] = []
+    for key in keys:
+        copy = newer.of(key)
+        if copy is not None:
+            status = copy.status
+        elif key in paths:
+            status = parse_front_matter(run(["show", f"{base}:{paths[key]}"], root))[0].get(
+                "status", ""
+            )
+        else:
+            continue
+        if status not in CLOSED_STATUSES:
+            continue
+        released = f"a claim on an item {base} has closed is released as soon as it is written"
+        if copy is not None:
+            refused.append(
+                f"claim: {key} is `{status}` on {base}, which closed it after this branch forked, "
+                f"and {released}; nothing was written. `bin/docket branch` says how to bring "
+                f"{base} in, and another item is the one to pick"
+            )
+        elif newer.declined:
+            refused.append(
+                f"claim: {key} is `{status}` on {base}, and {released}; nothing was written"
+                f" (whether {base} closed it after this branch forked could not be read -"
+                f" {newer.declined})"
+            )
+        else:
+            refused.append(
+                f"claim: {key} is `{status}` on {base} and this branch's copy reopens it, and "
+                f"{released}; nothing was written, and the reopening has to reach {base} first"
+            )
+    return tuple(refused)
 
 
 def _branch_of(hold: Hold, branch: _Branch) -> str:
@@ -895,7 +954,7 @@ def _claimed(
             code = REFUSED if code == CLAIMED else code
             lines.append(
                 f"claim: {key}: {commit[:12]} does not read back as a live claim by "
-                f"{branch.name}; {_unread_because(root, read, branch)}"
+                f"{branch.name}; {_unread_because(root, read, branch, key)}"
             )
         elif live[0] is not mine[0]:
             code = HELD_ELSEWHERE
@@ -926,8 +985,24 @@ def _yielded(
     return (REFUSED if lines else CLAIMED), lines
 
 
-def _unread_because(root: Path, read: Holdings, branch: _Branch) -> str:
-    """Why a claim just written reads as holding nothing."""
+def _unread_because(root: Path, read: Holdings, branch: _Branch, key: str) -> str:
+    """Why a claim just written reads as holding nothing.
+
+    A closure on the base first: `_closed_on_base` refuses one it can see, so
+    one found here landed between that read and the read-back, and it is a
+    finished item rather than a defect in docket (`PL-Y48N`).
+    """
+    if any(
+        hold.key == key
+        and hold.released_by == BY_CLOSED
+        and _branch_of(hold, branch) == branch.name
+        for hold in read.holds
+    ):
+        return (
+            f"{read.base} closed it after the read this claim was checked against, and a claim "
+            f"on an item {read.base} has closed is released as soon as it is written. Another "
+            "item is the one to pick"
+        )
     refs = _unlanded_refs(read.base, root, _run_git, include_remote=True)
     if not any(_head_name(name, branch.remotes) == branch.name for name in refs.unlanded):
         return (
