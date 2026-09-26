@@ -193,10 +193,8 @@ def overlaps(groups: Mapping[str, Cluster]) -> list[Overlap]:
     """Every pair of sound heads whose member lists share an id, or nest.
 
     **A fact about two lists, not a verdict that the heads share a record.**
-    Triage compared each new item with one head at a time and never compared
-    heads with each other, so one record read by several readers got a head
-    per reader (`PL-5MYR`). The intersection is the decidable half of that
-    comparison: on 2026-09-23 it named 11 pairs sharing a member, plus one
+    The intersection is the decidable half of comparing heads with each other
+    (`PL-5MYR`): on 2026-09-23 it named 11 pairs sharing a member, plus one
     pair that only nests - `PL-BHVM` names `PL-R808` - and recovered three of
     the five shared records `PL-T7Y1`'s audit verified and both of its
     misattributions. It cannot see a shared record whose members are
