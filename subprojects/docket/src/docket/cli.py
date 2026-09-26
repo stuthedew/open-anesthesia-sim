@@ -94,6 +94,7 @@ from .plan import (
 )
 from .release import (
     NOTES_DIR,
+    SEMVER_GRAMMAR,
     SEMVER_RE,
     Readiness,
     already_released,
@@ -3081,6 +3082,17 @@ def cmd_release(args: argparse.Namespace) -> int:
     is only as complete as somebody's memory of what to put in it, and the
     store already knows exactly which finished work has not gone out.
     """
+    # A typo in the number is refused before anything is read, in a dry run
+    # too. Nothing downstream asks the grammar: `prepare_bump` substitutes
+    # whatever string it is handed, `below_current` compares only numbers that
+    # parse, and `version_key` sorts an unparsable name below every release -
+    # so 0.5.12x would reach the version field, the notes file's name and
+    # every stamp (`PL-ZVG5`). `fullmatch`, because `$` also matches before a
+    # trailing newline, which would be carried into the bump with the rest.
+    if args.version is not None and SEMVER_RE.fullmatch(args.version) is None:
+        print(_malformed_version_refusal(args.version))
+        return 1
+
     directory, items, config = _load(args)
     root = _invocation(args).root
     git = _invocation(args).git
@@ -3388,6 +3400,21 @@ def _backwards_refusal(name: str, current: str, reason: str) -> str:
         [
             f"Cannot cut {name}: {reason}. Nothing was stamped and nothing was written.",
             f"A release moves the version forward, so name a number above {current.strip()}.",
+        ]
+    )
+
+
+def _malformed_version_refusal(requested: str) -> str:
+    """Say the argument is not a release version, and what one looks like.
+
+    Quoted, because the likely causes are a stray character or a space, and a
+    reader has to be able to see which.
+    """
+    return "\n".join(
+        [
+            f"Cannot cut {requested!r}: it is not a release version. "
+            "Nothing was stamped and nothing was written.",
+            f"A release version is {SEMVER_GRAMMAR}.",
         ]
     )
 
