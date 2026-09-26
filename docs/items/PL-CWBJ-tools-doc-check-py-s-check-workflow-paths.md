@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/items/PL-PVW2-pr
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a member of generator head PL-PVW2, triaged 2026-09-26
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1099
 payoff: a quoted CI path or gate script is read as the one word the shell reads, through the reading docket already holds, and PL-PVW2 can say spent
 verify: grep -q 'def test_workflow_paths_reads_a_quoted_path_as_one_word' tests/unit/test_doc_check.py && grep -q 'def test_gate_parity_reads_a_quoted_script_as_one_word' tests/unit/test_doc_check.py
 ---
