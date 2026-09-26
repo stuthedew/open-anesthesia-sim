@@ -2574,6 +2574,50 @@ def test_stranded_reports_nothing_when_every_branch_has_landed(
     assert "No item exists only on a branch" in capsys.readouterr().out
 
 
+def test_stranded_states_both_halves_of_its_predicate(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The store half is part of the claim, so the sentence carries it (`PL-Z6M3`).
+
+    An item this checkout's store holds is never reported, so that a session
+    is not told about its own capture - which also silences the session that
+    has just recovered a stranded item while the default branch still lacks
+    it. Checked out on the branch that carries it, `PL-K7QX` is in the store
+    and absent from `main`: the answer is empty, and says what it is empty of.
+    """
+    root = _branched_repo(tmp_path)
+    subprocess.run(
+        ["git", "checkout", "-q", "abandoned"], cwd=root, check=True, capture_output=True
+    )
+    # The premise, read from git rather than assumed: the store holds the item
+    # and the default branch does not.
+    on_main = subprocess.run(
+        ["git", "ls-tree", "--name-only", "main", "items/"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "PL-K7QX" not in on_main
+    assert (root / "items" / "PL-K7QX-lost.md").is_file()
+
+    assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "No item exists only on a branch and outside this checkout's store" in out
+    assert "not listed even where the default branch lacks it" in out
+    assert "No item exists only on a branch," not in out, "the one-part claim is gone"
+
+    # The finding case names both halves too, from a checkout whose store lacks it.
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
+
+    assert main(["--items", str(root / "items"), "stranded", "--no-fetch"]) == 0
+
+    out = capsys.readouterr().out
+    assert "1 item exists only on a branch and outside this checkout's store" in out
+    assert "no item missing from both the default branch and this checkout's store" in out
+
+
 def test_stranded_refreshes_the_base_before_deciding_anything_is_lost(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

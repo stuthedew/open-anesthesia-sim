@@ -637,8 +637,15 @@ def format_stranded(report: StrandedReport) -> str:
     Organized by item rather than by branch, because the loss is of an item and
     the recovery is of a file. The branches are still named in full - every one
     holding a copy, not just the first - so the other question this answers
-    reads off the same output: a branch named nowhere below carries no item the
-    default branch lacks, and deleting it loses no work the queue knows about.
+    reads off the same output: a branch named nowhere below carries no item
+    missing from both the default branch and this checkout's store.
+
+    **Both halves of that predicate are printed, in the finding case and the
+    empty one** (`PL-Z6M3`). `vcs.stranded` leaves out what the store holds so
+    that a session is not told about its own capture, and that also silences
+    the session that has just recovered a stranded item: its checkout now holds
+    the item while the default branch still lacks it. A sentence naming only
+    the default branch told that session the hole was closed.
 
     That is the only claim being made about *items*. What a branch carries
     outside `docs/items/` is `format_orphaned`'s question, and `cmd_stranded`
@@ -674,16 +681,18 @@ def format_stranded(report: StrandedReport) -> str:
     if not report.items:
         lines = [
             *partial,
-            f"No item exists only on a branch, across the {refs} this checkout holds.",
-            "A branch not fetched here was not read, so this is bounded by what has been.",
+            "No item exists only on a branch and outside this checkout's store, "
+            f"across the {refs} this checkout holds.",
+            "An item in this checkout's store is not listed even where the default branch "
+            "lacks it, and a branch not fetched here was not read, so this is bounded by both.",
             *_stale_base(report),
         ]
         return "\n".join([*lines, *_edited_lines(report)])
 
     lines = [
         *partial,
-        f"{_plural(len(report.items), 'item exists', 'items exist')} only on a branch, "
-        f"across the {refs} this checkout holds:",
+        f"{_plural(len(report.items), 'item exists', 'items exist')} only on a branch "
+        f"and outside this checkout's store, across the {refs} this checkout holds:",
         "",
         *_stale_base(report),
     ]
@@ -698,7 +707,10 @@ def format_stranded(report: StrandedReport) -> str:
         "A branch on live work will appear here and that is expected; the hole is a "
         "branch nobody will merge."
     )
-    lines.append("Every other branch read carries no item the default branch lacks.")
+    lines.append(
+        "Every other branch read carries no item missing from both the default branch "
+        "and this checkout's store."
+    )
     return "\n".join([*lines, *_edited_lines(report)])
 
 
