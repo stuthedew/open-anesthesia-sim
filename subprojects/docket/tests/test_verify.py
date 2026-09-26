@@ -2333,10 +2333,11 @@ def test_a_body_record_the_branch_added_is_not_outside_touches(tmp_path: Path) -
     [
         (RECORD, _record(pr="1058"), False),
         (RECORD, _record(header="recovered: 2026-09-26\n"), False),
-        ("docs/pr-bodies/pr-1059.md", _record(), False),
+        ("docs/pr-bodies/draft.md", _record(pr="draft"), False),
+        ("docs/pr-bodies/old/1059.md", _record(), False),
         (RECORD, _record(), True),
     ],
-    ids=["pr-disagrees-with-its-name", "no-recorded-line", "misnamed", "held-by-the-base"],
+    ids=["pr-disagrees-with-its-name", "no-recorded-line", "not-a-number", "nested", "held"],
 )
 def test_a_file_under_the_records_that_is_not_a_new_record_is_still_outside_touches(
     tmp_path: Path, path: str, text: str, held: bool
