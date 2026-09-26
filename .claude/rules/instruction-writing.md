@@ -153,8 +153,8 @@ apply to every reply of any kind. Never mention these rules, "phases," or
       commands: `git fetch origin`, then `bin/docket flight` and `bin/docket
       stranded`. Cheap, and the default has to be refresh-first because a
       session cannot feel its own copy going out of date: the session-start
-      digest is written once and resent every turn, `bin/docket flight` does
-      not fetch at all where `stranded` and `branch` do (`PL-QSGX`), and a
+      digest is written once and resent every turn, its refs line dates that
+      moment rather than this one (`PL-XBV4`), and a
       pull request can merge, a branch be deleted and the base move inside one
       turn — all three happened in the sitting that produced this rule.
     - Re-verify every carried-over item before repeating it. An action that

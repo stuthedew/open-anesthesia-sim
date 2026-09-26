@@ -439,9 +439,8 @@ read must work from a bare checkout with no network. A command whose one
 question is "has the base moved" would then answer "current" from a ref nobody
 refreshed, so `docket branch` refreshes first and `--no-fetch` says not to -
 and the line says which happened, rather than letting a stale answer look
-fresh. `docket stranded` is the second command on this pattern and the same
-three parts: it refreshes, it takes `--no-fetch`, and its report carries which
-happened.
+fresh. `docket stranded` was the second command on this pattern, and since
+`PL-XBV4` every read command is on it, through one snapshot: the next section.
 
 Where no comparison exists at all - a detached HEAD, no base, or the default
 branch with no remote copy of it - `--brief` prints nothing. That is what the
@@ -459,6 +458,63 @@ tests: a `PreToolUse` hook's plain stdout reaches the debug log and nothing the
 session can read, so the line travels as `additionalContext` in the documented
 JSON form; and the JSON must not carry `permissionDecision`, which would
 auto-approve the very edit it is attached to.
+
+### Every read command answers from one moment, and says which
+
+Read commands each assembled their own picture of the world. The store came
+from the working tree; holds came from refs that `branch` and `stranded` had
+just fetched and that `flight`, `next`, `show` and the digest had not; a fetch
+that failed was discarded, because `fetch_remote` returned nothing; and the
+digest was fresh only because the session-start hook happened to run `branch`
+first. So each command answered from a different moment and none said which,
+and every new read command picked its sources again. Five items were that one
+mechanism arriving one command at a time (`PL-XBV4`, the head of `PL-8Z1T`,
+`PL-QSGX`, `PL-D1P5`, `PL-Y48N` and `PL-HVLJ`).
+
+`vcs.Snapshot` is the one record of the moment, built once per command by
+`cli._snapshot` and kept on the invocation beside the holdings and the flight
+report. It carries what the command did about the network - `fetched`, `fetch
+failed`, `unfetched` under `--no-fetch`, `no remote`, or `unasked` under
+`--no-git` - when the remote-tracking refs were last refreshed, and where the
+working tree stands against the default branch, read against the same refs.
+`fetch_remote` returns its outcome, read off git's exit status rather than its
+silent output. `_holdings` reads through the snapshot, so a hold is never read
+from refs older than the command's fetch, and `--no-fetch` is one shared flag
+every command takes.
+
+**The line is the deliverable.** A command that fetched and was answered says
+nothing, because the fresh answer is the default. Otherwise every read command
+prints `render.format_snapshot`'s one sentence: told not to fetch, `Nothing
+refreshed the refs for this answer (--no-fetch): read from the last fetch, at
+01:30 UTC, 30 minutes before it`; a fetch the remote did not answer, `git fetch
+origin failed, so nothing refreshed the refs for this answer: read from the
+last fetch, ...`. The moment is given as a clock time and as an age because
+the digest is written once and resent on every turn, where an age goes stale
+and a clock time does not. `branch` and `stranded` print the same sentence
+where their own caveats used to sit.
+`test_every_read_command_names_what_its_snapshot_rests_on` runs every read
+command against a real clone in both shapes and is held to the parser, so a
+command added later is either in the census, named as reading the refs as
+they are, or named as not a read command.
+
+**When the refs were last refreshed is read from `FETCH_HEAD`, and read before
+a fetch.** Git writes it on every fetch that reaches the remote - a fetch that
+found nothing new still lists the refs it compared - and truncates it to
+nothing on one that did not, measured against git 2.43 on 2026-09-26. So a
+failed fetch would erase the only date the checkout keeps, and `fetch_remote`
+reads it first. A clone writes none, so a checkout nothing has fetched since
+the clone is reported as undated rather than as any particular age.
+
+Two things stay out on a recorded decision. `check` reads the refs as they
+are and says nothing: it validates the store, runs in CI's shallow checkout
+and in every `make check`, and its one ref read is the in-flight exclusion
+behind an advisory, so a fetch there would be paid on every run for nothing;
+the census names the exemption. And the forge - which branches have a pull
+request open, merged or closed - is not in the snapshot: one command asks it,
+the lookup has an eight-second timeout every other command would then pay,
+and the two members that wanted it moved to heads of their own. The hook runs
+`digest --no-fetch`, because `branch --brief` has just fetched, and the digest
+then dates its refs on the line above.
 
 ### A git that did not answer is not a git that answered nothing
 
@@ -1018,10 +1074,11 @@ somebody else's and told it to stand down. `claims.holdings` folds the two refs
 into one branch before reading, and decides `mine` by the claim's session token
 where it carries one and otherwise by whether `HEAD` is on the claiming branch.
 
-Neither half reaches the network. Only `docket branch` calls `fetch_remote`, so
-`flight` and `show` answer from the refs this checkout already holds — which is
-what lets them answer in a bare or offline tree, and what makes a fetch the
-caller's business before the question is worth asking.
+Neither half reaches the network itself. The command fetches once, through
+the snapshot § "Every read command answers from one moment" describes, before
+either half is read - unless `--no-fetch`, when the report says which moment
+its refs are from - and the library reads answer from the refs the checkout
+holds, which is what lets them answer in a bare or offline tree.
 
 It still reports rather than refuses, for the reason the rest of this read
 does: a ref past a truncated clone's horizon is the ordinary state of an agent
