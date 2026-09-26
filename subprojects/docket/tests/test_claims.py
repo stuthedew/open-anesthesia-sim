@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 
-from docket import arming, claiming, render
+from docket import arming, render
 from docket.claims import (
     BY_CLOSED,
     BY_LANDING,
@@ -28,7 +28,6 @@ from docket.claims import (
     BY_YIELD,
     CLAIM,
     CUT,
-    CUTOVER_MARKER,
     DISPOSITION,
     LAPSED,
     LEASE_TERM,
@@ -45,7 +44,7 @@ from docket.claims import (
     queue_records,
     settled_branches,
     unclaimed,
-    work_under_record,
+    work_outside_queue,
 )
 from docket.config import Config
 from docket.vcs import SILENT, _run_git
@@ -85,12 +84,10 @@ def _dated(when: datetime) -> dict[str, str]:
 class _Repo:
     """A scratch repository whose every commit carries the date a test gives it.
 
-    The base holds two open items and, unless `marked` is false, the cutover
-    marker - so every commit made on it counts as made after a session could
-    write a claim, and an unmarked base builds a history from before.
+    The base holds two open items.
     """
 
-    def __init__(self, root: Path, *, marked: bool = True) -> None:
+    def __init__(self, root: Path) -> None:
         self.root = root
         root.mkdir(parents=True)
         self.git("-c", "init.defaultBranch=main", "init", "-q")
@@ -100,8 +97,6 @@ class _Repo:
             "docs/items/PL-B1B1-held.md": _item("PL-B1B1"),
             "docs/items/PL-C2C2-other.md": _item("PL-C2C2"),
         }
-        if marked:
-            files[CUTOVER_MARKER] = "# the claim reader\n"
         self.commit("base", when=T0 - 30 * DAY, files=files)
 
     def git(self, *args: str, env: Mapping[str, str] | None = None) -> str:
@@ -506,69 +501,26 @@ def test_a_merge_of_main_read_below_an_uneven_horizon_spends_only_what_a_squash_
     ]
 
 
-def test_a_legacy_start_commit_still_claims_after_the_branch_merges_main(tmp_path: Path) -> None:
-    """Legacy is a fact about each commit's own tree, which a later merge of `main` leaves alone.
+def test_a_commit_made_before_the_record_claims_nothing_whatever_its_subject(
+    tmp_path: Path,
+) -> None:
+    """`PL-CH3Z` deleted the old rule: a leading id on a commit with no trailer is attribution.
 
-    A queue-only commit claims nothing under the old rule either, and the
-    commit made after the merge carries the marker in its tree, so its leading
-    id is attribution only.
+    Before it, the empty `<id>: start` commit and an id leading a commit that
+    reached outside the queue each claimed the id where the commit's tree
+    predated the record. Neither does now: the branch holds nothing, and it is
+    a work branch that claims nothing.
     """
-    repo = _Repo(tmp_path / "repo", marked=False)
-    repo.branch("claude/old")
+    repo = _Repo(tmp_path / "repo")
+    repo.branch("claude/old-a1b2c3")
     repo.commit("PL-B1B1: start", when=T0)
-    repo.commit(
-        "PL-C2C2: capture",
-        when=T0 + HOUR,
-        files={"docs/items/PL-C2C2-other.md": _item("PL-C2C2", "untriaged")},
-    )
-    repo.git("checkout", "-q", "main")
-    repo.commit("the claim writer lands", when=T0 + 2 * HOUR, files={CUTOVER_MARKER: "# writer\n"})
-    repo.git("checkout", "-q", "claude/old")
-    repo.git("merge", "-q", "--no-edit", "main", env=_dated(T0 + 3 * HOUR))
-    repo.commit("PL-D3D3: work", when=T0 + 4 * HOUR, files={"src/work.py": "x\n"})
+    repo.commit("PL-B1B1: work", when=T0 + HOUR, files={"src/work.py": "x\n"})
 
     read = holdings(repo.root, now=T0 + DAY)
 
-    assert [(hold.key, hold.ref, hold.state, hold.legacy) for hold in read.holds] == [
-        ("PL-B1B1", "claude/old", LIVE, True)
-    ]
-
-
-def test_a_start_commit_made_once_the_reader_landed_but_before_claim_did_still_claims(
-    tmp_path: Path,
-) -> None:
-    """The window `PL-SW2K` closed: `claims.py` reached `main` before `bin/docket claim`.
-
-    A branch started in between could only push start mode's old empty start
-    commit, onto a tree already carrying the reader. Marked by the reader, that
-    commit read as claiming nothing; marked by the writer, it is read by the old
-    rules and holds.
-    """
-    repo = _Repo(tmp_path / "repo", marked=False)
-    repo.commit(
-        "the claim reader lands",
-        when=T0 - DAY,
-        files={"subprojects/docket/src/docket/claims.py": "# reader\n"},
-    )
-    repo.branch("claude/between")
-    repo.commit("PL-B1B1: start", when=T0)
-
-    read = holdings(repo.root, now=T0 + HOUR)
-
-    assert [(hold.key, hold.ref, hold.state, hold.legacy) for hold in read.holds] == [
-        ("PL-B1B1", "claude/between", LIVE, True)
-    ]
-
-
-def test_the_cutover_marker_is_the_module_that_writes_claims() -> None:
-    """Renaming it would read every claim written after the rename by the old rules.
-
-    Those read no trailer, so a takeover and a yield would stop counting, with
-    nothing failing to say so.
-    """
-    root = Path(__file__).resolve().parents[3]
-
-    assert (root / CUTOVER_MARKER).resolve() == Path(claiming.__file__).resolve()
+    assert not read.holds
+    assert work_outside_queue(repo.root, "main", "claude/old-a1b2c3", QUEUE) is True
+    assert unclaimed(repo.root, read, QUEUE) == Unclaimed(branches=("claude/old-a1b2c3",))
 
 
 def test_two_claims_in_the_same_second_order_on_the_hash(tmp_path: Path) -> None:
@@ -697,48 +649,6 @@ def test_the_verdict_never_yields_the_first_claim_a_bystander_or_both_sessions(
     assert "(This ordering is partial - git failed to list refs" in said
     assert "Do not stand down on it.)" in said
     assert "(2 refs went unread, so this order is over what could be read.)" in said
-
-
-def test_one_legacy_claim_reached_through_a_merge_is_one_claim_in_every_checkout(
-    tmp_path: Path,
-) -> None:
-    """`PL-N162`'s review: two clones of one merged handoff each read their own branch first.
-
-    A claim read by the old rules counts for every branch reaching its commit,
-    so a branch that merged another's carries the same claim and the two tie on
-    everything the order ranks. Left to which refs a checkout lists first - its
-    own under `refs/heads`, before `refs/remotes` - each clone was told its
-    branch holds the item. The order now breaks the tie on the branch's name,
-    and `show` prints the one commit as the one claim it is, with no verdict.
-    """
-    origin = _Repo(tmp_path / "origin", marked=False)
-    origin.branch("claude/a")
-    stake = origin.commit("PL-B1B1: work", when=T0, files={"src/a.py": "a\n"})
-    origin.branch("claude/b", "main")
-    origin.commit("tidy", when=T0 + HOUR, files={"src/b.py": "b\n"})
-    origin.git("merge", "-q", "--no-edit", "claude/a", env=_dated(T0 + 2 * HOUR))
-    origin.git("checkout", "-q", "main")
-    now = T0 + 3 * HOUR
-
-    orders, said = {}, {}
-    for branch in ("claude/b", "claude/a"):
-        work = tmp_path / branch.replace("/", "-")
-        for args, cwd in (
-            (["clone", "-q", origin.root.as_uri(), str(work)], None),
-            (["checkout", "-q", branch], work),
-        ):
-            subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
-        read = holdings(work, now=now)
-        orders[branch] = [
-            (hold.ref.removeprefix("origin/"), hold.commit) for hold in read.order("PL-B1B1")
-        ]
-        said[branch] = render.format_holds(read, "PL-B1B1", now)
-
-    assert orders["claude/a"] == orders["claude/b"] == [("claude/a", stake), ("claude/b", stake)]
-    for branch, text in said.items():
-        assert f"IN FLIGHT on this branch ({branch}) - PL-B1B1 is this session's own work." in text
-        assert "the same claim commit is on origin/claude/" in text
-        assert "yields" not in text
 
 
 def test_a_claim_on_this_branch_by_another_session_is_this_branch_s_claim(
@@ -1494,18 +1404,6 @@ def test_unclaimed_names_a_work_branch_that_never_claimed_and_no_other(tmp_path:
     assert [(hold.ref, hold.state) for hold in read.holds] == [("claude/finished-d4e5f6", RELEASED)]
 
 
-def test_unclaimed_skips_work_made_before_a_session_could_claim(tmp_path: Path) -> None:
-    """A commit whose own tree lacks the marker is read by the old rule, which this catch skips."""
-    repo = _Repo(tmp_path / "repo", marked=False)
-    repo.branch("claude/old-session-a1b2c3")
-    repo.commit("the work", when=T0, files={"src/work.py": "WORK = 1\n"})
-
-    read = holdings(repo.root, now=T0 + HOUR)
-
-    assert work_under_record(repo.root, "main", "claude/old-session-a1b2c3", QUEUE) is False
-    assert unclaimed(repo.root, read, QUEUE) == Unclaimed()
-
-
 def test_unclaimed_names_a_branch_git_did_not_answer_about_apart(tmp_path: Path) -> None:
     """A silence is not "claims something": the branch is named as unknown, not dropped."""
     repo = _Repo(tmp_path / "repo")
@@ -1620,8 +1518,6 @@ def test_flight_s_rows_carry_the_kind_and_state_of_the_hold_behind_each(tmp_path
     for row, kind in zip(rows, kinds, strict=True):
         assert f"  live  {kind:<18}  last commit" in row
     assert "  live  " not in bare
-    assert "legacy refs: 0" in printed
-    assert "legacy refs" not in bare
 
 
 def test_a_lapsed_claim_beside_a_later_live_claim_is_no_lapsed_row(tmp_path: Path) -> None:
@@ -1691,17 +1587,3 @@ def test_flight_names_the_branches_git_did_not_answer_about_apart() -> None:
         "Whether 1 branch claims nothing is unknown - git did not answer which of its commits "
         "are work: origin/claude/quiet-a1b2c3." in printed
     )
-
-
-def test_legacy_refs_reads_no_conclusion_from_a_read_git_declined() -> None:
-    """`PL-CH3Z` starts on `legacy refs: 0`, and a declined read holds nothing to count.
-
-    `holdings` returns exactly this object when git is below the floor; the
-    zero it would count is the absence of a reading, not a reading of none.
-    """
-    read = Holdings(now=T0, declined="git 2.1 is older than the floor")
-    printed = render.format_flight(read.flight(), T0, read=read)
-
-    assert "legacy refs: unknown - git did not answer (git 2.1 is older than the floor)" in printed
-    assert "legacy refs: 0" not in printed
-    assert "nothing here still needs the old rule" not in printed

@@ -40,7 +40,7 @@ from pathlib import Path
 
 import branch_id_check
 import pytest
-from docket.claims import CUTOVER_MARKER, Holdings
+from docket.claims import Holdings
 from docket.vcs import answered
 
 
@@ -296,7 +296,6 @@ def test_git_saying_no_is_an_answer_and_git_failing_is_not() -> None:
 NOW = "2026-09-24T12:00:00+00:00"
 ITEM = "---\nid: PL-K7QX\ntitle: The work\nstatus: ready\n---\n"
 WORK = {"src/work.py": "WORK = 1\n"}
-MARKER = '"""Writes the claim record."""\n'
 
 
 def _commit(repo: Path, subject: str, when: str, **kwargs: object) -> None:
@@ -324,8 +323,8 @@ def _branch(repo: Path, name: str, start: str = "main") -> None:
     subprocess.run(["git", "checkout", "-q", "-b", name, start], cwd=repo, check=True)
 
 
-def _repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, recorded: bool = True) -> Path:
-    """A repository whose `main` holds one item, and the record's marker where `recorded`."""
+def _repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A repository whose `main` holds one item."""
     repo = tmp_path / "repo"
     subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True, capture_output=True)
     for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
@@ -335,10 +334,6 @@ def _repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, recorded: bo
         # As this repository's names it: the default is no notes file at all.
         "docket.toml": '[docket]\nnotes_file = "docs/WORKING_NOTES.md"\n',
     }
-    if recorded:
-        # Not empty: the reader asks `git show` for the marker and reads an
-        # empty answer as absent, where the real file is a whole module.
-        files[CUTOVER_MARKER] = MARKER
     _commit(repo, "c0", "09:00", files=files)
     monkeypatch.setattr(branch_id_check, "ROOT", repo)
     monkeypatch.delenv("GITHUB_HEAD_REF", raising=False)
@@ -447,14 +442,18 @@ def test_a_branch_named_for_its_item_owes_no_claim(
     assert _run(monkeypatch) == 0
 
 
-def test_a_legacy_commit_owes_no_claim(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # Made before a session could write a claim: its tree has no marker, so the
-    # clauses skip it and the old rule is all that reads it.
-    repo = _repository(tmp_path, monkeypatch, recorded=False)
+def test_a_commit_made_before_the_record_owes_a_claim_too(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # `PL-CH3Z` deleted the skip for a commit whose tree predates the record,
+    # and the old rule that read its subject as a claim: whatever the tree
+    # held, a work branch that recorded no claim is refused.
+    repo = _repository(tmp_path, monkeypatch)
     _branch(repo, "claude/some-session-a1b2c3")
     _commit(repo, "PL-K7QX: the work", "10:00", files=WORK)
 
-    assert _run(monkeypatch) == 0
+    assert _run(monkeypatch) == 1
+    assert "claims nothing" in capsys.readouterr().err
 
 
 def test_a_claim_ordering_behind_another_live_claim_is_refused(
@@ -477,16 +476,16 @@ def test_a_claim_ordering_behind_another_live_claim_is_refused(
     assert _run(monkeypatch) == 0
 
 
-def test_an_old_rule_hold_ordering_first_does_not_fence(
+def test_an_older_branch_that_never_claimed_does_not_fence(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # A subject leading with an id is an old-rule hold - an inference, which
-    # is what the record replaces - so it does not refuse a recorded claim.
-    repo = _repository(tmp_path, monkeypatch, recorded=False)
+    # A subject leading with an id claims nothing (`PL-CH3Z` deleted the old
+    # rule that read one), so a branch that never claimed stands ahead of no
+    # recorded claim and refuses none.
+    repo = _repository(tmp_path, monkeypatch)
     _branch(repo, "claude/old-session-a1b2c3")
-    _commit(repo, "PL-K7QX: work under the old rule", "10:00", files=WORK)
+    _commit(repo, "PL-K7QX: work never claimed", "10:00", files=WORK)
     subprocess.run(["git", "checkout", "-q", "main"], cwd=repo, check=True)
-    _commit(repo, "c1", "10:15", files={CUTOVER_MARKER: MARKER})
     _branch(repo, "claude/new-session-d4e5f6")
     _commit(repo, "PL-K7QX: start", "10:30", claim="PL-K7QX claude/new-session-d4e5f6")
 

@@ -74,9 +74,7 @@ for the reason the ids above come from `docket`'s own parsers.
 - *A work branch that claims nothing is refused.* Work is a non-merge commit
   changing a path outside the queue - the items, the roadmap, the working notes
   and the pull requests' body records, the records a queue workflow writes
-  (`claims.queue_records`) - and made under the record - its own tree
-  carries `claims.CUTOVER_MARKER` - so commits made before a session could
-  write a claim are skipped. The question is per branch, never per id: a
+  (`claims.queue_records`). The question is per branch, never per id: a
   capture or a triage pass, whose ids lead its subjects, is never pushed into
   claiming them (`PL-3CTW`). A claim counts in any state. A branch releases
   its claim by closing its item in its own copy, so "no live claim" would
@@ -88,9 +86,7 @@ for the reason the ids above come from `docket`'s own parsers.
   refusal and the count the design's 1-in-20 threshold reads cannot disagree
   (`PL-FFR0`).
 - *A claim that orders behind another live claim is refused* - the fence the
-  claim order needs, since nothing stops a later claim being written. Only
-  claims made under the record take part, on either side: an old-rule hold is
-  an inference from a subject, which is what the record replaces.
+  claim order needs, since nothing stops a later claim being written.
 
 The fence reads every pushed head, and CI's checkout holds them all: checked
 on 2026-09-24 against `quality` run 35969686133, whose fetch was
@@ -267,15 +263,10 @@ def attribution(name: str, subjects: list[str]) -> list[str]:
 
 
 def ahead_of(hold: Hold, report: Holdings) -> Hold | None:
-    """The live claim ordering first on `hold`'s item, where that is another branch's.
-
-    Old-rule holds take no part: the fence enforces the order the record keeps,
-    and an old-rule hold is an inference from a subject. `claim` still refuses
-    behind one at write time, which is where a session can act on it.
-    """
+    """The live claim ordering first on `hold`'s item, where that is another branch's."""
     if hold.state != LIVE:
         return None
-    first = next((other for other in report.order(hold.key) if not other.legacy), None)
+    first = next(iter(report.order(hold.key)), None)
     return None if first is None or first.ref == hold.ref else first
 
 

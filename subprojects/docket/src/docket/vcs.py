@@ -375,7 +375,7 @@ def subcommand_of(argv: Sequence[str]) -> str:
     """The git subcommand an argv names, ignoring the options in front of it.
 
     `-c` and `-C` take their value as the next word, which is not the
-    subcommand. `claims.work_under_record` asked `-c core.quotePath=false log`
+    subcommand. `claims.work_outside_queue` asked `-c core.quotePath=false log`
     first, and read as the subcommand `core.quotePath=false` it was counted
     under that name and, being no read this module knows, emptied the memo
     (`PL-N162`). Every read `changed_path_args` builds now asks that way, which
