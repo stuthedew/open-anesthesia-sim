@@ -116,6 +116,27 @@ def test_new_captures_several_ideas_in_one_call(
     assert len({p.name.split("-")[1] for p in written}) == 2
 
 
+def test_a_captures_problem_line_keeps_an_angle_bracket_placeholder(tmp_path: Path) -> None:
+    """`PL-PRSF`: the brief opens with the title, and GitHub drops `<n>` as a tag.
+
+    `PL-LF2C`'s own page read `refs/pull//head` in its Problem line while its
+    front matter kept the placeholder. The front matter keeps the title as
+    typed; the Problem line escapes the `<` a renderer would take for a tag,
+    and leaves a code span as it stands.
+    """
+    store = _store(tmp_path)
+    title = "Compare against refs/pull/<n>/head, as `git show <base>:<path>` does"
+
+    assert _run("new", title, "--items", str(store)) == 0
+
+    (written,) = store.glob("*.md")
+    item = parse_item(written.read_text(encoding="utf-8"), written.name)
+    assert item.title == title
+    assert item.body.strip() == (
+        "**Problem.** Compare against refs/pull/\\<n>/head, as `git show <base>:<path>` does"
+    )
+
+
 def test_touches_before_the_title_no_longer_swallows_it(tmp_path: Path) -> None:
     """The capture path is the one place in this project meant to be frictionless.
 
@@ -1143,6 +1164,36 @@ def test_the_flight_cache_does_not_outlive_one_invocation(
     assert len(calls) == 2
 
 
+def test_a_digest_offering_a_release_reads_who_holds_what_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`_cuts` walked the refs a second time for the release train (`PL-1WV7`).
+
+    Three finished items make the digest print `Releasable:`, which is the one
+    digest that reads the release train. `_cuts` built its own `Holdings` for
+    it, beside the one `_holdings` caches for the in-flight read, so that
+    digest walked every unlanded ref twice. Counted rather than timed, as the
+    flight cache's test above is.
+    """
+    calls: list[str] = []
+
+    def counted(
+        root: Path, *, now: datetime, items_dir: str = "docs/items", runner: object = None
+    ) -> Holdings:
+        calls.append(items_dir)
+        return Holdings(now=now)
+
+    monkeypatch.setattr("docket.cli.holdings", counted)
+    (tmp_path / "pyproject.toml").write_text('version = "0.2.5"\n', encoding="utf-8")
+    finished = [DONE.replace("PL-D1D1", ident) for ident in ("PL-D1D1", "PL-D2D2", "PL-D3D3")]
+    store = str(_store(tmp_path, *finished))
+
+    assert main(["--items", store, "--today", "2026-08-24", "digest"]) == 0
+
+    assert "Releasable: 3 finished item(s)" in capsys.readouterr().out
+    assert calls == ["items"]
+
+
 @pytest.mark.parametrize("unbuffered", [True, False], ids=["unbuffered", "buffered"])
 def test_a_reader_that_stops_early_ends_the_command_quietly(
     tmp_path: Path, unbuffered: bool
@@ -1658,6 +1709,41 @@ def test_a_project_that_has_never_tagged_is_not_refused(tmp_path: Path) -> None:
     root = _release_repo(tmp_path)
 
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+
+
+def test_a_cut_from_a_store_at_the_repository_root_refuses_on_who_holds_the_train(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The one decline `_holdings` does not make for itself (`PL-1WV7`).
+
+    A store git addresses as the empty prefix cannot be asked who holds the
+    release train, and `_holdings` passes that prefix straight to the read. So
+    `cmd_release` keeps its own decline when it takes the shared read, and the
+    guard refuses on the reason rather than cutting on a read that never asked.
+    """
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / "done.md").write_text(DONE, encoding="utf-8")
+    (root / "pyproject.toml").write_text('[project]\nversion = "0.2.5"\n', encoding="utf-8")
+    for command in (
+        ["git", "-c", "init.defaultBranch=main", "init", "-q"],
+        ["git", "config", "user.email", "t@example.com"],
+        ["git", "config", "user.name", "T"],
+        ["git", "add", "-A"],
+        ["git", "commit", "-qm", "base"],
+        ["git", "tag", "v0.2.5"],
+    ):
+        subprocess.run(command, cwd=root, check=True, capture_output=True)
+    _hold_the_train(root, store="")
+
+    assert main(["release", "0.2.6", "--items", str(root)]) == 1
+
+    printed = capsys.readouterr().out
+    assert (
+        "Cannot check whether another session is already cutting: "
+        "the store is not below the repository root."
+    ) in printed
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text(encoding="utf-8")
 
 
 def test_a_release_the_default_branch_already_holds_is_refused(
@@ -3547,6 +3633,84 @@ def test_show_calls_an_edited_item_startable_only_when_its_status_allows(
     assert f"Its file is already edited on {BRANCH} (last commit 3 days ago)." in out
     assert "a second edit to the same file collides" in out
     assert "startable" not in out
+
+
+#: A second branch writing `PL-0001`'s file, named the way the harness names one
+#: so that it lists ahead of `BRANCH`: the order `PL-1X2C`'s pair was read in.
+OWN = "claude/second-promotion-k2v7qd"
+
+
+def _carry(root: Path, name: str, *, new: bool = True) -> None:
+    """Check `name` out and commit a valid edit to `PL-0001`'s file on it, leaving it checked out.
+
+    Cut from `main` when `new`, so it edits the file independently of `BRANCH`,
+    as the two promotions of `PL-B8MK` did (`PL-1X2C`). The file is written
+    whole, since `_flight_repo`'s branch leaves it holding no item at all and
+    `show` reads the store from whichever branch is checked out.
+    """
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-22T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-22T12:00:00+00:00",
+    }
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
+
+    git("checkout", "-q", *(("-b", name, "main") if new else (name,)))
+    item = root / "items" / "PL-0001-on-main.md"
+    item.write_text(READY.replace("PL-B1B1", "PL-0001") + "\nPromoted here too.\n")
+    git("commit", "-qam", "PL-0001 Promote it")
+
+
+def test_the_carrier_line_names_the_other_branch_not_the_readers_own(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-1X2C: run on the second of two branches editing one item file, `show` named its own.
+
+    The reader knows what its own branch wrote; the branch it will collide with
+    is the one it cannot see, and that was the one left out.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Capture a note", wrote="items/PL-0001-on-main.md")
+    _carry(root, OWN)
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"Its file is already edited on {BRANCH} (last commit 3 days ago)." in out
+    assert f"edited on {OWN}" not in out
+    assert "PL-0001 is startable" in out
+
+
+def test_the_carrier_line_names_every_other_branch_that_edited_the_item(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Every other carrier is a collision, so naming the first alone hid the rest (`PL-1X2C`)."""
+    root = _flight_repo(tmp_path, "PL-0001 Capture a note", wrote="items/PL-0001-on-main.md")
+    _carry(root, "claude/third-promotion-m4r8wt")
+    _carry(root, OWN)
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"Its file is already edited on {BRANCH} (last commit 3 days ago)." in out
+    assert "Its file is already edited on claude/third-promotion-m4r8wt (" in out
+    assert f"edited on {OWN}" not in out
+    assert out.count("Not work in flight") == 1
+
+
+def test_the_carrier_line_is_silent_where_the_only_carrier_is_the_readers_own(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The only branch that edited the file is the reader's, with nothing to tell it (`PL-1X2C`)."""
+    root = _flight_repo(tmp_path, "PL-0001 Capture a note", wrote="items/PL-0001-on-main.md")
+    _carry(root, BRANCH, new=False)
+
+    assert main(["--items", str(root / "items"), "--today", "2026-08-23", "show", "PL-0001"]) == 0
+
+    out = capsys.readouterr().out
+    assert out.splitlines()[0].startswith("PL-0001"), "the premise: show read the item"
+    assert "already edited" not in out
+    assert "collides at merge" not in out
 
 
 def test_show_names_a_round_that_retitled_the_item_file_as_editing_it(

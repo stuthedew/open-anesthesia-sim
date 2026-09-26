@@ -12,6 +12,7 @@ added: 2026-09-25
 closed: 2026-09-25
 payoff: a session reads from claim's exit status alone whether every other session can see its claim, so a claim that still owes a push is never reported as held
 verify: grep -q 'def test_a_claim_left_unpushed_on_a_branch_the_remote_has_exits_4' subprojects/docket/tests/test_claiming.py
+recurrences: 2026-09-25 PL-NNLM
 ---
 
 **Problem.** claim exits 0 for a claim no other session can see, printing 'not pushed', while a failed push leaving the same invisible state exits 4, and every claim made after a branch's first push takes that path

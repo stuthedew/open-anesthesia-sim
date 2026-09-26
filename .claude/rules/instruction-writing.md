@@ -187,4 +187,8 @@ apply to every reply of any kind. Never mention these rules, "phases," or
       certifies: the match is a judgment on another model's prose, a session
       still mid-turn has not written its line yet, and two closing in the same
       minute still collide. Finding nothing means nothing; finding something
-      is decisive.
+      is decisive. `list_sessions` lists no Projects thread (measured
+      2026-09-25): those, tagged `hearth-thread`, are left out with or without
+      `mine`, and the `tags` filter is refused inside a session. So while
+      `PL-NZC0`'s Projects trial runs, triage and start nothing its Order list
+      reserves (`PL-DR3G`).

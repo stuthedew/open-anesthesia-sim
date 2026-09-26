@@ -99,6 +99,7 @@ from .release import (
     already_released,
     below_current,
     is_untagged,
+    markdown_title,
     milestones,
     notes_by_version,
     notes_name,
@@ -457,6 +458,20 @@ def _holdings(args: argparse.Namespace) -> Holdings:
     )
     inv.holdings = found
     return found
+
+
+def _elsewhere(args: argparse.Namespace, flight: FlightReport) -> FlightReport:
+    """`flight` with the reader's own branch left out of `editing` (`PL-1X2C`).
+
+    `FlightReport.editing` measures every ref that wrote an item's file, the
+    checked-out one included. A command answering the reader has no news in its
+    own branch, and naming it reads as somebody else being there, so `show` and
+    `triage` ask this instead. `Holdings.head` names that branch the way
+    `QueueEdit.name` does, from the read `_flight` made; where `HEAD` is
+    detached it is empty and nothing is left out.
+    """
+    head = _holdings(args).head
+    return with_fields(flight, editing=tuple(e for e in flight.editing if e.name != head))
 
 
 def _snapshot(args: argparse.Namespace, *, refresh: bool = True) -> Snapshot:
@@ -1040,18 +1055,20 @@ def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight 
 
     A branch holding the release train with nothing cut yet is added beside the
     cuts (`_with_train`), so a session that has filed and claimed its release
-    item stops the offer once its claim is pushed, not only once it cuts.
+    item stops the offer once its claim is pushed, not only once it cuts. Who
+    holds it is read from `_holdings`, the walk the digest's in-flight read has
+    already paid for (`PL-1WV7`); a store git addresses as the empty prefix is
+    asked nothing and gets the cuts alone, since `_holdings` would pass that
+    prefix straight through.
     """
     run = _invocation(args).git
     if run is None:
         return None
     base = released_on_base(root, version_file=config.version_file, notes_dir=NOTES_DIR, runner=run)
     cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=run)
-    tracked = _invocation(args).tracked
-    if not tracked:
+    if not _invocation(args).tracked:
         return cuts
-    read = holdings(root, now=_now(args), items_dir=tracked, runner=run)
-    return _with_train(cuts, _release_train(read, root, run))
+    return _with_train(cuts, _release_train(_holdings(args), root, run))
 
 
 def cmd_triage(args: argparse.Namespace) -> int:
@@ -1070,7 +1087,8 @@ def cmd_triage(args: argparse.Namespace) -> int:
     """
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
-    print(render.format_triage(report, config, _flight(args), _filed(args, report.untriaged)))
+    flight = _elsewhere(args, _flight(args))
+    print(render.format_triage(report, config, flight, _filed(args, report.untriaged)))
     _say_snapshot(args)
     return 0
 
@@ -1513,7 +1531,9 @@ def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namesp
         closed=None,
         commit="",
         reason="",
-        body=CAPTURE_TEMPLATE.format(title=title),
+        # The front matter keeps the title as typed; the brief is markdown, so
+        # its copy is escaped where a placeholder would render as a tag (`PL-PRSF`).
+        body=CAPTURE_TEMPLATE.format(title=markdown_title(title)),
     )
     path = write_item(directory, item)
     print(f"{identifier}  {path}")
@@ -1992,8 +2012,8 @@ def cmd_show(args: argparse.Namespace) -> int:
     # are what `FlightReport` has no room for. Empty under `--no-git`.
     if held := render.format_holds(_holdings(args), item.identifier, _now(args)):
         print(held)
-    edit = next((e for e in flight.editing if e.item_id == item.identifier), None)
-    if edit is not None and item.identifier not in flight.ids:
+    edits = tuple(e for e in _elsewhere(args, flight).editing if e.item_id == item.identifier)
+    if edits and item.identifier not in flight.ids:
         # The weaker mark, and only where no hold is live: a lapsed claim above
         # holds nothing, so it does not silence this. A session that names an
         # item reaches `show` and nothing else, so before this the one thing it
@@ -2003,7 +2023,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         # flight, which the condition above already holds - so a closed or
         # blocked item is not invited to start (`PL-9F8B`).
         startable = item.is_open and not item.is_untriaged and item.status != "blocked"
-        print(render.format_queue_edit(edit, _now(args), startable=startable))
+        print(render.format_queue_edit(edits, _now(args), startable=startable))
     if threads := _notes_threads(root, config, item.identifier):
         print(render.format_notes_threads(threads, item.identifier, config.notes_file))
     # Last before the brief, because the line it ends on past the threshold
@@ -3239,8 +3259,12 @@ def cmd_release(args: argparse.Namespace) -> int:
             # what makes refusing the right side to err on.
             cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=git)
             tracked = _invocation(args).tracked
+            # The invocation's shared read, first asked here - after the fetch
+            # above, so it is not a view older than the refs just fetched
+            # (`PL-1WV7`). `_holdings` passes an empty prefix straight through,
+            # so the decline for a store git cannot address stays this site's.
             read = (
-                holdings(root, now=_now(args), items_dir=tracked, runner=git)
+                _holdings(args)
                 if tracked
                 else Holdings(declined="the store is not below the repository root")
             )
@@ -3306,6 +3330,16 @@ def cmd_release(args: argparse.Namespace) -> int:
         print("Dry run: nothing was changed.")
         return 0
 
+    # The plan as it stands before the bump, which is the one reading that
+    # knows whether a milestone number this cut reaches is this release or a
+    # number a patch has taken: after the bump the version file already reads
+    # the cut, and the table still lacks its row (`PL-YS9F`). A resumed cut
+    # whose interrupted run got as far as its bump has no such plan left to
+    # read, so its hand-off keeps both readings rather than deciding from one
+    # computed after the fact.
+    bumped = resuming.lstrip("v") == current.strip().lstrip("v")
+    plan = None if bumped else _plan(root, items, config)
+
     # Prove the bump before writing anything, so a version file the bump
     # rejects costs an exit code rather than a stamped store claiming a release
     # that never happened, with nothing recording which stamps to unpick.
@@ -3334,11 +3368,11 @@ def cmd_release(args: argparse.Namespace) -> int:
     print(f"Bumped {previous} -> {version} in {config.version_file}")
     print(f"Wrote {notes_path.relative_to(root)} and stamped {len(ready.shippable)} item(s)")
     print()
-    print(_hand_off(root, config, name))
+    print(_hand_off(root, config, name, plan))
     return 0
 
 
-def _hand_off(root: Path, config: Config, name: str) -> str:
+def _hand_off(root: Path, config: Config, name: str, plan: Wave | None = None) -> str:
     """Say where the mechanical half ends, what is stale, and what comes next.
 
     A release stops here on purpose. The roadmap's version row and baseline
@@ -3348,12 +3382,16 @@ def _hand_off(root: Path, config: Config, name: str) -> str:
     replaces ran the project check straight into a failure caused by the edits
     nobody had been asked for yet, with the tree half updated - which teaches a
     maintainer to read a red check as the normal end of a release.
+
+    `plan` is the one `cmd_release` read before its bump, handed on so the
+    statement about a milestone number the cut reached says which edit is
+    owed rather than naming both (`PL-YS9F`).
     """
     lines = ["Stopping here: the rest is prose, and the roadmap says what this release was for."]
 
     roadmap = root / config.roadmap_file
     if roadmap.is_file():
-        stale = outstanding_roadmap_edits(roadmap.read_text(encoding="utf-8"), name)
+        stale = outstanding_roadmap_edits(roadmap.read_text(encoding="utf-8"), name, plan)
         if stale:
             lines.append("")
             lines.append(f"Stale in {config.roadmap_file}, and owed by hand:")
@@ -4085,8 +4123,9 @@ def cmd_claim(args: argparse.Namespace) -> int:
     branch's unpushed claim would have taken from it, now withdrawn; exit 4 that
     the claim was written and did not reach the remote - its push failed, or the
     branch's copy on the remote meant none was tried - so only this checkout can
-    see it until the `claim` the message names publishes it. Neither is a
-    failure of the command; each is a different next step.
+    see it until the `claim` the message names publishes it - or that the remote
+    could not be asked whether it has the branch, so nothing was pushed. Neither
+    is a failure of the command; each is a different next step.
     """
     inv = _invocation(args)
     if inv.git is None:
