@@ -3,11 +3,12 @@ id: PL-R17X
 title: no-prune-guard.sh refuses none of the pruning spellings git documents beyond its four patterns: git pull --prune or -p, git remote update -p, git fetch -P, a bundled short flag such as git fetch -tp, and a prune setting passed on the command line as git -c fetch.prune=true fetch, each of which prunes unrefused
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: .claude/hooks/no-prune-guard.sh, tests/unit/test_no_prune_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
 payoff: a session reaching for git pull -p, git remote update -p, a bundled -tp or a prune setting passed with -c meets the refusal and the recipe git fetch --prune already gets, so no spelling git documents deletes a stale ref that may hold the only copy of an item
 verify: grep -q 'def test_every_pruning_spelling_is_refused' tests/unit/test_no_prune_guard.py
 recurrences: 2026-09-26 PL-YFT4 withdrawn 2026-09-26 PL-YFT4

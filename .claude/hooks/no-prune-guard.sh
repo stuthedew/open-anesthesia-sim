@@ -55,19 +55,87 @@ if not isinstance(command, str):
 # without the guard eating its own documentation; a prune after the terminator
 # of a heredoc is read like any other line (`PL-39LD`).
 #
-# Four shapes delete remote-tracking refs, each a `git` command whose words
-# include these in this order. Matched on the words because that is what the
-# hook is handed; a shell that builds the flag from a variable is out of reach,
-# and so is a command handed to another shell as a string (`bash -c "..."`),
-# and neither is how any session has ever written it.
-PRUNE_FLAGS = ("--prune", "--prune-tags", "-p")
-PRUNE_SETTING = re.compile(r"\b(?:remote\.\S+\.prune|fetch\.prune)\b")
+# **What prunes is read from git 2.43 itself** (`PL-R17X`): its usage lines,
+# `git -h`, `git fetch -h`, `git pull -h` and `git remote -h`, and each
+# spelling run against a scratch remote, the one way to learn which spellings
+# delete a ref rather than which ones say they might. Two readings:
+#
+# - A setting passed ahead of the command name, as `-c <name>=<value>` or
+#   `--config-env=<name>=<envvar>`, holds for the whole call. A prune setting
+#   there prunes unless its value reads as false, and one written with no `=`
+#   reads as true. The value `--config-env` names sits in the environment, out
+#   of sight, so that setting is refused whatever it holds, and either is
+#   refused whatever command follows. There `-p` and `-P` are --paginate and
+#   --no-pager, and a `-c` after the command name is an option of that command
+#   (`git grep -c` counts), so only the options git reads as its own are
+#   read, stepping over each value a word of its own carries.
+# - Five shapes delete refs, each a `git` command whose words include these in
+#   this order. `fetch`, `pull` and `remote update` prune on a flag, spelled
+#   long or as a letter among bundled short flags - `-tp` is `-t -p` - up to
+#   the first letter taking a value, which takes the rest of the word: `-j4p`
+#   is jobs `4p`, an error, and prunes nothing. `remote prune` always prunes,
+#   and `config` writes a setting every later fetch reads.
+#
+# `--prune-tags`, `-P` and the `pruneTags` settings delete tags, and only where
+# pruning is on, which a config file this hook never reads may have turned on,
+# so they are refused beside the flags that turn it on.
+#
+# Matched on the words because that is what the hook is handed. Out of reach:
+# an alias; a setting passed in `GIT_CONFIG_PARAMETERS` or `GIT_CONFIG_COUNT`;
+# an abbreviated long option, though `git pull --pru` prunes; a shell that
+# builds the flag from a variable; and a command handed to another shell as a
+# string (`bash -c "..."`). None is how any session has written it.
+TAKES_A_WORD = frozenset(
+    ("-C", "-c", "--config-env", "--git-dir", "--work-tree", "--namespace", "--attr-source")
+)
+PRUNE_SETTING = re.compile(r"\b(?:fetch|remote\.\S+)\.prune(?:tags)?\b", re.IGNORECASE)
+FALSE = frozenset(("", "false", "no", "off", "0"))
+
+
+def flag(long_forms, prune, value):
+    """A test for one word: a long form, or a bundle holding a letter in `prune` before any in `value`."""
+
+    def prunes(word):
+        if word in long_forms:
+            return True
+        if word.startswith("--") or not word.startswith("-"):
+            return False
+        for letter in word[1:]:
+            if letter in value:
+                return False
+            if letter in prune:
+                return True
+        return False
+
+    return prunes
+
+
 SHAPES = (
-    ("fetch", PRUNE_FLAGS.__contains__),
+    ("fetch", flag(("--prune", "--prune-tags"), "pP", "jo")),
+    ("pull", flag(("--prune",), "p", "rsXSjo")),
     ("remote", "prune"),
-    ("remote", "update", "--prune"),
+    ("remote", "update", flag(("--prune",), "p", "")),
     ("config", PRUNE_SETTING.search),
 )
+
+
+def sets_pruning(words):
+    """Whether the options git reads ahead of the command name pass a prune setting."""
+    at = 1
+    while at < len(words) and words[at].startswith("-"):
+        option, equals, value = words[at].partition("=")
+        at += 1
+        if option in TAKES_A_WORD and not equals:
+            value = words[at] if at < len(words) else ""
+            at += 1
+        name, equals, setting = value.partition("=")
+        if not PRUNE_SETTING.fullmatch(name):
+            continue
+        if option == "--config-env":
+            return True
+        if option == "-c" and not (equals and setting.lower() in FALSE):
+            return True
+    return False
 
 
 def in_order(words, steps):
@@ -84,9 +152,9 @@ def in_order(words, steps):
 
 
 if not any(
-    words[0] == "git" and in_order(words[1:], shape)
+    words[0] == "git"
+    and (sets_pruning(words) or any(in_order(words[1:], shape) for shape in SHAPES))
     for words in shell_split.commands(command)
-    for shape in SHAPES
 ):
     sys.exit(0)
 
@@ -103,7 +171,7 @@ reason = (
     "    git branch -dr origin/<branch>\n"
     "    git fetch origin main\n"
     "    git checkout -B <branch> origin/main\n\n"
-    "To fetch without pruning, drop the flag: `git fetch origin`."
+    "To fetch without pruning, drop the flag or the setting: `git fetch origin`."
 )
 sys.stdout.write(
     json.dumps(
