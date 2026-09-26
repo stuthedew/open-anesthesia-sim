@@ -79,9 +79,9 @@ if not isinstance(command, str):
 # read like any other line (`PL-39LD`).
 #
 # **What prunes is read from git 2.43 itself** (`PL-R17X`): its usage lines,
-# `git -h`, `git fetch -h`, `git pull -h` and `git remote -h`, and each
-# spelling run against a scratch remote, the one way to learn which spellings
-# delete a ref rather than which ones say they might. Two readings:
+# `git -h`, `git fetch -h`, `git pull -h`, `git remote -h` and `git config -h`,
+# and each spelling run against a scratch remote, the one way to learn which
+# spellings delete a ref rather than which ones say they might. Three readings:
 #
 # - A setting passed ahead of the command name, as `-c <name>=<value>` or
 #   `--config-env=<name>=<envvar>`, holds for the whole call. A prune setting
@@ -92,12 +92,27 @@ if not isinstance(command, str):
 #   --no-pager, and a `-c` after the command name is an option of that command
 #   (`git grep -c` counts), so only the options git reads as its own are
 #   read, stepping over each value a word of its own carries.
-# - Five shapes delete refs, each a `git` command whose words include these in
+# - Four shapes delete refs, each a `git` command whose words include these in
 #   this order. `fetch`, `pull` and `remote update` prune on a flag, spelled
 #   long or as a letter among bundled short flags - `-tp` is `-t -p` - up to
 #   the first letter taking a value, which takes the rest of the word: `-j4p`
-#   is jobs `4p`, an error, and prunes nothing. `remote prune` always prunes,
-#   and `config` writes a setting every later fetch reads.
+#   is jobs `4p`, an error, and prunes nothing. `remote prune` always prunes.
+# - A `config` naming a prune setting writes one that every later fetch reads,
+#   unless it only reads it, and until `PL-YFT4` a read was refused as a write.
+#   A read is told from a write as git 2.43 tells them, each spelling measured
+#   in a scratch repository: its options stop at the first word that is not
+#   one, so `git config fetch.prune --get` writes the value `--get`; a `--no-`
+#   form clears the action before it, so `git config --get --no-get
+#   fetch.prune true` writes; and with no action a name alone is read, and a
+#   name with a value written. So a call reads only where each option ahead of
+#   its first other word is one this hook knows - a read action, a location, a
+#   type or a display option, or the value one of those takes - with a read
+#   action among them, or none and a single name after them. An option it does
+#   not know, an abbreviation included, is read as a write rather than guessed
+#   at, and so is a call holding a `$`, a backtick or a brace, from which bash
+#   makes new words after this hook has read them: `--get "$x"` writes where
+#   `x` holds `--no-get`. Each costs a read spelled that way one call, and is
+#   a known gap.
 #
 # `--prune-tags`, `-P` and the `pruneTags` settings delete tags, and only where
 # pruning is on, which a config file this hook never reads may have turned on,
@@ -134,6 +149,19 @@ TAKES_A_WORD = frozenset(
 PRUNE_SETTING = re.compile(r"\b(?:fetch|remote\.\S+)\.prune(?:tags)?\b", re.IGNORECASE)
 MIRROR_SETTING = re.compile(r"\bremote\.\S+\.mirror\b", re.IGNORECASE)
 FALSE = frozenset(("", "false", "no", "off", "0"))
+# The options of a `config` that reads, from `git config -h` (`PL-YFT4`).
+READS = frozenset(
+    ("--get", "--get-all", "--get-regexp", "--get-urlmatch", "--get-color", "--get-colorbool")
+    + ("--list", "-l")
+)
+BESIDE = frozenset(
+    ("--global", "--system", "--local", "--worktree", "--fixed-value", "--includes")
+    + ("--bool", "--int", "--bool-or-int", "--bool-or-str", "--path", "--expiry-date")
+    + ("-z", "--null", "--name-only", "--show-origin", "--show-scope")
+)
+VALUED = frozenset(("-f", "--file", "--blob", "-t", "--type", "--default"))
+EXPANDS = re.compile(r"[$`{]")
+GLOB = re.compile(r"[*?\[]")
 
 
 def flag(long_forms, prune, value):
@@ -159,12 +187,8 @@ SHAPES = (
     ("pull", flag(("--prune",), "p", "rsXSjo")),
     ("remote", "prune"),
     ("remote", "update", flag(("--prune",), "p", "")),
-    ("config", PRUNE_SETTING.search),
 )
-PUSH_SHAPES = (
-    ("push", flag(("--mirror", "--prune"), "", "")),
-    ("config", MIRROR_SETTING.search),
-)
+PUSH_SHAPES = (("push", flag(("--mirror", "--prune"), "", "")),)
 
 
 def sets(pattern, words):
@@ -199,12 +223,55 @@ def in_order(words, steps):
     return True
 
 
+def reads(words):
+    """Whether the words after `config` only read, as git 2.43 parses them (`PL-YFT4`).
+
+    Its options run to the first word that is not one, or to `--`, and each must
+    be one this hook knows, with a read action among them or none and a single
+    name after them. A glob where a second word would change what git does - in
+    an option value, or in that single name - reads as a write.
+    """
+    read, at = False, 0
+    while at < len(words) and words[at] not in ("-", "--") and words[at].startswith("-"):
+        word = words[at]
+        at += 1
+        option, equals, value = word.partition("=")
+        if word in VALUED:
+            value = words[at] if at < len(words) else ""
+            at += 1
+        elif word[:2] in ("-f", "-t"):
+            value = word[2:]
+        elif not (equals and option in VALUED) and word not in READS | BESIDE:
+            return False
+        if GLOB.search(value):
+            return False
+        read = read or word in READS
+    names = words[at:]
+    if names[:1] == ["--"]:
+        names = names[1:]
+    return read or (len(names) == 1 and not GLOB.search(names[0]))
+
+
+def writes(pattern, words):
+    """Whether a `config` among `words` names a setting `pattern` names, and does more than read it."""
+    if "config" not in words[1:]:
+        return False
+    after = words[words.index("config", 1) + 1 :]
+    if not any(pattern.search(word) for word in after):
+        return False
+    return any(EXPANDS.search(word) for word in words) or not reads(after)
+
+
 def runs(shapes, pattern, calls):
-    """Whether a git call in `calls` passes a setting `pattern` names, or takes one of `shapes`."""
+    """Whether a git call in `calls` passes or writes a setting `pattern` names, or takes one of `shapes`."""
     # A path to git is git: `/usr/bin/git fetch --prune` prunes (`PL-TRMN`).
     return any(
         words[0].rsplit("/", 1)[-1] == "git"
-        and (sets(pattern, words) or any(in_order(words[1:], shape) for shape in shapes))
+        and (
+            sets(pattern, words)
+            or writes(pattern, words)
+            or any(in_order(words[1:], shape) for shape in shapes)
+        )
         for words in calls
     )
 
