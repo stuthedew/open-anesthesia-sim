@@ -7737,7 +7737,8 @@ def _machinery_defect(tmp_path: Path, status: str) -> Path:
     [
         ("ready", "ranked on the generator tier - above every band but P0"),
         ("done", "closed, so on no tier - only an open item's claim ranks there"),
-        ("blocked", "blocked, so ranked nowhere until it can start"),
+        ("blocked", "blocked, and ranked by nothing: it names no blocker"),
+        ("untriaged", "untriaged, so ranked nowhere until triage seats it"),
     ],
 )
 def test_show_says_a_machinery_defect_ranks_only_while_open(
@@ -7962,6 +7963,111 @@ def test_generators_does_not_say_a_closed_machinery_defect_ranks(
     assert "PL-5050 (done)" in output
     assert "rank on the generator tier" not in output
     assert "ranks on the generator tier" not in output
+
+
+def _blocked_machinery_defect(tmp_path: Path) -> Path:
+    """A machinery defect blocked on one startable item, the shape `PL-Q4DF` was filed on."""
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\ngenerator_paths = ["a.py"]\n', encoding="utf-8"
+    )
+    return _store(
+        tmp_path,
+        _clustered(
+            "PL-5050",
+            "The ranking never reads the claim",
+            status="blocked",
+            **{"impairs-generators": "recommend never calls the soundness test"},
+            **{"blocked-by": "PL-F5F5"},
+        ),
+        _clustered("PL-F5F5", "The build item the defect waits on", priority="P3"),
+    )
+
+
+def test_a_blocked_machinery_defect_hands_its_rank_to_what_it_waits_on(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`next` ranks the blocker on the tier, and `show` and `generators` say where it went.
+
+    Before `PL-Q4DF` the rank reached nothing, `show` said "ranked nowhere" and
+    `generators` said the blocked defect ranked on the generator tier.
+    """
+    store = str(_blocked_machinery_defect(tmp_path))
+
+    assert _run("next", "--items", store) == 0
+    out = capsys.readouterr().out
+    assert "PL-5050, a defect in the generator machinery that is blocked on it" in out
+
+    assert _run("show", "PL-5050", "--items", store) == 0
+    out = capsys.readouterr().out
+    assert "passes to the open items it waits on: PL-F5F5" in out
+
+    assert _run("show", "PL-F5F5", "--items", store) == 0
+    out = capsys.readouterr().out
+    assert "unblocks machinery defect PL-5050: blocked on this item" in out
+    assert "unblocks generator" not in out
+
+    assert _run("generators", "--items", store) == 0
+    out = capsys.readouterr().out
+    assert "ranks nowhere itself, being blocked or untriaged" in out
+    assert "PL-5050 (blocked)" in out
+    assert "on the generator tier by `impairs-generators:`" not in out
+
+
+def test_generators_does_not_list_a_head_as_naming_no_members(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An `impairs-generators:` item that is also a head is a cluster above (`PL-Q4DF`)."""
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\ngenerator_paths = ["a.py"]\n', encoding="utf-8"
+    )
+    store = _store(
+        tmp_path,
+        _clustered(
+            "PL-4040",
+            "The shared refresh nobody owns",
+            names=_MEMBERS,
+            generator=_LIVE,
+            **{"impairs-generators": "recommend never calls the soundness test"},
+        ),
+        _clustered("PL-B1B1", "A member of the cluster"),
+        _clustered("PL-C2C2", "Another member"),
+        _clustered("PL-D3D3", "A third member"),
+    )
+
+    assert _run("generators", "--items", str(store)) == 0
+
+    out = capsys.readouterr().out
+    assert "PL-4040 3 members" in out
+    assert "name no members" not in out and "names no members" not in out
+
+
+def test_an_untriaged_generator_tier_item_is_not_called_ranked(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`next` offers an untriaged head nowhere, so the table must not call it on the tier."""
+    store = _store(
+        tmp_path,
+        _clustered(
+            "PL-4040",
+            "The shared refresh nobody owns",
+            names=_MEMBERS,
+            generator=_LIVE,
+            status="untriaged",
+        ),
+        _clustered("PL-B1B1", "A member of the cluster"),
+        _clustered("PL-C2C2", "Another member"),
+        _clustered("PL-D3D3", "A third member"),
+    )
+
+    assert _run("generators", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+    assert "still generating, but untriaged, so ranked nowhere until triage seats it" in out
+    assert "still generating, so on the tier" not in out
+
+    assert _run("show", "PL-4040", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+    assert "untriaged, so ranked nowhere until triage seats it" in out
+    assert "ranked on the generator tier - above every band but P0" not in out
 
 
 def test_generators_marks_an_open_head_that_no_longer_ranks(

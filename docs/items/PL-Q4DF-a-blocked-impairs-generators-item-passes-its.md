@@ -3,16 +3,17 @@ id: PL-Q4DF
 title: A blocked impairs-generators item passes its rank to nothing and nothing names it: generator_blockers lifts only a root-cause head's blockers, so a machinery defect waiting on another item drops off the generator tier silently
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: generator-identification
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; recorded as a generator head by the 2026-09-25 triage pass
 added: 2026-09-24
+closed: 2026-09-26
 payoff: A generator or machinery defect that cannot start yet is either ranked through the work it waits on or named as unranked, and no command calls an item ranked while next is not offering it
 verify: grep -q 'def test_a_blocked_impairs_generators_item' subprojects/docket/tests/test_plan.py && grep -q 'def test_an_untriaged_generator_tier_item' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-BBT8, PL-QFWF, PL-4RK2
-generator: live - each fix taught one reader one status (closed in PL-BBT8, a blocked head in PL-QFWF and PL-4RK2), and on 2026-09-25 show and generators still call four untriaged tier items ranked while next offers none of them
+generator: spent - every reader now takes where a tier item's rank stands from plan.tier_standings, so a status no reader handled reaches all of them at once instead of one per fix
 misread: Whether a generator-tier item holds its rank now, passes it to its blockers, or ranks nowhere
 impairs-generators: plan.generator_blockers and plan.unranked_generators ask only ranks_as_generator, so a blocked impairs-generators item's rank reaches nothing and nothing names it; render._outside_clusters, render._verdict_phrase and cmd_show's placement line call an untriaged or blocked tier item ranked
 ---
@@ -116,3 +117,23 @@ holds word for word: "the rank is the head's, and it passes to what the head
 waits on, since that is the work paying the generator down now". Neither
 `PL-QFWF` nor `PL-4RK2` records the heads-only scope as an owner decision, so
 this is a session's call, not the owner's.
+
+**Built, 2026-09-26: the rank passes one edge down, as recommended.**
+`plan.tier_standings` is the one function. It reads both entrances and every
+open status, and answers `HELD` (it can start), `PASSED` (blocked, with the open
+blockers the store holds), `UNRANKED` (blocked on nothing the store holds open),
+or `NOWHERE` (untriaged). A blocker handed a rank while it is itself untriaged
+or blocked also stands `NOWHERE`, because the rank goes no further.
+`generator_blockers` and `unranked_generators` read it, and so do `recommend`,
+`longest_waiting`, `cmd_show`'s plan and tier lines, `render._verdict_phrase` and
+`render._outside_clusters`. `_unseated_by` is the one status test, and
+`_startable` shares it, so what `next` offers and what the tier says is ranked
+cannot disagree. A blocked machinery defect now lifts its blockers, and
+`unranked_generators` names it where nothing offered carries it, marked as a
+defect rather than given a member count. `_outside_clusters` leaves out a
+defect that is also a head. The marks read "unblocks X on the generator tier",
+because the item unblocked may be a defect rather than a generator.
+
+The untriaged case is pinned with synthetic items in `test_plan.py` and
+`test_cli.py`. The four live examples above were triaged to `ready` before the
+work began, so the store no longer shows it.
