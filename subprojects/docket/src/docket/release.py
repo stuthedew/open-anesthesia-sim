@@ -438,9 +438,40 @@ def release_notes(milestone: Milestone, today: date) -> str:
         lines.append(f"### {name}")
         lines.append("")
         for item in by_class[name]:
-            lines.append(f"- {item.identifier} {item.title}{reference(item)}")
+            lines.append(f"- {item.identifier} {markdown_title(item.title)}{reference(item)}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
+
+
+#: A code span, as CommonMark delimits one: a run of backticks and the next run
+#: of exactly as many, neither part of a longer run.
+CODE_SPAN_RE = re.compile(r"(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)", re.S)
+
+#: An opening angle bracket no backslash already escapes.
+UNESCAPED_LT_RE = re.compile(r"(?<!\\)<")
+
+
+def markdown_title(title: str) -> str:
+    """A title as markdown that renders it as filed (`PL-PRSF`).
+
+    A title is prose, so a placeholder in it - `refs/pull/<n>/head` - reaches
+    a notes bullet or a capture's Problem line outside a code span, where
+    GitHub reads `<n>` as an HTML tag and its sanitizer drops it: the page
+    prints `refs/pull//head`, a wrong command rather than a missing word.
+    CommonMark lets any ASCII punctuation be backslash-escaped, and `<` is the
+    character every tag, comment and autolink opens with, so escaping it alone
+    keeps the whole placeholder; a lone `>` mid-line is already literal. A code
+    span is copied as it stands, since a placeholder inside one survives and a
+    backslash there would print, and so is a `<` a backslash already escapes.
+    """
+    kept: list[str] = []
+    start = 0
+    for span in CODE_SPAN_RE.finditer(title):
+        kept.append(UNESCAPED_LT_RE.sub(r"\\<", title[start : span.start()]))
+        kept.append(span.group())
+        start = span.end()
+    kept.append(UNESCAPED_LT_RE.sub(r"\\<", title[start:]))
+    return "".join(kept)
 
 
 def reference(item: Item) -> str:
@@ -737,7 +768,7 @@ def stamp(items: list[Item], version: str) -> list[Item]:
     return [item.__class__(**{**item.__dict__, "milestone": version}) for item in items]
 
 
-def outstanding_roadmap_edits(roadmap: str, version: str) -> list[str]:
+def outstanding_roadmap_edits(roadmap: str, version: str, plan: Wave | None = None) -> list[str]:
     """The roadmap statements a cut release has just made wrong.
 
     Reported, never written. The version table's milestone column and the
@@ -750,13 +781,20 @@ def outstanding_roadmap_edits(roadmap: str, version: str) -> list[str]:
     Each string is one wrong statement, phrased as the state of the file
     rather than as an instruction, so a reader can check it against what they
     are looking at. The milestone statements end by naming the edit owed,
-    because there two readings of one fact owe different edits and the reader
-    is the one who knows which reading holds.
+    because there two readings of one fact owe different edits.
+
+    `plan` is the plan as it stood before the cut's bump, and where one is
+    given it settles the one statement the file cannot (`PL-YS9F`). A milestone
+    number the cut has exactly reached is this release where that plan's
+    `release` beat asked for this very version, and a number a patch has taken
+    under any other beat; without a plan the statement names both edits and
+    the reader decides, as it always did.
     """
     # Imported here rather than at module scope: `roadmap` reads this module's
     # version grammar, so a top-level import would close the cycle.
     from .roadmap import (
         BASELINE_MARK,
+        RELEASE,
         VERSION_TABLE_HEADING,
         baseline_heading,
         parse_milestones,
@@ -794,8 +832,17 @@ def outstanding_roadmap_edits(roadmap: str, version: str) -> list[str]:
     # past the Qt port's number would have stepped the plan past the port while
     # the hand-off said only that the table lacked a row (`PL-Y1L0`). The table
     # lacks *this* release's row too at this point, which is why the statement
-    # for a number the cut has exactly reached names the edit each reading owes
-    # rather than deciding between them.
+    # for a number the cut has exactly reached cannot decide between the edit
+    # each reading owes from the file alone - and why the plan decides it where
+    # the caller has one.
+    reached = version_tuple(name)
+    releasing = (
+        None
+        if plan is None
+        else plan.beat == RELEASE
+        and plan.release_version is not None
+        and plan.release_version == reached
+    )
     steps, _ = parse_timeline(roadmap)
-    owed.extend(stale_milestones(steps, parse_milestones(roadmap), rows, version_tuple(name)))
+    owed.extend(stale_milestones(steps, parse_milestones(roadmap), rows, reached, releasing))
     return owed
