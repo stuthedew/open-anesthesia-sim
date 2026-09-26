@@ -1640,7 +1640,7 @@ that scope is clear. Membership in `Required scope` is the whole test, because
 that is how the rule states it — the group heading a frozen list writes the
 same split under is not parsed here. `tools/doc_check.py` holds that heading to
 `Required scope` instead, for the current gate, so the two cannot come apart
-the way v0.6.0's did, where two entries sat under "Cleared before" after the
+the way v0.6.0's did, where two entries sat under § "Cleared before" after the
 scope had named them (`PL-J6HP`). The two carve-outs
 are disjoint and `blocked_outside` is computed first: an entry that is
 milestone work *and* waits on work off the list is not something the milestone
