@@ -3780,6 +3780,24 @@ asked to act on it.
 Refusing such a run instead was considered and is wrong: reading another
 project's store under its own defaults is correct behaviour and a real use.
 
+**Where a git read takes the store from is the sibling question, and the same
+invocation answers it** (`PL-T441`). The settings come from beside the store;
+the store, for every read that asks git about the queue - what has landed,
+which closure is owed a `pr`, what a branch holds, what a `--verify` replay is
+scoped to - is the one the command resolved, spelled as git spells it beneath
+the repository root (`Invocation.tracked`, from `_tracked` in `cli.py`). It is
+never `config.items_dir`: `--items` wins over the setting here for the reason
+it does above, since a command pointed at one queue must not be answered about
+another. Handed the setting instead, a store that `--items` named and the
+loaded settings did not made every `git show` miss, so no closure had landed,
+no `pr` was owed, and `docket check` reported a clean provenance record for a
+store it never read - exit zero, a plausible count, and nothing on the line
+saying the question went unasked. A store git cannot address - outside the
+repository, or the repository root itself - comes back as the empty prefix,
+and no reader takes that for an empty queue: the in-flight reading keeps every
+commit's claim, and the readers that cannot ask git about such a store at all
+decline rather than answer (`_tracked`'s docstring names them).
+
 ### `notes_file`: making a threads file reachable
 
 A project that keeps a running cross-session log beside its queue - threads

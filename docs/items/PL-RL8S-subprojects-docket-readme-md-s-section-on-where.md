@@ -3,11 +3,12 @@ id: PL-RL8S
 title: subprojects/docket/README.md's section on where the settings are resolved from says nothing about where a git read gets the store, which is the sibling question PL-T441 just made uniform
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: count-input-addressing
 touches: subprojects/docket/README.md
 added: 2026-09-22
+closed: 2026-09-26
 payoff: a reader pointing --items elsewhere can learn from the README where a git read takes the store from, not only where the settings come from
 verify: grep -qF 'PL-T441' subprojects/docket/README.md
 ---
@@ -28,3 +29,12 @@ learn about.
 
 **Done when.** The section, or one beside it, says where a git read takes the
 store from and why, citing `PL-T441`.
+
+**Worked.** Written as a paragraph closing the section rather than as a new
+section, since the brief allows either and the section's first paragraph
+already names the `Invocation` every read shares. What it says is taken from
+the code rather than from `PL-T441`'s brief: `_tracked`'s docstring, the
+comment above the git reads in `_complete_report`, the `--verify` scope read
+in `cmd_check`, and the three readers that test the empty prefix - `record`
+exits 2 saying git cannot say what closed, `_stranded` returns nothing, and
+`_numbers_before_notes` leaves the bullet for `docket record`.
