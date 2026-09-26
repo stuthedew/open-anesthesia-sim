@@ -2,6 +2,7 @@
 id: PL-M1C4
 title: PL-1X2C's touches omit claims.py and cli.py, where the carrier line is chosen: claims._editing keeps the first branch per item and never excludes the reader's own, and cmd_show takes one QueueEdit with next(), so the fix cannot be made inside its declared files
 status: done
+milestone: v0.5.12
 added: 2026-09-26
 closed: 2026-09-26
 pr: 1039

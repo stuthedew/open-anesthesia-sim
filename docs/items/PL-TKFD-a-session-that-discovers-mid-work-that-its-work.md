@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: verify-close-out
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-17
 closed: 2026-09-25

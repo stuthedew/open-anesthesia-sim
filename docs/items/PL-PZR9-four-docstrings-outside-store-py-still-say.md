@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: slug-rename-on-write
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-26
 closed: 2026-09-26

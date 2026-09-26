@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
+milestone: v0.5.12
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md, docs/MODEL.md, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md, docs/machine-survey.md, docs/resident-instructions.md, subprojects/docket/README.md, docs/items/PL-GPJ7-hard-gates-recognise-what-they-check-by-wording.md
 added: 2026-09-21
 closed: 2026-09-26

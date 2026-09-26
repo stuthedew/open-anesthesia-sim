@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: slug-rename-on-write
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/store.py, subprojects/docket/tests/test_store.py
 added: 2026-09-19
 closed: 2026-09-26

@@ -3,6 +3,7 @@ id: PL-P0FP
 title: Stress-test the workflow apparatus: multi-session simulation, adversarial inputs to the prose-reading checks, duplicate-definition audit and inflow forensics, and record what makes its defect inflow multiple per day
 status: done
 feature: workflow-stress-2026-09
+milestone: v0.5.12
 touches: docs/items, docs/stress-2026-09-25/evidence.tar.gz
 added: 2026-09-25
 closed: 2026-09-25

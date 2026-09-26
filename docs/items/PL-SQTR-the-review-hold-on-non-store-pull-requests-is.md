@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: review-hold
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md
 blocked-by: PL-CBDX, PL-K6B2
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
