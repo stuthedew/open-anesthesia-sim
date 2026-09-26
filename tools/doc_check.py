@@ -158,7 +158,6 @@ try:
         answered,
         changed_path_args,
         is_shallow,
-        subcommand_of,
         tags,
     )
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
@@ -4762,22 +4761,16 @@ def _git(root: Path, *args: str) -> list[str]:
     # nothing in it. A base that did not resolve, or a checkout that is not a
     # repository at all, printed "nothing to sweep", and the close-out sweep
     # was skipped over a diff nobody had read (`PL-9RFP`).
-    #
-    # Named by the subcommand, not `args[0]`, which is `-c` for a read
-    # `changed_path_args` builds (`PL-8HSX`).
-    command = f"`git {subcommand_of(args)}`"
     try:
         result = subprocess.run(
             ("git", *args), cwd=root, capture_output=True, text=True, check=False
         )
     except GIT_UNAVAILABLE as error:
-        raise GitUnanswered(f"{command} could not run: {error}") from error
-    except UnicodeDecodeError as error:
-        raise GitUnanswered(f"{command} printed a path this cannot read: {error}") from error
+        raise GitUnanswered(f"`git {args[0]}` could not run: {error}") from error
     if result.returncode:
         said = next((line.strip() for line in result.stderr.splitlines() if line.strip()), "")
         raise GitUnanswered(
-            f"{command} exited {result.returncode}: {said or 'with nothing on stderr'}"
+            f"`git {args[0]}` exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
     return [line for line in result.stdout.splitlines() if line.strip()]
 
