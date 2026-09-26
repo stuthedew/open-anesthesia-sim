@@ -9,6 +9,7 @@ touches: .claude/hooks/no-prune-guard.sh, tests/unit/test_no_prune_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1102
 payoff: a session reaching for git pull -p, git remote update -p, a bundled -tp or a prune setting passed with -c meets the refusal and the recipe git fetch --prune already gets, so no spelling git documents deletes a stale ref that may hold the only copy of an item
 verify: grep -q 'def test_every_pruning_spelling_is_refused' tests/unit/test_no_prune_guard.py
 recurrences: 2026-09-26 PL-YFT4 withdrawn 2026-09-26 PL-YFT4
