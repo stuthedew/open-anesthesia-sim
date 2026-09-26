@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: verify-close-out
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/triage.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23

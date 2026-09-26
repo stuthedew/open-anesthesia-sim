@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: review-hold
+milestone: v0.5.12
 touches: docs/maintainer.md
 added: 2026-09-25
 closed: 2026-09-25

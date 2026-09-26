@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: pr-body-integrity
+milestone: v0.5.12
 touches: docs/pr-bodies/1015.md, docs/pr-bodies/1044.md, docs/items/PL-WFFX-name-the-merge-client-that-sends-an-empty.md, docs/items/PL-979D-the-squash-commit-on-main-is-composed-by.md, docs/maintainer.md
 blocked-by: PL-979D
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass

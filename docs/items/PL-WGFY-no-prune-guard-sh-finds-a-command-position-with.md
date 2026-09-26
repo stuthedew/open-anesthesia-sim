@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.12
 touches: .claude/hooks/no-prune-guard.sh, .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_no_prune_guard.py, docs/items/PL-PVW2-predicates-the-apparatus-asks-repeatedly-which.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; a member of PL-PVW2, its last
 added: 2026-09-26

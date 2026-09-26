@@ -3,6 +3,7 @@ id: PL-2866
 title: Decide how apparatus findings are worked while the owner's focus is product: capture all of them as now, let a product session stop only for one that blocks it, and hand root causes to the Projects trial's coordinator
 status: done
 feature: workflow-stress-2026-09
+milestone: v0.5.12
 touches: CLAUDE.md, .claude/skills/docket/SKILL.md, .claude/skills/docket/modes/picking.md, docs/resident-instructions.md, docs/items/PL-NZC0-a-claude-code-projects-trial-needs-project.md
 added: 2026-09-25
 closed: 2026-09-25

@@ -484,9 +484,21 @@ silent output. `_holdings` reads through the snapshot, so a hold is never read
 from refs older than the command's fetch, and `--no-fetch` is one shared flag
 every command takes.
 
+Where that fetch answered, the snapshot also carries one `git ls-remote
+--heads` listing of the branches the remote holds (`vcs.RemoteHeads`,
+`PL-MT3R`). No fetch here prunes, so a branch the remote has deleted keeps its
+tracking ref, and `stranded` recovers its work from exactly that ref; the
+holdings and cut reads are handed the listing instead, and a tracking ref for
+a branch it lacks holds nothing. `claim` and `yield` take one listing of their
+own, which also answers whether the remote has the branch they push, and
+`new --resource` one after its own fetch. The listing writes nothing, and where
+it fails every tracking ref is read as it was before.
+
 **The line is the deliverable.** A command that fetched and was answered says
-nothing, because the fresh answer is the default. Otherwise every read command
-prints `render.format_snapshot`'s one sentence: told not to fetch, `Nothing
+nothing, because the fresh answer is the default - unless the listing taken
+with that fetch failed, when it says `git ls-remote --heads origin` failed, so
+a branch the remote has deleted can still read as held. Otherwise every read
+command prints `render.format_snapshot`'s one sentence: told not to fetch, `Nothing
 refreshed the refs for this answer (--no-fetch): read from the last fetch, at
 01:30 UTC, 30 minutes before it`; a fetch the remote did not answer, `git fetch
 origin failed, so nothing refreshed the refs for this answer: read from the
