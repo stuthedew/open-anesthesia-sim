@@ -19,6 +19,8 @@ from docket.trend import (
     APPARATUS,
     BY_DAY,
     BY_WEEK,
+    CHURN_NOT_ASKED,
+    CHURN_READ,
     QUEUE,
     ROADMAP,
     SIM_CODE,
@@ -383,6 +385,25 @@ def test_a_history_git_did_not_answer_still_says_it_could_not_be_read() -> None:
 
     assert "churn not shown: git could not be read in this checkout." in key
     assert "not asked for" not in key
+
+
+def test_a_history_git_answered_with_no_line_counts_is_not_read_as_not_asked() -> None:
+    """Only the command knows whether it asked git, so the key takes its word (`PL-PWH6`).
+
+    An empty, undeclined reading is what a repository whose every commit is a
+    merge, empty or binary-only gives back, and it read as a `--no-git` run
+    while the cause was inferred from the reading's shape. Git answered, so the
+    columns are drawn, at zero; only a caller that asked nothing says so, by
+    passing no reading at all.
+    """
+    answered = analyze([_item("PL-0001")], Churn(), CONFIG, today=date(2026, 8, 27))
+    key = " ".join(format_trend(answered).split())
+
+    assert answered.churn_reading == CHURN_READ
+    assert "not asked for" not in key
+    assert "could not be read" not in key
+    unasked = analyze([_item("PL-0001")], None, CONFIG, today=date(2026, 8, 27))
+    assert unasked.churn_reading == CHURN_NOT_ASKED
 
 
 def test_no_git_names_the_day_its_windows_are_anchored_at(
