@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: pr-body-integrity
+milestone: v0.5.13
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, .github/workflows/pr-title.yml, .claude/hooks/docket-digest.sh, .claude/skills/docket/modes/release.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/start.md, docs/maintainer.md, docs/ARCHITECTURE.md, ROADMAP.md, docket.toml, tools/fixture_id_check.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py, docs/items/PL-979D-the-squash-commit-on-main-is-composed-by.md, docs/items/PL-K9XQ-pr-title-fails-on-the-first-head-of-every-draft.md, docs/items/PL-X2XP-backfill-docs-pr-bodies-for-the-pull-requests.md, docs/items/PL-7VWK-since-pl-979d-the-record-of-a-pull-request-s.md, .github/workflows/quality.yml
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-26

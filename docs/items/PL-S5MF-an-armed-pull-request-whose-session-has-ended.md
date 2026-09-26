@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: infra, docs
+milestone: v0.5.13
 touches: .github/workflows/update-armed.yml, tools/update_armed.py, tests/unit/test_update_armed.py, docket.toml, docs/maintainer.md, docs/ARCHITECTURE.md, CLAUDE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed at capture by PL-6MW8's session, 2026-09-23
 added: 2026-09-23
