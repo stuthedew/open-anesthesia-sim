@@ -1759,7 +1759,15 @@ def cmd_set(args: argparse.Namespace) -> int:
       between the store's errors with and without the write, so an error the
       store already carries elsewhere blocks nothing and no rule is restated
       here - the vocabulary, the safety pin, what `ready` and `dropped` owe,
-      all arrive from `checks.py` in its own words.
+      all arrive from `checks.py` in its own words. A `verify:` command is
+      replayed too, as `check --verify` replays it, because an open item whose
+      command already passes is an error only running it can find
+      (`PL-FTDB`). It runs with the line already written, since a command that
+      reads the item's own file sees that line - a `grep` for a string the
+      command itself spells passes on it and nowhere else - so a refusal puts
+      the file back as it was. The write then costs whatever the command
+      costs, which is the price of refusing it here rather than a `make check`
+      later.
 
     A file the rewrite could not keep faithful is refused too: one spelling a
     key twice would be collapsed to the parser's pick, one carrying a field
@@ -1844,7 +1852,20 @@ def cmd_set(args: argparse.Namespace) -> int:
             print(f"  {error}")
         return 1
 
+    original = (directory / item.path).read_bytes()
     path = rewrite_item(directory, updated)
+    if "verify" in changes:
+        try:
+            replayed = _replayed(args, updated, after, today, config, milestones, written)
+        except BaseException:
+            path.write_bytes(original)
+            raise
+        if replayed:
+            path.write_bytes(original)
+            print(f"{item.identifier}: nothing was written; `docket check` would then report:")
+            for error in replayed:
+                print(f"  {error}")
+            return 1
     for key, attribute, value in requested:
         if attribute in changes:
             print(f"{item.identifier}: {key}: {_spelled(value) or '(removed)'}")
@@ -1852,6 +1873,35 @@ def cmd_set(args: argparse.Namespace) -> int:
     _say_unblocked(item, updated, changes, items, after)
     _say_contradicted(changes, items, after, today)
     return 0
+
+
+def _replayed(
+    args: argparse.Namespace,
+    updated: Item,
+    after: list[Item],
+    today: date,
+    config: Config,
+    milestones: MilestoneStates | None,
+    written: WrittenReport | None,
+) -> list[str]:
+    """What `check --verify`'s replay would report about the command `set` just wrote.
+
+    The replay's own run and its own words: `already_passing` scoped to this
+    one item, read by `analyze` as `check` reads it, and only the errors that
+    run adds. So an open item whose command already exits 0 is refused in the
+    replay's own sentence, the one the next `make check` would print, and
+    everything the replay reads as no finding - a command it could not run,
+    one killed at the limit, one that reads past the tree, an item at a status
+    it does not ask about - refuses nothing here either (`PL-FTDB`).
+    """
+    landed = already_passing(
+        _invocation(args).root, [updated], scoped_to=frozenset({updated.identifier})
+    )
+    before = set(analyze(after, today, config, milestones=milestones, written=written).errors)
+    replayed = analyze(
+        after, today, config, milestones=milestones, written=written, landed=landed
+    ).errors
+    return [error for error in replayed if error not in before]
 
 
 def _say_contradicted(

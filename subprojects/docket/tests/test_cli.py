@@ -7302,6 +7302,31 @@ def test_set_holds_a_command_it_writes_to_the_admitted_shapes_whatever_the_item_
     assert "verify: grep -q 'def test_a' tests/unit/test_a.py\n" in _item_text(store)
 
 
+def test_set_refuses_a_verify_that_already_passes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The replay's error, at the moment of writing rather than a `make check` later.
+
+    A `grep` for a string the command itself spells passes on its own
+    `verify:` line, so it proves nothing about the work. `set` wrote one and
+    exited 0, and the next `check --verify` refused it (`PL-CBDX`, `PL-FTDB`).
+    The command runs with the line written, which is the only tree it passes
+    on, and a refusal puts the file back as it was.
+    """
+    store = _store(tmp_path, OPEN_ITEM)
+    probe = "grep -qF 'self-match-probe' items/item-0.md"
+
+    assert _run("set", "PL-K7QX", "--verify", probe, "--overwrite", "--items", str(store)) == 1
+    out = capsys.readouterr().out
+    assert "nothing was written" in out
+    assert "PL-K7QX is open but its `verify:` command already passes" in out
+    assert _item_text(store) == OPEN_ITEM
+
+    work = "grep -qF 'def test_the_work' tests/unit/test_work.py"
+    assert _run("set", "PL-K7QX", "--verify", work, "--overwrite", "--items", str(store)) == 0
+    assert f"verify: {work}\n" in _item_text(store)
+
+
 def test_set_refuses_a_file_it_could_not_rewrite_faithfully(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
