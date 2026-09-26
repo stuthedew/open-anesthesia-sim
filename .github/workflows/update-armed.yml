@@ -1,0 +1,55 @@
+name: update-armed
+
+# Brings `main` into every armed pull request it has moved past (`PL-S5MF`).
+# `main` merges only an up-to-date branch and GitHub's auto-merge never updates
+# one, so without this an armed pull request waits at "behind" until somebody
+# clicks Update branch. `tools/update_armed.py` holds the rule: armed, not a
+# draft, behind, and no required check already failed on its head.
+#
+# The update is made with `UPDATE_BRANCH_TOKEN`, a fine-grained personal access
+# token the owner creates (`docs/maintainer.md`), because one made with
+# `GITHUB_TOKEN` starts the pull request's checks in an approval-required
+# state. Until that secret exists, a run changes nothing and lists what it
+# would have updated.
+#
+# Red means a reading failed or GitHub refused the token; the run's summary
+# says which. It never runs on a pull request, so it gates nothing.
+on:
+  push:
+    branches: [main]
+  # To run it now, from Actions > update-armed > Run workflow.
+  workflow_dispatch:
+
+# Reads only. The one write, the update, is made with `UPDATE_BRANCH_TOKEN`.
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+
+# One run at a time, and a newer push replaces a run still waiting: each run
+# reads the pull requests as they stand when it starts.
+concurrency:
+  group: update-armed
+  cancel-in-progress: false
+
+jobs:
+  update:
+    # A dispatch from another branch would run that branch's copy of the script
+    # with the token.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # The floor `subprojects/docket/pyproject.toml` declares, as in `pr-title.yml`.
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      - name: bring main into the armed pull requests behind it
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          UPDATE_BRANCH_TOKEN: ${{ secrets.UPDATE_BRANCH_TOKEN }}
+        run: python3 tools/update_armed.py --base main

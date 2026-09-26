@@ -538,10 +538,10 @@ deviating from a described deliverable, not acting without one.
   pull request at its first push and arms auto-merge**, so a capture reaches
   `main` even when its session ends before any work does (project owner,
   2026-09-23, ratified, over "a branch carrying only captured items is not a
-  pull request", `PL-WNCT`), unless `main` has moved past its base by the time
-  its CI is green (`PL-S5MF`). **Whether it arms is `bin/docket arm`'s answer,
-  asked before arming and before every later push while a pull request is
-  open.** `arm`: mark it ready and arm it. `hold`: leave it unarmed, disarming
+  pull request", `PL-WNCT`), and `update-armed.yml` brings `main` in if `main`
+  moves past it first (`PL-S5MF`). **Whether it arms is `bin/docket arm`'s
+  answer, asked before arming and before every later push while a pull request
+  is open.** `arm`: mark it ready and arm it. `hold`: leave it unarmed, disarming
   it before the push that brings the hold or green CI merges half the work,
   and a draft while the hold is a claim. `behind N`: bring `origin/main` in and
   ask again. `subprojects/docket/src/docket/arming.py` carries the rules and
@@ -568,8 +568,8 @@ deviating from a described deliverable, not acting without one.
   the pull request waits on review is stale by its merge and paid again.
   Waiting on review behind is neither red nor conflicted, and is not work. At
   merge time the owner's *Update branch* brings it in (`docs/maintainer.md`);
-  an armed one is brought in by the session that armed it
-  (`update_pull_request_branch`), since auto-merge never updates a branch. The
+  an armed one is brought in by `update-armed.yml` on each push to `main`
+  (`PL-S5MF`), since auto-merge never updates a branch. The
   refusal does not bind an admin, and a session's GitHub calls are the owner's,
   so a session merges only by arming auto-merge. Sooner only on a genuine
   conflict, a notice that `main` is green again, or before editing work it will

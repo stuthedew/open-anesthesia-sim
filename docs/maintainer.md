@@ -257,12 +257,15 @@ when you come to merge:
    base, the merge skew the setting exists to stop. It stays as your escape
    hatch for a broken CI, not a route for ordinary merges.
 3. Come back in about five minutes. Success is the pull request marked
-   **Merged**. If the merge box offers **Update branch** again, another pull
-   request landed first: click it again and come back in another five.
+   **Merged**. If another pull request landed first, `update-armed.yml` has
+   brought `main` in again and the checks are running: come back in another
+   five. If the merge box still offers **Update branch**, that workflow could
+   not update it, and its newest run under **Actions** says why: click the
+   button and come back in another five.
 
-With several ready at once, arm auto-merge on each, but update one at a time,
-and the next only once the previous has merged. Updating them together runs CI
-on every one, and each merge sends the rest behind again.
+With several ready at once, arm auto-merge on each and update just one. When it
+merges, `update-armed.yml` brings `main` into every other armed one it left
+behind, which re-runs each one's checks, and the next to go green merges.
 
 If a check fails after the update, the branch and the new `main` do not work
 together. That is the merge skew the setting now stops at the pull request
@@ -274,9 +277,9 @@ session to merge `main` in and resolve them.
 Instead of steps 1 to 3, you can ask the session that opened the pull request
 to merge it: it arms auto-merge and brings the base in itself, with the same
 merge the button makes. GitHub never updates an armed pull request that falls
-behind, so one whose session has ended waits for you. A captures-only pull
-request is the usual case, and `PL-S5MF` holds the question of what should
-pick it up instead. **A pull request already green and current is the
+behind, so `update-armed.yml` does, on each push to `main`, and one whose
+session has ended does not wait for you (`PL-S5MF`, and its token in the next
+section). **A pull request already green and current is the
 exception: the session tells you it cannot arm it, and the Squash and merge is
 yours** (project owner, 2026-09-26, ratified, over the session merging it
 directly through the API, `PL-V2X5`). GitHub offers auto-merge "only on pull
@@ -287,6 +290,58 @@ admin's merge passes the up-to-date check `main` holds everyone else to:
 merging directly, it would land a stale branch whenever another pull request
 merged between its read and its call. Merge it on the Mac, as step 1 says for
 a branch that is already current.
+
+## Give update-armed its token, and renew it
+
+`.github/workflows/update-armed.yml` brings `main` into each armed pull request
+that `main` has moved past, on every push to `main` (`PL-S5MF`). The update
+needs a token only you can make: one made with the workflow's own token starts
+the pull request's checks in an approval-required state, so they would wait on
+you. Until the secret exists, each run lists what it would have updated and
+changes nothing.
+
+**To make the token**, on the Mac:
+
+1. Open [the token form, filled in for this](https://github.com/settings/personal-access-tokens/new?name=update-armed&description=open-anesthesia-sim+update-armed.yml+brings+main+into+armed+pull+requests&target_name=stuthedew&expires_in=366&contents=write&pull_requests=write&workflows=write).
+   It is GitHub's **Settings > Developer settings > Personal access tokens >
+   Fine-grained tokens > Generate new token**, with the name, description,
+   owner, a 366-day expiry and the permissions set.
+2. Under **Repository access**, choose **Only select repositories** and pick
+   `stuthedew/open-anesthesia-sim`. The link cannot set this.
+3. Under **Permissions**, check that the repository permissions are these and
+   no others: **Contents**, **Pull requests** and **Workflows**, each *Read and
+   write*, and **Metadata**, *Read-only*, which GitHub adds itself.
+4. Click **Generate token** and copy it. GitHub shows it only once.
+
+**To store it:**
+
+5. On the repository's page, click **Settings**, then **Secrets and variables >
+   Actions** under **Security** in the sidebar, then **New repository secret**.
+6. Enter `UPDATE_BRANCH_TOKEN` as the **Name**, paste the token as the
+   **Secret**, and click **Add secret**. Success is `UPDATE_BRANCH_TOKEN` listed
+   under **Repository secrets**. From a terminal, `gh secret set
+   UPDATE_BRANCH_TOKEN --repo stuthedew/open-anesthesia-sim` does steps 5 and 6
+   and prompts for the value.
+
+**Why those permissions.** GitHub's API reference lists *Pull requests* for the
+update call. The update is a merge written onto the branch, which is the
+*Contents* write, and GitHub refuses one that brings in a change to a workflow
+file without *Workflows*: Mergify's app met that refusal updating branches
+behind a workflow change
+([Mergifyio/mergify#5055](https://github.com/Mergifyio/mergify/issues/5055)). A
+run GitHub refuses turns red, and its summary names the permission GitHub asked
+for.
+
+**To see it work**, open **Actions > update-armed** after the next merge. The
+newest run's summary lists each armed pull request it read, with *updated*
+beside each one it brought `main` into.
+
+**To renew it**, before its expiry date or when runs turn red with HTTP 401,
+make a new token the same way and paste it over the old value: the edit icon
+beside `UPDATE_BRANCH_TOKEN` on the same settings page, or the `gh secret set`
+line again, which overwrites it. The 366 days is a choice, not a limit: a token
+that never expires saves the yearly renewal, but a copy that leaked would then
+work for good.
 
 ## Sweep branches now, or restore one the sweep deleted
 

@@ -3,11 +3,13 @@ id: PL-S5MF
 title: An armed pull request whose session has ended stalls at behind: main now requires branches to be up to date and GitHub's auto-merge never updates one, so PL-WNCT's promise that a capture reaches main after its session ends no longer holds
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra, docs
-touches: .github/workflows/update-armed.yml, tools/update_armed.py, tests/unit/test_update_armed.py, docket.toml, docs/maintainer.md, CLAUDE.md
+touches: .github/workflows/update-armed.yml, tools/update_armed.py, tests/unit/test_update_armed.py, docket.toml, docs/maintainer.md, docs/ARCHITECTURE.md, CLAUDE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed at capture by PL-6MW8's session, 2026-09-23
 added: 2026-09-23
+closed: 2026-09-26
+pr: 1137
 payoff: an armed pull request that main has moved past is brought up to date on the next push to main, so auto-merge lands it without a session or the owner bringing main in
 verify: grep -q 'def test_an_unarmed_pull_request_is_never_updated' tests/unit/test_update_armed.py
 ---
