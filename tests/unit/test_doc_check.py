@@ -1872,6 +1872,79 @@ def test_a_tag_whose_pyproject_version_disagrees_is_refused(tmp_path: Path) -> N
     ), errors
 
 
+def _git(root: Path, *args: str) -> str:
+    done = subprocess.run(("git", *args), cwd=root, check=True, capture_output=True, text=True)
+    return done.stdout.strip()
+
+
+def _cut(root: Path, name: str) -> str:
+    """Cut `name` as a release does, its notes and its version in one commit; its short hash."""
+    notes = root / "docs" / "releases" / f"{name}.md"
+    notes.parent.mkdir(parents=True, exist_ok=True)
+    notes.write_text(f"## {name}\n", encoding="utf-8")
+    version = name.removeprefix("v")
+    _commit_version_file(root, f'[project]\nname = "demo"\nversion = "{version}"\n', f"cut {name}")
+    return _short(root, "HEAD")
+
+
+def test_a_tag_ahead_of_its_own_cut_is_named(tmp_path: Path) -> None:
+    """`PL-KFWL`: one merge past its cut, a tag still declares its version, so only the cut sees it.
+
+    That is the tag `origin/main` put on the next merge when it was tagged late
+    (`PL-VYK1`). The message names both commits, and the version check says
+    nothing more about a tag already reported.
+    """
+    root = _tagged(tmp_path, "v0.2.4")
+    cut = _cut(root, "v0.2.5")
+    _commit_version_file(root, (root / "pyproject.toml").read_text(), "the next merge")
+    _git(root, "tag", "-a", "v0.2.5", "-m", "v0.2.5")
+    late = _short(root, "v0.2.5^{commit}")
+
+    errors = _errors(root)
+
+    assert any(
+        f"v0.2.5 points at `{late} the next merge`, which did not add docs/releases/v0.2.5.md"
+        in message
+        and f"Its own history says that is `{cut} cut v0.2.5`, so move it there" in message
+        and "git tag -d v0.2.5" in message
+        for message in errors
+    ), errors
+    assert not any("declares" in message for message in errors), errors
+
+
+def test_a_tag_behind_its_own_cut_is_named(tmp_path: Path) -> None:
+    """Tagged before its release merged, and on a commit already declaring its version."""
+    root = _tagged(tmp_path, "v0.2.4")
+    before = _short(root, "HEAD")
+    _cut(root, "v0.2.5")
+    _git(root, "tag", "-a", "v0.2.5", "-m", "v0.2.5", "HEAD^")
+
+    errors = _errors(root)
+
+    assert any(
+        f"v0.2.5 points at `{before} the current baseline`" in message
+        and "None in its own history did, so it sits before its release was cut" in message
+        for message in errors
+    ), errors
+
+
+def test_a_tag_on_its_cut_is_quiet_on_a_branch_that_merged_it_in(tmp_path: Path) -> None:
+    """Read from `HEAD`, this branch's own merge would be taken for the cut (`PL-QHCW`)."""
+    root = _tagged(tmp_path, "v0.2.4")
+    trunk = _git(root, "rev-parse", "--abbrev-ref", "HEAD")
+    _git(root, "checkout", "-qb", "feature")
+    (root / "work.txt").write_text("work\n", encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "feature work")
+    _git(root, "checkout", "-q", trunk)
+    _cut(root, "v0.2.5")
+    _git(root, "tag", "-a", "v0.2.5", "-m", "v0.2.5")
+    _git(root, "checkout", "-q", "feature")
+    _git(root, "merge", "-q", "--no-edit", trunk)
+
+    assert _errors(root) == []
+
+
 def test_a_version_named_as_shipping_with_a_stale_version_file_is_excused(tmp_path: Path) -> None:
     """v0.2.0's case: the tag is on the commit that shipped, which never bumped.
 

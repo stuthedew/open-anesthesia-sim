@@ -3,15 +3,18 @@ id: PL-QHCW
 title: No record says which commit a release was cut on: release.md hands the owner a tag placed by hand from a moving ref, and each reader then takes the tag for the cut - six items, three open
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect
 feature: release-process
-touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_cli.py, tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md, docs/items/PL-NZC0-a-claude-code-projects-trial-needs-project.md
+touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_cli.py, tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md, docs/items/PL-NZC0-a-claude-code-projects-trial-needs-project.md, docs/ARCHITECTURE.md, subprojects/docket/README.md, subprojects/docket/tests/test_vcs_silence.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
+closed: 2026-09-26
+pr: 1065
 payoff: The commit a release was cut on becomes a recorded fact, so the tag and its readers stop disagreeing
+verify: ! grep -rq 'git tag -a v0.3.0 origin/main' .claude/skills/docket/ && ! grep -q 'MERGE_COMMIT -m' subprojects/docket/src/docket/cli.py && grep -q 'def test_the_printed_tag_commands_tag_the_cut_however_late_they_run' subprojects/docket/tests/test_release.py && uv run pytest -q subprojects/docket/tests/test_release.py && python3 tools/doc_check.py check
 root-cause-of: PL-VYK1, PL-6YYR, PL-KFWL, PL-BKDP, PL-YKSD, PL-6SV4, PL-53Y6
-generator: live - release.md:191 still hands the owner git tag -a from origin/main and cli.py:2694 prints an unfilled MERGE_COMMIT, so no record says which commit a cut was made on; three members are open
+generator: spent - the tag block, bin/docket release's hand-off and its untagged warning all print one lookup that finds the commit which added the release's notes, and doc_check holds every tag with notes to that same commit, so no reader takes a tag placed by hand for the cut
 misread: Which commit a release was cut on, if it was cut at all
 ---
 
@@ -251,3 +254,18 @@ cycle.
 - `PL-LRM0` passes once `PL-6YYR` and `PL-KFWL` are no longer both
   `ready`.
 - The closing commit leads with all five ids, and `generator:` reads spent.
+
+**Closed 2026-09-26, built as the plan above says, with one change.** A
+truncated clone is not declined: its oldest commit reads as a root adding
+every file, which can pass a tag that is off its cut but can never fail one on
+it, so every finding stands and only the *naming* of a cut is withheld there.
+`docket.release` holds the definition (`notes_path`, `CUT_FLAGS`,
+`cut_query`, `tag_commands`) and `docket.vcs` the reads (`Cut`, `find_cut`,
+`notes_added`), both registered in `test_vcs_silence`'s sweep.
+`cli._hand_off` and `cli._untagged_warning` print `tag_commands`, and the
+warning names the commit the line will find from the default base.
+`doc_check._release_cuts` feeds `_check_tag_versions`, which now reports a tag
+off its cut by name before any version error, and `_tag_spans`, which no longer
+reads `HEAD`. On this repository's tags `doc_check` reports nothing, v0.4.8's
+included: it sits on `b340e7ff`, its cut. The members close in the same commit:
+`PL-VYK1`, `PL-KFWL`, `PL-6YYR` (clauses b and c; a declined) and `PL-LRM0`.
