@@ -249,10 +249,11 @@ WRAPPED = (
 
 @pytest.mark.parametrize(("command", "refused"), WRAPPED)
 def test_a_wrapper_runs_the_command_after_it(command: str, refused: bool) -> None:
-    """A prune run through `timeout`, `env` or another wrapper, or a path to git, is a prune (`PL-TRMN`).
+    """A prune run through `timeout`, `env` or another wrapper is a prune (`PL-TRMN`).
 
-    The guard read the wrapper as the command and compared a path with `git`,
-    so each refused spelling here pruned unrefused.
+    So is one run by a path to git. The guard read the wrapper as the command
+    and compared a path with `git`, so each refused spelling here pruned
+    unrefused.
     """
     decision = _decision(command)
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
