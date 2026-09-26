@@ -1054,7 +1054,7 @@ count, and the number lives only where its meaning is fixed by where it sits.
 A count can agree with the entries under a heading while the heading files
 them under the wrong claim, so the current gate's "Cleared by vX.Y.Z itself"
 group is held to the `Required scope` that states what a milestone clears
-itself: v0.6.0's filed two entries under "Cleared before" that its scope named
+itself: v0.6.0's filed two entries under § "Cleared before" that its scope named
 (`PL-J6HP`).
 
 A frozen list can be internally consistent and still be missing entries, so

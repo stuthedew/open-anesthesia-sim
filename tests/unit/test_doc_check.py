@@ -147,7 +147,7 @@ VERSIONED_ROADMAP = ROADMAP.replace(
 README = """# Demo
 
 The simulation lives in `core/thing.py` and its parameters in
-`data/agents/demo.json`. See "Known limitations" for what it omits.
+`data/agents/demo.json`. See § "Known limitations" for what it omits.
 """
 
 SOURCE = {
@@ -595,10 +595,10 @@ def test_dangling_section_citation_is_an_error(tmp_path: Path) -> None:
 
 
 def test_directional_citation_must_resolve_in_the_citing_file(tmp_path: Path) -> None:
-    """`see "X" below` points at this file, so a heading elsewhere is not enough."""
+    """`see § "X" below` points at this file, so a heading elsewhere is not enough."""
     readme = README.replace(
-        'See "Known limitations" for what it omits.',
-        'See "Known limitations" below for what it omits.',
+        'See § "Known limitations" for what it omits.',
+        'See § "Known limitations" below for what it omits.',
     )
     root = _repo(tmp_path, readme=readme)
     assert any('cites section "Known limitations" in this file' in e for e in _errors(root))
@@ -611,13 +611,13 @@ def test_citation_matching_the_start_of_a_longer_heading_resolves(tmp_path: Path
 
 
 def test_sentence_punctuation_inside_the_quotes_still_resolves(tmp_path: Path) -> None:
-    """`See "Known limitations."` is US quoting, not a heading ending in a period."""
-    readme = '# Demo\n\nSee "Known limitations."\n'
+    """`See § "Known limitations."` is US quoting, not a heading ending in a period."""
+    readme = '# Demo\n\nSee § "Known limitations."\n'
     assert not any("cites section" in e for e in _errors(_repo(tmp_path, readme=readme)))
 
 
 def test_a_capitalised_citation_is_checked_too(tmp_path: Path) -> None:
-    readme = '# Demo\n\nSee "Renamed limitations" for what it omits.\n'
+    readme = '# Demo\n\nSee § "Renamed limitations" for what it omits.\n'
     assert any(
         'cites section "Renamed limitations"' in e for e in _errors(_repo(tmp_path, readme=readme))
     )
@@ -639,7 +639,7 @@ def test_a_quoted_measurement_before_above_is_not_a_citation(tmp_path: Path) -> 
 
 def test_a_directed_citation_opening_on_a_letter_still_resolves(tmp_path: Path) -> None:
     """The narrowing must not swallow the form it exists to check."""
-    readme = '# Demo\n\nSee "Renamed limitations" above for what it omits.\n'
+    readme = '# Demo\n\nSee § "Renamed limitations" above for what it omits.\n'
 
     assert any(
         'cites section "Renamed limitations"' in e for e in _errors(_repo(tmp_path, readme=readme))
@@ -649,6 +649,76 @@ def test_a_directed_citation_opening_on_a_letter_still_resolves(tmp_path: Path) 
 def test_ordinary_quoted_prose_is_not_read_as_a_citation(tmp_path: Path) -> None:
     readme = '# Demo\n\nRecord it in "the same change" as the code.\n'
     assert not any("cites section" in e for e in _errors(_repo(tmp_path, readme=readme)))
+
+
+def test_a_quoted_command_output_is_not_a_section_citation(tmp_path: Path) -> None:
+    """Prose quoting what a tool printed passes, and is not told to change.
+
+    Both sentences are `PL-YSMV`'s reproductions. While `see` and `above` were
+    the recognition, each was a section no document has, and the only repair on
+    offer was to reword a sentence that was right. The section mark is the
+    recognition now, and a quotation naming no heading is not advised on either.
+    """
+    readme = (
+        "# Demo\n\n"
+        'The run printed "documentation: 0 errors, 0 advisories" above the summary.\n'
+        'See "docket check: 0 errors" for what a clean run prints.\n'
+    )
+    report = doc_check.analyze(_repo(tmp_path, readme=readme))
+
+    assert report.errors == []
+    assert report.advisories == []
+
+
+def test_an_unmarked_citation_of_a_heading_is_told_to_take_the_mark(tmp_path: Path) -> None:
+    """A quotation naming a heading is a section citation, which is a fact; the mark is missing."""
+    readme = '# Demo\n\nSee "Known limitations" for what it omits.\n'
+    report = doc_check.analyze(_repo(tmp_path, readme=readme))
+
+    assert report.errors == []
+    assert any('write § "Known limitations"' in a for a in report.advisories)
+
+
+def test_a_quotation_after_its_source_document_is_not_told_to_take_the_mark(tmp_path: Path) -> None:
+    """`` `doc.md` under "X" `` is held by containment, and a `§` there breaks that match."""
+    readme = '# Demo\n\nThe rest is in `docs/MODEL.md` under "Known limitations".\n'
+    report = doc_check.analyze(_repo(tmp_path, readme=readme))
+
+    assert report.errors == []
+    assert not any("without the mark" in a for a in report.advisories)
+
+
+def test_a_marked_citation_opening_on_a_digit_is_checked(tmp_path: Path) -> None:
+    """The mark says a citation is being made, so no opening letter is required of it."""
+    readme = '# Demo\n\nAs § "2 compartments" above says.\n'
+
+    assert any(
+        'cites section "2 compartments" in this file' in e
+        for e in _errors(_repo(tmp_path, readme=readme))
+    )
+
+
+def test_a_citation_shown_in_a_fence_or_a_code_span_is_a_literal(tmp_path: Path) -> None:
+    """An example of the form, or the form being described, is not a claim about the tree."""
+    readme = (
+        "# Demo\n\n"
+        'Write `see § "A heading nobody has"` to cite one.\n\n'
+        "```text\n"
+        'See § "Another heading nobody has" for the rest.\n'
+        "```\n"
+    )
+
+    assert not any("cites section" in e for e in _errors(_repo(tmp_path, readme=readme)))
+
+
+def test_a_title_copied_with_another_dash_still_resolves(tmp_path: Path) -> None:
+    """This project writes `-` and `—` for one dash; the heading is there either way."""
+    model = MODEL.replace("## Known limitations", "## Known limitations - and open questions")
+    readme = '# Demo\n\nSee § "Known limitations — and open questions" for the rest.\n'
+
+    assert not any(
+        "cites section" in e for e in _errors(_repo(tmp_path, model=model, readme=readme))
+    )
 
 
 # --- wrapped citations and bold markers -------------------------------------
@@ -666,7 +736,7 @@ def test_a_cited_section_title_that_wraps_across_lines_is_checked(tmp_path: Path
     read, which is worse than reporting a gap.
     """
     model = MODEL.replace("## Known limitations", "## Known limitations of the coupled model")
-    readme = _wrapped('See "Renamed limitations of the coupled\nmodel" for what it omits.')
+    readme = _wrapped('See § "Renamed limitations of the coupled\nmodel" for what it omits.')
     root = _repo(tmp_path, model=model, readme=readme)
     assert any(
         'cites section "Renamed limitations of the coupled model"' in e for e in _errors(root)
@@ -675,7 +745,7 @@ def test_a_cited_section_title_that_wraps_across_lines_is_checked(tmp_path: Path
 
 def test_a_wrapped_citation_that_resolves_is_not_an_error(tmp_path: Path) -> None:
     model = MODEL.replace("## Known limitations", "## Known limitations of the coupled model")
-    readme = _wrapped('See "Known limitations of the coupled\nmodel" for what it omits.')
+    readme = _wrapped('See § "Known limitations of the coupled\nmodel" for what it omits.')
     assert not any(
         "cites section" in e for e in _errors(_repo(tmp_path, model=model, readme=readme))
     )
@@ -684,7 +754,7 @@ def test_a_wrapped_citation_that_resolves_is_not_an_error(tmp_path: Path) -> Non
 def test_a_bold_marker_is_a_citable_section_title(tmp_path: Path) -> None:
     """This project subdivides documents with `**Bold.**`, and cites them by name."""
     model = MODEL + "\n**What the model omits.** Everything else.\n"
-    readme = _wrapped('See "What the model omits" for what it leaves out.')
+    readme = _wrapped('See § "What the model omits" for what it leaves out.')
     assert not any(
         "cites section" in e for e in _errors(_repo(tmp_path, model=model, readme=readme))
     )
@@ -692,7 +762,7 @@ def test_a_bold_marker_is_a_citable_section_title(tmp_path: Path) -> None:
 
 def test_a_bullet_led_bold_marker_is_a_citable_section_title(tmp_path: Path) -> None:
     model = MODEL + "\n- **What the model omits.** Everything else.\n"
-    readme = _wrapped('See "What the model omits" for what it leaves out.')
+    readme = _wrapped('See § "What the model omits" for what it leaves out.')
     assert not any(
         "cites section" in e for e in _errors(_repo(tmp_path, model=model, readme=readme))
     )

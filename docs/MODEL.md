@@ -17,7 +17,7 @@ version instead, which cannot go stale.
 
 The preceding milestone, v0.0.2, delivered an analytically validated ideal
 breathing-circuit wash-in and washout model without a patient; its reference
-tests are preserved unchanged (see "Preserved circuit reference tests" below).
+tests are preserved unchanged (see § "Preserved circuit reference tests" below).
 Version v0.1.0 extends that model through:
 
 ```text
@@ -302,8 +302,8 @@ The milestone must demonstrate:
 
 Only sevoflurane was modeled in v0.1.0. Isoflurane and desflurane were
 added in v0.2.0 as additional selectable agents, using this same section's
-equations unchanged (see "Status" and "v0.2.0: isoflurane and desflurane"
-under "Parameter provenance").
+equations unchanged (see § "Status" and "v0.2.0: isoflurane and desflurane"
+under § "Parameter provenance").
 
 ## Model boundary
 
@@ -334,7 +334,7 @@ independent compartment. See:
   <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1508141/>
 
 This is a deliberate simplification, documented here rather than left as an
-unfilled parameter. See "Known limitations."
+unfilled parameter. See § "Known limitations."
 
 Inspired gas is likewise not a separate compartment. The circuit is one ideal,
 perfectly mixed volume with no dead space and no separate inspiratory and
@@ -351,7 +351,7 @@ inspired fraction.
 This is an assumption of the circuit model rather than a property of breathing
 systems in general, and it is what makes the displayed $`F_A/F_I`$ ratio the
 textbook one — the canonical teaching curve of inhaled-anesthetic uptake — see
-"F_A/F_I as a displayed ratio". A multi-limb system such as Lerou and Booij's
+§ "F_A/F_I as a displayed ratio". A multi-limb system such as Lerou and Booij's
 three-part model separates inspired gas from mean circuit gas; there the two
 would be distinct states, this model's single $`F_I`$ would no longer describe
 both, and the departure would have to be recorded here before the model was
@@ -492,7 +492,7 @@ caller taking the same width: with the step fixed, there is only one sequence
 of arithmetic that reaches step *n*. A run held as its definition records no
 samples and fixes no width — a state is computed when it is asked for, and the
 same instant can be reached by more than one sequence. "The canonical
-evaluation rule" under "Runtime controls" is what carries the guarantee there.
+evaluation rule" under § "Runtime controls" is what carries the guarantee there.
 It is stronger than this paragraph in one respect and narrower in another: two
 evaluations of one run definition at one instant are bit-identical rather than
 merely reproducible across runs, and only values from the canonical path may be
@@ -540,7 +540,7 @@ $`F_D \rightarrow F_I \rightarrow F_A`$, which means that
 the middle gas-phase state is $`F_I`$ (inspired) — not a symbol named after
 the breathing circuit that holds it. The container keeps the apparatus subscript — $`V_C`$ for its volume
 and $`M_C`$ for the agent in it — so a capital $`C`$ names the rig and $`F_I`$
-names the gas. "Model boundary" above carries the assumption that makes the
+names the gas. § "Model boundary" above carries the assumption that makes the
 two one quantity, and what would break it.
 
 For example, $`F = 0.02`$ represents a 2% gas-phase concentration.
@@ -602,7 +602,7 @@ The unit used in code is liters of equivalent pure agent gas unless the implemen
 Every governing equation moves dimensionless fractions and physical volumes,
 and every partition coefficient is a ratio, so the trajectories, the
 mass-balance identity and every displayed concentration are invariant to which
-condition the unit names: change it and no number under "Governing equations",
+condition the unit names: change it and no number under § "Governing equations",
 "Conservation of agent mass" or "Minimum displayed outputs" moves. It is read
 at one kind of operation only — a conversion *out* of the unit, into moles,
 mass, or the millilitres of liquid a vaporizer is filled from. There the two
@@ -684,7 +684,7 @@ and tissue compartments physically are, so it is the condition at which the
 *stored* amounts are natively exact. It was not chosen because the amounts
 that leave the unit are the fresh-gas terms rather than the stores, and
 because the published constants any figure will be read against are 20 °C
-constants. What choosing it costs is under "Known limitations".
+constants. What choosing it costs is under § "Known limitations".
 
 Sources for this section, by the route each was read:
 
@@ -705,7 +705,7 @@ Sources for this section, by the route each was read:
   readout. Both read from the private reference corpus on 2026-09-16 and
   recorded in `PL-S6WW` and `PL-B396`; `docs/references/README.md`
   § "Philip — *Workbook for Gas Man*" carries the extraction note. Tier 3
-  under "Source hierarchy": it fixes what the reference implementation does,
+  under § "Source hierarchy": it fixes what the reference implementation does,
   and measures nothing.
 
 ## Symbols
@@ -721,7 +721,7 @@ get through the code is a defect in the code rather than a use for the table.
 | $`t`$ | Explicit simulation time | s | `SimulationState.elapsed_s` |
 | $`\Delta t`$ | Simulation step | s | `SimulationState.simulation_step_s` |
 | $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless | `BreathingCircuit.delivered_partial_pressure_fraction` |
-| $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see "Model boundary") | dimensionless | `BreathingCircuit.inspired_partial_pressure_fraction` |
+| $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see § "Model boundary") | dimensionless | `BreathingCircuit.inspired_partial_pressure_fraction` |
 | $`F_A`$ | Alveolar agent fraction | dimensionless | `AlveolarCompartment.partial_pressure_fraction` |
 | $`F_a`$ | Arterial partial-pressure-equivalent fraction (flow-limited: $`F_a \equiv F_A`$; not an independent state) | dimensionless | — no attribute: the code reads `AlveolarCompartment.partial_pressure_fraction` wherever an arterial fraction is required |
 | $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless | `VenousBloodCompartment.partial_pressure_fraction` |
@@ -730,7 +730,7 @@ get through the code is a defect in the code rather than a use for the table.
 | $`V_A`$ | Modeled alveolar gas volume | L gas | `AlveolarCompartment.gas_volume_l` |
 | $`V_v`$ | Venous blood-pool volume | L blood | `VenousBloodCompartment.volume_l` |
 | $`V_i`$ | Volume of tissue group $`i`$ | L tissue | `TissueGroup.volume_l` |
-| $`\dot V_F`$ | Fresh gas flow at the common gas outlet: carrier gas plus the vapour the vaporizer added, not the flowmeter setting (see "Breathing circuit") | L gas/min | `BreathingCircuit.fresh_gas_flow_l_min` |
+| $`\dot V_F`$ | Fresh gas flow at the common gas outlet: carrier gas plus the vapour the vaporizer added, not the flowmeter setting (see § "Breathing circuit") | L gas/min | `BreathingCircuit.fresh_gas_flow_l_min` |
 | $`\dot V_A`$ | Alveolar ventilation | L gas/min | `AlveolarCompartment.alveolar_ventilation_l_min` |
 | $`Q`$ | Cardiac output | L blood/min | `PatientCompartments.cardiac_output_l_min` |
 | $`Q_i`$ | Blood flow to tissue group $`i`$ | L blood/min | `TissueGroup.blood_flow_l_min` |
@@ -755,7 +755,7 @@ symbol.
 The two tissue coefficients are related by
 $`\lambda_{i:g} = \lambda_{i:b}\lambda_{b:g}`$. The agent data files store
 $`\lambda_{i:g}`$ and $`\lambda_{b:g}`$; $`\lambda_{i:b}`$ is derived from
-them, which is why the tissue capacity in "Tissue compartments" below is
+them, which is why the tissue capacity in § "Tissue compartments" below is
 written $`V_i\lambda_{i:b}\lambda_{b:g}`$ and computed as the equivalent
 single multiplication $`V_i\lambda_{i:g}`$. Both symbols name their two
 phases in order, as do both identifiers, because the primary literature does
@@ -798,7 +798,7 @@ $$
 
 The blood:gas partition coefficient relates dissolved blood concentration to an equilibrium gas-phase concentration.
 
-Arterial blood is flow-limited (see "Model boundary") and has no capacity or amount balance of its own: $`F_a \equiv F_A`$ at every instant.
+Arterial blood is flow-limited (see § "Model boundary") and has no capacity or amount balance of its own: $`F_a \equiv F_A`$ at every instant.
 
 Venous blood stores:
 
@@ -1159,7 +1159,7 @@ a conclusion without the reason.
 
 ### Arterial blood
 
-Arterial blood is flow-limited: blood leaving the lungs equilibrates instantaneously with alveolar gas, so $`F_a \equiv F_A`$ at every instant (see "Model boundary"). There is no separate arterial amount balance, capacity, or time constant. Every equation below that references $`F_a`$ uses the current alveolar fraction $`F_A`$ directly.
+Arterial blood is flow-limited: blood leaving the lungs equilibrates instantaneously with alveolar gas, so $`F_a \equiv F_A`$ at every instant (see § "Model boundary"). There is no separate arterial amount balance, capacity, or time constant. Every equation below that references $`F_a`$ uses the current alveolar fraction $`F_A`$ directly.
 
 ### Tissue uptake and return
 
@@ -1248,7 +1248,7 @@ $$
 
 This term is the semi-closed circle's. For a machine running with its
 surplus gas valve shut it is zero, and that is a different model rather than
-this one with a coefficient turned down — see "Breathing circuit".
+this one with a coefficient turned down — see § "Breathing circuit".
 
 ### Stored amount
 
@@ -1258,7 +1258,7 @@ $$
 M_{\mathrm{stored}} = M_C+M_A+M_v+\sum_i M_i
 $$
 
-Arterial blood contributes no separate term because it is flow-limited and holds no independent amount (see "Model boundary").
+Arterial blood contributes no separate term because it is flow-limited and holds no independent amount (see § "Model boundary").
 
 ### Mass-balance identity
 
@@ -1368,7 +1368,7 @@ and exhausted agent are states of that system too.
 A step is all-or-nothing. It writes each compartment in turn, and a guard can
 reject a value after earlier compartments have already been written; so a step
 that cannot be completed must leave every dynamic value exactly as it was
-before the step. "Step atomicity" below says why, and what a caller is left
+before the step. § "Step atomicity" below says why, and what a caller is left
 holding.
 
 ### Step atomicity
@@ -1414,7 +1414,7 @@ SIMULATION_TICK_INTERVAL_S = 0.1   # app/dashboard_frame.py
 endpoint: any positive step at or below it is supported, and both
 `AgentUptakeSystem.advance()` and `SimulationState.advance()` refuse a larger
 one. `SIMULATION_STEP_S` is the step the interface takes, which sits at that
-ceiling deliberately; "Supported simulation step" below states what the bound
+ceiling deliberately; § "Supported simulation step" below states what the bound
 tolerates and says why those two coincide. Neither is derived from the other,
 and the coincidence is a fact about this configuration rather than an
 identity — which is why they are named apart.
@@ -1443,7 +1443,7 @@ $$
 is then its exact solution, with no truncation error at any step size.
 
 `core/governing_equations.py` assembles $`A`$: every entry is one term of one
-balance equation in "Governing equations" above, written in the order this
+balance equation in § "Governing equations" above, written in the order this
 document states them. `core/matrix_exponential.py` computes
 $`\exp(A\Delta t)`$ and carries no physiology. Neither adds a dependency —
 the exponential is scaling and squaring with a truncated Taylor series, about
@@ -1457,7 +1457,7 @@ $`\dot M_{\mathrm{exhausted}} = \dot V_FF_I`$. Delivered agent has a closed
 form of its own, but exhausted agent is $`\dot V_F\int F_I\,dt`$ along a
 coupled trajectory and does not; carried as a state it is integrated by the
 same propagator over the same trajectory, which is what requirement 4 of
-"Numerical method" above asks for.
+§ "Numerical method" above asks for.
 
 **The residual this leaves is rounding, and it is larger in absolute terms
 than the split's was.** Measured 2026-09-06 over a 3600 s run at 1 MAC, the
@@ -1517,7 +1517,7 @@ without a lookup table, and the split could not reach it. Three of its five
 composed sub-steps were objects of the splitting scheme rather than of the
 physiology; the alveolar balance's two terms were computed in different
 sub-steps separated by a third; and the pulmonary uptake rate specified under
-"Alveolar gas" above was never formed at all. Assembling the system matrix, by
+§ "Alveolar gas" above was never formed at all. Assembling the system matrix, by
 contrast, *is* transcribing the governing equations — the alveolar balance is
 one row and its two terms are two entries of it. Accuracy was not the
 motivation and was not a cost either.
@@ -1543,7 +1543,7 @@ within floating-point rounding, so that gate asserts the stronger property
 instead: that the step does not enter the answer. What it cannot answer is
 whether the answer is *right* — a wrong transfer rate is equally step-independent
 — and neither can the mass-balance gate, since every internal transfer is an
-equal-and-opposite pair. "Independent-solution test" below is the gate that
+equal-and-opposite pair. § "Independent-solution test" below is the gate that
 answers it, by comparing all six states against a from-scratch integration of
 the equations above.
 
@@ -1742,7 +1742,7 @@ rolled back in full, simulation time does not advance, and the caller must stop
 the run — from a state that is the last completed step rather than a partially
 applied one. Under the exact step no parameter set reaches it, because the
 system matrix is Metzler and its propagator therefore entrywise nonnegative
-(see "Selected method (as implemented)"); the guard is cover for a model
+(see § "Selected method (as implemented)"); the guard is cover for a model
 extension whose matrix is not a pure transfer system, not for a caller stepping
 too coarsely. The two failures stay deliberately distinct:
 `SimulationConfigurationError` says the setting was refused and the run is
@@ -1809,7 +1809,7 @@ below the three.
    and what was adjusted to make the set cohere, are not recoverable from the
    program. **And the behavior it fixes has itself been measured against
    patients**, with an agreement materially worse through wash-in than through
-   maintenance; see "Known limitations", which carries the figures and says
+   maintenance; see § "Known limitations", which carries the figures and says
    what they bound.
 
 **A lower tier may be adopted, but never silently.** The ranking above says
@@ -2094,7 +2094,7 @@ radius of organs of the adult human body"**, tabulated for a total body of
 70,000 g. A "standard man" is a reference specification agreed by a committee,
 the document's own title being *Report of Committee II*, and the table gives no
 per-row citation, sample count or dispersion — unlike Table 7 on the facing
-page 150, whose tissue rows each carry a parenthesised count. Under "Source
+page 150, whose tissue rows each carry a parenthesised count. Under § "Source
 hierarchy" above, a consensus document that collects primary measurements
 without making one is **tier 2**. So the reference patient's longest provenance
 chain runs Gas Man (tier 3) → Lowe and Ernst (tier 2) → ICRP Committee II
@@ -2131,7 +2131,7 @@ ICRP's own rows those four organs are **5.36%, which is 3.75 L at 70 kg** — 38
 below what is stored. The stored value therefore rests on a lumping decision
 taken one link up the chain, and that decision is now visible where it was not.
 **No stored value moves on this and none should**: lumping the splanchnic bed
-into the liver compartment is ordinary modelling, "Tissue compartments" above
+into the liver compartment is ordinary modelling, § "Tissue compartments" above
 already treats the vessel-rich group as one lumped tissue, and nothing here is
 sourced to ICRP.
 
@@ -2242,7 +2242,7 @@ gives the cardiac output for its worked prime dose as $`2M^{3/4}`$ dl/min, "or
 70 kg** against the 5.0 stored here, which would need 73.1 kg. The book's own
 worked 63.25 dl is what fixes the exponent independently of reading a
 superscript off a scan. `PL-YKSM` decided on 2026-09-08 that the fixed 5.0
-stays; "Known limitations" below carries the reasoning.
+stays; § "Known limitations" below carries the reasoning.
 
 **And the relation itself is derived, not measured — pages 17–19 say from
 what.** Page 59 states $`2M^{3/4}`$ without citing anything, and until
@@ -2268,7 +2268,7 @@ steps, and neither of the two constants is a cardiac-output measurement:
 So $`0.2M^{3/4}`$ is Brody's mammalian metabolic allometry divided by an
 arteriovenous difference assumed constant across mammals. **4.84 L/min at 70 kg
 is therefore a derived interspecies extrapolation and must not be read as a
-measured human cardiac output.** "Known limitations" below is where that
+measured human cardiac output.** § "Known limitations" below is where that
 matters — it is the one place this document sets the figure beside Cattermole
 et al.'s measured median — and it says so there (`PL-DZQT`).
 
@@ -2426,7 +2426,7 @@ agent file cites primary measurements it has explicitly *not* adopted, and so
 does the reference patient — it cites five. A check reading the tier alone
 would therefore report all four of this project's data files as
 primary-sourced, on the same day this document records that most of the
-provenance table's rows are tier 3. That count is stated once, under "Source
+provenance table's rows are tier 3. That count is stated once, under § "Source
 hierarchy", and deliberately not repeated here: it moves whenever a row is added
 or a source is adopted, and two copies of it is how the previous pair came to be
 wrong (`PL-7KDC`). That is the second rule above, arriving as the exact failure it
@@ -2597,7 +2597,7 @@ where no provenance row could reach them and changed neither value.
 rather than replacing it** (`PL-QBKQ`). Targ, Yasuda and Eger measured a
 conventional circle system by water filling at **9860 ml** (*Anesth Analg*
 1989 Aug;69(2):218–25, PMID 2764290 — the same study behind the inert-circuit
-entry under "Known limitations"; read at full text 2026-09-13 from the private
+entry under § "Known limitations"; read at full text 2026-09-13 from the private
 reference corpus). It is not adopted, and the reason is what it contained: the
 system it measured included a latex reservoir bag at the Y-piece **standing in
 for the patient's lungs**, so adopting 9.86 L as `circuit_volume_l` would put a
@@ -2690,7 +2690,7 @@ the same error the De Wolf entry guards against for its 1 L/min elsewhere in
 this section.
 
 There is no "arterial blood-pool volume" row: arterial blood is flow-limited
-and holds no independent state (see "Model boundary"). Tissue:blood
+and holds no independent state (see § "Model boundary"). Tissue:blood
 coefficients are derived at load time (`AgentParameters` properties in
 `core/parameters.py`) as tissue:gas divided by blood:gas, not stored
 redundantly in the data file. The tissue-blood partition-coefficient tests
@@ -2733,7 +2733,7 @@ simulator's choices. Four things stop it from moving the tier, and the first is
 sufficient alone:
 
 - A program's statement about its own provenance is the program talking. That
-  is the same rule as "Republication does not promote a value between tiers"
+  is the same rule as § "Republication does not promote a value between tiers"
   above, applied one link further back.
 - The Workbook names a different document from the one the agent files cite:
   its reference 45 is the abstract `Anesthesiology 69:A615`, from the 1988 ASA
@@ -2861,10 +2861,10 @@ Sevoflurane's 8% and isoflurane's 5% are variable-bypass dials; desflurane's
 18% is the upper end of the Tec 6's range, and a Tec 6 is a heated gas–vapour
 blender rather than a variable bypass. This is the one place in the document
 where both classes are present, implicitly, in the same list. At the 760 mmHg
-fixed under "Assumptions" a dial position on either class means the same
+fixed under § "Assumptions" a dial position on either class means the same
 partial pressure, so nothing in the core has to know which device a given
 limit came from; the two classes come apart only under reduced ambient
-pressure, which is not modelled — see "Known limitations".
+pressure, which is not modelled — see § "Known limitations".
 
 `mac_percent` is 1 MAC for a 40-year-old adult. It is used for two things,
 both of them presentation: choosing the starting position of the
@@ -2930,7 +2930,7 @@ confidence limits and is a real limitation of the display, recorded in
 2026-09-04, on the recommendation below). Three reasons,
 and the first is this document's own rule. Mapleson 1996 is a meta-analysis:
 it regresses a literature survey and measures nothing, which is **tier 2**
-under "Source hierarchy". That does not forbid adopting it outright — a lower
+under § "Source hierarchy". That does not forbid adopting it outright — a lower
 tier may be adopted on a recorded decision — but it does mean adopting it
 would take one, and the two reasons below are why this decision went the other
 way. Second, every other parameter in this model is the Gas Man set, so a
@@ -3099,7 +3099,7 @@ the last displayed digit, is 0.55% of it.
 
 This gate is self-consistency across the supported steps, not correctness: a
 wrong transfer rate is exactly as step-independent as a right one and passes
-here. "Independent-solution test" below is what asks whether the solution is
+here. § "Independent-solution test" below is what asks whether the solution is
 the right one at all.
 
 ### Independent-solution test
@@ -3264,7 +3264,7 @@ either reading it was taken from. That was true of the split and is not true of
 the exact step, which drives no compartment from an already-moved value and
 leaves no bias with a sign. A gradient between two compartments is now no less
 accurate than either reading it is taken from. The withdrawn claim is recorded
-here rather than deleted because it was published in "Displayed precision"
+here rather than deleted because it was published in § "Displayed precision"
 below as well, and a reader comparing versions needs to know which way it went.
 
 The reference states are pinned in the test file: a change to the oracle or to
@@ -3289,7 +3289,7 @@ had settled the second.
 This test is the **validation** half, and it is the only required test whose
 expected values come from outside this repository
 (`tests/reference/test_published_wash_in_and_elimination.py`). The distinction
-matters to a reader of the two sections: "Independent-solution test" above and
+matters to a reader of the two sections: § "Independent-solution test" above and
 this one answer different questions, and conflating them over-reads both.
 
 **This section covers two comparisons, in opposite directions.** They are
@@ -3353,7 +3353,7 @@ flows — 1 L/min of alveolar ventilation either way puts all three agents
 outside their published spread, and 1 L/min of cardiac output moves every
 agent by more than one published standard deviation — so an operating point
 chosen to make the comparison pass would make the result circular. It is
-instead the shipped default, cited to the Gas Man workbook under "Parameter
+instead the shipped default, cited to the Gas Man workbook under § "Parameter
 provenance", and fixed in v0.1.0 before any comparison to Yasuda existed.
 
 Fresh gas flow is the one setting the test chooses, at 10 L/min, so that
@@ -3446,7 +3446,7 @@ For desflurane it over-accounts: the model crosses its published mean and
 settles 2.33 SD below it, washing out *faster* than the volunteers did rather
 than more slowly. That residual is a disagreement about tissue return with the
 circuit no longer available to explain it; what it is not, and what is left of
-it, is "Desflurane's residual" below.
+it, is § "Desflurane's residual" below.
 The movement itself — 3.5 to 4.2 SD per cohort — is asserted rather than
 recorded, so the attribution in the paragraph above cannot go stale in
 silence, as are the driver's residual $`F_I`$, the model's own conservation
@@ -3462,7 +3462,7 @@ what is asserted about it is the regression band above.
 #### Desflurane's residual, and why the parameter file was not changed
 
 The obvious reading of that residual is that desflurane's vessel-rich
-coefficient is too low. The sensitivity measured under "Parameter provenance"
+coefficient is too low. The sensitivity measured under § "Parameter provenance"
 makes the five-minute ratio a vessel-rich tissue:gas measurement and barely a
 blood:gas one, and a tissue group with too little capacity is a tissue group
 that empties too fast. The reading is arithmetically right and physically
@@ -3724,7 +3724,7 @@ circuit volume decides it** (`PL-XWCY`). Targ, Yasuda and Eger measured washin
 at 0.5–2 L/min and washout at 1–5 L/min in a real conventional circle system
 against the ideal exponential (*Anesth Analg* 1989 Aug;69(2):218–25, PMID
 2764290; read at full text 2026-09-13, and the same study behind the circuit
-volume's provenance and the inert-circuit entry under "Known limitations").
+volume's provenance and the inert-circuit entry under § "Known limitations").
 Desflurane's curves lay close to the ideal line at every flow — deviating most
 at the lowest flows and near complete washin, none of them this model's
 operating point — and the authors conclude that absorption of it "by circuit
@@ -3833,13 +3833,13 @@ transfers to whatever `PL-N092` writes in its place.
    direction that is not obviously conservative.
 2. *These are Gas Man parameters, derived to reproduce Eger's data.* The
    partition coefficients under test descend from the same lineage as the
-   measurements being tested against (see "Parameter provenance"). Passing
+   measurements being tested against (see § "Parameter provenance"). Passing
    shows that this implementation reproduces its parameter set's intent, not
    that the parameter set is independently right. It is weaker than
    "validated against a human measurement" and must not be described as more.
    The intent itself is worth least where this comparison's wash-in direction
    looks: Gas Man's own published agreement with patients is materially worse
-   through wash-in than through maintenance (see "Known limitations").
+   through wash-in than through maintenance (see § "Known limitations").
 3. *The breathing systems differ, and by more than the measurement's own
    spread.* The paragraphs above measure it, at 3.5 to 4.2 published standard
    deviations per cohort. Any statement that this model eliminates more slowly
@@ -3965,7 +3965,7 @@ one atmosphere, since that is what the compartments hold and what a readout
 converts: a relative tolerance would tighten without limit on the near-zero
 tissue fractions of an induction and say nothing about a displayed digit.
 
-The agreement required is far below the two-decimal percent under "Displayed
+The agreement required is far below the two-decimal percent under § "Displayed
 precision" and far above floating-point noise, so a real divergence fails and
 a rounding difference does not. `tests/unit/test_run_definition.py` holds
 `state_at` and `evaluate` against a run stepped alongside its definition and
@@ -4027,7 +4027,7 @@ value from the display path must be refused where a canonical one is required,
 which is what makes that rule a property of the program rather than of the
 reader.
 
-The measured separation between the two paths is published under "The
+The measured separation between the two paths is published under § "The
 canonical evaluation rule" and held to per-quantity bounds by the same module,
 so a change to the equations, to the propagator or to how a window is walked
 fails there rather than silently moving a figure this document prints. The
@@ -4213,7 +4213,7 @@ quietly wrong.
 Every change to a runtime control that the model actually runs under is
 recorded against the simulated time it took effect, held with the run, and
 cleared with it. What that record is for, what it does and does not assert,
-and why it is shaped the way it is are under "The control-input timeline"
+and why it is shaped the way it is are under § "The control-input timeline"
 below, with the display rules the rest of the interface section carries.
 
 #### The run is that record, and every state is derived from it
@@ -4225,7 +4225,7 @@ took effect. Nothing else is stored. `core/run_definition.py` is where this live
 
 **What is derived.** The equations are linear and time-invariant while every
 setting is held constant, so between two changes the propagator under
-"Selected method (as implemented)" is exact over any horizon, not only over a
+§ "Selected method (as implemented)" is exact over any horizon, not only over a
 simulation step. The state at any instant is therefore one propagation from
 the keyframe that opens the stretch containing it, and no value has to have
 been recorded for it to be recoverable. A keyframe is itself computed that
@@ -4241,10 +4241,10 @@ Measured 2026-09-07 against a stepped 600 s sevoflurane run with two setting
 changes, reaching a fraction of 0.0316: the single-instant path sits within
 1.8e-14 of the stepped run and the window path within 3.7e-15, as absolute
 differences in a fraction of one atmosphere. Both are eleven orders below the
-1e-4 that the two-decimal percent readout under "Displayed precision" can
+1e-4 that the two-decimal percent readout under § "Displayed precision" can
 show, so neither can move a displayed digit. Which of the two a stored,
 exported or branched value may be taken from is stated as a guarantee under
-"The canonical evaluation rule" below.
+§ "The canonical evaluation rule" below.
 
 **What this is for, measured rather than argued.** Recording one sample per
 step, as the run did until PL-2FM6, cost 130.8 bytes per sample, measured
@@ -4324,7 +4324,7 @@ bounds an order above what is printed here:
 
 The wider span is the worse case, because its columns are further apart and
 each chained propagation covers more ground; 24 h is the longest supported run
-under "Supported run length", so the second row is the worst a supported run
+under § "Supported run length", so the second row is the worst a supported run
 reaches at this column count.
 
 **The headroom differs by four orders between those two columns, which is why
@@ -4486,7 +4486,7 @@ zero would place the patient at the wrong point on the uptake curve on the
 clock, the control marks and the axis at once — the correct value under the
 wrong patient context, which `CLAUDE.md`'s safety-critical standard counts as a
 failure in its own right. It also keeps simulated time one multiplication under
-"Simulated time is a count of steps, not a running total": a branch's instants
+§ "Simulated time is a count of steps, not a running total": a branch's instants
 are the case's step count times the step, not the fork instant plus a second
 total. Since `PL-ZMRT` that holds of the run definition's instants as well as
 of the clock's, where before it held only of the clock.
@@ -4587,7 +4587,7 @@ its own, and every `AgentUptakeSystem` setter forwards to that compartment;
 clamped setting would simulate, display, and chart a value the user did not
 ask for. A `SimulationConfigurationError` is raised before anything changes,
 so the run in progress stays trustworthy and the interface reports the
-refusal beside the control that caused it — the same distinction "Supported
+refusal beside the control that caused it — the same distinction § "Supported
 simulation step" above draws between a refused argument and a step that
 broke down.
 
@@ -4626,7 +4626,7 @@ imprecise.
 
 The numerical figures below are kept as history. They were measured on
 desflurane over the *unperfused load, then dial off* trajectory of
-"Independent-solution test" above, at the shipped 0.1 s step against the
+§ "Independent-solution test" above, at the shipped 0.1 s step against the
 0.01-percentage-point displayed resolution, and they describe the method that
 shipped through v0.4.2:
 
@@ -4788,7 +4788,7 @@ roughly ten MAC-hours even the size of the omission is unmeasured.
   doi:10.1097/00000539-199512001-00005.
 
 **That citation is tier 2, and nothing here is stored from it.** It is a
-review, and under "Source hierarchy" a tier-2 source is the authority for a
+review, and under § "Source hierarchy" a tier-2 source is the authority for a
 stored value only on a recorded decision; none has been taken for this one, and
 there would be nothing for it to authorize — 24 hours is not computed from 2% to
 5%, and no parameter in this model descends from that paper. What it supplies is the
@@ -4983,7 +4983,7 @@ reasons, and the third is the one that decides it:
 - The governing equations stay well posed. A zero flow removes a transfer
   term rather than dividing by one: at $`Q=0`$ the tissue and venous
   derivatives are zero and the alveolar equation loses its uptake term, and
-  "Required tests" above already specifies that behavior in the
+  § "Required tests" above already specifies that behavior in the
   zero-ventilation, zero-cardiac-output, and zero-tissue-flow tests.
 - Zero is the endpoint of a continuous axis. Flooring a slider just above it
   would place an arbitrary boundary inside the model's own valid domain, and
@@ -5006,13 +5006,13 @@ excludes all three — and nothing about the patient's condition follows from
 it. A run at $`Q=0`$ answers "where does the agent go when perfusion stops",
 not "what is happening to this patient".
 
-**These ranges define the verification domain.** "Independent-solution test"
+**These ranges define the verification domain.** § "Independent-solution test"
 above drives its trajectories over what these ranges can produce, and its worst
 disagreement with the independent solution is reached on one that holds cardiac
 output at zero. Narrowing a range would take that worst case out of the
 reachable domain, and widening one would admit trajectories never measured;
 either way the gate must be re-measured. This is what the ranges are *for* now
-that the exact step has removed the numerical argument for them — see "What a
+that the exact step has removed the numerical argument for them — see § "What a
 setting outside the range costs" above. Three checks keep that from happening silently:
 `test_envelope_limits_match_the_supported_input_ranges` restates all six flow
 limits and fails if the model moves one,
@@ -5024,7 +5024,7 @@ stops short of the declared domain or reaches past it.
 **The simulation step is bounded too, and separately.** It is not a control a
 user sets, but it is an input to every `advance()` call, and what a caller
 may pass is bounded by `MAXIMUM_SIMULATION_STEP_S` rather than by these
-ranges; "Supported simulation step" above derives it.
+ranges; § "Supported simulation step" above derives it.
 
 **The two bounds are now independent, and were not before** (`PL-X9KD`). While
 the operator split shipped, the coefficient the step bound inverted was
@@ -5057,7 +5057,7 @@ Reset must:
 ## Agent-change behavior
 
 Changing the running agent must begin a new run. Switching between volatile
-agents is not modeled (see "Known limitations"), so there is no residual
+agents is not modeled (see § "Known limitations"), so there is no residual
 washout to carry across and no state from the old agent that the new one's
 partition coefficients would make meaningful. A change of agent must
 therefore do everything Reset does, and in addition rebuild every compartment
@@ -5479,13 +5479,13 @@ resolution. `tests/unit/test_run_definition.py` holds that case under half of
 it.
 
 Pegging that residual to the displayed resolution is deliberate, and it does
-not cross the line drawn under "Supported simulation step". That section
+not cross the line drawn under § "Supported simulation step". That section
 forbids traffic in the other direction — the readout's decimal count must not
 reach back into the model, which is why the step tolerance and the supported
 ranges are stated in absolute percentage points. This is a statement about
 the *chart*, expressed in the units a reader actually reads it in. Nor is the
 peg arbitrary: the two-decimal readout is itself derived from model fidelity
-under "Displayed precision", one published SD of a partition coefficient
+under § "Displayed precision", one published SD of a partition coefficient
 displacing a compartment by 8.7e-4 to 6.8e-2 percentage points.
 
 The pixel-column framing is the one Jugel, Jerzak, Hackenbroich and Markl
@@ -5499,7 +5499,7 @@ guarantee (`PL-4RBD`). The Flet chart, which could not afford a column per
 pixel (`PL-YSZN`), kept a fixed 150-column budget through its own series
 module until `PL-25KS` ported the dashboard and that module left with it.
 
-The drawn columns are display-path values, taken under "The canonical
+The drawn columns are display-path values, taken under § "The canonical
 evaluation rule" below: they may be drawn and nothing else, and the program
 enforces that rather than describing it.
 
@@ -5525,7 +5525,7 @@ must be visually distinguishable in kind from a compartment trace — by mark
 type rather than by colour alone. An unlabelled horizontal line is a modeled
 quantity to a reader who has no reason to think otherwise, which is the
 modeled-versus-measured confusion this document forbids elsewhere arriving
-through the chart. See "MAC-awake as a chart reference".
+through the chart. See § "MAC-awake as a chart reference".
 
 A **displayed ratio** of two modelled fractions is a trace and is *not*
 exempt from the rule above: every point it draws is still computed from one
@@ -5541,7 +5541,7 @@ which would draw values the run never produced; the display states which two
 quantities the ratio is of, in the terms this document uses for them; and where
 the trace
 is absent the display says which boundary it stopped at, since an absent
-trace otherwise reads as a run that stopped. See "F_A/F_I as a displayed
+trace otherwise reads as a run that stopped. See § "F_A/F_I as a displayed
 ratio", the only such quantity today.
 
 A **control mark** is a third kind of chart series, and is exempt from the
@@ -5554,7 +5554,7 @@ identified on the display as a record of a user input rather than of
 anything measured or modelled, and must be accompanied by a statement of
 which control moved and to what — a bare mark says an unspecified something
 happened, which invites the reader to supply their own explanation for the
-change in the curves beside it. See "The control-input timeline".
+change in the curves beside it. See § "The control-input timeline".
 
 Declaring where an adjustment begins is a statement about the *input
 device* and not about the model: it changes no simulation state, records no
@@ -5575,7 +5575,7 @@ grew with the run would rescale every trace's slope while the underlying
 rates did not. And a mode that claims to show the whole run must show the
 whole of it at every length — a window narrower than the case, labelled as
 the whole of it, is a false statement about what the reader is looking at.
-See "The chart's time base", which carries the widths, the ruling and the
+See § "The chart's time base", which carries the widths, the ruling and the
 labelling this paragraph requires.
 
 **A playback rate is a number of steps, never a step size, and it has to be
@@ -5666,12 +5666,12 @@ settings, and $`F_A/F_I`$ is derived at the point of drawing.
 - the rate simulated time is advancing at, as a multiple of real time, drawn
   wherever simulated time is drawn and at every rate including real time
   (`test_the_playback_rate_is_drawn_under_the_clock_it_governs`). See
-  "Interface boundary" for what the rate is and is not a statement about;
+  § "Interface boundary" for what the rate is and is not a statement about;
 - how much simulated time the chart is showing, and whether that width was
   chosen or fits the whole run so far
   (`test_the_axis_caption_states_the_span_the_chart_is_showing`,
   `test_the_caption_says_when_the_span_was_chosen_by_the_run_rather_than_the_reader`).
-  See "The chart's time base";
+  See § "The chart's time base";
 - run state, with running, paused, and halted-by-failure distinguishable
   from one another (`test_refresh_view_reflects_running_state`,
   `test_the_transport_is_enabled_by_state_in_all_four_states`);
@@ -5710,7 +5710,7 @@ settings, and $`F_A/F_I`$ is derived at the point of drawing.
   stated on the display (`test_every_compartment_is_readable_in_mac_multiples`,
   `test_the_dial_is_readable_in_the_unit_its_compartments_are`,
   `test_the_display_names_the_mac_the_readouts_were_divided_by`). See
-  "MAC multiples as a display unit" for what the
+  § "MAC multiples as a display unit" for what the
   multiple asserts and for why both units are shown rather than selected; and
 - the running agent's population MAC-awake on the chart, as a band labelled
   with the fraction and the divisor it was drawn from and with the trace it is
@@ -5719,7 +5719,7 @@ settings, and $`F_A/F_I`$ is derived at the point of drawing.
   (`test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from`,
   `test_the_interface_says_which_trace_the_band_is_read_against`,
   `test_no_trace_dash_is_as_wide_as_the_one_mac_reference_line`). See
-  "MAC-awake as a chart reference" for what the band
+  § "MAC-awake as a chart reference" for what the band
   asserts, what it does not, and why no time-to-wake-up figure is displayed
   anywhere in the interface; and
 - every setting changed during the current run, each with the simulated time
@@ -5727,19 +5727,19 @@ settings, and $`F_A/F_I`$ is derived at the point of drawing.
   marked on the chart at that time
   (`test_the_list_states_what_was_changed_and_to_what`,
   `test_a_recorded_change_is_marked_on_the_chart_at_its_own_time`). See
-  "The control-input timeline"; and
+  § "The control-input timeline"; and
 - $`F_A/F_I`$ over the run, on a dimensionless axis of its own, labelled as a
   ratio against the modelled inspired concentration rather than against the
   vaporizer dial, carrying the control marks above, ruled at the equilibrium
   the curve approaches, and stating where it is not defined
   (`test_the_wash_in_axis_is_ruled_at_quarters_and_the_window_is_the_chart_s`,
   `test_the_wash_in_plot_says_what_its_denominator_is`,
-  `test_the_wash_in_trace_draws_nothing_before_agent_reaches_the_circuit`). See "F_A/F_I as a displayed ratio" for the domain it is drawn over
+  `test_the_wash_in_trace_draws_nothing_before_agent_reaches_the_circuit`). See § "F_A/F_I as a displayed ratio" for the domain it is drawn over
   and for what the curve does and does not assert.
 
 The six compartment concentrations above are requirements on the **numeric
 readouts**, not on the chart. The chart's compartment traces are the reader's
-to show and hide (see "Interface boundary"), and a required value must not
+to show and hide (see § "Interface boundary"), and a required value must not
 leave the display with the curve that draws it. The chart entries in this list
 — the MAC-awake band, the 1 MAC line, the control marks, and $`F_A/F_I`$ — are
 requirements on the chart itself and are not selectable. The time base is the
@@ -5769,7 +5769,7 @@ without it. Applying that test gives two tiers.
 **Invariant, whatever is being simulated.** Simulated time; the rate it is
 advancing at; run state; why a run halted, when one has; what is being
 administered; and, once more than one top-level window can exist, the name of
-the run the window is showing - see "What a second top-level window owes"
+the run the window is showing - see § "What a second top-level window owes"
 below, which is where that last one comes from and why this tier and the next
 are allocated to windows differently. None of these depends on the substance or the model: a
 concentration with no time, no run state and no named drug is the correct
@@ -5993,7 +5993,7 @@ reader is looking at.
 
 Arterial concentration is deliberately **not** in this list. Arterial blood is
 flow-limited in this model and holds no independent state: $`F_a \equiv F_A`$
-(see "Model boundary"). A separate arterial readout would therefore display
+(see § "Model boundary"). A separate arterial readout would therefore display
 the alveolar number a second time under a different name, which would present
 a definitional identity as though it were an independently modeled quantity.
 Earlier revisions of this document required an arterial readout; that
@@ -6048,7 +6048,7 @@ vision deficiency. They differ by only 1.09 in luminance for normal color
 vision — they are separated by hue alone — and simulating the three
 dichromacies removes the hue without supplying the luminance: 1.48 for
 protanopia, 1.06 for deuteranopia, 1.11 for tritanopia. Measured by
-`tools/contrast_check.py` with the Brettel 1997 projection recorded under "The
+`tools/contrast_check.py` with the Brettel 1997 projection recorded under § "The
 six compartment traces" below, and pinned by `tests/unit/test_contrast_check.py`
 so this paragraph cannot go stale behind a color edit. Choosing more separable colors would break the correspondence to real
 vaporizers and is therefore the worse option; the mitigation is that the agent
@@ -6057,7 +6057,7 @@ both the dropdown options and the header badge. Color must never be the only
 thing distinguishing two agents in this interface.
 
 Distinguishing a halted run from a paused one is required for the same
-reason. Both stop the numbers advancing, and under "Step atomicity" both
+reason. Both stop the numbers advancing, and under § "Step atomicity" both
 leave state the reader can trust — but a pause is a run that will continue
 when the reader asks, and a halt is a run that cannot. A halted run displayed
 as "Paused" therefore offers a Start control that will fail on its first
@@ -6349,7 +6349,7 @@ differ in epistemic status and the marks say so: MAC-awake is a measured
 population value with real spread, so it is a band; 1 MAC is a definitional
 anchor rather than a distribution of the same kind, so it is a line.
 Band-versus-line survives greyscale and every colour-vision deficiency, which
-"Color contrast" below requires of any encoding carrying meaning, and it is a
+§ "Color contrast" below requires of any encoding carrying meaning, and it is a
 stronger separation than any colour pair. Both are drawn in the interface's
 own ink and label colours rather than in a seventh and eighth hue, so neither
 reads as another compartment.
@@ -6397,7 +6397,7 @@ claim the evidence carries, which is why it is the form the reference takes.
 
 **Which trace the band is read against, and why that is the load-bearing
 part.** The band must be read against the **vessel-rich** trace. This model
-has no effect-site compartment and defines $`F_a \equiv F_A`$ (see "Model
+has no effect-site compartment and defines $`F_a \equiv F_A`$ (see § "Model
 boundary"), so the alveolar trace is the fastest curve on the chart and the
 furthest from where responsiveness actually returns. Measured on a 3-hour
 1 MAC sevoflurane case with the vaporizer turned off at 10 L/min, the
@@ -6581,7 +6581,7 @@ an omission.** The two bounds above are on what is *shown*. Dropping the
 oldest entries would retire the beginning of a case — which is the part a
 learner returns to, since "where did I dial back?" is the question this
 record exists to answer — and it would bound nothing, because the run
-definition of "The run is that record, and every state is derived from it"
+definition of § "The run is that record, and every state is derived from it"
 above holds one stretch and one keyframe per accepted change and is not
 bounded either. Capping the display record alone would cost the
 reconstruction claim above and leave the larger structure growing.
@@ -6623,7 +6623,7 @@ published figure; this can.
 
 **The denominator is the modelled inspired concentration, not the vaporizer
 dial.** The inspired fraction here is the breathing circuit's own, which is an
-assumption of this circuit model rather than a general fact — see "Model
+assumption of this circuit model rather than a general fact — see § "Model
 boundary". The
 distinction from the dial is not pedantic: the circuit only approaches the
 delivered concentration over its own time constant, so early in a run the two
@@ -6726,7 +6726,7 @@ one at equilibrium and a single derived figure would over-claim at one end.
 The figure is set instead by what the quantity is read against — Yasuda et al.
 report 0.850, 0.733 and 0.90 with standard deviations of 0.018, 0.027 and 0.01
 — so a third decimal would be finer than the published spread. See
-"Published wash-in and elimination validation test".
+§ "Published wash-in and elimination validation test".
 
 **What it does not assert.** It is a modelled ratio, not a measurement; it
 carries the alveolar compartment's own limitation, that this model has no
@@ -7250,7 +7250,7 @@ the display.~~ **Withdrawn 2026-09-06 (`PL-GS5X`).** That bias was a property
 of the operator split's sub-step ordering. The exact step drives no compartment
 from an already-moved upstream value, so there is no displacement with a sign
 and a gap between two readouts is no less accurate than either reading it is
-taken from; "Independent-solution test" above records the withdrawal in full.
+taken from; § "Independent-solution test" above records the withdrawal in full.
 
 The comparison the interface actually invites is therefore no longer at risk
 from the solver, and that is a measurement rather than an assurance. The six
@@ -7480,7 +7480,7 @@ readout row, and the hover readout § "The chart's hover readout: what the
 tooltip may show" derives below. The MAC axis is labelled on round MAC values
 rather than on round percentages — half-MAC steps, which the fixed 3 ×MAC
 range gives for every agent, so the gridline a reader learns under one agent
-means the same thing under the next. "The chart's
+means the same thing under the next. § "The chart's
 vertical range is denominated in MAC, and fixed" above carries why the range
 is what it is. Its horizontal extent is the selected time base rather than a
 fixed span, so seconds per pixel is the reader's choice; "The chart's time
@@ -8041,11 +8041,11 @@ Version v0.1.0 assumes:
   measures what it costs and what lifting it would take;
 - inspired gas is circuit gas — one gas-phase state $`F_I`$ between the
   vaporizer and the alveoli, there being one perfectly mixed circuit with no
-  dead space and no separate limbs (see "Model boundary");
+  dead space and no separate limbs (see § "Model boundary");
 - the breathing system is a semi-closed circle whose surplus gas valve is
   passing — fresh-gas inflow is matched by an equal exhaust outflow at every
   instant, which is what lets one $`\dot V_F`$ be both the delivery and the
-  removal rate (see "Breathing circuit");
+  removal rate (see § "Breathing circuit");
 - inspired gas reaches the alveoli undiluted by water vapour — real alveolar
   gas is saturated at body temperature and nothing here represents that, so
   the circuit's dry gas enters the alveolar compartment unchanged. This is the
@@ -8090,16 +8090,16 @@ class of vaporizer the dial belongs to, which is why this model needs no
 device-class parameter and why no equation, stored value or displayed number
 here is wrong. Away from 760 mmHg the two classes diverge, and in opposite
 directions: that is a limit on where this model applies rather than a defect
-in it, and "Known limitations" below records it. A later reader should not
+in it, and § "Known limitations" below records it. A later reader should not
 "fix" this.
 
 ## Known limitations
 
 This model does not model:
 
-- a separate arterial blood-mixing compartment (arterial blood is flow-limited and equals alveolar gas at every instant, matching the Gas Man reference simulator's mammillary structure — see "Model boundary");
+- a separate arterial blood-mixing compartment (arterial blood is flow-limited and equals alveolar gas at every instant, matching the Gas Man reference simulator's mammillary structure — see § "Model boundary");
 - lung tissue and pulmonary blood — no compartment represents either, and together they are a store worth about a fifth of every agent's fast pool (the note below this list sizes it);
-- halothane, enflurane, ether, or xenon (isoflurane and desflurane were added in v0.2.0; see "Parameter provenance");
+- halothane, enflurane, ether, or xenon (isoflurane and desflurane were added in v0.2.0; see § "Parameter provenance");
 - nitrous oxide;
 - simultaneous gases;
 - concentration or second-gas effects;
@@ -8132,9 +8132,9 @@ This model does not model:
   carried at the single reference condition "Agent amount" fixes, and no
   ambient-to-body correction is applied anywhere (the note below this list
   sizes it);
-- altitude, or any ambient pressure other than the 760 mmHg fixed under "Assumptions" — the notes below this list are what that excludes;
+- altitude, or any ambient pressure other than the 760 mmHg fixed under § "Assumptions" — the notes below this list are what that excludes;
 - age-dependent MAC;
-- individual variation in awakening concentration (the chart's MAC-awake band is a population value at one standard deviation, never a threshold for the simulated patient — see "MAC-awake as a chart reference");
+- individual variation in awakening concentration (the chart's MAC-awake band is a population value at one standard deviation, never a threshold for the simulated patient — see § "MAC-awake as a chart reference");
 - anesthetic potency;
 - BIS, eBIS, or hypnosis;
 - nociceptive response;
@@ -8368,7 +8368,7 @@ own cardiac-output relation — the upstream the Gas Man Workbook names, now rea
 at the source — gives $`0.2M^{3/4}`$, which is 4.84 L/min at 70 kg; it is
 **derived rather than measured**, being Brody's 1945 interspecies
 oxygen-consumption allometry divided by an arteriovenous oxygen content
-difference assumed constant across mammals, and "Parameter provenance" above
+difference assumed constant across mammals, and § "Parameter provenance" above
 carries the derivation step by step. Cattermole et al.'s 686 subjects in the
 50–75 kg band give a **measured** median of 5.51 L/min in the weight band this
 file's patient sits in. So the stored 5.0 is not bracketed by two comparable
@@ -8429,7 +8429,7 @@ cost nothing so far.** A partial-pressure fraction is dimensionless and
 carries no condition, so $`F_A`$, $`F_A/F_I`$, the MAC multiple and every
 trace on the chart are untouched by it, and so is the release gate's relative
 residual. It reaches a reader only where an amount leaves the unit — the
-liquid-equivalent consumption figure planned under "Planned milestones"
+liquid-equivalent consumption figure planned under § "Planned milestones"
 item 28 — and there it biases the stored and exhausted split, not the
 delivered total, which is the figure that means cost. Lifting it means a
 gas-phase model carrying explicit conditions per compartment, which is well
@@ -8508,7 +8508,7 @@ heated humidifier, the difference between them — has an answer in it.
 
 **Ambient pressure is not modelled, and away from one atmosphere the
 delivered-concentration dial stops meaning one partial pressure.**
-"Assumptions" above fixes ambient pressure at 760 mmHg and says what that
+§ "Assumptions" above fixes ambient pressure at 760 mmHg and says what that
 identity buys. What it costs is stated here: this model is specified for sea
 level. A user in Denver (about 630 mmHg) or Mexico City (about 585 mmHg) who
 sets 6% desflurane in this simulator and 6% on the corresponding real device
@@ -8554,7 +8554,7 @@ partial pressure that convention quotes as a percentage of one atmosphere, so
 at reduced ambient pressure the percentage needed to reach it rises while the
 partial pressure does not. James and White proposed MAPP — minimum alveolar
 *partial pressure* — in place of MAC on exactly this ground, which is a
-further sense in which the unit described under "MAC multiples as a display
+further sense in which the unit described under § "MAC multiples as a display
 unit" is a sea-level unit rather than a universal one.
 
 **No correction factor is stored, and the $`1/P`$ form above must not become
@@ -8601,7 +8601,7 @@ stored value, there being none:
   the project owner and read in full 2026-09-06. **Owner-attested**: see the
   note below.
 - Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth
-  Crit Care Pain* 2011;11:199–203. **Tier 2** under "Source hierarchy": a
+  Crit Care Pain* 2011;11:199–203. **Tier 2** under § "Source hierarchy": a
   secondary synthesis, taken here for the shape of the explanation and the
   worked example and never as the authority for a number. Its § "Altitude"
   carries both classes side by side. Supplied by the project owner and read in
@@ -8624,7 +8624,7 @@ verify one has to reach the document itself.
 
 **Gas Man's own agreement with patients is phase-dependent, and wash-in is its
 worst phase.** Both this model's parameter set and its compartment structure
-descend from Gas Man, a lineage ranked tier 3 under "Source hierarchy", which
+descend from Gas Man, a lineage ranked tier 3 under § "Source hierarchy", which
 rests its worth on fixing the behavior of a widely taught teaching tool as
 something this implementation can be compared against. A prospective in-patient
 study has since measured how closely that behavior tracks real end-expired
@@ -8660,15 +8660,15 @@ wash-in and maintenance periods *combined* rather than the wash-in alone.
 
 **What that bounds here, and what it does not.** It is not a measurement of this
 implementation. Nothing in this project has ever been compared against a Gas Man
-trajectory — the comparisons under "Required tests" are against published human
+trajectory — the comparisons under § "Required tests" are against published human
 data — and no figure in the table above is a tolerance anything here is held to.
-What it bounds is what the lineage is worth. Where caveat 2 under "Published
+What it bounds is what the lineage is worth. Where caveat 2 under § "Published
 wash-in and elimination validation test" says that passing shows this
 implementation reproducing its parameter set's *intent* rather than showing that
 the set is independently right, this is how much that intent has been shown to
 be worth in patients — and it is worth least in the phase the simulator most
 displays, the first minutes of the $`F_A/F_I`$ rise, which is the canonical
-teaching curve of inhaled-anesthetic uptake (see "Model boundary"). So
+teaching curve of inhaled-anesthetic uptake (see § "Model boundary"). So
 "agrees with Gas Man" may not be read as "agrees with a patient" anywhere in a
 case, and least of all in the first fifteen minutes.
 
@@ -8686,7 +8686,7 @@ wash-in's own condition. With the Methods unread here, how much either accounts
 for is unestablished. The direction is nonetheless the one
 this project's own circuit already predicts: the apparatus lag
 $`\tau_C = V_C/\dot V_F`$ is "the part of the inspired curve a learner is most
-likely to attribute to uptake" (see "Parameter provenance"), and
+likely to attribute to uptake" (see § "Parameter provenance"), and
 `docs/machine-survey.md` reaches the same place from the machine side. One
 perfectly mixed circuit is least like a real workstation exactly where Gas Man's
 published agreement with patients is weakest.

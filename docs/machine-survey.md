@@ -12,7 +12,7 @@ multi-substance patient state land.
 It is therefore not an inventory. A specification is here because there is a
 stated path from it to a computed or displayed value, and that path is written
 down beside it. A specification with no such path is left out, or gets one line
-under "Ruled out" if it is one somebody would otherwise raise again.
+under § "Ruled out" if it is one somebody would otherwise raise again.
 
 **Survey only.** Nothing here changes `src/`, and nothing here is a machine
 class, a profile schema or an interlock. Those are `PL-FG9D`'s, and this
@@ -53,7 +53,7 @@ clinical-output standard.
 ## The machines surveyed, and why those
 
 No installed-base or market-share source was reachable from this session (see
-"How a value gets into this document" below), so "in current clinical use" is
+§ "How a value gets into this document" below), so "in current clinical use" is
 established by proxy, and the proxy is stated rather than hidden: **a machine is
 here if it is the subject or comparator of a peer-reviewed study published
 between 2006 and 2025**, which is evidence it was in service somewhere and

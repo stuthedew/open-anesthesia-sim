@@ -357,9 +357,16 @@ ASSERTION_RE = re.compile(r"^(?P<key>[A-Za-z_][\w.]*)\s*=\s*(?P<value>[-+]?\d+(?
 
 BRACE_RE = re.compile(r"\{([^{}]*)\}")
 
-# A quoted phrase is read as a section citation only in the two forms this
-# repository actually writes: after `see`/`under`, or immediately before
-# `above`/`below`. Bare `in "..."` is ordinary English and is left alone.
+# A quoted phrase is a section citation when the section mark says it is: `§
+# "X"` after `see` or `under`, or immediately before `above` or `below`. The
+# mark is the recognition, and it is exact. The words around a quotation are
+# not: read without the mark, these two positions took every quotation in them
+# for a citation, so prose quoting what a command printed - `See "docket check:
+# 0 errors" for what a clean run prints` - hard-failed as a section no document
+# has (`PL-YSMV`), as a quoted measurement had before it (`PL-KJ63`), and the
+# only repair on offer was to reword prose that was not wrong. `CLAUDE.md`
+# keeps hard failure for exact rules, and `PL-GPJ7` is the family this is one
+# member of.
 #
 # The quotation may span a source line. Prose here hard-wraps at about 78
 # characters, so a section title long enough to wrap was unmatchable while
@@ -369,24 +376,38 @@ BRACE_RE = re.compile(r"\{([^{}]*)\}")
 # as the thing that stops a runaway match, and `_normalized` puts the term
 # back on one line before it is compared.
 #
-# The `directed` branch must open on a letter or a code span, which is what a
-# section heading or a `**Bold.**` marker does and what a quoted *measurement*
-# does not. Without that bound, ordinary prose contrasting a figure with the
-# one it replaced - `"~88-256 B each" above` - was read as a citation of a
-# heading and hard-failed the run, so the repair was to reword prose that was
-# not wrong (`PL-KJ63`). `QUOTED_SOURCE_RE` below already carries the same
-# guard for the same reason. Measured across the documents this reads on
-# 2026-09-13: 40 directed citations, none of which opens on anything else.
-#
-# Only the `directed` branch is bounded. `see` and `under` say outright that a
-# citation is being made, so there is nothing to infer and nothing to guard
-# against.
+# These two positions, and not yet every bare `§ "X"`: five bare marks in the
+# documents on 2026-09-26 cite a section of an outside source - a paper's
+# "Materials and Methods", a manual's chapter - which no heading here can
+# resolve, so reading the mark wherever it stands first needs a rule for how
+# those are written. That rule is `PL-GPJ7`'s to settle.
 CITATION_RE = re.compile(
-    r'(?:\b(?:see|under)\s+"(?P<named>[^"]{1,160}?)")'
+    r'(?:\b(?:see|under)[ \n]+§{1,2}[ \n]*"(?P<named>[^"]{1,160}?)")'
+    r'|(?:§{1,2}[ \n]*"(?P<directed>[^"]{1,160}?)"[ \n]+(?:above|below)\b)',
+    re.IGNORECASE | re.DOTALL,
+)
+# The same two positions without the mark, which is how 147 of the documents'
+# citations were written until `PL-YSMV` marked them. Read only to say that one
+# lacks its mark, and only where its quotation names a heading: that is a fact
+# about the tree, and it makes the quotation a section citation. A quotation
+# naming no heading may be a faithful copy of anything - output, a label, a
+# figure - and is left alone, which is `tools/possessive_section_check.py`'s
+# asymmetry for the same reason. An advisory rather than an error, because the
+# position is still wording: a quotation that only coincides with a heading's
+# name is told to take a mark it does not need, and a reader can decline that.
+#
+# The `directed` branch opens on a letter or a code span, as a heading or a
+# `**Bold.**` marker does and a quoted measurement - `"~88-256 B each" above` -
+# does not. Measured across the documents this reads on 2026-09-13: 40 directed
+# citations, none of which opens on anything else.
+UNMARKED_CITATION_RE = re.compile(
+    r'(?:\b(?:see|under)[ \n]+"(?P<named>[^"]{1,160}?)")'
     r'|(?:"(?P<directed>[`A-Za-z][^"]{0,159}?)"[ \n]+(?:above|below)\b)',
     re.IGNORECASE | re.DOTALL,
 )
 DIRECTION_RE = re.compile(r"^[ \n]*(?:above|below)\b", re.IGNORECASE)
+#: What stands immediately before a quotation that already carries the mark.
+MARKED_RE = re.compile(r"§{1,2}[ \n]*$")
 
 # A `**Bold.**` run opening a line, with or without a list bullet in front of
 # it. This repository subdivides long documents with these rather than with
@@ -442,6 +463,11 @@ QUOTED_SOURCE_RE = re.compile(
     r'"(?P<quoted>\w[^"]{2,200}?)"',
     re.DOTALL,
 )
+#: A code-spanned source - a document, an item, a module - standing directly
+#: before a citation, which then quotes *that* source. `` `docs/MODEL.md` under
+#: "Known limitations" `` is `QUOTED_SOURCE_RE`'s to hold, by containment, and
+#: telling it to take a `§` would break the one match that reads it.
+QUALIFIED_RE = re.compile(r"`[\w./-]+`[ \n]*" + CITATION_CONNECTIVE + r"?[ \n]*$")
 
 # The `**Tags.**` statement. What it claims is deliberately not a list: the
 # version table above it already says which releases exist, so restating them
@@ -3285,19 +3311,22 @@ def _headings(text: str) -> list[str]:
 def _cites_heading(term: str, headings: Iterable[str]) -> bool:
     """Whether `term` names one of `headings`.
 
-    Two tolerances, both for writing that is correct as written. A prefix
+    Three tolerances, all for writing that is correct as written. A prefix
     ending on a word boundary counts, because prose shortens a long heading
     (`"Completed: v0.2.0"` for `Completed: v0.2.0 - isoflurane and
-    desflurane`). And sentence punctuation closed inside the quotation marks
-    is ignored, because `See "Known limitations."` is ordinary US style, not
-    a citation of a heading that ends in a period. A rename still breaks the
-    match, which is the drift being checked.
+    desflurane`). Sentence punctuation closed inside the quotation marks is
+    ignored, because `See "Known limitations."` is ordinary US style, not a
+    citation of a heading that ends in a period. And `TYPOGRAPHY` is folded on
+    both sides, because a title copied by hand settles on one of the dashes
+    this project writes and the heading is still there. A rename still breaks
+    the match, which is the drift being checked.
     """
+    term = term.translate(TYPOGRAPHY)
     candidates = {term, term.rstrip(" .,;:")}
     return any(
         heading == candidate
         or (heading.startswith(candidate) and heading[len(candidate)] in " -:,;")
-        for heading in headings
+        for heading in (title.translate(TYPOGRAPHY) for title in headings)
         for candidate in candidates
         if candidate
     )
@@ -3343,12 +3372,16 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                         f"{path}:{line}: links to {target}, but {linked} has no such heading"
                     )
 
-        for match in CITATION_RE.finditer(text):
-            term = _normalized(match.group("named") or match.group("directed"))
-            line = _line_of(text, match.start())
-            same_file = match.group("directed") is not None or DIRECTION_RE.match(
-                text[match.end() : match.end() + 24]
-            )
+        # A fence or a code span holds a literal - an example, a command, the
+        # form being described - and a literal is not a claim about the tree.
+        prose = _without_fences(text)
+        spans = [(span.start(), span.end()) for span in CODE_SPAN_RE.finditer(prose)]
+
+        for match in CITATION_RE.finditer(prose):
+            if _inside(match.start(), spans):
+                continue
+            term, same_file = _cited_section(prose, match)
+            line = _line_of(prose, match.start())
             if same_file:
                 if not _cites_heading(term, headings[path]):
                     report.errors.append(
@@ -3359,6 +3392,39 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                 report.errors.append(
                     f'{path}:{line}: cites section "{term}", which no documentation file has'
                 )
+
+        for match in UNMARKED_CITATION_RE.finditer(prose):
+            before = prose[max(0, match.start() - 200) : match.start()]
+            if (
+                _inside(match.start(), spans)
+                or MARKED_RE.search(before)
+                or QUALIFIED_RE.search(before)
+            ):
+                continue
+            term, same_file = _cited_section(prose, match)
+            if _cites_heading(term, headings[path] if same_file else every_heading):
+                report.advisories.append(
+                    f'{path}:{_line_of(prose, match.start())}: "{term}" names a section '
+                    f'without the mark, so a rename of it would pass unreported; write § "{term}"'
+                )
+
+
+def _inside(offset: int, spans: Sequence[tuple[int, int]]) -> bool:
+    """Whether `offset` falls within one of `spans`, each a half-open range."""
+    return any(start <= offset < end for start, end in spans)
+
+
+def _cited_section(text: str, match: re.Match[str]) -> tuple[str, bool]:
+    """The section a citation names, and whether it names one in its own file.
+
+    `above` and `below` point into the citing file, so a heading elsewhere does
+    not answer them; a bare `see` may send the reader anywhere the documents go.
+    """
+    term = _normalized(match.group("named") or match.group("directed"))
+    same_file = match.group("directed") is not None or bool(
+        DIRECTION_RE.match(text[match.end() : match.end() + 24])
+    )
+    return term, same_file
 
 
 #: A citation that points into a file by line: `core/parameters.py:274`, or a
