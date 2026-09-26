@@ -155,7 +155,9 @@ try:
     # `default_base` so a tag the working tree predates is placed against the
     # branch every docket command compares with (`PL-HVLJ`). `find_cut` and
     # `notes_added` are the one definition of a release's cut, which the
-    # printed tag commands use too (`PL-QHCW`).
+    # printed tag commands use too (`PL-QHCW`). And `subject_pull_request` is
+    # the one reading of the pull request number a subject names, which the
+    # tag-span read takes the squash shape of (`PL-YYDT`).
     from docket.vcs import (
         DEFAULT_BRANCHES,
         Cut,
@@ -168,6 +170,7 @@ try:
         is_shallow,
         notes_added,
         resolved,
+        subject_pull_request,
         tags,
     )
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
@@ -3131,12 +3134,6 @@ def _off_cut_error(where: str, name: str, cuts: _ReleaseCuts, root: Path, run: R
 # --- what a tag's span covers -----------------------------------------------
 
 
-#: A squash merge's subject ends with the pull request it closed, which is how
-#: `docket check` holds a recorded `pr` to the default branch
-#: (`merged_pull_requests`). Read the same way here rather than spelled a
-#: second time.
-SQUASH_PR_RE = re.compile(r"\(#(\d+)\)\s*$")
-
 #: A tag as `%D` prints it under `--decorate=full`: comma-separated ref names,
 #: a tag among them written in full. Matching the full form rather than the
 #: `tag: ` prefix is what keeps this independent of the log's decoration style.
@@ -3218,9 +3215,11 @@ def _tag_spans(root: Path) -> _TagSpans | None:
             current = max(tagged, key=_release_order)
         if current:
             version[commit] = current
-        found = SQUASH_PR_RE.search(subject)
-        if found:
-            pull_request[commit] = found.group(1)
+        # Read through `docket`'s one parser, the squash shape alone, as this
+        # span was written against (`PL-YYDT`).
+        named = subject_pull_request(subject)
+        if named is not None and named.squash:
+            pull_request[commit] = str(named.number)
     if not version:
         return None
 
