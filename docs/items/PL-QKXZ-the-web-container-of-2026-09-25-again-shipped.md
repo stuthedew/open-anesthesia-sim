@@ -53,9 +53,8 @@ Environment**." So the question above has a third answer: the lines are in
 place and ran, in an environment these projects do not use. `PL-NZC0`'s setup
 records `Default` as "chosen explicitly" for the trial, and its coordinator's
 reading says that choice is not in effect. `PL-H2V3`, captured on that Stream
-A branch and not on `main`, is the same observation from that thread (uv
-0.8.17, the suite run tool by tool); it is left to its branch, and this item's
-answer is its answer.
+A branch, is the same observation from that thread (uv 0.8.17, the suite run
+tool by tool), dropped on 2026-09-26 as a duplicate of this item.
 
 **Why it matters.** Every thread either project starts pays the repair before
 `make check` will run, and the obvious route, `uv self update`, dies on
@@ -82,23 +81,47 @@ both for every new container:
     apt-get update && apt-get install -y libegl1
     python3 -m pip install -U 'uv>=0.12.5' && ln -sf /usr/local/bin/uv /root/.local/bin/uv
 
-**Decision needed.** Point both projects' threads at `Default`, where both
-tools already are, or leave them on Anthropic's default and make the repair
-each session's, which is `PL-SPZT`'s `docs/worker.md` route. Only the owner
-can reach **Project settings**.
+**Checked 2026-09-26 05:15 UTC: "Clean up PL" is in `Default`, "Fix
+generators" is not.** `get_session` reads `env_01JWikdPctorEBXoFK7bJnCq` for
+"Slam-dunk batch 16" (`claude/pl-batch-16-y80jjp`, created 03:31:44 UTC), a
+"Clean up PL" thread started after the owner's 02:43 switch that `PL-7TH9`
+records, and still `env_011111111111111111111119` for "Stream A: PL-PVW2,
+continued" (`claude/pl-pvw2-next-iier2a`, created 04:34:03 UTC), a "Fix
+generators" thread. Both projects' coordinators read the old environment too,
+as the docs say any session already running will: "Changes to instructions,
+repositories, plugins, and environment in **Project settings** reach new
+threads, not threads already running" (§ "Project settings reference",
+fetched 2026-09-26). `Default`'s setup snapshot was rebuilt at 03:48 UTC, and
+a web session started from it at 05:07 (`claude/kind-ride-kkx2ir`) found
+`/root/.local/bin/uv` a regular file reading `uv 0.12.19`, no
+`/usr/local/bin/uv`, `libegl1 1.7.0-1build1` installed at 03:48:15, and `make
+check` exiting 0, 4,745 tests passed, with no repair. So step 2 below is in
+effect, the setup script `Default` now runs does not leave `PL-7TH9`'s dangling
+link, and step 1 is what is left. That the script was edited between 02:52 and
+03:48 is inferred from the rebuild and the missing link; no session can read
+the script itself.
 
-**Recommendation:** point both projects at `Default`. It fixes every later
-thread in them with no script edit, because `Default` already carries both.
-The cost is one setting per project, owed again by any new project, and
-threads already running keep the old environment until they end. The steps,
-checked against the Projects and cloud-environments docs on 2026-09-26:
+**Decision needed.** Point "Fix generators" at `Default` as well, or leave its
+threads on Anthropic's default and make the repair each thread's, which is
+`PL-SPZT`'s `docs/worker.md` route. "Clean up PL" is answered: the owner moved
+it to `Default` on 2026-09-26. Only the owner can reach **Project settings**.
+
+**Recommendation:** point "Fix generators" at `Default`. It fixes every later
+thread in it with no script edit, because `Default` carries both tools and
+runs `make check` with no repair, as checked above. The cost is one setting,
+owed again by any new project, and the coordinator and threads already running
+keep the old environment until they end. The steps, checked against the
+Projects and cloud-environments docs on 2026-09-26:
 
 1. At claude.ai/code or in the desktop app, open the "Fix generators"
-   project, click the gear icon in the project header to open **Project
-   settings**, go to **Environment**, and set **Cloud environment** to
-   **Default**: the account's one environment, the name the cloud icon above
-   an ordinary session's message box shows. Settings save as you change them.
-2. Do the same in the "Clean up PL" project, if it will start more threads.
+   project, click the gear icon in the project header (or **Settings** in the
+   project's sidebar menu) to open **Project settings**, go to
+   **Environment**, and set **Cloud environment** to **Default**: the
+   account's one environment, the name the cloud icon above an ordinary
+   session's message box shows. Settings save as you change them.
+2. [done 2026-09-26: the owner's 02:43 UTC switch, read back from batch 16
+   above] Do the same in the "Clean up PL" project, if it will start more
+   threads.
 3. The change reaches new threads only. Open the next new thread and ask it to
    run `uv --version && dpkg-query -W libegl1`. Worked: `uv 0.12.18` or later
    and `libegl1 1.7.0-1build1`, and `make check` runs with no repair. A
@@ -110,13 +133,21 @@ checked against the Projects and cloud-environments docs on 2026-09-26:
    the **Setup script** field, and save:
 
        apt-get update && apt-get install -y libegl1 || true
-       python3 -m pip install -U 'uv>=0.12.5' && ln -sf /usr/local/bin/uv /root/.local/bin/uv || true
+       python3 -m pip install -U 'uv>=0.12.5' && { [ -x /usr/local/bin/uv ] && ln -sf /usr/local/bin/uv /root/.local/bin/uv; } || true
 
-   The `|| true` is the docs' "Exit zero" rule, since a script that exits
-   non-zero stops the session starting. The pip route reaches PyPI rather
-   than GitHub's rate-limited API. Changing the script rebuilds the snapshot.
+   [corrected 2026-09-26: the link is conditional now. Unconditional, it
+   replaced a working user-site uv with a link to nothing in the first
+   container after the switch (`PL-7TH9`). Replayed against scratch paths, the
+   line links where pip put uv under `/usr/local/bin`, leaves a user-site uv
+   alone, and exits 0 when pip fails.] The `|| true` is the docs' "Exit zero"
+   rule, since a script that exits non-zero stops the session starting. The
+   pip route reaches PyPI rather than GitHub's rate-limited API. Changing the
+   script rebuilds the snapshot.
 
 **Done when.** A new thread in each project runs in `Default` and runs `make
 check` with no repair step, read as in step 3, or the owner decides the repair
 stays each session's and `PL-SPZT`'s `docs/worker.md` route is the whole
-answer.
+answer. "Clean up PL" meets it as far as a session can read: its new threads
+start in `Default`, and `Default`'s current snapshot runs `make check` with no
+repair. No "Clean up PL" thread has started since the 03:48 rebuild to read it
+from inside one.
