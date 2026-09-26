@@ -1,10 +1,16 @@
 ---
 id: PL-NNLM
 title: bin/docket yield run again after its push failed says the claim has already ended and pushes nothing, so the yield stays in this checkout while every other session still reads the item as held
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: claim-integrity
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_claiming.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
+payoff: a yield whose push failed reaches the remote when yield is run again, or says it did not, so no session reports a yield as done while every other session still reads the item as held
+verify: grep -q 'def test_yield_run_again_after_its_push_failed' subprojects/docket/tests/test_claiming.py
 ---
 
 **Problem.** bin/docket yield run again after its push failed says the claim has already ended and pushes nothing, so the yield stays in this checkout while every other session still reads the item as held
@@ -38,3 +44,16 @@ command alone. What is left is the retry.
 does not carry pushes it, as `claim`'s retry does, or exits non-zero saying
 the yield is local; a real-git test in `subprojects/docket/tests/test_claiming.py`
 holds the rerun.
+
+**Premise confirmed by reading, 2026-09-26, against `78b1a02b`.** In
+`claiming.yield_claims`, the "has already ended; nothing written" note and the
+`if not writing:` return both still come before `_on_remote`, which is the only
+place yield's path asks the remote. So the rerun decides from the local branch
+alone. `_publish`'s failed-push comment still names this item.
+
+**Generator check.** A re-entry of `PL-1X56` (done 2026-09-25): the same
+mechanism at a sibling site, `yield` rather than `claim`, which that fix did
+not cover because it reaches `_publish` alone. `PL-1X56` already lists this
+filing under `recurrences:`. `PL-MT3R` counts the same local read among its
+readers. The retry here can ask `_on_remote`, as `claim`'s does, without
+waiting on that head's record.

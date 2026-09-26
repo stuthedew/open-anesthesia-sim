@@ -1,9 +1,15 @@
 ---
 id: PL-8YBS
 title: docs/MODEL.md's hazard row for two traces drawn on top of each other says fat's whole first hour spans under 4 px on the chart, which holds only at a 1 MAC dial: at the interface's maximum dial it spans 6.1-11.0 px
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: compartment-trace-legibility
 touches: docs/MODEL.md
 added: 2026-09-26
+payoff: the authoritative specification states the fat-trace pixel figure with the dial it holds at, so no later session copies a 1 MAC measurement onward as true at every dial
+verify: grep -qF "fat's whole first hour spans under 4 px at a 1 MAC dial and under 12 px at the agent's vaporizer maximum" docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md's hazard row for two traces drawn on top of each other says fat's whole first hour spans under 4 px on the chart, which holds only at a 1 MAC dial: at the interface's maximum dial it spans 6.1-11.0 px
@@ -43,7 +49,19 @@ later session can copy onward as a general fact about the chart.
 whole first hour spans under 4 px, and under 12 px at the interface's maximum
 dial".
 
-**Done when.** The row states the dial its figure was measured at.
+**Reproduced 2026-09-26** on `78b1a02b`: `grep -n "fat's whole first hour"
+docs/MODEL.md` finds the clause once, in the hazard row, with no dial. The
+1 MAC condition is stated only in § "Where more than one trace answers". `git
+diff --stat a0ac88c4 HEAD -- src/` is empty, so `PL-CBDX`'s figures still hold
+on this tree.
+
+**Done when.** The row states the dial its figure was measured at. The
+clause reads, verbatim: "on which fat's whole first hour spans under 4 px at a
+1 MAC dial and under 12 px at the agent's vaporizer maximum". The rest of the
+row is unchanged. The wording uses the specification's own term, "vaporizer
+maximum" (from the hazard row about a setting above it, and the "Maximum
+delivered concentration" parameter rows), rather than the Fix's "the
+interface's maximum dial". It is fixed here so that the `verify:` can pin it.
 
 **Generator check.** A one-off: one clause lost its condition when a paragraph's
 figure was summarised into a table row. `PL-CBDX`'s read of `#959` found no
