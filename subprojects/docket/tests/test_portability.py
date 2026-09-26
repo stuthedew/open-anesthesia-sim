@@ -10,13 +10,17 @@ older interpreters cannot parse. The hook discards errors by design, so the
 only symptom was a digest that quietly stopped appearing.
 
 These tests hold the two halves of that promise: the declared floor and the
-tooling target agree, and nothing here imports a third-party package.
+tooling target agree, and nothing here imports a third-party package. A third
+holds what happens below the floor: the command says so in one line.
 """
 
 from __future__ import annotations
 
 import ast
+import os
 import re
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -97,3 +101,37 @@ def test_nothing_imports_outside_the_standard_library() -> None:
                 continue
             for name in names:
                 assert name in ALLOWED_IMPORTS, f"{path.name} imports '{name}'"
+
+
+def test_an_interpreter_below_the_floor_names_the_floor_and_itself() -> None:
+    """Below the floor, `python -m docket` says so in one line and exits non-zero (`PL-LKGW`).
+
+    CI has no interpreter that old, so a fresh one of this version stands in:
+    `sys.version_info` is set one minor below the declared floor, and
+    `docket.cli` is made unimportable, which is what an old interpreter does to
+    it - 3.10 fails on its `from datetime import UTC`. A check that ran after
+    that import would therefore fail here the way the item reproduced it, with
+    a traceback, rather than pass. The floor is read from `pyproject.toml`, so
+    `__main__.FLOOR` drifting either way from `requires-python` fails too.
+    """
+    major, minor = _floor()
+    below = (major, minor - 1, 12, "final", 0)
+    script = "\n".join(
+        (
+            "import runpy, sys",
+            f"sys.version_info = {below!r}",
+            "sys.modules['docket.cli'] = None",
+            "runpy.run_module('docket', run_name='__main__', alter_sys=True)",
+        )
+    )
+    env = {**os.environ, "PYTHONPATH": str(PACKAGE_ROOT / "src")}
+    done = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, env=env, text=True, check=False
+    )
+
+    assert done.returncode != 0
+    assert done.stdout == ""
+    assert done.stderr == (
+        f"docket needs Python {major}.{minor} or newer; "
+        f"this is Python {major}.{minor - 1}.12, at {sys.executable}\n"
+    )
