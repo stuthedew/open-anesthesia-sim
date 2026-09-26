@@ -50,3 +50,13 @@ opening this file now loads the correct account of the routes alongside the
 wrong one. That lowers the severity and does not close the item: the sentence
 in the file still says what it says, and a rule loaded beside a contradicting
 paragraph is a worse state than either alone.
+
+**Note, 2026-09-26 (`PL-M701`): the Jugel half of the approach is now wrong.**
+`doi.org` and `api.crossref.org` answered 200 at CONNECT through the proxy, and
+the project owner has both on the environment's allowed domains, so a registry
+is reachable. Crossref indexes the paper: a bibliographic query returned
+`10.14778/2732951.2732953`, *Proceedings of the VLDB Endowment* 7(10):797-808,
+matching the entry's journal, volume, issue and pages. So do not write that the reachable registries
+do not index this venue. Confirm the record against Crossref and add the DOI,
+which is what the entry's closing sentence asks of a session that can reach a
+registry. `www.vldb.org` was still refused. The Baker & Farmery half stands.

@@ -168,7 +168,12 @@ apply to every reply of any kind. Never mention these rules, "phases," or
       not a memory to recall. Do this for anything asserted about external
       state anywhere in a reply, not only in this block; the block is merely
       where a stale claim is acted on. Say what the check showed when it
-      changes the answer, rather than quietly dropping the item.
+      changes the answer, rather than quietly dropping the item. Whether a
+      host is reachable is external state too: the project owner sets the
+      allowed domains where no session can read them, so a file here calling
+      a host blocked records only the day it was measured. Probe the host
+      before repeating that, and count only a refusal at CONNECT as a block
+      (project owner, 2026-09-26, `PL-M701`).
     - Before recommending repository work - an item to start, or work that
       carries no item id - check whether another session is already on it or
       has asked for it. Every in-flight guard this project has reads a claim
