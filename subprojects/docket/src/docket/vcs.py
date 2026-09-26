@@ -806,9 +806,27 @@ class Branch:
     item_id: str
     last_commit: datetime | None = None
     #: Whether the default branch holds this item's file at all. `True` for an
-    #: item a reader could actually start, which is every claim the older
-    #: reading was right about.
+    #: item any reader could start, which is every claim the older reading was
+    #: right about. Whether *this* reader can is `only_on_a_branch`'s question,
+    #: which also asks this checkout's store.
     on_base: bool = True
+
+
+def only_on_a_branch(identifier: str, *, on_base: bool, here: Collection[str]) -> bool:
+    """Whether a branch holds an item's only copy: neither the base nor this checkout has one.
+
+    **The one answer to a question that was asked two ways** (`PL-LFNK`). The
+    digest's `Filed on a branch` line and `flight`'s `filed there` asked only
+    whether the default branch lacked the file, `stranded` whether this
+    checkout lacked it as well - so a session's own claimed capture, on no base
+    and in its own store, read "no copy here to start from" while `show` said
+    it was in flight on this branch and `stranded` rightly said nothing.
+
+    `here` is the ids in this checkout's working-tree store, which `stranded`
+    takes as `known_ids`: a capture nobody has committed yet is here although
+    no ref holds it.
+    """
+    return not on_base and identifier not in here
 
 
 @dataclass(frozen=True)
@@ -4154,8 +4172,9 @@ def stranded(
     `known_ids` is what the calling session can already see - the store in its
     own working tree - so an item captured on this branch a moment ago is not
     reported back to the session that captured it. The default branch's own
-    ids are added to that, because a branch forked before an item landed has a
-    working tree missing it and would otherwise report it as stranded.
+    ids count as well, since `only_on_a_branch` asks both, because a branch
+    forked before an item landed has a working tree missing it and would
+    otherwise report it as stranded.
 
     **It never fetches, and takes no word for whether anything did.** The rule
     the rest of this module follows - a read that must work from a bare
@@ -4218,7 +4237,7 @@ def stranded(
             else f"no items found on {base}, so every branch would read as stranding its own"
         )
 
-    known = {identifier.upper() for identifier in known_ids} | set(on_base)
+    known = {identifier.upper() for identifier in known_ids}
     held = _base_blobs(base, root, run)
     here = _item_blobs("HEAD", root, items_dir, run)
     elsewhere: dict[str, tuple[str, list[str]]] = {}
@@ -4228,17 +4247,17 @@ def stranded(
             continue
         for identifier, (blob, path) in _item_blobs(ref, root, items_dir, run).items():
             recorded = on_base.get(identifier)
-            if recorded is None:
-                if identifier in known:
-                    # The session's own store holds it and the base does not,
-                    # which is at risk rather than lost - and nothing here can
-                    # compare a copy the base has never had.
-                    continue
+            if only_on_a_branch(identifier, on_base=recorded is not None, here=known):
                 # Every branch holding it is recorded, not just the first. A
                 # branch missing from the report strands nothing and is safe to
                 # delete on that count; naming only one copy would make the
                 # branch holding the other look clean.
                 elsewhere.setdefault(identifier, (path, []))[1].append(ref)
+                continue
+            if recorded is None:
+                # The session's own store holds it and the base does not,
+                # which is at risk rather than lost - and nothing here can
+                # compare a copy the base has never had.
                 continue
             base_blob, base_path = recorded
             mine = here.get(identifier, ("", ""))[0]

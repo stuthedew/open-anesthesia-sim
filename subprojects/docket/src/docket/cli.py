@@ -4273,7 +4273,10 @@ def cmd_flight(args: argparse.Namespace) -> int:
     # with the roadmap and the notes the project's settings name.
     queue = with_fields(inv.config, items_dir=inv.tracked)
     forgetful = unclaimed(inv.root, read, queue, runner=inv.git)
-    print(render.format_flight(report, _now(args), settled, reviews, read, forgetful))
+    # The ids this checkout's store holds, which `filed there` asks about beside
+    # the base, so this branch's own capture is not called absent (`PL-LFNK`).
+    here = frozenset(item.identifier for item in _load(args)[1])
+    print(render.format_flight(report, _now(args), settled, reviews, read, forgetful, here))
     _say_snapshot(args)
     return 0
 
