@@ -29,3 +29,37 @@ which kept the four shapes as they were.
 
 **Generator check.** One-off: the guard's list of spellings is incomplete,
 which is not a fact another reader misreads.
+
+**Read before the fix, 2026-09-26, from git 2.43's usage lines** (`git fetch
+-h`, `git pull -h`, `git remote -h`), by the thread that claimed it and
+stopped for length before starting:
+
+- `fetch` prunes with `-p`, `-P` (`--prune-tags`), `--prune` and
+  `--prune-tags`. Its short options taking a value are `-j <n>` and
+  `-o <server-option>`; the rest (`v q a f m t k u n 4 6`) take none.
+- `pull` prunes with `-p` and `--prune`, and lists no prune-tags form. Its
+  short options taking a value are `-r[=...]`, `-s <strategy>`, `-X <option>`,
+  `-S[=<key-id>]`, `-j[=<n>]` and `-o <server-option>`.
+- `remote update` prunes with `-p` as well as `--prune`.
+- A bundle such as `-tp` prunes where `p` (or `P`, for `fetch`) comes before
+  the first letter that takes a value, since that letter takes the rest of the
+  word.
+- `-c <name>=<value>` and `--config-env=<name>=<envvar>` are global options,
+  before the subcommand. A prune setting there prunes unless its value reads
+  false (empty, `false`, `no`, `off`, `0`). Finding where the global options
+  end means stepping over the ones that take a separate value (`-C`, `-c`,
+  `--config-env`, `--git-dir`, `--work-tree`, `--namespace`), and `-p` and
+  `-P` there mean `--paginate` and `--no-pager`, not pruning.
+- `PRUNE_SETTING` misses `fetch.pruneTags` and `remote.<name>.pruneTags`,
+  both documented, because `\b` does not match between `prune` and `Tags`.
+  That reaches the existing `config` shape too. git reads a setting's section
+  and key without regard to case, so the match should as well.
+- Out of reach, to be stated beside the other limits rather than handled:
+  aliases, settings passed through `GIT_CONFIG_PARAMETERS` or
+  `GIT_CONFIG_COUNT`, and abbreviated long options such as `--prune-t`.
+- The hook refuses these spellings in any Bash command, so running real git on
+  a scratch repository to confirm one has to go through a script file. The
+  tests pipe payloads and run no git.
+- The hook's Python sits inside single quotes in bash, so an apostrophe
+  anywhere in it breaks every Bash call; check the file with `bash -n` after
+  each edit.
