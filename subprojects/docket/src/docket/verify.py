@@ -1532,10 +1532,12 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
     so no value this could return would say "unread" (`PL-9RFP`).
 
     **Both halves read `-z`, the one form in which git quotes no path**
-    (`PL-8HSX`). A quoted path starts with `"`, so `_within` matches it against
-    nothing protected. Git quotes a path outside ASCII while `core.quotePath` is
-    on, one holding a tab, newline, `"` or `\\` however that is set, and in
-    `status` one holding a space as well: measured on git 2.43.0, 2026-09-25, a
+    (`PL-8HSX`): the committed half because `changed_path_args` asks every read
+    for it, parsed by `vcs.listed_paths`, and `status` by its own flag. A quoted
+    path starts with `"`, so `_within` matches it against nothing protected.
+    Git quotes a path outside ASCII while `core.quotePath` is on, one holding a
+    tab, newline, `"` or `\\` however that is set, and in `status` one holding
+    a space as well: measured on git 2.43.0, 2026-09-25, a
     committed `src/anesthesia_sim/core/café.py` and an uncommitted
     `src/anesthesia_sim/core/a b.py` each passed as "none touched".
     `--untracked-files=all` because `status.showUntrackedFiles=no` in a user's
@@ -1544,13 +1546,11 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
     directory is one `dir/` entry rather than the files in it.
     """
     if commits:
-        committed = _git(
-            vcs.changed_path_args("show", "-z", "--name-only", "--format=", *commits), root
-        )
+        committed = _git(vcs.changed_path_args("show", "--name-only", "--format=", *commits), root)
     else:
-        committed = _git(vcs.changed_path_args("diff", "-z", "--name-only", f"{base}...HEAD"), root)
+        committed = _git(vcs.changed_path_args("diff", "--name-only", f"{base}...HEAD"), root)
     working = _git(["status", "--porcelain", "-z", "--untracked-files=all"], root)
-    paths = {path for path in committed.split("\0") if path}
+    paths = set(vcs.listed_paths(committed))
     entries = iter(working.split("\0"))
     for entry in entries:
         # `XY path`: two status letters and a space. A rename or a copy is

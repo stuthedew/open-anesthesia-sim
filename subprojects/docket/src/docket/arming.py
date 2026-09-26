@@ -81,6 +81,7 @@ from .vcs import (
     answered,
     changed_path_args,
     default_base,
+    listed_paths,
     resolved,
 )
 
@@ -249,7 +250,7 @@ def arm(
     outside: tuple[str, ...] = ()
     gate = False
     if answered(changed):
-        paths = {path for path in changed.splitlines() if path.strip()}
+        paths = set(listed_paths(changed))
         outside = tuple(
             sorted(path for path in paths if not path.startswith((prefix, TOOLING, RECORDS)))
         )

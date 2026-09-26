@@ -3,12 +3,14 @@ id: PL-NK1L
 title: vcs.filed_with_work splits a show --name-only listing on whitespace, so a path holding a space is reported as two paths
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-26 with the path-listing step of PL-PVW2
 added: 2026-09-25
+closed: 2026-09-26
+pr: 1078
 payoff: the work docket reports beside an item's filing names each path the filing commit changed, one holding a space included, instead of two paths that do not exist
 verify: grep -q 'def test_filed_with_work_reads_a_path_holding_a_space' subprojects/docket/tests/test_vcs.py
 ---

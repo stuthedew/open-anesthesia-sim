@@ -40,7 +40,7 @@ import subprocess
 import time
 import urllib.parse
 from collections import Counter
-from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -171,22 +171,52 @@ def changed_path_args(subcommand: str, *args: str) -> list[str]:
     addition it is, so every such read builds its argv here, and a new one cannot
     leave the flag out by copying whichever spelling it found first.
 
-    `core.quotePath` is off for the same reason: a path git quotes is a path no
-    caller can match. Left on, git prints a path outside ASCII as a quoted string
-    of octal escapes, so a committed `src/anesthesia_sim/core/café.py` came back
-    as `"src/anesthesia_sim/core/caf\\303\\251.py"`, quotes included, and the
-    protected-path audit passed it as "none touched" (`PL-8HSX`). Off, it prints
-    as written. A path holding a tab, newline, `"` or `\\` is quoted either way,
-    measured on git 2.43.0, 2026-09-25, so a read that must see those as written
-    adds `-z` and splits on NUL, as `verify.changed_paths` does. The `-c` goes
-    ahead of the subcommand, where git reads it, so `argv[0]` here is `-c` and
-    `subcommand_of` is what names the read.
+    `-z` is here for the same reason: it is the one form in which git neither
+    quotes a path nor ends it at anything a path can hold. Without it git quotes
+    a path outside ASCII, so a committed `src/anesthesia_sim/core/café.py` came
+    back as `"src/anesthesia_sim/core/caf\\303\\251.py"`, quotes included, and
+    the protected-path audit passed it as "none touched" (`PL-8HSX`); it quotes
+    a path holding a tab, newline, `"` or `\\` whatever `core.quotePath` says; and
+    the readers then split the listing four ways - on whitespace, which broke
+    `src/a b.py` in two (`PL-NK1L`), with `str.splitlines`, which also breaks at
+    U+2028, U+2029 and U+0085 (`PL-PQ0R`), on `\\n`, and on NUL. Measured on git
+    2.43.0, 2026-09-26: under `-z`, `diff` and `show` end each path of a
+    `--name-only` listing with NUL and write it byte for byte, `--raw` and
+    `--numstat` end each field that way, and `log` ends its format line with NUL
+    and opens each commit's paths with one `\\n`. So every reader parses NUL
+    fields, `listed_paths` for a `--name-only` listing, and the
+    `core.quotePath=false` this used to set, which `-z` makes moot, is gone
+    (`PL-PVW2`, step 3).
 
     A read asking which file is new (`--diff-filter=A`) or where a file came from
     (`-M`, `--follow`) does not come here, because there the pairing is the
     answer: a retitled item is not a new filing.
     """
-    return ["-c", "core.quotePath=false", subcommand, "--no-renames", *args]
+    return [subcommand, "--no-renames", "-z", *args]
+
+
+def untracked_path_args() -> list[str]:
+    """The argv for the files git does not track and does not ignore, as written.
+
+    The third half of what a working tree changed, beside the committed and the
+    uncommitted diff. `ls-files` quotes a path outside ASCII without `-z` too, so
+    read bare it named an untracked `new é.py` as `"new \\303\\251.py"` while the
+    diff halves beside it printed the name as written (`PL-Y2L6`). `-z` makes it
+    a listing `listed_paths` reads like theirs.
+    """
+    return ["ls-files", "-z", "--others", "--exclude-standard"]
+
+
+def listed_paths(listing: str) -> tuple[str, ...]:
+    """Each path a `-z` path listing names, exactly as written, in git's order.
+
+    The one parse of what `changed_path_args` and `untracked_path_args` ask for
+    under `--name-only`: git ends each path with NUL and writes nothing else, so
+    the fields between are the paths and an empty field is the end. A silence
+    reads as no path, as it always has; a caller that must tell the two apart
+    asks `answered` of the listing first.
+    """
+    return tuple(path for path in listing.split("\0") if path)
 
 
 def _asks_for_a_blob(args: list[str]) -> bool:
@@ -378,8 +408,10 @@ def subcommand_of(argv: Sequence[str]) -> str:
     subcommand. `claims.work_under_record` asked `-c core.quotePath=false log`
     first, and read as the subcommand `core.quotePath=false` it was counted
     under that name and, being no read this module knows, emptied the memo
-    (`PL-N162`). Every read `changed_path_args` builds now asks that way, which
-    is why `verify` names a read that failed by this rather than by `argv[0]`.
+    (`PL-N162`). Every read `changed_path_args` built asked that way until
+    `-z` made the setting moot (`PL-PVW2`), which is why `verify` and
+    `tools/doc_check.py` name a read that failed by this rather than by
+    `argv[0]`: an argv with an option in front still names its read.
     """
     words = iter(argv)
     for token in words:
@@ -1027,18 +1059,19 @@ def _landing_split(
     """
     landed: list[str] = []
     outstanding: list[str] = []
-    for line in run(
-        changed_path_args("diff", "--raw", "--no-abbrev", fork_point, ref, "--"), root
-    ).splitlines():
-        # `:<src mode> <dst mode> <src blob> <dst blob> <status>\t<path>`. The
-        # fields end at the first tab, and everything after it is the path -
-        # which can itself contain a tab, so it is taken whole rather than
-        # split. git quotes a path it cannot print literally, and such a path
-        # is reported the way git wrote it.
-        head, _, path = line.partition("\t")
-        fields = head.split()
-        if len(fields) == 5 and set(fields[3]) != {"0"}:
-            (landed if fields[3] in base_blobs else outstanding).append(path or fields[3])
+    # `:<src mode> <dst mode> <src blob> <dst blob> <status>` and then the path,
+    # each ended by NUL under `-z`, so the path is its own field and is the path
+    # as written, whatever it holds.
+    fields = iter(
+        run(changed_path_args("diff", "--raw", "--no-abbrev", fork_point, ref, "--"), root).split(
+            "\0"
+        )
+    )
+    for head in fields:
+        path = next(fields, "")
+        blobs = head.split()
+        if len(blobs) == 5 and set(blobs[3]) != {"0"}:
+            (landed if blobs[3] in base_blobs else outstanding).append(path or blobs[3])
     return tuple(landed), tuple(outstanding)
 
 
@@ -1173,12 +1206,14 @@ def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Ru
             # produce, and only `answered` separates them.
             continue
         differing: dict[str, tuple[str, str]] = {}
-        for line in output.splitlines():
-            fields = line.split("\t", 2)
+        # `<added>\t<deleted>\t<path>`, each record ended by NUL under `-z`, so
+        # the path is everything after the second tab, as written.
+        for record in output.split("\0"):
+            fields = record.split("\t", 2)
             if len(fields) != 3:
                 continue
             added, deleted, path = fields
-            differing[path.strip()] = (added.strip(), deleted.strip())
+            differing[path] = (added.strip(), deleted.strip())
         # Read within the chunk that asked, never against the union: "absent
         # means the tips agree" is sound only about paths this call named.
         for path in chunk:
@@ -1272,7 +1307,7 @@ def change_landed(
     """
     run = runner or _run_git
     changed = run(changed_path_args("diff", "--name-only", f"{commit}^", commit, "--"), root)
-    paths = tuple(line.strip() for line in changed.splitlines() if line.strip())
+    paths = listed_paths(changed)
     if not paths:
         return None
     fork = run(["merge-base", base, commit], root).strip()
@@ -1518,13 +1553,11 @@ def files_in_flight(
             continue
         paths = tuple(
             sorted(
-                {
-                    line.strip()
-                    for line in run(
-                        changed_path_args("diff", "--name-only", f"{base}...{name}"), root
-                    ).splitlines()
-                    if line.strip()
-                }
+                set(
+                    listed_paths(
+                        run(changed_path_args("diff", "--name-only", f"{base}...{name}"), root)
+                    )
+                )
             )
         )
         # An empty diff is either a branch whose commits cancel out or a git
@@ -2414,7 +2447,7 @@ def base_copies(
     """
     run = _Silences(runner or _run_git)
     listing = run(changed_path_args("diff", "--name-only", f"HEAD...{base}", "--", items_dir), root)
-    moved = _item_ids(listing)
+    moved = _item_ids(listed_paths(listing))
     if keys is not None:
         moved &= {key.upper() for key in keys}
     if not moved:
@@ -2430,13 +2463,11 @@ def base_copies(
     return BaseCopies(base=base, copies=copies, declined=run.reason)
 
 
-def _item_ids(listing: str) -> set[str]:
-    """The item ids a `--name-only` listing names, by the store's file names."""
+def _item_ids(paths: Iterable[str]) -> set[str]:
+    """The item ids a listing's paths name, by the store's file names."""
     found: set[str] = set()
-    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
-    for line in listing.split("\n"):
-        path = line.strip()
-        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1]) if path else None
+    for path in paths:
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
         if match is not None:
             found.add(match.group(1).upper())
     return found
@@ -2565,7 +2596,6 @@ def since_filed(
                 "--no-merges",
                 f"--since={filed.isoformat()} 00:00:00 +0000",
                 "--format=%x1f%H",
-                "-z",
                 "--name-status",
                 "HEAD",
                 "--",
@@ -2907,13 +2937,15 @@ def _cut_versions(
         sorted(
             {
                 version
-                for line in run(
-                    changed_path_args(
-                        "diff", "--name-only", f"{base}...{ref}", "--", f"{notes_dir}/"
-                    ),
-                    root,
-                ).splitlines()
-                if (leaf := line.strip().rsplit("/", 1)[-1])
+                for path in listed_paths(
+                    run(
+                        changed_path_args(
+                            "diff", "--name-only", f"{base}...{ref}", "--", f"{notes_dir}/"
+                        ),
+                        root,
+                    )
+                )
+                if (leaf := path.rsplit("/", 1)[-1])
                 and leaf not in on_base
                 and (version := leaf.removesuffix(".md").lstrip("v"))
             }
@@ -3352,7 +3384,9 @@ def filed_with_work(
         if entry is None or item_id not in leading_ids(entry[1]):
             continue
         commit, subject = entry
-        changed = run(changed_path_args("show", "--format=", "--name-only", commit), root).split()
+        changed = listed_paths(
+            run(changed_path_args("show", "--format=", "--name-only", commit), root)
+        )
         outside = tuple(path for path in changed if not path.startswith(prefix))
         if outside:
             found[item_id] = FilingCommit(
@@ -3821,11 +3855,10 @@ def _changed_items(root: Path, base: str, items_dir: str, run: Runner) -> set[st
     """
     changed: set[str] = set()
     for revision in (f"{base}...HEAD", "HEAD"):
-        for line in run(
-            changed_path_args("diff", "--name-only", revision, "--", items_dir), root
-        ).splitlines():
-            path = line.strip()
-            match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1]) if path else None
+        for path in listed_paths(
+            run(changed_path_args("diff", "--name-only", revision, "--", items_dir), root)
+        ):
+            match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
             if match is not None:
                 changed.add(match.group(1))
     return changed
@@ -4064,10 +4097,9 @@ def closed_by(
     listing = run(
         changed_path_args("diff", "--name-only", f"{revision}^", revision, "--", items_dir), root
     )
-    for line in listing.splitlines():
-        path = line.strip()
+    for path in listed_paths(listing):
         name = path.rsplit("/", 1)[-1]
-        match = ITEM_FILE_RE.match(name) if path else None
+        match = ITEM_FILE_RE.match(name)
         if match is not None and _done_at(revision, path, name, root, run):
             touched[match.group(1)] = path
     if not touched:
@@ -4911,13 +4943,9 @@ def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> Ref
             unread.append(name)
             continue
         ahead = run(["rev-list", "--count", f"{fork}..{name}"], root).strip()
-        touched = [
-            line
-            for line in run(
-                changed_path_args("diff", "--name-only", fork, name, "--", prefix), root
-            ).splitlines()
-            if line.strip()
-        ]
+        touched = listed_paths(
+            run(changed_path_args("diff", "--name-only", fork, name, "--", prefix), root)
+        )
         walked.append((name, int(ahead) if ahead.isdigit() else 0, len(touched)))
         distinct.update(touched)
     return RefWalk(
@@ -4995,7 +5023,7 @@ def working_paths(root: Path, *, runner: Runner | None = None) -> WorkingPaths:
     for args in (
         changed_path_args("diff", "--name-only", f"{base}...HEAD"),
         changed_path_args("diff", "--name-only", "HEAD"),
-        ["ls-files", "--others", "--exclude-standard"],
+        untracked_path_args(),
     ):
-        found.update(line.strip() for line in run(args, root).splitlines() if line.strip())
+        found.update(listed_paths(run(args, root)))
     return WorkingPaths(paths=tuple(sorted(found)), base=base, declined=run.reason)

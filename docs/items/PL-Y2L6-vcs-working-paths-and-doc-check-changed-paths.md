@@ -3,12 +3,14 @@ id: PL-Y2L6
 title: vcs.working_paths and doc_check._changed_paths read untracked files with ls-files, which still quotes a non-ASCII path, while their diff reads through changed_path_args now print it as written, so each reader names one file two ways
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/vcs.py, tools/doc_check.py, subprojects/docket/tests/test_vcs.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-26 with the path-listing step of PL-PVW2
 added: 2026-09-25
+closed: 2026-09-26
+pr: 1078
 payoff: an untracked non-ASCII file is found by bin/docket new's near-duplicate search and by the close-out sweep instead of being missed
 verify: grep -q 'def test_working_paths_names_an_untracked_non_ascii_file_as_written' subprojects/docket/tests/test_vcs.py && grep -q 'def test_changed_paths_names_an_untracked_non_ascii_file_as_written' tests/unit/test_doc_check.py
 ---

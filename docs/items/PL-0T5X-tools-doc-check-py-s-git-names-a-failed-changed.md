@@ -3,12 +3,14 @@ id: PL-0T5X
 title: tools/doc_check.py's _git names a failed changed-path read as git -c, since changed_path_args now opens every read with -c core.quotePath=false, and a changed path that is not UTF-8 raises UnicodeDecodeError out of it instead of GitUnanswered
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-26 with the path-listing step of PL-PVW2
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1078
 payoff: a close-out sweep that cannot read git names the command that failed and says so, instead of naming git -c or ending make check in a traceback
 verify: grep -q 'def test_git_names_a_failed_read_by_its_subcommand' tests/unit/test_doc_check.py && grep -q 'def test_git_answers_an_undecodable_path_as_unanswered' tests/unit/test_doc_check.py
 ---

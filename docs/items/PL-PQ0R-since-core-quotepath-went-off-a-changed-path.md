@@ -3,11 +3,13 @@ id: PL-PQ0R
 title: Since core.quotePath went off, a changed-path read that splits git's listing with splitlines reads a path holding U+2028, U+2029 or U+0085 as two paths
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/verify.py, tools/doc_check.py, subprojects/docket/tests
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-26 with the path-listing step of PL-PVW2
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1078
 payoff: every changed-path read reports the paths a change touched whatever characters they hold, so arm, change_landed and the protected-path audit decide on paths that exist
 verify: grep -q 'def test_a_path_listing_is_read_one_way' subprojects/docket/tests/test_vcs.py
 ---
