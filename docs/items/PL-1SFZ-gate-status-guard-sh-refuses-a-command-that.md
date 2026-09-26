@@ -3,12 +3,14 @@ id: PL-1SFZ
 title: gate-status-guard.sh refuses a command that keeps pytest's status - set -o pipefail inside a { ...; } group followed by echo "exit=$?" - while a near-identical group passes, so a correct spelling costs a retry and teaches that the refusal can be wrong
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: gate-status-guard
-touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py
+touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py, docs/items/PL-PVW2-predicates-the-apparatus-asks-repeatedly-which.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass
 added: 2026-09-23
+closed: 2026-09-26
+pr: 1082
 payoff: a pipefail command spelt correctly inside a group runs first time, and the guard's refusals stay ones a session obeys rather than learns to doubt
 verify: grep -q 'def test_pipefail_set_inside_a_group_keeps_the_status' tests/unit/test_gate_status_guard.py
 recurrences: 2026-09-26 PL-R5RF
