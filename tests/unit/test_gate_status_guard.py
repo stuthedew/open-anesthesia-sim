@@ -647,6 +647,102 @@ def test_the_refusal_names_the_gate_it_caught() -> None:
     )
 
 
+# Why each spelling below is outside the promise the hook's header opens with,
+# naming what found it.
+NEGATED = (
+    "a `!` ahead of a gate turns its answer over, is written nowhere here, and no session "
+    "is known to have written one: `PL-W9XN`, found working `PL-KQ4Q`"
+)
+UV_OPTIONS = (
+    "`uv run` with options of its own is written nowhere here and met by no session: "
+    "`PL-QMN0`, found triaging `PL-TRMN`. Its fix, which carries uv 0.12.19's option "
+    "grammar, is `59ea9d1c`, the head of `#1127` on `claude/project-thread-qt3onr`, ready "
+    "to rebase if the spelling is met"
+)
+NOT_RESERVED = (
+    "`time` or `!` after an assignment or a redirection, ahead of a `set`, is written "
+    "nowhere here and met by no session: `PL-DCHW`, found closing `PL-9RSP`"
+)
+AS_A_MODULE = (
+    "a listed gate run as `python -m` is written nowhere here and met by no session: "
+    "`PL-7PB9`, found working `PL-QMN0` on `claude/project-thread-qt3onr`"
+)
+DOCKET_OPTIONS = (
+    "`bin/docket` with its own options ahead of the subcommand is a line argparse admits "
+    "and nobody writes: `PL-BM3Z`, found working `PL-QMN0` on `claude/project-thread-qt3onr`"
+)
+UNMATCHED = (
+    "a gate built out of a variable, or run by a wrapper `shell_split.WRAPPERS` does not "
+    "name, is written nowhere here, and was left unmatched on purpose by `PL-TRMN`"
+)
+LOSES = "exits 0 when the gate fails, with the status of the `tail` it is piped to"
+
+# Spellings outside the promise, each read wrongly today (`PL-61FT`): the
+# command, whether it is refused today, what bash does with it, and why it is
+# outside. A session probing the guard records what it finds here rather than
+# filing it, and a row becomes an item only once a session is seen writing it.
+# Each exit is bash 5.2.21's with the gate a stub exiting 3.
+KNOWN_GAPS = (
+    ("! make check", False, "exits 0 when the gate fails, since `!` inverts it", NEGATED),
+    ("! make check && echo ok", False, "exits 0 when the gate fails, and runs the `echo`", NEGATED),
+    ("! make check || exit 1", False, "exits 0 when the gate fails, and skips the `exit`", NEGATED),
+    ("uv run --with pytest-xdist pytest -n 4 2>&1 | tail", False, LOSES, UV_OPTIONS),
+    ("uv run --frozen mypy | tail", False, LOSES, UV_OPTIONS),
+    ("uv run -m pytest | tail", False, LOSES, UV_OPTIONS),
+    ("uv -q run pytest -q 2>&1 | tail", False, LOSES, UV_OPTIONS),
+    (
+        "FOO=1 time set -o pipefail; make check 2>&1 | tail -5",
+        False,
+        "exits 0 when the gate fails: after an assignment `time` names a program, which is "
+        "not found, so no `set` runs",
+        NOT_RESERVED,
+    ),
+    (
+        "2>/dev/null time set -o pipefail; make check 2>&1 | tail -5",
+        False,
+        "exits 0 when the gate fails: after a redirection `time` names a program, which is "
+        "not found, so no `set` runs",
+        NOT_RESERVED,
+    ),
+    (
+        "FOO=1 ! set -o pipefail; make check 2>&1 | tail -5",
+        False,
+        "exits 0 when the gate fails: after an assignment `!` names a command, which is not "
+        "found, so no `set` runs",
+        NOT_RESERVED,
+    ),
+    ("python3 -m pytest -q 2>&1 | tail", False, LOSES, AS_A_MODULE),
+    ("python3 -m mypy | tail", False, LOSES, AS_A_MODULE),
+    ("python -m ruff check . | tail", False, LOSES, AS_A_MODULE),
+    ("uv run python -m mypy | tail", False, LOSES, AS_A_MODULE),
+    ("bin/docket --no-fetch check 2>&1 | tail -3", False, LOSES, DOCKET_OPTIONS),
+    ("bin/docket --no-fetch verify PL-QMN0 | tail", False, LOSES, DOCKET_OPTIONS),
+    ("bin/docket --items docs/items check | tail", False, LOSES, DOCKET_OPTIONS),
+    ('gate="make check"; $gate | tail', False, LOSES, UNMATCHED),
+    ("stdbuf -oL make check | tail", False, LOSES, UNMATCHED),
+)
+
+
+@pytest.mark.parametrize(("command", "refused", "effect", "outside"), KNOWN_GAPS)
+def test_a_known_gap_keeps_todays_verdict(
+    command: str, refused: bool, effect: str, outside: str
+) -> None:
+    """A spelling outside the promise gets the verdict it was recorded with (`PL-61FT`).
+
+    What is pinned is the record, not the behaviour - and not as `xfail`, which
+    `bin/docket verify --self` counts as a suppressed test. A change that closes
+    a gap, meant or not, fails here: the row then moves into the tables above,
+    and the promise in the hook's header is widened to hold it.
+    """
+    assert "PL-" in outside, f"{command!r}: name the item or branch that found it"
+    decision = _decision(command)
+    assert (decision is not None) is refused, (
+        f"{command!r} is a known gap recorded as {'refused' if refused else 'admitted'} "
+        f"({outside}), and it no longer is. Run, it {effect}. Move the row into the tables "
+        "above, and widen the promise in the hook's header to hold it."
+    )
+
+
 MALFORMED = ("", "make check 2>&1 | tail -45 'unbalanced", "   ", "|||")
 
 

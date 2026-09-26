@@ -45,6 +45,11 @@ at triage, 2026-09-26: all four refused.
 `git submodule foreach git fetch --prune` stays refused is the fix's to settle
 and record.
 
+**Since `PL-M2NV` (2026-09-26)** a second `config` shape sits in
+`PUSH_SHAPES`, reading `remote.<name>.mirror` as the first reads a prune
+setting, so `git config --get remote.origin.mirror` is refused for the same
+first cause, and the fix to that cause is owed on both.
+
 **Generator check.** A member of `PL-61FT` (the Bash guards read what a
 command does from its spelling): filed by `PL-R17X`'s close, whose `pull`
 shape brought the `git log --grep pull -p` refusal. Owed under any bound
