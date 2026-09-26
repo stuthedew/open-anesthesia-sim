@@ -3,12 +3,14 @@ id: PL-9MK6
 title: Cut v0.5.13 from the 18 items finished since v0.5.12
 priority: P2
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 resource: release-train
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1141
 payoff: the 18 items finished since v0.5.12 ship under their own number and stop being re-offered in every session digest, and v0.5.12's notes point at the two pull requests its tag holds but this release describes
 verify: grep -q "^version = \"0.5.13\"" pyproject.toml
 ---
