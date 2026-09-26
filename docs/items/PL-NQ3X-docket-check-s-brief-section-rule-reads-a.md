@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1089
 payoff: a brief can quote the capture template in a fenced example without docket check refusing the real sections beneath it
 verify: grep -q 'def test_a_fenced_copy_of_the_capture_template_is_not_the_brief' subprojects/docket/tests/test_checks.py
 ---

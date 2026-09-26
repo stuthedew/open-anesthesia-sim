@@ -10,6 +10,7 @@ touches: tools/dead_ends.py, tools/possessive_section_check.py, subprojects/dock
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1089
 payoff: a needs-decision brief that says it lacks a recommendation stops counting as one that marks it, and the other three misreads end fixed or recorded as the rule working
 verify: grep -q 'def test_lacks_a_recommendation_does_not_mark_one' subprojects/docket/tests/test_checks.py
 not-delegable: four independent parts, each closing by a fix with a test or by a recorded drop, and two look like drops; the command proves part (b) alone, the one certain to need a test, so a session closes the other three by reading them
