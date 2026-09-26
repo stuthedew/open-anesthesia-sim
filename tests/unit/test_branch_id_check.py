@@ -414,6 +414,25 @@ def test_a_triage_pass_writing_the_gate_owes_no_claim(
     assert _run(monkeypatch) == 0
 
 
+def test_a_body_record_owes_no_claim_and_the_refusal_names_the_records(
+    record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Every pull request records its body before its merge, since `pr-title`
+    # fails without it (`PL-979D`), so a capture's pull request carries one as
+    # surely as its item. Read as work, it refused every claimless capture,
+    # triage pass and design round once recorded (`PL-F6MM`).
+    _branch(record, "claude/some-session-a1b2c3")
+    _commit(record, "PL-BBBB: capture a finding", "10:00", files={"docs/items/PL-BBBB-x.md": ""})
+    _commit(record, "PL-BBBB: record the body", "10:30", files={"docs/pr-bodies/1066.md": "pr\n"})
+
+    assert _run(monkeypatch) == 0
+
+    _commit(record, "PL-BBBB: the work", "11:00", files=WORK)
+
+    assert _run(monkeypatch) == 1
+    assert "docs/pr-bodies/" in capsys.readouterr().err
+
+
 def test_a_branch_named_for_its_item_owes_no_claim(
     record: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

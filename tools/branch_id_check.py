@@ -72,9 +72,9 @@ reader of it - so this asks that reader rather than parsing a trailer itself,
 for the reason the ids above come from `docket`'s own parsers.
 
 - *A work branch that claims nothing is refused.* Work is a non-merge commit
-  changing a path outside the queue - the items, the roadmap and the working
-  notes, the records a queue workflow writes. The question is per branch,
-  never per id: a
+  changing a path outside the queue - the items, the roadmap, the working notes
+  and the pull requests' body records, the records a queue workflow writes
+  (`claims.queue_records`). The question is per branch, never per id: a
   capture or a triage pass, whose ids lead its subjects, is never pushed into
   claiming them (`PL-3CTW`). A claim counts in any state. A branch releases
   its claim by closing its item in its own copy, so "no live claim" would
@@ -123,6 +123,7 @@ from docket.claims import (  # noqa: E402
     claims_nothing,
     holdings,
     in_queue,
+    queue_records,
 )
 from docket.config import Config  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
@@ -291,11 +292,7 @@ def _behind(hold: Hold, first: Hold, name: str, remotes: frozenset[str]) -> str:
 
 
 def _queue_named(config: Config) -> str:
-    return ", ".join(
-        name
-        for name in (config.items_dir.strip("/") + "/", config.roadmap_file, config.notes_file)
-        if name
-    )
+    return ", ".join(queue_records(config))
 
 
 def _claims_nothing(name: str, config: Config) -> str:
