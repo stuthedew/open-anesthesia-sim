@@ -374,34 +374,40 @@ ASSERTION_RE = re.compile(r"^(?P<key>[A-Za-z_][\w.]*)\s*=\s*(?P<value>[-+]?\d+(?
 BRACE_RE = re.compile(r"\{([^{}]*)\}")
 
 # A quoted phrase is a section citation when the section mark says it is: `§
-# "X"` after `see` or `under`, or immediately before `above` or `below`. The
-# mark is the recognition, and it is exact. The words around a quotation are
-# not: read without the mark, these two positions took every quotation in them
-# for a citation, so prose quoting what a command printed - `See "docket check:
-# 0 errors" for what a clean run prints` - hard-failed as a section no document
-# has (`PL-YSMV`), as a quoted measurement had before it (`PL-KJ63`), and the
-# only repair on offer was to reword prose that was not wrong. `CLAUDE.md`
-# keeps hard failure for exact rules, and `PL-GPJ7` is the family this is one
-# member of.
+# "X"`, wherever it stands. The mark is the recognition, and it is exact. The
+# words around a quotation are not: read without the mark, the `see` and
+# `above` positions took every quotation in them for a citation, so prose
+# quoting what a command printed - `See "docket check: 0 errors" for what a
+# clean run prints` - hard-failed as a section no document has (`PL-YSMV`), as
+# a quoted measurement had before it (`PL-KJ63`), and the only repair on offer
+# was to reword prose that was not wrong. `CLAUDE.md` keeps hard failure for
+# exact rules, and `PL-GPJ7` is the family this is one member of.
+#
+# Wherever it stands, and not only beside `see`, `under`, `above` or `below`:
+# those four positions held 163 of the documents' 471 marks on 2026-09-26, and
+# the 308 elsewhere - `per § "X"`, `in § "X"`, a mark opening a sentence - were
+# read by nothing, which is how two of them stayed stale for a fortnight
+# (`PL-QQCD`). A mark that a code-spanned source stands directly before is not
+# this pattern's to resolve: `` `docs/MODEL.md` § "X" `` names its document and
+# `QUOTED_SOURCE_RE` holds it by containment, and `` `PL-MB2W` § "X" `` names
+# an item brief, which no documentation heading answers.
+#
+# The mark names a section of this repository's own documents, and nothing
+# else. A section of an outside source - a paper's "Materials and Methods", a
+# manual's page - is written without it, as the source's own locator: no
+# heading here can answer such a mark, and reading the words before it to tell
+# a paper from a document would be the wording recognition this file refuses.
+# Five such marks stood in the documents on 2026-09-26 and were rewritten
+# under `PL-GPJ7`.
 #
 # The quotation may span a source line. Prose here hard-wraps at about 78
 # characters, so a section title long enough to wrap was unmatchable while
-# both branches quoted as `[^"\n]+` - and unmatchable means unchecked, not
-# reported: `check_citations` passed over 18 citations in the documents it
-# already reads without examining one of them. The bound replaces the newline
-# as the thing that stops a runaway match, and `_normalized` puts the term
-# back on one line before it is compared.
-#
-# These two positions, and not yet every bare `§ "X"`: five bare marks in the
-# documents on 2026-09-26 cite a section of an outside source - a paper's
-# "Materials and Methods", a manual's chapter - which no heading here can
-# resolve, so reading the mark wherever it stands first needs a rule for how
-# those are written. That rule is `PL-GPJ7`'s to settle.
-CITATION_RE = re.compile(
-    r'(?:\b(?:see|under)[ \n]+§{1,2}[ \n]*"(?P<named>[^"]{1,160}?)")'
-    r'|(?:§{1,2}[ \n]*"(?P<directed>[^"]{1,160}?)"[ \n]+(?:above|below)\b)',
-    re.IGNORECASE | re.DOTALL,
-)
+# the quotation was `[^"\n]+` - and unmatchable means unchecked, not reported:
+# `check_citations` passed over 18 citations in the documents it already reads
+# without examining one of them. The bound replaces the newline as the thing
+# that stops a runaway match, and `_normalized` puts the term back on one line
+# before it is compared.
+CITATION_RE = re.compile(r'§{1,2}[ \n]*"(?P<term>[^"]{1,160}?)"', re.DOTALL)
 # The same two positions without the mark, which is how 147 of the documents'
 # citations were written until `PL-YSMV` marked them. Read only to say that one
 # lacks its mark, and only where its quotation names a heading: that is a fact
@@ -556,6 +562,13 @@ MAKE_MENTION_RE = re.compile(r"\bmake\s+(?P<name>[a-z][\w.-]*)")
 # as the literal text `(t)`. `docs/MODEL.md` carried 97 of them, its entire
 # symbol table among them, and seven queue items had copied the form out of it
 # (`PL-TH9V`).
+#
+# `\[...\]` reads the same whether it means display math or a literal bracket
+# pair, and it stays a hard error either way (`PL-GPJ7`, decided 2026-09-26):
+# the recognition is by these characters, which is exact; prose never needs
+# the escape, since `[WIP]` renders as written where no link definition claims
+# it and a code span carries any bracket; and a formula rendering as literal
+# text in `docs/MODEL.md` is the failure an advisory would leave unread.
 TEX_DELIMITER_RE = re.compile(r"\\[()\[\]]")
 
 # A well-formed inline expression, `$`...`$`, allowing the longer backtick runs
@@ -3608,7 +3621,11 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
         spans = [(span.start(), span.end()) for span in CODE_SPAN_RE.finditer(prose)]
 
         for match in CITATION_RE.finditer(prose):
-            if _inside(match.start(), spans):
+            # A code-spanned source directly before the mark says where the
+            # section lives: a document, which `check_quoted_sources` holds by
+            # containment, or an item brief, which no heading here answers.
+            before = prose[max(0, match.start() - 200) : match.start()]
+            if _inside(match.start(), spans) or QUALIFIED_RE.search(before):
                 continue
             term, same_file = _cited_section(prose, match)
             line = _line_of(prose, match.start())
@@ -3620,7 +3637,9 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                     )
             elif not _cites_heading(term, every_heading):
                 report.errors.append(
-                    f'{path}:{line}: cites section "{term}", which no documentation file has'
+                    f'{path}:{line}: cites section "{term}", which no documentation file has '
+                    "(§ names a section of these documents; write an outside source's "
+                    "section without the mark)"
                 )
 
         for match in UNMARKED_CITATION_RE.finditer(prose):
@@ -3648,10 +3667,12 @@ def _cited_section(text: str, match: re.Match[str]) -> tuple[str, bool]:
     """The section a citation names, and whether it names one in its own file.
 
     `above` and `below` point into the citing file, so a heading elsewhere does
-    not answer them; a bare `see` may send the reader anywhere the documents go.
+    not answer them; any other mark may send the reader anywhere the documents
+    go. The term is whichever group matched: `CITATION_RE` has one, and
+    `UNMARKED_CITATION_RE` names its directed position by group.
     """
-    term = _normalized(match.group("named") or match.group("directed"))
-    same_file = match.group("directed") is not None or bool(
+    term = _normalized(match.group(match.lastgroup or 0))
+    same_file = match.lastgroup == "directed" or bool(
         DIRECTION_RE.match(text[match.end() : match.end() + 24])
     )
     return term, same_file

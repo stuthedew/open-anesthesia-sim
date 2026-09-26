@@ -3,12 +3,14 @@ id: PL-QQCD
 title: Two bare section citations are stale today and nothing checks a bare citation: ROADMAP.md cites a Current baseline v0.4.26 heading that is now v0.5.10, and docs/MODEL.md cites Published wash-in validation test, now Published wash-in and elimination validation test
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: exact-gates
 touches: ROADMAP.md, docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
+closed: 2026-09-26
+pr: 1083
 payoff: a reader following a section citation in the roadmap or the model specification lands on the section it names instead of nowhere
 verify: ! grep -qF 'Current baseline: v0.4.26' ROADMAP.md && ! grep -qF 'wash-in validation test' docs/MODEL.md
 ---
@@ -28,3 +30,5 @@ Both MODEL.md references were written on 2026-09-07 (#421, #423), before `PL-B9V
 **Done when.** All three references name headings that exist - the two citations and the quote-only reference under **What bounds it is what this model omits.**; the check that makes bare `§` citations checked is the `exact-gates` head's work, not this item's.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+**Closed 2026-09-26, in `PL-GPJ7`'s first build.** The two `docs/MODEL.md` references now name "Published wash-in and elimination validation test", the quote-only one under **What bounds it is what this model omits.** marked as a citation with its neighbour "Known limitations". The `ROADMAP.md` citation points at the v0.4.26 row of the version table under "Versioning decision", which is where the id and the reasoning it named now live: the baseline subsection it cited exists only in the v0.4.26 tag's copy of the roadmap, since every cut rewrites that section. The same change reads a bare `§` citation wherever it stands, so all three would fail `make check` today were they still stale.

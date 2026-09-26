@@ -2331,8 +2331,9 @@ way. The 5-minute $`F_A/F_{A0}`$ elimination ratios move **0.11 to 0.13
 published SD further from** their cohort means — sevoflurane +3.67 to +3.79,
 isoflurane +4.02 to +4.15, desflurane +1.02 to +1.13 — because a larger pool
 returns more agent to the lungs. That is the same direction § "Published
-wash-in validation test" already attributes to this model's rebreathing circuit
-rather than to tissue return, and it is a tenth of the gap it adds to. The nine
+wash-in and elimination validation test" already attributes to this model's
+rebreathing circuit rather than to tissue return, and it is a tenth of the gap
+it adds to. The nine
 oracle reference states were re-derived and re-pinned in the same change.
 
 **It also answers the arterial question, against the arterial reading.** The
@@ -3548,9 +3549,10 @@ below giving what it proposed and what killed it.
 
 **The sixth row measured circuit-style rebreathing at an assumed ratio, and
 the apparatus turns out not to be that shape at all.** Yasuda 1991
-*Anesthesiology* § "Materials and Methods" puts about 50 ml of corrugated
-Teflon between the tracheal sampling port and the nonrebreathing valve, stated
-there to protect the end-tidal sample from contamination with inspired gas.
+*Anesthesiology*, in its "Materials and Methods", puts about 50 ml of
+corrugated Teflon between the tracheal sampling port and the nonrebreathing
+valve, stated there to protect the end-tidal sample from contamination with
+inspired gas.
 That volume holds alveolar gas at end-expiration and fresh gas at
 end-inspiration, which makes it a **series dead space** rather than a mixing
 volume returning a fraction of every breath — and in a model with one
@@ -3674,9 +3676,10 @@ residuals have, which is what made it attractive.
 *What the methods sections settled, and it was in its favour.* The fifth table
 row rules out the **flow-weighted** alveolar reading, so the hypothesis rested
 entirely on the published $`F_A`$ being an end-tidal sample instead. Yasuda
-1991 *Anesthesiology* § "Materials and Methods" sites that port **at the
-tracheal tube**, with the 50 ml of Teflon the seventh row analyses interposed
-to protect it from inspired gas, and samples mixed expired gas **separately**
+1991 *Anesthesiology*, in its "Materials and Methods", sites that port **at
+the tracheal tube**, with the 50 ml of Teflon the seventh row analyses
+interposed to protect it from inspired gas, and samples mixed expired gas
+**separately**
 from the 1-l mixing chamber, reporting it as $`F_M`$. So the reading the fifth
 row excludes is $`F_M`$, not $`F_A`$, and the obstacle was removed.
 
@@ -4201,7 +4204,7 @@ removed and re-added, one a branch reset. The word is "passed" rather than
 "reached" because the two claims come apart the moment a clock moves
 backwards: the reference simulator's bookmark is a pause point that fires on
 the original pass and on every replay alike (Philip JH, *Workbook for Gas
-Man®*, Med Man Simulations, chapter 2 § "Using Bookmarks"), so a rewind — or
+Man®*, Med Man Simulations, chapter 2, "Using Bookmarks"), so a rewind — or
 truncating at a mark and running on — leaves a mark that will stop the learner
 again while any historical claim about it has been revoked. A positional word
 is re-read from the clock every time the row is drawn and survives that; a
@@ -4761,9 +4764,10 @@ lands on 24 hours; and outside it the equations still solve exactly, as
 "What a setting outside the range costs" says of the flows. What stops at the
 boundary is the claim that the solution stands for a patient.
 
-**What bounds it is what this model omits.** Metabolism, first of all. "Known
-limitations" records that this model has none, and "Published wash-in
-validation test" already draws the consequence: it compares against five
+**What bounds it is what this model omits.** Metabolism, first of all.
+§ "Known limitations" records that this model has none, and § "Published
+wash-in and elimination validation test" already draws the consequence: it
+compares against five
 minutes of elimination and explicitly refuses the two Yasuda papers' own
 multi-day curves, because *over days the missing metabolism is no longer
 negligible, and neither is the fat group's flow* — which the same section
@@ -8603,8 +8607,8 @@ stored value, there being none:
 - Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth
   Crit Care Pain* 2011;11:199–203. **Tier 2** under § "Source hierarchy": a
   secondary synthesis, taken here for the shape of the explanation and the
-  worked example and never as the authority for a number. Its § "Altitude"
-  carries both classes side by side. Supplied by the project owner and read in
+  worked example and never as the authority for a number. Its "Altitude"
+  section carries both classes side by side. Supplied by the project owner and read in
   full 2026-09-06. **Owner-attested**: see the note below.
 
 **Two of those five are owner-attested rather than checkable, and this says
