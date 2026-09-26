@@ -9,6 +9,7 @@ touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, tests
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1112
 payoff: a session that sets pipefail through command or builtin - command set -o pipefail; make check 2>&1 | tail -45 - is let through, as bash holds the setting for that pipe, while every spelling that runs no set in this shell is still refused
 verify: grep -q 'def test_pipefail_set_through_command_or_builtin_keeps_the_status' tests/unit/test_gate_status_guard.py
 ---
