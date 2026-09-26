@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: defect
 feature: exact-gates
+milestone: v0.5.12
 touches: tools/doc_check.py, subprojects/docket/src/docket/checks.py, tests/unit/test_doc_check.py, subprojects/docket/tests/test_checks.py, tools/branch_id_check.py, tools/fixture_id_check.py, tests/unit/test_branch_id_check.py, tests/unit/test_fixture_id_check.py, docs/MODEL.md, ROADMAP.md, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md, docs/machine-survey.md, docs/maintainer.md, README.md, docs/interface-provenance.md, docs/resident-instructions.md, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/__main__.py, subprojects/docket/tests/test_portability.py
 added: 2026-09-14
 closed: 2026-09-26

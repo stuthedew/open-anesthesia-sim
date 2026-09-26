@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/vcs.py, tools/pr_body_check.py, tools/pr_title_check.py, tools/left_behind_check.py, tests/unit/test_pr_body_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-answer batch
 added: 2026-09-25

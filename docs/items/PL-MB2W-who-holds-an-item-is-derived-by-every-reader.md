@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: parallel-sessions
+milestone: v0.5.12
 touches: subprojects/docket/README.md, subprojects/docket/src/docket/vcs.py, docs/items, CLAUDE.md
 blocked-by: PL-3FYK, PL-NST2, PL-0TD9, PL-N162, PL-FX5Q, PL-DDYD, PL-331V, PL-J9S0
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged to needs-decision as a generator head by PL-TH9K's session

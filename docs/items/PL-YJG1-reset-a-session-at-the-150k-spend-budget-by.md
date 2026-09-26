@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost, docs
 feature: context-budget-reading
+milestone: v0.5.12
 touches: CLAUDE.md, docs/maintainer.md, docs/resident-instructions.md, .claude/skills/docket/modes/picking.md, tools/context_reading.py, docs/ARCHITECTURE.md, docs/items/PL-H253-measure-session-context-length-as-the-dominant.md
 added: 2026-09-25
 closed: 2026-09-25
