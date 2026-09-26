@@ -2776,11 +2776,10 @@ def cmd_generators(args: argparse.Namespace) -> int:
 
     Every head is printed with the one fact its members misread, and the
     pairs of heads whose member lists overlap follow the list (`PL-5MYR`).
-    Heads were compared with nothing, so one record read by several readers
-    got a head per reader. `--misread` prints only those lines, sorted by the
-    fact so that heads stating one sit together - the list triage and grooming
-    compare a capture against. Whether two lines name one record is judgment;
-    the command makes it one screen, and flags the overlap it can decide.
+    `--misread` prints only those lines, sorted by the fact so that heads
+    stating one sit together - the list triage and grooming compare a capture
+    against. Whether two lines name one record is judgment; the command makes
+    it one screen, and flags the overlap it can decide.
     """
     _, items, config = _load(args)
     if args.head and args.misread:
