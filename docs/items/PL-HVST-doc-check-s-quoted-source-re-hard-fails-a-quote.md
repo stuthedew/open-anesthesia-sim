@@ -3,12 +3,14 @@ id: PL-HVST
 title: doc_check's QUOTED_SOURCE_RE hard-fails a quote set beside a document name by a possessive, colon, comma, parenthesis or no connective, so proposed or since-deleted wording quoted beside CLAUDE.md fails make check; 422 of 465 matches already use the explicit section mark
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: exact-gates
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
+closed: 2026-09-26
+pr: 1086
 payoff: a brief or document can quote wording proposed for, or since deleted from, a named document without make check refusing it as a misquotation
 verify: grep -q 'def test_a_proposal_quoted_beside_a_document_is_not_an_error' tests/unit/test_doc_check.py
 ---
@@ -28,3 +30,5 @@ Re-confirmed 2026-09-25 against 46954a81 in a scratch root: a document quoting a
 **Done when.** Only `§` forms are hard errors; the other connectives are an advisory or not read; a test holds a quoted proposal through a clean run.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+**Built 2026-09-26, as step 2 of `PL-GPJ7`'s split.** The count came first, as asked: both reproduced refusals came through a colon and a comma and neither through the possessive, so the possessive stays hard beside `§` (`CLAIMING_CONNECTIVE_RE`), which is the head's Split rather than the Done-when's `§`-only. After a colon, comma, parenthesis, `under` or nothing, a quotation the file lacks is an advisory rather than an error, still read for drift, since containment cannot tell a proposal from a misquotation; a named document that does not exist takes the same severity. Counted on this tree over the documents, the live briefs and the docstrings: 423 `§` and 15 possessive quotations stay hard, and 28 move - 10 bare, 9 comma, 4 colon, 3 `under`, 2 parenthesis - every one contained today. `test_a_proposal_quoted_beside_a_document_is_not_an_error` holds all five through a clean run. The `under` and parenthesis tests now assert the advisory, which is the commissioned change to what they pinned; the other quoted-source tests keep their assertions, on the `§` form where a comma could no longer fail them.

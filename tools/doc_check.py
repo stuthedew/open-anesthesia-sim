@@ -17,7 +17,9 @@ checked here, and never left to a session to remember:
   has exactly one row in `docs/MODEL.md`'s provenance table, and every row
   names a key that file actually holds, carrying the value the table states.
 - **Citations.** Every repository path and every section heading cited from
-  a documentation file resolves to something that exists.
+  a documentation file resolves to something that exists - or, for a path a
+  sentence names as absent, planned or deleted, is declared under its
+  paragraph as `<!-- absent: path -->`, and is absent.
 - **Line citations.** Every citation that points into a file by line -
   `core/parameters.py:274` - names a line that file still has. Held over the
   authoritative documents and over *open* item briefs; a closed brief records
@@ -367,6 +369,18 @@ NUMBER_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
 # ventilation and an unrelated fresh-gas rate. A check that bound those to a
 # key would be confidently wrong in exactly the places a reader trusts most.
 PROSE_MARKER_RE = re.compile(r"^<!--\s*(?P<kind>provenance|derived):\s*(?P<body>.+?)\s*-->$")
+
+# A path a document names *because* it is not in the tree - one the project
+# lacks (`setup.py`), a tool it plans, a file since deleted - is declared in a
+# marker under the paragraph, the way the markers above declare a restated
+# value: `<!-- absent: setup.py -->`, several paths separated by spaces. The
+# code span is still a path, so the citation check still reads it, and a
+# sentence denying a file exists failed as citing one that does not
+# (`PL-HJ8G`). Telling the denial from the claim by its words - "no", "a
+# future", "was deleted" - is the wording recognition `PL-GPJ7` retires from
+# the hard gates; the marker is syntax, and it is a claim of its own that is
+# checked: a path it names must be absent, and cited in its paragraph.
+ABSENT_MARKER_RE = re.compile(r"^<!--\s*absent:\s*(?P<paths>.+?)\s*-->$")
 DERIVED_FROM_RE = re.compile(r"^(?P<figure>.+?)\s+from\s+(?P<rest>\S+\.json\s.+)$")
 MARKER_SOURCE_RE = re.compile(r"^(?P<relative>\S+\.json)\s+(?P<assertions>.+)$")
 ASSERTION_RE = re.compile(r"^(?P<key>[A-Za-z_][\w.]*)\s*=\s*(?P<value>[-+]?\d+(?:\.\d+)?)$")
@@ -481,10 +495,26 @@ CITATION_CONNECTIVE = r"(?:[,:(]|§{1,2}|['\u2019]s(?:\s+own)?|\bunder\b)"
 
 QUOTED_SOURCE_RE = re.compile(
     r"(?:\b(?:see|under|in)\s+)?"
-    r"`(?P<document>[\w./-]+\.md)`[ \n]*" + CITATION_CONNECTIVE + r"?[ \n]*"
+    r"`(?P<document>[\w./-]+\.md)`[ \n]*(?P<connective>" + CITATION_CONNECTIVE + r")?[ \n]*"
     r'"(?P<quoted>\w[^"]{2,200}?)"',
     re.DOTALL,
 )
+#: The connectives that claim the named document holds the words: the section
+#: mark, and the possessive that attributes them to it. A quotation after
+#: either that the file does not contain is an error. After the rest - a colon,
+#: a comma, a parenthesis, `under`, or nothing - it is an advisory, because
+#: those are equally how a brief sets down wording *proposed* for a document or
+#: since deleted from it, which the file rightly lacks: a brief proposing a
+#: sentence for `CLAUDE.md` after a colon, and one quoting a sentence replaced
+#: since after a comma, are the two false refusals reproduced (`PL-HVST`). No
+#: spelling separates such a quotation from a claim, so under `PL-GPJ7`'s rule
+#: it cannot be a hard failure. Counted 2026-09-26 over the documents, the live
+#: briefs and the docstrings: 423 `§` and 15 possessive quotations stay hard,
+#: and 28 move - 10 bare, 9 comma, 4 colon, 3 `under`, 2 parenthesis - every
+#: one contained in its file that day, so the move lost no finding. The
+#: possessive stays hard because neither refusal came through it, and because
+#: it is how this project quotes a sentence, whose drift is the point.
+CLAIMING_CONNECTIVE_RE = re.compile(r"§{1,2}|['\u2019]s(?:\s+own)?")
 #: A code-spanned source - a document, an item, a module - standing directly
 #: before a citation, which then quotes *that* source. `` `docs/MODEL.md` under
 #: "Known limitations" `` is `QUOTED_SOURCE_RE`'s to hold, by containment, and
@@ -552,6 +582,16 @@ PHONY_RE = re.compile(r"^\.PHONY\s*:(?P<names>.*)$")
 # `make docket`, as the documentation writes it. Read only inside code spans
 # and fenced blocks: prose says "make sure" and means nothing of the kind.
 MAKE_MENTION_RE = re.compile(r"\bmake\s+(?P<name>[a-z][\w.-]*)")
+# A fenced line names a target only where `make` is its first word, which is
+# the shape of a command. Read anywhere on the line, a fence's shell comment
+# (`# make sure the virtualenv exists`) and make's own output (`No rule to make
+# target`) each failed as a target the Makefile lacks, and the only repair was
+# to reword a correct sample (`PL-L8VP`). Counted 2026-09-26: 2 of the 5
+# fenced mentions in the documents open their line; the other 3 name `check`
+# from mid-line - two in the package map's comments, one after `set -o
+# pipefail;` - and 109 code-span mentions of targets, `make check` among them,
+# are still read.
+FENCED_MAKE_RE = re.compile(r"^\s*make\s+(?P<name>[a-z][\w.-]*)")
 
 # Where CI's commands live. A workflow step names repository scripts by path
 # exactly as the documentation does, and nothing was holding it to them.
@@ -592,6 +632,11 @@ BACKTICK_RUN_RE = re.compile(r"(`+)(?:(?!\1).)*\1")
 # and matches only backticks, which is right for the package-map reader but
 # would leave an indented or tilde-fenced sample exposed to the rules below.
 ANY_FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
+
+# A list item's opening line: its marker, a bullet or an ordered number, and
+# the gap to its content, or nothing where the item opens empty. What
+# `_content_column` reads to place an indented code block inside the item.
+LIST_ITEM_RE = re.compile(r"^(?P<marker> *(?:[-*+]|\d{1,9}[.)]))(?:(?P<gap> +)(?=\S)|\s*$)")
 
 WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 
@@ -1178,28 +1223,36 @@ def check_source_tiers(root: Path, report: Report) -> None:
             )
 
 
-def _marked_block(lines: list[str], index: int) -> str:
-    """The run of prose a marker sits under, blank lines between them allowed.
+def _is_marker(text: str) -> bool:
+    """Whether `text` is a marker line: `provenance:`, `derived:` or `absent:`."""
+    stripped = text.strip()
+    return any(rule.match(stripped) for rule in (PROSE_MARKER_RE, ABSENT_MARKER_RE))
 
-    Attaching to what *precedes* the marker rather than what follows it is what
-    lets the marker be added without moving the sentence it is about, and it
-    reads the way a footnote does.
+
+def _marked_span(lines: Sequence[str], index: int) -> tuple[int, int]:
+    """The run of prose a marker sits under, as a half-open range of `lines`.
+
+    Blank lines between them are allowed. Attaching to what *precedes* the
+    marker rather than what follows it is what lets the marker be added without
+    moving the sentence it is about, and it reads the way a footnote does.
     """
-
-    def is_marker(text: str) -> bool:
-        return PROSE_MARKER_RE.match(text.strip()) is not None
-
     # Back over blank lines *and* over sibling markers: one paragraph often
     # restates values from several data files, which is several markers, and
     # stopping at the first would hand every marker but the nearest an empty
     # block to check against - passing silently, which is the one failure this
     # check may not have.
     end = index
-    while end > 0 and (not lines[end - 1].strip() or is_marker(lines[end - 1])):
+    while end > 0 and (not lines[end - 1].strip() or _is_marker(lines[end - 1])):
         end -= 1
     start = end
-    while start > 0 and lines[start - 1].strip() and not is_marker(lines[start - 1]):
+    while start > 0 and lines[start - 1].strip() and not _is_marker(lines[start - 1]):
         start -= 1
+    return start, end
+
+
+def _marked_block(lines: list[str], index: int) -> str:
+    """The run of prose a marker sits under, joined; see `_marked_span`."""
+    start, end = _marked_span(lines, index)
     return "\n".join(lines[start:end])
 
 
@@ -3582,9 +3635,13 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
     every_heading = [heading for titles in headings.values() for heading in titles]
 
     for path, text in documents.items():
+        absent = _absent_paths(root, basenames, path, text, report)
         for match in CODE_SPAN_RE.finditer(text):
             token = match.group(1)
             if not _is_path_citation(token) or _resolves(root, basenames, token):
+                continue
+            line = _line_of(text, match.start())
+            if token in absent.get(line, ()):
                 continue
             # Asked only of a citation that has already failed to resolve, so a
             # run with nothing wrong in it starts no subprocess at all and the
@@ -3593,7 +3650,8 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
             if _covered_by_gitignore(root, token):
                 continue
             report.errors.append(
-                f"{path}:{_line_of(text, match.start())}: cites `{token}`, which does not exist"
+                f"{path}:{line}: cites `{token}`, which does not exist; a sentence naming it as "
+                f"absent, planned or deleted says so under its paragraph: <!-- absent: {token} -->"
             )
 
         for match in LINK_RE.finditer(text):
@@ -3656,6 +3714,45 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                     f'{path}:{_line_of(prose, match.start())}: "{term}" names a section '
                     f'without the mark, so a rename of it would pass unreported; write § "{term}"'
                 )
+
+
+def _absent_paths(
+    root: Path, basenames: frozenset[str], path: Path, text: str, report: Report
+) -> dict[int, set[str]]:
+    """The paths each line may name as absent, by 1-based line, from `absent:` markers.
+
+    Each marker covers the paragraph it sits under, as a `provenance:` marker
+    does, and is held to its own claim: every path it names must be absent -
+    so a planned tool that gets built, or a deleted file that comes back, fails
+    until the sentence and the marker are updated with it - and cited in that
+    paragraph, so a marker left behind by a reworded sentence fails rather than
+    lingering. A path `.gitignore` covers is not held absent, since its
+    presence differs between a working tree and CI. A marker shown in a fence
+    is the format being shown, and is not read.
+    """
+    lines = _without_fences(text).splitlines()
+    declared: dict[int, set[str]] = {}
+    for index, line in enumerate(lines):
+        marker = ABSENT_MARKER_RE.match(line.strip())
+        if marker is None:
+            continue
+        start, end = _marked_span(lines, index)
+        cited = {span.group(1) for span in CODE_SPAN_RE.finditer("\n".join(lines[start:end]))}
+        for token in marker.group("paths").split():
+            if token not in cited:
+                report.errors.append(
+                    f"{path}:{index + 1}: marks `{token}` absent, but the paragraph above does "
+                    "not cite it; the marker is under the wrong paragraph, or the sentence was "
+                    "reworded without it"
+                )
+            elif _resolves(root, basenames, token) and not _covered_by_gitignore(root, token):
+                report.errors.append(
+                    f"{path}:{index + 1}: marks `{token}` absent, but it is in the tree; update "
+                    "the sentence and drop it from the marker"
+                )
+            for number in range(start + 1, end + 1):
+                declared.setdefault(number, set()).add(token)
+    return declared
 
 
 def _inside(offset: int, spans: Sequence[tuple[int, int]]) -> bool:
@@ -3918,6 +4015,12 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     still there either way. An elided quotation is skipped outright: one
     written with an ellipsis cannot be found verbatim, and declining to
     answer beats a false error.
+
+    **Only a claiming connective makes a miss an error** - `§` or the
+    possessive, `CLAIMING_CONNECTIVE_RE`. After any other the same miss is an
+    advisory: the words may be a proposal for the file or a sentence it has
+    since dropped, which it rightly lacks, and a reader can tell that from
+    drift where no spelling can (`PL-HVST`).
     """
     bodies: dict[str, str | None] = {}
 
@@ -3934,10 +4037,18 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                 )
             body = bodies[cited]
             if body is None:
-                report.errors.append(f"{path}:{line}: quotes {cited}, which does not exist")
+                finding = f"{path}:{line}: quotes {cited}, which does not exist"
             elif _comparable(quoted).rstrip(" .,;:") not in body:
-                report.errors.append(
-                    f'{path}:{line}: quotes {cited} as "{quoted}", which is not in that file'
+                finding = f'{path}:{line}: quotes {cited} as "{quoted}", which is not in that file'
+            else:
+                continue
+            if CLAIMING_CONNECTIVE_RE.fullmatch(match.group("connective") or ""):
+                report.errors.append(finding)
+            else:
+                report.advisories.append(
+                    f"{finding} - drift, if it quotes the file; if it quotes wording proposed "
+                    "for it or since removed, nothing to do (only `§` or the possessive claims "
+                    "the file holds the words)"
                 )
 
 
@@ -3975,14 +4086,17 @@ def make_targets(text: str) -> tuple[frozenset[str], frozenset[str]]:
 
 
 def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
-    """Every `make <target>` written as code, with the line it sits on."""
+    """Every `make <target>` written as code, with the line it sits on.
+
+    Anywhere in a code span; in a fence, only as a line's first word.
+    """
     for match in CODE_SPAN_RE.finditer(text):
         for mention in MAKE_MENTION_RE.finditer(match.group(1)):
             yield mention.group("name"), _line_of(text, match.start())
     for start, body in _fenced_blocks(text):
         for offset, line in enumerate(body):
-            for mention in MAKE_MENTION_RE.finditer(line):
-                yield mention.group("name"), start + offset + 1
+            if (command := FENCED_MAKE_RE.match(line)) is not None:
+                yield command.group("name"), start + offset + 1
 
 
 def check_make_targets(root: Path, documents: dict[Path, str], report: Report) -> None:
@@ -4244,20 +4358,63 @@ def _without_code(text: str) -> list[str]:
     Blanking rather than deleting keeps the line numbering true. Well-formed
     math spans are blanked too: they are correct by construction, and what the
     rules look for is the debris a malformed one leaves behind.
+
+    **An indented code block is code too**, by CommonMark's own definition: a
+    run of lines indented four columns past their container, which cannot
+    interrupt a paragraph. A regex shown that way failed as LaTeX GitHub does
+    not render, in a document and in an item alike (`PL-XGYH`). The container
+    is the trap: inside a list item the four columns count from the item's
+    content, so `- item` followed by a line indented four is the item's own
+    prose, and blanking every indented line would hide a real delimiter there.
+    So the open items' content columns are tracked, and a line is blanked only
+    where it clears the innermost one by four and the line above it is not
+    prose it could continue. Where the reading is unsure it keeps an item open
+    or a line as prose, so a doubt costs a false refusal, which a fence
+    repairs, and never a delimiter left unread.
     """
     lines: list[str] = []
     fenced = False
-    for line in text.splitlines():
+    items: list[int] = []  # the content column of each open list item, innermost last
+    paragraph = False  # whether the line above is prose this line may continue
+    for raw in text.splitlines():
+        line = raw.expandtabs(4)
+        if fenced or not line.strip():
+            if fenced and ANY_FENCE_RE.match(line):
+                fenced = False
+            lines.append("")
+            paragraph = False
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        item = LIST_ITEM_RE.match(line)
+        if not paragraph or item is not None:
+            while items and indent < items[-1]:
+                items.pop()
+        if not paragraph and indent >= (items[-1] if items else 0) + 4:
+            lines.append("")
+            continue
         if ANY_FENCE_RE.match(line):
-            fenced = not fenced
+            fenced = True
             lines.append("")
+            paragraph = False
             continue
-        if fenced:
-            lines.append("")
-            continue
+        if item is not None:
+            items.append(_content_column(item))
+        paragraph = True
         blank = MATH_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
         lines.append(BACKTICK_RUN_RE.sub(lambda m: " " * len(m.group(0)), blank))
     return lines
+
+
+def _content_column(item: re.Match[str]) -> int:
+    """The column a list item's content starts on, which its blocks count from.
+
+    CommonMark's rule: the end of the gap after the marker, unless the gap is
+    five spaces or more - one past the marker then, the rest opening an
+    indented code block inside the item - or the item is empty.
+    """
+    gap = item.group("gap")
+    marker = len(item.group("marker"))
+    return marker + len(gap) if gap and len(gap) <= 4 else marker + 1
 
 
 #: A script one gate runs and the other deliberately does not, and why. The
