@@ -832,7 +832,10 @@ def _finished_claim(hold: Hold) -> bool:
 #: `pr-title`'s required job fails without it (`PL-979D`), and `--recover`
 #: writes one for a pull request already merged. `arming.RECORDS` spells the
 #: same directory for what arms on green, in the one module the gate holds for
-#: a read. The path is this repository's layout, as `arming.TOOLING`'s is.
+#: a read, and is kept there rather than imported from here, so that widening
+#: what arms still takes an edit the gate holds; `test_claims` pins the two
+#: equal (`PL-F6MM`). The path is this repository's layout, as
+#: `arming.TOOLING`'s is.
 RECORDS = "docs/pr-bodies/"
 
 

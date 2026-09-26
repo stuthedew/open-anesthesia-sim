@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 
-from docket import claiming, render
+from docket import arming, claiming, render
 from docket.claims import (
     BY_CLOSED,
     BY_LANDING,
@@ -34,6 +34,7 @@ from docket.claims import (
     LEASE_TERM,
     LIVE,
     NAMED,
+    RECORDS,
     RELEASED,
     SESSION_VARIABLE,
     Hold,
@@ -1536,6 +1537,18 @@ def test_the_queue_is_the_items_the_roadmap_the_notes_and_the_body_records() -> 
     assert not in_queue("docs/items-archive.md", QUEUE)
     assert not in_queue("docs/pr-bodies.md", QUEUE)
     assert not in_queue("src/work.py", QUEUE)
+
+
+def test_the_gate_keeps_its_own_copy_of_the_body_records() -> None:
+    """`arming.RECORDS` spells the body records again, and the two spellings must agree.
+
+    The gate holds `arming.py` for a read so that it cannot loosen itself, and
+    this module arms on green. Imported from here, a one-line widening of the
+    records would merge unread and then arm whatever it newly admitted, so the
+    held file keeps its own copy (`PL-F6MM`; project owner, 2026-09-26,
+    ratified, over `arming` importing this one). This keeps the two one answer.
+    """
+    assert RECORDS == arming.RECORDS
 
 
 def test_a_body_record_is_not_work_that_owes_a_claim(tmp_path: Path) -> None:

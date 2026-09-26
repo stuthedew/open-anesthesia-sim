@@ -3,12 +3,14 @@ id: PL-F6MM
 title: claims.in_queue omits docs/pr-bodies/, which PL-979D's pr-title check now makes every pull request carry, so a claimless capture, triage or design-round branch fails branch_id_check once it records its body
 priority: P1
 effort: S
-status: needs-decision
+status: done
 classes: defect
 feature: claim-record
-touches: subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_claims.py, tools/branch_id_check.py, tests/unit/test_branch_id_check.py, .claude/hooks/docket-branch-guard.sh
+touches: subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py, tools/branch_id_check.py, tests/unit/test_branch_id_check.py, .claude/hooks/docket-branch-guard.sh
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1077
 payoff: a capture, triage or design-round pull request merges without a claim again, and flight's unclaimed row stops counting it as a forgetful session
 verify: grep -q 'def test_a_body_record_is_not_work_that_owes_a_claim' subprojects/docket/tests/test_claims.py && grep -qF 'pr-bodies' subprojects/docket/src/docket/claims.py && grep -q 'def test_the_gate_keeps_its_own_copy_of_the_body_records' subprojects/docket/tests/test_claims.py
 ---
@@ -77,24 +79,22 @@ on 2026-09-26. `CLAUDE.md`'s housekeeping rule still files and claims such a
 pass; only CI's enforcement of it goes, and `in_queue`'s docstring says so.
 Reopen it if a claimless recover-only branch turns up.
 
-**Decision needed.** Does `arming.py` import `claims.RECORDS`, as the proposed
-patch has it, or keep its own copy, pinned equal by a test? Importing moves part
-of what arms on green out of the one file the gate holds for a read
+**Decided: `arming.py` keeps its own copy of the records, pinned equal by a
+test** (project owner, 2026-09-26, ratified, over `arming.py` importing
+`claims.RECORDS` as the proposed patch had it). Importing would move part of
+what arms on green out of the one file the gate holds for a read
 (`arming.GATE`, "a change to it could loosen the rule it states"). `claims.py`
 sits under `subprojects/docket/`, which arms on green, so a one-line edit to
 `claims.RECORDS` - widened to `docs/`, say - would merge unreviewed and from then
-on arm any pull request touching `docs/MODEL.md`. Today that widening takes an
-edit to `arming.py`, which holds.
-
-**Recommendation:** keep `arming.RECORDS` as the gate's own copy, and add a test
-in `test_claims.py` pinning `claims.RECORDS == arming.RECORDS`. The two then
-cannot disagree on `main`, and widening what arms still takes an edit the gate
-holds. Cost: the directory is spelled twice, so changing it is two edits, and
-`arming.py` and `verify.py` stay untouched. The one-spelling alternative that
-keeps the gate whole, `claims.py` reading `arming.RECORDS`, needs a
-function-level import, because `arming.py` already imports `claims.py`.
-
-`verify:` names the recommended answer's pin test, and fails until it lands.
-The other answer replaces that last grep with one for `RECORDS` in
-`arming.py`'s import from `.claims`, and adds `verify.py`, whose import moves
-with it, to `touches`.
+on arm any pull request touching `docs/MODEL.md`. Kept in `arming.py`, that
+widening still takes an edit the gate holds, and
+`test_the_gate_keeps_its_own_copy_of_the_body_records` pins
+`claims.RECORDS == arming.RECORDS`, so the two cannot disagree on `main`; it was
+seen failing at its assertion with `arming.RECORDS` widened in memory. So the
+done-when's "one definition `arming.RECORDS` also reads" is met as two spellings
+a test holds equal. Cost: the directory is spelled twice, so changing it is two
+edits, and the test names the second. `arming.py` and `verify.py` are untouched,
+and `arming.py` left `touches` with the patch that would have edited it. The
+one-spelling route that keeps the gate whole, `claims.py` reading
+`arming.RECORDS`, needs a function-level import, because `arming.py` already
+imports `claims.py`.
