@@ -194,7 +194,7 @@ STUB_ABOVE_BRIEF = (
 
 
 def test_a_stub_above_a_real_brief_does_not_satisfy_the_check() -> None:
-    """`PL-RWZV`'s own shape, and why the *first* heading is the one judged.
+    """`PL-RWZV`'s own shape, and why a heading with text never speaks for an empty one.
 
     Four empty headings echoing the format, with the real brief written under
     a second set below them. Judging any occurrence with text under it would
@@ -221,7 +221,7 @@ def test_a_stub_above_a_real_brief_is_named_rather_than_called_an_empty_section(
 
 
 def test_an_elaborated_second_heading_is_not_a_stub() -> None:
-    """The false positive the rule has to avoid, and the reason it reads the first.
+    """The false positive the rule has to avoid.
 
     `**Why it matters more than a normal benchmark.**` opens a section of its
     own rather than restating the one above it, so the plain heading above is
@@ -310,6 +310,28 @@ def test_a_fence_left_open_hides_no_section_below_it() -> None:
     )
 
     assert _errors(unclosed) == []
+
+
+QUOTED_ABOVE = (
+    "**Problem.** `docket triage` names the section it asks for as\n"
+    "**Done when.** in its message, and this sentence wraps there.\n\n"
+    "**Why it matters.** y\n\n"
+)
+
+
+def test_a_quoted_heading_does_not_fill_an_empty_one_below_it() -> None:
+    """`PL-6G8T`: a quotation wrapped to a line's start stood in for the real heading.
+
+    Only the first matching heading was judged, so a quotation opening a line
+    above an empty real one passed an item with no closing condition. It can
+    only ever hide a gap, which is how it outlived the stub, its loud opposite.
+    `PL-JL2M` has the same shape with both filled, which still passes.
+    """
+    messages = _errors(_item(body=QUOTED_ABOVE + "**Done when.**\n"))
+
+    assert _has(messages, "brief has nothing under **Done when.**")
+    assert not _has(messages, "the capture template is still above the brief")
+    assert _errors(_item(body=QUOTED_ABOVE + "**Done when.** It is reported.\n")) == []
 
 
 def test_an_empty_section_is_reported_as_empty_rather_than_missing() -> None:

@@ -270,10 +270,13 @@ def _section_text(body: str, marker: str) -> str | None:
     the item actually says. An empty string is a section with no text under
     it, which is a different failure from a missing one and reads as one.
 
-    The first matching heading is the one judged, deliberately. The stub this
-    check was written for - four headings echoing the format, above the real
-    brief - would pass a rule that accepted any occurrence with text, which is
-    the hole rather than the fix.
+    Every matching heading is judged, and one with nothing under it makes the
+    section empty. Judging the first alone let a sentence wrapped so that a
+    quotation of a heading opens a line stand in for an empty real heading
+    below it, passing an item with no closing condition (`PL-6G8T`). Accepting
+    any heading with text under it is the same hole from the other side: the
+    stub this check was written for, four headings echoing the format above
+    the real brief, passes it.
 
     A fenced block is a literal and is read past, headings and all: the text is
     still sliced from `body`, so a fence under a heading counts as text under it.
@@ -281,28 +284,35 @@ def _section_text(body: str, marker: str) -> str | None:
     Deciding whether a section has content, never whether the content is any
     good: `CLAUDE.md`'s line between what a tool may decide and what it may not.
     """
-    scan = _without_fences(body)
-    heading = _heading(scan, marker)
-    if heading is None:
+    texts = [text for _, text in _sections(body, marker)]
+    if not texts:
         return None
-    # Past the heading's own closing `**`, so that an elaborated heading is not
-    # mistaken for the text under itself. A heading that never closes has
-    # nothing under it by this reading, which is the answer that heading
-    # deserves.
-    close = scan.find("**", heading.end())
-    start = len(body) if close == -1 else close + 2
-    end = BRIEF_HEADING.search(scan, start)
-    return body[start : end.start() if end else len(body)].strip()
+    return "" if "" in texts else "\n\n".join(texts)
 
 
-def _heading(scan: str, marker: str, start: int = 0) -> re.Match[str] | None:
-    """The first line of `scan` at or past `start` that opens with `marker`'s words.
+def _sections(body: str, marker: str) -> list[tuple[int, str]]:
+    """Each heading opening with `marker`'s words: where it ends, and the text under it.
 
-    `scan` is a body with its fences blanked, so the one reading of where a
+    Found in `body` with its fences blanked, so the one reading of where a
     heading stands serves `_section_text` and `_stub_above_brief` alike.
     """
-    words = re.compile(rf"^{re.escape(marker.removesuffix('.**'))}", re.MULTILINE)
-    return words.search(scan, start)
+    scan = _without_fences(body)
+    sections = []
+    for heading in _heading_words(marker).finditer(scan):
+        # Past the heading's own closing `**`, so that an elaborated heading is
+        # not mistaken for the text under itself. A heading that never closes
+        # has nothing under it by this reading, which is the answer that
+        # heading deserves.
+        close = scan.find("**", heading.end())
+        start = len(body) if close == -1 else close + 2
+        end = BRIEF_HEADING.search(scan, start)
+        sections.append((heading.end(), body[start : end.start() if end else len(body)].strip()))
+    return sections
+
+
+def _heading_words(marker: str) -> re.Pattern[str]:
+    """A line opening with `marker`'s words, whatever the heading goes on to say."""
+    return re.compile(rf"^{re.escape(marker.removesuffix('.**'))}", re.MULTILINE)
 
 
 def _stub_above_brief(body: str) -> str | None:
@@ -311,9 +321,9 @@ def _stub_above_brief(body: str) -> str | None:
     `docket new` used to write four empty headings for a session to write over,
     and a session holding the brief appended it *below* them instead - eighteen
     of the thirty-two items at the triage pass of 2026-09-05, fifteen of those
-    carrying a full brief under a dead stub. `_section_text` judges the first
-    matching heading, so the stub wins and the item reads as having nothing
-    under two required sections however good the brief beneath it is
+    carrying a full brief under a dead stub. `_section_text` judges every
+    matching heading, so the stub's empty ones make the item read as having
+    nothing under two required sections however good the brief beneath it is
     (queue item `PL-D188`).
 
     The shape is decidable: a required heading left empty, with a `**Problem.**`
@@ -329,12 +339,11 @@ def _stub_above_brief(body: str) -> str | None:
     above it can.
     """
     scan = _without_fences(body)
+    problem = _heading_words(REQUIRED_BRIEF[0])
     for marker in (*REQUIRED_BRIEF, DONE_WHEN):
-        heading = _heading(scan, marker)
-        if heading is None or _section_text(body, marker) != "":
-            continue
-        if _heading(scan, REQUIRED_BRIEF[0], heading.end()):
-            return marker
+        for end, text in _sections(body, marker):
+            if text == "" and problem.search(scan, end):
+                return marker
     return None
 
 

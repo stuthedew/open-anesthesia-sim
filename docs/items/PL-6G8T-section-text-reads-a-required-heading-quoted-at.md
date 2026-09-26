@@ -3,12 +3,14 @@ id: PL-6G8T
 title: _section_text reads a required heading quoted at a line break as the section itself, so a wrapped quotation above an empty real heading masks the empty one
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-09-07
-verify: grep -q 'def test_a_required_heading_quoted_mid_paragraph_is_not_the_section' subprojects/docket/tests/test_checks.py && uv run pytest -q subprojects/docket/tests/test_checks.py
+closed: 2026-09-26
+pr: 1089
+verify: grep -q 'def test_a_quoted_heading_does_not_fill_an_empty_one_below_it' subprojects/docket/tests/test_checks.py && uv run pytest -q subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** _section_text reads a required heading quoted at a line break as the section itself, so a wrapped quotation above an empty real heading masks the empty one
@@ -39,3 +41,5 @@ of that heading appearing earlier in a wrapped sentence is reported as empty.
 **Measured 2026-09-26, for the project owner's decision.** `PL-GPJ7`'s Split named the route: a heading recognised only where a paragraph opens. Measured on the store first, as it asked, that rule refuses 63 headings that open no paragraph, 18 of them in 15 open items, and the README's own item-format example, which stacks its headings on consecutive lines, as do the test fixtures. **Recommended:** read every line that opens with a required heading's words, outside a fence, as that heading, and require text under each. A quotation can then no longer stand in for an empty heading below it, whatever the brief's layout, and no open item's reading changes. What it gives up: a quoted heading at a line start, with no real one anywhere, still reads as present, as it does today, and no open item has that shape. Put to the project owner 2026-09-26; the heading change waits for the answer, and the fence half of the same function landed with `PL-NQ3X`.
 
 How each route builds, for the session that takes the answer. **Every heading** (recommended): `_section_text` reads the text under every `_heading` match in the fence-blanked copy and returns an empty string if any is empty, and `_stub_above_brief` asks of each empty one whether a `**Problem.**` heading follows it. **Paragraph rule**: `_heading` accepts a match only on the body's first line or under a blank one; the 18 headings, the README's item-format block and the docket test fixtures that stack headings (`BRIEF` in `test_checks.py`, `test_model.py` and `test_verify.py`, and bodies in `test_cli.py` and others) each get a blank line; and "brief is missing" names any line that opens with the heading inside a paragraph, since that reads as no heading at all.
+
+**Decided and built 2026-09-26** (project owner, 2026-09-26, ratified, over recognising a heading only where a paragraph opens, the route `PL-GPJ7`'s Split named): every line opening with a required heading's words, outside a fence, is that heading, and each needs text under it. `_section_text` reads the text under every match through one `_sections` helper and returns an empty string when any is empty, and `_stub_above_brief` asks of each empty one whether a `**Problem.**` follows it. `test_a_quoted_heading_does_not_fill_an_empty_one_below_it` fails on the first-match reader and pins `PL-JL2M`'s shape, both headings filled, as passing. Measured on the built code over all 1,756 items: no open item's reading changed. Two closed items now read `**Done when.**` as empty, `PL-Y2GG` and `PL-Z4GF`, and both are right: each carries the old capture template's empty `**Where.**` and `**Done when.**` below its real brief, the stub's mirror, which the brief checks do not ask of a closed item. The verify test was renamed from `test_a_required_heading_quoted_mid_paragraph_is_not_the_section`, which named the paragraph rule's reading rather than this one.
