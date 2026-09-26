@@ -1117,7 +1117,12 @@ def test_next_computes_the_flight_report_once(
     calls: list[str] = []
 
     def counted(
-        root: Path, *, now: datetime, items_dir: str = "docs/items", runner: object = None
+        root: Path,
+        *,
+        now: datetime,
+        items_dir: str = "docs/items",
+        remote: object = None,
+        runner: object = None,
     ) -> Holdings:
         calls.append(items_dir)
         return Holdings(now=now)
@@ -1150,7 +1155,12 @@ def test_the_flight_cache_does_not_outlive_one_invocation(
     calls: list[str] = []
 
     def counted(
-        root: Path, *, now: datetime, items_dir: str = "docs/items", runner: object = None
+        root: Path,
+        *,
+        now: datetime,
+        items_dir: str = "docs/items",
+        remote: object = None,
+        runner: object = None,
     ) -> Holdings:
         calls.append(items_dir)
         return Holdings(now=now)
@@ -1179,7 +1189,12 @@ def test_a_digest_offering_a_release_reads_who_holds_what_once(
     calls: list[str] = []
 
     def counted(
-        root: Path, *, now: datetime, items_dir: str = "docs/items", runner: object = None
+        root: Path,
+        *,
+        now: datetime,
+        items_dir: str = "docs/items",
+        remote: object = None,
+        runner: object = None,
     ) -> Holdings:
         calls.append(items_dir)
         return Holdings(now=now)
@@ -9388,6 +9403,102 @@ def test_next_show_and_digest_do_not_read_unfetched_refs_as_fresh(
             "Nothing refreshed the refs for this answer (`--no-fetch`): read from the last "
             "fetch, at 01:30 UTC, 30 minutes before it." in capsys.readouterr().out
         ), argv[0]
+
+
+# --- the remote's branch list, read with the fetch (PL-MT3R) -----------------
+
+#: Another session's branch, claiming PL-B1B1, which the remote deletes.
+DELETED = "claude/rival-k2m9p4"
+
+
+def _claim_on_a_deleted_branch(tmp_path: Path) -> Path:
+    """A clone that fetched another session's claim on PL-B1B1 before the remote deleted its branch.
+
+    The rival claims on its own branch and pushes it, this clone fetches it,
+    and the remote then deletes the branch, as a merged pull request's is. No
+    fetch here prunes, so the tracking ref outlives the branch and is the one
+    copy of the claim left anywhere.
+    """
+    work = _snapshot_clone(tmp_path)
+    origin = tmp_path / "origin"
+    rival = tmp_path / "rival"
+    when = "2026-09-26T01:00:00+00:00"
+    dated = os.environ | {"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when}
+
+    def git(cwd: Path, *args: str) -> None:
+        subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, env=dated)
+
+    git(tmp_path, "clone", "-q", str(origin), str(rival))
+    for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git(rival, "config", key, value)
+    git(rival, "checkout", "-qb", DELETED)
+    git(rival, "commit", "-q", "--allow-empty", "-m", f"PL-B1B1: start\n\nClaim: PL-B1B1 {DELETED}")
+    git(rival, "push", "-q", "origin", DELETED)
+    git(work, "fetch", "-q", "origin")
+    git(origin, "branch", "-q", "-D", DELETED)
+    return work
+
+
+def test_a_fetching_read_reads_no_hold_from_a_branch_the_remote_deleted(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-MT3R`: a claim only a deleted branch's tracking ref carries holds nothing once listed.
+
+    Every read command read each tracking ref as a live holder, and the fetch
+    it makes never deletes one, so a claim whose branch the remote had deleted
+    went on holding its item in this clone and in no fresh one. The fetch is
+    now followed by one listing of the remote's branches, and a tracking ref
+    for a branch it lacks is read as nobody's. Told not to fetch, a command
+    takes no listing and reads the refs as they are, as its refs line says -
+    and the ref itself is left where it is, as `stranded`'s surviving copy.
+    """
+    work = _claim_on_a_deleted_branch(tmp_path)
+    store = str(work / "docs" / "items")
+
+    assert main(["flight", "--items", store, "--now", NOW]) == 0
+    out = capsys.readouterr().out
+    assert "No branch holds an item." in out and f"origin/{DELETED}" not in out
+    assert main(["show", "PL-B1B1", "--items", store, "--now", NOW]) == 0
+    assert "IN FLIGHT" not in capsys.readouterr().out
+
+    assert main(["flight", "--items", store, "--no-fetch", "--now", NOW]) == 0
+    out = capsys.readouterr().out
+    assert f"PL-B1B1  origin/{DELETED}  live  claim" in out
+    assert "Nothing refreshed the refs for this answer (`--no-fetch`)" in out
+    kept = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{DELETED}"],
+        cwd=work,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert kept.stdout.strip(), "the listing wrote nothing: the tracking ref survives"
+
+
+def test_a_branch_list_the_remote_did_not_give_reads_the_refs_as_they_are_and_says_so(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-MT3R`: a listing that fails after a fetch that answered drops nothing on a guess.
+
+    The fetch is stubbed as answered and the remote made unreachable after it,
+    so the one read left to fail is the listing. Every tracking ref then holds
+    as it did before the listing existed, and the refs line - silent after a
+    fetch that answered - says why a deleted branch can still read as held.
+    """
+    work = _claim_on_a_deleted_branch(tmp_path)
+    store = str(work / "docs" / "items")
+    monkeypatch.setattr("docket.cli.fetch_remote", _fetch_stub([]))
+    _break_remote(work)
+
+    assert main(["flight", "--items", store, "--now", NOW]) == 0
+
+    out = capsys.readouterr().out
+    assert f"PL-B1B1  origin/{DELETED}  live  claim" in out
+    assert (
+        "`git ls-remote --heads origin` failed, so the remote's branch list was not read for "
+        "this answer: a branch it has deleted can still read as held, from the tracking ref "
+        "this clone keeps for it." in out
+    )
 
 
 # --- origin/main's newer copy of an item (PL-Y48N) ---------------------------

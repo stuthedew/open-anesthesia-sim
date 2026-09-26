@@ -106,6 +106,7 @@ from .vcs import (
     Branch,
     FlightReport,
     QueueEdit,
+    RemoteHeads,
     Runner,
     SettledBranch,
     SettledReport,
@@ -459,6 +460,7 @@ def holdings(
     include_remote: bool = True,
     include_head: bool = True,
     term: timedelta = LEASE_TERM,
+    remote: RemoteHeads | None = None,
     runner: Runner | None = None,
 ) -> Holdings:
     """Every hold the unlanded refs record, each judged at `now`.
@@ -471,6 +473,13 @@ def holdings(
     branches, as it does for `vcs.orphaned`. `include_head=False`
     leaves the checkout's own branches out, so that only what has been pushed -
     what every other session can also read - decides the answer.
+
+    `remote` is the command's listing of what the remote holds (`PL-MT3R`).
+    Where it answered, a tracking ref for a branch the remote no longer has
+    holds nothing: no fetch prunes, so the ref outlives the branch, and no
+    fresh clone can see the claim it carries. That ref is `stranded`'s to
+    recover, not a holder. Where no listing is given, or the remote did not
+    answer, every tracking ref is read as it always was.
 
     Refs are read from what is already fetched, so the answer can be stale by
     one fetch, and it reports rather than blocks for that reason.
@@ -487,7 +496,7 @@ def holdings(
     remotes = _remotes(root, run)
 
     base = default_base(root, runner=run)
-    refs = _unlanded_refs(base, root, run, include_remote=include_remote)
+    refs = _unlanded_refs(base, root, run, include_remote=include_remote, remote=remote)
     skipped: frozenset[str] = frozenset() if include_head else _local_branches(root, run)
     candidates = [name for name in refs.candidates if name not in skipped]
     unreadable = {name for name in candidates if name in refs.unreadable}
