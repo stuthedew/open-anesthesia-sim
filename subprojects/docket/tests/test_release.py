@@ -144,6 +144,23 @@ def test_a_resumed_cut_folds_its_own_stamps_back_in() -> None:
     ]
 
 
+def test_the_item_a_release_was_cut_under_ships_in_no_release() -> None:
+    """PL-KRS6: the cut's own item closes after its notes, so it carries no stamp.
+
+    Read as finished and unreleased, it was the next release's content: every
+    session after a cut was offered a release of the cut alone. The
+    `resource: release-train` every cut already requires is what marks it, on
+    the plain read and on a resumed cut's alike.
+    """
+    from docket.release import unreleased
+
+    fresh = _item("PL-1111", milestone="")
+    cut = replace(_item("PL-2222", milestone=""), resource=RELEASE_TRAIN)
+
+    assert [i.identifier for i in unreleased([fresh, cut])] == ["PL-1111"]
+    assert [i.identifier for i in unreleased([fresh, cut], "v0.2.6")] == ["PL-1111"]
+
+
 def test_notes_are_read_from_the_bullet_leader_and_not_from_the_whole_line(tmp_path: Path) -> None:
     """An item's title quotes other ids, and every one of them is not a claim.
 
@@ -1968,6 +1985,42 @@ def test_the_digest_reads_a_release_train_holder_from_the_refs(
     out = capsys.readouterr().out
     assert "PL-TR4N holds the release train, nothing cut yet (claude/pl-tr4n-cut)" in out
     assert "Offer" not in out
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_freshly_merged_release_offers_nothing_while_only_its_own_item_has_closed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-KRS6 end to end: `main` at a merged cut, and nothing else closed since.
+
+    The release item closes in the cut's own pull request, after the notes are
+    written. Counted as unreleased, the dry run listed it as the next
+    release's whole content, and the digest said to offer that release before
+    taking new work, since one item finishing a feature is worth raising on
+    its own - `PL-H1GH` completed `release-process` that way after v0.4.7.
+    """
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    assert repo.run("release", "0.2.6", "--no-fetch") == 0
+    closed = _train_item("PL-TR4N", "done").replace(
+        "status: done\n", "status: done\nfeature: release-process\n"
+    )
+    repo.commit(
+        "PL-TR4N: cut v0.2.6",
+        when=TRAIN_T0 + timedelta(minutes=30),
+        files={"items/PL-TR4N-cut.md": closed},
+    )
+    repo.git("checkout", "-q", "main")
+    repo.git("merge", "-q", "--ff-only", "claude/pl-tr4n-cut")
+    capsys.readouterr()
+
+    assert repo.run("release", "--dry-run", "--no-fetch") == 0
+    assert repo.run("digest") == 0
+
+    out = capsys.readouterr().out
+    assert "Nothing to release: no finished work since 0.2.6." in out
+    assert "PL-TR4N" not in out
+    assert "Releasable:" not in out
 
 
 @pytest.mark.usefixtures("_no_session")
