@@ -547,16 +547,9 @@ class Item:
     #: commit subjects" - so a second head whose members misread the same fact
     #: writes the same words, and the two sort next to each other.
     #:
-    #: **It exists because heads were compared with nothing** (`PL-5MYR`).
-    #: Triage compared each new item with one head at a time and never compared
-    #: heads with each other, so one record read by several readers got a head
-    #: per reader: "who holds an item" took four (`PL-4Q9B`, `PL-BHVM`,
-    #: `PL-8FJK`, `PL-7TVT`) before `PL-MB2W` named it, and gate prose took
-    #: three before `PL-WD5Z`. The audit that found them read every brief, at
-    #: 262 agents (`PL-T7Y1`). A set intersection of `root_cause_of` lists
-    #: recovered some of what it found and missed `PL-J6HP` with `PL-WD5Z`,
-    #: two heads over one record whose member lists are disjoint - so the
-    #: overlap is a hint, and the stated fact is what carries the comparison.
+    #: Why it exists, and why the overlap of member lists cannot stand in for
+    #: it, is `subprojects/docket/README.md` § "What the front matter is,
+    #: exactly" (`PL-5MYR`).
     #:
     #: **Required on a closed head too, unlike `generator`.** A verdict on a
     #: closed head moves no ranking; a closed head's stated fact is exactly
