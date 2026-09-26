@@ -10,6 +10,7 @@ touches: .claude/hooks/no-prune-guard.sh, tests/unit/test_no_prune_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1142
 payoff: a session's git remote remove or rm is refused before it deletes every remote-tracking ref of that remote, a stranded item's only copy among them
 verify: grep -q 'def test_removing_a_remote_is_refused' tests/unit/test_no_prune_guard.py
 ---
