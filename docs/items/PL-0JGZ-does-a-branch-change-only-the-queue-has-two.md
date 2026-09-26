@@ -3,12 +3,15 @@ id: PL-0JGZ
 title: 'Does a branch change only the queue' has two definitions - claims.in_queue counts ROADMAP.md and WORKING_NOTES.md, arming counts docs/items only - so a ROADMAP.md-only branch passes branch_id_check and shows no unclaimed row while arm holds it
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: refactor
 feature: one-answer
-touches: subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_claims.py
+touches: subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_claims.py, docs/items/PL-PVW2-predicates-the-apparatus-asks-repeatedly-which.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-answer batch
 added: 2026-09-25
+closed: 2026-09-26
+pr: 1084
+verify: grep -q 'def test_a_roadmap_only_branch_is_queue_work_but_not_armable' subprojects/docket/tests/test_claims.py && grep -q 'def arms_on_green' subprojects/docket/src/docket/arming.py && grep -q 'arming.arms_on_green' subprojects/docket/src/docket/claims.py
 ---
 
 **Problem.** 'Does a branch change only the queue' has two definitions - claims.in_queue counts ROADMAP.md and WORKING_NOTES.md, arming counts docs/items only - so a ROADMAP.md-only branch passes branch_id_check and shows no unclaimed row while arm holds it
@@ -34,3 +37,11 @@ Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
 **Changed by `PL-K6B2`, 2026-09-25.** Arming's side of the title no longer counts `docs/items` only: `arm` now arms a branch whose every path is under `docs/items/` or `subprojects/docket/`, `arming.py` excepted (`arming.TOOLING`, `arming.GATE`). The two definitions still disagree, now on `subprojects/docket/` as well as on `ROADMAP.md` and `docs/WORKING_NOTES.md`.
 
 **Answered 2026-09-26: no, keep arming at its own scope** (project owner, 2026-09-26, ratified, over widening `arm` to treat `ROADMAP.md` and `docs/WORKING_NOTES.md` as queue records). The owner agreed with the recommendation above on a decision card in the Fix generators project. The done-when is therefore the recommendation's: two named predicates in `claims.py`, every caller importing one of them, and a test holding the `ROADMAP.md`-only branch for each. Recorded here by the `PL-PVW2` build thread so the answer does not live only on the card; the status moves when the item is taken.
+
+**Reopened 2026-09-26, on where arming's predicate lives.** The done-when above puts both named predicates in `claims.py`, with `arming` importing its own from there. A ratified decision of the same day refuses that import: `PL-F6MM` (project owner, 2026-09-26, ratified, over `arming` importing `claims.RECORDS`) keeps arming's path set in `arming.py`, because the gate holds `arming.py` for a read so that it cannot loosen itself, while `claims.py` arms on green (`arming.TOOLING`, `PL-K6B2`). Moved into `claims.py`, a one-line widening of what arms would merge unread and then arm whatever it newly admitted. `test_the_gate_keeps_its_own_copy_of_the_body_records` in `subprojects/docket/tests/test_claims.py` pins that decision. The case ratified above was written before `PL-K6B2` and did not carry that cost, so this is a ratified decision reopened on ordinary evidence.
+
+**Decision needed.** Should arming's named predicate live in `arming.py`, the held module, rather than in `claims.py` beside `in_queue`?
+
+**Recommendation:** yes, `arming.py`. Name arming's inline test there as `arming.arms_on_green`, have `arm` call it, and make each docstring name the other and the question it answers: `in_queue` whether a change owes a claim, `arms_on_green` whether it merges on green CI without the owner's read. `test_a_roadmap_only_branch_is_queue_work_but_not_armable` stays in `test_claims.py`, where `PL-PVW2`'s `verify:` names it, and asks both. It costs the side-by-side placement: the two definitions sit in two modules, and the cross-referencing docstrings carry what placement would have shown. The alternative keeps the done-when as written and reverses `PL-F6MM`, putting the rule for what merges unread outside the one file whose every change waits on a read. Under the recommendation the done-when is: `claims.in_queue` and `arming.arms_on_green`, each docstring naming the other, `arm` calling the second, and that test asking both about a `ROADMAP.md`-only branch.
+
+**Answered 2026-09-26: `arming.py`** (project owner, 2026-09-26, ratified, over two named predicates in `claims.py`), on a decision card in the Fix generators project. **Built in #1084.** `arming.arms_on_green(path, items_dir)` is arming's answer, asked by `arm` path by path, and answers no for `arming.py` itself; `arm` still asks `GATE in paths` directly, so the gate's hold does not rest on the predicate. `claims.in_queue`'s docstring names it and the question each answers, and its own docstring names `in_queue`. `test_a_roadmap_only_branch_is_queue_work_but_not_armable` asks both about `ROADMAP.md` and `docs/WORKING_NOTES.md` and holds a real `ROADMAP.md`-only branch for each; `test_what_arms_on_green_is_the_store_the_tooling_and_the_records_but_the_gate` pins the rest. `vcs._annotates_only`, the third spelling, stays with `PL-GJPD` under `PL-HMZZ`.
