@@ -2066,19 +2066,34 @@ def _say_held_elsewhere(args: argparse.Namespace, items: list[Item]) -> None:
     session asked about work another session holds (`PL-140X`). The holds are
     the lines `show` prints for an item it has. The file is found by the read
     `stranded` makes, without its fetch, as the holds were read without one.
-    Silent where nothing holds the id, which is the ordinary typo.
+
+    **An id no hold names is looked for on the branches too** (`PL-PV6H`). A
+    capture on a branch nobody claims - one the digest lists under "Only on a
+    branch" - is where a session reaches for `show` next, and it met the same
+    dead end. So the miss pays the stranded read, which triage measured at
+    about 0.3 s on the error path, and a hit pays nothing. Found there, it
+    prints the branches and the recover line `stranded` gives, under the refs
+    line where the refs are not this command's own fetch, since the recovery
+    writes a file and a stale base is how that went wrong before (`PL-KBFN`).
+    Silent where no branch has the id either, which is the ordinary typo.
     """
     held = render.format_holds(_holdings(args), args.item, _now(args))
-    if not held:
-        return
-    print("It is held on a branch, and this checkout's store has no copy of it:")
-    print(held)
     key = args.item.upper()
     report = _stranded(items, args)
     found = next(
         (entry for entry in (report.items if report else ()) if entry.identifier.upper() == key),
         None,
     )
+    if not held:
+        if found is not None:
+            print("No branch holds it, but its file is only on a branch, not in this checkout:")
+            print(f"  only on: {', '.join(found.branches)}")
+            if refs := _refs_line(args):
+                print(f"  {refs}")
+            print(f"  recover: git checkout {found.branches[0]} -- {found.path}")
+        return
+    print("It is held on a branch, and this checkout's store has no copy of it:")
+    print(held)
     if found is None:
         print("  Its file was not found on a ref this checkout holds; `bin/docket stranded`")
         print("  fetches and names every item that exists only on a branch.")

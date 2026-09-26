@@ -3985,6 +3985,39 @@ def test_show_names_the_branch_holding_an_item_absent_here(
     assert capsys.readouterr().out == "no item matching 'PL-Q9Q9'\n"
 
 
+def test_show_names_the_branch_of_a_stranded_id_no_hold_names(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-PV6H: an id only on a branch nothing holds printed only "no item matching".
+
+    `PL-140X` pointed at the branch only where a hold names the id, so a
+    capture the digest lists as stranded stayed a dead end. The miss now pays
+    the stranded read and prints the branch and the recover line `stranded`
+    gives, and a typo still gets the one line it always did.
+    """
+    from docket.claims import CUTOVER_MARKER
+
+    when = "2026-08-20T12:00:00+00:00"
+    root = _flight_repo(tmp_path, "Tidy up", when=when)
+    _commit_on(root, "main", {CUTOVER_MARKER: "# the claim writer\n"}, "claims", when)
+    branch = "claude/notes-elsewhere"
+    captured = "items/PL-K7QX-captured-there.md"
+    _commit_on(root, branch, {captured: READY.replace("PL-B1B1", "PL-K7QX")}, "capture", when)
+    ran = ["--items", str(root / "items"), "--today", "2026-08-23", "show"]
+
+    assert main([*ran, "PL-K7QX"]) == 1
+
+    out = capsys.readouterr().out
+    assert out.startswith("no item matching 'PL-K7QX'\n")
+    assert "held on a branch" not in out
+    assert "IN FLIGHT" not in out
+    assert f"  only on: {branch}\n" in out
+    assert f"  recover: git checkout {branch} -- {captured}\n" in out
+
+    assert main([*ran, "PL-Q9Q9"]) == 1
+    assert capsys.readouterr().out == "no item matching 'PL-Q9Q9'\n"
+
+
 def test_show_says_a_lapsed_claim_on_an_open_item_holds_nothing(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
