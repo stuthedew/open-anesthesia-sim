@@ -6,7 +6,7 @@ effort: M
 status: needs-decision
 classes: defect
 feature: release-process
-touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py, tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
+touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_cli.py, tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md, docs/items/PL-NZC0-a-claude-code-projects-trial-needs-project.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
 payoff: The commit a release was cut on becomes a recorded fact, so the tag and its readers stop disagreeing
@@ -170,3 +170,84 @@ moves it.
 merges, and the tag and its readers use it. Or the owner decides the hand-placed
 tag stays, and this head is closed spent with that recorded. It is a design
 question, and while an open item carries `generator: live` any new check waits.
+
+**Moved out of the trial (project owner, 2026-09-26, ratified, over leaving
+it to Stream B and over building `PL-VYK1`'s part alone).** The owner named
+`PL-VYK1` in their own session; this build closes it, so it is built there,
+on `claude/focused-davinci-dklbov`, under a claim on this item and all four
+members. `PL-NZC0` records the Stream B change. A half-build was declined
+because it writes the shared function and leaves the `doc_check` half, so the
+head stays live and Stream B still owes a thread.
+
+**Build plan, 2026-09-26 (this session; the design above, refined before any
+code).** Re-confirmed against `96287589`: the tag block is now
+`release.md:233`, `cli._hand_off` is `cli.py:3457` with `MERGE_COMMIT` at
+`:3495`, `cli._untagged_warning` is `cli.py:3715` with the `--grep` line at
+`:3728`, and `tools/doc_check.py` has `_check_tag_versions` at `:2799` and
+`_tag_spans` at `:2917`.
+
+*One refinement, measured: no reader runs the lookup from a branch's `HEAD`.*
+A branch that has merged the default branch in has its own merge commit on
+its first-parent line, and that merge added the notes file compared with its
+first parent. On a scratch branch forked at `fe2046f7^` that merged
+`fe2046f7`, `git log --first-parent --diff-filter=A HEAD --
+docs/releases/v0.5.11.md` named the branch's merge `4308874b`, not the cut
+`fe2046f7`. Read from `HEAD`, `doc_check` would fail `make check` on every
+branch that brought `main` in after a release. So the printed block reads
+`origin/main`, and `doc_check` reads the tags themselves. A tag sits on its
+cut when its own commit added its own notes file, compared with its first
+parent: the same definition, applied to named commits. One read covers every
+tag: `git log --no-walk --first-parent --diff-filter=A --format=%x00%H
+--name-only <tag commits> -- docs/releases`. It took 11 ms for 74 tags, against
+1.29 s for one lookup per tag, and it reproduced the count above: 68 on their
+cut, 0 off it, 6 with no notes. The per-tag lookup from the tag's own history
+runs only for a tag that fails, to name the cut in the error.
+
+*Where it lives.* The definition is pure and goes in `docket.release`:
+`notes_path`, `CUT_FLAGS = ("--first-parent", "--diff-filter=A")`,
+`cut_query(version, ref)` and `tag_commands(version, remote, branch)`.
+`tag_commands` renders the printed line with `shlex.join` from `cut_query`.
+The git reads go in `docket.vcs`: `find_cut(version, ref, root, runner)`
+returns a `Cut(commits, read)` whose `.commit` is empty unless exactly one
+commit is named, and `notes_added(commits, root, runner)` is the batch read.
+`vcs` imports `release`, so `release` cannot run git without closing the
+cycle.
+
+*Consumers.*
+1. `cli._hand_off` prints `tag_commands(name)`: fetch, the `"$(git log
+   ...)"` tag line, and push.
+2. `cli._untagged_warning(version, root, git)` prints the same three lines.
+   Under them it names the commit the lookup resolves to here, from
+   `default_base`, with its short sha and subject. If it resolves to nothing,
+   or to more than one commit, it says so.
+3. A `doc_check` helper `_release_cuts(root, names, run)` holds each release
+   tag whose notes file is in this tree. `_check_tag_versions` reports a tag
+   off its cut by name: the tag, its commit, the cut from the tag's own
+   history with its subject (or that none is in it), and the `git tag -d`
+   caveat. Only then does it skip the version error for that tag. Tags with
+   no notes keep the version check alone, and a shallow or silent read is
+   declined. `_tag_spans` takes `cut` from the same helper, in place of its
+   own `--diff-filter=A HEAD` read.
+4. The `release.md` block and `ROADMAP.md:135`'s Tags statement ("The tag
+   goes on the merge commit") say the tag goes on the commit that added the
+   release's notes file.
+
+*Tests.*
+- `test_release.py`: the printed commands, run by a shell in a clone,
+  tag the cut however late they run and refuse before the merge.
+- `find_cut` names nothing for an absent notes file and declines one
+  added twice.
+- `test_cli.py`: the hand-off assertion at `:2248`, and the untagged
+  warning naming the cut.
+- `test_doc_check.py`: `test_a_tag_ahead_of_its_own_cut_is_named`, which is
+  `PL-KFWL`'s `verify:`; a tag behind its cut; and a tag on its cut quiet on
+  a branch that merged `main` in.
+
+*Members at close.*
+- `PL-6YYR`'s clause (a), a second refusal inside `bin/docket release`, is
+  declined for `PL-YKSD`'s reason: a second copy of the tag read is free to
+  drift. Its `verify:` names that clause's test, so it is rewritten to (b)
+  and (c).
+- `PL-LRM0` passes once `PL-6YYR` and `PL-KFWL` are no longer both
+  `ready`.
+- The closing commit leads with all five ids, and `generator:` reads spent.
