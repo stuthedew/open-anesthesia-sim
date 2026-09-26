@@ -3,12 +3,14 @@ id: PL-6YYR
 title: A release tag can be pushed for a version that was never cut, and nothing detects it: v0.4.8 tags main at version 0.4.7 with no release notes and no ROADMAP row
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: release-process
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py, tools/doc_check.py, .claude/skills/docket/SKILL.md
 added: 2026-09-07
-verify: grep -q 'def test_release_refuses_a_version_whose_tag_names_a_commit_without_it' subprojects/docket/tests/test_release.py && uv run pytest -q subprojects/docket/tests/test_release.py
+closed: 2026-09-26
+pr: 1065
+verify: grep -q 'def test_a_tag_ahead_of_its_own_cut_is_named' tests/unit/test_doc_check.py && grep -q 'def test_the_printed_tag_line_refuses_before_the_release_has_merged' subprojects/docket/tests/test_release.py && uv run pytest -q subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** Observed on `origin` at 2026-09-07 17:35 UTC:
@@ -127,3 +129,14 @@ instance - so the block should run the tag only after `git show
 origin/main:pyproject.toml` declares that version. Refused before the push
 rather than reported by `doc_check` after it. Captured on `PL-YKSD`'s branch
 and folded in here rather than filed apart, since it is this clause.
+
+**Closed 2026-09-26 under `PL-QHCW`.** Clause (b) is now the cut check in
+`doc_check`, which fails a tag ahead of or behind its cut whatever version its
+tree declares. Clause (c) is the tag block's lookup: before the merge it names
+nothing and `git tag` refuses the empty name
+(`test_the_printed_tag_line_refuses_before_the_release_has_merged`), which is
+the refusal before the push this brief asked for, without a second read of
+`pyproject.toml`. Clause (a), a second refusal inside `bin/docket release`, is
+declined for `PL-YKSD`'s reason: a second copy of the tag read is free to drift
+from the one `doc_check` holds. `verify:` is rewritten from (a)'s test to (b)'s
+and (c)'s.

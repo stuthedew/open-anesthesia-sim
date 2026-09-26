@@ -105,6 +105,7 @@ from .release import (
     milestones,
     notes_by_version,
     notes_name,
+    notes_path,
     outstanding_roadmap_edits,
     prepare_bump,
     read_version,
@@ -112,6 +113,7 @@ from .release import (
     release_notes,
     restate_references,
     stamp,
+    tag_commands,
     unrecorded_milestones,
     unreferenced_by_version,
 )
@@ -160,6 +162,8 @@ from .vcs import (
     fetch_remote,
     filed_with_work,
     files_in_flight,
+    find_cut,
+    is_shallow,
     lost,
     merged_pull_requests,
     open_pull_requests,
@@ -3354,7 +3358,7 @@ def cmd_release(args: argparse.Namespace) -> int:
         if not existing.known:
             refusal = _unreadable_tags_refusal(current, existing.declined)
         elif is_untagged(current, existing.names):
-            refusal = _untagged_warning(current)
+            refusal = _untagged_warning(current, root, git)
         if refusal:
             print(refusal)
             if not args.dry_run:
@@ -3563,14 +3567,14 @@ def _hand_off(root: Path, config: Config, name: str, plan: Wave | None = None) -
     lines.append("Then:")
     lines.append(f"  {config.check_command}")
     lines.append("  review the diff and commit")
-    # A bare token, never an angle-bracketed placeholder: a shell reads the
-    # opening bracket as input redirection from a file named `merge`, so pasting
-    # the line answered "no such file or directory: merge" and never reached git
-    # at all - naming neither git, nor the tag, nor the thing that is missing.
-    # `MERGE_COMMIT` fails as `fatal: Failed to resolve 'MERGE_COMMIT'`, which
-    # does (`PL-HKF4`).
-    lines.append(f'  git tag -a {name} MERGE_COMMIT -m "{name}"   # the merge commit on main')
-    lines.append(f"  git push origin {name}")
+    # No placeholder to fill: the tag line finds the cut itself when it runs.
+    # An angle-bracketed one was read by a shell as input redirection
+    # (`PL-HKF4`), and the bare `MERGE_COMMIT` that replaced it still left the
+    # commit to whoever pasted it, who reached for `origin/main` - the next
+    # merge as often as this one (`PL-VYK1`).
+    lines.append("")
+    lines.append("Once it has merged, tag the commit that cut it:")
+    lines.extend(f"  {command}" for command in tag_commands(name))
     return "\n".join(lines)
 
 
@@ -3804,24 +3808,53 @@ def _no_train_refusal(name: str, count: int, current: str, train: _Train, store:
     )
 
 
-def _untagged_warning(version: str) -> str:
+def _untagged_warning(version: str, root: Path, git: Runner) -> str:
     """Say which tag is missing and give the commands, not the instruction.
 
     Asking someone to "tag v0.2.5" makes them go and reconstruct three
-    commands at the moment they are trying to do something else.
+    commands at the moment they are trying to do something else. They are
+    `_hand_off`'s, which find the cut when they run; the line beneath says
+    which commit that is from here, so what is about to be tagged can be seen
+    before it is. It once printed a `--grep` for a subject no cut is written
+    with and a `RELEASE_COMMIT` to fill from it (`PL-QHCW`).
     """
     name = f"v{version.lstrip('v')}"
     return "\n".join(
         [
             f"{name} shipped and carries no tag, so no commit in its span can be",
             "mapped to the release it went out in. That gap cannot be closed later",
-            "with any confidence. Tag it first:",
+            "with any confidence. Tag the commit that cut it first:",
             "",
-            f'  git log --oneline --grep="Release {name}"   # find the commit',
-            f'  git tag -a {name} RELEASE_COMMIT -m "{name}"   # the commit found above',
-            f"  git push origin {name}",
+            *(f"  {command}" for command in tag_commands(name)),
+            "",
+            _cut_seen_here(name, root, git),
         ]
     )
+
+
+def _cut_seen_here(version: str, root: Path, git: Runner) -> str:
+    """Which commit the printed tag line will find, read from this checkout's base.
+
+    A shallow clone is not asked, because its oldest commit reads as adding
+    every file and would be named as the cut (`vcs.find_cut`).
+    """
+    base = default_base(root, runner=git)
+    notes = notes_path(version)
+    if is_shallow(root, runner=git) is not False:
+        return "This clone is shallow, or git will not say, so the commit is not named here."
+    cut = find_cut(version, base, root, runner=git)
+    if not cut.known:
+        return f"git did not answer for {base}, so the commit is not named here."
+    if not cut.commits:
+        return f"{base} has no commit adding {notes}, so that line will refuse as it stands."
+    if not cut.commit:
+        added = ", ".join(commit[:8] for commit in cut.commits)
+        return (
+            f"{base} added {notes} {len(cut.commits)} times ({added}), so that line will "
+            "refuse: the cut is whichever of those the release shipped from."
+        )
+    named = git(["log", "-1", "--format=%h %s", cut.commit], root).strip()
+    return f"From {base} here, that is {named or cut.commit[:8]}."
 
 
 def _unreadable_tags_refusal(version: str, declined: str) -> str:
