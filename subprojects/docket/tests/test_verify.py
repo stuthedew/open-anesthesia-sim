@@ -2314,6 +2314,52 @@ def test_a_single_item_branch_says_nothing_about_other_items(tmp_path: Path) -> 
     assert not any(check.name == ALONE for check in report.checks)
 
 
+def _commit_each(root: Path, subjects: tuple[str, ...]) -> None:
+    """One commit per subject, each adding a test, so no commit removes anything."""
+    text = KEPT
+    for n, subject in enumerate(subjects):
+        text += f"\ndef test_{n}() -> None:\n    assert {n} == {n}\n"
+        _work(root, subject, "tests/test_thing.py", text)
+
+
+def test_a_subject_citing_another_item_is_not_a_batch(tmp_path: Path) -> None:
+    """`PL-WM46`: an id cited mid-sentence is a citation, not a batch claim.
+
+    `PL-19T3`'s closure had four commits all led by its own id, one of them
+    citing `PL-9RFP` in passing, and the note read that as four commits also
+    naming `PL-9RFP`. Only an id that leads a subject claims an item, which is
+    how `vcs.leading_ids` reads one.
+    """
+    root = _repo(tmp_path)
+    _commit_each(
+        root,
+        (
+            "PL-K7QX start the work",
+            "PL-K7QX run PL-B2B2's replay test with git",
+            "PL-K7QX pin the case",
+            "PL-K7QX close it",
+        ),
+    )
+
+    report = verify(root, _item(), _config(), "HEAD~4", self_audit=True)
+
+    assert not any(check.name == ALONE for check in report.checks)
+
+
+def test_the_batch_note_counts_the_commits_that_lead_with_the_other_id(tmp_path: Path) -> None:
+    """The count is of the commits carrying the other id, never every commit audited."""
+    root = _repo(tmp_path)
+    _commit_each(
+        root, ("PL-K7QX start the work", "PL-K7QX, PL-B2B2 do both things", "PL-K7QX close it")
+    )
+
+    report = verify(root, _item(), _config(), "HEAD~3", self_audit=True)
+
+    check = _check(report, ALONE)
+    assert check.advisory and not check.blocks
+    assert check.detail.startswith("1 of 3 commit(s) also lead with PL-B2B2,")
+
+
 def test_a_self_audit_still_refuses_a_removed_assertion(tmp_path: Path) -> None:
     """The line the whole design rests on.
 

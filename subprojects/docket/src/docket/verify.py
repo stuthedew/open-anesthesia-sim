@@ -42,7 +42,6 @@ from pathlib import Path
 from . import vcs
 from .config import Config
 from .model import CLOSED_STATUSES, WITHDRAWN_MARKER, Item, _split_list, parse_front_matter
-from .store import ID_PATTERN
 
 # Suppressions matched as text. `noqa` is deliberately absent: a project whose
 # ruff configuration does not enable a rule carries `noqa` directives that
@@ -2070,8 +2069,10 @@ def base_warning(root: Path, base: str) -> str:
     )
 
 
-def other_items_named(root: Path, commits: tuple[str, ...], identifier: str) -> tuple[str, ...]:
-    """The other items' ids the audited commits name in their subjects.
+def other_items_named(
+    root: Path, commits: tuple[str, ...], identifier: str
+) -> tuple[tuple[str, ...], int]:
+    """The other items' ids the audited commits lead with, and how many commits carry one.
 
     `item_commits` selects by id so that a batch branch is judged per item -
     "a reviewer can take four items and reject the fifth", as its own
@@ -2087,15 +2088,30 @@ def other_items_named(root: Path, commits: tuple[str, ...], identifier: str) -> 
     ids is what lets a reader see that the scope being audited is wider than
     the item, which is the whole of what went wrong silently before.
 
+    An id counts only where it *leads* a subject, read through
+    `vcs.leading_ids`, the one reading of which ids a subject claims: a
+    subject citing another item mid-sentence is a citation, not a batch. Any
+    id in the text used to count, and the note printed every audited commit as
+    naming it, so `PL-19T3`'s closure, one of whose four subjects cited
+    `PL-9RFP` in passing, read as four commits also naming `PL-9RFP`
+    (`PL-WM46`). The count returned is of the commits that lead with another
+    id, never of every commit audited.
+
     Raises `GitUnanswered` where the subjects cannot be read. Otherwise git's
     complaint would be searched for ids, and finding none would read as the
     commits naming this item alone.
     """
     if not commits:
-        return ()
-    output = _git(["show", "-s", "--format=%s", *commits], root)
-    found = {match.group(0) for match in re.finditer(ID_PATTERN, output)}
-    return tuple(sorted(found - {identifier}))
+        return (), 0
+    # NUL-separated, so a subject is split only where git ended it.
+    output = _git(["show", "-s", "--format=%s%x00", *commits], root)
+    found: set[str] = set()
+    carrying = 0
+    for subject in output.split("\0"):
+        others = set(vcs.leading_ids(subject)) - {identifier}
+        found |= others
+        carrying += bool(others)
+    return tuple(sorted(found)), carrying
 
 
 def verify_item(
@@ -2380,14 +2396,14 @@ def _check_item(
     # Said once, beside the check whose reach it widens. Silent when the
     # commits name this item alone, which is the delegated case and the one
     # the scoping was built for.
-    others = other_items_named(root, commits, item.identifier)
+    others, carrying = other_items_named(root, commits, item.identifier)
     if others:
         report.checks.append(
             Check(
                 "the audited diff is this item's alone",
                 False,
-                f"{len(commits)} commit(s) also name {', '.join(others)}, so the paths "
-                "above are the batch's rather than this item's",
+                f"{carrying} of {len(commits)} commit(s) also lead with {', '.join(others)}, "
+                "so the paths above are the batch's rather than this item's",
                 advisory=True,
             )
         )
