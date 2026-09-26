@@ -9,7 +9,7 @@ feature: pr-body-integrity
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, docs/pr-bodies
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-24
-recurrences: 2026-09-25 PL-YYDT withdrawn 2026-09-25 PL-PNJF
+recurrences: 2026-09-25 PL-YYDT withdrawn 2026-09-25 PL-PNJF, 2026-09-26 PL-7VWK withdrawn 2026-09-26 PL-PNJF
 ---
 
 **Problem.** pr_body_check.py --compare reports 27 squash bodies that say something other than their pull request, and nothing can record the pull request's body for them: --recover writes only for an empty body, and a recovery file's header says the commit landed empty
@@ -87,7 +87,9 @@ body has its file, each file's header names its shape truthfully, and
 2026-09-25) as a filing of this item, and the match rests only on the shared
 `tools/pr_body_check.py`. `PL-YYDT` is about four parsers of the pull-request
 number in a commit subject, a different mechanism in `PL-HMZZ`'s family. The
-entry is withdrawn with this item as the reason.
+entry is withdrawn with this item as the reason. `PL-7VWK` (filed 2026-09-26) matched the same way, on the shared
+file alone: it is about `docs/maintainer.md`'s merge rule after `PL-979D`, not
+about a recovery header, and its entry is withdrawn for the same reason.
 
 **Generator check.** An instance of `PL-WFFX`'s fact ("The squash commit's
 subject and body as the merge sends them, not as the pull request shows
