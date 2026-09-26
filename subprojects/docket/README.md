@@ -2834,14 +2834,23 @@ holder that has cut nothing yet instead of offering a release. `docket check`
 refuses any other value, because the match is exact and a misspelt resource
 would hold nothing.
 
+The field has a second effect, once the item is `done`: an item carrying
+`release-train` belongs to no release's count or notes (`PL-KRS6`).
+`release.unreleased` leaves it out, and its docstring says why. The release
+item closes in the cut's own pull request, after the notes are written, so it
+carries no `milestone:`; read as unreleased, it was the next release's whole
+content, offered to every session from the moment a cut merged until real work
+closed.
+
 ### `milestone:` records where work went out, never where it is planned
 
 `docket release` stamps `milestone:` onto the items it ships, and that is the
 whole of what the field means. Nothing else writes it. An item carrying one
 before its release is cut claims to have shipped in a release that has not
 happened — and worse, silently: `release.unreleased` selects finished work
-with **no** milestone, so a stamped item is invisible to the release that
-would actually ship it and is left out of that release's generated notes. The
+with **no** milestone (and no `resource: release-train`, above), so a stamped
+item is invisible to the release that would actually ship it and is left out
+of that release's generated notes. The
 one exception is a cut being resumed, which reclaims the items its own
 interrupted run stamped and nothing else. Ten
 items in the project this grew in were in exactly that state, hand-stamped for

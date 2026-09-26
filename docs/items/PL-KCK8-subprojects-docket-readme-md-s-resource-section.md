@@ -3,11 +3,12 @@ id: PL-KCK8
 title: subprojects/docket/README.md's resource: section says only what a claim on release-train holds, not that a done item carrying it ships in no release, which PL-KRS6 made true
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: release-process
 touches: subprojects/docket/README.md
 added: 2026-09-26
+closed: 2026-09-26
 payoff: a reader who learns resource: from the README knows the release item ships in no release, instead of expecting it in the next release's count and notes
 verify: grep -qF 'PL-KRS6' subprojects/docket/README.md
 ---
@@ -53,3 +54,13 @@ bound family to the close-out sweep "by decision rather than by oversight".
 `PL-G424` leaves prose drift that is not a citation to judgment and the
 capture rule, on purpose. `doc_check` decides whether a cited path exists,
 never whether the sentence around it is still true.
+
+**Worked.** Still a gap on `17c9f3ed` when picked up: the `resource:` section
+said nothing of `release.unreleased`, and the README cited `PL-KRS6` nowhere.
+A paragraph after the section's first now says a `done` item carrying
+`release-train` belongs to no release's count or notes, points at
+`release.unreleased`'s docstring for why, and cites `PL-KRS6`. One edit the
+Done-when did not name: the `milestone:` section's "selects finished work with
+**no** milestone" gained "(and no `resource: release-train`, above)", since the
+brief's reproduction names that sentence as leaving out the same exception and
+it is in the one file this item declares.
