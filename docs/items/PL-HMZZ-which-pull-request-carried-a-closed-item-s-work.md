@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: commit-provenance
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/README.md, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_vcs_silence.py, tools/pr_record_check.py, tools/pr_title_check.py, tools/doc_check.py, tests/unit/test_pr_record_check.py, .github/workflows/pr-title.yml, Makefile, docs/ARCHITECTURE.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/release.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head
 added: 2026-09-23
 payoff: Which pull request carried an item becomes one recorded fact, so a new shape of history stops costing an item

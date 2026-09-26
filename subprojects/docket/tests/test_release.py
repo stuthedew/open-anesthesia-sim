@@ -418,12 +418,14 @@ def test_a_title_escaped_by_hand_or_holding_no_placeholder_is_left_as_it_stands(
 
 # --- bullets that shipped before their number existed ------------------------
 #
-# `PL-W7WL`: the cut renders the notes and `docket record` writes `pr`
+# `PL-W7WL`: the cut rendered the notes and `docket record` wrote `pr`
 # afterwards, so an item that merged just before a cut shipped a bullet naming
 # no pull request, and re-cutting a shipped version to regenerate it is refused.
 # 128 of 853 bullets across 22 of this project's releases were in that state
 # when this was written, every one recoverable from a number the store by then
-# held.
+# held. Since `PL-HMZZ` the number is on the closure before it merges, so the
+# shape recurs only through a closure that reached the base past its check,
+# and `docket record N --merge SHA` is what restates the bullet then.
 
 #: One release's notes as the cut wrote them, with `PL-2222` missing the
 #: reference its siblings carry. The shape is `release_notes`' own output.

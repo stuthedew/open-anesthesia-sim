@@ -83,7 +83,7 @@ touches: src/{slug}.py
 **Problem.** {title}
 """
 
-CLOSED_EXTRA = "closed: 2026-09-02\nverify: uv run pytest\n"
+CLOSED_EXTRA = "closed: 2026-09-02\nverify: uv run pytest\npr: 1\n"
 
 
 def _git(root: Path, *args: str) -> str:
@@ -340,7 +340,7 @@ READS: tuple[Read, ...] = (
     Read(
         "closures_on_base",
         lambda r, g: closures_on_base(r, {"PL-0CLS": "PL-0CLS-fixture.md"}, runner=g),
-        _findings("landed", "derived"),
+        _findings("landed", "recorded"),
     ),
     Read(
         "records_on_base",

@@ -1707,20 +1707,22 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     the base, so there is no prior content for it to have changed.
 
     **`"pr"`** - an existing item file whose whole diff is added `pr:` lines.
-    That is what `bin/docket record` writes, and the `docket` skill's close-out
-    says to let it ride the commit already being made rather than composing one
-    for it. `verify` read those writes as paths outside the commission and
-    rejected the close-out that followed the instruction (`PL-ZYQC`). The
-    number is dictated by the merge history rather than chosen, and `record`
-    refuses to overwrite a different one, so there is nothing here a worker
-    could use to change what a check measures.
+    That is what `bin/docket record N` writes onto the closures a branch
+    introduces while its pull request is open (`PL-HMZZ`), and the `docket`
+    skill's close-out says to let it ride the closure commit, or the push that
+    follows it, rather than composing one for it. `verify` read those writes
+    as paths outside the commission and rejected the close-out that followed
+    the instruction (`PL-ZYQC`). The number is the pull request's own, which
+    its required check holds the field to, and `record` never replaces the
+    number on a landed closure, so there is nothing here a worker could use to
+    change what a check measures.
 
     **`"recurrence"`** - an existing item file whose whole diff is its
     `recurrences:` line arriving, or that line growing by entries on its right.
     `bin/docket new` writes it onto the item a capture matched, so a worker
     that captures a finding - which `CLAUDE.md` requires unconditionally -
     edits an item it was never commissioned to touch, exactly as `record`'s
-    backfill does. The value is dictated rather than chosen: today's date and
+    write does. The value is dictated rather than chosen: today's date and
     the id of the capture the session just made. It buys nothing a worker could
     want either, since the field only makes an item *named* as a generator-tier
     candidate for a human to confirm, and cannot move a band, a status or

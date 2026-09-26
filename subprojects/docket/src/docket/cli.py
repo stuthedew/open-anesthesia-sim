@@ -131,6 +131,7 @@ from .vcs import (
     DEFAULT_BRANCHES,
     BranchCut,
     Churn,
+    ClosureReport,
     CutsInFlight,
     FilingReport,
     FlightReport,
@@ -254,8 +255,8 @@ def _tracked(root: Path, directory: Path) -> str:
     (`PL-3T2Q`). Keeping a claim is the direction the flight reading prefers:
     an item wrongly left marked is picked around, an item wrongly unmarked is
     two sessions on one piece of work. The readers that cannot ask git about
-    such a store at all - `_stranded`, `_numbers_before_notes` and `record` -
-    test this value rather than deriving their own.
+    such a store at all - `_stranded` and `record` - test this value rather
+    than deriving their own.
     """
     try:
         prefix = directory.resolve().relative_to(root.resolve()).as_posix()
@@ -608,18 +609,11 @@ def _complete_report(
         milestones=_milestones(root, config),
         landed=landed,
         # Only the closures in question are asked about, because each costs a
-        # `git show`: an item is judged for a missing `pr` once its closure
-        # stands on the default base, and until then it is still in flight.
-        closures=(
-            None
-            if git is None
-            else closures_on_base(
-                root,
-                {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path},
-                items_dir=tracked,
-                runner=git,
-            )
-        ),
+        # `git show`: a done item recording no `pr`, judged once its closure
+        # stands on the default base, and a done item this checkout changed,
+        # whose closure may be in flight carrying the number of a pull request
+        # the base has not merged (`PL-HMZZ`).
+        closures=None if git is None else _closures_in_question(root, items, tracked, git),
         # The same `git show`, asked of the other half of a closure: not "has
         # this landed" but "does it still record the command that proved it".
         # Every closed item is offered and the reader narrows to the ones this
@@ -821,6 +815,32 @@ def cmd_check(args: argparse.Namespace) -> int:
     )
     print(render.format_check(report))
     return 1 if report.errors else 0
+
+
+def _closures_in_question(
+    root: Path, items: list[Item], tracked: str, git: GitRunner
+) -> ClosureReport:
+    """The closures `check` asks the base about, and what the base records for each.
+
+    Two sets, one `git show` each, and neither is the whole store. A done item
+    recording no `pr` is the one a landed closure's error is about. A done item
+    this checkout changed, committed on the branch or not, is the one whose
+    closure may still be in flight: `docket record N` writes the number of an
+    open pull request onto it, and `_check_provenance` has to know it is
+    unlanded before holding that number to what the base has merged
+    (`PL-HMZZ`). Where git cannot say what changed, only the first set is
+    asked, and the second is left to the provenance check's high-water mark,
+    which is where it stood before.
+    """
+    changed = changed_items(root, default_base(root, runner=git), items_dir=tracked, runner=git)
+    asked = {
+        item.identifier: item.path
+        for item in items
+        if item.status == "done"
+        and item.path
+        and (not item.pr or item.identifier in changed.identifiers)
+    }
+    return closures_on_base(root, asked, items_dir=tracked, runner=git)
 
 
 def _offered(
@@ -2894,77 +2914,6 @@ def cmd_milestone(args: argparse.Namespace) -> int:
     return 0
 
 
-def _numbers_before_notes(
-    directory: Path, ready: Readiness, root: Path, args: argparse.Namespace
-) -> Readiness:
-    """Write the `pr` each shipping closure is owed, while the notes can still use it.
-
-    Exactly `_record_owed`'s reading, narrowed to the items about to ship:
-    `closures_on_base` is the same call, so the cut and `docket record` cannot
-    disagree about which number an item merged as. What differs is the moment.
-    `record` runs after the cut and repairs the store alone; this runs before
-    the render, which is the only point at which a bullet can be written
-    correctly rather than repaired.
-
-    The item files are written too, not only the objects the notes are built
-    from. A cut that put the number in the notes and left the store owing it
-    would trade one half of the same disagreement for the other, and `docket
-    check`'s missing-`pr` advisory would still be counting these items.
-
-    Never a refusal. A number the base cannot supply - a shallow clone whose
-    history stops short of the merge, a closure that has not landed because it
-    is closing on the release branch itself - leaves the bullet as it was, and
-    `docket record` repairs it afterwards through `restate_references`. Holding
-    the release for it would stop a cut over provenance that is one `git fetch`
-    from recoverable, which is the wrong side to err on for the one command
-    whose output is permanent.
-
-    Measured before it was built: 128 of 853 bullets across 22 of this
-    project's releases name no pull request, among them nine of `v0.4.22`'s
-    fifteen and twelve of `v0.4.35`'s sixteen (`PL-W7WL`, filed four times from
-    four separate cuts).
-    """
-    owed = {i.identifier: i.path for i in ready.shippable if not i.pr and i.path}
-    inv = _invocation(args)
-    # Under `--no-git`, or for a store git cannot address, there is no number
-    # to read, and the bullet is left as it was for `docket record` to repair.
-    if not owed or inv.git is None or not inv.tracked:
-        return ready
-    report = closures_on_base(root, owed, items_dir=inv.tracked, runner=inv.git)
-    if not report.known:
-        print(f"Declined to read which pull request each closure merged as: {report.declined}\n")
-        return ready
-
-    numbers = report.numbers
-    verb = "would record" if args.dry_run else "recorded"
-    shippable: list[Item] = []
-    written = 0
-    for item in ready.shippable:
-        number = numbers.get(item.identifier)
-        if item.pr or number is None:
-            shippable.append(item)
-            continue
-        _write_pr(directory, item, str(number), args.dry_run)
-        print(f"{item.identifier}: {verb} `pr: {number}`, so these notes can cite it")
-        shippable.append(with_fields(item, pr=str(number)))
-        written += 1
-
-    # Said whether or not anything was written, for `PL-KX9N`'s reason: a
-    # partially deepened clone answers for its newest closures and not for the
-    # rest, so a run that recorded some numbers proves nothing about the others.
-    unnamed = sorted(i for i in report.landed if i not in numbers)
-    if unnamed and report.shallow:
-        print(
-            f"{len(unnamed)} shipping closure(s) record no `pr` and this checkout is a "
-            f"shallow clone, so the merge that names the number can lie outside it. Their "
-            f"bullets will cite the commit or nothing; `git fetch --unshallow origin` "
-            f"before the cut is what lets them cite the pull request: {', '.join(unnamed)}"
-        )
-    if written or unnamed:
-        print()
-    return with_fields(ready, shippable=shippable)
-
-
 @dataclass(frozen=True)
 class _Train:
     """Who holds the release train, as `cmd_release`, the digest and `new` all read it.
@@ -3212,23 +3161,6 @@ def cmd_release(args: argparse.Namespace) -> int:
                 if not args.dry_run:
                     return 1
                 print()
-
-    # **The numbers the base already knows, written on before the notes quote
-    # them rather than after.** A closure lands with an empty `pr` by design -
-    # the number does not exist when the commit that closes the item is made
-    # (`PL-QS72`) - and the only thing that writes it is `docket record`, which
-    # the documented cut runs *after* `make release`. So an item that merged
-    # between the previous cut and this one shipped a bullet naming no pull
-    # request, and no supported command could put one there afterwards: this
-    # command answers `Nothing to release` once the version is cut, correctly,
-    # because re-cutting a shipped release is what leaves two sets of notes
-    # disagreeing about the same items (`PL-1MKQ`).
-    #
-    # Swapping the documented order was the other candidate and is weaker: it
-    # removes nothing, it only asks every future cut to remember. This runs the
-    # same reading `record` does, off the fetch the guards above have paid for
-    # already, so it costs one history read and cannot be forgotten.
-    ready = _numbers_before_notes(directory, ready, root, args)
 
     milestone = milestones(stamp(ready.shippable, name))[name]
     notes = release_notes(milestone, args.today or date.today())
@@ -4122,49 +4054,54 @@ def cmd_arm(args: argparse.Namespace) -> int:
 
 
 def cmd_record(args: argparse.Namespace) -> int:
-    """Write a pull request number onto the items its merge commit closed.
+    """Write a pull request number onto the closures a branch, or a merge, introduced.
 
-    This is the write half of what `_check_closures` detects. The number does
-    not exist when the closure is committed - that is why the closure travels
-    with its work and the item lands with an empty `pr` (`PL-QS72`) - so
-    something has to supply it afterwards. Until now that something was a
-    session reading an advisory and retyping the number by hand, which cost a
-    commit and usually a pull request of its own on every item that closed,
-    turned `#229` and `#230` into duplicates of each other (`PL-QTSB`), and
-    left `main` red whenever the squash subject named no id at all
-    (`PL-2XTF`). None of that is judgment. The number is in the merge event,
-    and this writes it.
+    Two forms, one for each moment the number can be written, and the first is
+    the rule (`PL-HMZZ`).
 
-    Takes the number rather than deriving it, which is the whole point: the
-    caller that has it - the merge-time job, handed it by the event that fired
-    it - needs no subject parsing and so cannot be defeated by a subject.
-    `closed_by` supplies the other half, which is what the commit closed, and
-    that is a tree comparison rather than a guess.
+    `record N` runs on the branch while its pull request is open. It writes
+    `pr: N` onto every closure this checkout introduces - `done` here and not
+    on the default base, committed or still in the working tree, which is the
+    set `tools/pr_title_check.py` holds the title to - and the pull request's
+    own required check, `tools/pr_record_check.py`, refuses a closure that
+    does not carry it. So the number is a fact recorded before the merge by
+    the one party that knows it, and nothing infers it from history
+    afterwards. That inference read the merge subjects on the base and then
+    each item file's own history, and ten items in three weeks were the shapes
+    of history that misled it. A closure the base does not hold yet may have
+    its number *replaced*, because a pull request closed unmerged and reopened
+    is the one way a closure legitimately changes number; a landed closure is
+    never written by this form at all.
 
-    An item already carrying a *different* number is refused rather than
-    overwritten. Two numbers for one closure means one of them is wrong, and
-    which is not something this can know; a wrong provenance recorded
-    confidently is worse than the missing one this exists to supply.
+    `record N --merge SHA` is the explicit form, for a closure that reached
+    the base without its number - closed before the rule, or merged past the
+    check. `closed_by` supplies what that merge closed, by comparing its tree
+    against its parent's, and the number is taken rather than derived, so no
+    subject can defeat it. It restates the released bullets of what it closed
+    as well, since a closure that shipped without its number shipped a bullet
+    without one too. An item already carrying a *different* number is refused
+    rather than overwritten here: two numbers for one landed closure means one
+    of them is wrong, and which is not something this can know.
     """
     directory, items, _ = _load(args)
     inv = _invocation(args)
     root, tracked = inv.root, inv.tracked
     if inv.git is None:
-        print("record: `--no-git` asks git nothing, and only git can say what a merge closed")
+        print(
+            "record: `--no-git` asks git nothing, and only git can say what a branch or a "
+            "merge closed"
+        )
         return 2
     if not tracked:
         print("record: the store is not below the repository root, so git cannot say what closed")
         return 2
-    if args.number is None:
-        if args.merge is not None:
-            print("record: `--merge` names one commit, so it needs the number that merge is")
-            return 2
-        return _record_owed(directory, items, root, tracked, args)
     if args.number < 1:
         print(f"record: #{args.number} is not a pull request number")
         return 2
+    if args.merge is None:
+        return _record_on_branch(directory, items, root, tracked, inv.git, args)
 
-    merge = args.merge or "HEAD"
+    merge = args.merge
     report = closed_by(merge, root, items_dir=tracked, runner=inv.git)
     if not report.known:
         print(f"record: declined to read {report.declined}")
@@ -4203,92 +4140,78 @@ def cmd_record(args: argparse.Namespace) -> int:
             f"records `pr: {existing}`. One of the two is wrong and this cannot tell "
             f"which, so neither was written."
         )
+    # The other half of the same fact: a closure that reached the base without
+    # its number and then shipped has a released bullet citing none.
+    _restate_notes(
+        root,
+        {
+            identifier: with_fields(known[identifier], pr=number)
+            for identifier in written + unchanged
+        },
+        args.dry_run,
+    )
     return 1 if conflicting else 0
 
 
-def _record_owed(
-    directory: Path, items: Sequence[Item], root: Path, tracked: str, args: argparse.Namespace
+def _record_on_branch(
+    directory: Path,
+    items: Sequence[Item],
+    root: Path,
+    tracked: str,
+    git: GitRunner,
+    args: argparse.Namespace,
 ) -> int:
-    """Write every `pr` the default base is owed and can supply, in one pass.
+    """Write `pr: N` onto the closures this checkout introduces, and onto nothing else.
 
-    The normal form, and the one `make fix` runs. It asks exactly the question
-    `check` already asks - which landed closures record no `pr`, and which
-    number the base names for each - and writes the answer instead of printing
-    it. The two cannot disagree, because there is only one reading:
-    `closures_on_base` is the same call `cmd_check` makes.
+    The closures in question are the done items this checkout changed against
+    the default base - committed on the branch or still in the working tree,
+    the two moments `make check` runs at - narrowed to those the base does not
+    hold as done. An item the base already holds done is a closure that
+    landed, whatever this branch did to its file, and is never written here:
+    the number a landed closure records is the one its own merge carried.
+    Reading "changed" first keeps this at a handful of tree reads rather than
+    one per closed item in the store.
 
-    No `--merge`, because there is no one merge. A session that has been open a
-    while may be owed numbers from several, and taking them from the base
-    rather than from a commit is what lets the write ride whatever commit the
-    session is about to make - which is the point. The field stops costing a
-    commit of its own, which is what it cost when a session had to read an
-    advisory and compose one (`PL-WTQR`, `PL-N5WZ`).
-
-    A closure the base names no number for is left alone, and left to `check` -
-    the command that decides whether that is provenance lost, a decline, or a
-    truncated checkout. Writing nothing there is what makes this safe to run
-    unattended.
-
-    Which leaves the one case a session can act on itself, and it is the common
-    one: an agent container clones `--depth 1`, so the commit that would name
-    the number is usually outside the checkout entirely. That is a fetch away
-    rather than lost, and saying only that no number was found sends a session
-    to `check` for an answer it already has. So the depth is named, with the
-    fetch that settles it. It is named whether or not anything was written,
-    because a partially deepened clone answers for its newest closures and not
-    for the rest (`PL-KX9N`).
+    A checkout git cannot compare against the base declines and writes nothing
+    - a diff with no merge base, a missing default branch - because the
+    alternative is stamping one number across whatever the working tree calls
+    done.
     """
+    number = str(args.number)
+    changed = changed_items(root, default_base(root, runner=git), items_dir=tracked, runner=git)
+    if not changed.known:
+        print(f"record: declined to read {changed.declined}")
+        return 2
     known = {item.identifier: item for item in items}
-    owed = {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path}
-    if not owed:
-        print("record: every closure already records its pull request")
-        _restate_notes(root, known, args.dry_run)
-        return 0
-    report = closures_on_base(root, owed, items_dir=tracked, runner=_invocation(args).git)
+    candidates = {
+        item.identifier: item.path
+        for item in items
+        if item.status == "done" and item.path and item.identifier in changed.identifiers
+    }
+    report = closures_on_base(root, candidates, items_dir=tracked, runner=git)
     if not report.known:
         print(f"record: declined to read {report.declined}")
         return 2
 
-    numbers = report.numbers
     verb = "would record" if args.dry_run else "recorded"
-    written = 0
-    for identifier in sorted(report.landed):
-        number = numbers.get(identifier)
-        item = known.get(identifier)
-        if number is None or item is None:
-            continue
-        _write_pr(directory, item, str(number), args.dry_run)
-        print(f"{identifier}: {verb} `pr: {number}`")
-        # The notes pass below reads this map, so the number has to be on it:
-        # an item that is owed a `pr` *and* has already shipped is the case
-        # where one run of this command repairs both halves, and it is exactly
-        # the case a cut interrupted by a missing number leaves behind.
-        known[identifier] = with_fields(item, pr=str(number))
-        written += 1
-    unnamed = sorted(identifier for identifier in report.landed if identifier not in numbers)
-    if unnamed and report.shallow:
+    for identifier in sorted(report.unlanded):
+        item = known[identifier]
+        if item.pr == number:
+            print(f"{identifier}: already records `pr: {number}`; nothing to write")
+        elif item.pr:
+            if not args.dry_run:
+                replace_field(directory, item, "pr", number)
+            print(
+                f"{identifier}: {verb} `pr: {number}` in place of `pr: {item.pr}`, on a "
+                f"closure `{report.base}` does not hold yet"
+            )
+        else:
+            _write_pr(directory, item, number, args.dry_run)
+            print(f"{identifier}: {verb} `pr: {number}`")
+    if not report.unlanded:
         print(
-            f"record: this checkout is a shallow clone, so a closure's own merge commit - "
-            f"or the parent that would prove it is one - can lie outside it. `git fetch "
-            f"--unshallow origin` is what lets the remaining {len(unnamed)} be read"
-        )
-    _restate_notes(root, known, args.dry_run)
-    if written:
-        return 0
-    if not report.landed:
-        # The ordinary state of a session mid-item: the closure it just wrote
-        # is `done` in the working tree and has not merged, so no number is
-        # owed yet. Reporting the unlanded count as unnameable would be the
-        # confident wrong answer - it reads as lost provenance and is not.
-        print(
-            f"record: {len(owed)} closure(s) record no `pr`, and none has reached "
-            f"`{report.base}` yet, so no number is owed"
-        )
-    else:
-        print(
-            f"record: {len(report.landed)} landed closure(s) record no `pr`, and "
-            f"`{report.base}` names a number for none of them; `docket check` says "
-            f"whether that is provenance lost or a history this checkout cannot see"
+            f"record: this checkout closes no item that `{report.base}` does not already "
+            f"hold as done, so #{number} is owed to nothing"
         )
     return 0
 
@@ -4301,23 +4224,23 @@ def _restate_notes(root: Path, by_id: Mapping[str, Item], dry_run: bool) -> int:
     where that reader is looking - so a number written onto the item and not
     onto the bullet has been recorded in the half nobody reads.
 
-    It belongs to this command rather than to `release` because repair and
-    prevention are different jobs. `_numbers_before_notes` stops the next cut
-    producing one; nothing in a cut can reach a bullet that shipped two
-    releases ago, and re-cutting that version to regenerate it is refused,
-    correctly (`PL-1MKQ`). This is the only supported route to those lines, and
-    `make fix` runs it, so the repair costs no commit of its own - the same
-    property that made `record` the right home for the field itself.
+    It belongs to `record N --merge SHA` rather than to `release` because
+    repair and prevention are different jobs. A closure carries its number
+    before it merges, so the cut renders every bullet with one (`PL-HMZZ`);
+    the bullet without one is the closure that reached the base past that
+    rule and then shipped, and nothing in a cut can reach a bullet that
+    shipped two releases ago, since re-cutting that version to regenerate it
+    is refused, correctly (`PL-1MKQ`). This is the only supported route to
+    those lines, and it runs with the write that supplies the number, so the
+    two halves of the same fact are repaired in one pass.
 
-    Not in the `--number` path above, and the boundary is a fact rather than a
-    convenience: that path writes the number of a merge that has just
-    happened, and an item cannot appear in a release's notes before it has
-    merged. There is no bullet for it to repair.
+    Not in the branch form, and the boundary is a fact rather than a
+    convenience: that form writes the number of a pull request still open, and
+    an item cannot appear in a release's notes before it has merged. There is
+    no bullet for it to repair.
 
     Only an append is ever made, so a run that finds nothing to add writes
-    nothing at all - which is what lets this sit in `make fix` without
-    producing a diff on a healthy tree. `restate_references` carries why the
-    title is left alone.
+    nothing at all. `restate_references` carries why the title is left alone.
     """
     directory = root / NOTES_DIR
     if not directory.is_dir():
@@ -4347,10 +4270,9 @@ def _write_pr(directory: Path, item: Item, number: str, dry_run: bool) -> None:
     `insert_field` rather than either of the writers that render from the
     parsed item, and the two reasons are the two defects this line has had.
     `write_item` derives the filename from the title, so on a file whose slug
-    has drifted it turns one added line into a delete-plus-add - and the skill
-    grants `record` its standing exemption from the in-flight guard on the
-    grounds that two sessions running it write the same line and git merges
-    them, which a rename defeats (`PL-LBR6`, `PL-5QLP`). `rewrite_item` keeps
+    has drifted it turns one added line into a delete-plus-add, which took a
+    modify/delete conflict against whoever else held the file and left one id
+    under two names once backed out (`PL-LBR6`, `PL-5QLP`). `rewrite_item` keeps
     the name and still re-renders the block, so on a file whose keys are in
     some other order, or whose value runs over continuation lines, it removes
     lines as well as adding one - and `verify.sanctioned_queue_edit` reads a
@@ -4358,8 +4280,9 @@ def _write_pr(directory: Path, item: Item, number: str, dry_run: bool) -> None:
     exactly as instructed came back `REJECT` (`PL-7K8Y`).
 
     Both callers establish that the item records no `pr` before reaching here,
-    which is what makes an insert the right operation: `cmd_record` sorts a
-    conflicting number into its own report rather than overwriting it.
+    which is what makes an insert the right operation. The one replacement
+    `record` ever makes - a new number on a closure the base does not hold yet
+    - goes through `replace_field`, which keeps the same byte-for-byte promise.
     """
     if not dry_run:
         insert_field(directory, item, "pr", number)
@@ -4536,16 +4459,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     arm_cmd.set_defaults(func=cmd_arm)
 
-    record = add("record", "write the pull request number onto the closures owed one")
+    record = add(
+        "record", "write a pull request number onto the closures a branch, or a merge, introduced"
+    )
     record.add_argument(
         "number",
         type=int,
-        nargs="?",
-        default=None,
-        help="one pull request number; omit to write every number the base can supply",
+        help="this branch's own open pull request, whose number is written onto every "
+        "closure the branch introduces; with --merge, the pull request that merge was",
     )
     record.add_argument(
-        "--merge", default=None, help="with a number, the merge that closed them (default: HEAD)"
+        "--merge",
+        default=None,
+        help="the merge commit on the default base that closed the items, for a closure "
+        "that reached the base without its number",
     )
     record.add_argument(
         "--dry-run", action="store_true", help="say what would be written, and write nothing"
