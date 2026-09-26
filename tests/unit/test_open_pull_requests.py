@@ -183,3 +183,21 @@ def test_the_slug_is_read_from_every_spelling_of_the_remote(
     means which one arrives depends on when the remote is read."""
     monkeypatch.setattr(open_pull_requests, "_git", lambda args: url)
     assert open_pull_requests.repo_slug() == "owner/repo"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://x-access-token:abc@github.com/owner/repo.git\n",
+        "https://github.com/owner/repo.git/\n",
+        "ssh://git@github.com:22/owner/repo.git\n",
+    ],
+)
+def test_repo_slug_reads_a_token_bearing_url(monkeypatch: pytest.MonkeyPatch, url: str) -> None:
+    """The three shapes the four parsers disagreed on read alike, through `vcs.github_slug`.
+
+    The token-bearing URL was None here and `owner/repo` to the other three,
+    which `left_behind_check` and `pr_title_check` inherit (`PL-2TV9`).
+    """
+    monkeypatch.setattr(open_pull_requests, "_git", lambda args: url)
+    assert open_pull_requests.repo_slug() == "owner/repo"

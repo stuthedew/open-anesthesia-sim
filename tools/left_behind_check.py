@@ -76,6 +76,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.vcs import github_token  # noqa: E402
+
 from open_pull_requests import GITHUB_API, LOOKUP_TIMEOUT, repo_slug  # noqa: E402
 
 #: Seconds for one git call. `ls-remote` is the only one that touches the
@@ -157,6 +159,12 @@ def read_remote(run: Runner) -> Remote:
     Read from the remote rather than from this checkout's tracking refs, which
     are only as fresh as the last fetch. A tip newer than that fetch is caught
     per branch, in `examine`, rather than compared stale.
+
+    That is also why the default branch is the remote's own `HEAD` here and not
+    `vcs.default_base`, which every other tool imports for it (`PL-GNCB`): this
+    is the one reader comparing the remote's tips, and it takes the default
+    from the same answer as the tips, so the two cannot come from different
+    moments. On a clone whose default is `master` both name `master`.
     """
     done = run(["ls-remote", "--symref", "origin", "HEAD", "refs/heads/*", "refs/pull/*/head"])
     if done.code != 0:
@@ -202,7 +210,7 @@ def github_lookup(slug: str, base: str) -> Lookup:
     the failure: that script folds every failure into "could not look", and this
     one separates them into the conditions its caller must name.
     """
-    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    token = github_token()
     owner = slug.split("/")[0]
 
     def lookup(branch: str) -> PullRequest | None:

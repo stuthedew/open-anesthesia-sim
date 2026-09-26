@@ -34,9 +34,11 @@ what is on it that nowhere else has.
 from __future__ import annotations
 
 import locale
+import os
 import re
 import subprocess
 import time
+import urllib.parse
 from collections import Counter
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
@@ -1195,11 +1197,6 @@ def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Ru
     return superseded
 
 
-#: The number GitHub's squash merge writes at the end of the commit it lands,
-#: `Title (#934)`. A merge commit or a direct push carries none.
-_SQUASH_NUMBER = re.compile(r"\(#(\d+)\)\s*$")
-
-
 @dataclass(frozen=True)
 class Landing:
     """The commit on the default branch whose tree first held another commit's change."""
@@ -1209,9 +1206,9 @@ class Landing:
 
     @property
     def pull_request(self) -> int | None:
-        """The pull request that landed it, where the subject is a squash merge's."""
-        found = _SQUASH_NUMBER.search(self.subject)
-        return int(found.group(1)) if found else None
+        """The pull request that landed it, where the subject names one in either shape."""
+        found = subject_pull_request(self.subject)
+        return found.number if found is not None else None
 
 
 def change_landed(
@@ -3077,6 +3074,85 @@ PR_SUBJECT_RE = re.compile(r"^Merge pull request #(\d+)\b|\(#(\d+)\)\s*$")
 
 
 @dataclass(frozen=True)
+class SubjectPullRequest:
+    """The pull request a commit subject names, and which of GitHub's two shapes named it.
+
+    `squash` is carried rather than dropped because some readers want the squash
+    shape alone: a merge commit carries no pull request body to recover
+    (`tools/pr_body_check.py`), and the tag-span read in `tools/doc_check.py`
+    was written against squash subjects. They filter on it here instead of
+    spelling a squash-only pattern of their own, which is how four parsers came
+    to disagree on the 99 `Merge pull request #N from` subjects `main` holds
+    (`PL-YYDT`).
+    """
+
+    number: int
+    squash: bool
+
+
+def subject_pull_request(subject: str) -> SubjectPullRequest | None:
+    """The pull request `subject` names, in either shape, or None where it names none.
+
+    **The one reading of a pull request number in a commit subject** (`PL-PVW2`):
+    `Landing`, `FilingCommit`, `merged_pull_requests`, `tools/doc_check.py` and
+    `tools/pr_body_check.py` all read it here.
+    """
+    match = PR_SUBJECT_RE.search(subject.strip())
+    if match is None:
+        return None
+    merged, squashed = match.group(1), match.group(2)
+    if squashed is not None:
+        return SubjectPullRequest(int(squashed), squash=True)
+    return SubjectPullRequest(int(merged), squash=False)
+
+
+def github_slug(url: str) -> str | None:
+    """`owner/name` for a GitHub remote URL, or None for anything else (`PL-2TV9`).
+
+    **The one reading of which repository a remote names** (`PL-PVW2`). It reads
+    a URL the way git does: one with a scheme is split by `urllib.parse`, so a
+    token in its userinfo and a port both fall away with the host, and one
+    without is scp-like, `[user@]host:path`. Either way the host must be
+    `github.com` and the path exactly `owner/name`, less any slash around it and
+    one `.git`. Four spellings disagreed before this one: a token-bearing
+    `https://x-access-token:...@github.com/o/r.git` read as None to one of them,
+    `https://github.com/o/r.git/` as `o/r.git` to another, and
+    `ssh://git@github.com:22/o/r.git` as `22/o/r` to a third.
+    """
+    text = url.strip()
+    if "://" in text:
+        parts = urllib.parse.urlsplit(text)
+        host, path = parts.hostname or "", parts.path
+    else:
+        head, colon, path = text.partition(":")
+        if not colon or "/" in head:
+            return None
+        host = head.rpartition("@")[2].lower()
+    if host != "github.com":
+        return None
+    slug = path.strip("/").removesuffix(".git")
+    owner, slash, name = slug.partition("/")
+    return slug if slash and owner and name and "/" not in name else None
+
+
+#: Where a GitHub token is read from, in the GitHub CLI's own precedence: "`GH_TOKEN`,
+#: `GITHUB_TOKEN` (in order of precedence)" (`gh help environment`,
+#: https://cli.github.com/manual/gh_help_environment). One tool read them the
+#: other way round (`PL-2TV9`).
+GITHUB_TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN")
+
+
+def github_token(environ: Mapping[str, str] | None = None) -> str | None:
+    """The token to ask GitHub with, or None where the environment holds none.
+
+    **The one reading of it** (`PL-PVW2`): the first of `GITHUB_TOKEN_VARIABLES`
+    set to anything but the empty string.
+    """
+    env = os.environ if environ is None else environ
+    return next((env[name] for name in GITHUB_TOKEN_VARIABLES if env.get(name)), None)
+
+
+@dataclass(frozen=True)
 class PullRequestHistory:
     """Which pull requests the default branch names, or why that is not known.
 
@@ -3131,9 +3207,9 @@ def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> PullReq
     found: set[int] = set()
     # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
     for subject in subjects.split("\n"):
-        match = PR_SUBJECT_RE.search(subject.strip())
-        if match is not None:
-            found.add(int(match.group(1) or match.group(2)))
+        named = subject_pull_request(subject)
+        if named is not None:
+            found.add(named.number)
     return PullRequestHistory(numbers=frozenset(found))
 
 
@@ -3159,8 +3235,8 @@ class FilingCommit:
     @property
     def pull_request(self) -> int | None:
         """The pull request the filing commit arrived through, where the subject names one."""
-        match = PR_SUBJECT_RE.search(self.subject.strip())
-        return int(match.group(1) or match.group(2)) if match is not None else None
+        named = subject_pull_request(self.subject)
+        return named.number if named is not None else None
 
 
 @dataclass(frozen=True)
