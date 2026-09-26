@@ -3,11 +3,12 @@ id: PL-Z6M3
 title: bin/docket stranded prints 'No item exists only on a branch' while an item sits on two branches and not on main, because the predicate is 'neither the store nor the default branch' and the rendered sentence drops the store half
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: rendered-claim-accuracy
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
+closed: 2026-09-26
 verify: grep -q 'def test_stranded_states_both_halves_of_its_predicate' subprojects/docket/tests/test_cli.py
 recurrences: 2026-09-25 PL-LFNK
 ---
@@ -76,3 +77,19 @@ because this checkout's own store holds those items, or saying in the sentence
 that the claim is bounded by the store as well as by what was fetched - and a
 test under `subprojects/docket/tests/test_cli.py` drives an item present on a
 branch and in the store but absent from the default branch.
+
+**Worked.** Took the brief's first route, stating the predicate, rather than
+naming the suppressed count: `StrandedReport` carries no such count, and adding
+one means changing `vcs.stranded`, which the brief rules out and `touches` does
+not reach. The empty case now reads "No item exists only on a branch and
+outside this checkout's store", which keeps the prefix
+`test_stranded_reports_nothing_when_every_branch_has_landed` pins, so no
+existing assertion changed; its second line names the store bound beside the
+fetch bound. The finding case's heading carries the same two halves, and so
+does its closing line, "Every other branch read carries no item the default
+branch lacks", which made the same one-part claim and is fixed here too, with
+the docstring sentence that repeated it. One test,
+`test_stranded_states_both_halves_of_its_predicate`, drives both cases from
+`_branched_repo` with `--no-fetch`: checked out on `abandoned` the store holds
+`PL-K7QX` and `main` does not (read from `git ls-tree`, not assumed), and
+checked out on `main` the item is reported under the two-part heading.
