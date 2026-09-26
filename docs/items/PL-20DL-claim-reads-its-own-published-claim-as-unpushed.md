@@ -2,6 +2,7 @@
 id: PL-20DL
 title: claim reads its own published claim as unpushed where the branch's tip on the remote is a commit this clone has not fetched, so after someone else pushes to the branch, claim --no-fetch exits 4 saying only this checkout can see a claim every clone can
 status: untriaged
+feature: claim-integrity
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_claiming.py
 added: 2026-09-26
 ---
