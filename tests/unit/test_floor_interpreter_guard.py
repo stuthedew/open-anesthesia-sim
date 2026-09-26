@@ -108,6 +108,11 @@ ALLOWED = (
     "python3 -c 'print(1)'",
     # A path in a comment is nobody's argument.
     "python3 -c 'print(1)'  # src/ is the 3.14 tree",
+    # A reserved word opens the correct invocation as it opens any other, and
+    # one written as an argument is a word.
+    "for f in src/a.py src/b.py; do uv run python -m py_compile $f; done",
+    "time uv run python -m compileall src/",
+    "echo then python3 src/a.py",
 )
 
 
@@ -191,6 +196,36 @@ GROUPED = (
 @pytest.mark.parametrize("command", GROUPED)
 def test_a_subshell_paren_does_not_hide_the_interpreter(command: str) -> None:
     """A subshell, brace group or negation still runs the bare interpreter (`PL-BBV7`)."""
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert decision["permissionDecision"] == "deny"
+
+
+RESERVED = (
+    # `PL-0X0G`'s reproductions, verbatim.
+    "for f in a; do python3 -m compileall src/; done",
+    "time python3 -m compileall src/",
+    # Every other reserved word bash reads with a command after it, and the two
+    # options `time` takes before its pipeline.
+    "if python3 src/a.py; then :; fi",
+    "if true; then python3 src/a.py; fi",
+    "if false; then :; elif python3 src/a.py; then :; fi",
+    "if false; then :; else python3 src/a.py; fi",
+    "while python3 src/a.py; do :; done",
+    "until python3 src/a.py; do :; done",
+    "time -p -- python3 src/a.py",
+    "! time python3 src/a.py",
+)
+
+
+@pytest.mark.parametrize("command", RESERVED)
+def test_a_reserved_word_opens_the_command_after_it(command: str) -> None:
+    """`do`, `then`, `time` and the rest are bash's words, not the command's name (`PL-0X0G`).
+
+    `shell_split.command_words` dropped a leading `(`, `{`, `!` and assignments
+    and nothing else, so each of these read as a command named `do` or `time`,
+    and the interpreter after it was never checked.
+    """
     decision = _decision(command)
     assert decision is not None, f"{command!r} was allowed"
     assert decision["permissionDecision"] == "deny"

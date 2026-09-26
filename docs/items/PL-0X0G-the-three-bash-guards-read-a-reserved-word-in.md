@@ -3,11 +3,12 @@ id: PL-0X0G
 title: The three Bash guards read a reserved word in front of a command as the command's name, so a gate, a floor parse or a prune written after do, then, else or time passes the guard that exists to refuse it: for f in a; do make check | tail; done keeps tail's status unrefused
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
-touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_gate_status_guard.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py
+touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_gate_status_guard.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_no_prune_guard.py, docs/worker.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
 payoff: a gate, a floor parse or a prune written inside an if or a loop, or after time, is refused like the same command on its own, so a red make check piped to tail there no longer reaches a session as exit 0
 verify: grep -q 'def test_a_reserved_word_opens_the_command_after_it' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_reserved_word_opens_the_command_after_it' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_a_reserved_word_opens_the_command_after_it' tests/unit/test_no_prune_guard.py
 ---
