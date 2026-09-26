@@ -3,12 +3,13 @@ id: PL-YYDT
 title: The pull-request number in a commit subject is parsed four ways (vcs._SQUASH_NUMBER, doc_check, pr_body_check, vcs.PR_SUBJECT_RE), and the 99 'Merge pull request #N from' subjects on main give None to Landing.pull_request and N to FilingCommit
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: one-answer
 touches: tools/pr_body_check.py, tools/doc_check.py, subprojects/docket/src/docket/vcs.py, tests/unit/test_pr_body_check.py, subprojects/docket/tests/test_vcs.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-answer batch
 added: 2026-09-25
+closed: 2026-09-26
 payoff: the next tool that needs a commit's pull-request number imports one parser that names the subject shape, instead of copying a squash-only spelling that cannot see the 99 merge-commit pull requests on main
 verify: grep -q 'def test_pull_request_number_reads_both_subject_shapes' subprojects/docket/tests/test_vcs.py
 ---
@@ -26,3 +27,5 @@ Reproduced by importing both. doc_check's comment says it reads the number "the 
 **Done when.** One parser, imported by all four.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+**Fixed 2026-09-26.** `vcs.subject_pull_request` is the one parser. It returns the number with the shape that named it (`SubjectPullRequest.squash`), so `Landing`, `FilingCommit` and `merged_pull_requests` read both shapes, and `tools/doc_check.py`'s tag span and `tools/pr_body_check.py`'s squash walk keep the squash shape alone by filtering on the flag rather than by a pattern of their own. `vcs._SQUASH_NUMBER`, `doc_check.SQUASH_PR_RE` and `pr_body_check.SQUASH_SUBJECT_RE` are gone. One behaviour moved: `Landing.pull_request` now names the pull request for a `Merge pull request #N from` landing, where it gave None and `left_behind_check` fell back to the commit hash.

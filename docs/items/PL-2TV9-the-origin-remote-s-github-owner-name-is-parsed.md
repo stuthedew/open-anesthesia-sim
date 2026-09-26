@@ -3,12 +3,13 @@ id: PL-2TV9
 title: The origin remote's GitHub owner/name is parsed four ways, which disagree on a token-bearing URL, a trailing slash and an ssh port, and the token variables are read in opposite precedence
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/open_pull_requests.py, tools/main_ci_status.py, tools/pr_body_check.py, tools/required_checks_check.py, tests/unit/test_open_pull_requests.py, tests/unit/test_required_checks_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-answer batch
 added: 2026-09-25
+closed: 2026-09-26
 payoff: every tool that reads the origin's owner/name gets the same answer from one parser, so a new remote URL shape breaks all of them loudly or none of them
 verify: grep -q 'def test_repo_slug_reads_a_token_bearing_url' tests/unit/test_open_pull_requests.py && grep -q 'def test_token_is_read_in_one_precedence' tests/unit/test_required_checks_check.py
 ---
@@ -32,3 +33,5 @@ Reproduced: `https://x-access-token:abc@github.com/o/r.git` gives None to open_p
 **Done when.** One slug parser and one token lookup, imported by all four.
 
 Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
+
+**Fixed 2026-09-26.** `vcs.github_slug` is the one slug parser: a URL with a scheme is split by `urllib.parse`, so a token and a port fall away with the host, and an scp-like one is read as `[user@]host:path`. `open_pull_requests`, `main_ci_status`, `pr_body_check` and `required_checks_check` parse through it, and `left_behind_check` and `pr_title_check` inherit it through `open_pull_requests.repo_slug`. `vcs.github_token` is the one token lookup, `GH_TOKEN` over `GITHUB_TOKEN` as `gh help environment` orders them, read by the four tools that ask GitHub with a token. `main_ci_status` still reads none, as before: it asks an endpoint that answers unauthenticated.

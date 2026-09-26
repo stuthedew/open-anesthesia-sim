@@ -73,7 +73,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.model import CLOSED_STATUSES, Item, parse_item  # noqa: E402
-from docket.vcs import ITEM_FILE_RE, leading_ids  # noqa: E402
+from docket.vcs import ITEM_FILE_RE, default_base, leading_ids  # noqa: E402
 
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
 
@@ -174,7 +174,10 @@ def open_pull_request(slug: str, branch: str) -> tuple[int, str] | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base", default=os.environ.get("PR_BASE", "origin/main"))
+    # `docket`'s own answer where CI passes no `PR_BASE`, so a clone whose
+    # default is `master` compares against it rather than an `origin/main`
+    # that does not resolve there (`PL-GNCB`).
+    parser.add_argument("--base", default=os.environ.get("PR_BASE") or default_base(ROOT))
     parser.add_argument("--head", default=os.environ.get("PR_HEAD", "HEAD"))
     parser.add_argument(
         "--discover",

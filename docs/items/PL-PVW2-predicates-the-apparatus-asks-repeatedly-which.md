@@ -34,6 +34,15 @@ The audit enumerated the questions the apparatus asks and found every implementa
 
 **Working order.** `PL-6P0F` goes first (`impairs-generators`, S), then `PL-8HSX` (P1, the protected-path audit). `PL-0JGZ` waits on its own decision, which is why `verify:` below leaves it out. `PL-GJPD` is likelier to close under `PL-HMZZ`'s recorded `pr:` than here.
 
+**Split, 2026-09-26.** The `L` is built one question per pull request, and its members already are that decomposition, so no item is added. In order:
+
+1. The tools' own spellings of the pull-request number, the default branch, the origin slug and the GitHub token (`PL-YYDT`, `PL-GNCB`, `PL-2TV9`), onto `vcs.subject_pull_request`, `vcs.default_base`, `vcs.github_slug` and `vcs.github_token`.
+2. How a shell command splits, for the three Bash guard hooks (`PL-BBV7`, `PL-GVFC`).
+3. How a changed-path listing is read (`PL-NK1L`, `PL-PQ0R`, `PL-Y2L6`, `PL-0T5X`). It is the one question still being handed members, four since `PL-8HSX`, and it goes third rather than first because it is the widest, 19 call sites across five files, and its four members are untriaged; the first two are what `verify:` below names.
+4. `PL-LFNK`, then `PL-0JGZ`, whose decision the owner answered on 2026-09-26.
+
+The head closes with the last of them, when `verify:` passes and `generator:` can say spent.
+
 **Why it matters.** The members are one mechanism; fixed one at a time, each fix leaves the mechanism in place to hand over the next.
 
 **Done when.** Each listed question has one implementation that every caller imports, with `tools/` importing `subprojects/docket/src` as `branch_id_check` already does; a test per question holds the disagreeing input.
