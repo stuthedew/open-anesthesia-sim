@@ -49,3 +49,25 @@ and record.
 command does from its spelling): filed by `PL-R17X`'s close, whose `pull`
 shape brought the `git log --grep pull -p` refusal. Owed under any bound
 `PL-61FT` sets, since these are canonical reads refused, so it is left ready.
+
+**Met 2026-09-26 in ordinary work.** The project owner reported at 20:23 UTC,
+relayed to the `PL-61FT` design thread, that the no-prune guard blocked a
+read-only `git config --get fetch.prune` in ordinary work. That is the first
+of the four spellings above, and the first spelling of any `PL-61FT` member
+met rather than probed - within the hour of the bound being recorded, and by
+the owner's own hand. Under that bound a known gap met in ordinary work is
+worked as a defect at its own rank, so this item stays `ready` for that
+spelling, and the hold the design round asked for on it is lifted by the
+round's own rule rather than by a change to it. The other three spellings -
+`git remote prune -n origin`, `git log -S fetch -p`, `git log --grep pull -p`
+- are still met by nobody.
+
+**Done when, re-scoped 2026-09-26.** A `git config` invoked only to read a
+setting - `--get`, `--get-all`, `--get-regexp`, `--list` and `-l`, and their
+kin - passes the guard whatever setting it names, `git config --get
+fetch.prune` and `git config --get remote.origin.mirror` among them, while
+`git config fetch.prune true` and every write of a prune or mirror setting
+stays refused, pinned in `tests/unit/test_no_prune_guard.py`. The three
+unmet spellings above are recorded as `KNOWN_GAPS` rows there under
+`PL-61FT`'s build, or closed in the same change where that costs no reading
+of their own; the four-spelling "Done when" above is superseded for them.
