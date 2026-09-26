@@ -3,12 +3,15 @@ id: PL-PNJF
 title: pr_body_check.py --compare reports 27 squash bodies that say something other than their pull request, and nothing can record the pull request's body for them: --recover writes only for an empty body, and a recovery file's header says the commit landed empty
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: defect
 feature: pr-body-integrity
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, docs/pr-bodies
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-24
+closed: 2026-09-26
+pr: 1068
+verify: grep -q 'def test_recording_a_merged_pull_request_names_how_its_squash_copy_compares' tests/unit/test_pr_body_check.py
 recurrences: 2026-09-25 PL-YYDT withdrawn 2026-09-25 PL-PNJF, 2026-09-26 PL-7VWK withdrawn 2026-09-26 PL-PNJF, 2026-09-26 PL-X2XP withdrawn 2026-09-26 PL-PNJF
 ---
 
@@ -102,3 +105,13 @@ an empty one. With `PL-Y1W0` and `PL-BZHX`, this is the third post-close
 instance, which counts as a generator whose fix did not hold. `PL-WFFX` is
 closed and outside this triage batch, so the record is reported to the triage
 coordinator, not written here.
+
+**Closed 2026-09-26 with `PL-979D`'s build (#1068)**, as its header work.
+`--record N` writes a file for any pull request named, open or merged. A
+recovered file's header says when the body was fetched (`recovered:`) and names
+its shape in `squash:` (`empty`, `trailer-only`, `armed-message`, `differs` or
+`matches`), with one case per shape in
+`test_recording_a_merged_pull_request_names_how_its_squash_copy_compares`.
+`--compare` skips a pull request whose file exists, so it reports nothing on a
+tree where every differing body has one. Writing the 27 files is the backfill,
+`PL-X2XP`.

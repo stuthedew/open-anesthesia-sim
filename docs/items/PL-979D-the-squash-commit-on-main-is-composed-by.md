@@ -3,17 +3,19 @@ id: PL-979D
 title: The squash commit on main is composed by whichever merge path lands it and nothing records the pull request's body at the merge, so each new way a path rewrites it - emptied, replaced, hard-wrapped, a subject frozen at arming - arrives as its own item: PL-WFFX's fact, reopened by three instances filed after it closed
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: pr-body-integrity
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, .github/workflows/pr-title.yml, Makefile, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py, docs/maintainer.md, docs/ARCHITECTURE.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/capture.md, docs/pr-bodies
 blocked-by: PL-HMZZ
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
+closed: 2026-09-26
+pr: 1068
 payoff: the reasoning behind each merged change survives however it was merged, and a new merge path's rewrite stops producing an item
 verify: grep -q -- '--record' tools/pr_body_check.py
-root-cause-of: PL-Y1W0, PL-BZHX, PL-PNJF, PL-M7W1
-generator: live - the merge paths still compose the squash body their own way (a hard-wrapping path landed 9 of 10 table bodies broken since 2026-09-22) and nothing records the pull request's body, so each new rewrite arrives as its own item
+root-cause-of: PL-Y1W0, PL-BZHX, PL-PNJF, PL-M7W1, PL-HZ0M
+generator: spent - the pull request's body is recorded in the tree at docs/pr-bodies/N.md before its merge by tools/pr_body_check.py --record, and the required pr-title job holds the merge until the record matches the body GitHub has (#1068), so however a merge path composes the squash body it changes only a derived copy, and a new rewrite has no record left to damage
 misread: The squash commit's subject and body as the merge sends them, not as the pull request shows them
 ---
 
@@ -256,3 +258,11 @@ every open pull request fails `pr-title` until it records its body), `--record
 N` and `bin/docket record N` for it, and the closures in step 6. `PL-73G8`'s
 closing note says the 201 pre-rule files keep their old header, forward only,
 and that the commit adding each one dates its fetch.
+
+**Closed 2026-09-26** (the third build thread, on `claude/project-thread-00osek`,
+#1068). `make check` ran in full, this pull request's own body is recorded at
+`docs/pr-bodies/1068.md`, and the closures in step 6 ride the closing commit.
+`generator:` is now `spent`: the body is recorded in the tree before the merge
+and held there by the required `pr-title` job, so a merge path's rewrite
+changes only the squash copy and no longer produces an item. The backfill the
+owner left as its own decision is `PL-X2XP`.
