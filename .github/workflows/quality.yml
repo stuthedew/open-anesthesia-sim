@@ -201,6 +201,12 @@ jobs:
       - run: python3 tools/possessive_section_check.py
       - run: python3 tools/branch_id_check.py
       - run: python3 tools/rules_paths_check.py
+      # The recovered bodies' `commit:` anchors (`PL-73G8`), which a release now
+      # adds (`PL-3PH2`). `make check` has run it since it landed; the merge
+      # gate counted as running it only through `pr-title.yml`'s body step, a
+      # different mode of the same script, until that step was retired. It
+      # reads the first-parent line, which `fetch-depth: 0` above provides.
+      - run: python3 tools/pr_body_check.py --anchors
       # 0.07 s, and it reads two files. It was `make check`-only from
       # 2026-09-13, which meant the cap on the always-loaded session-start
       # context - paid by every session, forever, once an entry is added
