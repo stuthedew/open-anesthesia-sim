@@ -3,16 +3,17 @@
 #
 # **What it promises** (`PL-61FT`). A bare interpreter, on its own or behind a
 # wrapper `shell_split.WRAPPERS` names, handed `src` or `tests` in any path
-# form - in an argument, in a `-c` string, or in a file redirected onto its
-# input - or `compileall` or `py_compile` run on `.`. The tree named with no
-# slash after it, `python3 -m compileall src` or `python3 -m pytest tests`, is
-# inside the promise and not yet read (`PL-R5N0`). Outside it: an interpreter
-# named by path, which is the deliberate spelling, and a tree reached through a
-# `cd`, by `find -exec` or as a list on standard input, each a known gap and
-# not a defect - a row of `KNOWN_GAPS` in
-# `tests/unit/test_floor_interpreter_guard.py`, held to the verdict it gets
-# today, and filed as an item only once a session is seen writing it. A false
-# refusal is worked when a session meets one, and never probed for.
+# form - `src`, `src/`, `./src`, an absolute path, a file below it - as an
+# argument or as a file redirected onto its input, or either tree written with
+# its slash inside a `-c` string; or `compileall` or `py_compile` run on `.`.
+# Outside it: an interpreter named by path, which is the deliberate spelling,
+# and a tree reached through a `cd`, by `find -exec` or as a list on standard
+# input, or named with no slash inside a `-c` string, where the word is as
+# likely code as a path (`PL-R5N0`), each a known gap and not a defect - a row
+# of `KNOWN_GAPS` in `tests/unit/test_floor_interpreter_guard.py`, held to the
+# verdict it gets today, and filed as an item only once a session is seen
+# writing it. A false refusal is worked when a session meets one, and never
+# probed for.
 #
 # Two interpreters are in play here and both halves are deliberate. `src/` and
 # `tests/` target 3.14 - `pyproject.toml` declares `requires-python =
@@ -113,6 +114,13 @@ INTERPRETER = re.compile(r"^python(?:3(?:\.\d+)?)?$")
 # relative `src/` after a `cd` into that subproject is still read as the
 # product tree: paths are read as written, and no `cd` is followed.
 GUARDED = re.compile(r"(?<![\w-])(?<!subprojects/docket/)(?:src|tests)/")
+# The tree named with no slash after it - `python3 -m compileall src`,
+# `python3 -m pytest tests` - is read only where it is the whole argument:
+# bare, after `./`, or ending an absolute path (`PL-R5N0`). Inside a `-c`
+# string the word is as likely code as a path, `print("src")` as much as
+# `compile_dir("src")`, so there only the slash marks the tree. The lookbehind
+# keeps the docket subproject out, as above.
+TREE = re.compile(r"(?:.*/)?(?<!subprojects/docket/)(?:src|tests)")
 # A whole-tree parse reaches both without naming either.
 WHOLE_TREE = ("compileall", "py_compile")
 
@@ -138,7 +146,7 @@ for segment, _ in cut:
         for descriptor, operator, word in shell_split.redirections(segment)
         if descriptor in ("", "0") and operator in READS
     ]
-    if any(GUARDED.search(argument) for argument in arguments):
+    if any(GUARDED.search(argument) or TREE.fullmatch(argument) for argument in arguments):
         offender = " ".join(rest)
         break
     if any(a in WHOLE_TREE for a in arguments) and "." in arguments:
