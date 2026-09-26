@@ -3,11 +3,12 @@ id: PL-QYN4
 title: A § citation qualified by an item id in a code span, such as PL-MB2W § "Design round, 2026-09-24", is read by no check: check_citations leaves a code-spanned qualifier to containment and QUOTED_SOURCE_RE only reads a .md document, so the three such citations in docs/resident-instructions.md, the start mode and the docket README resolve against nothing
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
 payoff: a section mark after an item id, such as the seven citing PL-MB2W's brief, fails make check when the brief stops holding the words, instead of passing unread under a report that every citation resolved
 verify: grep -q 'def test_a_marked_citation_of_an_item_is_held_to_its_brief' tests/unit/test_doc_check.py
 ---
