@@ -1939,7 +1939,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         # `plan._startable`'s rule - open, triaged, not blocked, and not in
         # flight, which the condition above already holds - so a closed or
         # blocked item is not invited to start (`PL-9F8B`).
-        startable = item.is_open and not item.is_untriaged and not blocked
+        startable = item.is_open and not item.is_untriaged and item.status != "blocked"
         print(render.format_queue_edit(edit, _now(args), startable=startable))
     if threads := _notes_threads(root, config, item.identifier):
         print(render.format_notes_threads(threads, item.identifier, config.notes_file))
