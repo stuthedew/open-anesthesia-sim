@@ -100,9 +100,9 @@ title is the terse problem statement the fuller sections elaborate — and
 appending is what sessions do. Capture used to write the other three headings
 empty, which is a form rather than a statement, and a session holding the
 brief wrote it *below* the form instead of over it. That leaves a dead stub
-above a real brief; the first matching heading is the one judged, so the stub
-is the one read, and an item with a two-page brief reports as having nothing
-under two required sections. Eighteen of the thirty-two items at one triage
+above a real brief; every matching heading is judged, so the stub's empty ones
+are read, and an item with a two-page brief reports as having nothing under
+two required sections. Eighteen of the thirty-two items at one triage
 pass carried it.
 
 `docket check` and `docket triage` name that shape wherever it survives — an
@@ -2038,7 +2038,12 @@ why it is not new.**` is the same section, and a check that made an author
 flatten a better heading would be editing prose rather than checking it. What
 it does require is text under the heading: a required section with nothing
 below it is an error, because presence of a heading is not what makes an item
-startable by a stranger.
+startable by a stranger. Every line opening with a required heading's words
+is that heading and needs text under it, so a quotation of one that a wrapped
+sentence carries to a line's start cannot stand in for an empty one below it
+(`PL-6G8T`). A fenced block is a literal, so a brief may quote the capture
+template's headings in one without them being read as its own (`PL-NQ3X`); a
+fence under a heading still counts as text under it.
 
 `**Decision needed.**` is required at `needs-decision` and is matched the same
 way. It was a bare substring test until `PL-VJ1X`, so the one heading an author
@@ -2062,7 +2067,9 @@ brief that marks no recommendation. Three things about the rule:
 - **The test is the marker, not the word.** A marked recommendation is the
   token under emphasis - `**Recommended.**`, `**This is the
   recommendation.**`, `*Recommendation: not yet.*` - or the labelled
-  `Recommendation:`. Presence of the word decides nothing: of the ten open
+  `Recommendation:`, capitalised as a label is and outside a code span, since
+  "lacks a recommendation:" is prose about one and a quoted marker is a
+  literal (`PL-FKH6`). Presence of the word decides nothing: of the ten open
   `needs-decision` items using it on 2026-09-20, two used it only to say when
   a recommendation should be *formed*. Findability is the property being
   asked for rather than presence, because a recommendation in the ninth

@@ -8,13 +8,18 @@ tells them nothing, because this project writes the possessive to quote a
 sentence as often as to cite a section.
 
 **The decidable half is which of the two a given citation is, and only where
-the answer is yes.** A quotation that matches a heading or a `**Bold.**` marker
-in the cited file is a section citation - that is a fact about the tree, not a
-reading of intent. A quotation that matches no heading may still be a faithful
-quotation of a sentence, which is correct as written, so this reports nothing
-about it. The asymmetry is the point: `CLAUDE.md` refuses to script the
-judgment half, and the half that would need judgment is exactly the one left
-alone here.
+the answer is yes.** A quotation that matches a `#` heading in the cited file
+is a section citation - that is a fact about the tree, not a reading of intent.
+A quotation that matches no heading may still be a faithful quotation of a
+sentence, which is correct as written, so this reports nothing about it. The
+asymmetry is the point: `CLAUDE.md` refuses to script the judgment half, and
+the half that would need judgment is exactly the one left alone here.
+
+A `**Bold.**` marker is in that half. It is often a bullet's or a paragraph's
+lead sentence as well as a title, so `` `CLAUDE.md`'s "Capture, always, and
+capture cheaply" `` quotes a sentence correctly, and `§` would cite the same
+marker correctly - `doc_check` resolves a section mark against markers too. It
+was reported until `PL-FKH6`, a gate refusing a quotation that was right.
 
 Run as a command it exits 1 with a line per site. It was `PL-316G`'s `verify:`
 while the conversion was outstanding, and `make check` runs it now that the
@@ -47,7 +52,7 @@ def sites(root: Path, declined: list[str]) -> list[str]:
     """
     documents = doc_check.read_docs(root)
     headings = {
-        str(path): [doc_check._comparable(title) for title in doc_check._headings(text)]
+        str(path): [doc_check._comparable(title) for title in doc_check._hash_headings(text)]
         for path, text in documents.items()
     }
     found: list[str] = []
