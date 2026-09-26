@@ -3,10 +3,11 @@ id: PL-X8SV
 title: Stale claude/ branches stop accumulating and today's 14 are cleared once: nothing deletes a branch whose own pull request never merges, so each hand-off between sessions leaves one behind
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
-touches: tools/branch_sweep.py, tools/open_pull_requests.py, tests/unit/test_branch_sweep.py, .github/workflows/branch-sweep.yml, subprojects/docket/src/docket/claims.py, docket.toml, docs/worker.md, docs/maintainer.md, CLAUDE.md, docs/items, docs/pr-bodies
+touches: tools/branch_sweep.py, tools/open_pull_requests.py, tests/unit/test_branch_sweep.py, .github/workflows/branch-sweep.yml, subprojects/docket/src/docket/claims.py, docket.toml, docs/worker.md, docs/maintainer.md, docs/ARCHITECTURE.md, CLAUDE.md, .claude/skills/docket/modes/capture.md, docs/items, docs/pr-bodies
 added: 2026-09-26
+closed: 2026-09-26
 payoff: the remote holds main and live work only, and nobody deletes a branch by hand: a daily job archives each finished claude/ branch under refs/archive and deletes it
 verify: grep -q 'tools/branch_sweep.py --apply' .github/workflows/branch-sweep.yml && grep -q 'refs/archive' tools/branch_sweep.py && grep -q 'branch-sweep.yml' CLAUDE.md
 ---
@@ -64,6 +65,10 @@ want to fix this now not file it for later"), so route 1 was researched and
 built in the same session. The deletion risk is answered by making every
 deletion reversible, and merging the pull request is the owner's decision
 point, since nothing runs from a branch.
+
+**The owner agreed with both recommendations, 2026-09-26** ("Agree with
+recs"): land the sweep, and point `CLAUDE.md`'s housekeeping bullet, the
+capture mode and `docs/worker.md` at it rather than at a list built by hand.
 
 **What the research found.**
 
