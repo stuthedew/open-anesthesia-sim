@@ -3907,6 +3907,56 @@ def test_the_k_selector_rule_is_off_until_a_project_dates_it_and_names_its_trees
         assert not _has(errors, NARROWS)
 
 
+# --- one reading of a `verify:` command, for every rule that reads one --------
+#
+# `PL-B5VZ`: the two rules above cut a command at each `&&` as text and split
+# the pieces with `shlex` two different ways, beside the quote-aware reading the
+# admitted shapes below take. Both now read their clauses from that one.
+
+
+def test_a_verify_clause_is_read_one_way() -> None:
+    """A clause reads the same to every rule, however it is spaced, quoted or commented.
+
+    Each of these was read two ways. A glued pipe was part of a path to run for
+    the prerequisite rule and an operator for the `-k` rule, so its answer
+    turned on the spacing; a quoted `&&` cut the clause around it for both, and
+    hid the run from each; and a comment was stripped by the `-k` rule and read
+    as paths to run by the other. The message names the clause as written.
+    """
+    for command in (
+        "uv run pytest -q tests/unit/test_a.py | tail && grep -q 'x' a.py",
+        "uv run pytest -q tests/unit/test_a.py|tail && grep -q 'x' a.py",
+    ):
+        assert not _has(_shape_errors(verify=command), TWICE), command
+
+    for command, clause in (
+        (
+            "uv run pytest tests/unit/test_a.py --junitxml='a&&b.xml' && grep -q 'x' a.py",
+            "uv run pytest tests/unit/test_a.py --junitxml='a&&b.xml'",
+        ),
+        (
+            "grep -q 'x' a.py && uv run pytest tests/unit/test_a.py # the tests it adds",
+            "uv run pytest tests/unit/test_a.py",
+        ),
+    ):
+        errors = _shape_errors(verify=command)
+
+        assert _has(errors, TWICE), command
+        assert _has(errors, f"`{clause}`"), command
+
+    for command, clause in (
+        (
+            "uv run pytest tests/unit -k foo --junitxml='a&&b.xml' && grep -q 'x' a.py",
+            "uv run pytest tests/unit -k foo --junitxml='a&&b.xml'",
+        ),
+        ("uv run pytest tests/unit -k foo # the tests it adds", "uv run pytest tests/unit -k foo"),
+    ):
+        errors = _selector_errors(verify=command)
+
+        assert _has(errors, NARROWS), command
+        assert _has(errors, f"`{clause}`"), command
+
+
 # --- the admitted shapes, which refuse a shape nobody has argued for ---------
 #
 # `PL-1P5V`: the rules above each refuse one shape after it failed, and seven
