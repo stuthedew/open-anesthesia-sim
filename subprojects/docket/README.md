@@ -996,16 +996,19 @@ outside the queue, so no amount of fetching, `show` or `flight` could show one
 pass to another. Two sessions triaged one pair of items on 2026-09-06, each
 having checked, and the merge discarded one of the two answers (`PL-N1JK`).
 
-So `FlightReport.editing` names, per item, a ref that has changed that item's
-own file. It is a measurement of paths rather than a judgment about subjects,
-which is what makes it exact: the file is what conflicts, whatever either
-commit was for. It ranks nothing — `next`, `list` and `status` read `ids`
-alone, so an annotated item stays startable and `PL-X3WZ` is intact — and it
-prints only where it changes a decision: `triage`, which is about to write to
-that file, and `show`, which is about to start the item. It is deliberately
-absent from `flight`, where capture being mandatory would put a row under
-nearly every live branch and change no answer to the question that command
-asks.
+So `FlightReport.editing` names, per item, every ref that has changed that
+item's own file: keeping only the first left out the one that would actually
+collide (`PL-1X2C`). It is a measurement of paths rather than a judgment about
+subjects, which is what makes it exact: the file is what conflicts, whatever
+either commit was for. It ranks nothing — `next`, `list` and `status` read
+`ids` alone, so an annotated item stays startable and `PL-X3WZ` is intact — and
+it prints only where it changes a decision: `triage`, which is about to write
+to that file, and `show`, which is about to start the item. Both leave out the
+branch the reader is on, through `cli._elsewhere`, because the reader already
+knows what it wrote and naming it reads as somebody else being there; the
+measurement itself keeps it. It is deliberately absent from `flight`, where
+capture being mandatory would put a row under nearly every live branch and
+change no answer to the question that command asks.
 
 **A third mark on the triage list answers a different question: was this item
 already worked when it was filed?** The two above are about other sessions;
