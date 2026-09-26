@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from docket.claims import CUTOVER_MARKER, SESSION_VARIABLE
+from docket.claims import SESSION_VARIABLE
 from docket.cli import main
 from docket.model import RELEASE_TRAIN, Item, parse_item, render_item
 from docket.release import (
@@ -1698,7 +1698,6 @@ class _TrainRepo:
             files={
                 "items/PL-D1D1-shipped.md": _train_item("PL-D1D1", "done", resource=""),
                 "pyproject.toml": '[project]\nversion = "0.2.5"\n',
-                CUTOVER_MARKER: "# the claim reader\n",
             },
         )
         self.git("tag", "v0.2.5")
