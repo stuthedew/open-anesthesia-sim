@@ -142,6 +142,12 @@ try:
         table_rows,
         version_tuple,
     )
+
+    # `shell_words` is the one reading of how a shell command splits
+    # (`PL-PVW2`). A CI step's line and a Makefile recipe line are read through
+    # it rather than a split of this tool's own, which cut inside quotes and
+    # read `python3 "tools/my file.py"` as `tools/my` (`PL-CWBJ`).
+    from docket.shell import Word, shell_words
     from docket.store import ID_PATTERN, read_items
 
     # Reading `git tag` is a second borrowing, for the same reason as the first.
@@ -182,8 +188,8 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
     raise SystemExit(
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
         "grammar, docket/vcs.py for the tag read and the default-branch list, "
-        "docket/release.py for where a cut writes its notes, and "
-        "docket/{config,model,store}.py for the queue, "
+        "docket/release.py for where a cut writes its notes, docket/shell.py for "
+        "how a shell line splits, and docket/{config,model,store}.py for the queue, "
         f"and could not import them: {error}"
     ) from error
 
@@ -647,14 +653,12 @@ WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 RUN_STEP_RE = re.compile(r"^(?P<indent>\s*)-?\s*run:\s*(?P<inline>.*)$")
 BLOCK_SCALARS = frozenset({"|", ">", "|-", ">-", "|+", ">+"})
 
-# Shell syntax that separates one token from the next.
-COMMAND_SPLIT_RE = re.compile(r"[\s;|&()<>]+")
-
 # A token this check cannot resolve by reading the tree: a shell or GitHub
 # expansion, a glob whose intended match is not stated, a URL, or an action
 # reference. Skipped rather than guessed at - a checker that guesses at the
-# judgment half is worse than no checker.
-UNRESOLVABLE = ("$", "*", "?", "://", "@")
+# judgment half is worse than no checker. The backquote is there because a
+# word keeps a command substitution as written; its body is read on its own.
+UNRESOLVABLE = ("$", "`", "*", "?", "://", "@")
 
 
 @dataclass
@@ -4161,13 +4165,42 @@ def workflow_commands(text: str) -> Iterator[tuple[str, int]]:
                 yield body.strip(), index
 
 
-def _command_paths(command: str) -> Iterator[str]:
-    """Every token in a shell line that is written as a path."""
-    for raw in COMMAND_SPLIT_RE.split(command):
-        token = raw.strip("\"'`,")
+def _shell_words(where: str, command: str, report: Report, unread: str) -> tuple[str, ...]:
+    """The words a shell line runs, quotes removed, as docket's `shell.shell_words` reads them.
+
+    That is the one reading of how a shell command splits (`PL-PVW2`), and
+    this tool kept a split of its own until `PL-CWBJ`: a pattern cutting at
+    whitespace and operators, inside quotes too, so `python3 "tools/my
+    file.py"` read as `tools/my`. A command substitution's body is read as
+    the command it is, so a path named inside one is read as well.
+
+    The reading is of one line, which is how both callers hand a command over.
+    A line whose quote, substitution or trailing backslash runs past its end
+    is a command this cannot place, so it is declined, naming `unread`, and
+    answers no words rather than a guess at them.
+    """
+    reading = shell_words(command)
+    if not reading.clauses:
+        report.declined.append(
+            f"{where}: `{command}` does not end where its line does - a quote, a command "
+            f"substitution or a backslash runs past it - so {unread}"
+        )
+        return ()
+    return tuple(
+        token.text
+        for clause in reading.every_clause()
+        for token in clause.tokens
+        if isinstance(token, Word)
+    )
+
+
+def _command_paths(words: Iterable[str]) -> Iterator[str]:
+    """Every word of a shell line that is written as a path."""
+    for word in words:
+        token = word.strip(",")
         # `--cov=src/x` and `KEY=path` carry the path on the right of the `=`.
         if "=" in token:
-            token = token.rpartition("=")[2].strip("\"'")
+            token = token.rpartition("=")[2]
         token = token.removeprefix("./")
         if "/" not in token or token.startswith("-"):
             continue
@@ -4200,7 +4233,10 @@ def check_workflow_paths(root: Path, report: Report) -> None:
         relative = path.relative_to(root)
         reported: set[tuple[str, int]] = set()
         for command, line in workflow_commands(path.read_text(encoding="utf-8")):
-            for token in _command_paths(command):
+            words = _shell_words(
+                f"{relative}:{line}", command, report, "the paths it runs were not resolved"
+            )
+            for token in _command_paths(words):
                 if PurePosixPath(token).parts[0] not in top_level:
                     continue
                 if (token, line) in reported:
@@ -4511,8 +4547,8 @@ def _target_commands(
     return commands + recipes[target]
 
 
-def _gate_scripts(root: Path, command: str) -> Iterator[str]:
-    """Every repository script a shell line names, as a repository-relative path.
+def _gate_scripts(root: Path, words: Iterable[str]) -> Iterator[str]:
+    """Every repository script a shell line's words name, as a repository-relative path.
 
     The rule is deliberately about *this project's own* scripts and not about
     the commands around them. `ruff`, `mypy`, `pytest` and `uv` are third-party
@@ -4526,10 +4562,10 @@ def _gate_scripts(root: Path, command: str) -> Iterator[str]:
     that exists. The second half is what keeps a `.py` written in prose, or a
     path a step creates, out of the comparison.
     """
-    for raw in COMMAND_SPLIT_RE.split(command):
-        token = raw.strip("\"'`,").removeprefix("./")
+    for word in words:
+        token = word.strip(",").removeprefix("./")
         if "=" in token:
-            token = token.rpartition("=")[2].strip("\"'")
+            token = token.rpartition("=")[2]
         if not token.endswith(GATE_SCRIPT_SUFFIX) and token not in GATE_SCRIPT_NAMES:
             continue
         if any(mark in token for mark in UNRESOLVABLE):
@@ -4606,20 +4642,24 @@ def check_gate_parity(root: Path, report: Report) -> None:
     recipes, prerequisites = _target_recipes(makefile.read_text(encoding="utf-8"))
     if "check" not in recipes:
         return
+    unread = "the scripts it runs were not compared"
     local = {
         script
         for command in _target_commands(recipes, prerequisites, "check")
-        for script in _gate_scripts(root, command)
+        for script in _gate_scripts(root, _shell_words("Makefile", command, report, unread))
     }
     merge: set[str] = set()
     for path in workflows:
         text = path.read_text(encoding="utf-8")
         if not _gates_pull_requests(text):
             continue
+        where = path.relative_to(root)
         merge |= {
             script
-            for command, _ in workflow_commands(text)
-            for script in _gate_scripts(root, command)
+            for command, line in workflow_commands(text)
+            for script in _gate_scripts(
+                root, _shell_words(f"{where}:{line}", command, report, unread)
+            )
         }
     if not local or not merge:
         return

@@ -2477,6 +2477,51 @@ def test_an_expansion_is_skipped_rather_than_guessed_at(tmp_path: Path) -> None:
     assert _errors(_with_workflow(_repo(tmp_path), body=body)) == []
 
 
+# PL-CWBJ: a step's line was split by a pattern of this tool's own, which cut at
+# whitespace and shell operators inside quotes too, so a quoted path holding a
+# space read as two words. The line is read by docket's `shell.shell_words`
+# now, the one reading of how a shell command splits (`PL-PVW2`).
+
+
+def test_workflow_paths_reads_a_quoted_path_as_one_word(tmp_path: Path) -> None:
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n", '      - run: python3 "tools/harness/my file.py" check\n'
+    )
+    root = _with_workflow(_repo(tmp_path), body=body)
+    script = root / "tools" / "harness" / "my file.py"
+    script.write_text("", encoding="utf-8")
+
+    assert _errors(root) == []
+
+    script.unlink()
+
+    assert any(
+        "runs `tools/harness/my file.py`, which does not exist" in message
+        for message in _errors(root)
+    )
+
+
+def test_a_line_running_past_its_end_is_declined_rather_than_read(tmp_path: Path) -> None:
+    """A backslash continues the command onto the next line, which a one-line reading cannot place.
+
+    Read as it stands the line would be a guess at the command, so the check
+    says it did not read it rather than reporting it resolved.
+    """
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n",
+        "      - run: |\n          bin/runner \\\n            check\n",
+    )
+    report = doc_check.Report()
+
+    doc_check.check_workflow_paths(_with_workflow(_repo(tmp_path), body=body), report)
+
+    assert report.errors == []
+    assert any(
+        "`bin/runner \\`" in message and "were not resolved" in message
+        for message in report.declined
+    ), report.declined
+
+
 def test_a_repository_with_no_workflows_is_left_alone(tmp_path: Path) -> None:
     assert _errors(_repo(tmp_path)) == []
 
@@ -2791,6 +2836,18 @@ def test_how_a_script_is_invoked_is_not_a_drift(tmp_path: Path) -> None:
     )
 
     assert _parity(root) == []
+
+
+def test_gate_parity_reads_a_quoted_script_as_one_word(tmp_path: Path) -> None:
+    """`PL-CWBJ`'s other reader: split inside its quotes, the script was never seen at all."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=['python3 "tools/a check.py"', "python3 tools/b_check.py"],
+        workflows={"quality.yml": (GATING_WORKFLOW, ["python3 tools/b_check.py"])},
+    )
+    (root / "tools" / "a check.py").write_text("", encoding="utf-8")
+
+    assert any("runs tools/a check.py and no workflow" in message for message in _parity(root))
 
 
 def test_a_script_only_the_local_gate_runs_is_an_error(tmp_path: Path) -> None:
