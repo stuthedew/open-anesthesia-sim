@@ -6458,15 +6458,20 @@ store already holds.
 The numbered list below is the catalogue; this is the order intended for the
 part of it § "The timeline" has not yet placed, and why. A release the
 timeline names takes the timeline's order, which governs where the two
-disagree (§ "The planning model: a rolling wave"). The phases below still read
-as the whole order, and where they disagree with the timeline they are the
-stale side (`PL-5XG1`). Phases are groupings of intent, not scoped milestones
-— each item still has to be specified individually before implementation, per
-the development rules above.
+disagree (§ "The planning model: a rolling wave"). Each phase keeps its name
+and its intent, because other documents cite a phase by name, but its order
+covers only what the timeline has not placed: where the timeline has taken a
+phase's first half, the phase says so without naming the release, and how it
+came to be taken is dated as history rather than restated (`PL-5XG1`). Phases
+are groupings of intent, not scoped milestones — each item still has to be
+specified individually before implementation, per the development rules
+above.
 
 The organizing goal is a mature inhalational simulator before any intravenous
-work begins: the science first, then an interface that can actually drive it,
-then reproducibility, then IV.
+work begins. The phases were written as its steps — the science first, then an
+interface that can actually drive it, then reproducibility, then IV — and
+since 2026-08-25 the timeline has taken interface and comparison work ahead of
+the science. Among what it has not placed, that order still holds.
 
 **Phase 0 — foundation. Superseded by the standing debt gate, 2026-08-25.**
 
@@ -6513,7 +6518,9 @@ by Phase 0, only by its own gate.
 **Phase 1 — scientific maturity.** Generalize the patient's state from one
 agent to N simultaneously present substances, then items 6 and 7 (nitrous
 oxide, concentration and second-gas effects), then item 1 (machine abstraction
-with interlocks), then item 2 (agent switching with residual washout). Item 40,
+with interlocks), then item 2 (agent switching with residual washout).
+§ "The timeline" has placed the generalization with items 6 and 7, so items 1
+and 2 are the part of this phase whose order is held here. Item 40,
 the machine-profile framework, is **not** part of this phase: it was split out
 of item 1 on 2026-09-20 (project owner) precisely because nothing in a config
 file needs the substance generalization.
@@ -6532,11 +6539,13 @@ but only if the generalization is designed as substances rather than as
 "volatile agent, plus nitrous oxide as a special case". That framing is a
 requirement of this phase, not an optional nicety.
 
-Nitrous oxide sits before any interface work for two reasons: the second-gas
-effect is the phenomenon this class of simulator is most used to teach, so
-without it there is no credible inhalational simulator to build an interface
-on; and it changes the core equations, so an interface built on a single-gas
-core would be reworked when it lands.
+*As this phase was first written*, nitrous oxide sat before any interface
+work for two reasons: the second-gas effect is the phenomenon this class of
+simulator is most used to teach, so without it there is no credible
+inhalational simulator to build an interface on; and it changes the core
+equations, so an interface built on a single-gas core would be reworked when it
+lands. The reordering below set that placement aside, and the known risk at
+the end of this section is the second reason's general form.
 
 **Reordering (project owner, 2026-08-25): the teachable case is taken ahead
 of Phase 1.** As written below, Phase 1's substance generalization and nitrous
@@ -6552,27 +6561,29 @@ multi-gas display looks like. The rework this accepts is bounded and known:
 the view consumes an immutable `SimulationSnapshot`, so the time base,
 playback, event marks and axis handling are substance-agnostic, and the MAC
 readout - which becomes a MAC sum when a second substance lands - is the piece
-that changes. v0.4.0 is that work; Phase 1 follows it unchanged.
+that changes. v0.4.0 is that work; Phase 1 follows it unchanged. *That was the order on
+2026-08-25 and is no longer:* the timeline has placed further releases ahead of
+the generalization since, each moved by a decision dated on its own row.
 
-**Phase 2 — an interface that can drive the machine.** Consolidate the
-display constants named in item 24 first, then item 24 itself, then items 5,
-3 and 4 (end-tidal control, override mode, direct injection), then item 8
-(scenario events), item 20 (accessibility), item 25 (playback speed), and
-item 26 (run bookmarks).
+**Phase 2 — an interface that can drive the machine.** Item 24 itself (the
+preferences panel), then items 5, 3 and 4 (end-tidal control, override mode,
+direct injection), then item 8's scenario events and item 20 (accessibility).
 
-The consolidation leads because item 24 already names it as a prerequisite,
-and because every control added before it spreads the same scattered defaults
-further.
+The rest of this phase has shipped, as dated history. It opened by
+consolidating the display constants item 24 names as its prerequisite, which
+led because item 24 already named it and because every control added before
+it spreads the same scattered defaults further; `PL-2CS8` landed it in
+v0.4.11. Item 25 (playback speed) shipped in v0.4.0 and item 26 (run
+bookmarks) in v0.5.0, and item 8's control-input timeline - the entry Phase 3
+cannot start without, because it is what save/load, replay and forking each
+restore from - shipped in halves: recording in v0.4.0, the replay driver in
+v0.5.0.
 
-Item 26 comes last of those because it depends on both: bookmarks are what
-make a playback multiplier usable, and their MAC-threshold kind waits on MAC
-becoming a displayed unit at all (PL-DHV7 in the queue). Item 8 is the one
-Phase 2 entry Phase 3 cannot start without — its control-input timeline is
-what save/load, replay and forking each restore from.
-
-**Phase 3 — reproducibility and comparison.** Items 9, 10, 11 and 12 in that
-order (save/load, deterministic replay, side-by-side comparison, forking),
-on top of item 8's control-input timeline.
+**Phase 3 — reproducibility and comparison.** Items 9 and 10 in that order
+(save/load, then deterministic replay), on top of item 8's control-input
+timeline. Items 11 and 12 (side-by-side comparison, forking) shipped in v0.5.0
+ahead of both, departing from the phase's first sequence of 9, 10, 11, 12;
+§ "The timeline" records why.
 
 This phase is also groundwork, which is why it precedes intravenous work
 rather than following it. Save/load and forking both force the whole
@@ -6589,11 +6600,14 @@ documentation) are continuous rather than phased. Items 16 to 19
 and item 23 (packaging and distribution) are deliberately later: each is an
 extension of a mature model rather than a step toward one.
 
-**The known risk** is that Phase 1 front-loads the hardest work in the plan.
-Coupled-gas equations with reference cases are real scientific work and the
-most likely place to stall. That is accepted deliberately: every milestone
-built before the substance generalization is code written against the
-single-agent assumption, and would have to be revisited afterwards.
+**The known risk**, as written with the phases, is that Phase 1 front-loads
+the hardest work in the plan. Coupled-gas equations with reference cases are
+real scientific work and the most likely place to stall. That is accepted
+deliberately: every milestone built before the substance generalization is
+code written against the single-agent assumption, and would have to be
+revisited afterwards. *Since 2026-08-25 the timeline builds milestones before
+it*, and whether this argument still binds the ones it places there is the
+project owner's question, held with its count by `PL-5XG1`.
 
 ## Planned milestones
 
