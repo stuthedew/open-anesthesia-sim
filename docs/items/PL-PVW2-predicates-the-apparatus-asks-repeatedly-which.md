@@ -11,8 +11,8 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-25
 payoff: the next tool or hook imports the one answer to each question the apparatus keeps asking instead of copying a spelling that disagrees, the way PL-KR69's and PL-8HSX's did on the protected-path audit
 verify: grep -q 'def test_creation_parents_reads_leading_ids_as_docket_does' tests/unit/test_generator_check.py && grep -q 'def test_a_non_ascii_protected_path_is_rejected' subprojects/docket/tests/test_verify.py && grep -q 'def test_repo_slug_reads_a_token_bearing_url' tests/unit/test_open_pull_requests.py && grep -q 'def test_default_branch_ref_follows_docket_on_a_master_only_clone' tests/unit/test_pr_body_check.py && grep -q 'def test_pull_request_number_reads_both_subject_shapes' subprojects/docket/tests/test_vcs.py && grep -q 'def test_an_unspaced_separator_still_ends_a_command' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_a_path_listing_is_read_one_way' subprojects/docket/tests/test_vcs.py && grep -q 'def test_digest_counts_this_branch_as_here' subprojects/docket/tests/test_cli.py && grep -q 'def test_a_roadmap_only_branch_is_queue_work_but_not_armable' subprojects/docket/tests/test_claims.py && grep -q 'def test_a_glued_punctuation_run_splits_into_bash_operators' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_backslash_newline_continues_the_command' tests/unit/test_gate_status_guard.py && grep -q 'def test_only_a_heredoc_body_is_removed' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_quoted_separator_starts_no_command' tests/unit/test_no_prune_guard.py && grep -q 'def test_a_verify_clause_is_read_one_way' subprojects/docket/tests/test_checks.py && grep -q 'def test_an_apostrophe_in_double_quotes_hides_no_command' subprojects/docket/tests/test_verify.py
-root-cause-of: PL-KR69, PL-YYDT, PL-2TV9, PL-GNCB, PL-0JGZ, PL-BBV7, PL-6P0F, PL-8HSX, PL-GVFC, PL-GJPD, PL-LFNK, PL-0T5X, PL-NK1L, PL-Y2L6, PL-PQ0R, PL-R5RF, PL-63TT, PL-39LD, PL-WGFY, PL-B5VZ
-generator: live - each listed question has one implementation its callers import but how a shell command splits, which docket's verify.py still reads with regexes and shlex.split of its own beside checks.py's quote-aware _shell_words (PL-P7J7, untriaged, the same question inside docket), so the next reader of a verify: command can copy whichever spelling it meets first
+root-cause-of: PL-KR69, PL-YYDT, PL-2TV9, PL-GNCB, PL-0JGZ, PL-BBV7, PL-6P0F, PL-8HSX, PL-GVFC, PL-GJPD, PL-LFNK, PL-0T5X, PL-NK1L, PL-Y2L6, PL-PQ0R, PL-R5RF, PL-63TT, PL-39LD, PL-WGFY, PL-B5VZ, PL-P7J7
+generator: live - each listed question has one implementation its callers import but how a shell command splits, which docket's verify.py still reads with regexes and shlex.split of its own beside checks.py's quote-aware _shell_words (PL-P7J7, triaged as this head's member and designed, not yet built), so the next reader of a verify: command can copy whichever spelling it meets first
 misread: Which spelling of a repeated predicate is the answer, when tools, hooks and docket each spell it
 ---
 
@@ -110,13 +110,20 @@ of its own (`_outside_quotes`, `_blanked`, `PIPELINE_END_RE`,
 `TRAILING_COMMENT_RE`) and `shlex.split`, and misses a real `bin/docket verify`
 behind an apostrophe inside double quotes. That is this head's fact again, in
 the module `checks.py` imports, so the head cannot say spent while it stands.
-**Next, in a fresh thread once #1095 has merged:** triage `PL-P7J7` as this
+[superseded 2026-09-26: `PL-P7J7` triaged, as the paragraph below says] **Next, in a fresh thread once #1095 has merged:** triage `PL-P7J7` as this
 head's member, move `_shell_words` into a module both files import, and read
 `verify.py`'s commands through it; then `generator:` can say spent. `verify:`
 passed once `PL-B5VZ` landed, so it gains that step's test, a prediction in
 `subprojects/docket/tests/test_verify.py`:
 `test_an_apostrophe_in_double_quotes_hides_no_command`. The thread that builds
 it updates the line where it names or places the test otherwise.
+
+**`PL-P7J7` triaged 2026-09-26** as this head's member, with the build's design
+in its brief; the thread that triaged it stopped for length before building.
+**Next, in a fresh thread:** build `PL-P7J7` as its design says, with the test
+named above; then `generator:` can say spent unless `PL-CWBJ` - `tools/doc_check.py`
+splitting a CI step's `run:` with a pattern of its own, filed at that triage -
+is triaged as this head's member, which keeps it live on that one.
 
 **Why it matters.** The members are one mechanism; fixed one at a time, each fix leaves the mechanism in place to hand over the next.
 
