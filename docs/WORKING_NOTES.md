@@ -1398,26 +1398,48 @@ https://github.com/qt/qtbase/blob/v6.11.2/src/corelib/serialization/qxmlstream.c
 and
 https://github.com/qt/qtbase/blob/v6.11.2/src/corelib/serialization/qcborstreamwriter.cpp.
 
-**Not a PySide quirk, and reported: PYSIDE-232.** PyQt6 6.11.0 / Qt 6.11.0
-fails the `QDataStream` and `QBuffer` forms under the same reproduction, 25 runs
-of 25 each: the `QDataStream` form segfaults through the same three frames, and
-the `QBuffer` form segfaults rather than reading zeros. PyQt6's sip declarations
+**Not a PySide quirk, and not reported.** PyQt6 6.11.0 / Qt 6.11.0 fails the
+`QDataStream` and `QBuffer` forms under the same reproduction, 25 runs of 25
+each: the `QDataStream` form segfaults through the same three frames, and the
+`QBuffer` form segfaults rather than reading zeros. PyQt6's sip declarations
 give none of the six a KeepReference - five mark the array Constrained, and
 `QXmlStreamWriter`'s carries no annotation - so it too leaves the array's
 lifetime to the caller. PySide's development branch declared all six exactly as
-6.11.2 does on 2026-09-26, so no fix is in progress. A report does exist:
-PYSIDE-232, "Crash with QDataStream and QByteArray"
-(https://bugreports.qt.io/browse/PYSIDE-232), which a second session's web
-search found on 2026-09-26 after the search here had reported none. Nobody here
-has read it: this environment's proxy refuses bugreports.qt.io (403 on
-2026-09-26), so its status, its date and whether it reaches past `QDataStream`
-are unknown. In C++ the mistake does not compile - g++ 13 rejects taking a
-temporary's address with "taking address of rvalue" - so this is a C++ safety
-rule lost on the way to Python: the calling code breaks Qt's documented
-contract, and neither binding stops it, although Python's own promise is that
-pure-Python code cannot corrupt memory. Whether to add the six-entry-point
-reproduction to PYSIDE-232 or to file a new report citing it waits on someone
-reading it from outside this environment.
+6.11.2 does on 2026-09-26, so no fix is in progress. A query of the PYSIDE
+project on the Qt tracker, now https://qt-project.atlassian.net, on 2026-09-26
+for `QBuffer`, `setBuffer`, `QDataStream`, `QTextStream`, `QXmlStreamWriter` and
+`QCborStreamWriter` found no report of the trap among the 27 distinct issues it
+returned. The nearest title, PYSIDE-232 "Crash with QDataStream and
+QByteArray", is a different bug: PySide 1.2.0 crashing in `repr()` of a named
+`QByteArray` that a `QDataStream` had written into, closed Done on 2018-06-04 by
+pyside-setup commit ee8e7117, "Improve the QByteArray implementation". In C++ the mistake does not
+compile - g++ 13 rejects taking a temporary's address with "taking address of
+rvalue" - so this is a C++ safety rule lost on the way to Python: the calling
+code breaks Qt's documented contract, and neither binding stops it, although
+Python's own promise is that pure-Python code cannot corrupt memory.
+
+**PySide's own documentation states the rule for one of the six.** Its
+`QBuffer` page (https://doc.qt.io/qtforpython-6/PySide6/QtCore/QBuffer.html)
+carries Qt's sentence verbatim: "The caller is responsible for ensuring that
+byteArray remains valid until the QBuffer is destroyed, or until setBuffer() is
+called to change the buffer." Its `QDataStream` and `QTextStream` pages say only
+that a `QBuffer` is created internally to wrap the array, which is exactly the
+buffer the caller never sees.
+
+**Upstream's stance, which a report has to answer.** PySide's maintainers have
+held that a pointer argument is the caller's to keep alive. On PYSIDE-1807
+(2022, `installEventFilter`, still unresolved) a maintainer wrote: "it seems to
+me it's the proper behavior and a reference must not be taken, and you should
+be responsible of keeping the filter object alive ... it takes a pointer, and
+not a reference so I'm more inclined to keep this behavior as is". PYSIDE-237
+(`QStandardItem.insertRow`) was closed Invalid on 2017-03-02 as by design, and
+has been disputed in its comments since, most recently in 2026 against PySide6
+6.10.2. A report here would argue what differs: the argument is a value type
+whose own Python signature advertises `bytes | bytearray | memoryview` (which
+the binding then refuses, as measured above); the pointer is held by a `QBuffer`
+the caller never sees, created inside the call; and the outcome is a segfault or
+silently wrong data. A report was recommended to the project owner on
+2026-09-26 and is not filed.
 
 **The rule: never pass a `QByteArray` where Qt's C++ signature takes
 `QByteArray *`.** Let Qt own the bytes, or copy them. The first table above

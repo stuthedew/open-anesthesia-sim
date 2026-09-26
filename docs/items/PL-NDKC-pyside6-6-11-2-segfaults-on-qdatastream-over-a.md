@@ -47,6 +47,8 @@ rather than crash, so the brief above replaces the one filed.
 
 *Widened before merge, 2026-09-26.* A second session found four more entry
 points with the same gap - `QBuffer.setBuffer`, `QTextStream`,
-`QXmlStreamWriter` and `QCborStreamWriter` - and a tracker report, PYSIDE-232.
-The thread measures all six and states the rule by signature: never pass a
-`QByteArray` where Qt's C++ signature takes `QByteArray *`.
+`QXmlStreamWriter` and `QCborStreamWriter`. The thread measures all six, states
+the rule by signature - never pass a `QByteArray` where Qt's C++ signature takes
+`QByteArray *` - and records upstream's stance on pointer arguments, which a
+report would have to answer. A tracker query found no report of the trap;
+PYSIDE-232, which a web search surfaced, is a different bug fixed in 2018.
