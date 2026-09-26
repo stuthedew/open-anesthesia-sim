@@ -33,17 +33,19 @@ fetches, refuses with exit 3 and writes nothing where another branch holds the
 item first, and otherwise makes one empty commit - subject `<id>: start`, a
 `Claim: <id> <branch> <session>` trailer - with the attribution lines in the
 same paragraph, since git reads a trailer from the last paragraph alone and one
-added below it afterwards turns the claim into prose. On a branch with no
-upstream of its own - none, or the default branch, which is how the web harness
-starts some sessions (`PL-KX73`) - and no copy on the remote, it pushes with
-`--set-upstream`, fetches again and re-reads, so a claim another session
-pushed in the same minute is seen: exit 3 then prints the line to yield by, and
-exit 4 means the claim is only in this checkout - the push failed, or the
-branch was already on the remote and none was tried - so nobody else can see
-it until `claim` publishes it (`PL-1X56`). Run the `claim` the message prints -
-the same command again after a failed push, `--push` added once auto-merge is
-disarmed on a branch the remote has - and not `git push`, which skips the check
-for a claim another session published meanwhile (`PL-ZLJ9`, below). Who holds
+added below it afterwards turns the claim into prose. On a branch the remote
+does not have yet it pushes with `--set-upstream`, fetches again and re-reads,
+so a claim another session pushed in the same minute is seen: exit 3 then
+prints the line to yield by, and exit 4 means the claim is only in this
+checkout - the push failed, or the branch was already on the remote and none
+was tried - so nobody else can see it until `claim` publishes it (`PL-1X56`),
+or that the remote could not be asked whether it has the branch, so nothing was
+pushed. Run the `claim` the message prints - the same command again after a
+failed push or an unanswered remote, `--push` added once auto-merge is disarmed
+on a branch the remote has - and not `git push`, which skips the check for a
+claim another session published meanwhile (`PL-ZLJ9`, below). An upstream
+naming the default branch, which is how the web harness starts some sessions,
+is not refused as pushing elsewhere (`PL-KX73`). Who holds
 an item is that recorded claim, read by `claims.holdings` (`PL-MB2W` § "Design
 round, 2026-09-24"), and not whatever shape the first push happens to take;
 `show`, `flight` and `next` answer from the same read, so a takeover or a yield
@@ -70,18 +72,18 @@ item picked up mid-session - one filed as housekeeping, or the item the first
 turned out to be waiting on - and a session named after one item is invisible
 under every other: `PL-HX5C` implemented `PL-W8XP` in full inside a session
 titled for other work, and `PL-N2PP`'s rider was seen by no guard until its
-push. On a branch that already has an upstream of its own, or a copy on the
-remote, `claim` commits and does not push, because a pull request may be open
-and armed and the push would merge the claim away with the branch (`PL-QP9Z`);
-it says so and exits 4, since until the claim is pushed no other session can
-see it. Disarm auto-merge if it is armed, then publish it with the
-`bin/docket claim <id> --push` the message names, before any other push: a
-claim left to ride your next work push is published without the check for one
-another session published meanwhile. The remote's copy of the branch decides
-that, not the tracking setting. Running `claim` again on an item the branch
-already holds writes nothing, and pushes a claim an earlier run could not -
-unless another session has published a claim on it since, when it withdraws
-this branch's instead, as below.
+push. On a branch the remote already has, `claim` commits and does not push,
+because a pull request may be open and armed and the push would merge the claim
+away with the branch (`PL-QP9Z`); it says so and exits 4, since until the claim
+is pushed no other session can see it. Disarm auto-merge if it is armed, then
+publish it with the `bin/docket claim <id> --push` the message names, before
+any other push: a claim left to ride your next work push is published without
+the check for one another session published meanwhile. It asks the remote
+itself, so neither the tracking setting nor the tracking ref the harness writes
+at session start for a branch nobody has pushed decides that (`PL-WX87`).
+Running `claim` again on an item the branch already holds writes nothing, and
+pushes a claim an earlier run could not - unless another session has published
+a claim on it since, when it withdraws this branch's instead, as below.
 
 **Taking over a dead claim is `bin/docket claim <id> --over <branch> --reason
 "..."`, and only on the owner's word or with `get_session` showing the holding
@@ -139,8 +141,10 @@ still ordered by date, the session overtaken learning that only by reading
 
 **So read the session list too, which sees what no ref can.** `list_sessions`
 from the `claude-code-remote` MCP server (`mine: true`) returns every session's
-title and its branch, including a session that has committed nothing at all —
-the window the two rules above leave open. Scan the live ones for the id
+title and its branch but a Projects thread's, including a session that has
+committed nothing at all — the window the two rules above leave open. For a
+thread, rule 14 in `.claude/rules/instruction-writing.md` says where the trial
+records what it will take. Scan the live ones for the id
 (`session_status` `RUNNING` or `IDLE`; archived and completed ones are finished
 work), in the title and in `external_metadata.current_branches` both, because
 either can carry it and neither reliably does.
