@@ -1586,13 +1586,17 @@ def cmd_set(args: argparse.Namespace) -> int:
     written = (
         WrittenReport(identifiers=frozenset({item.identifier})) if "verify" in changes else None
     )
-    introduced = analyze(after, today, config, written=written).errors
+    # The roadmap `check` reads, so the rules that need it - a debt item's gate
+    # disposition among them - refuse the write too, rather than surfacing one
+    # `check` later (`PL-BB5W`). Unreadable, it declines as it does for `check`.
+    milestones = _milestones(_invocation(args).root, config)
+    introduced = analyze(after, today, config, milestones=milestones, written=written).errors
     if introduced:
         # Only what this write adds counts against it. An error the store
         # already carries is somebody else's, and blocking every write until
         # the whole store is clean would refuse the command on exactly the
         # days it is needed.
-        already = set(analyze(items, today, config).errors)
+        already = set(analyze(items, today, config, milestones=milestones).errors)
         introduced = [error for error in introduced if error not in already]
     if introduced:
         print(f"{item.identifier}: nothing was written; `docket check` would then report:")
@@ -1782,6 +1786,7 @@ def cmd_show(args: argparse.Namespace) -> int:
     item = find_item(items, args.item)
     if item is None:
         print(f"no item matching '{args.item}'")
+        _say_held_elsewhere(args, items)
         return 1
     flight = _flight(args)
     print(f"{item.identifier} {item.title}")
@@ -1953,6 +1958,36 @@ def cmd_show(args: argparse.Namespace) -> int:
     print(item.body.strip())
     _say_unread(flight)
     return 0
+
+
+def _say_held_elsewhere(args: argparse.Namespace, items: list[Item]) -> None:
+    """Which branch holds an id this store lacks, and how to read its file there.
+
+    An item captured and claimed on another branch is absent from this store
+    until that branch merges, while `next` and `flight` already name it as a
+    live claim - so the bare not-found line was a dead end at the moment a
+    session asked about work another session holds (`PL-140X`). The holds are
+    the lines `show` prints for an item it has. The file is found by the read
+    `stranded` makes, without its fetch, as the holds were read without one.
+    Silent where nothing holds the id, which is the ordinary typo.
+    """
+    held = render.format_holds(_holdings(args), args.item, _now(args))
+    if not held:
+        return
+    print("It is held on a branch, and this checkout's store has no copy of it:")
+    print(held)
+    key = args.item.upper()
+    report = _stranded(items, args)
+    found = next(
+        (entry for entry in (report.items if report else ()) if entry.identifier.upper() == key),
+        None,
+    )
+    if found is None:
+        print("  Its file was not found on a ref this checkout holds; `bin/docket stranded`")
+        print("  fetches and names every item that exists only on a branch.")
+        return
+    for branch in found.branches:
+        print(f"  read it: git show {branch}:{found.path}")
 
 
 def _since_filed(args: argparse.Namespace, item: Item, root: Path, config: Config) -> str:
@@ -2741,13 +2776,22 @@ def cmd_generators(args: argparse.Namespace) -> int:
 
     Every head is printed with the one fact its members misread, and the
     pairs of heads whose member lists overlap follow the list (`PL-5MYR`).
-    Heads were compared with nothing, so one record read by several readers
-    got a head per reader. `--misread` prints only those lines, sorted by the
-    fact so that heads stating one sit together - the list triage and grooming
-    compare a capture against. Whether two lines name one record is judgment;
-    the command makes it one screen, and flags the overlap it can decide.
+    `--misread` prints only those lines, sorted by the fact so that heads
+    stating one sit together - the list triage and grooming compare a capture
+    against. Whether two lines name one record is judgment; the command makes
+    it one screen, and flags the overlap it can decide.
     """
     _, items, config = _load(args)
+    if args.head and args.misread:
+        # The pair is refused rather than half of it dropped: the id view was
+        # printed as though the flag had been honoured (`PL-SL4L`), and it
+        # already carries its head's `misread:` line.
+        print(
+            f"`--misread` lists every head and takes no id: run `bin/docket generators "
+            f"--misread` for that list, or `bin/docket generators {args.head}` for one "
+            f"cluster, whose view already prints its head's `misread:` line."
+        )
+        return 1
     groups = clusters(items)
     if not args.head:
         pairs = overlaps(groups)
@@ -3894,6 +3938,21 @@ def _instant(text: str) -> datetime:
     return value
 
 
+def _at_least_one(text: str) -> int:
+    """A count of picks, for `next --limit`, refused below one.
+
+    The ranking is sliced with the value as given, so zero printed "Nothing is
+    ready to start" at exit 0 over a queue holding work, and a negative value
+    sliced from the end - `--limit -2` printed all but the last two picks
+    (`PL-RMN8`). "Nothing is ready" is the answer that ends a session's search
+    for work, so a count that cannot be honoured is refused instead.
+    """
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"must be 1 or more, got {value}")
+    return value
+
+
 def _now(args: argparse.Namespace) -> datetime:
     """The instant a branch's age is measured to.
 
@@ -4534,7 +4593,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="only work that fits the time available",
     )
-    nxt.add_argument("--limit", type=int, default=3)
+    nxt.add_argument("--limit", type=_at_least_one, default=3)
     nxt.add_argument(
         "--oldest",
         action="store_true",

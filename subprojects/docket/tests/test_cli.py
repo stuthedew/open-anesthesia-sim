@@ -3766,6 +3766,44 @@ def test_show_names_a_branch_holding_an_item_only_by_its_name(
     assert "records no claim" in out
 
 
+def test_show_names_the_branch_holding_an_item_absent_here(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A capture claimed on another branch is absent here, and `show` says where it is.
+
+    `next` and `flight` named such an item as a live claim while `show` printed
+    only "no item matching": a dead end at the moment a session asks about work
+    another session holds (`PL-140X`).
+    """
+    from docket.claims import CUTOVER_MARKER
+
+    when = "2026-08-20T12:00:00+00:00"
+    root = _flight_repo(tmp_path, "Tidy up", when=when)
+    _commit_on(root, "main", {CUTOVER_MARKER: "# the claim writer\n"}, "claims", when)
+    held = "claude/capture-k7qx"
+    captured = "items/PL-K7QX-captured-there.md"
+    _commit_on(root, held, {captured: READY.replace("PL-B1B1", "PL-K7QX")}, "capture", when)
+    dated = os.environ | {"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when}
+    for args in (
+        ["checkout", "-q", held],
+        ["commit", "-q", "--allow-empty", "-m", f"PL-K7QX: start\n\nClaim: PL-K7QX {held}"],
+        ["checkout", "-q", "main"],
+    ):
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
+    ran = ["--items", str(root / "items"), "--today", "2026-08-23", "show"]
+
+    assert main([*ran, "PL-K7QX"]) == 1
+
+    out = capsys.readouterr().out
+    assert out.startswith("no item matching 'PL-K7QX'\n")
+    assert f"IN FLIGHT on {held}" in out
+    assert f"  read it: git show {held}:{captured}\n" in out
+
+    # An id nothing holds is the ordinary typo, and gets the one line it always did.
+    assert main([*ran, "PL-Q9Q9"]) == 1
+    assert capsys.readouterr().out == "no item matching 'PL-Q9Q9'\n"
+
+
 def test_show_says_a_lapsed_claim_on_an_open_item_holds_nothing(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -5992,6 +6030,30 @@ def test_next_without_oldest_still_ranks_new_work(
     assert "Left out as new work, classed feature or planning: 1 item(s)" in oldest
 
 
+@pytest.mark.parametrize("oldest", [(), ("--oldest",)], ids=["plan", "oldest"])
+@pytest.mark.parametrize("limit", ["0", "-2"])
+def test_next_refuses_a_limit_below_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], oldest: tuple[str, ...], limit: str
+) -> None:
+    """A limit that cannot be honoured is refused, never sliced into a false answer.
+
+    Zero said "Nothing is ready to start" over a queue holding work, and a
+    negative value sliced the ranking from its end (`PL-RMN8`).
+    """
+    store = str(_store(tmp_path, READY))
+
+    with pytest.raises(SystemExit) as stop:
+        _run("next", *oldest, "--limit", limit, "--items", store)
+
+    assert stop.value.code != 0
+    captured = capsys.readouterr()
+    assert f"argument --limit: must be 1 or more, got {limit}" in captured.err
+    assert "Nothing is ready to start" not in captured.out
+    assert "No owed work is ready to start" not in captured.out
+    assert _run("next", *oldest, "--limit", "1", "--items", store) == 0
+    assert "PL-B1B1" in capsys.readouterr().out
+
+
 def test_next_oldest_reads_what_counts_as_new_work_from_the_config(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -6968,6 +7030,75 @@ def test_set_refuses_a_write_the_checker_would_fail_and_says_why(
     assert _item_text(store) == CAPTURED
 
 
+# The least a roadmap needs to record a current gate: a baseline row, and the
+# next milestone's frozen list, which names an id other than the capture's.
+GATE_ROADMAP = """# Plan
+
+## Versioning decision
+
+| Version | Status | Milestone |
+| --- | --- | --- |
+| v0.4.0 | Completed / current baseline | The teachable case |
+
+## The plan
+
+### The timeline
+
+| # | Step | Notes | Effort |
+| --- | --- | --- | --- |
+| 1 | **v0.5.0 — the case you can branch** | scoped below | - |
+
+## v0.5.0 - the case you can branch
+
+### Goal
+
+Make the comparison possible.
+
+### Debt gate: the frozen list
+
+- PL-B1B1 (S) On the list
+
+### Required scope
+
+Both branches.
+
+### Definition of done
+
+Both branches read.
+
+### Explicitly out of scope for v0.5.0
+
+Three branches.
+"""
+
+
+def test_set_refuses_a_debt_capture_with_no_gate_disposition(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A rule that needs the roadmap refuses the write too, as `check` would.
+
+    `set` validated without the milestones, so a capture classed as debt was
+    written at a triaged status and failed the next `check` for having no gate
+    disposition (`PL-BB5W`).
+    """
+    store = _store(tmp_path, CAPTURED)
+    (tmp_path / "ROADMAP.md").write_text(GATE_ROADMAP, encoding="utf-8")
+    fields = ("--status", "ready", "--priority", "P3", "--effort", "S", "--classes", "defect")
+
+    assert _run("set", "PL-D4D4", *fields, "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert "nothing was written" in out
+    assert "open debt (classed defect) that v0.5.0's gate neither places nor defers" in out
+    assert 'bin/docket set PL-D4D4 --deferred-from "v0.5.0 - <why>"' in out
+    assert _item_text(store) == CAPTURED
+
+    deferral = ("--deferred-from", "v0.5.0 - captured after the freeze")
+    assert _run("set", "PL-D4D4", *fields, *deferral, "--items", str(store)) == 0
+    assert "deferred-from: v0.5.0 - captured after the freeze" in _item_text(store)
+    assert _run("check", "--items", str(store)) == 0
+
+
 def test_set_holds_a_command_it_writes_to_the_admitted_shapes_whatever_the_item_s_age(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -7929,6 +8060,25 @@ def test_generators_on_a_head_prints_its_misread(
     assert _run("generators", "PL-4040", "--items", str(store)) == 0
 
     assert f"\n  misread: {_MISREAD}\n" in capsys.readouterr().out
+
+
+def test_generators_given_an_id_and_misread_does_not_ignore_the_flag(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The pair printed the cluster view at exit 0, as though the flag were honoured.
+
+    Refused instead, naming both commands that answer (`PL-SL4L`).
+    """
+    store = _overlapping_heads(tmp_path)
+
+    assert _run("generators", "PL-4040", "--misread", "--items", str(store)) == 1
+
+    output = capsys.readouterr().out
+    assert "`--misread` lists every head and takes no id" in output
+    assert "`bin/docket generators --misread`" in output
+    assert "`bin/docket generators PL-4040`" in output
+    assert "root cause of" not in output
+    assert f"misread: {_MISREAD}" not in output
 
 
 def test_show_on_a_head_prints_its_misread_beside_the_verdict(
