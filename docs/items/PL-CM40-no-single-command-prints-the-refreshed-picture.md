@@ -3,11 +3,10 @@ id: PL-CM40
 title: No single command prints the refreshed picture a closing block needs - main's tip, whether this branch is contained in it, flight and stranded - so the rule has to name three
 priority: P3
 effort: S
-status: blocked
+status: needs-decision
 classes: infra
 feature: refresh-before-reporting
 touches: subprojects/docket/src/docket/cli.py, .claude/rules/instruction-writing.md
-blocked-by: PL-QSGX
 deferred-from: v0.6.0 - filed 2026-09-19 as blocked and never on the frozen list; a closing-block convenience, not safety or science, and its decision opened only when PL-QSGX closed on 2026-09-26
 added: 2026-09-19
 ---

@@ -3,16 +3,17 @@ id: PL-XBV4
 title: Read commands each assemble their own picture of the world - the store from the working tree, holds from refs, some after a fetch and some not, a failed fetch discarded, the forge asked by one command only - so each answers from a different moment and none says which
 priority: P2
 effort: L
-status: ready
+status: done
 classes: defect, infra
 feature: one-snapshot
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/README.md, .claude/hooks/docket-digest.sh, .claude/skills/docket/modes/start.md, .claude/rules/instruction-writing.md, docs/items/PL-CM40-no-single-command-prints-the-refreshed-picture.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-snapshot batch
 added: 2026-09-25
+closed: 2026-09-26
 payoff: every docket read says which moment it answered from, so a failed or skipped fetch, or a working tree behind origin/main, stops passing for a fresh answer in every command at once
 verify: grep -q 'def test_every_read_command_names_what_its_snapshot_rests_on' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-8Z1T, PL-Y48N, PL-D1P5, PL-QSGX, PL-HVLJ
-generator: live - nothing records which moment a read answered from: vcs.fetch_remote returns None, and next, show, flight and the digest never fetch or date their refs, so each new read command picks its own sources again; three members were reproduced on 2026-09-25 beside two open since 2026-09-19 and 2026-09-21
+generator: spent - every read command now answers from one vcs.Snapshot, fetched once per invocation and dated, and prints which moment it rests on when that is not a fresh fetch; a new read command gets the snapshot by construction instead of picking its own sources, and the two members still open (PL-Y48N, PL-HVLJ) are consequences already filed, not ones the mechanism can still mint
 misread: How fresh the refs, working tree and forge state a read command answered from are
 ---
 
