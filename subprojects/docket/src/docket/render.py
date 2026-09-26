@@ -3268,10 +3268,14 @@ def format_git_profile(profile: GitProfile) -> str:
     if walk.declined:
         lines.append(f"  ref set: not read - {walk.declined}")
         return "\n".join(lines)
+    # The sum is named as a sum and the distinct count printed beside it: a
+    # figure a reader divides a per-edit rate by has to say which of the two it
+    # is, since they part as soon as two refs edit one file (`PL-3BYK`).
     lines += [
         "",
         f"  ref set: {walk.listed} refs, {walk.merged} merged, {walk.unmerged} unmerged, "
-        f"carrying {walk.commits} commits and {walk.item_edits} item-file edits",
+        f"carrying {walk.commits} commits and {walk.item_edits} item-file edits summed per "
+        f"ref, {_plural(walk.item_files, 'distinct item file', 'distinct item files')}",
     ]
     lines += [
         f"    {name:<52}{ahead:>5} commits{edits:>5} items" for name, ahead, edits in walk.refs

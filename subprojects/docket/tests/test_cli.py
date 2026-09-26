@@ -5423,6 +5423,44 @@ def test_no_git_read_in_the_cli_takes_the_store_from_the_settings() -> None:
     )
 
 
+def test_the_ref_set_block_names_distinct_item_files(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Two refs editing one item file are two edits and one file, and the block says both.
+
+    The `ref set` block summed each ref's item files, so an item file edited
+    on ten refs counted ten, and it printed the sum as though it counted
+    files. On a clone of long-lived branches editing one store the sum ran
+    2.6x the files, and a rate divided by it over-predicted by as much
+    (`PL-3BYK`). So the sum is named for what it is, beside the distinct count.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    item = root / "items" / "PL-0001-on-main.md"
+    item.write_text(READY.replace("PL-B1B1", "PL-0001"), encoding="utf-8")
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    git("-c", "init.defaultBranch=main", "init", "-q")
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    for branch in ("first-edit", "second-edit"):
+        git("checkout", "-qb", branch, "main")
+        item.write_text(item.read_text(encoding="utf-8") + f"A note from {branch}.\n")
+        git("commit", "-qam", f"PL-0001: {branch}")
+    git("checkout", "-q", "main")
+
+    argv = ["--items", str(root / "items"), "--today", "2026-08-23", "digest", "--profile"]
+    assert main(argv) == 0
+
+    out = capsys.readouterr().out
+    assert "2 unmerged, carrying 2 commits and 2 item-file edits summed per ref" in out
+    assert "summed per ref, 1 distinct item file" in out
+
+
 def test_every_git_read_in_the_cli_takes_the_invocations_runner() -> None:
     """Every read `cli.py` asks of `vcs` is handed the one runner the command holds.
 
