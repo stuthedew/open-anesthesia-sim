@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1086
 payoff: a regex shown in an indented code block passes make check, instead of being refused as math GitHub does not render
 verify: grep -q 'def test_math_in_an_indented_code_block_is_quiet' tests/unit/test_doc_check.py
 ---

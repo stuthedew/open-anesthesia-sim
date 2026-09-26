@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1086
 payoff: a brief or document can quote wording proposed for, or since deleted from, a named document without make check refusing it as a misquotation
 verify: grep -q 'def test_a_proposal_quoted_beside_a_document_is_not_an_error' tests/unit/test_doc_check.py
 ---

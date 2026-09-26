@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1086
 payoff: a shell comment or pasted make output in a fenced block passes make check, instead of being reworded to satisfy a check that read it as a command
 verify: grep -q 'def test_a_fenced_shell_comment_saying_make_sure_names_no_target' tests/unit/test_doc_check.py && grep -q 'def test_make_error_output_in_a_fence_names_no_target' tests/unit/test_doc_check.py
 ---

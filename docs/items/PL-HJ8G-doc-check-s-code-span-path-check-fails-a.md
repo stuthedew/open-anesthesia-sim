@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1086
 payoff: a document can name a file that is absent, planned or deleted, in the backticks a path deserves, without failing make check
 verify: grep -q 'def test_a_file_named_as_absent_is_not_a_missing_citation' tests/unit/test_doc_check.py
 ---
