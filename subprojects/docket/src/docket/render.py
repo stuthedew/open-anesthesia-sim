@@ -1464,13 +1464,11 @@ def format_clusters(
     ranking and the clause would decide nothing.
 
     **Under each head, the fact its members misread rather than its title**
-    (`PL-5MYR`). Heads were compared with nothing, so one record read by
-    several readers got a head per reader; the title names the reader and the
-    `misread:` line names the record, which is the half a comparison needs. A
-    head that states none says so and falls back to its title. The pairs of
-    heads whose member lists overlap follow the list - decidable, and a hint
-    rather than a verdict, since two heads can share a record over disjoint
-    members.
+    (`PL-5MYR`): the title names the reader and the `misread:` line names the
+    record, which is the half a comparison needs. A head that states none says
+    so and falls back to its title. The pairs of heads whose member lists
+    overlap follow the list - decidable, and a hint rather than a verdict,
+    since two heads can share a record over disjoint members.
     """
     if not clusters:
         lines = ["no item carries a sound `root-cause-of:`, so no generator is recorded"]
