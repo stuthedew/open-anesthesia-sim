@@ -99,6 +99,7 @@ from .release import (
     SEMVER_RE,
     Readiness,
     already_released,
+    asked_tag,
     below_current,
     is_untagged,
     markdown_title,
@@ -136,6 +137,7 @@ from .vcs import (
     UNASKED,
     BaseCopies,
     BaseCopy,
+    BaseRelease,
     BranchCut,
     ClosureReport,
     CutsInFlight,
@@ -1203,7 +1205,9 @@ def _interrupted(root: Path, items: list[Item], current: str) -> str:
 def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight | None:
     """Which refs are mid-release, read only where the digest prints `Releasable:`.
 
-    Gated on `Readiness.is_worth_cutting` rather than run for every digest: it
+    `status` asks it too, wherever its `Unreleased:` line would offer a version
+    (`PL-53Y6`); the rest of this is the digest's own gate. Gated on
+    `Readiness.is_worth_cutting` rather than run for every digest: it
     costs a walk of the unlanded refs (measured 103 ms on this repository), and
     a session shown no `Releasable:` line has nothing to be warned off. That
     gate means there is finished work to cut, whether or not a version is free
@@ -2478,22 +2482,60 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
-    """The project at feature altitude, plus whether a release is worth cutting."""
+    """The project at feature altitude, plus whether a release is worth cutting.
+
+    The flight report is read first because it is what fetches (`_snapshot`),
+    and the cut read and the tag read after it both answer from those refs.
+    The cut is read only where the survey would otherwise print an offer, as
+    the digest reads it only beside its own (`_cuts`).
+    """
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
     root = _invocation(args).root
     current = read_version(root / config.version_file)
     ready = readiness(items, current, config.minor_classes)
+    flight = _flight(args)
+    interrupted = _interrupted(root, items, current)
     rendered = render.format_status(
         report,
         ready,
-        _flight(args),
+        flight,
         _plan(root, items, config),
-        interrupted=_interrupted(root, items, current),
+        interrupted=interrupted,
+        cuts=_cuts(root, config, args) if ready.shippable and not interrupted else None,
+        tagged=_tagged(report.open_items, args),
     )
     print(rendered if rendered else "Nothing open.")
     _say_snapshot(args)
     return 0
+
+
+def _tagged(items: Sequence[Item], args: argparse.Namespace) -> dict[str, str]:
+    """Each open item whose title asks for a release tag the clone already holds (`PL-53Y6`).
+
+    The tag step a cut hands the owner is filed as an item, and nothing closed
+    it when the tag was pushed: it has no `verify:`, since the replay reports
+    an open item whose command passes as an error, which would turn the
+    default branch red for bookkeeping at every tag. So `status` offered
+    `PL-08D4` (Tag v0.5.10) as work after v0.5.10 was tagged. This names such
+    an item for the reader to close; closing it stays theirs.
+
+    Positive evidence only: a tag the clone lacks - not fetched yet, or a read
+    git declined - leaves the item offered as it was. Whether the tag sits on
+    its release's cut is `tools/doc_check.py`'s hard gate, not asked again
+    here. Under `--no-git`, and where no open item asks for a tag, git is not
+    asked at all.
+    """
+    asked = {item.identifier: tag for item in items if (tag := asked_tag(item.title))}
+    git = _invocation(args).git
+    if not asked or git is None:
+        return {}
+    held = tags(_invocation(args).root, runner=git).names
+    return {
+        identifier: tag
+        for identifier, tag in asked.items()
+        if tag in held or tag.removeprefix("v") in held
+    }
 
 
 def cmd_next(args: argparse.Namespace) -> int:
@@ -3294,6 +3336,45 @@ def _with_train(cuts: CutsInFlight, train: _Train) -> CutsInFlight:
     return with_fields(cuts, branches=tuple(sorted((*rest, held), key=lambda branch: branch.ref)))
 
 
+def _rival_cuts(
+    args: argparse.Namespace, root: Path, git: Runner, base: BaseRelease
+) -> tuple[list[BranchCut], str, _Train]:
+    """Every other ref cutting or holding the train, why that could not be read, and the train.
+
+    The reason is `""` where every read answered. The claims it could not
+    believe are printed as it reads them. Shared by the cut's guard and by the
+    unnamed-version answer, so the two cannot disagree about who else is
+    cutting (`PL-53Y6`).
+
+    **The guard refuses on a read it could not complete** (`PL-Q9Z1`), which
+    is why the reason travels with the holders. Each question is looking for
+    evidence that somebody else is already cutting, and an absence of evidence
+    is what a git that did not answer produces - so proceeding on one is the
+    v0.3.7 collision arriving through the guard built to stop it.
+    """
+    cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=git)
+    # The invocation's shared read, first asked here - after the caller's
+    # fetch, so it is not a view older than the refs just fetched (`PL-1WV7`).
+    # `_holdings` passes an empty prefix straight through, so the decline for a
+    # store git cannot address stays this site's.
+    read = (
+        _holdings(args)
+        if _invocation(args).tracked
+        else Holdings(declined="the store is not below the repository root")
+    )
+    train = _release_train(read, root, git)
+    cuts = _with_train(cuts, train)
+    # A ref whose claims were not believed is named, never read as clean, as
+    # `claim` names it; `cuts.unreadable` is left as it was.
+    skipped = claiming._unread(read)
+    if skipped:
+        print(*skipped, sep="\n")
+        print()
+    holders = [branch for branch in cuts.branches if not branch.mine]
+    unread = "" if base.known else _base_unread(base.base)
+    return holders, unread or cuts.declined or read.declined, train
+
+
 def cmd_release(args: argparse.Namespace) -> int:
     """Cut a release from whatever is finished and has not shipped yet.
 
@@ -3371,17 +3452,43 @@ def cmd_release(args: argparse.Namespace) -> int:
 
     # A resumed cut needs no version named: the interrupted run named it, and
     # it is stamped on the items this one is picking back up.
+    #
+    # Naming one is what this advises, so another session's cut is asked about
+    # first, and where one is found its warning takes the advice's place:
+    # `release --dry-run` stopped here and never said another branch was
+    # cutting, while the digest did (`PL-53Y6`). A read that could not answer
+    # keeps the advice and says so, since naming a version asks again and
+    # refuses there. What the default branch already holds, and whether this
+    # branch holds the train, are asked of a named version, so they wait for
+    # one below.
     if args.version is None and not resuming and config.version_policy == "manual":
+        holders: list[BranchCut] = []
+        unread = ""
+        if git is not None:
+            _say_snapshot(args)
+            base = released_on_base(
+                root, version_file=config.version_file, notes_dir=NOTES_DIR, runner=git
+            )
+            holders, unread, _ = _rival_cuts(args, root, git, base)
         print(f"{len(ready.shippable)} finished item(s) since {current}:")
         for item in ready.shippable:
             print(f"  {item.identifier} {item.title}")
         if ready.completed_features:
             print(f"Completes: {', '.join(ready.completed_features)}")
+        print()
+        if holders:
+            print(_parallel_cut_warning(holders))
+            return 1
         print(
-            f"\nThis project chooses versions by the capability boundary a release "
-            f"crosses, not by incrementing. Name the version to cut it "
+            "This project chooses versions by the capability boundary a release "
+            "crosses, not by incrementing. Name the version to cut it "
             f"(mechanical guess, for reference only: {ready.suggested_version})."
         )
+        if unread:
+            print(
+                f"Whether another session is already cutting could not be checked: {unread}. "
+                "Naming the version asks again, and refuses to cut until it can."
+            )
         return 1
 
     version = (args.version or resuming or ready.suggested_version).lstrip("v")
@@ -3430,41 +3537,16 @@ def cmd_release(args: argparse.Namespace) -> int:
                 return 1
             print()
         else:
-            # **The guards refuse on a read they could not complete**
-            # (`PL-Q9Z1`). Each is looking for evidence that somebody else is
-            # already cutting, and an absence of evidence is what a git that did
-            # not answer produces - so proceeding on one is the v0.3.7
-            # collision arriving through the guard built to stop it. This is the
-            # rarest command here and the most expensive to get wrong, which is
-            # what makes refusing the right side to err on.
-            cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=git)
-            tracked = _invocation(args).tracked
-            # The invocation's shared read, first asked here - after the fetch
-            # above, so it is not a view older than the refs just fetched
-            # (`PL-1WV7`). `_holdings` passes an empty prefix straight through,
-            # so the decline for a store git cannot address stays this site's.
-            read = (
-                _holdings(args)
-                if tracked
-                else Holdings(declined="the store is not below the repository root")
-            )
-            train = _release_train(read, root, git)
-            cuts = _with_train(cuts, train)
-            # A ref whose claims were not believed is named, never read as
-            # clean, as `claim` names it; `cuts.unreadable` is left as it was.
-            skipped = claiming._unread(read)
-            if skipped:
-                print(*skipped, sep="\n")
-                print()
-            holders = [branch for branch in cuts.branches if not branch.mine]
-            unread = "" if base.known else _base_unread(base.base)
+            holders, unread, train = _rival_cuts(args, root, git, base)
             refusal = ""
             if holders:
                 refusal = _parallel_cut_warning(holders)
-            elif unread or not cuts.known or not read.known:
-                refusal = _unreadable_cut_warning(unread or cuts.declined or read.declined)
+            elif unread:
+                refusal = _unreadable_cut_warning(unread)
             elif train.ours is None:
-                refusal = _no_train_refusal(name, len(ready.shippable), current, train, tracked)
+                refusal = _no_train_refusal(
+                    name, len(ready.shippable), current, train, _invocation(args).tracked
+                )
             if refusal:
                 print(refusal)
                 if not args.dry_run:
