@@ -377,6 +377,46 @@ def test_notes_fall_back_to_the_commit_for_an_item_closed_before_the_field() -> 
     assert " — `abc1234`" in release_notes(milestone, TODAY)
 
 
+def test_an_angle_bracket_placeholder_in_a_title_survives_the_rendered_notes() -> None:
+    """`PL-PRSF`: `refs/pull/<n>/head` shipped in v0.5.9's notes as `refs/pull//head`.
+
+    The bullet copied the title verbatim, and GitHub read `<n>` as an HTML tag
+    and dropped it. CommonMark renders a backslash-escaped `<` as itself, so
+    the escaped bullet prints the placeholder; one inside a code span already
+    survives, and escaping there would print the backslash instead.
+    """
+    from docket.release import NOTES_ENTRY_RE
+
+    title = (
+        "PL-VV4D's check rests on refs/pull/<n>/head, and `git show <base>:<path>` "
+        "reads v<version>"
+    )
+    item = replace(_item("PL-LF2C"), title=title)
+
+    notes = release_notes(milestones([item])["v0.3.0"], TODAY)
+
+    (bullet,) = [line for line in notes.splitlines() if line.startswith("- PL-LF2C ")]
+    assert bullet == (
+        "- PL-LF2C PL-VV4D's check rests on refs/pull/\\<n>/head, and "
+        "`git show <base>:<path>` reads v\\<version> — #48"
+    )
+    # The readers of a cut's notes still find the bullet's id and its reference.
+    assert NOTES_ENTRY_RE.findall(notes) == ["PL-LF2C"]
+    assert unreferenced(notes) == ()
+
+
+def test_a_title_escaped_by_hand_or_holding_no_placeholder_is_left_as_it_stands() -> None:
+    """Escaping twice would print a backslash and bring the tag back; nothing else moves."""
+    from docket.release import markdown_title
+
+    assert markdown_title("already \\<n> escaped") == "already \\<n> escaped"
+    assert markdown_title("a plain title, with `code` and a -> arrow") == (
+        "a plain title, with `code` and a -> arrow"
+    )
+    assert markdown_title("an unclosed ` span <n>") == "an unclosed ` span \\<n>"
+    assert markdown_title("``double <n> span`` then <m>") == "``double <n> span`` then \\<m>"
+
+
 # --- bullets that shipped before their number existed ------------------------
 #
 # `PL-W7WL`: the cut renders the notes and `docket record` writes `pr`

@@ -98,6 +98,7 @@ from .release import (
     already_released,
     below_current,
     is_untagged,
+    markdown_title,
     milestones,
     notes_by_version,
     notes_name,
@@ -1451,7 +1452,9 @@ def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namesp
         closed=None,
         commit="",
         reason="",
-        body=CAPTURE_TEMPLATE.format(title=title),
+        # The front matter keeps the title as typed; the brief is markdown, so
+        # its copy is escaped where a placeholder would render as a tag (`PL-PRSF`).
+        body=CAPTURE_TEMPLATE.format(title=markdown_title(title)),
     )
     path = write_item(directory, item)
     print(f"{identifier}  {path}")

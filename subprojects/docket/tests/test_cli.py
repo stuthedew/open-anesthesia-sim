@@ -106,6 +106,27 @@ def test_new_captures_several_ideas_in_one_call(
     assert len({p.name.split("-")[1] for p in written}) == 2
 
 
+def test_a_captures_problem_line_keeps_an_angle_bracket_placeholder(tmp_path: Path) -> None:
+    """`PL-PRSF`: the brief opens with the title, and GitHub drops `<n>` as a tag.
+
+    `PL-LF2C`'s own page read `refs/pull//head` in its Problem line while its
+    front matter kept the placeholder. The front matter keeps the title as
+    typed; the Problem line escapes the `<` a renderer would take for a tag,
+    and leaves a code span as it stands.
+    """
+    store = _store(tmp_path)
+    title = "Compare against refs/pull/<n>/head, as `git show <base>:<path>` does"
+
+    assert _run("new", title, "--items", str(store)) == 0
+
+    (written,) = store.glob("*.md")
+    item = parse_item(written.read_text(encoding="utf-8"), written.name)
+    assert item.title == title
+    assert item.body.strip() == (
+        "**Problem.** Compare against refs/pull/\\<n>/head, as `git show <base>:<path>` does"
+    )
+
+
 def test_touches_before_the_title_no_longer_swallows_it(tmp_path: Path) -> None:
     """The capture path is the one place in this project meant to be frictionless.
 
