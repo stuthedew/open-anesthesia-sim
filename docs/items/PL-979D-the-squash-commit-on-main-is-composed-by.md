@@ -239,3 +239,20 @@ below is the build's own, inside the form decided above:
    this pull request's own body. Once this merges, every open pull request
    fails `pr-title` until it records its body. The pull request body says so,
    as `#1056`'s did.
+
+**Build progress, 2026-09-26, second build thread** (on
+`claude/project-thread-f3ybg7`, which continued `claude/pl-979d-build-1y2bjk`
+and holds the five claims; it stopped at the context budget). Pushed:
+`tools/pr_body_check.py`'s `--record [N]`, `--check` and `--anchors`, the two
+headers (`recorded:`, or `recovered:` with `squash:`) with no HTML comment, and
+twelve new tests, `test_a_recovery_file_whose_commit_sha_no_longer_resolves_is_reported`
+and one case per `squash:` shape among them; the `pr-title.yml` step; `make
+check` running `--anchors`, which passes on the tree (all 201 existing anchors
+are on `main`'s first-parent line); the docs in step 5; and `PL-7VWK`, filed
+from the docs pass. `arming.py`'s `RECORDS` and `verify.py`'s `record` kind
+were being written with their tests when it stopped; `git log` on the branch
+says whether they landed. Left: `make check`, the pull request (its body says
+every open pull request fails `pr-title` until it records its body), `--record
+N` and `bin/docket record N` for it, and the closures in step 6. `PL-73G8`'s
+closing note says the 201 pre-rule files keep their old header, forward only,
+and that the commit adding each one dates its fetch.
