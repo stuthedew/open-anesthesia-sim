@@ -10,6 +10,7 @@ touches: tools/doc_check.py, subprojects/docket/src/docket/checks.py, tests/unit
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1094
 payoff: a correct sentence stops failing make check for its wording, and the bare section citations - 264 by the stress test count, two stale today, one in docs/MODEL.md - are checked instead of passing unread
 verify: grep -q 'def test_a_bare_section_mark_citation_is_checked' tests/unit/test_doc_check.py && grep -q 'def test_a_proposal_quoted_beside_a_document_is_not_an_error' tests/unit/test_doc_check.py && grep -q 'def test_a_fenced_copy_of_the_capture_template_is_not_the_brief' subprojects/docket/tests/test_checks.py && grep -q 'def test_a_branch_named_for_an_id_the_store_does_not_hold_is_unattributed' tests/unit/test_branch_id_check.py && grep -q 'def test_the_prose_token_pl_prefixed_is_not_read_as_an_id' tests/unit/test_fixture_id_check.py
 root-cause-of: PL-YSMV, PL-QQCD, PL-HVST, PL-L8VP, PL-XGYH, PL-HJ8G, PL-VH5V, PL-SN2T, PL-NQ3X, PL-FKH6, PL-6G8T

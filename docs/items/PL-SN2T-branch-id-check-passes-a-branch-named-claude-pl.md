@@ -10,6 +10,7 @@ touches: tools/branch_id_check.py, tests/unit/test_branch_id_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1094
 payoff: a branch or commit whose PL- token names no item stops passing the attribution check as though it named one
 verify: grep -q 'def test_a_branch_named_for_an_id_the_store_does_not_hold_is_unattributed' tests/unit/test_branch_id_check.py && grep -q 'def test_a_subject_leading_with_an_id_the_store_does_not_hold_is_unattributed' tests/unit/test_branch_id_check.py
 recurrences: 2026-09-26 PL-WK57
