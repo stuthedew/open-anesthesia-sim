@@ -1011,16 +1011,19 @@ outside the queue, so no amount of fetching, `show` or `flight` could show one
 pass to another. Two sessions triaged one pair of items on 2026-09-06, each
 having checked, and the merge discarded one of the two answers (`PL-N1JK`).
 
-So `FlightReport.editing` names, per item, a ref that has changed that item's
-own file. It is a measurement of paths rather than a judgment about subjects,
-which is what makes it exact: the file is what conflicts, whatever either
-commit was for. It ranks nothing — `next`, `list` and `status` read `ids`
-alone, so an annotated item stays startable and `PL-X3WZ` is intact — and it
-prints only where it changes a decision: `triage`, which is about to write to
-that file, and `show`, which is about to start the item. It is deliberately
-absent from `flight`, where capture being mandatory would put a row under
-nearly every live branch and change no answer to the question that command
-asks.
+So `FlightReport.editing` names, per item, every ref that has changed that
+item's own file: keeping only the first left out the one that would actually
+collide (`PL-1X2C`). It is a measurement of paths rather than a judgment about
+subjects, which is what makes it exact: the file is what conflicts, whatever
+either commit was for. It ranks nothing — `next`, `list` and `status` read
+`ids` alone, so an annotated item stays startable and `PL-X3WZ` is intact — and
+it prints only where it changes a decision: `triage`, which is about to write
+to that file, and `show`, which is about to start the item. Both leave out the
+branch the reader is on, through `cli._elsewhere`, because the reader already
+knows what it wrote and naming it reads as somebody else being there; the
+measurement itself keeps it. It is deliberately absent from `flight`, where
+capture being mandatory would put a row under nearly every live branch and
+change no answer to the question that command asks.
 
 **A third mark on the triage list answers a different question: was this item
 already worked when it was filed?** The two above are about other sessions;
@@ -1790,10 +1793,14 @@ way `flight` and `stranded` do.
 questions is worth asking. This is the rarest command here and the most expensive to get
 wrong, which is what makes one network read proportionate where the digest's
 would not be; `--no-fetch` is there for a caller that has already refreshed or
-cannot. The digest carries the same answer on its `Releasable:` line, computed
-only where a release is actually being offered, because the offer is where a
-duplicate release starts - refusing at `release` alone leaves the second
-session having already raised it and been approved.
+cannot. The digest carries the same answer on its `Releasable:` line, because
+the offer is where a duplicate release starts - refusing at `release` alone
+leaves the second session having already raised it and been approved. The
+digest reads the refs for it wherever `Readiness.is_worth_cutting` holds, which
+means there is finished work to cut, not that a release is being offered: where
+the roadmap has reserved the number a bump would reach, the line says
+`No release to offer` and the read still runs, which between milestones is the
+usual case (`PL-FT3M`).
 
 **A release that cannot finish writing itself is resumable, and one that is
 not resumed is reported.** Three things reach disk — the `milestone:` stamp on
@@ -1823,7 +1830,12 @@ defines an interrupted cut once — a milestone stamped in the store that no
 notes file records — and both halves of the repair read it: `cmd_release`
 folds those items back in and re-cuts the whole release, and
 `checks._check_release_notes` reports the state as an error wherever the
-re-run has not happened. A run asked for a *different* version while a cut is
+re-run has not happened. The digest's `Releasable:` line and `status`'s
+`Unreleased:` line read it too, through `cli._interrupted`, and name the
+interrupted cut and the command that finishes it in place of an offer: the
+count `readiness` gives leaves the stamped items out by contract, so without
+it they would print the short remainder with nothing saying why (`PL-1BS2`).
+A run asked for a *different* version while a cut is
 unfinished is refused, since two numbers over one unfinished cut make both
 sets of notes permanently wrong. Its floor is the lower of the oldest version
 with a notes file and the current version: the first exempts releases cut
@@ -1936,8 +1948,10 @@ only when there is one *and* truncation could account for it. A tag being
 **present** is never in doubt, so the conclusions drawn from that stand either
 way.
 
-What the check does say, when it can, is which completed releases carry no tag
-and which tags name no release. `docket release` still enforces the tag at the
+What the check does say, when it can, is which completed releases carry no tag,
+which tags name no release, and which tag sits off its release's cut - the
+commit that added its notes, which the tag commands `release` prints look up
+rather than leave to be filled in (`PL-QHCW`). `docket release` still enforces the tag at the
 one moment tags are certainly to hand: it refuses to cut the next release while
 the current one is untagged.
 
@@ -2837,14 +2851,23 @@ holder that has cut nothing yet instead of offering a release. `docket check`
 refuses any other value, because the match is exact and a misspelt resource
 would hold nothing.
 
+The field has a second effect, once the item is `done`: an item carrying
+`release-train` belongs to no release's count or notes (`PL-KRS6`).
+`release.unreleased` leaves it out, and its docstring says why. The release
+item closes in the cut's own pull request, after the notes are written, so it
+carries no `milestone:`; read as unreleased, it was the next release's whole
+content, offered to every session from the moment a cut merged until real work
+closed.
+
 ### `milestone:` records where work went out, never where it is planned
 
 `docket release` stamps `milestone:` onto the items it ships, and that is the
 whole of what the field means. Nothing else writes it. An item carrying one
 before its release is cut claims to have shipped in a release that has not
 happened — and worse, silently: `release.unreleased` selects finished work
-with **no** milestone, so a stamped item is invisible to the release that
-would actually ship it and is left out of that release's generated notes. The
+with **no** milestone (and no `resource: release-train`, above), so a stamped
+item is invisible to the release that would actually ship it and is left out
+of that release's generated notes. The
 one exception is a cut being resumed, which reclaims the items its own
 interrupted run stamped and nothing else. Ten
 items in the project this grew in were in exactly that state, hand-stamped for

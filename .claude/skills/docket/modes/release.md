@@ -225,20 +225,25 @@ session that has pushed nothing**, so a clean answer still means "nothing
 visible", never "nothing" — which is why the session check under **Mode: start an item**, in
 `.claude/skills/docket/modes/start.md`, is worth running before offering a release too.
 
-**Never ask the owner to "tag vX.Y.Z". Paste the commands, filled in, and
-resolve the merge commit rather than leaving a placeholder to fill:**
+**Never ask the owner to "tag vX.Y.Z". Paste the commands, filled in. The tag
+line finds the release's cut itself - the commit that added its notes file -
+so nothing is left to fill and nothing turns on when it is run:**
 
 ```bash
 git fetch origin main
-git tag -a v0.3.0 origin/main -m "v0.3.0"
+git tag -a v0.3.0 "$(git log --first-parent --diff-filter=A --format=%H origin/main -- docs/releases/v0.3.0.md)" -m "v0.3.0"
 git push origin v0.3.0
 ```
 
 Every time, not only the first. Asking for a tag without them makes the owner
 reconstruct three commands at the moment they are trying to do something else.
-Run these straight after the merge, when `origin/main` *is* the merge commit;
-an angle-bracket placeholder is also the one thing a pull request body silently
-eats (`PL-1DN9`).
+`bin/docket release` prints them, filled in for the version it cut, at the end
+of every cut; paste those rather than editing these. Run before the release has
+merged, the lookup finds nothing and `git tag` refuses with `Failed to resolve
+''`; run after another merge, it still tags the cut, where `origin/main` would
+have tagged that merge (`PL-VYK1`). The line holds no angle-bracket
+placeholder, which is the one thing a pull request body silently eats
+(`PL-1DN9`).
 
 **Do not try to push the tag yourself first - it fails, and it fails
 convincingly (`PL-N936`).** `git push --dry-run` reports `[new tag]` and the

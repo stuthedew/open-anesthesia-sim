@@ -95,6 +95,7 @@ from .plan import (
 )
 from .release import (
     NOTES_DIR,
+    SEMVER_GRAMMAR,
     SEMVER_RE,
     Readiness,
     already_released,
@@ -104,6 +105,7 @@ from .release import (
     milestones,
     notes_by_version,
     notes_name,
+    notes_path,
     outstanding_roadmap_edits,
     prepare_bump,
     read_version,
@@ -111,6 +113,7 @@ from .release import (
     release_notes,
     restate_references,
     stamp,
+    tag_commands,
     unrecorded_milestones,
     unreferenced_by_version,
 )
@@ -160,6 +163,8 @@ from .vcs import (
     fetch_remote,
     filed_with_work,
     files_in_flight,
+    find_cut,
+    is_shallow,
     lost,
     merged_pull_requests,
     open_pull_requests,
@@ -2207,19 +2212,34 @@ def _say_held_elsewhere(args: argparse.Namespace, items: list[Item]) -> None:
     session asked about work another session holds (`PL-140X`). The holds are
     the lines `show` prints for an item it has. The file is found by the read
     `stranded` makes, without its fetch, as the holds were read without one.
-    Silent where nothing holds the id, which is the ordinary typo.
+
+    **An id no hold names is looked for on the branches too** (`PL-PV6H`). A
+    capture on a branch nobody claims - one the digest lists under "Only on a
+    branch" - is where a session reaches for `show` next, and it met the same
+    dead end. So the miss pays the stranded read, which triage measured at
+    about 0.3 s on the error path, and a hit pays nothing. Found there, it
+    prints the branches and the recover line `stranded` gives, under the refs
+    line where the refs are not this command's own fetch, since the recovery
+    writes a file and a stale base is how that went wrong before (`PL-KBFN`).
+    Silent where no branch has the id either, which is the ordinary typo.
     """
     held = render.format_holds(_holdings(args), args.item, _now(args))
-    if not held:
-        return
-    print("It is held on a branch, and this checkout's store has no copy of it:")
-    print(held)
     key = args.item.upper()
     report = _stranded(items, args)
     found = next(
         (entry for entry in (report.items if report else ()) if entry.identifier.upper() == key),
         None,
     )
+    if not held:
+        if found is not None:
+            print("No branch holds it, but its file is only on a branch, not in this checkout:")
+            print(f"  only on: {', '.join(found.branches)}")
+            if refs := _refs_line(args):
+                print(f"  {refs}")
+            print(f"  recover: git checkout {found.branches[0]} -- {found.path}")
+        return
+    print("It is held on a branch, and this checkout's store has no copy of it:")
+    print(held)
     if found is None:
         print("  Its file was not found on a ref this checkout holds; `bin/docket stranded`")
         print("  fetches and names every item that exists only on a branch.")
@@ -3231,6 +3251,17 @@ def cmd_release(args: argparse.Namespace) -> int:
     is only as complete as somebody's memory of what to put in it, and the
     store already knows exactly which finished work has not gone out.
     """
+    # A typo in the number is refused before anything is read, in a dry run
+    # too. Nothing downstream asks the grammar: `prepare_bump` substitutes
+    # whatever string it is handed, `below_current` compares only numbers that
+    # parse, and `version_key` sorts an unparsable name below every release -
+    # so 0.5.12x would reach the version field, the notes file's name and
+    # every stamp (`PL-ZVG5`). `fullmatch`, because `$` also matches before a
+    # trailing newline, which would be carried into the bump with the rest.
+    if args.version is not None and SEMVER_RE.fullmatch(args.version) is None:
+        print(_malformed_version_refusal(args.version))
+        return 1
+
     directory, items, config = _load(args)
     root = _invocation(args).root
     git = _invocation(args).git
@@ -3277,7 +3308,7 @@ def cmd_release(args: argparse.Namespace) -> int:
         if not existing.known:
             refusal = _unreadable_tags_refusal(current, existing.declined)
         elif is_untagged(current, existing.names):
-            refusal = _untagged_warning(current)
+            refusal = _untagged_warning(current, root, git)
         if refusal:
             print(refusal)
             if not args.dry_run:
@@ -3486,14 +3517,14 @@ def _hand_off(root: Path, config: Config, name: str, plan: Wave | None = None) -
     lines.append("Then:")
     lines.append(f"  {config.check_command}")
     lines.append("  review the diff and commit")
-    # A bare token, never an angle-bracketed placeholder: a shell reads the
-    # opening bracket as input redirection from a file named `merge`, so pasting
-    # the line answered "no such file or directory: merge" and never reached git
-    # at all - naming neither git, nor the tag, nor the thing that is missing.
-    # `MERGE_COMMIT` fails as `fatal: Failed to resolve 'MERGE_COMMIT'`, which
-    # does (`PL-HKF4`).
-    lines.append(f'  git tag -a {name} MERGE_COMMIT -m "{name}"   # the merge commit on main')
-    lines.append(f"  git push origin {name}")
+    # No placeholder to fill: the tag line finds the cut itself when it runs.
+    # An angle-bracketed one was read by a shell as input redirection
+    # (`PL-HKF4`), and the bare `MERGE_COMMIT` that replaced it still left the
+    # commit to whoever pasted it, who reached for `origin/main` - the next
+    # merge as often as this one (`PL-VYK1`).
+    lines.append("")
+    lines.append("Once it has merged, tag the commit that cut it:")
+    lines.extend(f"  {command}" for command in tag_commands(name))
     return "\n".join(lines)
 
 
@@ -3538,6 +3569,21 @@ def _backwards_refusal(name: str, current: str, reason: str) -> str:
         [
             f"Cannot cut {name}: {reason}. Nothing was stamped and nothing was written.",
             f"A release moves the version forward, so name a number above {current.strip()}.",
+        ]
+    )
+
+
+def _malformed_version_refusal(requested: str) -> str:
+    """Say the argument is not a release version, and what one looks like.
+
+    Quoted, because the likely causes are a stray character or a space, and a
+    reader has to be able to see which.
+    """
+    return "\n".join(
+        [
+            f"Cannot cut {requested!r}: it is not a release version. "
+            "Nothing was stamped and nothing was written.",
+            f"A release version is {SEMVER_GRAMMAR}.",
         ]
     )
 
@@ -3712,24 +3758,53 @@ def _no_train_refusal(name: str, count: int, current: str, train: _Train, store:
     )
 
 
-def _untagged_warning(version: str) -> str:
+def _untagged_warning(version: str, root: Path, git: Runner) -> str:
     """Say which tag is missing and give the commands, not the instruction.
 
     Asking someone to "tag v0.2.5" makes them go and reconstruct three
-    commands at the moment they are trying to do something else.
+    commands at the moment they are trying to do something else. They are
+    `_hand_off`'s, which find the cut when they run; the line beneath says
+    which commit that is from here, so what is about to be tagged can be seen
+    before it is. It once printed a `--grep` for a subject no cut is written
+    with and a `RELEASE_COMMIT` to fill from it (`PL-QHCW`).
     """
     name = f"v{version.lstrip('v')}"
     return "\n".join(
         [
             f"{name} shipped and carries no tag, so no commit in its span can be",
             "mapped to the release it went out in. That gap cannot be closed later",
-            "with any confidence. Tag it first:",
+            "with any confidence. Tag the commit that cut it first:",
             "",
-            f'  git log --oneline --grep="Release {name}"   # find the commit',
-            f'  git tag -a {name} RELEASE_COMMIT -m "{name}"   # the commit found above',
-            f"  git push origin {name}",
+            *(f"  {command}" for command in tag_commands(name)),
+            "",
+            _cut_seen_here(name, root, git),
         ]
     )
+
+
+def _cut_seen_here(version: str, root: Path, git: Runner) -> str:
+    """Which commit the printed tag line will find, read from this checkout's base.
+
+    A shallow clone is not asked, because its oldest commit reads as adding
+    every file and would be named as the cut (`vcs.find_cut`).
+    """
+    base = default_base(root, runner=git)
+    notes = notes_path(version)
+    if is_shallow(root, runner=git) is not False:
+        return "This clone is shallow, or git will not say, so the commit is not named here."
+    cut = find_cut(version, base, root, runner=git)
+    if not cut.known:
+        return f"git did not answer for {base}, so the commit is not named here."
+    if not cut.commits:
+        return f"{base} has no commit adding {notes}, so that line will refuse as it stands."
+    if not cut.commit:
+        added = ", ".join(commit[:8] for commit in cut.commits)
+        return (
+            f"{base} added {notes} {len(cut.commits)} times ({added}), so that line will "
+            "refuse: the cut is whichever of those the release shipped from."
+        )
+    named = git(["log", "-1", "--format=%h %s", cut.commit], root).strip()
+    return f"From {base} here, that is {named or cut.commit[:8]}."
 
 
 def _unreadable_tags_refusal(version: str, declined: str) -> str:
@@ -4165,13 +4240,15 @@ def _instant(text: str) -> datetime:
 
 
 def _at_least_one(text: str) -> int:
-    """A count of picks, for `next --limit`, refused below one.
+    """A count of picks, for `next --limit` and `concurrent --limit`, refused below one.
 
     The ranking is sliced with the value as given, so zero printed "Nothing is
     ready to start" at exit 0 over a queue holding work, and a negative value
     sliced from the end - `--limit -2` printed all but the last two picks
     (`PL-RMN8`). "Nothing is ready" is the answer that ends a session's search
     for work, so a count that cannot be honoured is refused instead.
+    `concurrent` answered the same values with a batch of one, which reads as
+    a real answer to a question nobody can ask (`PL-HY56`).
     """
     value = int(text)
     if value < 1:
@@ -4500,9 +4577,11 @@ def _write_pr(directory: Path, item: Item, number: str, dry_run: bool) -> None:
     `insert_field` rather than either of the writers that render from the
     parsed item, and the two reasons are the two defects this line has had.
     `write_item` derives the filename from the title, so on a file whose slug
-    has drifted it turns one added line into a delete-plus-add, which took a
-    modify/delete conflict against whoever else held the file and left one id
-    under two names once backed out (`PL-LBR6`, `PL-5QLP`). `rewrite_item` keeps
+    has drifted it writes a second file under the same id rather than adding
+    one line to the first. While it also removed the old name, that write was
+    a delete-plus-add, which took a modify/delete conflict against whoever
+    else held the file and left one id under two names once backed out
+    (`PL-LBR6`, `PL-5QLP`). `rewrite_item` keeps
     the name and still re-renders the block, so on a file whose keys are in
     some other order, or whose value runs over continuation lines, it removes
     lines as well as adding one - and `verify.sanctioned_queue_edit` reads a
@@ -4832,7 +4911,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     concurrent = add("concurrent", "what can be worked at once")
     concurrent.add_argument("item", nargs="?", help="check against this item")
-    concurrent.add_argument("--limit", type=int, default=None)
+    concurrent.add_argument("--limit", type=_at_least_one, default=None)
     concurrent.set_defaults(func=cmd_concurrent)
 
     milestone = add("milestone", "release membership and progress")

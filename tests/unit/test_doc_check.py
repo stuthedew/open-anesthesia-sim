@@ -1769,6 +1769,102 @@ def test_a_tag_the_version_table_does_not_name_is_an_error(tmp_path: Path) -> No
     assert any("git holds v0.2.9, but no row of the version table" in message for message in errors)
 
 
+# PL-HVLJ: a tag and the working tree move independently, so a checkout that
+# fetched after a release merged holds its tag before it holds its row.
+
+RELEASED_ROADMAP = VERSIONED_ROADMAP.replace(
+    "| v0.2.5 | Completed / current baseline | The current one. |",
+    "| v0.2.5 | Completed | The current one. |\n"
+    "| v0.2.9 | Completed / current baseline | The newest. |",
+).replace("## Current baseline: v0.2.5", "## Current baseline: v0.2.9")
+
+
+def _clone_behind_a_release(
+    tmp_path: Path, *, depth: int | None = None, merged: bool = True
+) -> Path:
+    """A clone that fetched v0.2.9's tag and never pulled the commit adding its row.
+
+    The tag goes on the commit that adds the row, as a cut leaves it, so this is
+    exactly the state `git fetch --tags` leaves on its own. `merged=False` cuts
+    the same release on a branch `main` never takes, which no pull brings in.
+    """
+    origin = _tagged(tmp_path / "origin", "v0.2.4", "v0.2.5")
+    subprocess.run(("git", "branch", "-M", "main"), cwd=origin, check=True, capture_output=True)
+    clone = tmp_path / "clone"
+    shallow = ("--depth", str(depth)) if depth else ()
+    subprocess.run(
+        ("git", "clone", "--quiet", *shallow, origin.as_uri(), str(clone)),
+        check=True,
+        capture_output=True,
+    )
+    if not merged:
+        subprocess.run(
+            ("git", "checkout", "-q", "-b", "unmerged"), cwd=origin, check=True, capture_output=True
+        )
+    (origin / "ROADMAP.md").write_text(RELEASED_ROADMAP, encoding="utf-8")
+    _commit_version_file(origin, '[project]\nname = "demo"\nversion = "0.2.9"\n', "cut v0.2.9")
+    for directory, command in (
+        (origin, ("tag", "-a", "v0.2.9", "-m", "v0.2.9")),
+        (clone, ("fetch", "--quiet", "--tags", "origin")),
+    ):
+        subprocess.run(("git", *command), cwd=directory, check=True, capture_output=True)
+    return clone
+
+
+def test_a_tag_ahead_of_the_working_tree_names_its_own_remedy(tmp_path: Path) -> None:
+    """v0.4.35's instance: its tag and its row are one commit, fetched and not pulled.
+
+    The table is right and the checkout is behind, so what it is told is the
+    pull rather than an edit - and the pull is taken, to show it is the whole
+    repair.
+    """
+    clone = _clone_behind_a_release(tmp_path)
+
+    report = doc_check.analyze(clone)
+
+    assert report.errors == []
+    assert [line for line in report.declined if "v0.2.9" in line] == [
+        "release tags: git holds v0.2.9, which origin/main has and this checkout's HEAD does "
+        "not, so the working tree predates that release rather than leaving it out of "
+        "ROADMAP.md; `git pull` brings it in on main, and `bin/docket branch` says how on any "
+        "other branch"
+    ]
+
+    subprocess.run(
+        ("git", "pull", "--quiet", "--ff-only"), cwd=clone, check=True, capture_output=True
+    )
+    pulled = doc_check.analyze(clone)
+
+    assert pulled.errors == []
+    assert pulled.declined == []
+
+
+def test_a_tag_the_default_branch_does_not_hold_either_is_still_an_error(tmp_path: Path) -> None:
+    """Behind means behind the default branch, so that branch has to hold the tag.
+
+    A release tagged on a branch `main` never took is one no pull brings in, and
+    the decline must not become an amnesty for it.
+    """
+    report = doc_check.analyze(_clone_behind_a_release(tmp_path, merged=False))
+
+    assert any("git holds v0.2.9, but no row" in message for message in report.errors)
+    assert not any("v0.2.9" in line for line in report.declined), report.declined
+
+
+def test_a_shallow_clone_behind_a_release_says_its_history_may_stop_short(tmp_path: Path) -> None:
+    """In a truncated clone a merge base not found proves nothing, and the line says so."""
+    clone = _clone_behind_a_release(tmp_path, depth=1)
+    assert doc_check.is_shallow(clone), "the fixture must actually truncate the clone"
+
+    report = doc_check.analyze(clone)
+
+    assert not any("v0.2.9" in message for message in report.errors), report.errors
+    assert any(
+        "predates that release" in line and "`git fetch --unshallow`" in line
+        for line in report.declined
+    ), report.declined
+
+
 def test_a_tag_of_another_shape_is_not_read_as_a_release(tmp_path: Path) -> None:
     """`v0.2.6-rc1` names something the version table has no business holding."""
     assert _errors(_tagged(tmp_path, "v0.2.4", "v0.2.5", "v0.2.6-rc1")) == []
@@ -1940,6 +2036,79 @@ def test_a_tag_whose_pyproject_version_disagrees_is_refused(tmp_path: Path) -> N
         and "git tag -d v0.2.5" in message
         for message in errors
     ), errors
+
+
+def _git(root: Path, *args: str) -> str:
+    done = subprocess.run(("git", *args), cwd=root, check=True, capture_output=True, text=True)
+    return done.stdout.strip()
+
+
+def _cut(root: Path, name: str) -> str:
+    """Cut `name` as a release does, its notes and its version in one commit; its short hash."""
+    notes = root / "docs" / "releases" / f"{name}.md"
+    notes.parent.mkdir(parents=True, exist_ok=True)
+    notes.write_text(f"## {name}\n", encoding="utf-8")
+    version = name.removeprefix("v")
+    _commit_version_file(root, f'[project]\nname = "demo"\nversion = "{version}"\n', f"cut {name}")
+    return _short(root, "HEAD")
+
+
+def test_a_tag_ahead_of_its_own_cut_is_named(tmp_path: Path) -> None:
+    """`PL-KFWL`: one merge past its cut, a tag still declares its version, so only the cut sees it.
+
+    That is the tag `origin/main` put on the next merge when it was tagged late
+    (`PL-VYK1`). The message names both commits, and the version check says
+    nothing more about a tag already reported.
+    """
+    root = _tagged(tmp_path, "v0.2.4")
+    cut = _cut(root, "v0.2.5")
+    _commit_version_file(root, (root / "pyproject.toml").read_text(), "the next merge")
+    _git(root, "tag", "-a", "v0.2.5", "-m", "v0.2.5")
+    late = _short(root, "v0.2.5^{commit}")
+
+    errors = _errors(root)
+
+    assert any(
+        f"v0.2.5 points at `{late} the next merge`, which did not add docs/releases/v0.2.5.md"
+        in message
+        and f"Its own history says that is `{cut} cut v0.2.5`, so move it there" in message
+        and "git tag -d v0.2.5" in message
+        for message in errors
+    ), errors
+    assert not any("declares" in message for message in errors), errors
+
+
+def test_a_tag_behind_its_own_cut_is_named(tmp_path: Path) -> None:
+    """Tagged before its release merged, and on a commit already declaring its version."""
+    root = _tagged(tmp_path, "v0.2.4")
+    before = _short(root, "HEAD")
+    _cut(root, "v0.2.5")
+    _git(root, "tag", "-a", "v0.2.5", "-m", "v0.2.5", "HEAD^")
+
+    errors = _errors(root)
+
+    assert any(
+        f"v0.2.5 points at `{before} the current baseline`" in message
+        and "None in its own history did, so it sits before its release was cut" in message
+        for message in errors
+    ), errors
+
+
+def test_a_tag_on_its_cut_is_quiet_on_a_branch_that_merged_it_in(tmp_path: Path) -> None:
+    """Read from `HEAD`, this branch's own merge would be taken for the cut (`PL-QHCW`)."""
+    root = _tagged(tmp_path, "v0.2.4")
+    trunk = _git(root, "rev-parse", "--abbrev-ref", "HEAD")
+    _git(root, "checkout", "-qb", "feature")
+    (root / "work.txt").write_text("work\n", encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "feature work")
+    _git(root, "checkout", "-q", trunk)
+    _cut(root, "v0.2.5")
+    _git(root, "tag", "-a", "v0.2.5", "-m", "v0.2.5")
+    _git(root, "checkout", "-q", "feature")
+    _git(root, "merge", "-q", "--no-edit", trunk)
+
+    assert _errors(root) == []
 
 
 def test_a_version_named_as_shipping_with_a_stale_version_file_is_excused(tmp_path: Path) -> None:

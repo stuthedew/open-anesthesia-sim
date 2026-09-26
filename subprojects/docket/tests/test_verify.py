@@ -1095,7 +1095,7 @@ def test_an_item_file_the_base_does_not_hold_is_accepted_as_a_new_one(tmp_path: 
 
 
 def test_a_title_edit_that_renames_the_file_is_still_compared_by_id(tmp_path: Path) -> None:
-    """The rename is `store.write_item`'s, and the title is front matter.
+    """A title edit can move the file, by a `git mv` pass, and the title is front matter.
 
     Looked up by its current name, the renamed file has no copy at the base and
     reads as a new item - so the one edit that moves an item file would be the
@@ -2299,6 +2299,63 @@ def test_a_new_item_file_that_is_not_a_capture_is_still_outside_touches(tmp_path
     report = verify(root, _item(), _config(), "HEAD~1")
     check = _check(report, TOUCHES)
     assert not check.passed, check
+
+
+RECORD = "docs/pr-bodies/1059.md"
+
+
+def _record(pr: str = "1059", header: str = "recorded: 2026-09-26\n", body: str = "Why.\n") -> str:
+    """A body record as `tools/pr_body_check.py --record` writes one before the merge."""
+    return f"---\npr: {pr}\n{header}---\n\n{body}"
+
+
+def test_a_body_record_the_branch_added_is_not_outside_touches(tmp_path: Path) -> None:
+    """What `tools/pr_body_check.py --record` writes on every pull request's branch (`PL-979D`).
+
+    Without the exemption every close-out would name its own record as work
+    outside the commission. The record is written again after any edit to the
+    body, and that rewrite of the branch's own record is still the file it added.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root, "PL-K7QX do the thing", "tests/test_thing.py", KEPT + "\ndef test_more():\n    pass\n"
+    )
+    _work(root, "PL-K7QX record the pull request's body", RECORD, _record())
+    _work(root, "PL-K7QX record the body again after an edit", RECORD, _record(body="Edited.\n"))
+
+    check = _check(verify(root, _item(), _config(), "HEAD~3"), TOUCHES)
+    assert check.passed, check
+    assert f"{RECORD} - record, not counted" in check.lines, check.lines
+
+
+@pytest.mark.parametrize(
+    ("path", "text", "held"),
+    [
+        (RECORD, _record(pr="1058"), False),
+        (RECORD, _record(header="recovered: 2026-09-26\n"), False),
+        ("docs/pr-bodies/draft.md", _record(pr="draft"), False),
+        ("docs/pr-bodies/old/1059.md", _record(), False),
+        (RECORD, _record(), True),
+    ],
+    ids=["pr-disagrees-with-its-name", "no-recorded-line", "not-a-number", "nested", "held"],
+)
+def test_a_file_under_the_records_that_is_not_a_new_record_is_still_outside_touches(
+    tmp_path: Path, path: str, text: str, held: bool
+) -> None:
+    """Each condition of the `record` kind, failing alone.
+
+    A record the base holds is a merged pull request's history, so a branch
+    rewriting it is not recording its own body, however well-formed the result.
+    """
+    root = _repo(tmp_path)
+    if held:
+        _work(root, "base: a merged pull request's record", path, text)
+        text = _record(body="Rewritten.\n")
+    _work(root, "PL-K7QX write under the records", path, text)
+
+    check = _check(verify(root, _item(), _config(), "HEAD~1"), TOUCHES)
+    assert not check.passed, check
+    assert path in check.lines, check.lines
 
 
 # --- the self-audit, which is a different question (PL-69JZ, PL-B5YN, PL-4LT9)

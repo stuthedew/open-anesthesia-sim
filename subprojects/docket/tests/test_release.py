@@ -28,11 +28,13 @@ from docket.release import (
     release_notes,
     restate_references,
     suggest_version,
+    tag_commands,
     unreferenced,
     unreferenced_by_version,
     version_key,
 )
 from docket.roadmap import CLEAR, IMPLEMENT, RELEASE, SCOPE, Wave, wave
+from docket.vcs import SILENT, Cut, find_cut, notes_added
 
 TODAY = date(2026, 8, 24)
 
@@ -2214,6 +2216,54 @@ def test_a_version_below_the_current_one_is_refused(
 
 
 @pytest.mark.usefixtures("_no_session")
+def test_a_version_that_is_not_semantic_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-ZVG5: a typo such as 0.2.6x used to be cut, reaching the version field and every stamp.
+
+    Refused in a dry run too, which used to print `0.2.5 -> 0.2.6x` and go on
+    to the train guards, and the refusal says what grammar it wants. The
+    branch holds the train, so no other refusal stands in for this one.
+    """
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    shipped = repo.items / "PL-D1D1-shipped.md"
+    before = shipped.read_text(encoding="utf-8")
+
+    for typo in ("0.2.6x", "0.2", "0.2.6.1", "vv0.2.6", " 0.2.6", "0.2.6\n", ""):
+        assert repo.run("release", typo, "--no-fetch", "--dry-run") == 1, typo
+    assert repo.run("release", "0.2.6x", "--no-fetch") == 1
+
+    out = capsys.readouterr().out
+    assert (
+        "Cannot cut '0.2.6x': it is not a release version. "
+        "Nothing was stamped and nothing was written." in out
+    )
+    assert "Cannot cut ' 0.2.6'" in out
+    assert "MAJOR.MINOR.PATCH, with an optional leading v" in out
+    assert "-> 0.2.6x" not in out
+    assert 'version = "0.2.5"' in repo.version()
+    assert shipped.read_text(encoding="utf-8") == before
+    assert not (repo.root / "docs" / "releases" / "v0.2.6x.md").exists()
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_well_formed_version_is_not_refused_as_malformed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-ZVG5's other side: both spellings `SEMVER_RE` accepts reach the cut."""
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+
+    assert repo.run("release", "0.2.6", "--no-fetch", "--dry-run") == 0
+    assert repo.run("release", "v0.2.6", "--no-fetch", "--dry-run") == 0
+
+    out = capsys.readouterr().out
+    assert "not a release version" not in out
+    assert out.count("0.2.5 -> 0.2.6\n") == 2
+
+
+@pytest.mark.usefixtures("_no_session")
 def test_a_cut_of_the_current_version_is_left_to_the_guard_that_names_its_evidence(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -2253,3 +2303,144 @@ def test_a_cut_interrupted_after_its_bump_is_resumed_rather_than_refused_as_curr
     assert "Resuming an interrupted cut of v0.2.6" in out
     assert "Cannot cut" not in out
     assert (repo.root / "docs" / "releases" / "v0.2.6.md").exists()
+
+
+# --- where a release's tag goes (`PL-QHCW`) ---------------------------------
+
+
+def _git(cwd: Path, *args: str) -> str:
+    """Run real git: what is under test is what git does with the printed lines."""
+    done = subprocess.run(
+        ["git", "-c", "user.name=T", "-c", "user.email=t@example.com", *args],
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return done.stdout.strip()
+
+
+def _commit(root: Path, message: str, files: dict[str, str | None]) -> str:
+    """Commit `files`, where `None` deletes one, and return the new commit's hash."""
+    for name, text in files.items():
+        path = root / name
+        if text is None:
+            path.unlink()
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", message)
+    return _git(root, "rev-parse", "HEAD")
+
+
+def _published(tmp_path: Path) -> tuple[Path, Path]:
+    """A bare `origin` and a clone of it, `main` holding one commit and no notes."""
+    origin = tmp_path / "origin.git"
+    _git(tmp_path, "-c", "init.defaultBranch=main", "init", "-q", "--bare", str(origin))
+    work = tmp_path / "work"
+    _git(tmp_path, "-c", "init.defaultBranch=main", "clone", "-q", str(origin), str(work))
+    _commit(work, "base", {"pyproject.toml": '[project]\nversion = "0.2.9"\n'})
+    _git(work, "push", "-q", "origin", "HEAD:main")
+    return origin, work
+
+
+def _run_printed(commands: tuple[str, ...], cwd: Path) -> subprocess.CompletedProcess[str]:
+    """Run the printed lines as pasted into a shell, stopping at the first that fails."""
+    identity = {"GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@example.com"}
+    return subprocess.run(
+        ["bash", "-ec", "\n".join(commands)],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        env={**os.environ, **identity},
+        check=False,
+    )
+
+
+def test_the_printed_tag_commands_tag_the_cut_however_late_they_run(tmp_path: Path) -> None:
+    """`PL-VYK1`: run after another merge, `origin/main` is that merge; the lookup is still the cut.
+
+    An edit to the notes after the cut does not move it either, which is what
+    `--diff-filter=A` is for.
+    """
+    origin, work = _published(tmp_path)
+    cut = _commit(
+        work,
+        "PL-TR4N: cut v0.3.0",
+        {
+            "docs/releases/v0.3.0.md": "## v0.3.0\n",
+            "pyproject.toml": '[project]\nversion = "0.3.0"\n',
+        },
+    )
+    _commit(work, "PL-D1D1: the next merge", {"README.md": "later\n"})
+    _commit(
+        work, "PL-D1D2: an edit to the notes", {"docs/releases/v0.3.0.md": "## v0.3.0\n\nmore\n"}
+    )
+    _git(work, "push", "-q", "origin", "HEAD:main")
+    tagger = tmp_path / "tagger"
+    _git(tmp_path, "clone", "-q", str(origin), str(tagger))
+
+    done = _run_printed(tag_commands("0.3.0"), tagger)
+
+    assert done.returncode == 0, done.stderr
+    assert _git(tagger, "rev-parse", "v0.3.0^{commit}") == cut
+    assert _git(origin, "rev-parse", "v0.3.0^{commit}") == cut
+
+
+def test_the_printed_tag_line_refuses_before_the_release_has_merged(tmp_path: Path) -> None:
+    """Run too early, the lookup names nothing and git refuses the empty name rather than guess."""
+    _, work = _published(tmp_path)
+
+    done = _run_printed(tag_commands("v0.3.0"), work)
+
+    assert done.returncode != 0
+    assert "Failed to resolve ''" in done.stderr
+    assert _git(work, "tag", "--list") == ""
+
+
+def test_find_cut_names_nothing_for_absent_notes_and_no_one_of_notes_added_twice(
+    tmp_path: Path,
+) -> None:
+    """A file added, deleted and added again has two candidates, and neither is picked."""
+    _, work = _published(tmp_path)
+    assert find_cut("0.3.0", "HEAD", work) == Cut()
+
+    first = _commit(work, "cut v0.3.0", {"docs/releases/v0.3.0.md": "one\n"})
+    _commit(work, "drop it", {"docs/releases/v0.3.0.md": None})
+    second = _commit(work, "cut v0.3.0 again", {"docs/releases/v0.3.0.md": "two\n"})
+    found = find_cut("0.3.0", "HEAD", work)
+
+    assert found.commits == (second, first)
+    assert found.commit == ""
+    assert not find_cut("0.3.0", "HEAD", work, runner=lambda args, root: SILENT).known
+
+
+def test_a_branch_that_merged_the_cut_in_names_its_own_merge_from_head(tmp_path: Path) -> None:
+    """Why no reader asks a branch's `HEAD`: its merge added the notes against its first parent."""
+    _, work = _published(tmp_path)
+    _git(work, "checkout", "-qb", "feature")
+    _commit(work, "feature work", {"src.txt": "work\n"})
+    _git(work, "checkout", "-q", "main")
+    cut = _commit(work, "cut v0.3.0", {"docs/releases/v0.3.0.md": "## v0.3.0\n"})
+    _git(work, "checkout", "-q", "feature")
+    _git(work, "merge", "-q", "--no-edit", "main")
+
+    assert find_cut("0.3.0", "HEAD", work).commit == _git(work, "rev-parse", "HEAD")
+    assert find_cut("0.3.0", "main", work).commit == cut
+
+
+def test_notes_added_answers_every_commit_and_keeps_a_silence_distinct(tmp_path: Path) -> None:
+    """One read for every tag, with "added none" and "git did not answer" kept apart."""
+    _, work = _published(tmp_path)
+    base = _git(work, "rev-parse", "HEAD")
+    cut = _commit(work, "cut v0.3.0", {"docs/releases/v0.3.0.md": "## v0.3.0\n"})
+    edit = _commit(work, "edit the notes", {"docs/releases/v0.3.0.md": "## v0.3.0\n\nmore\n"})
+
+    assert notes_added([base, cut, edit], work) == {
+        base: frozenset(),
+        cut: frozenset({"docs/releases/v0.3.0.md"}),
+        edit: frozenset(),
+    }
+    assert notes_added([cut], work, runner=lambda args, root: SILENT) is None
+    assert notes_added([], work) == {}

@@ -55,6 +55,13 @@ Never hold a finding in conversation until the current work lands. The
 container is ephemeral; an uncommitted thought is one interruption from gone.
 Commit the new item on its own so it survives an abandoned branch.
 
+Where the branch carries only item files, `CLAUDE.md`'s commit-and-push rule
+opens its pull request at its first push and arms auto-merge. Before arming,
+record the body with `python3 tools/pr_body_check.py --record` and commit and
+push the file it writes, since `pr-title` holds a pull request until
+`docs/pr-bodies/<N>.md` holds its body; `bin/docket arm` still answers `arm`,
+a record arming on green like the item store (`PL-979D`).
+
 **A diagnosis that produces more than one item files them under one
 `feature:`, in the same call.**
 

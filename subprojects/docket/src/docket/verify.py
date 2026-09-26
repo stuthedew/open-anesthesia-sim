@@ -40,6 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import vcs
+from .arming import RECORDS
 from .config import Config
 from .model import CLOSED_STATUSES, WITHDRAWN_MARKER, Item, _split_list, parse_front_matter
 
@@ -1688,11 +1689,15 @@ RECURRENCE_LINE_RE = re.compile(
     rf"^recurrences:\s*{RECURRENCE_ENTRY}(?:,\s*{RECURRENCE_ENTRY})*\s*$"
 )
 
+#: A body record's file name as `tools/pr_body_check.py --record` writes it:
+#: the pull request's number, and nothing else (`PL-979D`).
+RECORD_NAME_RE = re.compile(r"[0-9]+\.md")
+
 
 def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path: str) -> str:
-    """Whether an out-of-`touches` edit to the queue is one the workflow asked for.
+    """Whether an out-of-`touches` queue edit, or a body record, is one the workflow asked for.
 
-    Two of them are, and both are mechanically distinguishable from an item
+    Four kinds are, and each is mechanically distinguishable from the work
     being tampered with - which is what makes exempting them safe rather than
     a hole. Returns the kind for the report to name, or `""` for an ordinary
     edit that stays outside the commission.
@@ -1735,11 +1740,27 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     must begin with the removed one - which is an append and cannot be an edit
     of what was already recorded.
 
+    **`"record"`** - a pull request's body record the branch added: `<N>.md`
+    directly under `RECORDS`, which the base does not hold and whose copy at
+    `HEAD` carries `pr: N` and a `recorded:` line. `tools/pr_body_check.py
+    --record` writes it while the pull request is open, and the pull request's
+    required check holds the merge until it matches the body, so every pull
+    request's branch carries one (`PL-979D`). It is the one kind outside the
+    store, and the one read off the base and `HEAD` rather than the diff: the
+    record is written again after any edit to the body, which read commit by
+    commit is a removal like any other. Like a capture it cannot weaken
+    anything, since the base holds no prior content for it to have changed. A
+    record the base holds is a merged pull request's history, and a file there
+    under another name or with no `recorded:` - a recovery written after a
+    merge has none - is not the write the workflow asked for.
+
     Nothing else is exempt. An item file this branch edited in any other way -
     a `status`, a `touches`, a `verify:` command - is still outside `touches`
     and still fails, which is the case the audit exists for and the reason
     this reads the diff rather than the path.
     """
+    if _within(path, (RECORDS,)):
+        return "record" if _added_record(root, base, path) else ""
     scope = ["git", "show", "--format=", *commits] if commits else ["git", "diff", f"{base}...HEAD"]
     status, diff = _run([*scope, "--", path], root)
     if status != 0 or not diff.strip():
@@ -1786,6 +1807,29 @@ def _recurrences_grew(added: list[str], removed: list[str]) -> bool:
     if not RECURRENCE_LINE_RE.match(before) or not RECURRENCE_LINE_RE.match(after):
         return False
     return after.startswith(before) and after[len(before) :].lstrip().startswith(",")
+
+
+def _added_record(root: Path, base: str, path: str) -> bool:
+    """Whether `path` is a body record the branch added, as the `record` kind states it.
+
+    The base is its tip rather than the fork point, so a record that merged
+    before its branch went on reads as the history it now is. It is asked
+    through `_git`, so a read git did not answer ends the audit rather than
+    reading as a record the base lacks (`PL-9RFP`). `HEAD` holding no copy is
+    an answer, not a failure: the record is uncommitted or deleted, and stays
+    outside `touches` like any other such path.
+    """
+    folder, _, name = path.rpartition("/")
+    if f"{folder}/" != RECORDS or not RECORD_NAME_RE.fullmatch(name):
+        return False
+    if _git(["ls-tree", "--name-only", base, "--", path], root).strip():
+        return False
+    status, text = _run(["git", "show", f"HEAD:{path}"], root)
+    if status != 0:
+        return False
+    fields, _ = parse_front_matter(text)
+    number = name.removesuffix(".md")
+    return fields.get("pr", "").strip() == number and bool(fields.get("recorded", "").strip())
 
 
 @dataclass(frozen=True)
@@ -2036,10 +2080,12 @@ def front_matter_check(
     case on the same argument, that an answer identical for every item is a
     misconfiguration reporting itself as a finding.
 
-    The base copy is found by id rather than by name, because `store.write_item`
-    renames the file when the title changes - and the title is front matter, so
-    looking the current name up would miss the one edit that moves the file out
-    from under the guard watching it.
+    The base copy is found by id rather than by name, because a title edit can
+    move the file: a `git mv` pass brings the slug back into line with the new
+    title (`PL-YTDN`), and a write through `store.write_item` lands it under a
+    second name. The title is front matter, so looking the current name up
+    would miss the one edit that moves the file out from under the guard
+    watching it.
     """
     name = "item front matter unchanged"
     if not item.path:
@@ -2366,14 +2412,15 @@ def _check_item(
     # check.
     scope = commission.touches or item.touches
     candidates = [p for p in paths if not _within(p, scope) and Path(p).name != own_file]
-    # A queue edit the workflow itself asked for is separated from the rest
-    # rather than excused silently: the audit says which paths it declined to
-    # count and why, so a reader can disagree with the exemption (`PL-66PR`,
-    # `PL-ZYQC`). Only paths under the store are even considered.
+    # An edit the workflow itself asked for is separated from the rest rather
+    # than excused silently: the audit says which paths it declined to count
+    # and why, so a reader can disagree with the exemption (`PL-66PR`,
+    # `PL-ZYQC`). Only paths under the store and the body records (`PL-979D`)
+    # are even considered.
     sanctioned = {
         path: kind
         for path in candidates
-        if _within(path, (config.items_dir,))
+        if _within(path, (config.items_dir, RECORDS))
         and (kind := sanctioned_queue_edit(root, base, commits, path))
     }
     outside = [path for path in candidates if path not in sanctioned]
@@ -2398,7 +2445,7 @@ def _check_item(
             detail = f"{len(paths)} path(s), no commit naming {item.identifier}, all declared"
         if sanctioned:
             kinds = Counter(sanctioned.values())
-            detail += " or a sanctioned queue edit ({})".format(
+            detail += " or a sanctioned edit ({})".format(
                 ", ".join(f"{count} {kind}" for kind, count in sorted(kinds.items()))
             )
     report.checks.append(
