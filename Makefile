@@ -216,6 +216,11 @@ check: sync
 # request and skips silently on every way the lookup can fail, like the line
 # above; it reads the committed tree, so a closure counts once committed.
 	python3 tools/pr_record_check.py --discover
+# The body records beside the number (`PL-979D`, `PL-73G8`): a recovered body's
+# `commit:` is the one field tying it to the tree, and a history rewrite leaves
+# it naming nothing with no other check noticing. Offline, and it says so
+# rather than passing where the clone is shallow.
+	python3 tools/pr_body_check.py --anchors
 # Beside the guard above because it is the same category one level down: that
 # one asks whether this branch's work is visible, this asks whether a rule's
 # declared scope is the one it will actually get. Reads only the frontmatter of
