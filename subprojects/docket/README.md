@@ -50,8 +50,10 @@ docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
 docket stranded              # work that exists only on a branch
 docket digest --profile      # what the session-start digest asks git, and the ref set it walked
-docket record                # write every pull request number the base is owed,
-                             # onto the items and onto the released notes alike
+docket record N              # write this branch's open pull request's number onto
+                             # the closures it introduces, before the merge
+docket record N --merge SHA  # ...or onto what that merge on the base closed, for a
+                             # closure that reached it without one; restates its notes
 docket check                 # validate the store; exits non-zero on errors
 docket check --verify        # ...and replay every open item's `verify:` command
 docket check --verify --verify-base origin/main   # ...only the ones this branch could have changed
@@ -2871,19 +2873,35 @@ durable but unknowable until after the merge, so it could not be written by
 the closing commit and would need a second pass over every item forever, to
 produce a second pointer to what `pr` already reaches (`PL-T63T`).
 
-`pr` names the pull request, as a bare number written without the `#`. It is
-unaffected by rebasing, squashing or amending, and GitHub writes it into the
-subject of whatever reaches the default branch — `Merge pull request #71 from owner/branch` for a merge commit,
-`Title (#71)` for a squash — so the link back is free either way.
+`pr` names the pull request whose merge closed the item, as a bare number
+written without the `#`. Under the same-commit closure rule below that is
+the pull request that carried the work, and the release notes cite it as
+such. A closure split from its work is a rule violation visible in that pull
+request's own diff; the notes then cite the closure honestly, and the item's
+body is where the work's pull request is named in prose (`PL-LPWK`, project
+owner, 2026-09-25, ratified, over recording a second field for a case the rule
+forbids and over preferring the oldest subject naming the id; `PL-HB58`'s
+bullet in `v0.4.6` stays as it shipped, since a released bullet is not
+rewritten). The number is unaffected by rebasing, squashing or amending, and
+GitHub writes it into the subject of whatever reaches the default branch —
+`Merge pull request #71 from owner/branch` for a merge commit, `Title (#71)`
+for a squash — so the link back is free either way.
 
 So `check` holds a recorded pull request to one the default branch has
-actually seen, and two cases are deliberately passed over rather than
+actually seen, and three cases are deliberately passed over rather than
 reported:
 
 - **A number above the highest one on the default branch.** An item is closed
   on the branch that carries it, so at the moment `check` first reads the
   number, that pull request has not merged. Numbers past the high-water mark
   are not-yet-merged rather than wrong.
+- **A closure still in flight, whatever its number.** The branch that closes
+  an item writes the number of its own open pull request onto the closure
+  (below), so an item `done` here and not on the default base names a pull
+  request the base has not merged by construction — and it sits below the
+  high-water mark whenever another pull request merged after this one
+  opened. Without this pass-over a branch that opened `#1010` while `#1011`
+  merged failed `check` in CI on exactly the pull request it named.
 - **Anything at all, in a shallow clone.** `git log` in a truncated history
   answers confidently and wrongly, and the commits it is missing are the
   oldest ones — so the best-established provenance in the store is what would
@@ -2920,11 +2938,12 @@ invention.
 So a *landed* `done` requires `pr`, and carries no second pointer. The
 requirement carries no cutover date, because there is nothing to cut over
 from: the store this grew in had every one of its 66 closed items backfilled
-in a single pass, each number derived from the commit on the default branch
-that first contained the recorded hash. A dated exemption is a leak that has
-to be remembered forever; a backfill is one commit.
+in a single pass, and the 43 closed since `v0.5.11` without one were written
+in two commits on the branch that retired the inference below. A dated
+exemption is a leak that has to be remembered forever; a backfill is one
+commit.
 
-### When the `pr` is owed
+### The number is written before the merge, by the branch that closes the item
 
 "Landed" is load-bearing, and it was learned the hard way. The number does not
 exist until the pull request is open, so an item cannot be closed in the same
@@ -2935,192 +2954,124 @@ fix while the store still called the item open and a debt gate still counted
 it. The window was 100 seconds wide the once it was measured, and it was open
 on every item.
 
-`closures_on_base` reads whether each closure in question already stands on
-the default base, and `check` owes a `pr` only for those. A closure that is
-`done` only in the working tree is still in flight, which is the expected
-shape rather than an error — so the closure travels in the same commit as its
-work and there is nothing left for a merge to strand.
+So the closure travels in the same commit as its work, and only the number may
+trail it. `docket record N`, run on the branch once its pull request is open,
+writes `pr: N` onto every closure the checkout introduces — `done` here and
+not on the default base, committed or still in the working tree — and onto
+nothing else: an item the base already holds as done is a closure that landed,
+whatever this branch did to its file, and the number it records is its own
+merge's. Where the draft pull request is already open when the item closes,
+which the start mode permits at the claim push, the number rides the closure
+commit and nothing trails it; where the pull request opens after the closure,
+the number rides one more push. `verify` sanctions that write: a diff that is
+only added `pr:` lines is a queue edit the workflow asked for.
 
-Whether a closure *landed* does **not** decline in a shallow clone, unlike
-`merged_pull_requests`. That reader needs history, which a truncated one
-answers confidently and wrongly; this needs a single tree read, and `git show
-<ref>:<path>` is correct however little history stands behind the ref. Since an
-agent session normally runs shallow, a reader that declined there would decline
-in exactly the case the rule exists for. It declines only when no default
-branch resolves at all.
+**The guarantee is a check on the pull request, at the one point that knows
+its own number.** `tools/pr_record_check.py` runs as a step of the required
+`pr-title` job, which already checks out both trees and already computes what
+the branch closes: every item the pull request closes must record `pr:` equal
+to the pull request's own number, or the run fails naming the ids and the
+command. Because the job is required, a merge cannot land between the
+closure's push and the number's — the pull request stays red until the number
+lands — so the window above does not reopen. `make check` runs the same script
+with `--discover`, against the branch's own open pull request, so a session
+learns before it pushes; it reads the committed tree, so the closure has to be
+committed to be seen.
 
-Which pull request landed it is the other kind of question, and the depth does
-bear on it — see below.
+A closure the base does not hold yet may have its number *replaced*, because a
+pull request closed unmerged and reopened is the one way a closure
+legitimately changes number. A landed closure's number is never replaced by
+either form of the command.
 
-What is left over is not a gap. An item reaching the default branch with an
-empty `pr` is the *normal* shape of a successful merge, not an exception:
-the closure travels with its work, and the number does not exist when that
-commit is written. So `check` asks a second question before deciding what it
-has found — does any commit on the base name a number for this item?
+**Which pull request closed an item is therefore a recorded fact, and nothing
+infers it** (`PL-HMZZ`, project owner, 2026-09-25, ratified, over commit-side
+recovery and over keeping the inference and closing the head spent). It used
+to be derived after the merge: `closures_on_base` read the merge subjects on
+the base for a leading id and a trailing `(#N)`, confirmed each hit against
+the item's tree at that commit and at its parent, fell back to the item file's
+own history with renames followed, declined a closure whose commit changed
+nothing outside the queue unless the item declared queue work, and qualified
+every absence by the depth of the clone. Each rule was a repair for one shape
+of history that had misled the reading before it — a UI-generated title naming
+no id (`PL-2XTF`), a rider closed under another item's subject (`PL-GW37`), a
+closure split from its work (`PL-YDL6`), a rename (`PL-S5LB`), a graft
+boundary that wrote `#401` onto five items (`PL-KX9N`), a queue-only closure
+(`PL-YFXG`) — and ten items in three weeks were that one mechanism, four of
+them still open when it was retired. The count that let it go: on the day it
+was retired every one of the store's 1,143 done items carried `pr:`, the last
+43 written once by the reading it replaced. About 340 lines of `vcs.py` and
+their tests went with it, and `PL-GJPD` and `PL-WG7Q`, defects in that code,
+were dropped rather than fixed.
 
-`closures_on_base` answers it from the subject a squash merge writes,
-`PL-JWXF Scope the selects-no-test advisory ... (#148)`, using the two
-parsers already here: the run of ids a subject opens with, and the number in
-trailing parentheses. One history read for the whole set, taken only when
-something landed, and the newest such commit wins — an id also leads the
-capture that filed it.
+What `closures_on_base` reads now is two facts off one tree read per closure
+in question: whether the closure stands on the default base, and what the
+base's own copy records as its `pr`. Whether a closure *landed* does **not**
+decline in a shallow clone, unlike `merged_pull_requests`: that reader needs
+history, which a truncated one answers confidently and wrongly; this needs a
+single tree read, and `git show <ref>:<path>` is correct however little
+history stands behind the ref. It declines only when no default branch
+resolves at all. An item whose file the base holds under another name is read
+at that name, one `ls-tree` away, since a title edit renames the file.
 
-**Recency is not enough, so the answer is confirmed before it is believed.**
-Leading a subject proves a commit is *about* an item, never that it *closed*
-it, and several kinds of commit are about a closed one: the merge that writes
-its `pr` back, a follow-up fix, the triage that filed it. Measured 2026-09-04
-over the 122 closed items on this project's `main` that a leading-id subject
-names, the unconfirmed scan answered 21 with a number that is not their
-closure. So each hit is put to the test the file reading already uses — the
-commit must read `status: done` in its own tree and not in its parent's — and
-an unconfirmed hit falls through to that reading instead. Over the same
-history the confirmation agreed with the file reading wherever both could
-answer and disagreed nowhere, and across every closed item carrying a `pr` the
-recovery went from 101 correct and 25 wrong to 114 correct and 12 wrong
-(`PL-GW37`).
+`check` then reports exactly one thing about a closure's `pr`, and it is an
+error:
 
-Two shapes made up most of what was left. The first is fixed: an item whose
-file was renamed after it closed used to recover the renaming commit, because
-the fallback walked `git log` without rename detection and the parent does not
-hold the new path at all. The walk now follows renames *and* reads each commit
-at the name the file carried there — the second half being the one that does
-the work, since `--follow` on its own still leaves every commit older than the
-rename reading as "not done" (`PL-S5LB`). The second is declined rather than
-answered: an item whose work landed in one pull request but whose `status:
-done` was written in a later one would recover the later number, which carries
-the closure and none of the work, so nothing is recorded and the transcription
-stays owed (`PL-YDL6`) — the shape `PL-D2GW` closed by requiring the closure to
-travel in the same commit as the work, so it exists only in the three items
-predating that rule.
+- **A landed closure recording no number** → provenance the store does not
+  hold. It can only be a closure that reached the base before this rule or
+  past its check — an administrator's merge, which the branch protection does
+  not bind — and the remedy is in the error: `docket record N --merge SHA`,
+  the explicit form below. Erroring on every fresh merge, as this rule once
+  did, meant the default branch went red on the completion of every item;
+  erroring one merge later on a shallow clone, as it then did, pointed at an
+  item that was not at fault (`PL-99Y4`). Both are gone with the reading that
+  produced them: nothing here reads history, so depth no longer qualifies an
+  absence.
 
-**That decline reads the item's `touches`, not the diff alone** (`PL-YFXG`). A
-commit changing nothing outside the queue directory is a closure separated from
-its work only where the work was somewhere else to begin with; for a
-release-tag item, a triage pass, a stranded recovery or a rename pass it is
-what landing correctly looks like. So a queue-only closure is declined only
-where the item declares work outside the queue — the same field the
-in-flight read once took to draw the same distinction (`PL-7790`). Without
-it, `PL-YTDN` closed correctly in `#712` with all twelve changed files under
-`docs/items/`, the number was declined, and `check` raised the error rather
-than the advisory: `main` failed on every branch cut from it, and nothing
-cleared it, because the bare `record` writes only what the base can supply.
-Measured across the 927 closed items on this project's `main`, the reading
-changes 29 answers and every one matches the `pr` already recorded there.
+Two states are passed over. A closure `done` only in the working tree is in
+flight, which is the expected shape, and `_check_provenance` is told the same
+set. And a landed closure whose copy *here* records no number while the base's
+copy does is a stale checkout rather than a gap — the base holds the fact, and
+bringing it in supplies it, which is what every branch cut before the backfill
+commits met.
 
-- **The number is recoverable** → nothing until a cut has shipped the closure,
-  then one advisory naming every such closure, its number and its release, and
-  the command that writes them. Nothing is lost; the way back exists in git.
-  Before the cut, the cut is the writer: it writes each shipping closure's
-  number before it renders the notes, so reporting it earlier fired on every
-  healthy run for work the cut already does (`PL-XYQW`). After it, the notes
-  bullet cites no pull request, which `docket record` restates along with the
-  field.
-- **The commit that would name it has no parent in this checkout** → a decline,
-  like the truncated case below. Finding a commit that names a number was once
-  taken as proof it was the closure, at any depth. It is not: the closure is
-  told from every later commit touching the same file *only* by its parent's
-  tree, and at a graft boundary git reports every file as added, so the oldest
-  commit a shallow clone holds reads as the closure of every item in it.
-  `record` wrote `#401` onto five items that way, of which four had merged in
-  `#399`, `#400` and `#402`, and `check` then reported no error at all — the
-  field was present and well formed, and the one check that could have
-  contradicted it is the shallow decline two paragraphs up (`PL-KX9N`).
-  `closed_by` had refused this since it was written; the two readings here had
-  not, and `_parent_in_reach` is shared by all three now.
+### The explicit form, for a closure that reached the base without its number
 
-  The refusal is per closure rather than per checkout, which `is_shallow`
-  cannot express: it is equally true of `--depth 1` and of the `--depth 200`
-  that recovered the four wrong numbers. Measured against real git on a
-  12-commit history fetched to depth 4, the three closures whose commit and
-  parent are both held resolve and the nine at or below the boundary decline.
-  So a bounded fetch buys back exactly what it reaches.
-- **No commit names one, in a checkout that says it is complete** → the error
-  it always was. That is provenance genuinely lost.
-- **No commit names one, in a truncated checkout** → a decline naming the
-  ids. The commit may simply be out of reach, and at `fetch-depth: 1` that is
-  true of every closure but the newest, so absence proves nothing. `is_shallow`
-  answering neither way is treated the same, per the rule `PL-J295` set for
-  `tags`.
+`docket record N --merge SHA` writes `pr: N` onto whatever the merge commit
+`SHA` closed. It takes the number rather than deriving it, and `closed_by`
+supplies what that merge closed by comparing its tree against its parent's:
+`status: done` here and not there, compared by id so a title edit renaming the
+file cannot be read as a closure. A revision whose parent the checkout does not
+hold declines rather than answering, because "no parent" would otherwise read
+as "everything done here was closed here" and stamp one number across the
+whole store.
 
-Erroring on the first case meant `main` went red on the completion of every
-item, which trains a reader to treat a red store check as routine — the
-opposite of what the loudest signal here is for. Erroring on the third meant
-it went red one merge *later* instead, which is worse: nothing about the
-provenance had changed between the green run and the red one, only what the
-clone could see, so the failure pointed at an item that was not at fault
-(`PL-99Y4`). The check therefore runs for real only where the history is
-whole, which is what `fetch-depth: 0` in a CI checkout is for.
-
-### The write belongs to the merge, not to a later session
-
-Everything above describes how a missing `pr` is *detected*, and for a while
-that detection was also the mechanism: `check` named the number and a session
-retyped it. That is the wrong division of labour, and it showed.
-
-The transcription cost a commit and usually a pull request of its own after
-every merge that closed anything. It is also the most deterministic work in the
-queue — the tool names the item and states the exact line — so two sessions
-reading the same advisory computed the same answer and opened two pull requests
-for one identical insertion. And it could fail outright: a squash subject that
-names no id leaves nothing to recover from, so the advisory became an error and
-the number had to be read off a web page by hand.
-
-`docket record` is the other half, and bare is its normal form: it asks the
-same question `check` asks — which landed closures owe a number, and which
-number does the base name for each — and writes the answer instead of printing
-it. There is one reading, so the two cannot disagree, which is why the fix for
-the graft-boundary case above went into the reading rather than into this
-command: a `record` that declined while `check` went on printing `#401` as
-recoverable would have left the wrong number on screen and the instruction to
-write it pointing at that. Where the checkout is shallow and some landed
-closure went unnamed, it names `git fetch --unshallow origin` — the one thing a
-session can do about it, and cheaper than sending it to `check` for an answer
-it already has. Crucially it takes no
-merge, because a session may be owed numbers from several, and because taking
-them from the base is what lets the write ride whatever commit the session was
-about to make. That is the cost being removed: not the typing, but the commit
-the typing needed.
-
-Bare, it also puts that number where a reader is actually looking. `pr` exists
-so somebody can get from a released item back to the change that made it, and a
-release's notes are where they look — so a number written onto the item and not
-onto the bullet has been recorded in the half nobody reads. That happened to
-128 of this project's 853 released bullets across 22 of 40 releases, because
-the cut rendered the notes and this command ran afterwards (`PL-W7WL`, filed
-four times from four separate cuts before anything compared the two files on
-that axis). The cut now writes the number first, which stops the next one; this
-is the only supported route to a bullet that has already shipped, since
-re-cutting a released version to regenerate it is refused and should be. The
-edit is an append — the id and the title stay exactly as they went out — so a
-release never changes what it claims, and a run with nothing to add writes
-nothing, which is what lets it sit in `make fix`. `docket check` reports what
-is left as an advisory, counting only bullets the store can actually supply a
-reference for.
-
-`docket record NUMBER --merge MERGE_COMMIT` is the explicit form, for the number
-the base cannot name — a squash subject that led with no id. It takes the
-number rather than deriving it, and `closed_by` supplies what that merge closed
-by comparing its tree against its parent's: `status: done` here and not there,
-compared by id so a title edit renaming the file cannot be read as a closure. A
-revision whose parent the checkout does not hold declines rather than
-answering, because "no parent" would otherwise read as "everything done here
-was closed here" and stamp one number across the whole store.
-
-Neither form runs in CI, and one was tried. `PL-WTQR` put the write in a job
-fired by the merge, which is exact — the number comes from the event, with no
-subject to parse. It cannot land: a push made with `GITHUB_TOKEN` starts no
-workflow, so a default branch that requires status checks can never see them
-report on the commit such a job pushes, and every configuration that would
-accept the push weakens that gate instead. `PL-N5WZ` records the measurement
-and the decision.
+It restates the released bullets of what it closed as well. `pr` exists so
+somebody can get from a released item back to the change that made it, and a
+release's notes are where they look — so a closure that shipped without its
+number shipped a bullet without one, and a number written onto the item and
+not onto the bullet has been recorded in the half nobody reads. That happened
+to 128 of this project's 853 released bullets across 22 of 40 releases while
+the cut rendered the notes and the number was written afterwards (`PL-W7WL`,
+filed four times from four separate cuts). The edit is an append — the id and
+the title stay exactly as they went out — so a release never changes what it
+claims, and re-cutting a released version to regenerate it stays refused.
+`docket check` reports what is left as an advisory, counting only bullets the
+store can actually supply a reference for.
 
 An item already carrying a *different* number is refused, never overwritten.
-Two numbers for one closure means one is wrong, and nothing here can know
-which; a confident wrong provenance is worse than the missing one this exists
-to supply.
+Two numbers for one landed closure means one is wrong, and nothing here can
+know which; a confident wrong provenance is worse than the missing one this
+exists to supply.
 
-Both halves are kept, and they answer to different failures. The write is the
-mechanism; the detection is what notices the mechanism did not run.
+Nothing in CI writes the field, and one attempt was made. `PL-WTQR` put the
+write in a job fired by the merge, which is exact — the number comes from the
+event, with no subject to parse. It cannot land: a push made with
+`GITHUB_TOKEN` starts no workflow, so a default branch that requires status
+checks can never see them report on the commit such a job pushes, and every
+configuration that would accept the push weakens that gate instead. `PL-N5WZ`
+records the measurement and the decision. The check on the pull request is
+what CI does instead: it reads the number the event carries and refuses,
+which needs no token and no push.
 
 ### An open item whose own command already passes
 

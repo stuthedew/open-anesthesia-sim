@@ -209,6 +209,13 @@ check: sync
 # token, no network, no pull request open yet - so this target stays green
 # offline. `make pr-title` runs it alone. `PL-J3BB`.
 	python3 tools/pr_title_check.py --discover
+# The record half beside the title half, and the one provenance rests on
+# (`PL-HMZZ`): every item this branch closes must record `pr:` equal to its
+# own open pull request's number, which the required `pr-title` job refuses
+# the pull request without. `--discover` reads the number from that pull
+# request and skips silently on every way the lookup can fail, like the line
+# above; it reads the committed tree, so a closure counts once committed.
+	python3 tools/pr_record_check.py --discover
 # Beside the guard above because it is the same category one level down: that
 # one asks whether this branch's work is visible, this asks whether a rule's
 # declared scope is the one it will actually get. Reads only the frontmatter of
@@ -329,13 +336,6 @@ fix:
 # the import ruff would have rewritten reaches CI unsorted. The fixing half of
 # a gate has to read the same tree the gate does. `PL-QSJM`.
 	uv run ruff check --no-cache --fix .
-# The mutating half of `bin/docket check`'s missing-`pr` advisory. `check`
-# reports which landed closures owe a pull request number and which number the
-# base names for each; this writes them, so the field rides the commit the
-# session is about to make instead of costing one of its own (`PL-N5WZ`).
-# Here rather than in `check` for the reason `ruff format` is: `check` runs in
-# CI, where mutating the tree is not the job.
-	bin/docket record
 
 # `-n auto` for the reason the `check` line above gives, which transfers
 # unchanged: what keeps the flag off `addopts` is the scoped

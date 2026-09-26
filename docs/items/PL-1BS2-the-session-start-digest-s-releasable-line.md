@@ -9,6 +9,7 @@ feature: release-process
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-13
 closed: 2026-09-25
+pr: 1032
 verify: grep -rq 'def test_the_digest_names_an_interrupted_cut_behind_the_releasable_line' subprojects/docket/tests/ && uv run pytest subprojects/docket/tests/test_cli.py -q
 ---
 

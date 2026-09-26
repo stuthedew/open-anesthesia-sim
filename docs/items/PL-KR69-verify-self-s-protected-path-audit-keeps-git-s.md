@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/ver
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by its own triage on 2026-09-25, which the Stream A thread working it ran
 added: 2026-09-25
 closed: 2026-09-25
+pr: 1015
 payoff: a core or data file moved out of its protected directory fails verify's protected-path audit instead of passing as none touched, and every read of what a change touched agrees about renames
 verify: grep -q 'def test_moving_a_protected_file_out_is_rejected' subprojects/docket/tests/test_verify.py && grep -q 'def changed_path_args' subprojects/docket/src/docket/vcs.py
 ---

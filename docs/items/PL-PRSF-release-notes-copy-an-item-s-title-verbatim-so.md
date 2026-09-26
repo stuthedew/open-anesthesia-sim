@@ -9,6 +9,7 @@ touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-24
 closed: 2026-09-26
+pr: 1044
 payoff: release notes and item pages keep the command shapes their titles give, instead of printing a wrong command
 verify: grep -q 'def test_an_angle_bracket_placeholder_in_a_title_survives_the_rendered_notes' subprojects/docket/tests/test_release.py && grep -q 'def test_a_captures_problem_line_keeps_an_angle_bracket_placeholder' subprojects/docket/tests/test_cli.py
 ---

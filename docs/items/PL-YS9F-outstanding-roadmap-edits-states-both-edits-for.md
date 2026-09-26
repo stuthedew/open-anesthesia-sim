@@ -9,6 +9,7 @@ feature: timeline-arrangement
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_release.py
 added: 2026-09-19
 closed: 2026-09-26
+pr: 1044
 verify: grep -q 'def test_the_reached_number_statement_reads_the_plan' subprojects/docket/tests/test_release.py
 ---
 

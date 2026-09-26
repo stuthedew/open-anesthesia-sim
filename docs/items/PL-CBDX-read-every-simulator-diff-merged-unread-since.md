@@ -9,6 +9,7 @@ feature: review-hold
 touches: docs/items, src/anesthesia_sim
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1043
 payoff: any wrong or misleading clinical value an unread merge put on screen since 2026-09-23 is found and filed, or the record says none was
 verify: grep -q '^\*\*Reviewed\.\*\*' docs/items/PL-CBDX-*.md
 not-delegable: the work is a read of merged diffs against the safety-critical standard; no command can prove a diff was read well, and the brief asks for a clean-context session on the strongest model

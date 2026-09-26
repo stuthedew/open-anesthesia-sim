@@ -9,6 +9,7 @@ feature: release-process
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py, .claude/skills/docket/modes/release.md
 added: 2026-09-07
 closed: 2026-09-26
+pr: 1049
 verify: grep -q 'def test_the_item_a_release_was_cut_under_ships_in_no_release' subprojects/docket/tests/test_release.py && grep -q 'def test_a_freshly_merged_release_offers_nothing_while_only_its_own_item_has_closed' subprojects/docket/tests/test_release.py && ! grep -q 'so the next release ships it' .claude/skills/docket/modes/release.md && uv run pytest -q subprojects/docket/tests/test_release.py
 ---
 

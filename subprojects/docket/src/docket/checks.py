@@ -1543,12 +1543,13 @@ def _check_notes_references(
     history.
 
     **Advisory, and decidable, which is normally an error's combination.** The
-    exception is what the reader would do about it: `docket record` writes
-    these, `make fix` runs it, and the repair is an append that cannot be got
-    wrong. An error here would go red on a tree whose repair is one command
-    nobody has run yet - and, worse, on a cut made from the shallow clone that
-    is the normal state of an agent session, where the number was unreachable
-    at the moment the notes were written and no amount of refusing produces it.
+    exception is what the reader would do about it: `docket record N --merge
+    SHA`, for the merge that closed each, writes these, and the repair is an
+    append that cannot be got wrong. An error here would go red on a tree whose
+    repair is one command nobody has run yet. The shape is rare since
+    `PL-HMZZ`: a closure carries its number before it merges, so the cut
+    renders every bullet with one, and only a closure that reached the base
+    past that check can ship without.
 
     **Only what the store can actually supply is counted**, which is what stops
     this becoming the advisory nobody reads (`CLAUDE.md` § "A check earns its
@@ -1577,8 +1578,8 @@ def _check_notes_references(
         report.advisories.append(
             f"{NOTES_DIR}/{notes_name(name)} names {len(recoverable)} item(s) without "
             f"saying where the change landed, and the store can say: {_named(recoverable)}. "
-            f"`docket record` appends what each item already records, leaving the titles "
-            f"as they shipped"
+            f"`docket record N --merge SHA`, naming the merge that closed each, appends "
+            f"what the item records and leaves the titles as they shipped"
         )
 
 
@@ -1645,7 +1646,9 @@ def _check_cut_window(
     )
 
 
-def _check_provenance(report: Report, history: PullRequestHistory | None) -> None:
+def _check_provenance(
+    report: Report, history: PullRequestHistory | None, closures: ClosureReport | None = None
+) -> None:
     """Hold every recorded pull request to one the default branch has actually seen.
 
     Three things stop this from being a plain set membership test, and all
@@ -1667,6 +1670,15 @@ def _check_provenance(report: Report, history: PullRequestHistory | None) -> Non
     left is the case worth failing on: a number in the range the default
     branch covers that no commit there names, which is a typo or an invention
     and is provenance that leads nowhere.
+
+    A closure still in flight is passed over whatever its number (`PL-HMZZ`).
+    The branch that closes an item writes the number of its own open pull
+    request onto the closure, so a `pr` on an item that is `done` here and not
+    on the default base names a pull request the base has not merged, by
+    construction: it sits below the high-water mark whenever another pull
+    request merged after this one opened, and held to the base it failed here
+    in CI on exactly the pull request it named. `closures` says which those
+    are; a caller that did not ask about closures passes over nothing extra.
     """
     if history is None:
         return
@@ -1676,8 +1688,9 @@ def _check_provenance(report: Report, history: PullRequestHistory | None) -> Non
     if not history.numbers:
         return
     high_water = max(history.numbers)
+    in_flight = closures.unlanded if closures is not None and closures.known else frozenset()
     for item in report.items:
-        if not item.pr or not PR_RE.match(item.pr):
+        if not item.pr or not PR_RE.match(item.pr) or item.identifier in in_flight:
             continue
         number = int(item.pr)
         if number <= high_water and number not in history.numbers:
@@ -3084,118 +3097,56 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
     was 100 seconds wide the once it was measured, and it is open on every
     item.
 
-    So the rule moves to where the number is certainly available. An item that
-    reads `done` on the default base has had its pull request, and an empty
-    `pr` there is a real gap in the provenance. One that reads `done` only in
-    the working tree is a closure still in flight, which is now the expected
-    shape rather than an error - and is what lets the closure travel in the
-    same commit as its work, which is what closes the window rather than
-    moving it.
+    So the closure travels with its work and only the number may trail it, and
+    where the number is written decides what this check can mean. It is
+    written on the branch, by `docket record N` once the pull request is open,
+    and the pull request's own required check refuses a closure that does not
+    carry it (`tools/pr_record_check.py`, `PL-HMZZ`): a merge cannot land
+    between the closure's push and the number's, because the check holds the
+    pull request red until the number lands. An item that reads `done` on the
+    default base has therefore had its number written before it got there.
+
+    What is left is exact, and it is an error: a landed closure recording no
+    number reached the base before the rule, or past the check - an
+    administrator's merge, which the branch protection does not bind. The way
+    back from the closure to the work exists in the merge commit and nowhere
+    in the store, so the error names the command that copies it in, `docket
+    record N --merge SHA`, with what to put in each place. `PL-QNYF` asked for
+    exactly that: an error a session cannot act on from where it stands is one
+    it learns to route around. Until `PL-HMZZ` the number was derived from
+    history instead, and this check carried the advisory, the shallow-clone
+    decline and the recoverable-number branch that reading needed; all three
+    went with it, and nothing here reads history now, so depth no longer
+    qualifies an absence.
+
+    Two states are passed over. A closure `done` only in the working tree is
+    still in flight, which is the expected shape rather than an error - and
+    `_check_provenance` is told the same set, so the number it carries is not
+    held to a base that has not merged it. And a landed closure whose copy
+    *here* records no number while the base's copy does is a stale checkout
+    rather than a gap: the base already holds the fact, and bringing the base
+    in supplies it, which is what every branch cut before a backfill commit
+    meets.
 
     `commit` stays legal and is still checked for shape where it appears; it
     is simply not what makes a closure traceable across a squash-merge.
-
-    What is left splits again, on whether the provenance is actually lost.
-    The number does not exist until the work is pushed and the pull request
-    opened, so a closure committed with its work - which is what closes the
-    window above - cannot carry it, and every merge would land red. Where the
-    merge commit's own subject names the number, nothing is lost: it is the
-    same parse this module already trusts for the provenance history, and the
-    way back exists in git. That is a transcription still owed - once the
-    closure has shipped, below - which is an advisory naming the number to write.
-
-    That advisory names a command rather than a line to type, and the
-    difference is the whole of `PL-N5WZ`. `docket record` writes every number
-    this same reading has already derived, so the field costs no commit of its
-    own - it rides whatever the session was about to commit anyway. Retyping
-    the number by hand is what cost a commit and usually a pull request after
-    every merge that closed anything, and what let two sessions open `#229` and
-    `#230` for one identical insertion (`PL-QTSB`).
-
-    It names every such closure in one line rather than one per item, since the
-    remedy is one command whatever the count. A paragraph each repeated one
-    sentence with a different id in front of it - six of the eleven advisories
-    `check` printed on 2026-09-23 - which is the disease `PL-CW14` names: an
-    advisory printed often enough to train a session to skim the block a real
-    finding also lands in (`PL-XYQW`).
-
-    **And the transcription is owed only once a cut has shipped the closure**
-    (project owner, 2026-09-23, ratified, over collapsing the per-item lines
-    alone and over deriving `pr` on every read instead of storing it). Until
-    then the cut is the writer: `_numbers_before_notes` writes every shipping
-    closure's number before it renders the notes, the one place the number is
-    read, so an unshipped closure without one is the expected state, as a
-    closure done only on its branch already is. Reported anyway, the line fired
-    on every healthy run: all six it named on 2026-09-23 were unshipped, and
-    none of the 1,030 done items had shipped without its number. What is left
-    is the cut that could not read the merge, most often from a shallow clone,
-    whose notes bullet then cites no pull request - which `docket record`
-    repairs in the field and the notes together. The error below is not
-    narrowed: a complete history naming no number is provenance lost before
-    the cut as after it, and the cut cannot supply one either.
-
-    Where no commit on the base names one, the answer depends on whether the
-    checkout could have seen it. Only a complete history makes "no commit
-    names a number" mean the way back is gone; a truncated one makes it mean
-    the commit is out of reach, which is not the same claim and must not be
-    reported as one. `main` went red twice on that conflation (`PL-99Y4`):
-    CI checked out at `fetch-depth: 1`, so a closure stayed an advisory on its
-    own merge commit and became an error one merge later, when nothing about
-    the provenance had changed. So the error is reserved for a checkout that
-    says outright it is complete, and truncation - or a git that will not say -
-    declines with the ids, which is this module's standing answer to a question
-    the tree cannot support.
     """
     if closures is None:  # a caller that did not ask; every command but `check`
         return
     if not closures.known:
         report.declined.append(f"closures recording no `pr`: {closures.declined}")
         return
-    derived = closures.numbers
-    recoverable: list[tuple[Item, int]] = []
-    unreadable: list[str] = []
+    recorded = closures.numbers
     for item in report.items:
         if item.status != "done" or item.pr or item.identifier not in closures.landed:
             continue
-        number = derived.get(item.identifier)
-        if number is not None:
-            # Owed once a cut has shipped it. Until then the cut is the writer.
-            if item.milestone:
-                recoverable.append((item, number))
-        elif closures.shallow is False:
-            report.errors.append(
-                f"{_where(item)}: marked done on `{closures.base}` but records no `pr`; "
-                "without it there is no way back from the closure to the work that made it"
-            )
-        else:
-            unreadable.append(item.identifier)
-
-    if recoverable:
-        one = len(recoverable) == 1
-        owed = ", ".join(
-            f"{item.identifier} #{number} in {item.milestone}"
-            for item, number in sorted(recoverable, key=lambda pair: pair[0].identifier)
-        )
-        report.advisories.append(
-            f"{len(recoverable)} closure{'' if one else 's'} shipped without "
-            f"{'its' if one else 'their'} `pr`, though "
-            f"{'the number is' if one else 'each number is'} recoverable from its merge "
-            f"commit ({owed}), so {'its notes bullet cites' if one else 'their bullets cite'} "
-            f"no pull request; `docket record` writes {'it' if one else 'them all'} and "
-            f"restates the notes in one pass. Let it ride the commit you are already making "
-            "rather than composing one"
-        )
-
-    if unreadable:
-        depth = (
-            "the checkout is a shallow clone"
-            if closures.shallow
-            else "git cannot say whether this checkout is complete"
-        )
-        report.declined.append(
-            f"whether {', '.join(sorted(unreadable))} lost provenance by recording no `pr`: "
-            f"{depth}, so the merge commit naming each number can lie outside it and its "
-            f"absence proves nothing; a full-history checkout answers"
+        if item.identifier in recorded:
+            continue
+        report.errors.append(
+            f"{_where(item)}: marked done on `{closures.base}` but records no `pr`; "
+            "without it there is no way back from the closure to the work that made it. "
+            "`docket record N --merge SHA` writes it, where N is the pull request whose "
+            f"merge closed the item and SHA is that merge commit on `{closures.base}`"
         )
 
 
@@ -3275,8 +3226,8 @@ def _check_landing_records(report: Report, records: RecordReport) -> None:
     item falls on, and `milestone:` by `docket release` and `wave`, deciding
     whose notes it belongs in - and neither had anything stopping a branch
     rewriting it. `pr:` is the fourth field of the set and was already covered
-    from the other side, since `docket record` refuses to overwrite a different
-    number, which is what made the gap in these two visible.
+    from the other side, since `docket record` never replaces the number on a
+    landed closure, which is what made the gap in these two visible.
 
     **The severities differ, and that is the judgment this item existed to
     make.** A rewritten `milestone:` moves an item between releases, so two sets
@@ -3963,7 +3914,7 @@ def analyze(
     _check_release_notes(report, notes, version)
     _check_notes_references(report, unreferenced)
     _check_cut_window(report, window, notes)
-    _check_provenance(report, history)
+    _check_provenance(report, history, closures)
     _check_landed(report, landed)
     _check_selects_nothing(report, landed, ids)
     _note_settings(report, settings_source)

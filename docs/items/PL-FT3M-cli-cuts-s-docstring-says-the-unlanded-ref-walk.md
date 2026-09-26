@@ -9,6 +9,7 @@ feature: release-process
 touches: subprojects/docket/src/docket/cli.py
 added: 2026-09-14
 closed: 2026-09-25
+pr: 1032
 verify: ! grep -q 'Gated on the offer rather than run for every digest' subprojects/docket/src/docket/cli.py && uv run pytest tests/unit/test_docket_digest_hook.py
 ---
 

@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-24 triage pass
 added: 2026-09-23
 closed: 2026-09-25
+pr: 1017
 payoff: a close-out that rewrites the command proving its work can no longer turn that command's failure into ACCEPT
 verify: grep -q 'def test_a_rewritten_command_prints_the_commissioned_one_beside_it' subprojects/docket/tests/test_verify.py
 ---

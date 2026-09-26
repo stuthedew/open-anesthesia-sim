@@ -1959,6 +1959,31 @@ def test_a_pull_request_not_yet_merged_is_not_yet_wrong() -> None:
     assert analyze([item], TODAY, history=_history(85, 86)).errors == []
 
 
+def test_an_in_flight_closure_s_number_is_not_held_to_the_base() -> None:
+    """`PL-HMZZ`: the branch writes its own open pull request's number before the merge.
+
+    Below the high-water mark whenever another pull request merged after this
+    one opened - `#12` on the branch while `#13` merged - and named by no
+    commit on the base by construction. Held to the base, `check` failed in CI
+    on exactly the pull request the number named.
+    """
+    item = _item(status="done", pr="12", closed=TODAY)
+    closures = ClosureReport(base="origin/main", unlanded=frozenset({"PL-K7QX"}))
+
+    report = analyze([item], TODAY, history=_history(11, 13), closures=closures)
+
+    assert report.errors == []
+
+
+def test_a_landed_closure_s_number_is_still_held_to_the_base() -> None:
+    item = _item(status="done", pr="12", closed=TODAY)
+    closures = ClosureReport(base="origin/main", landed=frozenset({"PL-K7QX"}))
+
+    report = analyze([item], TODAY, history=_history(11, 13), closures=closures)
+
+    assert any("records pull request #12" in e for e in report.errors)
+
+
 def test_a_checkout_that_cannot_answer_declines_rather_than_failing() -> None:
     """A shallow clone is missing exactly the oldest, best-established work."""
     item = _item(status="done", pr="12", closed=TODAY)
@@ -2338,113 +2363,60 @@ def test_a_selects_no_test_check_that_could_not_run_says_so_once() -> None:
 #
 # The rule is not "a done item names a pull request" but "a done item that has
 # *landed* names one", because the number does not exist until the pull request
-# is open. `analyze` is pure here too - it is handed a `ClosureReport` - so what
-# these assert is the judgment, not the git reading behind it.
+# is open - and since `PL-HMZZ` the branch writes it before the merge, so a
+# landed closure without one is the one state left to report. `analyze` is pure
+# here too - it is handed a `ClosureReport` - so what these assert is the
+# judgment, not the git reading behind it.
 
 
 def _closures(
     *landed: str,
     base: str = "origin/main",
     declined: str = "",
-    derived: tuple[tuple[str, int], ...] = (),
-    shallow: bool | None = False,
+    recorded: tuple[tuple[str, int], ...] = (),
+    unlanded: tuple[str, ...] = (),
 ) -> ClosureReport:
-    """A closure report over a complete checkout unless a case says otherwise.
-
-    `shallow=False` rather than the type's own `None` default: most of these
-    cases are about the judgment on a history that *can* be read, and the
-    type defaults to claiming nothing, which is right for it and wrong here.
-    The cases that turn it on are the last two below.
-    """
     return ClosureReport(
-        base=base, landed=frozenset(landed), derived=derived, shallow=shallow, declined=declined
+        base=base,
+        landed=frozenset(landed),
+        unlanded=frozenset(unlanded),
+        recorded=recorded,
+        declined=declined,
     )
 
 
-def test_a_closure_on_the_base_without_a_pr_is_an_error() -> None:
-    # A complete history that names no number is the one state where the way
-    # back from the closure to the work genuinely does not exist.
+def test_a_landed_closure_without_a_number_is_an_error() -> None:
+    # The way back from the closure to the work exists in the merge commit and
+    # nowhere in the store: a closure that reached the base before the rule,
+    # or past the check that holds a pull request to it.
     item = _item(status="done", closed=TODAY)
     report = analyze([item], TODAY, closures=_closures("PL-K7QX"))
 
     assert any("marked done on `origin/main` but records no `pr`" in e for e in report.errors)
+    assert report.advisories == [] and report.declined == []
 
 
-def test_a_closure_the_next_cut_will_number_is_not_owed_yet() -> None:
-    # The normal shape of a successful merge. The closure travels in the same
-    # commit as its work, so it cannot carry a number that does not yet exist,
-    # and erroring here turned `main` red on the completion of every item. Nor
-    # is it an advisory: the cut writes the number before it renders the notes,
-    # and reporting it anyway fired on every healthy run (`PL-XYQW`).
+def test_a_landed_closure_without_a_number_names_the_explicit_record_form() -> None:
+    """`PL-QNYF`: an error a session cannot act on from where it stands is one it routes around.
+
+    The bare `record` wrote only what history could supply and the error named
+    nothing, so `make check` failed with no action available. Nothing reads
+    history now, and the one command that can supply the number is in the
+    sentence, with what goes in each place.
+    """
     item = _item(status="done", closed=TODAY)
-    report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),)))
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX"))
 
-    assert report.errors == [] and report.advisories == [] and report.declined == []
-
-
-def test_a_shipped_closure_whose_merge_commit_names_its_number_is_an_advisory() -> None:
-    # The cut that could not read the merge - a shallow clone - shipped a bullet
-    # citing no pull request. The number is recoverable, so it is owed, not lost.
-    item = _item(status="done", closed=TODAY, milestone="v0.4.2")
-    report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),)))
-
-    assert report.errors == []
-    assert _has(report.advisories, "recoverable from its merge commit")
-    assert _has(report.advisories, "PL-K7QX #148 in v0.4.2")
+    [error] = report.errors
+    assert "`docket record N --merge SHA`" in error
+    assert "merge commit on `origin/main`" in error
 
 
-def test_the_advisory_names_the_number_and_the_command_that_writes_it() -> None:
-    # An advisory a reader has to go and look something up to act on is one
-    # they defer, so the exact remedy is in the sentence. It is a command
-    # rather than a line to type: retyping a number by hand is what put two
-    # sessions on `#229` and `#230` for one identical insertion (`PL-QTSB`).
-    item = _item(status="done", closed=TODAY, milestone="v0.4.2")
-    report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),)))
+def test_a_landed_closure_that_records_its_pr_is_accepted() -> None:
+    item = _item(status="done", pr="12", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX"))
 
-    assert _has(report.advisories, "#148")
-    assert _has(report.advisories, "`docket record` writes it")
-
-
-def test_the_advisory_says_to_let_the_write_ride_the_next_commit() -> None:
-    # The cost this removed was never the typing; it was the commit the typing
-    # needed, and often a pull request with it. An advisory that named the line
-    # to write instead of the command would put that cost straight back.
-    item = _item(status="done", closed=TODAY, milestone="v0.4.2")
-    report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),)))
-
-    assert _has(report.advisories, "ride the commit you are already making")
-
-
-def test_the_record_advisory_names_every_owed_item_once() -> None:
-    # One paragraph per closure repeated one sentence with a different id in
-    # front of it - six of eleven advisories on 2026-09-23 - and trained a
-    # session to skim the block a real finding also lands in (`PL-XYQW`). The
-    # remedy is one command whatever the count, so it is one finding.
-    items = [
-        _item(identifier, status="done", closed=TODAY, milestone="v0.4.2")
-        for identifier in ("PL-K7QX", "PL-B1C2", "PL-D3F4")
-    ]
-    derived = (("PL-K7QX", 148), ("PL-B1C2", 150), ("PL-D3F4", 150))
-    report = analyze(
-        items, TODAY, closures=_closures(*(i.identifier for i in items), derived=derived)
-    )
-
-    assert report.errors == []
-    [advisory] = report.advisories
-    assert advisory.startswith("3 closures shipped without their `pr`")
-    assert "(PL-B1C2 #150 in v0.4.2, PL-D3F4 #150 in v0.4.2, PL-K7QX #148 in v0.4.2)" in advisory
-    assert advisory.count("docket record") == 1
-    assert ", 1 advisory" in format_check(report)
-
-
-def test_a_derived_number_for_another_item_does_not_excuse_this_one() -> None:
-    # The mapping is per item; borrowing a neighbour's number would record
-    # provenance that leads to the wrong work, which is worse than none.
-    item = _item(status="done", closed=TODAY)
-    report = analyze([item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-B1C2", 148),)))
-
-    assert report.advisories == []
-    assert any("records no `pr`" in e for e in report.errors)
+    assert report.errors == [] and report.declined == []
 
 
 def test_a_closure_not_yet_on_the_base_is_accepted() -> None:
@@ -2455,16 +2427,27 @@ def test_a_closure_not_yet_on_the_base_is_accepted() -> None:
     could arrive inside - taking the work and stranding the closure.
     """
     item = _item(status="done", closed=TODAY)
-    report = analyze([item], TODAY, closures=_closures())
+    report = analyze([item], TODAY, closures=_closures(unlanded=("PL-K7QX",)))
 
     assert report.errors == [] and report.declined == []
 
 
-def test_a_landed_closure_that_records_its_pr_is_accepted() -> None:
-    item = _item(status="done", pr="12", closed=TODAY)
-    report = analyze([item], TODAY, closures=_closures("PL-K7QX"))
+def test_a_stale_copy_of_a_landed_closure_is_not_a_gap() -> None:
+    # This checkout's copy records nothing and the base's records `#148`: a
+    # branch cut before the number was written there, which bringing the base
+    # in repairs. Reporting it would fire on every branch cut before a
+    # backfill commit, for a fact the store already holds.
+    item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX", recorded=(("PL-K7QX", 148),)))
 
-    assert report.errors == [] and report.declined == []
+    assert report.errors == [] and report.advisories == [] and report.declined == []
+
+
+def test_a_number_the_base_records_for_another_item_does_not_excuse_this_one() -> None:
+    item = _item(status="done", closed=TODAY)
+    report = analyze([item], TODAY, closures=_closures("PL-K7QX", recorded=(("PL-B1C2", 148),)))
+
+    assert any("records no `pr`" in e for e in report.errors)
 
 
 def test_a_checkout_that_cannot_read_the_base_declines_rather_than_guessing() -> None:
@@ -2481,50 +2464,6 @@ def test_a_caller_that_does_not_ask_is_not_told() -> None:
     report = analyze([item], TODAY)
 
     assert report.errors == [] and report.declined == []
-
-
-def test_a_missing_pr_declines_on_a_shallow_clone() -> None:
-    """The conflation that turned `main` red twice on 2026-09-01.
-
-    CI checked out at `fetch-depth: 1`, so a closure carrying no `pr` read as
-    an advisory on its own merge commit - the one commit present - and became
-    an error on the very next merge, when the commit naming its number
-    dropped out of the clone. Nothing about the provenance had changed; only
-    what the checkout could see had. `PL-99Y4`.
-    """
-    item = _item(status="done", closed=TODAY)
-    report = analyze([item], TODAY, closures=_closures("PL-K7QX", shallow=True))
-
-    assert report.errors == []
-    assert _has(report.declined, "PL-K7QX")
-    assert _has(report.declined, "shallow clone")
-    assert _has(report.declined, "absence proves nothing")
-
-
-def test_a_missing_pr_declines_when_git_will_not_say_whether_the_clone_is_complete() -> None:
-    # `is_shallow` has three answers, and the third forbids inferring anything
-    # from absence just as firmly as the second does.
-    item = _item(status="done", closed=TODAY)
-    report = analyze([item], TODAY, closures=_closures("PL-K7QX", shallow=None))
-
-    assert report.errors == []
-    assert _has(report.declined, "git cannot say whether this checkout is complete")
-
-
-def test_a_shallow_clone_still_advises_where_the_number_was_found() -> None:
-    """Truncation qualifies an absence, never a hit.
-
-    A derived number is proof the commit was there to read, so depth cannot
-    make it less true - and suppressing it would take the one line that says
-    which number is owed and how to write it.
-    """
-    item = _item(status="done", closed=TODAY, milestone="v0.4.2")
-    report = analyze(
-        [item], TODAY, closures=_closures("PL-K7QX", derived=(("PL-K7QX", 148),), shallow=True)
-    )
-
-    assert report.errors == [] and report.declined == []
-    assert _has(report.advisories, "`docket record` writes it")
 
 
 def test_an_item_a_merge_removed_is_an_error_carrying_the_command_that_recovers_it() -> None:

@@ -10,6 +10,7 @@ touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 resource: release-train
 added: 2026-09-25
 closed: 2026-09-25
+pr: 1003
 payoff: the 16 items finished since v0.5.10 ship under their own number and stop being re-offered in every session digest
 verify: grep -q "^version = \"0.5.11\"" pyproject.toml
 ---

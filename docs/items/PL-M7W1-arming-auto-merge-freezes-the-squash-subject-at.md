@@ -231,3 +231,9 @@ the pull-request API. The client's own verification was not possible.
 
 The **Problem** above predates this evidence and describes the freeze as
 unconditional.
+
+**2026-09-26.** Direction 3's title half landed in `PL-HMZZ`'s build (#1056):
+`tools/pr_title_check.py`'s docstring and failure message say the subject is
+the one line of `main`'s history naming what a change was about, and that
+provenance rests on `tools/pr_record_check.py` beside it. The body half closes
+with `PL-979D`.

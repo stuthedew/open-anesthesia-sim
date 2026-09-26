@@ -4,6 +4,7 @@ title: PL-1X2C's touches omit claims.py and cli.py, where the carrier line is ch
 status: done
 added: 2026-09-26
 closed: 2026-09-26
+pr: 1039
 verify: grep -Eq '^touches: .*claims\.py.*cli\.py' docs/items/PL-1X2C-bin-docket-show-names-the-reader-s-own-branch.md
 ---
 

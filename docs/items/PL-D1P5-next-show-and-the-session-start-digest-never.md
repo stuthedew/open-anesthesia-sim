@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/ren
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-snapshot batch
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1054
 payoff: next, show and the digest say when what they read is stale, so a session is not handed an item another session claimed since its last fetch as free to start
 verify: grep -q 'def test_next_show_and_digest_do_not_read_unfetched_refs_as_fresh' subprojects/docket/tests/test_cli.py
 ---

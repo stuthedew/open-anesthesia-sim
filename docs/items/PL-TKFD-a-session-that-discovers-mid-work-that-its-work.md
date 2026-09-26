@@ -9,6 +9,7 @@ feature: verify-close-out
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-17
 closed: 2026-09-25
+pr: 1017
 verify: grep -q 'A waiver is amended where the commission lives' .claude/skills/docket/modes/close-out.md
 recurrences: 2026-09-25 PL-PLV0
 ---

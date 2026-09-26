@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/re
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; recorded as a generator head by the 2026-09-25 triage pass
 added: 2026-09-24
 closed: 2026-09-26
+pr: 1042
 payoff: A generator or machinery defect that cannot start yet is either ranked through the work it waits on or named as unranked, and no command calls an item ranked while next is not offering it
 verify: grep -q 'def test_a_blocked_impairs_generators_item' subprojects/docket/tests/test_plan.py && grep -q 'def test_an_untriaged_generator_tier_item' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-BBT8, PL-QFWF, PL-4RK2

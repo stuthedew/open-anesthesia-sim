@@ -10,6 +10,7 @@ touches: subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the first 2026-09-23 triage pass
 added: 2026-09-22
 closed: 2026-09-25
+pr: 1018
 payoff: a design round that retitles its item still warns the next session through show and triage, and each fake-backed rename test is built on the listing git gives its reader
 verify: grep -q 'def test_show_names_a_round_that_retitled_the_item_file_as_editing_it' subprojects/docket/tests/test_cli.py
 ---

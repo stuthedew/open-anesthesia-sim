@@ -4971,7 +4971,7 @@ def test_record_writes_the_number_onto_what_the_merge_closed(
     """The write half of the advisory `check` used to hand to a session."""
     root = _record_repo(tmp_path)
 
-    assert main(["record", "257", "--items", str(root / "items")]) == 0
+    assert main(["record", "257", "--merge", "HEAD", "--items", str(root / "items")]) == 0
 
     assert _pr_field(root) == "pr: 257"
     assert "PL-K7QX: recorded `pr: 257`" in capsys.readouterr().out
@@ -4982,7 +4982,7 @@ def test_record_leaves_the_rest_of_the_item_alone(tmp_path: Path) -> None:
     root = _record_repo(tmp_path)
     before = (root / "items" / "PL-K7QX-a-closed-item.md").read_text(encoding="utf-8")
 
-    main(["record", "257", "--items", str(root / "items")])
+    main(["record", "257", "--merge", "HEAD", "--items", str(root / "items")])
 
     after = (root / "items" / "PL-K7QX-a-closed-item.md").read_text(encoding="utf-8")
     assert after == before.replace("added: 2026-08-01\n", "added: 2026-08-01\npr: 257\n")
@@ -5008,7 +5008,7 @@ def test_record_leaves_a_hand_written_block_alone(tmp_path: Path) -> None:
     root = _record_repo(tmp_path, extra=scrambled)
     before = (root / "items" / "PL-K7QX-a-closed-item.md").read_text(encoding="utf-8")
 
-    assert main(["record", "257", "--items", str(root / "items")]) == 0
+    assert main(["record", "257", "--merge", "HEAD", "--items", str(root / "items")]) == 0
 
     after = (root / "items" / "PL-K7QX-a-closed-item.md").read_text(encoding="utf-8")
     assert after == before.replace("closed: 2026-09-01\n", "closed: 2026-09-01\npr: 257\n")
@@ -5029,7 +5029,7 @@ def test_record_keeps_a_drifted_filename(tmp_path: Path) -> None:
     root = _record_repo(tmp_path, name="PL-K7QX-an-older-title.md")
     items = root / "items"
 
-    assert main(["record", "257", "--items", str(items)]) == 0
+    assert main(["record", "257", "--merge", "HEAD", "--items", str(items)]) == 0
 
     assert sorted(path.name for path in items.glob("*.md")) == ["PL-K7QX-an-older-title.md"]
     assert "pr: 257" in (items / "PL-K7QX-an-older-title.md").read_text(encoding="utf-8")
@@ -5039,7 +5039,7 @@ def test_record_is_idempotent(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     """The job that runs it can be re-run, and a session can run it without checking first."""
     root = _record_repo(tmp_path, extra="pr: 257\n")
 
-    assert main(["record", "257", "--items", str(root / "items")]) == 0
+    assert main(["record", "257", "--merge", "HEAD", "--items", str(root / "items")]) == 0
 
     assert "already records `pr: 257`" in capsys.readouterr().out
     assert _pr_field(root) == "pr: 257"
@@ -5051,7 +5051,7 @@ def test_record_refuses_to_overwrite_a_different_number(
     """Two numbers for one closure means one is wrong, and this cannot know which."""
     root = _record_repo(tmp_path, extra="pr: 99\n")
 
-    assert main(["record", "257", "--items", str(root / "items")]) == 1
+    assert main(["record", "257", "--merge", "HEAD", "--items", str(root / "items")]) == 1
 
     assert "records `pr: 99`" in capsys.readouterr().out
     assert _pr_field(root) == "pr: 99"
@@ -5060,7 +5060,9 @@ def test_record_refuses_to_overwrite_a_different_number(
 def test_record_dry_run_writes_nothing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     root = _record_repo(tmp_path)
 
-    assert main(["record", "257", "--dry-run", "--items", str(root / "items")]) == 0
+    assert (
+        main(["record", "257", "--merge", "HEAD", "--dry-run", "--items", str(root / "items")]) == 0
+    )
 
     assert "would record `pr: 257`" in capsys.readouterr().out
     assert _pr_field(root) == ""
@@ -5072,7 +5074,7 @@ def test_record_writes_nothing_where_the_commit_closed_nothing(
     """A capture-only merge owes no number, and must not stamp one on the store."""
     root = _record_repo(tmp_path, closes=False)
 
-    assert main(["record", "257", "--items", str(root / "items")]) == 0
+    assert main(["record", "257", "--merge", "HEAD", "--items", str(root / "items")]) == 0
 
     assert "closed no item" in capsys.readouterr().out
     assert _pr_field(root) == ""
@@ -5083,7 +5085,7 @@ def test_record_refuses_a_number_that_is_not_one(
 ) -> None:
     root = _record_repo(tmp_path)
 
-    assert main(["record", "0", "--items", str(root / "items")]) == 2
+    assert main(["record", "0", "--merge", "HEAD", "--items", str(root / "items")]) == 2
 
     assert "not a pull request number" in capsys.readouterr().out
     assert _pr_field(root) == ""
@@ -5113,7 +5115,7 @@ def test_record_declines_where_the_parent_is_out_of_reach(
     subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
     subprocess.run(["git", "commit", "-qm", "root"], cwd=root, check=True, capture_output=True)
 
-    assert main(["record", "257", "--items", str(root / "items")]) == 2
+    assert main(["record", "257", "--merge", "HEAD", "--items", str(root / "items")]) == 2
 
     assert "declined" in capsys.readouterr().out
     assert _pr_field(root) == ""
@@ -5173,44 +5175,16 @@ def _work_pr(work: Path) -> str:
     return next((line for line in text.splitlines() if line.startswith("pr:")), "")
 
 
-def test_bare_record_writes_every_number_the_base_is_owed(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """The normal form, and what `make fix` runs.
-
-    It asks the question `check` asks and writes the answer, so the field costs
-    no commit of its own - it rides whatever the session was about to commit.
-    """
-    work = _owed_clone(tmp_path)
-
-    assert main(["record", "--items", str(work / "items")]) == 0
-
-    assert _work_pr(work) == "pr: 148"
-    assert "PL-K7QX: recorded `pr: 148`" in capsys.readouterr().out
-
-
-def test_bare_record_says_so_when_nothing_is_owed(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """Safe to run unattended, which is what putting it in `make fix` requires."""
-    work = _owed_clone(tmp_path)
-    main(["record", "--items", str(work / "items")])
-    capsys.readouterr()
-
-    assert main(["record", "--items", str(work / "items")]) == 0
-
-    assert "every closure already records its pull request" in capsys.readouterr().out
-
-
 # --- the number reaching the notes, not only the item ------------------------
 #
-# `PL-W7WL`, filed four times from four separate cuts. The documented order is
-# `make release` and then `docket record`, so an item that merged between the
-# previous cut and this one had no `pr` when the notes were rendered and its
-# bullet shipped naming no pull request - and `release` answers `Nothing to
-# release` once the version is cut, correctly, so nothing could put one there
-# afterwards. Nine of `v0.4.22`'s fifteen bullets and twelve of `v0.4.35`'s
-# sixteen were in that state.
+# `PL-W7WL`, filed four times from four separate cuts: the cut rendered the
+# notes and `docket record` wrote `pr` afterwards, so an item that merged
+# between two cuts shipped a bullet naming no pull request, and `release`
+# answers `Nothing to release` once the version is cut, correctly. Since
+# `PL-HMZZ` the number is on the closure before it merges, so the shape recurs
+# only through a closure that reached the base past its check - and the
+# explicit `record N --merge SHA`, which writes that number, restates the
+# bullet with it.
 
 
 def _releasable_owed_clone(tmp_path: Path, *, subject: str = "PL-K7QX: close it (#148)") -> Path:
@@ -5229,57 +5203,14 @@ def _shipped_notes(work: Path, version: str = "0.2.6") -> str:
     return (work / "docs" / "releases" / f"v{version}.md").read_text(encoding="utf-8")
 
 
-def test_a_cut_backfills_a_pull_request_number_the_base_already_names(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+def test_a_cut_ships_the_bullet_as_it_stands_for_a_closure_recording_no_number(
+    tmp_path: Path,
 ) -> None:
-    """The observed defect, driven end to end: the bullet cites the merge.
+    """Never a refusal, and the cut reads nothing from history to fill the gap.
 
-    The number is in the base's history at the moment the notes are rendered.
-    Nothing had read it there, because the only reader ran after the cut.
-    """
-    work = _releasable_owed_clone(tmp_path)
-
-    assert main(["release", "0.2.6", "--no-fetch", "--items", str(work / "items")]) == 0
-
-    assert "- PL-K7QX A closed item — #148" in _shipped_notes(work)
-    assert "PL-K7QX: recorded `pr: 148`, so these notes can cite it" in capsys.readouterr().out
-
-
-def test_a_cut_backfill_writes_the_number_onto_the_item_as_well(tmp_path: Path) -> None:
-    """Both records or neither; one repaired half is the same disagreement.
-
-    A cut that cited the number and left the store owing it would keep
-    `docket check`'s missing-`pr` advisory counting the item forever.
-    """
-    work = _releasable_owed_clone(tmp_path)
-
-    main(["release", "0.2.6", "--no-fetch", "--items", str(work / "items")])
-
-    assert _work_pr(work) == "pr: 148"
-
-
-def test_a_dry_run_cut_shows_the_number_it_would_record_and_writes_nothing(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """The dry run exists to review the notes, so it has to render the real ones."""
-    work = _releasable_owed_clone(tmp_path)
-
-    assert (
-        main(["release", "0.2.6", "--dry-run", "--no-fetch", "--items", str(work / "items")]) == 0
-    )
-
-    out = capsys.readouterr().out
-    assert "PL-K7QX: would record `pr: 148`" in out
-    assert "- PL-K7QX A closed item — #148" in out
-    assert _work_pr(work) == ""
-    assert not (work / "docs" / "releases").exists()
-
-
-def test_a_cut_ships_the_bullet_as_it_stands_when_no_commit_names_a_number(tmp_path: Path) -> None:
-    """Never a refusal: provenance one `git fetch` away must not stop a release.
-
-    The bullet goes out as it would have before, and `docket record` repairs it
-    afterwards - which is the half of this that a cut can never do.
+    A closure that reached the base without its number is `docket check`'s
+    error and `record N --merge SHA`'s repair; the cut ships the bullet as it
+    stands rather than holding a release for it.
     """
     work = _releasable_owed_clone(tmp_path, subject="PL-K7QX: close it")
 
@@ -5304,7 +5235,7 @@ def test_record_restates_a_released_bullet_that_shipped_without_a_number(
         "## v0.2.5 - 2026-08-20\n\n### infra\n\n- PL-K7QX A closed item\n", encoding="utf-8"
     )
 
-    assert main(["record", "--items", str(work / "items")]) == 0
+    assert main(["record", "148", "--merge", "origin/main", "--items", str(work / "items")]) == 0
 
     assert "- PL-K7QX A closed item — #148" in (releases / "v0.2.5.md").read_text(encoding="utf-8")
     assert "restated 1 bullet(s)" in capsys.readouterr().out
@@ -5313,14 +5244,14 @@ def test_record_restates_a_released_bullet_that_shipped_without_a_number(
 def test_record_leaves_a_notes_file_whose_bullets_all_cite_their_merge(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """No diff on a healthy tree, which is what `make fix` running it requires."""
+    """No diff on a healthy tree: the append is the only edit it ever makes."""
     work = _releasable_owed_clone(tmp_path)
     releases = work / "docs" / "releases"
     releases.mkdir(parents=True)
     healthy = "## v0.2.5 - 2026-08-20\n\n### infra\n\n- PL-K7QX A closed item — #148\n"
     (releases / "v0.2.5.md").write_text(healthy, encoding="utf-8")
 
-    assert main(["record", "--items", str(work / "items")]) == 0
+    assert main(["record", "148", "--merge", "origin/main", "--items", str(work / "items")]) == 0
 
     assert (releases / "v0.2.5.md").read_text(encoding="utf-8") == healthy
     assert "restated" not in capsys.readouterr().out
@@ -5335,84 +5266,37 @@ def test_a_dry_run_record_says_what_it_would_restate_without_writing_it(
     shipped = "- PL-K7QX A closed item\n"
     (releases / "v0.2.5.md").write_text(shipped, encoding="utf-8")
 
-    assert main(["record", "--dry-run", "--items", str(work / "items")]) == 0
+    assert (
+        main(
+            ["record", "148", "--merge", "origin/main", "--dry-run", "--items", str(work / "items")]
+        )
+        == 0
+    )
 
     assert (releases / "v0.2.5.md").read_text(encoding="utf-8") == shipped
     assert "would restate 1 bullet(s)" in capsys.readouterr().out
 
 
-def test_bare_record_writes_nothing_where_the_base_names_no_number(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """A UI-generated title names no id and no number (`PL-2XTF`).
-
-    Guessing here would be worse than the gap: `check` is the command that
-    decides whether an unnameable closure is provenance lost, a decline, or a
-    truncated checkout, and this must not pre-empt it.
-    """
-    work = _owed_clone(tmp_path, subject="Add some safety checks")
-
-    assert main(["record", "--items", str(work / "items")]) == 0
-
-    assert _work_pr(work) == ""
-    out = capsys.readouterr().out
-    assert "1 landed closure(s) record no `pr`" in out
-    assert "names a number for none of them" in out
+# --- the branch form: the number written before the merge ---------------------
+#
+# `PL-HMZZ`. The branch that closes an item writes its own open pull request's
+# number onto the closure, and the pull request's required check refuses a
+# closure without it; nothing infers the number from history afterwards.
 
 
-def test_bare_record_does_not_call_an_unlanded_closure_unnameable(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """The ordinary state mid-item, and it must not read as lost provenance.
+def _closing_branch(tmp_path: Path, *, commit: bool = True, extra: str = "") -> Path:
+    """A clone on a branch that closes `PL-K7QX`, which `origin/main` holds open.
 
-    A closure written in the working tree and not yet merged owes no number at
-    all. Counting it among the ones the base cannot name says the way back is
-    gone, which is the confident wrong answer this package refuses - and it is
-    what `make fix` printed the first time it ran this.
-    """
-    work = _owed_clone(tmp_path)
-    main(["record", "--items", str(work / "items")])
-    name = "PL-B1C2-a-closed-item.md"
-    (work / "items" / name).write_text(
-        RECORD_ITEM.format(id="PL-B1C2", status="done", extra=""), encoding="utf-8"
-    )
-    capsys.readouterr()
-
-    assert main(["record", "--items", str(work / "items")]) == 0
-
-    out = capsys.readouterr().out
-    assert "none has reached `origin/main` yet, so no number is owed" in out
-    assert "names a number for none of them" not in out
-
-
-def test_bare_record_dry_run_writes_nothing(tmp_path: Path) -> None:
-    work = _owed_clone(tmp_path)
-
-    assert main(["record", "--dry-run", "--items", str(work / "items")]) == 0
-
-    assert _work_pr(work) == ""
-
-
-def _shallow_clone(tmp_path: Path) -> tuple[Path, Path]:
-    """A `--depth 1` clone of a remote whose last three commits each closed one item.
-
-    The container an agent session runs in has no checkout, so it clones
-    `--depth 1` - which is shallow *and* single-branch. Every item is `done` in
-    the tree it lands in and none records a `pr`, which is the state every
-    merge leaves and the one `record` exists to clear.
-
-    Built against real git rather than a fake, because the defect was a wrong
-    belief about what git does at a graft boundary: it reports every file in
-    the boundary commit's tree as *added*, so each of the three items looks
-    closed by that one commit. No fake would have been written with that shape
-    unless somebody already knew.
-
-    Returns the origin and the clone, because the test deepens the clone from
-    the origin to show the decline lifting.
+    The state `record N` is written for: the closure is this checkout's own,
+    committed on the branch or, with `commit=False`, still in the working tree -
+    the moment the close-out runs it. `PL-L4ND` is a closure the base already
+    holds, with its own number. `origin/main` is a real remote, because
+    `closures_on_base` resolves the default base through one.
     """
     origin = tmp_path / "origin"
     items = origin / "items"
     items.mkdir(parents=True)
+    name = "PL-K7QX-a-closed-item.md"
 
     def git(*args: str, cwd: Path = origin) -> None:
         subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
@@ -5424,96 +5308,137 @@ def _shallow_clone(tmp_path: Path) -> tuple[Path, Path]:
     )
     for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
         git("config", key, value)
-    for identifier in ("PL-6Q8N", "PL-GJDW", "PL-VRMK"):
-        (items / f"{identifier}-a-closed-item.md").write_text(
-            RECORD_ITEM.format(id=identifier, status="ready", extra=""), encoding="utf-8"
-        )
+    (items / name).write_text(
+        RECORD_ITEM.format(id="PL-K7QX", status="ready", extra=""), encoding="utf-8"
+    )
+    (items / "PL-L4ND-a-closed-item.md").write_text(
+        RECORD_ITEM.format(id="PL-L4ND", status="done", extra="pr: 140\n"), encoding="utf-8"
+    )
     git("add", "-A")
-    git("commit", "-qm", "capture three items")
-    for identifier, number in (("PL-6Q8N", 399), ("PL-GJDW", 400), ("PL-VRMK", 401)):
-        (items / f"{identifier}-a-closed-item.md").write_text(
-            RECORD_ITEM.format(id=identifier, status="done", extra=""), encoding="utf-8"
-        )
-        git("add", "-A")
-        git("commit", "-qm", f"{identifier}: do the thing (#{number})")
+    git("commit", "-qm", "PL-K7QX: capture it")
 
     work = tmp_path / "work"
-    subprocess.run(
-        ["git", "clone", "-q", "--depth", "1", origin.as_uri(), str(work)],
-        check=True,
-        capture_output=True,
+    subprocess.run(["git", "clone", "-q", str(origin), str(work)], check=True, capture_output=True)
+    for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", key, value, cwd=work)
+    git("checkout", "-q", "-b", "claude/pl-k7qx-work", cwd=work)
+    (work / "items" / name).write_text(
+        RECORD_ITEM.format(id="PL-K7QX", status="done", extra=extra), encoding="utf-8"
     )
-    return origin, work
+    if commit:
+        git("add", "-A", cwd=work)
+        git("commit", "-qm", "PL-K7QX: do the thing", cwd=work)
+    return work
 
 
-def _pr_fields(work: Path) -> dict[str, str]:
-    fields = {}
-    for identifier in ("PL-6Q8N", "PL-GJDW", "PL-VRMK"):
-        text = (work / "items" / f"{identifier}-a-closed-item.md").read_text(encoding="utf-8")
-        fields[identifier] = next(
-            (line for line in text.splitlines() if line.startswith("pr:")), ""
-        )
-    return fields
-
-
-def test_record_declines_on_a_checkout_it_cannot_walk(
+def test_a_closure_on_this_branch_is_written_the_pull_request_number(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """It wrote one merge's number onto every closure in the tree (`PL-KX9N`).
+    """The normal form: the number rides the closure, and the merge finds it there."""
+    work = _closing_branch(tmp_path)
 
-    Observed 2026-09-06 in a session whose container had cloned `--depth 1`:
-    `record` wrote `#401` onto five items, of which four had merged in `#399`,
-    `#400` and `#402`. The clone holds one commit, so the walk that recovers a
-    number reached only that commit, and at a graft boundary every file reads
-    as added and every closed item as closed right there.
+    assert main(["record", "1050", "--items", str(work / "items")]) == 0
 
-    The silent half is what made it worth an item rather than a fix. `check`
-    declines to *verify* a recorded number on this same clone - it says so,
-    under `Not checked` - and then `record` wrote one anyway, after which
-    `check` reports no error at all: the field is present and well formed, and
-    the one check that could have contradicted it had already excused itself.
-
-    Deepening is the other half of the assertion. A decline that a fetch cannot
-    lift would be a refusal to work in the only checkout these sessions have.
-    """
-    origin, work = _shallow_clone(tmp_path)
-
-    assert main(["record", "--items", str(work / "items")]) == 0
-
-    assert _pr_fields(work) == {"PL-6Q8N": "", "PL-GJDW": "", "PL-VRMK": ""}
-    out = capsys.readouterr().out
-    assert "401" not in out
-    assert "git fetch --unshallow origin" in out
-
-    subprocess.run(
-        ["git", "fetch", "-q", "--unshallow", origin.as_uri()],
-        cwd=work,
-        check=True,
-        capture_output=True,
-    )
-
-    assert main(["record", "--items", str(work / "items")]) == 0
-
-    assert _pr_fields(work) == {"PL-6Q8N": "pr: 399", "PL-GJDW": "pr: 400", "PL-VRMK": "pr: 401"}
+    assert _work_pr(work) == "pr: 1050"
+    assert "PL-K7QX: recorded `pr: 1050`" in capsys.readouterr().out
 
 
-def test_record_refuses_a_merge_without_the_number_it_is(
+def test_a_closure_still_in_the_working_tree_is_written_too(tmp_path: Path) -> None:
+    # The moment the close-out runs it: `set --status done`, then `record N`,
+    # then one commit carrying the work, the closure and the number.
+    work = _closing_branch(tmp_path, commit=False)
+
+    assert main(["record", "1050", "--items", str(work / "items")]) == 0
+
+    assert _work_pr(work) == "pr: 1050"
+
+
+def test_a_closure_the_base_already_holds_is_not_written(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """`--merge` names one commit; the bare form reads the base and takes none."""
-    work = _owed_clone(tmp_path)
+    """A landed closure's number is its own merge's, whatever this branch did to its file."""
+    work = _closing_branch(tmp_path)
+    landed = work / "items" / "PL-L4ND-a-closed-item.md"
+    landed.write_text(
+        landed.read_text(encoding="utf-8") + "\nA line the branch added.\n", encoding="utf-8"
+    )
 
-    assert main(["record", "--merge", "HEAD", "--items", str(work / "items")]) == 2
+    assert main(["record", "1050", "--items", str(work / "items")]) == 0
 
-    assert "needs the number that merge is" in capsys.readouterr().out
+    assert "pr: 140" in landed.read_text(encoding="utf-8")
+    assert "PL-L4ND" not in capsys.readouterr().out
+
+
+def test_a_reopened_pull_request_s_number_replaces_the_one_that_never_merged(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # The one way a closure legitimately changes number: its pull request was
+    # closed unmerged and reopened. Only on a closure the base does not hold.
+    work = _closing_branch(tmp_path, extra="pr: 1049\n")
+
+    assert main(["record", "1050", "--items", str(work / "items")]) == 0
+
+    assert _work_pr(work) == "pr: 1050"
+    assert "in place of `pr: 1049`" in capsys.readouterr().out
+
+
+def test_the_branch_form_is_idempotent(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    work = _closing_branch(tmp_path, extra="pr: 1050\n")
+
+    assert main(["record", "1050", "--items", str(work / "items")]) == 0
+
+    assert "already records `pr: 1050`" in capsys.readouterr().out
+    assert _work_pr(work) == "pr: 1050"
+
+
+def test_a_branch_closing_nothing_is_owed_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    work = _closing_branch(tmp_path)
+    (work / "items" / "PL-K7QX-a-closed-item.md").write_text(
+        RECORD_ITEM.format(id="PL-K7QX", status="ready", extra=""), encoding="utf-8"
+    )
+    subprocess.run(
+        ["git", "commit", "-qam", "PL-K7QX: reopen it"], cwd=work, check=True, capture_output=True
+    )
+
+    assert main(["record", "1050", "--items", str(work / "items")]) == 0
+
+    assert "owed to nothing" in capsys.readouterr().out
     assert _work_pr(work) == ""
+
+
+def test_the_branch_form_dry_run_writes_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    work = _closing_branch(tmp_path)
+
+    assert main(["record", "1050", "--dry-run", "--items", str(work / "items")]) == 0
+
+    assert "would record `pr: 1050`" in capsys.readouterr().out
+    assert _work_pr(work) == ""
+
+
+def test_record_needs_a_number(tmp_path: Path) -> None:
+    # The bare form that once wrote every number the base could supply is gone
+    # with the reading behind it; a number is the one thing this cannot infer.
+    root = _record_repo(tmp_path)
+
+    with pytest.raises(SystemExit):
+        main(["record", "--items", str(root / "items")])
+
+    assert _pr_field(root) == ""
 
 
 def _owed_project(tmp_path: Path, *, store: str = "docs/items") -> Path:
     """A clone whose `origin/main` holds a shipped closure recording no `pr`, plus work.
 
-    Shipped, because a closure no cut has stamped is not owed its number yet:
-    the cut writes it before it renders the notes (`PL-XYQW`).
+    Under a drifted file name as well, which is what gives the grooming counts
+    below an advisory: the missing `pr` was one when this was written and is
+    the error `check` raises on a landed closure since `PL-HMZZ`. It stays in
+    the fixture because it is the one finding about a closure that a git read
+    stands behind - the read that `PL-T441` had taking its path from the wrong
+    place.
 
     `store` is where the queue sits, and the default is the default setting
     rather than a constraint. It was a constraint when this was written: the
@@ -5529,7 +5454,7 @@ def _owed_project(tmp_path: Path, *, store: str = "docs/items") -> Path:
     origin = tmp_path / "origin"
     items = origin / store
     items.mkdir(parents=True)
-    closed = "PL-K7QX-a-closed-item.md"
+    closed = "PL-K7QX-an-older-title.md"
 
     def git(*args: str) -> None:
         subprocess.run(["git", *args], cwd=origin, check=True, capture_output=True)
@@ -5667,7 +5592,7 @@ def test_counts_resolve_the_store_from_the_tracked_directory(
 
     Pinned as an equality between the two layouts rather than as a number, so
     it keeps holding when the advisories themselves change: what must not come
-    back is where the queue sits changing the answer. The advisory naming the
+    back is where the queue sits changing the answer. The error naming the
     closure is asserted too, because that is the finding that went missing and
     a total can agree for other reasons.
     """
@@ -5677,7 +5602,7 @@ def test_counts_resolve_the_store_from_the_tracked_directory(
     main(["check", "--items", str(elsewhere), "--today", "2026-08-24"])
     out = capsys.readouterr().out
 
-    assert "PL-K7QX" in out and "#148" in out
+    assert "PL-K7QX" in out and "records no `pr`" in out
     assert default["check"] >= 1
     assert _grooming_counts(elsewhere, capsys) == default
 
@@ -5872,9 +5797,9 @@ def test_flight_shares_the_invocations_git_runner(
 
 
 #: Every command, spelled to reach the reads it has: the scoped replay, the
-#: profile, each command that refreshes before it reads, and both forms of
-#: `record`. The writers come last because they change the store the readers
-#: above them read.
+#: profile, each command that refreshes before it reads, and `record`. The
+#: writers come last because they change the store the readers above them
+#: read.
 NO_GIT_ARGV: tuple[tuple[str, ...], ...] = (
     ("check",),
     ("check", "--verify"),
@@ -5887,7 +5812,6 @@ NO_GIT_ARGV: tuple[tuple[str, ...], ...] = (
     ("branch", "--brief"),
     ("branch", "--if-stale"),
     ("stranded",),
-    ("record", "--dry-run"),
     ("record", "7", "--dry-run"),
     ("triage",),
     ("next",),
