@@ -1096,6 +1096,14 @@ on a blocked head says it is not ranked itself, and names the open blockers
 carrying its rank, or says that nothing is; `docket generators` says it is not
 on the tier itself.
 
+A blocked `impairs-generators:` item passes its rank the same way, one edge
+down, and is named under the list the same way when nothing offered carries
+it: the tier's second entrance is the same tier (`PL-Q4DF`). An untriaged item
+on the tier ranks nowhere until triage seats it, whichever entrance it came by,
+and so does a blocker handed a rank while it is itself untriaged or blocked.
+Where each item stands is read once, by `plan.tier_standings`, so `next`,
+`show` and `generators` cannot give three answers about one status.
+
 ### What newer work keeps outranking: `docket next --oldest`
 
 Every term `next` ranks on favours work that is newer, more urgent or more

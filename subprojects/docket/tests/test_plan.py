@@ -14,6 +14,10 @@ import pytest
 
 from docket.model import Item
 from docket.plan import (
+    HELD,
+    NOWHERE,
+    PASSED,
+    UNRANKED,
     Waiting,
     clusters,
     effort_total,
@@ -28,6 +32,7 @@ from docket.plan import (
     recommend,
     recurring,
     set_aside,
+    tier_standings,
     unranked_generators,
 )
 from docket.roadmap import MilestoneStates, Scope, milestone_scope, parse_milestones
@@ -1322,7 +1327,7 @@ def test_a_blocked_generator_head_ranks_its_open_blockers_in_the_generator_tier(
     assert "Ranked on the generator tier as a blocker of PL-5555" in blocker.reason
     assert "root cause of 3 items" in blocker.reason
     assert "above every band but P0" in blocker.reason
-    assert "unblocks generator PL-5555" in blocker.describe()
+    assert "unblocks PL-5555 on the generator tier" in blocker.describe()
 
 
 def test_a_spent_head_blocked_on_its_build_items_passes_no_rank() -> None:
@@ -1446,6 +1451,126 @@ def test_only_a_ranking_head_that_is_blocked_and_not_in_flight_is_reported() -> 
 
     assert unranked_generators(spent) == []
     assert unranked_generators(live, {"PL-5555"}) == []
+
+
+@pytest.mark.parametrize("entrance", ["generator", "defect"])
+@pytest.mark.parametrize(
+    ("status", "blocked_by", "state"),
+    [
+        ("ready", (), HELD),
+        ("needs-decision", (), HELD),
+        ("untriaged", (), NOWHERE),
+        ("blocked", ("PL-BBBB",), PASSED),
+        ("blocked", ("PL-ZZZZ",), UNRANKED),
+        ("done", (), None),
+    ],
+)
+def test_tier_standings_answers_for_every_status_at_both_entrances(
+    entrance: str, status: str, blocked_by: tuple[str, ...], state: str | None
+) -> None:
+    """One answer per status, whichever entrance the claim came by (`PL-Q4DF`).
+
+    `untriaged` is the status no reader handled: `show` and `generators` called
+    four untriaged tier items ranked on 2026-09-25 while `next` offered none.
+    An id the store cannot place carries nothing, so it leaves the item unranked.
+    """
+    if entrance == "generator":
+        claim = _item(
+            "PL-AAAA", status=status, blocked_by=blocked_by, root_cause_of=GENERATOR, generator=LIVE
+        )
+    else:
+        claim = _item(
+            "PL-AAAA",
+            status=status,
+            blocked_by=blocked_by,
+            touches=MACHINERY,
+            impairs_generators=IMPAIRS,
+        )
+
+    standings = tier_standings([claim, _item("PL-BBBB"), *_explained()], MACHINERY)
+
+    if state is None:
+        assert "PL-AAAA" not in standings
+        return
+    assert standings["PL-AAAA"].state == state
+    assert standings["PL-AAAA"].passes_to == (("PL-BBBB",) if state == PASSED else ())
+
+
+def test_a_rank_passed_to_a_blocker_that_cannot_start_is_held_nowhere() -> None:
+    """One edge down and no further, and an untriaged blocker is not seated to hold it."""
+    standings = tier_standings(
+        [
+            _blocked_head(LIVE, ("PL-B1B1", "PL-B2B2")),
+            _item("PL-B1B1", status="untriaged"),
+            _item("PL-B2B2", status="blocked", blocked_by=("PL-B3B3",)),
+            _item("PL-B3B3"),
+            *_explained(),
+        ]
+    )
+
+    assert [(standings[b].state, standings[b].why) for b in ("PL-B1B1", "PL-B2B2")] == [
+        (NOWHERE, "untriaged"),
+        (NOWHERE, "blocked"),
+    ]
+    assert [head.identifier for head in standings["PL-B1B1"].lifted_by] == ["PL-5555"]
+    assert "PL-B3B3" not in standings
+
+
+def test_a_blocked_machinery_defect_passes_its_rank_to_its_open_blockers() -> None:
+    """The tier's second entrance hands its rank down as a head does (`PL-Q4DF`).
+
+    The brief's reproduction: before the fix `generator_blockers` passed the
+    defect's rank to nothing, `unranked_generators` did not name it, and its
+    blocker ranked on its band below the `safety`-classed `P1`.
+    """
+    items = [
+        _item("PL-1111", priority="P1", classes=("safety",)),
+        _item(
+            "PL-AAAA",
+            status="blocked",
+            touches=MACHINERY,
+            impairs_generators=IMPAIRS,
+            blocked_by=("PL-BBBB",),
+        ),
+        _item("PL-BBBB", priority="P3"),
+    ]
+
+    picks = recommend(items, limit=2, generator_paths=MACHINERY)
+
+    assert [p.item.identifier for p in picks] == ["PL-BBBB", "PL-1111"]
+    assert "PL-AAAA, a defect in the generator machinery that is blocked on it" in picks[0].reason
+    assert "unblocks PL-AAAA on the generator tier" in picks[0].describe()
+    assert unranked_generators(items, generator_paths=MACHINERY) == []
+
+
+def test_a_blocked_machinery_defect_nothing_offered_carries_is_named() -> None:
+    """Named as a head is, and marked as not a generator, so no count is invented."""
+    items = [
+        _item(
+            "PL-AAAA",
+            status="blocked",
+            touches=MACHINERY,
+            impairs_generators=IMPAIRS,
+            blocked_by=("PL-BBBB",),
+        ),
+        _item("PL-BBBB", status="blocked", blocked_by=("PL-CCCC",)),
+        _item("PL-CCCC"),
+    ]
+
+    (found,) = unranked_generators(items, generator_paths=MACHINERY)
+
+    assert found.head.identifier == "PL-AAAA"
+    assert (found.waiting_on, found.behind, found.generator) == (("PL-BBBB",), ("PL-CCCC",), False)
+
+
+def test_the_plan_line_says_an_untriaged_tier_item_ranks_nowhere_yet() -> None:
+    """`show` said "it ranks above every band but P0" of untriaged tier items (`PL-Q4DF`)."""
+    line = placement_line(
+        _scope(current=("PL-2222",)), "PL-1111", ranks_above_bands=True, untriaged=True
+    )
+
+    assert "it is untriaged, so it ranks nowhere until triage seats it" in line
+    assert "it ranks above every band but P0" not in line
 
 
 def test_the_chain_behind_an_unranked_head_ends_at_what_is_not_blocked() -> None:
