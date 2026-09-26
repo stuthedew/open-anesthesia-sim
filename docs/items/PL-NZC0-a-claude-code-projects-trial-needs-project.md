@@ -38,6 +38,8 @@ All four were untriaged on 2026-09-25, so the thread that takes one triages it f
 
 **Stream A refill, decided 2026-09-25** (project owner, 2026-09-25, ratified, over working the new heads in fresh sessions outside the trial, and over the pending recommendation to move the claim fixes and `PL-QHCW` to Stream A; two of those fixes have since landed, `PL-KX73` in #1020 and `PL-1X56`). The heads the 2026-09-25 triage recorded live join the trial. Stream A takes `PL-8HSX` first (P1, a member of `PL-PVW2`), then `PL-Q4DF`, `PL-XBV4`, `PL-PVW2` with `PL-6P0F` as its first slice, and `PL-GPJ7`. `PL-979D` rides Stream B with `PL-HMZZ`'s build. The instructions below carry it, and it takes effect when the owner pastes them into the project.
 
+**`PL-QHCW` moved out of Stream B, decided 2026-09-26** (project owner, 2026-09-26, ratified, over leaving it to Stream B and over building only `PL-VYK1`'s part in their session). The owner named `PL-VYK1`, a `PL-QHCW` member, in a session of their own. The build that closes it is done there, on `claude/focused-davinci-dklbov`, under a claim on `PL-QHCW` and its four members, so a Stream B thread reaching it is turned away at `claim`. Stream B ends with `PL-979D`'s thread. The instructions below carry the change. It takes effect when the owner pastes them into the project or tells the coordinator.
+
 **Setup.** One repository, `stuthedew/open-anesthesia-sim`. Environment: `Default` (the account's only one, created 2026-08-22), chosen explicitly, since threads otherwise start in a generic Anthropic-hosted one. Thread model Opus at high effort; coordinator effort medium, not the Projects default of low, which the effort docs reserve for work that is not intelligence-sensitive: the coordinator's job here is sequencing against the Order list, and one slip costs a whole thread; not high, since Opus 5.5 at medium matches or beats Opus 5 at high on Anthropic's coding and knowledge-work evaluations and the job is rule-following rather than hard reasoning (settings > Usage shows the conversation's share: above about 10-15% with no slips, drop to low; a slip more thought would have caught, raise to high); the three design threads on Fable. The desktop app, for notifications (a browser shows only a dot).
 
 **Project instructions, verbatim** (Project settings > Memory > Project instructions):
@@ -68,8 +70,8 @@ Order:
    PL-GPJ7, each build then its open members. PL-KR69 and the PL-B8HZ
    build are done.
    Stream B: PL-ZLJ9, the PL-MB2W close-out, the PL-HMZZ build and members
-   with PL-979D, the PL-QHCW build and members. PL-FX5Q, PL-J16N, PL-KX73
-   and PL-1X56 are done.
+   with PL-979D. PL-FX5Q, PL-J16N, PL-KX73 and PL-1X56 are done, and the
+   PL-QHCW build and members moved to an owner session.
    Start the next thread in a stream only after the previous pull request
    merged. An untriaged item is triaged first, in the thread that takes it.
 

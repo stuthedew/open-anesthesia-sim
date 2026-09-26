@@ -58,9 +58,11 @@ from docket.vcs import (
     default_base,
     filed_with_work,
     files_in_flight,
+    find_cut,
     is_shallow,
     lost,
     merged_pull_requests,
+    notes_added,
     open_pull_requests,
     orphaned,
     records_on_base,
@@ -407,6 +409,16 @@ READS: tuple[Read, ...] = (
     Read("is_shallow", lambda r, g: is_shallow(r, runner=g), _findings()),
     Read("behind_remote", lambda r, g: behind_remote(r, "main", runner=g), _findings()),
     Read("tags", lambda r, g: tags(r, runner=g), _findings("names")),
+    Read("find_cut", lambda r, g: find_cut("0.1.0", "main", r, runner=g), _findings("commits")),
+    Read(
+        # Asked of the commit `v0.1.0` peels to, resolved outside the runner
+        # under test so the one read swept is the batch itself.
+        "notes_added",
+        lambda r, g: notes_added(
+            [_run_git(["rev-parse", "v0.1.0^{commit}"], r).strip()], r, runner=g
+        ),
+        lambda answer: frozenset() if answer is None else frozenset(answer.items()),
+    ),
     Read(
         "changed_items",
         lambda r, g: changed_items(r, "origin/main", runner=g),
