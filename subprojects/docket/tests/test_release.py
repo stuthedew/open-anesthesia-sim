@@ -674,6 +674,93 @@ def test_a_cut_reaching_a_milestone_section_is_named() -> None:
     assert outstanding_roadmap_edits(PORT_CUT_ROADMAP, "0.2.5") == []
 
 
+#: `PORT_CUT_ROADMAP` with the port scoped in full - a frozen list, a Required
+#: scope, a definition of done and an out-of-scope list - so `wave` gives it a
+#: beat: `release v0.2.6` once both ids are closed, `implement` while the
+#: Required scope is still open.
+SCOPED_PORT_ROADMAP = PORT_CUT_ROADMAP.replace(
+    "Move the dashboard.\n",
+    """Move the dashboard.
+
+### Debt gate: the frozen list
+
+**Frozen 2026-08-25.** One entry.
+
+- PL-GT01 (M) The frozen entry
+
+### Required scope
+
+- The port (queue item PL-PT01).
+
+### Definition of done
+
+Nothing a learner can do is lost.
+
+### Explicitly out of scope for v0.2.6
+
+A restyle.
+""",
+)
+SCOPED_PORT_IDS = frozenset({"PL-GT01", "PL-PT01"})
+
+
+def test_the_reached_number_statement_reads_the_plan() -> None:
+    """`PL-YS9F`: the plan read before the bump decides which edit is owed.
+
+    At the hand-off the version table lacks the cut's own row by construction,
+    so a milestone number the cut has exactly reached reads two ways from the
+    file: this release is that milestone, or a patch has taken its number. The
+    plan computed before the bump knows which - a `release` beat asking for the
+    cut's version is the first, any other beat the second - and without one
+    the statement still names both. Nothing else the hand-off states moves.
+    """
+    releasing = wave(SCOPED_PORT_ROADMAP, "0.2.5", SCOPED_PORT_IDS, SCOPED_PORT_IDS, {})
+    building = wave(SCOPED_PORT_ROADMAP, "0.2.5", frozenset({"PL-GT01"}), SCOPED_PORT_IDS, {})
+    assert (releasing.beat, releasing.release_version) == (RELEASE, (0, 2, 6))
+    assert building.beat == IMPLEMENT
+
+    def owed(plan: Wave | None) -> tuple[str, list[str]]:
+        statements = outstanding_roadmap_edits(SCOPED_PORT_ROADMAP, "0.2.6", plan)
+        (at_number,) = [s for s in statements if s.startswith("v0.2.6 — the interface port (")]
+        return at_number, [s for s in statements if s != at_number]
+
+    released, rest = owed(releasing)
+    patched, patched_rest = owed(building)
+    undecided, undecided_rest = owed(None)
+
+    reached = "which the project has reached with no v0.2.6 release in the version table: "
+    assert reached + "the plan was releasing it, so this release is that milestone" in released
+    assert released.endswith("and its table row is owed")
+    assert reached + "the plan was not releasing it, so a patch has taken its number" in patched
+    assert patched.endswith("the row and its section owe a new one")
+    assert undecided.endswith(
+        reached + "its table row is owed if this release is that milestone, and a new number"
+        " if it is not"
+    )
+    assert rest == patched_rest == undecided_rest
+    assert "the version table has no row for v0.2.6" in rest
+
+
+def test_a_release_beat_asking_for_another_number_is_the_second_reading() -> None:
+    """Only a `release` beat asking for the cut's own number is the first reading.
+
+    The beat's number is replaced by hand, so the rule is shown reading the
+    number rather than the word: a plan releasing some other version says this
+    cut took the port's number. And a number the cut has passed is the one
+    statement no plan changes.
+    """
+    releasing = wave(SCOPED_PORT_ROADMAP, "0.2.5", SCOPED_PORT_IDS, SCOPED_PORT_IDS, {})
+    elsewhere = replace(releasing, release_version=(0, 3, 0))
+
+    reached = outstanding_roadmap_edits(SCOPED_PORT_ROADMAP, "0.2.6", elsewhere)
+    passed = outstanding_roadmap_edits(SCOPED_PORT_ROADMAP, "0.2.7", releasing)
+
+    (at_number,) = [s for s in reached if s.startswith("v0.2.6 — the interface port (")]
+    assert "the plan was not releasing it, so a patch has taken its number" in at_number
+    (behind,) = [s for s in passed if s.startswith("v0.2.6 — the interface port (")]
+    assert behind.endswith("the row and its section owe a number the project has not passed")
+
+
 # --- the offer, once the roadmap has had its say -----------------------------
 
 # Two milestones that record a frozen list, and a third step between them whose
@@ -1694,6 +1781,39 @@ def test_a_cut_proceeds_where_head_holds_the_release_train_first(tmp_path: Path)
     repo.git("checkout", "-q", "claude/pl-tr4n-cut")
     assert repo.run("release", "0.2.6", "--no-fetch") == 0
     assert 'version = "0.2.6"' in repo.version()
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_the_hand_off_reads_the_plan_from_before_the_bump(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-YS9F`, end to end: a cut at the port's own number is the port.
+
+    Before the bump the plan's beat is `release v0.2.6`; after it the version
+    file reads 0.2.6 and the plan has moved on to scoping v0.3.0, which would
+    read the same cut as a patch that took the port's number. So the hand-off
+    names the first reading only if `cmd_release` read the plan first.
+    """
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.commit(
+        "scope the port",
+        when=TRAIN_T0 - timedelta(days=29),
+        files={
+            "ROADMAP.md": SCOPED_PORT_ROADMAP,
+            **{
+                f"items/{ident}-scoped.md": _train_item(ident, "done", resource="")
+                for ident in SCOPED_PORT_IDS
+            },
+        },
+    )
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+
+    assert repo.run("release", "0.2.6", "--no-fetch") == 0
+
+    out = capsys.readouterr().out
+    assert "Stale in ROADMAP.md, and owed by hand:" in out
+    assert "the plan was releasing it, so this release is that milestone" in out
+    assert "the plan was not releasing it" not in out
 
 
 @pytest.mark.usefixtures("_no_session")

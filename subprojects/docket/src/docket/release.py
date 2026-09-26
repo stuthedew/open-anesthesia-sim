@@ -726,7 +726,7 @@ def stamp(items: list[Item], version: str) -> list[Item]:
     return [item.__class__(**{**item.__dict__, "milestone": version}) for item in items]
 
 
-def outstanding_roadmap_edits(roadmap: str, version: str) -> list[str]:
+def outstanding_roadmap_edits(roadmap: str, version: str, plan: Wave | None = None) -> list[str]:
     """The roadmap statements a cut release has just made wrong.
 
     Reported, never written. The version table's milestone column and the
@@ -739,13 +739,20 @@ def outstanding_roadmap_edits(roadmap: str, version: str) -> list[str]:
     Each string is one wrong statement, phrased as the state of the file
     rather than as an instruction, so a reader can check it against what they
     are looking at. The milestone statements end by naming the edit owed,
-    because there two readings of one fact owe different edits and the reader
-    is the one who knows which reading holds.
+    because there two readings of one fact owe different edits.
+
+    `plan` is the plan as it stood before the cut's bump, and where one is
+    given it settles the one statement the file cannot (`PL-YS9F`). A milestone
+    number the cut has exactly reached is this release where that plan's
+    `release` beat asked for this very version, and a number a patch has taken
+    under any other beat; without a plan the statement names both edits and
+    the reader decides, as it always did.
     """
     # Imported here rather than at module scope: `roadmap` reads this module's
     # version grammar, so a top-level import would close the cycle.
     from .roadmap import (
         BASELINE_MARK,
+        RELEASE,
         VERSION_TABLE_HEADING,
         baseline_heading,
         parse_milestones,
@@ -783,8 +790,17 @@ def outstanding_roadmap_edits(roadmap: str, version: str) -> list[str]:
     # past the Qt port's number would have stepped the plan past the port while
     # the hand-off said only that the table lacked a row (`PL-Y1L0`). The table
     # lacks *this* release's row too at this point, which is why the statement
-    # for a number the cut has exactly reached names the edit each reading owes
-    # rather than deciding between them.
+    # for a number the cut has exactly reached cannot decide between the edit
+    # each reading owes from the file alone - and why the plan decides it where
+    # the caller has one.
+    reached = version_tuple(name)
+    releasing = (
+        None
+        if plan is None
+        else plan.beat == RELEASE
+        and plan.release_version is not None
+        and plan.release_version == reached
+    )
     steps, _ = parse_timeline(roadmap)
-    owed.extend(stale_milestones(steps, parse_milestones(roadmap), rows, version_tuple(name)))
+    owed.extend(stale_milestones(steps, parse_milestones(roadmap), rows, reached, releasing))
     return owed
