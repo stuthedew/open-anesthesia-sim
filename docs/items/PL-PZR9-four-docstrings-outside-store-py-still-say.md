@@ -3,11 +3,13 @@ id: PL-PZR9
 title: Four docstrings outside store.py still say store.write_item renames an item file when its title changes - in verify.py, cli.py's _write_pr, test_verify.py and test_cli.py - though PL-9KSY removed the replace= that did it, and a rename is now git mv's alone
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: slug-rename-on-write
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1059
 payoff: each guard's stated reason matches the code again, so a reader checking one against write_item no longer concludes a live guard is stale
 verify: ! grep -qF 'renames the file when the title changes' subprojects/docket/src/docket/verify.py && ! grep -qF 'has drifted it turns one added line into a delete-plus-add' subprojects/docket/src/docket/cli.py && ! grep -qF 'The rename is `store.write_item`' subprojects/docket/tests/test_verify.py && ! grep -qF 'through `write_item` renames it' subprojects/docket/tests/test_cli.py
 ---

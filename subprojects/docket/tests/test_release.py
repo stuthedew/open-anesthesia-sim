@@ -2214,6 +2214,54 @@ def test_a_version_below_the_current_one_is_refused(
 
 
 @pytest.mark.usefixtures("_no_session")
+def test_a_version_that_is_not_semantic_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-ZVG5: a typo such as 0.2.6x used to be cut, reaching the version field and every stamp.
+
+    Refused in a dry run too, which used to print `0.2.5 -> 0.2.6x` and go on
+    to the train guards, and the refusal says what grammar it wants. The
+    branch holds the train, so no other refusal stands in for this one.
+    """
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    shipped = repo.items / "PL-D1D1-shipped.md"
+    before = shipped.read_text(encoding="utf-8")
+
+    for typo in ("0.2.6x", "0.2", "0.2.6.1", "vv0.2.6", " 0.2.6", "0.2.6\n", ""):
+        assert repo.run("release", typo, "--no-fetch", "--dry-run") == 1, typo
+    assert repo.run("release", "0.2.6x", "--no-fetch") == 1
+
+    out = capsys.readouterr().out
+    assert (
+        "Cannot cut '0.2.6x': it is not a release version. "
+        "Nothing was stamped and nothing was written." in out
+    )
+    assert "Cannot cut ' 0.2.6'" in out
+    assert "MAJOR.MINOR.PATCH, with an optional leading v" in out
+    assert "-> 0.2.6x" not in out
+    assert 'version = "0.2.5"' in repo.version()
+    assert shipped.read_text(encoding="utf-8") == before
+    assert not (repo.root / "docs" / "releases" / "v0.2.6x.md").exists()
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_a_well_formed_version_is_not_refused_as_malformed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-ZVG5's other side: both spellings `SEMVER_RE` accepts reach the cut."""
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+
+    assert repo.run("release", "0.2.6", "--no-fetch", "--dry-run") == 0
+    assert repo.run("release", "v0.2.6", "--no-fetch", "--dry-run") == 0
+
+    out = capsys.readouterr().out
+    assert "not a release version" not in out
+    assert out.count("0.2.5 -> 0.2.6\n") == 2
+
+
+@pytest.mark.usefixtures("_no_session")
 def test_a_cut_of_the_current_version_is_left_to_the_guard_that_names_its_evidence(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
