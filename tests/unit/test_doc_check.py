@@ -3823,6 +3823,26 @@ def test_math_fenced_sample_is_quiet(tmp_path: Path) -> None:
     assert _math_errors(tmp_path / "repo", "docs/NOTE.md", body) == []
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        "The pattern\n``` `x` ``` cannot match.\nThe step \\(t\\) is read.\n\n```\ncode\n```\n",
+        "```text\nnever closed\nThe step \\(t\\) is read.\n",
+    ],
+    ids=["code span at a line start", "fence nothing closes"],
+)
+def test_math_below_a_line_that_opens_no_block_is_still_reported(tmp_path: Path, body: str) -> None:
+    """Neither line opens a fenced block, so the prose after it is read (`PL-92MY`).
+
+    Toggled on either, the delimiter below went unread. A fence nothing closes
+    costs at worst this loud error, which closing the fence repairs.
+    """
+    errors = _math_errors(tmp_path / "repo", "docs/NOTE.md", body)
+
+    assert len(errors) == 2
+    assert all("docs/NOTE.md:3" in error for error in errors)
+
+
 def test_math_shell_snippet_is_not_an_unclosed_expression(tmp_path: Path) -> None:
     """A backtick against a dollar is ordinary in shell, and common in the queue."""
     body = 'Comparing `"$upstream..HEAD"` against a deleted tip overcounts.\n'
@@ -5117,6 +5137,30 @@ def test_an_item_may_quote_the_broken_citation_it_reports(tmp_path: Path) -> Non
     )
 
     assert _line_citation_errors(root) == []
+
+
+def test_a_code_span_at_a_line_start_hides_no_citation_below_it(tmp_path: Path) -> None:
+    """`PL-92MY`: a wrapped triple-backtick code span was read as a fence nothing closed.
+
+    `PL-6SRZ`'s brief wraps one to a line's start, and no line citation below it
+    was read while the check passed. A backtick fence's info string holds no
+    backtick, so the line is a code span and opens nothing.
+    """
+    body = "The pattern\n``` `(test_\\w+)` ```, which cannot match.\n\nSee `core/thing.py:900`.\n"
+    root = _items(_repo(tmp_path), {"PL-8888-open": _brief("ready", body)})
+
+    errors = _line_citation_errors(root)
+
+    assert len(errors) == 1
+    assert "core/thing.py:900" in errors[0]
+
+
+def test_a_fence_nothing_closes_hides_no_citation_below_it(tmp_path: Path) -> None:
+    """A fence nothing closes is not a fence, so what follows it is still held to the tree."""
+    body = "An example:\n\n```text\nnever closed\n\nSee `core/thing.py:900`.\n"
+    root = _items(_repo(tmp_path), {"PL-8888-open": _brief("ready", body)})
+
+    assert any("core/thing.py:900" in error for error in _line_citation_errors(root))
 
 
 def test_an_ambiguous_bare_filename_declines(tmp_path: Path) -> None:

@@ -119,6 +119,15 @@ try:
     # say which milestone is current and what it still owes.
     from docket.config import Config
     from docket.config import load as load_docket_config
+
+    # `fences` is the one reading of where a fenced block is (`PL-92MY`). This
+    # tool held three spellings of its own beside docket's two, and one read a
+    # triple-backtick code span wrapped to a line's start as a fence nothing
+    # closed, so the rest of that brief was never read for line citations.
+    # `without_fences` is re-exported, as `tools/possessive_section_check.py`
+    # reads it from here.
+    from docket.fences import blocks, fenced_lines
+    from docket.fences import without_fences as without_fences
     from docket.model import CLOSED_STATUSES, Item
     from docket.release import NOTES_DIR, SPAN_HEADING, notes_path
     from docket.roadmap import (
@@ -189,7 +198,8 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
         "doc_check needs subprojects/docket/src/docket/roadmap.py for the release-train "
         "grammar, docket/vcs.py for the tag read and the default-branch list, "
         "docket/release.py for where a cut writes its notes, docket/shell.py for "
-        "how a shell line splits, and docket/{config,model,store}.py for the queue, "
+        "how a shell line splits, docket/fences.py for where a fenced block is, "
+        "and docket/{config,model,store}.py for the queue, "
         f"and could not import them: {error}"
     ) from error
 
@@ -343,9 +353,6 @@ NON_PARAMETER_KEYS = frozenset({"schema_version", "sources", "provenance_gap"})
 # and `tests/unit/test_parameters.py` fails if the two ever disagree.
 SOURCE_TIERS = ("primary", "secondary", "reference-implementation")
 
-FENCE_RE = re.compile(r"^```")
-#: The same fence, allowed to sit inside a list item.
-INDENTED_FENCE_RE = re.compile(r"^[ \t]*```")
 TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
 #: A source file named in the reference index, as inline code: `name.pdf`.
 REFERENCE_FILE_RE = re.compile(r"`(?P<name>[\w][\w.-]*\.(?:pdf|txt|csv|json))`")
@@ -647,11 +654,6 @@ MATH_EDGE_RE = re.compile(r"\$`|`\$")
 # expression.
 BACKTICK_RUN_RE = re.compile(r"(`+)(?:(?!\1).)*\1")
 
-# Any fence, including an indented one. `FENCE_RE` is anchored at column zero
-# and matches only backticks, which is right for the package-map reader but
-# would leave an indented or tilde-fenced sample exposed to the rules below.
-ANY_FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
-
 # A list item's opening line: its marker, a bullet or an ordered number, and
 # the gap to its content, or nothing where the item opens empty. What
 # `_content_column` reads to place an indented code block inside the item.
@@ -849,21 +851,10 @@ def read_docs(root: Path) -> dict[Path, str]:
 
 
 def _fenced_blocks(text: str) -> Iterator[tuple[int, list[str]]]:
-    """Yield each fenced block as its opening line number and its contents."""
+    """Yield each closed fenced block as its opening line's number and the lines inside it."""
     lines = text.splitlines()
-    index = 0
-    while index < len(lines):
-        if not FENCE_RE.match(lines[index]):
-            index += 1
-            continue
-        start = index + 1
-        body: list[str] = []
-        index += 1
-        while index < len(lines) and not FENCE_RE.match(lines[index]):
-            body.append(lines[index])
-            index += 1
-        index += 1
-        yield start, body
+    for block in blocks(text):
+        yield block.start + 1, lines[block.start + 1 : block.end]
 
 
 def parse_tree(root: Path, start_line: int, block: list[str]) -> TreeMap | None:
@@ -1340,18 +1331,16 @@ def check_prose_provenance(root: Path, report: Report) -> None:
     if not path.is_file():
         return  # `check_provenance` has already reported the missing document.
 
-    lines = path.read_text(encoding="utf-8").splitlines()
+    text = path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    fenced = fenced_lines(text)
     markers = 0
-    fenced = False
     for index, line in enumerate(lines):
         # A marker inside a code fence is the format being *shown*, not a claim
         # being made - the section below documents the convention by printing
         # one. Reading it as a claim would force every example to be
         # coincidentally true of the shipped data.
-        if ANY_FENCE_RE.match(line):
-            fenced = not fenced
-            continue
-        if fenced:
+        if index in fenced:
             continue
         match = PROSE_MARKER_RE.match(line.strip())
         if match is None:
@@ -3701,7 +3690,7 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
 
         # A fence or a code span holds a literal - an example, a command, the
         # form being described - and a literal is not a claim about the tree.
-        prose = _without_fences(text)
+        prose = without_fences(text)
         spans = [(span.start(), span.end()) for span in CODE_SPAN_RE.finditer(prose)]
 
         for match in CITATION_RE.finditer(prose):
@@ -3756,7 +3745,7 @@ def _absent_paths(
     presence differs between a working tree and CI. A marker shown in a fence
     is the format being shown, and is not read.
     """
-    lines = _without_fences(text).splitlines()
+    lines = without_fences(text).splitlines()
     declared: dict[int, set[str]] = {}
     for index, line in enumerate(lines):
         marker = ABSENT_MARKER_RE.match(line.strip())
@@ -3890,7 +3879,9 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
 
     sources = list(documents.items()) + list(_live_item_briefs(root))
     for path, raw in sources:
-        for match in LINE_CITATION_RE.finditer(_without_fences(raw)):
+        # A fence holds a literal, and read as a claim it made an item that
+        # documents a stale citation an error for quoting the one it reports.
+        for match in LINE_CITATION_RE.finditer(without_fences(raw)):
             token, first, last = match.group(1), int(match.group(2)), match.group(3)
             if not _is_path_citation(token):
                 continue
@@ -3906,28 +3897,6 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
                     f"{count} lines. Anchor the citation to a symbol rather than "
                     f"re-pointing it at a line number, which drifts again."
                 )
-
-
-def _without_fences(text: str) -> str:
-    """`text` with fenced blocks blanked, offsets and line numbers preserved.
-
-    A fence holds a literal - a command, an example, a quotation shown as
-    broken. Reading one as a claim is how an item that documents a stale
-    citation becomes an error for containing the citation it reports.
-
-    Indented fences count. `FENCE_RE` anchors at column 0, which is right for
-    the top-level blocks it was written for and wrong here: an example given
-    under a list item is indented to sit inside it, and that is exactly where
-    an item shows the citation it is reporting.
-    """
-    out, fenced = [], False
-    for line in text.splitlines(keepends=True):
-        if INDENTED_FENCE_RE.match(line):
-            fenced = not fenced
-            out.append(" " * (len(line) - 1) + "\n")
-        else:
-            out.append(" " * (len(line) - 1) + "\n" if fenced else line)
-    return "".join(out)
 
 
 def _docstrings(tree: ast.Module) -> Iterator[tuple[int, str]]:
@@ -4074,7 +4043,7 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
         return briefs[item]
 
     for path, offset, text in _quoting_sources(root, documents, report.declined):
-        prose = _without_fences(text)
+        prose = without_fences(text)
         for match in QUOTED_SOURCE_RE.finditer(prose):
             cited, quoted = match.group("document"), _normalized(match.group("quoted"))
             if "..." in quoted or "…" in quoted:
@@ -4468,16 +4437,19 @@ def _without_code(text: str) -> list[str]:
     prose it could continue. Where the reading is unsure it keeps an item open
     or a line as prose, so a doubt costs a false refusal, which a fence
     repairs, and never a delimiter left unread.
+
+    A fenced block is where `docket.fences` finds one, blanked from its opening
+    line through its closing one, so an opener nothing closes blanks nothing
+    and the prose below it is still read (`PL-92MY`).
     """
     lines: list[str] = []
-    fenced = False
+    closes = {block.start: block.end for block in blocks(text)}
+    closing = -1  # the closing line of the fenced block being blanked
     items: list[int] = []  # the content column of each open list item, innermost last
     paragraph = False  # whether the line above is prose this line may continue
-    for raw in text.splitlines():
+    for index, raw in enumerate(text.splitlines()):
         line = raw.expandtabs(4)
-        if fenced or not line.strip():
-            if fenced and ANY_FENCE_RE.match(line):
-                fenced = False
+        if index <= closing or not line.strip():
             lines.append("")
             paragraph = False
             continue
@@ -4489,8 +4461,8 @@ def _without_code(text: str) -> list[str]:
         if not paragraph and indent >= (items[-1] if items else 0) + 4:
             lines.append("")
             continue
-        if ANY_FENCE_RE.match(line):
-            fenced = True
+        if index in closes:
+            closing = closes[index]
             lines.append("")
             paragraph = False
             continue

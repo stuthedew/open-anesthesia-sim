@@ -41,6 +41,8 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from .fences import fenced_lines
+
 ISO_DATE_RE = re.compile(r"\b(20\d{2})-(\d{2})-(\d{2})\b")
 """An ISO date written out in prose: `2026-09-21`.
 
@@ -48,19 +50,6 @@ Bounded at both ends, so a timestamp (`2026-09-21T09:00`) and a version-like
 run of digits do not match something they merely begin with. Four digits
 beginning `20` rather than `\\d{4}`, because a bare `1999-01-01` in an
 instruction file is far likelier to be an example than a claim about now.
-"""
-
-FENCE_RE = re.compile(r"^\s*(```|~~~)")
-"""The opening or closing line of a fenced code block.
-
-Dates inside a fence are skipped, and the reason is discharge rather than
-precision. This repository's `.claude/skills/docket/modes/capture.md` carries
-a worked `bin/docket new "... standing in the queue on 2026-09-21"` - a
-template for writing an item title, not a claim about the world. Naming it
-would put an entry in the report that a reader cannot honestly clear, since
-clearing it means editing an example to say something it does not mean, and a
-permanent undischargeable entry is exactly what stops a report reaching zero.
-One such line on 2026-09-21, of 74 date occurrences.
 """
 
 
@@ -109,14 +98,25 @@ def _dates(line: str) -> list[date]:
 
 
 def parse(name: str, text: str) -> list[Assertion]:
-    """The dated lines of one instruction file, outside its code fences."""
+    """The dated lines of one instruction file, outside its fenced blocks.
+
+    Dates inside a fence are skipped, and the reason is discharge rather than
+    precision. This repository's `.claude/skills/docket/modes/capture.md` carries
+    a worked `bin/docket new "... standing in the queue on 2026-09-21"` - a
+    template for writing an item title, not a claim about the world. Naming it
+    would put an entry in the report that a reader cannot honestly clear, since
+    clearing it means editing an example to say something it does not mean, and a
+    permanent undischargeable entry is exactly what stops a report reaching zero.
+    One such line on 2026-09-21, of 74 date occurrences.
+
+    `fences` decides where a fence is, so a triple-backtick code span wrapped to
+    a line's start opens none, and an opener nothing closes hides no date below
+    it (`PL-92MY`).
+    """
+    fenced = fenced_lines(text)
     assertions: list[Assertion] = []
-    fenced = False
     for number, line in enumerate(text.splitlines(), 1):
-        if FENCE_RE.match(line):
-            fenced = not fenced
-            continue
-        if fenced:
+        if number - 1 in fenced:
             continue
         found = _dates(line)
         if found:

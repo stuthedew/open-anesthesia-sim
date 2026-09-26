@@ -57,7 +57,7 @@ def sites(root: Path, declined: list[str]) -> list[str]:
     }
     found: list[str] = []
     for path, offset, text in doc_check._quoting_sources(root, documents, declined):
-        for match in POSSESSIVE_RE.finditer(doc_check._without_fences(text)):
+        for match in POSSESSIVE_RE.finditer(doc_check.without_fences(text)):
             quoted = doc_check._comparable(match.group("quoted"))
             titles = headings.get(match.group("document"), ())
             if not any(title == quoted or title.startswith(quoted + " ") for title in titles):
