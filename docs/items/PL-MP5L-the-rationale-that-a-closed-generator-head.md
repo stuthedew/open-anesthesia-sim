@@ -3,11 +3,13 @@ id: PL-MP5L
 title: The rationale that a closed generator head still owes a misread: line, because a later capture is compared against a closed head's stated fact, is written out in Item.misread's comment, _check_misread's docstring and the docket README; PL-0TB3 cut the sibling rationale to the README and left this one out of scope
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: generator-identification
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1062
 payoff: the closed-head rule for misread: is argued in one place, so the next change to it cannot leave three source copies giving the old reason
 verify: ! grep -rqF --include=*.py 'an instance of a closed' subprojects/docket/src/docket
 ---
@@ -53,3 +55,15 @@ One session (`PL-5MYR`'s) wrote the rationale at each function it touched, and
 no head's `misread:` states a fact this misreads. This is not a re-entry: it is
 the remainder that `PL-0TB3` named and kept out of scope, filed when
 `PL-0TB3` closed so the note would survive.
+
+**Worked.** Re-confirmed on `96287589` before starting: all four copies stood as
+the brief quotes them, so the item was still live. `Item.misread`'s bold rule
+keeps its sentence, now ending "for the reason that section gives", and
+names no `PL-5MYR` of its own: the sentence directly above it already cites
+`PL-5MYR` beside the README section, so a second citation two lines down
+would repeat it. `misread_faults` and `_check_misread` each keep one clause
+citing `PL-5MYR`. Nothing cut was missing from the README paragraph, which
+already carries the `PL-7TVT` example and the `PL-T7Y1` backfill point. The
+"would invent a judgment nothing reads" clause that only `misread_faults`
+had is `generator_faults`' own reasoning, and its docstring still states it.
+Comments and docstrings only; no code or test changed.
