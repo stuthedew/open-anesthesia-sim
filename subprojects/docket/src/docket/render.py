@@ -1812,7 +1812,7 @@ def format_notes_threads(threads: Sequence[Thread], identifier: str, notes_path:
     return "\n".join(lines)
 
 
-def format_queue_edit(edit: QueueEdit, now: datetime, *, startable: bool) -> str:
+def format_queue_edit(edits: Sequence[QueueEdit], now: datetime, *, startable: bool) -> str:
     """That an item's file has already been edited, which is not that it is in flight.
 
     **The line exists to be different from `IN FLIGHT`, so it does not open
@@ -1836,15 +1836,24 @@ def format_queue_edit(edit: QueueEdit, now: datetime, *, startable: bool) -> str
     (`done`) and `PL-MB2W` (`blocked`) startable alike. Where the status does
     not allow a start, the line says nothing about starting at all: the
     collision is still true, and it is the only thing this line knows.
+
+    **One line per branch, and `edits` never holds the reader's own**
+    (`PL-1X2C`). Every other branch that wrote to the file is one a second edit
+    collides with, so naming only the first left out whichever came later; and
+    `cli._elsewhere` leaves the checked-out branch out before this is called.
     """
-    edited = f"  Its file is already edited on {edit.name} ({_since(edit.last_commit, now)}).\n"
+    edited = "".join(
+        f"  Its file is already edited on {edit.name} ({_since(edit.last_commit, now)}).\n"
+        for edit in edits
+    )
     if not startable:
         return (
             f"{edited}  Not work in flight - but a second edit to the same file collides\n"
             "  at merge, so land the smaller change first."
         )
+    item_id = edits[0].item_id
     return (
-        f"{edited}  Not work in flight - {edit.item_id} is startable - but a second edit to the\n"
+        f"{edited}  Not work in flight - {item_id} is startable - but a second edit to the\n"
         "  same file collides at merge, so land the smaller change first."
     )
 
@@ -2379,14 +2388,16 @@ def format_triage(
     # The weaker mark, for the case the stronger one cannot reach at all: a
     # triage pass records no claim, so two passes on one item are invisible to
     # each other however carefully each fetches (`PL-N1JK`).
-    editing = {edit.item_id: edit.name for edit in flight.editing}
+    editing: dict[str, list[str]] = {}
+    for edit in flight.editing:
+        editing.setdefault(edit.item_id, []).append(edit.name)
     lines = [f"{_plural(len(report.untriaged), 'item is', 'items are')} untriaged.", ""]
     for item in sorted(report.untriaged, key=lambda i: i.sort_key()):
         lines.append(f"{item.identifier}  {item.title}")
         if held_by := carrying.get(item.identifier):
             lines.append(f"  IN FLIGHT on {held_by} - triaging it here as well collides at merge.")
         elif edited_on := editing.get(item.identifier):
-            lines.append(f"  Its file is already edited on {edited_on}.")
+            lines.extend(f"  Its file is already edited on {name}." for name in edited_on)
             lines.append(
                 "  A capture or another triage pass, not work in flight - but a second answer"
             )
