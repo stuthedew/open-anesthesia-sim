@@ -1471,6 +1471,9 @@ def _git(args: list[str], root: Path) -> str:
     could not read. Only stdout is returned, so none of stderr can reach a
     caller as output.
     """
+    # By the subcommand, not `args[0]`, which is `-c` for every read
+    # `vcs.changed_path_args` builds.
+    command = f"`git {vcs.subcommand_of(args)}`"
     try:
         result = subprocess.run(
             ["git", *args],
@@ -1482,11 +1485,15 @@ def _git(args: list[str], root: Path) -> str:
             check=False,
         )
     except (OSError, subprocess.SubprocessError) as error:
-        raise GitUnanswered(f"`git {args[0]}` could not run: {error}") from error
+        raise GitUnanswered(f"{command} could not run: {error}") from error
+    except UnicodeDecodeError as error:
+        # A path printed as written whose bytes are not text here: unread, so
+        # the audit stops rather than passing a path it cannot compare.
+        raise GitUnanswered(f"{command} printed a path this cannot read: {error}") from error
     if result.returncode != 0:
         said = next((line.strip() for line in result.stderr.splitlines() if line.strip()), "")
         raise GitUnanswered(
-            f"`git {args[0]}` exited {result.returncode}: {said or 'with nothing on stderr'}"
+            f"{command} exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
     return result.stdout
 
@@ -1522,20 +1529,35 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
     Raises `GitUnanswered` where either half cannot be read, a base that does
     not resolve among them. The empty tuple is a branch that changed nothing,
     so no value this could return would say "unread" (`PL-9RFP`).
+
+    **Both halves read `-z`, the one form in which git quotes no path**
+    (`PL-8HSX`). A quoted path starts with `"`, so `_within` matches it against
+    nothing protected. Git quotes a path outside ASCII while `core.quotePath` is
+    on, one holding a tab, newline, `"` or `\\` however that is set, and in
+    `status` one holding a space as well: measured on git 2.43.0, 2026-09-25, a
+    committed `src/anesthesia_sim/core/café.py` and an uncommitted
+    `src/anesthesia_sim/core/a b.py` each passed as "none touched".
+    `--untracked-files=all` because `status.showUntrackedFiles=no` in a user's
+    git config drops every untracked file from the porcelain, which passed a new
+    uncommitted core file the same way, and because otherwise an untracked
+    directory is one `dir/` entry rather than the files in it.
     """
     if commits:
-        committed = _git(vcs.changed_path_args("show", "--name-only", "--format=", *commits), root)
+        committed = _git(
+            vcs.changed_path_args("show", "-z", "--name-only", "--format=", *commits), root
+        )
     else:
-        committed = _git(vcs.changed_path_args("diff", "--name-only", f"{base}...HEAD"), root)
-    working = _git(["status", "--porcelain"], root)
-    paths = {line.strip() for line in committed.splitlines() if line.strip()}
-    for line in working.splitlines():
-        entry = line[3:].strip() if len(line) > 3 else ""
-        if " -> " in entry:  # a rename touches both names
-            before, _, after = entry.partition(" -> ")
-            paths.update({before.strip(), after.strip()})
-        elif entry:
-            paths.add(entry)
+        committed = _git(vcs.changed_path_args("diff", "-z", "--name-only", f"{base}...HEAD"), root)
+    working = _git(["status", "--porcelain", "-z", "--untracked-files=all"], root)
+    paths = {path for path in committed.split("\0") if path}
+    entries = iter(working.split("\0"))
+    for entry in entries:
+        # `XY path`: two status letters and a space. A rename or a copy is
+        # followed by the path it came from, as a field of its own.
+        paths.add(entry[3:])
+        if "R" in entry[:2] or "C" in entry[:2]:
+            paths.add(next(entries, ""))
+    paths.discard("")
     return tuple(sorted(paths))
 
 
