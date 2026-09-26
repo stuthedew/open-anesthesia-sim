@@ -84,9 +84,11 @@ see, which is the property `PL-WLWY` used to rule out reading 2.
 
 **What is left of this item is v0.6.0's half**: building the unconditional
 region in that per-window shape, with the main window's identity and the
-per-substance tier's single home, so that v0.7.0 adds a window rather than
-rebuilding the region. The second window's own application of the rule - the
-window lifetime, and the test that drives break-out - is `PL-Y04W`. The
+per-substance tier's single home, so that break-out, whenever it is built,
+adds a window rather than rebuilding the region. The second window's own
+application of the rule - the window lifetime, and the test that drives
+break-out - is that build's work; break-out has had no release since
+2026-09-26 (`PL-V1Y7`), and `PL-Y04W`, which carried it, was dropped. The
 whole-interface visibility predicate this item also carried was split out to
 `PL-904Y` on the same day, because it breaks at Area close and join rather than
 at break-out.

@@ -43,12 +43,16 @@ gains a window set later is a migration against files a learner has already
 saved their Workspaces into.
 
 **What break-out *does* - the operation, the window's lifetime, what happens to
-the source Area and to a closed window's contents - is `PL-Y04W`** and is
-v0.7.0's. Two of the questions this item listed are answered already and are
-recorded rather than re-derived: what a second window owes the display is
-`PL-W54S`'s tier split, and the lifetime constraint is that the main window
-refuses to close while any other is open, which `PL-Y04W` carries with the
-measured Qt trap behind it.
+the source Area and to a closed window's contents - is break-out's own
+build**, which has had no release since 2026-09-26 (`PL-V1Y7`): `ROADMAP.md`
+item 34 carries it as its unscheduled second half, and `PL-Y04W`, its build
+item, was dropped that day. Two of the questions this item listed are
+answered already and are recorded rather than re-derived: what a second
+window owes the display is `PL-W54S`'s tier split, and the lifetime
+constraint is that the main window refuses to close while any other is open,
+which `PL-Y04W`'s brief records with the measured Qt trap behind it. The
+window set this item puts in the root is kept all the same: it is what keeps
+break-out possible without a migration.
 
 *Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
 scope" item 1.

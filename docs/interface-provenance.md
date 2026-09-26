@@ -748,9 +748,10 @@ reader can never be wrong about what context a displayed value belongs to.
 stored as a **nested-splitter tree**. `PL-3J2P` carries that decision and the
 measurement behind it. The serialized form is a root holding **one or more
 windows**, each a tree of its own, from version 1 — decided 2026-09-16 when item
-34 was scoped across two releases, because break-out arrives in the second and a
-root that gains a window set later is a schema migration against files a learner
-has already saved their own workspaces into.
+34 was scoped across two releases with break-out in the second, because a root
+that gains a window set later is a schema migration against files a learner has
+already saved their own workspaces into. Break-out has had no release since
+2026-09-26 and the reason stands: it is still wanted, only not soon.
 
 ### Diverged, and each divergence has a specific cause
 

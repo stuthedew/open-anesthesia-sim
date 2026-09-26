@@ -3,11 +3,13 @@ id: PL-V1Y7
 title: ROADMAP.md schedules break-out into a second window as v0.7.0, the milestone right after v0.6.0, but the project owner wants it as an eventual to-do rather than soon
 priority: P2
 effort: M
-status: ready
+status: done
 classes: planning
 feature: interface-areas
 touches: ROADMAP.md, docs/MODEL.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/WORKING_NOTES.md, docs/items/PL-904Y-split-the-whole-interface-visibility-predicate.md, docs/items/PL-HJPY-pl-c842-s-layoutmodel-has-no-representation-for.md, docs/items/PL-L6QR-re-run-the-area-model-queue-audit-when-roadmap.md, docs/items/PL-M3X6-add-required-scope-entry-20-to-v0-6-0-every.md, docs/items/PL-W54S-decide-what-a-broken-out-top-level-window-owes.md, docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md, docs/items/PL-Y04W-build-break-out-an-area-taken-into-its-own-top.md
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1134
 payoff: The release after v0.6.0 becomes the schematic rather than a second-window release the owner wants only eventually, and Gate 3 no longer inherits break-out's L build item as debt to clear first.
 verify: ! grep -qF -- '— the second screen**' ROADMAP.md && ! grep -qF -- '**v0.9.0 —' ROADMAP.md && grep -qF '*Break-out unscheduled' ROADMAP.md && grep -q '^status: dropped' docs/items/PL-Y04W-build-break-out-an-area-taken-into-its-own-top.md
 ---
@@ -70,3 +72,34 @@ onto its list.
 **Done when.** `ROADMAP.md`'s timeline carries no break-out row and item 34
 records break-out as unscheduled; `bin/docket wave` reserves no version for it;
 no open item waits on a version for break-out.
+
+**Done 2026-09-26.** The five recommendations, as written, plus what working
+them turned up:
+
+- `ROADMAP.md`: the timeline's break-out row and Gate 5 are gone, the interface
+  pass is `v0.6.x` and sits after v0.6.0 as `v0.4.x` sits after v0.4.0, the
+  schematic is row 9 at v0.7.0, multi-substance row 11 at v0.8.0, and Beyond
+  row 12+. Item 34 carries a dated *Break-out unscheduled* paragraph citing
+  `PL-Y04W`'s Qt measurement; item 33 records why its placement argument
+  survives, since all four surfaces it named arrive in v0.6.0 (Required scope
+  entries 5, 14 and 16). v0.6.0's out-of-scope bullet now says why both
+  reservations stay although break-out is unscheduled, so a later session does
+  not read them as dead weight; its gate records `PL-Y04W`'s drop after the
+  deferral paragraph, which is left as the freeze wrote it, as v0.5.0's gate
+  does for `PL-NGF7`. Live pointers at a moving number in the shipped
+  sections name the release by what it is instead (`PL-YVM1`'s rule).
+- `docs/MODEL.md`, `docs/ARCHITECTURE.md`, `docs/interface-provenance.md` and
+  `docs/WORKING_NOTES.md`: each present-tense "v0.7.0 adds break-out" rewritten;
+  dated records keep their dates, and later moves get dated sentences of their
+  own, which is `PL-C7XV`'s fix, closed alongside.
+- Open briefs repaired in place: `PL-904Y`, `PL-HJPY`, `PL-W54S`, `PL-WZVZ`,
+  `PL-M3X6` (whose "two steps later" is one step now; its argument does not
+  rest on the distance). `PL-L6QR` waited on v0.8.0, the release after item
+  34's two, which is v0.7.0 now; its `blocked-by` says so.
+- `PL-Y04W` dropped with the reason above.
+
+Left as records: the version table's released rows and the v0.5.12 baseline
+("v0.6.0 through v0.9.0 being given to milestone sections" was true at each
+cut), v0.5.0's gate dispositions, closed briefs, `docs/releases/` and
+`docs/pr-bodies/`. `PL-5XG1`'s brief names v0.9.0, but another session holds
+it, so it was not edited here.

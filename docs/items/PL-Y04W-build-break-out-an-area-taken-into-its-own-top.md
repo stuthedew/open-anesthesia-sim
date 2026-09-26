@@ -1,14 +1,16 @@
 ---
 id: PL-Y04W
 title: Build break-out: an Area taken into its own top-level window, the window lifetime that keeps the main window unclosable while break-outs exist, and the test that every window the application can be left showing carries the invariant display tier
-status: blocked
-feature: interface-areas
-added: 2026-09-16
-priority: P2
+priority: P1
 effort: L
-blocked-by: v0.7.0
+status: dropped
 classes: safety, anticipated, feature
+feature: interface-areas
 touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, docs/MODEL.md, tests/integration
+blocked-by: v0.7.0
+added: 2026-09-16
+closed: 2026-09-26
+reason: Break-out came off the timeline on 2026-09-26 (project owner: wanted eventually, not soon; PL-V1Y7), so no release builds it, and blocked-by: v0.7.0 would have released it once the schematic, v0.7.0 since that day, was scoped. An eventual feature is intent in ROADMAP.md planned-milestone item 34, which cites this brief for its Qt transient-parent measurement; the rule it would enforce stays in docs/MODEL.md § Minimum displayed outputs, and its hazard is not live, since nothing creates a second top-level window. Priority moves to P1 on the drop because the P2 band only waits while an anticipated safety item is blocked, as with PL-TBMX.
 ---
 
 **Problem.** Build break-out: an Area taken into its own top-level window, the window lifetime that keeps the main window unclosable while break-outs exist, and the test that every window the application can be left showing carries the invariant display tier
