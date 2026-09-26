@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docke
 deferred-from: v0.6.0 - filed 2026-09-25 by PL-P0FP's stress test, after the freeze, and not safety or science; a defect in the claim record's ordering, which merged after the freeze
 added: 2026-09-25
 closed: 2026-09-25
+pr: 1028
 payoff: a session told by claim's exit 0 that it holds an item keeps it: a claim written earlier but published later through claim yields instead of displacing it
 verify: grep -q 'def test_a_claim_confirmed_first_is_not_displaced_by_one_published_later_through_push' subprojects/docket/tests/test_claiming.py && grep -q 'def test_a_retry_withdraws_a_claim_a_rival_published_over_while_it_was_unpublished' subprojects/docket/tests/test_claiming.py
 ---

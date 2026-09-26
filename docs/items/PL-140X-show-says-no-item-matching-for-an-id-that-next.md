@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-snapshot batch
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1037
 payoff: a session asking about an item another session holds is told which branch has it and how to read it, instead of 'no item matching'
 verify: grep -q 'def test_show_names_the_branch_holding_an_item_absent_here' subprojects/docket/tests/test_cli.py
 ---

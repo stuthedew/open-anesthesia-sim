@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 closed: 2026-09-25
+pr: 1031
 payoff: the review hold fires only where a read matters, on simulator code, so the owner's read is spent where a wrong clinical value could land
 verify: grep -q 'def test_arm_arms_a_docket_only_pull_request_on_green' subprojects/docket/tests/test_cli.py
 recurrences: 2026-09-25 PL-WW0Q

@@ -9,6 +9,7 @@ feature: projects-trial
 touches: .claude/rules/instruction-writing.md, .claude/skills/docket/modes/start.md, docs/resident-instructions.md
 added: 2026-09-25
 closed: 2026-09-25
+pr: 1021
 payoff: a session checking for other sessions' work knows a Projects thread never appears in list_sessions and where the trial records what its threads will take, so it does not triage or start work a thread holds
 verify: grep -qF 'hearth-thread' .claude/rules/instruction-writing.md
 ---

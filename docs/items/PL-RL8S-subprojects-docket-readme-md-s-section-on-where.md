@@ -9,6 +9,7 @@ feature: count-input-addressing
 touches: subprojects/docket/README.md
 added: 2026-09-22
 closed: 2026-09-26
+pr: 1038
 payoff: a reader pointing --items elsewhere can learn from the README where a git read takes the store from, not only where the settings come from
 verify: grep -qF 'PL-T441' subprojects/docket/README.md
 ---
