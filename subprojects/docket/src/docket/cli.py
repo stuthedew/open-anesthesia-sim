@@ -977,18 +977,20 @@ def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight 
 
     A branch holding the release train with nothing cut yet is added beside the
     cuts (`_with_train`), so a session that has filed and claimed its release
-    item stops the offer once its claim is pushed, not only once it cuts.
+    item stops the offer once its claim is pushed, not only once it cuts. Who
+    holds it is read from `_holdings`, the walk the digest's in-flight read has
+    already paid for (`PL-1WV7`); a store git addresses as the empty prefix is
+    asked nothing and gets the cuts alone, since `_holdings` would pass that
+    prefix straight through.
     """
     run = _invocation(args).git
     if run is None:
         return None
     base = released_on_base(root, version_file=config.version_file, notes_dir=NOTES_DIR, runner=run)
     cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=run)
-    tracked = _invocation(args).tracked
-    if not tracked:
+    if not _invocation(args).tracked:
         return cuts
-    read = holdings(root, now=_now(args), items_dir=tracked, runner=run)
-    return _with_train(cuts, _release_train(read, root, run))
+    return _with_train(cuts, _release_train(_holdings(args), root, run))
 
 
 def cmd_triage(args: argparse.Namespace) -> int:
@@ -3136,8 +3138,12 @@ def cmd_release(args: argparse.Namespace) -> int:
             # what makes refusing the right side to err on.
             cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=git)
             tracked = _invocation(args).tracked
+            # The invocation's shared read, first asked here - after the fetch
+            # above, so it is not a view older than the refs just fetched
+            # (`PL-1WV7`). `_holdings` passes an empty prefix straight through,
+            # so the decline for a store git cannot address stays this site's.
             read = (
-                holdings(root, now=_now(args), items_dir=tracked, runner=git)
+                _holdings(args)
                 if tracked
                 else Holdings(declined="the store is not below the repository root")
             )
