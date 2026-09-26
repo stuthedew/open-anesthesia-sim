@@ -47,6 +47,15 @@ PRUNING = (
     "GIT_TRACE=1 git fetch --prune",
     # A line continued with a backslash is one command.
     "git fetch origin \\\n  --prune",
+    # A command in a subshell or a substitution runs, quoted or not (`PL-WGFY`).
+    "(git fetch --prune)",
+    "echo $(git fetch --prune)",
+    'echo "$(git remote prune origin)"',
+    'echo "$(echo a; git fetch --prune)"',
+    "diff <(git fetch --prune) x",
+    # A group and a negation open the command after them, as in the other guards.
+    "{ git fetch --prune; }",
+    "! git fetch --prune",
 )
 
 
@@ -111,6 +120,37 @@ def test_only_a_heredoc_body_is_removed() -> None:
     ):
         assert _decision(heredoc + "git fetch origin") is None
         assert _decision(heredoc + "git fetch --prune") is not None
+
+
+def test_a_quoted_separator_starts_no_command() -> None:
+    """A `;` or a flag inside quoted text is that text, and starts nothing (`PL-WGFY`).
+
+    The hook found a command position with a regex of its own over text that
+    kept quoted content as written, so a `;` inside quotes read as a separator
+    and a commit message read as a command's flags. The first case is the shape
+    of the call that filed the item: a loop over command strings, one of them a
+    prune, none of them run.
+    """
+    for quoted in (
+        "for c in 'git fetch origin; git fetch --prune' 'x'; do echo \"$c\"; done",
+        "echo 'a; git fetch --prune'",
+        'echo "a; git fetch --prune"',
+        "git commit -m 'never fetch with --prune'",
+        'git commit -m "a; git remote prune origin"',
+    ):
+        assert _decision(quoted) is None, f"{quoted!r} was denied"
+    assert _decision("echo a; git fetch --prune") is not None
+
+
+def test_a_prune_before_a_line_bash_cannot_read_is_refused() -> None:
+    """Bash runs every line before a syntax error, so the hook reads them.
+
+    The gate and floor guards fail open on a command bash would refuse. This
+    one cannot: the prune on the first line runs before bash reaches the
+    unclosed quote or the `<<` with no word on the second.
+    """
+    assert _decision('git fetch --prune\necho "unclosed') is not None
+    assert _decision("git remote prune origin\ncat <<") is not None
 
 
 def test_another_tool_is_not_this_hook_s_business() -> None:

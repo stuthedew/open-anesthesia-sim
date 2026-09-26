@@ -41,19 +41,32 @@ unquoted. So the rules are bash's own, from the Bash Reference Manual (§2
 - `$` and the backtick are word characters, and `$(` yields `$` and `(`, so a
   substitution's parentheses reach a walker counting subshells as they did.
 
+**Where a command's words start is answered here too**, by `command_words`,
+so no guard can disagree with another about which word is the command. And
+`commands` finds every command a string runs, those inside `( )` and `$( )`
+included, for a guard that must see one wherever bash would run it.
+`no-prune-guard.sh` read that with a regex of its own, which took a `;` inside
+quotes for a separator (`PL-WGFY`).
+
 **What it does not read**, none of which a guard here has needed: arithmetic
 (`$(( ))` and `(( ))`, where a `<<` shift reads as a heredoc here), the `&&`,
 `||`, `<` and `>` inside `[[ ]]`, which read as a separator or a redirection,
-the `)` that ends a `case` pattern, and a backtick's contents, which split at
-spaces as `shlex` split them.
+the `)` that ends a `case` pattern, a backtick's contents, which split at
+spaces as `shlex` split them, and a reserved word such as `do`, `then` or
+`time` in front of a command, which `command_words` reads as its name
+(`PL-0X0G`).
 
 A command bash would refuse - an unclosed quote or substitution, a `<<` with no
-word after it - is unreadable, and every hook fails open on that, as it always
-has. Standard library only, and it parses at the floor
+word after it - is unreadable. `words` and `segments` answer None for it, and
+the gate and floor guards fail open on that, as they always have. `commands`
+still reads it as far as it can, because bash runs every line before the one it
+cannot finish. Standard library only, and it parses at the floor
 `tests/unit/test_tools_portability.py` holds `.claude/hooks/` to.
 """
 
 from __future__ import annotations
+
+import re
 
 
 class Operator(str):
@@ -91,6 +104,12 @@ LINEBREAK_AFTER = frozenset(SEPARATORS) | {"("}
 # What a backslash escapes inside double quotes; before anything else it is kept.
 ESCAPED_IN_DOUBLE_QUOTES = frozenset('$`"\\\n')
 
+# A subshell's `(`, a group's `{` and a negation's `!` open the command after them.
+GROUPING = frozenset(("(", "{", "!"))
+
+# A leading `NAME=value` sets the command's environment, and is not its name.
+ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
+
 
 def words(command: str) -> list[str] | None:
     """The tokens bash reads in `command`, or None where bash would refuse it.
@@ -116,10 +135,61 @@ def segments(command: str) -> list[tuple[list[str], str | None]] | None:
     command, as `make check &` backgrounds the gate. None where `words` is.
     """
     tokens = words(command)
-    if tokens is None:
-        return None
+    return None if tokens is None else _cut(tokens)
+
+
+def command_words(segment: list[str]) -> list[str]:
+    """`segment` from its command word on, with its grouping and assignments dropped.
+
+    Every guard reads the head of a command through this, so none can disagree
+    with another about which word is the command - as two readers inside one
+    hook once did, and a `set` opening a group went unseen (`PL-1SFZ`).
+    """
+    rest = list(segment)
+    while rest and rest[0] in GROUPING:
+        rest.pop(0)
+    while rest and ASSIGNMENT.match(rest[0]):
+        rest.pop(0)
+    return rest
+
+
+def commands(command: str) -> list[list[str]]:
+    """Every command in `command` that bash would run, each read through `command_words`.
+
+    A segment ends only at a separator; a command also starts after each `(`
+    or `)` read as an operator, so a subshell, a `$( )`, a `<( )` and the
+    command after a `case` pattern each yield their own. The commands in a
+    `$( )` inside double quotes are read too: their text stays in the quoted
+    word, and they run all the same.
+
+    Never None, unlike `words` and `segments`. Where bash would refuse the
+    command, it has still run every line before the one it could not finish,
+    so what could be read before that point is returned rather than nothing.
+    """
+    reader = _Reader(command, [], 0, nested=False)
+    try:
+        reader.read()
+    except _Unreadable:
+        pass
+    found: list[list[str]] = []
+    for tokens in (reader.tokens, *reader.substituted):
+        for segment, _ in _cut(tokens):
+            piece: list[str] = []
+            for token in [*segment, Operator(")")]:
+                if isinstance(token, Operator) and token in ("(", ")"):
+                    head = command_words(piece)
+                    if head:
+                        found.append(head)
+                    piece = []
+                else:
+                    piece.append(token)
+    return found
+
+
+def _cut(tokens: list[str]) -> list[tuple[list[str], str | None]]:
+    """`tokens` cut at each separator, as `segments` describes."""
     if tokens and isinstance(tokens[-1], Operator) and SEPARATORS.get(tokens[-1]) == ";":
-        tokens.pop()
+        tokens = tokens[:-1]
     cut: list[tuple[list[str], str | None]] = []
     current: list[str] = []
     for token in tokens:
@@ -132,28 +202,8 @@ def segments(command: str) -> list[tuple[list[str], str | None]] | None:
     return cut
 
 
-def command_text(command: str) -> str:
-    """`command` as written, less its continuations, comments and heredoc bodies.
-
-    For a guard that reads the text with its own patterns rather than the
-    tokens. It is never None: where bash would refuse the command, the part
-    that could be read is cleaned and the rest kept raw, so a guard reading
-    this never sees less than the whole command.
-    """
-    removed: list[tuple[int, int]] = []
-    try:
-        _Reader(command, removed, 0, nested=False).read()
-    except _Unreadable as stop:
-        return _kept(command, removed, 0, stop.position) + command[stop.position :]
-    return _kept(command, removed, 0, len(command))
-
-
 class _Unreadable(Exception):
-    """A command bash would refuse, and where the construct it could not finish starts."""
-
-    def __init__(self, position: int) -> None:
-        super().__init__(position)
-        self.position = position
+    """A command bash would refuse."""
 
 
 def _kept(text: str, removed: list[tuple[int, int]], start: int, end: int) -> str:
@@ -213,9 +263,12 @@ class _Reader:
         # The heredocs whose bodies start at the next unquoted newline: each
         # delimiter, and whether `<<-` strips its lines' leading tabs.
         self.pending: list[tuple[str, bool]] = []
-        # A `<<` or `<<-` still waiting for its delimiter: where it stands, and
-        # whether it strips tabs.
-        self.introducer: tuple[int, bool] | None = None
+        # Whether a `<<` still waiting for its delimiter is a `<<-`, which
+        # strips tabs; None where no `<<` is waiting.
+        self.introducer: bool | None = None
+        # The tokens of each `$( )` read inside double quotes, whose commands
+        # run although their text stays in the quoted word.
+        self.substituted: list[list[str]] = []
 
     def read(self) -> int:
         """Read to the end, or past the `)` that closes a nested list; return where it stopped."""
@@ -258,10 +311,8 @@ class _Reader:
                 self.in_word = True
                 self.at += 1
         self._end_word()
-        if self.introducer is not None:
-            raise _Unreadable(self.introducer[0])
-        if self.nested:
-            raise _Unreadable(self.at)
+        if self.introducer is not None or self.nested:
+            raise _Unreadable
         return self.at
 
     def _remove(self, start: int, end: int) -> None:
@@ -275,15 +326,15 @@ class _Reader:
         self.word.clear()
         self.in_word = False
         if self.introducer is not None:
-            self.pending.append((word, self.introducer[1]))
+            self.pending.append((word, self.introducer))
             self.introducer = None
 
     def _operator(self) -> str:
         if self.introducer is not None:
-            raise _Unreadable(self.introducer[0])
+            raise _Unreadable
         operator = _operator_at(self.text, self.at)
         if operator in ("<<", "<<-"):
-            self.introducer = (self.at, operator == "<<-")
+            self.introducer = operator == "<<-"
         elif operator == "(" and self.nested:
             self.depth += 1
         self.tokens.append(Operator(operator))
@@ -292,7 +343,7 @@ class _Reader:
 
     def _newline(self) -> None:
         if self.introducer is not None:
-            raise _Unreadable(self.introducer[0])
+            raise _Unreadable
         last = self.tokens[-1] if self.tokens else None
         if last is not None and not (isinstance(last, Operator) and last in LINEBREAK_AFTER):
             self.tokens.append(Operator(";"))
@@ -319,7 +370,7 @@ class _Reader:
     def _single_quoted(self) -> None:
         close = self.text.find("'", self.at + 1)
         if close < 0:
-            raise _Unreadable(self.at)
+            raise _Unreadable
         self.word.append(self.text[self.at + 1 : close])
         self.in_word = True
         self.at = close + 1
@@ -330,7 +381,7 @@ class _Reader:
         while at < len(text) and text[at] != "'":
             at += 2 if text[at] == "\\" else 1
         if at >= len(text):
-            raise _Unreadable(self.at)
+            raise _Unreadable
         # Its escapes are kept as written: no guard reads what they decode to.
         self.word.append(text[self.at + 2 : at])
         self.in_word = True
@@ -338,8 +389,7 @@ class _Reader:
 
     def _double_quoted(self) -> None:
         text = self.text
-        opening = self.at
-        at = opening + 1
+        at = self.at + 1
         while at < len(text):
             character = text[at]
             following = text[at + 1 : at + 2]
@@ -354,19 +404,18 @@ class _Reader:
                     self.word.append(following)
                 at += 2
             elif character == "$" and following == "(":
-                try:
-                    end = _Reader(text, self.removed, at + 2, nested=True).read()
-                except _Unreadable:
-                    raise _Unreadable(opening) from None
+                inner = _Reader(text, self.removed, at + 2, nested=True)
+                end = inner.read()
+                self.substituted += [inner.tokens, *inner.substituted]
                 self.word.append(_kept(text, self.removed, at, end))
                 at = end
             elif character == "`":
                 close = _backquote_end(text, at)
                 if close < 0:
-                    raise _Unreadable(opening)
+                    raise _Unreadable
                 self.word.append(text[at : close + 1])
                 at = close + 1
             else:
                 self.word.append(character)
                 at += 1
-        raise _Unreadable(opening)
+        raise _Unreadable

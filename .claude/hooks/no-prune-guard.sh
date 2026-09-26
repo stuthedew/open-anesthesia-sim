@@ -18,10 +18,11 @@
 # commands rather than a prune. Answering the question the caller actually had
 # is what makes a refusal cheaper than the prose was.
 #
-# Fails open in every error path - no python3, an unreadable payload, a
-# malformed command, `shell_split.py` missing from beside it - because a guard
-# that breaks the session costs more than the ref it protects.
-# `docs/resident-instructions.md` records the trade.
+# Fails open in every error path - no python3, an unreadable payload,
+# `shell_split.py` missing from beside it - because a guard that breaks the
+# session costs more than the ref it protects. `docs/resident-instructions.md`
+# records the trade. A command bash would refuse is not one of them: bash runs
+# every line before the one it cannot finish, so the lines before it are read.
 set -uo pipefail
 
 payload=$(cat)
@@ -44,29 +45,49 @@ command = data.get("tool_input", {}).get("command")
 if not isinstance(command, str):
     sys.exit(0)
 
-# A heredoc body is document content, and this repository writes prose *about*
-# pruning through heredocs routinely - CLAUDE.md, this hook, the ledger.
-# Blocking a session from writing the word would be the guard eating its own
-# documentation. So the patterns below read the command as `shell_split.py`
-# leaves it, which the three Bash guards share (`PL-PVW2`): every heredoc body,
-# comment and line continuation removed, and everything else as written, so a
-# prune after a heredoc terminator is read like any other line (`PL-39LD`).
-command = shell_split.command_text(command)
-
-# Four shapes delete remote-tracking refs, and nothing else in git does it as a
-# side effect. Each is anchored at a command position - the start of the string
-# or just after a shell separator - so the flag quoted inside an argument reads
-# as the text it is. Matched on the command text because that is what the hook
-# is handed; a shell that builds the flag from a variable is out of reach, and
-# is not how any session has ever written it.
-HEAD = r"(?:^|[;&|\n(])\s*(?:[A-Za-z_]\w*=\S*\s+)*"
-PRUNING = (
-    re.compile(HEAD + r"git\b[^|;&]*\bfetch\b[^|;&]*(?:--prune-tags\b|--prune\b|(?<![-\w])-p(?![\w]))"),
-    re.compile(HEAD + r"git\b[^|;&]*\bremote\b[^|;&]*\bprune\b"),
-    re.compile(HEAD + r"git\b[^|;&]*\bremote\b[^|;&]*\bupdate\b[^|;&]*--prune\b"),
-    re.compile(HEAD + r"git\b[^|;&]*\bconfig\b[^|;&]*\b(?:remote\.\S+\.prune|fetch\.prune)\b"),
+# Where each command starts is the answer `shell_split.py` gives, which the
+# three Bash guards share (`PL-PVW2`), and this guard reads every command it
+# finds: those in a subshell or a `$( )` too, quoted or not, since each runs. A
+# quoted argument stays one word, so a `;` or a flag inside it is the text it
+# is, where the regex this file used took a `;` inside quotes for a separator
+# (`PL-WGFY`). Heredoc bodies and comments are gone, which is what lets this
+# repository write prose *about* pruning - `CLAUDE.md`, this hook, the ledger -
+# without the guard eating its own documentation; a prune after the terminator
+# of a heredoc is read like any other line (`PL-39LD`).
+#
+# Four shapes delete remote-tracking refs, each a `git` command whose words
+# include these in this order. Matched on the words because that is what the
+# hook is handed; a shell that builds the flag from a variable is out of reach,
+# and so is a command handed to another shell as a string (`bash -c "..."`),
+# and neither is how any session has ever written it.
+PRUNE_FLAGS = ("--prune", "--prune-tags", "-p")
+PRUNE_SETTING = re.compile(r"\b(?:remote\.\S+\.prune|fetch\.prune)\b")
+SHAPES = (
+    ("fetch", PRUNE_FLAGS.__contains__),
+    ("remote", "prune"),
+    ("remote", "update", "--prune"),
+    ("config", PRUNE_SETTING.search),
 )
-if not any(pattern.search(command) for pattern in PRUNING):
+
+
+def in_order(words, steps):
+    """Whether `words` holds a word for each step, in order: one equal to it, or passing it."""
+    at = 0
+    for step in steps:
+        passes = step if callable(step) else step.__eq__
+        while at < len(words) and not passes(words[at]):
+            at += 1
+        if at == len(words):
+            return False
+        at += 1
+    return True
+
+
+if not any(
+    words[0] == "git" and in_order(words[1:], shape)
+    for words in shell_split.commands(command)
+    for shape in SHAPES
+):
     sys.exit(0)
 
 reason = (
