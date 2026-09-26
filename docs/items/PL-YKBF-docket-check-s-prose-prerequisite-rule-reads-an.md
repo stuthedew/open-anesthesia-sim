@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1055
 payoff: a brief saying it is not held up by an item stops drawing advice to block it on that item
 verify: grep -q 'def test_a_negated_blocked_by_is_not_read_as_a_prerequisite' subprojects/docket/tests/test_checks.py
 ---
