@@ -8,7 +8,7 @@ classes: housekeeping
 touches: docs/items
 added: 2026-09-26
 closed: 2026-09-26
-reason: The project owner judged it not worth a pull request (2026-09-26): deleting remote branches changes nothing in the repository, so the item only ever recorded itself. #1092 was closed unmerged. The rule change this prompted is PL-P99G's successor in the same branch.
+reason: The project owner judged it not worth a pull request (2026-09-26): deleting remote branches changes nothing in the repository, so the item only ever recorded itself. #1092 was closed unmerged. PL-S8LZ carries the rule change this prompted.
 payoff: the remote lists main and live work only, so git branch -r, flight and stranded stop re-reading thirteen branches whose work main already holds
 not-delegable: the proof is the remote's branch list, which no file in the tree holds, so no admitted grep shape can read it: git ls-remote --heads origin with the thirteen names must print nothing, read from its output and never its exit status, which is 0 either way (PL-X9WZ)
 ---
