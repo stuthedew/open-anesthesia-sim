@@ -8,7 +8,6 @@ in a way git accepts is proved against a real checkout in `test_cli.py`.
 from __future__ import annotations
 
 import hashlib
-import os
 import subprocess
 from collections.abc import Mapping
 from datetime import UTC, date, datetime, timedelta, timezone
@@ -3896,11 +3895,12 @@ def test_a_path_that_is_not_utf8_reads_as_unanswered_rather_than_raising(tmp_pat
     """
     repo = _Repo(tmp_path / "repo")
     repo.commit("seed", seed_txt="seed\n")
-    try:
-        (repo.root / os.fsdecode(b"caf\xe9.py")).write_text("x\n")
-    except OSError:
-        pytest.skip("this filesystem refuses a name that is not UTF-8")
-    repo.git("add", "-A")
+    blob = repo.git("hash-object", "-w", "seed.txt").encode()
+    # Through the index alone, so no filesystem is asked to hold the name.
+    cacheinfo = b"100644," + blob + b",caf\xe9.py"
+    subprocess.run(
+        [b"git", b"update-index", b"--add", b"--cacheinfo", cacheinfo], cwd=repo.root, check=True
+    )
     repo.git("commit", "-qm", "add a Latin-1 name")
 
     listing = _run_git(changed_path_args("diff", "--name-only", "HEAD~1", "HEAD"), repo.root)

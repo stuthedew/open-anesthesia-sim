@@ -13,7 +13,6 @@ mocked, because what is being tested is largely what git reports.
 from __future__ import annotations
 
 import ast
-import os
 import subprocess
 import sys
 from datetime import date
@@ -335,13 +334,18 @@ def test_a_protected_path_that_is_not_utf8_stops_the_audit(tmp_path: Path) -> No
     that stops the audit, which never passes.
     """
     root = _repo(tmp_path)
-    core = root / "src" / "anesthesia_sim" / "core"
-    core.mkdir(parents=True)
-    try:
-        (core / os.fsdecode(b"caf\xe9.py")).write_text("VALUE = 2\n")
-    except OSError:
-        pytest.skip("this filesystem refuses a name that is not UTF-8")
-    _git(root, "add", "-A")
+    blob = subprocess.run(
+        ["git", "hash-object", "-w", "src/core.py"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    # Through the index alone, so no filesystem is asked to hold the name.
+    cacheinfo = f"100644,{blob},".encode() + b"src/anesthesia_sim/core/caf\xe9.py"
+    subprocess.run(
+        [b"git", b"update-index", b"--add", b"--cacheinfo", cacheinfo], cwd=root, check=True
+    )
     _git(root, "commit", "-qm", "PL-K7QX add a core module")
 
     report = verify(root, _item(), _config(protected_paths=("src/anesthesia_sim/core",)), "HEAD~1")
