@@ -15,7 +15,7 @@ every later push while a pull request is open.
 
 - `arm` (0): the net change a squash would land - `base...HEAD` - lies under
   the store, the queue's own tooling, `subprojects/docket/`, or the pull
-  requests' body records, `docs/pr-bodies/`, and leaves this module alone,
+  requests' recovered bodies, `docs/pr-bodies/`, and leaves this module alone,
   which `arms_on_green` answers path by path; no
   claim bound to this branch is unreleased; and the branch contains the base's
   tip.
@@ -104,10 +104,10 @@ SHOWN = 5
 #: this repository's layout.
 TOOLING = "subprojects/docket/"
 
-#: The pull requests' body records, which arm on green beside the store and the
-#: tooling: `tools/pr_body_check.py --record` writes one on each pull request's
-#: branch before its merge, and a copy of a body is never a change to read
-#: (`PL-979D`). `verify` sanctions the same write as `record`. The path is this
+#: The pull requests' body files, which arm on green beside the store and the
+#: tooling: `tools/pr_body_check.py --recover` writes one for a squash commit
+#: that landed with no body, and a copy of a body is never a change to read
+#: (`PL-3PH2`). `verify` sanctions the same write as `record`. The path is this
 #: repository's layout, as `TOOLING`'s is.
 RECORDS = "docs/pr-bodies/"
 

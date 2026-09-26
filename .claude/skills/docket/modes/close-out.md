@@ -59,12 +59,6 @@ page and decides which file a session reads.
    it in the one error it still raises about `pr`: a landed closure recording
    none.
 
-   **Record the body too, with `python3 tools/pr_body_check.py --record`,
-   once the pull request is open**, committing the file it writes with the
-   `bin/docket record N` write where there is one, and again after any later
-   edit to the body: `pr-title` holds the merge until the head's
-   `docs/pr-bodies/<N>.md` holds the body GitHub has (`PL-979D`).
-
    **Act on what `bin/docket set --status done` prints about the items you
    just unblocked.** It
    names the items whose last recorded blocker this closure clears - the
