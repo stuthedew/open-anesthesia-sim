@@ -49,7 +49,15 @@ from .model import (
 )
 from .notes import Thread
 from .plan import OfferedReport, promotable
-from .release import NOTES_DIR, SEMVER_RE, notes_name, reference, unrecorded_milestones, version_key
+from .release import (
+    CODE_SPAN_RE,
+    NOTES_DIR,
+    SEMVER_RE,
+    notes_name,
+    reference,
+    unrecorded_milestones,
+    version_key,
+)
 from .roadmap import MilestoneStates
 from .store import ID_PATTERN, ID_RE, filename_for
 from .vcs import (
@@ -127,6 +135,50 @@ STATUS_REQUIREMENTS: tuple[tuple[str, str], ...] = (
 # paragraph does.
 BRIEF_HEADING = re.compile(r"^\*\*", re.MULTILINE)
 
+# A fenced block's opening and closing lines, by CommonMark's rules: three or
+# more backticks or tildes, closed by a bare run of the same character at least
+# as long. A backtick opener's info string holds no backtick, which is what keeps
+# a triple-backtick code span wrapped to a line's start - `PL-6SRZ`'s brief has
+# one - from opening a block. Any indentation, as a fence under a list item is
+# indented to sit inside it.
+FENCE_OPEN_RE = re.compile(r"^[ \t]*(?P<fence>`{3,}(?=[^`]*$)|~{3,})")
+FENCE_CLOSE_RE = re.compile(r"^[ \t]*(?P<fence>`{3,}|~{3,})[ \t]*$")
+
+
+def _blank(line: str) -> str:
+    """`line` as spaces, its line break kept, so every offset past it still holds."""
+    text = line.rstrip("\r\n")
+    return " " * len(text) + line[len(text) :]
+
+
+def _without_fences(body: str) -> str:
+    """`body` with every closed fenced block blanked, offsets and line breaks kept.
+
+    A fence holds a literal: a brief quoting the capture template shows its
+    headings there, and read as headings they became the brief's own, so the
+    real sections below them were never judged (`PL-NQ3X`). Only a block that
+    closes is blanked. One left open is read as written rather than hiding
+    every section after it, which would report a brief the writer can see is
+    whole as missing them.
+    """
+    out: list[str] = []
+    held: list[str] = []
+    fence = ""
+    for line in body.splitlines(keepends=True):
+        text = line.rstrip("\r\n")
+        if fence:
+            held.append(line)
+            closing = FENCE_CLOSE_RE.match(text)
+            if closing and closing["fence"].startswith(fence):
+                out.extend(_blank(fenced) for fenced in held)
+                held, fence = [], ""
+        elif opening := FENCE_OPEN_RE.match(text):
+            fence, held = opening["fence"], [line]
+        else:
+            out.append(line)
+    return "".join(out + held)
+
+
 # An item file's whole name, as `store.filename_for` writes one: the id, then a
 # slug, then the suffix. This is what tells a `touches` entry that names *an
 # item* from one that names the store directory itself - 48 of this store's 95
@@ -188,13 +240,20 @@ def _marks_recommendation(body: str) -> bool:
     reach, because `**No recommendation**, because the deciding number cannot
     be measured` marks the declination in the same breath as the word.
 
+    The label is capitalised, as a label is written, and read outside code
+    spans, which are literals. In lower case it is prose about a
+    recommendation rather than one, and a brief saying it "lacks a
+    recommendation:" was read as marking one (`PL-FKH6`); in a code span it is
+    a brief quoting the marker it has not written. Both measured 2026-09-26:
+    no `needs-decision` item's reading changed.
+
     Matched on the brief with its wrapping flattened. A marker falling across
     a line break is the same marker to a reader and a different string to a
     regex, and four of the eight briefs carrying one in this store wrap
     somewhere inside it.
     """
-    flat = " ".join(body.split())
-    if re.search(r"recommendation:", flat, re.IGNORECASE):
+    flat = CODE_SPAN_RE.sub(" ", " ".join(body.split()))
+    if "Recommendation:" in flat:
         return True
     return any(re.search(r"recommend", span, re.IGNORECASE) for span in _emphasised(flat))
 
@@ -216,20 +275,34 @@ def _section_text(body: str, marker: str) -> str | None:
     brief - would pass a rule that accepted any occurrence with text, which is
     the hole rather than the fix.
 
+    A fenced block is a literal and is read past, headings and all: the text is
+    still sliced from `body`, so a fence under a heading counts as text under it.
+
     Deciding whether a section has content, never whether the content is any
     good: `CLAUDE.md`'s line between what a tool may decide and what it may not.
     """
-    heading = re.search(rf"^{re.escape(marker.removesuffix('.**'))}", body, re.MULTILINE)
+    scan = _without_fences(body)
+    heading = _heading(scan, marker)
     if heading is None:
         return None
     # Past the heading's own closing `**`, so that an elaborated heading is not
     # mistaken for the text under itself. A heading that never closes has
     # nothing under it by this reading, which is the answer that heading
     # deserves.
-    close = body.find("**", heading.end())
+    close = scan.find("**", heading.end())
     start = len(body) if close == -1 else close + 2
-    end = BRIEF_HEADING.search(body, start)
+    end = BRIEF_HEADING.search(scan, start)
     return body[start : end.start() if end else len(body)].strip()
+
+
+def _heading(scan: str, marker: str, start: int = 0) -> re.Match[str] | None:
+    """The first line of `scan` at or past `start` that opens with `marker`'s words.
+
+    `scan` is a body with its fences blanked, so the one reading of where a
+    heading stands serves `_section_text` and `_stub_above_brief` alike.
+    """
+    words = re.compile(rf"^{re.escape(marker.removesuffix('.**'))}", re.MULTILINE)
+    return words.search(scan, start)
 
 
 def _stub_above_brief(body: str) -> str | None:
@@ -255,11 +328,12 @@ def _stub_above_brief(body: str) -> str | None:
     less can never trigger it. Only writing a brief and leaving the template
     above it can.
     """
+    scan = _without_fences(body)
     for marker in (*REQUIRED_BRIEF, DONE_WHEN):
-        heading = re.search(rf"^{re.escape(marker.removesuffix('.**'))}", body, re.MULTILINE)
+        heading = _heading(scan, marker)
         if heading is None or _section_text(body, marker) != "":
             continue
-        if re.search(r"^\*\*Problem", body[heading.end() :], re.MULTILINE):
+        if _heading(scan, REQUIRED_BRIEF[0], heading.end()):
             return marker
     return None
 
