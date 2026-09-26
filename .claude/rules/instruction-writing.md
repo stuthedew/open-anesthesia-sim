@@ -124,10 +124,12 @@ apply to every reply of any kind. Never mention these rules, "phases," or
       way, and was caught only because a second session happened to raise the
       same thing (`PL-H1JD`). So a line that could reasonably outlive this
       sitting is `bin/docket new "..."` as well, and the block then points at
-      the item. That is `CLAUDE.md`'s capture rule reaching the closing block,
-      not a new obligation of its own. A line the reader acts on in this
-      sitting — a decision this reply waits on, a tag to run now — needs
-      nothing. Where the line asks them to decide something **an item
+      the item, though a list of remote branches to delete stays in the reply,
+      per `CLAUDE.md`'s housekeeping bullet. That is `CLAUDE.md`'s capture rule
+      reaching the closing block, not a new obligation of its own. A line the
+      reader acts on in this sitting — a decision this reply waits on, a tag to
+      run now — needs nothing. Where the line asks them to decide something
+      **an item
       already holds**, that item is the instrument and `bin/docket new` is
       not: write your recommendation into its brief beside the question, and
       mark it, before the block points at it. A reply is the one carrier
