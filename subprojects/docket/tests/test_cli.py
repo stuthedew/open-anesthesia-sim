@@ -26,7 +26,7 @@ from typing import Any
 
 import pytest
 
-from docket import claims, cli, vcs
+from docket import arming, claims, cli, vcs
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.claims import CUTOVER_MARKER, SESSION_VARIABLE, Holdings
 from docket.cli import build_parser, main, merge_shared
@@ -8159,7 +8159,7 @@ def test_arm_holds_a_lapsed_claim_and_says_how_to_end_it(
 def test_arm_holds_a_branch_changing_paths_outside_the_store_and_names_them(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Work outside the store merges on review, and a move into the store is still a deletion.
+    """Work outside the store waits on a read, and a move into the store is still a deletion.
 
     Read with rename detection, the file moved in from `docs/` prints as one
     path under the store, and the branch would arm with a file gone from
@@ -8230,6 +8230,138 @@ def test_arm_answers_unknown_rather_than_arm_from_a_read_it_could_not_complete(
     git("checkout", "-q", "--detach")
     assert _arm(root, "--no-fetch") == 2
     assert capsys.readouterr().out.startswith("unknown - HEAD is on no branch")
+
+
+#: The module deciding `arm`'s answer, as the brief names it (`PL-K6B2`).
+ARM_GATE = "subprojects/docket/src/docket/arming.py"
+
+
+def _put(git: Callable[..., str], root: Path, path: str, when: str = ARM_T0) -> None:
+    """Commit a new file at `path` on the checked-out branch, making its directory."""
+    (root / path).parent.mkdir(parents=True, exist_ok=True)
+    _commit_file(git, root, path, "X = 1\n", when)
+
+
+def test_arm_arms_a_docket_only_pull_request_on_green(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The queue's own tooling arms beside the store, so the hold is left for what needs a read.
+
+    The hold fired on every docket change and was clicked through (`PL-SQTR`).
+    The branch is the usual shape of docket work: a module, its test, the
+    package's README and the item it closes.
+    """
+    root, git = _arm_repo(tmp_path)
+    for path in (
+        "subprojects/docket/src/docket/render.py",
+        "subprojects/docket/tests/test_render.py",
+        "subprojects/docket/README.md",
+    ):
+        _put(git, root, path)
+    closed = _item_document("PL-B1B1", "done")
+    _commit_file(git, root, "docs/items/PL-B1B1-held.md", closed, ARM_T0)
+
+    assert _arm(root) == 0
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"arm - {ARM_BRANCH} changes nothing outside docs/items and subprojects/docket, "
+        "leaves arming.py alone, holds no open claim"
+    )
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "src/anesthesia_sim/core/uptake.py",
+        "src/anesthesia_sim/data/agents/sevoflurane.json",
+        "tests/unit/test_uptake.py",
+        "docs/MODEL.md",
+        "README.md",
+        "CLAUDE.md",
+        "subprojects/docketeer/tool.py",
+    ],
+)
+def test_arm_holds_for_a_read_a_path_outside_the_store_and_the_tooling(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
+) -> None:
+    """Everything but the store and the tooling waits on a read, the simulator first of all.
+
+    The branch also changes a docket module, which would arm alone, so the
+    hold is the path's own. `subprojects/docketeer/` shares the tooling's
+    letters and not its directory.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "subprojects/docket/src/docket/render.py")
+    _put(git, root, path)
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes 1 path outside docs/items and subprojects/docket, "
+        "so its pull request waits on a read\n"
+    )
+    assert f"\n  {path}\n" in out
+    assert "subprojects/docket/src/docket/render.py" not in out
+    assert "keep the pull request a draft" not in out
+
+
+@pytest.mark.parametrize("change", ["edit", "move"])
+def test_arm_holds_a_change_to_arming_py_for_a_read_although_it_lies_under_the_tooling(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], change: str
+) -> None:
+    """The gate cannot loosen itself, by an edit or by moving where the exception points.
+
+    The module is on the base, so a move reads as its deletion beside the new
+    file, both under the tooling: read with rename detection, the move would
+    print as the new path alone and arm.
+    """
+    root, git = _arm_repo(tmp_path)
+    git("checkout", "-q", "main")
+    _put(git, root, ARM_GATE, "2026-08-01T12:00:00+00:00")
+    git("push", "-q", "origin", "main")
+    git("checkout", "-q", ARM_BRANCH)
+    git("merge", "-q", "--ff-only", "main")
+    if change == "edit":
+        _commit_file(git, root, ARM_GATE, "X = 2\n", ARM_T0)
+    else:
+        git("mv", ARM_GATE, "subprojects/docket/src/docket/gating.py")
+        git("commit", "-qm", "move the gate", when=ARM_T0)
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes {ARM_GATE}, the gate itself, "
+        "so its pull request waits on a read\n"
+    )
+    assert "outside docs/items" not in out
+
+
+def test_arm_names_the_gate_beside_the_paths_outside_the_tooling(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Both reasons are said, and the listed paths are the ones outside, not the gate."""
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, ARM_GATE)
+    _put(git, root, "src/anesthesia_sim/core/uptake.py")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(
+        f"hold - {ARM_BRANCH}: it changes 1 path outside docs/items and subprojects/docket "
+        f"and it changes {ARM_GATE}, the gate itself, so its pull request waits on a read\n"
+        "  src/anesthesia_sim/core/uptake.py\n"
+    )
+
+
+def test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer() -> None:
+    """A move of `arming.py` would leave the exception naming a file nothing reads.
+
+    The moved module would then arm on green, which is the gate loosening itself.
+    """
+    root = Path(__file__).resolve().parents[3]
+
+    assert arming.GATE == ARM_GATE
+    assert (root / arming.GATE).resolve() == Path(arming.__file__).resolve()
 
 
 def _flight_row(out: str, start: str) -> str:

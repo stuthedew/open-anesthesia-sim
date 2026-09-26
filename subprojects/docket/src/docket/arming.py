@@ -14,14 +14,16 @@ every later push while a pull request is open.
 **Four answers, and an exit status for each.**
 
 - `arm` (0): the net change a squash would land - `base...HEAD` - lies under
-  the store, no claim bound to this branch is unreleased, and the branch
+  the store or the queue's own tooling, `subprojects/docket/`, and leaves this
+  module alone; no claim bound to this branch is unreleased; and the branch
   contains the base's tip.
 - `hold` (1), naming what holds it. A claim holds the pull request unarmed and
   a draft, whichever push carried it, until the branch's own copy closes or
   blocks the item or the branch yields it: merged, the branch and its claim go
   together while the work goes on. A lapsed claim is unreleased too - it is
-  work nobody finished or handed back. A path outside the store holds it
-  unarmed, because that work merges on review rather than on green CI.
+  work nobody finished or handed back. A path outside the store and the
+  tooling holds it unarmed, and so does a change to this module, because that
+  work waits on a read rather than merging on green CI.
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
@@ -29,8 +31,8 @@ every later push while a pull request is open.
   no established base, a history git would not walk, a claim trailer that
   does not parse, a fetch that failed. Never `arm` from a partial read.
 
-**`hold` outranks `unknown`.** A claim or a path outside the store is reason
-enough whatever else went unread, so it is said, with what went unread beside
+**`hold` outranks `unknown`.** A claim or a path that waits on a read is
+reason enough whatever else went unread, so it is said, with what went unread beside
 it, rather than withheld.
 
 **The decisions the rule rests on**, moved here from `CLAUDE.md` with it:
@@ -44,12 +46,17 @@ it, rather than withheld.
   closed, `PL-3FYK`) - `claims.RELEASING_STATUSES`;
 - a pull request a claim rides is a draft (2026-09-24, ratified, over opening
   none while a claim rides or titling it as the capture, because `#978` was
-  merged by hand while its claim was open, `PL-H14W`).
+  merged by hand while its claim was open, `PL-H14W`);
+- the tooling arms on green beside the store, and everything else waits on a
+  read, this module included (2026-09-25, ratified, over holding every path
+  outside the store, `PL-SQTR`, built by `PL-K6B2`): the hold fired on every
+  docket change and was clicked through, so it guarded nothing, the simulator
+  included. This module stays held so that the gate cannot loosen itself.
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge
-exists for, and a cut's notes file lies outside the store, so the paths hold
-it already.
+exists for, and a cut's notes file lies outside the store and the tooling,
+so the paths hold it already.
 """
 
 from __future__ import annotations
@@ -82,8 +89,19 @@ UNKNOWN = "unknown"
 #: now", and the line printed says which.
 EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, UNKNOWN: 2}
 
-#: How many paths outside the store a `hold` names before counting the rest.
+#: How many paths outside the store and the tooling a `hold` names before
+#: counting the rest.
 SHOWN = 5
+
+#: The queue's own tooling, which arms on green beside the store. The path is
+#: this repository's layout, as `claims.CUTOVER_MARKER` is.
+TOOLING = "subprojects/docket/"
+
+#: The one file under `TOOLING` that still waits on a read: this module, which
+#: decides the answer, so a change to it could loosen the rule it states.
+#: `test_cli` pins it to the module's own path, so a move cannot leave it
+#: naming a file nothing reads.
+GATE = TOOLING + "src/docket/arming.py"
 
 
 @dataclass(frozen=True)
@@ -91,8 +109,9 @@ class Verdict:
     """`arm`'s answer for `HEAD`, and what it rests on.
 
     `claims` are the unreleased claims bound to this branch, `outside` the
-    paths a merge would land outside the store, and `behind` how many of the
-    base's commits the branch lacks. `unread` is why the answer is `unknown`,
+    paths a merge would land outside the store and the tooling, `gate` whether
+    it would change this module, and `behind` how many of the base's commits
+    the branch lacks. `unread` is why the answer is `unknown`,
     or what went unread beside a `hold`.
     """
 
@@ -102,6 +121,7 @@ class Verdict:
     items_dir: str = ""
     claims: tuple[Hold, ...] = ()
     outside: tuple[str, ...] = ()
+    gate: bool = False
     behind: int = 0
     unread: tuple[str, ...] = ()
 
@@ -126,10 +146,12 @@ class Verdict:
             )
         if self.answer == ARM:
             return (
-                f"arm - {self.branch} changes nothing outside {self.items_dir}, holds no open "
+                f"arm - {self.branch} changes nothing outside {self.items_dir} and "
+                f"{TOOLING.rstrip('/')}, leaves {GATE.rpartition('/')[2]} alone, holds no open "
                 f"claim, and contains {self.base}'s tip: mark its pull request ready and arm it",
             )
-        said = [f"hold - {self.branch}: " + " and ".join(self._holding())]
+        read = ", so its pull request waits on a read" if self.outside or self.gate else ""
+        said = [f"hold - {self.branch}: " + " and ".join(self._holding()) + read]
         for hold in self.claims:
             said.append(f"  {_described(hold)}")
         if self.outside:
@@ -148,7 +170,7 @@ class Verdict:
         return (*said, *notes)
 
     def _holding(self) -> list[str]:
-        """The one-clause reasons a `hold` names, claims before paths."""
+        """The one-clause reasons a `hold` names: claims, then paths, then the gate."""
         reasons = []
         if self.claims:
             keys = ", ".join(hold.key for hold in self.claims)
@@ -157,8 +179,10 @@ class Verdict:
             count = len(self.outside)
             noun = "path" if count == 1 else "paths"
             reasons.append(
-                f"it changes {count} {noun} outside {self.items_dir}, which merge on review"
+                f"it changes {count} {noun} outside {self.items_dir} and {TOOLING.rstrip('/')}"
             )
+        if self.gate:
+            reasons.append(f"it changes {GATE}, the gate itself")
         return reasons
 
 
@@ -208,9 +232,11 @@ def arm(
     # it made outside it, which a rename would print as one path under the store.
     changed = run(changed_path_args("diff", "--name-only", f"{base}...HEAD", "--"), root)
     outside: tuple[str, ...] = ()
+    gate = False
     if answered(changed):
         paths = {path for path in changed.splitlines() if path.strip()}
-        outside = tuple(sorted(path for path in paths if not path.startswith(prefix)))
+        outside = tuple(sorted(path for path in paths if not path.startswith((prefix, TOOLING))))
+        gate = GATE in paths
     else:
         unread.append(f"git would not diff {name} against {base}, so what a merge lands is unknown")
 
@@ -246,10 +272,11 @@ def arm(
         items_dir=prefix.rstrip("/"),
         claims=claims,
         outside=outside,
+        gate=gate,
         behind=behind,
         unread=tuple(unread),
     )
-    if claims or outside:
+    if claims or outside or gate:
         return found
     if unread:
         return Verdict(UNKNOWN, branch=name, base=base, unread=tuple(unread))
