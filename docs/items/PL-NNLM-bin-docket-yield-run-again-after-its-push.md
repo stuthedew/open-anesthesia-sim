@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/tes
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
 closed: 2026-09-26
+pr: 1070
 payoff: a yield whose push failed reaches the remote when yield is run again, or says it did not, so no session reports a yield as done while every other session still reads the item as held
 verify: grep -q 'def test_yield_run_again_after_its_push_failed' subprojects/docket/tests/test_claiming.py
 ---
