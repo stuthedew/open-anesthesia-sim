@@ -40,7 +40,10 @@ from docket.verify import (
     item_commits,
     items_reading,
     landed_workers,
+    never_fails,
     reaches_outside_tree,
+    reads_check_output,
+    reenters_verify,
     removed_assertions,
     sanctioned_queue_edit,
     selects_no_test,
@@ -4060,3 +4063,47 @@ def test_reaching_outside_the_tree_takes_precedence_over_blocked(tmp_path: Path)
     assert report.passing == ("PL-41B2",)
     assert report.external == ("PL-41B2",)
     assert report.blocked == ()
+
+
+# One reading of a `verify:` command for every reader here, `docket.shell`'s
+# (`PL-P7J7`). Each command below was misread by the quote regexes and the
+# `shlex.split` these readers took before it, the first in the unsafe
+# direction: a real recursion into `docket verify` left unrefused.
+APOSTROPHE_IN_DOUBLE_QUOTES = (
+    'grep -qF "it\'s" a.md && bin/docket verify PL-K7QX && grep -qF "it\'s" b.md'
+)
+
+
+def test_an_apostrophe_in_double_quotes_hides_no_command() -> None:
+    # The single-quote regex ran from one apostrophe to the next, across the
+    # double quotes and the command between them.
+    assert reenters_verify(APOSTROPHE_IN_DOUBLE_QUOTES) is True
+    # `shlex.split` kept `a.md|curl` one word.
+    assert reaches_outside_tree("grep -qF 'x' a.md|curl -s https://example.com") is True
+    # A quoted `&&` cut the clause, so `z` read as the program the next one ran.
+    assert "z" in command_paths('grep -qF "x \\"y && z\\" w" docs/a.md')
+    # A substitution runs its body wherever it stands: quoted, bare or backquoted.
+    for command in (
+        'test -n "$(bin/docket verify PL-K7QX)"',
+        "echo $(bin/docket verify PL-K7QX)",
+        "echo `bin/docket verify PL-K7QX`",
+    ):
+        assert reenters_verify(command) is True, command
+
+
+def test_the_readers_take_bash_s_reading_of_quotes_comments_and_pipes() -> None:
+    # Quotes are removed as bash removes them, so these run the program.
+    assert never_fails("'true'") is True
+    assert reenters_verify('"docket" verify PL-K7QX') is True
+    # A comment is never read by bash, so it names no path.
+    assert "docs/b.md" not in command_paths("grep -q x docs/a.md # docs/b.md")
+    # `>|` is a redirection and `|&` a pipe; a backquote captures like `$( )`.
+    assert reads_check_output("bin/docket check >| out.txt") == ""
+    assert reads_check_output("bin/docket check |& grep -q x") == (
+        "pipes its output into another command"
+    )
+    assert reads_check_output("test -z `bin/docket check`") == (
+        "captures its output in a command substitution"
+    )
+    # An unclosed substitution is a command bash refuses, so it runs nothing.
+    assert reenters_verify('echo "$(bin/docket verify PL-K7QX"') is False
