@@ -41,7 +41,11 @@ from pathlib import Path
 import branch_id_check
 import pytest
 from docket.claims import Holdings
-from docket.vcs import answered
+from docket.vcs import SILENT, answered
+
+#: The items the fake store holds, in both copies: every id the tests below
+#: expect to attribute work. `PL-SN2T`'s two reproductions are not among them.
+HELD = ("PL-CP74", "PL-1Q3S", "PL-0D4X")
 
 
 def _install(
@@ -51,9 +55,14 @@ def _install(
     branch: str = "claude/some-generated-name-a36q1s",
     parents: str = "abc1234",
     base: str = "origin/main",
+    listed: bool = True,
 ) -> None:
-    """A `_git` serving one branch: its name, and what it adds to the base."""
+    """A `_git` serving one branch: its name, what it adds to the base, and the store.
+
+    `listed=False` is a store listing git did not answer, in either copy.
+    """
     log = "\n".join(f"{parents}\x1f{subject}" for subject in subjects)
+    listing = "\n".join(f"docs/items/{key}-an-item.md" for key in HELD)
 
     def fake(args: list[str]) -> str:
         if args[0] == "rev-parse" and "--abbrev-ref" in args:
@@ -63,6 +72,8 @@ def _install(
             return args[-1] + "\n" if args[-1] == base else ""
         if args[0] == "log":
             return log
+        if args[0] == "ls-tree":
+            return listing if listed else SILENT
         return ""
 
     monkeypatch.delenv("GITHUB_HEAD_REF", raising=False)
@@ -143,6 +154,63 @@ def test_an_id_mentioned_mid_subject_does_not_count(
 
     assert branch_id_check.main() == 1
     assert "no item id names any of them" in capsys.readouterr().err
+
+
+def test_a_branch_named_for_an_id_the_store_does_not_hold_is_unattributed(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-SN2T`: the grammar passed an English word, and no item was asked for.
+
+    `CTRL` fits the alphabet, so the name carried an id by its position alone
+    and the branch passed with no item behind it. An id attributes work only
+    where the store holds it.
+    """
+    _install(monkeypatch, ["Add the hotkeys"], branch="claude/pl-ctrl-hotkeys")
+
+    assert branch_id_check.main() == 1
+    err = capsys.readouterr().err
+    assert "no item id names any of them" in err
+    assert "the branch name carries PL-CTRL" in err
+    # The brief's reproduction, as its re-confirmation ran it.
+    reproduction = branch_id_check.attribution(
+        "claude/pl-ctrl-hotkeys", ["PL-HTML export"], frozenset(HELD)
+    )
+    assert reproduction == []
+
+
+def test_a_subject_leading_with_an_id_the_store_does_not_hold_is_unattributed(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # `HTML` fits the alphabet as `CTRL` does, and leads the subject as an id
+    # would: the other half of `PL-SN2T`'s reproduction.
+    _install(monkeypatch, ["PL-HTML export"])
+
+    assert branch_id_check.main() == 1
+    assert "a commit subject leads with PL-HTML" in capsys.readouterr().err
+
+
+def test_an_id_the_store_holds_attributes_beside_one_it_does_not(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # The rule removes an id naming no item and nothing else, so a leading run
+    # that also names a real one is attributed by it.
+    _install(monkeypatch, ["PL-HTML, PL-CP74: the export"])
+
+    assert branch_id_check.main() == 0
+    assert "a commit subject leads with PL-CP74" in capsys.readouterr().out
+
+
+def test_a_store_git_did_not_list_is_read_on_the_grammar_and_says_so(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # A listing git did not answer is a partial read, never an empty store:
+    # read as empty, it would refuse every id on a checkout that could not look.
+    _install(monkeypatch, ["Add the hotkeys"], branch="claude/pl-ctrl-hotkeys", listed=False)
+
+    assert branch_id_check.main() == 0
+    out = capsys.readouterr().out
+    assert "the store's ids were not read in full" in out
+    assert "taken on its grammar alone" in out
 
 
 def test_a_release_commit_owes_no_id(
@@ -440,6 +508,29 @@ def test_a_branch_named_for_its_item_owes_no_claim(
     _commit(record, "PL-K7QX: the work", "10:00", files=WORK)
 
     assert _run(monkeypatch) == 0
+
+
+def test_an_id_either_copy_of_the_store_holds_attributes_the_branch(
+    record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Either copy can be the only one (`PL-SN2T`). An item filed on the base
+    # after this branch forked is in the base's copy alone...
+    _branch(record, "claude/pl-bbbb-filed-later")
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=record, check=True)
+    later = {"docs/items/PL-BBBB-later.md": ITEM.replace("PL-K7QX", "PL-BBBB")}
+    _commit(record, "PL-BBBB: capture it", "10:00", files=later)
+    subprocess.run(["git", "checkout", "-q", "claude/pl-bbbb-filed-later"], cwd=record, check=True)
+    _commit(record, "Resolve the merge", "10:30", files=WORK)
+
+    assert _run(monkeypatch) == 0
+    assert "branch name carries PL-BBBB" in capsys.readouterr().out
+
+    # ...and one captured on this branch is in its own copy alone.
+    _branch(record, "claude/some-session-a1b2c3")
+    _commit(record, "PL-DDDD: capture a finding", "11:00", files={"docs/items/PL-DDDD-x.md": ""})
+
+    assert _run(monkeypatch) == 0
+    assert "a commit subject leads with PL-DDDD" in capsys.readouterr().out
 
 
 def test_a_commit_made_before_the_record_owes_a_claim_too(

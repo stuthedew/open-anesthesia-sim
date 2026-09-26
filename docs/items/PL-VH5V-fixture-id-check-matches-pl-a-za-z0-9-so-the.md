@@ -3,12 +3,13 @@ id: PL-VH5V
 title: fixture_id_check matches PL-[A-Za-z0-9]+, so the prose 'Every PL-prefixed token' in .claude/ or a .py message is read as an id, while the placeholders PL-XXXX and PL-ZZZZ are accepted as valid
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: exact-gates
 touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
+closed: 2026-09-26
 payoff: a sentence under .claude/ or a Python message that writes the PL- prefix as a word stops failing make check, while a malformed id written there is still refused
 verify: grep -q 'def test_the_prose_token_pl_prefixed_is_not_read_as_an_id' tests/unit/test_fixture_id_check.py
 ---
