@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: generator-identification
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py
 added: 2026-09-26
 closed: 2026-09-26

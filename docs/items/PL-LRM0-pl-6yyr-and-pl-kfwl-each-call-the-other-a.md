@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping
 feature: queue-hygiene
+milestone: v0.5.12
 touches: docs/items/PL-6YYR-a-release-tag-can-be-pushed-for-a-version-that.md, docs/items/PL-KFWL-the-v0-4-8-tag-is-pushed-onto-a-commit-where.md
 added: 2026-09-22
 closed: 2026-09-26

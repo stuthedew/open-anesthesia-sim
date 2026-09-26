@@ -12,7 +12,7 @@ closed: 2026-09-23
 pr: 969
 reason: Recorded for the audit: the mechanism is closed by tools/fixture_id_check.py
 verify: python3 tools/fixture_id_check.py
-root-cause-of: PL-GXPP, PL-CY8B, PL-DPY6, PL-3BZS, PL-7922, PL-L609, PL-KYW3
+root-cause-of: PL-GXPP, PL-CY8B, PL-DPY6, PL-3BZS, PL-7922, PL-L609, PL-KYW3, PL-PB8V
 generator: spent - PL-KYW3 made the restating sites import store.ID_PATTERN and tools/fixture_id_check.py, wired into make check, refuses an unmintable literal in any Python file or .claude/ text; nothing has arrived since 2026-09-21
 misread: Which strings are valid item ids
 ---

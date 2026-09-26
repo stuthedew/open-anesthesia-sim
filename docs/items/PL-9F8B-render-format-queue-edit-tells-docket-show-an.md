@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: carrier-detection
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - filed after the freeze by the 2026-09-24 triage pass, and not safety or science
 added: 2026-09-24

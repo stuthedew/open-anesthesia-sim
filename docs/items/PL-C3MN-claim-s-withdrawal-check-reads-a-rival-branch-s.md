@@ -3,13 +3,18 @@ id: PL-C3MN
 title: claim's withdrawal check reads a rival branch's tracking ref as the remote's copy of it, so a rival branch deleted on the remote but never pruned here still withdraws this branch's unpublished claim, in favour of a claim no fresh clone can see
 priority: P2
 effort: S
-status: blocked
+status: done
 classes: defect
 feature: claim-integrity
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_claiming.py
 blocked-by: PL-MT3R
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1119
+payoff: a claim is never withdrawn in favour of a rival branch GitHub has deleted, so no item is left held by nobody
+verify: grep -q 'def test_a_rival_whose_branch_the_remote_deleted_does_not_withdraw_the_claim' subprojects/docket/tests/test_claiming.py
+recurrences: 2026-09-26 PL-20DL withdrawn 2026-09-26 PL-20DL
 ---
 
 **Problem.** claim's withdrawal check reads a rival branch's tracking ref as the remote's copy of it, so a rival branch deleted on the remote but never pruned here still withdraws this branch's unpublished claim, in favour of a claim no fresh clone can see
@@ -63,3 +68,17 @@ belongs to `PL-MT3R`, the head recording that the fix did not hold.
 one `ls-remote --heads` listing per command for every reader of the remote's
 copy, which is this item's fix. A fix made here alone would be one more
 per-reader fix.
+
+**Done, 2026-09-26 (#1119).** #1116 had already closed the case this brief
+describes: `holdings` drops a tracking ref whose branch the listing lacks, so
+a deleted rival read only through its tracking ref withdrew nothing on `main`.
+It did not reach a local branch of the rival's name, which `holdings` still
+reads as this checkout's own. There `_on_copy` found the unpruned tracking ref
+carrying the claim and withdrew this branch's claim with exit 3, reproduced by
+the `and-local-branch` case of the test the `verify:` names. `_on_copy` now
+reads the rival's branch from the command's listing, as `PL-MT3R` decided. Where
+the listing names a tip this clone has not fetched, git exits 128 rather than
+answering, and the tracking ref is read as before, so a rival that pushed since
+the fetch still withdraws the claim (`PL-ZLJ9`); a third test holds that.
+`_published` has the same exit-128 misreading for this branch's own copy,
+filed as `PL-20DL`.

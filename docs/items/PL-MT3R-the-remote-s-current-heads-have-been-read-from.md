@@ -3,13 +3,16 @@ id: PL-MT3R
 title: The remote's current heads have been read from the clone's own copies by four readers since PL-4Q9B closed - a harness-written tracking ref, the upstream setting, a rival's unpruned tracking ref, the local branch - so what the remote holds wants one record per command, consulted by claim, yield and arm
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect
 feature: remote-copy
-touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_claiming.py, subprojects/docket/tests/test_claims.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_claiming.py, subprojects/docket/tests/test_claims.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1116
 payoff: what the remote holds is one record every command reads, so a new reader stops taking a clone's copy for the remote's and costing an item
+verify: grep -q 'def test_holdings_reads_no_hold_from_a_branch_the_remote_deleted' subprojects/docket/tests/test_claims.py
 root-cause-of: PL-WX87, PL-KX73, PL-C3MN, PL-21KN
 generator: live - five readers in claiming.py, arming.py, claims.py and vcs.py still take a local copy for the remote's: claiming._on_copy a rival's tracking ref, arming.arm HEAD for the pull request's branch, claims.holdings and vcs.cuts_in_flight every refs/remotes ref as live, one for a branch the remote deleted included, and claiming.yield_claims the local branch; only claiming._on_remote asks the remote, for the checkout's own branch, so each new reader picks its own copy again
 misread: The remote's current refs and tags, and whether the clone's local copies still match them
@@ -82,6 +85,16 @@ is built once per command and consulted by every reader above that now takes a
 local copy for the remote's. `PL-C3MN` and `PL-21KN` close against it, each with
 the real-git test its own **Done when.** names. A new reader then has one record
 to consult, not a copy to pick.
+
+**Decided.** One `git ls-remote --heads origin` listing per command, as
+recommended below (project owner, 2026-09-26, ratified, over `git fetch
+--prune` and per-reader fixes). The build divides along the head's members:
+this item builds the listing and moves the readers no other item names -
+`claims.holdings`, with it every read command's holds and `new`'s, `claim`'s
+and `yield`'s, `vcs.cuts_in_flight` and `claiming._on_remote`. `PL-C3MN` moves
+`claiming._on_copy` and `PL-21KN` moves `arming.arm`, each onto the same
+listing and with the real-git test its own **Done when.** names, in that order
+after this one merges.
 
 **Decision needed.** Which single record answers "what does the remote hold"
 for `claim`, `yield` and `arm`.

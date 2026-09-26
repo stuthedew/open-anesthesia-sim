@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: defect, infra
 feature: one-snapshot
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/README.md, .claude/hooks/docket-digest.sh, .claude/skills/docket/modes/start.md, .claude/rules/instruction-writing.md, docs/items/PL-CM40-no-single-command-prints-the-refreshed-picture.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-snapshot batch
 added: 2026-09-25

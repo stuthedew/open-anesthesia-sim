@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: one-answer
+milestone: v0.5.12
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/claims.py, tools/doc_check.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, docs/items/PL-WNQT-bin-docket-stranded-reports-a-one-path-commit.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by its own triage on 2026-09-25, which the Stream A thread working it ran
 added: 2026-09-25

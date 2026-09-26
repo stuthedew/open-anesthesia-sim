@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: pr-body-integrity
+milestone: v0.5.12
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, .github/workflows/pr-title.yml, Makefile, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py, docs/maintainer.md, docs/ARCHITECTURE.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/capture.md, docs/pr-bodies
 blocked-by: PL-HMZZ
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science

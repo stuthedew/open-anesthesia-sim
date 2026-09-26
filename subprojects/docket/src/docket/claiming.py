@@ -22,7 +22,10 @@ without being asked. It pushes only a branch the remote does not have, unless
 `push` says auto-merge is disarmed, and asks the remote itself rather than the
 tracking setting or the clone's tracking ref (`PL-WX87`): a branch the remote
 has may have a pull request open and armed, and a push would merge the claim
-away with the branch (`PL-QP9Z`). An upstream naming the default branch is how
+away with the branch (`PL-QP9Z`). It asks once, listing every branch the remote
+has, and the read of who holds what is filtered by that listing too, so a
+tracking ref for a branch the remote has deleted holds nothing there
+(`PL-MT3R`). An upstream naming the default branch is how
 the web harness starts a session branch (`PL-KX73`), so it is not refused as
 pushing to another branch, and the push gives the branch its own. After a push
 it fetches again and re-reads, because a claim pushed in the same minute is
@@ -85,6 +88,7 @@ from .claims import (
 from .model import CLOSED_STATUSES, parse_front_matter
 from .store import ID_PATTERN
 from .vcs import (
+    RemoteHeads,
     Runner,
     _head_name,
     _item_paths_on,
@@ -93,6 +97,7 @@ from .vcs import (
     _unlanded_refs,
     base_copies,
     default_base,
+    remote_heads,
 )
 
 #: Exit statuses. `USAGE` is argparse's own. `HELD_ELSEWHERE` and `LOCAL_ONLY`
@@ -149,11 +154,11 @@ class _Branch:
 
 @dataclass(frozen=True)
 class _OnRemote:
-    """What the remote itself said of the branch, asked by `_on_remote`."""
+    """What the remote itself holds of the branch, read by `_on_remote` from its listing."""
 
     #: The branch's tip there, or `""` where the remote has no such branch.
     tip: str
-    #: git's words where the remote could not be asked, and `tip` then says nothing.
+    #: Why the remote's branches could not be listed, and `tip` then says nothing.
     failed: str = ""
 
 
@@ -216,7 +221,11 @@ def claim(
                 ),
             )
         run = _run_git
-    read = holdings(root, now=now, items_dir=items_dir, runner=run)
+    # Listed once, since nothing before the push `_publish` decides on moves the
+    # remote's copy of this branch, and read by both questions put to the remote
+    # below: who holds each item, and whether this branch is there to push onto.
+    heads = remote_heads(root)
+    read = holdings(root, now=now, items_dir=items_dir, remote=heads, runner=run)
     if not read.known:
         return Written(
             REFUSED,
@@ -229,13 +238,11 @@ def claim(
     closed = _closed_on_base(root, read.base, wanted, items_dir, run)
     if closed:
         return Written(REFUSED, (*notes, *closed))
-    # Asked once, since nothing before the push `_publish` decides on moves the
-    # remote's copy of this branch.
-    remote = _on_remote(root, branch.name)
+    remote = _on_remote(heads, branch.name)
     # Which of this branch's claims are on that copy is what `_displaced` asks;
     # where the remote could not say, nothing is pushed, so the check waits for
     # a run that can ask it rather than withdraw on a guess.
-    displaced = {} if remote.failed else _displaced(root, read, branch, remote)
+    displaced = {} if remote.failed else _displaced(root, read, branch, remote, heads)
     if displaced:
         withdrawn = _withdraw(root, branch, displaced, trailers=trailers, asked=wanted)
         if withdrawn.code != CLAIMED:
@@ -353,7 +360,9 @@ def yield_claims(
     branch, refused = _branch(root, run, items_dir, (), "yield")
     if refused:
         return Written(REFUSED, refused)
-    read = holdings(root, now=now, items_dir=items_dir, runner=run)
+    # One listing for every question this puts to the remote, as `claim` takes.
+    heads = remote_heads(root)
+    read = holdings(root, now=now, items_dir=items_dir, remote=heads, runner=run)
     if not read.known:
         return Written(
             REFUSED, (f"yield: declined to read what this branch holds - {read.declined}",)
@@ -388,7 +397,7 @@ def yield_claims(
     if not writing:
         if not ended:
             return Written(CLAIMED, tuple(notes))
-        remote = _on_remote(root, branch.name)
+        remote = _on_remote(heads, branch.name)
         unpushed = [
             key
             for key in ended
@@ -419,7 +428,7 @@ def yield_claims(
         verb="yield",
         body=[],
         trailers=[*(f"Yield: {key} {branch.name}" for key in writing), *trailers],
-        remote=_on_remote(root, branch.name),
+        remote=_on_remote(heads, branch.name),
         now=now,
         items_dir=items_dir,
         notes=notes,
@@ -622,15 +631,16 @@ def _take_another(hold: Hold, key: str) -> tuple[str, ...]:
 
 
 def _displaced(
-    root: Path, read: Holdings, branch: _Branch, remote: _OnRemote
+    root: Path, read: Holdings, branch: _Branch, remote: _OnRemote, heads: RemoteHeads
 ) -> dict[str, tuple[Hold, Hold]]:
     """This branch's claims that publishing would put over one already published, by item.
 
     Each is a live claim of the branch's that orders first and is not on the
     remote's copy of the branch, as the remote itself answered (`PL-WX87`),
     paired with the first live claim behind it that is on its own branch's copy
-    there: the one every other session reads as holding the item, and whose
-    session was told it does (`PL-ZLJ9`).
+    there, as the same listing answered (`PL-C3MN`): the one every other
+    session reads as holding the item, and whose session was told it does
+    (`PL-ZLJ9`).
     """
     found: dict[str, tuple[Hold, Hold]] = {}
     for hold in read.holds:
@@ -641,7 +651,7 @@ def _displaced(
             continue
         for rival in live[1:]:
             name = _branch_of(rival, branch)
-            if name != branch.name and _on_copy(root, name, rival.commit):
+            if name != branch.name and _on_copy(root, heads, name, rival.commit):
                 found[hold.key] = (hold, rival)
                 break
     return found
@@ -842,8 +852,8 @@ def _publish(
             LOCAL_ONLY,
             (
                 *said,
-                f"{what}, and not pushed: `git ls-remote {REMOTE}` failed, so whether the branch "
-                "is on the remote, with a pull request a push could merge it away with, is "
+                f"{what}, and not pushed: `git ls-remote --heads {REMOTE}` failed, so whether the "
+                "branch is on the remote, with a pull request a push could merge it away with, is "
                 f"unknown. {seen}",
                 *_indented(remote.failed),
                 f"  Run `{again}` again once the remote answers, rather than pushing by hand, "
@@ -890,7 +900,13 @@ def _publish(
                 f"note: `git fetch {REMOTE}` after the push failed, so a claim pushed in the same "
                 "minute cannot be ruled out; `bin/docket show` each id once it answers"
             )
-    reread = holdings(root, now=now, items_dir=items_dir, runner=_run_git)
+    # A listing of its own, not the one the claim was checked against: that one
+    # predates the push, so it lacks a rival branch pushed in the same minute,
+    # and filtering the re-fetched refs by it would drop exactly the claim this
+    # read-back exists to catch (`PL-MT3R`).
+    reread = holdings(
+        root, now=now, items_dir=items_dir, remote=remote_heads(root), runner=_run_git
+    )
     code, lines = check(root, reread, keys, branch, commit)
     if held_back and code == CLAIMED:
         code = LOCAL_ONLY
@@ -901,8 +917,8 @@ def _head(root: Path) -> str:
     return _git(["rev-parse", "HEAD"], root).out.strip()
 
 
-def _on_remote(root: Path, name: str) -> _OnRemote:
-    """Ask the remote for the branch, rather than read the clone's copy of its last answer.
+def _on_remote(heads: RemoteHeads, name: str) -> _OnRemote:
+    """The branch as the remote answered for it, rather than the clone's copy of its last answer.
 
     `refs/remotes/origin/<name>` is what some fetch last saw, and a fetch that
     does not prune never deletes it - `claim`'s does not, deliberately, since
@@ -911,18 +927,18 @@ def _on_remote(root: Path, name: str) -> _OnRemote:
     branch nobody has pushed, sometimes with the tracking setting too, so read
     as the remote's copy it kept every fresh session's claim unpushed and said
     the branch was on the remote (`PL-WX87`).
+
+    It asked `git ls-remote` for this one branch until `PL-MT3R`, and now reads
+    the command's one listing of every branch the remote has. The fix held for
+    this reader alone, and each reader after it that needed the remote's copy
+    picked a local stand-in of its own; with one listing per command, the read
+    of who holds what and this answer come from the same moment of the remote,
+    and a new reader has a record to consult rather than a copy to pick.
     """
-    ref = f"refs/heads/{name}"
-    asked = _git(["ls-remote", REMOTE, ref], root)
-    if asked.code != 0:
-        return _OnRemote(tip="", failed=asked.err.strip() or f"exit status {asked.code}")
-    # `ls-remote` matches a pattern against the tail of each ref, so the listing
-    # can hold refs other than the one asked for.
-    for line in asked.out.splitlines():
-        tip, _, listed = line.partition("\t")
-        if listed.strip() == ref:
-            return _OnRemote(tip=tip.strip())
-    return _OnRemote(tip="")
+    tip = heads.tip(name)
+    if tip is None:
+        return _OnRemote(tip="", failed=heads.failed or "the remote's branches were not listed")
+    return _OnRemote(tip=tip)
 
 
 def _published(root: Path, remote: _OnRemote, commit: str) -> bool:
@@ -932,10 +948,36 @@ def _published(root: Path, remote: _OnRemote, commit: str) -> bool:
     return _git(["merge-base", "--is-ancestor", commit, remote.tip], root).code == 0
 
 
-def _on_copy(root: Path, name: str, commit: str) -> bool:
-    """Whether the remote's copy of another branch, as of the last fetch, carries `commit`."""
+def _on_copy(root: Path, heads: RemoteHeads, name: str, commit: str) -> bool:
+    """Whether another branch's copy on the remote carries `commit`, as the listing has it.
+
+    It read `refs/remotes/origin/<name>` until `PL-C3MN`, and no fetch here
+    prunes, so a rival branch the remote had deleted still read as carrying
+    its claim, and withdrew this branch's in favour of one no fresh clone can
+    see. `holdings` drops such a ref since `PL-MT3R`, but not a local branch of
+    the same name, so the listing decides here too: a branch it lacks carries
+    nothing.
+
+    The listing can name a tip the clone lacks - pushed since the fetch, or
+    under `--no-fetch` - and git then cannot say what it carries. The tracking
+    ref is the evidence left, read as it was before the listing, as it is
+    where the listing failed: the remote still has the branch, so taking its
+    claim as published withdraws this branch's in favour of one every clone
+    can fetch, where the other answer would publish over a claim a session
+    was told it holds (`PL-ZLJ9`).
+    """
+    if not commit:
+        return False
+    tip = heads.tip(name)
+    if tip == "":
+        return False
+    if tip is not None:
+        # 0 is "carries it" and 1 "does not"; anything else is git unable to say.
+        carried = _git(["merge-base", "--is-ancestor", commit, tip], root).code
+        if carried in (0, 1):
+            return carried == 0
     ref = f"refs/remotes/{REMOTE}/{name}"
-    return bool(commit) and _git(["merge-base", "--is-ancestor", commit, ref], root).code == 0
+    return _git(["merge-base", "--is-ancestor", commit, ref], root).code == 0
 
 
 def _recorded(root: Path, base: str, branch: _Branch, key: str, *, trailer: str = "Claim") -> str:

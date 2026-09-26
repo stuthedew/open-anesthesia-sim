@@ -106,6 +106,7 @@ from .vcs import (
     Branch,
     FlightReport,
     QueueEdit,
+    RemoteHeads,
     Runner,
     SettledBranch,
     SettledReport,
@@ -459,6 +460,7 @@ def holdings(
     include_remote: bool = True,
     include_head: bool = True,
     term: timedelta = LEASE_TERM,
+    remote: RemoteHeads | None = None,
     runner: Runner | None = None,
 ) -> Holdings:
     """Every hold the unlanded refs record, each judged at `now`.
@@ -471,6 +473,13 @@ def holdings(
     branches, as it does for `vcs.orphaned`. `include_head=False`
     leaves the checkout's own branches out, so that only what has been pushed -
     what every other session can also read - decides the answer.
+
+    `remote` is the command's listing of what the remote holds (`PL-MT3R`).
+    Where it answered, a tracking ref for a branch the remote no longer has
+    holds nothing: no fetch prunes, so the ref outlives the branch, and no
+    fresh clone can see the claim it carries. That ref is `stranded`'s to
+    recover, not a holder. Where no listing is given, or the remote did not
+    answer, every tracking ref is read as it always was.
 
     Refs are read from what is already fetched, so the answer can be stale by
     one fetch, and it reports rather than blocks for that reason.
@@ -487,7 +496,7 @@ def holdings(
     remotes = _remotes(root, run)
 
     base = default_base(root, runner=run)
-    refs = _unlanded_refs(base, root, run, include_remote=include_remote)
+    refs = _unlanded_refs(base, root, run, include_remote=include_remote, remote=remote)
     skipped: frozenset[str] = frozenset() if include_head else _local_branches(root, run)
     candidates = [name for name in refs.candidates if name not in skipped]
     unreadable = {name for name in candidates if name in refs.unreadable}
@@ -781,12 +790,7 @@ def settled_branches(
     for row in read.flight().branches:
         if row.name not in unread:
             shown.setdefault(row.name, set()).add(row.item_id)
-    # Every claim the ref recorded is asked, whether or not it won its item's
-    # row: a claim shadowed by another branch's is still a session working.
-    unfinished = {hold.ref for hold in read.holds if not _finished_claim(hold)}
-    for hold in (*read.dispositions, *read.named):
-        if hold.state == LIVE and hold.status not in CLOSED_STATUSES:
-            unfinished.add(hold.ref)
+    unfinished = unfinished_work(read)
 
     finished = sorted(
         (
@@ -811,6 +815,26 @@ def settled_branches(
         branches=tuple(entry for entry in finished if _head_name(entry.name, remotes) not in heads),
         declined=declined or run.reason,
     )
+
+
+def unfinished_work(read: Holdings) -> dict[str, tuple[str, ...]]:
+    """Each ref holding work that is not finished, and the items it holds it on.
+
+    `settled_branches`'s test, named so that `tools/branch_sweep.py` asks the
+    same one: a ref read here is never settled and never swept (`PL-X8SV`).
+    Every claim the ref recorded is asked, whether or not it won its item's
+    row, since a claim shadowed by another branch's is still a session working.
+    A disposition or a name counts while it is live on an item its copy has not
+    closed.
+    """
+    held: dict[str, set[str]] = {}
+    for hold in read.holds:
+        if not _finished_claim(hold):
+            held.setdefault(hold.ref, set()).add(hold.key)
+    for hold in (*read.dispositions, *read.named):
+        if hold.state == LIVE and hold.status not in CLOSED_STATUSES:
+            held.setdefault(hold.ref, set()).add(hold.key)
+    return {ref: tuple(sorted(keys)) for ref, keys in held.items()}
 
 
 def _finished_claim(hold: Hold) -> bool:
