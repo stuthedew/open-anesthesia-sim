@@ -137,7 +137,6 @@ from .vcs import (
     BaseCopies,
     BaseCopy,
     BranchCut,
-    Churn,
     ClosureReport,
     CutsInFlight,
     FilingReport,
@@ -690,21 +689,22 @@ def _stranded(items: Sequence[Item], args: argparse.Namespace) -> StrandedReport
     can only be asked about paths it tracks, and searching the wrong path would
     find no items and report every branch as stranding all of its own.
 
-    `fetched` is the snapshot's answer rather than the caller's word: whether
-    the refs the report is read against are this command's own fetch. Two
-    callers used to say it for themselves and one of them said it wrong - the
-    digest, run by a hook that had just fetched through `docket branch`,
-    passed `False` and was right only by the hook's ordering (`PL-XBV4`).
+    Whether the refs the report is read against are this command's own fetch
+    is the snapshot's answer, `Snapshot.fresh`, and nothing here restates it.
+    Two callers used to say it for themselves and one of them said it wrong -
+    the digest, run by a hook that had just fetched through `docket branch`,
+    passed `False` and was right only by the hook's ordering (`PL-XBV4`) - and
+    the report field they wrote it into outlived that fix unread (`PL-Z909`).
+    The snapshot is still taken first, for its fetch: the report is read from
+    the refs it refreshed, and the refs line printed beneath it is that
+    moment's.
     """
     inv = _invocation(args)
     if inv.git is None or not inv.tracked:
         return None
+    _snapshot(args)
     return stranded(
-        inv.root,
-        {item.identifier for item in items},
-        items_dir=inv.tracked,
-        fetched=_snapshot(args).fresh,
-        runner=inv.git,
+        inv.root, {item.identifier for item in items}, items_dir=inv.tracked, runner=inv.git
     )
 
 
@@ -1763,7 +1763,15 @@ def cmd_set(args: argparse.Namespace) -> int:
       between the store's errors with and without the write, so an error the
       store already carries elsewhere blocks nothing and no rule is restated
       here - the vocabulary, the safety pin, what `ready` and `dropped` owe,
-      all arrive from `checks.py` in its own words.
+      all arrive from `checks.py` in its own words. A `verify:` command is
+      replayed too, as `check --verify` replays it, because an open item whose
+      command already passes is an error only running it can find
+      (`PL-FTDB`). It runs with the line already written, since a command that
+      reads the item's own file sees that line - a `grep` for a string the
+      command itself spells passes on it and nowhere else - so a refusal puts
+      the file back as it was. The write then costs whatever the command
+      costs, which is the price of refusing it here rather than a `make check`
+      later.
 
     A file the rewrite could not keep faithful is refused too: one spelling a
     key twice would be collapsed to the parser's pick, one carrying a field
@@ -1848,7 +1856,20 @@ def cmd_set(args: argparse.Namespace) -> int:
             print(f"  {error}")
         return 1
 
+    original = (directory / item.path).read_bytes()
     path = rewrite_item(directory, updated)
+    if "verify" in changes:
+        try:
+            replayed = _replayed(args, updated, after, today, config, milestones, written)
+        except BaseException:
+            path.write_bytes(original)
+            raise
+        if replayed:
+            path.write_bytes(original)
+            print(f"{item.identifier}: nothing was written; `docket check` would then report:")
+            for error in replayed:
+                print(f"  {error}")
+            return 1
     for key, attribute, value in requested:
         if attribute in changes:
             print(f"{item.identifier}: {key}: {_spelled(value) or '(removed)'}")
@@ -1856,6 +1877,35 @@ def cmd_set(args: argparse.Namespace) -> int:
     _say_unblocked(item, updated, changes, items, after)
     _say_contradicted(changes, items, after, today)
     return 0
+
+
+def _replayed(
+    args: argparse.Namespace,
+    updated: Item,
+    after: list[Item],
+    today: date,
+    config: Config,
+    milestones: MilestoneStates | None,
+    written: WrittenReport | None,
+) -> list[str]:
+    """What `check --verify`'s replay would report about the command `set` just wrote.
+
+    The replay's own run and its own words: `already_passing` scoped to this
+    one item, read by `analyze` as `check` reads it, and only the errors that
+    run adds. So an open item whose command already exits 0 is refused in the
+    replay's own sentence, the one the next `make check` would print, and
+    everything the replay reads as no finding - a command it could not run,
+    one killed at the limit, one that reads past the tree, an item at a status
+    it does not ask about - refuses nothing here either (`PL-FTDB`).
+    """
+    landed = already_passing(
+        _invocation(args).root, [updated], scoped_to=frozenset({updated.identifier})
+    )
+    before = set(analyze(after, today, config, milestones=milestones, written=written).errors)
+    replayed = analyze(
+        after, today, config, milestones=milestones, written=written, landed=landed
+    ).errors
+    return [error for error in replayed if error not in before]
 
 
 def _say_contradicted(
@@ -4012,9 +4062,11 @@ def cmd_trend(args: argparse.Namespace) -> int:
         )
         return 1
     inv = _invocation(args)
-    history = Churn() if inv.git is None else churn(inv.root, runner=inv.git)
+    # `None` under `--no-git`, not a bare `Churn()`: whether git was asked is
+    # this command's to say, and an empty reading cannot say it (`PL-PWH6`).
+    history = None if inv.git is None else churn(inv.root, runner=inv.git)
     report = analyze_trend(items, history, config, by=args.by, today=args.today or date.today())
-    if history.declined:
+    if history is not None and history.declined:
         # A measurement with an unread stretch of history is not the measurement
         # it looks like, and the shape of a trend is exactly what a missing
         # stretch changes (`PL-Q9Z1`).
