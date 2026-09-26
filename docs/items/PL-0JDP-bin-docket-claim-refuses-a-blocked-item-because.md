@@ -3,13 +3,14 @@ id: PL-0JDP
 title: bin/docket claim refuses a blocked item because a block releases a claim as it is written (PL-3FYK), so a design round on a blocked head - PL-979D on 2026-09-25, blocked by PL-HMZZ since #1027 - cannot follow the claim-before-pull-request rule and runs unclaimed
 priority: P3
 effort: M
-status: needs-decision
+status: ready
 classes: defect
 feature: claim-record
-touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claiming.py, subprojects/docket/tests/test_claims.py, .claude/skills/docket/modes/start.md
+touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claiming.py, subprojects/docket/tests/test_claims.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-26 triage pass
 added: 2026-09-25
 payoff: a design round on an item somebody else blocked can hold a claim, so every in-flight guard sees it and a second session does not triage or start the same item
+verify: grep -q 'def test_claim_accepts_an_item_blocked_before_the_branch_touched_it' subprojects/docket/tests/test_claiming.py && grep -q 'def test_a_claim_on_an_item_already_blocked_on_the_base_is_held' subprojects/docket/tests/test_claims.py && grep -qF 'PL-0JDP' subprojects/docket/src/docket/claims.py
 ---
 
 **Problem.** bin/docket claim refuses a blocked item because a block releases a claim as it is written (PL-3FYK), so a design round on a blocked head - PL-979D on 2026-09-25, which PL-HMZZ held from #1027 until it closed in #1056 on 2026-09-26 - cannot follow the claim-before-pull-request rule and runs unclaimed
@@ -51,11 +52,15 @@ question as it was asked.
 answer's reason whole. B costs nothing now, but it leaves the record every guard
 reads blind to a kind of work the trial schedules on purpose.
 
-**Done when.** Under A: `bin/docket claim` on an item another branch blocked
-writes a claim that `bin/docket flight` shows as live; a block the claiming
-branch writes still releases its claim; and the comment on `RELEASING_STATUSES`
-records the answer. Under B: `start.md` says a round on a blocked item cannot
-claim, and what covers it instead.
+**Answered 2026-09-26: A** (project owner, 2026-09-26, ratified, over B, which
+kept the refusal and said in `start.md` that such a round cannot claim).
+
+**Done when.** `bin/docket claim` on an item another branch blocked writes a
+claim that `bin/docket flight` shows as live; a block the claiming branch writes
+still releases its claim, which
+`test_the_branch_s_own_copy_reaching_a_releasing_status_releases_the_claim`
+holds today; and the comment on `RELEASING_STATUSES` and the README's "A claim
+ends in one of five ways" paragraph record the answer.
 
 **Generator check.** Not a new head. The misread fact is who holds an item now,
 which is `PL-MB2W`'s `misread:`. This item was filed 2026-09-25, a day before

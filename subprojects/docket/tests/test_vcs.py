@@ -44,6 +44,7 @@ from docket.vcs import (
     StrandedItem,
     StrandedReport,
     SubjectPullRequest,
+    _landing_split,
     _pathspec_chunks,
     _run_git,
     _standing,
@@ -64,6 +65,7 @@ from docket.vcs import (
     files_in_flight,
     github_slug,
     github_token,
+    listed_paths,
     lost,
     merged_pull_requests,
     open_pull_requests,
@@ -76,7 +78,10 @@ from docket.vcs import (
     stranded,
     subject_pull_request,
     tags,
+    untracked_path_args,
+    working_paths,
 )
+from docket.verify import changed_paths
 
 ROOT = Path("/nowhere")
 BASE = "origin/main"
@@ -135,6 +140,7 @@ def _name_only(changes: tuple[str | tuple[str, str], ...], args: list[str]) -> s
     scores `R078` prints one name under `--name-only` and both, sorted, under
     `--no-renames`. A fake that printed a rename one way whatever it was asked
     let a test pass against a git that does not behave that way (`PL-J16N`).
+    `-z`, which that read sends too, ends each path with NUL (`PL-PVW2`).
     """
     apart = "--no-renames" in args
     paths: list[str] = []
@@ -143,6 +149,8 @@ def _name_only(changes: tuple[str | tuple[str, str], ...], args: list[str]) -> s
             paths.extend(change if apart else change[1:])
         else:
             paths.append(change)
+    if "-z" in args:
+        return "".join(f"{path}\0" for path in sorted(paths))
     return "\n".join(sorted(paths))
 
 
@@ -199,7 +207,7 @@ def _runner(
             # then the paths asked about. A path git does not name is one the
             # two tips agree on, so the fake omits it rather than reporting zeros.
             asked = args[args.index("--") + 1 :]
-            per_path = (tips or {}).get(args[4])
+            per_path = (tips or {}).get(args[args.index("--") - 1])
             rows = []
             for path in asked:
                 if per_path is None:
@@ -208,10 +216,11 @@ def _runner(
                 counts = per_path.get(path)
                 if counts is not None:
                     rows.append(f"{counts[0]}\t{counts[1]}\t{path}")
-            return "\n".join(rows)
+            return "".join(f"{row}\0" for row in rows)
         if args[0] == "diff":
-            return "\n".join(
-                f":000000 100644 {'0' * 40} {_blob(entry)} A\t{_path(entry)}"
+            # `--raw -z`: the status fields, then the path, each ended by NUL.
+            return "".join(
+                f":000000 100644 {'0' * 40} {_blob(entry)} A\0{_path(entry)}\0"
                 for entry in (adds or {}).get(args[-2], [])
             )
         if args[0] == "log":
@@ -296,7 +305,7 @@ def test_a_split_pathspec_answers_every_path_it_was_given() -> None:
     def run(args: list[str], root: Path) -> str:
         chunk = tuple(args[args.index("--") + 1 :])
         asked.append(chunk)
-        return "\n".join(f"3\t1\t{path}" for path in chunk if path not in agreed)
+        return "".join(f"3\t1\t{path}\0" for path in chunk if path not in agreed)
 
     superseded = _superseded(HARNESS, BASE, paths, ROOT, run)
 
@@ -1801,7 +1810,7 @@ def _files_runner(diffs: dict[str, list[str]], counts: dict[str, int] | None = N
         args = _bare(args)
         if args[0] == "diff":
             ref = args[-1].split("...")[-1]
-            return "".join(f"{path}\n" for path in diffs.get(ref, []))
+            return "".join(f"{path}\0" for path in diffs.get(ref, []))
         if args[0] == "rev-list":
             ref = args[-1].split("..")[-1]
             return f"{(counts or {}).get(ref, 0)}\n"
@@ -2363,10 +2372,10 @@ def _cut_runner(
             return "onbase some/path\n"
         if args[0] == "diff" and "--name-only" in args:
             ref = next(arg for arg in args if "..." in arg).split("...")[-1]
-            return "".join(f"{path}\n" for path in notes.get(ref, []))
+            return "".join(f"{path}\0" for path in notes.get(ref, []))
         if args[0] == "diff":
             ref = args[-2]
-            return f":000000 100644 {'0' * 40} {ref}blob A\tsome/{ref}\n"
+            return f":000000 100644 {'0' * 40} {ref}blob A\0some/{ref}\0"
         if args[0] == "log":
             return f"{when}\n"
         return ""
@@ -2655,7 +2664,7 @@ def _landed_runner(
         if args[:2] == ["rev-list", "--objects"]:
             return "\n".join(f"{oid} {path}" for oid, path in adds if oid in on_base)
         if args[0] == "diff" and "--raw" in args:
-            return "\n".join(f":000000 100644 {'0' * 40} {oid} A\t{path}" for oid, path in adds)
+            return "".join(f":000000 100644 {'0' * 40} {oid} A\0{path}\0" for oid, path in adds)
         if args[0] == "diff" and "--numstat" in args:
             # Every outstanding path still differs from the base's tip, which
             # is what a branch genuinely carrying work looks like.
@@ -2864,7 +2873,7 @@ def _filing_runner(shallow: str, log: str, changed: dict[str, list[str]] | None 
         if args[0] == "log":
             return log
         if args[0] == "show":
-            return "\n".join((changed or {}).get(args[-1], []))
+            return "".join(f"{path}\0" for path in (changed or {}).get(args[-1], []))
         return ""
 
     return run
@@ -3267,26 +3276,66 @@ class _Repo:
         return (self.root / name).read_text(encoding="utf-8")
 
 
-def test_a_changed_path_read_prints_a_path_outside_ascii_as_written(tmp_path: Path) -> None:
-    """`changed_path_args` turns `core.quotePath` off for every read it builds (`PL-8HSX`).
+def test_a_path_listing_is_read_one_way(tmp_path: Path) -> None:
+    """Every changed-path read names each path as written, whatever it holds (`PL-PVW2`).
 
-    Left on, git printed `src/anesthesia_sim/core/café.py` as
-    `"src/anesthesia_sim/core/caf\\303\\251.py"`, quotes included, and matched
-    against that, `verify`'s protected-path audit passed the file as "none
-    touched". `claims.work_outside_queue` was the one reader spelling its own
-    `-c`, and now relies on this one.
+    Step 3 of the head's split. Before `changed_path_args` asked for `-z` and
+    `listed_paths` read it, the readers split git's listing four ways and each
+    broke a different path: whitespace broke `a b.py` in two (`PL-NK1L`),
+    `str.splitlines` broke one holding U+2028, U+2029 or U+0085 (`PL-PQ0R`), and
+    git quoted a path holding a tab, newline, `"` or `\\` whatever the reader
+    did, and one outside ASCII until `PL-8HSX`, so `verify`'s protected-path
+    audit passed `src/anesthesia_sim/core/café.py` as "none touched". Each read
+    below is one a reader makes, and each names every path the same way.
     """
+    names = ("a b.py", "c\u2028d.py", "e\u2029f.py", "g\x85h.py", "café.py")
+    names += ("t\tab.py", 'q"t.py', "b\\s.py", "n\nl.py")
     repo = _Repo(tmp_path / "repo")
     repo.commit("seed", seed_txt="seed\n")
-    core = repo.root / "src" / "anesthesia_sim" / "core"
-    core.mkdir(parents=True)
-    (core / "café.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (repo.root / "src").mkdir()
+    for number, name in enumerate(names):
+        (repo.root / "src" / name).write_text(f"VALUE = {number}\n", encoding="utf-8")
     repo.git("add", "-A")
-    repo.git("commit", "-qm", "add a core module")
+    repo.git("commit", "-qm", "odd names")
+    # Git lists by byte, and UTF-8 keeps code-point order, so `sorted` is git's.
+    written = tuple(sorted(f"src/{name}" for name in names))
 
     listing = _run_git(changed_path_args("diff", "--name-only", "HEAD~1", "HEAD"), repo.root)
+    shown = _run_git(changed_path_args("show", "--format=", "--name-only", "HEAD"), repo.root)
+    landed, outstanding = _landing_split("HEAD", "HEAD~1", frozenset(), repo.root, _run_git)
 
-    assert listing.splitlines() == ["src/anesthesia_sim/core/café.py"]
+    assert listed_paths(listing) == written
+    assert listed_paths(shown) == written
+    assert (landed, outstanding) == ((), written)
+    # A path the numstat names is one the tips disagree on, so none is superseded;
+    # a path the parse broke would be missing from it and read as agreeing.
+    assert _superseded("HEAD", "HEAD~1", written, repo.root, _run_git) == set()
+    assert changed_paths(repo.root, "HEAD~1") == written
+
+
+def test_working_paths_names_an_untracked_non_ascii_file_as_written(tmp_path: Path) -> None:
+    """`ls-files` quoted `new é.py` while the diff halves beside it did not (`PL-Y2L6`)."""
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", seed_txt="seed\n")
+    (repo.root / "new é.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (repo.root / "seed.txt").write_text("changed\n", encoding="utf-8")
+
+    assert listed_paths(_run_git(untracked_path_args(), repo.root)) == ("new é.py",)
+    assert {"new é.py", "seed.txt"} <= set(working_paths(repo.root).paths)
+
+
+def test_filed_with_work_reads_a_path_holding_a_space() -> None:
+    """`.split()` read `src/a b.py` as `src/a` and `b.py`, two paths neither there (`PL-NK1L`)."""
+    changed = {"ff4be610": ["docs/items/PL-0J9K-a.md", "src/a b.py"]}
+
+    report = filed_with_work(
+        frozenset({"PL-0J9K"}),
+        ROOT,
+        prefix="docs/items",
+        runner=_filing_runner("false", FILED_LOG, changed),
+    )
+
+    assert report.filings["PL-0J9K"].paths == ("src/a b.py",)
 
 
 def test_a_path_that_is_not_utf8_reads_as_unanswered_rather_than_raising(tmp_path: Path) -> None:

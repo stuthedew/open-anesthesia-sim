@@ -168,10 +168,13 @@ try:
         default_base,
         find_cut,
         is_shallow,
+        listed_paths,
         notes_added,
         resolved,
+        subcommand_of,
         subject_pull_request,
         tags,
+        untracked_path_args,
     )
 except ImportError as error:  # pragma: no cover - a checkout missing the subproject
     raise SystemExit(
@@ -5045,7 +5048,7 @@ class GitUnanswered(Exception):
     """A git read the candidate list rests on that git did not answer, and why."""
 
 
-def _git(root: Path, *args: str) -> list[str]:
+def _git_output(root: Path, *args: str) -> str:
     # `git` is resolved through `PATH` rather than pinned, for the same reason
     # as docket's `vcs._run_git`: the path differs by environment.
     #
@@ -5054,18 +5057,32 @@ def _git(root: Path, *args: str) -> list[str]:
     # nothing in it. A base that did not resolve, or a checkout that is not a
     # repository at all, printed "nothing to sweep", and the close-out sweep
     # was skipped over a diff nobody had read (`PL-9RFP`).
+    #
+    # The read is named by `subcommand_of`, since an argv can open with an
+    # option; and git writes a changed path byte for byte under `-z`, so one
+    # whose bytes are not UTF-8 is a read this cannot decode, answered as
+    # unread rather than as a traceback, as `vcs._run_git` answers it
+    # (`PL-0T5X`).
+    command = f"`git {subcommand_of(args)}`"
     try:
         result = subprocess.run(
             ("git", *args), cwd=root, capture_output=True, text=True, check=False
         )
     except GIT_UNAVAILABLE as error:
-        raise GitUnanswered(f"`git {args[0]}` could not run: {error}") from error
+        raise GitUnanswered(f"{command} could not run: {error}") from error
+    except UnicodeDecodeError as error:
+        raise GitUnanswered(f"{command} printed a path this cannot read: {error}") from error
     if result.returncode:
         said = next((line.strip() for line in result.stderr.splitlines() if line.strip()), "")
         raise GitUnanswered(
-            f"`git {args[0]}` exited {result.returncode}: {said or 'with nothing on stderr'}"
+            f"{command} exited {result.returncode}: {said or 'with nothing on stderr'}"
         )
-    return [line for line in result.stdout.splitlines() if line.strip()]
+    return result.stdout
+
+
+def _git(root: Path, *args: str) -> list[str]:
+    """The lines git printed, blank ones dropped; raises as `_git_output` does."""
+    return [line for line in _git_output(root, *args).splitlines() if line.strip()]
 
 
 # What a diff changes that documentation is likely to name: a definition, a
@@ -5117,8 +5134,10 @@ CROWDED_TERM_LIMIT = 10
 
 
 def _changed_paths(root: Path, base: str) -> list[str]:
-    paths = _git(root, *changed_path_args("diff", "--name-only", base))
-    paths += _git(root, "ls-files", "--others", "--exclude-standard")
+    # Both halves through docket's one parse of a `-z` listing, so a path is
+    # named as written by each, whatever it holds (`PL-Y2L6`, `PL-PQ0R`).
+    paths = listed_paths(_git_output(root, *changed_path_args("diff", "--name-only", base)))
+    paths += listed_paths(_git_output(root, *untracked_path_args()))
     return sorted(set(paths))
 
 
