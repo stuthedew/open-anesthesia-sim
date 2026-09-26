@@ -3,13 +3,16 @@ id: PL-KQ4Q
 title: The gate guard refuses a failing gate followed by an or-fallback that keeps it red - make check || exit 1, a bare exit, false, or a group ending in exit 1 - because it reads every or-fallback as one that succeeds
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
-touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py
+touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py, docs/worker.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1103
 payoff: a session can stop a multi-step command on a red gate with make check || exit 1, or a fallback group ending in exit 1 or false, without a refusal that calls the fallback successful, while a fallback that does lose the status is still refused and told the spelling that keeps it
 verify: grep -q 'def test_a_fallback_that_fails_too_keeps_the_status' tests/unit/test_gate_status_guard.py
+recurrences: 2026-09-26 PL-W9XN withdrawn 2026-09-26 PL-W9XN
 ---
 
 **Problem.** The gate guard refuses a failing gate followed by an or-fallback that keeps it red - make check || exit 1, a bare exit, false, or a group ending in exit 1 - because it reads every or-fallback as one that succeeds
