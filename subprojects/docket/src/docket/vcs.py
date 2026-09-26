@@ -1412,7 +1412,9 @@ class _Refs:
     base_blobs: frozenset[str] = frozenset()
 
 
-def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) -> _Refs:
+def _unlanded_refs(
+    base: str, root: Path, run: Runner, *, include_remote: bool, remote: RemoteHeads | None = None
+) -> _Refs:
     """Which refs still carry work the default branch has not taken.
 
     Split out because two reads need exactly this and would otherwise each
@@ -1420,6 +1422,14 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
     merged ones, resolving each fork point, and asking after the content a
     squash merge keeps - and two spellings of one question are two answers
     waiting to disagree.
+
+    `remote` is the command's listing of what the remote holds (`PL-MT3R`).
+    Where it answered, a tracking ref for a branch the remote no longer has is
+    no candidate: no fetch prunes, so the ref outlives its branch, and read as
+    the remote's copy it holds items for a branch no fresh clone can see.
+    `orphaned` passes none, since that ref is the surviving copy it exists to
+    recover, as `stranded`'s own listing of the refs is; without one the
+    answer is what it always was.
     """
     args = ["for-each-ref", "--format=%(refname:short)", "refs/heads"]
     if include_remote:
@@ -1428,7 +1438,12 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
         name.strip() for name in run([*args, f"--merged={base}"], root).splitlines() if name.strip()
     }
     listing = [name.strip() for name in run(args, root).splitlines() if name.strip()]
-    candidates = [name for name in listing if name not in merged]
+    gone = (
+        _deleted_on_remote(root, run, remote)
+        if include_remote and remote is not None and remote.known
+        else frozenset()
+    )
+    candidates = [name for name in listing if name not in merged and name not in gone]
 
     # A truncated clone is the normal state of an agent session's container,
     # and a ref with no readable merge-base is one whose commits this checkout
@@ -1469,6 +1484,28 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
         fork=fork,
         base_blobs=base_blobs,
     )
+
+
+def _deleted_on_remote(root: Path, run: Runner, remote: RemoteHeads) -> frozenset[str]:
+    """The short names of `origin`'s tracking refs whose branch `remote` does not list.
+
+    Short names because that is how `_unlanded_refs` lists every ref, and read
+    from `refs/remotes/origin` rather than by the `origin/` prefix, so a local
+    branch that happens to share the prefix is never taken for a tracking ref.
+    `refs/remotes/origin/HEAD` names the remote's default branch rather than a
+    branch of its own, so it is left alone.
+    """
+    prefix = f"refs/remotes/{REMOTE}/"
+    listing = run(
+        ["for-each-ref", "--format=%(refname)%09%(refname:short)", prefix.rstrip("/")], root
+    )
+    gone: set[str] = set()
+    for line in listing.split("\n"):
+        full, _, short = line.partition("\t")
+        branch = full.strip().removeprefix(prefix)
+        if short.strip() and branch != "HEAD" and branch not in remote.tips:
+            gone.add(short.strip())
+    return frozenset(gone)
 
 
 def _item_paths_on(base: str, items_dir: str, root: Path, run: Runner) -> dict[str, str]:
@@ -2190,6 +2227,92 @@ def fetch_remote(root: Path, *, runner: Runner | None = None) -> Fetch:
 
 
 @dataclass(frozen=True)
+class RemoteHeads:
+    """Which branches the remote holds, as one `git ls-remote --heads` answered (`PL-MT3R`).
+
+    The clone keeps copies of what the remote held - a tracking ref for every
+    branch some fetch saw, the upstream setting, the local branch - and four
+    readers each took one of them for the remote's own copy, each fixed where
+    it stood until the next reader picked another (`PL-WX87`, `PL-KX73`,
+    `PL-C3MN`, `PL-21KN`). This is the one record of what the remote holds,
+    taken once by the command and consulted by every reader that needs it, so
+    a new reader has a record to read rather than a copy to pick.
+
+    **It never writes the clone.** A fetch that pruned would answer the same
+    question by deleting the tracking ref of every branch the remote no longer
+    has, and that ref is the only surviving copy of anything committed on it,
+    which is what `stranded` and `orphaned` recover from. So `fetch_remote`
+    goes on refusing `--prune`, and a reader wanting the remote's copy asks
+    this instead.
+
+    **`asked` is why this is a type rather than a mapping**, for the reason it
+    is on `OpenPullRequests`: a branch absent from `tips` is gone from the
+    remote *only when the remote answered*. Where it did not, `failed` says
+    why, and a reader treats the remote's copy as unknown - reading the
+    clone's copies as it did before this record existed - and says so.
+    """
+
+    #: Per branch the remote holds, by its name there (`claude/x`, never
+    #: `refs/heads/claude/x`), the commit at its tip.
+    tips: Mapping[str, str] = field(default_factory=dict)
+    #: Whether the remote was asked. `False` is a command that took no
+    #: listing, which a read command takes only after its own fetch answered.
+    asked: bool = False
+    #: Why the remote did not answer, where it was asked; `""` where it
+    #: answered or was never asked.
+    failed: str = ""
+
+    @property
+    def known(self) -> bool:
+        """Whether the remote answered, so a branch absent from `tips` is gone from it."""
+        return self.asked and not self.failed
+
+    def tip(self, branch: str) -> str | None:
+        """The branch's tip on the remote: `None` where unknown, `""` where it has none."""
+        if not self.known:
+            return None
+        return self.tips.get(branch, "")
+
+
+def remote_heads(root: Path, *, runner: Runner | None = None) -> RemoteHeads:
+    """What the remote holds now, from one `git ls-remote --heads`, without writing the clone.
+
+    One round trip answers every branch at once, which a reader weighing a
+    rival's branch needs and a per-branch ask cannot give (`PL-MT3R`). It is
+    the command's to take, once, as the fetch is, and never a reader's: a
+    reader takes the listing it is handed, so every reader in one command
+    answers from the same moment of the remote.
+
+    `--heads` rather than `--branches`, which is git 2.46's spelling of it:
+    the containers this runs in carry 2.43.
+
+    **A silence is `failed`, never an empty listing.** A remote read as
+    holding no branches would make every tracking ref a branch it deleted, and
+    hide every hold pushed there - the direction that costs two sessions a
+    collision rather than one a look. Where there is no `origin` it says so,
+    unless git would not say which remotes there are, which is a silence too.
+    """
+    run = _Silences(runner or _run_git)
+    if REMOTE not in _remotes(root, run):
+        return RemoteHeads(
+            asked=True, failed=run.reason or f"this checkout has no `{REMOTE}` remote to ask"
+        )
+    listing = run(["ls-remote", "--heads", REMOTE], root)
+    if not answered(listing):
+        return RemoteHeads(asked=True, failed=f"`git ls-remote --heads {REMOTE}` did not answer")
+    prefix = "refs/heads/"
+    tips: dict[str, str] = {}
+    # On `\n` alone, since a branch name may hold a character `str.splitlines`
+    # also breaks at (`PL-PQ0R`).
+    for line in listing.split("\n"):
+        tip, _, ref = line.partition("\t")
+        ref = ref.strip()
+        if tip.strip() and ref.startswith(prefix):
+            tips[ref[len(prefix) :]] = tip.strip()
+    return RemoteHeads(tips=tips, asked=True)
+
+
+@dataclass(frozen=True)
 class Snapshot:
     """Which moment a read command answered from (`PL-XBV4`).
 
@@ -2210,6 +2333,13 @@ class Snapshot:
     command reads from the working tree and the refs it reads holds from are
     placed relative to each other in the same breath.
 
+    `heads` is which branches the remote holds (`PL-MT3R`), listed only where
+    this command's own fetch answered: a fetch never deletes the tracking ref
+    of a branch the remote deleted, so fresh refs still carry it, and the
+    listing is what tells the two apart. It sits here because both are one
+    read of the remote per command, not because they are one fact - a fetch a
+    second old still leaves every copy the listing is read against.
+
     The forge - which branches have a pull request open, merged or closed - is
     not here, on a decision recorded in `PL-XBV4`: one command asks it, the
     lookup has an eight-second timeout that every other command would then
@@ -2222,6 +2352,7 @@ class Snapshot:
     fetch: str = UNASKED
     refs_at: datetime | None = None
     branch: BranchState = field(default_factory=BranchState)
+    heads: RemoteHeads = field(default_factory=RemoteHeads)
     declined: str = ""
 
     @property
@@ -2231,7 +2362,12 @@ class Snapshot:
 
 
 def snapshot(
-    root: Path, *, now: datetime, fetch: Fetch | None = None, runner: Runner | None = None
+    root: Path,
+    *,
+    now: datetime,
+    fetch: Fetch | None = None,
+    heads: RemoteHeads | None = None,
+    runner: Runner | None = None,
 ) -> Snapshot:
     """The moment a command is answering from, read against what the checkout holds.
 
@@ -2239,7 +2375,10 @@ def snapshot(
     `None` says it did nothing - `--no-fetch` - so the refs are dated here from
     `FETCH_HEAD`. **It never fetches itself**: the command fetches and the
     function does not, which is the rule every read in this module follows and
-    the reason `fetch_remote` is a separate call.
+    the reason `fetch_remote` is a separate call. `heads` is the same rule
+    applied to the remote's branch list: the command lists it with
+    `remote_heads` and hands it in, `None` saying it listed nothing, and this
+    never lists it itself.
 
     `now` is the caller's instant rather than the clock, for `holdings`'
     reason: an age is a subtraction, and a read that took the clock itself
@@ -2261,14 +2400,16 @@ def snapshot(
     else:
         refs_at = None
     branch = _branch_state(root, run)
+    listed = heads if heads is not None else RemoteHeads()
     if run.reason:
         return Snapshot(
             fetch=outcome,
             refs_at=refs_at,
             branch=replace(branch, absent=True, declined=run.reason),
+            heads=listed,
             declined=run.reason,
         )
-    return Snapshot(fetch=outcome, refs_at=refs_at, branch=branch)
+    return Snapshot(fetch=outcome, refs_at=refs_at, branch=branch, heads=listed)
 
 
 def branch_state(root: Path, *, runner: Runner | None = None) -> BranchState:
@@ -2902,6 +3043,7 @@ def cuts_in_flight(
     notes_dir: str,
     on_base: frozenset[str] = frozenset(),
     include_remote: bool = True,
+    remote: RemoteHeads | None = None,
     runner: Runner | None = None,
 ) -> CutsInFlight:
     """Every release being cut on a ref the default branch has not taken.
@@ -2918,12 +3060,15 @@ def cuts_in_flight(
 
     Read from refs, so it is stale by exactly one fetch and blind to a session
     that has pushed nothing. Both are floors on what it can prove rather than
-    flaws in it: what it names, it names on evidence a second checkout would
-    read identically.
+    flaws in it. What it names, a second checkout would read identically only
+    where `remote` is the command's listing of what the remote holds and it
+    answered (`PL-MT3R`): no fetch prunes, so without one a tracking ref for a
+    branch the remote has deleted - which no fresh clone holds - is read as a
+    cut in flight.
     """
     run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)
-    refs = _unlanded_refs(base, root, run, include_remote=include_remote)
+    refs = _unlanded_refs(base, root, run, include_remote=include_remote, remote=remote)
 
     found: list[BranchCut] = []
     for name in refs.unlanded:

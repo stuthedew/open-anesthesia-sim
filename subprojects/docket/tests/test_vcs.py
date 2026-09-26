@@ -39,6 +39,7 @@ from docket.vcs import (
     OpenPullRequests,
     OrphanedBranch,
     OrphanedReport,
+    RemoteHeads,
     RewriteReport,
     Runner,
     SettledBranch,
@@ -74,6 +75,7 @@ from docket.vcs import (
     orphaned,
     records_on_base,
     released_on_base,
+    remote_heads,
     resolved,
     since_filed,
     snapshot,
@@ -3723,6 +3725,85 @@ def test_snapshot_dates_the_refs_it_did_not_fetch(tmp_path: Path) -> None:
     subprocess.run(["git", "remote", "remove", "origin"], cwd=work, check=True, capture_output=True)
     alone = snapshot(work, now=now)
     assert (alone.fetch, alone.refs_at) == (UNFETCHABLE, None)
+
+
+# --- what the remote holds, listed once per command (PL-MT3R) ----------------
+
+
+def test_remote_heads_lists_every_branch_and_fails_rather_than_listing_none(tmp_path: Path) -> None:
+    """One listing answers every branch, and a remote it could not ask is never one with none.
+
+    A branch the remote lacks is `""` only where the remote answered; where it
+    did not - an `origin` that cannot be reached, or none at all - the listing
+    says why and every tip is unknown, because a remote read as holding no
+    branches would make every tracking ref one it had deleted.
+    """
+    work = _clone_of_a_remote(tmp_path)
+    origin = tmp_path / "origin"
+    subprocess.run(["git", "branch", "claude/x"], cwd=origin, check=True, capture_output=True)
+    tip = subprocess.run(
+        ["git", "rev-parse", "main"], cwd=origin, check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+    listed = remote_heads(work)
+    assert listed == RemoteHeads(tips={"main": tip, "claude/x": tip}, asked=True)
+    assert (listed.tip("claude/x"), listed.tip("claude/gone")) == (tip, "")
+
+    subprocess.run(
+        ["git", "remote", "set-url", "origin", str(tmp_path / "gone")],
+        cwd=work,
+        check=True,
+        capture_output=True,
+    )
+    unreached = remote_heads(work)
+    assert (unreached.asked, unreached.known, unreached.tip("main")) == (True, False, None)
+    assert unreached.failed == "`git ls-remote --heads origin` did not answer"
+
+    subprocess.run(["git", "remote", "remove", "origin"], cwd=work, check=True, capture_output=True)
+    alone = remote_heads(work)
+    assert (alone.asked, alone.known, alone.tip("main")) == (True, False, None)
+    assert alone.failed == "this checkout has no `origin` remote to ask"
+    assert RemoteHeads().tip("main") is None, "nothing asked is unknown, not empty"
+
+
+def test_a_cut_on_a_branch_the_remote_deleted_is_in_flight_only_without_a_listing(
+    tmp_path: Path,
+) -> None:
+    """What `cuts_in_flight` names, a fresh clone reads identically only with the listing.
+
+    The remote deletes a branch cutting v0.4.0 after this clone fetched it,
+    and no fetch prunes, so the tracking ref stays. A listing that answered
+    reads it as nobody's cut; no listing, or one that failed, reads the refs
+    as they are. A local branch of the same name is this checkout's own, which
+    no listing of the remote speaks for, so it is left alone.
+    """
+    work = _clone_of_a_remote(tmp_path)
+    origin = tmp_path / "origin"
+
+    def git(cwd: Path, *args: str) -> None:
+        subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+
+    git(origin, "checkout", "-qb", "claude/cut")
+    (origin / "docs" / "releases").mkdir(parents=True)
+    (origin / "docs" / "releases" / "v0.4.0.md").write_text("# v0.4.0\n", encoding="utf-8")
+    git(origin, "add", "-A")
+    git(origin, "commit", "-qm", "Cut v0.4.0")
+    git(origin, "checkout", "-q", "main")
+    git(work, "fetch", "-q", "origin")
+    git(origin, "branch", "-q", "-D", "claude/cut")
+
+    def cuts(remote: RemoteHeads | None) -> list[tuple[str, tuple[str, ...]]]:
+        found = cuts_in_flight(work, notes_dir="docs/releases", remote=remote)
+        assert found.known, found.declined
+        return [(branch.ref, branch.versions) for branch in found.branches]
+
+    listed = remote_heads(work)
+    assert cuts(None) == [("origin/claude/cut", ("0.4.0",))]
+    assert cuts(RemoteHeads(asked=True, failed="no network")) == cuts(None)
+    assert cuts(listed) == []
+
+    git(work, "branch", "claude/cut", "origin/claude/cut")
+    assert cuts(listed) == [("claude/cut", ("0.4.0",))]
 
 
 # --- the default branch's newer copy of an item (PL-Y48N) --------------------

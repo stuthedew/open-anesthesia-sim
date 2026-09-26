@@ -156,15 +156,26 @@ def format_snapshot(snapshot: Snapshot, now: datetime) -> str:
 
     Printed by every read command (`PL-XBV4`), so "this may be stale" is
     worded once wherever a session meets it. Nothing where there is nothing to
-    caveat: the command fetched and the remote answered, so the refs are its
-    own; there is no remote, so no fetch could make them fresher; or git was
-    asked nothing, which `NO_GIT` has already said.
+    caveat: the command fetched and the remote answered, listing its branches
+    too, so the refs are its own; there is no remote, so no fetch could make
+    them fresher; or git was asked nothing, which `NO_GIT` has already said.
+
+    A fetch that answered followed by a branch list that did not is the one
+    fresh answer with a caveat (`PL-MT3R`): no fetch prunes, so without the
+    list a branch the remote has deleted keeps its tracking ref and every hold
+    on it, and the answer reads that ref as the clone did before the list.
 
     The moment is given twice on purpose, as a clock time and as an age. The
     digest is written once and resent on every turn of a session, where an age
     goes stale and a clock time does not; a command read once wants the age.
     Both are `now`-relative in the one way that can be replayed: `--now`.
     """
+    if snapshot.fetch == FETCHED and snapshot.heads.asked and snapshot.heads.failed:
+        return (
+            f"`git ls-remote --heads {REMOTE}` failed, so the remote's branch list was not read "
+            "for this answer: a branch it has deleted can still read as held, from the tracking "
+            "ref this clone keeps for it."
+        )
     if snapshot.fetch in {FETCHED, UNFETCHABLE, UNASKED}:
         return ""
     if snapshot.fetch == FETCH_FAILED:
