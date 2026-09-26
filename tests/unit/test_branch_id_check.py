@@ -510,6 +510,21 @@ def test_a_branch_named_for_its_item_owes_no_claim(
     assert _run(monkeypatch) == 0
 
 
+def test_a_work_branch_whose_name_names_no_item_owes_its_claim(
+    record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # `PL-HTML` fits the grammar and no copy of the store holds it, so the name
+    # holds nothing and exempts nothing (`PL-WK57`); the subject still
+    # attributes the branch, which is why only the claim is owed.
+    _branch(record, "claude/fix-pl-html-export-abc123")
+    _commit(record, "PL-K7QX: the work", "10:00", files=WORK)
+
+    assert _run(monkeypatch) == 1
+    captured = capsys.readouterr()
+    assert branch_id_check.CLAIMS_NOTHING in captured.err
+    assert "a commit subject leads with PL-K7QX" in captured.out
+
+
 def test_an_id_either_copy_of_the_store_holds_attributes_the_branch(
     record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -617,6 +632,24 @@ def test_the_hint_asks_nothing_of_an_item_file_or_a_file_elsewhere(
     assert _run(monkeypatch, "--hint", str(item)) == branch_id_check.NOT_ASKED
     assert _run(monkeypatch, "--hint", str(tmp_path / "scratch.md")) == branch_id_check.NOT_ASKED
     assert capsys.readouterr().out == ""
+
+
+def test_the_hint_reads_a_name_as_the_refusal_does(
+    record: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # A fresh branch named for an item the store holds holds it by the name,
+    # and one whose name fits the grammar and names no item holds nothing, so
+    # the hint and the refusal it mirrors stay one answer (`PL-WK57`).
+    work = str(record / "src" / "work.py")
+    _branch(record, "claude/pl-k7qx-the-work")
+
+    assert _run(monkeypatch, "--hint", work) == 0
+    assert capsys.readouterr().out == ""
+
+    _branch(record, "claude/fix-pl-html-export-abc123")
+
+    assert _run(monkeypatch, "--hint", work) == 0
+    assert branch_id_check.CLAIMS_NOTHING in capsys.readouterr().out
 
 
 def test_the_hint_is_silent_once_the_branch_claims(

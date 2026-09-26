@@ -30,13 +30,9 @@ passes an English word - `CTRL` and `HTML` fit its alphabet - so a branch named
 `claude/pl-ctrl-hotkeys`, or a subject reading `PL-HTML export`, carried an id
 by its position and named no item at all. An id attributes work here only where
 the base's copy of the store or this branch's holds it, which `held` reads from
-each tree's listing. The name is still read as `claims.holdings` reads it, first
-match only, so this is never looser than `docket flight`. What that leaves,
-stated rather than left to be found: `claims.holdings` still takes a name on the
-grammar alone, so `flight` lists such a branch under an item that does not
-exist and `claims_nothing` exempts its unclaimed work from the refusal below,
-which `--hint` mirrors so that the two agree. `PL-WK57` carries it, because
-every in-flight guard reads the one answer it changes.
+each tree's listing. The name is read by `claims.named_id`, the one rule
+`claims.holdings` reads it by, so `docket flight`, the refusal below and
+`--hint` give one answer about it (`PL-WK57`).
 
 **Deliberately not decided here: how small is too small to file.** A rule
 demanding an item for a one-line typo fix converts the queue into a log, which
@@ -136,6 +132,7 @@ from docket.claims import (  # noqa: E402
     claims_nothing,
     holdings,
     in_queue,
+    named_id,
     queue_records,
 )
 from docket.config import Config  # noqa: E402
@@ -285,18 +282,18 @@ def attribution(name: str, subjects: list[str], store: frozenset[str] | None) ->
 
     An id counts only where `store` holds it (`PL-SN2T`); `None` is a store
     that could not be read, where the grammar alone decides and the caller
-    says so. The name is read by `search`, first match only, as
-    `claims.holdings` reads it: crediting a later match no guard reads would
-    certify a branch that `docket flight` cannot see.
+    says so. The name is read by `claims.named_id`, first match only, which is
+    how `claims.holdings` reads it: crediting a later match no guard reads
+    would certify a branch that `docket flight` cannot see.
     """
 
     def names_an_item(key: str) -> bool:
         return store is None or key in store
 
     found: list[str] = []
-    match = BRANCH_ID_RE.search(name)
-    if match is not None and names_an_item(match.group(1).upper()):
-        found.append(f"branch name carries {match.group(1).upper()}")
+    named = named_id(name, names_an_item)
+    if named:
+        found.append(f"branch name carries {named}")
     for subject in subjects:
         ids = [key for key in leading_ids(subject) if names_an_item(key)]
         if ids:
@@ -444,16 +441,17 @@ def hint(path: str, now: datetime) -> int:
     if in_queue(inside, config):
         return NOT_ASKED
     name = branch_name()
-    if (
-        not name
-        or name == "HEAD"
-        or not in_agent_namespace(name)
-        or BRANCH_ID_RE.search(name) is not None
-    ):
+    if not name or name == "HEAD" or not in_agent_namespace(name):
         return 0
     report = holdings(ROOT, now=now, items_dir=config.items_dir)
     remotes = _remotes(ROOT, _runner)
     if not report.known or any(_head_name(ref, remotes) == name for ref in report.unreadable):
+        return 0
+    # A branch with nothing on it yet is one `holdings` never reads, so the
+    # name is asked of the store here, by the rule `claims_nothing`'s exemption
+    # takes from `holdings` (`PL-WK57`).
+    store, partial = held(report.base)
+    if partial or named_id(name, store.__contains__):
         return 0
     if not claims_bound(report, name, remotes):
         print(
