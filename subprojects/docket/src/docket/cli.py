@@ -65,18 +65,18 @@ from .model import (
     is_under,
     live_recurrences,
     misread_faults,
-    ranks_as_generator,
-    ranks_as_generator_defect,
     recurrence_count,
     recurrences_of,
 )
 from .plan import (
+    HELD,
+    NOWHERE,
     OfferedReport,
+    Standing,
     UnrankedGenerator,
     clusters,
     features,
     gate,
-    generator_blockers,
     generator_defects,
     is_new_work,
     longest_waiting,
@@ -87,6 +87,7 @@ from .plan import (
     recommend,
     recurring,
     set_aside,
+    tier_standings,
     unranked_generators,
     unsound_generator_claims,
     waiting_since,
@@ -1803,40 +1804,29 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  milestone: {item.milestone}")
     root = _invocation(args).root
     plan = _plan(root, items, config)
-    # Whether this item is on the generator tier, by either entrance, so the
+    # Where this item's rank stands on the generator tier - by its own claim at
+    # either entrance, or by a rank a blocked tier item passes to it - so the
     # plan line does not tell a session it "ranks on its band alone" about an
-    # item that ranked above every band. `recommend` refuses that sentence
-    # already; `show` asserted it, and `show` is the path a named item arrives
-    # on.
+    # item that ranked above every band, nor that it ranks above every band
+    # while `next` is not offering it. `plan.tier_standings` is the one reading
+    # of a status against the tier, and every tier line below reads it too:
+    # each used to test status for itself, one status per fix - closed
+    # (`PL-BBT8`), blocked (`PL-QFWF`, `PL-4RK2`) - and called four untriaged
+    # tier items ranked (`PL-Q4DF`). The claim predicates it rests on are rank
+    # predicates, so a spent head (`PL-T7QR`) and a closed item stand nowhere.
     known_ids = {i.identifier for i in items if i.identifier}
-    # `ranks_as_generator` rather than `is_generator`, which is the whole of
-    # what this line asks: a recorded generator whose mechanism is spent did
-    # *not* rank above every band, so "it ranks on its band alone" is true of
-    # it and must not be dropped (`PL-T7QR`). Both are rank predicates, not
-    # claim predicates, so a closed item is on no tier here whatever its
-    # fields say - which the claim predicates reported otherwise (`PL-BBT8`).
-    # The third reading is the rank a blocked head hands down to what it waits
-    # on (`PL-QFWF`): without it the plan line told the build item a design
-    # round filed that it ranks on its band alone, while `next` ranked it on
-    # the tier.
-    lifted = generator_blockers(items)
-    unblocks = lifted.get(item.identifier, ())
-    on_the_tier = (
-        ranks_as_generator(item, known_ids)
-        or ranks_as_generator_defect(item, config.generator_paths)
-        or bool(unblocks)
-    )
+    standings = tier_standings(items, config.generator_paths)
+    standing = standings.get(item.identifier)
+    lifted = {i: s.lifted_by for i, s in standings.items() if s.lifted_by}
+    unblocks = standing.lifted_by if standing is not None else ()
     closed = item.status in CLOSED_STATUSES
-    # A blocked item is startable by nothing, so whatever tier it is on it is
-    # not ranked there now - which the plan line and both tier lines below
-    # asserted of `PL-MB2W` while `next` ranked its blockers instead (`PL-4RK2`).
-    blocked = item.status == "blocked"
     placement = placement_line(
         plan.scope if plan is not None else None,
         item.identifier,
-        ranks_above_bands=on_the_tier,
+        ranks_above_bands=standing is not None,
         closed=closed,
-        blocked=blocked,
+        blocked=standing is not None and standing.why == "blocked",
+        untriaged=standing is not None and standing.why == "untriaged",
     )
     if placement:
         print(f"  plan: {placement}")
@@ -1863,10 +1853,8 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  generator: {item.generator}")
         if verdict_faults:
             print(f"    UNSOUND - {'; '.join(verdict_faults)}; ranks on its band until repaired")
-        elif ranks_as_generator(item, known_ids) and blocked:
-            print(_blocked_head_rank(item, items, lifted, flight.ids, _milestones(root, config)))
-        elif ranks_as_generator(item, known_ids):
-            print("    ranked on the generator tier - above every band but P0")
+        elif standing is not None and standing.generator:
+            print(_tier_rank(item, standing, items, lifted, flight.ids, root, config))
         elif closed:
             # Before `spent`, which would say "ranked on its own band" of an
             # item nothing ranks. A `live` verdict on a closed head is the case
@@ -1911,27 +1899,32 @@ def cmd_show(args: argparse.Namespace) -> int:
             print(f"    UNSOUND - {'; '.join(faults)}; ranks on its band alone until repaired")
         elif closed:
             print("    closed, so on no tier - only an open item's claim ranks there")
-        elif blocked:
-            # Only a generator head hands its rank down (`generator_blockers`),
-            # so a blocked machinery defect is ranked by nothing until it can
-            # start, and saying so is all this line can truthfully do.
-            print(
-                "    blocked, so ranked nowhere until it can start"
-                " - then on the generator tier, above every band but P0"
-            )
-        else:
-            print("    ranked on the generator tier - above every band but P0")
+        elif standing is not None:
+            # A blocked machinery defect hands its rank down as a head does,
+            # so this line names what carries it or says nothing can
+            # (`PL-Q4DF`); until then it said "ranked nowhere" and nothing
+            # else did.
+            print(_tier_rank(item, standing, items, lifted, flight.ids, root, config))
     if unblocks:
         # The line naming the head, because the rank is the head's and nothing
         # on this item's own face carries it: `blocked-by` is written on the
         # head alone, as `root-cause-of:` is. It says where the rank comes
         # from rather than that the item is ranked now, which a blocker that
         # is blocked itself is not.
-        named = ", ".join(head.identifier for head in unblocks)
-        print(
-            f"  unblocks generator {named}: blocked on this item, so the head's rank passes"
-            " here - the generator tier, above every band but P0"
-        )
+        head_ids = [h.identifier for h in unblocks if standings[h.identifier].generator]
+        defect_ids = [h.identifier for h in unblocks if not standings[h.identifier].generator]
+        if head_ids:
+            print(
+                f"  unblocks generator {', '.join(head_ids)}: blocked on this item, so the head's"
+                " rank passes here - the generator tier, above every band but P0"
+            )
+        if defect_ids:
+            # Its own line, so a machinery defect is never called a generator
+            # (`PL-Q4DF`, which let a blocked defect's rank pass here at all).
+            print(
+                f"  unblocks machinery defect {', '.join(defect_ids)}: blocked on this item, so"
+                " its rank passes here - the generator tier, above every band but P0"
+            )
     # The read `_flight` already made, whole: the kind and state of each hold
     # are what `FlightReport` has no room for. Empty under `--no-git`.
     if held := render.format_holds(_holdings(args), item.identifier, _now(args)):
@@ -1946,7 +1939,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         # `plan._startable`'s rule - open, triaged, not blocked, and not in
         # flight, which the condition above already holds - so a closed or
         # blocked item is not invited to start (`PL-9F8B`).
-        startable = item.is_open and not item.is_untriaged and not blocked
+        startable = item.is_open and not item.is_untriaged and item.status != "blocked"
         print(render.format_queue_edit(edit, _now(args), startable=startable))
     if threads := _notes_threads(root, config, item.identifier):
         print(render.format_notes_threads(threads, item.identifier, config.notes_file))
@@ -2249,7 +2242,9 @@ def cmd_next(args: argparse.Namespace) -> int:
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
         _say_promotable(items)
-        _say_unranked_generators(items, flight.ids, _milestones(root, config))
+        _say_unranked_generators(
+            items, flight.ids, _milestones(root, config), config.generator_paths
+        )
         _say_recurring(items, flight.ids)
         _say_lane_holdouts(items, flight, config, args, lane)
         _say_unread(flight)
@@ -2260,7 +2255,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     if flight.ids:
         print(render.format_excluded(flight.ids, _holdings(args)))
     _say_promotable(items)
-    _say_unranked_generators(items, flight.ids, _milestones(root, config))
+    _say_unranked_generators(items, flight.ids, _milestones(root, config), config.generator_paths)
     _say_recurring(items, flight.ids)
     _say_lane_holdouts(items, flight, config, args, lane)
     _say_answer_lane(items, flight, config, args, plan, lane, picks[0].item)
@@ -2510,7 +2505,10 @@ def _waiting_on(
 
 
 def _say_unranked_generators(
-    items: list[Item], in_flight: Collection[str], milestones: MilestoneStates | None
+    items: list[Item],
+    in_flight: Collection[str],
+    milestones: MilestoneStates | None,
+    generator_paths: tuple[str, ...] = (),
 ) -> None:
     """Name the blocked live generator heads whose rank reaches nothing offered.
 
@@ -2523,16 +2521,55 @@ def _say_unranked_generators(
     Takes the flight ids the ranking excluded on: a blocker being worked on a
     branch is paying the head's edge down, so the head is not named for it.
     """
-    found = unranked_generators(items, in_flight, milestones=milestones)
+    found = unranked_generators(
+        items, in_flight, milestones=milestones, generator_paths=generator_paths
+    )
     if not found:
         return
-    heads = "A live generator" if len(found) == 1 else "Live generators"
+    # A machinery defect is named here as a head is (`PL-Q4DF`), and says which
+    # it is: "root cause of 0 items" would describe no claim it makes.
+    if all(entry.generator for entry in found):
+        heads = "A live generator" if len(found) == 1 else "Live generators"
+    else:
+        heads = (
+            "An item on the generator tier" if len(found) == 1 else "Items on the generator tier"
+        )
     print(f"{heads} that nothing ranks - blocked, and no item it waits on can start:")
     for entry in found:
-        count = len(entry.head.root_cause_of)
+        if entry.generator:
+            claim = f"root cause of {len(entry.head.root_cause_of)} items"
+        else:
+            claim = "a defect in the generator machinery"
         said = _waiting_on(entry, items, milestones)
-        print(f"  {entry.head.identifier} (root cause of {count} items) {said}")
+        print(f"  {entry.head.identifier} ({claim}) {said}")
     print(f"  Not ranked above - {UNRANKED_REMEDY}.")
+
+
+def _tier_rank(
+    item: Item,
+    standing: Standing,
+    items: list[Item],
+    lifted: dict[str, tuple[Item, ...]],
+    in_flight: Collection[str],
+    root: Path,
+    config: Config,
+) -> str:
+    """Where an item's own tier rank stands, for the line under its claim.
+
+    Read from `plan.tier_standings` rather than from the status, so the line
+    under a `generator:` verdict and the one under an `impairs-generators:`
+    claim cannot disagree with each other or with `next` (`PL-Q4DF`).
+    """
+    if standing.state == HELD:
+        return "    ranked on the generator tier - above every band but P0"
+    if standing.state == NOWHERE:
+        return (
+            "    untriaged, so ranked nowhere until triage seats it"
+            " - then on the generator tier, above every band but P0"
+        )
+    return _blocked_head_rank(
+        item, items, lifted, in_flight, _milestones(root, config), config.generator_paths
+    )
 
 
 def _blocked_head_rank(
@@ -2541,6 +2578,7 @@ def _blocked_head_rank(
     lifted: dict[str, tuple[Item, ...]],
     in_flight: Collection[str],
     milestones: MilestoneStates | None,
+    generator_paths: tuple[str, ...] = (),
 ) -> str:
     """Where a blocked live head's rank is now, for the line under its verdict.
 
@@ -2554,7 +2592,9 @@ def _blocked_head_rank(
     unranked = next(
         (
             u
-            for u in unranked_generators(items, in_flight, milestones=milestones)
+            for u in unranked_generators(
+                items, in_flight, milestones=milestones, generator_paths=generator_paths
+            )
             if u.head.identifier == head.identifier
         ),
         None,
@@ -2804,6 +2844,7 @@ def cmd_generators(args: argparse.Namespace) -> int:
                 unsound_generator_claims(items),
                 generator_defects(items, config.generator_paths),
                 pairs,
+                standings=tier_standings(items, config.generator_paths),
             )
         )
         return 0
