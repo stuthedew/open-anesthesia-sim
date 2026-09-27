@@ -507,7 +507,18 @@ values (p. 323) and the post-release activity caveat on the terminal fits
 (p. 319) are in the same section's fat-perfusion paragraph and in the
 reference patient's Heinonen source entry, taken 2026-09-27 for `PL-HBH2`.
 
+Their elimination sampling schedule (*Anesth Analg* p. 317), the mammillary
+model's hepatic site - elimination from the vessel-rich group, k20 (p. 318) -
+and the fitted k20 for each agent (Table 3 of each, pp. 321 and 495) are in
+`tests/reference/test_late_washout_against_published_fits.py` and
+`docs/MODEL.md` § "The first 24 hours of elimination against the published mean
+curves", taken 2026-09-27 for `PL-KK1Q`; the hybrid coefficients and their SDs
+(Tables 1 and 2) were read again at the source the same day and match the
+2026-09-26 record. Figures 3 and 4 of each, the multi-day washout curves on
+logarithmic axes, were read qualitatively and no number was taken from them.
+
 Route and depth: the *Anesth Analg* paper through the corpus's text layer, pp.
-319-23; the *Anesthesiology* paper is a scan with no text layer, read as page
-images of pp. 493-96 only, and p. 496 again on 2026-09-27. Neither paper's
-methods for the wash-in apparatus were read in either pass.
+317-23; the *Anesthesiology* paper is a scan with no text layer, read as page
+images of pp. 493-96 only, p. 496 again on 2026-09-27, and pp. 493-95 again the
+same day for `PL-KK1Q`. Neither paper's methods for the wash-in apparatus were
+read in any pass.
