@@ -3,11 +3,13 @@ id: PL-SQJ1
 title: Playback delivers 73-91% of the rate the dropdown displays: 300x measured at 220x, 1x at 0.9x, so the clock on screen runs slower than its label
 priority: P2
 effort: M
-status: ready
+status: done
 classes: ux, perf
 feature: presentation-safety
 touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-09-08
+closed: 2026-09-27
+pr: 1185
 verify: ! grep -qF '_run_simulation_timer' src/anesthesia_sim/app/playback.py && grep -qF '2026-09-27' src/anesthesia_sim/app/playback.py && grep -qF 'delivered rate' docs/MODEL.md
 ---
 
@@ -268,3 +270,18 @@ for multiplier in (1, 5, 20, 60, 300):
 **For the build under option 1.** Add `docs/MODEL.md` to `touches`; the
 done-when's first clause ("left alone with the reasoning recorded") is the one
 taken.
+
+## Built 2026-09-27
+
+Option 1, as ratified: nothing on screen changes. `playback.py`'s docstring
+replaces the dead `SimulationView._run_simulation_timer` citation with
+`RunView.step_tick` (closing `PL-P55F` in the same commit) and gains a
+paragraph recording the 2026-09-27 QTimer measurement, the mechanism the
+Flet-era shortfall went with, what can still make the label false, and the
+decision; `docs/MODEL.md` § "Interface boundary" says what the rate label is a
+statement about and names the delivered rate. The guard is filed as `PL-2NYN`
+(`feature`, outside the gate) with option 3's design and the condition that
+reopens this recommendation. The done-when's first clause is the one taken;
+its re-measurement on the owner's machine stands, with the script above.
+RE-CONFIRM: the brief was re-measured and answered on 2026-09-27, so it was
+worked as written.

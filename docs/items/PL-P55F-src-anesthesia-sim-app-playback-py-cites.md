@@ -3,11 +3,13 @@ id: PL-P55F
 title: src/anesthesia_sim/app/playback.py cites SimulationView._run_simulation_timer, a method the 2026-09-15 PySide6 port deleted, so live source prose names a mechanism the tree has not had for six days
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: gate-staleness-sweep
 touches: src/anesthesia_sim/app/playback.py
 added: 2026-09-21
+closed: 2026-09-27
+pr: 1185
 payoff: A reader of playback.py can grep the mechanism it names and find it, so the paragraph on when a control change takes effect is confirmable rather than taken on trust.
 verify: grep -q 'RunView.step_tick' src/anesthesia_sim/app/playback.py
 ---
