@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.5.15
 touches: tools/pr_title_check.py, tools/pr_record_check.py, tests/unit/test_pr_title_check.py, tests/unit/test_pr_record_check.py, Makefile, .claude/skills/docket/modes/close-out.md, subprojects/docket/README.md
 added: 2026-09-12
 closed: 2026-09-27

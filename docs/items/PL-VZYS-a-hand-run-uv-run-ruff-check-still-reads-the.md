@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.5.15
 touches: pyproject.toml, Makefile, subprojects/docket/ruff.toml, tools/doc_check.py
 added: 2026-09-15
 closed: 2026-09-27

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: dev-tooling
+milestone: v0.5.15
 touches: subprojects/docket/tests/test_vcs.py
 added: 2026-09-13
 closed: 2026-09-27

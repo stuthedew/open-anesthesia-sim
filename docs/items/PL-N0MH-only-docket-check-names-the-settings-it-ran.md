@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: dev-tooling
+milestone: v0.5.15
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docs/items/PL-QNYF-docket-check-errors-on-an-item-whose-closure.md
 added: 2026-09-21
 closed: 2026-09-27

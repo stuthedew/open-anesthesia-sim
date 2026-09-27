@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: presentation-safety
+milestone: v0.5.15
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/qt_widgets.py, tests/unit/test_bootstrap.py, tests/integration/test_qt_widgets.py, docs/MODEL.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/items/PL-005-replace-the-full-screen-startup-window-with-a.md
 added: 2026-09-16
 closed: 2026-09-27
