@@ -1,9 +1,15 @@
 ---
 id: PL-RH88
 title: docs/ARCHITECTURE.md's routing bullet still says Editor contract and editor, where PL-GPYV renamed both to View on 2026-09-16 (#654), so a reader searching ROADMAP.md for the contract it names finds nothing
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: docs
 touches: docs/ARCHITECTURE.md
 added: 2026-09-26
+closed: 2026-09-26
+pr: 1131
+verify: ! grep -qE 'Editor contract|holds one editor|bind an editor' docs/ARCHITECTURE.md && grep -q 'the View contract that replaces it' docs/ARCHITECTURE.md
 ---
 
 **Problem.** docs/ARCHITECTURE.md's routing bullet still says Editor contract and editor, where PL-GPYV renamed both to View on 2026-09-16 (#654), so a reader searching ROADMAP.md for the contract it names finds nothing

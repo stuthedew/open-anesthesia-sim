@@ -1566,6 +1566,12 @@ def _check_cut_window(
     stamped and folds the newcomers in, found by the same `cut_window` read.
     Until `PL-2TDX` it did not work at the moment this fires: with the notes
     written, the re-run read the version as shipped and refused it as untagged.
+
+    Merging the base in does not end it, since `PL-C0C0`, though that merge is
+    the route's own first step and what `update-armed.yml` does to an armed
+    release pull request. It ended it before, because the window was measured
+    from the merge-base; `CutWindow` says what it is measured from now, and what
+    that costs.
     """
     if window is None or not window.version:
         return

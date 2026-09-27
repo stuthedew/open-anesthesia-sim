@@ -1,10 +1,18 @@
 ---
 id: PL-C0C0
 title: docket check's unmerged-cut advisory measures from the branch's merge-base with the base, so merging the base in - the absorb route's own first step, and what update-armed.yml does to an armed release pull request whenever main moves - silences it while the work that landed is still named in no notes
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: defect
 feature: release-process
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1154
+payoff: a release session still hears what the base took during its cut after merging the base in, by hand or through update-armed.yml, instead of reading the advisory's silence as nothing landed
+verify: grep -rq 'def test_merging_the_base_in_leaves_the_newcomer_reported_until_the_re_cut_names_it' subprojects/docket/tests/
 ---
 
 **Problem.** docket check's unmerged-cut advisory measures from the branch's merge-base with the base, so merging the base in - the absorb route's own first step, and what update-armed.yml does to an armed release pull request whenever main moves - silences it while the work that landed is still named in no notes
@@ -53,3 +61,29 @@ to report still holds, and `update-armed.yml` makes that the normal case for
 an armed release pull request. The damage is bounded by the tag-span check
 above, which is why this is a recommendation on order rather than a priority
 band.
+
+**Resolution, 2026-09-27.** `cut_window` measures `landed` from the commit that
+added the notes file, the newest such commit, so notes deleted and written
+again are measured from the copy `HEAD` holds. It asks whether history is
+readable of that commit rather than of `HEAD`. A shallow clone missing the
+cut's own history then declines, instead of reading the base's whole history
+as landed. `test_merging_the_base_in_leaves_the_newcomer_reported_until_the_re_cut_names_it`
+in `subprojects/docket/tests/test_release.py` merges the base in, checks,
+re-cuts and checks again. On the unfixed code it fails at the check after the
+merge.
+
+Refused: measuring from the newest commit that *changed* the notes. It would
+also stop reporting subjects a re-cut saw but could not take, but a hand edit
+of the notes after a base merge would silence it with no re-cut behind the
+edit. That is the silent answer this item removes, moved one step.
+
+The cost the brief asked about is taken, and it is wider than the brief said.
+Two things are now reported until the cut merges. One is a closure let go to
+the next release. The other is a subject naming work still in progress, which
+a re-cut cannot fold in. The base merge that used to end both sooner decided
+nothing about either. In-progress subjects are ordinary: in the 40 newest
+commits on `main` at `23f95714`, 12 of 54 leading ids were not closed by the
+commit they lead, going by whether its diff sets the item's `status:` to done
+or dropped. The advisory's last sentence already says an id may be
+in-progress work. A read that drops them is captured separately rather than
+built here.
