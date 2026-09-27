@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from docket.checks import Report
+from docket.claims import BY_LANDING, LIVE, holdings
 from docket.store import ID_PATTERN
 from docket.vcs import (
     _PATHSPEC_BYTES,
@@ -53,6 +54,7 @@ from docket.vcs import (
     StrandedReport,
     SubjectPullRequest,
     _landing_split,
+    _Landings,
     _pathspec_chunks,
     _run_git,
     _standing,
@@ -642,7 +644,7 @@ def test_a_hash_that_merely_looks_like_a_number_is_not_a_pull_request() -> None:
 def _tree_runner(
     trees: dict[str, dict[str, str]],
     titles: dict[str, str] | None = None,
-    history: tuple[str, ...] = (),
+    forks: dict[str, dict[str, str]] | None = None,
 ):
     """A git that holds the given trees, as `ref -> {item file: contents}`.
 
@@ -651,17 +653,28 @@ def _tree_runner(
     cannot answer a containment question, the implementation is not asking
     one.
 
-    `history` is the text of copies the default branch has held and has since
-    moved on from, which is the one object walk this answers. A ref still
-    holding one of them is behind whatever the base holds now however
-    different the two files read, and without that the base rewriting its own
-    prose leaves the ref holding lines the base lacks - which on text alone is
-    indistinguishable from the ref having written them.
+    `forks` is the tree each ref forked from, for the one history question
+    `stranded` does put (`_Landings`, `PL-WVSX`): whether the ref wrote a copy
+    since its fork, and whether the base did. A ref with no entry here has no
+    fork git can name, and its copies are read by text alone. Without that
+    question the base rewriting its own prose leaves the ref holding lines the
+    base lacks - which on text alone is indistinguishable from the ref having
+    written them.
 
     A tree keyed `HEAD` is the checkout's own, and is deliberately not listed
     by `for-each-ref`: git lists refs under `refs/heads` and `refs/remotes`,
     and `HEAD` is neither.
     """
+    forked = forks or {}
+
+    def raw(before: Mapping[str, str], after: Mapping[str, str]) -> str:
+        """`--raw -z` records for every item file whose text differs between two trees."""
+        return "".join(
+            f":100644 100644 {hashlib.sha1(before.get(name, '').encode()).hexdigest()} "
+            f"{hashlib.sha1(text.encode()).hexdigest()} M\0docs/items/{name}\0"
+            for name, text in after.items()
+            if before.get(name) != text
+        )
 
     def run(args: list[str], root: Path) -> str:
         args = _bare(args)
@@ -669,13 +682,18 @@ def _tree_runner(
             return "\n".join(ref for ref in trees if ref != "HEAD")
         if args[:2] == ["rev-parse", "--verify"]:
             return "abc123\n" if args[-1] in trees else ""
-        if args[0] == "rev-list" and "--objects" in args:
-            # The object walk `_base_blobs` reads, in the shape git writes it:
-            # an oid, then the path anything but a commit was stored under.
-            return "".join(
-                f"{hashlib.sha1(text.encode()).hexdigest()} docs/items/held.md\n"
-                for text in history
-            )
+        if args[0] == "merge-base":
+            return f"fork-of-{args[2]}\n" if args[2] in forked else ""
+        if args[0] == "log" and "--raw" in args:
+            # What the base wrote since the ref's fork: the fork's tree
+            # against the base's, which `^fork-of-<ref> <base>` names.
+            fork = next(arg for arg in args if arg.startswith("^fork-of-"))
+            base = args[args.index(fork) + 1]
+            return raw(forked[fork.removeprefix("^fork-of-")], trees.get(base, {}))
+        if args[0] == "diff" and "--raw" in args:
+            # What the ref wrote since its fork: the fork's tree against its own.
+            ref = next(arg for arg in args if arg.startswith("fork-of-")).removeprefix("fork-of-")
+            return raw(forked[ref], trees.get(ref, {}))
         if args[0] == "ls-tree":
             return _tree_lines(
                 {f"docs/items/{name}": text for name, text in trees.get(args[2], {}).items()}
@@ -894,16 +912,21 @@ def test_a_copy_the_base_has_held_and_moved_past_is_not_reported() -> None:
     On the text alone that is indistinguishable from the branch having written
     them, and it is the commonest shape in this store: 2,158 of the 2,180
     branch copies differing from `main` on 2026-09-21 are one the base has
-    held. Reading them by text instead called 873 of them ahead.
+    held. Reading them by text instead called 873 of them ahead. What tells
+    them apart is the branch's own history: this copy is the one it forked
+    with, and it has not written the file since (`PL-WVSX`). Where git cannot
+    say what the branch forked with, the copy is read by text, and reported.
     """
     rewritten = {"PL-0001-on-main.md": _document("PL-0001", "On main").replace("x", "rewritten")}
     trees = {"origin/main": rewritten, "origin/claude/older": MAIN}
 
-    walked = stranded(ROOT, {"PL-0001"}, runner=_tree_runner(trees, history=tuple(MAIN.values())))
-    unwalked = stranded(ROOT, {"PL-0001"}, runner=_tree_runner(trees))
+    forked = stranded(
+        ROOT, {"PL-0001"}, runner=_tree_runner(trees, forks={"origin/claude/older": MAIN})
+    )
+    unread = stranded(ROOT, {"PL-0001"}, runner=_tree_runner(trees))
 
-    assert walked.edits == ()
-    assert [edit.identifier for edit in unwalked.edits] == ["PL-0001"]
+    assert forked.edits == ()
+    assert [edit.identifier for edit in unread.edits] == ["PL-0001"]
 
 
 def test_an_edit_this_session_is_holding_is_not_reported_back_to_it() -> None:
@@ -3426,6 +3449,116 @@ def test_a_squashed_rename_is_read_as_written_by_the_base(tmp_path: Path) -> Non
         "rev-list", "--objects", f"^{fork}", "main"
     )
     assert _landing_split("topic", fork, written, repo.root, _run_git) == (("new.txt",), ())
+
+
+ITEM = "docs/items/PL-0001-on-main.md"
+OTHER = "docs/items/PL-0002-closed-on-main.md"
+
+
+def _write(repo: _Repo, message: str, files: Mapping[str, str]) -> str:
+    """One commit of whole files by path, since `_Repo.commit` cannot spell an item file's."""
+    for path, text in files.items():
+        target = repo.root / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+    repo.git("add", "-A")
+    repo.git("commit", "-qm", message)
+    return repo.git("rev-parse", "HEAD")
+
+
+def test_stranded_reports_a_branch_restoring_an_item_to_an_earlier_version(tmp_path: Path) -> None:
+    """A copy the branch put back to an earlier version is a change; the fork's own copy is not.
+
+    `stranded` skipped every copy whose blob the base's history had ever held,
+    and a restore to an earlier version is exactly that: reported by nothing,
+    and lost with the branch (`PL-WVSX`). The stale branch is why the filter
+    could not simply go - it holds the same blob - and only the branch's own
+    history since its fork tells the two apart. A restore that reopens a closed
+    item stays unreported, on `_standing`'s closure rule, whose docstring
+    carries the count.
+    """
+    repo = _Repo(tmp_path / "repo")
+    first = _document("PL-0001", "On main")
+    other = _document("PL-0002", "Closed on main")
+    closed = other.replace("status: untriaged", "status: done\nclosed: 2026-09-27")
+    at_first = _write(repo, "the items as first written", {ITEM: first, OTHER: other})
+    _write(
+        repo,
+        "the base rewrites one and closes the other",
+        {ITEM: first.replace("x", "rewritten"), OTHER: closed},
+    )
+    repo.git("switch", "-qc", "restoring")
+    _write(repo, "PL-0001 put the first prose back", {ITEM: first})
+    repo.git("switch", "-qc", "reopening", "main")
+    _write(repo, "PL-0002 reopen it", {OTHER: other})
+    repo.git("switch", "-qc", "fresh", "main")
+    _write(repo, "PL-0001 new prose", {ITEM: first.replace("x", "new")})
+    repo.git("switch", "-qc", "stale", at_first)
+    _write(repo, "unrelated", {"other.txt": "other\n"})
+    repo.git("switch", "-q", "main")
+
+    report = stranded(repo.root, set(), runner=_run_git)
+
+    assert report.known, report.declined
+    assert [(edit.identifier, edit.branches) for edit in report.edits] == [
+        ("PL-0001", ("fresh", "restoring"))
+    ]
+
+
+def test_every_landed_reader_answers_from_the_branch_s_own_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`landed_whole`, `claims._landed_through` and `stranded` share one landed test (`PL-927J`).
+
+    Each had a blob set of its own, and the two still reading every blob the
+    base's history holds took a branch putting files back to pre-fork content
+    for a merge (`PL-P64J`, `PL-WVSX`). One shape, three readers: unlanded
+    while the base holds the restored content only from before the fork,
+    landed once a squash writes it after - and the routing is pinned by
+    patching the one test, which moves all three at once.
+    """
+    repo = _Repo(tmp_path / "repo")
+    first = _document("PL-0001", "On main")
+    _write(repo, "as first written", {ITEM: first, "src/flag.py": "ON = True\n"})
+    _write(
+        repo,
+        "the base replaces both",
+        {ITEM: first.replace("x", "rewritten"), "src/flag.py": "ON = False\n"},
+    )
+    repo.git("switch", "-qc", "topic")
+    repo.git("commit", "-q", "--allow-empty", "-m", "PL-0001: start\n\nClaim: PL-0001 topic")
+    restore = _write(repo, "PL-0001: put both back", {ITEM: first, "src/flag.py": "ON = True\n"})
+    _write(repo, "PL-0001: and go on", {"src/more.py": "MORE = True\n"})
+    repo.git("switch", "-q", "main")
+    now = datetime.now(UTC)
+
+    def verdicts() -> tuple[bool, tuple[str, ...], tuple[str, ...]]:
+        return (
+            landed_whole("main", repo.root, _run_git, ref="topic"),
+            tuple(hold.released_by or hold.state for hold in holdings(repo.root, now=now).holds),
+            tuple(edit.identifier for edit in stranded(repo.root, set(), runner=_run_git).edits),
+        )
+
+    real = _Landings.split
+
+    def everything_landed(
+        self: _Landings, ref: str
+    ) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
+        split = real(self, ref)
+        return None if split is None else (split[0] + split[1], ())
+
+    before = verdicts()
+    monkeypatch.setattr(_Landings, "split", everything_landed)
+    patched = verdicts()
+    monkeypatch.undo()
+    repo.git("merge", "-q", "--squash", restore)
+    repo.git("commit", "-qm", "PL-0001: put both back (#1)")
+    after = verdicts()
+
+    assert before == (False, (LIVE,), ("PL-0001",))
+    # A branch wholly landed is read for no claims at all, so the item is unheld.
+    assert patched == (True, (), ())
+    assert after == (True, (BY_LANDING,), ())
 
 
 def test_a_path_listing_is_read_one_way(tmp_path: Path) -> None:

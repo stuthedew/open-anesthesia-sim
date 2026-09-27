@@ -3,16 +3,18 @@ id: PL-927J
 title: PL-GHHW's mechanism is producing again: three readers of whether the base took a branch's change, left off vcs.change_landed by its fix, were filed after it closed - PL-8BR0 (landed_whole refuses queue-only commits as merge evidence), PL-RLTK (_base_blobs holds every blob the base ever held) and PL-P64J (claims._landed_through, the same ever-held set) - so a live head wants recording with root-cause-of and generator: live once PL-P64J reaches main with #1133
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: pre-fork-content
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_claims.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1160
 payoff: whether a branch's change reached main gets one answer every docket command reads, so a restore stops being taken for a merge and a squash merge for unmerged work, and the family stops filing a member a day
 verify: grep -q 'def test_every_landed_reader_answers_from_the_branch_s_own_history' subprojects/docket/tests/test_vcs.py
 root-cause-of: PL-8BR0, PL-RLTK, PL-P64J, PL-WVSX
-generator: live - four readers of whether the base took a branch's change were filed in the four days after PL-GHHW closed (PL-8BR0, PL-RLTK, PL-P64J, PL-WVSX), each deciding it on its own blob set with no function giving them one answer, and telling a restoring branch from a stale one needs whether the branch itself wrote a blob after its fork, which none of them reads
+generator: spent - every reader of whether the base took a branch's change answers from vcs._Landings, which reads the ref's own history since its fork; a reader added beside it would have to re-derive a blob set of its own, and test_every_landed_reader_answers_from_the_branch_s_own_history pins the three that existed to that one function
 misread: Whether the base already holds or has superseded a branch commit's change, by whatever route
 ---
 
@@ -69,3 +71,14 @@ them - answers from one function that reads the branch's own history since its
 fork, so content the base held before the fork counts as landed only where the
 base wrote it after; `PL-P64J` and `PL-WVSX` close through it; and the
 generator's verdict is rewritten to say why it cannot produce another.
+
+**Fixed 2026-09-27**, closing `PL-P64J` and `PL-WVSX` through it.
+`vcs._Landings` is the one test: a ref's own fork, its net change since it
+(`_landing_split`), judged against what the base wrote after that fork
+(`_written_since`). `_base_blobs` and `_Refs.base_blobs` are gone.
+`_unlanded_refs`, `landed_whole`, `claims._landed_through` - each commit's own
+fork, and no ever-held prefilter - and `stranded`'s item filter all answer
+from it, and `test_every_landed_reader_answers_from_the_branch_s_own_history`
+pins the routing: patching the one function moves all three readers at once.
+Measured on this checkout: `bin/docket flight --no-fetch` 2.06 s against
+2.08 s before, `stranded` 1.07 s against 1.30 s.
