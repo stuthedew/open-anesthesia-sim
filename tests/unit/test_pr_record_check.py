@@ -19,6 +19,7 @@ applied to what they return.
 from __future__ import annotations
 
 import subprocess
+from pathlib import Path
 
 import pr_record_check
 import pr_title_check
@@ -268,3 +269,60 @@ def test_discover_does_not_fail_on_a_tree_it_cannot_read(
 
     assert pr_record_check.main() == 0
     assert "not checked" in capsys.readouterr().err
+
+
+def _discover_on_disk(
+    monkeypatch: pytest.MonkeyPatch, root: Path, on_disk: str, **refs: dict[str, str]
+) -> int:
+    """`main()` as `make check` runs it in `root`, with #1050 open and one item file on disk."""
+    directory = root / "docs" / "items"
+    directory.mkdir(parents=True)
+    (directory / "PL-K7QX-a.md").write_text(on_disk, encoding="utf-8")
+    monkeypatch.setattr(pr_title_check, "ROOT", root)
+    _install(monkeypatch, **refs)
+    monkeypatch.setattr(pr_record_check, "repo_slug", lambda: "owner/repo")
+    monkeypatch.setattr(pr_record_check, "_branch", lambda: "claude/pl-t8pt-slug")
+    monkeypatch.setattr(
+        pr_record_check, "open_pull_request", lambda slug, branch: (1050, "PL-K7QX: do it")
+    )
+    monkeypatch.delenv("PR_NUMBER", raising=False)
+    monkeypatch.delenv("PR_HEAD", raising=False)
+    monkeypatch.setattr("sys.argv", ["pr_record_check.py", "--base", "base", "--discover"])
+    return pr_record_check.main()
+
+
+def test_discover_confirms_a_number_written_but_not_yet_committed(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    # `record N` writes before the closure's commit, and the working tree is
+    # read as the title check reads it (`PL-T8PT`), so the number is confirmed
+    # at that moment rather than one commit later.
+    ready = ITEM.format(id="PL-K7QX", status="ready", extra="")
+    recorded = ITEM.format(id="PL-K7QX", status="done", extra="pr: 1050\n")
+
+    status = _discover_on_disk(
+        monkeypatch, tmp_path, recorded, base={"PL-K7QX-a.md": ready}, HEAD={"PL-K7QX-a.md": ready}
+    )
+
+    assert status == 0
+    assert "PL-K7QX records #1050" in capsys.readouterr().out
+
+
+def test_discover_refuses_a_closure_on_disk_that_records_no_number(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    ready = ITEM.format(id="PL-K7QX", status="ready", extra="")
+    unrecorded = ITEM.format(id="PL-K7QX", status="done", extra="")
+
+    status = _discover_on_disk(
+        monkeypatch,
+        tmp_path,
+        unrecorded,
+        base={"PL-K7QX-a.md": ready},
+        HEAD={"PL-K7QX-a.md": ready},
+    )
+
+    assert status == 1
+    err = capsys.readouterr().err
+    assert "this checkout closes PL-K7QX in its working tree" in err
+    assert "bin/docket record 1050" in err

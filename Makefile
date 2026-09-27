@@ -213,14 +213,17 @@ check: sync
 # and cost a cycle. `--discover` reads the title from this branch's own open
 # pull request instead, and skips silently on every way that can fail - no
 # token, no network, no pull request open yet - so this target stays green
-# offline. `make pr-title` runs it alone. `PL-J3BB`.
+# offline. `make pr-title` runs it alone. `PL-J3BB`. What the branch closes it
+# reads from the working tree, since this runs before the commit it vouches
+# for and a closure rides that commit (`PL-T8PT`).
 	python3 tools/pr_title_check.py --discover
 # The record half beside the title half, and the one provenance rests on
 # (`PL-HMZZ`): every item this branch closes must record `pr:` equal to its
 # own open pull request's number, which the required `pr-title` job refuses
 # the pull request without. `--discover` reads the number from that pull
 # request and skips silently on every way the lookup can fail, like the line
-# above; it reads the committed tree, so a closure counts once committed.
+# above, and reads the working tree as that line does, so a number `record N`
+# has just written counts before it is committed (`PL-T8PT`).
 	python3 tools/pr_record_check.py --discover
 # The body records beside the number (`PL-979D`, `PL-73G8`): a recovered body's
 # `commit:` is the one field tying it to the tree, and a history rewrite leaves

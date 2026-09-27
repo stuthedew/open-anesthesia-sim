@@ -35,14 +35,14 @@ page and decides which file a session reads.
    it after `bin/docket set --status done` and before the closure commit, and
    the number rides the same commit as the work. It writes onto every closure
    this checkout introduces, committed or not, and onto nothing the base
-   already holds as done; `make check` then reads the committed tree through
-   `tools/pr_record_check.py --discover`, and CI's required `pr-title` job
-   refuses the pull request until every closure records its number
-   (`PL-HMZZ`). **Never edit the field by hand** - typing the line is how the
-   wrong number gets recorded (`PL-QTSB`). Where the pull request opens only
-   after the closure was pushed, run the command then: the number rides one
-   more push, and the red check is what holds the merge until it lands, so
-   the window below stays shut.
+   already holds as done; `make check` then reads the same working tree
+   through `tools/pr_record_check.py --discover` (`PL-T8PT`), and CI's
+   required `pr-title` job refuses the pull request until every closure
+   records its number (`PL-HMZZ`). **Never edit the field by hand** - typing
+   the line is how the wrong number gets recorded (`PL-QTSB`). Where the pull
+   request opens only after the closure was pushed, run the command then: the
+   number rides one more push, and the red check is what holds the merge until
+   it lands, so the window below stays shut.
 
    **Do not split the closure out to get the number earlier.** Closing in the
    same commit as the work is what removes the window in which a merge takes
