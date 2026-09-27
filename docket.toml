@@ -354,6 +354,15 @@ known_classes = [
 # the answer to "a new tools test landed" is to run the check and paste the
 # line it prints, not to remember this paragraph.
 #
+# That rule decides a *test* file, one pytest collects. A support module under
+# `tests/` - a `conftest.py`, a helper the tests import - is held only to the
+# simulator's side when it imports `anesthesia_sim`; one importing nothing of
+# it serves whichever side its purpose puts it on, which no import shows, so an
+# entry here is its author's declaration and the check prints no line to paste
+# (`PL-12P8`). `tests/conftest.py` has none: it selects Qt's headless platform
+# for the product's rendering tests, and the entry the check once demanded for
+# it made an item touching it and the Qt test it serves `crossing`.
+#
 # Deliberately absent, and each is a judgment rather than an oversight:
 #
 # - `ROADMAP.md` and `docs/releases/` are product direction. They name
@@ -389,7 +398,6 @@ workflow_paths = [
   "docs/maintainer.md",
   "docs/worker.md",
   "subprojects",
-  "tests/conftest.py",
   "tests/unit/test_agent_identity_check.py",
   "tests/unit/test_branch_id_check.py",
   "tests/unit/test_branch_sweep.py",

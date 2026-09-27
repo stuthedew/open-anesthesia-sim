@@ -18,10 +18,17 @@ Two others carry the design rather than the behavior.
 statement of what the item asked for, run against this repository's real
 settings through the same `Item.lane` that ranks the queue - so it fails if the
 check passes while the thing the check is *for* is still broken. And
-`test_the_prefix_comparison_agrees_with_the_lane_it_mirrors` pins the one
-knowing duplication in the tool: `is_covered` restates
-`docket.model.is_under` because tools here may import the standard library
-only, and this is what stops the two drifting apart in silence.
+`test_the_prefix_comparison_agrees_with_the_lane_it_mirrors` pins a knowing
+duplication in the tool: `is_covered` restates `docket.model.is_under` because
+tools here may import the standard library only, and this is what stops the
+two drifting apart in silence. `TEST_FILE_PATTERNS`, restating pytest's
+`python_files`, is the other, pinned by
+`test_a_test_file_is_what_this_run_of_pytest_collects`.
+
+A support module - anything under `tests/` pytest does not collect - is held
+to half the rule, and its tests cover both halves: the direction its imports
+decide, and the one they cannot, where the list's declaration stands
+(`PL-12P8`).
 """
 
 from __future__ import annotations
@@ -30,7 +37,7 @@ from pathlib import Path
 
 import pytest
 import workflow_paths_check
-from docket.model import LANE_WORKFLOW, is_under, parse_item
+from docket.model import LANE_PRODUCT, LANE_WORKFLOW, is_under, parse_item
 
 ROOT = Path(workflow_paths_check.__file__).resolve().parent.parent
 
@@ -44,6 +51,17 @@ APPARATUS_TEST = (
     'import pr_title_check\n\nSAMPLE = "src/anesthesia_sim/core/blood.py"\n\n\n'
     "def test_it():\n    pass\n"
 )
+
+#: Support modules, which pytest does not collect. The first is `PL-4GN8`'s
+#: `tests/reference/mass_balance_gate.py` near enough - one constant the
+#: reference tests shared, and not one import - and the second is
+#: `tests/conftest.py` as it stands. Both serve the simulator and import none
+#: of it.
+SUPPORT_CONSTANT = '"""The release gate\'s tolerance."""\n\nTOLERANCE = 1e-9\n'
+CONFTEST = 'import os\n\nos.environ.setdefault("QT_QPA_PLATFORM", "offscreen")\n'
+
+#: A support module built on the simulator, the shape of `tests/benchmarks/frame_cost.py`.
+PRODUCT_SUPPORT = "from anesthesia_sim.app.controller import SimulationController\n"
 
 
 def _repo(tmp_path: Path, *, workflow_paths: tuple[str, ...], **tests: str) -> Path:
@@ -61,6 +79,13 @@ def _repo(tmp_path: Path, *, workflow_paths: tuple[str, ...], **tests: str) -> P
     for stem, body in tests.items():
         (unit / f"{stem}.py").write_text(body, encoding="utf-8")
     return tmp_path
+
+
+def _support(root: Path, relative: str, body: str) -> None:
+    """Write one file anywhere under `root`, for a module `_repo`'s stems cannot name."""
+    target = root / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(body, encoding="utf-8")
 
 
 def test_an_apparatus_test_missing_from_the_list_is_refused(tmp_path: Path) -> None:
@@ -158,6 +183,41 @@ def test_every_offender_is_named_not_only_the_first(tmp_path: Path) -> None:
     assert len(found) == 2
 
 
+def test_a_support_module_importing_no_product_is_not_told_to_join_the_list(tmp_path: Path) -> None:
+    """`PL-12P8`: what a support module imports shows what it needs, not what it serves.
+
+    The rule is exact for a test file because a test has to import what it
+    exercises; a module the tests import has no such obligation. Both files
+    here were told to add themselves to `workflow_paths` - `PL-4GN8` met it on
+    its first shared constant, and `tests/conftest.py` was listed to keep
+    `make check` green - which wrote simulator content into the apparatus list.
+    """
+    root = _repo(tmp_path, workflow_paths=("tools",), test_blood=PRODUCT_TEST)
+    _support(root, "tests/reference/mass_balance_gate.py", SUPPORT_CONSTANT)
+    _support(root, "tests/conftest.py", CONFTEST)
+    assert workflow_paths_check.problems(root) == []
+
+
+def test_a_support_module_the_list_declares_apparatus_stays_declared(tmp_path: Path) -> None:
+    """The declined half, from its other side: a helper for the `tools/` tests is
+    apparatus by purpose, and its entry is the declaration.
+
+    Holding every support module to the product side instead would be this
+    defect in the mirror - an apparatus helper told to leave the list.
+    """
+    root = _repo(tmp_path, workflow_paths=("tools", "tests/unit/git_scratch.py"))
+    _support(root, "tests/unit/git_scratch.py", "import subprocess\n")
+    assert workflow_paths_check.problems(root) == []
+
+
+def test_a_support_module_importing_the_product_is_still_refused_the_list(tmp_path: Path) -> None:
+    """The half its imports do decide: a module built on the simulator is the simulator's."""
+    root = _repo(tmp_path, workflow_paths=("tools", "tests/benchmarks/frame_cost.py"))
+    _support(root, "tests/benchmarks/frame_cost.py", PRODUCT_SUPPORT)
+    (problem,) = workflow_paths_check.problems(root)
+    assert 'Remove "tests/benchmarks/frame_cost.py" from workflow_paths' in problem
+
+
 def test_the_failure_prints_to_stderr_and_exits_one(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -182,6 +242,29 @@ def test_a_clean_tree_reports_what_it_counted(
     monkeypatch.setattr("sys.argv", ["workflow_paths_check.py", "--root", str(root)])
     assert workflow_paths_check.main() == 0
     assert "2 test file(s)" in capsys.readouterr().out
+
+
+def test_a_clean_tree_counts_the_support_modules_it_left_to_the_list(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """What the check could not decide is said rather than rounded off (`PL-12P8`).
+
+    A support module is not counted as a test file, and the one importing no
+    `anesthesia_sim` is reported as resting on the list's word alone.
+    """
+    root = _repo(
+        tmp_path,
+        workflow_paths=("tools", "tests/unit/test_thing_check.py"),
+        test_thing_check=APPARATUS_TEST,
+        test_blood=PRODUCT_TEST,
+    )
+    _support(root, "tests/conftest.py", CONFTEST)
+    _support(root, "tests/benchmarks/frame_cost.py", PRODUCT_SUPPORT)
+    monkeypatch.setattr("sys.argv", ["workflow_paths_check.py", "--root", str(root)])
+    assert workflow_paths_check.main() == 0
+    out = capsys.readouterr().out
+    assert "2 test file(s) under tests, 1 of them apparatus" in out
+    assert "2 support module(s), 1 importing no `anesthesia_sim`" in out
 
 
 def test_a_tools_script_and_its_own_test_land_in_the_same_lane() -> None:
@@ -237,6 +320,42 @@ def test_the_owners_own_notes_are_apparatus_like_the_workers() -> None:
             "---\n\nBody.\n"
         )
         assert item.lane(paths) == LANE_WORKFLOW, doc
+
+
+def test_the_conftest_that_renders_the_qt_tests_lands_in_the_product_lane() -> None:
+    """What `PL-12P8` asked for, stated end to end against this repository.
+
+    `tests/conftest.py` imports only `os`, to select Qt's headless platform for
+    the product's rendering tests. The check read that as apparatus and
+    demanded a `workflow_paths` entry, and the entry made an item touching the
+    conftest and the Qt test it serves `crossing` - offered to neither lane.
+    Through `Item.lane`, for the reason the two tests above give.
+    """
+    paths = workflow_paths_check.declared_workflow_paths(ROOT)
+    item = parse_item(
+        "---\n"
+        "id: PL-T3ST\n"
+        "title: A change to a Qt test and the conftest it renders under\n"
+        "priority: P2\n"
+        "effort: S\n"
+        "status: ready\n"
+        "touches: tests/conftest.py, tests/integration/test_qt_chart.py\n"
+        "---\n\nBody.\n"
+    )
+    assert item.lane(paths) == LANE_PRODUCT
+
+
+def test_a_test_file_is_what_this_run_of_pytest_collects(pytestconfig: pytest.Config) -> None:
+    """`TEST_FILE_PATTERNS` restates `python_files`; this is what pins the two together.
+
+    The check tells a test from a support module by name, and leaves a support
+    module importing no `anesthesia_sim` to the list. Were `python_files`
+    changed, a test it newly collected would be read as support, and an
+    apparatus one among them would drift out of `workflow_paths` in silence -
+    `PL-JBZK` back. Compared with the setting this run collected under rather
+    than with a copy of pytest's default, so the comparison cannot drift too.
+    """
+    assert tuple(pytestconfig.getini("python_files")) == workflow_paths_check.TEST_FILE_PATTERNS
 
 
 def test_the_prefix_comparison_agrees_with_the_lane_it_mirrors() -> None:
