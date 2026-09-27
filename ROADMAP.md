@@ -108,7 +108,8 @@ capability-boundary rule above governs.
 | v0.5.9 | Completed | **The release where a gate's dispositions moved onto the item, `main` started refusing a branch that is not up to date, and an item filed more than 14 days ago started being re-confirmed before it is worked.** Twenty-seven items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in `src/` moved, and this cut says so by tree identity alone**: `src/` resolves to `37b0a4c` at v0.5.8 and here, so `core/` (`d9e3ca9`), `data/` (`ab3499f`) and `app/` (`f3c6e26`) are byte-identical, and `tests/reference/` (`a184830`), `README.md` and `.github/` (`275baf5`) with them. **`docs/MODEL.md` moves by a correction** (`148686b` to `fd139ea`): from v0.4.32 it said the chart's percent axis is scaled by the alveolar peak, where the code has fixed it at 3 MAC for every agent (`CHART_AXIS_TOP_MAC`) since v0.4.0. `PL-QYBW` keeps that one linear axis (project owner, 2026-09-23, ratified, over a reader-selected logarithmic scale) and corrects the three statements, and `PL-H5DV` corrects planned-milestone item 27's claim about how much agent fat holds. **Four features complete.** `gate-disposition-store`: `PL-WD5Z` moves a gate's dispositions from `ROADMAP.md` prose onto a `deferred-from:` field on the item, closing `PL-58JD`, `PL-59QW` (which completes `brief-state-agreement`), `PL-FD5Q` and `PL-VFJ3` with it. `merge-skew`: `PL-70VB` repairs the red `main` that `#967` and `#970` produced by merging cleanly, the third instance within 30 days, so the trigger `PL-Z0SM` recorded fired, the project owner turned on strict up-to-date checks for `main`, and `PL-6MW8` revises `CLAUDE.md`'s base-merge rule for them. `debt-aging`: `PL-TQN2` has `bin/docket show` print an open item's age and what changed under its `touches`, and ask past 14 days for re-confirmation. Six more finish the owner's generator audit and say what the new-mechanism pause holds, `PL-GHHW` and `PL-PXZ3` share one landing test, `vcs.change_landed`, and the rest fix the queue tool. **Four are Gate 2 entries**, which stands at 46 of 185 cleared at this cut, eight more are v0.6.0 deferrals, and `PL-8543`, the v0.5.8 cut, closes here because a cut cannot stamp itself. | 27 items |
 | v0.5.10 | Completed | **The release where who holds an item started being recorded as a claim rather than inferred from commit subjects, and every generator head started naming the fact its members misread.** Eight items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved, and this cut says so by tree identity alone**: `src/` resolves to `37b0a4c` at v0.5.9 and here, so `core/` (`d9e3ca9`), `data/` (`ab3499f`) and `app/` (`f3c6e26`) are byte-identical, and `tests/reference/` (`a184830`), `docs/MODEL.md` (`fd139ea`), `README.md` (`9938368`) and `.github/` (`275baf5`) with them. **Four items build `PL-MB2W`'s claim record**: `PL-3FYK` reads a `Claim:` trailer on the holder's own branch under a seven-day lease in one reader, `claims.holdings`, releasing it at `blocked` as well as `done` and `dropped` (project owner, 2026-09-24, ratified, over holding the claim until the item is `done` or `dropped`); `PL-NST2` completes that reader with the landed prefix, status dispositions, the item's `resource:` and cut holds; `PL-0TD9` writes the record with `bin/docket claim` and `bin/docket yield`, which replace start mode's empty-commit recipe; and `PL-SW2K` moves the cutover marker to the writer (project owner, 2026-09-24, ratified, over accepting the window until `PL-0TD9` lands), so a branch started between the two merges is read by the old rules rather than as claiming nothing. `show`, `flight` and `next` move onto the record with `PL-N162`. **Two are the generator machinery**: `PL-5MYR` gives every head a `misread:` line naming the one fact its members misread (project owner, 2026-09-23), which `bin/docket check` requires and `bin/docket generators` prints beside the pairs of heads that share a member, and `PL-QFWF` ranks a blocked live head's direct blockers in the generator tier, where `PL-3FYK` had fallen to an ordinary P2 the moment the design round blocked `PL-MB2W` on it. `PL-038` measures that a mid-session `CLAUDE.md` edit invalidates no prompt cache, and the bullet now says so. **None is a Gate 2 entry**, which stands at 46 of 185 cleared at this cut as at the last, five are v0.6.0 deferrals, and `PL-R498`, the v0.5.9 cut, closes here because a cut cannot stamp itself. | 8 items |
 | v0.5.11 | Completed | **The release where the in-flight guards started answering who holds an item from the recorded claim rather than from commit subjects, and the release train became something a claim holds.** Sixteen items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `37b0a4c` at v0.5.10 and here, and `tests/reference/` (`a184830`), `docs/MODEL.md` (`fd139ea`) and `README.md` (`9938368`) with it; `.github/` moves only to run `tools/possessive_section_check.py` under `uv` as well (`PL-MB3F`). **Five items put the in-flight machinery on `PL-MB2W`'s claim record**: `PL-N162` moves `show`, `flight`, `next` and the session-start digest onto `claims.holdings`, each hold printed with its kind and state, and `PL-FFR0` gives CI and `flight` one definition of a branch that claims nothing; `PL-J9S0` has CI refuse such a branch, and a claim ordering behind another live one; `PL-H14W` opens a claimed captures-only pull request as a draft, after v0.5.9's `#978` was merged six minutes in, and `PL-DDYD` replaces the arming catalog `CLAUDE.md` restated with `bin/docket arm`. **`PL-331V` makes the release train a claimed resource**, closing `PL-MFM4`'s blind spot for a session that has filed a release but not cut it. **Most of the rest are checks that passed on what they could not see**: `PL-Y1W0`'s `pr_body_check.py --compare` finds 27 of 681 squash bodies differing from their pull request's, and `PL-25JP` recovered the ten that landed empty; `PL-MB3F` names the source files `doc_check` cannot parse instead of skipping them; `PL-KNHX` and `PL-TP75` make `contrast_check` refuse a stale shortfall entry and count the errors its exit code counts; and `PL-4RK2` names a blocked generator head whose rank reaches nothing startable. `PL-SL16` states `PL-B11M`'s commit-attribution rule in `CLAUDE.md`. **Two are Gate 2 entries**, `PL-KNHX` and `PL-MFM4`, which leaves it at 48 of 186 cleared; eight are v0.6.0 deferrals, and `PL-NLXK`, the v0.5.10 cut, closes here because a cut cannot stamp itself. | 16 items |
-| v0.5.12 | Completed / current baseline | **The release where the nine generator heads the Projects trial's "Fix generators" project set out to retire stopped generating, and the three Bash guards started reading a command the way bash runs it.** 131 items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `37b0a4c` at v0.5.11 and here, and `tests/reference/` (`a184830`) and `README.md` (`9938368`) with it; `docs/MODEL.md` moves only in its cross-references, 101 section marks among them, and `.github/` only by the two checks `pr-title.yml` gained, for a closure's `pr:` number (`PL-HMZZ`) and a recorded body (`PL-979D`). **Each of the nine heads is one fact its members misread, now read one way**: `PL-B8HZ` which copy of an item `verify --self` reads, `PL-HMZZ` which pull request carried an item, `PL-QHCW` which commit a release was cut on, `PL-MB2W` who holds an item, `PL-Q4DF` where a generator-tier rank stands, `PL-XBV4` how fresh a command's refs are, `PL-PVW2` which spelling of a repeated predicate is the answer, `PL-GPJ7` what a hard gate recognises, and `PL-979D` the record of a pull request's body; `bin/docket generators` now lists `PL-MT3R`, recorded on 2026-09-26, alone as still generating. **Thirteen items put the three Bash guards on one shared splitter** that reads groups, reserved words, wrappers, redirections, or-fallbacks and git's own option spellings as bash and git do. `PL-CBDX`, the one `safety` item, read the 13 merges the review hold let through unread and filed one finding, `PL-8YBS`, with no displayed value affected. **24 are Gate 2 entries**, which with three dropped leaves it at 75 of 187 cleared; 89 are v0.6.0 deferrals, and `PL-DRRG`, the v0.5.11 cut, ships in no release under `PL-KRS6`. | 131 items |
+| v0.5.12 | Completed | **The release where the nine generator heads the Projects trial's "Fix generators" project set out to retire stopped generating, and the three Bash guards started reading a command the way bash runs it.** 131 items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `37b0a4c` at v0.5.11 and here, and `tests/reference/` (`a184830`) and `README.md` (`9938368`) with it; `docs/MODEL.md` moves only in its cross-references, 101 section marks among them, and `.github/` only by the two checks `pr-title.yml` gained, for a closure's `pr:` number (`PL-HMZZ`) and a recorded body (`PL-979D`). **Each of the nine heads is one fact its members misread, now read one way**: `PL-B8HZ` which copy of an item `verify --self` reads, `PL-HMZZ` which pull request carried an item, `PL-QHCW` which commit a release was cut on, `PL-MB2W` who holds an item, `PL-Q4DF` where a generator-tier rank stands, `PL-XBV4` how fresh a command's refs are, `PL-PVW2` which spelling of a repeated predicate is the answer, `PL-GPJ7` what a hard gate recognises, and `PL-979D` the record of a pull request's body; `bin/docket generators` now lists `PL-MT3R`, recorded on 2026-09-26, alone as still generating. **Thirteen items put the three Bash guards on one shared splitter** that reads groups, reserved words, wrappers, redirections, or-fallbacks and git's own option spellings as bash and git do. `PL-CBDX`, the one `safety` item, read the 13 merges the review hold let through unread and filed one finding, `PL-8YBS`, with no displayed value affected. **24 are Gate 2 entries**, which with three dropped leaves it at 75 of 187 cleared; 89 are v0.6.0 deferrals, and `PL-DRRG`, the v0.5.11 cut, ships in no release under `PL-KRS6`. | 131 items |
+| v0.5.13 | Completed / current baseline | **The release where no generator head is left generating, and what the remote holds started being read from one listing of it rather than from the clone's own copies.** Eighteen items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `37b0a4c` at v0.5.12 and here, and `tests/reference/` (`a184830`), `docs/MODEL.md` (`9c23c5a`) and `README.md` (`9938368`) with it; `.github/` gains two workflows, a daily sweep of finished `claude/*` branches (`PL-X8SV`) and one that brings `main` into each armed pull request it has moved past (`PL-S5MF`), and `pr-title.yml` stops holding a merge on a recorded body (`PL-3PH2`). **`PL-MT3R` retires the last live head** (project owner, 2026-09-26, ratified, over `git fetch --prune` and per-reader fixes): a command that reads the remote takes one `git ls-remote --heads origin` listing and hands it to every reader beneath it, and `PL-C3MN`, `PL-21KN` and `PL-20DL` move `claim`'s withdrawal check, `bin/docket arm` and the published-copy test in `claim` and `yield` onto it, completing `remote-copy`; `bin/docket generators` now marks no head as still generating. **`PL-61FT` bounds what the three Bash guards promise** (project owner, 2026-09-26, ratified, over filing every probed spelling and over failing closed), so a spelling outside the promise is a `KNOWN_GAPS` test row rather than an item; `PL-M2NV` and `PL-R5N0` close two gaps inside it, and `PL-YFT4` stops the prune guard refusing a `git config` that only reads a setting. `PL-3PH2` makes the squash commit the record of a pull request's body again (project owner, 2026-09-26, ratified, over keeping `PL-979D`'s per-pull-request record). `PL-PB8V` (`#1113`) and `PL-MT3R` (`#1116`) merged inside v0.5.12's tag, whose notes now point here. **None is a Gate 2 entry**, which stands at 75 of 187 cleared at this cut as at the last; eleven are v0.6.0 deferrals, and `PL-5ZLQ`, the v0.5.12 cut, ships in no release under `PL-KRS6`. | 18 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -210,151 +211,157 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.12
+## Current baseline: v0.5.13
 
-v0.5.12 is the release where the nine generator heads the Projects trial's
-"Fix generators" project set out to retire stopped generating, and the three
-Bash guards started reading a command the way bash runs it. 131 items, all
-apparatus and documentation, and a patch on both halves of § "Versioning
-decision"'s test: no capability boundary is crossed, because nothing a learner
-can reach changed at all, and every number above it is spent, v0.6.0 through
-v0.9.0 being given to milestone sections. 24 of the 131 are entries in Gate 2,
-the debt gate frozen under v0.6.0, and with three more entries dropped since
-the last cut the gate stands at 75 of its 187 entries cleared, against 48 of
-186 at v0.5.11. 89 are v0.6.0 deferrals. Seven features complete:
-`context-budget-reading`, `count-input-addressing`, `gate-status-guard`,
-`rendered-claim-accuracy`, `set-parity`, `timeline-arrangement` and
-`verify-false-reject`.
+v0.5.13 is the release where no generator head is left generating, and what the
+remote holds started being read from one listing of it rather than from the
+clone's own copies. Eighteen items, all apparatus and documentation, and a
+patch on both halves of § "Versioning decision"'s test: no capability boundary
+is crossed, because nothing a learner can reach changed at all, and every
+number above it is spent, v0.6.0 through v0.9.0 being given to milestone
+sections. None of the eighteen is an entry in Gate 2, the debt gate frozen
+under v0.6.0, so it stands at 75 of its 187 entries cleared, as at v0.5.12.
+Eleven are v0.6.0 deferrals, and three more deferrals, `PL-DCHW`, `PL-QMN0` and
+`PL-W9XN`, were dropped under `PL-61FT`'s bound. One feature completes:
+`remote-copy`.
 
 **Nothing in the simulator moved, and this cut says so by tree identity:**
 
-| Tree | v0.5.11 | This cut | What moved |
+| Tree | v0.5.12 | This cut | What moved |
 | --- | --- | --- | --- |
 | `src/` | `37b0a4c` | `37b0a4c` | nothing - `core/` (`d9e3ca9`), `data/` (`ab3499f`) and `app/` (`f3c6e26`) are byte-identical, so no equation, parameter, constant, numerical method, solver step or displayed value moves |
 | `tests/reference/` | `a184830` | `a184830` | nothing - every published-reference case, expected value and tolerance is byte-identical |
-| `docs/MODEL.md` | `fd139ea` | `9c23c5a` | its cross-references only: 101 section marks on references to its own sections (`PL-YSMV`, `PL-GPJ7`, `PL-QQCD`), two references repaired to a heading's current name, and four quoted headings of other works reworded so they cannot read as its own. No equation, value, unit or stated limitation changed |
+| `docs/MODEL.md` | `9c23c5a` | `9c23c5a` | nothing |
 | `README.md` | `9938368` | `9938368` | nothing |
-| `.github/` | `2e0a3e2` | `7b15273` | `pr-title.yml` gains two steps: every closure records the pull request's number (`PL-HMZZ`), and the pull request's body is recorded in the tree (`PL-979D`) |
+| `.github/` | `7b15273` | `11d3072` | two new workflows, `branch-sweep.yml` (`PL-X8SV`) and `update-armed.yml` (`PL-S5MF`); `pr-title.yml` loses its body-record step, and `quality.yml` runs `pr_body_check.py --anchors` in its place (`PL-3PH2`) |
 
 Everything else this release moves is the queue tool, the repository's own
-checks and hooks, and the instructions that describe them:
-`subprojects/docket/`, thirteen scripts under `tools/` with their tests under
-`tests/unit/`, `.claude/hooks/`, `.claude/rules/`, the `docket` skill's modes,
-`CLAUDE.md`, `docket.toml`, `docs/maintainer.md`, `docs/ARCHITECTURE.md`,
-`docs/worker.md`, `docs/resident-instructions.md`, the recorded bodies under
-`docs/pr-bodies/`, and this file.
+checks, hooks and workflows, and the instructions that describe them: four
+modules of `subprojects/docket/` (`arming.py`, `claiming.py`, `claims.py` and
+`verify.py`) with their tests; `tools/branch_sweep.py` and
+`tools/update_armed.py`, both new, `tools/pr_body_check.py`, without its
+`--record` and `--check` modes, and `tools/open_pull_requests.py`, with their
+tests under
+`tests/unit/`; the three Bash guards, their shared splitter and the
+session-start digest hook under `.claude/hooks/`;
+`.claude/rules/instruction-writing.md` and five of the `docket` skill's modes;
+`CLAUDE.md`, `docket.toml`, `docs/ARCHITECTURE.md`,
+`docs/interface-provenance.md`, `docs/maintainer.md`,
+`docs/resident-instructions.md` and `docs/worker.md`; eleven bodies under
+`docs/pr-bodies/`, written under `PL-979D`'s per-pull-request record, which
+`PL-3PH2` retired; and this file.
 
-### The nine generator heads, each read one way
+### The last live head: what the remote holds
 
-A generator head is a mechanism that keeps handing the queue new defects,
-recorded on its item with `root-cause-of:`. The Projects trial (`PL-NZC0`)
-opened a project to retire four live heads and added five more on 2026-09-25.
-All nine close here, each by replacing the several readings its members had
-misread with one:
+At v0.5.12's cut `bin/docket generators` listed one head as still generating,
+`PL-MT3R`. Since `PL-4Q9B` closed, four readers had taken one of the clone's
+own copies of a ref for the remote's - a harness-written tracking ref, the
+upstream setting, a rival's unpruned tracking ref and the local branch - so a
+claim no fresh clone could see still held its item. **`PL-MT3R` (`#1116`)**
+gives each command that reads the remote one `git ls-remote --heads origin`
+listing, handed to every reader beneath it (project owner, 2026-09-26,
+ratified, over `git fetch --prune` and per-reader fixes). A tracking ref whose
+branch the listing lacks holds nothing and names no cut in flight, while
+`stranded` still reads it as the surviving copy of that branch's work, and
+where the listing fails the readers fall back to the tracking refs and say so.
+Three members move the readers it left:
 
-- **`PL-B8HZ` (`#1017`)**, which copy of an item `verify --self` reads each
-  contract field from: a correction is run and printed, a waiver is the
-  base's, and an outcome is the branch's. It folds `PL-PZ6T` and `PL-TKFD`.
-- **`PL-HMZZ` (`#1056`)**, which pull request carried an item's work: the
-  number is written onto the closure before the merge, `pr-title` refuses a
-  closure without it, and nothing infers it from history.
-- **`PL-QHCW` (`#1065`)**, which commit a release was cut on: the tag and
-  every reader of it name that commit, the one that added the release's notes
-  file.
-- **`PL-MB2W` (`#1041`)**, who holds an item: claims are recorded and landing
-  is derived. `PL-FX5Q` (`#1016`) deleted the claim inference and its three
-  promotions, and `PL-CH3Z` (`#1076`) the legacy reading of commit subjects.
-- **`PL-Q4DF` (`#1042`)**, where a generator-tier item's rank stands: one
-  reading, and a blocked machinery defect passes its rank one edge down.
-- **`PL-XBV4` (`#1054`)**, how fresh a read command's refs are: one snapshot
-  per command, fetched once, dated, and said when it is not fresh.
-- **`PL-PVW2` (`#1099`)**, which spelling of a repeated predicate is the
-  answer: the three Bash guards share one splitter, and `doc_check` reads a
-  shell line through docket's `shell.py`. It closes spent.
-- **`PL-GPJ7` (`#1094`)**, whether a sentence makes the claim a hard gate
-  checks: each gate now refuses only what explicit syntax claims.
-- **`PL-979D` (`#1068`)**, the record of a pull request's body: it is written
-  under `docs/pr-bodies/` before the merge, and `pr-title` holds the merge on
-  it. `PL-3PH2`, ratified on 2026-09-26 and unbuilt at this cut, retires the
-  per-pull-request record in favour of the squash commit and a recovery pass at
-  each release.
+- **`PL-C3MN` (`#1119`)**: `claim`'s withdrawal check reads a rival's branch
+  from the listing, so a rival the remote has deleted no longer withdraws this
+  branch's claim in favour of one no fresh clone can see.
+- **`PL-21KN` (`#1126`)**: `bin/docket arm` reads the pull request's branch
+  from the listing rather than answering for `HEAD`, so after someone else
+  brings `main` in it no longer reports `behind 1` and advises a merge that
+  misfires. This completes `remote-copy`.
+- **`PL-20DL` (`#1136`)**: where the tip of the remote's copy of the branch is
+  a commit this clone has not fetched, `claim` and `yield` say it is not known
+  whether that copy carries the record, and push nothing. They had read git's exit 128
+  there as "not carried", so `claim` could withdraw a claim every clone reads as
+  holding first.
 
-At this cut `bin/docket generators` lists one head as still generating,
-`PL-MT3R`, recorded on 2026-09-26: five readers still take a clone's copy of a
-ref for the remote's. While it stays open with `generator: live`, the pause on
-new workflow mechanisms holds.
+**At this cut `bin/docket generators` marks no head as still generating, and no
+open item carries `generator: live`**, which is the condition `CLAUDE.md`'s
+pause on new workflow mechanisms ends on. `PL-PB8V` (`#1113`) removes one more
+second spelling of a shared fact: `vcs.BRANCH_ID_RE` is built from the store's
+id grammar rather than restating it in lower case, and
+`tools/fixture_id_check.py` now finds such a copy whatever its case.
 
-### The Bash guards read a command as bash runs it
+### The Bash guards say what they promise
 
-The three guard hooks under `.claude/hooks/` refuse a command that throws away
-a gate's exit status, runs the simulator's code under the bare interpreter, or
-prunes remote-tracking refs. Each read a command its own way, so every spelling
-bash accepts and a guard did not was a way past it. Thirteen items close that.
-`PL-63TT`, `PL-39LD` and `PL-R5RF` (`#1087`) and `PL-WGFY` (`#1088`) put all
-three on one shared splitter, and the rest teach it what bash does with a group
-(`PL-1SFZ`), a reserved word (`PL-0X0G`), an or-fallback (`PL-KQ4Q`), a
-wrapper in front of the program (`PL-TRMN`), a redirection (`PL-K9QL`), a `set`
-run through `command` or `builtin` (`PL-9RSP`) and a separator without spaces
-(`PL-BBV7`, `PL-GVFC`), and what git does with its own option spellings
-(`PL-R17X`). `PL-QMN0`, a gate after `uv run`'s own options, is still open.
+`PL-61FT` (`#1138`) was recorded as a live head on 2026-09-26, because each
+guard fix's session probed the spellings beside the one it fixed and filed
+every gap it found: the six fixes merged that day filed nine more, and none of
+the twelve recorded a session meeting its spelling in ordinary work. Each
+guard's header now opens with what it promises - the spellings this repository
+writes to be run and sessions have been seen writing, and for the prune guard
+every git 2.43 spelling that deletes refs, since a deleted ref cannot be
+brought back (project owner, 2026-09-26, ratified, over filing every probed
+spelling and over failing closed). A spelling outside the promise that a guard
+misreads is a row of `KNOWN_GAPS` beside its tests, pinned to the verdict it
+gets today, and becomes an item only once a session is seen writing it; five
+filed spellings, `PL-DCHW`, `PL-QMN0`, `PL-W9XN`, `PL-BM3Z` and `PL-7PB9`, were
+dropped to rows. Two gaps inside the promise close: `PL-M2NV` (`#1129`)
+refuses a `git push` carrying `--mirror` or `--prune`, or a mirror push made
+through the `remote.origin.mirror` setting, each of which deletes other
+sessions' branches on the remote, and `PL-R5N0` (`#1139`) refuses the floor
+interpreter handed `src` or `tests` with no trailing slash. `PL-YFT4` (`#1140`)
+corrects the prune guard the other way, after it refused
+`git config --get fetch.prune` in ordinary work: a `git config` that only reads
+a setting now passes, while every write of a prune or mirror setting is still
+refused, including the spellings that look like reads.
 
-### Who holds an item, and when a claim is seen
+### How the project runs
 
-With `PL-MB2W`'s record in place, the claim itself was what a session could
-still get wrong. `PL-WX87` (`#1024`) has `claim` ask the remote whether it has
-the branch instead of trusting the clone's tracking ref, `PL-KX73` (`#1020`)
-accepts the web harness's branches that track `main`, and `PL-1X56` (`#1026`)
-exits 4 whenever a claim or a yield is only in this checkout. `PL-ZLJ9`
-(`#1028`) makes a claim never pushed yield to one already published,
-`PL-NNLM` (`#1070`) has a second `yield` push what the first could not, and
-`PL-WK57` (`#1100`) lets a branch's name hold an item only where a copy of the
-store holds its id.
-
-### Checks that answered from less than they read
-
-- **`verify`.** `PL-KR69` (`#1015`) and `PL-8HSX` (`#1034`) close two ways a
-  protected `core/` path passed the audit, a rename out of `core/` and a
-  non-ASCII name git printed quoted. `PL-DNZ0` (`#1033`) reads six more ways a
-  test can be suppressed, and `PL-B5VZ` (`#1095`) and `PL-P7J7` (`#1098`) read
-  a `verify:` command through one lexer.
-- **Merging.** After `PL-SQTR` found the review hold being clicked through
-  unread, `PL-K6B2` (`#1031`) has `bin/docket arm` arm on green a pull request
-  that changes only the queue and its tool and hold the rest for a read, and
-  `PL-V2X5` (`#1097`, `#1106`) arms at the ready push and leaves a pull request
-  already green and current to the owner's Squash and merge.
-- **`PL-CBDX` (`#1043`)**, the release's one `safety` item, read the 13 merges
-  the hold had let through unread against the safety-critical standard. It
-  found one thing, filed as `PL-8YBS` and open at this cut: a `docs/MODEL.md`
-  table row states fat's first-hour span on the chart as under 4 px, which
-  holds only at a 1 MAC dial. No displayed value is affected.
-
-### How sessions work
-
-`PL-2866` (`#1014`) declares product focus in `CLAUDE.md` from 2026-09-25: a
-session given no particular work is a product session, and it stops only for
-an apparatus finding that blocks it. `PL-YJG1` (`#1005`) resets a session at
-its spend budget by pushing its work and compacting in place, rather than by a
-handoff to a new session. `PL-DR3G` (`#1021`) records that `list_sessions`
-cannot see a Projects thread, so a pushed claim is the only sign of a thread's
-work. `PL-P0FP` (`#1007`) stress-tested the workflow apparatus and filed what
-it found under five features.
+- **`PL-S5MF` (`#1137`)**: `main` merges only an up-to-date branch, and
+  GitHub's auto-merge never updates one, so an armed pull request another merge
+  sent behind waited until somebody noticed; `#1115`, the v0.5.12 cut, sat
+  behind `main` for half an hour that way. `update-armed.yml` now brings `main`
+  into each armed pull request it has moved past, on every push to `main`,
+  writing with a token only the owner can make (project owner, 2026-09-26,
+  ratified, over the trial's coordinator bringing `main` in by hand).
+- **`PL-X8SV` (`#1122`)** and **`PL-S8LZ` (`#1110`)**: a session cannot delete
+  a branch, and GitHub deletes one only when its own pull request merges, so 14
+  stale `claude/*` branches had piled up. `branch-sweep.yml` archives, then
+  deletes, each finished one daily, and branch cleanup files no item and opens
+  no pull request, since it changes nothing in the repository (project owner,
+  2026-09-26, ratified, over filing it as housekeeping with a pull request of
+  its own).
+- **`PL-3PH2` (`#1118`)**: the squash commit's body on `main` is the record of
+  a pull request's body again (project owner, 2026-09-26, ratified, over
+  keeping `PL-979D`'s per-pull-request record behind `pr-title`'s required
+  check). `docs/pr-bodies/` holds only a body a merge dropped, recovered in one
+  batch at each release; none needed recovering at this cut.
+- **`PL-LJVD` (`#1117`)** names the planning model § "The plan" follows, a
+  rolling wave, says the timeline holds the order of every release it names,
+  and states that no second plan of releases is kept beside this file.
+- **`PL-M701` (`#1125`)** has a session probe a host before repeating that it
+  is blocked (project owner, 2026-09-26), and re-dates the statements that
+  called `blender.org` blocked.
+  `PL-YYV9` (`#1123`) corrects the `docket` skill's triage mode on where a
+  `verify:` command that already passes is refused, and `PL-77DZ` (`#1132`)
+  cites `inert_splitter` by name rather than at a line of `qt_widgets.py` it
+  has since left.
 
 ### The rest, and this release's tag span
 
-`PL-HZWB` (`#1096`) and `PL-08D4` (`#1003`), the tag items for v0.5.11 and
-v0.5.10, ship here. `PL-DRRG`, the v0.5.11 cut, ships in no release, because
-`PL-KRS6` (`#1049`) keeps the item a release is cut under out of every later
-release. All 131 carried their `pr:` number before the cut, so every bullet
-cites its pull request, across 79 of them from `#1003` to `#1112`.
+`PL-84Z4` (`#1121`), the v0.5.12 tag step, ships here. `PL-5ZLQ`, the v0.5.12
+cut, ships in no release, because `PL-KRS6` keeps the item a release is cut
+under out of every later release. All eighteen carried their `pr:` number
+before the cut, so every bullet cites its pull request, one each, from `#1110`
+to `#1140`.
 
-**None of the 131 shipped inside v0.5.11's tag.** That tag is on `fe2046f7`,
-the merge of its own cut, and every other merge this release describes came
-after it, so v0.5.11's notes take no `### also inside this tag's span`
-pointer. `PL-9RSP` (`#1112`) merged after this release was filed and before it
-was cut, so it is here. This cut is handled as v0.5.11's was, on `PL-V065`'s
-precedent: anything merging after it is taken and before the v0.5.12 tag ships
-inside that tag, is described in the next release, and takes a pointer in
-v0.5.12's notes at that release's cut.
+**Two of the eighteen shipped inside v0.5.12's tag.** `PL-PB8V` (`#1113`) and
+`PL-MT3R` (`#1116`) merged after v0.5.12's notes were written and before its
+cut merged, so `git describe --contains` resolves them to v0.5.12 while this
+release describes them, on `PL-V065`'s precedent. v0.5.12's notes now carry the
+pointer that says so, which `tools/doc_check.py` requires of that span once
+v0.5.13's tag makes it no longer the newest. `PL-77DZ` (`#1132`) and
+`PL-YFT4` (`#1140`) merged while this cut was being taken, so `main` was merged
+in and the cut re-run to include each. This cut is otherwise handled as
+v0.5.12's was: anything merging
+after it is taken and before the v0.5.13 tag ships inside that tag, is
+described in the next release, and takes a pointer in v0.5.13's notes at that
+release's cut.
 
 ## The plan
 

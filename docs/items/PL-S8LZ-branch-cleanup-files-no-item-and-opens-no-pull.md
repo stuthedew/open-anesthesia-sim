@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: infra
+milestone: v0.5.13
 touches: CLAUDE.md, .claude/rules/instruction-writing.md, .claude/skills/docket/modes/capture.md, docs/items/PL-P99G-delete-the-13-remote-branches-whose-work-main.md
 added: 2026-09-26
 closed: 2026-09-26

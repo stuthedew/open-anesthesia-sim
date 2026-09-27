@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: bash-guard-bound
+milestone: v0.5.13
 touches: .claude/hooks/shell_split.py, .claude/hooks/gate-status-guard.sh, .claude/hooks/no-prune-guard.sh, .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_gate_status_guard.py, tests/unit/test_no_prune_guard.py, tests/unit/test_floor_interpreter_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head at triage
 added: 2026-09-26

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: planning-cadence
+milestone: v0.5.13
 touches: ROADMAP.md, docs/items/PL-5XG1-roadmap-md-s-development-pathway-still-says.md
 added: 2026-08-26
 closed: 2026-09-26
