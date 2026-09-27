@@ -9,6 +9,7 @@ feature: late-washout-evidence
 touches: docs/MODEL.md, docs/items/PL-KK1Q-compare-this-model-s-washout-over-the-first-24.md, tests/reference/test_published_wash_in_and_elimination.py, src/anesthesia_sim/core/supported_ranges.py
 added: 2026-09-26
 closed: 2026-09-27
+pr: 1167
 payoff: a reader of Supported run length learns that the washout tail lacks its largest measured term from about the third hour, not only past the 24-hour boundary
 verify: grep -qF 'PL-YD2V' docs/MODEL.md
 ---
