@@ -500,7 +500,14 @@ constants (Tables 1 and 2), and each paper's reading of the fourth compartment
 as fat reached by intertissue diffusion - are in `docs/MODEL.md` § "Known
 limitations" with their pages, taken 2026-09-26 for `PL-WMCJ`.
 
+Their fat-group blood-flow estimates (Table 5 of each, pp. 322 and 496), the
+method behind them (*Anesth Analg* p. 319: tissue/blood partition coefficient
+times fitted rate constant), the fitted volumes' shortfall against known
+values (p. 323) and the post-release activity caveat on the terminal fits
+(p. 319) are in the same section's fat-perfusion paragraph and in the
+reference patient's Heinonen source entry, taken 2026-09-27 for `PL-HBH2`.
+
 Route and depth: the *Anesth Analg* paper through the corpus's text layer, pp.
 319-23; the *Anesthesiology* paper is a scan with no text layer, read as page
-images of pp. 493-96 only. Neither paper's methods for the wash-in apparatus
-were read in that pass.
+images of pp. 493-96 only, and p. 496 again on 2026-09-27. Neither paper's
+methods for the wash-in apparatus were read in either pass.

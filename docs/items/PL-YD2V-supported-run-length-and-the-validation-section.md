@@ -39,3 +39,9 @@ note; the "two omissions" paragraph in "Known limitations" says which omissions
 bound the run length and which the tail inside it; and `docs/MODEL.md` cites
 `PL-YD2V` where it changes. Whether the 24 hours should move is `PL-KK1Q`'s to
 raise, once its measurement gives the size.
+
+**Note from `PL-HBH2`, 2026-09-27.** The two passages this item rewrites still
+restate the fat flow as "about twice the reachable resting measurement", the
+PET reading alone; `PL-HBH2` made the fat-perfusion paragraph two-sided (the
+Yasuda washout fits put the flow at or a little above the stored figure), so
+carry that reading into both restatements as well.

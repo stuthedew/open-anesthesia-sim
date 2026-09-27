@@ -3,10 +3,11 @@ id: PL-B396
 title: Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
 priority: P2
 effort: M
-status: needs-decision
+status: blocked
 classes: ux, docs
 feature: liquid-agent-consumption
 touches: ROADMAP.md, docs/items
+blocked-by: PL-YRLM
 added: 2026-09-16
 ---
 
@@ -218,6 +219,8 @@ hazard it describes - a reader-selectable unit, a reader-set price - still does
 not exist. So the drop would have pushed two safety findings into a gate that
 cannot clear them, on a technicality of queue bookkeeping.
 
+[superseded 2026-09-27: the question moved to `PL-YRLM`, and this item is `blocked`
+on it (`PL-18BD`)]
 **Decision needed.** Whether `ROADMAP.md` planned-milestone item 28 - the agent
 consumption readout - is scoped into a release now, and which.
 
@@ -238,6 +241,8 @@ decision goes, this file is where a session building item 28 finds out why the
 answer is millilitres of liquid equivalent, why money is later and reader-set,
 and why the accounting Editor keeps litres of vapour.
 
+[superseded 2026-09-27: `PL-YRLM` is the stand-in now, and this item waits on it
+for a release]
 **Done when** item 28 is either scoped - at which point the five items above are
 re-pointed at it and this one closes - or explicitly left unscoped with this item
 recorded as the stand-in.
@@ -256,3 +261,15 @@ delivered-agent amount", with the note at `:5429` recording that it read
 five. The reason to keep this open is untouched: `PL-0S0V` and `PL-VJZK` are
 both `safety`-classed and both blocked on it, so closing it promotes two
 anticipated safety items into the gate.
+
+**Blocked on `PL-YRLM` from 2026-09-27 (`PL-18BD`).** The question this item
+held as item 28's stand-in - whether and when a release schedules
+planned-milestone item 28 - moved to `PL-YRLM`, filed off Gate 2's frozen list
+for it, so this item's `blocked-by` can say what it waits on (project owner,
+2026-09-27, ratified, over teaching `bin/docket wave` to read the gate
+section's deferral group). `PL-0S0V`, `PL-VJZK` and `PL-KZ99` still wait on
+this item and now reach `PL-YRLM` through it, so `wave` counts all four with
+`PL-WZVZ` as the Gate 3 deferrals `ROADMAP.md` records (`PL-DB64`) rather than
+as work Gate 2 can clear. What is left here is the readout the unit decision
+above describes, which is item 28's to build; when a release schedules it, this
+item takes that version in `blocked-by:` in place of `PL-YRLM`.
