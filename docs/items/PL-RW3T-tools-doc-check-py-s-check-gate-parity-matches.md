@@ -3,11 +3,13 @@ id: PL-RW3T
 title: tools/doc_check.py's check_gate_parity matches a gate script by its path and not by the arguments it runs with, so a mode one gate runs and the other never does passes as covered: tools/pr_body_check.py --anchors ran only in make check from PL-73G8 until PL-3PH2, counted as covered in CI by pr-title.yml's --check, a different mode of the same script
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-27
+pr: 1133
 payoff: a check wired into make check in one mode can no longer merge unenforced because CI happens to run the same script in another mode
 verify: grep -q 'def test_gate_parity_refuses_a_mode_only_one_gate_runs' tests/unit/test_doc_check.py
 ---
@@ -56,3 +58,16 @@ gate and the merge gate each run and where the two sets differ (head closed
 2026-09-22, spent). This is an instance filed after that head closed: its fix
 held the two lists together at the script level only. It is the first
 post-close instance found.
+
+**Done 2026-09-27.** A gate script is now compared as its path and its mode,
+read from the words after it within the one simple command it stands in:
+`_shell_commands` cuts a line at bash's control operators and leaves out a
+redirection's file and the descriptor written against it, so `2>&1 | tee log`
+hands the script no arguments. `GATE_ONLY` is keyed by script and mode and
+holds the four standing differences as six entries, since each `--discover`
+run and the event-mode run CI makes in its place are one difference seen from
+both sides. Unrecorded, the rule reports exactly those six on this tree, and
+the three mode tests fail on the path-only rule. Working it found `PL-ZXM1`:
+the rule reads no step's `if:`, so `bin/docket check --verify`, which never
+runs on a pull request, is recorded here as CI-only rather than read as absent
+from the merge gate.
