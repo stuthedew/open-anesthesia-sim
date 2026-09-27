@@ -5880,9 +5880,10 @@ over the two live readings `PL-W54S` had written, and reopenable on ordinary
 evidence per `CLAUDE.md`; the occlusion rule above is not, being the safety
 floor rather than the arrangement). The guarantee above is stated against
 the area system's own operations and stops at the frame of the window carrying
-the region. `ROADMAP.md` item 34 builds break-out - an area taken into its own
-top-level window, itself a full window with its own areas - in v0.7.0, and the
-region v0.6.0 builds has to be the right shape for it on the first attempt.
+the region. `ROADMAP.md` item 34 includes break-out - an area taken into its
+own top-level window, itself a full window with its own areas - as its second
+half, wanted but not yet scheduled (project owner, 2026-09-26), and the region
+v0.6.0 builds has to be the right shape for it on the first attempt.
 `PL-WLWY` wrote three candidate readings of what such a window owes and closed
 without choosing between them. The answer is a fourth, and it splits the
 obligation the way this section has already split the list, because **the two

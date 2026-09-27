@@ -1,6 +1,6 @@
 ---
 id: PL-M3X6
-title: Add Required-scope entry 20 to v0.6.0: every surface this milestone brings into existence has its appearance and its edge states decided here, rather than inherited from Qt defaults or deferred to the visual pass at v0.7.x
+title: Add Required-scope entry 20 to v0.6.0: every surface this milestone brings into existence has its appearance and its edge states decided here, rather than inherited from Qt defaults or deferred to the visual pass, planned-milestone item 33
 priority: P2
 effort: S
 status: ready
@@ -8,11 +8,11 @@ classes: planning
 feature: interface-areas
 touches: ROADMAP.md
 added: 2026-09-21
-payoff: v0.6.0 ships the surfaces it creates with a decided appearance and decided edge states, instead of toolkit defaults that planned-milestone item 33 would redo two steps later.
+payoff: v0.6.0 ships the surfaces it creates with a decided appearance and decided edge states, instead of toolkit defaults that planned-milestone item 33 would redo in the pass after it.
 verify: grep -qF 'has its appearance and its edge states decided here' ROADMAP.md
 ---
 
-**Problem.** Add Required-scope entry 20 to v0.6.0: every surface this milestone brings into existence has its appearance and its edge states decided here, rather than inherited from Qt defaults or deferred to the visual pass at v0.7.x
+**Problem.** Add Required-scope entry 20 to v0.6.0: every surface this milestone brings into existence has its appearance and its edge states decided here, rather than inherited from Qt defaults or deferred to the visual pass, planned-milestone item 33
 
 **Decided (project owner, 2026-09-21, ratified)** - chosen over leaving the
 appearance of these surfaces to the visual pass (planned-milestone item 33,
@@ -36,7 +36,10 @@ what the chooser *guarantees*. **No entry says what any of it looks like**, and
 § "Explicitly out of scope for v0.6.0" sends "the visual composition of each
 surface" to item 33. So as scoped, this milestone ships its own new surfaces
 looking like whatever Qt's defaults or the first commit produced, and item 33
-redoes them two steps later.
+redoes them two steps later. (Two steps when this was written; one since
+2026-09-26, when break-out came off the timeline and the pass came to follow
+v0.6.0 directly, `PL-V1Y7`. The owner's argument above does not rest on the
+distance.)
 
 The roadmap already contains the argument that makes this a gap rather than a
 preference. Item 33 was moved *after* item 34 on 2026-09-16 on the ground that
