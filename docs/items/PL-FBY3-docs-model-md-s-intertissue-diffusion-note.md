@@ -1,10 +1,13 @@
 ---
 id: PL-FBY3
 title: docs/MODEL.md's intertissue-diffusion note records Eger and Saidman 2005 as abstract-only, though the private corpus now holds its full text, which confirms the note and adds a bias it does not name: the lean tissues that lose agent to fat equilibrate more slowly than a perfusion-limited group, the brain excepted
-status: untriaged
+status: done
 feature: model-spec-accuracy
 touches: docs/MODEL.md, docs/references/README.md
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1153
+verify: python3 tools/doc_check.py check && grep -qF 'doi:10.1093/bja/48.4.279' docs/MODEL.md && ! grep -qF 'healthy and obese patients' docs/MODEL.md && ! grep -qF 'through PubMed 2026-09-23 and 2026-09-26' docs/MODEL.md && grep -q '^### Eger & Saidman 2005' docs/references/README.md && grep -q '^### Allott, Steward & Mapleson 1976' docs/references/README.md
 ---
 
 **Problem.** docs/MODEL.md's intertissue-diffusion note records Eger and Saidman 2005 as abstract-only, though the private corpus now holds its full text, which confirms the note and adds a bias it does not name: the lean tissues that lose agent to fat equilibrate more slowly than a perfusion-limited group, the brain excepted
