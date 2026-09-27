@@ -1,10 +1,12 @@
 ---
 id: PL-JYJJ
 title: Record every CI failure in the tree before GitHub deletes it: from 2026-10-01 a public repository keeps workflow runs 90 days at most, and the only count so far - 391 failed runs of 6,545, 20% of pull-request branches red at least once, 30% in the week to 2026-09-27 - came from a one-off script in a session's scratchpad
-status: untriaged
+status: dropped
 feature: fewer-red-runs
 touches: tools/ci_census.py, tests/tools/test_ci_census.py, docs/ci-failures.csv, .claude/skills/docket/SKILL.md
 added: 2026-09-27
+closed: 2026-09-27
+reason: not needed: no decision found that needs CI history older than GitHub's 90-day window; a one-off census inside the window answers every question asked of it (recipe in the brief)
 ---
 
 **Asked for** by the project owner, 2026-09-27: keep track of every CI
@@ -81,3 +83,40 @@ whether a fix held and whether red runs fall as the apparatus settles.
   from `docs/ci-failures.csv` alone, with no network;
 - the release procedure runs `record`;
 - a test shows that a second `record` over the same runs adds nothing.
+
+**Dropped 2026-09-27, the same day it was filed.** The project owner
+clarified that the tracker had been an idea, not a request, and asked whether
+one is needed at all. It is not.
+
+- **The test.** A record kept in the tree is worth building only if some
+  decision needs CI history older than GitHub's 90-day window. None was found.
+  - Whether a fix worked shows within days. The body-record burst lasted one
+    day, and the `main`-only replay has been quiet since 2026-09-23.
+  - The checks change weekly, so a failure more than 90 days old mostly
+    describes a check that no longer exists in that form.
+  - `PL-04KR`'s convergence signals use no CI data.
+- **What would change this.** A question like "is the red rate falling
+  quarter on quarter?" needs one number per quarter, written where the
+  question lives. It does not need a log of every failure.
+- **What building it would have cost.** A tool, its tests, a file that grows
+  forever, and a new step in every release, which is one more thing that can
+  fail. It would also be a new workflow mechanism while `generator: live`
+  items are open, a pause the owner's request lifts only for what was
+  actually asked.
+
+**The recipe, so the next census costs minutes rather than rediscovery.** A
+session can reach `api.github.com` (the repository is public, and the proxy
+reported a limit of 15,000 calls an hour on 2026-09-27).
+
+1. List runs with `GET /repos/stuthedew/open-anesthesia-sim/actions/runs?status=failure&per_page=100`,
+   paging through them. For denominators, list all runs, or use `total_count`
+   with `event=` and `branch=` filters.
+2. For each failed run, `GET .../actions/runs/{id}/jobs` and take the steps
+   whose `conclusion` is `failure`. Every check here is its own step, so the
+   step name identifies the check.
+3. Group the failures by workflow, event (`main` push or pull request) and
+   failing step, and by week. Count pull-request branches (`head_branch`) that
+   went red at least once.
+4. For the error text, do not use the REST logs endpoint: it redirects to
+   `*.blob.core.windows.net`, which the proxy refused at CONNECT. Use the
+   GitHub MCP `get_job_logs` tool from a subagent, on a sample of job ids.
