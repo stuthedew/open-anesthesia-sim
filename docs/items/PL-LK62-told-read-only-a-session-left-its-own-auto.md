@@ -1,8 +1,15 @@
 ---
 id: PL-LK62
 title: Told read only, a session left its own auto-merge armed and offered a hold instead of disarming it, so PR 1213 merged against the instruction
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
+touches: CLAUDE.md
 added: 2026-09-27
+closed: 2026-09-27
+payoff: a session told read only stops its own pending merges unasked, so the owner never has to confirm a hold to prevent one
+verify: grep -q 'Read only means read only' CLAUDE.md
 ---
 
 **Problem.** Told read only, a session left its own auto-merge armed and offered a hold instead of disarming it, so PR 1213 merged against the instruction
