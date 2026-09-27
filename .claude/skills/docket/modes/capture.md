@@ -124,15 +124,16 @@ judgment call in the same way.** It names a branch whose pull request already
 took part of its work and left the rest - a commit pushed after the merge,
 which nothing merges and nothing else reports (`PL-3D2M`). Restart the branch
 on the merged `main` and carry the commit forward as a new pull request, never
-by pushing to the merged branch again, which is what lost it:
+by pushing to the merged branch again, which is what lost it. `<branch>` is the
+branch `stranded` named, written out rather than held in a variable:
+`no-prune-guard.sh` refuses a `branch -dr` whose ref the shell builds, since a
+variable reads the same as a loop's (`PL-G8TR`).
 
 ```bash
-BRANCH=claude/the-branch-stranded    # the ref `stranded` named
-
-git push origin --delete "$BRANCH"   # the branch itself - the owner's to run
-git branch -dr "origin/$BRANCH"      # this clone's remote-tracking ref
+git push origin --delete <branch>   # the branch itself - the owner's to run
+git branch -dr origin/<branch>      # this clone's remote-tracking ref
 git fetch origin main
-git checkout -B "$BRANCH" origin/main
+git checkout -B <branch> origin/main
 ```
 
 **`bin/docket branch` now names this case while the commit is still
