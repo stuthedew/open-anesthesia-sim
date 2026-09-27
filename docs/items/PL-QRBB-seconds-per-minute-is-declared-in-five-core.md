@@ -55,6 +55,7 @@ that, and the number of declarations reaches neither.
 `tests/reference/test_published_wash_in_and_elimination.py`,
 `tests/reference/test_late_washout_against_published_fits.py`,
 `tests/reference/test_coupled_dynamics.py`, `tests/benchmarks/frame_cost.py`.
+`docs/ARCHITECTURE.md` for the new module's entry.
 
 **Decision needed.** Whether to consolidate, and how far. Put to the project
 owner 2026-09-27, who raised it as a general aversion to duplicate
@@ -66,7 +67,9 @@ declarations, and not yet answered.
    `MINUTES_PER_HOUR` and `MILLISECONDS_PER_SECOND` as `Final`, each with a
    docstring in the style of `PERCENT_PER_UNIT_FRACTION`: a definition, so no
    provenance note. It imports nothing from the package, so no module
-   importing it can form a cycle.
+   importing it can form a cycle. It also takes a line in
+   `docs/ARCHITECTURE.md`'s package map, which `tools/doc_check.py` holds to
+   the tree on disk in both directions.
 2. The four core modules that use the constant import it; their copies go,
    and so does `uptake_system.py`'s orphan.
 3. The two interface modules import `MILLISECONDS_PER_SECOND` in place of
