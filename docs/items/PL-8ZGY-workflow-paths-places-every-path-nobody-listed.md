@@ -3,7 +3,7 @@ id: PL-8ZGY
 title: workflow_paths places every path nobody listed on the simulator's side and only tests/ is checked, so apparatus files cross the lane boundary unnoticed - 22 items were set aside from both lanes by docs/resident-instructions.md alone
 priority: P1
 effort: M
-status: ready
+status: needs-decision
 classes: defect, infra
 feature: parallel-sessions
 touches: docket.toml, tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py
@@ -168,3 +168,12 @@ settled distinction, and that item's table gains these rows when this one is
 built. Paths items name that are not in the tree - `spikes/`, `assets/`,
 `docs/workflow.md`, `docs/ci-failures.csv` - are untouched by the check until
 they land.
+
+**Decision needed.** Two, and both are answered by the section above: (1)
+whether the simulator's side is recorded as a `product_paths` list in
+`docket.toml`, as recommended, or as per-path pinning tests in
+`tests/unit/test_workflow_paths_check.py`; (2) whether the table's placements
+stand, in particular the three rows it names as contested - `.gitattributes`
+to the workflow side, and `CITATION.cff` and the packaging trio
+(`pyproject.toml`, `uv.lock`, `.python-version`) to the product side. An
+answer to both starts the build on this branch.
