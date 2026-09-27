@@ -3,12 +3,14 @@ id: PL-PNW6
 title: A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: release-process
-touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/release.py
+touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_release.py
 added: 2026-09-07
-verify: grep -rqF 'a version number a tag has previously named' .claude/skills/docket/ && python3 tools/doc_check.py check
+closed: 2026-09-27
+pr: 1197
+verify: grep -q 'def test_the_tag_lines_clear_a_withdrawn_tag_before_tagging' subprojects/docket/tests/test_release.py && grep -qF 'git ls-remote --exit-code' subprojects/docket/src/docket/release.py && grep -qF 'git ls-remote --exit-code' .claude/skills/docket/modes/release.md
 ---
 
 **Problem.** A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
@@ -141,3 +143,110 @@ re-used number, not this one.
 
 **The `verify:` command was run 2026-09-19 and fails for the right reason**:
 `doc_check` passes and the `grep` half exits 1.
+
+**Re-confirmed 2026-09-27: the problem holds, sharper than recorded, and the
+2026-09-19 answer is reopened on two facts it did not have.** The mode this
+brief points into moved from `.claude/skills/docket/SKILL.md` to
+`.claude/skills/docket/modes/release.md`, and `touches` now says so.
+
+1. **The session no longer writes the handover.** Since `PL-VYK1` (2026-09-25,
+   `#1065`), `bin/docket release` prints the tag lines from
+   `release.tag_commands`, and `modes/release.md` tells the session to paste
+   those rather than edit them. So the ratified shape - the cutting session
+   adds the delete when it knows the number was re-used - now means editing
+   generated lines against the skill's own instruction. It also still rests on
+   a session knowing what a fresh clone cannot show it: a withdrawn tag
+   survives only in checkouts that fetched it, and the one that matters is the
+   owner's.
+2. **The refusal does not stop the handover; the push after it republishes
+   the withdrawn tag.** Measured 2026-09-27 in a scratch origin and warm clone,
+   with `tag_commands("1.0.0")`'s three lines run as one pasted block:
+   `git tag -a` refused with `fatal: tag 'v1.0.0' already exists`, and
+   `git push origin v1.0.0` then pushed the clone's withdrawn tag, printing
+   `* [new tag]`, so origin held `v1.0.0` on the withdrawn commit again. The
+   brief above calls the refusal "the good case ... loud and stops"; pasted as a
+   block, which is how the handover is used, it is followed by a push that
+   looks like success.
+
+**What no longer needs this item.** The silent half is reported now. In a
+warm checkout that has pulled the re-cut, the withdrawn tag trips
+`doc_check`'s tag-on-its-cut error (`PL-QHCW`), and its version error where the
+two commits' version files differ (`PL-YKSD`); both name
+`git ls-remote --tags origin` and `git tag -d`. `PL-LT77` gave the
+version-table error the same clause for a checkout that has not pulled.
+
+**Decision needed.** Where the local clear comes from, now that the handover is
+generated: (1) keep the ratified shape, the cutting session adding it by hand
+when it knows of the re-use; or (2) generate it in `tag_commands`, guarded.
+
+**Recommendation: (2).** One line between the fetch and the tag, in every
+handover:
+
+```bash
+git ls-remote --exit-code origin refs/tags/v1.0.0 >/dev/null || git tag -d v1.0.0 2>/dev/null
+```
+
+It deletes a local tag only when origin does not list that name. This is not
+the 09-19 option 2 re-argued: that one had `bin/docket release` read tag
+history the remote no longer holds, and would have answered "no re-use" with
+authority. This line reads only origin's current answer, on the machine that
+holds the stale tag, at the moment it matters. Measured in the same scratch
+pair: it cleared the withdrawn tag and the release tagged its cut
+(`Deleted tag 'v1.0.0' (was d57c6f7)`, then `* [new tag]` on the cut commit),
+and re-run after success it changed nothing (`already exists`,
+`Everything up-to-date`, `git fetch --tags` exit 0). An unguarded `git tag -d`
+fails that second case: it re-creates a different tag object, the push is
+rejected, and every later `git fetch --tags` exits 1 on
+`would clobber existing tag`. Cost: every handover grows from three lines to
+four, one of them a network call, silent unless it deletes something. If (2) is
+taken, `verify:` becomes a `tag_commands` test in
+`subprojects/docket/tests/test_release.py`, and the `grep` above retires, since
+it presumes (1).
+
+**Answered 2026-09-27: (2), generate it** (project owner, 2026-09-27,
+ratified, over keeping the 2026-09-19 shape, in which the cutting session
+writes the delete by hand when it knows the number was re-used). The work:
+`release.tag_commands` returns the guarded line above between the fetch and
+the tag, filled in for the version and remote; its docstring says why the
+guard is there; `.claude/skills/docket/modes/release.md`'s example block and
+prose follow it from three lines to four; and a test runs the generated lines
+against a scratch origin and a warm clone holding the withdrawn tag, asserting
+the tag lands on the cut and origin never receives the withdrawn one, then
+re-runs them after success and asserts nothing changes. `verify:` greps for
+that test and for the guard in both `release.py` and the skill's example, and
+`make check` runs the test; the `grep` for the prose shape retires with shape
+(1).
+
+**Closed 2026-09-27.** `release.tag_commands` returns four lines, and the
+second, between the fetch and the tag, reads for `v1.0.0`:
+
+```bash
+[ -z "$(git tag -l v1.0.0)" ] || git ls-remote --exit-code origin refs/tags/v1.0.0 >/dev/null || [ $? -ne 2 ] || git tag -d v1.0.0
+```
+
+That is the answered shape with two guards the line quoted above lacked. Both
+were found by measuring it while building it, in a scratch origin with git
+2.43.0:
+
+- **It exited 1 on every ordinary handover.** A checkout holding no tag of the
+  name reached `git tag -d`, which failed, so a `bash -e` run stopped at line
+  two - which is how the existing replay tests run the lines - and a paste
+  reported a failure on the first tag of every release. It now asks nothing
+  and exits 0 when the checkout holds no such tag.
+- **It deleted a published tag when origin could not be asked.**
+  `ls-remote --exit-code` exits 2 only when origin answered and holds no such
+  ref; pointed at a path that does not exist it exits 128, and the `||` read
+  that as withdrawn. Re-run with origin unreachable, the quoted line deleted
+  the checkout's correct tag; the tag line re-creates it as a different object,
+  and `git fetch --tags` then exits 1 on `would clobber existing tag`. It now
+  deletes only on exit 2.
+
+Neither changes what was decided: a generated line that deletes only what
+origin says it does not have. `test_the_tag_lines_clear_a_withdrawn_tag_before_tagging`
+fails on the three-line handover, where origin takes the withdrawn tag back;
+`test_the_tag_lines_delete_nothing_when_origin_cannot_answer` fails on the
+quoted line, as do the two existing replay tests. `_run_printed` gained
+`keep_going`, since the hazard exists only where every pasted line runs.
+`.claude/skills/docket/modes/release.md`'s example is byte-identical to
+`tag_commands("0.3.0")`, and two docstrings in `cli.py` that counted three
+commands no longer count them.

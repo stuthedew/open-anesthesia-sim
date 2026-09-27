@@ -3,11 +3,13 @@ id: PL-LT77
 title: git fetch --tags does not prune, so a tag deleted on origin keeps failing doc_check in every checkout that already fetched it, and nothing distinguishes stale local state from a real repository fault
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: tag-error-names-its-cause
-touches: tools/doc_check.py, .claude/hooks
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-07
+closed: 2026-09-27
+pr: 1197
 verify: grep -q 'def test_a_stale_local_tag_names_its_own_remedy' tests/unit/test_doc_check.py && uv run pytest tests/unit/test_doc_check.py
 ---
 
@@ -154,3 +156,11 @@ instead of reaching the version-table error, which still fires on a tag whose
 commit `HEAD` holds or the default branch lacks too. A withdrawn tag reaches it
 at once where the default branch never held its commit, and otherwise once the
 checkout does, so what is left here is unchanged.
+
+**Closed 2026-09-27.** Re-confirmed against the tree first: the version-table
+error was unchanged and still named neither reading, while its two sisters
+(`PL-YKSD`, `PL-QHCW`) already carried the clause. It now carries the same one,
+naming `git ls-remote --tags origin` as the test and `git tag -d v<version>` as
+the repair, and `test_a_stale_local_tag_names_its_own_remedy` takes both on a
+clone whose origin withdrew the tag. `touches` dropped `.claude/hooks`, which
+the chosen shape never reaches, for the test file it does.

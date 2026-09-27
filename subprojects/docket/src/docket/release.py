@@ -227,8 +227,8 @@ def cut_query(version: str, ref: str) -> list[str]:
 
 def tag_commands(
     version: str, remote: str = "origin", branch: str = "main"
-) -> tuple[str, str, str]:
-    """The three shell lines that tag `version` on its cut, filled in.
+) -> tuple[str, str, str, str]:
+    """The four shell lines that tag `version` on its cut, filled in.
 
     The tag line finds the cut *when it runs*, from `remote/branch`, instead
     of naming a commit here. Printed by the cut, there is no commit on the
@@ -236,11 +236,25 @@ def tag_commands(
     as the moment it was read. Run before the release has merged, the lookup
     prints nothing and `git tag` refuses the empty name; run late, it still
     finds the cut, however many merges have landed since (`PL-VYK1`).
+
+    The line before it clears a tag this checkout holds and `remote` says it
+    does not have: a withdrawn tag at a re-used number, which `git fetch` never
+    removes. Left in place, `git tag` refuses the name and the push after it,
+    which a pasted block runs anyway, puts the withdrawn tag back on `remote`
+    (measured 2026-09-27, `PL-PNW6`). Its guards are what make it safe to paste
+    every time. Holding no such tag, it asks nothing and exits 0, so the
+    ordinary first tag does not stop a `bash -e` run. And it deletes only on
+    `ls-remote`'s exit 2, the one status meaning `remote` answered: any other
+    means it could not be asked, and a published tag deleted then comes back
+    from the tag line as a different object, which every later
+    `git fetch --tags` refuses to clobber.
     """
     name = f"v{version.strip().lstrip('v')}"
     lookup = shlex.join(["git", *cut_query(version, f"{remote}/{branch}")])
     return (
         f"git fetch {remote} {branch}",
+        f'[ -z "$(git tag -l {name})" ] || git ls-remote --exit-code {remote} '
+        f"refs/tags/{name} >/dev/null || [ $? -ne 2 ] || git tag -d {name}",
         f'git tag -a {name} "$({lookup})" -m "{name}"',
         f"git push {remote} {name}",
     )

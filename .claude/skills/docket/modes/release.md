@@ -251,19 +251,25 @@ so nothing is left to fill and nothing turns on when it is run:**
 
 ```bash
 git fetch origin main
+[ -z "$(git tag -l v0.3.0)" ] || git ls-remote --exit-code origin refs/tags/v0.3.0 >/dev/null || [ $? -ne 2 ] || git tag -d v0.3.0
 git tag -a v0.3.0 "$(git log --first-parent --diff-filter=A --format=%H origin/main -- docs/releases/v0.3.0.md)" -m "v0.3.0"
 git push origin v0.3.0
 ```
 
 Every time, not only the first. Asking for a tag without them makes the owner
-reconstruct three commands at the moment they are trying to do something else.
+reconstruct four commands at the moment they are trying to do something else.
 `bin/docket release` prints them, filled in for the version it cut, at the end
 of every cut; paste those rather than editing these. Run before the release has
 merged, the lookup finds nothing and `git tag` refuses with `Failed to resolve
 ''`; run after another merge, it still tags the cut, where `origin/main` would
-have tagged that merge (`PL-VYK1`). The line holds no angle-bracket
-placeholder, which is the one thing a pull request body silently eats
-(`PL-1DN9`).
+have tagged that merge (`PL-VYK1`). The second line is for a re-used number:
+it deletes a tag the owner's checkout still holds after origin withdrew it,
+which `git fetch` never removes. Left there, `git tag` would refuse the name,
+and the push, which a pasted block runs anyway, would put the withdrawn tag
+back on origin. It deletes nothing where origin lists the tag or cannot be
+asked, so the block stays safe to paste twice (`PL-PNW6`). The lines hold no
+angle-bracket placeholder, which is the one thing a pull request body silently
+eats (`PL-1DN9`).
 
 **Do not try to push the tag yourself first - it fails, and it fails
 convincingly (`PL-N936`).** `git push --dry-run` reports `[new tag]` and the
