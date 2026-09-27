@@ -10,6 +10,7 @@ touches: docket.toml, tests/unit/test_workflow_paths_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
 closed: 2026-09-27
+pr: 1199
 payoff: a change to how the test process is configured is offered to the apparatus lane rather than set aside by both
 verify: grep -q 'def test_the_root_conftest_lands_with_the_apparatus_it_configures' tests/unit/test_workflow_paths_check.py
 ---
