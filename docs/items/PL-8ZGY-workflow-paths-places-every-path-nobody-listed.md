@@ -3,12 +3,14 @@ id: PL-8ZGY
 title: workflow_paths places every path nobody listed on the simulator's side and only tests/ is checked, so apparatus files cross the lane boundary unnoticed - 22 items were set aside from both lanes by docs/resident-instructions.md alone
 priority: P1
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: parallel-sessions
-touches: docket.toml, tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py
+touches: docket.toml, tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, docs/ARCHITECTURE.md, docs/items/PL-21RC-docs-maintainer-md-is-apparatus-in-docket-toml.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1210
 payoff: an apparatus item stops being held out of its lane by a file nobody thought to list, and a new file's side becomes a decision made once
 not-delegable: the fix starts with a decision per unplaced path and a choice of which carrier is the source of truth, so no command can prove it before that design round
 root-cause-of: PL-JBZK, PL-GVNS, PL-12P8, PL-1KTV, PL-21RC, PL-W40L
@@ -177,3 +179,14 @@ stand, in particular the three rows it names as contested - `.gitattributes`
 to the workflow side, and `CITATION.cff` and the packaging trio
 (`pyproject.toml`, `uv.lock`, `.python-version`) to the product side. An
 answer to both starts the build on this branch.
+
+**Decided 2026-09-27: the recommendation as written** (project owner,
+2026-09-27, ratified, over recording the simulator's side as per-path pinning
+tests in `tests/unit/test_workflow_paths_check.py`, and over the other side
+for each of the three contested rows). Built on this branch: `product_paths`
+in `docket.toml` with the table's entries and reasons, the six workflow
+entries and `.mailmap` removed, the placement rule and its two entry refusals
+in `tools/workflow_paths_check.py`, and the tests. `docs/ARCHITECTURE.md`'s
+tree entry for the check was rewritten in the docs sweep, which also settles
+`PL-93RN`'s sentence; that item's file is on `#1199`'s branch and closes once
+it lands. `PL-21RC` carries the six rows the standard's carriers now lack.

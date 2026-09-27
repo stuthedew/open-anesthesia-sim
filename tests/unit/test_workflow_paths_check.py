@@ -29,6 +29,15 @@ A support module - anything under `tests/` pytest does not collect - is held
 to half the rule, and its tests cover both halves: the direction its imports
 decide, and the one they cannot, where the list's declaration stands
 (`PL-12P8`).
+
+Outside `tests/` the question is different - not which side a path is on, but
+whether anybody decided - and the tests for it are the three refusals: a
+tracked path neither list places, named at the shortest ancestor the lists do
+not reach into so the line printed is the line to add; an entry both lists
+cover; and an entry no tracked file is under (`PL-8ZGY`). One test walks this
+repository's real tree, and one asserts for every entry of both lists, through
+`Item.lane`, that an item touching only that entry lands on its side - which
+is what each recorded decision was for.
 """
 
 from __future__ import annotations
@@ -64,16 +73,24 @@ CONFTEST = 'import os\n\nos.environ.setdefault("QT_QPA_PLATFORM", "offscreen")\n
 PRODUCT_SUPPORT = "from anesthesia_sim.app.controller import SimulationController\n"
 
 
-def _repo(tmp_path: Path, *, workflow_paths: tuple[str, ...], **tests: str) -> Path:
+def _repo(
+    tmp_path: Path,
+    *,
+    workflow_paths: tuple[str, ...],
+    product_paths: tuple[str, ...] | None = None,
+    **tests: str,
+) -> Path:
     """A repository root with a `docket.toml` and the named files under `tests/unit/`.
 
     Keywords are file stems, so `_repo(p, workflow_paths=(), test_a=...)`
-    writes `tests/unit/test_a.py`.
+    writes `tests/unit/test_a.py`. `product_paths` is written only when given,
+    since its absence is a case of its own: the placement rule declines.
     """
     entries = "".join(f'  "{entry}",\n' for entry in workflow_paths)
-    (tmp_path / "docket.toml").write_text(
-        f"[docket]\nworkflow_paths = [\n{entries}]\n", encoding="utf-8"
-    )
+    settings = f"[docket]\nworkflow_paths = [\n{entries}]\n"
+    if product_paths is not None:
+        settings += "product_paths = [\n" + "".join(f'  "{e}",\n' for e in product_paths) + "]\n"
+    (tmp_path / "docket.toml").write_text(settings, encoding="utf-8")
     unit = tmp_path / "tests" / "unit"
     unit.mkdir(parents=True)
     for stem, body in tests.items():
@@ -343,6 +360,243 @@ def test_the_conftest_that_renders_the_qt_tests_lands_in_the_product_lane() -> N
         "---\n\nBody.\n"
     )
     assert item.lane(paths) == LANE_PRODUCT
+
+
+def test_the_root_conftest_lands_with_the_apparatus_it_configures() -> None:
+    """What `PL-W40L` asked for, stated end to end against this repository.
+
+    The repository-root `conftest.py` sits outside `tests/`, so the check never
+    reads it and its side is whatever the list declares. It holds the process
+    settings every pytest run takes - the git configuration the docket and hook
+    tests must not inherit (`PL-YRYR`), and the no-bytecode guard the
+    `Makefile` also exports (`PL-0MLZ`) - and the only two items ever to declare
+    it paired it with apparatus alone, yet read `crossing` while the list left
+    it out. Their shapes are the cases. Through `Item.lane`, for the reason the
+    tests above give.
+    """
+    paths = workflow_paths_check.declared_workflow_paths(ROOT)
+    for touches in (
+        "conftest.py, subprojects/docket/tests/test_git_isolation.py, subprojects/docket/README.md",
+        "conftest.py, Makefile, tests/unit/test_bytecode_guard.py",
+    ):
+        item = parse_item(
+            "---\n"
+            "id: PL-T3ST\n"
+            "title: A change to the root conftest and what it configures\n"
+            "priority: P2\n"
+            "effort: S\n"
+            "status: ready\n"
+            f"touches: {touches}\n"
+            "---\n\nBody.\n"
+        )
+        assert item.lane(paths) == LANE_WORKFLOW, touches
+
+
+# --- outside tests/, a path is placed by a decision or refused (`PL-8ZGY`) ---
+
+
+def _placed_repo(tmp_path: Path, *files: str, **lists: tuple[str, ...]) -> Path:
+    """A tree that is not a checkout, with `docket.toml` and empty files at `files`.
+
+    The settings file is a tracked root file like any other, and this
+    repository lists it in `workflow_paths`; the helper lists it the same way,
+    so each test names only the paths it is about.
+    """
+    lists["workflow_paths"] = (*lists["workflow_paths"], "docket.toml")
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    root = _repo(tmp_path, **lists)
+    for relative in files:
+        _support(root, relative, "")
+    return root
+
+
+def test_a_tracked_path_neither_list_places_is_refused(tmp_path: Path) -> None:
+    """The default this rule replaces: an unlisted path was the simulator's in silence.
+
+    `docs/resident-instructions.md` sat that way while 22 items crossed the
+    boundary because of it, none ever filed. The refusal names both lines,
+    because which list is the author's judgment and the tool's finding is only
+    that nobody made it.
+    """
+    root = _placed_repo(
+        tmp_path,
+        "tools/x.py",
+        "src/pkg/y.py",
+        "docs/notes.md",
+        workflow_paths=("tools",),
+        product_paths=("src",),
+    )
+    (problem,) = workflow_paths_check.placement_problems(root)
+    assert '"docs" is tracked (1 file(s))' in problem
+    assert 'Add "docs" to workflow_paths' in problem
+    assert "or to product_paths" in problem
+
+
+def test_the_refusal_names_the_shortest_ancestor_the_lists_do_not_reach_into(
+    tmp_path: Path,
+) -> None:
+    """The line printed is the line to add, at the depth where a decision is missing.
+
+    With `docs/items` and `docs/MODEL.md` placed, naming `docs` would cover
+    what the lists already place, and naming each file would print one line per
+    file; `docs/references` is the entry a reader would write, and two files
+    under it are one refusal.
+    """
+    root = _placed_repo(
+        tmp_path,
+        "docs/items/PL-0000.md",
+        "docs/MODEL.md",
+        "docs/references/README.md",
+        "docs/references/source.pdf",
+        "spikes/qt/probe.py",
+        "NOTICE",
+        workflow_paths=("tools", "docs/items"),
+        product_paths=("src", "docs/MODEL.md"),
+    )
+    _support(root, "tools/x.py", "")
+    _support(root, "src/y.py", "")
+    found = workflow_paths_check.placement_problems(root)
+    named = [problem.split('"')[1] for problem in found]
+    assert named == ["NOTICE", "docs/references", "spikes"]
+    assert "(2 file(s))" in found[1]
+
+
+def test_a_file_under_tests_is_left_to_the_import_rule(tmp_path: Path) -> None:
+    """`tests/` is in neither list on purpose: its files are decided one by one above."""
+    root = _placed_repo(
+        tmp_path,
+        "tests/conftest.py",
+        "tests/unit/helper.py",
+        "tools/x.py",
+        "src/y.py",
+        workflow_paths=("tools",),
+        product_paths=("src",),
+    )
+    assert workflow_paths_check.placement_problems(root) == []
+
+
+def test_an_entry_both_lists_cover_is_refused(tmp_path: Path) -> None:
+    """Two lists that overlap disagree about a side, whichever way `Item.lane` reads it."""
+    root = _placed_repo(
+        tmp_path,
+        "docs/items/PL-0000.md",
+        "docs/MODEL.md",
+        workflow_paths=("docs/items",),
+        product_paths=("docs",),
+    )
+    (problem,) = workflow_paths_check.placement_problems(root)
+    assert '"docs/items" is in workflow_paths, but product_paths covers it' in problem
+    root = _placed_repo(
+        tmp_path / "twice", "tools/x.py", workflow_paths=("tools",), product_paths=("tools",)
+    )
+    (problem,) = workflow_paths_check.placement_problems(root)
+    assert '"tools" is in product_paths, but workflow_paths covers it' in problem
+
+
+def test_an_entry_placing_nothing_is_refused(tmp_path: Path) -> None:
+    """`.mailmap` sat in `workflow_paths` with no such file in the tree, placing nothing."""
+    root = _placed_repo(
+        tmp_path,
+        "tools/x.py",
+        "src/y.py",
+        workflow_paths=("tools", ".mailmap"),
+        product_paths=("src",),
+    )
+    (problem,) = workflow_paths_check.placement_problems(root)
+    assert '".mailmap" is in workflow_paths, but no tracked file is under it' in problem
+    assert "Remove it, or fix its spelling" in problem
+
+
+def test_an_undeclared_product_list_declines_the_placement_rule(tmp_path: Path) -> None:
+    """A settings file that draws one side is not this tool's to complete, as with `gate_paths`."""
+    root = _placed_repo(tmp_path, "tools/x.py", "docs/notes.md", workflow_paths=("tools",))
+    assert workflow_paths_check.placement_problems(root) == []
+
+
+def test_the_placement_failure_prints_to_stderr_and_exits_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _placed_repo(
+        tmp_path,
+        "tools/x.py",
+        "src/y.py",
+        "docs/notes.md",
+        workflow_paths=("tools",),
+        product_paths=("src",),
+    )
+    monkeypatch.setattr("sys.argv", ["workflow_paths_check.py", "--root", str(root)])
+    assert workflow_paths_check.main() == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert '"docs"' in captured.err
+    assert "PL-8ZGY" in captured.err
+
+
+def test_a_clean_tree_counts_what_the_two_lists_place(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _placed_repo(
+        tmp_path,
+        "tools/x.py",
+        "src/y.py",
+        "docs/notes.md",
+        workflow_paths=("tools",),
+        product_paths=("src", "docs"),
+    )
+    monkeypatch.setattr("sys.argv", ["workflow_paths_check.py", "--root", str(root)])
+    assert workflow_paths_check.main() == 0
+    out = capsys.readouterr().out
+    assert (
+        "4 tracked file(s) outside tests/, each under one of 2 workflow_paths or 2 "
+        "product_paths entries"
+    ) in out
+
+
+def test_a_checkout_is_listed_by_git_rather_than_walked() -> None:
+    """Untracked files are nobody's to place, so a checkout is read through `git ls-files`.
+
+    The walk is for a tree with no repository, which is what the fixtures
+    build; here the virtualenv and every other untracked path stay out.
+    """
+    tracked = workflow_paths_check.tracked_files(ROOT)
+    assert "docket.toml" in tracked
+    assert "tools/workflow_paths_check.py" in tracked
+    assert not any(name.startswith((".venv/", ".git/")) for name in tracked)
+    assert all((ROOT / name).exists() for name in tracked[:50])
+
+
+_ENTRIES = [
+    *((entry, LANE_WORKFLOW) for entry in workflow_paths_check.declared_workflow_paths(ROOT)),
+    *((entry, LANE_PRODUCT) for entry in workflow_paths_check.declared_product_paths(ROOT)),
+]
+
+
+@pytest.mark.parametrize(("entry", "lane"), _ENTRIES, ids=[entry for entry, _ in _ENTRIES])
+def test_every_entry_of_both_lists_lands_on_its_side(entry: str, lane: str) -> None:
+    """Each recorded decision, stated through the code that ranks the queue.
+
+    `product_paths` is read by the check and not by docket, so this is what
+    holds the two lists to `Item.lane`: an item touching only a product entry
+    reads `product` because no workflow entry reaches it, and one touching only
+    a workflow entry reads `workflow`. The three pins above say why particular
+    entries exist; this says every entry does what its list claims.
+    """
+    item = parse_item(
+        "---\n"
+        "id: PL-T3ST\n"
+        f"title: A change to {entry}\n"
+        "priority: P2\n"
+        "effort: S\n"
+        "status: ready\n"
+        f"touches: {entry}\n"
+        "---\n\nBody.\n"
+    )
+    assert item.lane(workflow_paths_check.declared_workflow_paths(ROOT)) == lane
+
+
+def test_this_repository_places_every_tracked_path() -> None:
+    """The real tree: every tracked path outside `tests/` is under one list, no entry is dead."""
+    assert workflow_paths_check.placement_problems(ROOT) == []
 
 
 def test_a_test_file_is_what_this_run_of_pytest_collects(pytestconfig: pytest.Config) -> None:

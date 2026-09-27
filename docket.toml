@@ -363,19 +363,39 @@ known_classes = [
 # for the product's rendering tests, and the entry the check once demanded for
 # it made an item touching it and the Qt test it serves `crossing`.
 #
-# Deliberately absent, and each is a judgment rather than an oversight:
+# The repository-root `conftest.py` is outside `tests/`, so the check never
+# reads it, and its entry is a declaration of the same kind made the other way.
+# It holds the process settings every pytest run takes: the git configuration
+# the docket and hook tests must not inherit (`PL-YRYR`), and the no-bytecode
+# guard the `Makefile` also exports (`PL-0MLZ`). Both items that ever declared
+# it touched apparatus alone beside it, and read `crossing` until it was listed
+# (`PL-W40L`). The entry is a path from the root, so it does not reach
+# `tests/conftest.py`.
 #
-# - `ROADMAP.md` and `docs/releases/` are product direction. They name
-#   simulator milestones and what shipped in them, so a session scoping the
-#   next release is doing product work even though no `src/` file moves. Four
-#   items reaching both a tool and the roadmap are set aside as a result, which
-#   is the right answer: changing how the release train is *written* and
-#   changing what it *says* are two jobs.
-# - `docs/ARCHITECTURE.md` and `README.md` are written for a reader of the
-#   simulator, which CLAUDE.md holds to the specialist standard.
+# What is absent from this list is placed rather than defaulted: every tracked
+# path outside `tests/` that no entry here covers is under an entry of
+# `product_paths`, below, with its reason beside it. `ROADMAP.md`,
+# `docs/releases/`, `docs/ARCHITECTURE.md` and `README.md` were once recorded
+# here as deliberate absences, and are entries there now, since a path's side
+# was a decision only where somebody had written one down and an apparatus
+# file nobody listed was the simulator's in silence: `docs/resident-instructions.md`
+# alone set 22 items aside from both lanes with none ever filed (`PL-8ZGY`).
+# `tools/workflow_paths_check.py` refuses a tracked path under neither list,
+# naming both lines that would place it.
+#
+# The six entries `PL-8ZGY` added are the apparatus files that were on the
+# simulator's side by omission: `docs/resident-instructions.md`, the ledger of
+# what loads resident, addressed to sessions as `docs/worker.md` is;
+# `docs/pr-bodies`, the pull-request record `tools/pr_body_check.py` writes;
+# `bin`, the docket launcher, which no item had ever declared; `.vscode` and
+# `.gitattributes`, editor and git plumbing beside `.gitignore`; and
+# `docs/stress-2026-09-25`, `PL-P0FP`'s stress-test evidence. `.mailmap` left
+# at the same time: it was listed and had never been tracked, which the check
+# now refuses as an entry that places nothing.
 #
 # `docs/maintainer.md` is present for the same reason `docs/worker.md` is, and
-# is said out loud because its absence read as a fifth entry on that list. Both
+# is said out loud because its absence once read as a fifth deliberate
+# absence, before those moved to `product_paths`. Both
 # are addressed to a participant in the build rather than to a reader of the
 # simulator - worker.md to a session, maintainer.md to the person running them -
 # and CLAUDE.md routes to both in the same breath. It was missing until
@@ -384,19 +404,25 @@ known_classes = [
 # and hidden from the apparatus one.
 workflow_paths = [
   ".claude",
+  ".gitattributes",
   ".github",
   ".gitignore",
-  ".mailmap",
+  ".vscode",
   "AGENTS.md",
   "CLAUDE.md",
   "CONTRIBUTING.md",
   "Makefile",
+  "conftest.py",
   "docket.toml",
   "docs/WORKING_NOTES.md",
   "docs/dead-ends.md",
   "docs/items",
   "docs/maintainer.md",
+  "docs/pr-bodies",
+  "docs/resident-instructions.md",
+  "docs/stress-2026-09-25",
   "docs/worker.md",
+  "bin",
   "subprojects",
   "tests/unit/test_agent_identity_check.py",
   "tests/unit/test_branch_id_check.py",
@@ -434,6 +460,80 @@ workflow_paths = [
   "tests/unit/test_update_armed.py",
   "tests/unit/test_bytecode_guard.py",
   "tools",
+]
+
+# The other side of the same boundary, so that a tracked path's side is a
+# decision made once rather than a default nobody chose (`PL-8ZGY`; project
+# owner, 2026-09-27, ratified, over recording the simulator's side as per-path
+# pinning tests in `tests/unit/test_workflow_paths_check.py`).
+#
+# Not a package setting. `Item.lane` reads `workflow_paths` alone and places
+# every other path on the product side, and that does not change: docket never
+# reads this list, and `docket.config.load` passes over it. It is read by
+# `tools/workflow_paths_check.py`, which refuses a tracked path outside
+# `tests/` that is under neither list, naming both lines that would place it,
+# since which list is the author's judgment and the tool decides only that
+# nobody has made it. The same run refuses an entry both lists cover and an
+# entry no tracked file is under. `tests/` is in neither list on purpose: a
+# test file's side is what it imports, and a support module's is the entry
+# `workflow_paths` gives it or else the simulator's (`PL-JBZK`, `PL-12P8`).
+#
+# Why the pinning tests were not made the record: a test can guard a
+# placement, asserting through `Item.lane` where an item touching the path
+# lands, but cannot enumerate the placed set, and "unplaced" is a question
+# about the set. Once the tests hold a list to enumerate, the list is the
+# record, and this is the file that defines the boundary and already carried
+# the four absences below as prose. The pins stay as the guard.
+#
+# Each entry with the reason it is the simulator's, and where the reason was
+# not plain, the count taken before it was placed on 2026-09-27: items ever
+# declaring the path that pair it only with apparatus paths, against only with
+# product paths.
+#
+# - `src`, `docs/MODEL.md` and `README.md` are CLAUDE.md's own enumeration of
+#   the simulator, recorded as data.
+# - `ROADMAP.md` and `docs/releases` are product direction. They name
+#   simulator milestones and what shipped in them, so a session scoping the
+#   next release is doing product work even though no `src/` file moves.
+#   Changing how the release train is *written* and changing what it *says*
+#   are two jobs, so an item reaching both a tool and the roadmap is set aside
+#   as `crossing`. Ninety have been, which `PL-KRGY` weighs; the placement
+#   stands until that is decided.
+# - `docs/ARCHITECTURE.md` is written for a reader of the simulator, which
+#   CLAUDE.md holds to the specialist standard, and documents the apparatus
+#   tree as well: 40 items pair it only with apparatus paths, `PL-KRGY` again.
+# - `docs/references` is the register of source documents behind
+#   `docs/MODEL.md`'s provenance, which `.claude/rules/citing-sources.md`
+#   scopes with it (4 against 8).
+# - `docs/consultant-brief.md`, `docs/interface-provenance.md`,
+#   `docs/machine-abstraction.md` and `docs/machine-survey.md` are the
+#   simulator's design records; no item pairs any of them with apparatus alone.
+# - `LICENSE` and `CITATION.cff` are for a reader or citer of the simulator, as
+#   `README.md` is; both items that declared `CITATION.cff` were about making
+#   the simulator citable.
+# - `pyproject.toml`, `uv.lock` and `.python-version` define the simulator's
+#   package and are also where its tools are configured, so they are genuinely
+#   both and the count decided: 8 items pair `pyproject.toml` only with product
+#   paths against 3 only with apparatus, and `uv.lock` 6 against 0. The cost is
+#   that a tool's configuration inside `pyproject.toml` reads product, and an
+#   apparatus change that needs a dependency reads `crossing`, which is honest.
+product_paths = [
+  ".python-version",
+  "CITATION.cff",
+  "LICENSE",
+  "README.md",
+  "ROADMAP.md",
+  "docs/ARCHITECTURE.md",
+  "docs/MODEL.md",
+  "docs/consultant-brief.md",
+  "docs/interface-provenance.md",
+  "docs/machine-abstraction.md",
+  "docs/machine-survey.md",
+  "docs/references",
+  "docs/releases",
+  "pyproject.toml",
+  "src",
+  "uv.lock",
 ]
 
 # How `bin/docket flight` asks which branches have a pull request open, which

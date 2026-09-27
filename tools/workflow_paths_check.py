@@ -1,4 +1,4 @@
-"""Refuse a file under `tests/` whose side of the lane boundary disagrees with its imports.
+"""Refuse a file whose side of the lane boundary nobody decided, or decided against its imports.
 
 `docket.toml`'s `workflow_paths` decides which half of the project an item
 belongs to: `Item.lane()` reads each declared `touches` path against it, and an
@@ -74,12 +74,35 @@ runs them, and the audit still reports ACCEPT. The rule is the same shape as the
 one above and equally decidable: every `ruff.toml` in the tree must be covered by
 some `gate_paths` entry.
 
-**Deliberately not decided here: anything about the rest of either list.**
-Directory entries, what `workflow_paths` says about `ROADMAP.md` or
-`docs/ARCHITECTURE.md`, whether `gate_paths` should hold some file that is not a
-`ruff.toml`, and whether either boundary is drawn in the right place at all are
-judgments, argued in `docket.toml`'s own comments. A tool guessing at the rest
-would be the "worse than no tool" case `CLAUDE.md` names.
+**Outside `tests/`, a tracked path is placed by one list or the other, and a
+path under neither is refused (`PL-8ZGY`).** `Item.lane` reads `workflow_paths`
+alone and places every other path on the simulator's side, so a path's side
+was a decision only where somebody had written one down, and an apparatus file
+nobody listed crossed the boundary in silence: measured 2026-09-27,
+`docs/resident-instructions.md` alone had set 22 items aside from both lanes,
+none ever filed, and the root `conftest.py`, `docs/pr-bodies/` and the docket
+launcher under `bin/` were in the same position. Six items had misread that one
+default before the file was found. So `docket.toml` now carries
+`product_paths` beside `workflow_paths` - the simulator's side, each entry with
+its reason - and this check reads the tree the repository tracks and refuses
+the shortest ancestor of any file that neither list reaches into, naming both
+lines that would place it. Which list is the author's judgment; that nobody
+has made it is a fact about two lists and a `git ls-files`, which is what earns
+the refusal. Two entries are refused with it, being the two ways the record
+itself goes wrong: one both lists cover, since the lists then disagree about a
+side, and one no tracked file is under, since it places nothing - `.mailmap`
+was listed for weeks with no such file in the tree. `tests/` is exempt from
+the placement rule and from neither list's dead-entry rule, because its files
+are decided above, one by one. Where `docket.toml` declares no `product_paths`
+the rule declines, as the `gate_paths` rule below declines an absent list.
+
+**Deliberately not decided here: which side a path belongs on, or anything
+about the rest of either list.** Directory entries, what `product_paths` says
+about `ROADMAP.md` or `docs/ARCHITECTURE.md`, whether `gate_paths` should hold
+some file that is not a `ruff.toml`, and whether either boundary is drawn in
+the right place at all are judgments, argued in `docket.toml`'s own comments. A
+tool guessing at the rest would be the "worse than no tool" case `CLAUDE.md`
+names.
 
 **Invoked through `uv run python`, not bare `python3`.** It parses repository
 source with `ast`, and `tests/` is free to use the language `.python-version`
@@ -95,9 +118,10 @@ from __future__ import annotations
 import argparse
 import ast
 import fnmatch
+import subprocess
 import sys
 import tomllib
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -106,8 +130,15 @@ ROOT = Path(__file__).resolve().parent.parent
 #: land on the product side by omission.
 TESTS_DIR = Path("tests")
 
-#: The store's own settings file, which holds the list being checked.
+#: The store's own settings file, which holds the lists being checked.
 CONFIG = Path("docket.toml")
+
+#: Directories a checkout carries but does not author. Skipped by
+#: `ruff_configs`, and by the walk that stands in for `git ls-files` in a tree
+#: that is not a checkout.
+SKIP_DIRS = frozenset(
+    {".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".ruff_cache"}
+)
 
 #: Importing this is what makes a test file the simulator's. Named once here
 #: because the rule is about this package specifically, not about any import.
@@ -182,6 +213,19 @@ def declared_workflow_paths(root: Path) -> tuple[str, ...]:
     return tuple(section.get("workflow_paths", ()))
 
 
+def declared_product_paths(root: Path) -> tuple[str, ...]:
+    """`[docket] product_paths` from the store's settings file, or empty where none is declared.
+
+    Docket itself does not read this list: `Item.lane` places every path
+    `workflow_paths` does not cover on the product side. The list exists so
+    that placement is a decision this check can hold the tree to.
+    """
+    with (root / CONFIG).open("rb") as handle:
+        data = tomllib.load(handle)
+    section = data.get("docket", {})
+    return tuple(section.get("product_paths", ()))
+
+
 def declared_gate_paths(root: Path) -> tuple[str, ...]:
     """`[docket] gate_paths` from the store's settings file."""
     with (root / CONFIG).open("rb") as handle:
@@ -197,11 +241,10 @@ def ruff_configs(root: Path) -> list[str]:
     `ruff.toml` vendored inside `.venv` is somebody else's file and naming it
     in `gate_paths` would be meaningless.
     """
-    skip = {".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".ruff_cache"}
     found = []
     for path in sorted(root.rglob("ruff.toml")):
         relative = path.relative_to(root)
-        if any(part in skip for part in relative.parts):
+        if any(part in SKIP_DIRS for part in relative.parts):
             continue
         found.append(relative.as_posix())
     return found
@@ -273,15 +316,133 @@ def problems(root: Path) -> list[str]:
     return found
 
 
+def tracked_files(root: Path) -> list[str]:
+    """Every file the repository tracks, as posix paths relative to `root`.
+
+    `git ls-files` where `root` is a checkout, because an untracked file - a
+    scratch script, a build product, a virtualenv - is nobody's to place. A
+    tree that is not a checkout, which is what the tests build, is walked
+    instead, skipping only `SKIP_DIRS`; that walk sees every file and stands
+    in for git rather than replacing it. Git failing in a checkout is raised
+    to the caller, which reports it: a tree this check could not list is one
+    it cannot vouch for, and passing it silently is the failure the check
+    exists to stop.
+    """
+    if (root / ".git").exists():
+        completed = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z"],
+            capture_output=True,
+            check=True,
+            encoding="utf-8",
+        )
+        return sorted(name for name in completed.stdout.split("\0") if name)
+    found = []
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root)
+        if path.is_file() and not any(part in SKIP_DIRS for part in relative.parts):
+            found.append(relative.as_posix())
+    return found
+
+
+def unplaced_ancestor(relative: str, entries: tuple[str, ...]) -> str:
+    """The shortest ancestor of an uncovered file that no entry reaches into.
+
+    This is the line the reader would add. For `docs/references/README.md`
+    with `docs/items` listed, it is `docs/references`: `docs` is a directory
+    the lists already reach into, and naming it would cover what they place.
+    For a file in a new top-level tree it is that tree's root, and for a root
+    file it is the file.
+    """
+    parts = PurePosixPath(relative.strip("/")).parts
+    for depth in range(1, len(parts) + 1):
+        prefix = "/".join(parts[:depth])
+        if not any(entry.strip().strip("/").startswith(prefix + "/") for entry in entries):
+            return prefix
+    return relative
+
+
+def placement_problems(root: Path) -> list[str]:
+    """Every tracked path outside `tests/` under neither list, and every entry that misplaces.
+
+    An entry misplaces when both lists cover it, since they then disagree
+    about a side, or when no tracked file is under it, since it then places
+    nothing.
+
+    Declined where `docket.toml` declares no `product_paths`: the rule needs
+    both sides drawn, and a settings file that draws one is not this tool's to
+    complete.
+    """
+    workflow = declared_workflow_paths(root)
+    product = declared_product_paths(root)
+    if not workflow or not product:
+        return []
+    found: list[str] = []
+    for entry in product:
+        if is_covered(entry, workflow):
+            found.append(
+                f'"{entry}" is in product_paths, but workflow_paths covers it, so the two lists '
+                f"disagree about its side. Remove it from one of them"
+            )
+    listed_as_product = {entry.strip().strip("/") for entry in product}
+    for entry in workflow:
+        # An entry both lists name verbatim was reported once already, above.
+        if entry.strip().strip("/") not in listed_as_product and is_covered(entry, product):
+            found.append(
+                f'"{entry}" is in workflow_paths, but product_paths covers it, so the two lists '
+                f"disagree about its side. Remove it from one of them"
+            )
+    try:
+        tracked = tracked_files(root)
+    except (OSError, subprocess.CalledProcessError) as error:
+        found.append(
+            f"the tracked files could not be listed ({error}), so no path outside "
+            f"{TESTS_DIR.as_posix()}/ can be vouched for"
+        )
+        return found
+    entries = workflow + product
+    unplaced: dict[str, int] = {}
+    prefixes: set[str] = set()
+    for relative in tracked:
+        parts = PurePosixPath(relative).parts
+        prefixes.update("/".join(parts[:depth]) for depth in range(1, len(parts) + 1))
+        if parts[0] == TESTS_DIR.name:
+            continue
+        if is_covered(relative, workflow) or is_covered(relative, product):
+            continue
+        ancestor = unplaced_ancestor(relative, entries)
+        unplaced[ancestor] = unplaced.get(ancestor, 0) + 1
+    for ancestor, count in sorted(unplaced.items()):
+        found.append(
+            f'"{ancestor}" is tracked ({count} file(s)) and neither workflow_paths nor '
+            f"product_paths in {CONFIG.as_posix()} places it, so an item declaring it lands on "
+            f'the simulator\'s side by default rather than by a decision. Add "{ancestor}" to '
+            f"workflow_paths if it exists so sessions can be productive, or to product_paths "
+            f"if a reader of the simulator needs it"
+        )
+    for name, declared in (("workflow_paths", workflow), ("product_paths", product)):
+        for entry in declared:
+            if entry.strip().strip("/") not in prefixes:
+                found.append(
+                    f'"{entry}" is in {name}, but no tracked file is under it, so the entry '
+                    f"places nothing. Remove it, or fix its spelling"
+                )
+    return found
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=ROOT, help="repository to check")
     args = parser.parse_args()
 
     found = problems(args.root)
+    placement = placement_problems(args.root)
     gate = gate_problems(args.root)
-    if not found and not gate:
+    if not found and not placement and not gate:
         roots = declared_workflow_paths(args.root)
+        product = declared_product_paths(args.root)
+        outside = sum(
+            1 for name in tracked_files(args.root) if PurePosixPath(name).parts[0] != TESTS_DIR.name
+        )
         files = sorted((args.root / TESTS_DIR).rglob("*.py"))
         tests = [path for path in files if is_test_file(path.name)]
         support = [path for path in files if not is_test_file(path.name)]
@@ -298,8 +459,15 @@ def main() -> int:
             f"{apparatus} of them apparatus, each on the side its imports put it; "
             f"{len(support)} support module(s), {declared} importing no `{PRODUCT_PACKAGE}` "
             f"and so on whichever side workflow_paths declares, which imports cannot "
-            f"confirm; {len(ruff_configs(args.root))} linter config(s), each covered by "
-            f"gate_paths"
+            f"confirm; "
+            + (
+                f"{outside} tracked file(s) outside {TESTS_DIR.as_posix()}/, each under one of "
+                f"{len(roots)} workflow_paths or {len(product)} product_paths entries; "
+                if product
+                else f"product_paths undeclared, so placement outside {TESTS_DIR.as_posix()}/ "
+                f"was not checked; "
+            )
+            + f"{len(ruff_configs(args.root))} linter config(s), each covered by gate_paths"
         )
         return 0
 
@@ -314,6 +482,17 @@ def main() -> int:
             "set aside from both lanes and offered to nobody (`PL-JBZK`). A support "
             "module, which pytest does not collect, is held to the second half only "
             "(`PL-12P8`).",
+            file=sys.stderr,
+        )
+    if placement:
+        print(
+            f"workflow-paths: {len(placement)} path(s) outside {TESTS_DIR.as_posix()}/ that "
+            f"neither list places, or entries that place nothing.\n"
+            + "".join(f"  {problem}\n" for problem in placement)
+            + "  A tracked path under neither workflow_paths nor product_paths is on the "
+            "simulator's side by default rather than by a decision, and an item declaring it "
+            "beside apparatus is set aside from both lanes as reaching both halves. Which "
+            "list is yours to judge; that nobody has decided is what this refuses (`PL-8ZGY`).",
             file=sys.stderr,
         )
     if gate:
