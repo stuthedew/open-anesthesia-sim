@@ -65,4 +65,6 @@ where `worksteal` put their tests. A cache that dies with the run cannot
 serve a stale build, so `PL-0MLZ`'s hazard does not arise. (3) A cheaper
 step loop, found by profiling one curve. That is a core change under the
 safety standard and would be an item of its own. Recommendation: measure (1)
-first, and fall back to (2) if `loadgroup` slows the rest of the suite.
+first, and fall back to (2) if `loadgroup` slows the rest of the suite
+(project owner, 2026-09-27, ratified, over leading with (2), the cache that
+keeps the change inside `tests/reference/`).
