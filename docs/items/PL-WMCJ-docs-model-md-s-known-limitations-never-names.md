@@ -3,11 +3,13 @@ id: PL-WMCJ
 title: docs/MODEL.md's Known limitations never names intertissue diffusion, the route Eger and Saidman 2005 describe for agent reaching fat, though every tissue group here exchanges only with arterial blood
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, docs
 feature: model-spec-accuracy
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/references/README.md
 added: 2026-09-23
+closed: 2026-09-26
+pr: 1135
 payoff: a reader of the fat compartment learns that one published route by which agent reaches fat is not modelled, and which way leaving it out biases what the chart draws
 verify: grep -qiF 'intertissue diffusion' docs/MODEL.md
 ---
@@ -66,3 +68,37 @@ and fat".
 
 **Done when.** § "Known limitations" names intertissue diffusion, its effect on
 the fat compartment and its source.
+
+## Worked 2026-09-26
+
+**Premise re-confirmed**, then written. `docs/MODEL.md` now names the route in
+§ "Assumptions" (the perfusion-limited bullet says a tissue group exchanges
+agent only with its own blood) and in § "Known limitations" (a bullet beside
+"diffusion limitation", which it distinguishes itself from, and a note after
+the fat-perfusion note).
+
+**The direction and size came from primary full text, not from the review.**
+Eger and Saidman 2005 is in neither PubMed Central nor the private corpus, and
+`journals.lww.com` is blocked from this environment, so it stays abstract-only
+and nothing is sized from it. The corpus supplied what the brief asked for
+instead: both Yasuda 1991 papers fit a five-compartment washout and read the
+fourth compartment as fat reached by intertissue diffusion (the *Anesthesiology*
+one is a scan, read as page images of pp. 493-96); the Gas Man Workbook states
+the omission itself (App. B, p. 170); and Hendrickx and De Wolf's chapter
+carries the interpretive caution (pp. 163, 166). The model's fat time constant
+matches the fitted *fifth* compartment, so the fourth is what is missing, and
+the note states three biases from that: fat holds too little agent (the
+missing store is 0.9-2.2x the modelled fat group's uptake over a 0.5-4 h case),
+the fat trace draws the slow fat alone, and the late washout loses the term
+that dominates it from about hour 2-3 to hour 21-29.
+
+**Carpenter 1986's DOI is not carried forward.** The brief gave
+`10.1213/00000539-198606000-00004`, which PubMed's record and its ID converter
+do not return, so the note cites the PMID and says PubMed records no DOI.
+
+**Captured, not fixed here:** `PL-HBH2` (the fat-perfusion note weighs
+Heinonen alone, where the Yasuda fits sit on the stored parameters),
+`PL-YD2V` and `PL-KK1Q` (feature `late-washout-evidence`: the run-length
+rationale does not name the missing compartment, and the model's first-day
+washout has never been compared with the fits), and `PL-7LCY` (a false
+refusal by the floor-interpreter guard, met in this work).
