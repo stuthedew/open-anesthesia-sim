@@ -73,6 +73,12 @@ looks for a program named `set` and finds none (`PL-9RSP`). Each is read bare,
 because a `command` named by path is a program, and `command` by the grammar
 `WRAPPERS` holds for it, so the two readers cannot disagree about its options.
 
+**Last, how to spell a command back so that bash runs it again**, by
+`command_line`, for a guard that prints one to be run: spelled from the
+program's name alone, the gate guard's remedy for `python3 tools/doc_check.py
+check` was `tools/doc_check.py`, and no `tools/` script is executable
+(`PL-ZS13`). It says what of the quoting `words` removed it cannot restore.
+
 **What it does not read**, none of which a guard here has needed: arithmetic
 (`$(( ))` and `(( ))`, where a `<<` shift reads as a heredoc here), the `&&`,
 `||`, `<` and `>` inside `[[ ]]`, which read as a separator or a redirection,
@@ -103,6 +109,7 @@ parses at the floor `tests/unit/test_tools_portability.py` holds
 from __future__ import annotations
 
 import re
+import shlex
 from typing import NamedTuple
 
 
@@ -174,6 +181,12 @@ TIME_OPTIONS = ("-p", "--")
 
 # A leading `NAME=value` sets the command's environment, and is not its name.
 ASSIGNMENT = re.compile(r"^[A-Za-z_]\w*=")
+
+# What makes bash read a word written bare as something else: a blank splits
+# it, a quote or a backslash is read as quoting, an operator character ends it,
+# and a `#` can open a comment. A `$`, a backtick and the glob characters are
+# not here, so a word bash expanded is expanded again (`PL-ZS13`).
+NEEDS_QUOTES = re.compile(r"[\s'\"\\&|;()<>#]")
 
 
 class Grammar(NamedTuple):
@@ -311,18 +324,67 @@ def command_words(segment: list[str]) -> list[str]:
     with another about which word is the command - as two readers inside one
     hook once did, and a `set` opening a group went unseen (`PL-1SFZ`).
     """
-    rest = list(segment)
-    while rest and (rest[0] in GROUPING or rest[0] in OPENS_A_COMMAND):
-        if rest.pop(0) == "time":
-            for option in TIME_OPTIONS:
-                if rest and rest[0] == option:
-                    rest.pop(0)
+    rest = _past_openers(segment)
     while rest:
         taken = 1 if ASSIGNMENT.match(rest[0]) else _redirection(rest, 0)
         if not taken:
             break
         del rest[:taken]
     return rest
+
+
+def _past_openers(segment: list[str]) -> list[str]:
+    """`segment` past the grouping and reserved words opening its command, and `time`'s options."""
+    rest = list(segment)
+    while rest and (rest[0] in GROUPING or rest[0] in OPENS_A_COMMAND):
+        if rest.pop(0) == "time":
+            for option in TIME_OPTIONS:
+                if rest and rest[0] == option:
+                    rest.pop(0)
+    return rest
+
+
+def command_line(segment: list[str]) -> str | None:
+    """The command `segment` runs, spelled so that bash runs it again, or None where it cannot be.
+
+    Its assignments, its command word and its arguments, in order and through
+    any wrapper, less what bash reads around them: the grouping and reserved
+    words `command_words` drops, every redirection, which bash lifts out
+    wherever it stands, and a `)` closing a subshell opened before the
+    segment. For a guard printing a command back to be run, which has to run
+    what the segment ran (`PL-ZS13`).
+
+    A word is quoted only where bash would read it bare as something else, and
+    in double quotes where it holds a `$` or a backtick, so what bash expanded
+    is expanded again - and a `$` that single quotes hid comes back live, since
+    `words` keeps no record of which quote it was. An unquoted substitution
+    reaches here as operators with the quoting inside it gone, so a segment
+    holding one answers None rather than a spelling that runs something else.
+    """
+    spelled: list[str] = []
+    for word in _lift(_past_openers(segment))[0]:
+        if isinstance(word, Operator) and word == ")":
+            continue
+        if isinstance(word, Operator):
+            return None
+        spelled.append(_quoted(word))
+    return " ".join(spelled) or None
+
+
+def _quoted(word: str) -> str:
+    """`word` written so that bash reads it back as this word: bare where it can be.
+
+    An assignment keeps its `NAME=` bare and has its value quoted, since
+    quoted whole it would be a command's name rather than an assignment.
+    """
+    name = ASSIGNMENT.match(word)
+    head = name.group() if name else ""
+    value = word[len(head) :]
+    if (value or head) and not NEEDS_QUOTES.search(value):
+        return word
+    if "$" in value or "`" in value:
+        return head + '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    return head + shlex.quote(value)
 
 
 def program_words(segment: list[str]) -> list[str]:
