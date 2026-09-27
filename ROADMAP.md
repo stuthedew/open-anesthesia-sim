@@ -5502,9 +5502,9 @@ worked:
   registry `PL-R1WQ`, so it is unworkable until implementation has begun, and
   then on `PL-TBMK`, a second machine profile, and `PL-4TWW`, the surface that
   selects between profiles, which no release schedules.
-- `PL-B396` is held open as the stand-in for planned-milestone item 28, agent
-  cost and the liquid-volume readout it decided, and its open question is
-  whether a release schedules item 28. None does before v0.6.0.
+- `PL-B396` is the liquid-volume readout planned-milestone item 28, agent
+  cost, would build, and waits on `PL-YRLM`, which holds whether a release
+  schedules item 28. None does before v0.6.0.
 - `PL-0S0V`, `PL-VJZK` and `PL-KZ99` each wait on `PL-B396`, because each is
   work item 28 would create: a reader-selectable agent unit and its precision,
   a reader-set price, and the molar mass and liquid density a vapour-to-liquid
@@ -5536,16 +5536,15 @@ or a liquid figure. `PL-B396` is classed `ux` and `docs`, so beat 3 asks this
 record of the other four alone.
 
 **What reads this, and what reads past it.** `bin/docket wave` counts this list
-from the items rather than from this prose, and the two readings agree for
-`PL-WZVZ` alone: its `blocked-by` chain leaves the list at `PL-TBMK` and
-`PL-4TWW`, so it is counted apart from the entries this gate can clear. For the
-other four they disagree, knowingly. `PL-B396` is at `needs-decision` with
-nothing blocking it and the three behind it wait only on it, an entry on this
-list, so `wave` counts all four among the entries this gate can clear; item 28
-has no id or version a `blocked-by` could hold, and `wave` reads no group
-heading. Until that changes, Gate 2 is clear when `wave`'s list of what this
-gate can clear names these four and nothing else, and `PL-18BD` holds whether
-`wave` should read the deferral instead.
+from the items rather than from this prose, and the two readings agree for all
+five: each `blocked-by` chain leaves the list, `PL-WZVZ`'s at `PL-TBMK` and
+`PL-4TWW`, and `PL-B396`'s at `PL-YRLM`, which the other three reach through
+`PL-B396`. So `wave` counts all five apart from the entries this gate can
+clear. `PL-YRLM` was filed for exactly that, off this list, to give item 28's
+scheduling the id a `blocked-by` needs (`PL-18BD`, project owner, 2026-09-27,
+ratified, over teaching `wave` to read this section's group headings), which is
+the route `PL-0H5D` took for `PL-WZVZ`. A later deferral whose condition has no
+id is given one the same way, since `wave` reads no group heading.
 
 **What this list is not swept for yet.** Beat 3 of the cadence requires a
 staleness pass before any of it is worked - a `verify:` command tests for the

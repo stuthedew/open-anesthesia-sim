@@ -68,6 +68,14 @@ whose precision is in question and is itself undecided between two options.
 Nothing here is actionable until both land; `AGENT_VOLUME_DISPLAY_DECIMALS` is
 correct for the unit currently displayed.
 
+**Where the two stand, 2026-09-27 (`PL-18BD`).** `PL-S6WW` closed on
+2026-09-17. `PL-B396` is no longer undecided: its unit was settled on
+2026-09-16 as millilitres of liquid equivalent by default, and it is now
+`blocked` on `PL-YRLM`, which holds whether a release schedules the readout
+(planned-milestone item 28). So this item waits on that release, reached
+through `PL-B396`, and `ROADMAP.md` defers it to Gate 3 with `PL-B396`
+(`PL-DB64`).
+
 **Done when.** `docs/MODEL.md` § "Displayed precision" carries a derivation per
 (quantity, unit) rather than per quantity; the constants express that shape
 rather than one `Final` per quantity; the bound is one-sided with finer
