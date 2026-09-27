@@ -3,11 +3,14 @@ id: PL-12P8
 title: PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: parallel-sessions
-touches: tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, docket.toml
+touches: tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, docket.toml, docs/ARCHITECTURE.md
 added: 2026-09-06
+closed: 2026-09-27
+pr: 1196
+verify: grep -q 'def test_the_conftest_that_renders_the_qt_tests_lands_in_the_product_lane' tests/unit/test_workflow_paths_check.py
 ---
 
 **Problem.** `tools/workflow_paths_check.py` decides a file's lane from
@@ -57,3 +60,32 @@ the *product's* Qt chart can render under pytest - imports no `anesthesia_sim`
 and was told to declare itself apparatus. It is listed in `workflow_paths` to
 keep `make check` green, which is the wrong lane for it and is exactly this
 item's defect.
+
+**Decided, 2026-09-27, by the session working it** (a choice between three
+routes the brief itself offered, with one tool's behaviour as its blast
+radius, so the session's under `.claude/rules/instruction-writing.md` rule
+14). The second route, sharpened: a support module is excluded from the half
+of the rule its imports cannot decide, and held to the half they can.
+
+- *Why not the first* - classifying a support module some other way. By
+  importer, the live instance has no answer: `tests/conftest.py` is loaded for
+  every test beneath it, product and apparatus alike. By location - every
+  support module is the simulator's - an apparatus fixture builder under
+  `tests/unit/` would be told to leave the list, this defect in the mirror.
+- *Why not the third* - changing only the message. The check would still fail
+  on `tests/conftest.py` with no correct remedy left to print, so the one
+  live instance could not be fixed at all.
+- *What was built.* A test file is what pytest collects (`test_*.py`,
+  `*_test.py`, pinned to this run's `python_files`); anything else under
+  `tests/` is a support module. One importing `anesthesia_sim` is still refused
+  a `workflow_paths` entry - built on the simulator, it is the simulator's.
+  One importing none of it is left where the list puts it, and the clean
+  report counts those, so what the check did not decide is printed rather
+  than rounded off. `tests/conftest.py` left the list, which puts an item
+  touching it and the Qt test it serves in the product lane.
+
+**Reproduced 2026-09-27, before the fix:** with the conftest entry removed the
+check printed `tests/conftest.py imports no anesthesia_sim, so it is
+apparatus ... Add "tests/conftest.py" to workflow_paths`; with it present, an
+item touching `tests/conftest.py` and `tests/integration/test_qt_chart.py`
+read `crossing`.
