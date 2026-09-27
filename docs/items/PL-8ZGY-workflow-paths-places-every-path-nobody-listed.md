@@ -58,7 +58,7 @@ absences - no simulator file in them at all:
 | Unplaced path | Items | Open among them |
 | --- | --- | --- |
 | `docs/resident-instructions.md` | 22 | `PL-NK5K` (blocked) |
-| `docs/pr-bodies/` | 6 | none |
+| `docs/pr-bodies/` | 5 | none |
 | `docs/references/` | 4 | `PL-0SCG`, `PL-Z3V5` |
 | `pyproject.toml` | 4 | none |
 | `conftest.py` | 2 | none; `PL-W40L` lists it |

@@ -3,12 +3,13 @@ id: PL-W40L
 title: The repository-root conftest.py isolates git for the docket and hook tests but sits on the product side of workflow_paths by omission, so an item touching it and the tests it serves is crossing
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
 touches: docket.toml, tests/unit/test_workflow_paths_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
+closed: 2026-09-27
 payoff: a change to how the test process is configured is offered to the apparatus lane rather than set aside by both
 verify: grep -q 'def test_the_root_conftest_lands_with_the_apparatus_it_configures' tests/unit/test_workflow_paths_check.py
 ---
