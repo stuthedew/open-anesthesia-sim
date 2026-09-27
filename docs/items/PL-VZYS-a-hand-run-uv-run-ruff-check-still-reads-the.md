@@ -6,9 +6,9 @@ effort: S
 status: ready
 classes: defect, infra
 feature: dev-tooling
-touches: pyproject.toml, docs/worker.md
+touches: pyproject.toml, Makefile
 added: 2026-09-15
-verify: grep -qE 'RUFF_NO_CACHE' pyproject.toml
+verify: grep -qF 'known-first-party = ["anesthesia_sim"]' pyproject.toml
 ---
 
 **Problem.** A hand-run 'uv run ruff check .' still reads the stale .ruff_cache that PL-QSJM's --no-cache removes from make check and make fix, so the guard sits at the entry point rather than where the tool reads it - the same shape as PL-0MLZ's finding about PYTHONDONTWRITEBYTECODE
@@ -102,7 +102,7 @@ importing test with an `ImportError`, and `mypy`'s gate covers `src`,
 `tools`, `.claude/hooks` and `subprojects/docket/src`; both run in CI on
 every pull request, and neither reads a cache.
 
-*Refused: a `PreToolUse` hook on Bash* that refuses a `ruff check` written
+[superseded 2026-09-27: the declaration was ratified, so this fallback is not built] *Refused: a `PreToolUse` hook on Bash* that refuses a `ruff check` written
 without `--no-cache` and prints the flagged spelling, the shape of
 `.claude/hooks/gate-status-guard.sh`. It would reach every session and
 subagent, which is where the hand run happens, and never a terminal on the
@@ -121,7 +121,7 @@ whole answer: a line in the `docket` skill or `docs/worker.md`* telling a
 session to type `--no-cache` by hand - a rule nobody reads, and with the
 declaration in place the hand run needs no rule.
 
-*Dropping the item* is the honest ending if the declaration is refused and
+[superseded 2026-09-27: the declaration was ratified, so the item is built rather than dropped] *Dropping the item* is the honest ending if the declaration is refused and
 the hook is not wanted: the gate is covered, and what stays exposed is a
 session's belief between edits, already documented at the Makefile line.
 
@@ -149,3 +149,17 @@ warm cache and a `--no-cache` run give the same verdict after a first-party
 module is deleted; the intact tree's verdicts are unchanged; the Makefile
 keeps CI's question for every rule; and the refusal it recorded is rewritten
 as the decision that replaced it.
+
+## Answers 2026-09-27
+
+**Q1 - Answered 2026-09-27: declare `known-first-party = ["anesthesia_sim"]`
+under `[tool.ruff.lint.isort]`, keep the Makefile's `--no-cache` and
+`check_ruff_cache`, and re-point `verify:` at the declaration** (project
+owner, 2026-09-27, ratified, over a `PreToolUse` hook refusing a hand-typed
+`ruff check` without `--no-cache`, and over dropping the item). This decision
+is what reopens `PL-QSJM`'s recorded refusal of the declaration: the build
+rewrites the Makefile paragraph as history, citing this item. `touches:` and
+`verify:` above were re-pointed with this record - `Makefile` in, `docs/worker.md`
+out, the grep on the declaration - and the status stays `ready` for the build
+thread, which follows § "How, for the build thread" and replays the
+measurement before closing.
