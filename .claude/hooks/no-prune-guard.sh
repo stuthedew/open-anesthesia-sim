@@ -7,7 +7,8 @@
 # git 2.43's own usage documents that deletes refs without naming them one by
 # one, whether or not anybody has written it - the prune flags and settings of
 # `fetch`, `pull` and `remote update` (`PL-R17X`), `remote prune`, a prune or
-# mirror setting written by `config`, a push with `--prune` or `--mirror`
+# mirror setting written by `config`, by its name or by the section holding it
+# (`PL-VM7C`), a push with `--prune` or `--mirror`
 # (`PL-M2NV`), and `remote remove` or `remote rm`, which deletes every
 # remote-tracking ref of its remote (`PL-R295`) - through every command shape
 # `shell_split.py` reads. Outside it is what "Matched on the words" below puts
@@ -113,6 +114,15 @@ if not isinstance(command, str):
 #   makes new words after this hook has read them: `--get "$x"` writes where
 #   `x` holds `--no-get`. Each costs a read spelled that way one call, and is
 #   a known gap.
+# - A `config` that removes or renames a section writes every setting in it,
+#   so one naming a section a guarded setting sits in - `fetch`, or
+#   `remote.<name>` - names that setting, in either place of a rename
+#   (`PL-VM7C`). Measured: `--remove-section fetch` dropped a local
+#   `fetch.prune = false`, and the next plain fetch pruned under a global
+#   `true`; `--rename-section foo fetch` moved a `foo.prune = true` this hook
+#   never reads into place. git matches a section as the file spells it, so a
+#   hand-written `[Fetch]` goes with `--remove-section Fetch`, and the name is
+#   read without regard to case, as the name of a setting is.
 #
 # `--prune-tags`, `-P` and the `pruneTags` settings delete tags, and only where
 # pruning is on, which a config file this hook never reads may have turned on,
@@ -132,8 +142,11 @@ if not isinstance(command, str):
 # makes every push to that remote a mirror push - `--mirror` is "the default if
 # the configuration option `remote.<remote>.mirror` is set", in git v2.43.0
 # `Documentation/git-push.txt` - so it is read as the prune settings are: ahead
-# of the command name, or written by `config`. A branch deleted by name, with
-# `--delete` or a `:<branch>` refspec, is not refused: it names what it deletes.
+# of the command name, or written by `config`, whose `--rename-section foo
+# remote.origin` carried a `foo.mirror = true` there and made a plain push
+# delete the branch the clone did not hold (`PL-VM7C`). A branch deleted by
+# name, with `--delete` or a `:<branch>` refspec, is not refused: it names what
+# it deletes.
 #
 # **Removing a remote deletes every ref it tracks** (`PL-R295`): the stale ones
 # a prune would take and the live ones beside them, so `git remote remove
@@ -174,6 +187,10 @@ BESIDE = frozenset(
 VALUED = frozenset(("-f", "--file", "--blob", "-t", "--type", "--default"))
 EXPANDS = re.compile(r"[$`{]")
 GLOB = re.compile(r"[*?\[]")
+# The actions of a `config` that write a section whole, from `git config -h`,
+# and the names under a section that the two setting patterns guard (`PL-VM7C`).
+SECTION_ACTIONS = frozenset(("--remove-section", "--rename-section"))
+GUARDED_NAMES = ("prune", "prunetags", "mirror")
 
 
 def flag(long_forms, prune, value):
@@ -265,12 +282,35 @@ def reads(words):
     return read or (len(names) == 1 and not GLOB.search(names[0]))
 
 
+def sections(words):
+    """The sections the words after `config` remove or rename whole (`PL-VM7C`).
+
+    Its options run to the first word that is not one, or to `--`, as `reads`
+    reads them; where a section action is among them, the names after them are
+    the sections it writes, the one `--remove-section` takes or both of a rename.
+    """
+    action, at = False, 0
+    while at < len(words) and words[at] not in ("-", "--") and words[at].startswith("-"):
+        action = action or words[at] in SECTION_ACTIONS
+        at += 2 if words[at] in VALUED else 1
+    names = words[at:]
+    if names[:1] == ["--"]:
+        names = names[1:]
+    return names if action else []
+
+
+def holds(pattern, section):
+    """Whether `section` holds a setting `pattern` names, as `fetch` holds `fetch.prune`."""
+    return any(pattern.fullmatch(f"{section}.{name}") for name in GUARDED_NAMES)
+
+
 def writes(pattern, words):
-    """Whether a `config` among `words` names a setting `pattern` names, and does more than read it."""
+    """Whether a `config` among `words` names a setting `pattern` names, or a section holding one, and does more than read it."""
     if "config" not in words[1:]:
         return False
     after = words[words.index("config", 1) + 1 :]
-    if not any(pattern.search(word) for word in after):
+    named = any(pattern.search(word) for word in after)
+    if not (named or any(holds(pattern, section) for section in sections(after))):
         return False
     return any(EXPANDS.search(word) for word in words) or not reads(after)
 

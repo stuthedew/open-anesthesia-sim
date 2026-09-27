@@ -2432,6 +2432,102 @@ def test_a_cut_interrupted_after_its_bump_is_resumed_rather_than_refused_as_curr
     assert (repo.root / "docs" / "releases" / "v0.2.6.md").exists()
 
 
+def _unmerged_cut(tmp_path: Path) -> _TrainRepo:
+    """A branch holding the train, its cut of v0.2.6 committed with its notes and not merged."""
+    repo = _TrainRepo(tmp_path / "repo")
+    repo.hold("claude/pl-tr4n-cut", "PL-TR4N")
+    assert repo.run("release", "0.2.6", "--no-fetch") == 0
+    repo.commit("cut v0.2.6", when=TRAIN_T0 + timedelta(minutes=30))
+    return repo
+
+
+NEWCOMER = {"items/PL-N3W1-newcomer.md": _train_item("PL-N3W1", "done", resource="")}
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_absorbing_after_the_notes_are_written_folds_the_new_work_in(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-2TDX`: with the notes written, the named re-run was refused as shipped and untagged.
+
+    Followed as `docket check` gives it: the base takes a closure while the
+    cut is unmerged, the advisory names the route, the base is merged in and
+    the version named again.
+    """
+    repo = _unmerged_cut(tmp_path)
+    repo.git("checkout", "-q", "main")
+    repo.commit("PL-N3W1: close it", when=TRAIN_T0 + timedelta(minutes=45), files=NEWCOMER)
+    repo.git("checkout", "-q", "claude/pl-tr4n-cut")
+    repo.run("check", "--no-fetch")
+    assert "merge the base in and re-run `make release VERSION=0.2.6`" in capsys.readouterr().out
+    repo.git("merge", "-q", "--no-edit", "main", when=TRAIN_T0 + timedelta(minutes=60))
+
+    assert repo.run("release", "0.2.6", "--no-fetch") == 0
+
+    out = capsys.readouterr().out
+    assert "Re-cutting v0.2.6, which this branch cut and has not merged: 1 of these 2" in out
+    assert "shipped and carries no tag" not in out
+    notes = (repo.root / "docs" / "releases" / "v0.2.6.md").read_text(encoding="utf-8")
+    assert notes.count("\n- PL-") == 2
+    assert "\n- PL-N3W1 " in notes
+    assert "milestone: v0.2.6" in (repo.items / "PL-N3W1-newcomer.md").read_text(encoding="utf-8")
+    assert 'version = "0.2.6"' in repo.version()
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_merging_the_base_in_leaves_the_newcomer_reported_until_the_re_cut_names_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-C0C0`: measured from the merge-base, the window closed at the merge.
+
+    That merge is the absorb route's first step and what `update-armed.yml`
+    does to an armed release pull request, so the newcomer went unreported with
+    the route half taken and the notes still naming nothing of it.
+    """
+    repo = _unmerged_cut(tmp_path)
+    repo.git("checkout", "-q", "main")
+    repo.commit("PL-N3W1: close it", when=TRAIN_T0 + timedelta(minutes=45), files=NEWCOMER)
+    repo.git("checkout", "-q", "claude/pl-tr4n-cut")
+    repo.git("merge", "-q", "--no-edit", "main", when=TRAIN_T0 + timedelta(minutes=60))
+    capsys.readouterr()
+
+    repo.run("check", "--no-fetch")
+    merged = capsys.readouterr().out
+    assert "v0.2.6 is cut here and not yet merged, and the base has taken PL-N3W1 since" in merged
+
+    assert repo.run("release", "0.2.6", "--no-fetch") == 0
+    repo.commit("re-cut v0.2.6", when=TRAIN_T0 + timedelta(minutes=75))
+    capsys.readouterr()
+    repo.run("check", "--no-fetch")
+    assert "is cut here and not yet merged" not in capsys.readouterr().out
+
+
+@pytest.mark.usefixtures("_no_session")
+def test_an_unmerged_cut_is_refused_as_unmerged_rather_than_as_shipped(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The runs that do not re-cut: another number, or none, even as a dry run.
+
+    Another number would stamp the newcomer for a second release that merges
+    with the first, and the untagged guard these runs used to meet called the
+    cut shipped and printed a tag line for a commit the base does not hold.
+    """
+    repo = _unmerged_cut(tmp_path)
+    repo.commit("PL-N3W1: close it", when=TRAIN_T0 + timedelta(minutes=45), files=NEWCOMER)
+
+    assert repo.run("release", "0.2.7", "--no-fetch") == 1
+    assert repo.run("release", "0.2.7", "--no-fetch", "--dry-run") == 1
+    assert repo.run("release", "--no-fetch") == 1
+
+    out = capsys.readouterr().out
+    assert out.count("v0.2.6 is cut on this branch and has not merged") == 3
+    assert "  make release VERSION=0.2.6\n" in out
+    assert "shipped and carries no tag" not in out
+    assert not (repo.root / "docs" / "releases" / "v0.2.7.md").exists()
+    assert "milestone:" not in (repo.items / "PL-N3W1-newcomer.md").read_text(encoding="utf-8")
+    assert 'version = "0.2.6"' in repo.version()
+
+
 # --- where a release's tag goes (`PL-QHCW`) ---------------------------------
 
 

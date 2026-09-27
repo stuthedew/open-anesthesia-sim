@@ -3046,6 +3046,17 @@ class CutWindow:
     made here, while the cut is still unmerged and re-running it would absorb
     the newcomers, rather than reconciled later from a history that cannot say.
 
+    **Measured from the commit that wrote the notes, not from the merge-base**
+    (`PL-C0C0`). Merging the base in, which is the absorb route's first step
+    and what `update-armed.yml` does to an armed pull request whenever `main`
+    moves, puts the merge-base at the base's tip, so a window measured from it
+    read as empty while the newcomers were still named in no notes. Nothing but
+    writing the notes again moves the commit that added them, and what a re-cut
+    folds in stops counting because the notes then name it. What a re-cut
+    cannot fold in, work let go to the next release or a subject naming work
+    still in progress, is reported until the cut merges: the base merge that
+    used to end it sooner decided nothing about either.
+
     `landed` is **subject-derived**, and the advisory that prints it says so.
     `_landed_since` reads leading ids off the base's new subjects, which names
     a commit's own item and not necessarily a *closure*. That is the right
@@ -3056,7 +3067,8 @@ class CutWindow:
 
     #: The version this checkout is cutting, without its `v`; empty when none.
     version: str = ""
-    #: The ids leading subjects the base gained since the cut was written.
+    #: The ids leading subjects the base holds and the commit adding the notes
+    #: cannot reach: what the base gained since the cut was written.
     landed: tuple[str, ...] = ()
     declined: str = ""
 
@@ -3077,8 +3089,9 @@ def cut_window(
 
     Returns:
         An empty window where this checkout is not cutting anything, which is
-        every session but one. `declined` where git would not answer, because a
-        silent empty answer here would read as "nothing landed in the window".
+        every session but one. `declined` where git would not answer, or found
+        no commit adding the notes, because a silent empty answer here would
+        read as "nothing landed in the window".
     """
     run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)
@@ -3094,14 +3107,27 @@ def cut_window(
     ]
     if not added:
         return CutWindow(declined=run.reason)
-    versions = sorted({name[len(prefix) :].removesuffix(".md").lstrip("v") for name in added})
-    fork = run(["merge-base", "HEAD", base], root).strip()
-    if not fork:
+    paths = {name[len(prefix) :].removesuffix(".md").lstrip("v"): name for name in added}
+    version = sorted(paths)[-1]
+    # From the commit that wrote the notes, not from `HEAD`: merging the base in
+    # moves the merge-base to the base's tip (`PL-C0C0`). Newest first, so notes
+    # deleted and written again are measured from the copy `HEAD` holds.
+    written = run(
+        ["log", "--format=%H", "--diff-filter=A", f"{base}..HEAD", "--", paths[version]], root
+    ).split()
+    if not written:
         return CutWindow(
-            version=versions[-1], declined=f"this clone shares no readable history with {base}"
+            version=version,
+            declined=run.reason or f"no commit this branch holds reads as adding {paths[version]}",
+        )
+    # Asked of the cut rather than of `HEAD`, whose merge of the base is readable
+    # where a shallow clone has cut the cut's own history off.
+    if not run(["merge-base", written[0], base], root).strip():
+        return CutWindow(
+            version=version, declined=f"this clone shares no readable history with {base}"
         )
     return CutWindow(
-        version=versions[-1], landed=_landed_since(fork, base, root, run), declined=run.reason
+        version=version, landed=_landed_since(written[0], base, root, run), declined=run.reason
     )
 
 

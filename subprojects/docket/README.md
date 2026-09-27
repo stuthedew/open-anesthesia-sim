@@ -1865,6 +1865,15 @@ with a notes file and the current version: the first exempts releases cut
 before the project wrote notes at all, the second covers a first release,
 where there is no notes directory to take a floor from.
 
+**A cut that wrote its notes and has not merged is re-cut the same way when its
+version is named again** (`PL-2TDX`). That is the absorb route
+`checks._check_cut_window` advises once the base has taken work since the cut,
+and `cmd_release` finds the state through the same `vcs.cut_window` read, so
+the two cannot disagree about where re-cutting absorbs; before, the run read the
+version as shipped and refused it as untagged. Only a run naming the version
+re-cuts, because absorbing work the session did not do is a judgment; any other
+run on that branch is refused as unmerged.
+
 **A notes file stops claiming partway down, since `PL-P669`.** Below the
 `### also inside this tag's span` heading are bullets of the same shape naming
 work *another* release stamped - a closing pull request inside this tag's span
@@ -2910,8 +2919,8 @@ happened — and worse, silently: `release.unreleased` selects finished work
 with **no** milestone (and no `resource: release-train`, above), so a stamped
 item is invisible to the release that would actually ship it and is left out
 of that release's generated notes. The
-one exception is a cut being resumed, which reclaims the items its own
-interrupted run stamped and nothing else. Ten
+one exception is a cut being resumed, or re-cut before it merges, which
+reclaims the items its own earlier run stamped and nothing else. Ten
 items in the project this grew in were in exactly that state, hand-stamped for
 a release still being assembled, every one of them scoped to the release its
 own notes would have omitted it from.
