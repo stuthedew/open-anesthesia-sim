@@ -5014,8 +5014,9 @@ before, while the rebreathing circuit holds it up, and above them again at
 24 hours by 15 to 29%, or a factor of 2.2 for desflurane, as this model's fat
 group returns more than the fitted fat term; with the apparatus taken away the
 tissue return alone is a third to a half of the mean curve between hours 8
-and 13. **That result does not move the 24 hours** (recorded by the session
-that measured it, 2026-09-27, and open to the project owner). The number is
+and 13. **That result does not move the 24 hours** (project owner, 2026-09-27,
+ratified, over shortening or extending the span on the measured departures).
+The number is
 argued against the two omissions above growing past negligible over the span,
 and the measured departures are neither of them: the metabolism bound in the
 same subsection accounts for about an eighth of the excess where the tail
