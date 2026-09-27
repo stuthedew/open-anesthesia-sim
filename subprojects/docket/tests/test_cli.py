@@ -9061,6 +9061,109 @@ def test_arm_takes_no_copy_of_its_branch_from_a_tracking_ref_the_remote_deleted(
     assert capsys.readouterr().out.startswith(f"arm - {ARM_BRANCH}")
 
 
+def _newest_forge(root: Path, command: str) -> None:
+    """Point `newest_pull_request_command` at `command` (`PL-8BR0`).
+
+    In a `docket.toml` at the checkout's root, which is where `_invocation`
+    reads the settings, and excluded from git, so that `_commit_file`'s
+    `add -A` leaves it out of the branch whose position is under test.
+    """
+    (root / "docket.toml").write_text(
+        f"[docket]\nnewest_pull_request_command = '{command}'\n", encoding="utf-8"
+    )
+    (root / ".git" / "info").mkdir(exist_ok=True)
+    with (root / ".git" / "info" / "exclude").open("a", encoding="utf-8") as exclude:
+        exclude.write("/docket.toml\n")
+
+
+def _forge_says(root: Path, answer: str) -> None:
+    """A forge printing `answer` whatever it is asked, which it records beside the checkout.
+
+    The package appends the branch and the base, which `sh -c` takes as `$0`
+    and `$1`.
+    """
+    _newest_forge(root, f'sh -c "echo $0 $1 > {root.parent / "asked"}; echo {answer}"')
+
+
+def test_a_squash_merged_captures_only_pull_request_is_landed_to_branch_and_arm(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Scenario f, end to end: the forge's word is the merge evidence (`PL-8BR0`).
+
+    The item's reproduction, step by step. A capture is armed, then squash-
+    merged from another clone; `branch` told its session to merge the base in
+    and `arm` said `behind 1`. Merged in and captured again, `arm` said `arm`
+    for a pull request that had already merged, and the capture landed nowhere.
+    """
+    root, git = _arm_repo(tmp_path)
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+    head = git("rev-parse", "HEAD").strip()
+    git("push", "-q", "-u", "origin", ARM_BRANCH)
+    _forge_says(root, f"12 open {head}")
+
+    assert _arm(root) == 0
+    assert capsys.readouterr().out.startswith(f"arm - {ARM_BRANCH}")
+    assert (tmp_path / "asked").read_text(encoding="utf-8") == f"{ARM_BRANCH} main\n"
+
+    elsewhere = _other_writer(tmp_path)
+    elsewhere("merge", "--squash", "-q", f"origin/{ARM_BRANCH}")
+    elsewhere("commit", "-qm", "PL-F4F4: file the new item (#12)")
+    elsewhere("push", "-q", "origin", "main")
+    _forge_says(root, f"12 merged {head}")
+    branch = ["branch", "--items", str(root / "docs" / "items")]
+
+    assert main(branch) == 0
+    out = capsys.readouterr().out
+    assert f"Its pull request #12 merged at {head[:9]}" in out
+    assert "do NOT merge and push" in out
+    assert f"git checkout -B {ARM_BRANCH} origin/main" in out
+    assert "git merge" not in out
+    assert _arm(root) == 1
+    assert capsys.readouterr().out.startswith(f"landed - #12 merged {ARM_BRANCH} at {head[:12]}")
+
+    # What the session did on the old advice: merged the base in, and captured
+    # again, which the counts alone read as current.
+    git("merge", "-q", "--no-edit", "origin/main")
+    _commit_file(git, root, "docs/items/PL-G5G5-next.md", _item_document("PL-G5G5"), ARM_T0)
+    second = git("rev-parse", "HEAD").strip()
+
+    assert main([*branch, "--brief", "--if-stale"]) == 0
+    out = capsys.readouterr().out
+    assert f"    {second[:9]} edit docs/items/PL-G5G5-next.md" in out
+    assert f"git cherry-pick {second[:9]}" in out
+    assert "git merge" not in out
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(f"landed - #12 merged {ARM_BRANCH}")
+    assert f"{second[:9]} edit docs/items/PL-G5G5-next.md" in out
+
+
+def test_a_forge_that_could_not_be_asked_is_unknown_to_arm_and_said_by_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Arming a pull request that may have merged is what `arm` exists to stop.
+
+    So a forge that did not answer leaves it `unknown`, while `branch` still
+    answers from the content and says that its answer rests there.
+    """
+    root, git = _arm_repo(tmp_path)
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+    elsewhere = _other_writer(tmp_path)
+    elsewhere("commit", "-q", "--allow-empty", "-m", "main moves on")
+    elsewhere("push", "-q", "origin", "main")
+    _newest_forge(root, "false")
+
+    assert _arm(root) == 2
+    assert capsys.readouterr().out.startswith(
+        f"unknown - whether {ARM_BRANCH}'s pull request has already merged could not be asked"
+        " - `false` exited 1"
+    )
+    assert main(["branch", "--items", str(root / "docs" / "items")]) == 0
+    out = capsys.readouterr().out
+    assert "git merge origin/main" in out
+    assert "already merged could not be asked (`false` exited 1)" in out
+
+
 #: The module deciding `arm`'s answer, as the brief names it (`PL-K6B2`).
 ARM_GATE = "subprojects/docket/src/docket/arming.py"
 

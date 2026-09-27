@@ -135,6 +135,7 @@ from .vcs import (
     CURRENT,
     DEFAULT_BRANCHES,
     FETCHED,
+    PULL_STATES,
     UNASKED,
     BaseCopies,
     BaseCopy,
@@ -145,7 +146,9 @@ from .vcs import (
     FilingReport,
     FlightReport,
     GitRunner,
+    NewestPullRequest,
     OrphanedReport,
+    PullRequestLookup,
     RemoteHeads,
     Runner,
     SinceFiled,
@@ -181,6 +184,7 @@ from .vcs import (
     snapshot,
     stranded,
     tags,
+    with_newest_pull_request,
     working_paths,
 )
 from .verify import (
@@ -4313,6 +4317,15 @@ def cmd_branch(args: argparse.Namespace) -> int:
     of this package refuses to give. So the command refreshes first and says
     which of the two happened. `--no-fetch` is for the caller that already
     fetched - the hook among them - and for a checkout with no network.
+
+    **And it asks the forge, where the project names a way to, and the snapshot
+    does not** (`PL-8BR0`). A squash lands none of a branch's commits by hash
+    and a queue-only commit is no content evidence of a merge (`PL-JBRC`), so a
+    branch whose captures-only pull request merged read as one to merge, and
+    as current once it had merged the base in; the forge's word on the newest
+    pull request is the evidence. `vcs.with_newest_pull_request` asks only
+    where the answer could move the advice, and `--if-stale` reads the refined
+    answer, so a branch whose pull request merged is said even at `behind 0`.
     """
     inv = _invocation(args)
     if inv.git is None:
@@ -4328,6 +4341,9 @@ def cmd_branch(args: argparse.Namespace) -> int:
         # why there is no position is worth having when a person asks, and is
         # noise when nobody did.
         return 0
+    lookup = _newest_pull_request(inv.root, inv.config)
+    if lookup is not None:
+        state = with_newest_pull_request(state, lookup, inv.root, runner=inv.git)
     if args.if_stale and state.disposition == CURRENT:
         return 0
     print(
@@ -4338,10 +4354,11 @@ def cmd_branch(args: argparse.Namespace) -> int:
     return 0
 
 
-#: How long `open_pull_requests_command` is given. Short, because this sits in
-#: front of an answer the command already has without it: the pull-request half
-#: sharpens the report and is never what the report is for, so a slow forge
-#: costs a reader seconds and then gets the unasked reading.
+#: How long `open_pull_requests_command` and `newest_pull_request_command` are
+#: given. Short, because this sits in front of an answer the command already
+#: has without it: the pull-request half sharpens the report and is never what
+#: the report is for, so a slow forge costs a reader seconds and then gets the
+#: unasked reading.
 OPEN_LOOKUP_TIMEOUT = 8.0
 
 
@@ -4373,18 +4390,8 @@ def _open_pull_requests(
         return None
 
     def ask() -> Mapping[str, int | None] | None:
-        try:
-            done = subprocess.run(
-                shlex.split(command),
-                cwd=root,
-                capture_output=True,
-                text=True,
-                timeout=OPEN_LOOKUP_TIMEOUT,
-                check=False,
-            )
-        except (OSError, ValueError, subprocess.SubprocessError):
-            return None
-        if done.returncode != 0:
+        done = _run_forge_command(command, root)
+        if isinstance(done, str) or done.returncode != 0:
             return None
         found: dict[str, int | None] = {}
         for line in done.stdout.splitlines():
@@ -4394,6 +4401,78 @@ def _open_pull_requests(
             number = fields[1].lstrip("#") if len(fields) > 1 else ""
             found.setdefault(fields[0], int(number) if number.isdigit() else None)
         return found
+
+    return ask
+
+
+def _run_forge_command(
+    command: str, root: Path, *extra: str
+) -> subprocess.CompletedProcess[str] | str:
+    """Run a command a project named for asking its forge: what it did, or why it did not run.
+
+    Both forge commands run through here, from the repository root and under
+    `OPEN_LOOKUP_TIMEOUT`, so a timeout, a command that is not there and one
+    `shlex` cannot split fail one way for both. `extra` is appended to the
+    command's own words. Every exception is a failure, never a raise: the
+    commands asking are reports with an answer of their own to fall back on.
+    """
+    try:
+        return subprocess.run(
+            [*shlex.split(command), *extra],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=OPEN_LOOKUP_TIMEOUT,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return f"it gave no answer within {OPEN_LOOKUP_TIMEOUT:g} s"
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        return f"it could not be run ({error})"
+
+
+def _newest_pull_request(
+    root: Path, config: Config
+) -> Callable[[str, str], PullRequestLookup] | None:
+    """A way to ask what became of a branch's newest pull request, or None if there is none.
+
+    `newest_pull_request_command` answers it, with the branch and the default
+    branch's name appended (`PL-8BR0`), and `vcs.with_newest_pull_request` and
+    `arming.arm` ask it only where the answer could move theirs. The contract
+    is `Config`'s: exit 0 and `NUMBER STATE HEAD`, exit 0 and nothing where no
+    pull request was ever opened from the branch, non-zero where it could not
+    ask.
+
+    **What could not be read is said, and never read as "none opened"**, the
+    answer that would leave the content reading standing without a word: a
+    command that failed, timed out, or printed a line of any other shape comes
+    back `declined`, naming the command, and `branch` says so while `arm`
+    answers `unknown` on it.
+    """
+    command = config.newest_pull_request_command
+    if not command:
+        return None
+
+    def ask(branch: str, base: str) -> PullRequestLookup:
+        done = _run_forge_command(command, root, branch, base)
+        if isinstance(done, str):
+            return PullRequestLookup(declined=f"`{command}` was not answered: {done}")
+        if done.returncode != 0:
+            return PullRequestLookup(declined=f"`{command}` exited {done.returncode}")
+        said = [line.strip() for line in done.stdout.split("\n") if line.strip()]
+        if not said:
+            return PullRequestLookup()
+        fields = said[0].split()
+        if (
+            len(fields) == 3
+            and fields[0].isdigit()
+            and fields[1] in PULL_STATES
+            and all(char in "0123456789abcdef" for char in fields[2].lower())
+        ):
+            return PullRequestLookup(NewestPullRequest(int(fields[0]), fields[1], fields[2]))
+        return PullRequestLookup(
+            declined=f"`{command}` answered {said[0]!r}, which is not `NUMBER STATE HEAD`"
+        )
 
     return ask
 
@@ -4561,8 +4640,10 @@ def cmd_yield(args: argparse.Namespace) -> int:
 def cmd_arm(args: argparse.Namespace) -> int:
     """Whether this branch's pull request may be armed: `arming.arm`, which says how.
 
-    Exit 0 is `arm`, 1 is `hold` or `behind N` - the line printed says which -
-    and 2 is `unknown`: something the answer rests on could not be read.
+    Exit 0 is `arm`, 1 is `hold`, `behind N` or `landed` - the line printed
+    says which - and 2 is `unknown`: something the answer rests on could not be
+    read. `newest_pull_request_command`, where the project names one, is how
+    it learns that the pull request has already merged (`PL-8BR0`).
     """
     inv = _invocation(args)
     if inv.git is None:
@@ -4575,7 +4656,12 @@ def cmd_arm(args: argparse.Namespace) -> int:
         )
         return arming.EXIT[arming.UNKNOWN]
     verdict = arming.arm(
-        inv.root, items_dir=inv.tracked, now=_now(args), fetch=not args.no_fetch, runner=inv.git
+        inv.root,
+        items_dir=inv.tracked,
+        now=_now(args),
+        fetch=not args.no_fetch,
+        runner=inv.git,
+        newest=_newest_pull_request(inv.root, inv.config),
     )
     for line in verdict.lines:
         print(line)
