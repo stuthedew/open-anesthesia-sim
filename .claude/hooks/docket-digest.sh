@@ -28,15 +28,16 @@ command -v python3 >/dev/null 2>&1 || exit 0
 
 # After a compaction, one line before everything else (`PL-384P`).
 #
-# Compaction restores up to five of the files the session read or wrote most
-# recently (Claude Code 2.1.283: five, 5,000 tokens each, 50,000 in all), and
-# restores them through the Read tool's own call. So each counts as already
-# read, and an Edit to one goes through with no Read first. A path-scoped rule
-# attaches when a file is read, and on the one compaction measured the restored
-# file's rule did not come back with it. The first edit to a restored file could
-# then be written without its rules - under `src/`, the simulator's provenance
-# and domain bar - while `CLAUDE.md` said they re-attach. A re-read costs little
-# and loads them, since compaction also forgets which rules were loaded.
+# Compaction restores up to five of the files the session read or wrote, the
+# most recently modified first (Claude Code 2.1.283: five, 5,000 tokens each,
+# 50,000 in all), and restores them through the Read tool's own call. So each
+# counts as already read, and an Edit to one goes through with no Read first. A
+# path-scoped rule attaches when a file is read, and on the one compaction
+# measured the restored file's rule did not come back with it. The first edit to
+# a restored file could then be written without its rules - under `src/`, the
+# simulator's provenance and domain bar - while `CLAUDE.md` said they re-attach.
+# A re-read costs little and loads them, since compaction also forgets which
+# rules were loaded.
 #
 # `source` comes from the hook's own input, which the harness pipes in and then
 # closes. A terminal is skipped, so a hand run does not wait on stdin. First,
