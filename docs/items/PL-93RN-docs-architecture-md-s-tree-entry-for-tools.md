@@ -1,8 +1,12 @@
 ---
 id: PL-93RN
 title: docs/ARCHITECTURE.md's tree entry for tools/workflow_paths_check.py says a crossing item is offered to nobody, where docket next without a lane has offered crossing items since the lane split (#287)
+priority: P3
+effort: S
 status: untriaged
+classes: docs
 feature: parallel-sessions
+touches: docs/ARCHITECTURE.md
 added: 2026-09-27
 ---
 
@@ -18,3 +22,10 @@ offers these" (`cli.py`'s `_say_lane_holdouts`, since `PL-2NSX` and `PL-8165`).
 `docs/ARCHITECTURE.md` is on the simulator's side of the lane boundary, so
 fixing it there would have made `PL-W40L` itself `crossing`. A one-phrase edit:
 "offered by neither lane" is true, "offered to nobody" is not.
+
+**Done 2026-09-27, in `PL-8ZGY`'s docs sweep.** The entry now reads "set aside
+from both lanes as reaching both halves, offered only by a `docket next` run
+without a lane", and describes the check's third rule beside its first two.
+Closed on `PL-8ZGY`'s branch as a rider: the sweep that item owed touched the
+one sentence this item names, and `docs/ARCHITECTURE.md` is in that item's
+`touches` for the same edit.
