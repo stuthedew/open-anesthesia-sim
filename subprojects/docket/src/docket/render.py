@@ -88,6 +88,7 @@ from .vcs import (
     FilingReport,
     FlightReport,
     GitProfile,
+    MergedPullRequest,
     OpenPullRequests,
     OrphanedReport,
     QueueEdit,
@@ -2195,6 +2196,10 @@ def format_branch_state(
     The ids are what make it worth re-running mid-session. "3 behind" says the
     base moved; naming what landed answers whether the thing this session was
     waiting on is in.
+
+    A merged pull request the forge named replaces the content reading's
+    `landed` block with `_merged_lines`, and a forge that could not be asked
+    adds a line saying the answer rests on the branch alone (`PL-8BR0`).
     """
     if state.declined:
         head = f"Branch: {state.branch or 'unknown'} - {state.declined}."
@@ -2218,6 +2223,8 @@ def format_branch_state(
         lines.append(f"Branch: {branch} is {state.behind} behind {base} with nothing of its own.")
         lines.append("  Its work is merged or it never had any. Restart it before editing:")
         lines.append(f"  git checkout main && git pull && git checkout -B {branch} {base}")
+    elif state.disposition == LANDED and (merged := state.merged) is not None:
+        lines.extend(_merged_lines(state, merged))
     elif state.disposition == LANDED:
         lines.append(f"Branch: {branch} is {state.behind} behind {base} and {state.ahead} ahead.")
         lines.append(
@@ -2233,6 +2240,12 @@ def format_branch_state(
         lines.append(f"  Merge {base} before your first edit, not at push time:")
         lines.append(f"  git merge {base}")
 
+    if state.pull_request_declined and state.ahead:
+        lines.append(
+            "  Whether its pull request has already merged could not be asked "
+            f"({state.pull_request_declined}), so this answer is read from the branch alone, "
+            "which cannot see a merge of commits that only wrote to the queue."
+        )
     if state.landed:
         lines.append(f"  Landed on {base} since this branch forked: {', '.join(state.landed)}.")
     # `rests_on` is `format_snapshot`'s line, and it is empty where a caveat
@@ -2243,6 +2256,49 @@ def format_branch_state(
     if flight is not None and (extra := _flight_lines(flight)):
         lines.append(extra)
     return "\n".join(lines)
+
+
+def _merged_lines(state: BranchState, merged: MergedPullRequest) -> list[str]:
+    """A branch whose pull request the forge says merged, and how to carry what came after.
+
+    Every commit past the head is listed, unbounded, for `_rewrite_recovery`'s
+    reason: the `cherry-pick` line is built from the list, so a truncated list
+    would be a recovery that silently drops a commit. `--allow-empty` appears
+    only where an empty commit - a claim or a yield - is among them, since
+    `git cherry-pick` stops at one without it and the claim would go with it.
+    """
+    base, branch = state.base, state.branch
+    if state.behind:
+        lines = [f"Branch: {branch} is {state.behind} behind {base} and {state.ahead} ahead."]
+    else:
+        lines = [f"Branch: {branch}, current with {base} ({state.ahead} ahead)."]
+    lines.append(
+        f"  Its pull request #{merged.number} merged at {merged.head[:9]}, and nothing merges a "
+        "merged pull request again, so do NOT merge and push."
+    )
+    restart = f"  git fetch origin main && git checkout -B {branch} {base}"
+    if not merged.carried:
+        lines.append(
+            f"  Everything it holds is on {base}. Restart it before the next commit, or that "
+            "commit lands nowhere:"
+        )
+        lines.append(restart)
+        return lines
+    count = len(merged.carried)
+    lines.append(
+        f"  {_plural(count, 'commit', 'commits')} here came after it and "
+        f"{'lands' if count == 1 else 'land'} nowhere as things stand:"
+    )
+    lines.extend(f"    {commit.sha[:9]} {commit.subject}" for commit in merged.carried)
+    carry = "it" if count == 1 else "them"
+    lines.append(
+        f"  Restart on the merged base and carry {carry} across, then push and open a new pull "
+        "request:"
+    )
+    lines.append(restart)
+    empty = "--allow-empty " if any(commit.empty for commit in merged.carried) else ""
+    lines.append(f"  git cherry-pick {empty}{' '.join(c.sha[:9] for c in merged.carried)}")
+    return lines
 
 
 def _rewrite_recovery(rewrite: RewriteReport, branch: str, base: str) -> list[str]:

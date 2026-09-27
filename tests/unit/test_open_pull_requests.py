@@ -1,5 +1,10 @@
 """Tests for `tools/open_pull_requests.py`, the forge half of `docket flight`.
 
+And, through `--newest`, of `docket branch` and `docket arm` (`PL-8BR0`): the
+same request asking what became of one branch's newest pull request, under the
+same contract - exit 1 with nothing printed where it could not ask, exit 0 with
+nothing printed where the forge answered that none was ever opened.
+
 One property carries this file, and it is the reason the script exists rather
 than the request living inside `docket`: **"could not look" and "looked, and
 nothing is open" must never arrive as the same answer.** `docket flight` says
@@ -201,3 +206,120 @@ def test_repo_slug_reads_a_token_bearing_url(monkeypatch: pytest.MonkeyPatch, ur
     """
     monkeypatch.setattr(open_pull_requests, "_git", lambda args: url)
     assert open_pull_requests.repo_slug() == "owner/repo"
+
+
+# --- `--newest`: what became of a branch's newest pull request (PL-8BR0) -----
+
+#: The head a merged pull request's listing names, as GitHub froze it.
+HEAD_SHA = "46620e20" + "7" * 32
+
+
+def _newest(number: int, state: str, merged_at: str | None, sha: str = HEAD_SHA) -> dict:
+    return {
+        "number": number,
+        "state": state,
+        "merged_at": merged_at,
+        "head": {"ref": "claude/one", "sha": sha},
+    }
+
+
+def test_the_newest_asks_every_state_for_that_branch_into_that_base_newest_first(_served) -> None:
+    """The listing `left_behind_check.github_lookup` makes: one result, the newest created."""
+    urls = _served(_payload())
+    open_pull_requests.newest_pull_request("owner/repo", "claude/one", "main")
+    assert urls == [
+        "https://api.github.com/repos/owner/repo/pulls?state=all&head=owner%3Aclaude%2Fone"
+        "&base=main&sort=created&direction=desc&per_page=1"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("state", "merged_at", "said"),
+    [
+        ("closed", "2026-09-25T10:00:00Z", "merged"),
+        ("closed", None, "closed"),
+        ("open", None, "open"),
+    ],
+)
+def test_the_newest_reads_a_merge_from_merged_at_and_otherwise_the_state(
+    _served, state: str, merged_at: str | None, said: str
+) -> None:
+    """GitHub closes a merged pull request, so `state` alone cannot tell a merge from a refusal."""
+    _served(_payload(_newest(841, state, merged_at)))
+    assert open_pull_requests.newest_pull_request("owner/repo", "claude/one", "main") == (
+        open_pull_requests.NewestPullRequest(number=841, state=said, head=HEAD_SHA),
+    )
+
+
+def test_the_newest_prints_its_number_state_and_head_and_exits_zero(
+    _served, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _served(_payload(_newest(841, "closed", "2026-09-25T10:00:00Z")))
+    monkeypatch.setattr(open_pull_requests, "repo_slug", lambda: "owner/repo")
+    assert open_pull_requests.main(["--newest", "claude/one", "main"]) == 0
+    assert capsys.readouterr().out == f"841 merged {HEAD_SHA}\n"
+
+
+def test_a_branch_nothing_was_opened_from_answers_with_nothing_and_exits_zero(
+    _served, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The forge answered, so this is a fact the caller acts on, not a refusal."""
+    _served(_payload())
+    monkeypatch.setattr(open_pull_requests, "repo_slug", lambda: "owner/repo")
+    assert open_pull_requests.newest_pull_request("owner/repo", "claude/one", "main") == ()
+    assert open_pull_requests.main(["--newest", "claude/one", "main"]) == 0
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        urllib.error.URLError("no network"),
+        urllib.error.HTTPError("u", 403, "forbidden", {}, None),  # type: ignore[arg-type]
+        "{}",
+    ],
+    ids=["no-network", "refused", "not-a-listing"],
+)
+def test_the_newest_exits_non_zero_and_prints_nothing_when_it_could_not_ask(
+    _served,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str | Exception,
+) -> None:
+    """Printed nothing with exit 0 would read as "never opened", and `branch` would believe it."""
+    _served(failure)
+    monkeypatch.setattr(open_pull_requests, "repo_slug", lambda: "owner/repo")
+    assert open_pull_requests.main(["--newest", "claude/one", "main"]) == 1
+    assert capsys.readouterr().out == ""
+
+
+def test_the_newest_without_a_token_exits_non_zero(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr(open_pull_requests, "repo_slug", lambda: "owner/repo")
+    assert open_pull_requests.main(["--newest", "claude/one", "main"]) == 1
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        "not an object",
+        {**_newest(841, "open", None), "number": "841"},
+        {**_newest(841, "open", None), "state": "merged"},
+        {key: value for key, value in _newest(841, "closed", None).items() if key != "merged_at"},
+        {**_newest(841, "closed", None), "merged_at": 1},
+        {**_newest(841, "open", None), "head": "claude/one"},
+        _newest(841, "open", None, sha=""),
+        {**_newest(841, "open", None), "head": {"ref": "claude/one"}},
+    ],
+    ids=["entry", "number", "state", "no-merged-at", "merged-at", "head", "empty-sha", "no-sha"],
+)
+def test_a_newest_entry_the_api_has_promised_nothing_about_is_a_refusal(
+    _served, entry: object
+) -> None:
+    """A missing `merged_at` most of all: read as "not merged", it is the answer being fixed."""
+    _served(json.dumps([entry]))
+    assert open_pull_requests.newest_pull_request("owner/repo", "claude/one", "main") is None

@@ -235,6 +235,18 @@ class Config:
     #: non-zero, printing nothing, when it could not look, so that "looked,
     #: none open" and "could not look" never arrive as the same empty answer.
     open_pull_requests_command: str = ""
+    #: A command saying what became of the newest pull request opened from a
+    #: branch into the default branch, which `docket branch` and `docket arm`
+    #: take as the merge evidence a squash leaves no commit of (`PL-8BR0`). The
+    #: package appends the branch and the default branch's name, in that order,
+    #: as the last two arguments. The command owes exit 0 and one line `NUMBER
+    #: STATE HEAD` - `STATE` one of `open`, `merged` or `closed`, `HEAD` the
+    #: commit the forge names as the pull request's head - or exit 0 and
+    #: nothing where no pull request was ever opened from the branch, and
+    #: non-zero where it could not ask. A command, and empty by default, for
+    #: `open_pull_requests_command`'s reason: without it both commands answer
+    #: from the branch's content alone, and say so.
+    newest_pull_request_command: str = ""
     #: Paths a delegated item may never modify, whatever its check proves.
     #: Empty by default, and that default is fail-closed rather than
     #: permissive: with nothing declared protected, no item is delegable at
@@ -422,6 +434,9 @@ def load(root: Path) -> Config:
         check_command=str(section.get("check_command", defaults.check_command)),
         open_pull_requests_command=str(
             section.get("open_pull_requests_command", defaults.open_pull_requests_command)
+        ),
+        newest_pull_request_command=str(
+            section.get("newest_pull_request_command", defaults.newest_pull_request_command)
         ),
         code_paths=_tuple(section.get("code_paths"), defaults.code_paths),
         notes_file=str(section.get("notes_file", defaults.notes_file)),
