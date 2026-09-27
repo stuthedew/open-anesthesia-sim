@@ -61,6 +61,16 @@ def _store(tmp_path: Path, *documents: str) -> Path:
     return items
 
 
+def _own_settings(root: Path) -> None:
+    """Give the repository at `root` a `docket.toml`, so its store is read under its own settings.
+
+    For a test pinning an answer's exact text: a store read under library
+    defaults ends its answer with a line saying so (`PL-N0MH`), and these
+    stores are otherwise read under defaults, having no config of their own.
+    """
+    (root / "docket.toml").write_text("[docket]\n", encoding="utf-8")
+
+
 def _run(*args: str) -> int:
     return main([*args, "--no-git", "--today", "2026-08-24"])
 
@@ -790,6 +800,89 @@ def test_check_says_when_it_found_no_config_beside_the_store(
     line = capsys.readouterr().out.splitlines()[1]
     assert line.strip().startswith(f"settings: no {tmp_path / 'docket.toml'},")
     assert "library defaults govern this run" in line
+
+
+def test_check_names_its_settings_once(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """`check`'s report names the settings, so the line every other command ends with is not added.
+
+    `main` says the settings at the foot of every command that read the store
+    (`PL-N0MH`), and `check` is the one whose own report already says it,
+    under the headline where it is context for the counts. Twice would be one
+    fact in two places, and the second in the wrong one.
+    """
+    store = _store(tmp_path, READY)
+
+    assert _run("check", "--items", str(store)) == 0
+    assert capsys.readouterr().out.count("settings:") == 1
+
+
+def test_next_names_the_settings_it_ran_under(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`next` read under library defaults says so, and read under its own config says nothing.
+
+    Only `check` used to name its settings (`PL-K5PW`), so `next` pointed at a
+    store whose repository has no `docket.toml` ranked it under the package's
+    values - no `workflow_paths`, no `generator_paths`, a top band of 5 - and
+    nothing on its answer said so (`PL-N0MH`). The line names the path it
+    looked for, which is the whole of the diagnosis.
+
+    Silent where the config was found: `check` pins the path it read on every
+    run, and a line naming it on every `next` would change no decision.
+    """
+    store = _store(tmp_path, READY)
+
+    assert _run("next", "--items", str(store)) == 0
+    last = capsys.readouterr().out.rstrip().splitlines()[-1]
+    assert last.startswith(f"settings: no {tmp_path / 'docket.toml'},")
+    assert "library defaults governed this answer" in last
+
+    _own_settings(tmp_path)
+    assert _run("next", "--items", str(store)) == 0
+    assert "settings:" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("command", ["digest", "status", "list", "trend", "show PL-B1B1"])
+def test_a_command_reading_a_store_under_library_defaults_says_so(
+    command: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The rest of the commands `PL-N0MH` names, and `show`, end the same way `next` does.
+
+    Said once, by `main`, for every command that loaded an item, so no command
+    has a line of its own to forget; `trend` refuses a store with no
+    `workflow_paths` and still says what it was read under, since the refusal
+    is the defaults' answer too.
+    """
+    store = _store(tmp_path, READY)
+
+    _run(*command.split(), "--items", str(store))
+    last = capsys.readouterr().out.rstrip().splitlines()[-1]
+    assert last.startswith(f"settings: no {tmp_path / 'docket.toml'},")
+
+    _own_settings(tmp_path)
+    _run(*command.split(), "--items", str(store))
+    assert "settings:" not in capsys.readouterr().out
+
+
+def test_every_store_read_in_the_cli_goes_through_load() -> None:
+    """`read_items` is called by `_load` alone, so every command that reads the store is marked.
+
+    `_say_settings` speaks for a command whose invocation `_load` marked as
+    having read an item, which is complete only while no command reads the
+    store round it (`PL-N0MH`). A second call to `read_items` would answer
+    under the settings and never say which.
+    """
+    tree = ast.parse(Path(cli.__file__).read_text(encoding="utf-8"))
+    callers = sorted(
+        function.name
+        for function in ast.walk(tree)
+        if isinstance(function, ast.FunctionDef)
+        for node in ast.walk(function)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "read_items"
+    )
+    assert callers == ["_load"]
 
 
 #: A `ready` item - one of `LANDED_STATUSES` - whose `verify:` command leaves a
@@ -3412,6 +3505,9 @@ def test_a_nested_store_reads_the_same_in_flight_answer_as_the_default(
     root = _flight_repo(
         tmp_path, "PL-K7QX Do the thing", wrote="docs/items/PL-K7QX-a-note.md", store="docs/items"
     )
+    # The two runs name a missing config by two spellings of one path, relative
+    # to where each ran; given one, neither names it.
+    _own_settings(root)
 
     assert main(["--items", str(root / "docs" / "items"), "--today", "2026-08-23", "flight"]) == 0
     pointed = capsys.readouterr().out
@@ -4018,6 +4114,7 @@ def test_show_names_the_branch_holding_an_item_absent_here(
         ["checkout", "-q", "main"],
     ):
         subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=dated)
+    _own_settings(root)
     ran = ["--items", str(root / "items"), "--today", "2026-08-23", "show"]
 
     assert main([*ran, "PL-K7QX"]) == 1
@@ -4047,6 +4144,7 @@ def test_show_names_the_branch_of_a_stranded_id_no_hold_names(
     branch = "claude/notes-elsewhere"
     captured = "items/PL-K7QX-captured-there.md"
     _commit_on(root, branch, {captured: READY.replace("PL-B1B1", "PL-K7QX")}, "capture", when)
+    _own_settings(root)
     ran = ["--items", str(root / "items"), "--today", "2026-08-23", "show"]
 
     assert main([*ran, "PL-K7QX"]) == 1
@@ -6231,6 +6329,7 @@ def test_next_oldest_hands_out_the_longest_waiting_and_names_the_plans_pick_last
     the case the footer exists for, since a session handed work by age must
     see what the plan would have handed it instead (`PL-Q89J`).
     """
+    _own_settings(tmp_path)
     assert _run("next", "--oldest", "--items", str(_store(tmp_path, READY, OLDER_P3))) == 0
     out = capsys.readouterr().out
 

@@ -14,7 +14,15 @@ from __future__ import annotations
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from datetime import UTC, date, datetime, timedelta
 
-from .checks import DONE_WHEN, HOUSEKEEPING, REQUIRED_BRIEF, STATUS_REQUIREMENTS, Report, brief_gaps
+from .checks import (
+    DONE_WHEN,
+    HOUSEKEEPING,
+    REQUIRED_BRIEF,
+    STATUS_REQUIREMENTS,
+    Report,
+    SettingsSource,
+    brief_gaps,
+)
 from .claims import CLAIM, DISPOSITION, LEASE_TERM, LIVE, NAMED, Hold, Holdings, Unclaimed
 from .concurrency import undeclared
 from .config import Config
@@ -187,6 +195,43 @@ def format_snapshot(snapshot: Snapshot, now: datetime) -> str:
     return (
         "Nothing refreshed the refs for this answer (`--no-fetch`): "
         f"read {_refs_moment(snapshot.refs_at, now)}."
+    )
+
+
+def format_settings(source: SettingsSource) -> str:
+    """The one line saying library defaults governed a command's answer, or nothing.
+
+    Printed at the foot of every command that read the store except `check`,
+    whose report names its settings under its headline, found or not
+    (`checks._note_settings`). Here only the case where no `docket.toml` was
+    found says anything, and that difference is the design (`PL-N0MH`).
+
+    The not-found case is the one that changes an answer without looking
+    wrong. `next` and the digest place work by `workflow_paths`,
+    `generator_paths` and `protected_paths`, and the grooming counts they
+    print are judged against `top_band_limit`. Read under the defaults, a
+    store gets the package's values for all four - three empty path lists and
+    a band of 5, where this project's `docket.toml` sets 12 - and the answer
+    is plausible and wrong in the quiet direction, which is the failure
+    `PL-K5PW` was filed twice for.
+
+    The found case earns no line here, where it earns one on `check`.
+    `check`'s argument for naming it is that silence would be ambiguous - no
+    line reads the same as a command that reports nothing - but every command
+    that reads the store now says the not-found case, so silence here means
+    a config was found. What is left is root resolution moving to a
+    *different* file that exists, and `check` pins the path it read on every
+    `make check` and every CI run, which is where that regression is caught.
+    A line naming the found file on every `digest`, which the session-start
+    hook prints into every session, would change no decision and teach its
+    reader to skim the lines beside it.
+    """
+    if source.found:
+        return ""
+    return (
+        f"settings: no {source.path}, so library defaults governed this answer rather than "
+        "this project's own policy - what it ranks, bands or splits into lanes may be the "
+        "defaults' reading of this store"
     )
 
 
