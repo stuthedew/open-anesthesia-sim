@@ -10,7 +10,8 @@
 # a redirection or a reserved word, and in every list, group and compound the
 # tests pin. A path's form, an option's order, a count or a target does not
 # make a spelling new, and a line a program's usage admits is not one anybody
-# writes. Every remedy it prints is admitted. A spelling outside that which it
+# writes. Every remedy it prints is admitted, and runs the gate as the refused
+# command ran it. A spelling outside that which it
 # misreads is a known gap, not a defect: a row of `KNOWN_GAPS` in
 # `tests/unit/test_gate_status_guard.py`, held to the verdict it gets today,
 # and filed as an item only once a session is seen writing it. A false refusal
@@ -44,6 +45,18 @@
 # summarize rather than to load - and loses nothing. A guard whose remedy costs
 # context would be a guard sessions learn to work around.
 #
+# **And each remedy runs the gate the refused command ran** (`PL-ZS13`). They
+# were spelled from the gate's name, so `python3 tools/doc_check.py check |
+# head -40` was offered `set -o pipefail; tools/doc_check.py 2>&1 | tail -45`,
+# which exits 126, since no `tools/` script is executable, and `uv run pytest
+# -q t.py | tail` was offered bare `pytest`, over the whole suite. A remedy
+# that fails when copied costs the retry the refusal was meant to be the whole
+# price of. `shell_split.command_line` spells the gate's command back - its
+# assignments, a wrapper, `uv run` or the interpreter, and its arguments - and
+# the sentence saying which gate fired still names it alone. The one gate it
+# cannot spell back is one run with an unquoted substitution, and there the
+# lines name the gate and say so.
+#
 # **Reading `$?` counts as keeping the status, and the first live firing is why.**
 # It refused `make check > /tmp/gate.log 2>&1; echo "exit=$?"` on the `;`, which
 # is correct by the separator and wrong about the command: that `echo` *is* the
@@ -52,6 +65,20 @@
 # the exemption is the fix rather than a concession - restricted to the segment
 # immediately after the separator, since anything in between replaces `$?` with
 # its own status, and never after `&`, where `$?` is the background launch.
+#
+# **So does reading `PIPESTATUS` after the pipeline, and a session writing it is
+# why** (`PL-1DW7`). The array holds "a list of exit status values from the
+# processes in the most-recently-executed foreground pipeline" (Bash Reference
+# Manual § 5.2), so `make docket 2>&1 | tail -4; echo "exit=${PIPESTATUS[0]}"`
+# prints `make`'s own status, and it was refused at the `|`, since the `tail`
+# after it holds no `$?`. A gate opening its pipeline now keeps its status
+# where the command after that pipeline's `;` reads the first stage's, with
+# `pipefail` or without: `${PIPESTATUS[0]}`, the bare name, which is an array's
+# first element, or `[@]` or `[*]`, which are all of them. That command has to
+# run whatever the pipeline returned, so not behind `&&`, `||` or `&`, nor
+# after `then`, `do`, `else` or `elif`; and no subshell may close between the
+# two, since after `(make check | tail)` the array holds the subshell's status.
+# bash 5.2.21 printed each verdict the tests pin.
 #
 # **A group is read the way bash runs it, and a false refusal is why.** `{ set
 # -o pipefail; uv run pytest -q t.py 2>&1 | tail -12; }` keeps the status and
@@ -320,6 +347,39 @@ def ends(start, deepest):
     return None
 
 
+# A read of the first stage of a pipeline out of `PIPESTATUS` (`PL-1DW7`):
+# `${PIPESTATUS[0]}`, the bare name, which names the first element of an
+# array, or `[@]` and `[*]`, which are all of them.
+FIRST_STAGE = re.compile(r"\$(?:PIPESTATUS\b|\{PIPESTATUS(?:\[[0@*]\])?\})")
+# The words opening a command that runs only on the answer of the one before
+# it, or not at all after it: a branch, a loop body, a later branch of an `if`.
+CONDITIONAL = (["then"], ["do"], ["else"], ["elif"])
+
+
+def pipestatus_read(start):
+    """The segment ending the pipeline `start` opens, where the command after it reads the status of its first stage; else None.
+
+    It has to be the command straight after the `;` ending the pipeline, which
+    runs whatever the pipeline returned. A stage that is a group is stepped
+    over whole, as the walk below steps over it, and a pipeline ending
+    shallower than it started has closed a subshell around the gate, whose
+    status is all the array then holds.
+    """
+    if start > 0 and separators[start - 1] == "|":
+        return None
+    end = start
+    while separators[end] == "|":
+        end = ends(end + 1, depth[end])
+        if end is None:
+            return None
+    if separators[end] != ";" or depth[end] != depth[start]:
+        return None
+    reader = segments[end + 1]
+    if reader[:1] in CONDITIONAL or not any(FIRST_STAGE.search(word) for word in reader):
+        return None
+    return end
+
+
 # `exit N` leaves with N modulo 256, N read in base 10 (bash 5.2.21). Only a
 # literal, since a variable can hold 0.
 EXIT_STATUS = re.compile(r"^[+-]?\d{1,9}$")
@@ -401,6 +461,7 @@ for index, segment in enumerate(segments):
     # runs next, and `||` to a fallback, which loses it unless it fails too.
     lost = None
     at = index
+    read = pipestatus_read(index)
     while at < len(segments):
         separator = separators[at]
         following = at + 1
@@ -472,14 +533,32 @@ for index, segment in enumerate(segments):
         # `$?` is the launch, never the gate.
         if separator != "&" and any("$?" in token for token in after):
             break
+        # Or reads it out of `PIPESTATUS` after the pipeline the gate opens
+        # (`PL-1DW7`). From the gate itself, or from the end of its pipeline
+        # when `pipefail` carried the walk there, that pipeline is the one the
+        # array holds; from anywhere else the walk has reached, it may not be.
+        if read is not None and at in (index, read):
+            break
         lost = separator
         break
     if lost is not None:
         offender, swallowed_by = name, lost
+        rerun = shell_split.command_line(segment)
         break
 
 if offender is None:
     sys.exit(0)
+
+# Every remedy below runs the gate as the refused command ran it, since that is
+# the line a session copies (PL-ZS13): spelled from the name, a check run
+# through python3 came back as a script that is not executable. The name still
+# says which gate fired.
+spelled = rerun if rerun is not None else offender
+UNSPELLED = (
+    "These lines name the gate alone, because the command runs it with a "
+    "substitution this guard does not spell back: write its arguments back "
+    "in.\n\n"
+)
 
 LOSS = {
     "|": (
@@ -514,7 +593,7 @@ unreached = swallowed_by == "|" and any(sets_pipefail(s) for s in segments)
 # every pass.
 LOOPED = (
     "Inside a loop, read the status on every pass, before `done` - `"
-    + offender
+    + spelled
     + "; echo \"exit=$?\"; done` prints each verdict - or run the gate once "
     "over all its targets.\n\n"
 )
@@ -530,18 +609,19 @@ reason = (
     "read exit 0, and reported the gate green in its commit message and in the "
     "body of `#880`. The tree it pushed was red, and the correction is the "
     "block that body now opens with. `PL-D0W8` is this refusal.\n\n"
-    "Two spellings keep the status. The first is the one you want - the output "
+    + (UNSPELLED if rerun is None else "")
+    + "Two spellings keep the status. The first is the one you want - the output "
     "is just as short:\n\n"
-    "    set -o pipefail; " + offender + " 2>&1 | tail -45\n\n"
-    "    " + offender + " > /tmp/gate.log 2>&1      # then read the file in a "
+    "    set -o pipefail; " + spelled + " 2>&1 | tail -45\n\n"
+    "    " + spelled + " > /tmp/gate.log 2>&1      # then read the file in a "
     "second call\n\n"
     "`set -o pipefail` makes a pipeline report its rightmost non-zero stage, "
     "so `tail` still trims the output and a red gate still exits non-zero. It "
     "is one token, it costs no context, and it is never wrong to add. Two more "
     "spellings are accepted, where the sequencing suits: `&&`, which "
-    "short-circuits on failure (`" + offender + " && tail -45 /tmp/gate.log`), "
+    "short-circuits on failure (`" + spelled + " && tail -45 /tmp/gate.log`), "
     "and reading the status straight out into the output "
-    "(`" + offender + " > /tmp/gate.log 2>&1; echo \"exit=$?\"`).\n\n"
+    "(`" + spelled + " > /tmp/gate.log 2>&1; echo \"exit=$?\"`).\n\n"
     "Guarded because their exit status IS the evidence a session reports: "
     "`make check|test|docket|doc-check|prebuild|pr-title`, `bin/docket "
     "check|verify`, `pytest`, `mypy`, `ruff`, and `tools/*_check.py`. "
