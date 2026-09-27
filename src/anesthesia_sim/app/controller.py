@@ -54,6 +54,15 @@ class SimulationSnapshot:
 
     is_running: bool
     elapsed_s: float
+    began_at_s: float
+    """The case instant this run itself began at: zero on a trunk, its fork on a branch.
+
+    On the case's own axis like `elapsed_s`, and the value
+    `SimulationController.began_at_s` gives. It travels beside the elapsed time
+    it bounds because `has_recorded_run` reads the two together: a branch is
+    built already standing at its fork, so elapsed time above zero says nothing
+    about whether anyone has touched it (`PL-7TBQ`).
+    """
     agent_id: str
     agent_display_name: str
     max_delivered_concentration_percent: Percent
@@ -209,9 +218,10 @@ class SimulationSnapshot:
     def has_recorded_run(self) -> bool:
         """Whether this run holds anything that starting over would destroy.
 
-        True once the run has advanced past its first sample or has recorded
+        True once the run has advanced past its own beginning or has recorded
         a setting change; false for a run that has been built and not yet
-        touched, which is the state both a fresh session and `reset()` leave.
+        touched, which is the state a fresh session, a fresh branch and
+        `reset()` all leave.
 
         It exists so the interface can tell a destructive act from a harmless
         one. `set_agent` always begins a new run, which is unrecoverable where
@@ -224,9 +234,17 @@ class SimulationSnapshot:
         misses a case: a run paused at its first sample with the vaporizer
         already turned has a recorded input and no elapsed time, and a run
         advanced with nothing touched has the reverse.
+
+        **Elapsed time counts from `began_at_s`, not from zero** (`PL-7TBQ`).
+        A branch's clock is the case's, so it opens at its fork with
+        `elapsed_s` already past zero, and read against zero every branch held
+        a run to lose from the moment it was made, and again after every reset.
+        The comparison is exact at the fork: the branch's clock is its step
+        count times its step, and both doors to a fork refuse an instant that
+        is not a whole number of steps, so the clock stands exactly on it.
         """
 
-        return self.elapsed_s > 0.0 or bool(self.control_timeline)
+        return self.elapsed_s > self.began_at_s or bool(self.control_timeline)
 
 
 @dataclass(frozen=True, slots=True)
@@ -584,6 +602,7 @@ class SimulationController:
         return SimulationSnapshot(
             is_running=self._is_running,
             elapsed_s=self._state.elapsed_s,
+            began_at_s=self.began_at_s,
             agent_id=self._agent_id,
             agent_display_name=self._agent_display_name,
             max_delivered_concentration_percent=self._max_delivered_concentration_percent,
@@ -759,8 +778,10 @@ class SimulationController:
 
         Zero on a trunk and the fork instant on a branch, on the case's own
         axis like everything else this class hands out. It is what bounds a
-        run to the left - what `drawn_window` clips at, and what
-        `app/bookmarks.py` reads to call a mark unreachable.
+        run to the left - what `drawn_window` clips at, what
+        `app/bookmarks.py` reads to call a mark unreachable, and what
+        `SimulationSnapshot.has_recorded_run` counts a run's own progress
+        from, which is why the snapshot carries it too.
 
         **It is not `run_segments[0].opening.instant_s`, and inferring it from
         there is the mistake this property exists to remove** (`PL-B8MK`). A

@@ -3,11 +3,13 @@ id: PL-7TBQ
 title: SimulationController.has_recorded_run reads elapsed_s > 0.0, so it is True the instant a branch is made and before the learner has touched it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py, tests/unit/test_dashboard_frame.py
 added: 2026-09-14
+closed: 2026-09-27
+pr: 1187
 verify: grep -q 'def test_a_fresh_branch_holds_nothing_to_destroy' tests/integration/test_controller.py && uv run pytest tests/integration/test_controller.py
 ---
 
@@ -61,3 +63,17 @@ a warning trained to be dismissed is the opposite.
 not yet touched, and true once it has advanced past its own opening or recorded
 a setting change of its own - measured against the branch's opening instant
 rather than against zero. `tests/integration/` covers a fresh branch.
+
+**Closed 2026-09-27.** Re-confirmed against `4dd559fe` before the fix. A branch
+forked at 60.0 s read `has_recorded_run` `True` with an empty timeline, and it
+still read `True` after 5 s of advance and a `reset()`. `SimulationSnapshot` now
+carries `began_at_s`, which is the value `SimulationController.began_at_s`
+gives, and the property counts elapsed time from there rather than from zero.
+Five tests in `tests/integration/test_controller.py` pin the behaviour. The
+fresh-branch, bookmark-branch and reset cases fail against the old comparison.
+
+Since filing, the consequence has narrowed. `PL-QRD1` replaced a branch's agent
+selector with the agent chip, so the false confirmation described above cannot
+be reached from the dashboard today. The property was still wrong against its
+own docstring, and the fix is for whichever reader asks it about a branch
+next.
