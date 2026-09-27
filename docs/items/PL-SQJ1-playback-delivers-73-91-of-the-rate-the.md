@@ -173,14 +173,15 @@ loop - delivers less, and nothing on screen says so.
 **Recommendation: option 1 now, with option 3 filed by the build thread as a
 `feature` item outside the gate.** The defect this item was filed for does not
 reproduce on the shipped path, so what remains is a guard against a host
-nobody has measured. `CLAUDE.md`'s "obvious failure over a plausible number"
-would demand the guard if the number a reader acts on could be wrong, and
-that number is the clock, which is exact at every rate; the rate label is the
-setting. Filing the guard keeps it from being lost and keeps an M build out of
-Gate 2. If the owner wants the guard now, option 3 is built under this item
-and nothing is filed. Either way the done-when's "re-measured on the owner's
-machine" stands: run the script below on the Mac, and a delivered rate under
-99% there reopens this recommendation.
+nobody has measured. `CLAUDE.md` asks to "Prefer an obvious failure/error
+state to displaying a plausible-looking number when correctness cannot be
+established", which would demand the guard if the number a reader acts on
+could be wrong; that number is the clock, which is exact at every rate, and
+the rate label is the setting. Filing the guard keeps it from being lost and
+keeps an M build out of Gate 2. If the owner wants the guard now, option 3 is
+built under this item and nothing is filed. Either way the done-when's
+"re-measured on the owner's machine" stands: run the script below on the Mac,
+and a delivered rate under 99% there reopens this recommendation.
 
 **Method, kept so the next re-measurement does not rebuild it** (`PL-ZG5J`'s
 lesson). Run with `QT_QPA_PLATFORM=offscreen uv run python measure_rate.py
