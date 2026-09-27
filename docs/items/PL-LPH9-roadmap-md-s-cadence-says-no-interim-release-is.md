@@ -3,10 +3,12 @@ id: PL-LPH9
 title: ROADMAP.md's cadence says no interim release is cut partway through clearing a gate, but 159 of Gate 1's 175 frozen entries already shipped in v0.4.x patches, so the sentence a later session would cite to refuse a cut describes nothing this project has done since v0.4.5
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, planning
 touches: ROADMAP.md
 added: 2026-09-19
+closed: 2026-09-27
+pr: 1189
 payoff: stops a later session declining a release the project has cut twenty-seven times, on a cadence rule ROADMAP.md still states
 verify: grep -q 'A gate does not get a version of its own' ROADMAP.md && ! grep -q 'decline it, or the gate work scatters' ROADMAP.md && ! grep -qF 'Later gates ship *inside*' ROADMAP.md
 ---
@@ -198,3 +200,28 @@ design thread that pushes item files only; the thread that rewrites
 `ROADMAP.md` sets the status first and closes the item on that commit. Its
 `touches:` already names the one file, and its effort stays `S`: the
 passages are located and the wording is drafted above.
+
+## Built 2026-09-27
+
+`ROADMAP.md` now states the practice, on the draft above with its counts
+re-read. The four named passages are handled as planned: § "The cadence"'s two
+paragraphs are rewritten, § "Versioning decision"'s sentence is replaced, the
+v0.4.26 paragraph carries a dated note beside the clause it quoted, and the
+v0.5.0 "Three groups" paragraph was read and needed nothing. The draft's "v0.5.1
+through v0.5.14 shipped Gate 2's first 92 of 190" was corrected: 92 was the
+count *cleared*, which includes drops and closures not yet released, and the
+Gate 2 entries stamped with a `v0.5.1`-`v0.5.14` milestone number 67. The Gate 1
+figure is kept as the dated `bin/docket wave` reading it was - 172 of the 175
+entries the list held on 2026-09-20 - since the list closed at 185.
+
+**Five more passages stated or quoted the old rule, and the sweep found them**:
+the timeline rows for Gate 2 ("Ships inside v0.6.0."), Gate 3 and Gate 4
+("ships inside v0.7.0" / "v0.8.0") are rewritten, since each is a live
+sentence a later session could cite to decline a cut; the Gate 1 row and the
+v0.5.0 record of this item's own decline to Gate 2 are completed records, so
+each carries a dated note instead. One more, the `PL-WZVZ` deferral paragraph
+under v0.5.0 ("Gate 2 freezes when v0.5.0 ships and ships inside v0.6.0"), was
+read and left: it is a dated decision's reasoning, and its point - that the
+entry is workable only once v0.6.0's scope lands - does not rest on where gate
+work ships. `subprojects/docket/src/docket/plan.py` argues from the old rule in
+a comment and is outside this item's `touches`, so it is filed as `PL-QVSN`.
