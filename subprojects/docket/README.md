@@ -1264,6 +1264,21 @@ finishing first, because a shipped feature is worth more than equal progress
 spread across several. Work already in flight on a branch is excluded rather
 than ranked low.
 
+Work at `needs-decision` is not ranked either, unless it is `P0` (`PL-JW39`,
+project owner, 2026-09-27, ratified, over keeping its rank and saying in the
+reason line that its next step is a decision). That next step is the project
+owner's answer, so a session handed one as a pick could only read the brief and
+stop, and the digest's `Top:` line, read from the same ranking, named one
+whenever it ranked first. `next` names them instead, beneath the picks: oldest
+first, cut to `--limit` with the rest counted, and printed when nothing else is
+ready as well. Nothing is hidden - the ids stay in the block a session reads,
+and `gate` and `wave` count them as before - and what is given up is band order
+among the decisions themselves. It holds on the generator tier too, where a
+head or a blocker awaiting a decision is named rather than ranked; `P0` is the
+exception because a hotfix tops the list whatever its status.
+`plan.awaits_decision` is the one rule the ranking, `--oldest` and the lane
+footer read.
+
 The step's scope is preferred *absolutely* rather than as a tie-breaker inside
 a band, because the priority field cannot express the phase: `docket check`
 pins `safety` and `science` items to `P1`, so the top band is product work by
@@ -1332,8 +1347,8 @@ standard remedy is *aging*: a request's priority rises the longer it waits
 (Silberschatz, Galvin and Gagne, *Operating System Concepts*, 10th ed., the
 CPU-scheduling chapter's section on priority scheduling). `--oldest` is aging's
 extreme form, pure age order, and the simplest to audit. It answers the
-question "what have we forgotten" beside the plan rather than changing it: a
-bare `docket next` prints exactly what it printed before the flag existed.
+question "what have we forgotten" beside the plan rather than changing it:
+adding the flag left a bare `docket next` byte-identical.
 
 - **Order.** Longest-waiting first by `added:`, ties by band and then id, `P0`
   on top whatever its age. Age is `--today` minus `added`, so no git read is
@@ -1349,6 +1364,9 @@ bare `docket next` prints exactly what it printed before the flag existed.
 - **Decisions apart.** Owed work at `needs-decision` is listed on a line of its
   own, oldest first, never ranked: its next step is the project owner's answer,
   and ranked by age the oldest unanswered decision would hold the top for good.
+  `--oldest` did this first. A bare `docket next` has done the same since
+  `PL-JW39`, from the same `plan.awaiting_decision`, so under a lane the line
+  also names the decisions no lane can place.
 - **Never silent about the plan.** Each pick carries the placement sentence
   `next` writes, so an off-gate pick says so, and the last line names the plan's
   own pick for the same lane and effort, with the command that explains it.
@@ -1426,7 +1444,11 @@ confined to one of them can make the change whole; an item declaring no
 `touches` is set aside because nothing has been said about it. `next` names
 both sets under the ranking, with the count and the ids, and the unfiltered
 ranking still offers them. A lane is a filter, and a filter that silently
-drops a fifth of a queue is how work goes missing for months.
+drops a fifth of a queue is how work goes missing for months. A decision is
+the exception, named on the decisions line rather than set aside: under a lane
+that line carries the lane's own decisions and those no lane can place, so no
+item is counted twice, and the digest's count of work in neither lane leaves
+decisions out for the same reason (`PL-JW39`).
 
 An undeclared `workflow_paths` refuses the lane arguments outright rather than
 answering from the whole queue. A lane that quietly degrades to *everything*

@@ -82,6 +82,7 @@ from .plan import (
     OfferedReport,
     Standing,
     UnrankedGenerator,
+    awaiting_decision,
     clusters,
     features,
     gate,
@@ -2633,6 +2634,12 @@ def cmd_next(args: argparse.Namespace) -> int:
     `--oldest` asks a different question of the same queue - owed work in the
     order it has waited - and `_next_oldest` answers it. Without the flag
     nothing below changes.
+
+    Work waiting on a decision is named beneath the picks rather than ranked
+    among them (`plan.awaits_decision`), oldest first and cut to `--limit`,
+    the line `--oldest` already printed. It is printed when nothing else is
+    ready too, since a queue whose startable work is all decisions would
+    otherwise answer "nothing is ready" and say no more.
     """
     _, items, config = _load(args)
     lane = None if args.lane == "all" else args.lane
@@ -2670,9 +2677,14 @@ def cmd_next(args: argparse.Namespace) -> int:
         protected_paths=config.protected_paths,
         gate_paths=config.gate_paths,
     )
+    pending = awaiting_decision(
+        items, flight.ids, effort=args.effort, lane=lane, workflow_paths=config.workflow_paths
+    )
+    today = args.today or date.today()
     where = f" in the {lane} lane" if lane else ""
     if not picks:
         print(f"Nothing is ready to start{where}.")
+        _say_decisions(pending, today, args.limit, NAMED_NOT_OFFERED)
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
         _say_promotable(items)
@@ -2687,6 +2699,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     print(f"{render.open_count(report)} open. Suggested next{where}:\n")
     for index, pick in enumerate(picks, start=1):
         print(f"  {index}. {pick.describe()}\n")
+    _say_decisions(pending, today, args.limit, NAMED_NOT_OFFERED)
     if flight.ids:
         print(render.format_excluded(flight.ids, _holdings(args)))
     _say_promotable(items)
@@ -2745,7 +2758,7 @@ def _next_oldest(
             print(f"  {index}. {pick.describe()}\n")
     else:
         print(f"No owed work is ready to start{where}.")
-    _say_decisions(waiting.decisions, today, args.limit)
+    _say_decisions(waiting.decisions, today, args.limit, NAMED_NOT_AGED)
     if waiting.new_work:
         print(
             f"Left out as new work, classed {' or '.join(config.new_work_classes)}: "
@@ -2764,12 +2777,26 @@ def _next_oldest(
     return 0
 
 
-def _say_decisions(decisions: list[Item], today: date, limit: int) -> None:
-    """Name the owed work waiting on a decision, oldest first, beside `--oldest`'s picks.
+#: Why `_say_decisions` names rather than ranks, under bare `next` and under
+#: `--oldest`. The first clause is one rule (`plan.awaits_decision`); the
+#: second is what ranking would do under each order, which differs.
+NAMED_NOT_OFFERED = (
+    "Not ranked above - each one's next step is the project owner's answer rather than "
+    "a session's work, so a session handed one as a pick could only read it and stop."
+)
+NAMED_NOT_AGED = (
+    "Not ranked above - each one's next step is the project owner's answer rather than "
+    "a session's work, and ranked by age the oldest would hold the top for good."
+)
 
-    Named and never ranked, for the reason `plan.longest_waiting` gives. Cut to
-    the picks' own limit with the rest counted, so a store holding forty open
-    decisions prints one line rather than forty.
+
+def _say_decisions(decisions: list[Item], today: date, limit: int, because: str) -> None:
+    """Name the work waiting on a decision, oldest first, beneath the picks.
+
+    Named and never ranked, for the reason `plan.awaits_decision` gives, and
+    printed under bare `next` and under `--oldest` alike. Cut to the picks' own
+    limit with the rest counted, so a store holding forty open decisions prints
+    one line rather than forty.
     """
     if not decisions:
         return
@@ -2779,10 +2806,7 @@ def _say_decisions(decisions: list[Item], today: date, limit: int) -> None:
     rest = len(decisions) - limit
     more = f", and {rest} more (`--limit` shows them)" if rest > 0 else ""
     print(f"Waiting on a decision, oldest first ({len(decisions)}): {shown}{more}.")
-    print(
-        "  Not ranked above - each one's next step is the project owner's answer rather than "
-        "a session's work, and ranked by age the oldest would hold the top for good."
-    )
+    print(f"  {because}")
 
 
 def _say_plan_pick(
