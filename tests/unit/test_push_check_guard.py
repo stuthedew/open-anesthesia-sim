@@ -69,9 +69,7 @@ def project(tmp_path: Path) -> Path:
 
 def _decision(command: str, *, cwd: Path, project: Path) -> dict[str, str] | None:
     """The hook's `hookSpecificOutput` for one Bash call, or `None` if it let the call through."""
-    payload = json.dumps(
-        {"tool_name": "Bash", "tool_input": {"command": command}, "cwd": str(cwd)}
-    )
+    payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "cwd": str(cwd)})
     result = subprocess.run(
         ["bash", str(HOOK)],
         input=payload,
@@ -183,10 +181,7 @@ def test_a_long_report_is_cut(project: Path) -> None:
 
 @pytest.mark.parametrize(
     "doc",
-    [
-        'raise RuntimeError("the check itself broke")',
-        "import sys\nsys.exit(2)",
-    ],
+    ['raise RuntimeError("the check itself broke")', "import sys\nsys.exit(2)"],
     ids=["traceback", "other-exit"],
 )
 def test_a_check_that_breaks_lets_the_push_through(project: Path, doc: str) -> None:

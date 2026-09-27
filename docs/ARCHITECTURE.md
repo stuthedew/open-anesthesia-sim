@@ -1202,7 +1202,7 @@ and import, run before a push, and reach what those six commands never do.
 
 ## Wired hooks (`.claude/hooks/`)
 
-The seven scripts `.claude/settings.json` wires as hooks live in
+The eight scripts `.claude/settings.json` wires as hooks live in
 `.claude/hooks/`, not in `tools/`, and the reason is a guard rather than tidiness.
 `.claude` is a *protected directory* in Claude Code's own list, so a write to
 anything under it is never auto-approved: it prompts, or in auto mode routes to
@@ -1214,9 +1214,9 @@ putting a hook anywhere else silently leaves it out. `stop_hook_patch.py` sat
 in `tools/` until `PL-W4H9`, which is exactly the gap that item names: a script
 that rewrites another hook, editable without review. `docket-digest.sh`,
 `docket-branch-guard.sh`, `item_read_log.py`, `no-prune-guard.sh`,
-`floor-interpreter-guard.sh` and `gate-status-guard.sh` are documented where
-their behavior is, in their own headers. `shell_split.py` is the one file there
-that nothing wires: the three Bash guards import it for where one shell command
+`floor-interpreter-guard.sh`, `gate-status-guard.sh` and `push-check-guard.sh`
+are documented where their behavior is, in their own headers. `shell_split.py`
+is the one file there that nothing wires: the four Bash guards import it for where one shell command
 ends (`PL-PVW2`), and it sits in the protected directory for the hooks' own
 reason, because its answer decides what they refuse.
 
