@@ -1569,6 +1569,46 @@ def test_an_overfull_top_band_still_prescribes_demotion_where_something_can_move
     assert _has(advisories, "demote what is not genuinely next")
 
 
+def _tier_head(identifier: str) -> Item:
+    """A live head classed as process work, at the P1 the pin holds it to."""
+    return _item(
+        identifier,
+        priority="P1",
+        classes=("infra",),
+        root_cause_of=_EXPLAINS,
+        generator=_LIVE,
+        misread=_MISREAD,
+    )
+
+
+def test_the_top_band_advisories_never_prescribe_demoting_a_generator_tier_item() -> None:
+    """The tier's items are pinned in the band as a `safety` item is (`PL-06JJ`).
+
+    Still counted, since the count stands for every pinned item, and never
+    offered as what to demote - by either advisory - since `docket check` would
+    then refuse the write, the action `PL-CW14` stopped these prescribing.
+    """
+    heads = [_tier_head(f"PL-H1H{n}") for n in range(6)]
+
+    advisories = analyze([*heads, *_explained()], TODAY).advisories
+
+    assert _has(advisories, "6 startable items")
+    assert _has(advisories, "all 6 are pinned there by a safety or science class or the generator")
+    assert _has(advisories, "that much safety-critical and generator work is open")
+    assert not _has(advisories, "demote")
+
+
+def test_process_work_beside_the_tier_is_weighed_against_the_product_work_alone() -> None:
+    """A tier item is neither the process work promoted nor the product it is weighed against."""
+    science = _item("PL-B1B0", priority="P1", classes=("science",))
+    promoted = [_item(f"PL-C2C{n}", priority="P1", classes=("infra",)) for n in range(2)]
+    heads = [_tier_head(f"PL-H1H{n}") for n in range(2)]
+
+    advisories = analyze([science, *promoted, *heads, *_explained()], TODAY).advisories
+
+    assert _has(advisories, "process work (PL-C2C0, PL-C2C1) outnumbers the product work")
+
+
 def test_touches_naming_a_missing_item_file_is_an_error() -> None:
     """A rename leaves the declaration naming nothing, and nothing said so.
 
@@ -3608,7 +3648,9 @@ def _machinery_errors(*items: Item) -> list[str]:
 
 
 def test_a_sound_machinery_claim_is_accepted() -> None:
-    errors = _machinery_errors(_item(touches=_MACHINERY, impairs_generators=_IMPAIRS))
+    """At P1, since the tier pins the band of an item on it (`PL-06JJ`)."""
+    item = _item(priority="P1", touches=_MACHINERY, impairs_generators=_IMPAIRS)
+    errors = _machinery_errors(item)
 
     assert not _has(errors, "impairs-generators")
 
@@ -3645,6 +3687,73 @@ def test_the_field_survives_a_round_trip_through_the_store() -> None:
     item = _item(touches=_MACHINERY, impairs_generators=_IMPAIRS)
 
     assert parse_item(render_item(item)).impairs_generators == _IMPAIRS
+
+
+# --- the generator tier's band, pinned where `next` already ranks it ---------
+#
+# `PL-06JJ` (project owner, 2026-09-27): a reader of the stored band - the
+# queue dashboard among them - showed the last live head at P2 while `next`
+# offered it above every P1. So an item on the tier by its own claim is held to
+# P0 or P1, as `safety` and `science` are held in `_check_item`.
+
+ON_TIER = "on the generator tier, as"
+
+
+def _live_head(**overrides: object) -> Item:
+    fields: dict[str, object] = dict(root_cause_of=_EXPLAINS, generator=_LIVE, misread=_MISREAD)
+    fields.update(overrides)
+    return _item("PL-K7QX", **fields)
+
+
+def test_an_item_on_the_generator_tier_below_p1_is_refused() -> None:
+    """The error names the band, the entrance, and the write that clears it."""
+    for band in ("P2", "P3"):
+        errors = _errors(_live_head(priority=band), *_explained())
+
+        assert _has(errors, f"sits at {band} on the generator tier, as a head whose `generator:`")
+        assert _has(errors, "`docket set PL-K7QX --priority P1 --overwrite` raises it")
+
+
+def test_an_item_on_the_generator_tier_at_p0_or_p1_passes() -> None:
+    for band in ("P0", "P1"):
+        assert not _has(_errors(_live_head(priority=band), *_explained()), ON_TIER)
+
+
+def test_the_band_pin_holds_only_an_item_ranked_on_the_tier_by_its_own_claim() -> None:
+    """The predicates `next` ranks by, so nothing it ranks on its band is told otherwise.
+
+    A spent head ranks on its own band (project owner, 2026-09-21, ratified), a
+    closed one ranks nowhere, and a claim naming fewer than three items ranks
+    nothing.
+    """
+    spent = _live_head(generator="spent - the parse every member stood on was deleted")
+    closed = _live_head(status="done", closed=date(2026, 8, 20))
+    unsound = _live_head(root_cause_of=_EXPLAINS[:2])
+
+    for head in (spent, closed, unsound):
+        assert not _has(_errors(head, *_explained()), ON_TIER)
+
+
+def test_a_machinery_defect_below_p1_is_refused_as_a_head_is() -> None:
+    """The second entrance: "the same priority as a generator" (project owner, 2026-09-19)."""
+    sound = _item(priority="P3", touches=_MACHINERY, impairs_generators=_IMPAIRS)
+    unsound = _item(priority="P3", touches=("src/x.py",), impairs_generators=_IMPAIRS)
+
+    assert _has(
+        _machinery_errors(sound),
+        "sits at P3 on the generator tier, as a sound `impairs-generators:`",
+    )
+    assert not _has(_machinery_errors(unsound), ON_TIER)
+
+
+def test_a_blocked_head_pinned_at_p1_carries_its_blocker_up_with_it() -> None:
+    """No exemption from the blocker rule: `next` passes the tier's rank down that edge."""
+    head = _live_head(priority="P1", status="blocked", blocked_by=("PL-B1B1",))
+
+    errors = _errors(head, _item("PL-B1B1"), *_explained())
+
+    assert not _has(errors, ON_TIER)
+    assert _has(errors, "is P1 but waits on PL-B1B1 at P2")
 
 
 # --- what a `verify:` command may be, not merely that it is there ------------

@@ -8573,6 +8573,62 @@ def test_set_refuses_a_blank_misread_rather_than_writing_an_empty_line(
     assert _item_text(store) == before
 
 
+def test_set_raises_an_item_it_puts_on_the_generator_tier_to_p1(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Recording `generator: live` needs no second command (`PL-06JJ`).
+
+    `check` pins the band at P0 or P1, so without the raise the verdict would
+    be refused for a band the session never named. It takes no `--overwrite`,
+    since the value is the rule's, and the line it prints says so.
+    """
+    store = _cluster(tmp_path, names=_MEMBERS, misread=_MISREAD)
+
+    assert _run("set", "PL-4040", "--generator", _LIVE, "--items", str(store)) == 0
+
+    out = capsys.readouterr().out
+    assert f"PL-4040: generator: {_LIVE}" in out
+    assert "PL-4040: priority: P1, raised from P2 - an item on the generator tier" in out
+    assert "\npriority: P1\n" in _item_text(store)
+    assert _run("check", "--items", str(store)) == 0
+
+
+def test_set_refuses_a_band_below_p1_asked_for_on_the_generator_tier(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A band somebody asked for is refused by the pin in its own words, never replaced."""
+    store = _cluster(tmp_path, names=_MEMBERS, generator=_LIVE, misread=_MISREAD, priority="P1")
+    before = _item_text(store)
+
+    assert _run("set", "PL-4040", "--priority", "P2", "--overwrite", "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert "nothing was written" in out
+    assert "sits at P2 on the generator tier" in out
+    assert "raised from" not in out
+    assert _item_text(store) == before
+
+
+def test_set_names_the_blocker_a_raise_would_leave_a_head_above(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`set` writes one item, so the blocker the raised head would outrank is named, not raised.
+
+    No exemption from the blocker rule: its edge is the one `next` passes the
+    tier's rank down, so the blocker belongs at P1 too.
+    """
+    blocked = {"status": "blocked", "blocked-by": "PL-B1B1"}
+    store = _cluster(tmp_path, names=_MEMBERS, misread=_MISREAD, **blocked)
+    before = _item_text(store)
+
+    assert _run("set", "PL-4040", "--generator", _LIVE, "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert "report, with its priority raised from P2 to P1 as the generator tier pins it:" in out
+    assert "is P1 but waits on PL-B1B1 at P2" in out
+    assert _item_text(store) == before
+
+
 def test_show_on_a_head_prints_what_is_wrong_with_its_misread_under_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
