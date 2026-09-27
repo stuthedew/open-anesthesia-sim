@@ -3,14 +3,17 @@ id: PL-RLTK
 title: vcs.landed_whole reads a commit that restores a file to content the default branch held earlier in its history as a commit the base took whole, because _base_blobs collects every blob the base's history ever held rather than its tip's: bin/docket branch told #1118's session its open pull request had merged, not to merge and push, and to restart the branch on origin/main, since c69bad17 put pr-title.yml back to the blob #1056 wrote and #1068 replaced
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: pre-fork-content
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-27
+pr: 1133
 payoff: bin/docket branch stops telling a session whose pull request is still open that it merged and should restart, whenever the branch restores a file to an earlier version
 verify: grep -q 'def test_a_restore_to_content_main_held_before_the_fork_is_not_landed' subprojects/docket/tests/test_vcs.py
+recurrences: 2026-09-27 PL-WVSX, 2026-09-27 PL-P813
 ---
 
 **Problem.** vcs.landed_whole reads a commit that restores a file to content the default branch held earlier in its history as a commit the base took whole, because _base_blobs collects every blob the base's history ever held rather than its tip's: bin/docket branch told #1118's session its open pull request had merged, not to merge and push, and to restart the branch on origin/main, since c69bad17 put pr-title.yml back to the blob #1056 wrote and #1068 replaced
@@ -109,3 +112,19 @@ code written yet; the claim stands on draft #1133).
   some point" become "written since the fork". New: the verify-named restore
   test on a scratch repository, a squash-merged branch still landed, and a
   renamed file still landed.
+
+**Done 2026-09-27.** The landing split is judged against `_written_since`, the
+blobs the base's commits wrote after the ref's fork, read from `git log --raw
+--no-renames -z --format= ^<fork> <base>` by `_raw_writes`, the parser
+`_landing_split`'s own diff read now shares. `landed_whole` and
+`_unlanded_refs` both pass it, the latter once per fork point, so
+`branch_state`, `orphaned` and every reader of the unlanded set move together;
+`_Refs.base_blobs` keeps the ever-held set for `claims._landed_through`
+(`PL-P64J`). The restore test fails on the old rule, whose `landed_whole`
+answers `True` for it. The squashed-rename test asserts the split rather than
+`landed_whole`, because `_commits_by_landing` reads `--name-only` under git's
+default rename detection, so its answer there depends on the tester's config.
+On this checkout's 20 candidate refs no verdict changed, and the ten reads cost
+0.098 s. Working it found `PL-WVSX`: `stranded`'s item filter reads the same
+ever-held set, which made three readers of one mechanism, recorded as the spent
+generator `PL-P813`.
