@@ -57,3 +57,85 @@ a measurement says otherwise.
 segment record per change, the keyframe per segment is not duplicated by the
 rebuild, and `tests/unit/test_run_definition.py` pins the growth - with the
 measured before-and-after in the item so the next reader knows what it bought.
+
+## Measured 2026-09-27, before any change
+
+Measured on the tree at `b1ccc844` with the project's Python 3.14 in a cloud
+container. Rebuild times are the best of five runs of 200; `record_change` is
+the median of 20 calls. The scripts were one-offs and are not kept.
+
+**The rebuild duplicates no keyframe.** The tuple holds references, so
+`(*self._segments, new)` copies one 8-byte pointer per segment already
+recorded and nothing a segment holds. Checked by identity: after a change,
+every earlier segment is the same object it was, and so is its keyframe. A
+segment costs about 900 bytes in all (tracemalloc over 2,000 recorded changes,
+settings included). Its keyframe is 408 of them: a 48-byte object, a 24-byte
+instant, and a nine-entry state tuple of 120 bytes holding nine 24-byte floats.
+
+**What the rebuild costs, against what every change already pays.**
+
+| Segments recorded | Tuple rebuild alone | Whole `record_change` |
+| --- | --- | --- |
+| 1,000 | 0.005 ms | 1.04 ms |
+| 10,000 | 0.057 ms | 1.13 ms |
+| 100,000 | 0.53 ms | 2.65 ms |
+
+The floor near 1.0 ms is the matrix exponential that forms the new keyframe,
+which any record pays. The rest at 100,000 is the copy plus releasing the old
+tuple, about 16 ns per segment already recorded.
+
+**How many changes a run reaches.** `PL-1PSX` measured ten entries per real
+second of continuous dragging, and put the reachable extreme at some three
+hours of unbroken dragging: about 100,000 changes. A teaching case with a few
+dozen adjustments of a second or two each reaches the low thousands, where
+the rebuild costs 5 microseconds a change.
+
+**The record's other whole-length readers run per frame, and they are small
+too.** Every render tick the fork panel asks for the trunk's fork points,
+which `BranchedCase.fork_points_s` builds from `segments` (3.1 ms at
+100,000). `_anchored_columns` walks every segment to find the event columns in
+its window (2.6 ms at 100,000 segments over 30 days). Both are under 2% of the
+200 ms render interval at the extreme, and on these numbers neither is worth
+an item. At that density a frame's cost is the two propagators per segment in
+view, 368 ms for the 138 events in the last hour, which `docs/MODEL.md`
+§ "The run is that record, and every state is derived from it" already
+records.
+
+**What a replacement would have to be.** `segments` has to keep handing out
+an immutable record: `tests/integration/test_simulation_view.py` compares
+`run_segments` before and after an action, and a live view would make those
+comparisons pass whatever the action did. With Python's built-in types that
+leaves two designs. A list with a cached tuple moves the copy to the first
+read after a change, and the fork panel reads the record on every render
+tick, so a drag still copies it about once per frame. A persistent sequence
+type makes both the append and the snapshot cheap, at the price of a new data
+structure in `core/` with its own tests, to save at most 1.6 ms a change after
+three hours of dragging.
+
+**What would reopen it.** A path that records on the order of 100,000
+changes in one pass. There the rebuild's quadratic sum catches up with the
+matrix exponentials: about 80 s against 100 s at 100,000, and eight times
+them at a million. Save, load and replay (planned-milestone items 9 and 10)
+are where such a path could arrive, and a loader that builds the record in
+one pass would avoid it without touching `record_change`.
+
+**Pinned either way.** `test_recording_a_change_copies_no_segment_already_recorded`
+checks by identity that each accepted change adds one segment and copies none,
+over the 300 changes `PL-1PSX` counted.
+`test_a_record_handed_out_is_not_changed_by_later_changes` holds any
+replacement to the immutable snapshot this brief asks for, across all three
+things `record_change` can do to the open segment.
+
+## Open question: build the replacement, or close on the measurement?
+
+The Done-when above asks for a record that does not copy itself per change.
+The measurement says the copy is not a cost worth that at any reachable
+count.
+
+**Recommendation:** close the item on the measurement. Keep the tuple, keep
+the two tests above, and point `verify:` at the first of them. The
+replacement would add a cache or a new data structure to the record every
+fork and keyframe is read from, to save at most 1.6 ms a change after three
+hours of unbroken dragging. The Done-when's second condition already holds:
+no keyframe is duplicated. If a bulk-recording path arrives, the numbers
+above say when the question comes back.
