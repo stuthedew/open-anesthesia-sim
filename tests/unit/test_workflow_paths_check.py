@@ -4,8 +4,8 @@ The check exists because `docket.toml`'s `workflow_paths` named three apparatus
 test files by hand and was nine short by the following day (`PL-JBZK`). The
 failure is silent, and silent in the worst direction: an item declaring one
 `tools/` script and its own test lands in neither lane, so `docket next
-workflow` and `docket next product` both set it aside and no session is ever
-offered it.
+workflow` and `docket next product` both set it aside as reaching both halves,
+and only a session taking the whole queue is offered it.
 
 The interesting tests are therefore not the happy path but the two directions
 the list can be wrong in - an apparatus test the list has fallen behind on, and
@@ -274,7 +274,8 @@ def test_a_tools_script_and_its_own_test_land_in_the_same_lane() -> None:
     `workflow_paths`, which is the code that actually decides what `docket next
     workflow` offers. An item that is plainly one `tools/` script and its own
     test has to come out `workflow`, not `crossing` - `crossing` is the state
-    in which no session is offered it at all.
+    in which neither lane offers it, and only a session taking the whole queue
+    is.
     """
     paths = workflow_paths_check.declared_workflow_paths(ROOT)
     for stem in ("pr_title_check", "branch_id_check", "ignore_check"):
@@ -343,6 +344,36 @@ def test_the_conftest_that_renders_the_qt_tests_lands_in_the_product_lane() -> N
         "---\n\nBody.\n"
     )
     assert item.lane(paths) == LANE_PRODUCT
+
+
+def test_the_root_conftest_lands_with_the_apparatus_it_configures() -> None:
+    """What `PL-W40L` asked for, stated end to end against this repository.
+
+    The repository-root `conftest.py` sits outside `tests/`, so the check never
+    reads it and its side is whatever the list declares. It holds the process
+    settings every pytest run takes - the git configuration the docket and hook
+    tests must not inherit (`PL-YRYR`), and the no-bytecode guard the
+    `Makefile` also exports (`PL-0MLZ`) - and the only two items ever to declare
+    it paired it with apparatus alone, yet read `crossing` while the list left
+    it out. Their shapes are the cases. Through `Item.lane`, for the reason the
+    tests above give.
+    """
+    paths = workflow_paths_check.declared_workflow_paths(ROOT)
+    for touches in (
+        "conftest.py, subprojects/docket/tests/test_git_isolation.py, subprojects/docket/README.md",
+        "conftest.py, Makefile, tests/unit/test_bytecode_guard.py",
+    ):
+        item = parse_item(
+            "---\n"
+            "id: PL-T3ST\n"
+            "title: A change to the root conftest and what it configures\n"
+            "priority: P2\n"
+            "effort: S\n"
+            "status: ready\n"
+            f"touches: {touches}\n"
+            "---\n\nBody.\n"
+        )
+        assert item.lane(paths) == LANE_WORKFLOW, touches
 
 
 def test_a_test_file_is_what_this_run_of_pytest_collects(pytestconfig: pytest.Config) -> None:
