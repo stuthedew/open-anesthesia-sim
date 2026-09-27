@@ -22,9 +22,14 @@ lost the report. The other is `.github/workflows/update-armed.yml`, which
 brings `main` into every armed pull request on each push to `main`. An armed
 release pull request therefore has `main` merged in before any check runs
 against it, and the advisory cannot fire for work landing after it was armed.
-The class docstring gives the stakes: 12 of 47 tagged spans measured on
-2026-09-14 carried a closure their notes never named, and the window leaves no
-trace afterwards.
+What is lost is the choice, not the record. Once the tag is pushed,
+`check_tag_span_covers_its_notes` in `tools/doc_check.py` fails `make check`
+until the notes carry an `### also inside this tag's span` pointer for each
+such closure, so the work reaches the next release's notes by default. The
+absorb route, the only way to have this release's own notes name it, is what
+goes unoffered, and `PL-028F` gave that choice to the session. It is not rare:
+20 closing pull requests landed inside 16 of 65 tagged spans (`PL-P669`,
+2026-09-22).
 
 Observed 2026-09-27 while fixing `PL-2TDX`, in the `_TrainRepo` harness in
 `subprojects/docket/tests/test_release.py`: v0.2.6 cut and committed on the
@@ -41,3 +46,10 @@ merge-base, since that commit is not moved by a base merge. Its cost is the
 "let it go to the next release" disposition, which then reports on every run
 until the cut merges; whether that noise is acceptable for the one session in
 a release is the design question.
+
+**Recommendation:** take it before the next release cut. It meets the
+silent-wrong-answer test, since the advisory passes while the state it exists
+to report still holds, and `update-armed.yml` makes that the normal case for
+an armed release pull request. The damage is bounded by the tag-span check
+above, which is why this is a recommendation on order rather than a priority
+band.
