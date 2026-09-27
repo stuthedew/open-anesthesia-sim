@@ -142,8 +142,9 @@ they were trying to do.
 --oldest`** (`PL-Q89J`). The plan's order favours what is newer, more urgent or
 more central, so owed work that is none of those - the `docs`, `infra` and
 `test` items no gate will hold - waits for good. `--oldest` hands out owed work
-longest-waiting first with `P0` on top, lists `needs-decision` items apart,
-and composes with a lane and `--effort`. Its picks are usually off-gate, and
+longest-waiting first with `P0` on top, and composes with a lane and
+`--effort`; like bare `next` since `PL-JW39`, it names `needs-decision` items
+apart rather than ranking them. Its picks are usually off-gate, and
 the placement sentence under each one says so; offer them under the off-gate
 rule below, and name the plan's own pick, which its last line prints. Age is a
 reason to look, not evidence the item is still real: an old brief can describe

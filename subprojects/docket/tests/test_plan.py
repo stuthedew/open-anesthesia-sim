@@ -19,6 +19,7 @@ from docket.plan import (
     PASSED,
     UNRANKED,
     Waiting,
+    awaiting_decision,
     clusters,
     effort_total,
     features,
@@ -888,12 +889,110 @@ def test_set_aside_applies_the_same_exclusions_the_ranking_did() -> None:
     assert [i.identifier for i in held.crossing] == ["PL-B0TH"]
 
 
+def test_set_aside_leaves_a_decision_to_the_decisions_line() -> None:
+    """A decision reaching both halves is named beside the picks, not set aside.
+
+    Counted in both places it would be reported twice, and the set-aside line
+    would call it work for a session that can hold the whole change, which no
+    session can start (`PL-JW39`).
+    """
+    items = [
+        _item("PL-B0TH", touches=("tools/a.py", "src/core/b.py")),
+        _item("PL-D3C1", status="needs-decision", touches=("tools/c.py", "src/core/d.py")),
+    ]
+
+    held = set_aside(items, workflow_paths=WORKFLOW)
+
+    assert [i.identifier for i in held.crossing] == ["PL-B0TH"]
+    assert [
+        i.identifier for i in awaiting_decision(items, lane="workflow", workflow_paths=WORKFLOW)
+    ] == ["PL-D3C1"]
+
+
 def test_an_undeclared_boundary_places_nothing_in_a_lane() -> None:
     """Fail closed: with no boundary, no item is on either side of it."""
     items = [_item("PL-W0RK", touches=("tools/doc_check.py",))]
 
     assert recommend(items, lane="workflow") == []
     assert recommend(items, lane="product") == []
+
+
+# A decision is named, never ranked (`PL-JW39`).
+#
+
+
+def test_recommend_leaves_a_decision_out_unless_it_is_p0() -> None:
+    """A `P1` awaiting a decision would have led the list; now nothing ranks it.
+
+    `P0` keeps its place whatever its status, and the ready work keeps the order
+    it had with the decision in the queue - the rule removes, it never reorders.
+    """
+    ready = [_item("PL-2222", priority="P2"), _item("PL-3333", priority="P3")]
+    items = [
+        _item("PL-1111", priority="P1", status="needs-decision"),
+        _item("PL-0000", priority="P0", status="needs-decision"),
+        *ready,
+    ]
+
+    picks = [pick.item.identifier for pick in recommend(items, limit=10)]
+
+    assert picks == ["PL-0000", "PL-2222", "PL-3333"]
+    assert picks[1:] == [pick.item.identifier for pick in recommend(ready, limit=10)]
+
+
+def test_a_decision_on_the_generator_tier_is_named_rather_than_ranked() -> None:
+    """The tier outranks every band, but its answer is still the owner's to give."""
+    head = _item("PL-5555", status="needs-decision", root_cause_of=GENERATOR, generator=LIVE)
+    items = [head, _item("PL-2222"), *_explained()]
+
+    assert "PL-5555" not in [pick.item.identifier for pick in recommend(items, limit=10)]
+    assert [item.identifier for item in awaiting_decision(items)] == ["PL-5555"]
+
+
+def test_awaiting_decision_is_oldest_first_and_takes_the_rankings_exclusions() -> None:
+    """In flight and the effort filter apply as they do to the picks; `P0` is ranked."""
+    items = [
+        _item("PL-1111", status="needs-decision", added=date(2026, 8, 3)),
+        _item("PL-2222", status="needs-decision", priority="P3", added=date(2026, 8, 1)),
+        _item("PL-3333", status="needs-decision", priority="P1", added=date(2026, 8, 1)),
+        _item("PL-F1Y5", status="needs-decision", added=date(2026, 7, 1)),
+        _item("PL-B1G5", status="needs-decision", effort="L", added=date(2026, 7, 1)),
+        _item("PL-0000", status="needs-decision", priority="P0", added=date(2026, 7, 1)),
+        _item("PL-4444", added=date(2026, 7, 1)),
+    ]
+
+    found = awaiting_decision(items, {"PL-F1Y5"}, effort="S")
+
+    assert [item.identifier for item in found] == ["PL-3333", "PL-2222", "PL-1111"]
+
+
+def test_a_lane_names_its_own_decisions_and_those_no_lane_can_place() -> None:
+    """The other lane's decision is its own; one crossing the boundary is everyone's."""
+    items = [
+        _item("PL-W0RK", status="needs-decision", touches=("tools/a.py",)),
+        _item("PL-PR0D", status="needs-decision", touches=("src/core/b.py",)),
+        _item("PL-B0TH", status="needs-decision", touches=("tools/c.py", "src/core/d.py")),
+        _item("PL-N0N3", status="needs-decision", touches=()),
+    ]
+
+    workflow = awaiting_decision(items, lane="workflow", workflow_paths=WORKFLOW)
+    product = awaiting_decision(items, lane="product", workflow_paths=WORKFLOW)
+
+    assert [item.identifier for item in workflow] == ["PL-B0TH", "PL-N0N3", "PL-W0RK"]
+    assert [item.identifier for item in product] == ["PL-B0TH", "PL-N0N3", "PL-PR0D"]
+
+
+def test_oldest_names_a_decision_no_lane_can_place_under_either_lane() -> None:
+    """`set_aside` no longer counts it, so `--oldest` names it rather than losing it."""
+    items = [
+        _item("PL-B0TH", status="needs-decision", touches=("tools/c.py", "src/core/d.py")),
+        _item("PL-PR0D", touches=("src/core/b.py",)),
+    ]
+
+    waiting = _waiting(items, lane="product", workflow_paths=WORKFLOW)
+
+    assert [item.identifier for item in waiting.decisions] == ["PL-B0TH"]
+    assert set_aside(items, workflow_paths=WORKFLOW).total == 0
 
 
 # `root-cause-of:` and the rank it buys.
@@ -1438,7 +1537,8 @@ def test_a_blocked_live_head_whose_every_blocker_closed_is_reported() -> None:
 def test_a_blocked_head_carried_by_a_direct_blocker_is_not_reported(
     blocker: Item, in_flight: tuple[str, ...]
 ) -> None:
-    """Startable, `next` ranks it on the tier; in flight, a session is paying it down."""
+    """Startable, `next` ranks it on the tier, or names it beside the picks while it
+    awaits a decision; in flight, a session is paying it down."""
     items = [_blocked_head(LIVE, ("PL-B1B1", "v0.7.0")), blocker, _item("PL-H1H1"), *_explained()]
 
     assert unranked_generators(items, in_flight) == []

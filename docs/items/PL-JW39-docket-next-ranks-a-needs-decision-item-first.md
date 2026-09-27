@@ -3,11 +3,12 @@ id: PL-JW39
 title: docket next ranks a needs-decision item first, so every fresh session opens on work whose next step is the owner's answer
 priority: P2
 effort: S
-status: ready
+status: done
 classes: session-cost, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py, subprojects/docket/README.md, .claude/skills/docket/modes/picking.md, .claude/skills/docket/modes/triage.md
 added: 2026-09-06
+closed: 2026-09-27
 verify: grep -q 'def test_recommend_leaves_a_decision_out_unless_it_is_p0' subprojects/docket/tests/test_plan.py
 ---
 
@@ -137,3 +138,25 @@ stops ranking a `needs-decision` item unless it is `P0`, and names the
 decisions apart beneath the picks, as § "Design round 2026-09-27:
 recommendations" specifies. The thread that builds it sets this item's status
 and `touches:`.
+
+## Built 2026-09-27
+
+As designed: `plan.awaits_decision` is the one predicate, `recommend` leaves
+out what it answers, and `cmd_next` prints `plan.awaiting_decision`'s line
+beneath the picks, and after "Nothing is ready to start" when nothing else is.
+Three consequences the design round did not spell out, each chosen so that
+nothing is counted twice or left out:
+
+- **Under a lane, the decisions line carries the lane's own decisions and the
+  ones no lane can place.** `set_aside` no longer counts a decision, because
+  its footer says bare `next` offers what it lists, which a decision is not.
+  So a crossing or unplaced decision is named on the decisions line or
+  nowhere. Three were open when this was built, all reaching both halves:
+  `PL-65HT`, `PL-KKRP` and `PL-YRLM`.
+- **The digest's "N in neither lane" count leaves decisions out**, for the
+  same reason: it reads `set_aside`.
+- **The generator tier gets no exemption.** The ratified rule exempts `P0`
+  alone, so a live head, or a blocker carrying a head's rank, that awaits a
+  decision is named rather than ranked. No such item was open when this was
+  built; if one appears, the tier's rank is waiting on the owner's answer,
+  which is where naming it sends it.

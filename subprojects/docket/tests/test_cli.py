@@ -6271,6 +6271,70 @@ def test_next_oldest_lists_decisions_on_a_line_of_their_own(
     )
 
 
+# A `P1` at `needs-decision`, older than `OLDER_P3`: ranked, it would have been pick 1.
+DECISION = (
+    READY.replace("PL-B1B1", "PL-D3C1")
+    .replace("status: ready", "status: needs-decision")
+    .replace("added: 2026-08-01", "added: 2026-06-30")
+)
+
+
+def test_next_names_decisions_beneath_the_picks_and_ranks_none(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Bare `next` offers only work a session can start, and names the rest (`PL-JW39`)."""
+    assert _run("next", "--items", str(_store(tmp_path, DECISION, OLDER_P3))) == 0
+    out = capsys.readouterr().out
+
+    assert "  1. P3 PL-C2C2" in out and "  2. " not in out
+    assert (
+        "Waiting on a decision, oldest first (1): PL-D3C1 (added 2026-06-30, 55 days waiting)."
+        in out
+    )
+    assert "a session handed one as a pick could only read it and stop" in out
+
+
+def test_next_cuts_the_decisions_line_to_the_limit_and_counts_the_rest(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Forty open decisions print one line, not forty."""
+    later = [
+        DECISION.replace("PL-D3C1", identifier).replace("2026-06-30", added)
+        for identifier, added in (("PL-D3C2", "2026-07-02"), ("PL-D3C3", "2026-07-03"))
+    ]
+    store = str(_store(tmp_path, OLDER_P3, DECISION, *later))
+
+    assert _run("next", "--limit", "1", "--items", store) == 0
+    out = capsys.readouterr().out
+
+    assert (
+        "Waiting on a decision, oldest first (3): PL-D3C1 (added 2026-06-30, 55 days waiting), "
+        "and 2 more (`--limit` shows them)." in out
+    )
+
+
+def test_next_names_the_decisions_when_nothing_else_is_ready(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A queue of decisions alone does not answer "nothing is ready" and stop there."""
+    assert _run("next", "--items", str(_store(tmp_path, DECISION))) == 0
+    out = capsys.readouterr().out
+
+    assert "Nothing is ready to start." in out
+    assert "Waiting on a decision, oldest first (1): PL-D3C1" in out
+
+
+def test_the_digest_never_opens_on_a_decision(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The digest's `Top:` is `recommend`'s first pick, so it follows `next` unchanged."""
+    assert _run("digest", "--items", str(_store(tmp_path, DECISION, OLDER_P3))) == 0
+    out = capsys.readouterr().out
+
+    assert "Top: PL-C2C2" in out
+    assert "Top: PL-D3C1" not in out
+
+
 def test_next_without_oldest_still_ranks_new_work(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
