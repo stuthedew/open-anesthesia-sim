@@ -8,9 +8,10 @@
 # one, whether or not anybody has written it - the prune flags and settings of
 # `fetch`, `pull` and `remote update` (`PL-R17X`), `remote prune`, a prune or
 # mirror setting written by `config`, by its name or by the section holding it
-# (`PL-VM7C`), a push with `--prune` or `--mirror`
-# (`PL-M2NV`), and `remote remove` or `remote rm`, which deletes every
-# remote-tracking ref of its remote (`PL-R295`) - through every command shape
+# (`PL-VM7C`), a push with `--prune` or `--mirror` (`PL-M2NV`), `remote remove`
+# or `remote rm`, which deletes every remote-tracking ref of its remote
+# (`PL-R295`), and a `branch` delete of remote-tracking refs that does not spell
+# out the one ref it deletes (`PL-G8TR`) - through every command shape
 # `shell_split.py` reads. Outside it is what "Matched on the words" below puts
 # out of reach, and a read that prunes nothing but is refused, where probing
 # rather than a session found it. Each is a known gap, not a defect: a row of
@@ -160,13 +161,35 @@ if not isinstance(command, str):
 # deletes only the symbolic `<name>/HEAD`, which holds no commit, so neither
 # is refused.
 #
+# **A delete by name is a prune when the names are generated** (`PL-G8TR`).
+# `git branch -dr origin/<branch>` is the remedy two refusals below print, and
+# it names the one ref it deletes. On 2026-09-06 a session piped `git
+# for-each-ref` through a filter into `xargs -r -I{} git branch -dr origin/{}`,
+# which deletes the set `--prune` deletes, each ref by name: what made the
+# remedy safe was one ref, chosen, not the absence of a flag. So a `branch`
+# call deleting remote-tracking refs - `-d`, `-D` or `--delete` beside `-r` or
+# `--remotes`, read past the options `git branch -h` gives a value - passes only
+# where the whole command deletes exactly one ref and spells it out. `xargs`
+# hands its command names from its input, which only the wrapper shows. A `$`,
+# a backtick, a brace or a glob is a name bash builds after this hook has read
+# the words, and `"origin/$b"` in a loop reads exactly as a lone
+# `"origin/$BRANCH"` does, so a variable counts too. Names are counted across
+# the whole command, since the next thing a refused session tries is the same
+# deletes split by `;`. None at all is refused with the rest: git deletes
+# nothing then, and only `xargs` supplies the names. Run on git 2.43.0 in a
+# scratch clone, two names deleted both, `-rd`, `--remotes --delete` and `-r
+# -D` each deleted, `-d -r --merged` and a bare `-dr` deleted nothing, and the
+# 2026-09-06 pipeline deleted the only copy of a branch the remote had dropped.
+#
 # Matched on the words because that is what the hook is handed. Out of reach:
 # an alias; a setting passed in `GIT_CONFIG_PARAMETERS` or `GIT_CONFIG_COUNT`;
 # an abbreviated long option, though `git pull --pru` prunes and `git push
 # --mir` mirrors; the mirror setting `git remote add --mirror` and `git clone
 # --mirror` write, which only a push to that new remote or from that new clone
-# reads; a shell that builds the flag from a variable; and a command handed to
-# another shell as a string (`bash -c "..."`). None is how any session has
+# reads; a shell that builds the flag from a variable; a command handed to
+# another shell as a string (`bash -c "..."`); and a generated list deleted by
+# a command other than `branch` - `update-ref --stdin` reading `delete` lines,
+# or a push `--delete` handed a substitution. None is how any session has
 # written it, so each is a known gap, pinned by a row of `KNOWN_GAPS`.
 TAKES_A_WORD = frozenset(
     ("-C", "-c", "--config-env", "--git-dir", "--work-tree", "--namespace", "--attr-source")
@@ -191,6 +214,12 @@ GLOB = re.compile(r"[*?\[]")
 # and the names under a section that the two setting patterns guard (`PL-VM7C`).
 SECTION_ACTIONS = frozenset(("--remove-section", "--rename-section"))
 GUARDED_NAMES = ("prune", "prunetags", "mirror")
+# The long options of a `branch` that take the next word as their value where
+# no `=` joins one, from `git branch -h`; `-u` is the one such letter (`PL-G8TR`).
+BRANCH_VALUED = frozenset(
+    ("--set-upstream-to", "--contains", "--no-contains", "--merged", "--no-merged")
+    + ("--sort", "--points-at", "--format")
+)
 
 
 def flag(long_forms, prune, value):
@@ -221,15 +250,22 @@ PUSH_SHAPES = (("push", flag(("--mirror", "--prune"), "", "")),)
 REMOVE_SHAPES = (("remote", "remove"), ("remote", "rm"))
 
 
-def sets(pattern, words):
-    """Whether the options git reads ahead of the command name pass a setting `pattern` names."""
-    at = 1
+def own_options(words):
+    """The options git reads ahead of the command name, each with its value, and where that name stands."""
+    options, at = [], 1
     while at < len(words) and words[at].startswith("-"):
         option, equals, value = words[at].partition("=")
         at += 1
         if option in TAKES_A_WORD and not equals:
             value = words[at] if at < len(words) else ""
             at += 1
+        options.append((option, value))
+    return options, at
+
+
+def sets(pattern, words):
+    """Whether the options git reads ahead of the command name pass a setting `pattern` names."""
+    for option, value in own_options(words)[0]:
         name, equals, setting = value.partition("=")
         if not pattern.fullmatch(name):
             continue
@@ -315,11 +351,15 @@ def writes(pattern, words):
     return any(EXPANDS.search(word) for word in words) or not reads(after)
 
 
+def is_git(words):
+    """Whether `words` run git. A path to git is git: `/usr/bin/git fetch --prune` prunes (`PL-TRMN`)."""
+    return words[0].rsplit("/", 1)[-1] == "git"
+
+
 def runs(shapes, pattern, calls):
     """Whether a git call in `calls` passes or writes a setting `pattern` names, where there is one, or takes one of `shapes`."""
-    # A path to git is git: `/usr/bin/git fetch --prune` prunes (`PL-TRMN`).
     return any(
-        words[0].rsplit("/", 1)[-1] == "git"
+        is_git(words)
         and (
             (pattern is not None and (sets(pattern, words) or writes(pattern, words)))
             or any(in_order(words[1:], shape) for shape in shapes)
@@ -328,11 +368,66 @@ def runs(shapes, pattern, calls):
     )
 
 
+def remote_deletes(words):
+    """The names a `git branch` call deletes from the remote-tracking refs, or None where it deletes none (`PL-G8TR`).
+
+    Its options are read as `git branch -h` gives them, bundled or not, and
+    every word after `--` is a name.
+    """
+    _, at = own_options(words)
+    if words[at : at + 1] != ["branch"]:
+        return None
+    delete = remote = False
+    names = []
+    rest = iter(words[at + 1 :])
+    for word in rest:
+        if word == "--":
+            names.extend(rest)
+        elif word.startswith("--"):
+            option, equals, _ = word.partition("=")
+            delete = delete or option == "--delete"
+            remote = remote or option == "--remotes"
+            if option in BRANCH_VALUED and not equals:
+                next(rest, None)
+        elif word.startswith("-") and word != "-":
+            for position, letter in enumerate(word[1:], 2):
+                delete = delete or letter in "dD"
+                remote = remote or letter == "r"
+                if letter == "u":
+                    # Its value is the rest of the word, or the next word if none is left.
+                    if position == len(word):
+                        next(rest, None)
+                    break
+        else:
+            names.append(word)
+    return names if delete and remote else None
+
+
+def generated(calls):
+    """Whether the `branch` deletes of remote-tracking refs in `calls` do other than spell out one ref (`PL-G8TR`).
+
+    One `xargs` runs, or a name holding a character bash expands, is refused
+    outright; otherwise the names are counted across every call, so one ref
+    passes and none or several do not.
+    """
+    named, found = set(), False
+    for words in calls:
+        names = remote_deletes(words) if is_git(words) else None
+        if names is None:
+            continue
+        if "xargs" in words.wrappers or any(EXPANDS.search(n) or GLOB.search(n) for n in names):
+            return True
+        found = True
+        named.update(names)
+    return found and len(named) != 1
+
+
 calls = shell_split.commands(command)
 pushes = runs(PUSH_SHAPES, MIRROR_SETTING, calls)
 prunes = runs(SHAPES, PRUNE_SETTING, calls)
 removes = runs(REMOVE_SHAPES, None, calls)
-if not (pushes or prunes or removes):
+deletes = generated(calls)
+if not (pushes or prunes or removes or deletes):
     sys.exit(0)
 
 push_reason = (
@@ -365,6 +460,15 @@ prune_reason = (
     "    git checkout -B <branch> origin/main\n\n"
     "To fetch without pruning, drop the flag or the setting: `git fetch origin`."
 )
+delete_reason = (
+    "A `git branch -dr` handed a generated list is a prune by another "
+    "spelling: it deletes what `--prune` would, with no stop to ask whether "
+    "any of those refs is the only copy of something (`PL-G8TR`). It passes "
+    "only where one Bash call deletes exactly one ref, spelled out - not "
+    "handed its names by `xargs`, not built by the shell from a variable, a "
+    "substitution, a brace or a glob, and not one of several. Delete each ref "
+    "in a call of its own.\n\n"
+)
 remove_reason = (
     "Removing a remote is refused in this repository. `git remote remove` and "
     "`git remote rm` delete every remote-tracking ref of the remote they name, "
@@ -381,7 +485,7 @@ reason = "\n\n".join(
     text
     for refused, text in (
         (pushes, push_reason),
-        (prunes, prune_reason),
+        (prunes or deletes, (delete_reason if deletes else "") + prune_reason),
         (removes, remove_reason),
     )
     if refused
