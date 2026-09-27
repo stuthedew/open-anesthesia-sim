@@ -3,11 +3,12 @@ id: PL-T8PT
 title: make check runs pr_title_check --discover against committed history, so a session that runs it before committing the closure sees a HEAD without it, passes locally, and goes red in CI anyway
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: dev-tooling
-touches: tools/pr_title_check.py, tests/unit/test_pr_title_check.py, Makefile
+touches: tools/pr_title_check.py, tools/pr_record_check.py, tests/unit/test_pr_title_check.py, tests/unit/test_pr_record_check.py, Makefile, .claude/skills/docket/modes/close-out.md
 added: 2026-09-12
+verify: grep -q 'def test_a_closure_written_but_not_committed_is_refused_before_the_commit' tests/unit/test_pr_title_check.py
 ---
 
 **Problem.** make check runs pr_title_check --discover against committed history, so a session that runs it before committing the closure sees a HEAD without it, passes locally, and goes red in CI anyway
