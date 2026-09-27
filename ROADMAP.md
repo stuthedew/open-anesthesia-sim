@@ -378,7 +378,11 @@ drops. `tools/pr_body_check.py` found no squash commit that lost its body.
 `PL-RZQ0` files this release's tag step. This cut is otherwise handled as
 v0.5.14's was: anything merging after it is taken and before the
 v0.5.15 tag ships inside that tag, is described in the next release, and takes
-a pointer in v0.5.15's notes at that release's cut.
+a pointer in v0.5.15's notes at that release's cut. `PL-NC62` (`#1188`) is the
+first: it merged while this cut was in review, so the v0.5.15 tag carries its
+settings-mismatch refusal naming each setting a resumed branch differs on, a
+message in `src/anesthesia_sim/app/controller.py` with no equation, parameter
+or stored value behind it.
 
 ## The plan
 

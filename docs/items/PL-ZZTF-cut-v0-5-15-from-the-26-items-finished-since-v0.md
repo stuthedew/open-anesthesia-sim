@@ -53,3 +53,9 @@ giving `PL-SQJ1`'s measured floor as 99.0% where its table has the 20x rung
 at 98.9%; the notes give the table's figure, and `PL-B0JG` is filed to correct
 the two passages. `PL-RZQ0` files the tag step, which only the owner can push
 from this environment.
+
+**`main` moved during review.** `PL-NC62` (`#1188`) merged at 17:50 UTC, after
+the cut was taken, and `update-armed.yml` merged it into this branch. It ships
+inside the v0.5.15 tag and is described in the next release, per the rule the
+baseline section states; the baseline names it, since its change is a message a
+learner could meet.
