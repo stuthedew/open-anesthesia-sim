@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md, tests/unit/test_contrast_check.py, .claude/rules/ui-color.md
 added: 2026-09-08
 closed: 2026-09-27
+pr: 1180
 verify: grep -qE '^EXEMPT[ :=]' tools/contrast_check.py && ! grep -qF 'furniture the traces need not contrast' src/anesthesia_sim/app/theme.py
 ---
 
