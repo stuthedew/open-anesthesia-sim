@@ -112,7 +112,8 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.12 | Completed | **The release where the nine generator heads the Projects trial's "Fix generators" project set out to retire stopped generating, and the three Bash guards started reading a command the way bash runs it.** 131 items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `37b0a4c` at v0.5.11 and here, and `tests/reference/` (`a184830`) and `README.md` (`9938368`) with it; `docs/MODEL.md` moves only in its cross-references, 101 section marks among them, and `.github/` only by the two checks `pr-title.yml` gained, for a closure's `pr:` number (`PL-HMZZ`) and a recorded body (`PL-979D`). **Each of the nine heads is one fact its members misread, now read one way**: `PL-B8HZ` which copy of an item `verify --self` reads, `PL-HMZZ` which pull request carried an item, `PL-QHCW` which commit a release was cut on, `PL-MB2W` who holds an item, `PL-Q4DF` where a generator-tier rank stands, `PL-XBV4` how fresh a command's refs are, `PL-PVW2` which spelling of a repeated predicate is the answer, `PL-GPJ7` what a hard gate recognises, and `PL-979D` the record of a pull request's body; `bin/docket generators` now lists `PL-MT3R`, recorded on 2026-09-26, alone as still generating. **Thirteen items put the three Bash guards on one shared splitter** that reads groups, reserved words, wrappers, redirections, or-fallbacks and git's own option spellings as bash and git do. `PL-CBDX`, the one `safety` item, read the 13 merges the review hold let through unread and filed one finding, `PL-8YBS`, with no displayed value affected. **24 are Gate 2 entries**, which with three dropped leaves it at 75 of 187 cleared; 89 are v0.6.0 deferrals, and `PL-DRRG`, the v0.5.11 cut, ships in no release under `PL-KRS6`. | 131 items |
 | v0.5.13 | Completed | **The release where no generator head is left generating, and what the remote holds started being read from one listing of it rather than from the clone's own copies.** Eighteen items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `37b0a4c` at v0.5.12 and here, and `tests/reference/` (`a184830`), `docs/MODEL.md` (`9c23c5a`) and `README.md` (`9938368`) with it; `.github/` gains two workflows, a daily sweep of finished `claude/*` branches (`PL-X8SV`) and one that brings `main` into each armed pull request it has moved past (`PL-S5MF`), and `pr-title.yml` stops holding a merge on a recorded body (`PL-3PH2`). **`PL-MT3R` retires the last live head** (project owner, 2026-09-26, ratified, over `git fetch --prune` and per-reader fixes): a command that reads the remote takes one `git ls-remote --heads origin` listing and hands it to every reader beneath it, and `PL-C3MN`, `PL-21KN` and `PL-20DL` move `claim`'s withdrawal check, `bin/docket arm` and the published-copy test in `claim` and `yield` onto it, completing `remote-copy`; `bin/docket generators` now marks no head as still generating. **`PL-61FT` bounds what the three Bash guards promise** (project owner, 2026-09-26, ratified, over filing every probed spelling and over failing closed), so a spelling outside the promise is a `KNOWN_GAPS` test row rather than an item; `PL-M2NV` and `PL-R5N0` close two gaps inside it, and `PL-YFT4` stops the prune guard refusing a `git config` that only reads a setting. `PL-3PH2` makes the squash commit the record of a pull request's body again (project owner, 2026-09-26, ratified, over keeping `PL-979D`'s per-pull-request record). `PL-PB8V` (`#1113`) and `PL-MT3R` (`#1116`) merged inside v0.5.12's tag, whose notes now point here. **None is a Gate 2 entry**, which stands at 75 of 187 cleared at this cut as at the last; eleven are v0.6.0 deferrals, and `PL-5ZLQ`, the v0.5.12 cut, ships in no release under `PL-KRS6`. | 18 items |
 | v0.5.14 | Completed | **The release where `docs/MODEL.md` started naming intertissue diffusion as a route this model leaves out, and saying which way leaving it out biases the fat and lean-tissue traces, and where break-out came off the timeline.** Seventeen items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and the next three minor numbers, v0.6.0 through v0.8.0, are given to milestone sections. **Nothing in the simulator's code or reference cases moved**: `src/` resolves to `37b0a4c` at v0.5.13 and here, and `tests/reference/` (`a184830`), `README.md` (`9938368`) and `.github/` (`11d3072`) with it. **`docs/MODEL.md` moves by a statement about the model rather than a change to it** (`9c23c5a` to `83153ba`): `PL-WMCJ` names the route in § "Assumptions" and records in § "Known limitations" that the Yasuda washout fits this model is validated against found a faster fat-like store it does not have, so fat holds too little agent, the fat trace shows the slow fat alone, and the late washout tail loses its largest measured term inside the supported run length; `PL-FBY3` reads Eger and Saidman 2005 at full text, adds the bias in the lean tissues that feed that store, and separates the route, measured once outside Eger's group, from its size, which rests on that group's fits alone. **It completes `bash-guard-bound`**: `PL-R295` and `PL-VM7C` close two routes past the prune guard to deleted refs, `PL-0FGH` and `PL-1DW7` two false refusals the gate guard gave in ordinary work, and `PL-ZS13` the remedies it printed. `PL-8BR0` has `branch` and `arm` read whether a pull request merged from GitHub's own record, `PL-RLTK` stops `landed_whole` reading a restored file as landed, `PL-RW3T` makes gate parity compare a script's mode as well as its path, and `PL-2TDX` and `PL-C0C0` make the unmerged-cut advisory's absorb route work once a cut's notes exist and keep the advisory speaking after a base merge. `PL-V1Y7` takes break-out off the timeline on the owner's word - the schematic is now v0.7.0 and multi-substance v0.8.0 - dropping `PL-Y04W`; `PL-C7XV` completes `interface-pass-narrative`, and `PL-NDKC` records the PySide6 temporary-`QByteArray` trap where the Qt build will meet it. **Two are Gate 2 entries**, `PL-WMCJ` and `PL-NDKC`, which with `PL-Y04W` dropped leaves it at 78 of 187 cleared; ten are v0.6.0 deferrals, and `PL-9MK6`, the v0.5.13 cut, ships in no release under `PL-KRS6`. | 17 items |
-| v0.5.15 | Completed / current baseline | **The release where `docs/MODEL.md` measured the first 24 hours of washout against the published human mean curves, and the window started opening maximized.** Twenty-six items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed - the one change a learner sees is the window opening maximized - and the next three minor numbers, v0.6.0 through v0.8.0, are given to milestone sections. **No equation, parameter or stored value moved**: `core/` changes by one comment (`d9e3ca9` to `9a95dfd`) and `data/` by one source note (`ab3499f` to `b8477a1`). **It completes `late-washout-evidence`**: `PL-KK1Q` adds `tests/reference/test_late_washout_against_published_fits.py` and a `docs/MODEL.md` subsection recording how far, and in which direction, the shipped tail departs from Yasuda 1991's fitted mean curves over the first 24 hours - below them by up to a third from about hour 7 to hour 21, and by up to a half from hour 3.4 to hour 15.3 for desflurane - asserting no agreement and leaving the supported 24 hours where they are; `PL-YD2V` says the tail inside those hours already lacks the fourth compartment, its largest measured term; and `PL-HBH2` weighs the Yasuda fits' fat group beside Heinonen's PET depot measurement, which disagree about the direction of the stored fat flow's error. `PL-Z4K6` opens the window maximized, so a 1366 px laptop gets seven readout columns on the font measured; `PL-SQJ1` measured the Qt playback loop at 98.9 to 99.9% of every rung's nominal rate and leaves the label as it is; `PL-HKTB` records the gridline grey as exempt from WCAG 2.2 SC 1.4.11; and `PL-7TBQ` has a branch nobody has touched read as holding nothing to discard. It also completes `pre-fork-content` and `gate-staleness-sweep`, carries nine `dev-tooling` items, and `PL-LPH9` has § "The cadence" say that gate work ships in patch releases as it clears, which this cut is. **Sixteen are Gate 2 entries**, three of them joining it since v0.5.14, and with three dropped the gate stands at 97 of 190 cleared; five are v0.6.0 deferrals, and `PL-47SP`, the v0.5.14 cut, ships in no release under `PL-KRS6`. | 26 items |
+| v0.5.15 | Completed | **The release where `docs/MODEL.md` measured the first 24 hours of washout against the published human mean curves, and the window started opening maximized.** Twenty-six items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed - the one change a learner sees is the window opening maximized - and the next three minor numbers, v0.6.0 through v0.8.0, are given to milestone sections. **No equation, parameter or stored value moved**: `core/` changes by one comment (`d9e3ca9` to `9a95dfd`) and `data/` by one source note (`ab3499f` to `b8477a1`). **It completes `late-washout-evidence`**: `PL-KK1Q` adds `tests/reference/test_late_washout_against_published_fits.py` and a `docs/MODEL.md` subsection recording how far, and in which direction, the shipped tail departs from Yasuda 1991's fitted mean curves over the first 24 hours - below them by up to a third from about hour 7 to hour 21, and by up to a half from hour 3.4 to hour 15.3 for desflurane - asserting no agreement and leaving the supported 24 hours where they are; `PL-YD2V` says the tail inside those hours already lacks the fourth compartment, its largest measured term; and `PL-HBH2` weighs the Yasuda fits' fat group beside Heinonen's PET depot measurement, which disagree about the direction of the stored fat flow's error. `PL-Z4K6` opens the window maximized, so a 1366 px laptop gets seven readout columns on the font measured; `PL-SQJ1` measured the Qt playback loop at 98.9 to 99.9% of every rung's nominal rate and leaves the label as it is; `PL-HKTB` records the gridline grey as exempt from WCAG 2.2 SC 1.4.11; and `PL-7TBQ` has a branch nobody has touched read as holding nothing to discard. It also completes `pre-fork-content` and `gate-staleness-sweep`, carries nine `dev-tooling` items, and `PL-LPH9` has § "The cadence" say that gate work ships in patch releases as it clears, which this cut is. **Sixteen are Gate 2 entries**, three of them joining it since v0.5.14, and with three dropped the gate stands at 97 of 190 cleared; five are v0.6.0 deferrals, and `PL-47SP`, the v0.5.14 cut, ships in no release under `PL-KRS6`. | 26 items |
+| v0.5.16 | Completed / current baseline | **The release where a refused branch started naming each value it differs on, and a run's record started holding each flow as it was set.** Five items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed - nothing a learner can reach looks different, the one new message being a refusal a branch meets only when a data file changed after its trunk was built - and the next three minor numbers, v0.6.0 through v0.8.0, are given to milestone sections. **No equation, parameter or stored value moved, and the trajectories are bit-identical**: `core/` changes (`9a95dfd` to `4fd5842`) because `UptakeEquationSettings` and `TissueGroupEquationSettings` now store each flow in the litres per minute it was set to and derive the litres per second the equations read, by the same division `equation_settings()` performed before (`PL-SM5V`), and 7,290 sampled states across the three agents, nine cardiac outputs and three fresh gas flows hash identically at both ends; `data/` and `tests/reference/` resolve to the same trees. **It finishes the `scenario-branching` chain's five Gate 2 entries**: `PL-NC62` has a refused branch list every value the rebuild holds that its trunk did not, both values each and no cause, and check the agent's name, vaporizer maximum, MAC and MAC-awake beside the settings; `PL-SM5V` makes a recorded segment rebuild the settings it ran under at every 0.1 L/min setting of all three flow controls, where 7 of the 101 cardiac outputs had not; and `PL-7TXJ` closes on its measurement, the per-change rebuild copying one reference per segment and never a keyframe, 0.53 ms at 100,000 segments beside the 1 ms matrix exponential every change pays. `PL-12P8` holds a support module under `tests/` to the half of the lane rule its imports decide, which takes `tests/conftest.py` out of `workflow_paths`. **Four are Gate 2 entries**, and the gate stands at 101 of 190 cleared, from 97 at v0.5.15; `PL-NC62` shipped inside the v0.5.15 tag, and `PL-ZZTF`, the v0.5.15 cut, ships in no release under `PL-KRS6`. | 5 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -214,175 +215,119 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.15
+## Current baseline: v0.5.16
 
-v0.5.15 is the release where `docs/MODEL.md` measured the first 24 hours of
-washout against the published human mean curves, and said which of its
-omissions the gap belongs to; and where the window started opening maximized.
-Twenty-six items, and a patch on both halves of § "Versioning decision"'s test:
-no capability boundary is crossed, because the one change a learner sees is the
-window's opening state and the rest is a measurement recorded beside the model
-rather than a change to it, and the next three minor numbers, v0.6.0 through
-v0.8.0, are given to milestone sections. It is the first cut taken under
-§ "The cadence" as `PL-LPH9` restated it the same day: gate work ships in patch
-releases as it clears, and a feature finishing is the occasion. Sixteen of the
-twenty-six are entries in Gate 2, the debt gate frozen under v0.6.0 - three of
-them, `PL-KK1Q`, `PL-YD2V` and `PL-HBH2`, joining it since v0.5.14 when the
-triage pass classed them `science` - and three more entries were dropped
-(`PL-LLBV`, `PL-JW9J`, `PL-MSFB`), so it stands at 97 of its 190 entries
-cleared, from 78 of 187 at v0.5.14. Five
-are v0.6.0 deferrals. Three features complete: `late-washout-evidence`,
-`pre-fork-content` and `gate-staleness-sweep`.
+v0.5.16 is the release where a branch refused for disagreeing with its trunk
+started naming each value it disagrees on, and where a run's record started
+holding each flow in the litres per minute it was set to, so a recorded stretch
+rebuilds the settings it ran under. Five items, and a patch on both halves of
+§ "Versioning decision"'s test: no capability boundary is crossed, because
+nothing a learner can reach looks different - the one new message is a refusal
+a branch meets only when a data file changed between its trunk's build and its
+own - and the next three minor numbers, v0.6.0 through v0.8.0, are given to
+milestone sections. It is the second cut taken under § "The cadence" as
+`PL-LPH9` restated it: gate work ships in patch releases as it clears, and the
+occasion is the `scenario-branching` chain finishing, its five Gate 2 entries
+all on `main` - `PL-LLBV` dropped and `PL-7TBQ` fixed in v0.5.15, and
+`PL-NC62`, `PL-SM5V` and `PL-7TXJ` here. Four of the five items are Gate 2
+entries, `PL-12P8` the fourth, so the gate stands at 101 of its 190 entries
+cleared, from 97 at v0.5.15. It completes no feature: `scenario-branching`,
+`parallel-sessions` and `release-process` each keep open items.
 
 **No equation, parameter, stored value or numerical method moved, and this cut
-says so by tree identity:**
+says so by tree identity and by a re-run:**
 
-| Tree | v0.5.14 | This cut | What moved |
+| Tree | v0.5.15 | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `37b0a4c` | `1e83b92` | `core/` (`d9e3ca9` to `9a95dfd`) by one comment in `supported_ranges.py`, restating why metabolism may be omitted over a case beside the fourth compartment the tail lacks (`PL-YD2V`); `data/` (`ab3499f` to `b8477a1`) by one source note in `src/anesthesia_sim/data/patients/reference_adult.json`, the Heinonen entry naming the Yasuda washout comparison beside its own, with every stored value byte-identical (`PL-HBH2`); `app/` (`f3c6e26` to `0b636de`) by the maximized opening (`PL-Z4K6`), `has_recorded_run` counting from a run's own beginning (`PL-7TBQ`), and prose in `playback.py` and `theme.py` (`PL-SQJ1`, `PL-P55F`, `PL-HKTB`) |
-| `tests/reference/` | `a184830` | `a785f80` | `test_late_washout_against_published_fits.py` is new (`PL-KK1Q`), and the existing module's setup moved into one helper the new module shares, with no assertion, expected value or tolerance changed |
-| `docs/MODEL.md` | `83153ba` | `e278a19` | +440 -56: the late-washout subsection, the supported-run-length, caveat-4 and known-limitations passages brought into line with it, the fat-perfusion note weighed two-sided, and the rate label's and gridline's records (`PL-KK1Q`, `PL-YD2V`, `PL-HBH2`, `PL-SQJ1`, `PL-HKTB`, `PL-Z4K6`) |
-| `README.md` | `9938368` | `3a8f16e` | one sentence naming the new reference module and that it asserts no agreement (`PL-KK1Q`) |
+| `src/` | `cd38458` | `41a1a28` | `core/` (`9a95dfd` to `4fd5842`): `UptakeEquationSettings` and `TissueGroupEquationSettings` in `src/anesthesia_sim/core/governing_equations.py` store each flow in the litres per minute it was set to, with the litres per second as properties that `build_system_matrix` reads, `src/anesthesia_sim/core/uptake_system.py` passes the compartments' own values through, and `src/anesthesia_sim/core/run_definition.py` says so (`PL-SM5V`); `data/` (`b8477a1`) nothing; `app/` (`c9e6c7d` to `dd268ce`) by one docstring in `src/anesthesia_sim/app/controller.py` (`PL-SM5V`) |
+| `tests/reference/` | `a785f80` | `a785f80` | nothing |
+| `docs/MODEL.md` | `e278a19` | `af9349a` | +14 -1: `docs/MODEL.md` § "Time" says the litres per minute is the record and the per second is derived from it, and why the conversion does not run backwards, and the run-record passage says the flows are held as set (`PL-SM5V`) |
+| `README.md` | `3a8f16e` | `3a8f16e` | nothing |
 | `.github/` | `11d3072` | `11d3072` | nothing |
 
-Everything else this release moves is the queue tool, the repository's own
-checks and hooks, and the documents that describe them: six modules of
-`subprojects/docket/` (`checks.py`, `claims.py`, `cli.py`, `plan.py`,
-`render.py` and `vcs.py`) with their tests, its README and its ruff settings;
-`tools/context_reading.py`, `tools/contrast_check.py`, `tools/doc_check.py`,
-`tools/pr_record_check.py` and `tools/pr_title_check.py`, with their tests
-under `tests/unit/`; the root `conftest.py`, the `Makefile`, `pyproject.toml`
-and `docket.toml`; the session-start digest hook; `CLAUDE.md`, three of the
-docket skill's modes and `.claude/rules/ui-color.md`; `docs/ARCHITECTURE.md`,
-`docs/interface-provenance.md`, `docs/maintainer.md`,
-`docs/references/README.md` and `docs/resident-instructions.md`; and this
-file. The interface's own tests move with the items that changed it:
-`tests/integration/test_controller.py`, `tests/integration/test_qt_widgets.py`
-and `tests/unit/test_dashboard_frame.py`.
+The per-second values are the same division by 60.0 that
+`equation_settings()` performed before, now taken where the equations read
+them, so every matrix is assembled from the same floats. The cut re-ran that
+claim rather than reading it off the code: 30 minutes of wash-in, the
+vaporizer closed, then cardiac output, fresh gas flow and alveolar ventilation
+changed mid-washout, for each of the three agents at nine cardiac outputs -
+the seven that did not round-trip among them - and three fresh gas flows, with
+the circuit, alveolar, patient and tissue amounts sampled every minute. All
+7,290 samples hash identically on the v0.5.15 tag and on this cut. The v0.5.15
+column is the tag, which already carries `PL-NC62`: the v0.5.15 cut measured
+`src/` at `1e83b92`, and `PL-NC62` moved it to `cd38458` by `app/` alone
+(`0b636de` to `c9e6c7d`), with no equation, parameter or stored value behind
+the change.
 
-### What the model's specification now measures of the late washout
+Everything else this release moves is the lane check and the documents around
+it: `tools/workflow_paths_check.py` with
+`tests/unit/test_workflow_paths_check.py`, `docket.toml` and one tree entry in
+`docs/ARCHITECTURE.md` (`PL-12P8`); the unit tests `PL-SM5V` and `PL-7TXJ`
+add to or bring in line, `tests/unit/test_governing_equations.py`,
+`tests/unit/test_resume_at.py` and `tests/unit/test_run_definition.py`; and
+the item files, the release notes,
+`pyproject.toml`, `uv.lock` and this file.
 
-v0.5.14 named the route this model leaves out - agent passing from a lean
-tissue into fat beside it - and said only which way leaving it out pushes the
-washout tail. **`PL-KK1Q` (`#1175`)** measures how far. A second reference
-module runs the five-minute gate's own protocol - the shipped 30-minute
-wash-in at the reference operating point, then the vaporizer closed - for the
-24 hours a run is supported for, and compares F_A/F_A0 with the published mean
-five-exponential curves of both Yasuda 1991 washout papers, at the papers' own
-sampling minutes, for all four cohorts. The shipped tail sits above the fitted
-curve at five minutes, falls below it from 6 to 13 minutes until 0.8 to 2.0
-hours, runs above it until 3.4 hours for desflurane and 6.9 to 8.4 hours
-for the others, then runs **below it by up to a third, near hour 13, until
-20.7 to 21.8 hours** - by up to a half, near hour 8, until 15.3 hours for
-desflurane - and finishes above it at 24 hours. That middle stretch is where
-the fourth compartment the fits needed is the largest term in every published
-curve, and this model has no such term. Every assertion in the module is a
-regression band around what was measured on 2026-09-27 or a property of the
-published coefficients; none asserts agreement with a human washout, and
-caveat 4's refusal of the multi-day curves stands. The record says the result
-does not move the supported 24 hours (project owner, 2026-09-27, ratified).
+### What a learner sees, and what changed underneath it
 
-**`PL-YD2V` (`#1167`)** brings § "Supported run length", caveat 4 and
-§ "Known limitations" into line with it: inside the supported hours the tail
-already lacks its largest measured term, from about 1.8 to 3.1 hours after a
-30-minute administration until about 20.7 to 29.4 hours. **`PL-HBH2`
-(`#1164`)** weighs the stored fat flow against both human comparisons the
-project holds, where the note had cited one: Heinonen's PET measurement of one
-resting subcutaneous depot puts it at about twice the truth, while both Yasuda
-papers estimate the fitted fat group's flow at 2.1 to 2.4 mL per 100 mL of
-tissue per minute, putting the stored 2.07 at or a little below them. The note now says the two
-disagree about the direction of the error, why neither settles it, and that
-fat loading is uncertain by up to about a factor of two with the direction
-unsettled. None of the three changes an equation, a parameter or a displayed
-value.
-
-### What a learner sees, and what was measured and left
-
-- **`PL-Z4K6` (`#1182`)**: the window opens maximized over the centred
-  eight-tenths geometry it restores to, so a 1366 px laptop, where that
-  geometry left the readout row 21 logical pixels short of seven columns on
-  the font measured, opens on seven.
-  Maximized keeps the title bar and window controls, so `PL-005`'s refusal of
-  a full-screen start is untouched.
-- **`PL-SQJ1` (`#1185`)**: the 73 to 91% playback shortfall the item was filed
-  on was Flet's single event loop. Measured on the Qt loop that shipped, every
-  rung from 1x to 300x delivered 98.9 to 99.9% of its nominal rate, so the
-  label is left as it is and `playback.py` records why (project owner,
-  2026-09-27, ratified). `docs/MODEL.md` and `playback.py` give the floor as
-  99.0%, a tenth of a point above the 20x rung's 98.9%, and `PL-B0JG` is
-  filed to correct both. A host that holds the loop past a tick still loses
-  it, and `PL-2NYN` is filed for the guard that would detect and disclose it.
-  **`PL-P55F`** rides the same pull request, re-pointing `playback.py`'s
-  citation from `SimulationView._run_simulation_timer`, which the PySide6 port
-  deleted, to `RunView.step_tick`.
-- **`PL-HKTB` (`#1180`)**: the gridline grey, 1.31:1 on the panel, is recorded
-  as exempt from WCAG 2.2 SC 1.4.11 in all four things it draws, in an
-  `EXEMPT` table `make check` reports, because every ruling stands at a
-  labelled tick and the readouts and hover state the values it rules (project
-  owner, 2026-09-27, ratified, over darkening it to 3:1). Nothing on screen
-  changes.
-- **`PL-7TBQ` (`#1187`)**: `has_recorded_run` counts a run's progress from its
-  own beginning, its fork on a branch, where it had counted from zero, so a
-  fresh, bookmark-forked or reset branch holds nothing to discard. Nothing on
-  screen changes today: the flag's one reader, the agent-change confirmation,
-  is not reachable from a branch.
+- **`PL-NC62` (`#1188`)**: a branch whose rebuilt settings differ from its
+  trunk's is refused, as before, but the refusal now lists every value that
+  differs - each equation setting, and each tissue group's fields under the
+  group's name - as its value in this run and its value on the branch, and
+  names no cause, where it had blamed the recorded control timeline whatever
+  differed. The agent's display name, vaporizer maximum, MAC and MAC-awake are
+  checked beside the settings, since the MAC divides every MAC multiple on
+  screen, and the message points at `docs/ARCHITECTURE.md` § "What a branch
+  is, and what it shares with its parent". A learner reaches it today only
+  when a data file changed between the trunk's build and the branch's.
+- **`PL-SM5V` (`#1191`)**: a run holds each flow in the litres per minute it
+  was set to. Multiplying the per-second value back by 60 had returned
+  something other than the setting for 7 of the 101 cardiac outputs on a
+  0.1 L/min grid across the supported range (1.9, 3.8, 3.9 and 7.6 to
+  7.9 L/min), so settings rebuilt from a recorded segment described a run
+  nobody set up; now they rebuild exactly, at every 0.1 L/min setting of all
+  three flow controls. Nothing on screen changes, and `PL-NJPB` is filed for
+  the same round trip in the vaporizer setting.
+- **`PL-7TXJ` (`#1194`)** closes on its measurement, with no replacement built
+  (project owner, 2026-09-27, ratified): recording a change rebuilds the
+  segment tuple, but the tuple holds references, so each change copies one
+  pointer per segment already recorded and never a keyframe - 0.53 ms at
+  100,000 segments, some three hours of unbroken dragging, beside the 1 ms
+  matrix exponential every change pays. Two tests pin it, and the item says
+  what would reopen it: a path that records on the order of 100,000 changes in
+  one pass, which save, load and replay could bring.
 
 ### How the project runs
 
-- **`PL-LPH9` (`#1189`)**: § "The cadence" and § "Versioning decision" say a
-  gate takes no version of its own and that its work ships in patch releases
-  as it clears, on the project owner's answer of 2026-09-27; the Gate 2 to 4
-  timeline rows say the same. `PL-QVSN` is filed for a comment in `plan.py`
-  that still argues from the old rule.
-- **`pre-fork-content` completes** with **`PL-927J`, `PL-P64J` and `PL-WVSX`
-  (`#1160`)**: `landed_whole`, the claim record and `stranded` answer whether
-  the base took a branch's change from one test, where each had read the
-  base's ever-held blob set, so a branch that restores a file to older content
-  no longer reads as merged, spent or behind.
-- **Nine `dev-tooling` items.** `PL-JW39` (`#1171`) has `docket next` name
-  decisions beneath its picks rather than rank one first; `PL-T8PT` (`#1179`)
-  has `make check`'s pull-request title and record checks read the working
-  tree, so a closure not yet committed is checked before the push; `PL-0MLZ`
-  (`#1168`) turns bytecode writing off in the root `conftest.py`, and `PL-H9GV`
-  (`#1178`) fails a test if the `Makefile` stops exporting
-  `PYTHONDONTWRITEBYTECODE`; `PL-VZYS` (`#1181`) declares `anesthesia_sim` and
-  `docket` first-party, so a hand-typed `ruff check` agrees with a cache-free
-  one; `PL-N0MH` (`#1176`) has every command reading a store under library
-  defaults say so; `PL-3LLZ` (`#1177`) gives `test_vcs.py`'s fakes one
-  formatter; `PL-TCKV` (`#1184`) records that `UV_SYSTEM_CERTS` quiets a bare
-  `uv run`; and `PL-7RTN` (`#1170`) closes with its cause named, no check run
-  having been missing.
-- **`PL-DB64` (`#1163`)** defers `PL-WZVZ`, `PL-B396`, `PL-0S0V`, `PL-VJZK`
-  and `PL-KZ99` from Gate 2 to Gate 3, recording why none can clear before
-  v0.6.0 begins, and **`PL-18BD` (`#1165`)** makes `bin/docket wave` count
-  them apart. **`PL-06JJ` (`#1161`)** pins items on the generator tier to
-  `P1`. **`PL-384P` (`#1157`)** tells a compacted session to re-read a
-  restored file before editing it, and states when `/compact` re-reads the
-  whole history uncached.
+- **`PL-12P8` (`#1196`)**: the lane check decides a *test* file by whether it
+  imports `anesthesia_sim`, and had applied the same rule to every file under
+  `tests/`, so a support module importing nothing of the simulator was told to
+  declare itself apparatus. It now holds a support module - anything under
+  `tests/` that pytest does not collect - only to the half of the rule its
+  imports decide, and `tests/conftest.py`, which selects Qt's headless
+  platform for the product's rendering tests, leaves `workflow_paths`, so an
+  item touching it and the Qt test it serves reads as product rather than
+  crossing.
 
 ### The rest, and this release's tag span
 
-`PL-G5MQ` (`#1159`), the v0.5.14 tag step, ships here. `PL-47SP`, the v0.5.14
+`PL-RZQ0` (`#1192`), the v0.5.15 tag step, ships here. `PL-ZZTF`, the v0.5.15
 cut, ships in no release, because `PL-KRS6` keeps the item a release is cut
-under out of every later release. All twenty-six carried their `pr:` number
-before the cut, so every bullet cites its pull request. As at v0.5.14, no open
-item carries `generator: live`.
+under out of every later release. All five carried their `pr:` number before
+the cut, so every bullet cites its pull request. As at v0.5.15, no open item
+carries `generator: live`.
 
-**None of the twenty-six shipped inside v0.5.14's tag.** The tag sits on
-`863dede`, the v0.5.14 cut's own merge (`#1156`), and each closing pull request
-merged after it, so v0.5.14's notes owe no pointer. Of the ids leading a commit
-inside the span, the eleven with no bullet in these notes are open or dropped:
-seven the interface-areas design round recorded recommendations on (`#1162`),
-`PL-5B1N`, which the presentation-safety round did (`#1169`), and the three
-drops. `tools/pr_body_check.py` found no squash commit that lost its body.
-`PL-RZQ0` files this release's tag step. This cut is otherwise handled as
-v0.5.14's was: anything merging after it is taken and before the
-v0.5.15 tag ships inside that tag, is described in the next release, and takes
-a pointer in v0.5.15's notes at that release's cut. `PL-NC62` (`#1188`) is the
-first: it merged while this cut was in review, so the v0.5.15 tag carries its
-settings-mismatch refusal naming each setting a resumed branch differs on, a
-message in `src/anesthesia_sim/app/controller.py` with no equation, parameter
-or stored value behind it.
+**One of the five shipped inside v0.5.15's tag.** `PL-NC62` (`#1188`) merged
+while the v0.5.15 cut was in review, so the v0.5.15 tag carries it, and
+v0.5.15's notes now point to this release in their tag-span section. The
+other four merged after the tag, which sits on `16cb66a`, the
+v0.5.15 cut's own merge (`#1190`). Of the ids leading a commit inside this
+release's span, the two with no bullet are open: `PL-8XQS`, a capture
+(`#1193`), and `PL-9DYK`, the owner's recorded answer on the references
+repository (`#1195`). `tools/pr_body_check.py` found no squash commit that
+lost its body. `PL-4NZM` files this release's tag step. Anything merging after
+this cut and before the v0.5.16 tag ships inside that tag, is described in the
+next release, and takes a pointer in v0.5.16's notes at that release's cut.
 
 ## The plan
 
@@ -3618,6 +3563,16 @@ is `dropped` carrying that refutation. Recorded here because a `safety`-classed
 `P1` briefly existed on the strength of it, and a later reader meeting the
 dropped item is owed the reason it never reached this list.
 
+**The refutation was itself the misreading, and `PL-TBMX` is open again**
+(project owner, 2026-09-27, ratified, over building `PL-HGB6` as written). The
+profile's "the apparatus alone" contrasts the stored volume with Targ et al.'s
+system plus the bag that stood in for the lung, and that system's corrugated
+limbs and Y-piece were apparatus, so the phrase means without the lung, not
+without the patient circuit; the model's one gas compartment in front of the
+patient leaves the limbs nowhere else to be. `PL-HGB6` was re-scoped to keep the
+assembled-total meaning in `docs/machine-abstraction.md`, and `PL-TBMX` joined
+v0.6.0's frozen list as a post-freeze `safety` entry.
+
 Nothing is misleading anybody meanwhile, which is what makes the deferral safe
 rather than merely convenient: no preview is drawn today, so the safety obligation
 the item records binds whoever builds it rather than describing a live defect. Had
@@ -5460,6 +5415,18 @@ for the next freeze: a frozen list is computed from the store's *classes*, so
 an untriaged backlog is invisible to it, and a freeze taken while captures are
 waiting understates itself by however many of them turn out to be debt.
 
+**`PL-TBMX` joined this list on 2026-09-27, after the freeze, under the
+exception that admits a `safety` finding whenever it is made.** It was filed on
+2026-09-20 and dropped the same day on a misreading of the reference profile's
+phrase "the apparatus alone", which there means without the lung and not without
+the patient circuit; § "Declined to Gate 2 on the refilling-queue ground"
+carries the history. The project owner reopened it as a `P1` when `PL-HGB6` was
+re-scoped (project owner, 2026-09-27, ratified, over building `PL-HGB6` as
+written). It is `ready` rather than `blocked` behind `PL-2FZ9`, so the
+`anticipated` carve-out does not reach it: its own brief places it before a
+second profile can be loaded, because that gap is the whole of its exposure. It
+is product-lane work and is listed in that group.
+
 **Three kinds of group, and only the third is a precondition.** The first is
 debt inside this milestone's own Required scope, cleared *by* it per § "Debt
 inside the milestone's own scope" - the test is whether `Required scope` below
@@ -5626,7 +5593,7 @@ named here, for the reason beat 3 gives.
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 - PL-WZVZ (M) Make an inter-machine difference attributable: which parameter differs, and what it does to the result
 
-**Cleared before v0.6.0 begins, the product lane - 45 entries**
+**Cleared before v0.6.0 begins, the product lane - 46 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
@@ -5663,6 +5630,7 @@ named here, for the reason beat 3 gives.
 - PL-SM5V (M) A run's settings cannot be recovered from RunSegment.settings: the L/min to L/s conversion does not round-trip for 7 of 101 cardiac outputs
 - PL-SPN6 (S) Three compartments now raise the same 'partial_pressure_fraction must be between 0 and 1', so a refused step no longer says which one refused
 - PL-SQJ1 (M) Playback delivers 73-91% of the rate the dropdown displays: 300x measured at 220x, 1x at 0.9x, so the clock on screen runs slower than its label
+- PL-TBMX (S) circuit_volume_l means apparatus plus patient circuit, so a real machine profile storing a published apparatus figure would understate the circuit time constant by about 40%
 - PL-TCR5 (S) The chart hover answers the pointer's previous position and never re-answers a resting pointer while paused, because the direct sigMouseMoved slot reads the position the rate-limited proxy stored one event earlier
 - PL-TDBT (M) docs/pr-bodies holds 187 historical documents that read as current: 21 cited paths no longer exist, 30 cite an unresolvable sha, and 22 angle-bracket placeholders in 15 files vanish in GitHub's own blob view, with doc_check blind to all of it by design
 - PL-V67Q (M) Add y-axis range control to the agent graph: optional auto-scale, and a settable MAC / volume-percent scale
