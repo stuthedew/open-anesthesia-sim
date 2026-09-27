@@ -2536,6 +2536,9 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
     rules = [
         f"{'/'.join(config.safety_classes)} classes force P0 or P1; `docket check` "
         "rejects them at P2 or P3.",
+        "so does the generator tier - a `generator: live` head or a sound "
+        "`impairs-generators:` - and `docket set` raises one there itself unless the "
+        "write names a priority (`PL-06JJ`).",
         f"the top band is {top}, holding {startable} startable of the "
         f"{config.top_band_limit} a session can choose between at a glance.",
         f"process work ({', '.join(config.process_classes)}) does not enter the top "

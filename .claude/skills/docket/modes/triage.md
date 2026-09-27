@@ -56,7 +56,8 @@ Fill in what capture deliberately skipped:
 with related work. Safety-critical work starts at `P0` or `P1`; the checker
 enforces that. Process work — work on how the project is built rather than on
 the product — does not enter the top band when it would outnumber the product
-work already there.
+work already there, except an item on the generator tier, which the checker
+pins at `P0` or `P1` too and `bin/docket set` raises on its own (`PL-06JJ`).
 
 **Write the answers with `bin/docket set`, not into the file.** `bin/docket set
 <id> --priority P2 --effort S --classes defect --touches a.py --status ready
@@ -217,7 +218,10 @@ function or check already encodes that fact. Land on one of these:
   states it.** That is a generator. Record it under `CLAUDE.md` § "A root cause
   of more than two items is pulled, not queued", which also sets its two
   endings, and write its `misread:` beside the `root-cause-of:` and the
-  `generator:`. `bin/docket check` refuses a head without one. Three post-close
+  `generator:`. `bin/docket check` refuses a head without one. The band
+  follows on its own: a `set` recording `generator: live` on a head below `P1`
+  raises it to `P1`, so leave `--priority` off that write, since a band below
+  `P1` named there is refused rather than replaced. Three post-close
   instances of one head count the same way, as a generator whose fix did not
   hold.
 - **A one-off, bookkeeping, or work the owner asked for.** This is the common

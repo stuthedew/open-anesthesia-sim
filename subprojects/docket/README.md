@@ -1201,6 +1201,15 @@ typed into the front matter by hand or by a helper the session wrote and threw
 away, and 96 of the 1,189 files in the store this grew in carried a key order
 no tool had written (`PL-L4YG`).
 
+**One field is written unasked: a write leaving an item on the generator tier
+below `P1` raises it to `P1`**, and prints the line saying so, because `docket
+check` pins the band there (`PL-06JJ`, below). The raise needs no
+`--overwrite`, since the value is the rule's rather than anybody's choice - and
+so a write that names a `priority` is never raised: a band below `P1` asked for
+on a tier item is refused by the pin, in its words. Where the raised band would
+itself outrank a blocker, the write is refused with that error, naming the
+blocker to raise first; `set` writes one item.
+
 **A write that moves a status into `done` or `dropped` names the items that
 closure just took the last recorded blocker off.** The reverse of `blocked-by`
 is derived rather than stored: a `blocking:` field was considered and refused,
@@ -1258,8 +1267,10 @@ than ranked low.
 The step's scope is preferred *absolutely* rather than as a tie-breaker inside
 a band, because the priority field cannot express the phase: `docket check`
 pins `safety` and `science` items to `P1`, so the top band is product work by
-construction and a tie-breaker there would never fire in the case the rule
-exists for. `P0` sits above it: a hotfix outranks the phase.
+construction - bar the generator tier's items, pinned there too (`PL-06JJ`),
+which rank above the phase whatever their band - and a tie-breaker there would
+never fire in the case the rule exists for. `P0` sits above it: a hotfix
+outranks the phase.
 
 An item carrying a sound `root-cause-of:` **and** a `generator: live`
 verdict sits between the two, above the phase and above every band. Promotion *within* a band was the alternative and
@@ -1269,8 +1280,10 @@ itself growing moves nothing in absolute terms, so the decision is about what
 a generator competes with rather than where it sits in a list. The safety floor
 is untouched by it — a clinical defect that has to be fixed now is what `P0` is
 for, and `P0` still outranks a generator. The reason line says it was ranked as
-a generator and names the items it explains, so a `P2` leading a queue with
-`P1`s in it reads as the ranking meaning it.
+a generator and names the items it explains, so a head leading the queue ahead
+of the phase's own work reads as the ranking meaning it. Its stored band is
+pinned at `P1` all the same, for the readers of the field that do not rank -
+the `generator` field's paragraph below has the rule (`PL-06JJ`).
 
 The verdict is the second of two tests and it is the one that moves the rank. A
 cluster recorded but marked `generator: spent` ranks on its own band: it is a
@@ -2247,6 +2260,20 @@ inflow rather than about the damage the existing three already did. A `spent`
 one is recorded all the same, for the audit, and ranks on its own band — so a
 cluster judged finished is now written down rather than withheld to keep the
 ranking honest.
+
+**A `live` one's band is pinned where that rank is** (project owner,
+2026-09-27, `PL-06JJ`). `docket check` refuses an open item on the generator
+tier — a live head, or a sound `impairs-generators:` — stored below `P1`, as it
+refuses a `safety` item there, and `docket set` raises one to `P1` on the write
+that leaves it below. The pin moves nothing in the order, which the tier
+already decides; it is for every reader of the stored field that does not rank.
+The queue dashboard is one, and showed the last live head at `P2` while `next`
+offered it above every `P1`. A blocked head carries its item blockers up with
+it, by the rule that a `P1` may not wait on a `P2`, along the edge its rank
+already passes down. A spent head, a closed one and an unsound claim are not
+pinned, and a head that turns spent while open keeps its band until somebody
+lowers it. So `P1` is no longer only clinical work, which the owner accepted
+because the carve-out is this tier and nothing else.
 
 Recording does not rank. An open generator carrying no verdict ranks on its
 band and `docket check` says the field is missing — the fail-safe direction,

@@ -165,3 +165,16 @@ v0.5.0 still ships without it (`PL-S5Q9`), re-examined against the tree on
 2026-09-21 and confirmed over pulling `PL-1FT6`, `PL-R1WQ` and `PL-TH35` forward
 — which would not have unblocked it, since `src/anesthesia_sim/data/machines/`
 holds one profile whatever happens to those three.
+
+## Deferred again, 2026-09-27 (`PL-DB64`): to Gate 3, with nothing else changed
+
+The paragraph above is dated, and its first sentence no longer holds. This
+entry does not clear in Gate 2: the project owner deferred it to Gate 3 with
+four other entries (project owner, 2026-09-27, ratified, over keeping the five
+on Gate 2, where they would hold the gate open until planned-milestone item 28
+and a machine chooser are scheduled), so v0.6.0 ships without it as v0.5.0 did.
+What holds it is unchanged - `blocked-by` names the same four items, and
+`src/anesthesia_sim/data/machines/` still held one profile at `19af95d` - so
+the hazard is still not live. `ROADMAP.md` § "v0.6.0 - the layout is the
+reader's" -> "Debt gate: the frozen list" records the deferral and the reading
+of the tree it rests on.
