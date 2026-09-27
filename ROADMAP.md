@@ -5430,9 +5430,10 @@ the whole store by feature (`PL-RFHH`). `PL-CNCF` and `PL-PGZF` sat in the
 product-lane and neither-lane groups until 2026-09-23, because `#862` declared
 them in Required scope after `#850` had grouped this list. They moved into the
 first group when `tools/doc_check.py` began holding it to Required scope
-(`PL-J6HP`), and the three group counts moved with them. The second is the
-single entry deferred to Gate 3, below. The rest clears before implementation of this
-milestone begins, and is recorded in three groups rather than one because that
+(`PL-J6HP`), and the three group counts moved with them. The second is what
+this gate defers to Gate 3, in the two groups below that say so. The rest clears
+before implementation of this milestone begins, and is recorded in three groups
+rather than one because that
 is how it is meant to be worked: `docket.toml` computes a lane from each item's
 `touches`, the product and workflow lanes share no files and so run
 concurrently in two sessions, and the entries in neither lane cross both and
@@ -5481,12 +5482,70 @@ put it in the workflow lane.
 **`PL-WZVZ` is inherited rather than found here.** It is Gate 1's one deferred
 entry - deferred on § "The cadence" beat 3's terms by `PL-S5Q9`, and still
 written on v0.5.0's frozen list, where removing it would have been the
-renegotiation a freeze exists to prevent. It appears below in the group its
-lane puts it in, and its holding condition is in `PL-0H5D`'s field rather than
-in prose. Being `safety`-classed, it took that route only because the gate
+renegotiation a freeze exists to prevent. This gate defers it again, to Gate 3,
+with four other entries, as the next paragraph records, and its holding
+condition is in `PL-0H5D`'s field rather than in prose. Being
+`safety`-classed, it took that route only because the gate
 section recording it also records that its hazard is not live, read against the
 tree: there is one machine profile and no chooser, so no displayed value can
 yet be misattributed between machines.
+
+**Five entries are deferred to Gate 3 on § "The cadence" beat 3's terms**
+(project owner, 2026-09-27, ratified, over keeping them on this list, where
+they would hold the gate open until planned-milestone item 28 and a machine
+chooser are scheduled; `PL-DB64`): `PL-WZVZ`, `PL-B396`, `PL-0S0V`, `PL-VJZK`
+and `PL-KZ99`. Beat 3 clears this list before implementation of v0.6.0 begins,
+and none of the five can close before then, in whatever order the rest is
+worked:
+
+- `PL-WZVZ` waits on this milestone's own View contract `PL-TH35` and view
+  registry `PL-R1WQ`, so it is unworkable until implementation has begun, and
+  then on `PL-TBMK`, a second machine profile, and `PL-4TWW`, the surface that
+  selects between profiles, which no release schedules.
+- `PL-B396` is held open as the stand-in for planned-milestone item 28, agent
+  cost and the liquid-volume readout it decided, and its open question is
+  whether a release schedules item 28. None does before v0.6.0.
+- `PL-0S0V`, `PL-VJZK` and `PL-KZ99` each wait on `PL-B396`, because each is
+  work item 28 would create: a reader-selectable agent unit and its precision,
+  a reader-set price, and the molar mass and liquid density a vapour-to-liquid
+  conversion needs.
+
+The deferral names **Gate 3**, which freezes when v0.6.0 ships and clears
+before v0.7.0's implementation begins, and v0.6.0 ships without the five. They
+stay written on this list, moved out of the lane groups, whose headings say
+their entries clear before this milestone begins, into a group of their own
+below, as `PL-Y04W` was. Nothing about them changes by waiting: unless a
+release schedules item 28 or machine selection before v0.6.0 ships, Gate 3
+inherits all five as this gate inherited `PL-WZVZ`, and owes them the same
+disposition.
+
+**Four of the five are `safety`- or `science`-classed, and no hazard among them
+is live, read against the tree at `19af95d` rather than asserted.**
+`src/anesthesia_sim/data/machines/` holds one profile, loaded by name through
+`core/parameters.py`'s `load_reference_circle_system_parameters`; nothing in
+`src/` selects between profiles and no label in `app/` names a machine, so no
+displayed difference can be misattributed between machines (`PL-WZVZ`). Agent
+amounts are displayed in one fixed unit, `app/dashboard_frame.py`'s
+`ACCOUNTING_UNIT_CAPTION`, with no selector, so displayed precision is still
+one quantity's (`PL-0S0V`). Nothing in `src/` stores or displays a price, a
+currency or a cost (`PL-VJZK`), or a liquid volume, a density or a molar mass,
+so no vapour-to-liquid conversion exists to rest on a composite constant
+(`PL-KZ99`). Each is owed its band the moment its condition lifts: a second
+profile or a surface naming a machine, a selectable agent unit, a stored price,
+or a liquid figure. `PL-B396` is classed `ux` and `docs`, so beat 3 asks this
+record of the other four alone.
+
+**What reads this, and what reads past it.** `bin/docket wave` counts this list
+from the items rather than from this prose, and the two readings agree for
+`PL-WZVZ` alone: its `blocked-by` chain leaves the list at `PL-TBMK` and
+`PL-4TWW`, so it is counted apart from the entries this gate can clear. For the
+other four they disagree, knowingly. `PL-B396` is at `needs-decision` with
+nothing blocking it and the three behind it wait only on it, an entry on this
+list, so `wave` counts all four among the entries this gate can clear; item 28
+has no id or version a `blocked-by` could hold, and `wave` reads no group
+heading. Until that changes, Gate 2 is clear when `wave`'s list of what this
+gate can clear names these four and nothing else, and `PL-18BD` holds whether
+`wave` should read the deferral instead.
 
 **What this list is not swept for yet.** Beat 3 of the cadence requires a
 staleness pass before any of it is worked - a `verify:` command tests for the
@@ -5518,10 +5577,17 @@ named here, for the reason beat 3 gives.
 
 - PL-Y04W (L) Build break-out: an Area taken into its own top-level window, the window lifetime that keeps the main window unclosable while break-outs exist, and the test that every window the application can be left showing carries the invariant display tier
 
-**Cleared before v0.6.0 begins, the product lane - 49 entries**
+**Deferred to Gate 3 on 2026-09-27, because none can close before v0.6.0 begins - 5 entries**
+
+- PL-0S0V (M) AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
+- PL-B396 (M) Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
+- PL-KZ99 (M) Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
+- PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
+- PL-WZVZ (M) Make an inter-machine difference attributable: which parameter differs, and what it does to the result
+
+**Cleared before v0.6.0 begins, the product lane - 45 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
-- PL-0S0V (M) AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
 - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
 - PL-2MD9 (M) "The propagator's constant state row drifts and the squarings amplify it: 2.28e+222 at an alveolar volume of 1e-19 L, where governing_equations.UNIT_STATE promises no step can perturb it"
 - PL-3JP0 (S) Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it
@@ -5545,7 +5611,6 @@ named here, for the reason beat 3 gives.
 - PL-JS0X (S) test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar calls build_sidebar_panels a second time and then measures mapTo(page, ...) on panels that are not in the page, so its last two assertions are vacuous and the sidebar they claim to measure has been dismantled
 - PL-KK1Q (M) Compare this model's washout over the first 24 h against Yasuda 1991's published five-compartment mean fits, to measure whether the modelled tail runs fast or slow where only the five-minute point is validated today
 - PL-KRZW (M) Decide what the interface does under a dark system appearance, now that every colour it declares is a light-theme value
-- PL-KZ99 (M) Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
 - PL-KZR1 (S) RunView's build_* methods are split between returning a stored widget (build_notice, build_off_scale_notice) and constructing a new one on each call (build_sidebar_panels, build_readout_section), with nothing in the names saying which
 - PL-LLBV (S) The whole-step guard on a fork instant refuses 35.5% of the one-decimal times a user could type
 - PL-LPH9 (S) ROADMAP.md's cadence says no interim release is cut partway through clearing a gate, but 159 of Gate 1's 175 frozen entries already shipped in v0.4.x patches, so the sentence a later session would cite to refuse a cut describes nothing this project has done since v0.4.5
@@ -5560,12 +5625,10 @@ named here, for the reason beat 3 gives.
 - PL-TCR5 (S) The chart hover answers the pointer's previous position and never re-answers a resting pointer while paused, because the direct sigMouseMoved slot reads the position the rate-limited proxy stored one event earlier
 - PL-TDBT (M) docs/pr-bodies holds 187 historical documents that read as current: 21 cited paths no longer exist, 30 cite an unresolvable sha, and 22 angle-bracket placeholders in 15 files vanish in GitHub's own blob view, with doc_check blind to all of it by design
 - PL-V67Q (M) Add y-axis range control to the agent graph: optional auto-scale, and a settable MAC / volume-percent scale
-- PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 - PL-W3Q5 (S) app/formatting.py types mac_percent as Percent in two signatures and as a bare float in five others, so one parameter carries two types in one module
 - PL-WG73 (S) COMPARING_FORK_LOCK_TEXT tells a learner to Reset the case, which labels no control - and the Reset they are likeliest to press discards the branch and leaves the lock standing
 - PL-WMCJ (S) docs/MODEL.md's Known limitations never names intertissue diffusion, the route Eger and Saidman 2005 describe for agent reaching fat, though every tissue group here exchanges only with arterial blood
 - PL-WPDB (S) The frame-cost harness measures a one-run dashboard, but v0.5.0 draws two runs on one chart, so the frame cost the branching milestone will actually pay is unmeasured
-- PL-WZVZ (M) Make an inter-machine difference attributable: which parameter differs, and what it does to the result
 - PL-Y4YX (S) PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
 - PL-YD2V (S) Supported run length and the validation section's caveat 4 bound the slow tail on metabolism and fat flow alone, but the fourth compartment this model lacks is the largest term in Yasuda 1991's measured washouts from about hour 2-3 to hour 21-29, inside the 24 h envelope, and neither passage says so
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
@@ -5688,13 +5751,12 @@ named here, for the reason beat 3 gives.
 - PL-Z9K5 (S) bin/docket record normalizes an item's whole front matter as well as inserting pr:, so PL-ZYQC's 'pr, not counted' exemption misses and the close-out audit reports files the skill told the session to touch
 - PL-ZM48 (S) docs/worker.md records remote-branch deletion as exit status 0, and PL-3V6C as two incompatible causes, but one 2026-09-20 transcript carries the 403 and the Everything up-to-date line together at exit 1
 
-**Cleared before v0.6.0 begins, in neither lane - 11 entries**
+**Cleared before v0.6.0 begins, in neither lane - 10 entries**
 
 - PL-1RTM (M) doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked
 - PL-316G (M) Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
 - PL-4L49 (M) tools/contrast_check.py measures only declared pairs, so a control that declares no colour reads as covered when nothing measures it
 - PL-65HT (M) A core/ dataclass numeric field default other than 0 or 1 that appears in no provenance-table value is an unsourced scientific constant, and nothing checks for one
-- PL-B396 (M) Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
 - PL-KKRP (M) Re-examine the debt gate's freeze trigger: scoping a milestone has not frozen its gate for the last two milestones scoped, so the cadence's beat 1 no longer describes what the project does
 - PL-0MLZ (S) uv run pytest writes bytecode that survives a source restore, so a mutation test can silently keep running the mutated build
 - PL-73G8 (S) The recovery file header claims the body verbatim, but it is the body as GitHub serves it today rather than at merge time, and its commit: sha silently dangles after a history rewrite with nothing checking it
