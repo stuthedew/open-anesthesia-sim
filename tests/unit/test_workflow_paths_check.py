@@ -4,8 +4,8 @@ The check exists because `docket.toml`'s `workflow_paths` named three apparatus
 test files by hand and was nine short by the following day (`PL-JBZK`). The
 failure is silent, and silent in the worst direction: an item declaring one
 `tools/` script and its own test lands in neither lane, so `docket next
-workflow` and `docket next product` both set it aside and no session is ever
-offered it.
+workflow` and `docket next product` both set it aside as reaching both halves,
+and only a session taking the whole queue is offered it.
 
 The interesting tests are therefore not the happy path but the two directions
 the list can be wrong in - an apparatus test the list has fallen behind on, and
@@ -274,7 +274,8 @@ def test_a_tools_script_and_its_own_test_land_in_the_same_lane() -> None:
     `workflow_paths`, which is the code that actually decides what `docket next
     workflow` offers. An item that is plainly one `tools/` script and its own
     test has to come out `workflow`, not `crossing` - `crossing` is the state
-    in which no session is offered it at all.
+    in which neither lane offers it, and only a session taking the whole queue
+    is.
     """
     paths = workflow_paths_check.declared_workflow_paths(ROOT)
     for stem in ("pr_title_check", "branch_id_check", "ignore_check"):
