@@ -3,11 +3,12 @@ id: PL-LPH9
 title: ROADMAP.md's cadence says no interim release is cut partway through clearing a gate, but 159 of Gate 1's 175 frozen entries already shipped in v0.4.x patches, so the sentence a later session would cite to refuse a cut describes nothing this project has done since v0.4.5
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: docs, planning
 touches: ROADMAP.md
 added: 2026-09-19
 payoff: stops a later session declining a release the project has cut twenty-seven times, on a cadence rule ROADMAP.md still states
+verify: grep -q 'A gate does not get a version of its own' ROADMAP.md && ! grep -q 'decline it, or the gate work scatters' ROADMAP.md && ! grep -qF 'Later gates ship *inside*' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md's cadence says no interim release is cut partway through clearing a gate, but 159 of Gate 1's 175 frozen entries already shipped in v0.4.x patches, so the sentence a later session would cite to refuse a cut describes nothing this project has done since v0.4.5
@@ -192,7 +193,7 @@ version of their own: their work ships in patch releases on the preceding
 milestone's track as it clears, and the milestone's own number marks the
 boundary its scope crosses - see § "The cadence" under § "The debt gate"."
 
-**Status is left at `needs-decision` here.** This record was written by a
+[superseded 2026-09-27] **Status is left at `needs-decision` here.** This record was written by a
 design thread that pushes item files only; the thread that rewrites
 `ROADMAP.md` sets the status first and closes the item on that commit. Its
 `touches:` already names the one file, and its effort stays `S`: the
