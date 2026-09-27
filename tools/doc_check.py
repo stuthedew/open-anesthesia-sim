@@ -4436,14 +4436,14 @@ def check_ruff_cache(root: Path, report: Report) -> None:
     green (`PL-QSJM`). Upstream carries the same root cause open for `INP001`,
     which depends on `__init__.py` the same way (astral-sh/ruff#5449).
 
-    The exposure is the tree outside the package, which is what makes it easy
-    to miss rather than rare: isort's `detect-same-package` branch settles an
-    `anesthesia_sim.*` import first-party for any file under
-    `src/anesthesia_sim/` before the filesystem probe is reached, so `tests/`
-    and `tools/` are where a deleted module actually shows up. All four files
-    the port left stale were outside the package that way, two of them in the
-    Qt spike tree `PL-7SVX` has since deleted - which narrows where this can
-    happen without changing that it can.
+    The exposure is narrower than it was, and not gone. All four files the port
+    left stale were outside the package, where only the filesystem probe
+    settled an `anesthesia_sim.*` import; since `PL-VZYS` a `known-first-party`
+    declaration settles every such import by name before the probe is reached,
+    and one in `subprojects/docket/ruff.toml` does the same for `docket`. What
+    still reaches the probe is a tool importing a sibling under `tools/` - nine
+    imports of five modules on 2026-09-27, four of which go stale on deletion -
+    and whatever first-party package arrives next, so the flag stays required.
 
     An exact rule about one flag on one line, so a hard failure rather than an
     advisory - there is no context in which a cached `ruff check` is the

@@ -3,12 +3,14 @@ id: PL-VZYS
 title: A hand-run 'uv run ruff check .' still reads the stale .ruff_cache that PL-QSJM's --no-cache removes from make check and make fix, so the guard sits at the entry point rather than where the tool reads it - the same shape as PL-0MLZ's finding about PYTHONDONTWRITEBYTECODE
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
-touches: pyproject.toml, Makefile
+touches: pyproject.toml, Makefile, subprojects/docket/ruff.toml, tools/doc_check.py
 added: 2026-09-15
-verify: grep -qF 'known-first-party = ["anesthesia_sim"]' pyproject.toml
+closed: 2026-09-27
+pr: 1181
+verify: grep -qF 'known-first-party = ["anesthesia_sim"]' pyproject.toml && grep -qF 'known-first-party = ["docket"]' subprojects/docket/ruff.toml && grep -q 'ruff check --no-cache' Makefile
 ---
 
 **Problem.** A hand-run 'uv run ruff check .' still reads the stale .ruff_cache that PL-QSJM's --no-cache removes from make check and make fix, so the guard sits at the entry point rather than where the tool reads it - the same shape as PL-0MLZ's finding about PYTHONDONTWRITEBYTECODE
@@ -163,3 +165,54 @@ rewrites the Makefile paragraph as history, citing this item. `touches:` and
 out, the grep on the declaration - and the status stays `ready` for the build
 thread, which follows § "How, for the build thread" and replays the
 measurement before closing.
+
+## Close-out 2026-09-27
+
+**Built as ratified, and carried to the second package the round did not
+count.** Measured today on ruff 0.16.4 with uv 0.12.19, before the change: on a
+warm cache, moving `src/anesthesia_sim/app/run_view.py` aside left a bare `uv
+run ruff check .` at `All checks passed!` while `--no-cache` reported the `I001`
+in `tests/integration/test_simulation_view.py`; moving
+`subprojects/docket/src/docket/config.py` aside did the same with six `I001`s in
+`subprojects/docket/tests/` (`test_checks.py`, `test_claims.py`, `test_cli.py`,
+`test_config.py`, `test_trend.py`, `test_verify.py`). The round's answer to
+`PL-QSJM`'s second ground counted the selected *rules* and found one probe,
+`match_sources`; it did not count the *packages* that probe settles. `ruff check
+--no-cache --verbose .` logs each categorization, and before the change the
+probe settled 435 imports: 251 `anesthesia_sim`, 175 `docket` - resolved under
+`subprojects/docket/ruff.toml`, whose `src` roots are that subproject's - and 9
+imports of sibling modules under `tools/`.
+
+**What was built.** `known-first-party = ["anesthesia_sim"]` under
+`[tool.ruff.lint.isort]` in `pyproject.toml`, as answered, and
+`known-first-party = ["docket"]` under `[lint.isort]` in
+`subprojects/docket/ruff.toml`, which replaces the root's list rather than
+adding to it (`ruff check --show-settings` resolves it to `docket` alone, and
+keeps the inherited `split-on-trailing-comma = false`); nothing in that tree
+imports `anesthesia_sim`. After the change the verbose log shows 389
+`anesthesia_sim` and 175 `docket` imports settled by name and 9 by the probe,
+and both deletions above leave the hand run and the cache-free run at `All
+checks passed!`. On the intact tree `ruff format --check` and `ruff check
+--no-cache` both pass, so no import block re-sorts. The Makefile's refusal
+paragraph is rewritten as the decision that replaced it, and the flag lines stay;
+`check_ruff_cache` in `tools/doc_check.py` is unchanged, and its docstring's
+"exposure" paragraph, which placed the exposure in `tests/` and `tools/` for
+`anesthesia_sim`, now says where it remains.
+
+**The residual, and why it stays with the flag.** A tool importing a sibling
+under `tools/` is still settled by the probe. Moving each of the five aside:
+`open_pull_requests.py` hid five `I001`s, `left_behind_check.py`,
+`pr_title_check.py` and `required_checks_check.py` one each, and `doc_check.py`
+none. Naming those modules too would be a list every new tool has to join, and a
+tool missing from it would reopen the gap with nothing to say so - the
+instance-not-fault objection `PL-QSJM` raised, which holds for an open-ended set
+of module names where it did not for two package names. `--no-cache` on
+`make check` and `make fix` covers them, and `check_ruff_cache` holds the flag
+there. Decided in the build, not filed: the gate already answers correctly, and
+what stays exposed is a session's belief between edits after deleting a tool.
+
+**`verify:` holds three facts, not one.** The design's § "How, for the build
+thread" asked for the declaration grep beside `PL-QSJM`'s `ruff check
+--no-cache` grep on the Makefile, so both halves are held; the command also
+greps the docket declaration, which nothing else would notice going.
+`touches:` gained `subprojects/docket/ruff.toml` and `tools/doc_check.py`.

@@ -73,13 +73,21 @@ check: sync
 # adding a module is picked up correctly, so the cache fails in the one
 # direction that turns the gate green on a tree CI rejects.
 #
-# `known-first-party = ["anesthesia_sim"]` was considered and refused. It would
-# work - isort consults `known_modules` before it probes the filesystem, so the
-# package's own imports would stop depending on what exists - but it treats the
-# instance rather than the fault. The fault is that the cache does not track
-# the filesystem facts a verdict rests on, so the next rule that reads another
-# file reintroduces the divergence, and it would also silence the sorter on an
-# import of a module that is genuinely gone. `--no-cache` covers every rule.
+# `known-first-party` was refused here under `PL-QSJM`, as treating the
+# instance rather than the fault, and is declared since `PL-VZYS` (2026-09-27):
+# `anesthesia_sim` in pyproject.toml, `docket` in subprojects/docket/ruff.toml.
+# It was reopened because nothing can hand this flag to a hand-typed `uv run
+# ruff check .` - uv 0.12 reads no environment from pyproject.toml, and ruff's
+# configuration has no switch that turns its cache off - while isort consults
+# `known_modules` before it probes, so those two packages' imports stop
+# depending on what exists. Measured with both declared: deleting
+# `app/run_view.py` or `docket/config.py` leaves a warm hand run and a
+# cache-free one agreeing, where each had disagreed. The fault is still
+# upstream's, so this line keeps the flag for what the declarations do not
+# name: a tool importing a sibling under `tools/`, nine imports of five modules,
+# four of which diverged the same way on deletion. Naming those too would be a
+# list every new tool has to join, which is where the refusal's objection still
+# holds. `PL-VZYS` carries how each of its grounds was answered.
 #
 # The formatter keeps its cache deliberately. Its output depends only on the
 # file in front of it, so a stale entry there needs that file to have changed,
