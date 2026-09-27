@@ -1562,9 +1562,10 @@ def _check_cut_window(
     one session in a release, so it costs nothing on every other run - the test
     `CLAUDE.md` requires a check to pass to keep its place.
 
-    The remedy it names already exists: re-running the cut of the same version
-    reclaims what it stamped and folds the newcomers in, which is the property
-    `unreleased`'s `resuming` argument was built for.
+    The remedy it names is `cmd_release`'s re-cut, which reclaims what the cut
+    stamped and folds the newcomers in, found by the same `cut_window` read.
+    Until `PL-2TDX` it did not work at the moment this fires: with the notes
+    written, the re-run read the version as shipped and refused it as untagged.
     """
     if window is None or not window.version:
         return
