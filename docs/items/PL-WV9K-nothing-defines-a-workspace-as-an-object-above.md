@@ -117,19 +117,18 @@ over the alternative each names).
 
 **Q4: specified otherwise** (project owner, 2026-09-27): "Want a save button
 (in drop down menu). Like Blender. Want to purposefully save a new default."
-Two readings of "like Blender" exist and the owner was asked on 2026-09-27
-which one they mean; until they answer, the design below records the first:
-**A**, Blender's startup file, where reopening loads the saved default and
-changes not saved as default are gone at quit; or **B**, reopening restores
-the last state automatically *and* "Save as default" remains a deliberate
-action with "Reset to my default" beside "Reset to shipped".
-**Recommendation: B**, because a layout lost at quit is the stale-state
-hazard the display standard names and B still gives the purposeful default
-the owner asked for; its cost is one more stored section and one more menu
-entry. Under B, `PL-SSQW` Q3, Q4 and Q6 gain an automatic atomic write of
-the last-state section beside the explicit save of the default.
+Two readings of "like Blender" were put to the owner the same day: **A**,
+Blender's startup file, where reopening loads the saved default and changes
+not saved as default are gone at quit; or **B**, reopening restores the last
+state automatically *and* "Save as default" remains a deliberate action, with
+"Reset to my default" beside "Reset to shipped". The session recommended B,
+because a layout lost at quit is the stale-state hazard the display standard
+names. **The owner chose A** (project owner, 2026-09-27, specified: "yes,
+A"), so the design below is A, and reopening B needs a compelling argument
+rather than ordinary evidence. The stale-state concern was raised and
+answered, not overlooked.
 
-Blender's own model, which its source confirms
+Blender's model, which its source confirms
 (`source/blender/windowmanager/intern/wm_files.cc`, blender/blender `main`,
 read 2026-09-27): `WM_OT_save_homefile`, "Save Startup File - Make the
 current file the default startup file", writes the startup file into the user

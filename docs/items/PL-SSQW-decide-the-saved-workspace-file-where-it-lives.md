@@ -152,9 +152,7 @@ The one decision the owner specified otherwise is `PL-WV9K` Q4: layouts are
 written by an explicit "Save as default" action, never automatically, so Q3,
 Q4 and Q6 above were reworded to match on the same day. A migrated older file
 (Q5) is therefore rewritten at the reader's next "Save as default", not
-before, and the pre-migration copy is kept at that moment. **Open on
-2026-09-27:** whether reopening also restores the last state automatically
-(`PL-WV9K` § "Answers 2026-09-27", reading B, recommended there); if so, the
-file gains a last-state section written automatically and atomically on
-change, and the wording of Q3, Q4 and Q6 applies to the default section
-only.
+before, and the pre-migration copy is kept at that moment. **Answered
+the same day:** the owner chose reading A in `PL-WV9K` § "Answers
+2026-09-27" (reopening loads the saved default, no last-state section), so
+Q3, Q4 and Q6 stand as worded and the file holds one `WorkspaceSet`.
