@@ -254,15 +254,23 @@ the same reading `flight` already applies to the same commits, since a capture, 
 triage pass, a recovered item and a `record` write all lead with an id they are
 not implementing, and none of them is work a merge took.
 
+**The landed side is what the base wrote after the branch forked, not what its
+history ever held.** Content the base held only before the fork cannot have come
+from the branch. Asked of the whole history, a branch that restores a file to an
+earlier version read as merged, and `bin/docket branch` told a session holding
+an open pull request to restart (`PL-RLTK`). The read is what the base's commits
+wrote rather than which objects its history reaches, because a rename the branch
+made reaches the base as a blob the fork already held.
+
 **What counts as the branch's outstanding side is decided at its tip, not
-across its history.** The content split asks whether the base ever held each
-blob the branch introduced, which is right for a squash and wrong for a path
-whose content was replaced after the branch introduced it. Two shapes reach it
-and neither lost anything: a file the branch itself revised before merging, so
-the squash carried only the final version; and a file the base took and then
-added to in the same commit, so the base's copy is a strict superset and the
-`recover:` line would overwrite the newer half with the older one. Both are
-settled by the two-dot diff between the tips — a path the tips agree on is
+across its history.** The content split asks whether the base wrote each blob
+the branch introduced since the fork, which is right for a squash and wrong for
+a path whose content was replaced after the branch introduced it. Two shapes
+reach it and neither lost anything: a file the branch itself revised before
+merging, so the squash carried only the final version; and a file the base took
+and then added to in the same commit, so the base's copy is a strict superset
+and the `recover:` line would overwrite the newer half with the older one. Both
+are settled by the two-dot diff between the tips — a path the tips agree on is
 missing from nowhere, and a path whose diff only *removes* lines is one the base
 holds in full. Every silence there leaves the path outstanding, so the report
 still errs toward naming a branch.
@@ -301,14 +309,15 @@ part of what it measured.
 Both directions of error are still possible and the trade is deliberate. Three
 shapes go unreported, and all three are silence, which is the expensive
 direction: a commit pushed after the merge that happens to leave one file in a
-state the base has held; a post-merge push to a branch whose every pre-merge
-commit was re-merged against a base that had moved under it, since neither side
-then has a whole commit; and a post-merge push to a branch whose only wholly
-landed commit wrote to the queue alone. All three are accepted only because the
-alternative — the content split on its own — fired in every session's digest,
-which `CLAUDE.md` calls a defect in the check rather than coverage. Each of the
-three narrowings was bought with an observed false positive, and each false
-positive led a reader to a ref deletion rather than to a copy.
+state the base wrote since the fork; a post-merge push to a branch whose every
+pre-merge commit was re-merged against a base that had moved under it, since
+neither side then has a whole commit; and a post-merge push to a branch whose
+only wholly landed commit wrote to the queue alone. All three are accepted only
+because the alternative — the content split on its own — fired in every
+session's digest, which `CLAUDE.md` calls a defect in the check rather than
+coverage. Each of the three narrowings was bought with an observed false
+positive, and each false positive led a reader to a ref deletion rather than to
+a copy.
 
 ### The other loss: a merge that deletes an item nothing deleted
 

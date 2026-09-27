@@ -156,7 +156,7 @@ try:
     # (`PL-PVW2`). A CI step's line and a Makefile recipe line are read through
     # it rather than a split of this tool's own, which cut inside quotes and
     # read `python3 "tools/my file.py"` as `tools/my` (`PL-CWBJ`).
-    from docket.shell import Word, shell_words
+    from docket.shell import Reading, Word, shell_words
     from docket.store import ID_PATTERN, read_items
 
     # Reading `git tag` is a second borrowing, for the same reason as the first.
@@ -4200,12 +4200,8 @@ def _shell_words(where: str, command: str, report: Report, unread: str) -> tuple
     is a command this cannot place, so it is declined, naming `unread`, and
     answers no words rather than a guess at them.
     """
-    reading = shell_words(command)
-    if not reading.clauses:
-        report.declined.append(
-            f"{where}: `{command}` does not end where its line does - a quote, a command "
-            f"substitution or a backslash runs past it - so {unread}"
-        )
+    reading = _shell_reading(where, command, report, unread)
+    if reading is None:
         return ()
     return tuple(
         token.text
@@ -4213,6 +4209,66 @@ def _shell_words(where: str, command: str, report: Report, unread: str) -> tuple
         for token in clause.tokens
         if isinstance(token, Word)
     )
+
+
+#: The redirection operators among `docket.shell.OPERATORS`. Each takes the
+#: word after it as its file and leaves the command it stands in running on;
+#: every other operator there ends that command (Bash Reference Manual §3.6
+#: "Redirections", §2 "Definitions" for "control operator").
+REDIRECTIONS = frozenset({"<", ">", ">>", "<<", "<<<", "<&", ">&", "<>", ">|", "&>", "&>>"})
+
+
+def _shell_commands(
+    where: str, command: str, report: Report, unread: str
+) -> tuple[tuple[str, ...], ...]:
+    """The simple commands a shell line runs, each as its words, read as `_shell_words` reads it.
+
+    `_shell_words` hands back every word on the line, which is right for a
+    question about paths and wrong for one about what a script was passed: in
+    `python3 tools/x.py --check | tee log`, `tee` and `log` are not its
+    arguments. So the words are cut where bash ends a simple command, at each
+    control operator. A redirection does not end one, and neither its file nor
+    the descriptor written against it - the `2` of `2>&1` - is an argument, so
+    both are left out: digits touching an operator that opens with `<` or `>`
+    are a descriptor (POSIX Shell Command Language §2.10.1, "IO_NUMBER").
+    """
+    reading = _shell_reading(where, command, report, unread)
+    if reading is None:
+        return ()
+    commands: list[tuple[str, ...]] = []
+    for clause in reading.every_clause():
+        words: list[str] = []
+        target = descriptor = False
+        previous = -1
+        for token, (start, end) in zip(clause.tokens, clause.spans, strict=True):
+            if isinstance(token, Word):
+                if not target:
+                    words.append(token.text)
+                digits = token.text.isascii() and token.text.isdecimal()
+                descriptor = digits and not (target or token.quoted)
+                target = False
+            elif token in REDIRECTIONS:
+                if descriptor and start == previous and token[0] in "<>":
+                    words.pop()
+                target, descriptor = True, False
+            else:
+                commands.append(tuple(words))
+                words, target, descriptor = [], False, False
+            previous = end
+        commands.append(tuple(words))
+    return tuple(words for words in commands if words)
+
+
+def _shell_reading(where: str, command: str, report: Report, unread: str) -> Reading | None:
+    """Docket's reading of one shell line, or `None` once it is declined, naming `unread`."""
+    reading = shell_words(command)
+    if not reading.clauses:
+        report.declined.append(
+            f"{where}: `{command}` does not end where its line does - a quote, a command "
+            f"substitution or a backslash runs past it - so {unread}"
+        )
+        return None
+    return reading
 
 
 def _command_paths(words: Iterable[str]) -> Iterator[str]:
@@ -4486,19 +4542,61 @@ def _content_column(item: re.Match[str]) -> int:
     return marker + len(gap) if gap and len(gap) <= 4 else marker + 1
 
 
-#: A script one gate runs and the other deliberately does not, and why. The
-#: value is the side it is allowed to be alone on and the reason it is there,
-#: and `check_gate_parity` below refuses every asymmetry that is not written
-#: here. It is the answer to the question a session meets when it wires a new
-#: script into `make check`: cover it in CI too, or say in one line why the
-#: merge gate cannot ask it (`PL-PBP5`).
+#: A script, in one mode, that one gate runs and the other deliberately does
+#: not, and why. The key is the script as `_gate_invocations` spells it - its
+#: path, then its mode, as `tools/pr_title_check.py --discover` - so an entry
+#: excuses that mode alone and never the script's others (`PL-RW3T`). The value
+#: is the side it is allowed to be alone on and the reason it is there, and
+#: `check_gate_parity` below refuses every asymmetry that is not written here.
+#: It is the answer to the question a session meets when it wires a new script
+#: into `make check`: cover it in CI too, or say in one line why the merge gate
+#: cannot ask it (`PL-PBP5`).
 GATE_ONLY: dict[str, tuple[str, str]] = {
+    "bin/docket check": (
+        "ci",
+        "the floor run: `quality.yml` runs it before `uv` exists, which is what proves "
+        "the store's own check needs no virtualenv under the 3.11 floor, and `make "
+        "check` asks everything it asks inside its `--verify` run, which only adds the "
+        "replay",
+    ),
+    "bin/docket check --verify": (
+        "ci",
+        "the whole-store sweep, which `quality.yml` runs on a push to `main` and its "
+        "step's `if:` keeps off every pull request - recorded here because this rule "
+        "does not read an `if:` yet (`PL-ZXM1`). It finds work that merged without its "
+        "item being closed, which a branch cannot have changed (`PL-P3B6`), so both "
+        "gates run the `--verify-base` form on a branch instead",
+    ),
+    "tools/pr_record_check.py": (
+        "ci",
+        "the event mode: it reads the pull request's number from `PR_NUMBER`, which "
+        "only the `pull_request` event sets, so a checkout has nothing to read and "
+        "`make check` runs the `--discover` mode below in its place",
+    ),
+    "tools/pr_record_check.py --discover": (
+        "local",
+        "the event mode's stand-in: it asks this branch's open pull request for the "
+        "number and skips silently with no token, no network or no pull request, so it "
+        "can never be the merge gate's answer, and CI reads the event instead (`PL-HMZZ`)",
+    ),
+    "tools/pr_title_check.py": (
+        "ci",
+        "the event mode: it reads the title from `PR_TITLE`, which only the "
+        "`pull_request` event sets, so a checkout has nothing to read and `make check` "
+        "runs the `--discover` mode below in its place",
+    ),
+    "tools/pr_title_check.py --discover": (
+        "local",
+        "the event mode's stand-in: it asks this branch's open pull request for the "
+        "title and skips silently with no token, no network or no pull request, so it "
+        "can never be the merge gate's answer, and CI reads the event instead (`PL-J3BB`)",
+    ),
     "tools/required_checks_check.py": (
         "ci",
         "its answer is not in the tree: it reads the repository's required status "
         "checks off the GitHub API and reconciles them against the jobs that report "
         "them, so a checkout with no network and no token has nothing to compare",
-    )
+    ),
 }
 
 #: Where a gate script may be named. `.py` is every check this project has
@@ -4571,8 +4669,11 @@ def _target_commands(
     return commands + recipes[target]
 
 
-def _gate_scripts(root: Path, words: Iterable[str]) -> Iterator[str]:
-    """Every repository script a shell line's words name, as a repository-relative path.
+def _gate_scripts(root: Path, words: Iterable[str]) -> Iterator[tuple[int, str]]:
+    """Every repository script a command's words name, as a repository-relative path.
+
+    Each comes with where it stands among the words, since what follows it
+    there is what it was passed.
 
     The rule is deliberately about *this project's own* scripts and not about
     the commands around them. `ruff`, `mypy`, `pytest` and `uv` are third-party
@@ -4586,7 +4687,7 @@ def _gate_scripts(root: Path, words: Iterable[str]) -> Iterator[str]:
     that exists. The second half is what keeps a `.py` written in prose, or a
     path a step creates, out of the comparison.
     """
-    for word in words:
+    for at, word in enumerate(words):
         token = word.strip(",").removeprefix("./")
         if "=" in token:
             token = token.rpartition("=")[2]
@@ -4595,7 +4696,33 @@ def _gate_scripts(root: Path, words: Iterable[str]) -> Iterator[str]:
         if any(mark in token for mark in UNRESOLVABLE):
             continue
         if (root / token).is_file():
-            yield token
+            yield at, token
+
+
+def _mode(arguments: Sequence[str]) -> tuple[str, ...]:
+    """What a script's arguments choose it to do: its subcommand, then its options' names.
+
+    The subcommand is every word ahead of the first option - `check` in
+    `bin/docket check` - and an option's name is the word as written, or its
+    part before an `=`. The rest are values and are dropped, since
+    `--verify-base origin/main` locally and `--verify-base "$VERIFY_BASE"` in
+    CI are one mode handed two refs, and the names are sorted, since their order
+    chooses nothing.
+    """
+    subcommand: list[str] = []
+    for word in arguments:
+        if word.startswith("-"):
+            break
+        subcommand.append(word)
+    names = {word.partition("=")[0] for word in arguments if word.startswith("-")}
+    return (*subcommand, *sorted(names))
+
+
+def _gate_invocations(root: Path, commands: Iterable[Sequence[str]]) -> Iterator[tuple[str, ...]]:
+    """Every repository script the commands run, each followed by the mode it runs in."""
+    for words in commands:
+        for at, script in _gate_scripts(root, words):
+            yield (script, *_mode(words[at + 1 :]))
 
 
 def _gates_pull_requests(text: str) -> bool:
@@ -4641,11 +4768,19 @@ def check_gate_parity(root: Path, report: Report) -> None:
     reason it exists. A session adding a check meets the question at the moment
     it would otherwise be decided by not thinking about it.
 
-    **Scripts, not commands.** How a script is invoked differs by construction -
-    `python3 tools/x.py` at the floor, `uv run python tools/x.py` after the
-    sync - so comparing command strings would report every line as a drift. The
-    set compared is which of this project's own scripts each gate runs at all,
-    which is exactly the question "is this check enforced on the merge".
+    **Scripts and their modes, not command strings.** How a script is invoked
+    differs by construction - `python3 tools/x.py` at the floor, `uv run
+    python tools/x.py` after the sync - so comparing command strings would
+    report every line as a drift, and nothing ahead of the script is compared.
+    What follows it is, reduced to the mode `_mode` reads, because a script run
+    with `--anchors` in one gate and `--check` in the other is two checks with
+    one of them unenforced: matched by path alone, `tools/pr_body_check.py
+    --anchors` ran only in `make check` from `PL-73G8` until `PL-3PH2`, counted
+    as covered by CI's `--check` (`PL-RW3T`). The match is exact rather than
+    "covered by a run with more options", since an option can switch what a
+    script checks rather than add to it and telling which would mean reading
+    each script's parser; an exact match reports the difference and asks for
+    its reason instead.
 
     **Only workflows that run on `pull_request` count as the merge gate.** A
     branch can merge without a scheduled workflow ever having looked, so
@@ -4668,46 +4803,66 @@ def check_gate_parity(root: Path, report: Report) -> None:
         return
     unread = "the scripts it runs were not compared"
     local = {
-        script
+        invocation
         for command in _target_commands(recipes, prerequisites, "check")
-        for script in _gate_scripts(root, _shell_words("Makefile", command, report, unread))
+        for invocation in _gate_invocations(
+            root, _shell_commands("Makefile", command, report, unread)
+        )
     }
-    merge: set[str] = set()
+    merge: set[tuple[str, ...]] = set()
     for path in workflows:
         text = path.read_text(encoding="utf-8")
         if not _gates_pull_requests(text):
             continue
         where = path.relative_to(root)
         merge |= {
-            script
+            invocation
             for command, line in workflow_commands(text)
-            for script in _gate_scripts(
-                root, _shell_words(f"{where}:{line}", command, report, unread)
+            for invocation in _gate_invocations(
+                root, _shell_commands(f"{where}:{line}", command, report, unread)
             )
         }
     if not local or not merge:
         return
-    for script in sorted(local - merge):
-        if GATE_ONLY.get(script, ("", ""))[0] == "local":
+    for invocation in sorted(local - merge):
+        spelled = " ".join(invocation)
+        if GATE_ONLY.get(spelled, ("", ""))[0] == "local":
             continue
         report.errors.append(
-            f"`make check` runs {script} and no workflow triggered by a pull request "
+            f"`make check` runs {spelled} and no workflow triggered by a pull request "
             "does, so a branch pushed without a local `make check` merges green on a "
-            "tree `make check` would refuse. Add a step for it to "
-            "`.github/workflows/quality.yml` - the floor section where it needs no "
-            "virtualenv, under `uv run` where it does - or record it in "
-            "`tools/doc_check.py`'s `GATE_ONLY` with the reason the merge gate "
+            f"tree `make check` would refuse.{_other_modes(invocation, merge, 'They run')} "
+            "Add a step for it to `.github/workflows/quality.yml` - the floor section "
+            f"where it needs no virtualenv, under `uv run` where it does - or record `{spelled}` "
+            "in `tools/doc_check.py`'s `GATE_ONLY` with the reason the merge gate "
             "cannot ask it"
         )
-    for script in sorted(merge - local):
-        if GATE_ONLY.get(script, ("", ""))[0] == "ci":
+    for invocation in sorted(merge - local):
+        spelled = " ".join(invocation)
+        if GATE_ONLY.get(spelled, ("", ""))[0] == "ci":
             continue
         report.errors.append(
-            f"a pull-request workflow runs {script} and `make check` does not, so the "
+            f"a pull-request workflow runs {spelled} and `make check` does not, so the "
             "first place a session can learn the answer is a red CI run after review "
-            "has started. Add it to the `check:` target, or record it in "
-            "`tools/doc_check.py`'s `GATE_ONLY` with the reason a checkout cannot ask it"
+            f"has started.{_other_modes(invocation, local, '`make check` runs')} Add it to "
+            f"the `check:` target, or record `{spelled}` in `tools/doc_check.py`'s "
+            "`GATE_ONLY` with the reason a checkout cannot ask it"
         )
+
+
+def _other_modes(invocation: tuple[str, ...], gate: set[tuple[str, ...]], who: str) -> str:
+    """The sentence naming the modes the other gate runs this script in, where it runs any.
+
+    It is the case a match by path passed (`PL-RW3T`), and a reader shown only
+    that the mode is missing would go looking for the script and find it there.
+    """
+    others = sorted(" ".join(other) for other in gate if other[0] == invocation[0])
+    if not others:
+        return ""
+    return (
+        f" {who} {invocation[0]} only as {', '.join(others)}, which does not cover "
+        "it: a subcommand or an option can change what a script checks."
+    )
 
 
 def check_math_delimiters(root: Path, report: Report) -> None:
