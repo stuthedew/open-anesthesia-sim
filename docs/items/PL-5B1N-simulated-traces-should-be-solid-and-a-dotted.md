@@ -131,3 +131,127 @@ is computed by a pure deterministic read of `core/` at the run's own model and
 version, touching none of the run's state. `PL-GVXP`'s derivation still holds
 afterwards, and `tests/unit/test_simulation_view.py` covers the preview appearing,
 disappearing on both exits, and never being drawn in a style a compartment uses.
+
+## Design round 2026-09-27: recommendations
+
+Recommendations, not decisions: the thread that records the project owner's
+answer marks each `(project owner, DATE, ratified)` or replaces it. Answered
+against the pyqtgraph chart, as the brief requires, at tree `aeb00392`.
+
+**What is fixed and what is open.** The owner specified the *distinction*
+(2026-09-12): the run that happened reads as the run, and the trajectory a
+control would give while it is grabbed and not released reads as a
+prediction, gone at release. Open is the channel, because dash is spent
+(`PL-GVXP`), and what follows from taking the specification at its word.
+
+**Read on 2026-09-27.**
+
+- The axis is a fixed-width viewport: `following_window` keeps
+  `CHART_LIVE_HEADROOM_FRACTION` = 2% of the span empty right of the newest
+  sample (36 s of a thirty-minute base), and `fitted_window` gives the rung's
+  full width with the run at the left. There is no room for a preview by
+  default, and the span may not change (`PL-012`: the slope is the encoding).
+- `RunDefinition` refuses to evaluate past `reached_s` - *"that would be a
+  prediction rather than the run"* - so a preview cannot be the run's own
+  definition asked further ahead. It is a second definition opened at the
+  run's reach: `RunDefinition(hypothetical_settings, run.state_at(reached_s),
+  opened_at_s=reached_s)`, then `advance_to(horizon)` and `evaluate(...)`.
+  Same settings type, same governing equations, the canonical state, nothing
+  of the run's touched, deterministic. That is the one path; a preview
+  computed any other way is a second source of truth for a displayed value.
+- A drag applies live today: `ParameterSlider.valueChanged` reaches
+  `_on_slider_moved`, which emits `value_changed`, which reaches the
+  controller's setter on every move, grouped as one adjustment by
+  `begin_control_adjustment` on press. No slider has a typed entry; the
+  `QLineEdit` and `QDoubleSpinBox` in `qt_widgets.py` are the bookmark dialog's.
+- In compare mode a control applies to every drawn run
+  (`_apply_to_every_run`), each capped at two compartments
+  (`COMPARED_COMPARTMENT_CAP`), with run identity on width (2 px and 3 px).
+- The hover answers running or paused, over drawn points only.
+- Alpha cannot carry "lighter" without breaking the floor. Blended over
+  `PANEL` (Qt composites in sRGB), the traces' ratios fall to: at 0.85,
+  circuit 4.39, alveolar 2.93, mixed venous 4.34, vessel-rich 4.04, muscle
+  2.83, fat 3.56; at 0.75, 3.57 / 2.57 / 3.61 / 3.49 / 2.49 / 2.96. Two traces
+  are under SC 1.4.11's 3:1 at 0.85 and four at 0.75, so a ghost line is
+  either not lighter or not conformant.
+
+**Q1. The channel.** **Recommendation: position, region and label carry the
+distinction; the traces keep their colour and dash pattern and lose one width
+step.** Concretely: (i) a *now* edge at the run's reach - the left edge of a
+`LinearRegionItem` running from the reach to the axis's right edge, stroked in
+`MUTED` as the reference lines are, with a light fill (a `PREVIEW_REGION`
+colour and fill opacity in `theme.py` in the class of
+`MAC_AWAKE_BAND_FILL_OPACITY`, the fill recorded exempt on `PL-HKTB`'s ground:
+the edge and the label carry the information); (ii) the preview traces in
+each compartment's own colour and dash pattern, so `PL-GVXP`'s separation
+holds inside the preview exactly as outside it, at the run's width less one
+pixel (3 to 2, 2 to 1), which keeps the compare-mode width order between two
+runs' previews; (iii) a label inside the region, `INK` on a `PANEL` box as the
+hover readout is drawn, naming the control and the uncommitted value in the
+slider's own words - the setting's `name` and `value_text` - and saying it is
+not applied. That answers the three failure modes: *bound*, because region,
+label and traces are created in the `sliderPressed` slot and destroyed in the
+`sliderReleased` slot that applies the value, nothing decays; *lighter*,
+because the preview is thinner and sits inside a tinted region the run never
+enters; *labelled*, because the label is in the plot, so a screenshot carries
+it. No legend row: a row that appears and vanishes is the stale-state hazard
+`TraceLegend` was built to remove. *Refused:* an alpha ghost (the floor,
+above); solid for the run and dotted for the preview (collides with muscle and
+flattens five traces into one style - the brief's own finding); a legend-only
+marker (a screenshot cropped to the plot loses it).
+
+**Q2. The horizon and the axis.** **Recommendation: during a preview the
+window keeps its span and re-anchors so that the reach sits at the plot's
+midpoint** - half the chosen base of run, half of preview (fifteen minutes at
+the thirty-minute base, six hours at twelve), clamped at zero early in a run.
+The span is unchanged, so the slope encoding survives; the window already
+slides continuously while following, and this is a slide of half a span at
+press and back at release, in the same slots that draw and clear the preview.
+*Refused:* extending the axis (the rescale `PL-012` rejected); a fixed horizon
+constant (a number to justify, and it either does not fit the base or forces
+the rescale); drawing only into the 2% headroom (36 s is not a preview).
+
+**Q3. What a drag does to the run - the consequence of the specification.**
+Today the run follows the slider live. "Grabbed but not released" being
+uncommitted means the run keeps its setting until release, and one change is
+recorded at release, landing on the tick boundary as `PL-NBWP` states.
+**Recommendation: take it as specified.** Pointer drags apply on release;
+keyboard steps on a focused slider stay immediate, since a key press is a
+discrete committed input, which is how `begin_control_adjustment`'s docstring
+already reads it, and draw no preview; a typed entry, when one exists,
+previews on each parse, commits on Enter and cancels on Escape. The control
+timeline gets simpler - one entry per drag - and the adjustment grouping
+stays for keyboard runs. This is learner-visible and the owner's: while
+dragging, the run on screen no longer moves with the hand; the preview does.
+
+**Q4. Scope of the drawing.** Both plots: the wash-in ratio is derived from
+the same frame, and a lower plot that ignored the preview would show two
+futures. Per run in compare mode, each from its own reach under the setting
+`_apply_to_every_run` would give it. The preview never answers a hover.
+While the run plays, the preview is recomputed each render frame from the
+current reach - one more `evaluate` per run per frame, against a frame cost
+measured at 5.5-8.6 ms median today (`PL-SQJ1`, 2026-09-27). One test the
+design implies: a preview at the run's *current* setting coincides with what
+the run then draws, so releasing where you started leaves nothing to
+reconcile.
+
+**Q5. Where the build sits.** Deciding this clears nothing by itself: the gate
+counts an entry cleared at `done` or `dropped`, and this is `feature`-classed,
+so once decided it is debt no longer but still open on the frozen list. Three
+dispositions: build now, inside Gate 2 and in front of v0.6.0's
+implementation; defer the build to Gate 3 the way `PL-DB64` moved five
+entries; drop (no: the owner specified it). **Recommendation: record the
+design here, set `ready`, and defer the build to Gate 3.** It is feature work
+rather than debt, the chart it draws on is the pyqtgraph one v0.6.0 wraps in
+an Area rather than rewrites, so nothing is done twice either way, and an M
+feature in front of the layout milestone is a scheduling choice that is the
+owner's. *Alternative:* build it now, as the next item of the
+presentation-safety chain.
+
+**For the build.** `touches` grows to `src/anesthesia_sim/app/qt_chart.py`,
+`chart_frame.py`, `chart_time_base.py`, `qt_widgets.py`, `run_view.py`,
+`theme.py`, `tools/contrast_check.py`, `docs/MODEL.md` (a section naming the
+preview as a third epistemic class beside modelled and measured, and what
+drawing one may imply) and the tests beside each. The done-when's last clause
+changes: the preview *does* use each compartment's style, deliberately, and is
+never drawn outside its region, at the run's width, or without its label.
