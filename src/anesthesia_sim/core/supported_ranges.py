@@ -117,15 +117,21 @@ MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10.0
 # already draws the consequence of: it rejects the Yasuda papers' own
 # multi-day elimination curves as a comparison, because over days the missing
 # metabolism is no longer negligible and neither is the fat group's flow,
-# which the same document records as about twice the reachable resting
-# measurement. Sevoflurane is the binding agent - 2% to 5% of the absorbed
-# dose is metabolized, against far less for isoflurane and desflurane - and
-# its metabolism starts immediately rather than late, fluoride and HFIP
-# appearing in plasma within minutes of the start of administration. What
-# makes omitting it safe over a case is that the same review finds metabolism
-# "does not contribute to the termination of clinical drug effect": true while
-# ventilation and perfusion dominate the trace, and progressively false once
-# the only thing still moving is the slow tail this model gives no sink to.
+# which the same document weighs against two human sources that disagree
+# about its direction (about twice a resting depot measurement; at or a
+# little below what human washout fits imply). Inside the span the tail is
+# already missing its largest measured term - the fourth compartment human
+# washout needs and this model lacks, the largest from about the third hour
+# of elimination - which § "Supported run length" records; that bounds what
+# the late tail is worth, not how long a run may be. Sevoflurane is the binding
+# agent - 2% to 5% of the absorbed dose is metabolized, against far less for
+# isoflurane and desflurane - and its metabolism starts immediately rather than
+# late, fluoride and HFIP appearing in plasma within minutes of the start of
+# administration. What makes omitting it safe over a case is that the same
+# review finds metabolism "does not contribute to the termination of clinical
+# drug effect": true while ventilation and perfusion dominate the trace, and
+# progressively false once the only thing still moving is the slow tail this
+# model gives no sink to.
 #   Kharasch ED. Biotransformation of sevoflurane. Anesth Analg
 #   1995;81(6 Suppl):S27-38. PMID 7486145,
 #   doi:10.1097/00000539-199512001-00005.
