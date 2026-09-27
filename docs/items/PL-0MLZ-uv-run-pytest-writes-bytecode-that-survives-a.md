@@ -3,14 +3,15 @@ id: PL-0MLZ
 title: uv run pytest writes bytecode that survives a source restore, so a mutation test can silently keep running the mutated build
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
-touches: pyproject.toml, Makefile, tests/unit/test_tools_portability.py
+touches: conftest.py, Makefile, docket.toml, tests/unit/test_bytecode_guard.py, docs/items/PL-VZYS-a-hand-run-uv-run-ruff-check-still-reads-the.md
 added: 2026-09-13
-verify: uv run python -c "import sys; raise SystemExit(0 if sys.dont_write_bytecode else 1)"
+closed: 2026-09-27
+pr: 1168
+verify: grep -q 'def test_a_same_second_restore_runs_the_restored_source' tests/unit/test_bytecode_guard.py
 ---
-
 
 **Problem.** uv run pytest writes bytecode that survives a source restore, so a mutation test can silently keep running the mutated build
 
