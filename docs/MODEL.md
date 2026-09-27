@@ -2604,7 +2604,17 @@ where no provenance row could reach them and changed neither value.
   enough for the machine lag to read as a distinct phase of the early rise,
   short enough to resolve within the first minutes of a teaching run. That is a
   design rationale, and the data file labels it as one rather than as a
-  measurement.
+  measurement. **It is also the flow a run opens at when a machine profile
+  states none** (`PL-QW19`): `default_fresh_gas_flow_l_min` is optional in a
+  profile, because no surveyed machine publishes a startup flow, and a run
+  built from one that omits it opens at `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`
+  in `core/circuit.py`
+  (`test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teaching_default`).
+  That fallback's authority is this rationale and not a source, and
+  `test_the_bare_circuit_defaults_match_the_shipped_machine_file` fails if the
+  constant and the file's value ever differ. The rationale is stated for this
+  file's 6.0 L circuit: at a smaller assembled volume the same flow opens a
+  shorter lag, as "What real workstations hold" below computes.
 
 **One measured circle-system volume is now held, and it bounds the first row
 rather than replacing it** (`PL-QBKQ`). Targ, Yasuda and Eger measured a
@@ -5167,23 +5177,30 @@ directions, and a constant that never entered one is invisible to it.
 `AlveolarCompartment` and `BreathingCircuit` both still carry their two
 figures as dataclass field defaults — `gas_volume_l: float = 2.5` and
 `alveolar_ventilation_l_min: float = 4.0` on the first,
-`circuit_volume_l: float = 6.0` and `fresh_gas_flow_l_min: float = 4.0` on the
-second. They are kept so that a unit test of one compartment's physics need
-not load package data, and they are reached by nothing else: every shipped
-path goes through `AgentUptakeSystem.for_agent()`, which reads all four from
-the two files and passes them explicitly. What makes that safe to keep is that
-neither restatement may drift.
+`circuit_volume_l: float = 6.0` and a fresh gas flow of 4.0 L/min, named
+`TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`, on the second. They are kept so that a
+unit test of one compartment's physics need not load package data, and every
+shipped path goes through `AgentUptakeSystem.for_agent()`, which reads all four
+from the two files and passes them explicitly. The flow is the one that can
+also be reached another way: since `PL-QW19` a machine profile may state no
+startup flow, and a run built from such a profile opens at the named constant,
+whose authority is the teaching-default rationale recorded with the flow's
+provenance row rather than any source. What makes all of this safe to keep is
+that neither restatement may drift.
 `test_the_bare_circuit_defaults_match_the_shipped_machine_file` (`PL-4YY1`)
 and `test_the_bare_alveolar_defaults_match_the_shipped_patient_file`
 (`PL-DJYF`) each assert the literals against the file, and
 `test_for_agent_builds_the_circuit_at_the_machine_file_s_values` and
 `test_for_agent_builds_the_alveoli_at_the_patient_file_s_values` each assert
-that the shipped path reads the file rather than falling through to them. The
-second half of each pair is the one that catches the consequential failure:
-because the defaults currently equal the files' values, a change that stopped
+that the shipped path arrives at the file's values. That second pair cannot
+tell reading a file from falling through to the defaults, because the two are
+equal, and that is the consequential failure: a change that stopped
 `for_agent()` reading a file would move no number, and every provenance row in
 this table would silently become a claim about a file the model no longer
-consults.
+consults. For the fresh gas flow it is caught, by
+`test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow`, which
+builds a run from a profile stating a different flow; for the other three
+nothing catches it yet (`PL-H8QP`).
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4 -->
 <!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6.0, default_fresh_gas_flow_l_min = 4.0 -->
 

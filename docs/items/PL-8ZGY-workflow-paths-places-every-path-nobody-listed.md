@@ -6,13 +6,13 @@ effort: M
 status: ready
 classes: defect, infra
 feature: parallel-sessions
-touches: docket.toml, tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_trend.py
+touches: docket.toml, tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_trend.py, subprojects/docket/src/docket/config.py, docs/ARCHITECTURE.md, docs/items/PL-21RC-docs-maintainer-md-is-apparatus-in-docket-toml.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-27
 payoff: an apparatus item stops being held out of its lane by a file nobody thought to list, and a new file's side becomes a decision made once
 not-delegable: the fix starts with a decision per unplaced path and a choice of which carrier is the source of truth, so no command can prove it before that design round
 root-cause-of: PL-JBZK, PL-GVNS, PL-12P8, PL-W40L
-generator: live - the store handed it a member today (PL-W40L), and every tracked path no decision places still defaults to the simulator's side with nothing reporting it, so the next unplaced apparatus path is found only when someone happens to notice
+generator: spent - since #1210, tools/workflow_paths_check.py refuses a tracked path neither workflow_paths nor product_paths places, so no tracked path reaches the default unreported; what stays open here, bin/docket trend's reading of paths no longer tracked, hands the store no members
 misread: Which lane, workflow or product, each tracked path is in
 ---
 
@@ -143,3 +143,147 @@ to add, rather than defaulting to the simulator's side in silence. `bin/docket
 trend` no longer counts `docs/pr-bodies/`, `bin/docket`,
 `docs/resident-instructions.md` or any other path no decision places as a
 product change.
+
+**Design round, 2026-09-27, awaiting the project owner** (branch
+`claude/cool-meitner-pjnueb`, `#1210` as a draft). Two decisions; the second
+is a table. Both were counted before they were argued: a script ran every
+item's `touches` through `Item.lane` against `workflow_paths` as `#1199` leaves
+it, once as it stands and once with the path in question listed, and recorded
+what the item's *other* paths say - all apparatus (w), all product (p), mixed,
+or nothing else declared.
+
+**1. Which carrier records the simulator's side.**
+
+**Recommendation: a `product_paths` list in `docket.toml` beside
+`workflow_paths`, each entry with its reason as a comment, and the pinning
+tests kept as the end-to-end guard rather than made the record.** A pinning
+test can guard a placement - assert through `Item.lane` that an item touching
+only that path lands where the decision put it - but it cannot enumerate the
+placed set, and "unplaced" is a question about the set. The moment the tests
+hold a tuple to enumerate, that tuple is the record, and the only question left
+is which file holds it: the file that defines the boundary and already carries
+the four deliberate absences as prose, or a test module nobody opens to ask
+which side a path is on. The check is also a standard-library tool that runs
+from a bare checkout and a hook and already parses `docket.toml`; a record in
+a test module reaches it only through pytest. Cost: one key in `docket.toml`
+the docket package does not read. `docket.config.load` reads keys by name and
+ignores the rest, probed 2026-09-27 with the key present, so no change to
+`subprojects/docket/` and the comment says who reads it. `Item.lane` is
+unchanged: a path not yet in the tree stays product by default until it lands,
+and the check names it then. Under the pause on new mechanisms this is
+generator work - `PL-8ZGY` is the live head - so it needs no lift.
+
+**The check**, one rule added to `tools/workflow_paths_check.py`, which `make
+check` already runs: for every tracked file (`git ls-files`) outside `tests/`,
+whose files the import rule and `PL-12P8`'s support-module rule already decide,
+the shortest ancestor no entry of either list reaches into must itself be an
+entry of one list. Otherwise refuse, naming the path and both lines that would
+place it, since which list is the author's judgment and the tool decides only
+that nobody made it. Two more refusals of the same kind: an entry both lists
+cover, and an entry that resolves to nothing in the tree - which `.mailmap` in
+`workflow_paths` is today; no file of that name has ever been tracked. One
+parametrized test asserts through `Item.lane`, for every entry of both lists,
+that an item touching only that entry lands on its side; the three existing
+pins stay. `tests` is deliberately in neither list, and the rule says so where
+it exempts it.
+
+**2. A decision per unplaced path.** Every tracked path outside `src/` and
+`tests/` that no entry covers, with the count. `bin/docket` and
+`docs/resident-instructions.md` go to the workflow side; `docs/MODEL.md` to
+the product side, where `CLAUDE.md` already puts it in words.
+
+| Path | Side | Why | items / open / w / p |
+| --- | --- | --- | --- |
+| `docs/resident-instructions.md` | workflow | the ledger of the resident set, addressed to sessions as `docs/worker.md` is; 27 of 28 items cross today and 22 become `workflow` | 28 / 2 / 21 / 0 |
+| `docs/pr-bodies` | workflow | the pull-request record `tools/pr_body_check.py` writes; 7 of 10 become `workflow` | 10 / 1 / 5 / 0 |
+| `bin` | workflow | the docket launcher; no item has ever declared it | 0 / 0 / 0 / 0 |
+| `.vscode` | workflow | editor settings for working the repository | 1 / 0 / 1 / 0 |
+| `.gitattributes` | workflow | git plumbing beside `.gitignore`, which is listed; its one item (`PL-JX2T`) concerned a stray branch and pairs it with product paths, so kind decides over that one closed count | 1 / 0 / 0 / 1 |
+| `docs/stress-2026-09-25` | workflow | `PL-P0FP`'s apparatus stress-test evidence | 1 / 0 / 1 / 0 |
+| `.mailmap` | remove | listed, never in the tree | - |
+| `src`, `docs/MODEL.md`, `README.md` | product | `CLAUDE.md`'s own enumeration of the simulator, recorded as data | 247 / 42 / 11 / 156 for MODEL.md; 41 / 7 / 4 / 12 for README |
+| `ROADMAP.md`, `docs/releases`, `docs/ARCHITECTURE.md` | product | the recorded absences, moved from prose to entries with their reasons kept; the apparatus-only counts (90, 4, 40) are `PL-KRGY`'s question, not this item's | 244 / 23 / 90 / 37; 57 / 1 / 4 / 7; 120 / 18 / 40 / 26 |
+| `docs/references` | product | the source register behind `docs/MODEL.md`'s provenance, which `citing-sources.md` scopes with it; the 4 apparatus-paired items stay `crossing`, honestly | 22 / 8 / 4 / 8 |
+| `docs/consultant-brief.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md`, `docs/machine-survey.md` | product | the simulator's design records; every item pairing one with a side pairs it with product | 3 / 1; 7 / 1; 8 / 4; 8 / 2 - w 0 in all four |
+| `LICENSE`, `CITATION.cff` | product | for a reader or citer of the simulator, as `README.md` is; both `CITATION.cff` items were about making the simulator citable | 1 / 0 / 0 / 1; 2 / 0 / 0 / 0 |
+| `pyproject.toml`, `uv.lock`, `.python-version` | product | genuinely both, so the count decides: 8 items pair `pyproject.toml` only with product paths against 3 only with apparatus, and `uv.lock` 6 against 0. The cost is that a tool's configuration inside `pyproject.toml` reads `product`; `PL-M3YJ` (mypy's `warn_unused_configs`) is the one open instance | 72 / 1 / 3 / 8; 55 / 0 / 0 / 6; 1 / 0 / mixed |
+
+The three rows the count and the kind do not settle the same way, or where
+the count is thin, are `.gitattributes`, `CITATION.cff` and the packaging
+trio; the rest are uncontested. Placing a document on the workflow side is a
+lane fact only: whether `.claude/rules/apparatus-standard.md`'s `paths:` and
+`CLAUDE.md`'s enumeration follow is `PL-21RC`'s question, per `PL-1KTV`'s
+settled distinction, and that item's table gains these rows when this one is
+built. Paths items name that are not in the tree - `spikes/`, `assets/`,
+`docs/workflow.md`, `docs/ci-failures.csv` - are untouched by the check until
+they land.
+
+**Decision needed.** Two, and both are answered by the section above: (1)
+whether the simulator's side is recorded as a `product_paths` list in
+`docket.toml`, as recommended, or as per-path pinning tests in
+`tests/unit/test_workflow_paths_check.py`; (2) whether the table's placements
+stand, in particular the three rows it names as contested - `.gitattributes`
+to the workflow side, and `CITATION.cff` and the packaging trio
+(`pyproject.toml`, `uv.lock`, `.python-version`) to the product side. An
+answer to both starts the build on this branch.
+
+**Decided 2026-09-27: the recommendation as written** (project owner,
+2026-09-27, ratified, over recording the simulator's side as per-path pinning
+tests in `tests/unit/test_workflow_paths_check.py`, and over the other side
+for each of the three contested rows). Built on this branch: `product_paths`
+in `docket.toml` with the table's entries and reasons, the six workflow
+entries and `.mailmap` removed, the placement rule and its two entry refusals
+in `tools/workflow_paths_check.py`, and the tests. `docs/ARCHITECTURE.md`'s
+tree entry for the check was rewritten in the docs sweep, which also settles
+`PL-93RN`'s sentence; that item's file is on `#1199`'s branch and closes once
+it lands. `PL-21RC` carries the six rows the standard's carriers now lack.
+
+**Re-checked against #1199's corrections, 2026-09-27.** The design round
+above was argued on the brief as first filed: this branch's predecessor
+recovered it from `claude/pl-w40l-kidkwe` (`0207afd7`) before the corrections
+landed there (`9d71a82c`), and the merge that brought `#1199` in kept that
+copy whole (`82f71f2a`), so `#1210` put the uncorrected brief on `main`.
+Restored here as `#1199` filed it, the design round on top. Against each
+correction:
+
+- Four members, `PL-1KTV` and `PL-21RC` related: no change. The
+  recommendation already left the review-standard carriers to `PL-21RC` as a
+  separate question, and the six rows added there stand.
+- The misread narrowed to the lane: no change. The recommendation and the
+  build work on the lane alone.
+- The table as re-measured: every path in it is placed by `#1210`, on the
+  side the design round's table gives. `PL-0SCG` and `PL-Z3V5` stay
+  `crossing` deliberately: each pairs `docs/references/` with apparatus
+  paths, and the workflow side would make 8 product-only items cross to free 4.
+- `tests/unit/test_workflow_paths_check.py` as the existing record: the
+  recommendation stands. Its three pins guard placements `workflow_paths`
+  already lists, so no simulator-side decision was recorded there to extend,
+  and `trend.py`'s `bucket()` can read `docket.toml` through `docket.config`
+  but not a test module. `product_paths` is the done-when's second form: the
+  four deliberate absences, moved from prose to entries with their reasons.
+- No pointer to `check_workflow_paths`: no change. `tools/doc_check.py`'s
+  function of that name resolves the paths CI steps run; nothing here used it.
+- `bucket()` as a second reader: it reads `workflow_paths`, so `#1210`'s six
+  entries moved 14,768 changed lines of `bin/docket trend`'s history from
+  product to apparatus, the three paths the done-when names among them. But
+  it still ends in `return SIM_DOCS`, and with every tracked path placed, what
+  reaches that default is the history of paths no longer tracked: 7,209
+  lines, 1.3% of all churn (`docs/PUNCH_LIST.md` 3,374, `docs/inbox/` 235,
+  `spikes/qt/` 3,590, `v002Gitstuff` 10), and since 2026-08-31 only
+  `spikes/qt/`, 0.72%. It grows, since the placement rule's dead-entry refusal
+  takes an entry out with its path. So the done-when's last clause is unmet,
+  and the design round's cost - no change to `subprojects/docket/` - was wrong.
+
+**Decided 2026-09-27: reopen and build `trend`'s unplaced bucket** (project
+owner, 2026-09-27, ratified, over narrowing the done-when's last clause to
+tracked paths and closing with the 1.3% recorded). The build:
+`docket.config.Config` gains `product_paths`, read from `docket.toml`.
+`bucket()` keeps its order, and where `product_paths` is declared returns
+`SIM_DOCS` only for a path under it and a new `unplaced` bucket for a path
+under neither list; with none declared it keeps today's default, as the
+placement rule in `tools/workflow_paths_check.py` declines without one.
+`bin/docket trend` says how many lines are unplaced and keeps them out of
+both sides' share, as `Period.closed` keeps `crossing` items out of both.
+Tests in `subprojects/docket/tests/test_trend.py`, and `docket.toml`'s
+`product_paths` comment stops saying docket does not read it. `generator:` now
+reads spent: the placement rule closed what handed this head members.

@@ -3,14 +3,43 @@ id: PL-QW19
 title: default_fresh_gas_flow_l_min is a required field no manufacturer publishes, so the first real machine profile must invent an unsourced number or cannot be written
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, anticipated
 feature: machine-profile-framework
-touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_circuit.py, tests/unit/test_parameters.py, docs/machine-abstraction.md, docs/MODEL.md
+touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_circuit.py, tests/unit/test_parameters.py, docs/machine-abstraction.md, docs/MODEL.md, docs/machine-survey.md
 added: 2026-09-20
+closed: 2026-09-27
+pr: 1211
 payoff: stops the first real machine profile being unaddable, or being added only by inventing a startup fresh gas flow no manufacturer publishes and writing a provenance row that cites nothing
 verify: grep -q 'def test_a_profile_omitting_the_default_fresh_gas_flow_falls_back' tests/unit/test_circuit.py
 ---
+
+**Read against `PL-TBMX` and `PL-HGB6` on 2026-09-27, before building: they
+agree with this brief.** "The patient circuit volume is `PL-TBMX`'s deferred
+half" below names the split `PL-TBMX` defers, not work it will do. Its reopened
+brief pins `circuit_volume_l` as the assembled total, apparatus plus patient
+circuit, and puts "no `apparatus_volume_l` field, no run-level patient-circuit
+input" outside its own scope, and `docs/machine-abstraction.md` now gives that
+split to planned-milestone item 1: "the two names stay distinct until item 1
+moves the patient circuit to the run" (`PL-HGB6`). So the patient-circuit volume
+stays inside `circuit_volume_l`, stored whole on the profile. This item neither
+moves it nor needs `PL-TBMX` to land first, and the opening flow is the only
+opening condition it touches.
+
+**How it was built, where the brief left the route open.** The fallback is
+named, `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` in `core/circuit.py`, which is
+also `BreathingCircuit`'s field default, and `for_agent()` passes it explicitly
+rather than reaching it by leaving the argument out, so the run's construction
+says where its number came from. Three tests beyond the one the `verify:` names:
+a stated flow opens the run at that flow rather than at the fallback, because
+the shipped 4.0 equals the fallback and a `for_agent()` that always fell back
+would otherwise pass every test; a silent profile whose declared range excludes
+the fallback is refused by `BreathingCircuit` in its own words, as "Not in
+scope" below says it must be; and `fresh_gas_flow_l_min` written for this key is
+refused, since `extra="forbid"` is now all that keeps a misspelling from reading
+as silence. `docs/MODEL.md`'s paragraph "Each parameter file is the single
+authority for its own values" said the flow default was "reached by nothing
+else", which stopped being true here, and now says what else reaches it.
 
 **Problem.** default_fresh_gas_flow_l_min is a required field no manufacturer publishes, so the first real machine profile must invent an unsourced number or cannot be written
 
