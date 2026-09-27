@@ -45,6 +45,7 @@ only if the second number is a clear majority of the first.
   is dominated by legitimate identifiers - and then this item closes as
   `dropped` with the count as its reason, so the question is not re-raised.
 
+[superseded 2026-09-27: the count was taken, § "Design round 2026-09-27"]
 Whoever answers it should take the count first; the answer follows from it
 rather than from an argument.
 
@@ -122,3 +123,12 @@ an item answerable by running a measurement is a session's - the count decides
 this, and the item sat at `needs-decision` only because nobody had taken it.
 It is put to the project owner here because the design round was asked to put
 every open question, and a one-word answer closes it.
+
+## Answers 2026-09-27
+
+**Answered 2026-09-27: Q1 ratified - not tightened** (project owner,
+2026-09-27, ratified, over tightening to a substring rule). The
+whole-identifier rule stays, and this item closes `dropped` with the count in
+§ "Design round 2026-09-27: the count, and the recommendation" as its
+`reason`. That is one `bin/docket set PL-JW9J --status dropped --reason ...`
+write by the thread that takes it, and no code changes.

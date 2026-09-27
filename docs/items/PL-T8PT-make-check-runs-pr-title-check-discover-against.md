@@ -38,6 +38,7 @@ point of a pre-commit gate, and this is the one check in the suite whose input
 only becomes true *after* the commit. `dropped` counts here exactly as `done`
 does, which is what made five ids appear at once.
 
+[superseded 2026-09-27: approach 1 chosen, § "Answers 2026-09-27"]
 **Approaches, none chosen:**
 
 - Have `--discover` read the index and working tree as well as `HEAD`, so it
@@ -49,7 +50,8 @@ does, which is what made five ids appear at once.
   locally - the third approach `PL-3BC5` contributed to `PL-J3BB` and which
   was not the one built.
 
-**Not delegable as filed:** which of the three is right is an open question.
+[superseded 2026-09-27: answered, § "Answers 2026-09-27"] **Not delegable as
+filed:** which of the three is right is an open question.
 
 **Why it matters.** `CLAUDE.md` names an advisory being routed around as one of
 the three findings worth interrupting for, and this is the shape one step
@@ -183,3 +185,13 @@ runs `make check` before committing sees the title failure then, with the
 working tree named as what was read; CI's verdict on the pushed head is
 unchanged; and `record N`, the title check and the record check agree on
 what this checkout closes.
+
+## Answers 2026-09-27
+
+**Answered 2026-09-27: approach 1, narrowed to the local run, ratified**
+(project owner, 2026-09-27, ratified, over a pre-push hook and over printing
+the ids with no verdict). Under `--discover` the head side reads the working
+tree and CI is unchanged, as § "Design round 2026-09-27: recommendations"
+specifies. The approach is chosen, so the "not delegable as filed" reason
+above has ended and the item is ordinary `S` work; the thread that builds it
+sets its status and `touches:`.

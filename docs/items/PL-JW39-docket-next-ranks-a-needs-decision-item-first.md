@@ -127,3 +127,12 @@ mode files when the build thread claims it; `S` holds.
 batch hide `needs-decision` and in-flight items, or mark them the way `[IN
 FLIGHT]` does) is the same question about a different command, and its
 answer should follow this one: named, and never offered as startable.
+
+## Answers 2026-09-27
+
+**Answered 2026-09-27: Q1 ratified** (project owner, 2026-09-27, ratified,
+over keeping the rank and saying so in the reason line). `bin/docket next`
+stops ranking a `needs-decision` item unless it is `P0`, and names the
+decisions apart beneath the picks, as § "Design round 2026-09-27:
+recommendations" specifies. The thread that builds it sets this item's status
+and `touches:`.
