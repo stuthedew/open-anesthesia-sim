@@ -3,11 +3,13 @@ id: PL-G8TR
 title: no-prune-guard is evaded by the form it recommends - git branch -dr driven from a generated list is a prune
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
 touches: .claude/hooks/no-prune-guard.sh, .claude/hooks/shell_split.py, tests/unit/test_no_prune_guard.py, .claude/skills/docket/modes/capture.md
 added: 2026-09-06
+closed: 2026-09-27
+pr: 1198
 payoff: a generated list of remote-tracking refs to delete is stopped at the same question a prune is - is any of this the only copy? - while the one-ref remedy the guard prints still runs
 verify: grep -q 'def test_a_generated_list_of_refs_is_refused_as_a_prune' tests/unit/test_no_prune_guard.py && uv run pytest tests/unit/test_no_prune_guard.py
 ---
