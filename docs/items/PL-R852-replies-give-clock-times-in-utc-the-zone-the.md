@@ -3,10 +3,12 @@ id: PL-R852
 title: Replies give clock times in UTC, the zone the tools print, where the project owner reads US Central (Madison, Wisconsin), so every deadline - the compaction clock time among them - is converted by hand
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 touches: .claude/rules/instruction-writing.md, docs/resident-instructions.md
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1218
 payoff: every clock time a reply gives is one the project owner reads as given, the compaction deadline included, with no sum to do first
 verify: grep -qF 'America/Chicago' .claude/rules/instruction-writing.md && grep -qF "rule 15's clock times" .claude/rules/instruction-writing.md
 ---
