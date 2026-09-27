@@ -599,21 +599,22 @@ def washout_curve(
     curve computes it under a lock and publishes it where every worker of the
     run can read it, and a worker needing the same curve meanwhile waits on
     the lock and reads what was published. Sending each curve's tests to one
-    worker with `--dist loadgroup` also computes each curve once, and was
-    measured and set aside: it made the rest of the suite slower by more than
-    this saves over it.
+    worker with `--dist loadgroup` computes each curve once too, and was
+    measured and set aside: it slowed the rest of the suite by 8 to 11 s, and
+    the whole run by 19 s against this (`PL-F08Y` has the figures).
 
     The directory is the run's own base temporary directory, the parent of
     each worker's, which pytest makes afresh for every run and empties when
     one is named with `--basetemp`. A curve published there cannot be served
     to a later run built from different source, which is the hazard `PL-0MLZ`
-    closed for bytecode. For the same reason, sharing waits on `workerinput`,
-    which xdist sets on a worker's own configuration, and not on the
-    environment variable a pytest started inside a worker would inherit: that
-    run's base directory's parent outlives it. A curve is written whole and
-    then renamed into place, and the lock is `flock`, which the kernel
-    releases if the worker holding it dies, so a crash leaves the next worker
-    to compute the curve rather than read half of one or wait for ever.
+    closed for bytecode. For the same reason, whether to share turns on
+    `workerinput`, which xdist sets on a worker's own configuration, and not
+    on `PYTEST_XDIST_WORKER`, which a pytest started inside a worker would
+    inherit: that run's base directory's parent outlives it. A curve is
+    written whole and then renamed into place, and the lock is `flock`, which
+    the kernel releases if the worker holding it dies, so a crash leaves the
+    next worker to compute the curve rather than read half of one or wait for
+    ever.
     Without xdist one process runs every test and its cache is the whole
     story. Windows has no `fcntl`, so there each worker computes what it
     needs, as every worker did before.
