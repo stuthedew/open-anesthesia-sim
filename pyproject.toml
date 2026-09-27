@@ -160,6 +160,16 @@ select = ["E", "F", "I", "UP", "B", "RUF100"]
 # warning by reversing a formatting decision nobody asked to revisit.
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false
+# The package's imports are named first-party rather than found. Left to
+# isort's `match_sources`, an import is first-party only while its module's file
+# exists under a `src` root - a fact about a *different* file - and ruff's cache
+# keys a verdict to the linted file's mtime and permission bits alone, so
+# deleting a module left a hand-typed `uv run ruff check .` replaying clean
+# verdicts a cache-free run rejected. Isort reads this list before it probes, so
+# the verdict no longer rests on the other file. The Makefile's `ruff check`
+# line says why the gate keeps `--no-cache` anyway, and what this leaves to it
+# (`PL-VZYS`).
+known-first-party = ["anesthesia_sim"]
 
 # The type-check gate, and the single source of truth for what it covers:
 # `make check` and CI both run a bare `uv run mypy`, so widening it is one
