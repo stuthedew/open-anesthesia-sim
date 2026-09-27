@@ -318,7 +318,8 @@ def _snapshot(
     test naming an agent cannot pair that agent's concentrations with
     another agent's MAC, which is the presentation failure the MAC readouts
     have to be proof against. The six compartment fractions are read from
-    the last sample of `history` under the agent the snapshot names.
+    the last sample of `history` under the agent the snapshot names. The run
+    is a trunk's, begun at induction, as `_unreached` assumes of its marks.
     """
 
     if history is None:
@@ -336,6 +337,7 @@ def _snapshot(
     return SimulationSnapshot(
         is_running=is_running,
         elapsed_s=latest.elapsed_s,
+        began_at_s=0.0,
         agent_id=agent_id,
         agent_display_name=agent_display_name,
         max_delivered_concentration_percent=Percent(max_delivered_concentration_percent),

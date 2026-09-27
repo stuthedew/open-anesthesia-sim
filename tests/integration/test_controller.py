@@ -1079,6 +1079,80 @@ def test_set_agent_leaves_a_new_run_holding_nothing_to_discard() -> None:
     assert controller.snapshot().has_recorded_run is False
 
 
+def test_a_fresh_branch_holds_nothing_to_destroy() -> None:
+    """`PL-7TBQ`: a branch is built already standing at its fork, which is not a touch.
+
+    Its clock is the case's, so its elapsed time is past zero the instant it
+    exists. Counted from zero, it held a run to lose before the learner had
+    done anything to it; counted from where it began, it holds nothing.
+    """
+
+    trunk = _trunk_with_two_changes()
+    fork_s = trunk.run_segments[-1].opening.instant_s
+    branch = BranchedCase(trunk).fork_at(fork_s)
+
+    snapshot = branch.snapshot()
+
+    # The premise: the clock is past zero and nothing has been recorded.
+    assert snapshot.elapsed_s == snapshot.began_at_s == branch.began_at_s == fork_s
+    assert snapshot.elapsed_s > 0.0
+    assert snapshot.control_timeline == ()
+    assert trunk.snapshot().began_at_s == 0.0
+
+    assert snapshot.has_recorded_run is False
+
+
+def test_a_fresh_branch_taken_at_a_bookmark_holds_nothing_to_destroy() -> None:
+    """The other door to a fork, whose instant is the step the trunk halted on."""
+
+    marked = _trunk_halted_on_a_bookmark()
+    branch = BranchedCase(marked).fork_at_halt()
+
+    snapshot = branch.snapshot()
+
+    assert snapshot.elapsed_s == snapshot.began_at_s == marked.snapshot().elapsed_s
+    assert snapshot.has_recorded_run is False
+
+
+def test_a_branch_advanced_one_step_past_its_fork_holds_something_to_destroy() -> None:
+    trunk = _trunk_with_two_changes()
+    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+    branch.start()
+    branch.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    assert branch.snapshot().has_recorded_run is True
+
+
+def test_a_setting_changed_on_a_fresh_branch_is_something_to_destroy() -> None:
+    """The timeline half, on a branch: a change made at the fork is the learner's own act."""
+
+    trunk = _trunk_with_two_changes()
+    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+    branch.set_fresh_gas_flow(1.0)
+
+    snapshot = branch.snapshot()
+
+    assert snapshot.elapsed_s == snapshot.began_at_s
+    assert snapshot.has_recorded_run is True
+
+
+def test_resetting_a_branch_returns_it_to_holding_nothing_to_destroy() -> None:
+    """The case `PL-7TBQ` measured: advanced, changed and reset, it still read as a run to lose.
+
+    A branch's reset returns it to its fork rather than to zero, so what
+    reset leaves on a branch is the fresh branch, and has to read as one.
+    """
+
+    trunk = _trunk_with_two_changes()
+    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+    branch.start()
+    _advance_for(branch, duration_s=5.0)
+    branch.set_fresh_gas_flow(1.0)
+    branch.reset()
+
+    assert branch.snapshot().has_recorded_run is False
+
+
 # --- Stopping at the supported run length (PL-Y5WR) --------------------------
 
 
