@@ -134,6 +134,20 @@ class Descriptor(str):
     __slots__ = ()
 
 
+class Command(list[str]):
+    """A command's words from the program it runs, and the wrappers read past to reach it.
+
+    `xargs -I % git branch -dr origin/%` runs `git` with names `xargs` reads
+    from its input, so its words alone read as one ref spelled out, and only the
+    wrapper says otherwise (`PL-G8TR`).
+    """
+
+    def __init__(self, words: list[str], wrappers: tuple[str, ...] = ()) -> None:
+        super().__init__(words)
+        # Each wrapper's name, bare, outermost first: `timeout 5 xargs git` gives both.
+        self.wrappers = wrappers
+
+
 # Bash's control and redirection operators, matched longest first.
 OPERATORS = frozenset("; ;; ;& ;;& & && &> &>> | || |& ( ) < << <<- <<< <& <> > >> >& >|".split())
 OPERATOR_CHARACTERS = frozenset("&|;()<>")
@@ -387,22 +401,25 @@ def _quoted(word: str) -> str:
     return head + shlex.quote(value)
 
 
-def program_words(segment: list[str]) -> list[str]:
+def program_words(segment: list[str]) -> Command:
     """`segment` from the program it runs: its command word, or past each wrapper ahead of it.
 
     `timeout 60 nice -n 5 git fetch --prune` runs `git`, so that is where the
-    words start (`PL-TRMN`). Every redirection is gone from what is returned,
-    since bash passes none of them to the program: `env 2>/dev/null git fetch
-    --prune` runs `git`, and `bin/docket 2>/dev/null check` hands `bin/docket`
-    the word `check` first (`PL-K9QL`). Empty where the wrapper runs nothing -
+    words start (`PL-TRMN`), and the wrappers read past are kept beside them.
+    Every redirection is gone from what is returned, since bash passes none of
+    them to the program: `env 2>/dev/null git fetch --prune` runs `git`, and
+    `bin/docket 2>/dev/null check` hands `bin/docket` the word `check` first
+    (`PL-K9QL`). Empty where the wrapper runs nothing -
     `command -v git` describes it, a wrapper given no command runs none, and
     one refusing an option it does not know stops there - or runs a string this
     does not read, as `env -S` does.
     """
     rest, _ = _lift(command_words(segment))
+    wrappers: list[str] = []
     while rest and _basename(rest[0]) in WRAPPERS:
+        wrappers.append(_basename(rest[0]))
         rest = _run_by(rest, WRAPPERS)
-    return rest
+    return Command(rest, tuple(wrappers))
 
 
 def builtin_words(segment: list[str]) -> list[str]:
@@ -531,8 +548,11 @@ def _run_by(words: list[str], grammars: dict[str, Grammar]) -> list[str]:
     return words[at:]
 
 
-def commands(command: str) -> list[list[str]]:
+def commands(command: str) -> list[Command]:
     """Every command in `command` that bash would run, each read through `program_words`.
+
+    Each carries the wrappers that run it, so a guard can tell `xargs git
+    branch -dr` from `git branch -dr` (`PL-G8TR`).
 
     A segment ends only at a separator; a command also starts after each `(`
     or `)` read as an operator, so a subshell, a `$( )`, a `<( )` and the
@@ -549,7 +569,7 @@ def commands(command: str) -> list[list[str]]:
         reader.read()
     except _Unreadable:
         pass
-    found: list[list[str]] = []
+    found: list[Command] = []
     for tokens in (reader.tokens, *reader.substituted):
         for segment, _ in _cut(tokens):
             piece: list[str] = []
