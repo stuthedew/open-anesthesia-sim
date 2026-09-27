@@ -372,18 +372,23 @@ def test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teachin
     """`PL-QW19`: a profile that states no startup flow loads and runs.
 
     Before, the key was required, so a real machine's profile had to carry a
-    flow no manufacturer publishes. The circuit time constant is asserted
-    beside the flow because it is the quantity a learner reads off the early
-    rise: 6.0 L at the teaching default's 4.0 L/min is the shipped 90 s.
+    flow no manufacturer publishes. The volume is moved off the shipped 6.0 L
+    so that the run provably came from this profile: the shipped one states
+    the same 4.0 L/min as the fallback, so a flow alone could not tell them
+    apart. The circuit time constant is asserted beside the flow because it is
+    the quantity a learner reads off the early rise: 8.0 L at 4.0 L/min is
+    120 s.
     """
 
     payload = _shipped_machine_payload()
     del payload["default_fresh_gas_flow_l_min"]
+    payload["circuit_volume_l"] = 8.0
 
     circuit = _run_built_from(monkeypatch, payload).circuit
 
+    assert circuit.circuit_volume_l == 8.0
     assert circuit.fresh_gas_flow_l_min == TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
-    assert circuit.time_constant_s == pytest.approx(90.0)
+    assert circuit.time_constant_s == pytest.approx(120.0)
 
 
 def test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow(
