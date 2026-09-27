@@ -123,3 +123,10 @@ a liquid-equivalent figure derived from a composite constant whose temperature
 is invisible — still does not exist, because no vapour-to-liquid conversion
 exists. `anticipated` and `status: blocked` hold together, which is what
 `check_gate_reentries` requires since `PL-ZF2G`.
+
+**The question moved, 2026-09-27 (`PL-18BD`); this item's edge did not.**
+`PL-B396` is now `blocked` on `PL-YRLM`, which holds whether a release
+schedules item 28, so the passage above calling `PL-B396` `needs-decision`, and
+saying no version exists until `PL-B396` produces one, is dated: the version
+will come from `PL-YRLM`'s answer. `blocked-by: PL-S6WW, PL-B396` stands, and
+`bin/docket wave` reaches `PL-YRLM` through it.
