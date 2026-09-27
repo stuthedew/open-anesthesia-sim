@@ -167,7 +167,8 @@ fourth are the elimination's own.
    deviations per cohort. Any statement that this model eliminates more slowly
    than Yasuda's volunteers has to carry it, because most of that difference
    is a rebreathing circuit rather than a patient.
-4. *This model has no metabolism, which is why five minutes is the limit.*
+4. *This model has no metabolism, and nothing on the scale of the fourth
+   compartment human washout needs; five minutes is inside what both allow.*
    Over five minutes of elimination metabolism is negligible for all three
    shipped agents, and the papers themselves bound it: recovery — agent
    recovered during elimination over agent taken up — was 101 +/- 7% for
@@ -177,9 +178,20 @@ fourth are the elimination's own.
    metabolized agent. Both papers also report multi-day elimination curves.
    Those must not be added here: over days the missing metabolism is no
    longer negligible, and neither is the fat compartment's flow, which
-   docs/MODEL.md's "Known limitations" records as about twice the reachable
-   resting measurement and therefore acting directly on the slow tail of
-   washout.
+   docs/MODEL.md's "Known limitations" weighs against two human sources that
+   disagree about its direction (about twice a resting depot measurement; at
+   or a little below what the same papers' washout fits imply) and which acts
+   on the slow tail of washout either way. The measured tail leaves what this
+   model can follow long before days, though, and inside the 24 hours a run
+   is supported for: every washout these papers fitted needed a fourth
+   compartment between muscle and fat, which this model has no counterpart
+   for, and on the published mean coefficients its term is the largest in
+   the measured curve from about 1.8 to 3.1 hours after the 30-minute
+   administration until about 20.7 to 29.4 hours (docs/MODEL.md, the
+   intertissue-diffusion note under "Known limitations"). At five minutes it
+   is about one part in twenty of what remains. So the gap over those hours
+   belongs to a measurement recorded beside this gate, not to the gate
+   (docs/MODEL.md, caveat 4 of this comparison).
 
 What the wash-in comparison does establish is that six coupled compartments,
 an exact propagation of them, a circuit model, and three parameter files

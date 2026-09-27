@@ -32,5 +32,13 @@ shape: a carrier `uv run` reads, rather than one `make` applies.
 stale `.ruff_cache` - `[tool.uv]`'s `env` or `env-file` in `pyproject.toml` is
 the cheapest candidate, and takes `RUFF_NO_CACHE=true`, which rejects `1` - and
 the Makefile flags are either kept as belt-and-braces with a comment saying so,
-or removed as redundant. Worth landing with `PL-0MLZ` and `PL-TCKV`, which want
-the same carrier.
+or removed as redundant. `PL-TCKV` wants the same carrier; `PL-0MLZ`, which
+wanted it too, closed on 2026-09-27 without it.
+
+**Found by `PL-0MLZ`, 2026-09-27: the candidate above does not exist.** uv
+0.12.19 warns that `env` and `env-file` under `[tool.uv]` are unknown fields
+and applies neither, and reads a `.env` only under `--env-file` or
+`UV_ENV_FILE`. `PL-0MLZ` took the root `conftest.py`, which only a pytest run
+reads, so it offers ruff nothing, and ruff's own configuration carries
+`cache-dir` but no switch that turns the cache off. `.claude/settings.json`'s
+`env` block does not load in a Projects thread either (`PL-9DYK`).
