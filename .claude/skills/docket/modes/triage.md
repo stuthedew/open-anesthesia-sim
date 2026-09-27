@@ -101,7 +101,8 @@ no section, so nothing resolves it.
 
 **And `needs-decision` says the next step is a decision, never whose.** That is
 the third case, and it is the one taken by mistake, because the status looks
-like an invitation and `bin/docket next` ranks it. The owner's are the
+like an invitation - and `bin/docket next` ranked it until `PL-JW39` named it
+apart instead. The owner's are the
 *consequential* questions - whether a feature enters `ROADMAP.md`, the order
 features come in, which of two defensible products this is, anything a learner
 would see or the safety-critical standard reaches. `CLAUDE.md` divides it in

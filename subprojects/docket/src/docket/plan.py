@@ -493,11 +493,16 @@ def set_aside(
     Takes the same exclusions `recommend` does - in flight, and the effort
     filter - so the count reported beside a ranking describes that ranking,
     rather than a queue neither session was looking at.
+
+    A decision is left out, because `next` names it on a line of its own
+    (`awaiting_decision`). Counted here too, it would be reported twice, and
+    the second time as waiting for a session that can hold the whole change,
+    which no session can start (`PL-JW39`).
     """
     held = [
         item
         for item in _startable(items, in_flight, effort=effort)
-        if item.lane(workflow_paths) in (LANE_CROSSING, LANE_UNPLACED)
+        if item.lane(workflow_paths) in (LANE_CROSSING, LANE_UNPLACED) and not awaits_decision(item)
     ]
     return SetAside(
         crossing=[i for i in held if i.lane(workflow_paths) == LANE_CROSSING],
@@ -533,6 +538,63 @@ def _unseated_by(item: Item) -> str:
     if item.is_open and not item.is_untriaged and item.status != "blocked":
         return ""
     return item.status
+
+
+def awaits_decision(item: Item) -> bool:
+    """Whether this item's next step is the project owner's answer rather than a session's work.
+
+    A `needs-decision` item below `P0`. It is startable - `_unseated_by`
+    leaves it the rank its band and tier give it, and `bin/docket gate`
+    counts it - but a session handed one can only read the brief, find the
+    open question and stop. So it is named apart and never ranked (`PL-JW39`,
+    project owner, 2026-09-27, ratified, over keeping its rank and saying in
+    the reason line that its next step is a decision). `P0` is the exception,
+    as everywhere in the plan: a hotfix tops the list whatever its status.
+
+    One predicate for `recommend`, `longest_waiting`, `set_aside` and
+    `awaiting_decision`, so the picks, the decisions line and the lane footer
+    divide one startable population between them, with nothing counted twice
+    and nothing left out.
+    """
+    return item.status == "needs-decision" and item.priority != "P0"
+
+
+def awaiting_decision(
+    items: list[Item],
+    in_flight: Collection[str] | None = None,
+    *,
+    effort: str | None = None,
+    lane: str | None = None,
+    workflow_paths: tuple[str, ...] = (),
+) -> list[Item]:
+    """The startable work waiting on a decision, oldest first, as `next` names it.
+
+    `_startable`'s population, so the exclusions the ranking takes - work in
+    flight, and the effort filter - apply here too. A lane keeps its own
+    decisions and the ones no lane can place, reaching both halves or
+    declaring no `touches`: `set_aside` leaves decisions out of the lane
+    footer, so one that crosses the boundary is named here or nowhere.
+
+    Oldest first by `added`, ties by band and then id, and an item with no
+    `added` last. That is `longest_waiting`'s order: among questions waiting
+    on one person, the one that has waited longest is the one to put first.
+    """
+    placed = (lane, LANE_CROSSING, LANE_UNPLACED)
+    return sorted(
+        (
+            item
+            for item in _startable(items, in_flight, effort=effort)
+            if awaits_decision(item) and (lane is None or item.lane(workflow_paths) in placed)
+        ),
+        key=_oldest_first,
+    )
+
+
+def _oldest_first(item: Item) -> tuple[int, date, int, str]:
+    """Age order: undated last, then by `added`, then band, then id."""
+    undated = 0 if item.added is not None else 1
+    band = PRIORITIES.index(item.priority) if item.priority in PRIORITIES else len(PRIORITIES)
+    return (undated, item.added or date.max, band, item.identifier)
 
 
 def promotable(items: list[Item]) -> list[Item]:
@@ -1357,11 +1419,20 @@ def recommend(
     how near a feature is to done is a fact about the feature and not about
     who is looking at it. Work the lane cannot place is dropped here and
     counted by `set_aside`, never silently discarded.
+
+    **A decision is never ranked, whatever its band or tier, unless it is
+    `P0`** (`awaits_decision`). Its next step is the project owner's answer,
+    and ranked it led `next` and the session-start digest's `Top:` line with
+    work no session could start (`PL-JW39`). It is named instead, by
+    `awaiting_decision` beneath the picks, so it leaves the ranking without
+    leaving the output. That holds on the generator tier as well: a head or a
+    blocker awaiting a decision is named there, since the answer it waits on
+    is the owner's to give, not a session's to work.
     """
     startable = [
         item
         for item in _startable(items, in_flight, effort=effort)
-        if lane is None or item.lane(workflow_paths) == lane
+        if (lane is None or item.lane(workflow_paths) == lane) and not awaits_decision(item)
     ]
     # From every item rather than from `startable`: an item passing its rank
     # down is blocked, so the startable set is exactly what cannot contain it.
@@ -1615,8 +1686,10 @@ def longest_waiting(
     narrows it, less new work (`is_new_work`). Owed work at `needs-decision` is
     split out rather than ranked. Its next step is the project owner's answer
     rather than a session's work, and ranked by age the oldest unanswered
-    decision would hold the top of this list for good - `PL-JW39`'s hazard in
-    `next` itself.
+    decision would hold the top of this list for good - `PL-JW39`'s hazard,
+    which bare `next` now answers the same way. The split is
+    `awaiting_decision`'s, so under a lane it also names the decisions no lane
+    can place, which `set_aside` no longer counts.
 
     Each pick carries the placement sentence `recommend` writes, so an
     off-gate pick says so, and never the clause saying it "ranks on its band
@@ -1638,11 +1711,8 @@ def longest_waiting(
         band = PRIORITIES.index(item.priority) if item.priority in PRIORITIES else len(PRIORITIES)
         return (hotfix, undated, item.added or date.max, band, item.identifier)
 
-    def deciding(item: Item) -> bool:
-        return item.status == "needs-decision" and item.priority != "P0"
-
     picks: list[Recommendation] = []
-    for item in sorted((i for i in owed if not deciding(i)), key=rank)[:limit]:
+    for item in sorted((i for i in owed if not awaits_decision(i)), key=rank)[:limit]:
         waited = waiting_since(item, today)
         waited = f"{waited[:1].upper()}{waited[1:]}."
         if item.priority == "P0":
@@ -1664,8 +1734,11 @@ def longest_waiting(
                 delegable=item.delegability(protected_paths, gate_paths) is None,
             )
         )
+    # No new-work filter: `is_debt` keeps every `needs-decision` item owed.
     return Waiting(
         picks=picks,
-        decisions=sorted((i for i in owed if deciding(i)), key=rank),
+        decisions=awaiting_decision(
+            items, in_flight, effort=effort, lane=lane, workflow_paths=workflow_paths
+        ),
         new_work=len(startable) - len(owed),
     )

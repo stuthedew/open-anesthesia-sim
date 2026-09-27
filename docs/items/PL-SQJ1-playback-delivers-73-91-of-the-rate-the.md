@@ -3,11 +3,12 @@ id: PL-SQJ1
 title: Playback delivers 73-91% of the rate the dropdown displays: 300x measured at 220x, 1x at 0.9x, so the clock on screen runs slower than its label
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: ux, perf
 feature: presentation-safety
-touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/simulation_view.py
+touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-09-08
+verify: ! grep -qF '_run_simulation_timer' src/anesthesia_sim/app/playback.py && grep -qF '2026-09-27' src/anesthesia_sim/app/playback.py && grep -qF 'delivered rate' docs/MODEL.md
 ---
 
 **Problem.** `app/playback.py` states that "the rate is stated as a multiple of
@@ -64,6 +65,18 @@ the application does not keep.
 qualification on the label, or a measured "delivering ~220x" readout beside the
 setting. Each is defensible and they imply different work.
 
+**Answered 2026-09-27.** Nothing on screen changes: the label is left as it is
+and the reasoning recorded, in `playback.py`'s docstring and in
+`docs/MODEL.md` § "Interface boundary" (project owner, 2026-09-27, ratified,
+over building the detect-and-disclose guard now, and over qualifying the
+label). The guard - the delivered rate shown beside the set one when fewer
+than 95% of ticks fire over a 50-tick window - is filed by the build thread as
+a `feature` item outside the gate, on the design under option 3 below. The
+re-measurement on the QTimer path, the three options and the method are under
+"Design round 2026-09-27: recommendations" below; the done-when's first clause
+is the one taken, and its re-measurement on the owner's machine stands. Status
+`ready`; `touches` widened to `docs/MODEL.md`.
+
 **Re-measure before deciding, and on the right machine.** The figures above were
 taken on a 4-vCPU shared container; the shortfall is a property of the host. The
 frame cost they are a consequence of is also about to change - `PL-CNCF` puts
@@ -97,3 +110,161 @@ carry the old percentages forward.
 `SimulationView._run_simulation_timer` in live prose. That is drift in a live
 document rather than in a closed brief, and it is filed rather than repaired
 here because it is outside this item's `touches`.
+
+## Design round 2026-09-27: recommendations
+
+Recommendations, not decisions: the thread that records the project owner's
+answer marks each `(project owner, DATE, ratified)` or replaces it.
+
+**Re-measured 2026-09-27 on the QTimer path**, which the staleness sweep asked
+for before anything else. Method: the real `SimulationView` in a shown
+`QMainWindow` on the offscreen platform, run started, both timers running as
+`main.py` runs them, `RunView.step_tick` and `SimulationView.render_tick`
+wrapped to time each call, elapsed simulated time read before and after a
+wall-clock window. 4-vCPU shared container, tree `aeb00392`:
+
+| Set | Wall | Delivered | Of nominal | Tick period median / p90 / max | Tick cost median / max | Frame cost median / max |
+| ---: | ---: | ---: | ---: | --- | --- | --- |
+| 1× | 8 s | 1.0× | 99.5% | 100.2 / 100.5 / 100.8 ms | 0.2 / 1.2 ms | 5.5 / 10.4 ms |
+| 5× | 8 s | 5.0× | 99.7% | 100.0 / 100.5 / 101.1 ms | 0.2 / 1.2 ms | 6.8 / 10.7 ms |
+| 20× | 8 s | 19.8× | 98.9% | 99.9 / 100.7 / 100.8 ms | 0.5 / 1.3 ms | 7.9 / 41.0 ms |
+| 60× | 8 s | 59.6× | 99.4% | 100.0 / 100.6 / 101.9 ms | 1.1 / 13.1 ms | 7.8 / 16.4 ms |
+| 300× | 8 s | 296.9× | 99.0% | 99.9 / 100.7 / 101.0 ms | 4.6 / 26.4 ms | 8.5 / 9.8 ms |
+| 300× | 30 s | 299.6× | 99.9% | 99.9 / 100.7 / 103.6 ms | 4.5 / 7.9 ms | 8.6 / 26.6 ms |
+
+With the render timer stopped the figures are 98.7-100% at every rung, so
+what remains is not the paint. The 0.1-1.3% is the measurement's own edge -
+the first tick fires one interval after start, so 78-79 ticks arrive in 8 s
+where 80 are expected and 297 in 30 s where 300 are - rather than the loop:
+the tick period holds at 100 ms to within 4 ms at its worst.
+
+**So the shortfall in the title is gone, and the mechanism that produced it
+went with the toolkit.** Flet dispatched both cadences on one asyncio loop
+behind a serializing `page.update()`; Qt's `PreciseTimer` fires the step slot
+on its interval whatever the paint costs, and at 300× the burst is 4.6 ms of a
+100 ms interval. The label is a claim the loop now keeps.
+
+**What can still make it false, and by how much.** `step_tick` takes a fixed
+burst and makes no step up (`run_view.py`, decision D7), so a tick the loop
+could not service is lost and the delivered rate is the nominal one times the
+fraction of ticks that fired. Qt coalesces a timeout the loop was holding
+through rather than queueing it, so the loss is exactly the intervals during
+which something held the loop past 100 ms. Nothing did in 70 s of measurement
+here; the worst single frame was 41 ms. A host that does hold it - a paint
+several times slower than this container's worst, or something else on the
+loop - delivers less, and nothing on screen says so.
+
+**Q. What the interface owes.** Three options and their trade.
+
+1. **Leave the label; record why.** The claim holds on the shipped path,
+   measured. `playback.py`'s docstring replaces its dead
+   `SimulationView._run_simulation_timer` citation (line 54; `playback.py` is
+   in this item's `touches`, so that drift rides here) with the QTimer path
+   and this measurement, and `docs/MODEL.md` § "Interface boundary" says what
+   the rate is a statement about: the setting, kept to within 1% on the
+   measured host; the clock is exact at every rate; a host that cannot
+   service a 100 ms tick delivers less, and nothing on screen says so. Size
+   S. Leaves the residual silent.
+2. **Qualify the label** - "up to 300×". True always, but it withdraws the
+   check the module invites and says nothing about how far. Refused: it
+   trades a precise claim that holds for a vague one, which is false
+   uncertainty, the mirror of the false precision the standard forbids.
+3. **Detect and disclose.** Count missed ticks from a monotonic clock read in
+   `step_tick` for diagnosis only - steps per tick never change, and
+   simulated time stays a count of steps, so D7 holds - over a trailing
+   window of 50 ticks; when fewer than 95% fired, the rate text under the
+   clock (`_playback_rate_text`, which `docs/MODEL.md` requires wherever
+   simulated time is drawn) names the delivered rate beside the set one, in
+   `MUTED` rather than `WARNING` since nothing is wrong with the model, and
+   returns to the plain label once the window recovers. The 5% threshold sits
+   above the 1% this measurement cannot separate from its own edges and below
+   what a reader hand-timing a wash-in against a watch could notice at any
+   rung. Size M: a clock read and a ring counter in `RunView`, a formatter in
+   `app/formatting.py`, tests with a fake clock, the `docs/MODEL.md`
+   paragraph.
+
+**Recommendation: option 1 now, with option 3 filed by the build thread as a
+`feature` item outside the gate.** The defect this item was filed for does not
+reproduce on the shipped path, so what remains is a guard against a host
+nobody has measured. `CLAUDE.md` asks to "Prefer an obvious failure/error
+state to displaying a plausible-looking number when correctness cannot be
+established", which would demand the guard if the number a reader acts on
+could be wrong; that number is the clock, which is exact at every rate, and
+the rate label is the setting. Filing the guard keeps it from being lost and
+keeps an M build out of Gate 2. If the owner wants the guard now, option 3 is
+built under this item and nothing is filed. Either way the done-when's
+"re-measured on the owner's machine" stands: run the script below on the Mac,
+and a delivered rate under 99% there reopens this recommendation.
+
+**Method, kept so the next re-measurement does not rebuild it** (`PL-ZG5J`'s
+lesson). Run with `QT_QPA_PLATFORM=offscreen uv run python measure_rate.py
+30` from the repository root, or without the platform variable on a desktop:
+
+```python
+import os, sys, time, statistics
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication, QMainWindow
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.qt_widgets import (
+    WINDOW_SCREEN_FRACTION,
+    declare_application_colours,
+    initial_window_geometry,
+)
+from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.playback import playback_rate_for
+
+WALL_S = float(sys.argv[1]) if len(sys.argv) > 1 else 8.0
+app = QApplication([])
+declare_application_colours(app)
+for multiplier in (1, 5, 20, 60, 300):
+    case = BranchedCase(SimulationController())
+    view = SimulationView((case.trunk,), case=case)
+    window = QMainWindow()
+    window.setCentralWidget(view)
+    window.setGeometry(
+        initial_window_geometry(
+            app.primaryScreen().availableGeometry(),
+            window.minimumSizeHint(),
+            WINDOW_SCREEN_FRACTION,
+        )
+    )
+    window.show()
+    view.present(False)
+    app.processEvents()
+    run = view.runs[0]
+    run._playback_rate = playback_rate_for(multiplier)
+    ticks, cost = [], []
+    original = run.step_tick
+
+    def timed():
+        t = time.perf_counter()
+        ticks.append(t)
+        original()
+        cost.append(time.perf_counter() - t)
+
+    run._step_timer.timeout.disconnect()
+    run._step_timer.timeout.connect(timed)
+    run.controller.start()
+    before = run.controller.snapshot().elapsed_s
+    view.start_simulation_timer()
+    t0 = time.perf_counter()
+    QTimer.singleShot(int(WALL_S * 1000), app.quit)
+    app.exec()
+    wall = time.perf_counter() - t0
+    view.stop_timers()
+    run.controller.pause()
+    delivered = (run.controller.snapshot().elapsed_s - before) / wall
+    periods = [b - a for a, b in zip(ticks, ticks[1:])]
+    print(
+        f"{multiplier}x: delivered {delivered:.1f}x = {100 * delivered / multiplier:.1f}% of nominal, "
+        f"{len(ticks)} ticks, period median {1000 * statistics.median(periods):.1f} ms "
+        f"max {1000 * max(periods):.1f} ms, tick cost median {1000 * statistics.median(cost):.1f} ms"
+    )
+    window.close()
+    window.deleteLater()
+    app.processEvents()
+```
+
+**For the build under option 1.** Add `docs/MODEL.md` to `touches`; the
+done-when's first clause ("left alone with the reasoning recorded") is the one
+taken.

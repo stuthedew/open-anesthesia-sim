@@ -82,6 +82,7 @@ from .plan import (
     OfferedReport,
     Standing,
     UnrankedGenerator,
+    awaiting_decision,
     clusters,
     features,
     gate,
@@ -300,7 +301,8 @@ def _settings_source(root: Path) -> SettingsSource:
     (`PL-P757`). What it adds is the half `load_config` cannot report:
     it returns a `Config` and not where it came from, and a `Config` holding
     library defaults is indistinguishable from a project that wrote those
-    values down. `checks._note_settings` says what the answer is for.
+    values down. `checks._note_settings` and `render.format_settings` say
+    what the answer is for.
 
     Made relative to the working directory where it can be, because the reader
     is being shown a path to go and look at and an absolute one from a
@@ -353,7 +355,9 @@ class Invocation:
     read from refs the snapshot has already fetched and dated (`PL-XBV4`).
     `base_copies` is the fourth, by `_base_copies`, and it too is read against
     the snapshot's refs, for the commands that answer from an item's newer
-    copy on the default branch (`PL-Y48N`).
+    copy on the default branch (`PL-Y48N`). `read_store` is set by `_load`
+    once the store has yielded an item, so that `main` can say what it was
+    read under after the command has answered (`_say_settings`).
 
     The store itself is not held here: `_load` reads it on every call, because
     `set`, `new` and `withdraw` write between reads.
@@ -369,6 +373,7 @@ class Invocation:
     holdings: Holdings | None = None
     flight: FlightReport | None = None
     base_copies: BaseCopies | None = None
+    read_store: bool = False
 
 
 #: Where the command's invocation is kept, for the lifetime `Invocation` gives.
@@ -413,10 +418,17 @@ def _load(args: argparse.Namespace) -> tuple[Path, list[Item], Config]:
     one level down is the only depth at which the store's parent says that.
 
     The store is read fresh on every call and everything else is the
-    invocation's, resolved once.
+    invocation's, resolved once. An item read from it is also what makes the
+    command one whose answer the settings governed, so that is recorded here,
+    where every such command passes, rather than at each of them
+    (`PL-N0MH`). A store that held none had nothing judged under any policy,
+    and the digest of one stays silent, as a session start must.
     """
     inv = _invocation(args)
-    return inv.directory, read_items(inv.directory), inv.config
+    items = read_items(inv.directory)
+    if items:
+        inv.read_store = True
+    return inv.directory, items, inv.config
 
 
 def _flight(args: argparse.Namespace) -> FlightReport:
@@ -691,6 +703,29 @@ def _say_snapshot(args: argparse.Namespace) -> None:
     (`PL-MT3R`) - so a stale answer never reads as a fresh one.
     """
     if line := _refs_line(args):
+        print(line)
+
+
+def _say_settings(args: argparse.Namespace) -> None:
+    """Say that library defaults governed the answer, for every command that read the store.
+
+    Called once, from `main`, after the command has answered, rather than by
+    each command: 23 of them read the store, several through more than one
+    return, and a line each one had to remember is the per-call-site drift
+    `Invocation` exists to end. At the foot, beside the refs line, since both
+    say what bounds the answer rather than being any of it.
+
+    `check` is left out because its report already names the settings, found
+    or not, on its second line (`checks._note_settings`). So is a command that
+    loaded no item - `branch`, `claim`, `yield` and `arm` never load the
+    store, and an empty store holds none - since nothing in its answer was
+    judged under the settings. `render.format_settings` says why the found
+    case prints nothing here.
+    """
+    inv: Invocation | None = getattr(args, _INVOCATION_ATTR, None)
+    if inv is None or not inv.read_store or args.func is cmd_check:
+        return
+    if line := render.format_settings(inv.settings):
         print(line)
 
 
@@ -2633,6 +2668,12 @@ def cmd_next(args: argparse.Namespace) -> int:
     `--oldest` asks a different question of the same queue - owed work in the
     order it has waited - and `_next_oldest` answers it. Without the flag
     nothing below changes.
+
+    Work waiting on a decision is named beneath the picks rather than ranked
+    among them (`plan.awaits_decision`), oldest first and cut to `--limit`,
+    the line `--oldest` already printed. It is printed when nothing else is
+    ready too, since a queue whose startable work is all decisions would
+    otherwise answer "nothing is ready" and say no more.
     """
     _, items, config = _load(args)
     lane = None if args.lane == "all" else args.lane
@@ -2670,9 +2711,14 @@ def cmd_next(args: argparse.Namespace) -> int:
         protected_paths=config.protected_paths,
         gate_paths=config.gate_paths,
     )
+    pending = awaiting_decision(
+        items, flight.ids, effort=args.effort, lane=lane, workflow_paths=config.workflow_paths
+    )
+    today = args.today or date.today()
     where = f" in the {lane} lane" if lane else ""
     if not picks:
         print(f"Nothing is ready to start{where}.")
+        _say_decisions(pending, today, args.limit, NAMED_NOT_OFFERED)
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
         _say_promotable(items)
@@ -2687,6 +2733,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     print(f"{render.open_count(report)} open. Suggested next{where}:\n")
     for index, pick in enumerate(picks, start=1):
         print(f"  {index}. {pick.describe()}\n")
+    _say_decisions(pending, today, args.limit, NAMED_NOT_OFFERED)
     if flight.ids:
         print(render.format_excluded(flight.ids, _holdings(args)))
     _say_promotable(items)
@@ -2745,7 +2792,7 @@ def _next_oldest(
             print(f"  {index}. {pick.describe()}\n")
     else:
         print(f"No owed work is ready to start{where}.")
-    _say_decisions(waiting.decisions, today, args.limit)
+    _say_decisions(waiting.decisions, today, args.limit, NAMED_NOT_AGED)
     if waiting.new_work:
         print(
             f"Left out as new work, classed {' or '.join(config.new_work_classes)}: "
@@ -2764,12 +2811,26 @@ def _next_oldest(
     return 0
 
 
-def _say_decisions(decisions: list[Item], today: date, limit: int) -> None:
-    """Name the owed work waiting on a decision, oldest first, beside `--oldest`'s picks.
+#: Why `_say_decisions` names rather than ranks, under bare `next` and under
+#: `--oldest`. The first clause is one rule (`plan.awaits_decision`); the
+#: second is what ranking would do under each order, which differs.
+NAMED_NOT_OFFERED = (
+    "Not ranked above - each one's next step is the project owner's answer rather than "
+    "a session's work, so a session handed one as a pick could only read it and stop."
+)
+NAMED_NOT_AGED = (
+    "Not ranked above - each one's next step is the project owner's answer rather than "
+    "a session's work, and ranked by age the oldest would hold the top for good."
+)
 
-    Named and never ranked, for the reason `plan.longest_waiting` gives. Cut to
-    the picks' own limit with the rest counted, so a store holding forty open
-    decisions prints one line rather than forty.
+
+def _say_decisions(decisions: list[Item], today: date, limit: int, because: str) -> None:
+    """Name the work waiting on a decision, oldest first, beneath the picks.
+
+    Named and never ranked, for the reason `plan.awaits_decision` gives, and
+    printed under bare `next` and under `--oldest` alike. Cut to the picks' own
+    limit with the rest counted, so a store holding forty open decisions prints
+    one line rather than forty.
     """
     if not decisions:
         return
@@ -2779,10 +2840,7 @@ def _say_decisions(decisions: list[Item], today: date, limit: int) -> None:
     rest = len(decisions) - limit
     more = f", and {rest} more (`--limit` shows them)" if rest > 0 else ""
     print(f"Waiting on a decision, oldest first ({len(decisions)}): {shown}{more}.")
-    print(
-        "  Not ranked above - each one's next step is the project owner's answer rather than "
-        "a session's work, and ranked by age the oldest would hold the top for good."
-    )
+    print(f"  {because}")
 
 
 def _say_plan_pick(
@@ -5341,6 +5399,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = merge_shared(build_parser().parse_args(argv))
     try:
         status = int(args.func(args))
+        _say_settings(args)
         # Here rather than at interpreter exit, where a reader that closed
         # before the last buffered chunk would be reported as an ignored
         # exception and the exit status changed to 120.

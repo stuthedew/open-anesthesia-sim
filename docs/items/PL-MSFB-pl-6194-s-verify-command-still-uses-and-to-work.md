@@ -3,11 +3,13 @@ id: PL-MSFB
 title: PL-6194's verify: command still uses [(] and [)] to work around the math check that PL-WTQ1 fixed, and WORKING_NOTES.md:504 still uses backticks to work around PL-KJ63
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: defect, docs
 feature: dev-tooling
 touches: docs/items/, docs/WORKING_NOTES.md
 added: 2026-09-13
+closed: 2026-09-27
+reason: Moot: nothing is left to change. Its live half, the backticked ~88-256 B each figure in docs/WORKING_NOTES.md, was deleted with its thread by #858 (PL-DL4M, PL-FFG9, 2026-09-21), after this brief last re-measured it; the PL-6194 half was struck on 2026-09-21 because that brief is closed. Checked 2026-09-27: the figure appears nowhere in docs/WORKING_NOTES.md, so this item's verify can never pass.
 verify: grep -qF '"~88-256 B each" above' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
