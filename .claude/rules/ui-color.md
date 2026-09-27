@@ -109,7 +109,10 @@ rather than reaching a screen.
    it is not, so a color added without an entry is unchecked while looking
    checked. Name the pair it actually appears against — read the source and
    confirm which background it is drawn on, rather than assuming `PANEL` — the
-   criterion, and the reason in a few words.
+   criterion, and the reason in a few words. The one other place a color may
+   go is the `EXEMPT` table beside it, for a use SC 1.4.11 does not bind at
+   all; § "The shortfall list is not a suppression list" below says what that
+   takes, and it is never a failing ratio.
 
    **Cite the code by symbol, in backticks, and never by line number.** The
    reason is the entry, and the entry is how a later reviewer finds what it
@@ -189,3 +192,14 @@ comment nobody re-measures. Two rules keep it honest:
 - **Deleting an entry is part of fixing it.** The tool reports a listed
   shortfall that starts passing as an error, so a fix that leaves its excuse
   behind fails `make check`.
+
+**Neither is the exemption table.** `EXEMPT`, beside it, records a use of a
+colour that SC 1.4.11 does not bind - a graphic whose information text also
+carries, or a control boundary that visible content already identifies - with
+the criterion's own ground per use and the drawing code cited by symbol, and
+the gridline grey in its four uses is the one entry (`PL-HKTB`). A shortfall is
+a pair that *should* meet a minimum and does not; an exemption is a pair the
+minimum does not reach, and the bar for writing one is that carve-out read at
+source, never a ratio that failed. A colour that ought to clear 3:1 and does
+not is a colour to re-pick or a shortfall to own, and a colour both required
+and exempt on one surface fails `make check`.
