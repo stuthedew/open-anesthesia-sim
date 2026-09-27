@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import os
 import subprocess
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
@@ -118,17 +118,6 @@ def _tree_lines(entries: Mapping[str, str]) -> str:
     )
 
 
-def _bare(args: list[str]) -> list[str]:
-    """`args` without the `-c core.quotePath=false` a changed-path read opens with.
-
-    `changed_path_args` puts it ahead of the subcommand, where git reads it
-    (`PL-8HSX`), and the fakes here dispatch on `args[0]` and index the words
-    after it. Stripped before a fake records its call, so an assertion that no
-    `log` was asked still sees one.
-    """
-    return args[2:] if args[:2] == ["-c", "core.quotePath=false"] else args
-
-
 def _blob(entry: str | tuple[str, str]) -> str:
     """The blob an `adds` entry names, whether or not it also names a path."""
     return entry[0] if isinstance(entry, tuple) else entry
@@ -154,7 +143,14 @@ def _name_only(changes: tuple[str | tuple[str, str], ...], args: list[str]) -> s
     scores `R078` prints one name under `--name-only` and both, sorted, under
     `--no-renames`. A fake that printed a rename one way whatever it was asked
     let a test pass against a git that does not behave that way (`PL-J16N`).
-    `-z`, which that read sends too, ends each path with NUL (`PL-PVW2`).
+    `-z`, which that read sends too, ends each path with NUL (`PL-PVW2`), and
+    a read without it gets each path ended by a newline. `show --format=
+    --name-only` prints the same listing as `diff`, measured on git 2.43.0,
+    2026-09-27, so one formatter answers both.
+
+    Every fake here prints a `--name-only` listing through this, so a flag a
+    read gains or drops is modelled once rather than in each fake: `PL-NK1L`'s
+    `-z` was nine hand-written answers in this file (`PL-3LLZ`).
     """
     apart = "--no-renames" in args
     paths: list[str] = []
@@ -163,9 +159,79 @@ def _name_only(changes: tuple[str | tuple[str, str], ...], args: list[str]) -> s
             paths.extend(change if apart else change[1:])
         else:
             paths.append(change)
-    if "-z" in args:
-        return "".join(f"{path}\0" for path in sorted(paths))
-    return "\n".join(sorted(paths))
+    end = "\0" if "-z" in args else "\n"
+    return "".join(f"{path}{end}" for path in sorted(paths))
+
+
+def _raw(records: Iterable[tuple[str, str] | tuple[str, str, str]], args: list[str]) -> str:
+    """What `git diff --raw` and `log --raw` print, a record per changed file.
+
+    `(oid, path)` is a file added and `(before, after, path)` one modified, by
+    the blobs it held. The `-z` form alone: each record's status fields end
+    with NUL and its path with another, measured on git 2.43.0, 2026-09-27.
+    Every `--raw` read sends `-z` (`vcs.changed_path_args`), and a read that
+    stopped would be handed a shape it no longer parses, so the formatter
+    refuses it instead (`PL-3LLZ`). Neither kind prints differently under
+    `--no-renames`, which only splits a rename this does not model.
+    """
+    assert "-z" in args, f"a `--raw` read without -z, which no fake here models: {args}"
+    printed = []
+    for record in records:
+        if len(record) == 2:
+            oid, path = record
+            printed.append(f":000000 100644 {'0' * 40} {oid} A\0{path}\0")
+        else:
+            before, after, path = record
+            printed.append(f":100644 100644 {before} {after} M\0{path}\0")
+    return "".join(printed)
+
+
+def _numstat(rows: Iterable[tuple[int, int, str]], args: list[str]) -> str:
+    """What `git diff --numstat` prints for rows of `(added, deleted, path)`.
+
+    The `-z` form alone, each row ended with NUL, measured on git 2.43.0,
+    2026-09-27; refused without it, for `_raw`'s reason.
+    """
+    assert "-z" in args, f"a `--numstat` read without -z, which no fake here models: {args}"
+    return "".join(f"{added}\t{deleted}\t{path}\0" for added, deleted, path in rows)
+
+
+def _log_names(commits: Iterable[tuple[str, str, Sequence[str]]], args: list[str]) -> str:
+    """What `log --format=%x1e%H%x1f%s --name-only` prints for `(hash, subject, paths)`.
+
+    Measured on git 2.43.0, 2026-09-27: each commit's format line, then a blank
+    line and one path per line, and a merge, which names no path, as its format
+    line alone. Not `-z`: `vcs.orphaned` asks this walk without
+    `changed_path_args`, and under `-z` git ends the format line with NUL
+    instead, which this does not model and so refuses.
+    """
+    assert "-z" not in args, f"a `--name-only` walk with -z, which no fake here models: {args}"
+    return "".join(
+        f"\x1e{commit}\x1f{subject}\n"
+        + ("\n" + "".join(f"{path}\n" for path in paths) if paths else "")
+        for commit, subject, paths in commits
+    )
+
+
+def _default_run(args: list[str], root: Path) -> str:
+    """What git answers here when a fake's own tests have no opinion: nothing.
+
+    Every fake below that has not answered a read by its last line falls
+    through to this, so a read added to `vcs.py` that they should all answer
+    one way is taught here once, where `PL-YDL6` taught one to four fakes
+    separately (`PL-3LLZ`). A fake answers what its own tests turn on before
+    it gets here; one that must not be asked anything else raises, or answers
+    `SILENT`, and never reaches it.
+
+    **Only an answer every fake falling through would give belongs here.** Any
+    other answer is a fake answering a question its tests never considered,
+    which is how a test comes to pass for the wrong reason. That is why the
+    fakes resolving `BASE` keep their own `rev-parse`: moved here, it would
+    newly resolve the base for fakes whose tests never asked. Today the one
+    uniform answer is the empty string, which is what each fake returned by
+    hand before this.
+    """
+    return ""
 
 
 def _runner(
@@ -204,7 +270,6 @@ def _runner(
     """
 
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if args[0] == "rev-parse":
             return f"{BASE}\n" if args[-1] == BASE else ""
         if args[0] == "for-each-ref":
@@ -223,28 +288,24 @@ def _runner(
             # two tips agree on, so the fake omits it rather than reporting zeros.
             asked = args[args.index("--") + 1 :]
             per_path = (tips or {}).get(args[args.index("--") - 1])
-            rows = []
+            rows: list[tuple[int, int, str]] = []
             for path in asked:
                 if per_path is None:
-                    rows.append(f"1\t0\t{path}")
+                    rows.append((1, 0, path))
                     continue
                 counts = per_path.get(path)
                 if counts is not None:
-                    rows.append(f"{counts[0]}\t{counts[1]}\t{path}")
-            return "".join(f"{row}\0" for row in rows)
+                    rows.append((counts[0], counts[1], path))
+            return _numstat(rows, args)
         if args[0] == "diff":
-            # `--raw -z`: the status fields, then the path, each ended by NUL.
-            return "".join(
-                f":000000 100644 {'0' * 40} {_blob(entry)} A\0{_path(entry)}\0"
-                for entry in (adds or {}).get(args[-2], [])
+            return _raw(
+                ((_blob(entry), _path(entry)) for entry in (adds or {}).get(args[-2], [])), args
             )
         if args[0] == "log":
             if "--raw" in args:
-                # `_written_since`: what the base's commits wrote since the
-                # fork, a status record and then its path, each ended by NUL.
-                return "".join(
-                    f":000000 100644 {'0' * 40} {blob} A\0some/path/{blob}\0"
-                    for blob in sorted(on_base or set())
+                # `_written_since`: what the base's commits wrote since the fork.
+                return _raw(
+                    ((blob, f"some/path/{blob}") for blob in sorted(on_base or set())), args
                 )
             if "--left-right" in args:
                 # The rewrite fingerprint: the same author date and subject on
@@ -264,19 +325,20 @@ def _runner(
                 )
             if "--name-only" in args:
                 # `orphaned` decides on this walk - a commit *none* of whose
-                # paths reached the base - so the fake has to answer it. The
-                # record shape is git's: \x1e opens each, then the hash, \x1f,
-                # the subject, then one path per line.
+                # paths reached the base - so the fake has to answer it.
                 walked = args[-2]
-                return "".join(
-                    "\x1e{}\x1f{}\n{}\n".format(f"{walked}@{position}", subject, "\n".join(paths))
-                    for position, (subject, paths) in enumerate((touched or {}).get(walked, []))
+                return _log_names(
+                    (
+                        (f"{walked}@{position}", subject, paths)
+                        for position, (subject, paths) in enumerate((touched or {}).get(walked, []))
+                    ),
+                    args,
                 )
             wanted = [arg for arg in args if arg.startswith("--find-object=")]
             if wanted:
                 held = wanted[0].split("=", 1)[1] in (on_base or set())
                 return "fedcba9876543210\n" if held else ""
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -360,7 +422,7 @@ def test_a_split_pathspec_answers_every_path_it_was_given() -> None:
     def run(args: list[str], root: Path) -> str:
         chunk = tuple(args[args.index("--") + 1 :])
         asked.append(chunk)
-        return "".join(f"3\t1\t{path}\0" for path in chunk if path not in agreed)
+        return _numstat(((3, 1, path) for path in chunk if path not in agreed), args)
 
     superseded = _superseded(HARNESS, BASE, paths, ROOT, run)
 
@@ -429,7 +491,7 @@ def _refs(known: dict[str, str]):
             return known.get(args[-1], "")
         if args[:2] == ["rev-list", "--count"]:
             return known.get(args[-1], "")
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -478,7 +540,7 @@ def test_a_base_reached_by_falling_past_an_unanswered_probe_is_a_guess() -> None
     def run(args: list[str], root: Path) -> str:
         if args[-1] == "origin/main":
             return SILENT
-        return "def456" if args[-1] == "main" else ""
+        return "def456" if args[-1] == "main" else _default_run(args, root)
 
     base = default_base(ROOT, runner=run)
 
@@ -518,14 +580,13 @@ def test_a_base_with_no_counterpart_on_the_remote_is_not_judged() -> None:
 
 def _pr_runner(shallow: str, subjects: list[str]):
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if args[:2] == ["rev-parse", "--is-shallow-repository"]:
             return shallow + "\n" if shallow else ""
         if args[0] == "rev-parse":
             return "origin/main\n"
         if args[0] == "log":
             return "\n".join(subjects)
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -559,7 +620,11 @@ def test_a_shallow_clone_is_not_deepened_to_get_an_answer() -> None:
 
     def run(args: list[str], root: Path) -> str:
         asked.append(args)
-        return "true\n" if args[:2] == ["rev-parse", "--is-shallow-repository"] else ""
+        return (
+            "true\n"
+            if args[:2] == ["rev-parse", "--is-shallow-repository"]
+            else _default_run(args, root)
+        )
 
     merged_pull_requests(ROOT, runner=run)
 
@@ -568,10 +633,9 @@ def test_a_shallow_clone_is_not_deepened_to_get_an_answer() -> None:
 
 def _since_runner(log: str, shallow: str = "false") -> Runner:
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if args[:2] == ["rev-parse", "--is-shallow-repository"]:
             return shallow + "\n"
-        return log if "log" in args else ""
+        return log if "log" in args else _default_run(args, root)
 
     return run
 
@@ -667,17 +731,22 @@ def _tree_runner(
     """
     forked = forks or {}
 
-    def raw(before: Mapping[str, str], after: Mapping[str, str]) -> str:
-        """`--raw -z` records for every item file whose text differs between two trees."""
-        return "".join(
-            f":100644 100644 {hashlib.sha1(before.get(name, '').encode()).hexdigest()} "
-            f"{hashlib.sha1(text.encode()).hexdigest()} M\0docs/items/{name}\0"
-            for name, text in after.items()
-            if before.get(name) != text
+    def raw(before: Mapping[str, str], after: Mapping[str, str], args: list[str]) -> str:
+        """`--raw` records for every item file whose text differs between two trees."""
+        return _raw(
+            (
+                (
+                    hashlib.sha1(before.get(name, "").encode()).hexdigest(),
+                    hashlib.sha1(text.encode()).hexdigest(),
+                    f"docs/items/{name}",
+                )
+                for name, text in after.items()
+                if before.get(name) != text
+            ),
+            args,
         )
 
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if args[0] == "for-each-ref":
             return "\n".join(ref for ref in trees if ref != "HEAD")
         if args[:2] == ["rev-parse", "--verify"]:
@@ -689,11 +758,11 @@ def _tree_runner(
             # against the base's, which `^fork-of-<ref> <base>` names.
             fork = next(arg for arg in args if arg.startswith("^fork-of-"))
             base = args[args.index(fork) + 1]
-            return raw(forked[fork.removeprefix("^fork-of-")], trees.get(base, {}))
+            return raw(forked[fork.removeprefix("^fork-of-")], trees.get(base, {}), args)
         if args[0] == "diff" and "--raw" in args:
             # What the ref wrote since its fork: the fork's tree against its own.
             ref = next(arg for arg in args if arg.startswith("fork-of-")).removeprefix("fork-of-")
-            return raw(forked[ref], trees.get(ref, {}))
+            return raw(forked[ref], trees.get(ref, {}), args)
         if args[0] == "ls-tree":
             return _tree_lines(
                 {f"docs/items/{name}": text for name, text in trees.get(args[2], {}).items()}
@@ -701,7 +770,7 @@ def _tree_runner(
         if args[0] == "show":
             ref, _, path = args[1].partition(":")
             return trees.get(ref, {}).get(path.rsplit("/", 1)[-1], "")
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -1133,7 +1202,6 @@ def _branch_runner(
     """
 
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if args[:3] == ["rev-parse", "--abbrev-ref", "HEAD"]:
             return f"{branch}\n"
         if args[0] == "rev-parse":
@@ -1146,7 +1214,7 @@ def _branch_runner(
             return divergence
         if args[0] == "log":
             return "\n".join(f"{identifier} Something that landed" for identifier in landed)
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -1472,7 +1540,6 @@ def _base_tree_runner(on_base: dict[str, str], log: list[list[str]] | None = Non
     """
 
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if log is not None:
             log.append(args)
         if args[0] == "rev-parse":
@@ -1487,7 +1554,7 @@ def _base_tree_runner(on_base: dict[str, str], log: list[list[str]] | None = Non
                 f"100644 blob {index:040x}\tdocs/items/{name}\n"
                 for index, name in enumerate(on_base)
             )
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -1584,7 +1651,7 @@ def _lost_runner(tree: list[str], history: list[str], *, shallow: str = "false")
             return "\n".join(history)
         if args[0] == "rev-parse" and args[-1] == "--is-shallow-repository":
             return shallow
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -1731,7 +1798,6 @@ def _closed_by_runner(
     """
 
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if log is not None:
             log.append(args)
         if args[0] == "rev-parse":
@@ -1745,7 +1811,7 @@ def _closed_by_runner(
             return _tree_lines({k[len(prefix) :]: k for k in sorted(trees) if k.startswith(prefix)})
         if args[0] == "show":
             return trees.get(args[-1], "")
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -1883,10 +1949,9 @@ def _files_runner(diffs: dict[str, list[str]], counts: dict[str, int] | None = N
     """
 
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if args[0] == "diff":
             ref = args[-1].split("...")[-1]
-            return "".join(f"{path}\0" for path in diffs.get(ref, []))
+            return _name_only(tuple(diffs.get(ref, [])), args)
         if args[0] == "rev-list":
             ref = args[-1].split("..")[-1]
             return f"{(counts or {}).get(ref, 0)}\n"
@@ -2323,14 +2388,13 @@ def _base_runner(declared: str = '[project]\nversion = "0.3.8"\n', notes: tuple[
     """
 
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if args[0] == "rev-parse":
             return f"{BASE}\n" if args[-1] == BASE else ""
         if args[0] == "show":
             return declared
         if args[0] == "ls-tree":
             return "".join(f"docs/releases/{name}\n" for name in notes)
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -2429,7 +2493,6 @@ def _cut_runner(
     refs = list(notes)
 
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if args[0] == "rev-parse":
             if args[-1] == BASE:
                 return f"{BASE}\n"
@@ -2448,13 +2511,13 @@ def _cut_runner(
             return "onbase some/path\n"
         if args[0] == "diff" and "--name-only" in args:
             ref = next(arg for arg in args if "..." in arg).split("...")[-1]
-            return "".join(f"{path}\0" for path in notes.get(ref, []))
+            return _name_only(tuple(notes.get(ref, [])), args)
         if args[0] == "diff":
             ref = args[-2]
-            return f":000000 100644 {'0' * 40} {ref}blob A\0some/{ref}\0"
+            return _raw(((f"{ref}blob", f"some/{ref}"),), args)
         if args[0] == "log":
             return f"{when}\n"
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -2584,8 +2647,7 @@ def _record_runner(
     """
     listing = base_paths or tuple(on_base)
 
-    def run(args: list[str], _root: Path) -> str:
-        args = _bare(args)
+    def run(args: list[str], root: Path) -> str:
         if args[0] == "rev-parse":
             return "aaa111\n"
         if args[0] == "diff":
@@ -2596,7 +2658,7 @@ def _record_runner(
         if args[0] == "show":
             _, _, path = args[-1].partition(":")
             return on_base.get(path, "")
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -2728,7 +2790,6 @@ def _landed_runner(
     """
 
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if args[:3] == ["rev-parse", "--abbrev-ref", "HEAD"]:
             return f"{branch}\n"
         if args[0] == "rev-parse":
@@ -2740,7 +2801,7 @@ def _landed_runner(
         if args[:2] == ["rev-list", "--objects"]:
             return "\n".join(f"{oid} {path}" for oid, path in adds if oid in on_base)
         if args[0] == "diff" and "--raw" in args:
-            return "".join(f":000000 100644 {'0' * 40} {oid} A\0{path}\0" for oid, path in adds)
+            return _raw(adds, args)
         if args[0] == "diff" and "--numstat" in args:
             # Every outstanding path still differs from the base's tip, which
             # is what a branch genuinely carrying work looks like.
@@ -2748,19 +2809,18 @@ def _landed_runner(
         if args[:2] == ["log", "--topo-order"]:
             return divergence
         if args[0] == "log" and "--raw" in args:
-            return "".join(
-                f":000000 100644 {'0' * 40} {oid} A\0{path}\0"
-                for oid, path in adds
-                if oid in on_base
-            )
+            return _raw(((oid, path) for oid, path in adds if oid in on_base), args)
         if "--name-only" in args:
-            return "".join(
-                "\x1e" + f"c{position}" + "\x1f" + subject + "\n" + "\n".join(paths) + "\n"
-                for position, (subject, paths) in enumerate(commits)
+            return _log_names(
+                (
+                    (f"c{position}", subject, paths)
+                    for position, (subject, paths) in enumerate(commits)
+                ),
+                args,
             )
         if args[0] == "log":
             return ""
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -2895,13 +2955,12 @@ def _cut_window_runner(
     """A git whose `HEAD` adds the `added` notes at `written`, and whose base gained `landed`."""
 
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if args[:2] == ["rev-parse", "--verify"]:
             return f"{BASE}\n" if args[-1] == BASE else ""
         if args[0] == "rev-parse":
             return f"{BASE}\n" if args[-1] == BASE else ""
         if args[:2] == ["diff", "--name-only"]:
-            return "\n".join(added)
+            return _name_only(added, args)
         if args[0] == "merge-base":
             return f"{fork}\n" if fork else ""
         if args[0] == "log" and "--diff-filter=A" in args:
@@ -2909,7 +2968,7 @@ def _cut_window_runner(
         if args[0] == "log":
             assert f"{written}..{BASE}" in args, "measured from the commit adding the notes"
             return "\n".join(f"{identifier} Something that landed" for identifier in landed)
-        return ""
+        return _default_run(args, root)
 
     return run
 
@@ -2966,7 +3025,6 @@ def _filing_runner(shallow: str, log: str, changed: dict[str, list[str]] | None 
     """Git for a store whose item files were added by the commits `log` describes."""
 
     def run(args: list[str], root: Path) -> str:
-        args = _bare(args)
         if args[:2] == ["rev-parse", "--is-shallow-repository"]:
             return shallow + "\n" if shallow else ""
         if args[0] == "rev-parse":
@@ -2974,8 +3032,8 @@ def _filing_runner(shallow: str, log: str, changed: dict[str, list[str]] | None 
         if args[0] == "log":
             return log
         if args[0] == "show":
-            return "".join(f"{path}\0" for path in (changed or {}).get(args[-1], []))
-        return ""
+            return _name_only(tuple((changed or {}).get(args[-1], [])), args)
+        return _default_run(args, root)
 
     return run
 
@@ -3082,7 +3140,7 @@ def test_no_untriaged_items_asks_git_nothing() -> None:
 
     def run(args: list[str], root: Path) -> str:
         asked.append(args)
-        return ""
+        return _default_run(args, root)
 
     assert filed_with_work(frozenset(), ROOT, prefix="docs/items", runner=run).known
     assert asked == []
@@ -3293,7 +3351,7 @@ def _remotes_only(*remotes: str) -> Runner:
     """A git that knows these remotes and nothing else, which is all the match reads."""
 
     def run(args: list[str], root: Path) -> str:
-        return "\n".join(remotes) if args[:1] == ["remote"] else ""
+        return "\n".join(remotes) if args[:1] == ["remote"] else _default_run(args, root)
 
     return run
 
@@ -4083,7 +4141,7 @@ def test_an_id_past_a_line_separator_is_not_read_as_landed_on_the_base() -> None
     branch = _branch_runner(behind=1, ahead=1)
 
     def run(args: list[str], root: Path) -> str:
-        if _bare(args)[0] == "log" and "--format=%s" in args:
+        if args[0] == "log" and "--format=%s" in args:
             return "PL-K7QX: quote a pasted title\u2028PL-9Y42 is mentioned, not landed\n"
         return branch(args, root)
 
