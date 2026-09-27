@@ -1,11 +1,23 @@
 ---
 id: PL-06JJ
 title: Pin items on the generator tier to P1, so readers of the stored priority field - the queue dashboard among them - see what docket next already ranks: docket check refuses one below P1, and docket set raises it automatically
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: infra
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/picking.md, .claude/skills/docket/modes/triage.md
 added: 2026-09-27
+payoff: A reader of the stored priority field - the queue dashboard among them - sees a generator-tier item at P1, where docket next already ranks it above every band but P0
+verify: grep -q 'def test_an_item_on_the_generator_tier_below_p1_is_refused' subprojects/docket/tests/test_checks.py && grep -q 'def test_set_raises_an_item_it_puts_on_the_generator_tier_to_p1' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** Pin items on the generator tier to P1, so readers of the stored priority field - the queue dashboard among them - see what docket next already ranks: docket check refuses one below P1, and docket set raises it automatically
+
+**Why it matters.** The owner reads the queue on its dashboard, which shows the
+stored band, and saw the one live head there at `P2` while `docket next` ranked
+it above every `P1`. The display then disagrees with the ranking on exactly the
+item the tier exists to surface - one every session it stands through pays
+again - and calls it ordinary work.
 
 **Decision (project owner, 2026-09-27).** Asked in their own words: "make
 generators automatically P1". The session recommended leaving the stored band
@@ -29,31 +41,38 @@ open head on the morning of 2026-09-27, and none once #1160 merged.
 **Design.**
 - `docket check`: an open item on the generator tier at `P2` or `P3` is an
   error, built like the safety pin in `subprojects/docket/src/docket/checks.py`
-  ("safety-critical work starts at P0 or P1") and placed beside
-  `_check_generator_verdicts`, which already holds `known`. On the tier means
+  ("safety-critical work starts at P0 or P1"). On the tier means
   `model.ranks_as_generator` (a sound `root-cause-of:` plus `generator: live`)
   or `model.ranks_as_generator_defect` (a sound `impairs-generators:`) - the
   second because the owner's 2026-09-19 rule gives a machinery defect "the same
-  priority as a generator". Not pinned: spent heads (their own band, the
-  2026-09-21 ratified split), closed heads, unsound claims, and the blockers a
-  blocked head lends its rank to.
-- `docket set`: a write that leaves an item on the tier below `P1` raises it to
-  `P1` in the same write and prints the change, so recording `generator: live`
-  needs no second command. `cmd_set` in `subprojects/docket/src/docket/cli.py`;
-  first see whether it already refuses writes `check` would fail, and reuse
-  that path.
+  priority as a generator". It sits beside `_check_generator_defects` rather
+  than `_check_generator_verdicts`, because the second entrance needs the
+  configured `generator_paths` and only the first is handed them. Not pinned by
+  this rule: spent heads (their own band, the 2026-09-21 ratified split),
+  closed heads and unsound claims.
+- **No exemption from the blocker rule** (decided at build, 2026-09-27).
+  `_outranks_its_blocker` refuses a blocked `P1` waiting on an open `P2`, so a
+  blocked head pinned at `P1` carries its item blockers up with it. That is the
+  edge `plan.tier_standings` passes the tier's rank down, so the stored band
+  follows `docket next` there as well; a chain past the first edge is raised by
+  that rule as it is for every `P1`, which is the rule's existing reach rather
+  than the pin's.
+- `docket set`: a write that leaves an item on the tier below `P1` and names no
+  `priority` raises it to `P1` in the same write and prints the change, so
+  recording `generator: live` needs no second command. The raise takes no
+  `--overwrite`: the band it replaces is the rule's to replace, and the line it
+  prints says so. An explicit `--priority P2` or `P3` on a tier item is refused
+  with the check's own error instead, since a value somebody asked for is never
+  silently replaced. Where the raise would add another error - a blocked head
+  whose blocker sits below `P1` - the write is refused with that error, which
+  names the blocker to raise first; `set` writes one item.
 - A head that turns `spent` while still open keeps `P1` until lowered by hand.
   Rare: all 30 spent heads were closed on 2026-09-27.
 
-**Check before building.**
-- `subprojects/docket/README.md` says "a `P1` waiting on a `P2` is an error
-  rather than a priority". Pinning a blocked head may turn its `P2` blocker
-  into that error; decide whether the tier needs an exemption there.
-- No open head exists to fail the new pin: pull request #1160 closed
-  `PL-927J`, the last one, done and spent on 2026-09-27. Re-run `bin/docket
-  generators` before building, in case one has been recorded since.
-- List the open items carrying `impairs-generators:` and raise any below `P1`
-  in this branch, declared in `touches`.
+**Checked before building, 2026-09-27.** No open item carries `generator:
+live` or `impairs-generators:` - `PL-927J`, the last live head, closed done and
+spent in #1160 - so the pin fires on nothing in the store today and no band in
+it has to move.
 
 **Docs to sweep.**
 - `.claude/skills/docket/modes/picking.md`, at "Do not promote process work
@@ -70,7 +89,9 @@ open head on the morning of 2026-09-27, and none once #1160 merged.
 refused; `P0` and `P1` pass; spent at `P2` passes; closed and live at `P2`
 passes; an unsound `root-cause-of:` at `P2` passes; a sound
 `impairs-generators:` at `P3` refused; `set` recording `generator: live` on a
-`P2` item leaves it at `P1` and says so.
+`P2` item leaves it at `P1` and says so; `set` asking for `--priority P2` on a
+live head is refused and writes nothing; `set` recording `generator: live` on a
+blocked head whose blocker is at `P2` is refused, naming the blocker.
 
 **Done when.** `docket check` refuses an open item on the generator tier below
 `P1`, `docket set` raises one on write, the documents above say so, and `make
