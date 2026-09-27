@@ -1439,7 +1439,7 @@ whose own Python signature advertises `bytes | bytearray | memoryview` (which
 the binding then refuses, as measured above); the pointer is held by a `QBuffer`
 the caller never sees, created inside the call; and the outcome is a segfault or
 silently wrong data. A report was recommended to the project owner on
-2026-09-26 and is not filed.
+2026-09-26 and is not filed: `PL-MLRX` holds the draft, and the decision.
 
 **The rule: never pass a `QByteArray` where Qt's C++ signature takes
 `QByteArray *`.** Let Qt own the bytes, or copy them. The first table above
