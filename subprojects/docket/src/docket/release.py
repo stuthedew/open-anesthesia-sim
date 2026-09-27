@@ -85,7 +85,8 @@ def unreleased(items: list[Item], resuming: str = "") -> list[Item]:
     it into, which is the whole point: no one has to predict at capture time
     which release something will land in.
 
-    `resuming` names a release whose cut was interrupted, and folds the work
+    `resuming` names a release whose cut was interrupted, or one this branch
+    cut and is re-cutting before it merges (`PL-2TDX`), and folds the work
     that cut already stamped back in. Without it a re-run sees only what the
     first run had not reached, and ships a short release under the full one's
     name: `PL-1MKQ` is 26 items of 33 stamped, a re-run reporting "7 finished
