@@ -2,8 +2,10 @@
 
 It refuses the push that deletes branches on the remote beside the prune
 (`PL-M2NV`), since that deletes the branches themselves rather than this
-clone's copies of them, and the removal of a remote, which deletes every copy
-this clone holds of that remote's branches at once (`PL-R295`).
+clone's copies of them, the removal of a remote, which deletes every copy
+this clone holds of that remote's branches at once (`PL-R295`), and a delete
+by name handed a generated list, which deletes what the prune would
+(`PL-G8TR`).
 
 `PL-JK0M` routed this rule out of `CLAUDE.md`, where it was ten resident lines
 every session carried before it had read anything, into the hook that decides
@@ -593,6 +595,81 @@ def test_the_remove_refusal_answers_the_question_the_caller_had() -> None:
     assert "git push -u origin <branch>" not in reason
 
 
+# Each deletes remote-tracking refs from names generated rather than spelled
+# out, and each spelling that deleted anything did so on git 2.43.0 in a scratch
+# clone on 2026-09-27; the last deletes nothing, and only `xargs` hands a
+# `branch -dr` names it does not spell (`PL-G8TR`).
+GENERATED_DELETES = (
+    # The item's reproduction, verbatim: it deleted the only copy of a branch
+    # the remote had dropped.
+    "git for-each-ref --format='%(refname:short)' refs/remotes/origin | sed 's#^origin/##' \\\n"
+    "  | grep -vxFf <(git ls-remote --heads origin | sed 's#.*refs/heads/##') \\\n"
+    "  | xargs -r -I{} git branch -dr origin/{}",
+    # `xargs` hands the names, whatever its replace string, or with none.
+    "git for-each-ref refs/remotes/origin | xargs -I % git branch -dr %",
+    "timeout 60 xargs -n1 git branch -Dr < refs.txt",
+    # A name the shell builds: a substitution, a variable, a brace, a backtick.
+    "git branch -dr $(git for-each-ref --format='%(refname:short)' refs/remotes/origin)",
+    'for b in a b; do git branch -dr "origin/$b"; done',
+    'git for-each-ref refs/remotes/origin | while read r; do git branch -dr "$r"; done',
+    'BRANCH=claude/x; git branch -dr "origin/$BRANCH"',
+    "git branch -dr origin/{a,b}",
+    "git branch -dr `cat refs.txt`",
+    # Several at once, in one call or split across the command, spelled any way.
+    "git branch -dr origin/a origin/b",
+    "git branch -dr origin/a; git branch -dr origin/b",
+    "git branch --remotes --delete origin/a origin/b",
+    "git -C . branch -r -D origin/a origin/b",
+    # None at all.
+    "git branch -dr",
+)
+
+
+@pytest.mark.parametrize("command", GENERATED_DELETES)
+def test_a_generated_list_of_refs_is_refused_as_a_prune(command: str) -> None:
+    """A delete by name deletes what `--prune` does once the names are generated (`PL-G8TR`).
+
+    The guard read every `git branch -dr` as the one-ref remedy its refusals
+    print, so the pipeline that deletes the set a prune computes ran
+    unrefused, `xargs` naming each ref.
+    """
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert decision["permissionDecision"] == "deny"
+
+
+# One ref spelled out is the remedy the prune and remove refusals print. The
+# last three delete no remote-tracking ref at all: two local branches, a
+# listing, and the rule written about.
+ONE_REF_SPELLED_OUT = (
+    "git branch -dr origin/claude/pl-g8tr-x",
+    "git branch --delete --remotes -- origin/x",
+    # The restart the prune refusal prints, and one ref named twice.
+    "git branch -rd origin/x && git fetch origin main && git checkout -B x origin/main",
+    "git branch -dr origin/x || git branch -Dr origin/x",
+    "git branch -D claude/a claude/b",
+    "git branch -r --list 'origin/claude/*'",
+    'git commit -m "never xargs git branch -dr origin/a origin/b"',
+)
+
+
+@pytest.mark.parametrize("command", ONE_REF_SPELLED_OUT)
+def test_one_ref_spelled_out_is_untouched(command: str) -> None:
+    """The remedy the refusals print still runs beside its generated form (`PL-G8TR`)."""
+    assert _decision(command) is None, f"{command!r} was denied"
+
+
+def test_the_generated_list_refusal_says_why_it_counts_as_a_prune() -> None:
+    """A session that took its list for the remedy is told why not, then refused as a prune."""
+    reason = _decision("git branch -dr origin/a origin/b")["permissionDecisionReason"]
+    assert "prune by another spelling" in reason
+    assert "bin/docket stranded" in reason
+    assert "git branch -dr origin/<branch>" in reason
+    assert "another spelling" not in _decision("git fetch --prune")["permissionDecisionReason"]
+    both = _decision("git fetch --prune && xargs git branch -dr")["permissionDecisionReason"]
+    assert both.count("Run `bin/docket stranded` first") == 1
+
+
 # Why each spelling below is outside the promise the hook's header opens with,
 # naming what found it.
 PROBED_READ = (
@@ -621,6 +698,10 @@ UNREAD_CONFIG = (
     "a `config` read the hook cannot read whole - an option it does not know, or a word "
     "bash expands after the hook has read it - which it takes for a write rather than "
     "guess, found building `PL-YFT4`"
+)
+BY_OTHER_COMMAND = (
+    "a generated list of refs deleted by a command other than `branch`, which no session "
+    "has written: out of reach since `PL-G8TR`, found building it"
 )
 
 # Spellings outside the promise, each read wrongly today (`PL-61FT`): the
@@ -695,6 +776,21 @@ KNOWN_GAPS = (
     ),
     ("p=--prune; git fetch origin $p", False, "prunes, once bash expands `$p`", BY_VARIABLE),
     ("bash -c 'git fetch --prune'", False, "prunes, in the shell it starts", BY_SHELL),
+    # Measured 2026-09-27 the same way, the remote holding `claude/` branches.
+    (
+        "git for-each-ref --format='delete %(refname)' refs/remotes/origin/claude"
+        " | git update-ref --stdin",
+        False,
+        "deletes every `origin/claude/` tracking ref, each named on its input",
+        BY_OTHER_COMMAND,
+    ),
+    (
+        "git push origin --delete"
+        " $(git ls-remote --heads origin | sed 's#.*refs/heads/##' | grep -vx main)",
+        False,
+        "deletes on the remote every branch but `main`, each named by the substitution",
+        BY_OTHER_COMMAND,
+    ),
 )
 
 
