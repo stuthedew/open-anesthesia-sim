@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: claim-integrity
+milestone: v0.5.13
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_claiming.py, .claude/skills/docket/modes/start.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by its own thread's triage, 2026-09-26
 added: 2026-09-26

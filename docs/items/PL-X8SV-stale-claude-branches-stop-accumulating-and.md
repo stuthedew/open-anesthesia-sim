@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: infra
+milestone: v0.5.13
 touches: tools/branch_sweep.py, tools/open_pull_requests.py, tests/unit/test_branch_sweep.py, .github/workflows/branch-sweep.yml, subprojects/docket/src/docket/claims.py, docket.toml, docs/worker.md, docs/maintainer.md, docs/ARCHITECTURE.md, CLAUDE.md, .claude/skills/docket/modes/capture.md, docs/items, docs/pr-bodies
 added: 2026-09-26
 closed: 2026-09-26

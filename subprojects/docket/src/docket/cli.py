@@ -3443,11 +3443,26 @@ def cmd_release(args: argparse.Namespace) -> int:
     # reports whichever this does not resume rather than leaving it silent.
     interrupted = unrecorded_milestones(items, notes_by_version(root), current)
     resuming = interrupted[-1] if interrupted else ""
-    ready = readiness(items, current, config.minor_classes, resuming)
+    # The other state a re-run of the same number reclaims: a cut that wrote
+    # its notes and has not merged, while the base took work `docket check`
+    # then advises absorbing by naming the version again. Found by that
+    # advisory's own `cut_window`, so the two agree about what an unmerged cut
+    # is; read as a shipped release instead, the re-run was refused as
+    # untagged (`PL-2TDX`). Only a run naming the version re-cuts: absorbing
+    # work this session did not do is a judgment, and a bare run never makes it.
+    unmerged = "" if resuming or git is None else _unmerged_cut(root, git, current)
+    named = (args.version or "").lstrip("v")
+    recutting = unmerged if unmerged and named == unmerged.lstrip("v") else ""
+    reclaim = resuming or recutting
+    ready = readiness(items, current, config.minor_classes, reclaim)
 
     if not ready.shippable:
         print(f"Nothing to release: no finished work since {current}.")
         return 0
+
+    if unmerged and not recutting:
+        print(_unmerged_cut_refusal(unmerged))
+        return 1
 
     # Cutting a release on top of an untagged one extends a gap that cannot be
     # closed afterwards, so the refusal belongs here rather than in a reminder.
@@ -3457,14 +3472,14 @@ def cmd_release(args: argparse.Namespace) -> int:
     # Unless the interrupted cut is the current version, which happens when it
     # got as far as its bump: `current` is then the release being finished
     # rather than one that shipped and wants a tag, and refusing on it would
-    # block the only run that can write its notes.
+    # block the only run that can write its notes. A re-cut is the same case.
     #
     # A git that will not say refuses too, in its own words (`PL-ZPDM`). This
     # read answered a silence with an empty set until then, and `is_untagged`
     # holds a project with no tags to nothing - so the gate skipped itself
     # whenever git failed, silently, which is the permissive direction on the
     # one check whose gap cannot be repaired afterwards.
-    if git is not None and resuming.lstrip("v") != current.strip().lstrip("v"):
+    if git is not None and reclaim.lstrip("v") != current.strip().lstrip("v"):
         existing = tags(root, runner=git)
         refusal = ""
         if not existing.known:
@@ -3587,12 +3602,18 @@ def cmd_release(args: argparse.Namespace) -> int:
     milestone = milestones(stamp(ready.shippable, name))[name]
     notes = release_notes(milestone, args.today or date.today())
 
+    already = sum(1 for item in ready.shippable if item.milestone)
     if resuming:
-        already = sum(1 for item in ready.shippable if item.milestone)
         print(
             f"Resuming an interrupted cut of {resuming}: {already} of these "
             f"{len(ready.shippable)} item(s) were stamped by the run that stopped, and "
             f"{NOTES_DIR}/{notes_name(resuming)} was never written.\n"
+        )
+    elif recutting:
+        print(
+            f"Re-cutting {recutting}, which this branch cut and has not merged: {already} of "
+            f"these {len(ready.shippable)} item(s) carry its stamp already, and "
+            f"{NOTES_DIR}/{notes_name(recutting)} is rewritten to name them all.\n"
         )
     print(f"{len(ready.shippable)} finished item(s) since {current}.")
     if ready.completed_features:
@@ -3612,8 +3633,8 @@ def cmd_release(args: argparse.Namespace) -> int:
     # the cut, and the table still lacks its row (`PL-YS9F`). A resumed cut
     # whose interrupted run got as far as its bump has no such plan left to
     # read, so its hand-off keeps both readings rather than deciding from one
-    # computed after the fact.
-    bumped = resuming.lstrip("v") == current.strip().lstrip("v")
+    # computed after the fact. Nor has a re-cut, whose bump is long done.
+    bumped = reclaim.lstrip("v") == current.strip().lstrip("v")
     plan = None if bumped else _plan(root, items, config)
 
     # Prove the bump before writing anything, so a version file the bump
@@ -3689,6 +3710,43 @@ def _hand_off(root: Path, config: Config, name: str, plan: Wave | None = None) -
     lines.append("Once it has merged, tag the commit that cut it:")
     lines.extend(f"  {command}" for command in tag_commands(name))
     return "\n".join(lines)
+
+
+def _unmerged_cut(root: Path, git: Runner, current: str) -> str:
+    """The current version as `milestone:` stamps it, where it is this branch's unmerged cut.
+
+    Asked of `cut_window`, the read `_check_cut_window` advises from, so the
+    command re-cuts exactly where the advisory says re-cutting absorbs. Empty
+    where the cut is anything else, or git would not show this branch adding
+    the notes: that keeps the untagged guard, which refuses too.
+    """
+    declared = current.strip().lstrip("v")
+    return f"v{declared}" if declared and cut_window(root, runner=git).version == declared else ""
+
+
+def _unmerged_cut_refusal(cut: str) -> str:
+    """Say that the current version is this branch's own cut, which has not shipped.
+
+    Reached by any run but one naming the cut's version, which re-cuts it.
+    Until `PL-2TDX` this state met the untagged guard, which called the
+    version shipped and printed a tag line for a commit the base does not
+    hold. Refused in a dry run too, as `_unfinished_cut_refusal` is: a second
+    number here is a wrong number rather than a state to review.
+    """
+    return "\n".join(
+        [
+            f"{cut} is cut on this branch and has not merged, so it has not shipped and there is",
+            "no tag to put on it yet. Nothing else can be cut on top of it: both cuts would",
+            "reach the base in one merge, and their two tags could not tell them apart.",
+            "",
+            "To fold in what the base has taken since the cut, merge the base in and name",
+            "the same version, which reclaims what the cut stamped and rewrites its notes:",
+            "",
+            f"  make release VERSION={cut.lstrip('v')}",
+            "",
+            "Otherwise merge this cut and tag it; the next release is cut after that.",
+        ]
+    )
 
 
 def _unfinished_cut_refusal(resuming: str, ready: Readiness, requested: str) -> str:

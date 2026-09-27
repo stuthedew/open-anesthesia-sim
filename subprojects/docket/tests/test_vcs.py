@@ -57,6 +57,7 @@ from docket.vcs import (
     _run_git,
     _standing,
     _superseded,
+    _written_since,
     base_copies,
     behind_remote,
     branch_state,
@@ -73,6 +74,7 @@ from docket.vcs import (
     files_in_flight,
     github_slug,
     github_token,
+    landed_whole,
     listed_paths,
     lost,
     merged_pull_requests,
@@ -191,9 +193,10 @@ def _runner(
     cannot tell from a merge.
 
     `adds` maps a ref to the blobs it introduces since its fork point and
-    `on_base` names the blobs the default branch has held at some point, which
-    is what separates a branch whose work has landed from one still carrying
-    it. `touched` maps a ref to its commits as (subject, paths), newest first,
+    `on_base` names the blobs the default branch wrote since then, which is
+    what separates a branch whose work has landed from one still carrying it.
+    The fake answers the base's object walk from it too, which `claims` reads.
+    `touched` maps a ref to its commits as (subject, paths), newest first,
     which is what `orphaned` reads to tell a commit the merge took from one
     nothing took.
     """
@@ -234,6 +237,13 @@ def _runner(
                 for entry in (adds or {}).get(args[-2], [])
             )
         if args[0] == "log":
+            if "--raw" in args:
+                # `_written_since`: what the base's commits wrote since the
+                # fork, a status record and then its path, each ended by NUL.
+                return "".join(
+                    f":000000 100644 {'0' * 40} {blob} A\0some/path/{blob}\0"
+                    for blob in sorted(on_base or set())
+                )
             if "--left-right" in args:
                 # The rewrite fingerprint: the same author date and subject on
                 # both sides of the divergence, which is what a rewrite leaves
@@ -2685,13 +2695,13 @@ def _landed_runner(
 
     `_branch_runner` answers the counts and nothing else, which is all the four
     original states needed. This one also answers the three reads the landing
-    verdict makes: the blobs the base's history holds (`adds` and `on_base`
-    together decide the split), the two-dot numstat, and the commit walk
-    (`commits`, as subject and paths, newest first).
+    verdict makes: the blobs the base wrote since the fork (`adds` and
+    `on_base` together decide the split), the two-dot numstat, and the commit
+    walk (`commits`, as subject and paths, newest first).
 
     `adds` is `(blob oid, path)` for each path the branch introduces since its
-    fork point; `on_base` names the oids the base has held at some point, which
-    is the whole of what separates a merged branch from one still carrying work.
+    fork point; `on_base` names the oids the base wrote since then, which is
+    the whole of what separates a merged branch from one still carrying work.
     """
 
     def run(args: list[str], root: Path) -> str:
@@ -2714,6 +2724,12 @@ def _landed_runner(
             return ""
         if args[:2] == ["log", "--topo-order"]:
             return divergence
+        if args[0] == "log" and "--raw" in args:
+            return "".join(
+                f":000000 100644 {'0' * 40} {oid} A\0{path}\0"
+                for oid, path in adds
+                if oid in on_base
+            )
         if "--name-only" in args:
             return "".join(
                 "\x1e" + f"c{position}" + "\x1f" + subject + "\n" + "\n".join(paths) + "\n"
@@ -2822,6 +2838,7 @@ def test_the_landing_verdict_is_not_asked_where_it_could_not_change_the_advice()
     assert state.disposition == "restart"
     assert state.landed_whole is False
     assert not any(args[:2] == ["rev-list", "--objects"] for args in asked)
+    assert not any("--raw" in args for args in asked)
 
 
 def test_the_landed_branch_line_refuses_the_merge_it_replaces() -> None:
@@ -2846,9 +2863,13 @@ def test_the_landed_branch_line_refuses_the_merge_it_replaces() -> None:
 
 
 def _cut_window_runner(
-    *, added: tuple[str, ...] = (), landed: tuple[str, ...] = (), fork: str = "abc123"
+    *,
+    added: tuple[str, ...] = (),
+    landed: tuple[str, ...] = (),
+    fork: str = "abc123",
+    written: str = "c0ffee",
 ):
-    """A git whose `HEAD` introduces `added` notes files and whose base gained `landed`."""
+    """A git whose `HEAD` adds the `added` notes at `written`, and whose base gained `landed`."""
 
     def run(args: list[str], root: Path) -> str:
         args = _bare(args)
@@ -2860,7 +2881,10 @@ def _cut_window_runner(
             return "\n".join(added)
         if args[0] == "merge-base":
             return f"{fork}\n" if fork else ""
+        if args[0] == "log" and "--diff-filter=A" in args:
+            return f"{written}\n" if written else ""
         if args[0] == "log":
+            assert f"{written}..{BASE}" in args, "measured from the commit adding the notes"
             return "\n".join(f"{identifier} Something that landed" for identifier in landed)
         return ""
 
@@ -2897,6 +2921,17 @@ def test_a_cut_whose_fork_point_is_unreadable_declines_rather_than_reading_as_em
     assert window.version == "0.3.8"
     assert window.landed == ()
     assert "no readable history" in window.declined
+
+
+def test_a_cut_whose_notes_no_commit_reads_as_adding_declines() -> None:
+    """`PL-C0C0`: the window is measured from that commit, so without one it is not measured."""
+    window = cut_window(
+        ROOT, runner=_cut_window_runner(added=("docs/releases/v0.3.8.md",), written="")
+    )
+
+    assert window.version == "0.3.8"
+    assert window.landed == ()
+    assert "docs/releases/v0.3.8.md" in window.declined
 
 
 # `filed_with_work`: the shape `PL-3CBS`'s landed-work advisory cannot reach -
@@ -3317,6 +3352,80 @@ class _Repo:
 
     def read(self, name: str) -> str:
         return (self.root / name).read_text(encoding="utf-8")
+
+
+# What the landing split is judged against: the blobs the base's commits wrote
+# since the fork (`PL-RLTK`). Real repositories, because the question is which
+# blobs git's own log says the base wrote, which a fake would only restate.
+
+
+def test_a_restore_to_content_main_held_before_the_fork_is_not_landed(tmp_path: Path) -> None:
+    """A branch putting a file back to an earlier version has not merged (`PL-RLTK`).
+
+    `#1118`'s shape: the base wrote a file and then replaced it, and a branch
+    forked after the replacement restored the first version. That blob is one
+    the base's history holds, which is what `landed_whole` used to judge by,
+    so `bin/docket branch` told a session holding an open pull request that it
+    had merged and to restart. The base wrote nothing of the branch's since
+    the fork, so nothing of it has landed.
+    """
+    repo = _Repo(tmp_path / "repo")
+    first = "on: pull_request\n"
+    repo.commit("the workflow as the base first wrote it", workflow_yml=first)
+    repo.commit("the base replaces it", workflow_yml="on: pull_request_target\n")
+    repo.git("switch", "-qc", "topic")
+    repo.commit("PL-K7QX put the workflow back", workflow_yml=first)
+    repo.git("switch", "-q", "main")
+    repo.commit("the base moves on", other_txt="other\n")
+    fork = repo.git("merge-base", "main", "topic")
+    written = _written_since(fork, "main", repo.root, _run_git)
+
+    assert _landing_split("topic", fork, written, repo.root, _run_git) == ((), ("workflow.yml",))
+    assert landed_whole("main", repo.root, _run_git, ref="topic") is False
+
+
+def test_a_squash_of_the_branch_is_landed_after_the_base_edits_it(tmp_path: Path) -> None:
+    """The narrower evidence still convicts the merge `landed_whole` exists for.
+
+    A squash writes the branch's content in a commit after the fork, and a
+    later edit to the same file leaves that write in the walk, so the answer
+    does not decay the way comparing against the base's tip would.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", seed_txt="seed\n")
+    repo.git("switch", "-qc", "topic")
+    repo.commit("PL-K7QX the work", work_txt="work\n")
+    repo.git("switch", "-q", "main")
+    repo.git("merge", "-q", "--squash", "topic")
+    repo.git("commit", "-qm", "PL-K7QX the work (#1)")
+    repo.commit("a later edit to the same file", work_txt="work, revised\n")
+
+    assert landed_whole("main", repo.root, _run_git, ref="topic") is True
+
+
+def test_a_squashed_rename_is_read_as_written_by_the_base(tmp_path: Path) -> None:
+    """What the base's commits wrote, not which objects its history reaches.
+
+    A rename carries a blob the fork's tree already holds under the old name,
+    so `rev-list --objects ^<fork> <base>`, the lead the item first named,
+    leaves it out and would call a squashed rename unlanded. The squash's own
+    commit writes it under the new name, and that is what the split reads.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", old_txt="kept\n")
+    repo.git("switch", "-qc", "topic")
+    repo.git("mv", "old.txt", "new.txt")
+    repo.git("commit", "-qm", "PL-K7QX rename it")
+    repo.git("switch", "-q", "main")
+    repo.git("merge", "-q", "--squash", "topic")
+    repo.git("commit", "-qm", "PL-K7QX rename it (#1)")
+    fork = repo.git("merge-base", "main", "topic")
+    written = _written_since(fork, "main", repo.root, _run_git)
+
+    assert repo.git("rev-parse", "topic:new.txt") not in repo.git(
+        "rev-list", "--objects", f"^{fork}", "main"
+    )
+    assert _landing_split("topic", fork, written, repo.root, _run_git) == (("new.txt",), ())
 
 
 def test_a_path_listing_is_read_one_way(tmp_path: Path) -> None:

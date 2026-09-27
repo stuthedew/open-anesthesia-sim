@@ -392,8 +392,8 @@ COMPOUND = (
     ("for t in a b; do set -o pipefail; uv run pytest -q $t 2>&1 | tail -5; done", True),
     ('for t in a b; do uv run pytest -q $t; echo "exit=$?"; done', False),
     # After `&&`, or a pipe under `pipefail`, the status travels to the end of
-    # the next command, and an `if`, a loop or a group ends where it closes,
-    # not at the first `;` inside it.
+    # a pipeline, and an `if`, a loop or a group ends where it closes, not at
+    # the first `;` inside it.
     ("make check && if true; then echo ok; fi; git status", True),
     ("make check && { echo a; echo b; }", False),
     ("set -o pipefail; make check 2>&1 | while read -r l; do echo $l; done; git status", True),
@@ -460,6 +460,113 @@ def test_a_fallback_that_fails_too_keeps_the_status(command: str, refused: bool)
     """
     decision = _decision(command)
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+PIPESTATUS_READ = (
+    # `PL-1DW7`'s command, verbatim: `PIPESTATUS` holds the status of every
+    # stage of the pipeline run last, so the `echo` prints `make`'s own
+    # whatever `tail` did, and it was refused at the `|`. The comment is what
+    # bash 5.2.21 printed with the gate a stub exiting 3.
+    ('make docket 2>&1 | tail -4; echo "exit=${PIPESTATUS[0]}"', False),  # exit=3
+    # The first stage's element by its other names, every element, a copy, a
+    # newline for the `;`, and a gate with no pipe after it.
+    ('make check 2>&1 | tail -45; echo "exit=${PIPESTATUS[@]}"', False),  # exit=3 0
+    ('make check 2>&1 | tail -45; echo "exit=${PIPESTATUS[*]}"', False),  # exit=3 0
+    ('make check 2>&1 | tail -45; echo "exit=$PIPESTATUS"', False),  # exit=3
+    ('make check 2>&1 | tail -45; codes=("${PIPESTATUS[@]}")', False),  # codes holds 3 0
+    ('make check 2>&1 | tail -45\necho "exit=${PIPESTATUS[0]}"', False),  # exit=3
+    ('make check > /tmp/gate.log 2>&1; echo "exit=${PIPESTATUS[0]}"', False),  # exit=3
+    # Under `pipefail` too, which carries the walk to the pipeline's end first.
+    ('set -o pipefail; make docket 2>&1 | tail -4; echo "exit=${PIPESTATUS[0]}"', False),  # exit=3
+    # On every pass of a loop, and past a stage that is a group.
+    (
+        'for t in a b; do uv run pytest -q $t 2>&1 | tail -5; echo "exit=${PIPESTATUS[0]}"; done',
+        False,  # exit=3, twice
+    ),
+    ('make check 2>&1 | { tail -45; }; echo "exit=${PIPESTATUS[0]}"', False),  # exit=3
+    # Another stage's status, or none read straight after the pipeline.
+    ('make check 2>&1 | tail -45; echo "exit=${PIPESTATUS[1]}"', True),  # exit=0, tail's
+    ('echo t.py | uv run pytest -q 2>&1 | tail; echo "exit=${PIPESTATUS[0]}"', True),  # exit=0
+    ('make check 2>&1 | tail -45; git status; echo "exit=${PIPESTATUS[0]}"', True),  # git's
+    ('make check 2>&1 | tail -45 & echo "exit=${PIPESTATUS[0]}"', True),  # exit=, none ran yet
+    ('(make check 2>&1 | tail -45); echo "exit=${PIPESTATUS[0]}"', True),  # exit=0, the subshell's
+    # A read that runs only on the last stage's answer, or not at all: the
+    # `&&` and the `then` printed exit=3, and print nothing where `tail`
+    # fails; the rest printed nothing. Each string exits 0.
+    ('make check 2>&1 | tail -45 && echo "exit=${PIPESTATUS[0]}"', True),
+    ('make check 2>&1 | tail -45 || echo "exit=${PIPESTATUS[0]}"', True),
+    ('if make check | tail; then echo "exit=${PIPESTATUS[0]}"; fi', True),
+    ('until make check | tail; do echo "exit=${PIPESTATUS[0]}"; done', True),
+    ('if true; then make check | tail; else echo "exit=${PIPESTATUS[0]}"; fi', True),
+    ('if true; then make check | tail; elif [ "${PIPESTATUS[0]}" = 0 ]; then :; fi', True),
+)
+
+
+@pytest.mark.parametrize(("command", "refused"), PIPESTATUS_READ)
+def test_pipestatus_read_after_the_pipeline_keeps_the_status(command: str, refused: bool) -> None:
+    """A gate's status read out of `PIPESTATUS` after its pipeline survives the pipe (`PL-1DW7`).
+
+    The walk knew one reader, a `$?` in the segment straight after a
+    separator, so the met command was refused at the `|` although its `echo`
+    prints `make`'s own status. Only the first stage's status is read, and only
+    by the command after the `;` that ends the pipeline, which runs whatever
+    the pipeline returned.
+    """
+    decision = _decision(command)
+    assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+AND_THEN_A_PIPE = (
+    # `PL-0FGH`'s command, its elisions filled in: `|` binds tighter than `&&`,
+    # so the `grep` is the last stage of the push, and a failing `make` skips
+    # the push and the `grep` both. Each comment is the exit bash 5.2.21 gave
+    # with the gate a stub exiting 3, and the second field is what the refusal
+    # says of the separator that loses the status, where one does.
+    (
+        "make doc-check > /tmp/doc.log 2>&1 && git add docs/items && git commit -qm x "
+        "&& git push -q origin HEAD 2>&1 | grep -v remote",
+        None,
+    ),  # 3
+    # The `&&` the refusal recommends, with a pipe on the step after it.
+    ("make check > /tmp/gate.log 2>&1 && tail -45 /tmp/gate.log | grep -i error", None),  # 3
+    ("make check && git status | head -3", None),  # 3
+    # A stage that is a group, a gate ending a pipeline of its own, a second
+    # piped step, and a fallback that fails too ahead of the `&&`.
+    ("make check && { git status; } | head -3", None),  # 3
+    ("make check && ( git status ) | head -3", None),  # 3
+    ("true | make check && git status | head -3", None),  # 3
+    ("make check && git status | head -3 && git log --oneline | head -1", None),  # 3
+    ("make check || false && git status | head -3", None),  # 1
+    # What follows the skipped pipeline decides, as it would straight after
+    # the gate.
+    ('make check && git status | head -3; echo "exit=$?"', None),  # prints exit=3
+    ("make check && git status | head -3; echo after", "after the `;`"),  # 0
+    ("make check && git status | head -3 || true", "fallback succeeds"),  # 0
+    ("make check && git status | head -3 &", "backgrounded"),  # 0
+    # And a `|` after a group the gate is inside pipes the group.
+    ("( make check && git status ) | head -3", "LAST stage"),  # 0
+    ("{ make check && git status; } | head -3", "LAST stage"),  # 0
+    ("( make check && git status | head -3 ) | cat", "LAST stage"),  # 0
+)
+
+
+@pytest.mark.parametrize(("command", "loses"), AND_THEN_A_PIPE)
+def test_a_gate_before_and_skips_the_whole_pipeline_after_it(
+    command: str, loses: str | None
+) -> None:
+    """`|` binds tighter than `&&`, so a failing gate skips the whole pipeline after it (`PL-0FGH`).
+
+    The walk stepped over one command after the `&&` and read the `|` behind
+    it as losing the status of the gate, so every command here that bash
+    exits non-zero on was refused, and the rest were refused at that `|`
+    rather than at the separator that loses the status.
+    """
+    decision = _decision(command)
+    if loses is None:
+        assert decision is None, f"{command!r} was refused"
+    else:
+        assert decision is not None, f"{command!r} was allowed"
+        assert loses in decision["permissionDecisionReason"], command
 
 
 PRESERVED = (
@@ -647,6 +754,76 @@ def test_the_refusal_names_the_gate_it_caught() -> None:
     )
 
 
+REMEDIES = (
+    # This item's command, verbatim. Spelled from the gate's name, it was offered
+    # `tools/possessive_section_check.py` alone, which exits 126, since no
+    # `tools/` script is executable (`PL-ZS13`).
+    (
+        "python3 tools/possessive_section_check.py --help 2>&1 | tail -4",
+        "python3 tools/possessive_section_check.py --help",
+    ),
+    # The rest of what it reproduced: the runner and the file, a check's
+    # subcommand, an id, and an assignment the command set.
+    ("uv run pytest -q tests/unit/t.py | tail", "uv run pytest -q tests/unit/t.py"),
+    ("python3 tools/doc_check.py check | head -40", "python3 tools/doc_check.py check"),
+    ("bin/docket verify PL-D0W8 | tail", "bin/docket verify PL-D0W8"),
+    (
+        "QT_QPA_PLATFORM=offscreen uv run pytest -q tests/integration 2>&1 | tail -5",
+        "QT_QPA_PLATFORM=offscreen uv run pytest -q tests/integration",
+    ),
+    # A wrapper is how the gate ran. The grouping or reserved word opening it,
+    # the `)` of a subshell around it and its redirections are not.
+    ("timeout 600 make check | tail -5", "timeout 600 make check"),
+    ("cd /r && (make check) 2>&1 | tail", "make check"),
+    ("if make check 2>&1 | tail -45; then echo green; fi", "make check"),
+    ("2>/dev/null uv 2>&1 run mypy | tail", "uv run mypy"),
+    # A word quoted to hold a blank is quoted again - an assignment's value
+    # alone, and one holding a `$` in double quotes, so it expands as it did -
+    # and a bare one stays bare.
+    (
+        'uv run pytest -q t.py -k "a and not b" 2>&1 | tail -12',
+        "uv run pytest -q t.py -k 'a and not b'",
+    ),
+    ('FOO="a b" make check | tail', "FOO='a b' make check"),
+    ('uv run pytest -q "$(cat /tmp/files)" | tail', 'uv run pytest -q "$(cat /tmp/files)"'),
+    ("for t in a b; do uv run pytest -q $t; done", "uv run pytest -q $t"),
+    # And the command `PL-2JRC` ran comes back as it was.
+    ("make check 2>&1 | tail -45", "make check"),
+)
+
+
+@pytest.mark.parametrize(("command", "spelled"), REMEDIES)
+def test_the_remedy_runs_the_gate_the_command_ran(command: str, spelled: str) -> None:
+    """Each remedy spells the gate as the refused command ran it, and is admitted (`PL-ZS13`).
+
+    The lines were spelled from the gate's name, so a check run through
+    `python3` came back as a script that is not executable, which exits 126,
+    and `uv run pytest` on one file as bare `pytest` over the whole suite. The
+    header promises every remedy is admitted, so each is piped back in.
+    """
+    reason = _decision(command)["permissionDecisionReason"]
+    assert f"\n    set -o pipefail; {spelled} 2>&1 | tail -45\n" in reason
+    assert f"\n    {spelled} > /tmp/gate.log 2>&1 " in reason
+    assert f"(`{spelled} && tail -45 /tmp/gate.log`)" in reason
+    remedies = [line.strip() for line in reason.splitlines() if line.startswith("    ")]
+    assert len(remedies) == 2, reason
+    for remedy in remedies:
+        assert _decision(remedy) is None, f"{command!r} was offered {remedy!r}, which is refused"
+
+
+def test_a_gate_run_with_an_unquoted_substitution_is_named_and_says_so() -> None:
+    """The one gate `shell_split.command_line` does not spell back: the quoting inside is gone.
+
+    Named alone, the lines do not run what the command ran, so the refusal says
+    so rather than letting them pass for a copy of it.
+    """
+    reason = _decision("uv run pytest -q $(cat /tmp/files) | tail")["permissionDecisionReason"]
+    assert "\n    set -o pipefail; pytest 2>&1 | tail -45\n" in reason
+    assert "does not spell back" in reason
+    spelled = _decision("uv run pytest -q t.py | tail")["permissionDecisionReason"]
+    assert "does not spell back" not in spelled
+
+
 # Why each spelling below is outside the promise the hook's header opens with,
 # naming what found it.
 NEGATED = (
@@ -674,6 +851,15 @@ DOCKET_OPTIONS = (
 UNMATCHED = (
     "a gate built out of a variable, or run by a wrapper `shell_split.WRAPPERS` does not "
     "name, is written nowhere here, and was left unmatched on purpose by `PL-TRMN`"
+)
+IN_A_STAGE = (
+    "a `$?` read in a later stage of the gate's own pipeline is written nowhere here and met "
+    "by no session: found working `PL-1DW7`"
+)
+QUOTED_READ = (
+    "a status read written inside single quotes, which print it as text, is written nowhere "
+    "here and met by no session, and the guard reads each word with its quotes removed: found "
+    "working `PL-1DW7`"
 )
 LOSES = "exits 0 when the gate fails, with the status of the `tail` it is piped to"
 
@@ -720,6 +906,25 @@ KNOWN_GAPS = (
     ("bin/docket --items docs/items check | tail", False, LOSES, DOCKET_OPTIONS),
     ('gate="make check"; $gate | tail', False, LOSES, UNMATCHED),
     ("stdbuf -oL make check | tail", False, LOSES, UNMATCHED),
+    (
+        'make check | echo "exit=$?"',
+        False,
+        "exits 0 when the gate fails, and prints exit=0: in a pipeline stage `$?` is the status "
+        "of the command before the pipeline",
+        IN_A_STAGE,
+    ),
+    (
+        "make check; echo 'exit=$?'",
+        False,
+        "exits 0 when the gate fails, and prints the text exit=$?",
+        QUOTED_READ,
+    ),
+    (
+        "make check 2>&1 | tail -45; echo 'exit=${PIPESTATUS[0]}'",
+        False,
+        "exits 0 when the gate fails, and prints the text exit=${PIPESTATUS[0]}",
+        QUOTED_READ,
+    ),
 )
 
 

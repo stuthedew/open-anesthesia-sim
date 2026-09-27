@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: housekeeping
+milestone: v0.5.13
 touches: ROADMAP.md, docs/items/PL-9LNF-three-app-surfaces-own-state-a-layout-could.md, docs/items/PL-W9P6-build-the-one-adapter-module-that-drives-the-qt.md, docs/items/PL-L8RN-nothing-enforces-the-one-adapter-qsplitter.md
 added: 2026-09-26
 closed: 2026-09-26
