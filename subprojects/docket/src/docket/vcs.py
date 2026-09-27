@@ -1014,16 +1014,23 @@ def _annotates_only(paths: list[str], prefix: str) -> bool:
 def _base_blobs(base: str, root: Path, run: Runner) -> frozenset[str]:
     """Every blob the default branch's history holds, read in one walk.
 
-    The question each caller actually asks is per blob - has the default
-    branch ever held this content - and `git log --find-object` answers it
-    one blob at a time, walking the whole history for each. Listing the
-    objects reachable from the base answers it for all of them at once, and
-    the two agree by construction: a blob some commit on the base introduced
-    is a blob some tree on the base holds.
+    **Ever held, for the readers whose question that is.** `stranded` asks
+    whether a branch's copy of an item is one the base has been past, and
+    `claims._landed_through` whether a commit wrote only content the base
+    holds, which it relies on below a truncated clone's horizon (`PL-W1LN`).
+    Whether the base has *taken* a branch's work is a different question, and
+    this set answers it wrongly: a branch that restores a file to an earlier
+    version of itself adds a blob the base's history holds, so the landing
+    split is judged against `_written_since` instead (`PL-RLTK`).
+    `_landed_through`'s instance of that misread is `PL-P64J`.
 
-    Measured on this repository at 425 commits: 17 `--find-object` walks cost
-    0.62 s and this costs 0.033 s, so the *complete* split below is cheaper
-    than the short-circuited all-or-nothing test it replaced.
+    The question each caller asks is per blob, and `git log --find-object`
+    answers it one blob at a time, walking the whole history for each. Listing
+    the objects reachable from the base answers it for all of them at once,
+    and the two agree by construction: a blob some commit on the base
+    introduced is a blob some tree on the base holds. Measured on this
+    repository at 425 commits: 17 `--find-object` walks cost 0.62 s and this
+    costs 0.033 s.
 
     A truncated clone reaches fewer commits and so returns fewer blobs, which
     reads as "not landed" - the same safe direction `_landing_split` documents
@@ -1040,8 +1047,70 @@ def _base_blobs(base: str, root: Path, run: Runner) -> frozenset[str]:
     return frozenset(found)
 
 
+def _raw_writes(output: str) -> Iterator[tuple[str, str]]:
+    """Each blob a `--raw -z` listing says was written, with the path it went to.
+
+    Git writes each change as `:<src mode> <dst mode> <src blob> <dst blob>
+    <status>` and then the path, each ended by NUL under `-z`, so the path is
+    its own field and is the path as written, whatever it holds. A deletion
+    writes the null oid, which is no content. `log` opens a commit's changes
+    with a `\\n` after its format line, which `split` drops; under
+    `--format=` there is no format line, and the records run back to back with
+    nothing between two commits (measured on git 2.43.0, 2026-09-27).
+    """
+    fields = iter(output.split("\0"))
+    for head in fields:
+        words = head.split()
+        if len(words) != 5 or not words[0].startswith(":"):
+            continue
+        path = next(fields, "")
+        if set(words[3]) != {"0"}:
+            yield words[3], path
+
+
+def _written_since(fork_point: str, base: str, root: Path, run: Runner) -> frozenset[str]:
+    """Every blob the default branch's commits wrote after `fork_point`, in one walk.
+
+    **The evidence of a merge is content the base wrote after the fork**
+    (`PL-RLTK`). A squash, a rebase or a cherry-pick lands a branch's work on
+    the base after the commit it forked from, so every blob it carries is one
+    some commit since then wrote, and content the base held only before the
+    fork cannot have come from the branch. Asked of the base's whole history
+    instead (`_base_blobs`), the split read a branch that restores a file to an
+    earlier version of itself as merged: `bin/docket branch` told `#1118`'s
+    session, whose pull request was open, that it had merged and to restart on
+    the base, because `c69bad17` put `pr-title.yml` back to the blob `#1056`
+    wrote and `#1068` replaced. Retiring a feature restores files that way, so
+    the shape recurs.
+
+    **What the commits wrote, not what the walk reaches.** `rev-list --objects
+    ^<fork> <base>` drops a blob the fork's tree already holds, so a rename or
+    a copy the branch made, squashed onto the base, would read as never
+    landed. Measured on a scratch repository, git 2.43.0, 2026-09-27: after a
+    squash of a branch that renamed two files, that walk held 0 of their 2
+    blobs and this read held both.
+
+    A later edit to a file the squash wrote leaves the squash's write in the
+    walk, so the answer does not decay the way comparing against the base's
+    tip would. A merge commit shows no change by default, so a blob only a
+    merge's resolution wrote reads as unwritten; that, a truncated clone's
+    missing commits, and a read git refused all read as "not landed", the safe
+    direction `_landing_split` documents.
+
+    Measured 2026-09-27 on this checkout, 1,466 commits on `origin/main`: its
+    20 candidate refs forked at 10 points, read in 0.098 s in all, and one read
+    of the whole history takes 0.211 s, which bounds a fork of any age. None of
+    the 20 changed verdict against the whole-history set it replaced.
+    """
+    listing = run(
+        changed_path_args("log", "--raw", "--no-abbrev", "--format=", f"^{fork_point}", base, "--"),
+        root,
+    )
+    return frozenset(blob for blob, _ in _raw_writes(listing))
+
+
 def _landing_split(
-    ref: str, fork_point: str, base_blobs: frozenset[str], root: Path, run: Runner
+    ref: str, fork_point: str, on_base: frozenset[str], root: Path, run: Runner
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
     """The paths a ref introduces, split into what the base holds and what it does not.
 
@@ -1054,17 +1123,22 @@ def _landing_split(
     bites.
 
     So the question asked here is about content rather than ancestry: of the
-    blobs the ref adds to the tree it forked from, has the default branch held
-    each one at some point? That is `stranded`'s rule - compare what the trees
-    hold, never how the commits got there - pointed the other way, and it
-    answers a rebase or a cherry-pick the same way it answers a squash.
+    blobs the ref adds to the tree it forked from, which are in `on_base`?
+    That is `stranded`'s rule - compare what the trees hold, never how the
+    commits got there - pointed the other way, and it answers a rebase or a
+    cherry-pick the same way it answers a squash.
 
-    **The default branch's history, not its tip.** Comparing against the base
-    tree alone would call a squash-merged branch unlanded again the moment
-    anyone edited a file it had touched - which in this store is what the next
-    triage pass does to every item a branch captured, so the branch would be
-    back to reporting in flight one merge later. Asking whether the blob was
-    ever on the default branch does not decay.
+    **What the base wrote since the fork, not its tip and not its whole
+    history**, which is what every caller in this module passes
+    (`_written_since`). Comparing against the base tree alone would call a
+    squash-merged branch unlanded again the moment anyone edited a file it had
+    touched - which in this store is what the next triage pass does to every
+    item a branch captured, so the branch would be back to reporting in flight
+    one merge later. A write since the fork does not decay. The whole history
+    errs the other way: a branch that restores a file to content the base held
+    before the fork adds a blob the base has held, and read as landed,
+    `bin/docket branch` told a session holding an open pull request to restart
+    its branch (`PL-RLTK`).
 
     **Both sides are returned, because two readers need opposite halves.**
     `_work_already_on_base` needs to know the outstanding side is empty;
@@ -1083,24 +1157,14 @@ def _landing_split(
     """
     landed: list[str] = []
     outstanding: list[str] = []
-    # `:<src mode> <dst mode> <src blob> <dst blob> <status>` and then the path,
-    # each ended by NUL under `-z`, so the path is its own field and is the path
-    # as written, whatever it holds.
-    fields = iter(
-        run(changed_path_args("diff", "--raw", "--no-abbrev", fork_point, ref, "--"), root).split(
-            "\0"
-        )
-    )
-    for head in fields:
-        path = next(fields, "")
-        blobs = head.split()
-        if len(blobs) == 5 and set(blobs[3]) != {"0"}:
-            (landed if blobs[3] in base_blobs else outstanding).append(path or blobs[3])
+    listing = run(changed_path_args("diff", "--raw", "--no-abbrev", fork_point, ref, "--"), root)
+    for blob, path in _raw_writes(listing):
+        (landed if blob in on_base else outstanding).append(path or blob)
     return tuple(landed), tuple(outstanding)
 
 
 def _work_already_on_base(split: tuple[tuple[str, ...], tuple[str, ...]]) -> bool:
-    """Whether everything a ref adds is content the default branch has held.
+    """Whether everything a ref adds is content the split counts as the base's.
 
     `_landing_split` carries the reasoning; this is the all-or-nothing reading
     of it, kept as a named rule rather than spelled at the one call site so
@@ -1154,10 +1218,10 @@ def _pathspec_chunks(paths: tuple[str, ...]) -> Iterator[tuple[str, ...]]:
 def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Runner) -> set[str]:
     """Of `paths`, those the base's tip already accounts for, so nothing is left behind.
 
-    **The blob walk asks whether the base ever held a *version*; this asks
-    whether the base still needs one.** They differ wherever a path's content
-    was replaced after the branch introduced it, and `_landing_split` calls
-    every such path outstanding because no commit on the base ever carried that
+    **The split asks whether the base wrote a *version* since the fork; this
+    asks whether the base still needs one.** They differ wherever a path's
+    content was replaced after the branch introduced it, and `_landing_split`
+    calls every such path outstanding because no commit on the base wrote that
     exact blob. Two shapes reach it and neither is work anybody lost
     (`PL-XLQ5`):
 
@@ -1303,13 +1367,13 @@ def change_landed(
     same file does not confound it, which is the case every coarser test
     misses.
 
-    **Ever held, not held now**, which is `_landing_split`'s rule for the same
-    reason: a base that took the change and then rewrote the line has still
-    taken it, and recovering the commit would revert the rewrite. So the
-    candidates are the default branch's first-parent commits since the fork
-    point that touch the commit's paths, oldest first, and the first that holds
-    the change is the one returned. Its subject is how a reader is told which
-    pull request landed it.
+    **Taken since the fork, not held now**, which is `_landing_split`'s rule
+    for the same reason: a base that took the change and then rewrote the line
+    has still taken it, and recovering the commit would revert the rewrite. So
+    the candidates are the default branch's first-parent commits since the
+    fork point that touch the commit's paths, oldest first, and the first that
+    holds the change is the one returned. Its subject is how a reader is told
+    which pull request landed it.
 
     **Every failure reads as not landed**, which is the direction the readers
     need: they keep reporting the commit, as they did before this test existed.
@@ -1405,10 +1469,11 @@ class _Refs:
     #: a second time could return a different answer about where the branch
     #: left from.
     fork: dict[str, str]
-    #: Every blob the base's history holds, which the split above was judged
-    #: against. Kept because `claims.holdings` asks the same per-blob question
-    #: of each commit for its landed prefix, and a second walk of the base's
-    #: objects could answer from a base that had moved in between.
+    #: Every blob the base's history holds. The split above is judged against
+    #: what the base wrote since each ref's fork instead (`PL-RLTK`); this is
+    #: kept for `claims.holdings`, which asks of each commit of a landed prefix
+    #: whether it wrote only content the base holds, and a second walk of the
+    #: base's objects could answer from a base that had moved in between.
     base_blobs: frozenset[str] = frozenset()
 
 
@@ -1462,8 +1527,9 @@ def _unlanded_refs(
     unreadable: set[str] = set()
     landing: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {}
     fork: dict[str, str] = {}
-    # One walk of the base's objects, before the loop rather than inside it:
-    # the question is per blob and the answer is the same set for every ref.
+    # What the base wrote since a fork is one set for every ref forked there,
+    # so it is read once per fork point rather than once per ref.
+    written: dict[str, frozenset[str]] = {}
     base_blobs = _base_blobs(base, root, run)
     for name in candidates:
         fork_point = run(["merge-base", base, name], root).strip()
@@ -1471,7 +1537,9 @@ def _unlanded_refs(
             unreadable.add(name)
             continue
         fork[name] = fork_point
-        split = _landing_split(name, fork_point, base_blobs, root, run)
+        if fork_point not in written:
+            written[fork_point] = _written_since(fork_point, base, root, run)
+        split = _landing_split(name, fork_point, written[fork_point], root, run)
         if not _work_already_on_base(split):
             unlanded.append(name)
             landing[name] = split
@@ -4684,11 +4752,11 @@ def _commits_by_landing(
     work to leave behind, and such a commit is neither reported nor counted.
 
     The cost is recall, in one narrow shape: a commit pushed after the merge
-    that happens to leave one file in a state the base has held reads as partly
-    landed and goes unreported. Silence is this check's expensive direction
-    everywhere else, and the trade is taken here only because the alternative
-    was an advisory firing in every session's digest - which `CLAUDE.md` calls
-    a defect in the check rather than coverage.
+    that happens to leave one file in a state the base wrote since the fork
+    reads as partly landed and goes unreported. Silence is this check's
+    expensive direction everywhere else, and the trade is taken here only
+    because the alternative was an advisory firing in every session's digest -
+    which `CLAUDE.md` calls a defect in the check rather than coverage.
 
     **The same rule pointed at the landed side, which is the second half.**
     Agreement with the base does not mean the base took it: `bin/docket record`
@@ -4782,11 +4850,13 @@ def landed_whole(
     owner's decision of 2026-09-12 requires them rather than the unqualified
     "the landed side is non-empty" the item's own brief asserted: two documented
     shapes satisfy that and neither is a merge. So the pipeline is reused whole
-    - `_landing_split` for the content split, `_superseded` to drop paths the
-    base's tip no longer needs (`PL-XLQ5`), and `_commits_by_landing` for the
-    unit test that a squash takes commits whole where convergence scatters
-    files inside them (`PL-JHJ3`, `PL-5TRV`) and for its refusal to read a
-    queue-only annotation as merge evidence (`PL-JBRC`).
+    - `_landing_split` for the content split, judged against what the base
+    wrote since the fork as `orphaned`'s is (`_written_since`, `PL-RLTK`),
+    `_superseded` to drop paths the base's tip no longer needs (`PL-XLQ5`),
+    and `_commits_by_landing` for the unit test that a squash takes commits
+    whole where convergence scatters files inside them (`PL-JHJ3`, `PL-5TRV`)
+    and for its refusal to read a queue-only annotation as merge evidence
+    (`PL-JBRC`).
 
     **Where it differs from `orphaned`, and why.** That report wants a branch
     whose work the base took only *part* of, so it requires a commit left
@@ -4820,7 +4890,8 @@ def landed_whole(
     fork_point = run(["merge-base", base, ref], root).strip()
     if not fork_point:
         return False
-    landed, outstanding = _landing_split(ref, fork_point, _base_blobs(base, root, run), root, run)
+    written = _written_since(fork_point, base, root, run)
+    landed, outstanding = _landing_split(ref, fork_point, written, root, run)
     if not landed:
         return False
     superseded = _superseded(ref, base, outstanding, root, run)
@@ -4901,12 +4972,12 @@ def orphaned(
 
     **What it can get wrong**, now that agreement alone no longer convicts. Two
     directions, both silence. A commit pushed after the merge that happens to
-    leave one file in a state the base has held is not reported; nor is a
-    post-merge push to a branch whose every pre-merge commit was re-merged
-    against a base that had moved under it, since neither side then has a whole
-    commit. Silence is the expensive direction here and both trades are taken
-    deliberately; `_commits_by_landing` says why. The reader decides, the way
-    they do for `flight` and `stranded`.
+    leave one file in a state the base wrote since the fork is not reported;
+    nor is a post-merge push to a branch whose every pre-merge commit was
+    re-merged against a base that had moved under it, since neither side then
+    has a whole commit. Silence is the expensive direction here and both trades
+    are taken deliberately; `_commits_by_landing` says why. The reader decides,
+    the way they do for `flight` and `stranded`.
     """
     run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)

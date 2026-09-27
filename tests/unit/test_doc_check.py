@@ -2875,7 +2875,7 @@ def test_how_a_script_is_invoked_is_not_a_drift(tmp_path: Path) -> None:
     """The floor section runs a tool bare and the sync'd half runs it under `uv`.
 
     Comparing command strings would report every such line as a divergence,
-    which is why the set compared is which scripts each gate runs at all.
+    which is why nothing ahead of the script is compared.
     """
     root = _parity_repo(
         _repo(tmp_path),
@@ -2955,6 +2955,95 @@ def test_a_recorded_asymmetry_is_accepted_on_its_own_side_only(tmp_path: Path) -
         assert any("tools/only.py and no workflow" in m for m in _parity(root))
     finally:
         del doc_check.GATE_ONLY["tools/only.py"]
+
+
+def test_gate_parity_refuses_a_mode_only_one_gate_runs(tmp_path: Path) -> None:
+    """`PL-RW3T`: matched by path, `--anchors` in `make check` passed as covered by `--check`.
+
+    That is how `tools/pr_body_check.py --anchors` ran unenforced from `PL-73G8`
+    until `PL-3PH2`. Both sides are refused, and each message names the mode the
+    other gate does run, which is where a reader would otherwise go looking.
+    """
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/x_check.py --anchors"],
+        workflows={"quality.yml": (GATING_WORKFLOW, ["python3 tools/x_check.py --check"])},
+    )
+
+    errors = _parity(root)
+
+    assert any(
+        "runs tools/x_check.py --anchors and no workflow" in message
+        and "only as tools/x_check.py --check," in message
+        for message in errors
+    )
+    assert any("runs tools/x_check.py --check and `make check` does not" in m for m in errors)
+
+
+def test_a_subcommand_is_part_of_the_mode(tmp_path: Path) -> None:
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py check"],
+        workflows={"quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py fix"])},
+    )
+
+    assert any("runs tools/a_check.py check and no workflow" in m for m in _parity(root))
+
+
+def test_an_option_value_and_the_order_of_options_are_not_a_mode(tmp_path: Path) -> None:
+    """`--verify-base origin/main` locally and `"$VERIFY_BASE"` in CI are one run."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py check --verify --base origin/main"],
+        workflows={
+            "quality.yml": (
+                GATING_WORKFLOW,
+                ['python3 tools/a_check.py check --base="$BASE" --verify'],
+            )
+        },
+    )
+
+    assert _parity(root) == []
+
+
+def test_the_shell_around_a_script_is_not_its_mode(tmp_path: Path) -> None:
+    """A pipe, the command after `&&`, a redirection's file and its descriptor are no arguments.
+
+    Read as one run of words, `2>&1 | tee a.log` handed the script a subcommand
+    `2` and an argument `tee`, and cutting at the `>` of `>b.log --check` lost
+    the option written after it, which bash still passes.
+    """
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py 2>&1 | tee a.log", "python3 tools/b_check.py --check"],
+        workflows={
+            "quality.yml": (
+                GATING_WORKFLOW,
+                ["python3 tools/a_check.py", "python3 tools/b_check.py >b.log --check && echo ok"],
+            )
+        },
+    )
+
+    assert _parity(root) == []
+
+
+def test_a_record_excuses_its_own_mode_and_no_other(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`GATE_ONLY` is keyed by script and mode, so a record of `--discover` excuses no `--fast`."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/a_check.py --discover", "python3 tools/a_check.py --fast"],
+        workflows={"quality.yml": (GATING_WORKFLOW, ["python3 tools/a_check.py"])},
+    )
+    monkeypatch.setitem(doc_check.GATE_ONLY, "tools/a_check.py --discover", ("local", "reads"))
+    monkeypatch.setitem(doc_check.GATE_ONLY, "tools/a_check.py", ("ci", "reads the event"))
+
+    errors = _parity(root)
+
+    assert len(errors) == 1
+    assert "runs tools/a_check.py --fast and no workflow" in errors[0]
+    assert "record `tools/a_check.py --fast` in" in errors[0]
 
 
 def test_a_scheduled_workflow_is_not_the_merge_gate(tmp_path: Path) -> None:
