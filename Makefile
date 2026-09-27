@@ -33,6 +33,15 @@ export PYTHONDONTWRITEBYTECODE := 1
 # container's, the warning says the old name will be removed, and on that
 # release an untranslated variable stops applying in silence. `ifdef` makes the
 # block inert where nothing set it, so a local checkout is unaffected.
+#
+# Kept once a bare `uv run` went quiet too (`PL-TCKV`), because what quieted it
+# is not in this repository. The old name is Claude Code's own: its agent proxy
+# exports it into every shell with its other certificate variables, so no
+# environment setting can remove it, and uv warns only while it stands alone.
+# This project's environment now also sets `UV_SYSTEM_CERTS=true` (measured
+# 2026-09-27 on uv 0.12.19); a container of any environment without that
+# setting still warns on every `uv` call, and this block keeps `make` quiet
+# there.
 ifdef UV_NATIVE_TLS
 export UV_SYSTEM_CERTS := $(UV_NATIVE_TLS)
 unexport UV_NATIVE_TLS

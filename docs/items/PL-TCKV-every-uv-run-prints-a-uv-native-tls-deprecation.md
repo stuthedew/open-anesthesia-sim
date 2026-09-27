@@ -3,12 +3,15 @@ id: PL-TCKV
 title: Every uv run prints a UV_NATIVE_TLS deprecation warning, so every verify command and every test run carries a line nobody acts on
 priority: P3
 effort: S
-status: ready
+status: done
 classes: session-cost, infra
 feature: dev-tooling
-touches: docs/worker.md, subprojects/docket/src/docket/verify.py
+touches: Makefile
 added: 2026-09-14
-verify: grep -q 'UV_SYSTEM_CERTS' pyproject.toml
+closed: 2026-09-27
+pr: 1184
+verify: command -v uv >/dev/null && ! uv run --no-sync true 2>&1 | grep -q UV_NATIVE_TLS
+not-delegable: the fix is an environment setting no file in the tree holds, so no grep over the tree can prove it; only running uv in a Claude Code container shows the warning gone, and elsewhere the command passes without proving anything
 ---
 
 **Problem.** Every uv run prints a UV_NATIVE_TLS deprecation warning, so every verify command and every test run carries a line nobody acts on
@@ -63,3 +66,39 @@ outside any checkout - with the Makefile block kept until a fresh container is m
 quiet, and the `verify:` re-pointed at that measurement rather than at a
 `pyproject.toml` line. `PL-VZYS` § "Design round 2026-09-27" carries the source
 reads.
+
+**Closed 2026-09-27: a bare `uv run` is quiet, and `UV_SYSTEM_CERTS` is what
+quiets it, not the rename.** Measured in the first container started after the
+project owner changed the environment settings on the recommendation above
+(`UV_SYSTEM_CERTS=true` added, `UV_NATIVE_TLS=true` deleted), on uv 0.12.19:
+
+- `printenv` still shows `UV_NATIVE_TLS=true` beside `UV_SYSTEM_CERTS=true`.
+  The old name is not the environment's own, as the note above assumed: it is
+  one of the certificate variables Claude Code's agent proxy hands every shell,
+  with `SSL_CERT_FILE`, `PIP_CERT`, `HEX_CACERTS_PATH` and the rest, and the
+  proxy's `/etc/profile.d/ccr-agent-proxy-ca.sh`, headed "Managed by Claude
+  Code (CCR agent-proxy)", sets it back to `true` whenever it is unset or
+  empty. No environment setting can remove it. That source is inferred from
+  the script and the variable set, since the settings cannot be read from
+  inside a container.
+- uv warns only while the old name stands alone. `uv run python -c pass` with
+  both set wrote nothing to stderr; with `UV_SYSTEM_CERTS` removed for one run
+  (`env -u`) it printed "The `UV_NATIVE_TLS` environment variable is deprecated
+  and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead."; with
+  `UV_NATIVE_TLS` removed instead, nothing.
+
+So the translation does live where uv reads it, in the environment's
+`UV_SYSTEM_CERTS=true`, and the deletion changed nothing. The Makefile block
+stays, and its comment now says why: the quiet rests on one setting no file
+here records, and a container of any environment without it still warns on
+every `make`-run `uv` call.
+
+**The `verify:` is re-pointed at the warning itself.** The commissioned
+`grep -q 'UV_SYSTEM_CERTS' pyproject.toml` could pass only on a `[tool.uv]`
+line uv ignores, as the note above found, so it could not tell done from
+undone. The new command runs `uv` and fails if the warning prints, or if there
+is no `uv` to run. No admitted `grep` shape can see an environment setting,
+which is what `not-delegable:` records, and the command discriminates only in a
+Claude Code container: wherever `UV_NATIVE_TLS` is unset, as on a CI runner, it
+passes without proving anything. Checked both ways on 2026-09-27: it passes in
+the container measured above and exits 1 there with `UV_SYSTEM_CERTS` removed.
