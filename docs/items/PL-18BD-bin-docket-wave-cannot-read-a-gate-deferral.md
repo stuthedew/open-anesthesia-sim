@@ -3,11 +3,13 @@ id: PL-18BD
 title: bin/docket wave cannot read a gate deferral whose holding condition has no id, so PL-B396 and the three entries it blocks, deferred to Gate 3 on 2026-09-27, still count as work Gate 2 can clear and hold the beat at clear the gate
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, planning
 touches: ROADMAP.md, docs/items/PL-B396-agent-amounts-are-displayed-in-litres-of-vapour.md, docs/items/PL-KZ99-store-each-agent-s-molar-mass-and-liquid.md, docs/items/PL-0S0V-agent-volume-display-decimals-and-the-other.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-27 on the owner's answer to its decision
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1165
 payoff: bin/docket wave's Gate 2 count stops listing four entries the roadmap defers to Gate 3, so the gate reads clear when the work it can clear is done, with no hand subtraction from prose
 verify: grep -qF 'blocked-by: PL-YRLM' docs/items/PL-B396-*.md
 ---

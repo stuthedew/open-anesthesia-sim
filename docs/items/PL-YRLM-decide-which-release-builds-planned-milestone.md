@@ -1,7 +1,7 @@
 ---
 id: PL-YRLM
 title: Decide which release builds planned-milestone item 28, agent cost, so the liquid-equivalent readout PL-B396 decided, and the price, precision and constants waiting on it, have a release to wait on
-priority: P3
+priority: P2
 effort: S
 status: needs-decision
 classes: planning
