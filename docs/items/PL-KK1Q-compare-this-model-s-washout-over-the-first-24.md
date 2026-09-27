@@ -6,9 +6,10 @@ effort: M
 status: done
 classes: science, test
 feature: late-washout-evidence
-touches: tests/reference, docs/MODEL.md
+touches: tests/reference, docs/MODEL.md, README.md, docs/references/README.md
 added: 2026-09-26
 closed: 2026-09-27
+pr: 1175
 payoff: a reader of the washout tail learns how far, and from which hour, the modelled curve departs from measured human washout, instead of only which way the missing terms push it
 verify: grep -rq 'def test_the_first_24_hours_of_elimination_against_the_published_mean_curves' tests/reference/ && grep -qF 'PL-KK1Q' docs/MODEL.md
 ---
