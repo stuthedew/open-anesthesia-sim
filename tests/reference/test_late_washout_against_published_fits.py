@@ -522,6 +522,25 @@ def _metabolise(system: AgentUptakeSystem, rate_constant_per_min: float) -> floa
     return removed
 
 
+def _on_its_curve_s_worker(agent_id: str, condition: Condition) -> pytest.MarkDecorator:
+    """Send a test to the xdist worker that computes its curve, so it is computed once.
+
+    A curve is 864,000 steps after the wash-in, and `_washout_curve()`'s cache
+    lives in one process, so every xdist worker that runs a test needing a
+    curve computes that curve again: about 16 computations where 8 would do,
+    run late and in series (`PL-F08Y`). The suite runs `--dist loadgroup`,
+    which sends every test sharing an `xdist_group` to one worker and deals
+    out those groups before the ungrouped tests, so every curve starts at the
+    beginning of the run on a worker of its own. The group is the agent and the
+    condition. The hepatic-sink curve rides in its agent's group because the
+    one test that reads it also reads the same run without the sink. A test
+    added here that reads a curve without this mark still passes, and pays for
+    the curve a second time on another worker.
+    """
+
+    return pytest.mark.xdist_group(f"24-hour washout: {agent_id}, {condition}")
+
+
 @cache
 def _washout_curve(
     agent_id: str, condition: Condition, hepatic_elimination_rate_constant_per_min: float = 0.0
@@ -596,8 +615,19 @@ def _crossing_hours(curve: WashoutCurve, fit: PublishedWashoutFit) -> tuple[floa
     return tuple(hours)
 
 
-@pytest.mark.parametrize("condition", CONDITIONS)
-@pytest.mark.parametrize("fit", PUBLISHED_FITS, ids=[f.label for f in PUBLISHED_FITS])
+@pytest.mark.parametrize(
+    ("fit", "condition"),
+    [
+        pytest.param(
+            fit,
+            condition,
+            id=f"{fit.label}-{condition}",
+            marks=_on_its_curve_s_worker(fit.agent_id, condition),
+        )
+        for fit in PUBLISHED_FITS
+        for condition in CONDITIONS
+    ],
+)
 def test_the_first_24_hours_of_elimination_against_the_published_mean_curves(
     fit: PublishedWashoutFit, condition: Condition
 ) -> None:
@@ -635,8 +665,19 @@ def test_the_first_24_hours_of_elimination_against_the_published_mean_curves(
     )
 
 
-@pytest.mark.parametrize("condition", CONDITIONS)
-@pytest.mark.parametrize("agent_id", AGENT_IDS)
+@pytest.mark.parametrize(
+    ("agent_id", "condition"),
+    [
+        pytest.param(
+            agent_id,
+            condition,
+            id=f"{agent_id}-{condition}",
+            marks=_on_its_curve_s_worker(agent_id, condition),
+        )
+        for agent_id in AGENT_IDS
+        for condition in CONDITIONS
+    ],
+)
 def test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio(
     agent_id: str, condition: Condition
 ) -> None:
@@ -742,7 +783,13 @@ def test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours(
             )
 
 
-@pytest.mark.parametrize("condition", CONDITIONS)
+@pytest.mark.parametrize(
+    "condition",
+    [
+        pytest.param(condition, marks=_on_its_curve_s_worker("sevoflurane", condition))
+        for condition in CONDITIONS
+    ],
+)
 def test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent(
     condition: Condition,
 ) -> None:
