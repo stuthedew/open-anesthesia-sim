@@ -744,6 +744,65 @@ def test_the_first_stretch_is_kept_even_when_a_change_returns_to_it() -> None:
     )
 
 
+def test_recording_a_change_copies_no_segment_already_recorded() -> None:
+    """Each accepted change adds one segment and leaves every earlier one as it was.
+
+    The record grows by what the change adds and by nothing else. It holds
+    references, so a change copies at most one pointer per segment and never
+    a keyframe: `PL-7TXJ` measured on 2026-09-27 that a segment holds about
+    900 bytes, 408 of them its keyframe, and that the tuple rebuilt on each
+    change copies an 8-byte reference to it. Checked by identity rather than by
+    equality, because an equal copy of a keyframe is exactly what this rules
+    out; a segment is frozen, so the same segment carries the same keyframe.
+    Three hundred changes is the count over which `PL-1PSX` measured this
+    record and the control timeline growing one-for-one.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
+
+    for change in range(1, 301):
+        before = definition.segments
+        definition.advance_to(change * 10.0)
+        system.set_delivered_partial_pressure_fraction(0.01 + 0.005 * (change % 4))
+        definition.record_change(system.equation_settings())
+        after = definition.segments
+
+        assert len(after) == len(before) + 1
+        assert all(kept is held for kept, held in zip(after[:-1], before, strict=True))
+
+
+def test_a_record_handed_out_is_not_changed_by_later_changes() -> None:
+    """`segments` hands out the run as it stood, whatever the run records next.
+
+    What lets a caller read the run without being able to advance it, and
+    what `tests/integration/test_simulation_view.py` relies on when it
+    compares `run_segments` before and after an action: a view that followed
+    the run would make that comparison pass whatever the action did. Every
+    kind of change `record_change` can make is exercised, since each touches
+    the record differently - replacing the open segment at the instant it
+    opened, dropping it on a dial-back, and appending after it.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
+    definition.advance_to(10.0)
+    system.set_delivered_partial_pressure_fraction(0.03)
+    definition.record_change(system.equation_settings())
+    held = definition.segments
+    contents = list(held)
+
+    for fraction, reach_s in ((0.04, 10.0), (0.02, 10.0), (0.05, 20.0)):
+        definition.advance_to(reach_s)
+        system.set_delivered_partial_pressure_fraction(fraction)
+        definition.record_change(system.equation_settings())
+
+        assert len(held) == len(contents)
+        assert all(kept is was for kept, was in zip(held, contents, strict=True))
+
+    assert [segment.opening.instant_s for segment in definition.segments] == [0.0, 20.0]
+
+
 def test_anchored_columns_land_on_multiples_of_the_spacing() -> None:
     """The grid is measured from the case's zero, not from the window's left edge.
 
