@@ -3,11 +3,12 @@ id: PL-Z4K6
 title: Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
 priority: P3
 effort: S
-status: needs-decision
+status: ready
 classes: ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/theme.py
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/main.py, tests/unit/test_bootstrap.py, tests/integration/test_qt_widgets.py, docs/MODEL.md
 added: 2026-09-16
+verify: grep -qF 'showMaximized' src/anesthesia_sim/app/main.py && grep -qF 'WindowMaximized' tests/unit/test_bootstrap.py
 ---
 
 **Problem.** Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
@@ -34,9 +35,23 @@ interface pass (planned-milestone item 33) will redecide anyway; and
 `WINDOW_SCREEN_FRACTION`, which is how much of the screen the app claims at
 startup and is the only one that costs nothing typographic.
 
-Recommendation: **raise `WINDOW_SCREEN_FRACTION` just far enough** that 1 366
-px clears the seven-column width, and leave the font and padding to item 33.
-That is the lever with no clinical reading attached to it.
+**Answered 2026-09-27.** Seven across is wanted on a 1 366 px screen, and the
+window opens maximized to pay for it - `QMainWindow.showMaximized()` after the
+geometry is set, which is Blender's default window state and keeps the window
+controls (project owner, 2026-09-27, ratified, over raising
+`WINDOW_SCREEN_FRACTION` to 0.85, which clears 1 366 px at one font and leaves
+1 280 px on four columns). The measurement, the levers weighed and the build
+notes are under "Design round 2026-09-27: recommendations" below; `PL-005`'s
+full-screen refusal does not reach a maximized window, and its closing note
+gains a line saying so. Status `ready`; `touches` widened to
+`src/anesthesia_sim/app/main.py`, `tests/unit/test_bootstrap.py`,
+`tests/integration/test_qt_widgets.py` and `docs/MODEL.md`.
+
+[superseded 2026-09-27: the design round below weighed this lever against
+opening the window maximized, and the owner ratified maximized; see "Answered
+2026-09-27" above] Recommendation: **raise `WINDOW_SCREEN_FRACTION` just far
+enough** that 1 366 px clears the seven-column width, and leave the font and
+padding to item 33. That is the lever with no clinical reading attached to it.
 
 This is deliberately **not** blocked on item 33, because four columns is
 correct meanwhile: the row degrades rather than breaking, which is why this is

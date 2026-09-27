@@ -1,13 +1,14 @@
 ---
 id: PL-5B1N
 title: Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
-status: needs-decision
 priority: P2
 effort: M
+status: ready
 classes: feature
 feature: presentation-safety
-touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
+touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/theme.py, tools/contrast_check.py, docs/MODEL.md, tests/integration/test_qt_chart.py, tests/integration/test_qt_widgets.py, tests/unit/test_chart_frame.py, tests/unit/test_chart_time_base.py, tests/unit/test_theme.py, tests/unit/test_contrast_check.py
 added: 2026-09-12
+verify: grep -qF 'PREVIEW_REGION' src/anesthesia_sim/app/theme.py && grep -qF 'preview' tests/integration/test_qt_chart.py
 ---
 
 **Problem.** Project owner, 2026-09-12, as intent for the chart: a *simulated*
@@ -122,15 +123,52 @@ against the ported pyqtgraph chart rather than the Flet one, and answer all thre
 failure modes the brief names, since a preview is a third epistemic class beside
 modelled and measured.
 
-**Done when.** A learner changing the vaporizer dial, fresh gas flow or cardiac
-output without committing sees the resulting trajectory on a channel that does not
-compete with the six compartments' dash patterns; the preview is bound to the
-interaction and gone on commit or cancel; it reads as lighter than the run and is
-labelled as well as styled, so a screenshot taken mid-drag is not ambiguous; and it
-is computed by a pure deterministic read of `core/` at the run's own model and
-version, touching none of the run's state. `PL-GVXP`'s derivation still holds
-afterwards, and `tests/unit/test_simulation_view.py` covers the preview appearing,
-disappearing on both exits, and never being drawn in a style a compartment uses.
+**Answered 2026-09-27.** Position, region and label carry the distinction: a
+*now* edge at the run's reach, a tinted forward region to the axis's right
+edge, an in-plot label naming the control and the unapplied value, and the
+preview traces in each compartment's own colour and dash pattern one width
+step thinner (project owner, 2026-09-27, ratified, over an alpha ghost, which
+fails the 3:1 floor at every opacity under 0.85, over solid for the run and
+dotted for the preview, which collides with the muscle trace, and over a
+legend-only marker). With it, as put and agreed: during a preview the window
+keeps its span and re-anchors so the reach sits at the plot's midpoint; a
+pointer drag applies on release, keyboard steps stay immediate, and a typed
+entry previews on each parse and commits on Enter; both plots draw it, per run
+in compare mode, and it never answers a hover; and the build is deferred to
+Gate 3 (project owner, 2026-09-27, ratified, over building it now as the next
+item of the presentation-safety chain), which `PL-YBFB` records in
+`ROADMAP.md`'s gate section. Q1 to Q5 under "Design round 2026-09-27:
+recommendations" below carry the reasoning. Status `ready`; `touches` widened
+as that section's "For the build" lists.
+
+**Done when.** A learner changing the vaporizer dial, fresh gas flow or
+cardiac output without committing sees the resulting trajectory drawn from the
+run's reach forward, inside a tinted region the run never enters, one width
+step thinner than the run, in each compartment's own colour and dash pattern,
+with an in-plot label naming the control and the unapplied value; the preview
+is bound to the interaction - created on press, gone on release or cancel -
+and the run keeps its setting until release; it is computed by a second
+`RunDefinition` opened at the run's reach, a pure deterministic read of
+`core/` at the run's own model and version, touching none of the run's state;
+both plots draw it and the hover never answers from it. `PL-GVXP`'s derivation
+still holds afterwards, and the tests beside each touched module cover the
+preview appearing, disappearing on both exits, coinciding with the run at the
+run's own setting, and never being drawn outside its region, at the run's
+width, or without its label.
+
+[superseded 2026-09-27: the channel clause and the last clause changed with
+the decision above, which keeps each compartment's dash pattern inside the
+preview deliberately; the current done-when precedes this] **Done when.** A
+learner changing the vaporizer dial, fresh gas flow or cardiac output without
+committing sees the resulting trajectory on a channel that does not compete
+with the six compartments' dash patterns; the preview is bound to the
+interaction and gone on commit or cancel; it reads as lighter than the run and
+is labelled as well as styled, so a screenshot taken mid-drag is not
+ambiguous; and it is computed by a pure deterministic read of `core/` at the
+run's own model and version, touching none of the run's state. `PL-GVXP`'s
+derivation still holds afterwards, and `tests/unit/test_simulation_view.py`
+covers the preview appearing, disappearing on both exits, and never being
+drawn in a style a compartment uses.
 
 ## Design round 2026-09-27: recommendations
 

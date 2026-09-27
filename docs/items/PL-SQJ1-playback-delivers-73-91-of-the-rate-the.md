@@ -3,11 +3,12 @@ id: PL-SQJ1
 title: Playback delivers 73-91% of the rate the dropdown displays: 300x measured at 220x, 1x at 0.9x, so the clock on screen runs slower than its label
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: ux, perf
 feature: presentation-safety
-touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/simulation_view.py
+touches: src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-09-08
+verify: ! grep -qF '_run_simulation_timer' src/anesthesia_sim/app/playback.py && grep -qF '2026-09-27' src/anesthesia_sim/app/playback.py && grep -qF 'delivered rate' docs/MODEL.md
 ---
 
 **Problem.** `app/playback.py` states that "the rate is stated as a multiple of
@@ -63,6 +64,18 @@ the application does not keep.
 **Decision needed.** What the interface owes a reader here: nothing, a
 qualification on the label, or a measured "delivering ~220x" readout beside the
 setting. Each is defensible and they imply different work.
+
+**Answered 2026-09-27.** Nothing on screen changes: the label is left as it is
+and the reasoning recorded, in `playback.py`'s docstring and in
+`docs/MODEL.md` § "Interface boundary" (project owner, 2026-09-27, ratified,
+over building the detect-and-disclose guard now, and over qualifying the
+label). The guard - the delivered rate shown beside the set one when fewer
+than 95% of ticks fire over a 50-tick window - is filed by the build thread as
+a `feature` item outside the gate, on the design under option 3 below. The
+re-measurement on the QTimer path, the three options and the method are under
+"Design round 2026-09-27: recommendations" below; the done-when's first clause
+is the one taken, and its re-measurement on the owner's machine stands. Status
+`ready`; `touches` widened to `docs/MODEL.md`.
 
 **Re-measure before deciding, and on the right machine.** The figures above were
 taken on a 4-vCPU shared container; the shortfall is a property of the host. The

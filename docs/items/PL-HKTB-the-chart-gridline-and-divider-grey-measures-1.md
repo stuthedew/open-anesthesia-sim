@@ -3,11 +3,12 @@ id: PL-HKTB
 title: The chart gridline and divider grey measures 1.31:1 on the panel and carries no contrast requirement; decide whether it should be darkened or recorded as exempt furniture
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: ux
 feature: presentation-safety
-touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py
+touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md
 added: 2026-09-08
+verify: grep -qE '^EXEMPT[ :=]' tools/contrast_check.py && ! grep -qF 'furniture the traces need not contrast' src/anesthesia_sim/app/theme.py
 ---
 
 **Problem.** The chart gridline and divider grey measures 1.31:1 on the panel and carries no contrast requirement; decide whether it should be darkened or recorded as exempt furniture
@@ -30,6 +31,17 @@ colour nobody has a requirement for - which is how this one has survived.
 as exempt furniture with the reason. Note the two may separate: a gridline is a
 stronger candidate for exemption than a divider, and there is no need to give
 them one answer.
+
+**Answered 2026-09-27.** Recorded as exempt, for all four things the constant
+draws, and not darkened (project owner, 2026-09-27, ratified, over darkening
+the grey to 3:1). The divider, the axis lines and the slider groove are each
+exempt with their own reason rather than the ruling's; the record is an
+`EXEMPT` table in `tools/contrast_check.py` beside `KNOWN_SHORTFALLS`, with
+`docs/MODEL.md` § "Color contrast, and the standard this interface is held to"
+listing the exemption among its deliberate decisions and the `theme.py`
+comment rewritten to quote the line-graph example as it reads. The reasoning,
+the ratios and the alternatives refused are under "Design round 2026-09-27:
+recommendations" below. Status `ready`; `touches` widened to `docs/MODEL.md`.
 
 **Sequencing.** `PL-L9RD` re-expresses `app/theme.py` for Qt and makes the
 interface pass's visual decisions once. This is one of those decisions, so it
