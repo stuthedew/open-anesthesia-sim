@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: gate-staleness-sweep
+milestone: v0.5.15
 touches: src/anesthesia_sim/app/playback.py
 added: 2026-09-21
 closed: 2026-09-27

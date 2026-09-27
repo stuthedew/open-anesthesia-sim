@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: infra
+milestone: v0.5.15
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/picking.md, .claude/skills/docket/modes/triage.md
 added: 2026-09-27
 closed: 2026-09-27

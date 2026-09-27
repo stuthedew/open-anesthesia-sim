@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: pre-fork-content
+milestone: v0.5.15
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_claims.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost, infra
 feature: dev-tooling
+milestone: v0.5.15
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py, subprojects/docket/README.md, .claude/skills/docket/modes/picking.md, .claude/skills/docket/modes/triage.md
 added: 2026-09-06
 closed: 2026-09-27

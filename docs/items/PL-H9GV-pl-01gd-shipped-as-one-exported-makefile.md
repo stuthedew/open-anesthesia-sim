@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, test
 feature: dev-tooling
+milestone: v0.5.15
 touches: tests/unit/test_bytecode_guard.py, Makefile
 added: 2026-09-12
 closed: 2026-09-27

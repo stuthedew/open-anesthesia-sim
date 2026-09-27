@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs
+milestone: v0.5.15
 touches: ROADMAP.md, docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md
 added: 2026-09-27
 closed: 2026-09-27
