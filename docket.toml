@@ -347,8 +347,9 @@ known_classes = [
 # (`PL-JBZK`).** The list was written with three of them and was nine short a
 # day later - `tools/` grows, every new script brings its own test, and the
 # omission is silent in exactly the direction that hurts: `docket next
-# workflow` and `docket next product` both set the item aside and neither says
-# so. `tools/workflow_paths_check.py` now decides membership from the file
+# workflow` and `docket next product` both set the item aside as reaching both
+# halves, and nothing says it is one lane's work missing an entry.
+# `tools/workflow_paths_check.py` now decides membership from the file
 # itself, on the rule that a test under `tests/` is apparatus when it does not
 # import `anesthesia_sim`, and `make check` fails until this list agrees. So
 # the answer to "a new tools test landed" is to run the check and paste the

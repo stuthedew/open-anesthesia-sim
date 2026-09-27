@@ -2806,6 +2806,12 @@ def check_tags(root: Path, report: Report) -> None:
     `_ahead_of_the_tree` tells the two apart: a tag the default branch holds and
     `HEAD` does not is declined as a checkout that is behind, naming the pull,
     and one `HEAD` holds, or the default branch lacks too, keeps the error.
+
+    That error names the other state that reads the same way from here: a tag
+    withdrawn on the remote, which this checkout keeps because `git fetch
+    --tags` adds tags and never removes one. Telling those two apart takes the
+    network, so the message names the command that asks and the repair rather
+    than guessing (`PL-LT77`).
     """
     roadmap = root / ROADMAP
     if not roadmap.is_file():
@@ -2910,7 +2916,9 @@ def check_tags(root: Path, report: Report) -> None:
         if name not in ahead:
             report.errors.append(
                 f"{ROADMAP}: git holds {name}, but no row of the version table marks v{version} "
-                "completed; a release that shipped is one this table has to name"
+                "completed; a release that shipped is one this table has to name - unless "
+                f"`git ls-remote --tags origin` no longer lists {name}, when this clone is "
+                f"keeping a tag deleted on the remote and `git tag -d {name}` is the repair"
             )
     if ahead:
         report.declined.append(_behind_the_tags(ahead, base, truncated))
