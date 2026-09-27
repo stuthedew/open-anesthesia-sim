@@ -5,7 +5,6 @@ priority: P3
 effort: S
 status: ready
 classes: defect
-feature: bash-guard-bound
 touches: .claude/hooks/floor-interpreter-guard.sh, tests/unit/test_floor_interpreter_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
@@ -41,4 +40,7 @@ it reads as a parse.
 does when run, here whether a `-c` string parses 3.14 source - which that
 head's brief already records as met the day its bound was set, to be worked at
 its own rank. Its reopening number counts known-gap rows met, and this is a
-false refusal inside the promise rather than a row, so it is a one-off.
+false refusal inside the promise rather than a row, so it is a one-off. It
+carries no `feature:` for the same reason: `PL-61FT` puts the false refusals
+met the day the bound was set outside the bound's completion, and
+`bash-guard-bound` is otherwise complete.
