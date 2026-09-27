@@ -8430,28 +8430,79 @@ that structure rather than from a run:
   meets human washout only at five minutes (§ "Published wash-in and
   elimination validation test").
 
-**Eger and Saidman put the effect on late recovery rather than on emergence**,
-in the review whose title names the route: "Such anesthetic returns to the
-circulation to delay recovery in healthy and obese patients, particularly with
-more soluble anesthetics. However, the increased anesthetic in fat occurs at a
-lower partial pressure and thus might not influence emergence materially." That
-is the direction above — what the model misses is the tail, not the early fall
-— and the review's emphasis is obesity, which this model's one reference adult
-does not represent.
-
-**Two cautions keep this a limitation rather than a missing parameter.** What
-the fits establish is a time constant, not an anatomy: the authors write that
-intertissue diffusion is what "we believe provides the explanation for the
-fourth compartment" (*Anesth Analg* p. 323), and Hendrickx and De Wolf quote
-Hull that assigning a tissue to a fitted compartment is "ill-founded because
-parameters of the fit to the uptake data contain no information that might
-support such assumptions" (*Modern Anesthetics*, p. 166). And the fat-perfusion
-note above acts the other way on how much agent fat holds; nothing here
-measures whether the two cancel, and neither may be read as correcting the
-other. The same authors suggest the route may also enlarge the apparent
+**Eger and Saidman's review draws the same compartment, and names a fourth
+bias** (`PL-FBY3`). Their Table 3 (p. 1024) gives intertissue diffusion a group
+of its own, "a subset of the FG": 2.9 L, where the fat group is 14.5 L, with
+time constants of 230, 412 and 396 minutes for desflurane, sevoflurane and
+isoflurane against bulk fat's 1,226, 2,198 and 2,114. Those are the Yasuda
+fits, cited as such, and each lies within one standard deviation of the fitted
+compartment it corresponds to in every cohort above, so they restate the table
+rather than add to it. The fourth bias is in the lean tissues that feed the
+store: part of the intestine, liver, kidney and heart, and part of the muscle
+and skin, "are slower to reach equilibrium because anesthetic is continuously
+lost to adjacent fat", and 50 minutes into desflurane, "[w]ere it not for
+losses by intertissue diffusion, the desflurane partial pressure in the MG
+would reach 74% of the partial pressure delivered to it from the lungs"
+(p. 1025). On that reading this model's muscle trace runs ahead of the tissue
+it stands for. Yasuda et al. suggest the route may also enlarge the apparent
 delivery to muscle from the vessel-rich organs beside it (*Anesth Analg*
-p. 323), so the muscle trace is not exempt. Nothing in `ROADMAP.md` plans a
-fourth tissue compartment.
+p. 323), which acts the other way, and nothing here says which wins. The brain
+is spared: the review draws it apart from the rest of the vessel-rich group
+"for reasons related to intertissue diffusion" (p. 1022). This model has no
+effect-site compartment and parameterises its vessel-rich group as brain
+(§ "v0.2.0: isoflurane and desflurane"), so the vessel-rich trace is the one a
+learner reads as brain, and the one this bias spares. A route added later that
+drew its loss from that group would slow it, against the review.
+
+**Eger and Saidman put the effect on late recovery rather than on emergence**,
+in the review whose title names the route: agent stored this way "returns to
+the circulation to delay recovery in normal-weight and obese patients,
+particularly with more soluble anesthetics. However, the increased anesthetic in
+fat occurs at a lower partial pressure and thus might not influence emergence
+materially" (p. 1032). That is the direction above — what the model misses is
+the tail, not the early fall — and the review's emphasis is obesity, which this
+model's one reference adult does not represent.
+
+**Two cautions keep this a limitation rather than a missing parameter.** The
+first is that the route and its size rest on different evidence. The route has
+been measured outside Eger's group. In two dogs after 80 minutes of halothane,
+perirenal fat sampled against the kidney held 20 and 35 times the
+concentration of fat sampled far from it. Its tension was "comparable to the
+arterial tension instead of to the very low tension to be expected if the fat
+had received halothane only from its own blood supply" (Allott et al.,
+p. 289). Eger and Saidman cite that as the direct demonstration (their ref 8),
+though they call their own group's washout fits "the most convincing evidence"
+(p. 1025). The size has not been measured that way. Their "approximately 30%
+of the anesthetic taken up" and time constants of 200 to 400 minutes (p. 1025)
+cite Carpenter et al. and the two Yasuda papers, every one with Eger among its
+authors, so they restate the fits rather than confirm them. Allott et al.'s own
+case for lean tissue losing agent to fat "depends almost entirely on the
+improved fit to femoral venous tensions" (p. 290). And what a fit establishes
+is a time constant, not an anatomy. The Yasuda authors write that intertissue
+diffusion is what "we believe provides the explanation for the fourth
+compartment" (*Anesth Analg* p. 323). Hendrickx and De Wolf quote Hull that
+assigning a tissue to a fitted compartment is "ill-founded because parameters
+of the fit to the uptake data contain no information that might support such
+assumptions". They add that compartment parameters related to cardiac output
+and demographics in no straightforward way, so that correlating them with
+tissue volumes and blood flows "should be done with care, if at all"
+(*Modern Anesthetics*, pp. 165–66). The second caution is that the
+fat-perfusion note above acts the other way on how much agent fat holds.
+Nothing here measures whether the two cancel, and neither may be read as
+correcting the other.
+
+**Nothing in `ROADMAP.md` plans a fourth tissue compartment, and the one paper
+here that approximated the route warns against the shortcut.** Allott et al.
+matched their dogs by giving fat more of the cardiac output, or lean tissue a
+higher solubility (Table I, p. 281). They warn that such mimicry is "bound to
+fail to varying degrees in other circumstances". In recovery, "metabolism will
+still remove halothane from the circulation … whereas extra fat perfusion will
+eventually return halothane to the circulation". And with a low fat/lean
+partition coefficient "the tension gradients for diffusion will be less". Each
+circumstance might be matched by a distortion of its own, but "the only
+general solution is to build a more elaborate model which incorporates direct
+representations of metabolism (which would be straightforward) and
+intercompartment diffusion (which would be more complex)" (p. 290).
 
 The time constants in the last column, the ratios and the crossing times were
 computed 2026-09-26 from the published means above and this model's stored
@@ -8484,20 +8535,34 @@ parameters. Sources, none of them the authority for a stored value:
 - Eger EI 2nd, Saidman LJ. *Illustrations of inhaled anesthetic uptake,
   including intertissue diffusion to and from fat.* Anesth Analg
   2005;100(4):1020-33. PMID 15781517, doi:10.1213/01.ANE.0000146961.70058.A1.
-  **Abstract read**, through PubMed 2026-09-23 and 2026-09-26. It is not in
-  PubMed Central or the private corpus and the publisher's site is blocked
-  from this environment, so nothing above is sized from it.
+  **Full text**, read from the private reference corpus 2026-09-27: the brain
+  drawn apart on p. 1022, Table 3 on p. 1024, the lean-tissue losses, the
+  evidence and the 30% share on p. 1025, and recovery on p. 1032. A review,
+  tier 3: PubMed types it so, and its figures "illustrate concepts but are not
+  necessarily precise (quantitative) reflections of the kinetics" (p. 1020).
+- Allott PR, Steward A, Mapleson WW. *Pharmacokinetics of halothane in the
+  dog: comparison of theory and measurement in individuals.* Br J Anaesth
+  1976;48(4):279-95. PMID 1275995, doi:10.1093/bja/48.4.279. **Full text**,
+  read from the private reference corpus 2026-09-27: the design on p. 279,
+  Table I on p. 281, and the discussion on pp. 289-90. Seven dogs given 1%
+  halothane for 80 minutes; the perirenal-fat samples are from two further
+  dogs of another series (p. 289). Eger and Saidman's ref 8, with no author in
+  common with their refs 3-7.
 - Perl W, Rackow H, Salanitre E, Wolf GL, Epstein RM. *Intertissue diffusion
   effect for inert fat-soluble gases.* J Appl Physiol 1965;20(4):621-7. PMID
   5838712, doi:10.1152/jappl.1965.20.4.621. The Workbook's reference 32, which
-  prints the year as 1964. PubMed returns "[Abstract not available]", so
-  nothing is taken from it.
+  prints the year as 1964, and Eger and Saidman's ref 9, credited with
+  suggesting the effect "40 yr ago" (p. 1025); Allott et al. credit a 1963
+  chapter of Perl's with first suggesting it "on theoretical grounds"
+  (p. 289). PubMed returns "[Abstract not available]" and neither text has
+  been read, so nothing is taken from either.
 - Philip JH. *Workbook for Gas Man®*, Appendix B, pp. 169-70, and Hendrickx
   JFA, De Wolf A, *Special aspects of pharmacokinetics of inhalation
   anesthesia*, Handb Exp Pharmacol 2008;(182):159-86, PMID 18175091,
-  doi:10.1007/978-3-540-74806-9_8, pp. 163 and 166. Both read from the private
-  reference corpus 2026-09-26, and both tier 3; `docs/references/README.md`
-  carries their entries.
+  doi:10.1007/978-3-540-74806-9_8, pp. 163 and 165-66. Both read from the
+  private reference corpus 2026-09-26, and Hendrickx and De Wolf's pp. 165-66
+  again 2026-09-27; both tier 3, and `docs/references/README.md` carries their
+  entries.
 
 **Cardiac output does not scale with the patient, and the reference weight is
 a label rather than an input.** `default_cardiac_output_l_min` is a stored

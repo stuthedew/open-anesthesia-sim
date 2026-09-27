@@ -104,6 +104,35 @@ literature, and a miss means recording the gap and putting the reading to them.
 
 ## The documents
 
+### Allott, Steward & Mapleson 1976 — halothane in individual dogs
+
+**Not held here. Held in the private corpus**, like every other owner-supplied
+full text; the corpus's own index carries the file name and checksum. Supplied
+by the project owner 2026-09-27.
+
+> Allott PR, Steward A, Mapleson WW. *Pharmacokinetics of halothane in the dog:
+> comparison of theory and measurement in individuals.* Br J Anaesth
+> 1976;48(4):279-95. PMID [1275995](https://pubmed.ncbi.nlm.nih.gov/1275995/),
+> DOI [10.1093/bja/48.4.279](https://doi.org/10.1093/bja/48.4.279).
+
+A measurement, in one species with one agent: seven dogs given 1% halothane
+for 80 minutes, with tensions measured at five blood sites and in a psoas
+biopsy and compared with a multi-compartment model quantified in each dog
+(p. 279). Eger and Saidman 2005's ref 8, and their one source outside Eger's
+group for intertissue diffusion.
+
+**What has been taken from it, and where it is recorded.** For `PL-FBY3`,
+`docs/MODEL.md` § "Known limitations" takes the perirenal-fat measurement in
+two further dogs (p. 289), the authors' statement that their case for lean
+tissue losing agent to fat rests on an improved fit (p. 290), how they mimicked
+the route by redistributing cardiac output and raising the lean compartment's
+solubility (Table I, p. 281), and their warning that the mimicry fails outside
+the conditions it was fitted to (p. 290). It is cited for no stored value.
+
+Route and depth: full text, through the corpus's text layer on 2026-09-27.
+Pp. 279, 281 and 289-91 and the reference list were read; the methods and
+results between them were not, beyond Table I.
+
 ### Baker & Farmery 2011 — inert gas transport in blood and tissues
 
 **Not held here.** Removed 2026-09-06 as publisher-copyright material this
@@ -127,6 +156,34 @@ treats the anesthetic gases specifically, deriving how transfer depends on
 solubility in blood and in each tissue. Read it when a compartment structure,
 a governing equation, or a solubility-driven assumption in `docs/MODEL.md` is
 being questioned or extended.
+
+### Eger & Saidman 2005 — illustrations of uptake, and intertissue diffusion
+
+**Not held here. Held in the private corpus**, like every other owner-supplied
+full text; the corpus's own index carries the file name and checksum. Supplied
+by the project owner 2026-09-27, after `PL-WMCJ` had recorded it as
+abstract-only.
+
+> Eger EI 2nd, Saidman LJ. *Illustrations of inhaled anesthetic uptake,
+> including intertissue diffusion to and from fat.* Anesth Analg
+> 2005;100(4):1020-33. PMID [15781517](https://pubmed.ncbi.nlm.nih.gov/15781517/),
+> DOI [10.1213/01.ANE.0000146961.70058.A1](https://doi.org/10.1213/01.ANE.0000146961.70058.A1).
+
+A review, tier 3: PubMed types it so, and it says its figures "illustrate
+concepts but are not necessarily precise (quantitative) reflections of the
+kinetics" (p. 1020). Its numbers come from elsewhere, Table 3's time constants
+from the two Yasuda et al. 1991 papers below.
+
+**What has been taken from it, and where it is recorded.** For `PL-FBY3`,
+`docs/MODEL.md` § "Known limitations" takes Table 3's intertissue-diffusion
+group (p. 1024), the lean-tissue losses to adjacent fat and the 74% muscle
+figure at 50 minutes of desflurane (p. 1025), the brain drawn apart from the
+rest of the vessel-rich group (p. 1022), the paper's ranking of its evidence
+and its 30% share of uptake (p. 1025), and the recovery passage (p. 1032). It
+is cited for no stored value.
+
+Route and depth: the corpus's text layer, read in full on 2026-09-27; every
+printed page, pp. 1020-33, is recovered in the corpus's text dump.
 
 ### Jugel et al. 2014 — M4 time series aggregation
 
@@ -401,14 +458,20 @@ Route and depth, as `.claude/rules/citing-sources.md` requires: the corpus's
 section PDFs, read with `pdftotext -layout` on 2026-09-15 for the front matter,
 the full table of contents and every section's boundary pages, plus PubMed
 metadata and abstracts for all 22 chapters. **No chapter has been read at full
-text**, so nothing here may yet be cited for a value. Two pages have been read
-since, for `PL-WMCJ` on 2026-09-26: Hendrickx and De Wolf's p. 163, where
+text**, so nothing here may yet be cited for a value. Three pages have been
+read since. For `PL-WMCJ` on 2026-09-26: Hendrickx and De Wolf's p. 163, where
 Eger's five-compartment model adds a lung and an "intertissue diffusion"
 compartment, "hypothesized to be fat adjacent to well-perfused tissues", citing
 Carpenter et al. 1986; and p. 166, which reads Yasuda et al.'s fourth
 compartment as intertissue diffusion and quotes Hull against assigning any
-tissue to a fitted compartment. `docs/MODEL.md` § "Known limitations" cites
-them for that description and that caution, and for no value.
+tissue to a fitted compartment. For `PL-FBY3` on 2026-09-27: p. 165, which
+introduces Ishibashi et al. 2006 and Wissing's compartmental parameters
+(Rietbrock et al. 2000), and p. 166 again, where Ishibashi et al.'s parameters
+relate to cardiac output and demographics in no straightforward way, Wissing
+calls allocating fitted compartments to tissues "hardly feasible", and the
+chapter's authors find compartmental and physiologic models fit equally well
+(Hendrickx et al. 2006a). `docs/MODEL.md` § "Known limitations" cites them for
+that description and those cautions, and for no value.
 
 ### Yasuda et al. 1991 — the two human kinetics papers
 
