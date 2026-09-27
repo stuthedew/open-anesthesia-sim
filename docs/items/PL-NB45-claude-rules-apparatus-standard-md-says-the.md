@@ -3,11 +3,13 @@ id: PL-NB45
 title: .claude/rules/apparatus-standard.md says 'the fifteen apparatus tests under tests/unit/' where workflow_paths lists 35, and a count in a rule drifts at the rate tools/ grows
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: worker-instructions
 touches: .claude/rules/apparatus-standard.md
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1199
 payoff: the sentence saying how far the apparatus test bar reaches stays true as apparatus tests are added
 verify: grep -qF 'applies to the apparatus tests under' .claude/rules/apparatus-standard.md
 ---
