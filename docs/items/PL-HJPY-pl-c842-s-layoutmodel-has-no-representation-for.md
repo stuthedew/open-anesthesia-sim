@@ -56,3 +56,84 @@ break-out possible without a migration.
 
 *Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
 scope" item 1.
+
+---
+
+## Design round 2026-09-27: recommendations
+
+Recommendations, not decisions: the thread that records the project owner's
+answer marks each `(project owner, DATE, ratified)` or replaces it. Nothing
+here is built; the shape lands in `PL-1FT6`'s model at version 1.
+
+**Q1. What owns the set of windows?**
+**Recommendation: the Workspace.** A Workspace's layout is an ordered list of
+window trees; `windows[0]` is the main window by construction, and the model
+refuses to remove it or to empty the list. One Workspace is active for the
+whole application at a time, so switching tabs switches every window together.
+Blender's structures were read for the shape and then narrowed: `WorkSpace`
+holds a list of `WorkSpaceLayout`s, and a per-window `WorkSpaceInstanceHook`
+lets each window show a different Workspace
+(`source/blender/makesdna/DNA_workspace_types.h`, `blender/blender` `main`,
+read at `raw.githubusercontent.com` on 2026-09-27). That per-window freedom is
+refused here, because `docs/MODEL.md`'s allocation - the per-substance tier
+once, in the main window; the invariant tier and the run's name in every window
+- has one answer only while every window shows the same Workspace and therefore
+the same run binding. *Alternative refused:* a root-level window list with an
+active Workspace per window, Blender's runtime shape, which reopens whose
+per-substance tier the main window carries.
+
+**Q2. Several layouts, or one layout spanning windows?** Several: one tree per
+window, because a splitter tree is a rectangle and cannot span two. It follows
+from Q1.
+
+**Q3. How an Area is addressed across windows.** **Recommendation:** Area ids
+are unique across the Workspace, not per window, allocated by the model from a
+counter the Workspace stores (`next_area_id`) and **never reused**, because the
+per-Area retained View state (`PL-WV9K`) is keyed by Area id and a reused id
+would resurrect another Area's settings. `swap(a, b)` and `set_view(a, kind)`
+take Area ids, so both mean something across windows in the model; whether the
+interface offers a cross-window swap is break-out's own build.
+
+**Q4. Where the border-chain query terminates.** At the window boundary, by
+construction: `borders(handle)` is defined over the tree that owns the handle,
+and a handle belongs to exactly one window. The test is two windows whose
+handles are screen-collinear, with neither chain containing the other's handle.
+
+**Q5. The serialized shape, which is what this item owes v0.6.0.**
+**Recommendation:** three layers, each pure Python in the layout package:
+
+- `LayoutModel` (`PL-1FT6`): `windows`, a list of trees, a tree being nested
+  `Split(orientation, sizes, children)` and `Area(id, view)`. **Sizes are
+  fractions of the split's extent, never pixels**, so a file is
+  machine-independent and the too-small case (`PL-K285`) is decided against
+  the screen it is opened on. No window geometry is stored (out of scope for
+  v0.6.0, `ROADMAP.md`). The unconditional region has **no entry**, because it
+  is structural (`PL-NWTM`).
+- `Workspace` (`PL-WV9K`): name, origin, pinned run, its `LayoutModel`,
+  `next_area_id`, and per-Area View state.
+- `WorkspaceSet` (`PL-SSQW` persists it): the ordered Workspaces, the active
+  one, and `schema_version` at the top of the one file.
+
+Illustrative, not the schema:
+
+```json
+{"schema_version": 1, "active": 1, "workspaces": [
+  {"name": "Induction", "origin": "shipped:induction", "pinned_run": null,
+   "next_area_id": 3,
+   "windows": [{"tree": {"split": "horizontal", "sizes": [0.7, 0.3],
+                          "children": [{"area": 1, "view": "concentration_chart"},
+                                       {"area": 2, "view": "agent_accounting"}]}}],
+   "view_state": {"1": {"concentration_chart": {"state_version": 1}}}}]}
+```
+
+**Break-out's reservation, and nothing more.** Taking an Area into its own
+window is expressible with what version 1 already has: remove the Area from its
+tree, its space going to its sibling exactly as `join` gives it, and append a
+window whose tree is that Area. The schema needs no further field for it, so
+none is added and no code for it is written now.
+
+**What this settles for the queue.** Once ratified, this item's design half is
+done, and its `blocked-by: PL-1FT6` reads backwards (the 2026-09-27 report
+flagged the edge): `PL-1FT6`'s build carries this shape rather than preceding
+it. The thread recording the answer decides whether this item closes with
+`PL-1FT6` or is folded into it.

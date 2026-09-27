@@ -33,3 +33,111 @@ recurrences: 2026-09-20 PL-ZW0J
 ## Area-model audit (PL-BNYF)
 
 **Disposition: `missing-prereq`.** Filed 2026-09-16 by the area-model queue audit (`PL-BNYF`), which swept 49 open and untriaged items and seven gap lenses against `ROADMAP.md` item 34, `docs/interface-provenance.md` and `.claude/rules/ui-areas.md`. Each candidate was checked against the store before it was filed, so a gap an existing item already covers is not here.
+
+---
+
+## Design round 2026-09-27: recommendations
+
+Recommendations, not decisions: the thread that records the project owner's
+answer marks each `(project owner, DATE, ratified)` or replaces it. Two of
+them are learner-visible (the newer-file answer, and what an invalid file
+does) and are the owner's to take; the rest are architecture under the
+delegated call and are taken here unless the owner objects.
+
+**Q1. Where the file lives, per platform.**
+**Recommendation:** the directory Qt reports for
+`QStandardPaths.AppDataLocation`, resolved **once, in `app/main.py`**, after
+`main` sets the organization and application names it does not set today
+(`src/anesthesia_sim/app_metadata.py` already holds `APP_AUTHOR` and
+`APP_BUNDLE_ID`, neither read by `main`). Qt's own table, read at the source
+(`src/corelib/io/qstandardpaths.cpp`, qt/qtbase, 2026-09-27): macOS
+`~/Library/Application Support/<App>`, Windows `%APPDATA%\<Org>\<App>`
+(Roaming), Linux `~/.local/share/<App>`. Roaming rather than Local on Windows
+because the file is machine-independent by design (`PL-HJPY`: sizes are
+fractions, no window geometry). **The layout package never resolves a path:**
+its store takes a directory, `WorkspaceStore(directory: Path)`, so a test
+passes `tmp_path` and a headless run passes whatever it likes, which keeps
+`PL-CNJ1`'s standard. One environment override, `ANESTHESIA_SIM_USER_DIR`,
+read in `main.py` only, for a headless or portable run. *Alternatives
+refused:* a `platformdirs` dependency (a third package for a table Qt already
+carries, and it disagrees with Qt on macOS's config directory); a hand-rolled
+table (the same table, maintained twice). Blender's version-numbered
+directory (`BKE_appdir_folder_id_ex(BLENDER_USER_CONFIG)` in
+`source/blender/blenkernel/intern/appdir.cc`) is **not** adopted: Blender
+separates each release's config because its preferences are not forward
+compatible, and this file carries a `schema_version` for exactly that job.
+
+**Q2. One file or one per Workspace.** **Recommendation: one file,
+`workspaces.json`, holding the whole `WorkspaceSet`** - order, active tab,
+the last-Workspace floor - as one document, because the invariants are
+properties of the set (never empty, one active, names unique) and a directory
+of files cannot state them. Per-Workspace files are refused for that reason;
+export of one Workspace, if ever wanted, is a later item.
+
+**Q3. Write discipline.** **Recommendation: atomic replace with one previous
+generation.** Write `workspaces.json.tmp` in the same directory, `flush()`
+then `os.fsync()`, `os.replace()` over the target (atomic on POSIX and, unlike
+`os.rename()`, allowed to replace an existing file on Windows; CPython
+`Doc/library/os.rst`, read 2026-09-27), fsync the directory on POSIX, and
+remove the temp file on any failure. Before the replace, rename the current
+file to `workspaces.json.previous`, so one prior generation survives a bad
+write of the new one. Blender's `writefile.cc` does the same dance (writes
+`<file>@`, `BLI_rename_overwrite`, `remove()` on failure, `do_history()` for
+the `.blend1` copies). Saves are debounced (about half a second after the last
+change) and forced synchronous on quit; a torn file therefore arrives only
+through a crash mid-replace, which the OS guarantees leaves either file
+whole. Persistence itself is automatic (`PL-WV9K` Q4).
+
+**Q4. First run, and the shipped defaults' home.** **Recommendation:** no
+file means the shipped set is loaded from
+`src/anesthesia_sim/data/workspaces/*.json` (`PL-KXTL` carries their
+content), validated by the same `from_dict` as a learner's file, and
+**nothing is written until the first change**; the directory is created on
+the first write. A first run leaves no trace, and a learner who never
+customises never has a file to migrate.
+
+**Q5. The schema-version policy: three cases by name.**
+
+- *Older than supported.* **Recommendation: migrate in memory, one step per
+  version, in `layout/migrations.py`, owned by the layout package** and added
+  in the same change as the bump that needs it; at version 1 the table of
+  steps is empty and the hook exists so the first bump has somewhere to go.
+  The migrated set is written at the next save, and the pre-migration file is
+  kept once as `workspaces.v<N>.json`. The learner is told only when a step is
+  lossy (a step declares whether it is), never for a clean one.
+- *Newer than supported.* **Recommendation (learner-visible, owner's
+  call): refuse it, touch nothing, show the shipped defaults, and make
+  persistence read-only for the session**, with a persistent notice in the
+  interface naming the file's path, its version and this build's. The file
+  the newer build wrote is the learner's work, and a roll-back that
+  overwrote it would be the deletion this item exists to refuse.
+  *Alternative recorded:* set it aside under a dated name and start fresh
+  with persistence on; refused because it moves the learner's file without
+  being asked, for the benefit of a session that can equally run read-only.
+- *Invalid at the supported version.* **Recommendation:** `from_dict`
+  raises `LayoutFormatError` naming the invariant that failed (an Area with
+  two Views, sizes that do not match children, truncated JSON, an empty
+  window list); the store sets the file aside as
+  `workspaces.invalid-<UTC timestamp>.json`, loads `workspaces.json.previous`
+  if it validates and the shipped defaults otherwise, says so visibly, and
+  persistence continues, because the set-aside file is untouched evidence
+  and the next save cannot damage it. **An unknown View kind is not a file
+  error**: it is `PL-R1WQ`'s per-Area failure state, and the file loads.
+
+**Q6. Unreadable file, unwritable directory.** Unreadable (permissions,
+I/O error): treated as the newer-file case - defaults, notice, read-only
+session - since nothing can be known about it. Unwritable directory: the
+session continues, the notice says layouts will not be kept and why, and
+each failed save is one log line, not a dialog per debounce.
+
+**Q7. Tests.** All policy cases are unit tests over `from_dict` and the
+store against `tmp_path` with no `QApplication`, including a fixture one
+version ahead of the build, a truncated file, a `.previous` that rescues an
+invalid current file, and a read-only directory (skipped where the test runs
+as root, which cannot be denied a write).
+
+**Q8. The record.** `docs/ARCHITECTURE.md` gains a short "user state" entry
+naming the file, the directory rule and the policy above, replacing
+`PL-CNJ1`'s "writes nothing" as the current measurement, and
+`tools/import_boundary_check.py` is told the layout package may import
+`os`/`json`/`pathlib` and nothing from Qt.

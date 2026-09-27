@@ -127,3 +127,92 @@ re-check it against its implementers. `docs/interface-provenance.md` § "Prune
 the contract" records that Blender's `SpaceType` carries two callbacks with live
 call sites and zero implementations and a field no editor assigns, and that
 nothing in its design surfaces either.
+
+---
+
+## Design round 2026-09-27: recommendations
+
+Recommendations, not decisions: the thread that records the project owner's
+answer marks each `(project owner, DATE, ratified)` or replaces it. Two are
+learner-visible and the owner's: what a split does with the source View's
+state, and whether any View is barred from a closeable Area.
+
+**Q1. What the contract is, and where.** **Recommendation:** a
+`typing.Protocol` on the Qt side (proposed `app/view_contract.py`), small,
+and pruned by two tests: every registered kind's instance satisfies it, and
+every member has at least one call site in the adapter (`PL-W9P6`). A member
+nothing calls is deleted. This is the "design against the practised floor and
+state the enforced one" the 2026-09-16 read asked for: the Protocol *is* the
+enforced contract, and the practised one is whatever the two validating Views
+need beyond it, which the tests then promote or refuse.
+
+**Q2. Construction.** The registry factory (`PL-R1WQ`) is called as
+`factory(context)`, where `ViewContext` carries exactly three things: the
+**run binding** (the identity `PL-7Z84` defines, resolved by the adapter to
+a narrow per-run frame source such as `drawn_window(start, stop, columns)`,
+never the `BranchedCase`); the **shared-state handles** (time base,
+compartment selection) as read-only values plus a change-request signal; and
+`saved_state`, `None` on first creation and the Mapping the layout layer kept
+otherwise. Eclipse's `IViewPart.init(site, memento)` has the same shape, the
+memento null on first creation
+(`bundles/org.eclipse.ui.workbench/eclipseui/org/eclipse/ui/IViewPart.java`,
+eclipse-platform/eclipse.platform.ui, read 2026-09-27), and Blender separates
+`create` from `blend_read_data` the same way. A View receives no parent, no
+splitter and no reference to the Area it sits in.
+
+**Q3. Data flow.** `refresh(run_state)` is pushed each tick by the adapter; a
+chart pulls its own frame at its own width from the frame source and
+re-requests on its own resize, which is `PL-9LNF`'s shape and needs its
+`build_*` fix first. Both existing charts already take `draw(frame)`, so the
+validation is a rename plus the context object, not a rewrite.
+
+**Q4. Saved state.** `save_state() -> Mapping` returning drawing settings
+only, with a `state_version` the View owns; the layout layer stores it
+opaquely under Area id and kind (`PL-WV9K`) and never reads inside it. Saved
+state the View cannot read: **start from defaults and say so in the
+rectangle** until the reader changes a setting, at which point the next save
+replaces it. Silent defaults are the stale-state failure the display standard
+names.
+
+**Q5. Minimum size.** A constant on the registry entry, not a method, per
+`PL-K285`.
+
+**Q6. Empty state.** Text stating what is absent, in the rectangle, never a
+blank; the existing empty-state constants are the pattern and `PL-7Z84`'s
+"run not present" state is the same mechanism.
+
+**Q7. Controls.** A control over the View's own instance state may live in
+the View. A control over shared state renders the handed value and emits a
+request; it never owns the value (`PL-VN6M`, `PL-9LNF`).
+
+**Q8. Constructible any number of times against one run.** Required; it is
+what a split into three charts means.
+
+**Q9. Is any View barred from a closeable Area?** **Recommendation
+(learner-visible): no.** The unconditional values are region content and
+never a View (`PL-NWTM`); the accounting tier is guaranteed by reachability
+(`PL-50PZ`), not by pinning an Area. So no View needs a lock, and a lock would
+be a hidden mode.
+
+**Q10. What a split does with the source View's state.** **Recommendation
+(learner-visible): the new Area gets a copy of the source's `save_state()`**,
+so splitting a chart yields two identical charts the reader then diverges,
+which is the owner's own three-chart example and Blender's
+`SpaceType.duplicate`. `swap` moves instances with their state; `set_view`
+displacement keeps one saved state per kind per Area and restores it when the
+kind returns. *Alternative:* the new Area starts from defaults; refused
+because the reader then rebuilds the settings they just had.
+
+**Q11. Who draws the header.** **Recommendation: the container**, not the
+View. The Area header carries the registry title, the run's name where the
+View is bound (`PL-7Z84`'s display obligation), the chooser and the Area
+operations - all container concerns - so a View never draws a title bar. This
+is a recorded divergence from Blender, where the editor declares its header
+region, and the reason is that here the header carries the run-name
+obligation, which no View should be able to omit.
+
+**Validation set.** `ConcentrationChart` and `WashInChart` implement it; the
+readout row and the control-change record stay region content; the accounting
+panel becomes a View. `docs/ARCHITECTURE.md` then routes "a new View" as: a
+class satisfying the Protocol, one registry entry with a literal tag, an entry
+in the shipped Workspace where it belongs, and the two pruning tests.
