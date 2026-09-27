@@ -38,6 +38,37 @@ question its test never considered, which is how a test comes to pass for the
 wrong reason. Worth doing only if the shared half stays limited to reads whose
 answer is genuinely uniform.
 
+**Re-confirmed, 2026-09-27 - changed shape.** Three of the four fakes are gone:
+`_rename_runner`, `_closure_runner` and `_recovery_runner` went with the closure
+inference `PL-HMZZ` retired in #1056, and `_runner` is the one left. The
+duplication did not go with them. It moved from which question a fake answers to
+the shape it prints the answer in. #1078 (`PL-NK1L`) taught `-z` to every
+changed-path read, and in this file that meant rewriting nine answers by hand:
+`_name_only`, `_runner` twice, `_files_runner`, `_cut_runner` twice,
+`_landed_runner`, `_filing_runner` and the split-pathspec test's inline fake.
+`_name_only`, extracted by `PL-J16N` for two fakes, already answered from the
+flags a read sent; the five fakes and the inline one wrote NUL themselves. And 16 fakes
+still pass their arguments through `_bare`, which strips the
+`-c core.quotePath=false` prefix `PL-PVW2` stopped sending, so it is a no-op in
+every one.
+
+**Approach, chosen 2026-09-27.** One place for each of the two ways a read
+reaches the fakes:
+
+- **A read's shape.** One formatter per output git prints - `_name_only`, and
+  new `_raw`, `_numstat` and `_log_names` - answering from the flags the read
+  sent and refusing a shape it does not model, rather than handing a read that
+  changed its flags the old shape. Every fake that prints one of those outputs
+  calls its formatter, so the next `-z` is one edit per shape.
+- **A new read.** `_default_run`, which every fake that ended in `return ""`
+  now falls through to. It answers nothing today, which is exactly what those
+  fakes returned, and its docstring carries this brief's condition: only an
+  answer every fake falling through would give. A fake that must not be asked
+  anything else still raises or returns `SILENT`, and the fakes resolving
+  `BASE` keep their own `rev-parse`, since moving it would newly resolve the
+  base for fakes whose tests never asked.
+- `_bare` goes, being a no-op wherever it is called.
+
 **Done when.** A new git read added to `vcs.py` can be answered for the whole of
 `subprojects/docket/tests/test_vcs.py` in one place, with each fake still able to
 override what its own tests turn on; the suite passes unchanged; and no fake
