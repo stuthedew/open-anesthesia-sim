@@ -4083,7 +4083,7 @@ def _no_train_refusal(name: str, count: int, current: str, train: _Train, store:
 def _untagged_warning(version: str, root: Path, git: Runner) -> str:
     """Say which tag is missing and give the commands, not the instruction.
 
-    Asking someone to "tag v0.2.5" makes them go and reconstruct three
+    Asking someone to "tag v0.2.5" makes them go and reconstruct the
     commands at the moment they are trying to do something else. They are
     `_hand_off`'s, which find the cut when they run; the line beneath says
     which commit that is from here, so what is about to be tagged can be seen
@@ -4134,8 +4134,8 @@ def _unreadable_tags_refusal(version: str, declined: str) -> str:
 
     `_untagged_warning` is the wrong message here for the reason it is the
     right one there: it names a specific fact - this version carries no tag -
-    and sends the operator to run three commands, the first of which may be
-    pushing a tag that already exists. What is true is weaker and worth saying
+    and sends the operator to run the tag commands, which end by pushing a
+    tag that may already exist. What is true is weaker and worth saying
     in its own words: nothing was read, so the gate did not run.
 
     Refusing rather than warning through, because the two costs are not
