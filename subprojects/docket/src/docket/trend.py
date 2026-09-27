@@ -20,9 +20,10 @@ alone:
   that still answers when `touches` is missing or wrong. It has its own
   distortion, which is why the queue store is excluded: `docs/items` sits
   inside `workflow_paths`, so every capture and every triage pass would
-  otherwise read as apparatus work. A path neither `workflow_paths` nor
-  `product_paths` places is excluded too, from both sides: counting it as
-  product is how apparatus nobody listed read as simulator work (`PL-8ZGY`).
+  otherwise read as apparatus work. Where `product_paths` is declared, a path
+  neither it nor `workflow_paths` places is excluded too, from both sides:
+  counting it as product is how apparatus nobody listed read as simulator work
+  (`PL-8ZGY`).
 
 Like `wave`, this computes and decides nothing. Whether the balance it prints
 is the right one is a judgment about the project, and a tool that answered it
