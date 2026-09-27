@@ -15,9 +15,14 @@
 #
 # The cost is a little interpreter startup; the alternative is a red gate whose
 # failure the source cannot explain, and mutating-then-reverting is exactly what
-# `.claude/skills/docket/SKILL.md` asks of a session writing a `verify:`
+# `.claude/skills/docket/modes/triage.md` asks of a session writing a `verify:`
 # command. CI is unaffected either way, running pytest directly in a fresh
 # container where no stale cache can exist.
+#
+# Since `PL-0MLZ` the root `conftest.py` turns bytecode off inside every pytest
+# run, through `make` or not, and says why the cache is fooled - an equal-length
+# edit reverted within one second. So this export no longer protects a test
+# result on its own; it stays for the recipes here that are not pytest runs.
 export PYTHONDONTWRITEBYTECODE := 1
 
 # `PL-KY7M`: the Claude Code remote container exports `UV_NATIVE_TLS`, which uv

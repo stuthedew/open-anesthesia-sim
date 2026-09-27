@@ -85,3 +85,50 @@ and a source restore is therefore never shadowed by a stale `.pyc`. The
 carrier. The hypothesis in the brief above about PEP 552 hash-based invalidation
 is either confirmed by reading the 16-byte `.pyc` header flag word or dropped
 from the brief; the fix does not depend on which.
+
+**Re-shaped at pickup, 2026-09-27.** Three measurements move the fix; the end
+state does not move.
+
+- **The hash hypothesis is dropped.** The cache the reproduction below left
+  has flag word 0: a timestamp `.pyc`, not a PEP 552 hash one. In CPython
+  3.14's `importlib._bootstrap_external`, `SourceLoader.get_code` takes `int()`
+  of the source's mtime and `_validate_timestamp_pyc` accepts the cache when
+  that and the size match what it recorded, so an equal-length edit compiled
+  and reverted inside one whole second validates against the reverted file.
+  Reproduced: of 12 cycles of mutating `gas_volume_l` from 2.5 to 2.6 in
+  `src/anesthesia_sim/core/alveolar.py`, importing it with `uv run python`,
+  copying the original back and importing again, 11 ran 2.6 while the file
+  said 2.5. Pinning the restored file's mtime into the mutated one's second
+  with `touch -d` reproduces it every time. `--import-mode=importlib` cannot
+  change this: it decides how pytest imports test modules, and `src/` loads
+  through the ordinary source loader under every mode.
+- **The candidate carrier does not exist.** uv 0.12.19 warns that `env` and
+  `env-file` under `[tool.uv]` are unknown fields and applies neither, and it
+  reads a `.env` only under `--env-file` or `UV_ENV_FILE`. No file in the
+  checkout can make a bare `uv run` export a variable.
+- **`.claude/settings.json`'s `env` does not reach this project's threads.**
+  That file sets `CLAUDE_CODE_SUBAGENT_MODEL`, which is unset in the shell of
+  the thread that took this item: the project configures two repositories, so
+  a thread starts in the directory above the checkout and never loads it.
+
+**Carrier taken: the root `conftest.py`**, which pytest resolves however it is
+started - the reason the git-configuration lines already live there. It sets
+`sys.dont_write_bytecode` for the run and exports `PYTHONDONTWRITEBYTECODE` to
+the interpreters the suite starts, so it covers every invocation this brief
+names - a `verify:` command, a session iterating, a hand run, CI - and leaves
+the app's own startup alone. It does not cover a bare `uv run python`. The one
+carrier that reaches that is a dev-group package installing a `.pth` into the
+virtualenv: a new package and lock entry, and a slower launch for every
+`uv run anesthesia-sim`, for an invocation that is not how a test result is
+read. It stops a write, not a read: a cache written from mutated source by
+something other than a test run, and restored inside the same second, still
+shadows the restored file. The `Makefile` export stays for the recipes that
+are not pytest runs, and `PL-H9GV` owes it a test.
+
+**Done when**, restated for this carrier: a pytest run writes no bytecode
+however it was started, and a same-second restore runs the restored source.
+`tests/unit/test_bytecode_guard.py` holds both, with CPython's own behaviour as
+the control that shows the second test discriminates. The commissioned
+`verify:` asked whether a bare `uv run python` writes bytecode, which this
+carrier deliberately does not reach, so it gives way to the grep for the
+regression test.
