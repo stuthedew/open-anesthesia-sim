@@ -127,18 +127,14 @@ def _like(parent: AgentUptakeSystem) -> AgentUptakeSystem:
     volumes and coefficients come from the same data files the parent's did
     and only the four live controls are written here.
 
-    **They are read off the compartments in the units the compartments hold,
-    never recovered from a `RunSegment`.** A segment carries the litres per
-    *second* the equations are written in, and `equation_settings()` divides
-    by sixty to produce them - a conversion that does not round-trip:
-    multiplying back by sixty reproduces a different settings object for 7 of
-    the 101 cardiac outputs on a 0.1 L/min grid across the supported 0 to
-    10 L/min range, first at 1.9 L/min, where the three per-tissue blood flows
-    land one unit in the last place away because each is derived from cardiac
-    output in litres per minute *before* the conversion. A branch built that
-    way would assemble a system matrix one ulp from its parent's and solve
-    slightly different equations from its first step, inside the tolerance
-    that holds the two records together and so reported by nothing.
+    **They are read off the compartments, in the litres per minute the
+    compartments hold.** A `RunSegment` has held the same values since
+    `PL-SM5V`, so it is now an equally sound source. Before that a segment held
+    litres per second, and multiplying back by sixty rebuilt a different
+    settings object for 7 of the 101 cardiac outputs on a 0.1 L/min grid: a
+    branch built that way solved a matrix one unit in the last place from its
+    parent's, inside every tolerance and so reported by nothing. The assertion
+    below is what catches a helper that drifts from its parent like that.
     """
 
     system = _fresh_system()

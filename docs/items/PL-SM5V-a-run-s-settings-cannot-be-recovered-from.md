@@ -3,11 +3,13 @@ id: PL-SM5V
 title: A run's settings cannot be recovered from RunSegment.settings: the L/min to L/s conversion does not round-trip for 7 of 101 cardiac outputs
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: scenario-branching
-touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, tests/unit/test_run_definition.py, tests/unit/test_governing_equations.py, tests/unit/test_resume_at.py, docs/MODEL.md
 added: 2026-09-14
+closed: 2026-09-27
+pr: 1191
 verify: grep -q 'def test_a_recorded_setting_round_trips_to_what_was_set' tests/unit/test_run_definition.py && uv run pytest tests/unit/test_run_definition.py
 ---
 
@@ -89,3 +91,27 @@ per-second value, or by deriving both from one stored quantity - so that
 rebuilding a settings object from a recorded segment yields one equal to the
 original, for all 101 cardiac outputs above. `docs/MODEL.md` says which of the
 two is the record and which is derived.
+
+**Decision, 2026-09-27: the settings hold the litres per minute, and derive
+the per second.** The Options paragraph above leans toward documenting that
+`RunSegment.settings` must never configure a system, but the "Done when" and
+this item's `verify:` line both ask for the recovery itself, so the lean was
+superseded by the item's own later text and the recovery is what was built.
+Of the two ways "Done when" offers, deriving both from one stored quantity was
+taken over keeping the L/min alongside the L/s: two stored copies of one flow
+can disagree, and a check that they agree would be the same rounding question
+again. `UptakeEquationSettings` and `TissueGroupEquationSettings` now store
+`*_l_min` fields, compared and hashed as the propagator cache key, and expose
+`*_l_s` properties that `build_system_matrix` reads. The per-second values are
+the same divisions `equation_settings()` performed before, so every matrix,
+and every trajectory, is bit-identical to what it was.
+
+Re-measured against the tree before building: over the supported 0 to 10 L/min
+range (the setter refuses 10.1 and above, so the 1.0 to 11.0 grid above runs
+past it), the seven are 1.9, 3.8, 3.9, 7.6, 7.7, 7.8 and 7.9 L/min. All three
+tissue flows differ at six of them, and only the vessel-rich flow at 7.7.
+`PL-NC62`'s thread found this item could not reach that refusal, because
+`_branch_from` replays the timeline's L/min rather than the segment, and that
+holds; the docstring there that said a segment carries L/s is corrected.
+`test_a_recorded_setting_round_trips_to_what_was_set` checks every 0.1 L/min
+setting of all three flow controls across its supported range.

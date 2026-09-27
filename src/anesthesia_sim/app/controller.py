@@ -854,12 +854,10 @@ class SimulationController:
         afterwards would move the branch off its parent's keyframe silently -
         and the four live controls come from the recorded changes, which hold
         the values the compartments actually took in the units they hold them
-        in. They are not recovered from the segment: that carries litres per
-        second, and multiplying back by sixty does not round-trip for 7 of the
-        101 cardiac outputs on a 0.1 L/min grid across the supported range
-        (`PL-SM5V`). The replay is then checked against the segment's own
-        settings rather than trusted, because a branch assembling a system
-        matrix its parent never used would diverge from its first step inside
+        in. The replay is then checked against the segment's own settings
+        rather than trusted - which hold those same litres per minute since
+        `PL-SM5V`, so the two compare exactly - because a branch assembling a
+        system matrix its parent never used would diverge from its first step inside
         the tolerance that holds the two records together. The agent's
         displayed references are checked beside them, and a refusal names each
         value that differs rather than a cause, because the rebuild re-reads
