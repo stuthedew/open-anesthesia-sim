@@ -44,3 +44,31 @@ fills here only through its own blood supply…") was built from the two Yasuda
 `docs/references/README.md` owes the extraction note for the corpus reading.
 Recommendation: do all four in one pass, as `PL-WMCJ` did; no stored value,
 code or test changes.
+
+**Added 2026-09-27: *Modern Anesthetics* ch 8 corroborates the description,
+not the evidence.** Hendrickx & De Wolf (Handb Exp Pharmacol 2008;182:159–86,
+PMID 18175091, in the private corpus) restate Eger's five-compartment model — a
+lung and an "intertissue diffusion" compartment added (Carpenter et al. 1986),
+"hypothesized to be fat adjacent to well-perfused tissues" (p. 163) — and
+Yasuda's fourth compartment "interpreted as" intertissue diffusion (p. 166,
+Fig. 3). Every source they cite for it is Eger's group, Eger & Saidman 2005
+included, and their text gives no volume, time constant or share of uptake, so
+it adds no independent evidence. What it adds is the other side, which the
+note's "Two cautions" carries only as Hull:
+
+- Ishibashi et al. 2006 (*Anesthesiology* 105:A1202, an abstract from the
+  chapter authors' group): compartment parameters did not relate
+  straightforwardly to cardiac output or demographics, which the chapter reads
+  as "correlating clearances and distribution volumes with tissue volumes and
+  blood flows should be done with care, if at all" (p. 166).
+- Rietbrock et al. 2000 (*Br J Anaesth* 84:437–42, PMID 10823092), paraphrased
+  as Wissing's argument that "a precise allocation of several hypothetical
+  peripheral compartments to anatomically defined tissues is hardly feasible"
+  (p. 166).
+- Hendrickx et al. 2006a (*BMC Anesthesiol* 6:7, PMID 16772041, a simulation):
+  compartmental and physiologic models fit equally well, with a complex
+  relation between their parameters (p. 166).
+
+None disputes that the route exists; they dispute reading it off a washout fit.
+Cite pp. 163 and 165–66 in the note's cautions, and record p. 165 beside
+pp. 163 and 166 in `docs/references/README.md`'s Modern Anesthetics entry.
