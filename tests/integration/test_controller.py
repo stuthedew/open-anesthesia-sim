@@ -14,7 +14,7 @@ from anesthesia_sim.app.run_series import (
 )
 from anesthesia_sim.app.wash_in import is_wash_in
 from anesthesia_sim.core import uptake_system
-from anesthesia_sim.core.concentration import Fraction, MacMultiple
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -22,7 +22,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationNumericalError,
 )
 from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, EXHAUSTED_AGENT_L, STATE_SIZE
-from anesthesia_sim.core.parameters import load_reference_adult_parameters
+from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.run_definition import RunDefinition, RunSegment
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
@@ -1972,6 +1972,81 @@ def test_a_branch_inherits_its_parent_s_settings_at_the_fork() -> None:
         branch = trunk.resumed_at(segment.opening.instant_s)
 
         assert branch._state.uptake_system.equation_settings() == segment.settings
+
+
+def test_a_settings_mismatch_names_the_setting_that_differs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression (`PL-NC62`): the refusal states what differs, never a cause.
+
+    A branch re-reads the agent's data file when it is rebuilt, so a file
+    edited between the trunk and the branch fails the settings check with the
+    control timeline blameless. The refusal said the timeline did not
+    reproduce its own segments whatever had differed, which sent its reader
+    into the one part that was working.
+    """
+
+    trunk = _trunk_with_two_changes()
+    before = trunk.snapshot()
+    on_file = load_agent_parameters(before.agent_id)
+    edited = dataclasses.replace(
+        on_file, blood_gas_partition_coefficient=on_file.blood_gas_partition_coefficient + 0.05
+    )
+    monkeypatch.setattr(uptake_system, "load_agent_parameters", lambda agent_id: edited)
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+
+    assert (
+        f"blood_gas_partition_coefficient is {on_file.blood_gas_partition_coefficient!r} "
+        f"in this run and {edited.blood_gas_partition_coefficient!r} on the branch"
+    ) in str(refusal.value)
+    assert "timeline" not in str(refusal.value)
+    assert trunk.snapshot() == before
+
+
+def test_a_patient_mismatch_names_the_tissue_group_it_is_in(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Three tissue groups share each field name, so the group is named with it."""
+
+    trunk = _trunk_with_two_changes()
+    on_file = load_reference_adult_parameters()
+    edited = dataclasses.replace(on_file, muscle_volume_l=on_file.muscle_volume_l + 1.0)
+    monkeypatch.setattr(uptake_system, "load_reference_adult_parameters", lambda: edited)
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+
+    assert (
+        f"muscle volume_l is {on_file.muscle_volume_l!r} in this run and "
+        f"{edited.muscle_volume_l!r} on the branch"
+    ) in str(refusal.value)
+
+
+def test_a_branch_rebuilt_under_another_mac_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`PL-NC62`'s second gap: an agent reference no equation reads is checked too.
+
+    The MAC divides every MAC multiple on screen, and a branch re-reads it from
+    the agent's file. Rebuilt under another, the branch would show one
+    concentration as two multiples beside its parent while every equation
+    setting agreed, so the settings check alone let it through.
+    """
+
+    trunk = _trunk_with_two_changes()
+    on_file = load_agent_parameters(trunk.snapshot().agent_id)
+    edited = dataclasses.replace(on_file, mac_percent=Percent(on_file.mac_percent + 0.1))
+    monkeypatch.setattr(
+        "anesthesia_sim.app.controller.load_agent_parameters", lambda agent_id: edited
+    )
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+
+    assert (
+        f"agent_mac_percent is {on_file.mac_percent!r} in this run and "
+        f"{edited.mac_percent!r} on the branch"
+    ) in str(refusal.value)
 
 
 def test_a_branch_can_open_at_any_keyframe_the_run_holds() -> None:

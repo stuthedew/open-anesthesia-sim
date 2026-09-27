@@ -3,11 +3,13 @@ id: PL-NC62
 title: resumed_at's settings-mismatch refusal blames the control timeline whatever the cause, so a patient or agent mismatch would be misdiagnosed
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py, docs/ARCHITECTURE.md
 added: 2026-09-14
+closed: 2026-09-27
+pr: 1188
 verify: grep -q 'def test_a_settings_mismatch_names_the_setting_that_differs' tests/integration/test_controller.py && uv run pytest tests/integration/test_controller.py
 ---
 
@@ -68,3 +70,41 @@ confident explanation of a correct run.
 values, rather than attributing every mismatch to the control timeline - so a
 patient, agent or flow difference reads as itself. `tests/integration/` covers
 a mismatch in a field other than the timeline's own.
+
+## Done 2026-09-27
+
+`SimulationController._branch_from` now refuses on
+`_disagreements_with`, which lists every value the rebuilt branch holds that
+the trunk did not, each as `<name> is <value> in this run and <value> on the
+branch`, and names no cause. The equation settings are walked with
+`dataclasses.fields`, every tissue group field by field under the group's
+name, so the list covers exactly what the old whole-object equality compared.
+Values are written by `repr`, so two values that differ never print alike. The
+message ends by pointing at `docs/ARCHITECTURE.md` § "What a branch is, and
+what it shares with its parent", which states why a branch may not differ from
+its trunk.
+
+**The second gap is closed too, decided here.** The brief named it and the
+Done-when did not require it. The agent's displayed references are checked
+beside the settings: the display name, the vaporizer maximum, the MAC, and
+MAC-awake, which arrived after this brief was filed and is the same kind of
+value. The MAC divides every MAC multiple on screen, so a branch rebuilt under
+another MAC would show one concentration as two multiples beside its parent.
+Checking it costs four comparisons.
+
+**`PL-SM5V` does not reach this check, measured against the tree.** The brief
+says it does, and it no longer can. `_branch_from` replays the four live
+controls from the recorded timeline in litres per minute, which are the units
+the compartments hold, and never recovers them from the segment's litres per
+second. The division by sixty is therefore the same on both sides. The
+`resumed_at` docstring says the same thing and cites `PL-SM5V`, and
+`test_a_branch_inherits_its_parent_s_settings_at_the_fork` holds equality at
+every keyframe. The reachable path today is a data file that changed between
+the trunk's build and the branch's.
+
+Tests in `tests/integration/test_controller.py`:
+`test_a_settings_mismatch_names_the_setting_that_differs` (agent blood:gas,
+and the trunk is left untouched), `test_a_patient_mismatch_names_the_tissue_group_it_is_in`
+(muscle volume), and `test_a_branch_rebuilt_under_another_mac_is_refused`
+(the second gap). All three fail on the previous controller; the last fails
+with "DID NOT RAISE".
