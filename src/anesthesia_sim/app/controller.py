@@ -13,7 +13,7 @@ reader of either is not reading the boundary as well.
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, replace
 from math import isfinite
 
 from anesthesia_sim.app.bookmarks import (
@@ -40,6 +40,10 @@ from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
     SimulationExecutionError,
+)
+from anesthesia_sim.core.governing_equations import (
+    TissueGroupEquationSettings,
+    UptakeEquationSettings,
 )
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
 from anesthesia_sim.core.run_definition import Keyframe, RunDefinition, RunSegment
@@ -856,7 +860,10 @@ class SimulationController:
         (`PL-SM5V`). The replay is then checked against the segment's own
         settings rather than trusted, because a branch assembling a system
         matrix its parent never used would diverge from its first step inside
-        the tolerance that holds the two records together.
+        the tolerance that holds the two records together. The agent's
+        displayed references are checked beside them, and a refusal names each
+        value that differs rather than a cause, because the rebuild re-reads
+        the data files as well as the timeline (`_disagreements_with`).
 
         Args:
             elapsed_s: The case instant to open at, in seconds. Must be one
@@ -872,8 +879,9 @@ class SimulationController:
                 an instant this run holds a keyframe for; this run is itself a
                 branch, since a branch of a branch is refused rather than
                 silently flattened (`PL-TFX5`); the fork instant is not a whole
-                number of this run's steps; or the replayed settings do not
-                reproduce the segment's.
+                number of this run's steps; or the rebuilt branch holds an
+                equation setting or agent reference this run did not hold at
+                the fork, each named with both of its values.
         """
 
         return self._branch_from(self._resume_point_at(elapsed_s))
@@ -920,8 +928,9 @@ class SimulationController:
                 bookmark crossing, so there is no fork to take; this run is
                 itself a branch, since a branch of a branch is refused rather
                 than silently flattened; the halted instant is not a whole
-                number of this run's steps; or the replayed settings do not
-                reproduce the segment's.
+                number of this run's steps; or the rebuilt branch holds an
+                equation setting or agent reference this run did not hold at
+                the fork, each named with both of its values.
         """
 
         return self._branch_from(self._resume_point_at_halt())
@@ -958,14 +967,14 @@ class SimulationController:
             ),
         )
 
-        replayed = branch._state.uptake_system.equation_settings()
+        disagreements = self._disagreements_with(branch, resume_point.segment.settings)
 
-        if replayed != resume_point.segment.settings:
+        if disagreements:
             raise SimulationConfigurationError(
-                f"the settings replayed for a branch at {fork_at_s} s are not the "
-                "ones this run was computed under there, so the branch would solve equations "
-                "its parent never did; the recorded timeline does not reproduce its own "
-                "segments"
+                f"a branch at {fork_at_s} s would be rebuilt from values this run did not "
+                "hold there, which would make it a second case rather than a second "
+                f"management of this one: {'; '.join(disagreements)} "
+                '(docs/ARCHITECTURE.md, "What a branch is, and what it shares with its parent")'
             )
 
         # The branch inherits the marks and not the timeline, and the two go
@@ -988,6 +997,73 @@ class SimulationController:
         branch._open_at(resume_point)
 
         return branch
+
+    def _disagreements_with(
+        self, branch: SimulationController, settings_at_fork: UptakeEquationSettings
+    ) -> tuple[str, ...]:
+        """Each value `branch` was rebuilt with that this run did not hold at the fork.
+
+        A branch is rebuilt rather than copied: its live controls are replayed
+        from the recorded timeline, and its agent, patient and circuit are
+        re-read from the data files. So this names every value that came out
+        different, with both of its values, and no cause: a data file edited
+        between the two builds fails the check with the timeline blameless, and
+        a message blaming the timeline would send its reader into the one part
+        that worked (`PL-NC62`).
+
+        Two groups are compared. The equation settings, every field of them and
+        of each tissue group, which is everything their equality compares, so a
+        setting added to either class is named here without an edit. And the
+        agent's four displayed references, which no equation reads: the MAC is
+        the divisor of every MAC multiple on screen, so a branch rebuilt under
+        another would show one concentration as two multiples beside its parent.
+
+        Each value is written by its `repr` - for a float the shortest text that
+        reads back as the same float, for a string the string in quotes - so two
+        values that differ never read alike, a difference in the last bit
+        included, which any rounding would print identically on both sides.
+        """
+
+        replayed = branch._state.uptake_system.equation_settings()
+        compared: list[tuple[str, object, object]] = [
+            *(
+                (field.name, getattr(settings_at_fork, field.name), getattr(replayed, field.name))
+                for field in fields(UptakeEquationSettings)
+                if field.name != "tissues"
+            ),
+            *(
+                (
+                    f"{group_in_run.name} {field.name}",
+                    getattr(group_in_run, field.name),
+                    getattr(group_on_branch, field.name),
+                )
+                for group_in_run, group_on_branch in zip(
+                    settings_at_fork.tissues, replayed.tissues, strict=True
+                )
+                for field in fields(TissueGroupEquationSettings)
+            ),
+            ("agent_display_name", self._agent_display_name, branch._agent_display_name),
+            (
+                "max_delivered_concentration_percent",
+                self._max_delivered_concentration_percent,
+                branch._max_delivered_concentration_percent,
+            ),
+            ("agent_mac_percent", self._agent_mac_percent, branch._agent_mac_percent),
+            *(
+                (
+                    f"agent_mac_awake {field.name}",
+                    getattr(self._agent_mac_awake, field.name),
+                    getattr(branch._agent_mac_awake, field.name),
+                )
+                for field in fields(MacAwakeReference)
+            ),
+        ]
+
+        return tuple(
+            f"{name} is {in_run!r} in this run and {on_branch!r} on the branch"
+            for name, in_run, on_branch in compared
+            if in_run != on_branch
+        )
 
     def _open_at(self, resume_point: ResumePoint) -> None:
         """Stand this run at `resume_point`'s state, on its clock and its accounting.
@@ -1884,7 +1960,8 @@ class BranchedCase:
         Raises:
             SimulationConfigurationError: `elapsed_s` is not one of
                 `fork_points_s`, is not finite, or is not a whole number of
-                the trunk's steps. `resumed_at` raises these and names which.
+                the trunk's steps; or the branch rebuilt there would not hold
+                what the trunk held. `resumed_at` raises these and names which.
         """
 
         return self._kept(self._trunk.resumed_at(elapsed_s))
@@ -1906,8 +1983,9 @@ class BranchedCase:
 
         Raises:
             SimulationConfigurationError: the trunk is not standing on a
-                bookmark crossing, or the halted instant is not a whole number
-                of the trunk's steps. `resumed_at_halt` raises these and names
+                bookmark crossing, the halted instant is not a whole number of
+                the trunk's steps, or the branch rebuilt there would not hold
+                what the trunk held. `resumed_at_halt` raises these and names
                 which.
         """
 
