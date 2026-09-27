@@ -22,6 +22,17 @@ no network and knows nothing about GitHub, and it should stay that way. Which
 forge a project uses is not a fact about its queue, so the package asks a
 command named in `docket.toml` and this repository points that setting here.
 
+**`--newest BRANCH BASE` asks what became of a branch's newest pull request**,
+for `docket branch` and `docket arm` through `newest_pull_request_command`
+(`PL-8BR0`). A squash lands none of a branch's commits by hash, and a branch
+that carried only item files leaves no content `docket` may take for merge
+evidence (`PL-JBRC`), so a merged pull request read as work still to merge and
+the next capture on its branch landed nowhere. It prints `NUMBER STATE HEAD` -
+`STATE` one of `open`, `merged` or `closed`, `HEAD` the commit the forge names
+as the pull request's head, which GitHub freezes when it closes - or nothing
+where no pull request was ever opened from the branch. The listing is
+`left_behind_check.py`'s: every state, that head, that base, newest first.
+
 **The contract is the exit status, and it is the whole point of the script.**
 Exit 0 means the forge was asked and these - possibly none - are the branches
 with something open. Exit 1 means it could not be asked, and stdout is then
@@ -32,18 +43,21 @@ this exits 1, and adds "and no pull request is open" only when it exits 0.
 
 Standard library only, like every tool here, so it runs in a bare checkout.
 `urllib` is in that library; the token is read from the environment and never
-printed. `pr_title_check.py` shares the request code below, which is what keeps
-one spelling of the token, the timeout and the failure rule rather than two.
+printed. `pr_title_check.py` shares the request code below, and both questions
+here make it through `_listing`, which is what keeps one spelling of the token,
+the timeout and the failure rule rather than several.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import subprocess
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -81,6 +95,21 @@ class PullRequest:
     base: str = ""
 
 
+@dataclass(frozen=True)
+class NewestPullRequest:
+    """The newest pull request from one branch into one base, and what became of it.
+
+    `state` is `merged` where the forge records a merge and otherwise its own
+    `open` or `closed`. `head` is the commit the forge names as the pull
+    request's head: frozen when it closes, so a merged one names the commit
+    its merge took whatever the branch gained since (checked on `#793`).
+    """
+
+    number: int
+    state: str
+    head: str
+
+
 def _git(args: list[str]) -> str:
     """Run git from the repository root, returning empty output rather than raising."""
     try:
@@ -101,31 +130,19 @@ def repo_slug() -> str | None:
     return github_slug(_git(["remote", "get-url", "origin"]))
 
 
-def open_pull_requests(slug: str, *, head: str | None = None) -> tuple[PullRequest, ...] | None:
-    """The open pull requests on `slug`, or None when the forge could not be asked.
+def _listing(slug: str, query: dict[str, str | int]) -> list[object] | None:
+    """One page of `slug`'s pull requests as `query` narrows it, or None where it could not ask.
 
-    `head` narrows the listing to one branch, which is what a caller holding a
-    branch already wants and costs the same single request.
-
-    None covers every reason there is no answer, and they are deliberately not
-    told apart: no token, no network, a proxy refusing, a rate limit, a
-    repository this token cannot see, or a malformed body. Every caller does
-    the same thing with all of them - says it could not look - so separating
-    them would buy a message nobody can act on differently.
-
-    **A full page is one of those reasons.** A listing that comes back at the
-    per-page maximum may have more behind it, and the caller's question is
-    whether a *particular* branch is absent - which a truncated listing cannot
-    answer, while looking exactly like an answer. Declining is the one reading
-    that is never wrong. It cannot fire on a `head` listing, which asks about
-    one branch and is complete at one entry.
+    The one request every question here makes. None covers every reason there
+    is no answer, and they are deliberately not told apart: no token, no
+    network, a proxy refusing, a rate limit, a repository this token cannot
+    see, or a body that is not a JSON list. Every caller does the same thing
+    with all of them - says it could not look - so separating them would buy a
+    message nobody can act on differently.
     """
     token = github_token()
     if not token:
         return None
-    query: dict[str, str | int] = {"state": "open", "per_page": 1 if head else PAGE}
-    if head:
-        query["head"] = f"{slug.split('/')[0]}:{head}"
     request = urllib.request.Request(
         f"{GITHUB_API}/repos/{slug}/pulls?{urllib.parse.urlencode(query)}",
         headers={
@@ -142,7 +159,28 @@ def open_pull_requests(slug: str, *, head: str | None = None) -> tuple[PullReque
         # `URLError` and `HTTPError` are both `OSError`; a body that is not
         # JSON raises `ValueError`. Nothing else should escape a GET.
         return None
-    if not isinstance(payload, list):
+    return payload if isinstance(payload, list) else None
+
+
+def open_pull_requests(slug: str, *, head: str | None = None) -> tuple[PullRequest, ...] | None:
+    """The open pull requests on `slug`, or None when the forge could not be asked.
+
+    `head` narrows the listing to one branch, which is what a caller holding a
+    branch already wants and costs the same single request. `_listing` says
+    what None covers.
+
+    **A full page is one of those reasons.** A listing that comes back at the
+    per-page maximum may have more behind it, and the caller's question is
+    whether a *particular* branch is absent - which a truncated listing cannot
+    answer, while looking exactly like an answer. Declining is the one reading
+    that is never wrong. It cannot fire on a `head` listing, which asks about
+    one branch and is complete at one entry.
+    """
+    query: dict[str, str | int] = {"state": "open", "per_page": 1 if head else PAGE}
+    if head:
+        query["head"] = f"{slug.split('/')[0]}:{head}"
+    payload = _listing(slug, query)
+    if payload is None:
         return None
     if head is None and len(payload) >= PAGE:
         return None
@@ -160,8 +198,69 @@ def open_pull_requests(slug: str, *, head: str | None = None) -> tuple[PullReque
     return tuple(found)
 
 
-def main() -> int:
+def newest_pull_request(slug: str, branch: str, base: str) -> tuple[NewestPullRequest, ...] | None:
+    """The newest pull request from `branch` into `base`: one, `()` where none was opened, or None.
+
+    None is `_listing`'s refusal, and an entry this cannot read is one too: a
+    number that is not one, a state that is neither `open` nor `closed`, a
+    `merged_at` that is neither null nor a time - absent included, since a
+    merge read as "not merged" is the answer this exists to correct - or no
+    head commit. `()` is an answer: the forge was asked, and nothing was ever
+    opened from the branch.
+    """
+    query: dict[str, str | int] = {
+        "state": "all",
+        "head": f"{slug.split('/')[0]}:{branch}",
+        "base": base,
+        "sort": "created",
+        "direction": "desc",
+        "per_page": 1,
+    }
+    payload = _listing(slug, query)
+    if payload is None:
+        return None
+    if not payload:
+        return ()
+    entry = payload[0]
+    if not isinstance(entry, dict):
+        return None
+    number, state = entry.get("number"), entry.get("state")
+    merged_at = entry.get("merged_at", False)
+    head = entry.get("head")
+    sha = head.get("sha") if isinstance(head, dict) else None
+    if (
+        not isinstance(number, int)
+        or state not in ("open", "closed")
+        or not (merged_at is None or isinstance(merged_at, str))
+        or not isinstance(sha, str)
+        or not sha
+    ):
+        return None
+    merged = "merged" if merged_at is not None else state
+    return (NewestPullRequest(number=number, state=merged, head=sha),)
+
+
+def main(argv: Sequence[str] = ()) -> int:
+    parser = argparse.ArgumentParser(
+        description="Print every open pull request's branch and number, one per line."
+    )
+    parser.add_argument(
+        "--newest",
+        nargs=2,
+        metavar=("BRANCH", "BASE"),
+        help="print `NUMBER STATE HEAD` for the newest pull request from BRANCH into BASE "
+        "instead, or nothing where none was ever opened",
+    )
+    args = parser.parse_args(list(argv))
     slug = repo_slug()
+    if args.newest is not None:
+        branch, base = args.newest
+        newest = newest_pull_request(slug, branch, base) if slug else None
+        if newest is None:
+            return 1
+        for pull in newest:
+            print(f"{pull.number} {pull.state} {pull.head}")
+        return 0
     found = open_pull_requests(slug) if slug else None
     if found is None:
         return 1
@@ -171,4 +270,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

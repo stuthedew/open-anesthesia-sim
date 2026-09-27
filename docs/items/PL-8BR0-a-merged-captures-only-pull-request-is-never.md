@@ -3,12 +3,14 @@ id: PL-8BR0
 title: A merged captures-only pull request is never recognised as merged, because vcs.landed_whole refuses queue-only commits as merge evidence (PL-JBRC), so branch tells its session to merge the base in, arm says arm for a pull request that already merged, and the next capture there lands nowhere
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: one-snapshot
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, tools/open_pull_requests.py, tests/unit/test_open_pull_requests.py, docket.toml
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs_silence.py, tools/open_pull_requests.py, tests/unit/test_open_pull_requests.py, docket.toml, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-25 with the one-snapshot batch
 added: 2026-09-25
+closed: 2026-09-27
+pr: 1147
 payoff: a session whose pull request already squash-merged is told to restart instead of merging the base in, so its next capture is not stranded on a branch nothing will merge again
 verify: grep -q 'def test_a_merged_captures_only_branch_is_told_to_restart' subprojects/docket/tests/test_vcs.py
 recurrences: 2026-09-26 PL-RLTK

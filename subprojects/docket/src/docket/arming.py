@@ -11,7 +11,7 @@ missed merged a claim away with its branch while the work went on (`PL-QP9Z`,
 question is decided here, from the tree, and asked before arming and before
 every later push while a pull request is open.
 
-**Four answers, and an exit status for each.**
+**Five answers, and an exit status for each.**
 
 - `arm` (0): the net change a squash would land - `base...HEAD` - lies under
   the store, the queue's own tooling, `subprojects/docket/`, or the pull
@@ -29,16 +29,24 @@ every later push while a pull request is open.
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
+- `landed` (1): the forge says the branch's newest pull request has merged,
+  and HEAD still stands on the head it merged at (`vcs.carried_merge`), so
+  there is nothing to arm. Whatever came after that head is carried onto the
+  base by a restart and a new pull request (`PL-8BR0`).
 - `unknown` (2): something the answer rests on could not be read - no branch,
   no established base, a history git would not walk, a claim trailer that
-  does not parse, a fetch that failed - or the branch's copy on the remote
-  holds commits HEAD lacks, so HEAD is not what its pull request lands. Never
-  `arm` from a partial read.
+  does not parse, a fetch that failed, a forge that could not say whether the
+  pull request merged - or the branch's copy on the remote holds commits HEAD
+  lacks, so HEAD is not what its pull request lands. Never `arm` from a
+  partial read.
 
 **`hold` outranks `unknown`.** A claim or a path that waits on a read is
 reason enough whatever else went unread, so it is said, with what went unread beside
 it, rather than withheld. Commits the remote's copy holds and HEAD lacks are
 said first under either, since everything else was read from HEAD (`PL-21KN`).
+**`landed` outranks every other answer**, since a claim, a path, a base that
+moved or a remote copy HEAD lacks changes nothing about a pull request that
+has already merged; what went unread is said beside it.
 
 **The decisions the rule rests on**, moved here from `CLAUDE.md` with it:
 
@@ -70,6 +78,7 @@ so the paths hold it already.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -77,6 +86,8 @@ from pathlib import Path
 from .claiming import REMOTE, _git
 from .claims import LAPSED, RELEASED, Hold, holdings
 from .vcs import (
+    MergedPullRequest,
+    PullRequestLookup,
     RemoteHeads,
     Runner,
     _head_name,
@@ -84,6 +95,7 @@ from .vcs import (
     _run_git,
     _Silences,
     answered,
+    carried_merge,
     changed_path_args,
     default_base,
     listed_paths,
@@ -91,15 +103,16 @@ from .vcs import (
     resolved,
 )
 
-#: The four answers, each the first word of what `arm` prints.
+#: The five answers, each the first word of what `arm` prints.
 ARM = "arm"
 HOLD = "hold"
 BEHIND = "behind"
+LANDED = "landed"
 UNKNOWN = "unknown"
 
-#: The exit status of each answer. `behind` shares `hold`'s: both say "not
-#: now", and the line printed says which.
-EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, UNKNOWN: 2}
+#: The exit status of each answer. `behind` and `landed` share `hold`'s: all
+#: three say "not now", and the line printed says which.
+EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, LANDED: 1, UNKNOWN: 2}
 
 #: How many paths outside the store, the tooling and the records a `hold`
 #: names before counting the rest.
@@ -158,7 +171,8 @@ class Verdict:
     base's commits the branch lacks. `unpulled` is what the branch's copy on
     the remote holds that HEAD lacks, with what brings it in, or why that
     could not be read, said before anything else. `unread` is why the answer
-    is `unknown`, or what went unread beside a `hold`.
+    is `unknown`, or what went unread beside a `hold` or a `landed`. `merged`
+    is the merged pull request a `landed` names, and what came after it.
     """
 
     answer: str
@@ -171,6 +185,7 @@ class Verdict:
     behind: int = 0
     unpulled: str = ""
     unread: tuple[str, ...] = ()
+    merged: MergedPullRequest | None = None
 
     @property
     def code(self) -> int:
@@ -198,6 +213,33 @@ class Verdict:
                 f"{GATE.rpartition('/')[2]} alone, holds no open claim, and contains "
                 f"{self.base}'s tip: mark its pull request ready and arm it",
             )
+        if self.answer == LANDED and (merged := self.merged) is not None:
+            said = [
+                f"landed - #{merged.number} merged {self.branch} at {merged.head[:12]}, and "
+                "nothing merges a merged pull request again, so there is nothing to arm"
+            ]
+            if self.unpulled:
+                said.append(f"  {self.unpulled}")
+            if merged.carried:
+                oldest, count = merged.carried[0], len(merged.carried)
+                others = f", and {count - 1} more" if count > 1 else ""
+                came = "1 commit here came" if count == 1 else f"{count} commits here came"
+                said.append(
+                    f"  {came} after it and land{'s' if count == 1 else ''} nowhere until "
+                    f"carried onto {self.base}: {oldest.sha[:9]} {oldest.subject}{others}"
+                )
+                said.append(
+                    f"  Restart the branch on {self.base} and carry "
+                    f"{'it' if count == 1 else 'them'} - `bin/docket branch` prints the commands "
+                    "- then push and open a new pull request."
+                )
+            else:
+                said.append(
+                    f"  Everything {self.branch} holds is on {self.base}: restart it there before "
+                    "the next commit, which would otherwise land nowhere - `bin/docket branch` "
+                    "prints the command."
+                )
+            return (*said, *notes)
         read = ", so its pull request waits on a read" if self.outside or self.gate else ""
         said = [f"hold - {self.branch}: " + " and ".join(self._holding()) + read]
         if self.unpulled:
@@ -240,7 +282,13 @@ class Verdict:
 
 
 def arm(
-    root: Path, *, items_dir: str, now: datetime, fetch: bool = True, runner: Runner | None = None
+    root: Path,
+    *,
+    items_dir: str,
+    now: datetime,
+    fetch: bool = True,
+    runner: Runner | None = None,
+    newest: Callable[[str, str], PullRequestLookup] | None = None,
 ) -> Verdict:
     """Whether the pull request `HEAD`'s branch would open, or has open, may be armed.
 
@@ -258,6 +306,14 @@ def arm(
     `_unpulled`, from the remote's listing where the fetch answered - taken
     once and handed to `holdings` too, so a tracking ref for a branch the
     remote deleted is neither the copy nor a holder (`PL-MT3R`).
+
+    **And its pull request may already have merged**, which nothing in the
+    tree says where the branch carried only item files (`PL-8BR0`). `newest`
+    is the caller's way to ask the forge about the branch's newest pull
+    request, handed the branch and the default branch's name: a merge that
+    `vcs.carried_merge` confirms HEAD still stands on is `landed` at once, and
+    a forge that could not be asked is unread, since arming a pull request that
+    merged is the answer this exists to stop.
     """
     unread: list[str] = []
     ran = runner or _run_git
@@ -292,6 +348,31 @@ def arm(
         reason = f"HEAD is on {name}, the default branch, which opens no pull request of its own"
         return Verdict(UNKNOWN, branch=name, base=base, unread=(reason,))
     unpulled = _unpulled(root, run, heads, name, branch)
+    if newest is not None:
+        asked = newest(branch, _head_name(base, remotes))
+        pull = asked.newest
+        if asked.declined:
+            unread.append(
+                f"whether {name}'s pull request has already merged could not be asked - "
+                f"{asked.declined}"
+            )
+        elif pull is not None:
+            probe = _Silences(ran)
+            merged = carried_merge(pull, base, root, runner=probe)
+            if probe.reason:
+                unread.append(
+                    f"git could not compare {name} with {pull.head[:12]}, the head "
+                    f"#{pull.number} merged at - {probe.reason}"
+                )
+            elif merged is not None:
+                return Verdict(
+                    LANDED,
+                    branch=name,
+                    base=base,
+                    unpulled=unpulled,
+                    unread=tuple(unread),
+                    merged=merged,
+                )
 
     prefix = items_dir.strip("/") + "/"
     # Both sides of a rename, so a file moved into the store shows the deletion

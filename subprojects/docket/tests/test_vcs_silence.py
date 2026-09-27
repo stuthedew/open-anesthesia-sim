@@ -40,13 +40,17 @@ import pytest
 from docket.claims import holdings, settled_branches
 from docket.vcs import (
     SILENT,
+    BranchState,
     GitRunner,
+    NewestPullRequest,
+    PullRequestLookup,
     Runner,
     _run_git,
     answered,
     base_copies,
     behind_remote,
     branch_state,
+    carried_merge,
     change_landed,
     changed_items,
     churn,
@@ -74,6 +78,7 @@ from docket.vcs import (
     snapshot,
     stranded,
     tags,
+    with_newest_pull_request,
     working_paths,
 )
 
@@ -286,6 +291,28 @@ def _findings(*names: str) -> Callable[[Any], frozenset[Any]]:
     return found
 
 
+def _merged_at_parent(root: Path) -> NewestPullRequest:
+    """The forge's word on the fixture's own branch: merged at the commit before its last.
+
+    So the last is what nothing will merge, and it is the finding the two reads
+    below must not drop under a silence: the `cherry-pick` line a restart is
+    handed is built from it (`PL-8BR0`). Resolved outside the runner under
+    test, as `notes_added`'s commit is.
+    """
+    head = _run_git(["rev-parse", "claude/pl-k7qx-carried~1"], root).strip()
+    return NewestPullRequest(number=9, state="merged", head=head)
+
+
+def _forge_half_declined(state: BranchState) -> BranchState | None:
+    """`with_newest_pull_request`'s answer, or None where it said the forge half went unread.
+
+    It says so in `pull_request_declined` rather than `declined`, because the
+    content reading still answers the position; for the sweep, saying so is
+    the decline.
+    """
+    return None if state.pull_request_declined else state
+
+
 READS: tuple[Read, ...] = (
     Read(
         # What `branches_in_flight` and `precedence` answered here until
@@ -354,6 +381,23 @@ READS: tuple[Read, ...] = (
     ),
     Read(
         "merged_pull_requests", lambda r, g: merged_pull_requests(r, runner=g), _findings("numbers")
+    ),
+    Read(
+        "carried_merge",
+        lambda r, g: carried_merge(_merged_at_parent(r), "origin/main", r, runner=g),
+        lambda a: frozenset() if a is None else frozenset({a.head, *a.carried}),
+    ),
+    Read(
+        "with_newest_pull_request",
+        lambda r, g: _forge_half_declined(
+            with_newest_pull_request(
+                branch_state(r, runner=g),
+                lambda branch, base: PullRequestLookup(_merged_at_parent(r)),
+                r,
+                runner=g,
+            )
+        ),
+        lambda a: frozenset() if a is None else frozenset({(a.disposition, a.merged)}),
     ),
     Read("closed_by", lambda r, g: closed_by("HEAD", r, runner=g), _findings("closed")),
     Read(

@@ -1798,6 +1798,157 @@ def open_pull_requests(
     )
 
 
+# What the forge says became of a pull request, as `newest_pull_request_command`
+# prints it (`PL-8BR0`). Not a branch's disposition - `MERGE`, `LANDED` and the
+# rest below are those - but the pull request's own state.
+PULL_OPEN = "open"
+PULL_MERGED = "merged"
+PULL_CLOSED = "closed"
+PULL_STATES = (PULL_OPEN, PULL_MERGED, PULL_CLOSED)
+
+
+@dataclass(frozen=True)
+class NewestPullRequest:
+    """The forge's word on the newest pull request opened from a branch into the default branch.
+
+    `head` is the commit the forge names as its head, which GitHub freezes when
+    a pull request closes: `#793`'s branch took a commit after its merge, and
+    the API still names `46620e20`, the commit `refs/pull/793/head` holds. So a
+    merged one names the commit its merge took, whatever the branch did since.
+    """
+
+    number: int
+    #: One of `PULL_STATES`.
+    state: str
+    head: str
+
+
+@dataclass(frozen=True)
+class PullRequestLookup:
+    """What asking the forge about a branch's newest pull request came back with.
+
+    Three answers in two fields, kept apart for the reason `OpenPullRequests`
+    has `asked`: `declined` says the forge could not be asked, and why, so that
+    "could not ask" never reads as "none was ever opened", which is `newest`
+    empty with nothing declined.
+    """
+
+    newest: NewestPullRequest | None = None
+    declined: str = ""
+
+
+@dataclass(frozen=True)
+class CarriedCommit:
+    """A commit past a merged pull request's head that nothing will merge."""
+
+    sha: str
+    subject: str
+    #: Its tree is its parent's: a claim or a yield, whose record is the commit
+    #: itself. Carried across a restart with `--allow-empty`, since
+    #: `git cherry-pick` refuses an empty commit without it.
+    empty: bool
+
+
+@dataclass(frozen=True)
+class MergedPullRequest:
+    """A merged pull request whose head a branch still carries, and what came after it.
+
+    `carried` is every commit past the head that nothing will merge, oldest
+    first, which is the order a restart replays them in.
+    """
+
+    number: int
+    head: str
+    carried: tuple[CarriedCommit, ...] = ()
+
+
+def carried_merge(
+    newest: NewestPullRequest,
+    base: str,
+    root: Path,
+    *,
+    ref: str = "HEAD",
+    runner: Runner | None = None,
+) -> MergedPullRequest | None:
+    """The merged pull request `ref` still stands on, and what it holds past the head, or None.
+
+    **The forge's word is the evidence, and git's is the reading** (`PL-8BR0`).
+    A squash lands none of a branch's commits by hash, so the counts read a
+    merged branch as ahead by every one of them, and `landed_whole`, the
+    content reading that answers that for work (`PL-8M8H`), refuses a commit
+    that only wrote to the queue, because two branches running `docket record`
+    converge on one byte for byte (`PL-JBRC`). A branch carrying only captures -
+    the kind of pull request this project arms without a read - was therefore
+    told to merge the base in after its pull request had merged, and its next
+    capture landed nowhere. Whether the pull request merged, and at which
+    commit, is the forge's to say, and this package asks it only through a
+    command the project names (`PL-SK88`, `PL-VV4D`); whether this branch still
+    stands on that commit is git's, and is read here.
+
+    None unless four things hold: the forge says merged; this clone holds the
+    head; the head is not on the base; and `ref` is the head or descends from
+    it. The last two keep a branch that has already restarted from being sent
+    round again. A branch restarted on a squash does not descend from the head,
+    and its new commits wait on a new pull request rather than on this one. A
+    merge commit puts the head on the base, after which every branch restarted
+    there descends from the head as well, and one that restarted cannot be told
+    from one that never did - so that shape is left to the reading without the
+    forge rather than answered wrongly half the time.
+
+    **What is carried is what nothing will merge**: every commit past the head
+    that is not a merge - merging the base in brings nothing of the branch's
+    own - is not on the base, and is not one whose change the base took by
+    another route, which `change_landed` finds (`PL-GHHW`). An empty commit is
+    carried whatever the base holds, and marked: a claim or a yield is its own
+    record, `change_landed` has no change of it to look for, and a restart that
+    dropped it would drop the claim.
+
+    **A silence anywhere here is None, never a partial record.** A carried list
+    missing a commit is a `cherry-pick` line that drops it, so a read git did
+    not answer in full is not returned at all. None then also means "could not
+    read", which is `change_landed`'s posture and the reading there was before
+    the forge was asked; a caller that must say which wraps its runner in
+    `_Silences` and asks it, as `with_newest_pull_request` and `arming.arm` do.
+    """
+    run = _Silences(runner or _run_git)
+    if newest.state != PULL_MERGED:
+        return None
+    head = run(["rev-parse", "--verify", "--quiet", f"{newest.head}^{{commit}}"], root).strip()
+    if not head:
+        return None
+    if run(["merge-base", head, base], root).strip() == head:
+        return None
+    if run(["merge-base", head, ref], root).strip() != head:
+        return None
+    listed = run(
+        [
+            "log",
+            "--no-merges",
+            "--reverse",
+            "--format=%H%x1f%T%x1f%s",
+            f"{head}..{ref}",
+            f"^{base}",
+            "--",
+        ],
+        root,
+    )
+    carried: list[CarriedCommit] = []
+    # On `\n` alone, for the reason `change_landed` gives (`PL-139L`).
+    for line in listed.split("\n"):
+        fields = line.split("\x1f", 2)
+        if len(fields) != 3:
+            continue
+        sha, tree, subject = (part.strip() for part in fields)
+        parent = run(["rev-parse", "--verify", "--quiet", f"{sha}~1^{{tree}}"], root).strip()
+        if parent and parent == tree:
+            carried.append(CarriedCommit(sha=sha, subject=subject, empty=True))
+        elif change_landed(sha, base, root, runner=run) is None:
+            carried.append(CarriedCommit(sha=sha, subject=subject, empty=False))
+    if run.reason:
+        return None
+    return MergedPullRequest(number=newest.number, head=head, carried=tuple(carried))
+
+
 def default_base(root: Path, *, runner: Runner | None = None) -> str:
     """The ref a branch should be compared against, preferring the remote's.
 
@@ -1888,7 +2039,9 @@ REWRITTEN = "rewritten"
 #: since. The counts cannot reach it: a squash merge leaves the branch
 #: containing none of the commits that landed its content, so `ahead` counts
 #: them all and `RESTART` - which fires at `ahead == 0` - is never reached.
-#: It is read from the content instead, by `landed_whole` (`PL-8M8H`).
+#: It is read from the forge's word on the newest pull request where that was
+#: had (`PL-8BR0`), and otherwise from the content, by `landed_whole`
+#: (`PL-8M8H`).
 LANDED = "landed"
 
 
@@ -1988,6 +2141,20 @@ class BranchState:
     rewrite: RewriteReport | None = None
     declined: str = ""
     absent: bool = False
+    #: The merged pull request this branch still stands on, as the forge named
+    #: it and `carried_merge` confirmed, where it does. Set only by
+    #: `with_newest_pull_request`, which `branch` asks and the snapshot does
+    #: not, since the snapshot stays off the network (`PL-XBV4`, `PL-8BR0`).
+    merged: MergedPullRequest | None = None
+    #: The number of the branch's newest pull request where the forge says it
+    #: is open, which no content reading can overrule: the branch has not
+    #: merged, whatever it shares with the base (`PL-RLTK`).
+    open_pull_request: int | None = None
+    #: Why the forge's word on the newest pull request was not had - the
+    #: configured command could not ask, or git could not compare the branch
+    #: with the head the forge named - so the disposition rests on the content
+    #: alone and says so. Empty where it was had, or never asked.
+    pull_request_declined: str = ""
 
     @property
     def disposition(self) -> str:
@@ -2008,18 +2175,30 @@ class BranchState:
         every mark of one whose pull request merged: the rewrite changed every
         hash and left every byte alone, so the content split cannot tell them
         apart, and the existing arm excludes that shape at no cost.
+
+        **The forge's word outranks the counts where it was had** (`PL-8BR0`).
+        A merged pull request the branch still carries is `LANDED` even at
+        `behind == 0`: a branch that merged the base in after its pull request
+        merged reads `CURRENT` by the counts, and its next commit lands
+        nowhere. An open one outranks the content reading's `LANDED`, which a
+        commit restoring a file to content the base once held can reach while
+        its pull request is still open (`PL-RLTK`), and leaves `MERGE`.
         """
         if self.declined:
             return ""
-        if self.behind == 0:
+        if self.merged is None and self.behind == 0:
             return CURRENT
         if self.rewrite is not None:
             return REWRITTEN
         if self.is_default:
             return PULL
+        if self.merged is not None:
+            return LANDED
         if self.ahead == 0:
             return RESTART
-        return LANDED if self.landed_whole else MERGE
+        if self.landed_whole and self.open_pull_request is None:
+            return LANDED
+        return MERGE
 
     @property
     def is_default(self) -> bool:
@@ -2526,6 +2705,66 @@ def _branch_state(root: Path, run: Runner) -> BranchState:
         landed_whole=says_merge and landed_whole(base, root, run),
         rewrite=rewrite,
     )
+
+
+def with_newest_pull_request(
+    state: BranchState,
+    lookup: Callable[[str, str], PullRequestLookup],
+    root: Path,
+    *,
+    runner: Runner | None = None,
+) -> BranchState:
+    """`state` with the forge's word on the branch's newest pull request read into it (`PL-8BR0`).
+
+    `lookup` is the caller's way to ask, since this package knows no forge
+    (`PL-SK88`, `PL-VV4D`): it is handed the branch and the default branch's
+    name as the forge knows them. A command asks and a snapshot never does,
+    because the snapshot answers every read command and stays off the network
+    (`PL-XBV4`).
+
+    **Asked only where the answer could move the advice**, which is also what
+    keeps the forge off every other path: not where the position was not read,
+    not on the default branch, which opens no pull request of its own, not
+    across a rewrite, whose recovery outranks every other, and not with nothing
+    ahead, where `RESTART` or `CURRENT` is already right.
+
+    A merged pull request the branch still stands on sets `merged`, which
+    `disposition` answers `LANDED` whatever the counts say; an open one sets
+    `open_pull_request`, which the content reading cannot overrule. A lookup
+    that could not ask, or a git that went silent while the head was compared,
+    sets `pull_request_declined` and leaves the disposition to the content,
+    which is the reading there was before - and `format_branch_state` says
+    which reading it is.
+    """
+    if (
+        state.declined
+        or state.absent
+        or state.is_default
+        or state.rewrite is not None
+        or state.ahead == 0
+    ):
+        return state
+    run = _Silences(runner or _run_git)
+    remotes = _remotes(root, run)
+    if run.reason:
+        declined = f"git would not list the remotes to name {state.base} by - {run.reason}"
+        return replace(state, pull_request_declined=declined)
+    answer = lookup(state.branch, _head_name(state.base, remotes))
+    if answer.declined:
+        return replace(state, pull_request_declined=answer.declined)
+    newest = answer.newest
+    if newest is None:
+        return state
+    if newest.state == PULL_OPEN:
+        return replace(state, open_pull_request=newest.number)
+    merged = carried_merge(newest, state.base, root, runner=run)
+    if run.reason:
+        declined = (
+            f"git could not compare {state.branch} with {newest.head[:12]}, the head "
+            f"#{newest.number} merged at - {run.reason}"
+        )
+        return replace(state, pull_request_declined=declined)
+    return state if merged is None else replace(state, merged=merged)
 
 
 @dataclass(frozen=True)
