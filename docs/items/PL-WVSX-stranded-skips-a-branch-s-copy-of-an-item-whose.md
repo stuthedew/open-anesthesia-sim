@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
 closed: 2026-09-27
+pr: 1160
 payoff: an abandoned branch whose only change restores an item to an earlier version is reported by stranded instead of being lost with the branch
 verify: grep -q 'def test_stranded_reports_a_branch_restoring_an_item_to_an_earlier_version' subprojects/docket/tests/test_vcs.py
 ---

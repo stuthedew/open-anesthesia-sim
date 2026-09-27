@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cla
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
 closed: 2026-09-27
+pr: 1160
 payoff: whether a branch's change reached main gets one answer every docket command reads, so a restore stops being taken for a merge and a squash merge for unmerged work, and the family stops filing a member a day
 verify: grep -q 'def test_every_landed_reader_answers_from_the_branch_s_own_history' subprojects/docket/tests/test_vcs.py
 root-cause-of: PL-8BR0, PL-RLTK, PL-P64J, PL-WVSX

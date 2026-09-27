@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
 closed: 2026-09-27
+pr: 1160
 payoff: a claimed branch that restores files to earlier content keeps its claim, so the item still reads as held and no second session is offered it
 verify: grep -q 'def test_a_claim_on_a_branch_restoring_pre_fork_content_stays_live' subprojects/docket/tests/test_claims.py
 ---
