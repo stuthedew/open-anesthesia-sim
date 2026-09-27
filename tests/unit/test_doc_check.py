@@ -2022,6 +2022,44 @@ def test_a_tag_the_version_table_does_not_name_is_an_error(tmp_path: Path) -> No
     assert any("git holds v0.2.9, but no row of the version table" in message for message in errors)
 
 
+def test_a_stale_local_tag_names_its_own_remedy(tmp_path: Path) -> None:
+    """PL-LT77: a tag withdrawn on origin, which every clone that fetched it keeps.
+
+    `git fetch --tags` brings tags in and never takes one out, so the clone goes
+    on holding a tag the repository no longer has, and this is the error such a
+    tag reaches. It read as a fault in the repository until it named the other
+    reading. Both halves of what it names are taken - the command that tells the
+    two apart, then the repair - to show they are the whole of it.
+    """
+    origin = _tagged(tmp_path / "origin", "v0.2.4", "v0.2.5", "v0.2.9")
+    subprocess.run(("git", "branch", "-M", "main"), cwd=origin, check=True, capture_output=True)
+    clone = tmp_path / "clone"
+    subprocess.run(
+        ("git", "clone", "--quiet", origin.as_uri(), str(clone)), check=True, capture_output=True
+    )
+    subprocess.run(("git", "tag", "-d", "v0.2.9"), cwd=origin, check=True, capture_output=True)
+
+    assert _errors(clone) == [
+        "ROADMAP.md: git holds v0.2.9, but no row of the version table marks v0.2.9 completed; "
+        "a release that shipped is one this table has to name - unless `git ls-remote --tags "
+        "origin` no longer lists v0.2.9, when this clone is keeping a tag deleted on the remote "
+        "and `git tag -d v0.2.9` is the repair"
+    ]
+
+    listed = subprocess.run(
+        ("git", "ls-remote", "--tags", "origin"),
+        cwd=clone,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert "refs/tags/v0.2.4" in listed.stdout, "the remote must still answer for its other tags"
+    assert "refs/tags/v0.2.9" not in listed.stdout
+    subprocess.run(("git", "tag", "-d", "v0.2.9"), cwd=clone, check=True, capture_output=True)
+
+    assert _errors(clone) == []
+
+
 # PL-HVLJ: a tag and the working tree move independently, so a checkout that
 # fetched after a release merged holds its tag before it holds its row.
 
