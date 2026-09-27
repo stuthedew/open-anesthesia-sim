@@ -57,8 +57,11 @@ compaction the series is not monotonic and `spend` measures from the session's
 original floor rather than from the post-compaction one. That is the reading
 the budget wants, since `CLAUDE.md` now resets a session with `/compact`
 (`PL-YJG1`): what the compacted context holds above the floor it started at is
-what the next item has to fit beside. Untested, since no compaction has been
-observed in a measured session.
+what the next item has to fit beside. Observed once, on 2026-09-25 under Claude
+Code 2.1.282 (`PL-384P`): 248,803 tokens before the compaction and 95,987 on the
+first request after, 11,508 over that session's starting floor of 84,479. The
+summary a compaction leaves is a user record marked `isCompactSummary`, which
+nobody typed, so it is not counted as a turn.
 
 Per `.claude/rules/apparatus-standard.md`, an answer here has to be true or has
 to say what it could not read: records that fail to parse, and assistant
@@ -161,8 +164,13 @@ def read(text: str) -> Reading:
         message = message if isinstance(message, dict) else {}
 
         if kind == "user":
-            # A real user message starts a turn; a tool result continues one.
-            if "toolUseResult" not in row and not row.get("isMeta"):
+            # A real user message starts a turn; a tool result continues one,
+            # and a compaction's summary is neither.
+            if (
+                "toolUseResult" not in row
+                and not row.get("isMeta")
+                and not row.get("isCompactSummary")
+            ):
                 turns += 1
             continue
         if kind != "assistant":
