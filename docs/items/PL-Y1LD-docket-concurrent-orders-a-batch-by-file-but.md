@@ -3,11 +3,14 @@ id: PL-Y1LD
 title: docket concurrent orders a batch by file, but the lane mechanism separates only two sessions, so the third and fourth simultaneous session have no command that picks for them
 priority: P3
 effort: M
-status: needs-decision
+status: done
 classes: session-cost, infra
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
+touches: docs/items
 added: 2026-09-06
+closed: 2026-09-27
+pr: 1202
+verify: grep -qF 'Answered 2026-09-27: Q1 ratified' docs/items/PL-Y1LD-docket-concurrent-orders-a-batch-by-file-but.md
 ---
 
 **Problem.** docket concurrent orders a batch by file, but the lane mechanism separates only two sessions, so the third and fourth simultaneous session have no command that picks for them
@@ -125,8 +128,9 @@ works", capture by readiness). The trial has no end date to block on.
 the answer as `## Answers 2026-09-27`, sets `status: done` with
 `closed: 2026-09-27` and records its own pull request with `bin/docket record`,
 since the record is the whole deliverable, and acts on whatever `bin/docket
-set` prints about `verify:` at close. `touches:` is unchanged: nothing in
-`cli.py` moves.
+set` prints about `verify:` at close. [superseded 2026-09-27: `touches:` was re-pointed at `docs/items` at the
+close, the only tree this closure changes, so the `verify:` grep reads a
+declared path.] Nothing in `cli.py` moves.
 
 **What this settles beside it.** The coordinator's collision check stays
 `bin/docket concurrent` on each chain's next item, and `PL-4ZK8`'s
@@ -134,3 +138,17 @@ recommendation - the bare batch offers startable work only - is what makes the
 bare form pasteable on the day a hand fan-out returns. `PL-7B3G` (N startable
 gate entries that do not collide) is the same need at gate altitude and is
 sequenced behind `PL-4ZK8`, not this item.
+
+## Answers 2026-09-27
+
+**Answered 2026-09-27: Q1 ratified** (project owner, 2026-09-27, ratified,
+over building `bin/docket concurrent --pick`, the join between `next`'s
+ranking and `concurrent`'s graph). Not built. The record § "Design round
+2026-09-27: recommendations" carries is this item's second Done-when ending
+with its premise corrected: four-way work is routine under the Projects
+trial, is picked by feature under the owner's Order and dispatched one chain
+at a time, with `bin/docket concurrent` on each chain's next item as the
+collision check, so the rank-ordered join has no caller. If the trial ends
+and a session again hands out several items by hand, the need is refiled in
+the shape then observed. Closed on this record in the design round's own pull
+request, with no build thread.

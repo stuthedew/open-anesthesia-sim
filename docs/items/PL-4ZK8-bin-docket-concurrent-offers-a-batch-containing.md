@@ -141,3 +141,12 @@ the axis that remains; its re-triage belongs to whoever takes it, after this
 lands. Which copy of each item the batch reads - the working tree's, where
 `next` reads `origin/main`'s - is `PL-KS01`'s open question, and this
 recommendation takes no side on it: it fixes the population, not the copy.
+
+## Answers 2026-09-27
+
+**Answered 2026-09-27: Q1 ratified** (project owner, 2026-09-27, ratified,
+over marking `needs-decision` and in-flight items in the batch the way
+`[IN FLIGHT]` marks one). `bin/docket concurrent`'s bare batch offers only
+the population `next` ranks, and names the in-flight ids and the decisions
+beneath it, as § "Design round 2026-09-27: recommendations" specifies. The
+thread that builds it sets this item's status and `touches:`.
