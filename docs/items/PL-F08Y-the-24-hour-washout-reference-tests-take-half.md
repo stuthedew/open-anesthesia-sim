@@ -1,9 +1,17 @@
 ---
 id: PL-F08Y
 title: The 24-hour washout reference tests take half the suite's wall time: their 8 distinct 864,000-step curves are recomputed in each xdist worker that needs one, adding about 2.5 minutes to every CI checks run
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: infra, test
+feature: ci-cost
 touches: tests/reference/test_late_washout_against_published_fits.py
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1214
+payoff: every checks run and every local make check finishes about a minute and a half sooner - 262.9 s to 168.8 s cold on four cores - with the washout science tests unchanged
+verify: grep -q 'fcntl.flock(lock, fcntl.LOCK_EX)' tests/reference/test_late_washout_against_published_fits.py
 ---
 
 **Problem.** The 24-hour washout reference tests take half the suite's wall time: their 8 distinct 864,000-step curves are recomputed in each xdist worker that needs one, adding about 2.5 minutes to every CI checks run
@@ -68,3 +76,44 @@ safety standard and would be an item of its own. Recommendation: measure (1)
 first, and fall back to (2) if `loadgroup` slows the rest of the suite
 (project owner, 2026-09-27, ratified, over leading with (2), the cache that
 keeps the change inside `tests/reference/`).
+
+**Done, 2026-09-27: (2), the shared cache, because (1) slowed the rest of
+the suite.** The session fixture `washout_curve` hands each test its curve.
+The first xdist worker to need a curve computes it while holding an `flock` on
+that curve, and publishes it, pickled, into the run's own base temporary
+directory. A worker needing the same curve meanwhile waits on the lock and
+reads what was published. Without xdist, and on Windows, which has no
+`fcntl`, the per-process cache is used as before. No assertion, tolerance
+band or step changed.
+
+Measured on one 4-vCPU machine, cold, `-n 8 --cov=anesthesia_sim.core
+--cov-branch`, two runs of each at `main` plus the claim:
+
+| | Whole suite | File ignored | Curves computed |
+| --- | ---: | ---: | ---: |
+| `worksteal`, before | 264.9, 260.9 s | 150.3, 140.1 s | 18 |
+| (1) `loadgroup`, one `xdist_group` per curve | 195.9, 179.9 s | 158.3, 150.8 s | 8 |
+| (2) shared cache, `worksteal` | 167.2, 170.5 s | no code changed | 8 |
+
+- (1) computed each curve once and slowed the ungrouped tests by 8.0 and
+  10.7 s in two back-to-back pairs, which is the condition the ratified route
+  falls back on. (2) then measured 19 s faster than (1) in total as well, so
+  the fallback was taken without reopening the decision. The likely reason,
+  from the durations, is that `loadgroup` deals ungrouped tests out one at a
+  time, so a module's tests spread across all eight workers and each of its
+  per-process caches is paid on more of them (`PL-ZNPQ`).
+- (1) could only make six groups: the one test that reads a sevoflurane run
+  with the hepatic sink also reads the run without it, so those two curves
+  shared a group and ran in series on one worker. (2) has no such coupling.
+- One curve takes 17.3 s alone on one core. Each curve was computed exactly
+  once at 8 workers, at 3 (the file alone, 82.1 s) and with xdist off (the
+  file alone, 131.2 s), counted by a line each computation appended to a file
+  from a scratch copy of the module.
+- The file's cost fell from about 118 s to about 24 s, and the suite's mean
+  from 262.9 s to 168.8 s, 36%. The runs with the file ignored exercise no
+  code this change touched, so the before figures stand for after.
+- The `Makefile`, `quality.yml` and `drift.yml` pytest lines are unchanged,
+  since the scheduler is.
+- Every timing run also failed the two `--discover` tests in
+  `tests/unit/test_pr_title_check.py`, a fault of the scratch clone's
+  local-path `origin` rather than of this change (`PL-Y4NS`).
