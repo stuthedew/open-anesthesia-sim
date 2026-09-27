@@ -107,9 +107,21 @@ measured floor of 81,048-115,320 had already falsified. The net growth, 543
 characters, is the one sentence on what compaction keeps and re-attaches:
 without it the next session to read the rule re-derives the objection that
 compaction drops detail, which is the objection this edit answers. Still no
-mechanism. The `SessionStart` `compact` hook the reset seemed to need is not
-built, because Claude Code 2.1.282 clears its loaded-rule set on compaction and
-a path-scoped rule re-attaches on the next matching read.
+mechanism. The `SessionStart` `compact` hook the reset seemed to need was not
+built then, because Claude Code 2.1.282 clears its loaded-rule set on
+compaction and a path-scoped rule re-attaches on the next matching read.
+
+That reasoning was corrected on 2026-09-27 (`PL-384P`). It holds for a file
+read after compaction, but the up-to-five files compaction restores count as
+already read, so an edit to one needs no read first and can go without its
+rules. The clause saying rules re-attach was replaced by one saying to read a
+restored file again before the first edit to it. The ask now names the clock
+time an hour on, after which the summary re-reads the whole history uncached.
+Net growth: 216 characters. Both additions are needed at a moment no read
+precedes: the first edit after a compaction, and the reply asking for one. The
+hook is built now, as a line the digest prints on `compact` only. It carries
+the re-read at the moment compaction lands; the resident sentence covers a
+session where hooks do not run.
 
 The gate-scope bullet in that section was added on 2026-09-16 for the same
 reason and against a measured asymmetry. The stop-and-wait rule is stated once,

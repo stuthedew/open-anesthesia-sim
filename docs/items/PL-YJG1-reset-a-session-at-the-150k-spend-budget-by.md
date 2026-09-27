@@ -56,6 +56,14 @@ therefore not built. Re-check it if a Claude Code release changes compaction.
 An invoked skill comes back capped at 5,000 tokens, which the `docket` skill was
 already split to survive.
 
+**Corrected 2026-09-27 (`PL-384P`).** The paragraph above holds for a file read
+after compaction, and not for the up-to-five files compaction itself restores.
+Those come back through the Read tool's own call, so they count as already read
+and an edit to one needs no fresh read. On the one compaction measured, on
+2.1.282, the restored file's path-scoped rule did not come back with it. So the
+first edit after a reset could go without its rules, and the `SessionStart`
+`compact` line is built after all, in `.claude/hooks/docket-digest.sh`.
+
 **Routes weighed and not taken.**
 - **Automatic compaction** (`CLAUDE_CODE_AUTO_COMPACT_WINDOW`): it fires
   wherever the count lands, mid-item included, which is the failure `PL-NW76`

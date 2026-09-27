@@ -1,10 +1,10 @@
 """Tests for `tools/context_reading.py`, the live read of a session's own context.
 
-Five defects are pinned here, and each is one this script would otherwise have
+Six defects are pinned here, and each is one this script would otherwise have
 shipped with, because each arises from the transcript's real shape rather than
 from a hypothetical one.
 
-Three would *inflate* the reading and so would make a session hand off early,
+Four would *inflate* the reading and so would make a session hand off early,
 which is the failure with no symptom - the work simply does not get done and
 nothing says why. The harness writes one assistant record per content block and
 they all repeat the same `requestId` and the same usage, so counting records
@@ -12,7 +12,7 @@ instead of requests triples a normal turn. A subagent's records are marked
 `isSidechain`, and counting them charges this session for context that was
 never in its window - the specific thing `CLAUDE.md` recommends subagents *for*.
 A tool result arrives as a `user` record, so counting user records as turns
-reports a turn per tool call.
+reports a turn per tool call, and a compaction's summary arrives as one too.
 
 The other two are the apparatus standard's floor rather than arithmetic:
 what this prints has to be true or has to say what it could not read. A record
@@ -120,6 +120,37 @@ def test_tool_results_do_not_count_as_turns() -> None:
 
     assert reading.turns == 1
     assert len(reading.requests) == 3
+
+
+def test_a_compaction_is_read_against_the_original_floor_and_is_not_a_turn() -> None:
+    """PL-384P's measured reset: spend stays over the first floor, one turn stays one.
+
+    The series drops at a compaction, and the budget wants what the compacted
+    context holds above the floor the session started at. The summary the
+    compaction leaves is a user record nobody typed, so it starts no turn.
+    """
+    reading = context_reading.read(
+        "\n".join(
+            [
+                user(),
+                assistant("req_1", 84_479),
+                user(tool_result=True),
+                assistant("req_2", 248_803),
+                json.dumps(
+                    {
+                        "type": "user",
+                        "isCompactSummary": True,
+                        "isVisibleInTranscriptOnly": True,
+                        "message": {"content": "This session is being continued..."},
+                    }
+                ),
+                assistant("req_3", 95_987),
+            ]
+        )
+    )
+
+    assert reading.spend == 11_508
+    assert reading.turns == 1
 
 
 def test_unreadable_records_are_counted_back_not_dropped() -> None:
