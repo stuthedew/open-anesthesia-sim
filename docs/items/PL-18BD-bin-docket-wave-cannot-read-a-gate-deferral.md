@@ -1,8 +1,15 @@
 ---
 id: PL-18BD
 title: bin/docket wave cannot read a gate deferral whose holding condition has no id, so PL-B396 and the three entries it blocks, deferred to Gate 3 on 2026-09-27, still count as work Gate 2 can clear and hold the beat at clear the gate
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, planning
+touches: ROADMAP.md, docs/items/PL-B396-agent-amounts-are-displayed-in-litres-of-vapour.md, docs/items/PL-KZ99-store-each-agent-s-molar-mass-and-liquid.md, docs/items/PL-0S0V-agent-volume-display-decimals-and-the-other.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-27 on the owner's answer to its decision
 added: 2026-09-27
+payoff: bin/docket wave's Gate 2 count stops listing four entries the roadmap defers to Gate 3, so the gate reads clear when the work it can clear is done, with no hand subtraction from prose
+verify: grep -qF 'blocked-by: PL-YRLM' docs/items/PL-B396-*.md
 ---
 
 **Problem.** bin/docket wave cannot read a gate deferral whose holding condition has no id, so PL-B396 and the three entries it blocks, deferred to Gate 3 on 2026-09-27, still count as work Gate 2 can clear and hold the beat at clear the gate
@@ -84,3 +91,24 @@ is the general fix, and is worth its M change only if deferrals whose
 condition has no id keep arriving: this is the second in two gates, and the
 first was answered by filing its condition as items. Option 3 is the second
 copy option 2 avoids, and option 4 keeps the hand subtraction.
+
+**Answered 2026-09-27: option 1, the holding item** (project owner, ratified,
+over teaching `wave` to read the deferral group, a `deferred-to:` field, and
+leaving `wave` as it is). The holding item is `PL-YRLM`, which takes over the
+question of which release builds planned-milestone item 28, carrying
+`deferred-from: v0.6.0` because it was captured after Gate 2 froze.
+
+**Generator check.** The misread fact is that a condition on an unscheduled
+planned-milestone item has no id a `blocked-by` can hold, so every reader of
+`blocked-by` takes the waiting item as unblocked. `PL-0H5D` answered it for
+`PL-WZVZ` on 2026-09-21 by filing the condition as items, and this is the same
+mechanism at a sibling site within 30 days, answered the same way: a re-entry of
+`PL-0H5D`, whose survey counted one known case where `PL-B396`'s brief already
+recorded a second. No head's `misread:` states the fact (`bin/docket generators
+--misread`, read 2026-09-27), and two sites is short of a generator.
+
+**Done when.** `PL-B396` is `blocked` on `PL-YRLM`, and its brief says the
+question moved there; `bin/docket wave` counts `PL-B396`, `PL-0S0V`, `PL-VJZK`
+and `PL-KZ99` among the Gate 2 entries waiting outside the list rather than
+among those it can clear; and the v0.6.0 gate section's "What reads this, and
+what reads past it" paragraph says the two readings agree for all five.
