@@ -1,11 +1,11 @@
 """Tests for `.claude/hooks/push-check-guard.sh`, the checks run before a push (`PL-PLSJ`).
 
-The hook runs `tools/doc_check.py` and `tools/branch_id_check.py` from the tree
-a `git push` sends, and denies the push while either fails. Each test builds a
-scratch repository whose two scripts are stubs printing a known report, and
-points `CLAUDE_PROJECT_DIR` at it, so what is pinned is the hook's own rule:
-which commands are pushes, which tree is checked, what a refusal shows, and
-that every error path lets the push through.
+The hook runs `tools/doc_check.py`, `tools/branch_id_check.py` and `bin/docket
+check --verify` (`PL-S1BG`) from the tree a `git push` sends, and denies the
+push while any fails. Each test builds a scratch repository whose three scripts
+are stubs printing a known report, and points `CLAUDE_PROJECT_DIR` at it, so
+what is pinned is the hook's own rule: which commands are pushes, which tree is
+checked, what a refusal shows, and that every error path lets the push through.
 """
 
 from __future__ import annotations
@@ -40,6 +40,22 @@ BRANCH_FAILS = (
     " file=sys.stderr)\n"
     "sys.exit(1)"
 )
+# `bin/docket` is a bash wrapper, so its stubs are bash.
+STORE_PASS = 'echo "docket: 1 open, 0 errors, 0 advisories"'
+STORE_ERROR = "PL-K7QX is open but its `verify:` command already passes (1 of 1 checked)"
+STORE_FAILS = (
+    "cat <<'EOF'\n"
+    "docket: 1 open, 1 errors, 1 advisories\n"
+    "  verify: a cost line nobody needs at push time\n"
+    "\n"
+    "Errors (the store is wrong; fix before committing):\n"
+    f"  {STORE_ERROR}\n"
+    "\n"
+    "Grooming advisories (judgment needed; nothing is failing):\n"
+    "  a grooming advisory nobody needs at push time\n"
+    "EOF\n"
+    "exit 1"
+)
 
 
 def _git(where: Path, *args: str) -> None:
@@ -50,10 +66,12 @@ def _git(where: Path, *args: str) -> None:
     )
 
 
-def _stub(tree: Path, doc: str = PASS, branch: str = PASS) -> None:
+def _stub(tree: Path, doc: str = PASS, branch: str = PASS, store: str = STORE_PASS) -> None:
     (tree / "tools").mkdir(exist_ok=True)
     (tree / "tools" / "doc_check.py").write_text(doc + "\n")
     (tree / "tools" / "branch_id_check.py").write_text(branch + "\n")
+    (tree / "bin").mkdir(exist_ok=True)
+    (tree / "bin" / "docket").write_text(store + "\n")
 
 
 @pytest.fixture
@@ -106,7 +124,23 @@ def test_a_push_whose_branch_id_check_fails_is_refused(project: Path) -> None:
     assert "doc_check" not in reason
 
 
-def test_a_push_both_checks_pass_goes_through(project: Path) -> None:
+def test_a_push_whose_store_check_fails_is_refused(project: Path) -> None:
+    _stub(project, store=STORE_FAILS)
+    decision = _decision("git push", cwd=project, project=project)
+    assert decision is not None
+    reason = decision["permissionDecisionReason"]
+    # The re-run is `make check`'s own store check, reading the base without a fetch.
+    assert (
+        "`docket check` failed "
+        "(`bin/docket check --verify --verify-base origin/main --no-fetch` re-runs it)"
+    ) in reason
+    assert STORE_ERROR in reason
+    assert "a cost line nobody needs at push time" not in reason
+    assert "a grooming advisory nobody needs at push time" not in reason
+    assert "doc_check" not in reason
+
+
+def test_a_push_every_check_passes_goes_through(project: Path) -> None:
     assert _decision("git push -u origin claude/x", cwd=project, project=project) is None
 
 

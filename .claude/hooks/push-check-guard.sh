@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
 # PreToolUse hook on Bash: before a `git push` sends this repository's tree,
-# run the two checks that most often turn a pull request red on something
-# `make check` already refuses locally, and deny the push while either fails
-# (`PL-PLSJ`).
+# run the three checks that most often turn a pull request red on something
+# `make check` already refuses locally, and deny the push while any fails
+# (`PL-PLSJ`, `PL-S1BG`).
 #
-# **Why these two and why here.** `PL-JYJJ`'s census counted 391 red runs; 32
+# **Why these three and why here.** `PL-JYJJ`'s census counted 391 red runs; 32
 # were `doc_check` and 8 `branch_id_check`, rising week on week, and every one
 # in a 15-log sample was the branch's own text - an item quoting `start.md` by
-# bare name, a path that does not exist, a branch no item id names. `make check`
-# refuses all of them, so each went out without it, most often on the capture
-# path, which is kept cheap on purpose. The two checks take about 11 s together
-# and cost no tokens; a red run costs a session a fix cycle. The other half of
-# those red runs is a store rule tripped by `main`, which no local check can
-# see, and is `PL-PLSJ`'s second mechanism rather than this hook's.
+# bare name, a path that does not exist, a branch no item id names. `PL-1BGP`
+# then sorted its 43 store-rule runs: 40 were the branch's own, and `make
+# check`'s `bin/docket check --verify --verify-base origin/main` refuses all 40.
+# So each went out without `make check`, most often on the capture path, which
+# is kept cheap on purpose. Run side by side the three take about as long as
+# `doc_check` alone, 11 s, and cost no tokens; a red run costs a session a fix
+# cycle. The store check reads `origin/main` as of the last fetch and never
+# fetches, so a push never waits on the network. The other 2 of those 43 runs
+# were `main`'s, on one day and from one cause `tools/pr_record_check.py` has
+# refused since; on such a day this refuses a push the branch did not cause,
+# naming the item on `main` that is wrong.
 #
 # **What counts as a push**: a git call whose command, after git's own options,
 # is `push`, read through `shell_split.commands` as the three sibling guards
@@ -27,8 +32,8 @@
 # before the push and by the push's `-C` options - and only where git's common
 # directory there is this project's, so a linked worktree is checked and
 # another repository is not. Like `make check`, the checks read the working
-# tree, so an uncommitted edit counts. Each runs from that tree's own `tools/`,
-# and a tree without one is not checked.
+# tree, so an uncommitted edit counts. Each runs from that tree's own copy of
+# its script, and is skipped in a tree without one.
 #
 # **Known gaps**, each costing a push CI would then catch, never a false
 # refusal of a clean tree: in `git commit ... && git push` the hook runs before
@@ -74,9 +79,12 @@ TAKES_A_WORD = frozenset(
 PUSH_VALUED = frozenset(("--repo", "--recurse-submodules", "--receive-pack", "--exec", "--push-option"))
 SENDS_NOTHING = frozenset(("--delete", "--dry-run", "--no-verify"))
 EXPANDS = re.compile(r"[$`{]")
+# Each check as a session types it to re-run it: `python3` runs as this
+# interpreter, and `bin/docket`, a bash wrapper, runs under bash.
 CHECKS = (
-    ("doc_check", ("tools/doc_check.py", "check")),
-    ("branch_id_check", ("tools/branch_id_check.py",)),
+    ("doc_check", ("python3", "tools/doc_check.py", "check")),
+    ("branch_id_check", ("python3", "tools/branch_id_check.py")),
+    ("docket check", ("bin/docket", "check", "--verify", "--verify-base", "origin/main", "--no-fetch")),
 )
 DEADLINE = 100
 SHOWN = 40
@@ -170,7 +178,7 @@ def excerpt(text):
         report = report[:1] + [""] + report[errors[0] :]
     lines = []
     for line in report:
-        if line.startswith(("Advisories (", "Not checked (")):
+        if line.startswith(("Advisories (", "Grooming advisories (", "Not checked (")):
             break
         lines.append(line)
     while lines and not lines[-1].strip():
@@ -204,9 +212,14 @@ for target in targets:
 running = []
 for top in trees:
     for name, argv in CHECKS:
-        if os.path.isfile(os.path.join(top, argv[0])):
+        python = argv[0] == "python3"
+        if os.path.isfile(os.path.join(top, argv[1] if python else argv[0])):
             process = subprocess.Popen(
-                [sys.executable, *argv], cwd=top, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                [sys.executable, *argv[1:]] if python else ["bash", *argv],
+                cwd=top,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
             )
             running.append((name, argv, process))
 
@@ -219,7 +232,7 @@ for name, argv, process in running:
         process.kill()
         continue
     if process.returncode == 1 and "Traceback (most recent call last)" not in err:
-        rerun = " ".join(("python3",) + argv)
+        rerun = " ".join(argv)
         report = "\n".join(part for part in (out.rstrip(), err.rstrip()) if part)
         refusals.append(f"`{name}` failed (`{rerun}` re-runs it):\n\n{excerpt(report)}")
 if not refusals:
@@ -228,7 +241,7 @@ if not refusals:
 reason = (
     "This push is refused until the tree it sends passes the checks CI runs on "
     "every pull request, since each would turn the pull request red and cost a "
-    "fix cycle there (`PL-PLSJ`).\n\n"
+    "fix cycle there (`PL-PLSJ`, `PL-S1BG`).\n\n"
     + "\n\n".join(refusals)
     + "\n\nFix what it names, commit, and push again. A work-in-progress push to "
     "a branch with no pull request open runs no CI, and only that push may go "
