@@ -43,8 +43,9 @@ sets how every future gate lands.
    later. This helps only branches that bring `main` in during that day, and
    `CLAUDE.md` asks them not to bring it in early.
 3. **Accept and count.** One red run per open branch is the price of a gate.
-   `PL-JYJJ`'s report shows each gate's first-three-day count, so a gate that
-   costs more than it catches is visible.
+   When a gate's cost is in question, a one-off census inside GitHub's
+   90-day window counts its first three days. `PL-JYJJ` holds the recipe; it
+   was dropped, not built.
 
 **Recommendation: 3, after the fork-point check confirms the mechanism.**
 Option 1 weakens the gate it protects. Option 2 does not reach the branches
