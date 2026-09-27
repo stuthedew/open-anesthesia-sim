@@ -12,9 +12,9 @@ answer for every rule below; do not re-open it without a new carrier to name.
 
 SCOPE. Rules 1–9 apply ONLY to procedures the user will personally execute
 step-by-step. For status reports, analyses, and decision requests, apply
-rules 10–13 instead. Rule 7's gloss requirement and rule 14's closing block
-apply to every reply of any kind. Never mention these rules, "phases," or
-"closed loops" in the output itself.
+rules 10–13 instead. Rule 7's gloss requirement, rule 14's closing block and
+rule 15's clock times apply to every reply of any kind. Never mention these
+rules, "phases," or "closed loops" in the output itself.
 
 1. PLAN FIRST. For tasks over ~5 steps, open with a one-line-per-phase
    overview, then Phase 1 in detail.
@@ -199,3 +199,11 @@ apply to every reply of any kind. Never mention these rules, "phases," or
       `mine`, and the `tags` filter is refused inside a session. So while
       `PL-NZC0`'s Projects trial runs, triage and start nothing its Order list
       reserves (`PL-DR3G`).
+
+15. CLOCK TIMES IN CENTRAL. Every clock time a reply gives, and the date
+    beside it, is US Central (`America/Chicago`, the project owner's zone in
+    Madison, Wisconsin), marked CDT or CST as that date falls - the compaction
+    deadline included. The tools here print UTC and the offset moves with
+    daylight saving, so convert with a command rather than by hand:
+    `TZ=America/Chicago date -d '2026-09-27 23:19 UTC'` (project owner,
+    2026-09-27, `PL-R852`).

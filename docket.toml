@@ -468,14 +468,17 @@ workflow_paths = [
 # owner, 2026-09-27, ratified, over recording the simulator's side as per-path
 # pinning tests in `tests/unit/test_workflow_paths_check.py`).
 #
-# Not a package setting. `Item.lane` reads `workflow_paths` alone and places
-# every other path on the product side, and that does not change: docket never
-# reads this list, and `docket.config.load` passes over it. It is read by
-# `tools/workflow_paths_check.py`, which refuses a tracked path outside
+# Not what the lanes read. `Item.lane` reads `workflow_paths` alone and places
+# every other path on the product side, and that does not change. This list is
+# read by `tools/workflow_paths_check.py`, which refuses a tracked path outside
 # `tests/` that is under neither list, naming both lines that would place it,
 # since which list is the author's judgment and the tool decides only that
 # nobody has made it. The same run refuses an entry both lists cover and an
-# entry no tracked file is under. `tests/` is in neither list on purpose: a
+# entry no tracked file is under. And `bin/docket trend` reads it, through
+# `docket.config.load`, to count churn in a path under neither list as
+# unplaced rather than as product prose: the check keeps every tracked path out
+# of that column, so what reaches it is history the check cannot see, files
+# since deleted that nobody placed. `tests/` is in neither list on purpose: a
 # test file's side is what it imports, and a support module's is the entry
 # `workflow_paths` gives it or else the simulator's (`PL-JBZK`, `PL-12P8`).
 #

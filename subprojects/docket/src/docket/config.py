@@ -294,6 +294,19 @@ class Config:
     #: Unlike `workflow_paths` this fails *open*: with nothing declared, every
     #: product path is prose, which understates code and never invents it.
     code_paths: tuple[str, ...] = ("src", "tests")
+    #: Paths holding the product's side of the boundary `workflow_paths`
+    #: draws, declared rather than left as whatever that list omits. `docket
+    #: trend` reads it so a changed path under neither list is counted as
+    #: nobody's rather than as product prose: an apparatus file nobody listed
+    #: once read as simulator work there and in the lanes alike (`PL-8ZGY`).
+    #: `Item.lane` does not read it, and a lane still puts every path
+    #: `workflow_paths` omits on the product side.
+    #:
+    #: Empty by default, and `trend` then keeps that same default. A project
+    #: that has not said where its product is has not said what is unplaced
+    #: either, and setting every such path aside would empty the product
+    #: columns rather than correct them.
+    product_paths: tuple[str, ...] = ()
     #: A running cross-session notes file whose `##` sections are threads, if
     #: the project keeps one. `docket show` names the threads concerning the
     #: item being shown, which is the only thing that makes such a file
@@ -439,6 +452,7 @@ def load(root: Path) -> Config:
             section.get("newest_pull_request_command", defaults.newest_pull_request_command)
         ),
         code_paths=_tuple(section.get("code_paths"), defaults.code_paths),
+        product_paths=_tuple(section.get("product_paths"), defaults.product_paths),
         notes_file=str(section.get("notes_file", defaults.notes_file)),
         version_file=str(section.get("version_file", defaults.version_file)),
         roadmap_file=str(section.get("roadmap_file", defaults.roadmap_file)),

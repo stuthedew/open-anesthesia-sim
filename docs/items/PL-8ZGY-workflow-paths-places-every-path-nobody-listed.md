@@ -3,12 +3,14 @@ id: PL-8ZGY
 title: workflow_paths places every path nobody listed on the simulator's side and nothing reports a tracked one, so apparatus files cross the lane boundary unnoticed - 22 items declare docs/resident-instructions.md beside apparatus alone
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
-touches: docket.toml, tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_trend.py, subprojects/docket/src/docket/config.py, docs/ARCHITECTURE.md, docs/items/PL-21RC-docs-maintainer-md-is-apparatus-in-docket-toml.md
+touches: docket.toml, tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_trend.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, docs/ARCHITECTURE.md, docs/items/PL-21RC-docs-maintainer-md-is-apparatus-in-docket-toml.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1218
 payoff: an apparatus item stops being held out of its lane by a file nobody thought to list, and a new file's side becomes a decision made once
 not-delegable: the fix starts with a decision per unplaced path and a choice of which carrier is the source of truth, so no command can prove it before that design round
 root-cause-of: PL-JBZK, PL-GVNS, PL-12P8, PL-W40L
@@ -287,3 +289,13 @@ both sides' share, as `Period.closed` keeps `crossing` items out of both.
 Tests in `subprojects/docket/tests/test_trend.py`, and `docket.toml`'s
 `product_paths` comment stops saying docket does not read it. `generator:` now
 reads spent: the placement rule closed what handed this head members.
+
+**Built 2026-09-27** (`claude/pl-8zgy-trend-unplaced`), as decided above, with
+two choices the decision left open. The unplaced lines are a `+u` column inside
+the churn columns, drawn only where `product_paths` is declared, and where it is
+not the key says the product side is every path outside `workflow_paths`: a
+product column silently counting paths nobody placed is the misread recorded
+here. On this repository the column reads the 7,209 lines measured above, in
+three periods, and each period's share now leaves them out.
+`subprojects/docket/src/docket/render.py` and `subprojects/docket/README.md`
+joined `touches`.
