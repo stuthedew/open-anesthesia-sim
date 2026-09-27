@@ -42,6 +42,8 @@ from .model import (
     is_generator,
     live_recurrences,
     misread_faults,
+    ranks_as_generator,
+    ranks_as_generator_defect,
     recurrence_faults,
     root_cause_faults,
     split_deferred_from,
@@ -2392,6 +2394,61 @@ def _check_generator_defects(report: Report, config: Config) -> None:
         )
 
 
+#: The bands an item on the generator tier may be stored at (`PL-06JJ`).
+TIER_BANDS = ("P0", "P1")
+
+
+def tier_entrances(
+    item: Item, known: set[str], generator_paths: tuple[str, ...]
+) -> tuple[str, ...]:
+    """How this item's own claim puts it on the generator tier - by neither, one or both.
+
+    The predicates `plan.py` ranks by, so the pin below and the rank it mirrors
+    cannot come to different answers, and `docket set` asks this too before it
+    raises a band. Each already leaves out a closed item, a spent head and an
+    unsound claim. Only the item's own claim: a blocker lent the rank by a
+    blocked head is `_outranks_its_blocker`'s to raise, along the same edge.
+    """
+    entrances: list[str] = []
+    if ranks_as_generator(item, known):
+        entrances.append("a head whose `generator:` is live")
+    if ranks_as_generator_defect(item, generator_paths):
+        entrances.append("a sound `impairs-generators:` claim")
+    return tuple(entrances)
+
+
+def _check_generator_band(report: Report, config: Config) -> None:
+    """Hold an item on the generator tier to a stored band of `P0` or `P1`.
+
+    `docket next` ranks a live head or a sound machinery defect above every
+    band but `P0`, whatever its `priority:` says, so the band moves nothing in
+    the order - and every reader of the field that does not rank is told the
+    item is ordinary work. The queue dashboard is one: the owner saw the last
+    live head there at `P2` while `next` offered it above every `P1`, and asked
+    for generators to be `P1` automatically (project owner, 2026-09-27,
+    `PL-06JJ`). So the band is pinned where the rank already is, as `safety` and
+    `science` are pinned in `_check_item`, and `docket set` raises it on the
+    write that puts an item here, so the rule costs no second command.
+
+    Both entrances, because the owner's 2026-09-19 rule gives a machinery
+    defect "the same priority as a generator". A head that turns spent while
+    open keeps whatever band it has; lowering it is a person's call.
+    """
+    known = {item.identifier for item in report.items if item.identifier}
+    for item in report.items:
+        if item.priority not in PRIORITIES or item.priority in TIER_BANDS:
+            continue
+        entrances = tier_entrances(item, known, config.generator_paths)
+        if not entrances:
+            continue
+        report.errors.append(
+            f"{_where(item)}: sits at {item.priority} on the generator tier, as "
+            f"{' and '.join(entrances)}; `docket next` ranks it above every band but P0, "
+            f"so the band is pinned at P0 or P1 for any reader of the stored field - "
+            f"`docket set {item.identifier} --priority P1 --overwrite` raises it"
+        )
+
+
 def _declared_item_file(entry: str, items_dir: str) -> tuple[str, str] | None:
     """The (id, filename) a `touches` entry names inside the store, or `None`.
 
@@ -3659,6 +3716,11 @@ def _groom(
     if not top:
         return
     band = top[0].priority
+    # The generator tier's items are pinned in the band too (`PL-06JJ`), so
+    # neither remedy below may prescribe demoting one: that is the action
+    # `PL-CW14` stopped these advisories prescribing for a `safety` item.
+    known = {item.identifier for item in report.items if item.identifier}
+    on_tier = {i.identifier for i in top if tier_entrances(i, known, config.generator_paths)}
     # Blocked items sit in the band and cannot answer "what next": a session
     # cannot start one, and the limit is about how many choices it must weigh at
     # a glance. Counting them also made the advisory reachable without anyone
@@ -3681,14 +3743,21 @@ def _groom(
         # to twenty safety items is a real problem a session should be told
         # about. The count stands; only the remedy is narrowed to what is
         # available.
-        pinned = [i for i in startable if set(i.classes) & set(config.safety_classes)]
+        pinned = [
+            i
+            for i in startable
+            if set(i.classes) & set(config.safety_classes) or i.identifier in on_tier
+        ]
+        tier = any(i.identifier in on_tier for i in startable)
+        pinned_by = f"a {' or '.join(config.safety_classes)} class" + (
+            " or the generator tier" if tier else ""
+        )
         demotable = len(startable) - len(pinned)
         if demotable:
             one = demotable == 1
             remedy = (
-                f"{len(pinned)} are pinned there by a {' or '.join(config.safety_classes)} "
-                f"class, {demotable} {'is' if one else 'are'} demotable; demote what is not "
-                "genuinely next"
+                f"{len(pinned)} are pinned there by {pinned_by}, {demotable} "
+                f"{'is' if one else 'are'} demotable; demote what is not genuinely next"
             )
         else:
             # Nothing is demotable, so say what the number means instead of
@@ -3696,10 +3765,9 @@ def _groom(
             # class-pinned is large because that much safety work is open,
             # which is the debt gate's own signal and reads as one.
             remedy = (
-                f"all {len(startable)} are pinned there by a "
-                f"{' or '.join(config.safety_classes)} class, so the band is large because "
-                "that much safety-critical work is open rather than because anything is "
-                "over-prioritized"
+                f"all {len(startable)} are pinned there by {pinned_by}, so the band is "
+                f"large because that much safety-critical{' and generator' if tier else ''} "
+                "work is open rather than because anything is over-prioritized"
             )
         report.advisories.append(
             f"{band}: {len(startable)} startable items{note}, past the "
@@ -3711,8 +3779,13 @@ def _groom(
             f"{band}: {len(undecided)} of {len(top)} items are needs-decision; "
             "schedule the decisions, they are the work"
         )
-    process = [i for i in top if i.classes and all(c in config.process_classes for c in i.classes)]
-    if process and len(process) > len(top) - len(process):
+    # Weighed among what the band holds by choice: a tier item is neither the
+    # process work promoted nor the product work it is weighed against.
+    chosen = [i for i in top if i.identifier not in on_tier]
+    process = [
+        i for i in chosen if i.classes and all(c in config.process_classes for c in i.classes)
+    ]
+    if process and len(process) > len(chosen) - len(process):
         report.advisories.append(
             f"{band}: process work ({', '.join(i.identifier for i in process)}) outnumbers "
             "the product work beside it; demote it, the product's correctness ranks above "
@@ -3927,6 +4000,7 @@ def analyze(
     _check_references(report, milestones)
     _check_gate_dispositions(report, settings, milestones)
     _check_generator_defects(report, settings)
+    _check_generator_band(report, settings)
     _check_feature_spellings(report)
     _check_shared_verify(report)
     _check_touched_items(report, settings)
