@@ -8352,24 +8352,60 @@ past it is refused rather than taken. "Supported run length" argues the number
 and gives the measured extent of sevoflurane's metabolism; a longer run is not
 merely unvalidated but increasingly a display of what this model leaves out.
 
-**The fat group is perfused about twice as fast as the reachable resting
-measurement, and that acts on the shape of a curve.** The fat flow fraction is
-tier 3 like every other parameter in the reference patient, and
-`reference_adult.json` now carries the comparison: Heinonen et al.'s positron-
-emission-tomography measurement of resting subcutaneous adipose perfusion in
-healthy young women is close to half what this model's stored fraction
-implies, with the file's note giving both figures and the volume-to-mass
-conversion between them. The fat group's time constant is proportional to its
-volume and partition coefficient and inversely proportional to its flow, so
-halving the flow would roughly double that constant. Both values are long
-against any simulated case, so the fat compartment stays far from equilibrium
-either way and no displayed curve reaches a wrong endpoint; what moves is how
-much agent fat has taken up by the end of a case, and therefore the slow tail
-of washout, by something close to a factor of two. A learner reading the fat
-trace as a physiologic prediction rather than as this parameter set's
-behaviour would over-estimate fat loading. The measurement does not settle it
-— one depot in six subjects against a whole-body lumped compartment — which is
-why nothing was changed and the gap is recorded instead.
+**The fat group's flow is twice a resting depot measurement and where human
+washout fits put it, and the two human sources do not agree about which way
+the fat trace errs** (`PL-HBH2`). The fat flow fraction is tier 3 like every
+other parameter in the reference patient, and `reference_adult.json` carries
+both comparisons. Heinonen et al.'s positron-emission-tomography measurement
+of resting subcutaneous adipose perfusion in the thigh of six healthy young
+women is close to half what the stored fraction implies, with the file's note
+giving both figures and the volume-to-mass conversion between them. Both
+Yasuda 1991 papers this model is validated against fit a five-compartment
+mammillary model to each volunteer's data, read the slowest compartment as
+fat, and estimate its blood flow as that compartment's tissue/blood partition
+coefficient times its fitted rate constant (*Anesth Analg* p. 319): 2.4 ± 0.6
+and 2.2 ± 0.5 mL per 100 mL of tissue per minute for sevoflurane and
+isoflurane (Table 5, p. 322), and 2.1 ± 0.4 and 2.2 ± 0.2 for desflurane and
+isoflurane (Table 5, p. 496), mean ± SD, at the fat:blood coefficients of
+Yasuda, Targ and Eger 1989. The stored fraction implies 2.07 — 0.06 of the
+5.0 L/min default cardiac output into 14.5 L — and the comparison rests on no
+fitted volume: flow per unit of tissue is the partition coefficient over the
+time constant, so at this model's own stored fat solubilities (fat:gas over
+blood:gas, 52 for sevoflurane, 54 for isoflurane and 31 for desflurane) the
+fitted fat-group time constants of 2,120, 2,130, 1,340 and 2,090 minutes
+(Table 4 of each) give 2.5, 2.5, 2.3 and 2.6. That is the fact the
+intertissue-diffusion note below tabulates from the other side: this model's
+fat time constant is within one standard deviation of the fitted fat group's
+in three cohorts, and a little longer than it in all four. Read as evidence
+about the fat group's flow, the PET measurement puts the stored figure at
+about twice the truth, and the washout fits put it at or a little below.
+<!-- derived: 2.07 from data/patients/reference_adult.json tissue_groups.fat.perfusion_fraction = 0.06, default_cardiac_output_l_min = 5.0, tissue_groups.fat.volume_l = 14.5 -->
+<!-- derived: 52 for sevoflurane from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34.0, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 54 for isoflurane from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70.0, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 31 for desflurane from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13.0, blood_gas_partition_coefficient = 0.42 -->
+
+Neither settles it, and for different reasons. The PET figure is one depot in
+one small cohort, awake and at rest, against a whole-body lumped compartment
+in which depot-to-depot differences are real (the Frayn and Karpe entry in the
+same file). The fitted compartment is an assignment rather than an anatomy —
+what a fit establishes is a time constant, as the caution below says — its
+fitted volume is a third to two fifths of the fat this model stores, the
+analysis "only accounts for about 25 L of the body volume" (*Anesth Analg*
+p. 323), the same paper's flow estimates ran too small for the vessel-rich
+group and too large for muscle against known values (p. 323), the volunteers
+breathed nitrous oxide throughout, and the terminal time constant was fitted
+over days on which they had left the hospital and exceeded basal activity
+between samples (p. 319). What both support is this much: the fat group's
+time constant is long against any simulated case either way, so the fat
+compartment stays far from equilibrium and no displayed curve reaches a wrong
+endpoint; what moves with the flow is how much agent fat has taken up by the
+end of a case, and therefore the slow tail of washout, by up to something
+close to a factor of two. A learner reading the fat trace as a physiologic
+prediction rather than as this parameter set's behaviour should read its fat
+loading as uncertain by about that much with the direction unsettled — not as
+an over-estimate, which is what this paragraph said while it weighed the PET
+measurement alone. The measurement is not adopted, nothing was changed, and
+the gap is recorded instead.
 
 **Fat fills here only through its own blood supply, and human washout finds a
 second, faster fat-like store this model does not have** (`PL-WMCJ`). Every
@@ -8488,9 +8524,11 @@ assumptions". They add that compartment parameters related to cardiac output
 and demographics in no straightforward way, so that correlating them with
 tissue volumes and blood flows "should be done with care, if at all"
 (*Modern Anesthetics*, pp. 165–66). The second caution is that the
-fat-perfusion note above acts the other way on how much agent fat holds.
-Nothing here measures whether the two cancel, and neither may be read as
-correcting the other.
+fat-perfusion note above leaves the direction of the fat group's own error
+unsettled: on its PET reading the fat group already holds too much, which acts
+the other way from this omission, and on its washout reading it holds about
+what the fitted fat group would. Nothing here measures whether the two cancel,
+and neither may be read as correcting the other.
 
 **Nothing in `ROADMAP.md` plans a fourth tissue compartment, and the one paper
 here that approximated the route warns against the shortcut.** Allott et al.
