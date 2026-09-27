@@ -122,6 +122,9 @@ STATE_SIZE = 9
 TISSUE_GROUP_COUNT = 3
 """Vessel-rich, muscle and fat: the three groups `patient.py` builds."""
 
+SECONDS_PER_MINUTE = 60.0
+"""Turns a flow held in litres per minute into the litres per second it is read in."""
+
 CARDIAC_OUTPUT_TOLERANCE_L_S = 1e-12
 CARDIAC_OUTPUT_RELATIVE_TOLERANCE = 1e-9
 """How far the tissue flows may sum away from cardiac output.
@@ -204,6 +207,9 @@ def require_canonical_state(state: object) -> None:
 class TissueGroupEquationSettings:
     """One tissue group's parameters, as its balance equation needs them.
 
+    The blood flow is held in litres per minute and read in litres per second,
+    for the reason `UptakeEquationSettings` gives for its own flows.
+
     Raises:
         SimulationConfigurationError: any value is outside its domain - the
             volume and the partition coefficient must be positive and finite,
@@ -214,16 +220,22 @@ class TissueGroupEquationSettings:
 
     name: str
     volume_l: float
-    blood_flow_l_s: float
+    blood_flow_l_min: float
     tissue_blood_partition_coefficient: float
 
     def __post_init__(self) -> None:
         require_positive_finite(f"{self.name} volume_l", self.volume_l)
-        require_nonnegative_finite(f"{self.name} blood_flow_l_s", self.blood_flow_l_s)
+        require_nonnegative_finite(f"{self.name} blood_flow_l_min", self.blood_flow_l_min)
         require_positive_finite(
             f"{self.name} tissue_blood_partition_coefficient",
             self.tissue_blood_partition_coefficient,
         )
+
+    @property
+    def blood_flow_l_s(self) -> float:
+        """Return $`Q_i`$ in litres per second, the unit its balance equation is written in."""
+
+        return self.blood_flow_l_min / SECONDS_PER_MINUTE
 
     @property
     def washin_rate_s(self) -> float:
@@ -250,9 +262,16 @@ class UptakeEquationSettings:
     must not. Deriving the key from the same object the matrix is built from is
     what makes a stale propagator unrepresentable rather than merely unlikely.
 
-    Flows are per second, as `docs/MODEL.md` § "Governing equations" requires,
-    and the conversion from the user-facing litres per minute happens once
-    where this is constructed rather than inside an equation.
+    **Flows are held in the litres per minute they were set to, and read in
+    litres per second.** `docs/MODEL.md` § "Governing equations" writes every
+    flow term per second, so each flow has a per-second property and
+    `build_system_matrix` reads only those, which keeps the conversion out of
+    every equation. The value as set is what is stored because this object is
+    also what a run records, one per stretch (`core/run_definition.py`), and
+    the conversion does not run backwards: a cardiac output of 1.9 L/min,
+    divided by sixty and multiplied back, is 1.8999999999999997, and settings
+    rebuilt from that differ in all three tissue flows (`PL-SM5V`).
+    `docs/MODEL.md` § "Time" states which of the two is the record.
 
     Raises:
         SimulationConfigurationError: a volume or the blood:gas partition
@@ -265,9 +284,9 @@ class UptakeEquationSettings:
     circuit_volume_l: float
     alveolar_volume_l: float
     venous_volume_l: float
-    fresh_gas_flow_l_s: float
-    alveolar_ventilation_l_s: float
-    cardiac_output_l_s: float
+    fresh_gas_flow_l_min: float
+    alveolar_ventilation_l_min: float
+    cardiac_output_l_min: float
     blood_gas_partition_coefficient: float
     delivered_partial_pressure_fraction: float
     tissues: tuple[TissueGroupEquationSettings, ...]
@@ -276,9 +295,9 @@ class UptakeEquationSettings:
         require_positive_finite("circuit_volume_l", self.circuit_volume_l)
         require_positive_finite("alveolar_volume_l", self.alveolar_volume_l)
         require_positive_finite("venous_volume_l", self.venous_volume_l)
-        require_nonnegative_finite("fresh_gas_flow_l_s", self.fresh_gas_flow_l_s)
-        require_nonnegative_finite("alveolar_ventilation_l_s", self.alveolar_ventilation_l_s)
-        require_nonnegative_finite("cardiac_output_l_s", self.cardiac_output_l_s)
+        require_nonnegative_finite("fresh_gas_flow_l_min", self.fresh_gas_flow_l_min)
+        require_nonnegative_finite("alveolar_ventilation_l_min", self.alveolar_ventilation_l_min)
+        require_nonnegative_finite("cardiac_output_l_min", self.cardiac_output_l_min)
         require_positive_finite(
             "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
         )
@@ -303,6 +322,24 @@ class UptakeEquationSettings:
                 f"but cardiac output is {self.cardiac_output_l_s} L/s; the venous balance "
                 "returns what the tissues receive, so the two must agree"
             )
+
+    @property
+    def fresh_gas_flow_l_s(self) -> float:
+        """Return $`\\dot V_F`$ in litres per second, as the circuit balance reads it."""
+
+        return self.fresh_gas_flow_l_min / SECONDS_PER_MINUTE
+
+    @property
+    def alveolar_ventilation_l_s(self) -> float:
+        """Return $`\\dot V_A`$ in litres per second, as the gas-phase balances read it."""
+
+        return self.alveolar_ventilation_l_min / SECONDS_PER_MINUTE
+
+    @property
+    def cardiac_output_l_s(self) -> float:
+        """Return $`Q`$ in litres per second, as the alveolar and venous balances read it."""
+
+        return self.cardiac_output_l_min / SECONDS_PER_MINUTE
 
 
 def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:

@@ -23,6 +23,7 @@ from anesthesia_sim.core.governing_equations import (
     EXHAUSTED_AGENT_L,
     FIRST_TISSUE_FRACTION,
     INSPIRED_FRACTION,
+    SECONDS_PER_MINUTE,
     STATE_SIZE,
     TISSUE_GROUP_COUNT,
     UNIT_STATE,
@@ -38,20 +39,23 @@ from anesthesia_sim.core.governing_equations import (
 CIRCUIT_VOLUME_L = 6.0
 ALVEOLAR_VOLUME_L = 2.5
 VENOUS_VOLUME_L = 3.5
-FRESH_GAS_FLOW_L_S = 0.07
-ALVEOLAR_VENTILATION_L_S = 0.11
-CARDIAC_OUTPUT_L_S = 0.13
+FRESH_GAS_FLOW_L_MIN = 4.2
+ALVEOLAR_VENTILATION_L_MIN = 6.6
+CARDIAC_OUTPUT_L_MIN = 7.8
+FRESH_GAS_FLOW_L_S = FRESH_GAS_FLOW_L_MIN / SECONDS_PER_MINUTE
+ALVEOLAR_VENTILATION_L_S = ALVEOLAR_VENTILATION_L_MIN / SECONDS_PER_MINUTE
+CARDIAC_OUTPUT_L_S = CARDIAC_OUTPUT_L_MIN / SECONDS_PER_MINUTE
 BLOOD_GAS = 0.65
 DELIVERED_FRACTION = 0.02
 
 TISSUES = (
-    ("vessel_rich", 6.0, 0.0975, 1.7),
-    ("muscle", 33.0, 0.0247, 2.9),
-    ("fat", 14.5, 0.0078, 51.0),
+    ("vessel_rich", 6.0, 5.85, 1.7),
+    ("muscle", 33.0, 1.482, 2.9),
+    ("fat", 14.5, 0.468, 51.0),
 )
-"""(name, volume_l, blood_flow_l_s, tissue:blood coefficient) for each group.
+"""(name, volume_l, blood_flow_l_min, tissue:blood coefficient) for each group.
 
-The three flows sum to `CARDIAC_OUTPUT_L_S`, as the venous balance requires
+The three flows sum to `CARDIAC_OUTPUT_L_MIN`, as the venous balance requires
 and `UptakeEquationSettings` now checks. They are otherwise unlike each other
 and unlike every other constant here, so a transposed index cannot pass.
 """
@@ -62,19 +66,19 @@ def _settings(**overrides: object) -> UptakeEquationSettings:
         "circuit_volume_l": CIRCUIT_VOLUME_L,
         "alveolar_volume_l": ALVEOLAR_VOLUME_L,
         "venous_volume_l": VENOUS_VOLUME_L,
-        "fresh_gas_flow_l_s": FRESH_GAS_FLOW_L_S,
-        "alveolar_ventilation_l_s": ALVEOLAR_VENTILATION_L_S,
-        "cardiac_output_l_s": CARDIAC_OUTPUT_L_S,
+        "fresh_gas_flow_l_min": FRESH_GAS_FLOW_L_MIN,
+        "alveolar_ventilation_l_min": ALVEOLAR_VENTILATION_L_MIN,
+        "cardiac_output_l_min": CARDIAC_OUTPUT_L_MIN,
         "blood_gas_partition_coefficient": BLOOD_GAS,
         "delivered_partial_pressure_fraction": DELIVERED_FRACTION,
         "tissues": tuple(
             TissueGroupEquationSettings(
                 name=name,
                 volume_l=volume_l,
-                blood_flow_l_s=blood_flow_l_s,
+                blood_flow_l_min=blood_flow_l_min,
                 tissue_blood_partition_coefficient=tissue_blood,
             )
-            for name, volume_l, blood_flow_l_s, tissue_blood in TISSUES
+            for name, volume_l, blood_flow_l_min, tissue_blood in TISSUES
         ),
     }
     fields.update(overrides)
@@ -148,9 +152,9 @@ def test_the_venous_row_is_the_venous_balance() -> None:
 
     assert row[VENOUS_FRACTION] == pytest.approx(-CARDIAC_OUTPUT_L_S / VENOUS_VOLUME_L)
 
-    for offset, (_, _, blood_flow_l_s, _) in enumerate(TISSUES):
+    for offset, (_, _, blood_flow_l_min, _) in enumerate(TISSUES):
         assert row[FIRST_TISSUE_FRACTION + offset] == pytest.approx(
-            blood_flow_l_s / VENOUS_VOLUME_L
+            blood_flow_l_min / SECONDS_PER_MINUTE / VENOUS_VOLUME_L
         )
 
     assert row[INSPIRED_FRACTION] == 0.0
@@ -163,10 +167,10 @@ def test_each_tissue_row_is_that_group_s_balance() -> None:
 
     matrix = build_system_matrix(_settings())
 
-    for offset, (_, volume_l, blood_flow_l_s, tissue_blood) in enumerate(TISSUES):
+    for offset, (_, volume_l, blood_flow_l_min, tissue_blood) in enumerate(TISSUES):
         state = FIRST_TISSUE_FRACTION + offset
         row = matrix[state]
-        washin_rate_s = blood_flow_l_s / (volume_l * tissue_blood)
+        washin_rate_s = blood_flow_l_min / SECONDS_PER_MINUTE / (volume_l * tissue_blood)
 
         assert row[ALVEOLAR_FRACTION] == pytest.approx(washin_rate_s)
         assert row[state] == pytest.approx(-washin_rate_s)
@@ -256,7 +260,7 @@ def test_the_compartments_neither_create_nor_lose_agent() -> None:
 
 
 @pytest.mark.parametrize(
-    "zeroed", ["fresh_gas_flow_l_s", "alveolar_ventilation_l_s", "cardiac_output_l_s"]
+    "zeroed", ["fresh_gas_flow_l_min", "alveolar_ventilation_l_min", "cardiac_output_l_min"]
 )
 def test_a_zero_flow_is_a_zero_rate_and_needs_no_branch(zeroed: str) -> None:
     """`docs/MODEL.md`'s three zero-flow cases, expressed as arithmetic.
@@ -268,7 +272,7 @@ def test_a_zero_flow_is_a_zero_rate_and_needs_no_branch(zeroed: str) -> None:
 
     overrides: dict[str, object] = {zeroed: 0.0}
 
-    if zeroed == "cardiac_output_l_s":
+    if zeroed == "cardiac_output_l_min":
         # Every tissue flow is cardiac output times that group's perfusion
         # fraction, so a stopped heart stops all three with it. Zeroing the
         # one without the others is the inconsistency the settings refuse.
@@ -276,7 +280,7 @@ def test_a_zero_flow_is_a_zero_rate_and_needs_no_branch(zeroed: str) -> None:
             TissueGroupEquationSettings(
                 name=name,
                 volume_l=volume_l,
-                blood_flow_l_s=0.0,
+                blood_flow_l_min=0.0,
                 tissue_blood_partition_coefficient=tissue_blood,
             )
             for name, volume_l, _, tissue_blood in TISSUES
@@ -286,7 +290,7 @@ def test_a_zero_flow_is_a_zero_rate_and_needs_no_branch(zeroed: str) -> None:
 
     assert all(all(value == value for value in row) for row in matrix)
 
-    if zeroed == "alveolar_ventilation_l_s":
+    if zeroed == "alveolar_ventilation_l_min":
         assert matrix[INSPIRED_FRACTION][ALVEOLAR_FRACTION] == 0.0
         assert matrix[ALVEOLAR_FRACTION][INSPIRED_FRACTION] == 0.0
         # The v0.0.2 circuit equation, which docs/MODEL.md says this reduces
@@ -295,11 +299,11 @@ def test_a_zero_flow_is_a_zero_rate_and_needs_no_branch(zeroed: str) -> None:
             -FRESH_GAS_FLOW_L_S / CIRCUIT_VOLUME_L
         )
 
-    if zeroed == "cardiac_output_l_s":
+    if zeroed == "cardiac_output_l_min":
         assert matrix[ALVEOLAR_FRACTION][VENOUS_FRACTION] == 0.0
         assert matrix[VENOUS_FRACTION][VENOUS_FRACTION] == 0.0
 
-    if zeroed == "fresh_gas_flow_l_s":
+    if zeroed == "fresh_gas_flow_l_min":
         assert matrix[DELIVERED_AGENT_L][UNIT_STATE] == 0.0
         assert matrix[EXHAUSTED_AGENT_L][INSPIRED_FRACTION] == 0.0
 
@@ -311,17 +315,17 @@ def test_a_zero_tissue_flow_leaves_that_group_alone() -> None:
         TissueGroupEquationSettings(
             name=name,
             volume_l=volume_l,
-            blood_flow_l_s=0.0 if name == "fat" else blood_flow_l_s,
+            blood_flow_l_min=0.0 if name == "fat" else blood_flow_l_min,
             tissue_blood_partition_coefficient=tissue_blood,
         )
-        for name, volume_l, blood_flow_l_s, tissue_blood in TISSUES
+        for name, volume_l, blood_flow_l_min, tissue_blood in TISSUES
     )
     # Cardiac output falls with the flow that stopped, because the venous
     # balance returns exactly what the tissues receive.
     matrix = build_system_matrix(
         _settings(
             tissues=unperfused_fat,
-            cardiac_output_l_s=sum(tissue.blood_flow_l_s for tissue in unperfused_fat),
+            cardiac_output_l_min=sum(tissue.blood_flow_l_min for tissue in unperfused_fat),
         )
     )
     fat = FIRST_TISSUE_FRACTION + 2
@@ -337,13 +341,13 @@ def test_a_zero_tissue_flow_leaves_that_group_alone() -> None:
         ("circuit_volume_l", 0.0, "^circuit_volume_l must be positive and finite$"),
         ("alveolar_volume_l", -1.0, "^alveolar_volume_l must be positive and finite$"),
         ("venous_volume_l", float("inf"), "^venous_volume_l must be positive and finite$"),
-        ("fresh_gas_flow_l_s", -0.1, "^fresh_gas_flow_l_s must be nonnegative and finite$"),
+        ("fresh_gas_flow_l_min", -0.1, "^fresh_gas_flow_l_min must be nonnegative and finite$"),
         (
-            "alveolar_ventilation_l_s",
+            "alveolar_ventilation_l_min",
             float("nan"),
-            "^alveolar_ventilation_l_s must be nonnegative and finite$",
+            "^alveolar_ventilation_l_min must be nonnegative and finite$",
         ),
-        ("cardiac_output_l_s", -1.0, "^cardiac_output_l_s must be nonnegative and finite$"),
+        ("cardiac_output_l_min", -1.0, "^cardiac_output_l_min must be nonnegative and finite$"),
         (
             "blood_gas_partition_coefficient",
             0.0,
@@ -377,7 +381,7 @@ def test_rejects_tissue_flows_that_do_not_sum_to_cardiac_output() -> None:
     with pytest.raises(
         SimulationConfigurationError, match="the venous balance returns what the tissues receive"
     ):
-        _settings(cardiac_output_l_s=CARDIAC_OUTPUT_L_S * 1.5)
+        _settings(cardiac_output_l_min=CARDIAC_OUTPUT_L_MIN * 1.5)
 
 
 def test_rejects_a_tissue_group_count_the_model_does_not_have() -> None:
@@ -391,7 +395,7 @@ def test_rejects_a_tissue_group_count_the_model_does_not_have() -> None:
         TissueGroupEquationSettings(
             name="vessel_rich",
             volume_l=6.0,
-            blood_flow_l_s=CARDIAC_OUTPUT_L_S,
+            blood_flow_l_min=CARDIAC_OUTPUT_L_MIN,
             tissue_blood_partition_coefficient=1.7,
         ),
     )
@@ -407,7 +411,7 @@ def test_rejects_a_tissue_group_count_the_model_does_not_have() -> None:
     ("field", "value", "message"),
     [
         ("volume_l", 0.0, "^muscle volume_l must be positive and finite$"),
-        ("blood_flow_l_s", -0.1, "^muscle blood_flow_l_s must be nonnegative and finite$"),
+        ("blood_flow_l_min", -0.1, "^muscle blood_flow_l_min must be nonnegative and finite$"),
         (
             "tissue_blood_partition_coefficient",
             0.0,
@@ -421,7 +425,7 @@ def test_rejects_a_tissue_group_that_could_not_describe_a_tissue(
     fields: dict[str, object] = {
         "name": "muscle",
         "volume_l": 33.0,
-        "blood_flow_l_s": 0.023,
+        "blood_flow_l_min": 0.023,
         "tissue_blood_partition_coefficient": 2.9,
     }
     fields[field] = value
@@ -447,10 +451,10 @@ def test_equal_settings_compare_equal_so_the_propagator_cache_is_keyed_by_value(
         TissueGroupEquationSettings(
             name=name,
             volume_l=volume_l * (2.0 if name == "fat" else 1.0),
-            blood_flow_l_s=blood_flow_l_s,
+            blood_flow_l_min=blood_flow_l_min,
             tissue_blood_partition_coefficient=tissue_blood,
         )
-        for name, volume_l, blood_flow_l_s, tissue_blood in TISSUES
+        for name, volume_l, blood_flow_l_min, tissue_blood in TISSUES
     )
 
     assert _settings() != _settings(tissues=fatter)
@@ -471,7 +475,7 @@ def test_the_system_matrix_does_not_depend_on_a_tissue_group_s_name() -> None:
         TissueGroupEquationSettings(
             name=f"renamed-{index}",
             volume_l=tissue.volume_l,
-            blood_flow_l_s=tissue.blood_flow_l_s,
+            blood_flow_l_min=tissue.blood_flow_l_min,
             tissue_blood_partition_coefficient=tissue.tissue_blood_partition_coefficient,
         )
         for index, tissue in enumerate(_settings().tissues)

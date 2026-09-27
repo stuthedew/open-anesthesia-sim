@@ -120,7 +120,9 @@ class RunSegment:
 
     Attributes:
         settings: What `build_system_matrix` assembles $`A`$ from, in force
-            from `opening.instant_s` until the next segment begins.
+            from `opening.instant_s` until the next segment begins. Its flows
+            are the litres per minute that were set, so a system configured
+            from them rebuilds these settings exactly (`PL-SM5V`).
         opening: The state at the segment's first instant.
     """
 

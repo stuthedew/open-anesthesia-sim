@@ -40,6 +40,7 @@ from anesthesia_sim.core.governing_equations import (
     STATE_SIZE,
     UNIT_STATE,
     VENOUS_FRACTION,
+    UptakeEquationSettings,
 )
 from anesthesia_sim.core.matrix_exponential import Matrix
 from anesthesia_sim.core.run_definition import (
@@ -48,6 +49,11 @@ from anesthesia_sim.core.run_definition import (
     RunDefinition,
     RunSegment,
     SampledWindow,
+)
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    MAXIMUM_FRESH_GAS_FLOW_L_MIN,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -262,6 +268,59 @@ def test_two_changes_at_one_instant_are_one_segment() -> None:
     assert definition.segments[-1].settings.delivered_partial_pressure_fraction == pytest.approx(
         0.03
     )
+
+
+def _configured_from(settings: UptakeEquationSettings) -> AgentUptakeSystem:
+    """A fresh system under the four live controls a recorded segment holds."""
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    system.set_fresh_gas_flow(settings.fresh_gas_flow_l_min)
+    system.set_delivered_partial_pressure_fraction(settings.delivered_partial_pressure_fraction)
+    system.set_alveolar_ventilation(settings.alveolar_ventilation_l_min)
+    system.set_cardiac_output(settings.cardiac_output_l_min)
+
+    return system
+
+
+@pytest.mark.parametrize(
+    ("control", "maximum_l_min"),
+    [
+        ("cardiac_output", MAXIMUM_CARDIAC_OUTPUT_L_MIN),
+        ("fresh_gas_flow", MAXIMUM_FRESH_GAS_FLOW_L_MIN),
+        ("alveolar_ventilation", MAXIMUM_ALVEOLAR_VENTILATION_L_MIN),
+    ],
+)
+def test_a_recorded_setting_round_trips_to_what_was_set(control: str, maximum_l_min: float) -> None:
+    """A segment holds each flow as it was set, and so rebuilds the settings it ran under.
+
+    `PL-SM5V`. Segments held flows in litres per second, and multiplying back
+    by sixty rebuilt different settings for 7 of the 101 cardiac outputs on
+    this grid - 1.9, 3.8, 3.9 and 7.6 to 7.9 L/min - because each tissue's
+    flow is cardiac output times its perfusion fraction, formed in litres per
+    minute before the division. Every setting on a 0.1 L/min grid across the
+    supported range is checked, for each of the three flow controls, and each
+    one that fails is named.
+    """
+
+    set_control = getattr(AgentUptakeSystem, f"set_{control}")
+    unrecovered: list[float] = []
+
+    for tenths in range(round(maximum_l_min * 10) + 1):
+        set_l_min = tenths / 10
+        system = AgentUptakeSystem.for_agent("sevoflurane")
+        set_control(system, set_l_min)
+        definition = RunDefinition(
+            system.equation_settings(), system.state_vector(), opened_at_s=0.0
+        )
+        recorded = definition.segments[-1].settings
+
+        if (
+            getattr(recorded, f"{control}_l_min") != set_l_min
+            or _configured_from(recorded).equation_settings() != recorded
+        ):
+            unrecovered.append(set_l_min)
+
+    assert unrecovered == []
 
 
 def test_a_change_opens_a_segment_at_the_run_s_own_reach() -> None:

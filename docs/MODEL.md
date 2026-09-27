@@ -403,6 +403,18 @@ $$
 \dot V_{\mathrm{s}} = \frac{\dot V_{\mathrm{min}}}{60}
 $$
 
+**The liters per minute is the record, and the per-second value is derived
+from it.** A run holds each flow as it was set, in liters per minute, and the
+per-second value the governing equations read is computed from it where they
+read it rather than stored beside it. The conversion does not run backwards:
+multiplying a per-second flow by 60 returns something other than the setting
+for 7 of the 101 cardiac outputs on a 0.1 L/min grid across the supported
+0 to 10 L/min range (1.9, 3.8, 3.9 and 7.6 to 7.9 L/min), and the tissue flows
+formed from cardiac output inherit the difference, so settings rebuilt from a
+per-second record would describe a run nobody set up. `UptakeEquationSettings`
+in `core/governing_equations.py` holds the flows this way, and `PL-SM5V`
+records the measurement.
+
 Wall-clock time may schedule interface updates, but it must never be used as simulation time.
 
 Seconds are the unit everywhere this document, the core, and the run
@@ -4441,7 +4453,8 @@ below, with the display rules the rest of the interface section carries.
 **What is held.** A run is the settings in force at each moment — the four
 controls above, together with the patient and agent parameters the equations
 read — plus one *keyframe* per change: the state at the instant that change
-took effect. Nothing else is stored. `core/run_definition.py` is where this lives.
+took effect. Nothing else is stored. The flows among those settings are held
+as they were set, in liters per minute, for the reason § "Time" gives. `core/run_definition.py` is where this lives.
 
 **What is derived.** The equations are linear and time-invariant while every
 setting is held constant, so between two changes the propagator under
