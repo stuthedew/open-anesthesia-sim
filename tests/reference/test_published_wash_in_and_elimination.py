@@ -190,14 +190,19 @@ fourth are the elimination's own.
    administration until about 20.7 to 29.4 hours (docs/MODEL.md, the
    intertissue-diffusion note under "Known limitations"). At five minutes it
    is about one part in twenty of what remains. So the gap over those hours
-   belongs to a measurement recorded beside this gate, not to the gate
-   (docs/MODEL.md, caveat 4 of this comparison).
+   is measured beside this gate rather than gated by it:
+   test_late_washout_against_published_fits.py, in this directory, records
+   its size and direction over the first 24 hours (docs/MODEL.md, "The first
+   24 hours of elimination against the published mean curves") and asserts
+   no agreement.
 
 What the wash-in comparison does establish is that six coupled compartments,
 an exact propagation of them, a circuit model, and three parameter files
 together land inside the measured spread of a human study for three agents at
 once, ordered correctly by solubility — which nothing else in this suite can
-tell us, because nothing else looks outside the repository.
+tell us, because nothing else in it is gated on a human measurement: the
+module beside it looks outside the repository too, and asserts nothing about
+agreement.
 
 What the elimination comparison adds is different rather than more of the
 same. The three agents rank correctly on the way out as well as on the way
@@ -651,29 +656,48 @@ PUBLISHED_INSPIRED_PERCENTS = tuple(
 )
 
 
-@cache
-def _wash_in_system(
+def _configured_system(
     agent_id: str,
     alveolar_ventilation_l_min: float | None = None,
     cardiac_output_l_min: float | None = None,
     fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
     delivered_fraction: float = DELIVERED_FRACTION,
+    vessel_rich_tissue_gas_partition_coefficient: float | None = None,
 ) -> AgentUptakeSystem:
-    """Return the system after 30 minutes of wash-in at one operating point.
+    """Return a fresh system at the published protocol's operating point.
+
+    Nothing has been stepped: this is the setup every run in this module and
+    in `test_late_washout_against_published_fits.py` opens from, held in one
+    place so that the operating point an elimination runs from is provably
+    the one the wash-in comparisons were made at. Three copies of a
+    safety-critical setup that must agree is three chances for one of them to
+    stop agreeing silently.
 
     `None` for either patient flow means the reference patient's own default,
     which is what every comparison against a published value uses; the
     sensitivity tests pass explicit values to move off that point.
 
-    F_I is the *circuit* fraction at the moment of measurement, not the
-    vaporizer dial. That is the quantity the published studies measured — an
-    inspired concentration at the airway — and the two are not equal here:
-    alveolar uptake keeps the circuit measurably below the dial for the whole
-    run, so dividing by the dial instead would understate every ratio.
+    `vessel_rich_tissue_gas_partition_coefficient` is the module's only
+    parameter override and exists for one test:
+    `test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination`
+    asks what the *published human tissue measurements* would produce here,
+    which cannot be asked without running a coefficient the data files do not
+    hold. It is applied before any step, where the group's stored amount is
+    zero and no propagator has been built for the old value, and it goes
+    through `dataclasses.replace` rather than an attribute write so that
+    `TissueGroup.__post_init__` validates the new coefficient exactly as it
+    validates a shipped one. Every other caller leaves it `None` and gets the
+    shipped parameter set.
     """
 
     patient_parameters = load_reference_adult_parameters()
     system = AgentUptakeSystem.for_agent(agent_id)
+
+    if vessel_rich_tissue_gas_partition_coefficient is not None:
+        system.patient.vessel_rich = replace(
+            system.patient.vessel_rich,
+            tissue_gas_partition_coefficient=vessel_rich_tissue_gas_partition_coefficient,
+        )
 
     system.set_fresh_gas_flow(fresh_gas_flow_l_min)
     system.set_delivered_partial_pressure_fraction(delivered_fraction)
@@ -686,6 +710,37 @@ def _wash_in_system(
         patient_parameters.default_cardiac_output_l_min
         if cardiac_output_l_min is None
         else cardiac_output_l_min
+    )
+
+    return system
+
+
+@cache
+def _wash_in_system(
+    agent_id: str,
+    alveolar_ventilation_l_min: float | None = None,
+    cardiac_output_l_min: float | None = None,
+    fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
+    delivered_fraction: float = DELIVERED_FRACTION,
+) -> AgentUptakeSystem:
+    """Return the system after 30 minutes of wash-in at one operating point.
+
+    The operating point is `_configured_system()`'s, which documents what
+    `None` means for the patient flows.
+
+    F_I is the *circuit* fraction at the moment of measurement, not the
+    vaporizer dial. That is the quantity the published studies measured — an
+    inspired concentration at the airway — and the two are not equal here:
+    alveolar uptake keeps the circuit measurably below the dial for the whole
+    run, so dividing by the dial instead would understate every ratio.
+    """
+
+    system = _configured_system(
+        agent_id,
+        alveolar_ventilation_l_min,
+        cardiac_output_l_min,
+        fresh_gas_flow_l_min,
+        delivered_fraction,
     )
 
     for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
@@ -741,44 +796,19 @@ def _private_washed_in_system(
     step what they are given.
 
     Both elimination drivers open from this rather than keeping a copy of the
-    setup each, so the operating point an elimination runs from is provably
-    the one the wash-in comparisons were made at. Three copies of a
-    safety-critical setup that must agree is three chances for one of them to
-    stop agreeing silently.
-
-    `vessel_rich_tissue_gas_partition_coefficient` is the module's only
-    parameter override and exists for one test:
-    `test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination`
-    asks what the *published human tissue measurements* would produce here,
-    which cannot be asked without running a coefficient the data files do not
-    hold. It is applied to a system that has not been stepped, where the
-    group's stored amount is zero and no propagator has been built for the old
-    value, and it goes through `dataclasses.replace` rather than an attribute
-    write so that `TissueGroup.__post_init__` validates the new coefficient
-    exactly as it validates a shipped one. Every other caller leaves it `None`
-    and gets the shipped parameter set.
+    setup each, and the setup itself is `_configured_system()`'s, which also
+    documents the one parameter override
+    (`vessel_rich_tissue_gas_partition_coefficient`) and what `None` means for
+    the patient flows.
     """
 
-    patient_parameters = load_reference_adult_parameters()
-    system = AgentUptakeSystem.for_agent(agent_id)
-
-    if vessel_rich_tissue_gas_partition_coefficient is not None:
-        system.patient.vessel_rich = replace(
-            system.patient.vessel_rich,
-            tissue_gas_partition_coefficient=vessel_rich_tissue_gas_partition_coefficient,
-        )
-
-    system.set_fresh_gas_flow(fresh_gas_flow_l_min)
-    system.set_delivered_partial_pressure_fraction(delivered_fraction)
-    system.set_alveolar_ventilation(
-        patient_parameters.default_alveolar_ventilation_l_min
-        if alveolar_ventilation_l_min is None
-        else alveolar_ventilation_l_min
-    )
-    system.set_cardiac_output(
-        patient_parameters.default_cardiac_output_l_min
-        if cardiac_output_l_min is None
-        else cardiac_output_l_min
+    system = _configured_system(
+        agent_id,
+        alveolar_ventilation_l_min,
+        cardiac_output_l_min,
+        fresh_gas_flow_l_min,
+        delivered_fraction,
+        vessel_rich_tissue_gas_partition_coefficient,
     )
 
     for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):

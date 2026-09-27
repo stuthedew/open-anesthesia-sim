@@ -3,11 +3,12 @@ id: PL-KK1Q
 title: Compare this model's washout over the first 24 h against Yasuda 1991's published five-compartment mean fits, to measure whether the modelled tail runs fast or slow where only the five-minute point is validated today
 priority: P1
 effort: M
-status: ready
+status: done
 classes: science, test
 feature: late-washout-evidence
 touches: tests/reference, docs/MODEL.md
 added: 2026-09-26
+closed: 2026-09-27
 payoff: a reader of the washout tail learns how far, and from which hour, the modelled curve departs from measured human washout, instead of only which way the missing terms push it
 verify: grep -rq 'def test_the_first_24_hours_of_elimination_against_the_published_mean_curves' tests/reference/ && grep -qF 'PL-KK1Q' docs/MODEL.md
 ---

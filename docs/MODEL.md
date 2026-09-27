@@ -3872,8 +3872,10 @@ transfers to whatever `PL-N092` writes in its place.
    limitations"). At five minutes that term is about one part in twenty of what
    remains; from about the third hour it is the largest term there is. A
    comparison carried into those hours would measure an omission rather than a
-   parameter, so the gap over those hours belongs to a measurement recorded
-   beside this gate (`PL-KK1Q`), not to the gate.
+   parameter, so the gap over those hours is measured beside this gate rather
+   than gated by it: § "The first 24 hours of elimination against the
+   published mean curves" records its size and direction hour by hour
+   (`PL-KK1Q`), and asserts no agreement.
 
 **How sharp a gate this is, measured rather than assumed.** The discriminating
 power was re-measured on 2026-09-06 with the elimination point included, by
@@ -3943,7 +3945,208 @@ parameter was essentially unconstrained by anything in this repository until
 an elimination was compared; the elimination point closes it to about a fifth
 either way. That, rather than the blood:gas column, is what the second
 direction buys — together with being the only place the size and sign of this
-model's departure from a measured human washout is written down.
+model's departure from a *measured* human washout is written down; its
+departure from the fitted mean curves over the rest of the day is
+§ "The first 24 hours of elimination against the published mean curves".
+
+#### The first 24 hours of elimination against the published mean curves
+
+**A measurement recorded beside the gate above, not a second gate** (`PL-KK1Q`,
+2026-09-27). Caveat 4 refuses to carry the five-minute comparison into the
+papers' multi-day curves, because over those hours the measured washout is
+carried by a compartment this model does not have, and a comparison there
+measures an omission rather than a parameter. That refusal stands. What this
+subsection adds is the size of the omission, from which hour and in which
+direction, so that the intertissue-diffusion note under § "Known limitations"
+and § "Supported run length" can give a number where they could give only a
+direction. Every assertion in
+`tests/reference/test_late_washout_against_published_fits.py` is a regression
+band around what it measured on 2026-09-27, or a property of the published
+coefficients; none asserts agreement with a human washout, and none may be
+restated as one.
+
+**What is compared, and under what conditions.** Both papers fit each
+volunteer's elimination to a sum of five exponentials,
+$`F_A/F_{A0} = \sum_i A_i e^{-t/\tau_i}`$, and publish the mean and SD of every
+coefficient (Tables 1 and 2 of each, read at the source 2026-09-27: *Anesth
+Analg* p. 321 through the private corpus's text layer, *Anesthesiology* pp.
+494-95 as page images). The curve built from the mean coefficients is compared
+as published, un-normalised: the amplitudes sum to 0.912 to 0.937 rather than 1
+at discontinuation, being means of per-subject fits, and normalising them would
+raise every fitted value, and lower every ratio below, by 7 to 10%
+(`test_the_published_coefficients_sum_below_one_at_discontinuation`). The model
+runs the gate's own protocol - the shipped 30-minute wash-in at the reference
+operating point, then the vaporizer closed - for 24 hours, the supported run
+length, at the shipped 0.1 s step, sampled once a minute, and its fifth minute
+is held to the gate's pinned five-minute ratios to four decimals
+(`test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio`),
+so the tables are a continuation of the gate's comparison rather than a second
+protocol. Two conditions, exactly the gate's two: *shipped*, the rebreathing
+circuit at 10 L/min, which is the tail the chart draws; and *open circuit*, the
+test-only driver that discards the circuit's contents after every step, which
+no setting of the shipped simulator reaches. The stated times are the papers'
+own sampling times inside the first day (*Anesth Analg* p. 317), where the fit
+passes near a measured sample rather than interpolating, plus 1440 min.
+
+**The result, as model over fit.** Cohorts in the order sevoflurane and
+isoflurane from *Anesth Analg*, desflurane and isoflurane from *Anesthesiology*
+(`test_the_first_24_hours_of_elimination_against_the_published_mean_curves`
+holds every entry to 1%, and every crossing hour below to 0.1 h):
+
+| Minutes | Sevoflurane, shipped | Isoflurane, shipped | Desflurane, shipped | Isoflurane (second study), shipped |
+| ---: | ---: | ---: | ---: | ---: |
+| 5 | 1.20 | 1.33 | 1.11 | 1.42 |
+| 30 | 0.61 | 0.71 | 0.75 | 0.88 |
+| 60 | 0.81 | 0.87 | 0.93 | 1.08 |
+| 120 | 1.01 | 1.07 | 1.11 | 1.33 |
+| 240 | 1.20 | 1.26 | 0.88 | 1.52 |
+| 400 | 1.02 | 1.07 | 0.55 | 1.23 |
+| 600 | 0.74 | 0.78 | 0.56 | 0.86 |
+| 800 | 0.67 | 0.68 | 0.80 | 0.74 |
+| 1400 | 1.23 | 1.11 | 2.09 | 1.15 |
+| 1440 | 1.29 | 1.15 | 2.18 | 1.20 |
+
+| Minutes | Sevoflurane, open circuit | Isoflurane, open circuit | Desflurane, open circuit | Isoflurane (second study), open circuit |
+| ---: | ---: | ---: | ---: | ---: |
+| 5 | 0.80 | 0.98 | 0.64 | 1.05 |
+| 30 | 0.43 | 0.51 | 0.53 | 0.63 |
+| 60 | 0.58 | 0.64 | 0.65 | 0.79 |
+| 120 | 0.70 | 0.77 | 0.76 | 0.95 |
+| 240 | 0.82 | 0.85 | 0.58 | 1.04 |
+| 400 | 0.67 | 0.69 | 0.36 | 0.79 |
+| 600 | 0.47 | 0.48 | 0.37 | 0.53 |
+| 800 | 0.43 | 0.42 | 0.54 | 0.46 |
+| 1400 | 0.81 | 0.71 | 1.39 | 0.74 |
+| 1440 | 0.85 | 0.74 | 1.46 | 0.77 |
+
+The hours at which the shipped tail crosses the fitted curve, and where it
+stands between them:
+
+| Cohort | Below from | Above from | Below from | Above from | Widest below, middle stretch | At 24 h |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Sevoflurane | 0.13 h | 1.98 h | 6.88 h | 20.65 h | 0.67 at 12.9 h | 1.29 |
+| Isoflurane | 0.17 h | 1.62 h | 7.33 h | 21.78 h | 0.68 at 13.5 h | 1.15 |
+| Desflurane | 0.10 h | 1.30 h | 3.38 h | 15.30 h | 0.51 at 8.1 h | 2.18 |
+| Isoflurane (second study) | 0.22 h | 0.78 h | 8.42 h | 21.05 h | 0.74 at 13.7 h | 1.20 |
+
+In the open circuit the tail falls below the fitted curve between the second
+and the sixth minute and stays there for the whole 24 hours for sevoflurane and
+the first study's isoflurane; desflurane rises back above it at 19.18 h, and
+the second study's isoflurane sits above it between 2.45 and 4.58 h, by 5% at
+most. Between 8 and 13 hours the open-circuit tail is a third to a half of the
+mean curve in every cohort (0.34 to 0.46).
+
+**Read in stretches.** The shipped tail sits above the fitted curve at five
+minutes, which is the apparatus term the gate records. It falls below it from
+6 to 13 minutes until 0.8 to 2.0 hours, by 15 to 44% at the widest, around 15
+to 25 minutes. It runs above it until 3.4 hours for desflurane and 6.9 to 8.4
+hours for the other three, by 12 to 52% at the widest. It runs *below* it from
+there until 15.3 hours for desflurane and 20.7 to 21.8 hours for the others,
+by a third at the widest, near 13 hours, and by a half for desflurane, near 8.
+And it finishes above it, by 15 to 29% at 24 hours and by a factor of 2.2 for
+desflurane. The middle stretch is the answer the intertissue-diffusion note
+asked for: the fourth compartment's term is the largest in every fitted curve
+from 1.8 to 3.1 hours until 20.7 to 29.4 hours
+(`test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours`
+re-derives those hours from the coefficients), this model has no such term, and
+over those hours its tail falls faster than the measured mean - from the start
+with the apparatus gone, and only from the seventh hour in the shipped
+condition, because the rebreathing circuit holds it above the curve until then:
+with the circuit's return taken away the same hours sit at or below it. The
+model's muscle group also returns more slowly than the fitted muscle term, its
+isolated time constant being 1.5 to 1.7 times the fitted one's, which would
+explain why the open-circuit tail is nearest the curve over hours 2 to 4, the
+hours a slower muscle return fills; that reading is inferred from the time
+constants and was not tested by varying them. The late excess is the model's fat group returning more than the
+fitted fat term's small amplitude (0.028 to 0.080%, with SDs of 53 to 94% of
+the means), and it is still growing at 24 hours - the ratio rises between
+minutes 1400 and 1440 in every cohort - because the fitted curve is still
+falling on the fourth compartment's time constant while the model is already
+on its fat group's, which at about 2500 minutes for sevoflurane, 2600 for
+isoflurane and 1500 for desflurane is also longer than every fitted fat time
+constant (2230, 2310, 1350 and 2110). Those two model time constants are the
+isolated compartment's, tissue volume times the tissue:gas coefficient over
+tissue blood flow times the blood:gas coefficient, on the reference adult's
+14.5 L of fat perfused at 0.3 L/min and 33 L of muscle at 0.9 L/min.
+<!-- derived: 2500 minutes from data/patients/reference_adult.json tissue_groups.fat.volume_l = 14.5, tissue_groups.fat.perfusion_fraction = 0.06, tissue_groups.muscle.volume_l = 33.0, tissue_groups.muscle.perfusion_fraction = 0.18, default_cardiac_output_l_min = 5 -->
+<!-- derived: 2500 minutes from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34.0, tissue_gas_partition_coefficients.muscle = 2.4, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 2600 minutes from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70.0, tissue_gas_partition_coefficients.muscle = 4.5, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 1500 minutes from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13.0, tissue_gas_partition_coefficients.muscle = 0.97, blood_gas_partition_coefficient = 0.42 -->
+
+**Three things bound how sharply any of that may be read.**
+
+1. *The fitted mean curve is not the measured mean, and where it can be
+   checked it runs high.* At five minutes, the one time both are published,
+   the mean coefficients give 0.194, 0.243, 0.147 and 0.228 against the
+   measured 0.157 ± 0.020, 0.223 ± 0.024, 0.14 ± 0.02 and 0.22 ± 0.02: above by
+   1.84, 0.83, 0.33 and 0.39 published SD, or 3.5 to 24%
+   (`test_the_fitted_mean_curves_run_above_their_own_measured_five_minute_means`).
+   A sum of exponentials built from mean coefficients over-states the mean of
+   the subjects' curves wherever a time constant varies between subjects, and
+   every one of these does, with SDs of 10 to 52% of the means. So every ratio
+   above is an understatement of the model against the volunteers' mean, to an
+   extent that is 3.5 to 24% at the one point it can be measured: for
+   sevoflurane the open-circuit model sits 0.15 SD below the measured
+   five-minute mean and 20% below the fitted curve at the same instant, and the
+   whole of that 20% is the fit's own. Nothing here corrects for it, because no
+   measured mean exists at the later times to correct against; both papers plot
+   them (Figures 3 and 4), on logarithmic axes no number was taken from.
+2. *The term that carries the measured curve over the middle stretch is as
+   uncertain between subjects as it is large.* The fourth compartment's
+   amplitude is 0.717 ± 0.800, 1.296 ± 1.237, 0.775 ± 0.482 and 1.125 ± 0.669
+   (×100), SDs of 59 to 112% of the means, so a tail a third to a half below
+   the mean curve over those hours is inside the spread of the volunteers' own
+   curves. The direction and the mechanism are settled - the model has no term
+   there, and the open circuit puts its tissue return alone at a third to a
+   half of the mean - and the size is known to about a factor of two and no
+   better.
+3. *The published subjects breathed nitrous oxide throughout, and the
+   parameters under test descend from the lineage of the data* - caveats 1 and
+   2 of the gate, unchanged.
+
+**How much of the gap sevoflurane's missing metabolism could account for:
+little, and in the wrong direction over the middle stretch.** This model has no
+metabolism (§ "Known limitations"); a human has, and for sevoflurane it is 2 to
+5% of the absorbed dose (Kharasch 1995, cited under § "Supported run length").
+The module's test-only first-order sink on the vessel-rich group is sited where
+the papers' own mammillary model sites hepatic elimination - "the second
+compartment (vessel-rich group; k20)", *Anesth Analg* p. 318 - and runs at that
+paper's fitted sevoflurane rate constant, k20 = 0.0094 min⁻¹ (Table 3, p. 321;
+SD 0.0171, so the cohort could not tell it from zero), through the
+administration as well as the elimination, since a human's does. In this model
+it removes 7.8% of the 30-minute uptake by 24 hours in the shipped condition and
+7.2% in the open circuit - above Kharasch's range, which is what makes its
+effect a bound. It lowers the shipped tail by 4.5% at five minutes and by 1.9 to
+2.9% from 30 minutes on, and the open tail by 5.0% and then 1.3 to 1.8%
+(`test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent`). So
+where the shipped model runs above the fitted curve, metabolism could account
+for about an eighth of the excess where it is widest - 2.8 of the 20.4 points at
+four hours, 3.1 of the 28.6 at 24 - and where it runs below, metabolism widens
+the gap by the same few percent. The reason is where the sink looks: hepatic
+clearance sees the arterial partial pressure, which through the tail is the
+alveolar one, and never the stores that feed it. The model's own conservation
+identity is checked across the removals, which are recorded as exhausted agent
+so that § "Mass-balance identity" holds with the sink in place.
+
+**What a learner sees of it: nothing on screen, and the record gains the
+number.** The departures above are in $`F_A/F_{A0}`$, and at the gate's 1% dial
+$`F_{A0}`$ is 0.805, 0.672 and 0.876% of an atmosphere for sevoflurane,
+isoflurane and desflurane, so the shipped alveolar trace falls below the
+readouts' 0.01 percentage points (§ "Displayed precision") at 2.8, 4.2 and 1.9
+hours, before the stretch over which it runs below the measured mean; on the
+chart's linear axis, fixed at 3 MAC, it is a few pixels high well before that.
+A higher dial scales $`F_{A0}`$ with it and keeps the trace above the floor for
+longer - a 6% desflurane dial until about the fifth hour, inside its stretch -
+so the shortfall is not out of reach of a learner who runs a case long, and
+the intertissue-diffusion note is where a reader of that tail is sent.
+
+**Whether the result bears on § "Supported run length": it does not, and the
+reasoning is recorded there** so that the number is argued in one place. In
+one sentence: the departures measured here are the missing fourth compartment
+and the fat group's own size, present from the first hour and at the last, not
+the two omissions the 24 hours is argued against growing past negligible, so
+shortening the span would not take the tail out of them and extending it would
+add the late excess, which is still growing at the boundary.
 
 ### Mass-balance test
 
@@ -4802,12 +5005,27 @@ administration until about 20.7 to 29.4 hours, most of the span a run is
 supported for; the intertissue-diffusion note under § "Known limitations"
 has the coefficients and the arithmetic. All else equal, a tail without that
 store falls faster than the measured one from about the third hour of
-elimination. How much faster, and from which hour, is unmeasured, because
-this model meets human washout only at five minutes; `PL-KK1Q` is that
-measurement, and whether its result should move the 24 hours is its to
-raise. So the number is argued against the two omissions above growing past
-negligible over the span, and it certifies nothing about how close the late
-tail runs to a measured washout inside it.
+elimination, and measured against the published mean curves over the whole 24
+hours it does (§ "The first 24 hours of elimination against the published mean
+curves", `PL-KK1Q`): the shipped tail runs below them by about a third from
+about the seventh hour until about the twenty-first - from 3.4 to 15.3 hours,
+and by half, for desflurane - above them by a fifth to a half over the hours
+before, while the rebreathing circuit holds it up, and above them again at
+24 hours by 15 to 29%, or a factor of 2.2 for desflurane, as this model's fat
+group returns more than the fitted fat term; with the apparatus taken away the
+tissue return alone is a third to a half of the mean curve between hours 8
+and 13. **That result does not move the 24 hours** (recorded by the session
+that measured it, 2026-09-27, and open to the project owner). The number is
+argued against the two omissions above growing past negligible over the span,
+and the measured departures are neither of them: the metabolism bound in the
+same subsection accounts for about an eighth of the excess where the tail
+runs above and widens the gap where it runs below, and the shortfall is the
+missing fourth compartment, as present in the first hour as in the last.
+Shortening the span would not take the tail out of it, and extending the span
+would add the late excess, which is still growing at the boundary. So the
+number stands, and what it certifies about how close the late tail runs to a
+measured washout inside it is exactly what that subsection measured, and
+nothing more.
 
 Sevoflurane is the binding agent: 2% to 5% of the absorbed dose is
 metabolized, against far less for isoflurane and desflurane, and metabolism
@@ -8395,8 +8613,12 @@ washout needs and this model lacks carries the largest term in the measured
 curve from about hour 2-3 of elimination to about hour 21-29, so inside the
 supported span the tail is already missing its largest measured component
 and, all else equal, falls faster than the measurement from about the third
-hour. Neither moves the 24 hours by itself; whether the measured gap should is
-`PL-KK1Q`'s to raise.
+hour. Neither moves the 24 hours by itself, and the measured gap does not
+either: § "The first 24 hours of elimination against the published mean
+curves" puts the shipped tail a third below the published mean curves from
+about the seventh hour to the twenty-first - half, from 3.4 to 15.3 hours, for
+desflurane - and above them before and after, and § "Supported run length"
+records why that leaves the number where it is (`PL-KK1Q`).
 
 **The fat group's flow is twice a resting depot measurement and where human
 washout fits put it, and the two human sources do not agree about which way
@@ -8508,10 +8730,16 @@ that structure rather than from a run:
   is the largest in the measured washout from 1.8 to 3.1 hours after a
   30-minute administration until 20.7 to 29.4 hours — inside the 24 hours a
   run is supported for (§ "Supported run length"). All else equal, leaving the
-  store out makes the modelled tail fall faster. Whether it does fall below the
-  measured tail over those hours has not been measured, because this model
-  meets human washout only at five minutes (§ "Published wash-in and
-  elimination validation test").
+  store out makes the modelled tail fall faster, and it does: measured against
+  the mean curves themselves (§ "The first 24 hours of elimination against the
+  published mean curves", `PL-KK1Q`), the shipped tail runs below them from
+  about the seventh hour until about the twenty-first, by a third at the widest
+  near hour 13 - from 3.4 to 15.3 hours, and by half, for desflurane - and with
+  the apparatus taken away its tissue return alone is a third to a half of the
+  mean curve between hours 8 and 13. Later than the third hour in the shipped
+  condition because the rebreathing circuit holds the tail above the curve
+  until the seventh; the size is known to about a factor of two, which is the
+  fourth compartment's own between-subject spread.
 
 **Eger and Saidman's review draws the same compartment, and names a fourth
 bias** (`PL-FBY3`). Their Table 3 (p. 1024) gives intertissue diffusion a group
