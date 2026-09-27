@@ -933,6 +933,35 @@ def test_the_landed_prefix_spends_what_a_partial_squash_took_and_a_new_claim_hol
     assert (fresh.state, fresh.commit) == (LIVE, resumed)
 
 
+def test_a_claim_on_a_branch_restoring_pre_fork_content_stays_live(tmp_path: Path) -> None:
+    """`PL-P64J`: a restore to content the base held before the fork lands nothing.
+
+    Read against every blob the base's history holds, the restore's blobs were
+    all the base's, the commit read as the branch's landed prefix, and the
+    claim was spent while the branch was open - so `next` offered the item to
+    a second session. Retiring a feature restores files that way. Work after
+    the restore changes nothing. The control is the route the base actually
+    takes: once a squash writes that content after the fork, the claim is
+    spent.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("the base as first written", when=T0 - 3 * HOUR, files={"src/flag.py": "on\n"})
+    repo.commit("the base replaces it", when=T0 - 2 * HOUR, files={"src/flag.py": "off\n"})
+    repo.branch("claude/restore")
+    repo.claim("PL-B1B1", when=T0)
+    repo.commit("PL-B1B1: put it back", when=T0 + HOUR, files={"src/flag.py": "on\n"})
+    [restored] = holdings(repo.root, now=T0 + 2 * HOUR).holds
+    repo.commit("PL-B1B1: and go on", when=T0 + 3 * HOUR, files={"src/more.py": "more\n"})
+    [continued] = holdings(repo.root, now=T0 + 4 * HOUR).holds
+    repo.git("checkout", "-q", "main")
+    repo.commit("PL-B1B1: put it back (#1)", when=T0 + 5 * HOUR, files={"src/flag.py": "on\n"})
+    [taken] = holdings(repo.root, now=T0 + 6 * HOUR).holds
+
+    assert (restored.state, restored.released_by) == (LIVE, "")
+    assert (continued.state, continued.released_by) == (LIVE, "")
+    assert (taken.state, taken.released_by) == (RELEASED, BY_LANDING)
+
+
 def test_holder_is_the_first_live_claim_whose_item_names_the_resource(tmp_path: Path) -> None:
     """Two release items claimed on two branches: the earlier claim holds the train.
 
