@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: bash-guard-bound
+milestone: v0.5.14
 touches: .claude/hooks/no-prune-guard.sh, tests/unit/test_no_prune_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26

@@ -3,6 +3,7 @@ id: PL-FBY3
 title: docs/MODEL.md's intertissue-diffusion note records Eger and Saidman 2005 as abstract-only, though the private corpus now holds its full text, which confirms the note and adds a bias it does not name: the lean tissues that lose agent to fat equilibrate more slowly than a perfusion-limited group, the brain excepted
 status: done
 feature: model-spec-accuracy
+milestone: v0.5.14
 touches: docs/MODEL.md, docs/references/README.md
 added: 2026-09-27
 closed: 2026-09-27
