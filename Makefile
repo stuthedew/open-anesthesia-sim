@@ -22,7 +22,8 @@
 # Since `PL-0MLZ` the root `conftest.py` turns bytecode off inside every pytest
 # run, through `make` or not, and says why the cache is fooled - an equal-length
 # edit reverted within one second. So this export no longer protects a test
-# result on its own; it stays for the recipes here that are not pytest runs.
+# result on its own; it stays for the recipes here that are not pytest runs,
+# and `tests/unit/test_bytecode_guard.py` fails if it goes (`PL-H9GV`).
 export PYTHONDONTWRITEBYTECODE := 1
 
 # `PL-KY7M`: the Claude Code remote container exports `UV_NATIVE_TLS`, which uv

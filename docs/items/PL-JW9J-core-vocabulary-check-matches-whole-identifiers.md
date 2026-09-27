@@ -3,13 +3,14 @@ id: PL-JW9J
 title: core_vocabulary_check matches whole identifiers because two live names would have failed a substring rule, and since PL-6KNM neither exists: decide whether to tighten
 priority: P3
 effort: S
-status: needs-decision
+status: dropped
 classes: defect
 feature: dev-tooling
 touches: tools/core_vocabulary_check.py, tests/unit/test_core_vocabulary_check.py
 added: 2026-09-14
+closed: 2026-09-27
+reason: Not tightened (project owner, 2026-09-27, ratified, over a substring rule): a substring rule would newly flag 0 identifiers under src/anesthesia_sim/core/ for the 7 names RETIRED_NAMES holds, counted with the tool's own identifiers() reader on 2026-09-27 and retaken on main after #1171; the only substring hits anywhere are 2 legitimate identifiers in tests/, which the rule does not read. The count and the script to retake it are in this brief's design round.
 ---
-
 
 **Problem.** core_vocabulary_check matches whole identifiers because two live names would have failed a substring rule, and since PL-6KNM neither exists: decide whether to tighten
 
