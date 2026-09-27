@@ -27,6 +27,7 @@ with the answer.
 from __future__ import annotations
 
 import subprocess
+from pathlib import Path
 
 import open_pull_requests
 import pr_title_check
@@ -423,3 +424,110 @@ def test_a_branch_name_git_cannot_read_is_no_branch_to_look_up(
 
     monkeypatch.setattr(subprocess, "run", refuse)
     assert pr_title_check._branch() is None
+
+
+# --- what `--discover` reads as the head: the working tree (`PL-T8PT`).
+#
+# `make check` runs before the commit it vouches for, and the close-out mode
+# writes a closure in that same commit, so read at `HEAD` a closure was one
+# commit short: `#499` dropped five items and closed a sixth, passed `make
+# check`, and failed `pr-title` on the push. The first case is that sequence;
+# the rest are what the change must leave alone, or must not guess at.
+
+READY = CLOSED.format(id="PL-K7QX", status="ready")
+DONE = CLOSED.format(id="PL-K7QX", status="done")
+
+
+def _checkout(root: Path, files: dict[str, str]) -> None:
+    """The item files of a working tree, where `pr_title_check` reads one."""
+    directory = root / "docs" / "items"
+    directory.mkdir(parents=True)
+    for name, text in files.items():
+        (directory / name).write_text(text, encoding="utf-8")
+
+
+def _discover(
+    monkeypatch: pytest.MonkeyPatch, root: Path, title: str, *flags: str, **refs: dict[str, str]
+) -> int:
+    """`main()` as `make check` runs it in `root`, with the open pull request titled `title`."""
+    monkeypatch.setattr(pr_title_check, "ROOT", root)
+    monkeypatch.setattr(pr_title_check, "_git", _tree(**refs))
+    monkeypatch.setattr(pr_title_check, "repo_slug", lambda: "o/r")
+    monkeypatch.setattr(pr_title_check, "_branch", lambda: "claude/pl-t8pt-slug")
+    monkeypatch.setattr(pr_title_check, "open_pull_request", lambda *_: (499, title))
+    monkeypatch.delenv("PR_TITLE", raising=False)
+    monkeypatch.delenv("PR_HEAD", raising=False)
+    monkeypatch.setattr("sys.argv", ["pr_title_check.py", "--discover", "--base", "base", *flags])
+    return pr_title_check.main()
+
+
+def test_a_closure_written_but_not_committed_is_refused_before_the_commit(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    _checkout(tmp_path, {"PL-K7QX-a.md": DONE})
+
+    status = _discover(
+        monkeypatch,
+        tmp_path,
+        "Triage pass",
+        base={"PL-K7QX-a.md": READY},
+        HEAD={"PL-K7QX-a.md": READY},
+    )
+
+    assert status == 1
+    err = capsys.readouterr().err
+    assert "this checkout closes PL-K7QX in its working tree" in err
+    assert "#499's title" in err
+
+
+def test_an_explicit_head_still_reads_the_ref(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    # CI names its refs, and so may a hand run; neither asks the local question.
+    _checkout(tmp_path, {"PL-K7QX-a.md": DONE})
+
+    status = _discover(
+        monkeypatch,
+        tmp_path,
+        "Triage pass",
+        "--head",
+        "head",
+        base={"PL-K7QX-a.md": READY},
+        head={"PL-K7QX-a.md": READY},
+    )
+
+    assert status == 0
+    assert "closes no item" in capsys.readouterr().out
+
+
+def test_a_closure_committed_and_reverted_on_disk_is_not_this_checkout_s(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    # The other direction: `HEAD` holds a closure the working tree has undone,
+    # so the tree about to be committed closes nothing.
+    _checkout(tmp_path, {"PL-K7QX-a.md": READY})
+
+    status = _discover(
+        monkeypatch,
+        tmp_path,
+        "Triage pass",
+        base={"PL-K7QX-a.md": READY},
+        HEAD={"PL-K7QX-a.md": DONE},
+    )
+
+    assert status == 0
+    assert "closes no item" in capsys.readouterr().out
+
+
+def test_a_working_tree_with_no_items_on_disk_declines_rather_than_closes_nothing(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    # Read as empty it would close nothing and pass any title: the silent
+    # direction `PL-1PBV` closed for the ref reads.
+    status = _discover(monkeypatch, tmp_path, "no id here", base={})
+
+    assert status == 0
+    captured = capsys.readouterr()
+    assert "the working tree could not be read" in captured.err
+    assert "not checked" in captured.err
+    assert "closes no item" not in captured.out

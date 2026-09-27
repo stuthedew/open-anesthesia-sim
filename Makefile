@@ -73,13 +73,21 @@ check: sync
 # adding a module is picked up correctly, so the cache fails in the one
 # direction that turns the gate green on a tree CI rejects.
 #
-# `known-first-party = ["anesthesia_sim"]` was considered and refused. It would
-# work - isort consults `known_modules` before it probes the filesystem, so the
-# package's own imports would stop depending on what exists - but it treats the
-# instance rather than the fault. The fault is that the cache does not track
-# the filesystem facts a verdict rests on, so the next rule that reads another
-# file reintroduces the divergence, and it would also silence the sorter on an
-# import of a module that is genuinely gone. `--no-cache` covers every rule.
+# `known-first-party` was refused here under `PL-QSJM`, as treating the
+# instance rather than the fault, and is declared since `PL-VZYS` (2026-09-27):
+# `anesthesia_sim` in pyproject.toml, `docket` in subprojects/docket/ruff.toml.
+# It was reopened because nothing can hand this flag to a hand-typed `uv run
+# ruff check .` - uv 0.12 reads no environment from pyproject.toml, and ruff's
+# configuration has no switch that turns its cache off - while isort consults
+# `known_modules` before it probes, so those two packages' imports stop
+# depending on what exists. Measured with both declared: deleting
+# `app/run_view.py` or `docket/config.py` leaves a warm hand run and a
+# cache-free one agreeing, where each had disagreed. The fault is still
+# upstream's, so this line keeps the flag for what the declarations do not
+# name: a tool importing a sibling under `tools/`, nine imports of five modules,
+# four of which diverged the same way on deletion. Naming those too would be a
+# list every new tool has to join, which is where the refusal's objection still
+# holds. `PL-VZYS` carries how each of its grounds was answered.
 #
 # The formatter keeps its cache deliberately. Its output depends only on the
 # file in front of it, so a stale entry there needs that file to have changed,
@@ -213,14 +221,17 @@ check: sync
 # and cost a cycle. `--discover` reads the title from this branch's own open
 # pull request instead, and skips silently on every way that can fail - no
 # token, no network, no pull request open yet - so this target stays green
-# offline. `make pr-title` runs it alone. `PL-J3BB`.
+# offline. `make pr-title` runs it alone. `PL-J3BB`. What the branch closes it
+# reads from the working tree, since this runs before the commit it vouches
+# for and a closure rides that commit (`PL-T8PT`).
 	python3 tools/pr_title_check.py --discover
 # The record half beside the title half, and the one provenance rests on
 # (`PL-HMZZ`): every item this branch closes must record `pr:` equal to its
 # own open pull request's number, which the required `pr-title` job refuses
 # the pull request without. `--discover` reads the number from that pull
 # request and skips silently on every way the lookup can fail, like the line
-# above; it reads the committed tree, so a closure counts once committed.
+# above, and reads the working tree as that line does, so a number `record N`
+# has just written counts before it is committed (`PL-T8PT`).
 	python3 tools/pr_record_check.py --discover
 # The body records beside the number (`PL-979D`, `PL-73G8`): a recovered body's
 # `commit:` is the one field tying it to the tree, and a history rewrite leaves

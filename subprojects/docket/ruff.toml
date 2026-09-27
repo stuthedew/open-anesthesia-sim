@@ -14,3 +14,13 @@
 # which syntax is emitted.
 extend = "../../pyproject.toml"
 target-version = "py311"
+
+# This package's own imports are named first-party, for the reason the root
+# `pyproject.toml` gives beside `anesthesia_sim`'s: left to the filesystem
+# probe, deleting a module here left `tests/` replaying clean verdicts a
+# cache-free run rejected - six `I001`s for `docket/config.py`, measured
+# 2026-09-27 (`PL-VZYS`). The list replaces the root's rather than adding to
+# it - ruff resolves it to `docket` alone - which costs nothing while nothing
+# here imports `anesthesia_sim`.
+[lint.isort]
+known-first-party = ["docket"]
