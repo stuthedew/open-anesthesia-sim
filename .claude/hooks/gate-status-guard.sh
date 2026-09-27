@@ -101,6 +101,19 @@
 # `&&`: in `make check && if true; then echo; fi; git status` the `then` reads
 # `true`, and the `;` after `fi` loses the gate's status.
 #
+# **After `&&` the walk steps over the whole pipeline, because `|` binds
+# tighter than `&&`** (`PL-0FGH`). An and-list joins pipelines, not commands -
+# "AND and OR lists are sequences of one or more pipelines separated by the
+# control operators `&&` and `||`" (Bash Reference Manual § 3.2.4) - so a
+# failing gate skips every stage of the pipeline after its `&&`, and `make
+# doc-check > log 2>&1 && git push | grep -v remote` exits with `make`'s
+# status. The walk stepped over `git push` alone and read the `|` after it as
+# the gate's, so the `&&` the deny message below recommends was refused as
+# soon as a session piped a later step. What follows the skipped pipeline
+# decides, as it would straight after the gate, and a `|` after a group the
+# gate is inside is still the group's: `( make check && git status ) | head`
+# loses the status. bash 5.2.21 gave each exit the tests pin.
+#
 # **An `||` fallback that fails too keeps the status, and only one that
 # provably does** (`PL-KQ4Q`). Every fallback used to read as one that
 # succeeds, so `make check || exit 1`, the ordinary way to stop on a red gate,
@@ -347,6 +360,20 @@ def ends(start, deepest):
     return None
 
 
+def pipeline_end(start, deepest):
+    """The segment ending the pipeline whose first command `start` opens, `deepest` groups in, or None.
+
+    A stage that is a group, an `if` or a loop is stepped over whole, as
+    `ends` steps over one. A `|` after a segment that closes a group around
+    the pipeline pipes that group, in a pipeline outside this one, so this
+    one ends there. None is a construct bash would refuse as unfinished.
+    """
+    end = ends(start, deepest)
+    while end is not None and separators[end] == "|" and depth[end] == deepest:
+        end = ends(end + 1, deepest)
+    return end
+
+
 # A read of the first stage of a pipeline out of `PIPESTATUS` (`PL-1DW7`):
 # `${PIPESTATUS[0]}`, the bare name, which names the first element of an
 # array, or `[@]` and `[*]`, which are all of them.
@@ -367,12 +394,8 @@ def pipestatus_read(start):
     """
     if start > 0 and separators[start - 1] == "|":
         return None
-    end = start
-    while separators[end] == "|":
-        end = ends(end + 1, depth[end])
-        if end is None:
-            return None
-    if separators[end] != ";" or depth[end] != depth[start]:
+    end = pipeline_end(start, depth[start])
+    if end is None or separators[end] != ";" or depth[end] != depth[start]:
         return None
     reader = segments[end + 1]
     if reader[:1] in CONDITIONAL or not any(FIRST_STAGE.search(word) for word in reader):
@@ -469,11 +492,14 @@ for index, segment in enumerate(segments):
         if separator is None:
             break
         if separator == "&&" or (separator == "|" and pipefail[at]):
-            # The status travels to the end of the next command, and an `if`,
-            # a loop or a group ends only where it closes: in `make check &&
-            # if true; then echo; fi; git status` the `;` after `true` belongs
-            # to the `if`, and the one after `fi` loses the status.
-            end = ends(following, depth[at])
+            # The status travels to the end of a pipeline: under `pipefail`
+            # the rest of this one, and after `&&` the whole of the next, since
+            # `|` binds tighter than `&&` and a failing gate skips every stage
+            # of it (`PL-0FGH`). An `if`, a loop or a group ends only where it
+            # closes: in `make check && if true; then echo; fi; git status` the
+            # `;` after `true` belongs to the `if`, and the one after `fi`
+            # loses the status.
+            end = pipeline_end(following, depth[at])
             if end is None:
                 break
             at = end
