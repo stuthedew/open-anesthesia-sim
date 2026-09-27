@@ -1,5 +1,7 @@
 import importlib.resources
 import json
+import re
+from collections.abc import Callable
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -15,7 +17,9 @@ from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
+    MACHINE_SCHEMA_VERSIONS,
     SOURCE_TIERS,
+    SupportedSchemaVersions,
     load_agent_parameters,
     load_reference_adult_parameters,
     load_reference_circle_system_parameters,
@@ -1069,3 +1073,124 @@ def test_the_breathing_circuit_loader_shares_the_boundary_type_too(
 
     assert "reference_circle_system.json" in str(raised.value)
     assert isinstance(raised.value.__cause__, OSError)
+
+
+def _machine_window_widened_to_3(monkeypatch: Any) -> None:
+    """Widen the machine family to read 2 and 3, as a first real bump might."""
+
+    monkeypatch.setattr(
+        parameters_module,
+        "MACHINE_SCHEMA_VERSIONS",
+        SupportedSchemaVersions(
+            data_files=MACHINE_SCHEMA_VERSIONS.data_files,
+            minimum=2,
+            current=3,
+            widened_because="test only: a version 3 in which every version 2 key keeps its meaning",
+        ),
+    )
+
+
+def test_a_machine_only_schema_bump_leaves_the_agent_files_loading(monkeypatch: Any) -> None:
+    """`PL-HNWX`: widening one family's window moves nothing in the other two.
+
+    One integer checked by exact equality used to stand for agents, patients
+    and machines together, so raising it for a machine-only change refused the
+    three agent files and the patient file until each was edited for a change
+    it had nothing to do with. The last assertion is the independence itself:
+    the machine family reading 3 must not teach the agent family to.
+    """
+
+    _machine_window_widened_to_3(monkeypatch)
+
+    newer_machine = _valid_breathing_circuit_payload()
+    newer_machine["schema_version"] = 3
+
+    assert parse_breathing_circuit_parameters(newer_machine).schema_version == 3
+    assert load_reference_circle_system_parameters().id == "reference_circle_system"
+
+    for agent_id in AGENT_DATA_FILENAMES:
+        assert load_agent_parameters(agent_id).id == agent_id
+    assert load_reference_adult_parameters().id == "reference_adult_70kg"
+
+    newer_agent = _valid_agent_payload()
+    newer_agent["schema_version"] = 3
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape("agent files (data/agents/) at schema_version 2"),
+    ):
+        parse_agent_parameters(newer_agent)
+
+
+@pytest.mark.parametrize("version", (1, 3))
+@pytest.mark.parametrize(
+    ("parse", "valid_payload", "data_files"),
+    (
+        (parse_agent_parameters, _valid_agent_payload, "agent files (data/agents/)"),
+        (
+            parse_reference_adult_parameters,
+            _valid_patient_payload,
+            "patient files (data/patients/)",
+        ),
+        (
+            parse_breathing_circuit_parameters,
+            _valid_breathing_circuit_payload,
+            "machine profiles (data/machines/)",
+        ),
+    ),
+)
+def test_each_family_refuses_a_version_outside_its_window_and_names_itself(
+    parse: Callable[[object], object],
+    valid_payload: Callable[[], dict[str, object]],
+    data_files: str,
+    version: int,
+) -> None:
+    """A reader of the error can tell a machine-schema problem from an agent one.
+
+    Below the window as well as above it: exact equality refused both, and a
+    window one version wide still does, so nothing that loads today changes.
+    """
+
+    payload = valid_payload()
+    payload["schema_version"] = version
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape(
+            f"unsupported schema_version: {version}; this build reads {data_files} "
+            "at schema_version 2"
+        ),
+    ):
+        parse(payload)
+
+
+def test_a_widened_window_names_both_of_its_ends_when_it_refuses(monkeypatch: Any) -> None:
+    _machine_window_widened_to_3(monkeypatch)
+
+    payload = _valid_breathing_circuit_payload()
+    payload["schema_version"] = 4
+
+    with pytest.raises(SimulationConfigurationError, match="at schema_version 2 to 3"):
+        parse_breathing_circuit_parameters(payload)
+
+
+def test_a_schema_version_window_refuses_a_minimum_above_its_current() -> None:
+    """An inverted window admits no file, which would look like a broken file."""
+
+    with pytest.raises(SimulationConfigurationError, match="minimum 3 is above current 2"):
+        SupportedSchemaVersions(data_files="test files", minimum=3, current=2)
+
+
+@pytest.mark.parametrize("reason", (None, "", "   "))
+def test_a_window_reading_older_versions_must_say_why_they_still_read(reason: str | None) -> None:
+    """Raising `current` alone must not widen the window by default.
+
+    An older file is validated against today's payload model, not translated
+    into it, so a key whose meaning changed between versions would load clean
+    and be misread. The reason is where the author says it has not.
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="without widened_because"):
+        SupportedSchemaVersions(
+            data_files="test files", minimum=2, current=3, widened_because=reason
+        )

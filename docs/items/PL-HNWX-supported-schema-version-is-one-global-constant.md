@@ -3,11 +3,13 @@ id: PL-HNWX
 title: SUPPORTED_SCHEMA_VERSION is one global constant across agents, patients and machines, so a machine-only schema bump drags three agent files and the patient file with it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: machine-profile-framework
 touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py, docs/MODEL.md
 added: 2026-09-20
+closed: 2026-09-27
+pr: 1212
 payoff: a machine-only schema change stops forcing edits to three agent files and the patient file that the change has nothing to do with
 verify: grep -q 'def test_a_machine_only_schema_bump_leaves_the_agent_files_loading' tests/unit/test_parameters.py
 ---
@@ -110,3 +112,41 @@ route precisely because the bump was not affordable. If the project instead
 decides as policy that all data files move in lockstep by version, this item
 should be dropped rather than built, and that decision recorded where the
 constant is defined.
+
+**Built 2026-09-27, as the building session's own call** (not the project
+owner's). The coordinator's brief for this thread asked for the design this
+item recommends, and nothing needed weighing: no document records a policy
+that all data files change version together (`ROADMAP.md`, `docs/MODEL.md`,
+`docs/ARCHITECTURE.md`, `docs/machine-abstraction.md` and `CONTRIBUTING.md`
+were searched for one), so the falsifier above does not hold and the item is
+built rather than dropped. What was built, and the calls inside it:
+
+- **A named window per family, not a class attribute on the payload.**
+  `AGENT_SCHEMA_VERSIONS`, `PATIENT_SCHEMA_VERSIONS` and
+  `MACHINE_SCHEMA_VERSIONS` in `src/anesthesia_sim/core/parameters.py`, each a
+  `SupportedSchemaVersions(data_files, minimum, current)`, sit where
+  `SUPPORTED_SCHEMA_VERSION` sat, which is where the next bump will look. Each
+  payload's `schema_version` validator names its family's constant in its body,
+  so the window is read when a file is validated. All three are `minimum=2`,
+  `current=2`: exact equality under another name, and nothing that loaded
+  before loads differently.
+- **Widening has to say why.** A window whose `minimum` is below its `current`
+  is refused at import unless `widened_because` states why the older files
+  still read correctly. The item's recommendation leaves the widening to "the
+  first real bump", and the brief's own design point says why that has to be a
+  decision rather than a default: an older file is validated against today's
+  payload, not translated into it, so a key whose meaning changed between
+  versions loads clean and is then misread. Exact equality closed that hazard
+  by construction and a range reopens it; without the guard, raising `current`
+  alone would widen the window silently. Chosen over leaving the rule to a
+  docstring, which nothing enforces at the moment it matters.
+- **The refusal names the family by its directory.** `unsupported
+  schema_version: 3; this build reads machine profiles (data/machines/) at
+  schema_version 2`, and `2 to 3` once a window is wider. The
+  `unsupported schema_version:` prefix is kept, so the existing agent test and
+  any search for it still find it.
+- **Docs.** `docs/MODEL.md` § "Source hierarchy" now says the version is per
+  family. `docs/ARCHITECTURE.md` ("validates schema version", "an unsupported
+  schema version") and `docs/machine-abstraction.md` Question 4 item 5 ("a
+  `schema_version` the loader does not know") were checked and stay true as
+  written, now per family.

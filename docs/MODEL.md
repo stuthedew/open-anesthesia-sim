@@ -2412,9 +2412,14 @@ that reports Gas Man's table, states a tier-3 provenance as though it were a
 measurement, and is the same error made in conversation instead of in a file.
 
 **The first and third of those rules are now schema, and `make check` decides
-them.** Data files moved to `schema_version` 2 on 2026-09-07 (`PL-1JDD`).
-Every `sources` entry carries two new required fields, and a data file may
-carry one new optional top-level string. They are written as a list rather
+them.** Data files moved to `schema_version` 2 on 2026-09-07 (`PL-1JDD`), all
+four at once because that change reached every family of them. The version has
+been per family since `PL-HNWX`: agent, patient and machine files are each read
+against their own supported window in `src/anesthesia_sim/core/parameters.py`,
+so a later schema change moves only the family it reaches, and every window
+reads version 2 alone today. At version 2, every `sources` entry carries two
+new required fields, and a data file may carry one new optional top-level
+string. They are written as a list rather
 than a table because the provenance table below is found as the first table in
 this section, and a second one above it would be read in its place:
 

@@ -35,7 +35,70 @@ from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
-SUPPORTED_SCHEMA_VERSION = 2
+
+@dataclass(frozen=True, slots=True)
+class SupportedSchemaVersions:
+    """The `schema_version` values one family of data file may declare.
+
+    Each family - agents, patients, machines - has its own window, so a schema
+    change to one family moves only that family's files. Until `PL-HNWX` one
+    module-level integer, checked by exact equality, stood for all three, and a
+    machine-only bump would have refused the three agent files and the patient
+    file until each was edited for a change it had nothing to do with.
+
+    The window is inclusive: `minimum` is the oldest version still read and
+    `current` is the version a file written today declares. Every family's
+    window is one version wide today, which is exact equality under another
+    name, and a window widens only on purpose.
+
+    **Widening is a claim about meaning, so it has to be stated.** A file
+    older than `current` is validated against today's payload model and is
+    not translated into it; nothing here upcasts one version into another. It
+    therefore reads correctly only while every key it can hold means what it
+    meant at its own version, and a changed meaning under an unchanged key
+    loads clean and is then misread. So a window whose `minimum` is below
+    `current` says in `widened_because` why the older files still read
+    correctly, and one that does not say is refused at import. Raising
+    `current` alone fails loudly rather than admitting every older file by
+    default.
+
+    Raises:
+        SimulationConfigurationError: the minimum is above the current
+            version, which would admit no file at all, or the window admits a
+            version below `current` without saying why.
+    """
+
+    data_files: str
+    minimum: int
+    current: int
+    widened_because: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.minimum > self.current:
+            raise SimulationConfigurationError(
+                f"{self.data_files}: schema_version minimum {self.minimum} is above "
+                f"current {self.current}, so the window admits no file"
+            )
+
+        if self.minimum < self.current and not (self.widened_because or "").strip():
+            raise SimulationConfigurationError(
+                f"{self.data_files}: the window admits schema_version {self.minimum} to "
+                f"{self.current} without widened_because; an older file is validated "
+                "against the current schema rather than translated into it, so state why "
+                f"it still reads correctly, or raise minimum to {self.current} "
+                "(see SupportedSchemaVersions)"
+            )
+
+
+AGENT_SCHEMA_VERSIONS = SupportedSchemaVersions(
+    data_files="agent files (data/agents/)", minimum=2, current=2
+)
+PATIENT_SCHEMA_VERSIONS = SupportedSchemaVersions(
+    data_files="patient files (data/patients/)", minimum=2, current=2
+)
+MACHINE_SCHEMA_VERSIONS = SupportedSchemaVersions(
+    data_files="machine profiles (data/machines/)", minimum=2, current=2
+)
 
 #: How far the tissue perfusion fractions may sum from 1 before the sum is
 #: called wrong. Two guards enforce that rule and both should keep doing so -
@@ -289,16 +352,36 @@ def _validate_optional_nonempty_string(value: object) -> str | None:
     return _validate_nonempty_string(value)
 
 
-def _validate_schema_version(value: object) -> int:
+def _validate_schema_version(value: object, supported: SupportedSchemaVersions) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ValueError("schema_version must be an integer")
 
-    if value != SUPPORTED_SCHEMA_VERSION:
+    if not supported.minimum <= value <= supported.current:
+        accepted = (
+            f"{supported.current}"
+            if supported.minimum == supported.current
+            else f"{supported.minimum} to {supported.current}"
+        )
         raise ValueError(
-            f"unsupported schema_version: {value}; expected {SUPPORTED_SCHEMA_VERSION}"
+            f"unsupported schema_version: {value}; this build reads "
+            f"{supported.data_files} at schema_version {accepted}"
         )
 
     return value
+
+
+# One per family, each naming its window in the body so that the window is
+# read when a file is validated rather than captured when this module loads.
+def _validate_agent_schema_version(value: object) -> int:
+    return _validate_schema_version(value, AGENT_SCHEMA_VERSIONS)
+
+
+def _validate_patient_schema_version(value: object) -> int:
+    return _validate_schema_version(value, PATIENT_SCHEMA_VERSIONS)
+
+
+def _validate_machine_schema_version(value: object) -> int:
+    return _validate_schema_version(value, MACHINE_SCHEMA_VERSIONS)
 
 
 def _validate_positive_finite(value: object) -> float:
@@ -355,7 +438,9 @@ NonEmptyString = Annotated[str, BeforeValidator(_validate_nonempty_string)]
 OptionalNonEmptyString = Annotated[str | None, BeforeValidator(_validate_optional_nonempty_string)]
 SourceTier = Annotated[str, BeforeValidator(_validate_source_tier)]
 DeclaredBool = Annotated[bool, BeforeValidator(_validate_bool)]
-SchemaVersion = Annotated[int, BeforeValidator(_validate_schema_version)]
+AgentSchemaVersion = Annotated[int, BeforeValidator(_validate_agent_schema_version)]
+PatientSchemaVersion = Annotated[int, BeforeValidator(_validate_patient_schema_version)]
+MachineSchemaVersion = Annotated[int, BeforeValidator(_validate_machine_schema_version)]
 PositiveFinite = Annotated[float, BeforeValidator(_validate_positive_finite)]
 NonNegativeFinite = Annotated[float, BeforeValidator(_validate_nonnegative_finite)]
 PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)]
@@ -530,7 +615,7 @@ class _AgentPayload(_StrictPayload):
     See `_StrictPayload` for why the pair exists and is not duplication.
     """
 
-    schema_version: SchemaVersion
+    schema_version: AgentSchemaVersion
     id: NonEmptyString
     display_name: NonEmptyString
     blood_gas_partition_coefficient: PositiveFinite
@@ -582,7 +667,7 @@ class _ReferenceAdultPayload(_StrictPayload):
     See `_StrictPayload` for why the pair exists and is not duplication.
     """
 
-    schema_version: SchemaVersion
+    schema_version: PatientSchemaVersion
     id: NonEmptyString
     display_name: NonEmptyString
     weight_kg: PositiveFinite
@@ -672,7 +757,7 @@ class _BreathingCircuitPayload(_StrictPayload):
     claims (`PL-8PS6`).
     """
 
-    schema_version: SchemaVersion
+    schema_version: MachineSchemaVersion
     id: NonEmptyString
     display_name: NonEmptyString
     circuit_volume_l: PositiveFinite
