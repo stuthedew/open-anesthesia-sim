@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: interface-areas
+milestone: v0.5.14
 touches: docs/WORKING_NOTES.md, ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-26

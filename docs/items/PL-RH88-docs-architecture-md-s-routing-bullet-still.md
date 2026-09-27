@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.5.14
 touches: docs/ARCHITECTURE.md
 added: 2026-09-26
 closed: 2026-09-26
