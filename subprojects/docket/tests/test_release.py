@@ -2568,11 +2568,17 @@ def _published(tmp_path: Path) -> tuple[Path, Path]:
     return origin, work
 
 
-def _run_printed(commands: tuple[str, ...], cwd: Path) -> subprocess.CompletedProcess[str]:
-    """Run the printed lines as pasted into a shell, stopping at the first that fails."""
+def _run_printed(
+    commands: tuple[str, ...], cwd: Path, *, keep_going: bool = False
+) -> subprocess.CompletedProcess[str]:
+    """Run the printed lines as pasted into a shell, stopping at the first that fails.
+
+    `keep_going` runs each line whatever the one before returned, which is
+    what an interactive shell does with a pasted block (`PL-PNW6`).
+    """
     identity = {"GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@example.com"}
     return subprocess.run(
-        ["bash", "-ec", "\n".join(commands)],
+        ["bash", "-c" if keep_going else "-ec", "\n".join(commands)],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -2620,6 +2626,67 @@ def test_the_printed_tag_line_refuses_before_the_release_has_merged(tmp_path: Pa
     assert done.returncode != 0
     assert "Failed to resolve ''" in done.stderr
     assert _git(work, "tag", "--list") == ""
+
+
+def test_the_tag_lines_clear_a_withdrawn_tag_before_tagging(tmp_path: Path) -> None:
+    """`PL-PNW6`: a re-used number, tagged from a checkout still holding the withdrawn tag.
+
+    `git fetch` never removes a tag, so the warm clone keeps it. Pasted as a
+    block, the three lines before this had `git tag` refuse the name and the
+    push put the withdrawn tag back on origin. Run again once the tag has
+    landed, the lines change nothing: an unguarded delete re-creates the tag as
+    a different object, which the push is refused and `git fetch --tags` will
+    not clobber.
+    """
+    origin, work = _published(tmp_path)
+    withdrawn = _git(work, "rev-parse", "HEAD")
+    _git(work, "tag", "-a", "v0.3.0", "-m", "v0.3.0")
+    _git(work, "push", "-q", "origin", "v0.3.0")
+    warm = tmp_path / "warm"
+    _git(tmp_path, "clone", "-q", str(origin), str(warm))
+    _git(origin, "tag", "-d", "v0.3.0")
+    _git(work, "tag", "-d", "v0.3.0")
+    cut = _commit(
+        work,
+        "PL-TR4N: cut v0.3.0",
+        {
+            "docs/releases/v0.3.0.md": "## v0.3.0\n",
+            "pyproject.toml": '[project]\nversion = "0.3.0"\n',
+        },
+    )
+    _git(work, "push", "-q", "origin", "HEAD:main")
+    assert _git(warm, "rev-parse", "v0.3.0^{commit}") == withdrawn
+
+    done = _run_printed(tag_commands("0.3.0"), warm, keep_going=True)
+
+    assert done.returncode == 0, done.stderr
+    assert _git(warm, "rev-parse", "v0.3.0^{commit}") == cut
+    assert _git(origin, "rev-parse", "v0.3.0^{commit}") == cut, "origin took the withdrawn tag"
+
+    landed = (_git(warm, "rev-parse", "v0.3.0"), _git(origin, "rev-parse", "v0.3.0"))
+    _run_printed(tag_commands("0.3.0"), warm, keep_going=True)
+
+    assert (_git(warm, "rev-parse", "v0.3.0"), _git(origin, "rev-parse", "v0.3.0")) == landed
+    _git(warm, "fetch", "-q", "--tags", "origin")
+
+
+def test_the_tag_lines_delete_nothing_when_origin_cannot_answer(tmp_path: Path) -> None:
+    """Only `ls-remote`'s exit 2 says origin lacks the tag; unreachable, a published one stays.
+
+    Deleted on a failed read, the tag line would re-create it as a different
+    object, and every later `git fetch --tags` refuses to clobber that.
+    """
+    _, work = _published(tmp_path)
+    _commit(work, "PL-TR4N: cut v0.3.0", {"docs/releases/v0.3.0.md": "## v0.3.0\n"})
+    _git(work, "push", "-q", "origin", "HEAD:main")
+    assert _run_printed(tag_commands("0.3.0"), work).returncode == 0
+    published = _git(work, "rev-parse", "v0.3.0")
+    _git(work, "remote", "set-url", "origin", str(tmp_path / "gone.git"))
+
+    done = _run_printed(tag_commands("0.3.0"), work, keep_going=True)
+
+    assert "does not appear to be a git repository" in done.stderr
+    assert _git(work, "rev-parse", "v0.3.0") == published
 
 
 def test_find_cut_names_nothing_for_absent_notes_and_no_one_of_notes_added_twice(

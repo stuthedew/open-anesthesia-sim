@@ -3,11 +3,13 @@ id: PL-PNW6
 title: A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: release-process
-touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
+touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_release.py
 added: 2026-09-07
+closed: 2026-09-27
+pr: 1197
 verify: grep -q 'def test_the_tag_lines_clear_a_withdrawn_tag_before_tagging' subprojects/docket/tests/test_release.py && grep -qF 'git ls-remote --exit-code' subprojects/docket/src/docket/release.py && grep -qF 'git ls-remote --exit-code' .claude/skills/docket/modes/release.md
 ---
 
@@ -214,3 +216,37 @@ re-runs them after success and asserts nothing changes. `verify:` greps for
 that test and for the guard in both `release.py` and the skill's example, and
 `make check` runs the test; the `grep` for the prose shape retires with shape
 (1).
+
+**Closed 2026-09-27.** `release.tag_commands` returns four lines, and the
+second, between the fetch and the tag, reads for `v1.0.0`:
+
+```bash
+[ -z "$(git tag -l v1.0.0)" ] || git ls-remote --exit-code origin refs/tags/v1.0.0 >/dev/null || [ $? -ne 2 ] || git tag -d v1.0.0
+```
+
+That is the answered shape with two guards the line quoted above lacked. Both
+were found by measuring it while building it, in a scratch origin with git
+2.43.0:
+
+- **It exited 1 on every ordinary handover.** A checkout holding no tag of the
+  name reached `git tag -d`, which failed, so a `bash -e` run stopped at line
+  two - which is how the existing replay tests run the lines - and a paste
+  reported a failure on the first tag of every release. It now asks nothing
+  and exits 0 when the checkout holds no such tag.
+- **It deleted a published tag when origin could not be asked.**
+  `ls-remote --exit-code` exits 2 only when origin answered and holds no such
+  ref; pointed at a path that does not exist it exits 128, and the `||` read
+  that as withdrawn. Re-run with origin unreachable, the quoted line deleted
+  the checkout's correct tag; the tag line re-creates it as a different object,
+  and `git fetch --tags` then exits 1 on `would clobber existing tag`. It now
+  deletes only on exit 2.
+
+Neither changes what was decided: a generated line that deletes only what
+origin says it does not have. `test_the_tag_lines_clear_a_withdrawn_tag_before_tagging`
+fails on the three-line handover, where origin takes the withdrawn tag back;
+`test_the_tag_lines_delete_nothing_when_origin_cannot_answer` fails on the
+quoted line, as do the two existing replay tests. `_run_printed` gained
+`keep_going`, since the hazard exists only where every pasted line runs.
+`.claude/skills/docket/modes/release.md`'s example is byte-identical to
+`tag_commands("0.3.0")`, and two docstrings in `cli.py` that counted three
+commands no longer count them.
