@@ -113,14 +113,13 @@ from .vcs import (
     _cut_versions,
     _head_name,
     _item_paths_on,
-    _landing_split,
+    _Landings,
     _notes_on,
     _remotes,
     _run_git,
     _Silences,
     _superseded,
     _unlanded_refs,
-    _work_already_on_base,
     answered,
     changed_path_args,
     default_base,
@@ -553,7 +552,6 @@ def holdings(
     ranked: list[tuple[tuple[datetime, str, int, datetime, str], str, str, Hold]] = []
     for (key, branch), (episode, yielded) in episodes.items():
         standing = [claim for claim in episode if claim.identity not in superseded]
-        fork = refs.fork.get(tips[branch], "")
         unspent = [
             claim
             for claim in standing
@@ -561,8 +559,7 @@ def holdings(
                 claim,
                 histories[branch],
                 branches[branch],
-                fork,
-                refs.base_blobs,
+                refs.landings,
                 root,
                 run,
                 landed.setdefault(branch, {}),
@@ -624,7 +621,7 @@ def holdings(
     # and in the order that stops soonest: most edits change no status.
     dispositions: list[Hold] = []
     for branch, found in touched.items():
-        fork = refs.fork.get(tips[branch], "")
+        fork = refs.landings.fork(tips[branch])
         for key, (position, _) in found.items():
             if not fork or key not in on_base:
                 continue
@@ -1126,9 +1123,10 @@ def _history(names: list[str], base: str, root: Path, run: Runner) -> list[_Comm
     unevenly, and a branch forked below the graft descends through commits
     `^base` cannot exclude before ending against the fork point the short path
     still reaches. Every commit it emits has a parent, so the test above stays
-    silent and the base's own commits come back in the walk. `_landed_through`
-    is what keeps them from holding anything: they wrote only content the base
-    holds, so a claim they carry is spent (`PL-N162`). No sound test exists
+    silent and the base's own commits come back in the walk. What keeps them
+    from holding anything is that a claim binds only to the branch its token
+    names (`_events`), and that `_landed_through` asks only of a claim's own
+    descendants, which none of them is (`PL-N162`). No sound test exists
     inside a truncated checkout - naming a branch unread whenever the base is
     grafted would silence this read in every agent container, and deepening
     the clone breaks the rule that these commands need no network.
@@ -1427,56 +1425,56 @@ def _landed_through(
     claim: _Claim,
     history: list[_Commit],
     names: list[str],
-    fork: str,
-    base_blobs: frozenset[str],
+    landings: _Landings,
     root: Path,
     run: Runner,
     landed: dict[int, bool],
 ) -> bool:
     """Whether the branch's landed prefix takes in the claim: whether the claim is spent.
 
-    A landed commit wrote content, all of it content the base has held, and
-    the branch's own work through it - the branch as of that commit, against
-    its fork - is all on the base. That is where a squash merge took the
+    A landed commit is one the branch's own work through - the branch as of
+    that commit, against that commit's own fork - is all content the base
+    wrote since that fork (`_Landings`). That is where a squash merge took the
     branch, and a claim the commit descends from, or that is the commit, has
     been spent.
 
     **Descends from, not sorts after.** The walk is in author-date order, and
     a merge of the base brings in commits no claim is an ancestor of. Where the
-    clone is grafted unevenly, the walk reaches them below the graft, and each
-    writes only content the base holds. One authored after the claim sorts
-    after it, and read by place it spent a live claim (`PL-N162`'s review of its
-    slice 2). So the landed commit is sought among the claim's descendants,
-    newest first. Taking the newest landed commit overall and then asking about
-    ancestry would leave the claim live when a squash really had taken it.
+    clone is grafted unevenly, the walk reaches them below the graft. One
+    authored after the claim sorts after it, and read by place it spent a live
+    claim (`PL-N162`'s review of its slice 2). So the landed commit is sought
+    among the claim's descendants, newest first. Taking the newest landed
+    commit overall and then asking about ancestry would leave the claim live
+    when a squash really had taken it.
 
-    **Both tests, because either alone releases a live claim.** The commit's
-    own blobs are true of an empty commit - the claim commit itself - and of
-    one reverting a file to a version the base once held; the branch-level
-    test is what a squash actually proves. The first is a necessary condition
-    of the second, since a blob the commit writes is either in the branch's
-    net change or is the fork's own copy, so it picks the candidates from the
-    walk already made and only a candidate costs a diff; `landed` keeps each
-    diff's answer by place, for the branch's other claims. A branch the squash
-    cannot be proven against - a file the base resolved against its own later
-    edits (`PL-LKFP`) - keeps its claims until a yield or the lease, and so does
-    one git would not list descendants for.
+    **The branch's own history since the commit's own fork, and nothing
+    coarser** (`PL-P64J`). This read first judged each commit's blobs, and then
+    the split, against every blob the base's history holds, and spent a live
+    claim on a branch whose commit put files back to content the base held
+    before the fork - every blob such a commit writes is in that set. Judged
+    against what the base wrote since the fork, that commit lands nothing. The
+    fork is the commit's own rather than the tip's because a branch that
+    merged the base moved its tip's fork past its earlier commits, and an
+    earlier commit split against the later fork reads the base's writes in
+    between as its own, unlanded - so a squash that took the branch before the
+    merge would be missed and its claim held. An empty commit, the claim
+    itself, writes nothing and proves no squash, so it is never asked about;
+    `landed` keeps each commit's answer by place, for the branch's other
+    claims. A branch the squash cannot be proven against - a file the base
+    resolved against its own later edits (`PL-LKFP`), or a squash below a
+    truncated clone's horizon - keeps its claims until a yield or the lease,
+    and so does one git would not list descendants for.
     """
-    if not fork:
-        return False
     after = set(run(["rev-list", "--ancestry-path", f"^{claim.commit}", *names], root).split())
     after.add(claim.commit)
     # A descendant sorts after its ancestors in the walk, so nothing before the
     # claim can be one.
     for position in range(len(history) - 1, claim.position - 1, -1):
         entry = history[position]
-        if entry.commit not in after:
-            continue
-        if not entry.added or not all(blob in base_blobs for blob in entry.added):
+        if entry.commit not in after or not entry.added:
             continue
         if position not in landed:
-            split = _landing_split(entry.commit, fork, base_blobs, root, run)
-            landed[position] = _work_already_on_base(split)
+            landed[position] = landings.taken_whole(entry.commit)
         if landed[position]:
             return True
     return False

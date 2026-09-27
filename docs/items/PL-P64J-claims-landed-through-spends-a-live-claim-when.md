@@ -3,12 +3,13 @@ id: PL-P64J
 title: claims._landed_through spends a live claim when the branch, as of some commit after the claim, only restores files to content the default branch held before the fork, because it splits that commit against the base's ever-held blob set: a claimed branch retiring a feature by restoring files reads as merged, and its item as unheld
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: pre-fork-content
 touches: subprojects/docket/src/docket/claims.py, subprojects/docket/tests/test_claims.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-27
 payoff: a claimed branch that restores files to earlier content keeps its claim, so the item still reads as held and no second session is offered it
 verify: grep -q 'def test_a_claim_on_a_branch_restoring_pre_fork_content_stays_live' subprojects/docket/tests/test_claims.py
 ---
@@ -60,3 +61,11 @@ content.
 **Generator check.** A member of `PL-927J`, the head recorded at this triage
 for the family fact `PL-R808`, `PL-BHVM` and `PL-GHHW` name: whether the base
 already holds or has superseded a branch commit's change, by whatever route.
+
+**Fixed 2026-09-27** through `PL-927J`. `_landed_through` asks
+`vcs._Landings.taken_whole` of each descendant commit that wrote anything: the
+commit's own fork, its net change since, against what the base wrote after
+that fork. The ever-held prefilter went with the set. Pinned by
+`test_a_claim_on_a_branch_restoring_pre_fork_content_stays_live`: the restore
+keeps the claim live with and without later work, and a squash writing that
+content after the fork spends it.

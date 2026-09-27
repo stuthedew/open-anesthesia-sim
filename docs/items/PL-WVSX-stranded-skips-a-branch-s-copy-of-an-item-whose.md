@@ -3,12 +3,13 @@ id: PL-WVSX
 title: stranded skips a branch's copy of an item whose blob the default branch's history ever held, because its item filter reads _base_blobs' ever-held set: a branch that restores an item file to an earlier version, reopening a closed item for one, reads as behind the base, so its change is never reported if the branch is abandoned (reasoned from the code 2026-09-27, not yet run)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: pre-fork-content
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
+closed: 2026-09-27
 payoff: an abandoned branch whose only change restores an item to an earlier version is reported by stranded instead of being lost with the branch
 verify: grep -q 'def test_stranded_reports_a_branch_restoring_an_item_to_an_earlier_version' subprojects/docket/tests/test_vcs.py
 ---
@@ -55,3 +56,12 @@ docstring why it stays unreported; and a test pins each case.
 
 **Generator check.** A member of `PL-927J`, as `PL-P64J` is: the same family
 fact in `stranded`'s item filter.
+
+**Fixed 2026-09-27** through `PL-927J`. The filter reads the ref's split from
+`vcs._Landings`: a copy in the landed half is one the base wrote since the
+fork, a copy in neither is one the ref never wrote since its own fork (the
+stale control), and a copy outstanding - a restore to content the base held
+only before the fork among them - is opened and compared. Where git names no
+fork, the copy is read by text. The reopen case stays unreported, by
+`_standing`'s closure rule, and that docstring now says so. Pinned by
+`test_stranded_reports_a_branch_restoring_an_item_to_an_earlier_version`.
