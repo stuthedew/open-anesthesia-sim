@@ -44,6 +44,19 @@ lookup runs *before* `closes()` deliberately - it is one request against
 several hundred `git show` calls, so a branch with no pull request pays
 milliseconds and this check speaks only when it has something to say.
 
+**Under `--discover` the head is the working tree, not `HEAD`** (`PL-T8PT`,
+project owner, 2026-09-27, ratified, over a pre-push hook and over printing the
+ids with no verdict). `make check` runs before the commit it vouches for, and
+the close-out mode writes a closure in the same commit as its work, so read at
+`HEAD` a closure was always one commit short: the run passed, and `pr-title`
+failed on the same tree one push later (`#499`, five drops and a close). Read
+from disk it is the tree about to be committed, and the set `bin/docket record
+N` writes onto. The cost is that the local run answers about the checkout
+rather than about what is pushed, so a closure never committed is reported
+here and never reaches CI - a true statement about the checkout, and the
+failure says where it read. An explicit `--head`, or `PR_HEAD`, still names a
+ref, and CI passes no `--discover`, so the merge gate's answer is unchanged.
+
 **A tree git will not read is never compared as an empty one** (`PL-1PBV`).
 What a branch closes is the difference between the items closed at two refs,
 so an unreadable head read as empty closed nothing and passed any title, and
@@ -73,15 +86,25 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.model import CLOSED_STATUSES, Item, parse_item  # noqa: E402
+from docket.store import read_items  # noqa: E402
 from docket.vcs import ITEM_FILE_RE, default_base, leading_ids  # noqa: E402
 
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
 
 ITEMS_DIR = "docs/items"
 
+#: The head `--discover` reads where no ref is named (`PL-T8PT`): the item files
+#: on disk, committed or not. Git refuses a ref name with a space in it, so no
+#: ref can be taken for this.
+WORKING_TREE = "the working tree"
+
 
 class GitUnanswered(Exception):
-    """A git read the verdict rests on that git did not answer, and git's reason."""
+    """A tree read the verdict rests on that did not answer, and the reason.
+
+    Git's reason for a ref, and the disk's for `WORKING_TREE`, which declines
+    the same way rather than reading as a tree that closes nothing.
+    """
 
 
 def _git(args: list[str]) -> str:
@@ -112,9 +135,12 @@ def _git(args: list[str]) -> str:
 def closed_items_at(ref: str) -> dict[str, Item]:
     """Every item closed in that tree, by id, or `GitUnanswered`.
 
+    `ref` is a git ref, or `WORKING_TREE` for the files on disk.
     `pr_record_check.py` reads it too, for what each closure records, so the
     two checks cannot disagree about what a tree holds closed.
     """
+    if ref == WORKING_TREE:
+        return _closed_on_disk()
     closed: dict[str, Item] = {}
     listing = _git(["ls-tree", "-r", "--name-only", ref, "--", ITEMS_DIR])
     for path in listing.splitlines():
@@ -126,6 +152,28 @@ def closed_items_at(ref: str) -> dict[str, Item]:
         if item.status in CLOSED_STATUSES and item.identifier:
             closed[item.identifier] = item
     return closed
+
+
+def _closed_on_disk() -> dict[str, Item]:
+    """Every item closed in the files on disk, by id, or `GitUnanswered`.
+
+    Read through the store's own reader, so the files counted are the ones
+    `bin/docket record N` writes onto. A missing directory declines rather than
+    reading as a tree that closes nothing, as a ref git cannot read does
+    (`PL-1PBV`), and so does a file that cannot be read.
+    """
+    directory = ROOT / ITEMS_DIR
+    if not directory.is_dir():
+        raise GitUnanswered(f"`{ITEMS_DIR}` is not on disk in {ROOT}")
+    try:
+        items = read_items(directory)
+    except (OSError, UnicodeDecodeError) as error:
+        raise GitUnanswered(f"`{ITEMS_DIR}` could not be read from disk: {error}") from error
+    return {
+        item.identifier: item
+        for item in items
+        if item.status in CLOSED_STATUSES and item.identifier
+    }
 
 
 def closes(base: str, head: str) -> list[str]:
@@ -178,14 +226,18 @@ def main() -> int:
     # default is `master` compares against it rather than an `origin/main`
     # that does not resolve there (`PL-GNCB`).
     parser.add_argument("--base", default=os.environ.get("PR_BASE") or default_base(ROOT))
-    parser.add_argument("--head", default=os.environ.get("PR_HEAD", "HEAD"))
+    parser.add_argument("--head", default=os.environ.get("PR_HEAD"))
     parser.add_argument(
         "--discover",
         action="store_true",
         help="when PR_TITLE is unset, read the title from this branch's open "
-        "pull request; skip silently if it cannot be read (for `make check`)",
+        "pull request; skip silently if it cannot be read; with no --head, read "
+        "what the branch closes from the working tree (for `make check`)",
     )
     args = parser.parse_args()
+    # A ref where one is named, by `--head` or by CI's `PR_HEAD`; otherwise the
+    # local run reads the tree it is about to commit (`PL-T8PT`).
+    head = args.head or (WORKING_TREE if args.discover else "HEAD")
 
     # The title comes through the environment, never through argv or a shell
     # interpolation: it is attacker-controlled text on a fork pull request, and
@@ -207,10 +259,10 @@ def main() -> int:
         return 0
 
     try:
-        closing = closes(args.base, args.head)
+        closing = closes(args.base, head)
     except GitUnanswered as silence:
         print(
-            f"pr-title: git could not read one of the trees at {args.base} and {args.head}, "
+            f"pr-title: one of the trees at {args.base} and {head} could not be read, "
             f"so what this branch closes is unknown; not checked.\n"
             f"  {silence}\n"
             f"  Name refs git can resolve - `git fetch origin` where the base is missing.",
@@ -234,8 +286,12 @@ def main() -> int:
     # it. In CI the title arrives without one and the run is already on the
     # pull request it belongs to.
     which = f"#{number}'s title" if number is not None else "the title"
+    # Where it read, since under `--discover` that is the checkout rather than
+    # anything pushed yet.
+    closer = "this checkout" if head == WORKING_TREE else "this branch"
+    where = " in its working tree" if head == WORKING_TREE else ""
     print(
-        f"pr-title: this branch closes {', '.join(closing)}, but {which} does not "
+        f"pr-title: {closer} closes {', '.join(closing)}{where}, but {which} does not "
         f"lead with {', '.join(missing)}.\n"
         f"  title: {title}\n"
         f"  The squash-merge subject is taken from this title, and it is the one line "

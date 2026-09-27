@@ -3136,8 +3136,8 @@ command. Because the job is required, a merge cannot land between the
 closure's push and the number's — the pull request stays red until the number
 lands — so the window above does not reopen. `make check` runs the same script
 with `--discover`, against the branch's own open pull request, so a session
-learns before it pushes; it reads the committed tree, so the closure has to be
-committed to be seen.
+learns before it pushes; it reads the working tree, so a closure and the number
+`record N` wrote onto it are seen before they are committed (`PL-T8PT`).
 
 A closure the base does not hold yet may have its number *replaced*, because a
 pull request closed unmerged and reopened is the one way a closure

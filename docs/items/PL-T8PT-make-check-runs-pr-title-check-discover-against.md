@@ -3,11 +3,14 @@ id: PL-T8PT
 title: make check runs pr_title_check --discover against committed history, so a session that runs it before committing the closure sees a HEAD without it, passes locally, and goes red in CI anyway
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: dev-tooling
-touches: tools/pr_title_check.py, tests/unit/test_pr_title_check.py, Makefile
+touches: tools/pr_title_check.py, tools/pr_record_check.py, tests/unit/test_pr_title_check.py, tests/unit/test_pr_record_check.py, Makefile, .claude/skills/docket/modes/close-out.md, subprojects/docket/README.md
 added: 2026-09-12
+closed: 2026-09-27
+pr: 1179
+verify: grep -q 'def test_a_closure_written_but_not_committed_is_refused_before_the_commit' tests/unit/test_pr_title_check.py
 ---
 
 **Problem.** make check runs pr_title_check --discover against committed history, so a session that runs it before committing the closure sees a HEAD without it, passes locally, and goes red in CI anyway
@@ -195,3 +198,17 @@ tree and CI is unchanged, as § "Design round 2026-09-27: recommendations"
 specifies. The approach is chosen, so the "not delegable as filed" reason
 above has ended and the item is ordinary `S` work; the thread that builds it
 sets its status and `touches:`.
+
+**Built, 2026-09-27, as the design round's "How" describes.** Under
+`--discover` with no `--head`, both checks read the item files on disk through
+`docket.store.read_items`, the reader `record N` writes through; an explicit
+`--head` or `PR_HEAD` still names a ref, and `pr-title.yml` passes neither
+`--discover` nor `PR_HEAD`, so CI is unchanged. A missing `docs/items` declines
+with its reason. Five of the six new tests fail against the old read; the sixth
+pins the explicit `--head` path, which both reads share. A fifth sentence moved
+beside the four the design round named: `subprojects/docket/README.md` also
+said `make check` reads the committed tree. Run on this item's own close-out,
+before the closing commit: the record check refused "this checkout closes
+PL-T8PT in its working tree, but #1179 is not recorded" until `record 1179`
+ran, and both checks passed after it, where the old read would have said the
+branch closed nothing.
