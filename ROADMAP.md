@@ -3563,6 +3563,16 @@ is `dropped` carrying that refutation. Recorded here because a `safety`-classed
 `P1` briefly existed on the strength of it, and a later reader meeting the
 dropped item is owed the reason it never reached this list.
 
+**The refutation was itself the misreading, and `PL-TBMX` is open again**
+(project owner, 2026-09-27, ratified, over building `PL-HGB6` as written). The
+profile's "the apparatus alone" contrasts the stored volume with Targ et al.'s
+system plus the bag that stood in for the lung, and that system's corrugated
+limbs and Y-piece were apparatus, so the phrase means without the lung, not
+without the patient circuit; the model's one gas compartment in front of the
+patient leaves the limbs nowhere else to be. `PL-HGB6` was re-scoped to keep the
+assembled-total meaning in `docs/machine-abstraction.md`, and `PL-TBMX` joined
+v0.6.0's frozen list as a post-freeze `safety` entry.
+
 Nothing is misleading anybody meanwhile, which is what makes the deferral safe
 rather than merely convenient: no preview is drawn today, so the safety obligation
 the item records binds whoever builds it rather than describing a live defect. Had
@@ -5405,6 +5415,18 @@ for the next freeze: a frozen list is computed from the store's *classes*, so
 an untriaged backlog is invisible to it, and a freeze taken while captures are
 waiting understates itself by however many of them turn out to be debt.
 
+**`PL-TBMX` joined this list on 2026-09-27, after the freeze, under the
+exception that admits a `safety` finding whenever it is made.** It was filed on
+2026-09-20 and dropped the same day on a misreading of the reference profile's
+phrase "the apparatus alone", which there means without the lung and not without
+the patient circuit; § "Declined to Gate 2 on the refilling-queue ground"
+carries the history. The project owner reopened it as a `P1` when `PL-HGB6` was
+re-scoped (project owner, 2026-09-27, ratified, over building `PL-HGB6` as
+written). It is `ready` rather than `blocked` behind `PL-2FZ9`, so the
+`anticipated` carve-out does not reach it: its own brief places it before a
+second profile can be loaded, because that gap is the whole of its exposure. It
+is product-lane work and is listed in that group.
+
 **Three kinds of group, and only the third is a precondition.** The first is
 debt inside this milestone's own Required scope, cleared *by* it per § "Debt
 inside the milestone's own scope" - the test is whether `Required scope` below
@@ -5571,7 +5593,7 @@ named here, for the reason beat 3 gives.
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 - PL-WZVZ (M) Make an inter-machine difference attributable: which parameter differs, and what it does to the result
 
-**Cleared before v0.6.0 begins, the product lane - 45 entries**
+**Cleared before v0.6.0 begins, the product lane - 46 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
@@ -5608,6 +5630,7 @@ named here, for the reason beat 3 gives.
 - PL-SM5V (M) A run's settings cannot be recovered from RunSegment.settings: the L/min to L/s conversion does not round-trip for 7 of 101 cardiac outputs
 - PL-SPN6 (S) Three compartments now raise the same 'partial_pressure_fraction must be between 0 and 1', so a refused step no longer says which one refused
 - PL-SQJ1 (M) Playback delivers 73-91% of the rate the dropdown displays: 300x measured at 220x, 1x at 0.9x, so the clock on screen runs slower than its label
+- PL-TBMX (S) circuit_volume_l means apparatus plus patient circuit, so a real machine profile storing a published apparatus figure would understate the circuit time constant by about 40%
 - PL-TCR5 (S) The chart hover answers the pointer's previous position and never re-answers a resting pointer while paused, because the direct sigMouseMoved slot reads the position the rate-limited proxy stored one event earlier
 - PL-TDBT (M) docs/pr-bodies holds 187 historical documents that read as current: 21 cited paths no longer exist, 30 cite an unresolvable sha, and 22 angle-bracket placeholders in 15 files vanish in GitHub's own blob view, with doc_check blind to all of it by design
 - PL-V67Q (M) Add y-axis range control to the agent graph: optional auto-scale, and a settable MAC / volume-percent scale
