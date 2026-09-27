@@ -56,8 +56,6 @@ from anesthesia_sim.core.parameters import (
 from anesthesia_sim.core.patient import PatientCompartments, PatientCompartmentsState
 from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
 
-SECONDS_PER_MINUTE = 60.0
-
 # The largest simulation step `advance()` accepts.
 #
 # It is not a bound on the arithmetic, and re-deriving it (`PL-X9KD`) did not

@@ -112,10 +112,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.concentration import fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-
-#: Milliseconds per second, for the timer interval `RENDER_INTERVAL_S` states
-#: in seconds.
-_MILLISECONDS_PER_SECOND: Final = 1000
+from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 
 #: The chart column takes three parts of the width beside the sidebar's one,
 #: the proportion the Flet build's 9:3 grid columns gave the same two panels.
@@ -357,7 +354,7 @@ class SimulationView(QWidget):
 
         self._render_timer = QTimer(self)
         self._render_timer.setTimerType(Qt.TimerType.PreciseTimer)
-        self._render_timer.setInterval(round(RENDER_INTERVAL_S * _MILLISECONDS_PER_SECOND))
+        self._render_timer.setInterval(round(RENDER_INTERVAL_S * MILLISECONDS_PER_SECOND))
         self._render_timer.timeout.connect(self.render_tick)
 
     @property
