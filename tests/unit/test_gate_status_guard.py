@@ -392,8 +392,8 @@ COMPOUND = (
     ("for t in a b; do set -o pipefail; uv run pytest -q $t 2>&1 | tail -5; done", True),
     ('for t in a b; do uv run pytest -q $t; echo "exit=$?"; done', False),
     # After `&&`, or a pipe under `pipefail`, the status travels to the end of
-    # the next command, and an `if`, a loop or a group ends where it closes,
-    # not at the first `;` inside it.
+    # a pipeline, and an `if`, a loop or a group ends where it closes, not at
+    # the first `;` inside it.
     ("make check && if true; then echo ok; fi; git status", True),
     ("make check && { echo a; echo b; }", False),
     ("set -o pipefail; make check 2>&1 | while read -r l; do echo $l; done; git status", True),
@@ -514,6 +514,59 @@ def test_pipestatus_read_after_the_pipeline_keeps_the_status(command: str, refus
     """
     decision = _decision(command)
     assert (decision is not None) is refused, f"{command!r}: refused={decision is not None}"
+
+
+AND_THEN_A_PIPE = (
+    # `PL-0FGH`'s command, its elisions filled in: `|` binds tighter than `&&`,
+    # so the `grep` is the last stage of the push, and a failing `make` skips
+    # the push and the `grep` both. Each comment is the exit bash 5.2.21 gave
+    # with the gate a stub exiting 3, and the second field is what the refusal
+    # says of the separator that loses the status, where one does.
+    (
+        "make doc-check > /tmp/doc.log 2>&1 && git add docs/items && git commit -qm x "
+        "&& git push -q origin HEAD 2>&1 | grep -v remote",
+        None,
+    ),  # 3
+    # The `&&` the refusal recommends, with a pipe on the step after it.
+    ("make check > /tmp/gate.log 2>&1 && tail -45 /tmp/gate.log | grep -i error", None),  # 3
+    ("make check && git status | head -3", None),  # 3
+    # A stage that is a group, a gate ending a pipeline of its own, a second
+    # piped step, and a fallback that fails too ahead of the `&&`.
+    ("make check && { git status; } | head -3", None),  # 3
+    ("make check && ( git status ) | head -3", None),  # 3
+    ("true | make check && git status | head -3", None),  # 3
+    ("make check && git status | head -3 && git log --oneline | head -1", None),  # 3
+    ("make check || false && git status | head -3", None),  # 1
+    # What follows the skipped pipeline decides, as it would straight after
+    # the gate.
+    ('make check && git status | head -3; echo "exit=$?"', None),  # prints exit=3
+    ("make check && git status | head -3; echo after", "after the `;`"),  # 0
+    ("make check && git status | head -3 || true", "fallback succeeds"),  # 0
+    ("make check && git status | head -3 &", "backgrounded"),  # 0
+    # And a `|` after a group the gate is inside pipes the group.
+    ("( make check && git status ) | head -3", "LAST stage"),  # 0
+    ("{ make check && git status; } | head -3", "LAST stage"),  # 0
+    ("( make check && git status | head -3 ) | cat", "LAST stage"),  # 0
+)
+
+
+@pytest.mark.parametrize(("command", "loses"), AND_THEN_A_PIPE)
+def test_a_gate_before_and_skips_the_whole_pipeline_after_it(
+    command: str, loses: str | None
+) -> None:
+    """`|` binds tighter than `&&`, so a failing gate skips the whole pipeline after it (`PL-0FGH`).
+
+    The walk stepped over one command after the `&&` and read the `|` behind
+    it as losing the status of the gate, so every command here that bash
+    exits non-zero on was refused, and the rest were refused at that `|`
+    rather than at the separator that loses the status.
+    """
+    decision = _decision(command)
+    if loses is None:
+        assert decision is None, f"{command!r} was refused"
+    else:
+        assert decision is not None, f"{command!r} was allowed"
+        assert loses in decision["permissionDecisionReason"], command
 
 
 PRESERVED = (
