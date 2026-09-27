@@ -193,36 +193,63 @@ from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMainWindow
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.qt_widgets import (
-    WINDOW_SCREEN_FRACTION, declare_application_colours, initial_window_geometry)
+    WINDOW_SCREEN_FRACTION,
+    declare_application_colours,
+    initial_window_geometry,
+)
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.playback import playback_rate_for
 
 WALL_S = float(sys.argv[1]) if len(sys.argv) > 1 else 8.0
-app = QApplication([]); declare_application_colours(app)
+app = QApplication([])
+declare_application_colours(app)
 for multiplier in (1, 5, 20, 60, 300):
     case = BranchedCase(SimulationController())
     view = SimulationView((case.trunk,), case=case)
-    window = QMainWindow(); window.setCentralWidget(view)
-    window.setGeometry(initial_window_geometry(
-        app.primaryScreen().availableGeometry(), window.minimumSizeHint(), WINDOW_SCREEN_FRACTION))
-    window.show(); view.present(False); app.processEvents()
+    window = QMainWindow()
+    window.setCentralWidget(view)
+    window.setGeometry(
+        initial_window_geometry(
+            app.primaryScreen().availableGeometry(),
+            window.minimumSizeHint(),
+            WINDOW_SCREEN_FRACTION,
+        )
+    )
+    window.show()
+    view.present(False)
+    app.processEvents()
     run = view.runs[0]
     run._playback_rate = playback_rate_for(multiplier)
     ticks, cost = [], []
     original = run.step_tick
+
     def timed():
-        t = time.perf_counter(); ticks.append(t); original(); cost.append(time.perf_counter() - t)
-    run._step_timer.timeout.disconnect(); run._step_timer.timeout.connect(timed)
-    run.controller.start(); before = run.controller.snapshot().elapsed_s
-    view.start_simulation_timer(); t0 = time.perf_counter()
-    QTimer.singleShot(int(WALL_S * 1000), app.quit); app.exec()
-    wall = time.perf_counter() - t0; view.stop_timers(); run.controller.pause()
+        t = time.perf_counter()
+        ticks.append(t)
+        original()
+        cost.append(time.perf_counter() - t)
+
+    run._step_timer.timeout.disconnect()
+    run._step_timer.timeout.connect(timed)
+    run.controller.start()
+    before = run.controller.snapshot().elapsed_s
+    view.start_simulation_timer()
+    t0 = time.perf_counter()
+    QTimer.singleShot(int(WALL_S * 1000), app.quit)
+    app.exec()
+    wall = time.perf_counter() - t0
+    view.stop_timers()
+    run.controller.pause()
     delivered = (run.controller.snapshot().elapsed_s - before) / wall
     periods = [b - a for a, b in zip(ticks, ticks[1:])]
-    print(f"{multiplier}x: delivered {delivered:.1f}x = {100 * delivered / multiplier:.1f}% of nominal, "
-          f"{len(ticks)} ticks, period median {1000 * statistics.median(periods):.1f} ms "
-          f"max {1000 * max(periods):.1f} ms, tick cost median {1000 * statistics.median(cost):.1f} ms")
-    window.close(); window.deleteLater(); app.processEvents()
+    print(
+        f"{multiplier}x: delivered {delivered:.1f}x = {100 * delivered / multiplier:.1f}% of nominal, "
+        f"{len(ticks)} ticks, period median {1000 * statistics.median(periods):.1f} ms "
+        f"max {1000 * max(periods):.1f} ms, tick cost median {1000 * statistics.median(cost):.1f} ms"
+    )
+    window.close()
+    window.deleteLater()
+    app.processEvents()
 ```
 
 **For the build under option 1.** Add `docs/MODEL.md` to `touches`; the
