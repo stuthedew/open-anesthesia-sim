@@ -9,7 +9,7 @@ added: 2026-09-27
 
 **Where, read 2026-09-27.** `subprojects/docket/src/docket/plan.py`, the
 `if scope.clearing and scope.step_label:` branch that builds the "On the debt
-gate recorded under ..." reason. Its comment says `ROADMAP.md`'s "The cadence"
+gate recorded under ..." reason. Its comment says `ROADMAP.md` § "The cadence"
 "has cleared gate work ship inside the milestone that recorded it rather than
 in the patch track beneath it", and gives that as why the line must not say a
 `v0.4.x` step clears the gate (`PL-TNB6`). `PL-LPH9` rewrote § "The cadence"
