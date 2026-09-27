@@ -83,18 +83,19 @@ remove the temp file on any failure. Before the replace, rename the current
 file to `workspaces.json.previous`, so one prior generation survives a bad
 write of the new one. Blender's `writefile.cc` does the same dance (writes
 `<file>@`, `BLI_rename_overwrite`, `remove()` on failure, `do_history()` for
-the `.blend1` copies). Saves are debounced (about half a second after the last
-change) and forced synchronous on quit; a torn file therefore arrives only
-through a crash mid-replace, which the OS guarantees leaves either file
-whole. Persistence itself is automatic (`PL-WV9K` Q4).
+the `.blend1` copies). The file is written only by the reader's own action - "Save as default"
+and the reset actions (`PL-WV9K` Q3 and Q4, project owner 2026-09-27) - so a
+torn file arrives only through a crash mid-replace, which the OS guarantees
+leaves either file whole. [The recommendation here was a debounced automatic
+save; superseded 2026-09-27 by the owner's explicit save.]
 
 **Q4. First run, and the shipped defaults' home.** **Recommendation:** no
 file means the shipped set is loaded from
 `src/anesthesia_sim/data/workspaces/*.json` (`PL-KXTL` carries their
 content), validated by the same `from_dict` as a learner's file, and
-**nothing is written until the first change**; the directory is created on
-the first write. A first run leaves no trace, and a learner who never
-customises never has a file to migrate.
+**nothing is written until the first "Save as default"**; the directory is
+created on the first write. A first run leaves no trace, and a learner who
+never saves a default never has a file to migrate.
 
 **Q5. The schema-version policy: three cases by name.**
 
@@ -127,8 +128,8 @@ customises never has a file to migrate.
 **Q6. Unreadable file, unwritable directory.** Unreadable (permissions,
 I/O error): treated as the newer-file case - defaults, notice, read-only
 session - since nothing can be known about it. Unwritable directory: the
-session continues, the notice says layouts will not be kept and why, and
-each failed save is one log line, not a dialog per debounce.
+session continues, and "Save as default" reports the failure and why where
+it was invoked, since the reader asked for that write.
 
 **Q7. Tests.** All policy cases are unit tests over `from_dict` and the
 store against `tmp_path` with no `QApplication`, including a fixture one
@@ -141,3 +142,19 @@ naming the file, the directory rule and the policy above, replacing
 `PL-CNJ1`'s "writes nothing" as the current measurement, and
 `tools/import_boundary_check.py` is told the layout package may import
 `os`/`json`/`pathlib` and nothing from Qt.
+
+## Answers 2026-09-27
+
+**Every recommendation above: ratified** (project owner, 2026-09-27,
+ratified, over the alternative each names), including the learner-visible
+newer-file answer (refuse, touch nothing, read-only session with a notice).
+The one decision the owner specified otherwise is `PL-WV9K` Q4: layouts are
+written by an explicit "Save as default" action, never automatically, so Q3,
+Q4 and Q6 above were reworded to match on the same day. A migrated older file
+(Q5) is therefore rewritten at the reader's next "Save as default", not
+before, and the pre-migration copy is kept at that moment. **Open on
+2026-09-27:** whether reopening also restores the last state automatically
+(`PL-WV9K` § "Answers 2026-09-27", reading B, recommended there); if so, the
+file gains a last-state section written automatically and atomically on
+change, and the wording of Q3, Q4 and Q6 applies to the default section
+only.

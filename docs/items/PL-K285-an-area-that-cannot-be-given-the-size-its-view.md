@@ -83,3 +83,11 @@ a third loads a fixture Workspace against a small `available` and asserts
 `too_small` names the Areas and nothing has zero extent. The Qt-side test
 asserts `minimumSizeHint` of the built window equals the model's sum. The
 appearance of the state is entry 20's (`PL-M3X6`).
+
+## Answers 2026-09-27
+
+**Every recommendation above: ratified** (project owner, 2026-09-27,
+ratified, over the alternative each names). The one decision the owner
+specified otherwise is `PL-WV9K` Q4: layouts are saved by an explicit "Save
+as default" action in the layout menu, not automatically; `PL-WV9K`
+§ "Answers 2026-09-27" carries that design.

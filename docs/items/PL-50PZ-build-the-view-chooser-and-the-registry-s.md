@@ -72,3 +72,11 @@ shipped set, and this test is what guards the guarantee.
 (`PL-TH35` Q11), one control per Area, listing kinds by registry title;
 Blender's editor-type menu occupies the same position. Its appearance is
 entry 20's.
+
+## Answers 2026-09-27
+
+**Every recommendation above: ratified** (project owner, 2026-09-27,
+ratified, over the alternative each names). The one decision the owner
+specified otherwise is `PL-WV9K` Q4: layouts are saved by an explicit "Save
+as default" action in the layout menu, not automatically; `PL-WV9K`
+§ "Answers 2026-09-27" carries that design.

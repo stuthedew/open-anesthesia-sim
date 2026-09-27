@@ -216,3 +216,11 @@ readout row and the control-change record stay region content; the accounting
 panel becomes a View. `docs/ARCHITECTURE.md` then routes "a new View" as: a
 class satisfying the Protocol, one registry entry with a literal tag, an entry
 in the shipped Workspace where it belongs, and the two pruning tests.
+
+## Answers 2026-09-27
+
+**Every recommendation above: ratified** (project owner, 2026-09-27,
+ratified, over the alternative each names). The one decision the owner
+specified otherwise is `PL-WV9K` Q4: layouts are saved by an explicit "Save
+as default" action in the layout menu, not automatically; `PL-WV9K`
+§ "Answers 2026-09-27" carries that design. Q4's "next save" is that explicit save.

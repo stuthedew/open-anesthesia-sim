@@ -137,3 +137,11 @@ done, and its `blocked-by: PL-1FT6` reads backwards (the 2026-09-27 report
 flagged the edge): `PL-1FT6`'s build carries this shape rather than preceding
 it. The thread recording the answer decides whether this item closes with
 `PL-1FT6` or is folded into it.
+
+## Answers 2026-09-27
+
+**Every recommendation above: ratified** (project owner, 2026-09-27,
+ratified, over the alternative each names). The one decision the owner
+specified otherwise is `PL-WV9K` Q4: layouts are saved by an explicit "Save
+as default" action in the layout menu, not automatically; `PL-WV9K`
+§ "Answers 2026-09-27" carries that design.

@@ -72,11 +72,13 @@ confirmation, the one destructive step). *Alternative:* copy-on-write, where
 editing a shipped Workspace silently forks it; refused because the fork is a
 hidden mode and the reader ends up with two tabs of one name.
 
-**Q4. Saving.** **Recommendation (learner-visible): every change persists
-automatically** through `PL-SSQW`'s debounced atomic write; there is no dirty
-state and no Save action. *Alternative:* explicit save; refused because it
-introduces an unsaved-changes mode the interface must show, and a layout lost
-at quit is precisely the stale-state hazard the standard names.
+**Q4. Saving.** [superseded 2026-09-27; see "Answers 2026-09-27" below]
+The recommendation was automatic persistence of every change through
+`PL-SSQW`'s debounced atomic write, with no Save action, over an explicit
+save, on the grounds that an explicit save introduces an unsaved-changes mode
+and a layout lost at quit is a stale-state hazard. **The project owner
+specified the explicit save instead** (2026-09-27); the answer below carries
+the design.
 
 **Q5. Where the set is written and what a missing, unreadable or
 unknown-version file does.** Decided in `PL-SSQW`; the answers are
@@ -95,8 +97,9 @@ window's active scene on switch, `workspace_scene_pinning_update` ->
 `WM_window_set_active_scene`), which here would mean a layout change moving
 the simulation, refused.
 
-**Next, for the thread that records the answers (written 2026-09-27 because
-the design thread stopped for length, not for the work).** The seven
+**[done 2026-09-27, in the design thread itself, once the owner answered
+there] Next, for the thread that records the answers (written 2026-09-27
+because the design thread stopped for length, not for the work).** The seven
 `interface-areas` design items - `PL-HJPY`, `PL-R1WQ`, `PL-SSQW`, `PL-TH35`,
 `PL-K285`, `PL-WV9K`, `PL-50PZ` - each carry a "Design round 2026-09-27"
 section. When the project owner answers: mark each recommendation
@@ -106,3 +109,52 @@ in the item that holds it; run `bin/docket yield` on the branch
 refuses a `blocked` item, and the brief said change no status); then
 `bin/docket arm` and act on its answer. The six owner-facing decisions are
 listed in `/mnt/project-files/v0.6.0/interface-areas-design-round.md`.
+
+## Answers 2026-09-27
+
+**Q1, Q2, Q3, Q5 and Q6: ratified** (project owner, 2026-09-27, ratified,
+over the alternative each names).
+
+**Q4: specified otherwise** (project owner, 2026-09-27): "Want a save button
+(in drop down menu). Like Blender. Want to purposefully save a new default."
+Two readings of "like Blender" exist and the owner was asked on 2026-09-27
+which one they mean; until they answer, the design below records the first:
+**A**, Blender's startup file, where reopening loads the saved default and
+changes not saved as default are gone at quit; or **B**, reopening restores
+the last state automatically *and* "Save as default" remains a deliberate
+action with "Reset to my default" beside "Reset to shipped".
+**Recommendation: B**, because a layout lost at quit is the stale-state
+hazard the display standard names and B still gives the purposeful default
+the owner asked for; its cost is one more stored section and one more menu
+entry. Under B, `PL-SSQW` Q3, Q4 and Q6 gain an automatic atomic write of
+the last-state section beside the explicit save of the default.
+
+Blender's own model, which its source confirms
+(`source/blender/windowmanager/intern/wm_files.cc`, blender/blender `main`,
+read 2026-09-27): `WM_OT_save_homefile`, "Save Startup File - Make the
+current file the default startup file", writes the startup file into the user
+configuration directory after an "Overwrite Startup File" confirmation, and
+`WM_OT_read_factory_settings`, "Load Factory Settings", restores the shipped
+one, also after confirmation.
+
+The design that follows:
+
+- Changes to Workspaces during a session are the session's. Nothing writes
+  `workspaces.json` on a change.
+- **"Save as default"**, an entry in the layout drop-down menu (`PL-M352`
+  owns the menu), writes the whole current `WorkspaceSet` - every Workspace,
+  their order and the active one - to `workspaces.json` through `PL-SSQW`'s
+  atomic replace, after a confirmation naming what it overwrites, and keeps
+  the previous default as `workspaces.json.previous`.
+- The next launch loads that file; the shipped set loads only when no file
+  exists. Q3's reset actions are the "Load Factory Settings" side and keep
+  their confirmation.
+- No dirty marker and no prompt at quit, as in Blender, where the startup
+  file drifts from the session silently: a layout not saved as default is
+  gone at quit, which is the behaviour the analogy chooses. A quiet indicator
+  that the current layout differs from the saved default was considered;
+  recommendation: none, until a learner asks for one.
+- Elsewhere: `PL-SSQW` Q3, Q4 and Q6 are reworded to match (no debounce,
+  nothing written before the first save, a failed save reported at the
+  action), and a newer-version file's "read-only session" means the Save
+  action is disabled with the reason shown beside it.

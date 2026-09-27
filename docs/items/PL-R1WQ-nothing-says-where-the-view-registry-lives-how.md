@@ -93,3 +93,11 @@ registered.
 `PL-K285`'s; `required_reachable` is `PL-50PZ`'s; a View's own `state_version`
 is `PL-TH35`'s and is independent of the file's `schema_version` (`PL-SSQW`),
 so a change to one View never bumps the file.
+
+## Answers 2026-09-27
+
+**Every recommendation above: ratified** (project owner, 2026-09-27,
+ratified, over the alternative each names). The one decision the owner
+specified otherwise is `PL-WV9K` Q4: layouts are saved by an explicit "Save
+as default" action in the layout menu, not automatically; `PL-WV9K`
+§ "Answers 2026-09-27" carries that design.
