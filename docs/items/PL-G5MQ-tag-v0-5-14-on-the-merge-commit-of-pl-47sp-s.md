@@ -3,11 +3,13 @@ id: PL-G5MQ
 title: Tag v0.5.14 on the merge commit of PL-47SP's cut: the release is cut and only the project owner can push a tag ref from this environment
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning
 feature: release-process
 touches: docs/items/
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1159
 payoff: v0.5.14 carries its annotated tag, so the next cut is not refused and git describe resolves across it
 not-delegable: Proving this means pushing a tag ref to the remote, which no session in this environment can do: PL-N936 measured the failure, a dry run reporting [new tag] and the real push dying on an unexpected disconnect
 ---
@@ -36,3 +38,16 @@ git push origin v0.5.14
 
 Run before the merge, the lookup finds nothing and `git tag` refuses with
 `Failed to resolve ''`; run after a later merge, it still tags the cut.
+
+**Tagged 2026-09-27.** `PL-47SP`'s `#1156` merged at 03:22:46 UTC as
+`863dede8`, and the owner's annotated tag is dated nine seconds later. `git ls-remote
+--tags origin` lists the annotated tag object `82d1749e` peeling to
+`863dede8`, the commit that added `docs/releases/v0.5.14.md`, so the next cut
+is no longer refused on an untagged predecessor. With v0.5.13's span no longer
+the newest, `tools/doc_check.py` now holds v0.5.13's notes to every closure
+inside it, and `python3 tools/doc_check.py check` passes with the tag fetched.
+`main` took nothing between the cut and `#1156`'s merge, so every closure
+inside v0.5.14's own span is described in v0.5.14 and it needs no pointer of
+its own; the span's four pull requests that no item records, `#1144`,
+`#1145`, `#1146` and `#1149`, are captures, brief corrections and a drop that
+close nothing.
