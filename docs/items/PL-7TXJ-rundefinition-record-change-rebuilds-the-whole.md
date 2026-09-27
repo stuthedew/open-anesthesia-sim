@@ -3,12 +3,14 @@ id: PL-7TXJ
 title: RunDefinition.record_change rebuilds the whole segment tuple per change, and each segment carries a keyframe, so it is the larger of the two unbounded records
 priority: P3
 effort: M
-status: ready
+status: done
 classes: perf
 feature: scenario-branching
 touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py
 added: 2026-09-14
-verify: grep -q 'def test_recording_many_changes_does_not_rebuild_the_whole_record' tests/unit/test_run_definition.py && uv run pytest tests/unit/test_run_definition.py
+closed: 2026-09-27
+pr: 1194
+verify: grep -q 'def test_recording_a_change_copies_no_segment_already_recorded' tests/unit/test_run_definition.py && uv run pytest tests/unit/test_run_definition.py
 ---
 
 **Problem.** RunDefinition.record_change rebuilds the whole segment tuple per change, and each segment carries a keyframe, so it is the larger of the two unbounded records
@@ -57,6 +59,11 @@ a measurement says otherwise.
 segment record per change, the keyframe per segment is not duplicated by the
 rebuild, and `tests/unit/test_run_definition.py` pins the growth - with the
 measured before-and-after in the item so the next reader knows what it bought.
+
+[superseded 2026-09-27: the first condition was declined on the measurement
+below, and the item closed without replacing the tuple. The second condition
+already held, and both it and the growth are pinned by the two tests named
+under "Pinned either way".]
 
 ## Measured 2026-09-27, before any change
 
@@ -126,16 +133,14 @@ over the 300 changes `PL-1PSX` counted.
 replacement to the immutable snapshot this brief asks for, across all three
 things `record_change` can do to the open segment.
 
-## Open question: build the replacement, or close on the measurement?
+## Decision 2026-09-27: closed on the measurement
 
-The Done-when above asks for a record that does not copy itself per change.
-The measurement says the copy is not a cost worth that at any reachable
-count.
-
-**Recommendation:** close the item on the measurement. Keep the tuple, keep
-the two tests above, and point `verify:` at the first of them. The
-replacement would add a cache or a new data structure to the record every
-fork and keyframe is read from, to save at most 1.6 ms a change after three
-hours of unbroken dragging. The Done-when's second condition already holds:
-no keyframe is duplicated. If a bulk-recording path arrives, the numbers
-above say when the question comes back.
+Closed without replacing the tuple (project owner, 2026-09-27, ratified, over
+building the replacement the Done-when described). The tuple stays, the two
+tests above stay, and `verify:` points at the first of them. A replacement
+would add a cache or a new data structure to the record every fork and
+keyframe is read from, to save at most 1.6 ms a change after three hours of
+unbroken dragging, and no keyframe is duplicated today. The owner agreed the
+measurement settled it and said it should have been decided rather than put
+to him as a question. If a bulk-recording path arrives, "What would reopen
+it" above says when the question comes back.
