@@ -1,9 +1,16 @@
 ---
 id: PL-WKLJ
 title: The unmerged-cut advisory keeps naming in-progress work after the absorb route is taken, because cut_window reads landed ids off commit subjects and a re-cut can only fold in closures; reading each landed id's status on the base would leave only what the notes should name
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: release-process
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
+payoff: a release session that has taken the absorb route stops being told to absorb unfinished work, so the advisory names only closures the notes really miss and stays worth reading
+verify: grep -rq 'def test_a_capture_landing_during_the_cut_is_not_named_after_the_absorb_route' subprojects/docket/tests/
 ---
 
 **Problem.** The unmerged-cut advisory keeps naming in-progress work after the absorb route is taken, because cut_window reads landed ids off commit subjects and a re-cut can only fold in closures; reading each landed id's status on the base would leave only what the notes should name
@@ -36,3 +43,11 @@ right accuracy for an advisory, and `PL-8M8H` is where the same read was
 refused for acting on its own. Reading status from the base is closure-accurate
 whether or not the base was merged in. The checkout's own store is not: before
 a merge it holds the base's closures as still open.
+
+**Generator check.** The fact is which items a base commit *closed*, as
+distinct from the ids leading its subject, which name what it is about;
+`_landed_since` reads the second for the first, and `_check_cut_window` names
+what it returns. No head's `misread:` states it and no open item misreads it: a
+one-off. Nor is it a re-entry of `PL-C0C0` (closed 2026-09-27), whose fix moved
+where the window starts and made no claim about what it names; this is the edge
+that move exposed.
