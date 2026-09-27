@@ -24,7 +24,7 @@ itself is pinned, over the display-only route.
 misled"; on 2026-09-27 all three open P1 items were `science`-classed. The
 carve-out is narrow and is not promotion: the tier already ranks these above
 every band, so the pin changes no order, only what the stored field says. One
-open head on 2026-09-27.
+open head on the morning of 2026-09-27, and none once #1160 merged.
 
 **Design.**
 - `docket check`: an open item on the generator tier at `P2` or `P3` is an
@@ -49,10 +49,9 @@ open head on 2026-09-27.
 - `subprojects/docket/README.md` says "a `P1` waiting on a `P2` is an error
   rather than a priority". Pinning a blocked head may turn its `P2` blocker
   into that error; decide whether the tier needs an exemption there.
-- `PL-927J` (the only open head, live at `P2` on `main`) fails the new pin
-  until pull request #1160, which marks it done and spent, merges. Bring
-  `origin/main` in after that lands; do not edit `PL-927J` under its session's
-  claim.
+- No open head exists to fail the new pin: pull request #1160 closed
+  `PL-927J`, the last one, done and spent on 2026-09-27. Re-run `bin/docket
+  generators` before building, in case one has been recorded since.
 - List the open items carrying `impairs-generators:` and raise any below `P1`
   in this branch, declared in `touches`.
 
@@ -77,6 +76,6 @@ passes; an unsound `root-cause-of:` at `P2` passes; a sound
 `P1`, `docket set` raises one on write, the documents above say so, and `make
 check` is green.
 
-The new-mechanism pause is in force while `PL-927J` carries `generator: live`
-on `main`. This is the machinery that ranks generators, which the pause
-exempts, and the owner's request lifts it regardless (`PL-6Q9L`).
+The new-mechanism pause ended when #1160 closed `PL-927J`, the last open item
+carrying `generator: live`. This is the machinery that ranks generators, which
+the pause exempts anyway, and the owner's request would lift it (`PL-6Q9L`).
