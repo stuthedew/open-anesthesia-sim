@@ -3,12 +3,14 @@ id: PL-ZZTF
 title: Cut v0.5.15 from the 26 items finished since v0.5.14
 priority: P2
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 resource: release-train
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1190
 payoff: the 26 items finished since v0.5.14 ship under their own number and stop being re-offered in every session digest
 verify: grep -q "^version = \"0.5.15\"" pyproject.toml
 ---
