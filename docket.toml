@@ -445,6 +445,17 @@ workflow_paths = [
 # open". `flight --no-remote` skips it outright.
 open_pull_requests_command = "python3 tools/open_pull_requests.py"
 
+# How `bin/docket branch` and `bin/docket arm` ask what became of this branch's
+# newest pull request (`PL-8BR0`). A squash lands none of a branch's commits by
+# hash, and one carrying only item files leaves no content the package may take
+# for merge evidence (`PL-JBRC`), so without the forge's word a merged pull
+# request reads as work to merge and the next capture on it lands nowhere. A
+# command for the reason the setting above is one; the package appends the
+# branch and the default branch's name, and the script prints `NUMBER STATE
+# HEAD`, nothing where none was ever opened, or exits non-zero where it could
+# not ask - which `branch` then says, and `arm` answers `unknown` on.
+newest_pull_request_command = "python3 tools/open_pull_requests.py --newest"
+
 version_file = "pyproject.toml"
 
 # ROADMAP.md: "The next release number is chosen for the capability boundary it

@@ -44,8 +44,8 @@ docket claim PL-K7QX --push  # ...publishing it where the remote has the branch,
                              # once auto-merge is disarmed on its pull request
 docket claim PL-K7QX --over claude/x --reason "..."   # ...taking it over from a dead claim
 docket yield PL-K7QX         # end this branch's claim without closing the item
-docket arm                   # whether this branch's pull request may be armed:
-                             # arm, hold, behind N or unknown, exiting 0, 1, 1 or 2
+docket arm                   # whether this branch's pull request may be armed: arm,
+                             # hold, behind N, landed or unknown, exiting 0, 1, 1, 1 or 2
 docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
 docket stranded              # work that exists only on a branch
@@ -384,6 +384,25 @@ the whole-commit test and the queue-only exclusion both travel with it. It is
 asked only where the counts would otherwise say "merge", so the other four
 states pay none of its three git calls, and it is ordered below the rewritten
 case, which a content comparison cannot tell it from.
+
+**Content cannot see every merge, so the forge's word comes first where the
+project names a way to ask it** (`PL-8BR0`). `landed_whole` refuses a commit
+that only wrote to the queue as merge evidence, because two branches running
+`docket record` converge on one byte for byte (`PL-JBRC`) - which left a
+branch carrying only captures, the kind of pull request `arm` arms on green,
+told to merge the base in after its pull request had squash-merged, and
+`current` once it had, while its next capture landed nowhere.
+`newest_pull_request_command` in `docket.toml` names a command answering what
+became of the branch's newest pull request; where it says `merged`,
+`vcs.carried_merge` checks that `HEAD` still stands on the head it merged at,
+and the branch is told to restart, with a `git cherry-pick` of every commit
+past that head - an empty claim commit included, under `--allow-empty` -
+whatever the counts say. An `open` one outranks the content reading's
+"merged", which a restored file can fake (`PL-RLTK`). `branch` asks only where
+the answer could move the advice, and never from the snapshot the other read
+commands share, which stays off the network. A command that could not ask is
+said in a line, and the answer is the content's; `arm` answers `unknown` on it,
+and `landed` - before a hold or a `behind` - on a merge it confirms.
 
 **A rewritten history is not divergence, and no count can tell them apart.**
 `filter-repo`, `filter-branch` and a force-pushed rebase of the default branch
@@ -923,7 +942,11 @@ review. `SettledReport.asked` carries the distinction into the wording: "every
 item closed, and no pull request is open for it" when the forge answered,
 "every item closed" and a line saying the rest went unread when it did not.
 A project configuring no command gets the second reading, and `flight
---no-remote` asks for it.
+--no-remote` asks for it. `newest_pull_request_command` is the same boundary
+for `branch` and `arm` (`PL-8BR0`): the package appends the branch and the
+default branch's name, and the command prints `NUMBER STATE HEAD`, nothing
+where no pull request was ever opened, or exits non-zero where it could not
+ask.
 
 **The forge is asked once per run, wherever a branch carries anything.** It was
 asked only where a branch had finished, which kept `docket flight` off the

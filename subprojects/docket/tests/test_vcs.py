@@ -11,6 +11,7 @@ import hashlib
 import os
 import subprocess
 from collections.abc import Mapping
+from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -31,14 +32,18 @@ from docket.vcs import (
     Branch,
     BranchCut,
     BranchState,
+    CarriedCommit,
     Fetch,
     FilingCommit,
     FlightFiles,
     FlightReport,
     Landing,
+    MergedPullRequest,
+    NewestPullRequest,
     OpenPullRequests,
     OrphanedBranch,
     OrphanedReport,
+    PullRequestLookup,
     RemoteHeads,
     RewriteReport,
     Runner,
@@ -85,6 +90,7 @@ from docket.vcs import (
     subject_pull_request,
     tags,
     untracked_path_args,
+    with_newest_pull_request,
     working_paths,
 )
 from docket.verify import changed_paths
@@ -3652,6 +3658,258 @@ def test_orphaned_still_reports_work_pushed_after_the_merge_beside_such_a_port(
     [branch] = report.branches
     assert [commit.commit for commit in branch.commits] == [lost]
     assert port not in {commit.commit for commit in branch.commits}
+
+
+# --- the forge's word on a merged pull request (`PL-8BR0`) --------------------
+#
+# A squash lands none of a branch's commits by hash, and a commit that only
+# wrote to the queue is no content evidence of a merge (`PL-JBRC`), so a branch
+# whose captures-only pull request squash-merged read `MERGE`, and `CURRENT`
+# once it had merged the base in - and its next capture landed nowhere. The
+# forge's word on the newest pull request is the evidence; whether the branch
+# still stands on the head it merged at is git's, so these use real git.
+
+#: The branch every scenario below captures on.
+CAPTURE_BRANCH = "claude/capture-q7x2m4"
+
+
+def _capture(repo: _Repo, identifier: str, subject: str) -> str:
+    """Commit a new item file under `docs/items`, the way a capture does, and return the commit."""
+    items = repo.root / "docs" / "items"
+    items.mkdir(parents=True, exist_ok=True)
+    document = f"---\nid: {identifier}\ntitle: {identifier}\nstatus: untriaged\n---\n"
+    (items / f"{identifier}-captured.md").write_text(document, encoding="utf-8")
+    repo.git("add", "-A")
+    repo.git("commit", "-qm", subject)
+    return repo.git("rev-parse", "HEAD")
+
+
+def _squashed_capture(tmp_path: Path) -> tuple[_Repo, str]:
+    """A capture branch whose pull request squash-merged, checked out, and the head it merged at."""
+    repo = _Repo(tmp_path / "repo")
+    _capture(repo, "PL-0001", "base")
+    repo.git("checkout", "-qb", CAPTURE_BRANCH)
+    head = _capture(repo, "PL-0002", "PL-0002: capture a finding")
+    repo.git("checkout", "-q", "main")
+    repo.git("merge", "--squash", "-q", CAPTURE_BRANCH)
+    repo.git("commit", "-qm", "PL-0002: capture a finding (#12)")
+    repo.git("checkout", "-q", CAPTURE_BRANCH)
+    return repo, head
+
+
+def _forge(state: str, head: str, number: int = 12):
+    """A lookup answering as the forge would, whatever branch and base it is handed."""
+
+    def lookup(branch: str, base: str) -> PullRequestLookup:
+        return PullRequestLookup(NewestPullRequest(number=number, state=state, head=head))
+
+    return lookup
+
+
+def test_a_merged_captures_only_branch_is_told_to_restart(tmp_path: Path) -> None:
+    """Scenario f, in git: the content reading says merge, and the forge's word says restart.
+
+    Each step is the next thing the session in the item did: it captured
+    again on the merged branch, merged the base in when told to, and claimed
+    an item there. Every commit past the head the pull request merged at is
+    carried - the empty claim marked, since `git cherry-pick` refuses one
+    without `--allow-empty` - and the merge of the base is not.
+    """
+    repo, head = _squashed_capture(tmp_path)
+    merged = _forge("merged", head)
+
+    state = branch_state(repo.root)
+    assert (state.behind, state.ahead) == (1, 1)
+    # The defect's precondition: a queue-only commit is no content evidence.
+    assert state.disposition == "merge"
+
+    told = with_newest_pull_request(state, merged, repo.root)
+    assert told.disposition == "landed"
+    assert told.merged is not None
+    assert (told.merged.number, told.merged.head, told.merged.carried) == (12, head, ())
+
+    second = _capture(repo, "PL-0003", "PL-0003: capture another")
+    told = with_newest_pull_request(branch_state(repo.root), merged, repo.root)
+    assert told.disposition == "landed"
+    assert told.merged is not None
+    assert told.merged.carried == (CarriedCommit(second, "PL-0003: capture another", False),)
+
+    repo.git("merge", "-q", "--no-edit", "main")
+    counted = branch_state(repo.root)
+    assert (counted.behind, counted.disposition) == (0, "current")
+    told = with_newest_pull_request(counted, merged, repo.root)
+    assert told.disposition == "landed"
+    assert told.merged is not None
+    assert [commit.sha for commit in told.merged.carried] == [second]
+
+    repo.git(
+        "commit", "-q", "--allow-empty", "-m", f"PL-0003: start\n\nClaim: PL-0003 {CAPTURE_BRANCH}"
+    )
+    claim = repo.git("rev-parse", "HEAD")
+    told = with_newest_pull_request(branch_state(repo.root), merged, repo.root)
+    assert told.merged is not None
+    assert [(commit.sha, commit.empty) for commit in told.merged.carried] == [
+        (second, False),
+        (claim, True),
+    ]
+
+
+def test_an_open_pull_request_outranks_the_content_reading_of_a_merge() -> None:
+    """`PL-RLTK`'s symptom where the forge answers: content alone called an open one merged."""
+    run = _landed_runner(**MERGED_WHOLE)
+    state = branch_state(ROOT, runner=run)
+    assert state.disposition == "landed"
+
+    told = with_newest_pull_request(state, _forge("open", "abc123", number=7), ROOT, runner=run)
+
+    assert told.open_pull_request == 7
+    assert told.merged is None
+    assert told.disposition == "merge"
+
+
+def test_a_head_a_merge_commit_put_on_the_base_is_left_to_the_content_reading(
+    tmp_path: Path,
+) -> None:
+    """After a merge commit, a branch restarted on the base descends from the head as well.
+
+    So descent cannot tell a branch that restarted from one that did not, and
+    the reading stands aside rather than send a restarted branch round again.
+    """
+    repo = _Repo(tmp_path / "repo")
+    _capture(repo, "PL-0001", "base")
+    repo.git("checkout", "-qb", CAPTURE_BRANCH)
+    head = _capture(repo, "PL-0002", "PL-0002: capture a finding")
+    repo.git("checkout", "-q", "main")
+    repo.git("merge", "-q", "--no-ff", "--no-edit", CAPTURE_BRANCH)
+    repo.git("checkout", "-q", CAPTURE_BRANCH)
+    _capture(repo, "PL-0003", "PL-0003: capture another")
+
+    told = with_newest_pull_request(branch_state(repo.root), _forge("merged", head), repo.root)
+
+    assert told.merged is None
+    assert told.pull_request_declined == ""
+    assert told.disposition == "merge"
+
+
+def test_a_branch_restarted_on_the_squash_is_not_sent_round_again(tmp_path: Path) -> None:
+    """Its new commit does not descend from the head, and waits on a new pull request."""
+    repo, head = _squashed_capture(tmp_path)
+    repo.git("checkout", "-q", "-B", CAPTURE_BRANCH, "main")
+    _capture(repo, "PL-0003", "PL-0003: capture another")
+
+    told = with_newest_pull_request(branch_state(repo.root), _forge("merged", head), repo.root)
+
+    assert told.merged is None
+    assert told.disposition == "current"
+
+
+@pytest.mark.parametrize("state", ["closed", "none"])
+def test_a_pull_request_that_did_not_merge_leaves_the_content_reading(
+    tmp_path: Path, state: str
+) -> None:
+    repo, head = _squashed_capture(tmp_path)
+
+    def lookup(branch: str, base: str) -> PullRequestLookup:
+        return PullRequestLookup() if state == "none" else _forge(state, head)(branch, base)
+
+    told = with_newest_pull_request(branch_state(repo.root), lookup, repo.root)
+
+    assert (told.merged, told.open_pull_request, told.pull_request_declined) == (None, None, "")
+    assert told.disposition == "merge"
+
+
+def test_a_lookup_that_could_not_ask_is_said_and_leaves_the_content_reading() -> None:
+    run = _landed_runner(**MERGED_WHOLE)
+    state = branch_state(ROOT, runner=run)
+
+    def refused(branch: str, base: str) -> PullRequestLookup:
+        return PullRequestLookup(declined="`forge --newest` exited 1")
+
+    told = with_newest_pull_request(state, refused, ROOT, runner=run)
+
+    assert told.pull_request_declined == "`forge --newest` exited 1"
+    assert told.merged is None
+    assert told.disposition == "landed"
+
+
+def test_git_going_silent_on_the_head_is_said_rather_than_read_as_not_carried(
+    tmp_path: Path,
+) -> None:
+    """A carried list missing a commit is a `cherry-pick` line that drops it (`PL-8BR0`)."""
+    repo, head = _squashed_capture(tmp_path)
+    _capture(repo, "PL-0003", "PL-0003: capture another")
+
+    def silent_log(args: list[str], root: Path) -> str:
+        return SILENT if args[:2] == ["log", "--no-merges"] else _run_git(args, root)
+
+    told = with_newest_pull_request(
+        branch_state(repo.root), _forge("merged", head), repo.root, runner=silent_log
+    )
+
+    assert told.merged is None
+    assert "#12 merged at" in told.pull_request_declined
+    assert told.disposition == "merge"
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        BranchState(branch="claude/pl-k7qx-live", base=BASE, behind=2, ahead=0),
+        BranchState(branch="main", base=BASE, behind=1, ahead=1),
+        BranchState(branch="claude/pl-k7qx-live", base=BASE, declined="no base", absent=True),
+        BranchState(
+            branch="claude/pl-k7qx-live", base=BASE, behind=3, ahead=3, rewrite=RewriteReport()
+        ),
+    ],
+    ids=["nothing-ahead", "default-branch", "declined", "rewritten"],
+)
+def test_the_forge_is_not_asked_where_its_answer_could_not_move_the_advice(
+    state: BranchState,
+) -> None:
+    def lookup(branch: str, base: str) -> PullRequestLookup:
+        raise AssertionError("the forge was asked")
+
+    def run(args: list[str], root: Path) -> str:
+        raise AssertionError(f"git was asked {args}")
+
+    assert with_newest_pull_request(state, lookup, ROOT, runner=run) is state
+
+
+def test_the_merged_branch_line_carries_every_commit_and_never_merges() -> None:
+    """The recovery is built from the list, so the list is printed whole.
+
+    `--allow-empty` only where an empty commit is carried: `git cherry-pick`
+    stops at a claim without it, and would carry nothing past it.
+    """
+    from docket.render import format_branch_state
+
+    carried = (
+        CarriedCommit("a" * 40, "PL-0003: capture another", False),
+        CarriedCommit("b" * 40, "PL-0003: start", True),
+    )
+    merged = MergedPullRequest(number=12, head="c" * 40, carried=carried)
+    state = BranchState(branch=CAPTURE_BRANCH, base=BASE, behind=0, ahead=3, merged=merged)
+
+    printed = format_branch_state(state)
+
+    assert printed.startswith(f"Branch: {CAPTURE_BRANCH}, current with {BASE} (3 ahead).")
+    assert f"#12 merged at {'c' * 9}" in printed
+    assert "do NOT merge and push" in printed
+    assert "    aaaaaaaaa PL-0003: capture another\n    bbbbbbbbb PL-0003: start\n" in printed
+    assert f"git checkout -B {CAPTURE_BRANCH} {BASE}" in printed
+    assert "git cherry-pick --allow-empty aaaaaaaaa bbbbbbbbb" in printed
+    assert "git merge" not in printed
+
+    work_only = format_branch_state(replace(state, merged=replace(merged, carried=carried[:1])))
+    assert "git cherry-pick aaaaaaaaa" in work_only
+    assert "--allow-empty" not in work_only
+
+    nothing = format_branch_state(replace(state, behind=2, merged=replace(merged, carried=())))
+    assert nothing.startswith(f"Branch: {CAPTURE_BRANCH} is 2 behind {BASE} and 3 ahead.")
+    assert "Restart it before the next commit" in nothing
+    assert f"git checkout -B {CAPTURE_BRANCH} {BASE}" in nothing
+    assert "cherry-pick" not in nothing
+    assert "git merge" not in nothing
 
 
 # --- a subject is one line, whatever it holds (`PL-139L`) --------------------

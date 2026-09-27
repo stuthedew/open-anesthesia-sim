@@ -103,8 +103,8 @@ permanent - so a citation into the baseline section dangles at the next cut.)
 
 Nothing schedules the implementation. `ROADMAP.md` § "Planned milestones" item 1
 is a line of intent, and intent is not scope: no milestone *section* places it,
-and the reserved numbers v0.5.0 through v0.9.0 are spent on the branchable case,
-the layout, the second screen, the schematic and multi-substance. So there is no
+and every version the timeline names ahead is spent on other work - the
+layout, the schematic and multi-substance. So there is no
 version to name in `blocked-by` either - naming one would assert a placement the
 roadmap has not made.
 

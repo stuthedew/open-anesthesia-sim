@@ -3,11 +3,13 @@ id: PL-C7XV
 title: docs/WORKING_NOTES.md's UI-structure thread says 'What was decided that day: the placement above' where the sentence above now carries two placements, so the 2026-09-16 v0.7.x move reads as a 2026-09-08 decision
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: interface-pass-narrative
 touches: docs/WORKING_NOTES.md
 added: 2026-09-16
+closed: 2026-09-26
+pr: 1134
 verify: ! grep -qF 'the placement above' docs/WORKING_NOTES.md && python3 tools/doc_check.py check
 ---
 
@@ -59,3 +61,11 @@ One placement per dated entry. The 2026-09-16 move gets its own dated sentence
 rather than being written over the earlier one, which is the specific edit
 clause 4 forbids - a dated statement edited to carry a later fact reads as a
 record of something that was never recorded.
+
+**Done 2026-09-26, as a rider on `PL-V1Y7`**, which had to edit this sentence
+anyway: break-out came off the timeline that day and the row it names became
+`v0.6.x`. The 2026-09-08 paragraph now says "What was decided that day: that
+position, written `v0.5.x` and sitting between v0.5.0 and v0.6.0, and that the
+structural half of an overhaul is not polish", and the two later moves follow
+the 2026-09-14 paragraph as their own dated sentences - 2026-09-16's, ratified
+on `PL-PHKP`, and 2026-09-26's under `PL-V1Y7` - as `PL-4FBP`'s table disposed.
