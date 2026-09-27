@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: scenario-branching
+milestone: v0.5.16
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py, docs/ARCHITECTURE.md
 added: 2026-09-14
 closed: 2026-09-27
