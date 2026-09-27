@@ -214,8 +214,9 @@ class BreathingCircuitParameters:
     """Validated apparatus parameters: the breathing system, not the patient.
 
     A third kind beside `AgentParameters` and `ReferenceAdultParameters`,
-    because circuit volume and fresh gas flow belong to neither. They are
-    properties of the anesthesia machine in front of the patient, and a file
+    because circuit volume and fresh gas flow belong to neither. They describe
+    the breathing system in front of the patient - its volume, and the flow a
+    run opens at, which a profile may leave to the run (`PL-QW19`) - and a file
     that filed them under either would say something false about where they
     came from - the reference adult's eleven values are one product's default
     *patient*, and these are its default *apparatus*.
@@ -232,7 +233,13 @@ class BreathingCircuitParameters:
     id: str
     display_name: str
     circuit_volume_l: float
-    default_fresh_gas_flow_l_min: float
+    # The flow this profile opens a run at, or `None` where it states none.
+    # `None` reads as *this profile states no startup flow* and never as *this
+    # machine has none*: no surveyed machine publishes one, so a run built
+    # from a silent profile opens at `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`
+    # in `core/circuit.py` instead, whose docstring gives its authority
+    # (`PL-QW19`).
+    default_fresh_gas_flow_l_min: float | None
     # What this machine's flowmeters can actually set, or `None` where the
     # profile declares no range. `None` is an absence of claim and not a
     # machine known to be unlimited: with it the model's envelope in
@@ -636,6 +643,23 @@ class _BreathingCircuitPayload(_StrictPayload):
     refused by `BreathingCircuit.__post_init__` with the message that names
     the interval, rather than by a second copy of the interval here.
 
+    It is also optional, and omitting it or writing `null` reads as *this
+    profile states no startup flow*, never as *this machine has none*
+    (`PL-QW19`). No surveyed machine publishes one (`docs/machine-survey.md`
+    § "(a2) Default fresh gas flow"), so a required field left the author of
+    a real profile three choices: invent a flow and a provenance row citing
+    nothing, copy this project's teaching default as if the manufacturer had
+    stated it, or not add the machine. A run built from a silent profile
+    opens at `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` in `core/circuit.py`,
+    whose authority is the teaching-default rationale in
+    `data/machines/reference_circle_system.json`'s `provenance_gap` and not
+    any source. Optional is not lenient: `extra="forbid"` still refuses a
+    misspelled key, so `fresh_gas_flow_l_min` written for this one is an
+    error rather than a silence the run fills in. And a silent profile whose
+    declared deliverable range excludes the teaching default is refused when
+    the run is built, in `BreathingCircuit`'s own words, as a stated flow
+    outside its range would be.
+
     `deliverable_fresh_gas_flow_range` is optional and defaults to `None`,
     which reads as *this profile declares no range* rather than as *this
     machine is unlimited* - a profile written before the field existed
@@ -652,7 +676,7 @@ class _BreathingCircuitPayload(_StrictPayload):
     id: NonEmptyString
     display_name: NonEmptyString
     circuit_volume_l: PositiveFinite
-    default_fresh_gas_flow_l_min: PositiveFinite
+    default_fresh_gas_flow_l_min: PositiveFinite | None = None
     deliverable_fresh_gas_flow_range: _DeliverableFreshGasFlowRangePayload | None = None
     sources: Sources
     provenance_gap: OptionalNonEmptyString = None

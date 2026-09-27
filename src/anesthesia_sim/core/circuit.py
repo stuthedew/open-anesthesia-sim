@@ -46,6 +46,26 @@ from anesthesia_sim.core.validation import (
 
 SECONDS_PER_MINUTE = 60.0
 
+TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN = 4.0
+"""The fresh gas flow a run opens at when its machine profile states none.
+
+A teaching default, not a clinical recommendation, and not a property of any
+machine. No surveyed workstation publishes a startup fresh gas flow
+(`docs/machine-survey.md` § "(a2) Default fresh gas flow"), so
+`default_fresh_gas_flow_l_min` is optional in a `data/machines/` profile and
+`docs/machine-abstraction.md` § "Three homes, and why the shipped constants
+move" makes the opening flow a condition of the run rather than of the machine
+(`PL-QW19`). `AgentUptakeSystem.for_agent()` opens a run here when the profile
+is silent.
+
+Its authority is the rationale `data/machines/reference_circle_system.json`
+records in its `provenance_gap` for storing the same value - chosen so that a
+learner sees the machine lag as a distinct phase of the early rise - and not
+any source. `docs/MODEL.md` carries that row, and
+`test_the_bare_circuit_defaults_match_the_shipped_machine_file` in
+`tests/unit/test_circuit.py` fails if this value and the file's ever differ.
+"""
+
 
 @dataclass(frozen=True, slots=True)
 class DeliverableFreshGasFlowRange:
@@ -127,17 +147,20 @@ class BreathingCircuit:
 
     **`data/machines/reference_circle_system.json` is the authority for the
     first two, and this class is not.** Every shipped path builds the circuit
-    through `AgentUptakeSystem.for_agent()`, which reads both from that file
-    and passes them explicitly, so the literals below are reached only by a
-    bare unit-test construction of circuit physics. They are kept as defaults
-    rather than made required so that such a test does not have to load
-    package data to exercise an equation - and
+    through `AgentUptakeSystem.for_agent()`, which passes both explicitly: the
+    volume from the machine profile, and the flow from the profile where it
+    states one. So the volume literal below is reached only by a bare
+    unit-test construction of circuit physics, and is kept as a default rather
+    than made required so that such a test does not have to load package data
+    to exercise an equation. The flow default is
+    `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`, which is also what `for_agent()`
+    opens a run at when the profile states no startup flow (`PL-QW19`).
     `test_the_bare_circuit_defaults_match_the_shipped_machine_file` in
-    `tests/unit/test_circuit.py` fails if the two ever disagree, because a
-    reader meeting `6.0` here will take it for the model's circuit volume
-    whatever this paragraph says (`PL-4YY1`). The file also carries why 6.0 is
-    kept where the published Gas Man convention is 8 L, and that the 4 L/min
-    has no published counterpart at all.
+    `tests/unit/test_circuit.py` fails if either default and the file ever
+    disagree, because a reader meeting `6.0` here will take it for the model's
+    circuit volume whatever this paragraph says (`PL-4YY1`). The file also
+    carries why 6.0 is kept where the published Gas Man convention is 8 L, and
+    that the 4 L/min has no published counterpart at all.
 
     `fresh_gas_flow_l_min` is the flow at the common gas outlet - carrier
     gas plus the vapour the vaporizer added - and not the flowmeter
@@ -172,7 +195,7 @@ class BreathingCircuit:
     """
 
     circuit_volume_l: float = 6.0
-    fresh_gas_flow_l_min: float = 4.0
+    fresh_gas_flow_l_min: float = TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
     delivered_partial_pressure_fraction: Fraction = Fraction(0.0)
     inspired_partial_pressure_fraction: Fraction = Fraction(0.0)
     max_delivered_partial_pressure_fraction: Fraction = Fraction(1.0)

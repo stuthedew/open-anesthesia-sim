@@ -1,10 +1,21 @@
+import json
+import re
+from importlib.resources import files
 from math import exp, inf
 
 import pytest
 
-from anesthesia_sim.core.circuit import BreathingCircuit, DeliverableFreshGasFlowRange
+from anesthesia_sim.core import uptake_system
+from anesthesia_sim.core.circuit import (
+    TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN,
+    BreathingCircuit,
+    DeliverableFreshGasFlowRange,
+)
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.parameters import load_reference_circle_system_parameters
+from anesthesia_sim.core.parameters import (
+    load_reference_circle_system_parameters,
+    parse_breathing_circuit_parameters,
+)
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -277,12 +288,18 @@ def test_the_bare_circuit_defaults_match_the_shipped_machine_file() -> None:
     """`PL-4YY1`: the literals in `core/circuit.py` are a checked restatement.
 
     `data/machines/reference_circle_system.json` is the authority, and
-    `AgentUptakeSystem.for_agent()` passes both values from it explicitly, so
-    the field defaults below are reached only by a bare unit-test
-    construction. They are kept so that a test of circuit physics need not
-    load package data — but a reader meeting `circuit_volume_l: float = 6.0`
-    in `core/circuit.py` will take it for the model's circuit volume whatever
-    the docstring says, so the two are not allowed to drift apart silently.
+    `AgentUptakeSystem.for_agent()` passes its volume explicitly, so the
+    volume default is reached only by a bare unit-test construction. It is
+    kept so that a test of circuit physics need not load package data — but a
+    reader meeting `circuit_volume_l: float = 6.0` in `core/circuit.py` will
+    take it for the model's circuit volume whatever the docstring says, so the
+    two are not allowed to drift apart silently.
+
+    The flow default is `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`, and since
+    `PL-QW19` it is more than a restatement: it is the flow a run opens at when
+    its machine profile states none, and its only authority is the rationale
+    this file records for storing the same value. So the file has to keep
+    stating it, and the constant, the field default and the file have to agree.
 
     Deliberately not solved by importing the loader into `core/circuit.py`:
     `core/parameters.py` is the one module permitted to import Pydantic
@@ -296,6 +313,7 @@ def test_the_bare_circuit_defaults_match_the_shipped_machine_file() -> None:
 
     assert circuit.circuit_volume_l == machine.circuit_volume_l
     assert circuit.fresh_gas_flow_l_min == machine.default_fresh_gas_flow_l_min
+    assert machine.default_fresh_gas_flow_l_min == TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
 
 
 def test_for_agent_builds_the_circuit_at_the_machine_file_s_values() -> None:
@@ -315,6 +333,103 @@ def test_for_agent_builds_the_circuit_at_the_machine_file_s_values() -> None:
     assert circuit.circuit_volume_l == machine.circuit_volume_l
     assert circuit.fresh_gas_flow_l_min == machine.default_fresh_gas_flow_l_min
     assert circuit.time_constant_s == pytest.approx(90.0)
+
+
+# --- A profile that states no startup flow (PL-QW19) ---------------------------
+
+# No surveyed machine publishes a startup fresh gas flow, so a machine profile
+# may leave `default_fresh_gas_flow_l_min` out and the run supplies its opening
+# flow. `for_agent()` reads one hardcoded profile until `PL-2FZ9`, so these
+# tests hand it another the way `tests/integration/test_controller.py` hands it
+# an edited agent: by replacing the loader it calls. Each profile is the shipped
+# file with one thing changed, parsed as the loader parses it.
+
+
+def _shipped_machine_payload() -> dict[str, object]:
+    text = (
+        files("anesthesia_sim.data.machines")
+        .joinpath("reference_circle_system.json")
+        .read_text(encoding="utf-8")
+    )
+    payload = json.loads(text)
+    assert isinstance(payload, dict)
+
+    return payload
+
+
+def _run_built_from(
+    monkeypatch: pytest.MonkeyPatch, payload: dict[str, object]
+) -> AgentUptakeSystem:
+    machine = parse_breathing_circuit_parameters(payload)
+    monkeypatch.setattr(uptake_system, "load_reference_circle_system_parameters", lambda: machine)
+
+    return AgentUptakeSystem.for_agent("sevoflurane")
+
+
+def test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teaching_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`PL-QW19`: a profile that states no startup flow loads and runs.
+
+    Before, the key was required, so a real machine's profile had to carry a
+    flow no manufacturer publishes. The volume is moved off the shipped 6.0 L
+    so that the run provably came from this profile: the shipped one states
+    the same 4.0 L/min as the fallback, so a flow alone could not tell them
+    apart. The circuit time constant is asserted beside the flow because it is
+    the quantity a learner reads off the early rise: 8.0 L at 4.0 L/min is
+    120 s.
+    """
+
+    payload = _shipped_machine_payload()
+    del payload["default_fresh_gas_flow_l_min"]
+    payload["circuit_volume_l"] = 8.0
+
+    circuit = _run_built_from(monkeypatch, payload).circuit
+
+    assert circuit.circuit_volume_l == 8.0
+    assert circuit.fresh_gas_flow_l_min == TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
+    assert circuit.time_constant_s == pytest.approx(120.0)
+
+
+def test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The fallback fills a silence and never replaces a stated flow.
+
+    Needed because the shipped profile states the same 4.0 L/min as the
+    fallback, so a `for_agent()` that always took the fallback would pass
+    every other test in this file.
+    """
+
+    payload = _shipped_machine_payload()
+    payload["default_fresh_gas_flow_l_min"] = 2.0
+
+    circuit = _run_built_from(monkeypatch, payload).circuit
+
+    assert circuit.fresh_gas_flow_l_min == 2.0
+    assert circuit.time_constant_s == pytest.approx(180.0)
+
+
+def test_a_silent_profile_whose_range_excludes_the_teaching_default_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The fallback is held to the machine's declared range, not fitted into it.
+
+    Refused by `BreathingCircuit` in the words it uses for a stated flow
+    outside the range, rather than opened at a flow the machine cannot set or
+    clamped to one nobody chose.
+    """
+
+    payload = _shipped_machine_payload()
+    del payload["default_fresh_gas_flow_l_min"]
+    payload["deliverable_fresh_gas_flow_range"] = {"minimum_l_min": 0.5, "maximum_l_min": 3.0}
+
+    refusal = (
+        f"fresh_gas_flow_l_min of {TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN} is outside "
+        "what this machine can deliver, 0.5 to 3.0 L/min"
+    )
+    with pytest.raises(SimulationConfigurationError, match=re.escape(refusal)):
+        _run_built_from(monkeypatch, payload)
 
 
 # --- The machine's deliverable flow range (PL-8PS6) --------------------------

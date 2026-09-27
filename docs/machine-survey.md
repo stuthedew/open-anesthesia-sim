@@ -197,7 +197,10 @@ recommendation**, with no published counterpart. (The item's brief describes it 
 `src/anesthesia_sim/core/circuit.py`; that stopped being true when `PL-4YY1`
 moved both constants into the data file, and the literal that remains is a
 default for a bare unit-test construction, guarded by a test that fails if it
-disagrees with the file.)
+disagrees with the file.) Since `PL-QW19` that literal is named
+`TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` and is also the flow a run opens at when
+a machine profile states none, because the field is now optional; this section's
+finding is why.
 
 **What the survey found: no machine default, and one recommendation that is not
 a survey of practice.** No reachable source states a startup fresh gas flow for
