@@ -90,3 +90,13 @@ was recorded.
 `docs/maintainer.md`, a session opening that file loads
 `.claude/rules/apparatus-standard.md`, and the next file added to either half is
 caught by something other than a sweep that happened to run.
+
+**Six more rows, 2026-09-27, from `PL-8ZGY`.** `workflow_paths` now also
+lists `docs/resident-instructions.md`, `docs/pr-bodies`, `bin`, `.vscode`,
+`.gitattributes` and `docs/stress-2026-09-25`, each placed for the lane only,
+per the distinction this brief keeps between a lane fact and a standard fact.
+None is named by `CLAUDE.md`'s enumeration, `expert-review.md`'s copy of it, or
+`apparatus-standard.md`'s `paths:`, so each is a row for the table above on the
+same test `PL-1KTV` applied. `docs/resident-instructions.md` is the one with
+teeth, as `docs/maintainer.md` was: a session editing the ledger of the resident
+set loads no apparatus rule at all.
