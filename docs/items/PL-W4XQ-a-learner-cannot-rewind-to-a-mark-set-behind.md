@@ -79,6 +79,18 @@ own later answers and is the failure `PL-B8MK` measured at 48 of 54 elements and
 rejected; or refuse the act at entry rather than accepting a mark nothing can
 use.
 
+**Whichever route this takes, the fork instant is the step the run stopped
+on, never the mark's typed value** (noted 2026-09-27 by `PL-LLBV`'s drop).
+`SimulationController._resume_point` refuses any instant that is not exactly a
+whole number of the run's steps. Typed straight into it, 12 767 of the 36 001
+one-decimal times from 0 to 3600 s fail: `453 * 0.1` is 45.300000000000004,
+not 45.3. The replay route gets this right by construction, because it forks at
+the halt and the halt is read from the clock. A typed 45.3 s mark halts the run
+at 45.300000000000004 s and forks there. The re-propagation route would not get
+it right unless it snaps the mark to `round(t / step) * step` once, at the one
+boundary that accepts it, where the learner can see the instant taken. The
+guard stays exact, because the branch's step count rests on it.
+
 **Done when.** A learner who marks an instant the run has already passed can
 return to it, or is told at the moment of marking that they cannot and why; and
 `docs/MODEL.md` states what returning to a marked instant reproduces and what it

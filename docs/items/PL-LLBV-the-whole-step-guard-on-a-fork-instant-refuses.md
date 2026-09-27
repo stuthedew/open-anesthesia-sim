@@ -3,11 +3,13 @@ id: PL-LLBV
 title: The whole-step guard on a fork instant refuses 35.5% of the one-decimal times a user could type
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, ux
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py, docs/items/PL-W4XQ-a-learner-cannot-rewind-to-a-mark-set-behind.md
 added: 2026-09-14
+closed: 2026-09-27
+reason: Not reachable: every instant that reaches the whole-step guard in SimulationController._resume_point is the run's own clock. resumed_at requires an exact keyframe instant first, and every keyframe is a clock instant; resumed_at_halt reads the clock; the fork panel hands fork_at the float stored from fork_points_s; and a time bookmark is forked at its halt (PL-B8MK, PL-TYWQ), whose instant is the step the run stopped on rather than the number the learner typed. Measured 2026-09-27 at the 0.1 s step: 0 of the 864 001 clock instants in 24 h fail the guard, and 0 of 98 sampled one-decimal marks from 0.1 to 360 s are refused at the halt fork. The hazard returns only through a door that hands the guard a typed instant, which is written into PL-W4XQ, the one open item that could build one.
 verify: grep -q 'def test_a_one_decimal_fork_instant_is_accepted' tests/integration/test_controller.py && uv run pytest tests/integration/test_controller.py
 ---
 
@@ -65,3 +67,39 @@ rounding to the nearest step and checking the residual against a stated
 tolerance, or by taking the step index rather than the time - and the refusal is
 reserved for an instant that genuinely falls between steps.
 `tests/integration/` covers the one-decimal times that fail today.
+
+**Re-confirmed 2026-09-27 against `24f2023c`, and dropped: the premise did not
+come true.** This brief placed the defect in the future ("not a defect today and
+becomes one with time bookmarks"). Time bookmarks shipped without making it one,
+because `PL-B8MK` and `PL-TYWQ` take a fork at a mark *at the halt*, and the halt
+is read from the clock rather than from the mark. Every door to the guard in
+`SimulationController._resume_point` now hands it a clock instant:
+
+- `resumed_at` first requires `elapsed_s` to equal a keyframe exactly, and a
+  keyframe is laid at the run's own `elapsed_s`, which is
+  `step_count * simulation_step_s`.
+- `resumed_at_halt` reads `self._state.elapsed_s` itself.
+- The dashboard's only route into `resumed_at` is `BranchedCase.fork_at` from
+  `SimulationView._handle_fork`. It passes `ForkPanel.selected_instant_s`,
+  which is the float the selector stored from `fork_points_s` rather than
+  anything parsed from a label.
+
+Measured at the shipped 0.1 s step. **0 of the 864 001 clock instants** in the
+24 h supported run fail the guard's test. A typed 45.3 s time bookmark halts the
+run at 45.300000000000004 s and forks there. **0 of 98 sampled one-decimal
+marks** between 0.1 and 360 s, every 3.7 s, are refused at the halt fork. The
+arithmetic in the brief still holds when the guard is handed a typed instant:
+12 767 of the 36 001 one-decimal times from 0 to 3600 s fail it, the first
+being 0.3, 0.6, 0.7, 1.2 and 1.4 s. But nothing hands it one. A bare
+`BranchedCase.fork_at(45.3)` over a keyframe at step 453 is refused by the
+keyframe lookup before the guard. The refusal lists the keyframe as
+`45.300000000000004`, and no control in the interface passes a typed instant
+there.
+
+**Where it could come back.** The only open item that could build a door taking
+a typed instant is `PL-W4XQ` (returning to a mark set behind the clock). Its
+second route, re-propagating from the nearest keyframe to the marked instant,
+would meet this guard if it handed over the mark's own value. So the fix this
+brief named, snapping once at the boundary that accepts the typed value, is
+written into `PL-W4XQ` rather than built here against a door that does not
+exist. The guard stays exact, as this brief asked.
