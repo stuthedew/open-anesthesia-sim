@@ -26,6 +26,31 @@ set -uo pipefail
 
 command -v python3 >/dev/null 2>&1 || exit 0
 
+# After a compaction, one line before everything else (`PL-384P`).
+#
+# Compaction restores up to five of the files the session read or wrote, the
+# most recently modified first (Claude Code 2.1.283: five, 5,000 tokens each,
+# 50,000 in all), and restores them through the Read tool's own call. So each
+# counts as already read, and an Edit to one goes through with no Read first. A
+# path-scoped rule attaches when a file is read, and on the one compaction
+# measured the restored file's rule did not come back with it. The first edit to
+# a restored file could then be written without its rules - under `src/`, the
+# simulator's provenance and domain bar - while `CLAUDE.md` said they re-attach.
+# A re-read costs little and loads them, since compaction also forgets which
+# rules were loaded.
+#
+# `source` comes from the hook's own input, which the harness pipes in and then
+# closes. A terminal is skipped, so a hand run does not wait on stdin. First,
+# because it is the one line about the very next action, and it needs neither
+# the network nor the store, so nothing below can delay or swallow it.
+hook_input=""
+[ -t 0 ] || IFS= read -r -d '' -t 5 hook_input || true
+if [ -n "$hook_input" ] &&
+  [ "$(printf '%s' "$hook_input" |
+    python3 -c 'import json, sys; print(json.load(sys.stdin).get("source", ""))' 2>/dev/null)" = "compact" ]; then
+  echo "Compacted: a file restored with the summary counts as already read, and its path-scoped rules may not have come back with it. Read it again before the first edit to it (PL-384P)."
+fi
+
 root="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 [ -x "$root/bin/docket" ] || exit 0
 [ -d "$root/docs/items" ] || exit 0

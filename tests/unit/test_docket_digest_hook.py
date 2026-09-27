@@ -17,9 +17,12 @@ stub. They are local `file://` remotes, so nothing here touches a network.
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 HOOK = REPO / ".claude" / "hooks" / "docket-digest.sh"
@@ -121,17 +124,23 @@ def _hook_env(root: Path) -> dict[str, str]:
     }
 
 
-def _run_hook(root: Path) -> str:
+def _run_hook(root: Path, source: str | None = None) -> str:
     """The hook as a session start runs it: from the project directory.
 
     `cwd` is load-bearing rather than tidiness - `docket` resolves the store
     from the working directory, so a hook run from somewhere else would answer
     confidently about the wrong repository.
+
+    `source` is piped in as the harness pipes it, inside the hook's JSON input;
+    left out, the hook gets no input at all.
     """
     result = subprocess.run(
         ["bash", str(HOOK)],
         cwd=root,
         env=_hook_env(root),
+        input=None
+        if source is None
+        else json.dumps({"hook_event_name": "SessionStart", "source": source}),
         capture_output=True,
         text=True,
         check=False,
@@ -238,6 +247,36 @@ def test_a_repository_with_no_remote_branch_says_nothing(tmp_path: Path) -> None
     _git("commit", "-qm", "only", cwd=root)
 
     assert "Branch:" not in _run_hook(root)
+
+
+REREAD = "Read it again before the first edit to it"
+
+
+def test_a_compacted_session_is_told_to_re_read_a_restored_file_first(tmp_path: Path) -> None:
+    """PL-384P: a file compaction restores counts as read, without its rules.
+
+    The Edit tool accepts it with no Read first, and a path-scoped rule loads
+    only on a Read, so this line is what puts the Read back. It comes before the
+    digest, because nothing below it can then delay or swallow it.
+    """
+    root = tmp_path / "solo"
+    _install_docket(root)
+
+    out = _run_hook(root, source="compact")
+
+    assert out.splitlines()[0].startswith("Compacted:")
+    assert REREAD in out
+
+
+@pytest.mark.parametrize("source", ["startup", "resume", "clear", None])
+def test_a_session_that_was_not_compacted_is_not_told_to_re_read(
+    tmp_path: Path, source: str | None
+) -> None:
+    """The line is news only at a compaction; on every start it would be skimmed."""
+    root = tmp_path / "solo"
+    _install_docket(root)
+
+    assert REREAD not in _run_hook(root, source=source)
 
 
 def test_the_hook_runs_under_the_interpreter_running_this_suite(tmp_path: Path) -> None:

@@ -166,7 +166,19 @@ set it when the session opens rather than toggling it.
   new session, `PL-YJG1`). It pushes everything first, so what the summary
   drops is already on disk, and it keeps its branch, claim and pull-request
   watch. `/compact` works in cloud sessions and takes optional focus text
-  (`/compact keep the open question about X`); `/clear` does not. Start a
+  (`/compact keep the open question about X`); `/clear` does not. **Type it
+  within the hour; the session names the clock time.** The summary is written
+  by one more request over the whole history. While the prompt cache is warm
+  that request reads the history from it, which on the API bills at 0.05x the
+  input price on Opus 5.5 and 0.1x on most models; after a break longer than
+  the cache lasts it reprocesses all of it as uncached input
+  ([prompt caching](https://code.claude.com/docs/en/prompt-caching),
+  "Compacting the conversation";
+  [pricing](https://platform.claude.com/docs/en/about-claude/pricing)). That
+  was 248,803 tokens in the one reset measured (`PL-384P`). The cache lasts an
+  hour on your plan's included usage, and five minutes once usage credits are
+  drawn. Past that, a fresh session is cheaper by about that one read, as long
+  as the work is pushed and nothing needs the pull-request watch. Start a
   fresh session for an unrelated topic instead: that is where a clean prompt
   beats a carried conversation.
 

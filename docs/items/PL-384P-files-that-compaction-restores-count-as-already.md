@@ -3,12 +3,14 @@ id: PL-384P
 title: Files that compaction restores count as already read, so the first edit to one is written without its path-scoped rules, and a /compact typed after the cache hour re-reads the whole history at full price
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs, session-cost
 feature: compaction-reset
-touches: .claude/hooks/docket-digest.sh, CLAUDE.md, docs/maintainer.md, docs/items/PL-YJG1-reset-a-session-at-the-150k-spend-budget-by.md, tools/context_reading.py
+touches: .claude/hooks/docket-digest.sh, CLAUDE.md, docs/maintainer.md, docs/resident-instructions.md, docs/items/PL-YJG1-reset-a-session-at-the-150k-spend-budget-by.md, tools/context_reading.py, tests/unit/test_docket_digest_hook.py, tests/unit/test_context_reading.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25
+closed: 2026-09-27
+pr: 1157
 payoff: The first edit after a compaction is written with its file's rules loaded, including the simulator's provenance and domain rules under src/, and the owner knows when a late /compact costs a full-price read of the whole history
 verify: grep -q 'compact' .claude/hooks/docket-digest.sh && ! grep -qF 'Untested, since no compaction' tools/context_reading.py
 ---
@@ -116,3 +118,33 @@ the measured case, where the same read inside the cache hour bills at 0.1x.
   after `readFileState` is cleared. `PL-YJG1` read it from the binary once. No
   head's `misread:` states anything about the harness, and nothing in the
   store models it. `PL-NK5K`, in the same feature, misreads nothing.
+
+**Done, 2026-09-27.**
+- **Re-read against 2.1.283's binary, statically.** Compaction still runs
+  `readFileState.clear()` and empties `loadedNestedMemoryPaths`. It restores
+  at most five files, 5,000 tokens each and 50,000 in all, newest first, by
+  calling the Read tool directly, which is why a restored file counts as read.
+  `SessionStart` fires inside it with `source: "compact"`. The Read call also
+  queues the file as a rule trigger, but in the compaction's own context, and
+  whether that reaches the next request could not be settled without a live
+  compaction. So the 2.1.282 observation stands, and a re-read is right
+  either way: it re-queues the trigger, and the rule is no longer marked
+  loaded.
+- **The line.** `.claude/hooks/docket-digest.sh` reads `source` from its input
+  and prints the re-read line first on `compact` only.
+  `tests/unit/test_docket_digest_hook.py` pins both halves.
+- **The two false claims.** `CLAUDE.md`'s clause "and path-scoped rules
+  re-attaching on the next matching read" is replaced by the restored-file
+  sentence, and the ask now names the clock time an hour on. `PL-YJG1` has a
+  dated correction.
+- **The timing.** `docs/maintainer.md` says to type `/compact` within the hour
+  (five minutes on usage credits), and when a fresh session is cheaper. The
+  brief's 0.1x holds for most models. The pricing page puts a cache hit on
+  Opus 5.5, which these sessions run, at 0.05x, so the late read costs twenty
+  times the warm one rather than ten.
+- **`tools/context_reading.py`.** The docstring records the observation in
+  place of "Untested". The one defect the observation's shape exposed is
+  fixed: the summary a compaction leaves is a `user` record marked
+  `isCompactSummary`, and it was counted as a turn. The measured shape read 2
+  turns for 1. `tests/unit/test_context_reading.py` pins spend and turns
+  across a compaction.
