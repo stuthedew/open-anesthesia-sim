@@ -301,7 +301,8 @@ def _settings_source(root: Path) -> SettingsSource:
     (`PL-P757`). What it adds is the half `load_config` cannot report:
     it returns a `Config` and not where it came from, and a `Config` holding
     library defaults is indistinguishable from a project that wrote those
-    values down. `checks._note_settings` says what the answer is for.
+    values down. `checks._note_settings` and `render.format_settings` say
+    what the answer is for.
 
     Made relative to the working directory where it can be, because the reader
     is being shown a path to go and look at and an absolute one from a
@@ -354,7 +355,9 @@ class Invocation:
     read from refs the snapshot has already fetched and dated (`PL-XBV4`).
     `base_copies` is the fourth, by `_base_copies`, and it too is read against
     the snapshot's refs, for the commands that answer from an item's newer
-    copy on the default branch (`PL-Y48N`).
+    copy on the default branch (`PL-Y48N`). `read_store` is set by `_load`
+    once the store has yielded an item, so that `main` can say what it was
+    read under after the command has answered (`_say_settings`).
 
     The store itself is not held here: `_load` reads it on every call, because
     `set`, `new` and `withdraw` write between reads.
@@ -370,6 +373,7 @@ class Invocation:
     holdings: Holdings | None = None
     flight: FlightReport | None = None
     base_copies: BaseCopies | None = None
+    read_store: bool = False
 
 
 #: Where the command's invocation is kept, for the lifetime `Invocation` gives.
@@ -414,10 +418,17 @@ def _load(args: argparse.Namespace) -> tuple[Path, list[Item], Config]:
     one level down is the only depth at which the store's parent says that.
 
     The store is read fresh on every call and everything else is the
-    invocation's, resolved once.
+    invocation's, resolved once. An item read from it is also what makes the
+    command one whose answer the settings governed, so that is recorded here,
+    where every such command passes, rather than at each of them
+    (`PL-N0MH`). A store that held none had nothing judged under any policy,
+    and the digest of one stays silent, as a session start must.
     """
     inv = _invocation(args)
-    return inv.directory, read_items(inv.directory), inv.config
+    items = read_items(inv.directory)
+    if items:
+        inv.read_store = True
+    return inv.directory, items, inv.config
 
 
 def _flight(args: argparse.Namespace) -> FlightReport:
@@ -692,6 +703,29 @@ def _say_snapshot(args: argparse.Namespace) -> None:
     (`PL-MT3R`) - so a stale answer never reads as a fresh one.
     """
     if line := _refs_line(args):
+        print(line)
+
+
+def _say_settings(args: argparse.Namespace) -> None:
+    """Say that library defaults governed the answer, for every command that read the store.
+
+    Called once, from `main`, after the command has answered, rather than by
+    each command: 23 of them read the store, several through more than one
+    return, and a line each one had to remember is the per-call-site drift
+    `Invocation` exists to end. At the foot, beside the refs line, since both
+    say what bounds the answer rather than being any of it.
+
+    `check` is left out because its report already names the settings, found
+    or not, on its second line (`checks._note_settings`). So is a command that
+    loaded no item - `branch`, `claim`, `yield` and `arm` never load the
+    store, and an empty store holds none - since nothing in its answer was
+    judged under the settings. `render.format_settings` says why the found
+    case prints nothing here.
+    """
+    inv: Invocation | None = getattr(args, _INVOCATION_ATTR, None)
+    if inv is None or not inv.read_store or args.func is cmd_check:
+        return
+    if line := render.format_settings(inv.settings):
         print(line)
 
 
@@ -5365,6 +5399,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = merge_shared(build_parser().parse_args(argv))
     try:
         status = int(args.func(args))
+        _say_settings(args)
         # Here rather than at interpreter exit, where a reader that closed
         # before the last buffered chunk would be reported as an ignored
         # exception and the exit status changed to 120.

@@ -3956,6 +3956,31 @@ It is a fact about the run rather than a finding — the category the `verify:`
 cost line beside it is in, and the open-item counts above it — so nobody is
 asked to act on it.
 
+**Every other command that loads an item says the second form too, at its foot,
+and says nothing where the file was found** (`PL-N0MH`). The quiet failure was
+never `check`'s alone: `next`, `digest`, `status`, `list` and `trend` pointed at
+a store with no config ranked, banded and split it under the package's values —
+empty `workflow_paths` and `generator_paths`, a top band of 5 — and nothing on
+their answers said so.
+
+```
+settings: no /srv/other-project/docket.toml, so library defaults governed this
+answer rather than this project's own policy - what it ranks, bands or splits
+into lanes may be the defaults' reading of this store
+```
+
+`main` prints it once the command has answered, for every command whose store
+yielded an item (`_say_settings` in `cli.py`), so no command carries a line of
+its own to forget, and `test_every_store_read_in_the_cli_goes_through_load`
+fails a store read that goes round the one place that marks it. `check` is left
+out, its report having said it already. The found case earns a line on `check`
+alone. Since every other command now names the not-found case, their silence
+means a file was found; what is left is root resolution moving to a *different*
+file that exists, which `check` catches by pinning the path it read on every
+`make check` and CI run. The same line on every `digest`, which the
+session-start hook prints into every session, would change no decision and
+teach its reader to skim the lines beside it.
+
 Refusing such a run instead was considered and is wrong: reading another
 project's store under its own defaults is correct behaviour and a real use.
 
