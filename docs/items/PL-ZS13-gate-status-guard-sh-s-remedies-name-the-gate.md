@@ -3,12 +3,14 @@ id: PL-ZS13
 title: gate-status-guard.sh's remedies name the gate it matched rather than the command it refused, so for python3 tools/possessive_section_check.py --help 2>&1 | tail the line it calls the one you want was set -o pipefail; tools/possessive_section_check.py 2>&1 | tail -45, which exits 126 since no tools/*_check.py is executable - met 2026-09-27 triaging PL-N6JP
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: bash-guard-bound
 touches: .claude/hooks/gate-status-guard.sh, .claude/hooks/shell_split.py, tests/unit/test_gate_status_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1152
 payoff: a session refused for piping a check it runs through python3 or uv run is offered a line that runs that same check with its arguments, not one that exits 126 or runs another suite, so the retry the refusal asks for is the whole of its price
 verify: grep -q 'def test_the_remedy_runs_the_gate_the_command_ran' tests/unit/test_gate_status_guard.py
 ---
