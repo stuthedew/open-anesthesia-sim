@@ -103,3 +103,7 @@ the other, since a shared file is not a concurrency refusal (`PL-VRMK`).
 returns `core/units.py` and the one commented oracle in
 `tests/reference/test_coupled_dynamics.py`; no test's expected value changes;
 the full suite passes.
+
+**Decided 2026-09-27: build it as recommended** (project owner, 2026-09-27,
+ratified, over leaving the five copies in place as `PL-TCW5` did, and over
+consolidating every copy, the independent oracle's included).
