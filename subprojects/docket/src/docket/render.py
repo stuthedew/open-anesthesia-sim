@@ -3366,6 +3366,7 @@ def _gate_clause(plan: Wave) -> str:
 # three measures across three periods, which is exactly the reading a shifted
 # column breaks.
 _LABEL, _PAIR, _CROSS, _UNPLACED, _PCT, _WEIGHTED, _CHURN = 19, 9, 4, 4, 5, 9, 16
+_CHURN_UNPLACED = 8
 
 
 def _pct(share: float | None) -> str:
@@ -3395,14 +3396,20 @@ def format_trend(report: Trend) -> str:
     if not report.periods or report.anchor is None:
         return "Nothing closed and no history to read: there is no trend yet."
 
-    churn_width = _CHURN + _PCT if report.has_churn else 0
+    # Unplaced churn gets a column only where `product_paths` can say what is
+    # unplaced; without it there is none, and the key says why instead.
+    churn_unplaced = _CHURN_UNPLACED if report.product_declared else 0
+    churn_width = _CHURN + churn_unplaced + _PCT if report.has_churn else 0
+    churn_header = f"{'appar./product':>{_CHURN}}" + (
+        f"{'+u':>{churn_unplaced}}" if churn_unplaced else ""
+    )
     lines = [
         f"{'':{_LABEL}}{'closed items':>{_PAIR + _CROSS + _UNPLACED + _PCT}}"
         f"{'weighted':>{_WEIGHTED + _PCT}}"
         + (f"{'churn (no queue)':>{churn_width}}" if report.has_churn else ""),
         f"{'period':<{_LABEL}}{'wf/prod':>{_PAIR}}{'+x':>{_CROSS}}{'+u':>{_UNPLACED}}"
         f"{'wf%':>{_PCT}}{'wf/prod':>{_WEIGHTED}}{'wf%':>{_PCT}}"
-        + (f"{'appar./product':>{_CHURN}}{'wf%':>{_PCT}}" if report.has_churn else ""),
+        + (f"{churn_header}{'wf%':>{_PCT}}" if report.has_churn else ""),
     ]
     for period in report.periods:
         closed, weighted = period.closed, period.weighted
@@ -3416,7 +3423,10 @@ def format_trend(report: Trend) -> str:
         )
         if report.has_churn:
             pair = f"{period.apparatus_lines}/{period.product_lines}"
-            row += f"{pair:>{_CHURN}}{_pct(period.churn_share):>{_PCT}}"
+            row += f"{pair:>{_CHURN}}"
+            if churn_unplaced:
+                row += f"{period.unplaced_lines:>{churn_unplaced}}"
+            row += f"{_pct(period.churn_share):>{_PCT}}"
         lines.append(row)
 
     window = "day" if report.by == BY_DAY else "7-day period"
@@ -3460,6 +3470,16 @@ def format_trend(report: Trend) -> str:
             f"           while doing something else would count as {APPARATUS} work.",
             f"           Product churn is {', '.join(PRODUCT_BUCKETS)} together.",
         ]
+        if report.product_declared:
+            lines += [
+                "           +u is lines in a path neither workflow_paths nor product_paths",
+                "           places, kept out of both sides' share as +x and +u items are.",
+            ]
+        else:
+            lines += [
+                "           No product_paths is declared, so product churn counts every",
+                "           path outside workflow_paths, including any nobody placed.",
+            ]
     elif report.churn_reading == CHURN_NOT_ASKED:
         lines.append("  churn    not shown: not asked for, so this run read nothing from git.")
     else:

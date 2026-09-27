@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from docket.cli import main
-from docket.config import Config
+from docket.config import Config, load
 from docket.model import Item
 from docket.render import format_trend
 from docket.trend import (
@@ -25,6 +25,7 @@ from docket.trend import (
     ROADMAP,
     SIM_CODE,
     SIM_DOCS,
+    UNPLACED,
     analyze,
     bucket,
 )
@@ -37,6 +38,21 @@ CONFIG = Config(
     workflow_paths=("tools", ".claude", "docs/items", "Makefile"),
     code_paths=("src", "tests"),
     roadmap_file="ROADMAP.md",
+)
+
+#: The same boundary with its product side declared, which is what gives a
+#: path nobody placed somewhere to go other than the product's prose.
+PLACED = Config(
+    items_dir="docs/items",
+    workflow_paths=("tools", ".claude", "docs/items", "Makefile"),
+    code_paths=("src", "tests"),
+    roadmap_file="ROADMAP.md",
+    product_paths=("src", "docs/MODEL.md", "ROADMAP.md"),
+)
+
+#: One day's churn with a line in each half and more in a path neither list places.
+UNPLACED_CHURN = Churn(
+    {date(2026, 8, 25): {"tools/x.py": 10, "src/core.py": 30, "docs/pr-bodies/1.md": 60}}
 )
 
 
@@ -99,9 +115,33 @@ def test_an_undeclared_path_is_product_prose_rather_than_apparatus() -> None:
 
     An unrecognized path counted as apparatus would let the apparatus grow
     without the report showing it. Counted as product it can only understate
-    the apparatus, which is the error a reader can catch.
+    the apparatus, which is the error a reader can catch. That holds where no
+    `product_paths` is declared; where one is, the remainder is nobody's, below.
     """
     assert bucket("uv.lock", Config(workflow_paths=("tools",))) == SIM_DOCS
+
+
+def test_where_product_paths_is_declared_a_path_neither_list_places_is_nobodys() -> None:
+    """Counted as product prose, apparatus nobody listed read as simulator work (`PL-8ZGY`).
+
+    Whatever either list places keeps its bucket, and so does `tests`, which
+    `code_paths` settles before the question is asked.
+    """
+    assert bucket("docs/pr-bodies/1215.md", PLACED) == UNPLACED
+    assert bucket("docs/MODEL.md", PLACED) == SIM_DOCS
+    assert bucket("tests/unit/test_tissue.py", PLACED) == SIM_CODE
+    assert bucket("tools/x.py", PLACED) == APPARATUS
+    assert bucket("ROADMAP.md", PLACED) == ROADMAP
+
+
+def test_product_paths_is_read_from_the_settings_file(tmp_path: Path) -> None:
+    """Passed over, it would leave `trend` counting every path nobody placed as product."""
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nworkflow_paths = ["tools"]\nproduct_paths = ["src", "README.md"]\n',
+        encoding="utf-8",
+    )
+
+    assert load(tmp_path).product_paths == ("src", "README.md")
 
 
 # --- reading the history -----------------------------------------------------
@@ -255,6 +295,30 @@ def test_the_queue_store_is_left_out_of_the_churn_share() -> None:
     assert period.apparatus_lines == 10
     assert period.product_lines == 30
     assert period.churn_share == 0.25
+
+
+def test_unplaced_churn_is_counted_and_kept_out_of_both_sides_share() -> None:
+    """As a `crossing` closure is kept out of the closed share."""
+    period = analyze([], UNPLACED_CHURN, PLACED, today=date(2026, 8, 27)).periods[0]
+
+    assert period.unplaced_lines == 60
+    assert (period.apparatus_lines, period.product_lines) == (10, 30)
+    assert period.churn_share == 0.25
+
+
+def test_the_report_prints_the_unplaced_lines_or_says_nothing_could_set_them_aside() -> None:
+    """A column where `product_paths` is declared, and a key line saying why not where it is not.
+
+    Without the line, a product column that also counts every path nobody placed
+    reads as the product's alone - the misreading `PL-8ZGY` recorded.
+    """
+    placed = format_trend(analyze([], UNPLACED_CHURN, PLACED, today=date(2026, 8, 27)))
+    undeclared = format_trend(analyze([], UNPLACED_CHURN, CONFIG, today=date(2026, 8, 27)))
+
+    assert placed.splitlines()[2].split()[-3:] == ["10/30", "60", "25%"]
+    assert "neither workflow_paths nor product_paths places" in " ".join(placed.split())
+    assert undeclared.splitlines()[2].split()[-2:] == ["10/90", "10%"]
+    assert "No product_paths is declared" in " ".join(undeclared.split())
 
 
 def test_periods_are_anchored_at_the_first_day_rather_than_counted_back() -> None:
