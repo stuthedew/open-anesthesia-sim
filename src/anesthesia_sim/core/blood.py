@@ -8,13 +8,12 @@ from math import exp, inf
 
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_fraction,
     require_nonnegative_finite,
     require_positive_finite,
 )
-
-SECONDS_PER_MINUTE = 60.0
 
 
 @dataclass(frozen=True, slots=True)

@@ -303,11 +303,8 @@ import pytest
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
-from anesthesia_sim.core.uptake_system import (
-    MAXIMUM_SIMULATION_STEP_S,
-    SECONDS_PER_MINUTE,
-    AgentUptakeSystem,
-)
+from anesthesia_sim.core.units import SECONDS_PER_MINUTE
+from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
 
 # The measurement's own horizon: both studies administered the potent agent
 # for 30 minutes and report F_A/F_I at the end of it.

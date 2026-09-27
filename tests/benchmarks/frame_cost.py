@@ -87,6 +87,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.playback import playback_rate_for
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND, SECONDS_PER_MINUTE
 
 #: The size the dashboard is measured at, matching
 #: `tests/integration/test_qt_rendering.py`'s. It is a parameter of the
@@ -110,9 +111,6 @@ DEFAULT_FRAMES = 20
 #: frame. An hour, because cost grows with recorded history and an unwarmed
 #: run measures the cheapest case the application ever has.
 DEFAULT_WARM_UP_MINUTES = 60
-
-_SECONDS_PER_MINUTE = 60.0
-_MILLISECONDS_PER_SECOND = 1000.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -241,7 +239,7 @@ def measure(
     *,
     multiplier: int = DEFAULT_MULTIPLIER,
     frames: int = DEFAULT_FRAMES,
-    warm_up_s: float = DEFAULT_WARM_UP_MINUTES * _SECONDS_PER_MINUTE,
+    warm_up_s: float = DEFAULT_WARM_UP_MINUTES * SECONDS_PER_MINUTE,
 ) -> Measurement:
     """Drive a real dashboard frame by frame and time each frame's three stages.
 
@@ -348,7 +346,7 @@ def _milliseconds(seconds: float) -> str:
     is between that and 15 ms.
     """
 
-    return f"{seconds * _MILLISECONDS_PER_SECOND:.2f} ms"
+    return f"{seconds * MILLISECONDS_PER_SECOND:.2f} ms"
 
 
 def report(measurement: Measurement) -> str:
@@ -364,7 +362,7 @@ def report(measurement: Measurement) -> str:
     lines = [
         f"Frame cost at {measurement.multiplier}x real time, "
         f"{len(measurement.samples)} frames, warmed to "
-        f"{measurement.warm_up_s / _SECONDS_PER_MINUTE:g} min of simulated run.",
+        f"{measurement.warm_up_s / SECONDS_PER_MINUTE:g} min of simulated run.",
         f"{measurement.steps_per_frame} steps advanced per frame, against a "
         f"{_milliseconds(budget)} budget.",
         "",
@@ -430,7 +428,7 @@ def main(argv: list[str] | None = None) -> int:
             measure(
                 multiplier=arguments.rate,
                 frames=arguments.frames,
-                warm_up_s=arguments.warm_up_minutes * _SECONDS_PER_MINUTE,
+                warm_up_s=arguments.warm_up_minutes * SECONDS_PER_MINUTE,
             )
         )
     )
