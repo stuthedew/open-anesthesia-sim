@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 payoff: a session told to absorb work that landed during a release cut can do it with the command the advisory names, instead of meeting a refusal that points at tagging
 verify: grep -rq 'def test_absorbing_after_the_notes_are_written_folds_the_new_work_in' subprojects/docket/tests/
+recurrences: 2026-09-27 PL-C0C0
 ---
 
 **Problem.** docket check's unmerged-cut advisory says re-running make release VERSION=X absorbs what the base took since, but once the cut's notes are written that run exits 1 on the version as shipped and untagged, and only absorbs after the notes file is removed
