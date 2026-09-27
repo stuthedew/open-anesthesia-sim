@@ -2831,6 +2831,7 @@ def test_the_landing_verdict_is_not_asked_where_it_could_not_change_the_advice()
 
     assert state.disposition == "restart"
     assert state.landed_whole is False
+    assert not any(args[:2] == ["rev-list", "--objects"] for args in asked)
     assert not any("--raw" in args for args in asked)
 
 
