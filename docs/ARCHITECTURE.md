@@ -1338,9 +1338,9 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
 
   **The *whose is it* question describes the fixed layout shipped today, and
   is superseded when `ROADMAP.md` item 34's area system lands.** It routes by
-  which of two containers holds a surface, and an area holds one editor with
-  any editor able to occupy any area, so the question stops having an answer:
-  `PL-TH35` is where the Editor contract that replaces it is written, and
+  which of two containers holds a surface, and an area holds one View with
+  any View able to occupy any area, so the question stops having an answer:
+  `PL-TH35` is where the View contract that replaces it is written, and
   adding that route is its work rather than this bullet's. Until then this
   bullet still decides **where the code goes**, and
   `.claude/rules/ui-areas.md` — which loads on the same `src/` read as this
@@ -1351,10 +1351,10 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   bullet's *reason* rather than its routing: a run's panel must not state one
   branch's numbers over both, and a control shared between runs must not be
   duplicated into each. Both are properties of the value rather than of the
-  container, and they bind an editor exactly as they bind a panel today.
+  container, and they bind a View exactly as they bind a panel today.
 
   *The supersession has a release, as of 2026-09-16*: v0.6.0, "the layout is the
-  reader's", which builds the Areas, the Editor contract, the Workspaces and the
+  reader's", which builds the Areas, the View contract, the Workspaces and the
   persistence. Break-out into a second top-level window is item 34's second
   half, wanted but unscheduled since 2026-09-26; once it is built, the
   routing question gains a second half - *which window* a surface is

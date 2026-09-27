@@ -1562,9 +1562,16 @@ def _check_cut_window(
     one session in a release, so it costs nothing on every other run - the test
     `CLAUDE.md` requires a check to pass to keep its place.
 
-    The remedy it names already exists: re-running the cut of the same version
-    reclaims what it stamped and folds the newcomers in, which is the property
-    `unreleased`'s `resuming` argument was built for.
+    The remedy it names is `cmd_release`'s re-cut, which reclaims what the cut
+    stamped and folds the newcomers in, found by the same `cut_window` read.
+    Until `PL-2TDX` it did not work at the moment this fires: with the notes
+    written, the re-run read the version as shipped and refused it as untagged.
+
+    Merging the base in does not end it, since `PL-C0C0`, though that merge is
+    the route's own first step and what `update-armed.yml` does to an armed
+    release pull request. It ended it before, because the window was measured
+    from the merge-base; `CutWindow` says what it is measured from now, and what
+    that costs.
     """
     if window is None or not window.version:
         return

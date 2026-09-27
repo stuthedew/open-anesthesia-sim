@@ -2,7 +2,8 @@
 
 It refuses the push that deletes branches on the remote beside the prune
 (`PL-M2NV`), since that deletes the branches themselves rather than this
-clone's copies of them.
+clone's copies of them, and the removal of a remote, which deletes every copy
+this clone holds of that remote's branches at once (`PL-R295`).
 
 `PL-JK0M` routed this rule out of `CLAUDE.md`, where it was ten resident lines
 every session carried before it had read anything, into the hook that decides
@@ -249,6 +250,82 @@ def test_a_config_that_writes_is_refused_whatever_it_reads_like(command: str) ->
     assert decision["permissionDecision"] == "deny"
 
 
+# Each removes or renames a section holding a prune or mirror setting, which
+# writes every setting in it. Measured on git 2.43.0 in scratch clones on
+# 2026-09-27 (`PL-VM7C`): with a `fetch.prune = true` in a wider config file
+# behind a narrower `false`, removing `fetch` or renaming it away let the next
+# plain fetch prune; a section the guard never reads, renamed into `fetch` or a
+# remote's, carried its `prune` there and a plain fetch pruned, or its `mirror`
+# and a plain push deleted a branch on the remote.
+SECTION_WRITES = (
+    # The item's reproductions, verbatim.
+    "git config --remove-section fetch",
+    "git config --rename-section fetch kept",
+    # Past a location, the file an option names, and `--`.
+    "git config -f .git/config --remove-section fetch",
+    "git config --global --remove-section fetch",
+    "git config --remove-section -- fetch",
+    # Into the section, from one the guard never reads.
+    "git config --rename-section foo fetch",
+    "git config --rename-section foo remote.origin",
+    # A remote's section goes with the remote, and its override with it: the
+    # next plain fetch has no remote to read, and prunes once one is added back.
+    "git config --remove-section remote.origin",
+    "git config --rename-section remote.origin remote.kept",
+    # git matches a section as the file spells it: this removes a hand-written
+    # `[Fetch]`, which `fetch` does not.
+    "git config --remove-section Fetch",
+    # Read wherever a setting is: run by a wrapper, past git's own options.
+    "timeout 60 git config --remove-section fetch",
+    "git -C . config --rename-section foo remote.origin",
+)
+
+
+@pytest.mark.parametrize("command", SECTION_WRITES)
+def test_a_config_section_write_is_refused(command: str) -> None:
+    """A section removed or renamed is every setting in it written (`PL-VM7C`).
+
+    The guard read a `config` call for a setting's name, so `git config --unset
+    fetch.prune` was refused while `git config --remove-section fetch`, which
+    removes the same setting with the rest of its section, ran unrefused.
+    """
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert decision["permissionDecision"] == "deny"
+
+
+def test_a_section_renamed_into_a_remote_is_refused_as_a_push_too() -> None:
+    """A rename into `remote.<name>` can carry a `mirror` there, so it is refused as a push as well.
+
+    After `git config foo.mirror true`, `git config --rename-section foo
+    remote.origin` made a plain `git push origin` delete a branch on the remote
+    (`PL-VM7C`), which is `PL-M2NV`'s outcome, so the push reason is given too.
+    """
+    reason = _decision("git config --rename-section foo remote.origin")["permissionDecisionReason"]
+    assert "git push -u origin <branch>" in reason
+    assert "git branch -dr origin/<branch>" in reason
+    fetch_only = _decision("git config --remove-section fetch")["permissionDecisionReason"]
+    assert "git push -u origin <branch>" not in fetch_only
+
+
+# None of these writes a prune or mirror setting, so none is refused: a section
+# holding neither; a bare `remote`, which git 2.43 answers "no such section"
+# rather than reaching the remotes under it; and a section action after the
+# name, where git has stopped reading options and writes nothing.
+SECTION_WRITES_THAT_KEEP_THE_SETTINGS = (
+    "git config --remove-section alias",
+    "git config --rename-section branch.main branch.trunk",
+    "git config --remove-section remote",
+    "git config fetch --remove-section",
+)
+
+
+@pytest.mark.parametrize("command", SECTION_WRITES_THAT_KEEP_THE_SETTINGS)
+def test_a_section_holding_no_guarded_setting_is_untouched(command: str) -> None:
+    """A section action on a section no prune or mirror setting sits in passes (`PL-VM7C`)."""
+    assert _decision(command) is None, f"{command!r} was denied"
+
+
 def test_only_a_heredoc_body_is_removed() -> None:
     """The prose in a body stays allowed, and a prune after its terminator is refused (`PL-39LD`).
 
@@ -446,6 +523,74 @@ def test_the_push_refusal_answers_the_question_the_caller_had() -> None:
     both = _decision("git fetch --prune && git push --mirror origin")["permissionDecisionReason"]
     assert "git push -u origin <branch>" in both
     assert "git branch -dr origin/<branch>" in both
+
+
+# Each deleted every remote-tracking ref of `origin` on git 2.43.0, in a scratch
+# clone whose `origin/other` held the only copy of a branch deleted on the
+# remote (`PL-R295`).
+REMOVING_A_REMOTE = (
+    # The item's reproductions, verbatim.
+    "git remote remove origin",
+    "git remote rm origin",
+    # `-v` ahead of the subcommand, and `--` ahead of the name.
+    "git remote -v remove origin",
+    "git remote --verbose rm origin",
+    "git remote remove -- origin",
+    # Read wherever a prune is: past git's own options, run by a wrapper, in a
+    # list.
+    "git -C . remote remove origin",
+    "timeout 60 git remote rm origin",
+    "git fetch origin && git remote remove origin",
+)
+
+
+@pytest.mark.parametrize("command", REMOVING_A_REMOTE)
+def test_removing_a_remote_is_refused(command: str) -> None:
+    """A remote removed is every ref it tracks deleted at once (`PL-R295`).
+
+    The guard had no shape for `git remote remove` or its `rm`, so each of these
+    ran unrefused, deleting more refs than any prune the guard refused.
+    """
+    decision = _decision(command)
+    assert decision is not None, f"{command!r} was allowed"
+    assert decision["permissionDecision"] == "deny"
+
+
+# Each git call here deleted no branch's ref in the same scratch clone, so none
+# is refused: `rename` moved the refs, `set-head -d` deleted only the symbolic
+# `origin/HEAD`, and `branch -dr` names the one ref it deletes. The recipe the
+# refusal prints must pass, and so must writing about the spelling.
+REMOTE_CALLS_THAT_KEEP_THE_REFS = (
+    "git remote -v",
+    "git remote add upstream https://example.com/x.git",
+    "git remote set-url origin https://example.com/x.git",
+    "git remote rename origin kept",
+    "git remote set-head origin -d",
+    "git branch -dr origin/x",
+    'git commit -m "never git remote remove origin"',
+    "echo git remote rm origin",
+)
+
+
+@pytest.mark.parametrize("command", REMOTE_CALLS_THAT_KEEP_THE_REFS)
+def test_a_remote_call_that_keeps_the_refs_is_untouched(command: str) -> None:
+    """Reading, renaming or re-pointing a remote, and writing about removing one, pass."""
+    assert _decision(command) is None, f"{command!r} was denied"
+
+
+def test_the_remove_refusal_answers_the_question_the_caller_had() -> None:
+    """A removal is refused with its own recipe, since neither other one is about a remote.
+
+    A session removing a remote usually wants it pointed somewhere else, which
+    `set-url` does and keeps its refs, or one of its refs gone, which a delete
+    by name does (`PL-R295`).
+    """
+    reason = _decision("git remote remove origin")["permissionDecisionReason"]
+    assert "git remote set-url <name> <url>" in reason
+    assert "git branch -dr <name>/<branch>" in reason
+    assert "bin/docket stranded" in reason
+    assert "git checkout -B <branch> origin/main" not in reason
+    assert "git push -u origin <branch>" not in reason
 
 
 # Why each spelling below is outside the promise the hook's header opens with,
