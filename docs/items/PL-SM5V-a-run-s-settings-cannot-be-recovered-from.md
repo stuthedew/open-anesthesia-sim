@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: scenario-branching
+milestone: v0.5.16
 touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, tests/unit/test_run_definition.py, tests/unit/test_governing_equations.py, tests/unit/test_resume_at.py, docs/MODEL.md
 added: 2026-09-14
 closed: 2026-09-27

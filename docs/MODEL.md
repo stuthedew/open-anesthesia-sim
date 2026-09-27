@@ -2868,6 +2868,33 @@ appropriate for a patient.
 <!-- provenance: data/agents/isoflurane.json max_delivered_concentration_percent = 5 -->
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
+**It is a device-capability default stored under the agent on purpose, and
+where it is stored is not a claim about the agent** (`PL-JQY1`). Each agent
+file's value is the calibrated dial maximum of the vaporizers its adopted
+source names: the Dräger Vapor 2000 and Datex-Ohmeda Sevotec 5 for sevoflurane,
+the Penlon Sigma Delta and Datex-Ohmeda Isotec 5 for isoflurane, and the Tec 6
+for desflurane. Each file's note calls it a device-capability limit rather than
+a scientific model parameter. So desflurane's figure says how far a Tec 6 dial
+turns, not that desflurane cannot be delivered above it: another desflurane
+vaporizer, or an injector delivering into the circle, is bound by nothing about
+the agent. It stays under the agent for two reasons. The reference breathing
+system in `data/machines/reference_circle_system.json` is not a machine and
+names no vaporizer, so a per-machine entry would today repeat the agent file's
+number rather than add anything to it. And
+`_AgentPayload._mac_percent_must_not_exceed_vaporizer_max()` in
+`core/parameters.py` refuses an agent whose 1 MAC its own vaporizer cannot
+deliver, which the 1-MAC start in `AgentUptakeSystem.for_agent()` depends on;
+that guard can be written only where the maximum and `mac_percent` sit in one
+file. **It moves when a machine profile mounts a vaporizer whose maximum differs
+from the agent file's**, to the per-agent limit on the machine profile that
+`docs/machine-abstraction.md` names `agent_limits`. Three things move with it
+then: the MAC guard, to wherever the machine and the agent are paired, since a
+machine whose limit sits below an agent's MAC would otherwise refuse the run at
+construction; the read in `AgentUptakeSystem.for_agent()`; and the
+controller's own copy, which the interface's dial is drawn from, or the dial
+would offer positions the circuit refuses. Until then the circuit and the dial
+read the same number from the same file.
+
 **The three maxima come from two different classes of vaporizer, and that
 distinction matters nowhere in this model except away from sea level.**
 Sevoflurane's 8% and isoflurane's 5% are variable-bypass dials; desflurane's

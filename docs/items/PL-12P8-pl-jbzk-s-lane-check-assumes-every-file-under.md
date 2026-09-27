@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.5.16
 touches: tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, docket.toml, docs/ARCHITECTURE.md
 added: 2026-09-06
 closed: 2026-09-27

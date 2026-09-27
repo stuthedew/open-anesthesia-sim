@@ -3,11 +3,13 @@ id: PL-JQY1
 title: max_delivered_concentration_percent is a vaporizer device maximum stored as an agent property, so 18% reads as a fact about desflurane
 priority: P2
 effort: S
-status: ready
+status: done
 classes: refactor, docs
 feature: machine-profile-framework
-touches: src/anesthesia_sim/data/agents, src/anesthesia_sim/data/machines, src/anesthesia_sim/core/circuit.py, docs/MODEL.md
+touches: docs/MODEL.md
 added: 2026-09-19
+closed: 2026-09-27
+pr: 1201
 payoff: settles whether a vaporizer's calibrated maximum is keyed to the agent or the machine, so the field name stops re-opening a question its provenance note already answers
 verify: grep -qF 'device-capability' docs/MODEL.md
 ---
@@ -230,3 +232,41 @@ profile carries an `agent_limits` field, and `docs/MODEL.md` does not record
 the keying as deliberate. That is a refactor with a documentation obligation,
 not a live misattribution - which is a different priority, and the item should
 be re-ranked on it rather than on the original framing.
+
+## Closed 2026-09-27: recorded as deliberately keyed to the agent
+
+**Which ending, and why not the optional `agent_limits` field.** The done-when
+above has two endings, and this item takes the second: `docs/MODEL.md`
+§ "Delivery-limit and MAC parameters" now records that the value is a
+device-capability default stored under the agent on purpose, why, and what
+moves with it when it moves. The re-scope of 2026-09-20 recommended building an
+optional `agent_limits` mapping on the machine profile now, on the argument that
+"deciding the slot while one profile ships is a row; deciding it afterwards is a
+migration of every file". That argument holds for a required key and not for an
+optional one, and the re-scope itself requires the field to be optional: under
+`extra="forbid"` an optional key added later still loads every existing profile
+unchanged, so adding it later costs what adding it now costs. Built now, it
+would be a branch in a safety-critical control limit that no data file
+exercises, and the controller's second read path (point 3 above) would have to
+be rewired in the same change or the dial and the circuit would disagree the
+first time a profile narrowed a limit. `docs/machine-abstraction.md`'s own
+admission rule, that a field exists only if something consumes it, points the
+same way. So the field waits for the first profile that needs it.
+
+**What the record says** (`docs/MODEL.md`, in its own words): the value is the
+calibrated dial maximum of the vaporizers each agent file's adopted source names;
+where it is stored is not a claim about the agent; it stays under the agent
+because the reference breathing system names no vaporizer and because the MAC
+guard `_AgentPayload._mac_percent_must_not_exceed_vaporizer_max()` can be
+written only where the maximum and `mac_percent` share a file; and it moves, to
+`agent_limits`, when a machine profile mounts a vaporizer whose maximum differs
+from the agent file's, taking the MAC guard, the read in
+`AgentUptakeSystem.for_agent()` and the controller's copy with it.
+
+**What would reopen it.** The re-scope's own falsifier, unchanged: a machine
+profile whose vaporizer limit differs from an agent file's value for the same
+agent. Then the agent file's number stops being a defensible default for that
+pairing and the move is owed.
+
+**Nothing else changed.** No data file, no code, no displayed number. `touches`
+is narrowed to `docs/MODEL.md`, the one file the work changed.
