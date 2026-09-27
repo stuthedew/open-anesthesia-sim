@@ -3,12 +3,14 @@ id: PL-1DW7
 title: gate-status-guard.sh reads only $? as a reader of the status, so make docket 2>&1 | tail -4; echo "exit=${PIPESTATUS[0]}" is refused as losing the gate at the pipe, though PIPESTATUS[0] prints make's own status into the output - met 2026-09-26 in ordinary work, by the PL-61FT build session
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: bash-guard-bound
 touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
+closed: 2026-09-27
+pr: 1151
 payoff: a session that reads a gate's status out of PIPESTATUS straight after a pipe that trims it - make docket 2>&1 | tail -4; echo "exit=${PIPESTATUS[0]}" - is let through, as bash prints the gate's own status there, while a read of any other stage's status is still refused
 verify: grep -q 'def test_pipestatus_read_after_the_pipeline_keeps_the_status' tests/unit/test_gate_status_guard.py
 ---

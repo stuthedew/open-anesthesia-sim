@@ -53,6 +53,20 @@
 # immediately after the separator, since anything in between replaces `$?` with
 # its own status, and never after `&`, where `$?` is the background launch.
 #
+# **So does reading `PIPESTATUS` after the pipeline, and a session writing it is
+# why** (`PL-1DW7`). The array holds "a list of exit status values from the
+# processes in the most-recently-executed foreground pipeline" (Bash Reference
+# Manual § 5.2), so `make docket 2>&1 | tail -4; echo "exit=${PIPESTATUS[0]}"`
+# prints `make`'s own status, and it was refused at the `|`, since the `tail`
+# after it holds no `$?`. A gate opening its pipeline now keeps its status
+# where the command after that pipeline's `;` reads the first stage's, with
+# `pipefail` or without: `${PIPESTATUS[0]}`, the bare name, which is an array's
+# first element, or `[@]` or `[*]`, which are all of them. That command has to
+# run whatever the pipeline returned, so not behind `&&`, `||` or `&`, nor
+# after `then`, `do`, `else` or `elif`; and no subshell may close between the
+# two, since after `(make check | tail)` the array holds the subshell's status.
+# bash 5.2.21 printed each verdict the tests pin.
+#
 # **A group is read the way bash runs it, and a false refusal is why.** `{ set
 # -o pipefail; uv run pytest -q t.py 2>&1 | tail -12; }` keeps the status and
 # was refused twice over (`PL-1SFZ`): the `{` hid the `set` from the one reader
@@ -320,6 +334,39 @@ def ends(start, deepest):
     return None
 
 
+# A read of the first stage of a pipeline out of `PIPESTATUS` (`PL-1DW7`):
+# `${PIPESTATUS[0]}`, the bare name, which names the first element of an
+# array, or `[@]` and `[*]`, which are all of them.
+FIRST_STAGE = re.compile(r"\$(?:PIPESTATUS\b|\{PIPESTATUS(?:\[[0@*]\])?\})")
+# The words opening a command that runs only on the answer of the one before
+# it, or not at all after it: a branch, a loop body, a later branch of an `if`.
+CONDITIONAL = (["then"], ["do"], ["else"], ["elif"])
+
+
+def pipestatus_read(start):
+    """The segment ending the pipeline `start` opens, where the command after it reads the status of its first stage; else None.
+
+    It has to be the command straight after the `;` ending the pipeline, which
+    runs whatever the pipeline returned. A stage that is a group is stepped
+    over whole, as the walk below steps over it, and a pipeline ending
+    shallower than it started has closed a subshell around the gate, whose
+    status is all the array then holds.
+    """
+    if start > 0 and separators[start - 1] == "|":
+        return None
+    end = start
+    while separators[end] == "|":
+        end = ends(end + 1, depth[end])
+        if end is None:
+            return None
+    if separators[end] != ";" or depth[end] != depth[start]:
+        return None
+    reader = segments[end + 1]
+    if reader[:1] in CONDITIONAL or not any(FIRST_STAGE.search(word) for word in reader):
+        return None
+    return end
+
+
 # `exit N` leaves with N modulo 256, N read in base 10 (bash 5.2.21). Only a
 # literal, since a variable can hold 0.
 EXIT_STATUS = re.compile(r"^[+-]?\d{1,9}$")
@@ -401,6 +448,7 @@ for index, segment in enumerate(segments):
     # runs next, and `||` to a fallback, which loses it unless it fails too.
     lost = None
     at = index
+    read = pipestatus_read(index)
     while at < len(segments):
         separator = separators[at]
         following = at + 1
@@ -471,6 +519,12 @@ for index, segment in enumerate(segments):
         # own status, and `&` is excluded outright: after a background launch
         # `$?` is the launch, never the gate.
         if separator != "&" and any("$?" in token for token in after):
+            break
+        # Or reads it out of `PIPESTATUS` after the pipeline the gate opens
+        # (`PL-1DW7`). From the gate itself, or from the end of its pipeline
+        # when `pipefail` carried the walk there, that pipeline is the one the
+        # array holds; from anywhere else the walk has reached, it may not be.
+        if read is not None and at in (index, read):
             break
         lost = separator
         break
