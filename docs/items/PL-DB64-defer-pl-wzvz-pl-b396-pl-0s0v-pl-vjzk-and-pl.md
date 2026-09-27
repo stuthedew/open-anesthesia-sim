@@ -3,10 +3,12 @@ id: PL-DB64
 title: Defer PL-WZVZ, PL-B396, PL-0S0V, PL-VJZK and PL-KZ99 from Gate 2 to Gate 3 in ROADMAP.md, recording why none can clear before v0.6.0 begins and that none of their hazards is live
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
-touches: ROADMAP.md
+touches: ROADMAP.md, docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1163
 payoff: stops five entries that no work before v0.6.0 can close from holding Gate 2 open, and puts the owner's decision to defer them in the gate section beat 3 reads rather than in a thread report alone
 verify: grep -qF '**Deferred to Gate 3 on 2026-09-27' ROADMAP.md
 ---
@@ -33,9 +35,11 @@ only what the gate's own section records.
   between profiles), which no release schedules. It is Gate 1's one deferred
   entry already, sent here by `PL-S5Q9`.
 - `PL-B396` (report agent amounts as a liquid-equivalent millilitre figure) is
-  held open as the stand-in for planned-milestone item 28, the agent-consumption
-  readout. Its question is whether a release schedules item 28, and none does
-  before v0.6.0.
+  held open as the stand-in for planned-milestone item 28, agent cost, whose
+  readout it decided: millilitres of liquid equivalent by default, and a
+  reader-set price later. Its question is whether a release schedules item 28,
+  and none does before v0.6.0 (§ "Planned milestones" item 28 is named by no
+  row of the timeline).
 - `PL-0S0V` (display precision per unit), `PL-VJZK` (a reader-set agent price)
   and `PL-KZ99` (molar mass and liquid density) are each `blocked-by: PL-B396`,
   because each is work item 28 would create: a reader-selectable unit, a price,
@@ -77,7 +81,10 @@ whose headings say their entries clear before v0.6.0 begins and into a group of
 their own, which is what the section already did for `PL-Y04W`. The two
 sentences the move makes false are corrected: the "Three kinds of group"
 paragraph's "single entry deferred to Gate 3", and `PL-WZVZ`'s "appears below in
-the group its lane puts it in".
+the group its lane puts it in". `PL-WZVZ`'s own brief, whose 2026-09-21 section
+still says the entry clears in Gate 2, gains a dated note that it no longer
+does - a repair to a live brief under `.claude/rules/citation-drift.md`, not a
+change to its front matter.
 
 **What `bin/docket wave` reads, measured rather than assumed.** The report and
 the brief that started this item expected the paragraph to take the five out of
@@ -88,8 +95,13 @@ headings "are not read, and are not the test". `PL-WZVZ`'s chain leaves at
 `PL-TBMK` and `PL-4TWW`, so `wave` already agrees for it. `PL-B396` is at
 `needs-decision` with no blocker, and the other three wait only on it, an entry
 on the list, so `wave` goes on counting those four as work this gate can clear,
-and item 28 has no id or version a `blocked-by` could hold. The paragraph says
-so rather than claiming agreement, and the gap is filed as its own item.
+and item 28 has no id or version a `blocked-by` could hold. Measured on
+2026-09-27: `bin/docket wave --no-fetch` prints the same gate line on `main` at
+`19af95d` and on this item's branch after the edit, `78 cleared, 112 open - 95
+this gate can clear, 3 the milestone clears itself, 14 waiting on 5 open items
+outside it`, with `PL-0S0V`, `PL-B396`, `PL-KZ99` and `PL-VJZK` among the 95 and
+`PL-WZVZ` among the 14. The paragraph says so rather than claiming agreement,
+and the gap is `PL-18BD`, filed with the decision it needs.
 
 **Done when.** `ROADMAP.md`'s v0.6.0 gate section defers the five to Gate 3:
 it says so and why for each, names Gate 3 and that v0.6.0 ships without them,
