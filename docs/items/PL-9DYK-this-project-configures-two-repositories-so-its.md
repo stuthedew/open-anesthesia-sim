@@ -65,3 +65,19 @@ from its `main` on 2026-09-27, so no thread had written to it. That count
 cannot see reads, which is where it could be wrong: if most of this project's
 threads open a source at start, keeping it is the better trade. Which guards
 the trial needs stays the owner's call, alongside `PL-NZC0`.
+
+## Answered 2026-09-27
+
+**Taken out** (project owner, 2026-09-27, ratified, over keeping the
+references repository in the project). The project owner removed
+`open-anesthesia-sim-references` from the project's repositories at about
+19:00Z. By the documentation quoted above, threads started after that begin
+inside `open-anesthesia-sim` and read its `.claude/settings.json`, so its
+hooks, permission rules and `env` block apply again. Threads already running
+keep the layout they started with, which is why this one cannot confirm it.
+The coordinator added the one exception to the project instructions: a thread
+whose work needs the references library may add it to its own session.
+
+**Still to confirm before closing:** the first thread started after the
+removal checks that `CLAUDE_PROJECT_DIR` is set in its shell and that the
+SessionStart digest printed, then closes this item.
