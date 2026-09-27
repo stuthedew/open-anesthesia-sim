@@ -20,7 +20,10 @@ alone:
   that still answers when `touches` is missing or wrong. It has its own
   distortion, which is why the queue store is excluded: `docs/items` sits
   inside `workflow_paths`, so every capture and every triage pass would
-  otherwise read as apparatus work.
+  otherwise read as apparatus work. Where `product_paths` is declared, a path
+  neither it nor `workflow_paths` places is excluded too, from both sides:
+  counting it as product is how apparatus nobody listed read as simulator work
+  (`PL-8ZGY`).
 
 Like `wave`, this computes and decides nothing. Whether the balance it prints
 is the right one is a judgment about the project, and a tool that answered it
@@ -53,6 +56,10 @@ APPARATUS = "apparatus"
 SIM_CODE = "code"
 SIM_DOCS = "docs"
 ROADMAP = "roadmap"
+#: A path neither `workflow_paths` nor `product_paths` places. Only a project
+#: declaring `product_paths` has one, and it belongs to neither half, as a
+#: `crossing` item belongs to neither lane, so the churn share leaves it out.
+UNPLACED = "unplaced"
 
 #: The apparatus half, split so the queue store can be set aside. It is inside
 #: `workflow_paths` and belongs there - editing it is apparatus work - but it
@@ -98,6 +105,11 @@ def bucket(path: str, config: Config) -> str:
     settled before the general question is asked. `workflow_paths` itself is
     the same boundary `Item.lane` reads, so the churn column and the item
     columns are answering with one rule rather than two that can drift.
+
+    What is left is product prose where `product_paths` places it, and
+    `UNPLACED` where a project declares that list and it does not: a path
+    nobody placed is nobody's (`PL-8ZGY`). With none declared, the remainder
+    is product prose, as `Item.lane` reads it.
     """
     if is_under(path, (config.items_dir,)):
         return QUEUE
@@ -107,7 +119,9 @@ def bucket(path: str, config: Config) -> str:
         return ROADMAP
     if is_under(path, config.code_paths):
         return SIM_CODE
-    return SIM_DOCS
+    if not config.product_paths or is_under(path, config.product_paths):
+        return SIM_DOCS
+    return UNPLACED
 
 
 def _share(workflow: float, product: float) -> float | None:
@@ -175,8 +189,12 @@ class Period:
         return sum(self.churn.get(name, 0) for name in PRODUCT_BUCKETS)
 
     @property
+    def unplaced_lines(self) -> int:
+        return self.churn.get(UNPLACED, 0)
+
+    @property
     def churn_share(self) -> float | None:
-        """Apparatus's share of the churn, with the queue store excluded."""
+        """Apparatus's share of the churn, with the queue store and unplaced paths excluded."""
         return _share(self.apparatus_lines, self.product_lines)
 
 
@@ -201,6 +219,10 @@ class Trend:
     #: git starts at the first commit, so the two runs bucket the same closures
     #: into different periods and only this says why.
     anchor: date | None
+    #: Whether `product_paths` is declared, which is what lets the churn set a
+    #: path nobody placed aside. Without it the product columns count every
+    #: path outside `workflow_paths`, and the key has to say so.
+    product_declared: bool = False
 
     @property
     def has_churn(self) -> bool:
@@ -323,6 +345,7 @@ def analyze(
         by=by,
         churn_reading=reading,
         anchor=first,
+        product_declared=bool(config.product_paths),
     )
 
 

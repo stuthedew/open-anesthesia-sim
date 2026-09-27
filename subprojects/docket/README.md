@@ -1524,6 +1524,13 @@ since product direction is product work, but a period spent rewriting it is
 not a period spent building anything, so it is separated from `code`. What
 counts as code is `code_paths`, which defaults to `src` and `tests`.
 
+A project that declares `product_paths`, the product's side of the same
+boundary, gets one more: a path under neither list is **unplaced**, printed in
+its own `+u` column and kept out of the share, as a `crossing` closure is.
+`Item.lane` does not read the list. Without it the product side is everything
+`workflow_paths` omits, and the key says so, because an apparatus file nobody
+listed then reads as product work (`PL-8ZGY`).
+
 Periods are anchored at the first day the report has anything to say about,
 never counted back from today: two runs a day apart have to agree about what
 happened in August. A period with nothing in it is dropped rather than printed
@@ -3901,6 +3908,8 @@ minor_classes = ["feature"]
 protected_paths = []
 gate_paths = ["Makefile", "pyproject.toml", ".github", ".claude", "docket.toml"]
 code_paths = ["src", "tests"]      # what `docket trend` counts as code
+product_paths = []                 # the product's side; empty = `docket trend`
+                                   # counts every other path as product
 notes_file = ""                    # a threads file `docket show` points into
 version_file = "pyproject.toml"
 roadmap_file = "ROADMAP.md"

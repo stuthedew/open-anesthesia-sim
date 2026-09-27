@@ -652,3 +652,28 @@ its wrapping. It goes when a session can read the allowed domains, since a
 check could then compare a document's claim against the list;
 `$HTTPS_PROXY/__agentproxy/status` reports the proxy's state and not its
 policy, checked 2026-09-26.
+
+## Rule 15, clock times in Central, added 2026-09-27
+
+Replies gave clock times in UTC, the zone `bin/docket`'s digest, the
+container's `date` and GitHub's timestamps print, and the project owner reads
+US Central: the compaction deadline `CLAUDE.md` asks a session to name reached
+them as "23:42 UTC", a sum left for them to do. They asked for every time in
+Central, "whatever Madison Wisconsin is" (`PL-R852`). The pause on new
+workflow mechanisms does not hold it back, being the owner's own request,
+which lifts the pause for that request.
+
+**The carrier test.** No check can read a reply, so disposition 1 cannot hold
+it; a skill loads at its own trigger and a clock time can turn up in any
+reply, so disposition 2 cannot; and a reply is not preceded by a read, which
+rules out a `paths:` scope. Resident is what is left, as for the rest of this
+file.
+
+**Why nothing is cut.** No resident sentence names a time zone, so nothing is
+superseded. `CLAUDE.md`'s "name the clock time an hour on" says which time
+and not in which zone, and takes its zone from rule 15 now.
+
+**What it costs and what should retire it.** About 430 characters, and 30 more
+in the scope line. It retires only if the zone replies are read in changes.
+Moving the conversion into the tools would spare the command and not the
+rule, since git and GitHub print UTC as well.
