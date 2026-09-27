@@ -137,16 +137,24 @@ def _either(
     )
 
 
+def _exemption(background: str, why: str = "a fixture") -> contrast_check.Exemption:
+    return contrast_check.Exemption(
+        background=background, drawn_as="a fixture's ruling", ground="a fixture's ground", why=why
+    )
+
+
 @pytest.fixture
 def declare(monkeypatch: pytest.MonkeyPatch):
-    """Substitute the requirement table and the shortfall list for one test."""
+    """Substitute the requirement table, the shortfall list and the exemptions for one test."""
 
     def _declare(
         requirements: tuple[contrast_check.AnyRequirement, ...],
         shortfalls: dict[tuple[str, str], str] | None = None,
+        exempt: dict[str, tuple[contrast_check.Exemption, ...]] | None = None,
     ) -> None:
         monkeypatch.setattr(contrast_check, "REQUIREMENTS", requirements)
         monkeypatch.setattr(contrast_check, "KNOWN_SHORTFALLS", shortfalls or {})
+        monkeypatch.setattr(contrast_check, "EXEMPT", exempt or {})
 
     return _declare
 
@@ -306,6 +314,113 @@ def test_a_shortfall_naming_no_declared_requirement_is_an_error(tmp_path: Path, 
     assert "demoflurane.fill on PANEL, tracked by PL-DDDD" in output
     assert "now passing" not in output, "a stale entry says nothing about the pair"
     assert "0 known shortfalls" in output, "a stale entry is not a gap"
+
+
+# --- exemptions: a use the criterion does not bind (PL-HKTB) -----------------
+
+
+def test_an_exempt_use_is_counted_and_quiet(tmp_path: Path, declare) -> None:
+    """`#AAAAAA` on white is 2.32:1; recorded exempt, it counts on the verdict line as no gap."""
+    declare((), exempt={"FAINT": (_exemption("PANEL"),)})
+
+    report = contrast_check.analyze(_repo(tmp_path))
+    output = contrast_check.format_report(report, matrix=False)
+
+    assert not report.errors
+    assert [(name, use.background) for name, use in report.exempt] == [("FAINT", "PANEL")]
+    assert "1 use of 1 colour exempt from SC 1.4.11 (EXEMPT names each)" in output
+    assert "Below the required ratio" not in output, "an exemption is not a shortfall"
+
+
+def test_an_exempt_name_the_palette_does_not_hold_is_an_error(tmp_path: Path, declare) -> None:
+    """The table cannot rot: a renamed constant, or a surface that is not one, is loud.
+
+    Both names of a use are checked, because an exemption on a surface nothing
+    draws describes nothing on screen exactly as one for a colour nothing
+    declares does. Neither is counted as exempt: the verdict line counts what
+    the palette resolves, as it counts shortfalls from what was measured.
+    """
+    declare((), exempt={"GONE": (_exemption("PANEL"),), "FAINT": (_exemption("NOWHERE"),)})
+
+    report = contrast_check.analyze(_repo(tmp_path))
+    output = contrast_check.format_report(report, matrix=False)
+
+    assert report.errors
+    assert report.exempt_missing == ("GONE", "NOWHERE")
+    assert report.exempt == ()
+    assert "Names in EXEMPT that the palette does not hold" in output
+    assert "0 uses of 0 colours exempt" in output, "an unresolved entry is not an exemption"
+
+
+def test_a_colour_required_and_exempt_on_one_surface_is_an_error(tmp_path: Path, declare) -> None:
+    """The two tables answer one question about one pair, and may not disagree."""
+    declare(
+        (_requirement("INK", "PANEL", contrast_check.AA_TEXT),),
+        exempt={"INK": (_exemption("PANEL"),)},
+    )
+
+    report = contrast_check.analyze(_repo(tmp_path))
+    output = contrast_check.format_report(report, matrix=False)
+
+    assert report.errors
+    assert report.exempt_and_required == (("INK", "PANEL"),)
+    assert "Required and exempt at once, on one surface:" in output
+    assert "  INK on PANEL" in output
+
+
+def test_every_channel_of_a_disjunction_counts_as_required(tmp_path: Path, declare) -> None:
+    """An element is located by whichever channel a reader perceives, so each one is required."""
+    declare(
+        (
+            _either(
+                ("demoflurane.fill", "demoflurane.foreground"), "PANEL", contrast_check.AA_NON_TEXT
+            ),
+        ),
+        exempt={"demoflurane.foreground": (_exemption("PANEL"),)},
+    )
+
+    report = contrast_check.analyze(_repo(tmp_path))
+
+    assert report.exempt_and_required == (("demoflurane.foreground", "PANEL"),)
+
+
+def test_an_exemption_on_another_surface_is_not_a_collision(tmp_path: Path, declare) -> None:
+    """A pair is a colour and a surface: INK required on the panel says nothing of INK elsewhere."""
+    declare(
+        (_requirement("INK", "PANEL", contrast_check.AA_TEXT),),
+        exempt={"INK": (_exemption("FAINT"),)},
+    )
+
+    report = contrast_check.analyze(_repo(tmp_path))
+
+    assert not report.errors
+    assert report.exempt_and_required == ()
+
+
+@pytest.mark.parametrize(
+    ("cited", "message"),
+    [
+        pytest.param("`_nothing`", "which no module under", id="unknown symbol"),
+        pytest.param("simulation_view.py:12", "a line number", id="line number"),
+    ],
+)
+def test_an_exemption_cites_code_the_way_a_requirement_does(
+    tmp_path: Path, declare, cited: str, message: str
+) -> None:
+    """An exemption's `why` rots exactly as a requirement's does, so it is resolved the same way."""
+    declare((), exempt={"FAINT": (_exemption("PANEL", why=f"drawn by {cited}"),)})
+
+    errors = contrast_check.check_citations(_repo(tmp_path, view=VIEW_WITH_SYMBOLS))
+
+    assert len(errors) == 1
+    assert "FAINT on PANEL (exempt, a fixture's ruling)" in errors[0]
+    assert message in errors[0]
+
+
+def test_an_exemption_citing_a_symbol_that_exists_is_quiet(tmp_path: Path, declare) -> None:
+    declare((), exempt={"FAINT": (_exemption("PANEL", why="drawn by `mount`"),)})
+
+    assert contrast_check.check_citations(_repo(tmp_path, view=VIEW_WITH_SYMBOLS)) == ()
 
 
 def test_a_requirement_met_by_either_channel(tmp_path: Path, declare) -> None:
@@ -597,6 +712,28 @@ def test_every_known_shortfall_names_an_item_that_exists() -> None:
 
     for pair, item in contrast_check.KNOWN_SHORTFALLS.items():
         assert item in filed, f"{pair[0]} on {pair[1]} is excused by {item}, which is not filed"
+
+
+def test_the_shipped_gridline_is_exempt_in_its_four_uses() -> None:
+    """`PL-HKTB`. The one exempt colour is the gridline grey, and the record is of a colour
+    the criterion would otherwise fail: under 3:1 on the panel it is drawn on, in four uses
+    each named once, so nothing the constant draws is left where it was.
+    """
+    palette = contrast_check.read_palette(REPO_ROOT)
+    uses = contrast_check.EXEMPT["GRIDLINE"]
+
+    assert set(contrast_check.EXEMPT) == {"GRIDLINE"}
+    assert len(uses) == 4
+    assert {use.background for use in uses} == {"PANEL"}
+    assert len({use.drawn_as for use in uses}) == 4, "each use is named once"
+    assert all(use.ground and use.why for use in uses)
+    assert (
+        contrast_check.contrast_ratio(palette["GRIDLINE"], palette["PANEL"])
+        < contrast_check.AA_NON_TEXT
+    ), "an exemption for a colour that clears 3:1 anyway would be excusing nothing"
+    assert "4 uses of 1 colour exempt from SC 1.4.11" in contrast_check.format_report(
+        contrast_check.analyze(REPO_ROOT), matrix=False
+    )
 
 
 # --- dichromacy simulation, and the trace separation it is there for ---------

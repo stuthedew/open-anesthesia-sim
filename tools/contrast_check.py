@@ -20,13 +20,14 @@ element one channel at a time reports a shortfall on a badge that is legible
 and would report one on the others if the other channel were picked.
 
 **What it must never decide.** Whether a color is text or a graphical object,
-which pairs actually appear on screen together, whether a non-color channel is
-genuinely redundant, *which* channels an element really has, or how far apart
-two chart traces ought to be. Those are judgments; they live in `REQUIREMENTS`
-below, written by a person, and this file only evaluates them - taking the
-maximum over channels somebody else declared is arithmetic, not judgment. A
-tool that guesses the judgment half is worse than no tool, because its output
-looks authoritative and is not.
+whether a graphical object is required to understand the content or falls
+under one of SC 1.4.11's own carve-outs, which pairs actually appear on screen
+together, whether a non-color channel is genuinely redundant, *which* channels
+an element really has, or how far apart two chart traces ought to be. Those are
+judgments; they live in `REQUIREMENTS` and `EXEMPT` below, written by a person,
+and this file only evaluates them - taking the maximum over channels somebody
+else declared is arithmetic, not judgment. A tool that guesses the judgment
+half is worse than no tool, because its output looks authoritative and is not.
 
 **What it cannot decide, and now says so.** Whether anything declared a color
 at all. A requirement exists only where somebody wrote one down, so a control
@@ -79,6 +80,24 @@ the requirement forces its entry out as well. Every other reading of the list
 starts from a requirement, which is how such an entry used to outlive its
 requirement unread (PL-KNHX). The report line counts the requirements an entry
 excuses rather than the entries, so a dead entry is never counted as a gap.
+
+**Exemptions, and why they are not shortfalls (PL-HKTB).** SC 1.4.11 binds a
+graphical object *required to understand the content*, and its Understanding
+document says which are not: one whose information text also carries ("labels
+and values on a chart"), one that is aesthetic, one whose information is
+available in another form, and a control boundary where visible content already
+identifies the control. A colour drawn only in such uses has no minimum to fall
+short of, so a `REQUIREMENTS` entry would assert a bar the criterion does not
+set and a `KNOWN_SHORTFALLS` entry would call a pass a failure - and until
+PL-HKTB the one such colour here, `GRIDLINE`, carried neither and was argued in
+a comment nothing reported. `EXEMPT` is the record: keyed by constant, one entry
+per use, each naming the surface, the criterion's ground in a few words and the
+code that draws it, cited by symbol and resolved exactly as a `why` is. The
+verdict line counts the uses, and two hard errors keep the table honest - an
+exempt name the palette does not hold, and a colour both required and exempt on
+one surface, since the two tables answer one question about one pair and must
+not disagree. Whether a use genuinely falls under a carve-out stays a person's
+judgment, written into the entry, exactly as a requirement's pair does.
 
 **What a Qt port costs this check, measured rather than estimated (PL-JRS3).**
 It survives, because its colour input is module-level `NAME = "#RRGGBB"`
@@ -404,6 +423,40 @@ class EitherRequirement:
 #: text has no second channel, and a model letting it declare one would invite
 #: a fallback that is not on the screen.
 AnyRequirement = Requirement | EitherRequirement
+
+
+@dataclass(frozen=True)
+class Exemption:
+    """One use of a colour that SC 1.4.11 does not bind, and the ground it stands on.
+
+    The criterion asks 3:1 only of a graphical object *required to understand
+    the content*, and its Understanding document names the cases that are
+    not: a graphic whose information text also carries ("labels and values on
+    a chart"), one that is aesthetic, one whose information is available in
+    another form, and a control boundary where visible content already
+    identifies the control. Whether a use falls under one of those is a
+    judgment, written here by a person; this file only checks that the names
+    exist, that nothing also requires the colour on the same surface, and
+    that the code the entry cites resolves.
+
+    Not a `KNOWN_SHORTFALLS` entry, and the difference is the claim being
+    made. A shortfall is a pair that *should* meet a minimum and does not; an
+    exemption is a pair the minimum does not reach. `.claude/rules/ui-color.md`
+    forbids the shortfall list being used to make a colour go green, and the
+    same rule holds here: the bar for an entry is the criterion's own
+    carve-out, read at source, never a failing ratio.
+    """
+
+    #: The surface the use is drawn on, read from the widget tree as a
+    #: requirement's is.
+    background: str
+    #: What the colour is in this use - "the plot's ruling" - so the verdict
+    #: line's count has a name behind each unit.
+    drawn_as: str
+    #: The criterion's own carve-out, in a few words.
+    ground: str
+    #: Where it is drawn, cited by symbol in backticks, and the judgment.
+    why: str
 
 
 #: The specification. Every entry names a pair that actually appears on screen
@@ -786,6 +839,100 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
 #: found, owned and visible is the thing this replaced a comment-nobody-checks
 #: with, and the next one wants somewhere to go that is not a silent failure.
 KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {}
+
+#: Uses of a colour that SC 1.4.11 does not bind, keyed by the constant: each
+#: use names the surface it is drawn on, the criterion's ground in a few words
+#: and the code that draws it, cited by symbol as a `why` is and resolved the
+#: same way. Counted into the verdict line, so `make check` says how many uses
+#: stand on a recorded judgment rather than on a measurement.
+#:
+#: **Two things keep the table honest, both hard errors.** An exempt name the
+#: palette does not hold - a rename or a deletion leaves the entry excusing
+#: nothing, exactly as it would a shortfall's. And a colour that is also a
+#: `REQUIREMENTS` foreground on the same surface, since a colour cannot be
+#: required and exempt at once: the two tables answer one question about one
+#: pair and must not disagree.
+#:
+#: **`GRIDLINE` is recorded as exempt in all four things it draws, and not
+#: darkened** (project owner, 2026-09-27, ratified, over darkening the grey to
+#: 3:1; PL-HKTB). It measures 1.31:1 on `PANEL`, far under the 3:1 a graphical
+#: object needs, and until this table it carried no requirement and no record
+#: `make check` could report - the question had been argued in `app/theme.py`'s
+#: comment, which also misread the criterion's line-graph example as exempting
+#: gridlines outright. Each of the four uses falls under a carve-out the
+#: criterion states in its own words, given per use below. Darkening was
+#: refused on the chart's hierarchy rather than on the criterion: a ruling at
+#: 3:1 would be 87% as dark as the lightest trace (`MUSCLE_COLOR`, 3.43:1) and
+#: a hue step from `FAT_COLOR` (4.76:1), so furniture would weigh as much as
+#: data, and the order the chart rests on - ruling at 1.31:1, under `MUTED`
+#: reference lines at 5.00:1, under traces at 3.43-6.02:1, with widths 1 / 1.5
+#: / 2-3 px carrying the same order - would collapse at its bottom rung. 1.31:1
+#: is where charting practice puts a ruling deliberately: ggplot2's `theme_bw`
+#: rules its panel at grey92, 1.19:1 on white, and Matplotlib's default
+#: `grid.color` is `#b0b0b0`, 2.17:1, the darker of the two and still under 3:1
+#: (both read at source on 2026-09-27; the item names the files). A little
+#: darker without claiming 3:1 was refused as a change with no bar behind it,
+#: which is the state this record exists to end.
+EXEMPT: dict[str, tuple[Exemption, ...]] = {
+    "GRIDLINE": (
+        Exemption(
+            "PANEL",
+            "the plot's ruling",
+            "text conveys the same information - the labels and values on a chart",
+            "one line per labelled tick on each axis, drawn under every trace "
+            "(`_GridLines`, at `_Z_GRIDLINE`) from the same tick lists the axes are "
+            "labelled from, so the ruling and the labelling are one scale (PL-Q4VH). "
+            "The Understanding document's line-graph example counts such 'background "
+            "lines for the values' as graphical objects and asks 3:1 of them, and in "
+            "that example the rulings are how a value is perceived at all; this chart "
+            "gives a reader three other carriers. Every ruling stands at a tick the "
+            "axis labels in `MUTED` text at 5.00:1, the readouts state every "
+            "compartment's current value as text (`MetricPanel`), and the hover states "
+            "the exact value at any drawn point (`_hover_items`, PL-YVHK). The "
+            "criterion's own test for an object under 3:1 - assume that area is "
+            "invisible; is the graphic still understandable? - is passed: with the "
+            "rulings gone the chart is six labelled traces against two labelled axes, "
+            "which is where a reader takes a value from, and the ruling only speeds "
+            "the carry across",
+        ),
+        Exemption(
+            "PANEL",
+            "the three axis lines",
+            "text conveys the same information - the tick labels carry the scale",
+            "the left, bottom and right axis lines of each plot (`_plot`), drawn in "
+            "the same grey as the ruling they frame. The scale is the tick labels', in "
+            "`MUTED` text at 5.00:1, so the frame is the ruling's case again: with the "
+            "lines invisible the axes are still read from their labels",
+        ),
+        Exemption(
+            "PANEL",
+            "the rule between sections of the chart column",
+            "not required for understanding - the heading under it carries the boundary",
+            "the horizontal rule `_section_divider` draws, at three places: above the "
+            "wash-in section, above the bookmarks panel and above the fork panel. Each "
+            "sits directly over a heading or a titled panel - `WASH_IN_HEADING` in bold "
+            "`INK`, and the `_bookmarks_panel` and `_fork_panel` carry their own titles "
+            "- so the section break the rule marks is already carried by text, and the "
+            "criterion's own test is passed with the rule invisible. Its own reason "
+            "rather than the ruling's, because a rule separating two regions of content "
+            "is structure a reader uses where a gridline is not, and the case had to be "
+            "made for it separately - PL-HKTB's brief was right that the two may part",
+        ),
+        Exemption(
+            "PANEL",
+            "the slider's unfilled groove",
+            "a control with visible content needs no boundary of its hit area",
+            "the unfilled track of each `ParameterSlider` (`_slider_stylesheet`). The "
+            "criterion's Boundaries paragraph says in terms that a border or other "
+            "indication of a control's hit area is not required where visible content "
+            "identifies the control, and this one has two: the handle, a `PANEL` disc "
+            "edged 1px in `MUTED` at 5.00:1, and the filled track in `ACCENT` at "
+            "3.21:1, which is how the control shows where its value sits and is "
+            "measured above as a requirement. The groove is the edge of the unfilled "
+            "remainder and identifies nothing the other two do not",
+        ),
+    )
+}
 
 #: The six chart traces, in the order `chart_frame.COMPARTMENT_TRACES` lists them.
 TRACES: tuple[str, ...] = (
@@ -1349,21 +1496,31 @@ def check_citations(root: Path) -> tuple[str, ...]:
         One message per unresolved citation; empty when every one resolves.
     """
     symbols = read_symbols(root)
+    # An exemption cites the code that draws its use exactly as a requirement
+    # cites the code that draws its pair, and rots the same way, so both are
+    # resolved here rather than the second being trusted.
+    cited: list[tuple[str, str]] = [
+        (f"{requirement.label} on {requirement.background}", requirement.why)
+        for requirement in REQUIREMENTS
+    ]
+    cited.extend(
+        (f"{name} on {use.background} (exempt, {use.drawn_as})", use.why)
+        for name, uses in EXEMPT.items()
+        for use in uses
+    )
     errors: list[str] = []
-    for requirement in REQUIREMENTS:
-        pair = f"{requirement.label} on {requirement.background}"
-        for match in LINE_CITATION_RE.finditer(requirement.why):
+    for pair, why in cited:
+        for match in LINE_CITATION_RE.finditer(why):
             errors.append(
                 f"  {pair}: cites {match.group(0)}, a line number. Name the symbol the "
                 "color is set on instead - a line number is stale by the next edit "
                 "and says nothing when it is."
             )
-        for name in SYMBOL_SPAN_RE.findall(requirement.why):
+        for name in SYMBOL_SPAN_RE.findall(why):
             if name not in symbols:
                 errors.append(
                     f"  {pair}: cites `{name}`, which no module under {APP.as_posix()}/ "
-                    "defines. A renamed symbol leaves the requirement pointing at "
-                    "nothing."
+                    "defines. A renamed symbol leaves the entry pointing at nothing."
                 )
     return tuple(errors)
 
@@ -1406,6 +1563,18 @@ class Report:
     #: requirement was renamed, retyped or deleted is seen here or nowhere
     #: (PL-KNHX).
     stale_shortfalls: tuple[tuple[str, str], ...]
+    #: Every use `EXEMPT` records SC 1.4.11 as not binding, with both its names
+    #: in the palette. Counted into the verdict line, so a reader of `make
+    #: check` sees how many uses rest on a recorded judgment rather than on a
+    #: measurement (PL-HKTB).
+    exempt: tuple[tuple[str, Exemption], ...]
+    #: Names `EXEMPT` uses that the palette does not hold - the constant or its
+    #: surface. A rename or a deletion leaves an exemption excusing nothing,
+    #: exactly as it would a requirement or a shortfall.
+    exempt_missing: tuple[str, ...]
+    #: `(colour, surface)` pairs that a requirement holds to a minimum and an
+    #: exemption records as not bound by one. A colour cannot be both.
+    exempt_and_required: tuple[tuple[str, str], ...]
     citations: tuple[str, ...]
     #: Colors declared anywhere under `app/` other than the theme (PL-2CS8).
     misplaced_colors: tuple[str, ...]
@@ -1443,6 +1612,8 @@ class Report:
                 self.unexpected,
                 self.repaired,
                 self.stale_shortfalls,
+                self.exempt_missing,
+                self.exempt_and_required,
                 self.citations,
                 self.misplaced_colors,
                 self.author_styled_disabled,
@@ -1496,6 +1667,29 @@ def analyze(root: Path) -> Report:
     # so an entry that has outlived its requirement is still seen.
     declared = {requirement.key for requirement in REQUIREMENTS}
     stale_shortfalls = tuple(key for key in KNOWN_SHORTFALLS if key not in declared)
+    exempt: list[tuple[str, Exemption]] = []
+    exempt_missing: set[str] = set()
+    for name, uses in EXEMPT.items():
+        for use in uses:
+            absent = [each for each in (name, use.background) if each not in palette]
+            if absent:
+                exempt_missing.update(absent)
+                continue
+            exempt.append((name, use))
+    # A colour cannot be required and exempt at once on one surface: the two
+    # tables answer one question about one pair, and this is what stops them
+    # disagreeing. Every channel of a disjunction counts as required, since
+    # the element is located by whichever of them a reader perceives.
+    required = {
+        (candidate, requirement.background)
+        for requirement in REQUIREMENTS
+        for candidate in requirement.candidates
+    }
+    exempt_and_required = tuple(
+        sorted(
+            {(name, use.background) for name, use in exempt if (name, use.background) in required}
+        )
+    )
     drawn = tuple(name for name in TRACES if name in palette)
     trace_pairs = tuple(
         (
@@ -1526,6 +1720,9 @@ def analyze(root: Path) -> Report:
         repaired=repaired,
         excused=excused,
         stale_shortfalls=stale_shortfalls,
+        exempt=tuple(exempt),
+        exempt_missing=tuple(sorted(exempt_missing)),
+        exempt_and_required=exempt_and_required,
         citations=check_citations(root),
         misplaced_colors=check_colors_live_in_the_theme(root),
         author_styled_disabled=check_authored_disabled_colours_are_measured(root),
@@ -1537,15 +1734,23 @@ def analyze(root: Path) -> Report:
     )
 
 
+def _plural(count: int, noun: str) -> str:
+    """`1 use`, `4 uses`: the verdict line is read by people, not parsed."""
+    return f"{count} {noun}{'' if count == 1 else 's'}"
+
+
 def format_report(report: Report, *, matrix: bool) -> str:
     """Render a report the way `bin/docket check` renders one: verdict first."""
     met = sum(1 for result in report.results if result.meets)
+    exempt_colours = len({name for name, _ in report.exempt})
     lines = [
         f"contrast: {met} of {len(report.results)} declared requirements meet WCAG 2.2 AA, "
         f"{report.modules_read} modules read under {APP.as_posix()}/, "
         f"{len(report.undeclared_controls)} control kinds declare no foreground and are "
         f"measured by nothing ({CONTROL_COVERAGE_TEST.as_posix()} names each), "
         f"{len(report.excused)} known shortfalls, "
+        f"{_plural(len(report.exempt), 'use')} of {_plural(exempt_colours, 'colour')} exempt "
+        f"from SC 1.4.11 (EXEMPT names each), "
         f"{report.error_count} errors"
     ]
 
@@ -1615,6 +1820,25 @@ def format_report(report: Report, *, matrix: bool) -> str:
             "  A renamed, retyped or deleted requirement leaves its entry excusing nothing, "
             "and this says nothing about whether that pair now meets its minimum. Move the "
             "entry to the requirement's current key if it still falls short, or remove it."
+        )
+
+    if report.exempt_missing:
+        lines.append("")
+        lines.append("Names in EXEMPT that the palette does not hold:")
+        lines.extend(f"  {name}" for name in report.exempt_missing)
+        lines.append(
+            "  A renamed or deleted constant leaves its exemption excusing nothing, and "
+            "an exemption on a surface that does not exist describes nothing on screen."
+        )
+
+    if report.exempt_and_required:
+        lines.append("")
+        lines.append("Required and exempt at once, on one surface:")
+        lines.extend(f"  {name} on {background}" for name, background in report.exempt_and_required)
+        lines.append(
+            "  A colour is held to SC 1.4.11 in REQUIREMENTS or recorded as not bound by it "
+            "in EXEMPT, never both: decide which claim is true of the pair and delete the "
+            "other."
         )
 
     if report.excused and not report.errors:

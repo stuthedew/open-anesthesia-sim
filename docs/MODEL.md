@@ -7087,6 +7087,38 @@ and 1.4.12 (Text Spacing). Each needs a settled interface before it can be
 answered, and what the rendering backend can deliver for keyboard and
 screen-reader support is an open question rather than a commitment.
 
+**Exempt from SC 1.4.11, and recorded as such rather than left unasked**: the
+gridline grey, `GRIDLINE`, in all four things it draws - the plot's ruling, the
+axis lines, the rule between sections of the chart column and the sliders'
+unfilled groove (project owner, 2026-09-27, ratified, over darkening the grey
+to 3:1; `PL-HKTB`). It measures 1.31:1 on the panel, and the criterion binds
+only a graphical object *required to understand the content*. The Understanding
+document's line-graph example does count a chart's "background lines for the
+values" as graphical objects and ask 3:1 of them, but in that example the
+rulings are how a value is perceived at all; what lifts the requirement is
+stated under its "Required for understanding" heading, where it does not apply
+when "a graphic with text embedded or overlaid conveys the same information,
+such as labels and values on a chart". This chart has three such carriers -
+every ruling stands at a tick the axis labels as text at 5.00:1, the readouts
+state every compartment's current value, and the hover states the exact value
+at any drawn point - so the criterion's own test, assume the area is invisible
+and ask whether the graphic is still understood, is passed. The section rule
+sits over a bold heading or a titled panel that already carries the boundary,
+and the groove is the edge of a control whose handle and filled track already
+identify it, which the criterion's own paragraph on boundaries excuses in
+terms. Darkening was refused on the chart's hierarchy rather than on the
+criterion: a ruling at 3:1 would be 87% as dark as the lightest trace (3.43:1)
+and would collapse the ordering of ruling under reference line under trace that
+the widths 1 / 1.5 / 2-3 px also carry. The record is `tools/contrast_check.py`'s
+`EXEMPT` table, one entry per use with the criterion's ground and the drawing
+code cited by symbol; `make check` counts the uses into the contrast report
+line, refuses an exempt name the palette does not hold, and refuses a colour
+that is both required and exempt on one surface, so nothing is held to the
+criterion and excused from it at once. An exemption is not a shortfall: a
+shortfall is a pair that should meet a minimum and does not, and the bar for
+entering the exemption table is the criterion's own carve-out, never a failing
+ratio.
+
 **The ratios are computed, not asserted.** `tools/contrast_check.py` runs in
 `make check`, reads the color constants out of `app/theme.py` - which holds
 every one of them since `PL-2CS8`, and is where `check_colors_live_in_the_theme`
@@ -7102,7 +7134,9 @@ color — and is perceivable by whichever of the two clears the minimum, so
 measuring one channel at a time misreports it. Requirements that do not meet
 their minimum today are listed there against the item that closes each one,
 and a listed shortfall that starts passing is reported as an error, so a fix
-cannot leave its excuse behind.
+cannot leave its excuse behind. A colour the criterion does not bind is
+recorded in the same file's exemption table rather than as a requirement or a
+shortfall, as the paragraph above records for the gridline grey.
 
 **A declared colour reaches the screen by one of three mechanisms.** Most of
 this interface is drawn by a stylesheet composed from `app/theme.py`'s
