@@ -126,5 +126,6 @@ answers `True` for it. The squashed-rename test asserts the split rather than
 default rename detection, so its answer there depends on the tester's config.
 On this checkout's 20 candidate refs no verdict changed, and the ten reads cost
 0.098 s. Working it found `PL-WVSX`: `stranded`'s item filter reads the same
-ever-held set, which made three readers of one mechanism, recorded as the spent
-generator `PL-P813`.
+ever-held set, a third reader of one mechanism. `PL-927J`, a head filed on
+another branch, holds that generator; `PL-P813`, filed here as one before it was
+found, was dropped as its duplicate.
