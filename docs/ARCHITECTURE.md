@@ -81,7 +81,7 @@ src/anesthesia_sim/
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; toolkit-independent
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; toolkit-independent
 │   ├── theme.py                    # every display token: palette, cited ISO 5360 agent colors, type sizes, spacing, dash patterns; toolkit-independent
-│   └── main.py                     # PySide6 entry point; builds the BranchedCase and opens the dashboard over its trunk; sized, centred window per PL-005
+│   └── main.py                     # PySide6 entry point; builds the BranchedCase and opens the dashboard over its trunk; the window opens maximized (PL-Z4K6) over a sized, centred normal geometry (PL-005)
 └── data/                 # versioned, cited parameter files
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
     ├── machines/reference_circle_system.json

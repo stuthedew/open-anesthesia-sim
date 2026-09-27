@@ -1,12 +1,21 @@
 """The application entry point: one case, one window, two timers.
 
-`uv run anesthesia-sim` runs `main()` below. The window opens on a fraction
-of the screen's available area and centred (`PL-005`), never full-screen and
-never at a pixel size: `qt_widgets.initial_window_geometry` derives it from
-the screen the application is given. The first frame is drawn after the
-window is shown, because a frame is assembled from the plot's laid-out
+`uv run anesthesia-sim` runs `main()` below. The window opens maximized
+(`PL-Z4K6`), so the readout row gets the widest rung the screen affords -
+seven across on a 1366 px laptop, which the fraction below missed by a few
+pixels - over a normal geometry that is a fraction of the screen's available
+area and centred (`PL-005`), never at a pixel size:
+`qt_widgets.initial_window_geometry` derives it from the screen the
+application is given, and it is what the reader gets back on un-maximizing.
+Maximized is not full screen: the title bar and window controls stay, and on
+macOS it is the zoomed window, so `PL-005`'s refusal of a full-screen start
+does not reach it. It is also the reference's own default window state
+(`docs/interface-provenance.md` § "Adopted"). The first frame is drawn after
+the window is shown, because a frame is assembled from the plot's laid-out
 width, and the timers start after that so the first thing a reader sees is
-a drawn, paused run.
+a drawn, paused run; the platform applies the maximized size afterwards, and
+`SimulationView.resizeEvent` then owes the render tick a frame at the new
+width.
 
 **What is opened is a case, not a run** (`PL-VKJW`). `BranchedCase` is what
 makes two runs on one axis one patient under two managements rather than two
@@ -64,7 +73,7 @@ def main() -> None:
             screen.availableGeometry(), window.minimumSizeHint(), WINDOW_SCREEN_FRACTION
         )
     )
-    window.show()
+    window.showMaximized()
     view.present(False)
     view.start_simulation_timer()
     sys.exit(app.exec())

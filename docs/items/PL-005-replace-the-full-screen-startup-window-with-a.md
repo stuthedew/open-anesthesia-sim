@@ -41,3 +41,10 @@ dependency beyond the toolkit's own screen object. Held by
 geometry cases, including a minimum larger than the fraction) and the
 launcher test in `tests/unit/test_bootstrap.py`, which builds the real
 window and reads its geometry back.
+
+**2026-09-27, with `PL-Z4K6`.** The window now opens maximized over this
+geometry, which becomes what the reader gets back on un-maximizing. Maximized
+keeps the title bar and window controls, and on macOS is the zoomed window, so
+the reason above - full screen hides the controls - does not reach it;
+`initial_window_geometry` and its geometry cases are unchanged, and the
+launcher test now reads the window state and the normal geometry back.

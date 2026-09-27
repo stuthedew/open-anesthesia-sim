@@ -3,6 +3,7 @@ from importlib.resources import files
 from typing import Any
 
 import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import QApplication, QMainWindow
 
@@ -71,6 +72,13 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
     `main()`. It is recorded as a timeline rather than as two separate
     assertions, because either one alone passes with the call in the wrong
     place.
+
+    **And it opens maximized over a sized normal geometry** (`PL-Z4K6`,
+    `PL-005`). The offscreen platform records the state Qt was asked for at
+    once and applies the maximized size only once events are processed, so
+    what is asserted is the flag Qt records and the normal geometry a reader
+    gets back on un-maximizing, never the geometry the platform happens to
+    have produced by the time the assertion runs.
     """
 
     application = QApplication.instance() or QApplication([])
@@ -128,10 +136,11 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
         assert view.case.fork_points_s == (0.0,)
 
         available = QApplication.primaryScreen().availableGeometry()
-        assert window.geometry() == initial_window_geometry(
+        assert window.windowState() & Qt.WindowState.WindowMaximized
+        assert not window.isFullScreen()
+        assert window.normalGeometry() == initial_window_geometry(
             available, window.minimumSizeHint(), WINDOW_SCREEN_FRACTION
         )
-        assert not window.isFullScreen()
 
         assert timeline == ["declared", "built the first widget"]
         (palette,) = declared

@@ -3,11 +3,13 @@ id: PL-Z4K6
 title: Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
 priority: P3
 effort: S
-status: ready
+status: done
 classes: ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/main.py, tests/unit/test_bootstrap.py, tests/integration/test_qt_widgets.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/qt_widgets.py, tests/unit/test_bootstrap.py, tests/integration/test_qt_widgets.py, docs/MODEL.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/items/PL-005-replace-the-full-screen-startup-window-with-a.md
 added: 2026-09-16
+closed: 2026-09-27
+pr: 1182
 verify: grep -qF 'showMaximized' src/anesthesia_sim/app/main.py && grep -qF 'WindowMaximized' tests/unit/test_bootstrap.py
 ---
 
@@ -131,3 +133,31 @@ paragraph "In practice the row opens at whichever rung the screen affords"
 is rewritten, and `PL-005`'s closing note gains one line saying what changed.
 Add `src/anesthesia_sim/app/main.py`, `tests/unit/test_bootstrap.py`,
 `tests/integration/test_qt_widgets.py` and `docs/MODEL.md` to `touches`.
+
+## Built 2026-09-27
+
+`main.py` calls `showMaximized()` in place of `show()` after `setGeometry`, so
+the window opens maximized over `initial_window_geometry`'s centred eight
+tenths, which is what a reader gets back on un-maximizing.
+`SimulationView.resizeEvent` already owes the render tick a frame at the new
+width, so the first frame is redrawn once the platform applies the size.
+
+Measured under `QT_QPA_PLATFORM=offscreen` before the test was written: after
+`showMaximized()` the window state carries `WindowMaximized` at once while
+`geometry()` still reads the set geometry; after `processEvents()` the platform
+moves the geometry to the screen (2, 2, 796, 796 on its 800 px screen) and
+`normalGeometry()` keeps the set geometry throughout. So the launcher test in
+`tests/unit/test_bootstrap.py` asserts the flag Qt records and that
+`normalGeometry()` equals `initial_window_geometry`'s, never the geometry the
+platform happens to have produced by the time the assertion runs.
+`test_the_startup_window_is_sized_from_the_screen_and_centred` keeps its
+geometry cases as the restore geometry.
+
+Documentation: `docs/MODEL.md`'s paragraph on which rung the row opens at is
+rewritten around the maximized window, with the 21 px shortfall and the 0.85
+alternative recorded as the ratified decision; `PL-005`'s closing note gains a
+dated line; `docs/interface-provenance.md` § "Adopted" records the Blender
+default; `docs/ARCHITECTURE.md`'s package-map line for `main.py`, and the
+`WINDOW_SCREEN_FRACTION` comment and `initial_window_geometry` docstring in
+`qt_widgets.py`, now describe a normal geometry rather than where the window
+opens. `touches` widened to the files above.

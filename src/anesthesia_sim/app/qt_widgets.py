@@ -134,10 +134,11 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
-# How much of the screen's available area the window opens on (`PL-005`).
-# A fraction rather than a size, so the same rule opens a window that is
-# fully visible on every display, and never full-screen, which hides the
-# window controls on some platforms.
+# How much of the screen's available area the window's normal geometry takes
+# (`PL-005`): what a reader gets back on un-maximizing, since the window
+# itself opens maximized (`PL-Z4K6`). A fraction rather than a size, so the
+# same rule gives a window that is fully visible on every display, and never
+# full screen, which hides the window controls on some platforms.
 WINDOW_SCREEN_FRACTION: Final = 0.8
 
 
@@ -1696,10 +1697,12 @@ def freeze_splitter_handles(splitter: QSplitter) -> None:
 
 
 def initial_window_geometry(available: QRect, minimum: QSize, fraction: float) -> QRect:
-    """Where the window opens: a fraction of the available screen, centred, never below its minimum.
+    """The normal geometry: a fraction of the available screen, centred, never below its minimum.
 
     Sized from the screen rather than from a pixel count, so the window is
-    fully visible on every display and never full-screen (`PL-005`). A
+    fully visible on every display and never full screen (`PL-005`). The
+    window opens maximized over this geometry (`PL-Z4K6`), so it is what a
+    reader gets back on un-maximizing rather than the size first drawn. A
     minimum wider or taller than the fraction wins, because a window that
     cannot show its own content is worse than one that overhangs the
     screen; it is still centred on the available area.
@@ -1712,7 +1715,7 @@ def initial_window_geometry(available: QRect, minimum: QSize, fraction: float) -
             above zero and at most one.
 
     Returns:
-        The window's frame geometry.
+        The window's normal frame geometry.
 
     Raises:
         ValueError: If `fraction` is not above zero and at most one: a

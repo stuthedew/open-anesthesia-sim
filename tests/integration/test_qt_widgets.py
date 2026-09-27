@@ -740,7 +740,12 @@ def test_the_splitter_handles_are_inert(application: QApplication) -> None:
 
 
 def test_the_startup_window_is_sized_from_the_screen_and_centred() -> None:
-    """A fraction of the available screen, centred there, never below the minimum (`PL-005`)."""
+    """The normal geometry: a fraction of the screen, centred, never below the minimum (`PL-005`).
+
+    The window opens maximized over it (`PL-Z4K6`), so these are the cases for
+    what a reader gets back on un-maximizing; the launcher test in
+    `tests/unit/test_bootstrap.py` holds the state the window opens in.
+    """
 
     assert 0.0 < WINDOW_SCREEN_FRACTION <= 1.0
 
