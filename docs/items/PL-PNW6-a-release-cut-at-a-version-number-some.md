@@ -3,12 +3,12 @@ id: PL-PNW6
 title: A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: release-process
 touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-07
-verify: grep -rqF 'a version number a tag has previously named' .claude/skills/docket/ && python3 tools/doc_check.py check
+verify: grep -q 'def test_the_tag_lines_clear_a_withdrawn_tag_before_tagging' subprojects/docket/tests/test_release.py && grep -qF 'git ls-remote --exit-code' subprojects/docket/src/docket/release.py && grep -qF 'git ls-remote --exit-code' .claude/skills/docket/modes/release.md
 ---
 
 **Problem.** A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
@@ -200,3 +200,17 @@ four, one of them a network call, silent unless it deletes something. If (2) is
 taken, `verify:` becomes a `tag_commands` test in
 `subprojects/docket/tests/test_release.py`, and the `grep` above retires, since
 it presumes (1).
+
+**Answered 2026-09-27: (2), generate it** (project owner, 2026-09-27,
+ratified, over keeping the 2026-09-19 shape, in which the cutting session
+writes the delete by hand when it knows the number was re-used). The work:
+`release.tag_commands` returns the guarded line above between the fetch and
+the tag, filled in for the version and remote; its docstring says why the
+guard is there; `.claude/skills/docket/modes/release.md`'s example block and
+prose follow it from three lines to four; and a test runs the generated lines
+against a scratch origin and a warm clone holding the withdrawn tag, asserting
+the tag lands on the cut and origin never receives the withdrawn one, then
+re-runs them after success and asserts nothing changes. `verify:` greps for
+that test and for the guard in both `release.py` and the skill's example, and
+`make check` runs the test; the `grep` for the prose shape retires with shape
+(1).
