@@ -36,6 +36,10 @@ import pytest
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
+# Declared here rather than imported from `core/units.py`, like every equation
+# in `_build_derivative`: agreement is evidence only while the specification
+# is written out independently of the code under test, and a factor taken
+# from that code would check it against itself (`PL-QRBB`).
 SECONDS_PER_MINUTE = 60.0
 
 AGENT_IDS = ("sevoflurane", "isoflurane", "desflurane")

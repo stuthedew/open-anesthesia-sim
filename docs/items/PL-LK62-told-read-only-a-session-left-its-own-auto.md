@@ -8,6 +8,7 @@ classes: defect
 touches: CLAUDE.md
 added: 2026-09-27
 closed: 2026-09-27
+pr: 1217
 payoff: a session told read only stops its own pending merges unasked, so the owner never has to confirm a hold to prevent one
 verify: grep -q 'Read only means read only' CLAUDE.md
 ---

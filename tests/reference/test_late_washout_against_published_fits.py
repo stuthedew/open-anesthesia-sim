@@ -190,7 +190,8 @@ from test_published_wash_in_and_elimination import (
 )
 
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
-from anesthesia_sim.core.uptake_system import SECONDS_PER_MINUTE, AgentUptakeSystem
+from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_MINUTE
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # The supported run length, in the minutes the published coefficients are
 # stated in. A run of exactly this length is what `docs/MODEL.md` § "Supported
@@ -296,7 +297,7 @@ class PublishedWashoutFit:
         rate_difference = (
             1.0 / self.time_constants_min[first] - 1.0 / self.time_constants_min[second]
         )
-        return math.log(amplitude_ratio) / rate_difference / SECONDS_PER_MINUTE
+        return math.log(amplitude_ratio) / rate_difference / MINUTES_PER_HOUR
 
     @property
     def measurement(self) -> PublishedMeasurement:
@@ -591,7 +592,7 @@ def _crossing_hours(curve: WashoutCurve, fit: PublishedWashoutFit) -> tuple[floa
     for minute in range(2, ELIMINATION_DURATION_MIN + 1):
         above = curve.ratio_at(minute) > fit.ratio_at(minute)
         if above != previously_above:
-            hours.append(minute / SECONDS_PER_MINUTE)
+            hours.append(minute / MINUTES_PER_HOUR)
             previously_above = above
     return tuple(hours)
 
@@ -733,9 +734,10 @@ def test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours(
         f"{fit.label}: the fat group overtakes the fourth compartment at "
         f"{overtaken_by_fat_h:.2f} h, not the {recorded_end_h} h the note records"
     )
+    elimination_end_h = ELIMINATION_DURATION_MIN / MINUTES_PER_HOUR
     for minutes in STATED_MINUTES:
-        hours = minutes / SECONDS_PER_MINUTE
-        if overtakes_muscle_h < hours < min(overtaken_by_fat_h, ELIMINATION_DURATION_MIN / 60):
+        hours = minutes / MINUTES_PER_HOUR
+        if overtakes_muscle_h < hours < min(overtaken_by_fat_h, elimination_end_h):
             assert fit.leading_term_at(minutes) == FOURTH_COMPARTMENT, (
                 f"{fit.label}: at {minutes} min the largest term is compartment "
                 f"{fit.leading_term_at(minutes) + 1}, not the fourth"
