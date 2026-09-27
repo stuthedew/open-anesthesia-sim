@@ -363,6 +363,15 @@ known_classes = [
 # for the product's rendering tests, and the entry the check once demanded for
 # it made an item touching it and the Qt test it serves `crossing`.
 #
+# The repository-root `conftest.py` is outside `tests/`, so the check never
+# reads it, and its entry is a declaration of the same kind made the other way.
+# It holds the process settings every pytest run takes: the git configuration
+# the docket and hook tests must not inherit (`PL-YRYR`), and the no-bytecode
+# guard the `Makefile` also exports (`PL-0MLZ`). Both items that ever declared
+# it touched apparatus alone beside it, and read `crossing` until it was listed
+# (`PL-W40L`). The entry is a path from the root, so it does not reach
+# `tests/conftest.py`.
+#
 # Deliberately absent, and each is a judgment rather than an oversight:
 #
 # - `ROADMAP.md` and `docs/releases/` are product direction. They name
@@ -391,6 +400,7 @@ workflow_paths = [
   "CLAUDE.md",
   "CONTRIBUTING.md",
   "Makefile",
+  "conftest.py",
   "docket.toml",
   "docs/WORKING_NOTES.md",
   "docs/dead-ends.md",

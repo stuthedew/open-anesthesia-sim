@@ -57,10 +57,11 @@ With `"conftest.py"` listed, both read `workflow`. No item has ever declared the
 file beside a simulator path, which is the count that would have made the
 listing wrong.
 
-**Why it matters.** A `crossing` item is offered by neither `docket next
-workflow` nor `docket next product`, and neither says so. Every change to how
-the test process is configured - the two above, and the next - is apparatus
-work that no lane would offer.
+**Why it matters.** A `crossing` item is ranked by neither `docket next
+workflow` nor `docket next product`: each lists it as set aside for a session
+that can hold both halves, which apparatus work never needs. Every change to
+how the test process is configured - the two above, and the next - would be
+held back that way.
 
 **Recommendation, as worked.** List `"conftest.py"` in `workflow_paths`. The
 prefix comparison, `docket.model.is_under`, matches it at the repository root

@@ -9,7 +9,7 @@ feature: parallel-sessions
 touches: docket.toml, tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-27
-payoff: an apparatus item stops being hidden from both lanes by a file nobody thought to list, and a new file's side becomes a decision made once
+payoff: an apparatus item stops being held out of its lane by a file nobody thought to list, and a new file's side becomes a decision made once
 not-delegable: the fix starts with a decision per unplaced path and a choice of which carrier is the source of truth, so no command can prove it before that design round
 root-cause-of: PL-JBZK, PL-GVNS, PL-12P8, PL-1KTV, PL-21RC, PL-W40L
 generator: live - the store handed it a member today (PL-W40L), and docs/resident-instructions.md set 22 items aside from both lanes with none ever filed, so the next unplaced apparatus path is found only when someone happens to notice
@@ -24,7 +24,8 @@ draws, and `Item.lane` reads every path it does not list as the simulator's. So
 a path's side is a decision only where somebody made one. An apparatus file
 nobody listed is on the simulator's side by default, and an item touching it
 beside the apparatus it serves reads `crossing`: `docket next workflow` and
-`docket next product` both set it aside, and neither says so.
+`docket next product` both leave it unranked, and the line listing it says it
+reaches both halves - the wrong reason, stated as fact.
 `tools/workflow_paths_check.py` closed this for test files under `tests/`,
 whose imports decide their side (`PL-JBZK`), and `PL-12P8` for the support
 modules there. Nothing asks the question of any other path. The partition also
@@ -81,12 +82,12 @@ already compare, so the fix extends a carrier's check rather than adding a
 fourth carrier.
 
 **Why it matters.** The lane is how two parallel sessions stay off one item,
-and under product focus every session picks from one: an item neither lane
-offers waits until somebody names it. `docket.toml`'s own comment on the list
-says the omission "is silent in exactly the direction that hurts", and the
-table is that silence counted - the list's check reads `tests/` alone, so
-each new apparatus file outside it repeats the pattern until someone happens to
-notice, as `PL-W40L`'s session did from the root `conftest.py`.
+and under product focus a session given no work picks from one, so an item
+neither lane ranks waits for a session that takes the whole queue or is handed
+it by name. Nothing reports the misplacement itself: the list's check reads
+`tests/` alone, so each new apparatus file outside it repeats the pattern until
+someone happens to notice, as `PL-W40L`'s session did from the root
+`conftest.py`. The table is that silence counted.
 
 **Done when.** Every path in the table is placed by a recorded decision - listed
 in `workflow_paths`, or recorded as the simulator's with its reason, as the
