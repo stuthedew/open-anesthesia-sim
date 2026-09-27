@@ -1,11 +1,51 @@
 ---
 id: PL-PLSJ
 title: doc_check and the scoped verify replay turn pull requests red every day - 64 of 391 red runs, rising from W37 - and a 15-log sample splits them in two: branch text quoting a file that does not exist, which make check refuses locally, so the push went out unchecked; and a store-wide rule tripped by main's state at CI time, not by the branch
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: infra
 feature: fewer-red-runs
-touches: .claude/hooks/push-check-guard.sh, .claude/settings.json, tests/unit/test_push_check_guard.py, docs/items
+touches: .claude/hooks/push-check-guard.sh, .claude/settings.json, tests/unit/test_push_check_guard.py, docs/items, docs/ARCHITECTURE.md, .claude/hooks/shell_split.py, docket.toml
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1216
+payoff: a push whose branch text fails doc_check or branch_id_check is refused before it leaves the container, so CI stops turning red on what make check already refuses locally
+verify: grep -q 'push-check-guard.sh' .claude/settings.json && grep -q 'def test_a_push_whose_doc_check_fails_is_refused' tests/unit/test_push_check_guard.py
+recurrences: 2026-09-27 PL-1BGP
 ---
+
+**Problem.** A branch can push text that `make check` refuses. Nothing runs
+the check before a push, so the refusal first appears as a red CI run on the
+pull request. The table below counts how often that happens, and the section
+after it names the two mechanisms behind it.
+
+**Why it matters.** Each of these red runs costs a fix cycle: the session
+notices, diagnoses, commits and pushes again, and CI runs again. For
+mechanism 1 the check that would have caught it already exists and takes
+about 11 seconds. `doc_check` alone turned 21 pull-request runs red in W39,
+and the trend is rising.
+
+**Done when.** A PreToolUse hook denies a `git push` whose working tree fails
+`doc_check` or `branch_id_check`, and prints the check's own output. It passes
+every other push, and every command that only mentions one. It fails open on a
+crash or a timeout, and its unit tests cover the cases listed under the
+design below. Mechanism 2, the sort of the 43 store-rule runs that decides
+whether `PL-85NT` is reopened, moved to `PL-1BGP` on 2026-09-27. The store
+refuses an open item whose `verify:` passes, so the guard could not land while
+this item waited on that sort.
+
+**Worked 2026-09-27.** `.claude/hooks/push-check-guard.sh`, wired in
+`.claude/settings.json` with `"timeout": 120`, and 35 cases in
+`tests/unit/test_push_check_guard.py`, built as designed below. On this
+repository, with the real checks, the clean tree passed in 12.0 s. A planted
+`start.md` section quotation, the census's own shape, was refused in 11.3 s
+with `doc_check`'s line "quotes start.md, which does not exist". A planted
+missing path in an open brief was let through, because `doc_check` exempts
+one as a file the work may create, so the census shape is the one to test
+with. One change from the design: the refusal shows the report's first line
+and its errors only, since the two size-summary lines ran about 1,500
+characters.
 
 **Measured 2026-09-27** by `PL-JYJJ`'s census:
 
