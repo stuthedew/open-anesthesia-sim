@@ -542,22 +542,49 @@ EQUILIBRIUM_LINE_STROKE_WIDTH = 1.5
 # wraps "0.25" onto two lines.
 WASH_IN_AXIS_LABEL_SIZE = 34
 
-# The chart gridlines and the divider under the concentration panel. Named by
-# PL-2CS8; it was the bare literal "#D9E2EC" at five sites and defined nowhere,
-# so `tools/contrast_check.py` - which reads named constants - could not see it
-# at all, and the file it sat in reported as checked.
+# The chart gridlines and axis lines, the rule between sections of the chart
+# column, and the sliders' unfilled groove. Named by PL-2CS8; it was the bare
+# literal "#D9E2EC" at five sites and defined nowhere, so
+# `tools/contrast_check.py` - which reads named constants - could not see it at
+# all, and the file it sat in reported as checked.
 #
-# **It carries no `REQUIREMENTS` entry, and that is a judgment rather than an
-# omission.** Measured 1.31:1 on `PANEL` and 1.22:1 on `BACKGROUND`, so an
-# entry at SC 1.4.11's 3:1 would fail - and `.claude/rules/ui-color.md` forbids
-# a `KNOWN_SHORTFALLS` entry "to make a change go green". The criterion asks
-# 3:1 of a graphical object *required to understand the content*, and WCAG's
-# own line-graph example - quoted in `docs/MODEL.md` § "Color contrast" -
-# treats the "graduated lines" as furniture the traces need not contrast
-# against. The values a reader takes off this chart come from the axis labels,
-# which are held to 4.5:1 as text.
+# **It carries no `REQUIREMENTS` entry, and is recorded as exempt from SC
+# 1.4.11 in all four uses in `tools/contrast_check.py`'s `EXEMPT` table**
+# (project owner, 2026-09-27, ratified, over darkening the grey to 3:1;
+# PL-HKTB). Measured 1.31:1 on `PANEL`, so an entry at the criterion's 3:1
+# would fail, and `.claude/rules/ui-color.md` forbids a `KNOWN_SHORTFALLS`
+# entry "to make a change go green": a shortfall is a pair that should meet a
+# minimum and does not, and this is a pair the minimum does not reach.
 #
-# Whether the gridline should be darkened anyway is a design question, not a
-# consolidation one: PL-2CS8 moved this literal without changing what it draws.
-# PL-HKTB carries it.
+# What the criterion says, read at source on 2026-09-27 (w3c/wcag,
+# `understanding/21/non-text-contrast.html`). Its line-graph example counts
+# the "background lines for the values" as graphical objects and asks 3:1 of
+# them against the background; the clause about lines not needing to contrast
+# "with each other or the graduated lines" is about the traces against the
+# rulings, a different pair, and this comment misread it as exempting the
+# rulings themselves until PL-HKTB. What does exempt them is stated under
+# "Required for understanding": the requirement does not apply where "a
+# graphic with text embedded or overlaid conveys the same information, such as
+# labels and values on a chart". In the example the rulings are how a value is
+# perceived at all; this chart gives a reader three other carriers - every
+# ruling stands at a tick the axis labels in `MUTED` at 5.00:1, the readouts
+# state every compartment's value, and the hover states the exact value at any
+# drawn point. The criterion's own test, assume the area is invisible and ask
+# whether the graphic is still understood, is passed: without the rulings the
+# chart is six labelled traces against two labelled axes. The axis lines, the
+# section rule and the groove each stand on their own ground, given per use in
+# `EXEMPT`.
+#
+# Not darkened, and that is the chart's hierarchy speaking rather than the
+# criterion. The lightest trace, `MUSCLE_COLOR`, is 3.43:1 on the panel, so a
+# ruling at 3:1 would be 87% as dark as the lightest data line and a hue step
+# from `FAT_COLOR` at 4.76:1: furniture weighing as much as data, and the order
+# the chart rests on - this ruling under the `MUTED` reference lines at 5.00:1
+# under the traces at 3.43-6.02:1, with widths 1 / 1.5 / 2-3 px saying the same
+# - would collapse at its bottom rung. 1.31:1 is where charting practice puts a
+# ruling on purpose: ggplot2's `theme_bw` rules its panel at grey92, 1.19:1 on
+# white, and Matplotlib's default `grid.color` is `#b0b0b0`, 2.17:1, the darker
+# of the two and still under 3:1 (both read at source, 2026-09-27). A little
+# darker without claiming 3:1 was refused too, as a change with no bar behind
+# it - the state this record exists to end.
 GRIDLINE = "#D9E2EC"

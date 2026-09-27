@@ -3,11 +3,12 @@ id: PL-HKTB
 title: The chart gridline and divider grey measures 1.31:1 on the panel and carries no contrast requirement; decide whether it should be darkened or recorded as exempt furniture
 priority: P2
 effort: S
-status: ready
+status: done
 classes: ux
 feature: presentation-safety
-touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md
+touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md, tests/unit/test_contrast_check.py, .claude/rules/ui-color.md
 added: 2026-09-08
+closed: 2026-09-27
 verify: grep -qE '^EXEMPT[ :=]' tools/contrast_check.py && ! grep -qF 'furniture the traces need not contrast' src/anesthesia_sim/app/theme.py
 ---
 
@@ -180,3 +181,28 @@ a check and `CLAUDE.md`'s pause would then hold it (no head was live on
 **For the build.** Add `docs/MODEL.md` to `touches`. Done-when as written,
 plus: `theme.py`'s comment no longer says the example treats graduated lines
 as furniture, and the table names all four uses.
+
+## Built 2026-09-27
+
+As recommended and ratified. `tools/contrast_check.py` gained an `Exemption`
+type and an `EXEMPT` table beside `KNOWN_SHORTFALLS`, keyed by constant, with
+one entry per use of `GRIDLINE`: the plot's ruling (`_GridLines`), the three
+axis lines (`_plot`), the rule between sections of the chart column
+(`_section_divider`) and the slider's unfilled groove (`_slider_stylesheet`),
+each on `PANEL`, each with the criterion's ground in a few words and the
+drawing code cited by symbol, which `check_citations` resolves as it does a
+`why`. The verdict line reads `4 uses of 1 colour exempt from SC 1.4.11
+(EXEMPT names each)`. Two hard errors: a name in `EXEMPT` the palette does not
+hold (the constant or its surface), and a colour that is a `REQUIREMENTS`
+foreground - any channel of a disjunction counts - and exempt on the same
+surface. `theme.py`'s comment quotes the line-graph example as it reads and
+says what does exempt the ruling; `docs/MODEL.md` § "Color contrast, and the
+standard this interface is held to" lists the exemption among the deliberate
+decisions, beside the deferred criteria. `.claude/rules/ui-color.md` points a
+session picking a colour at the table and says the bar for entering it is the
+carve-out, never a failing ratio; `touches` widened to it and to
+`tests/unit/test_contrast_check.py`, which pins the count, both errors, the
+either-channel case, a different-surface non-collision, citation resolution
+and the shipped tree's four uses. No colour moved. The WCAG passages were
+re-read at source the same day (w3c/wcag `understanding/21/non-text-contrast.html`
+via raw.githubusercontent.com) and agree with the design round's quotations.
