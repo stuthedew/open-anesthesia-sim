@@ -759,6 +759,18 @@ that gains a window set later is a schema migration against files a learner has
 already saved their own workspaces into. Break-out has had no release since
 2026-09-26 and the reason stands: it is still wanted, only not soon.
 
+**The window opens maximized.** Blender's `wm_window.cc` defines its default
+window state, `GHOST_WINDOW_STATE_DEFAULT`, as `GHOST_kWindowStateMaximized`,
+and sizes the default geometry to the main screen — read at source 2026-09-27
+through the GitHub mirror, since the Manual's page was not reachable from the
+container. This project's one window opens the same way (`PL-Z4K6`; project
+owner, 2026-09-27, ratified, over raising `WINDOW_SCREEN_FRACTION` to 0.85),
+over a centred normal geometry of eight tenths of the screen that the reader
+gets back on un-maximizing (`PL-005`). Maximized is not full screen: the title
+bar and window controls stay, which is what `PL-005` refused a full-screen
+start to keep, and every Area item 34 builds gets the most room the screen
+has.
+
 ### Diverged, and each divergence has a specific cause
 
 **The occupant of an Area is called a View here, not an Editor** (project owner,

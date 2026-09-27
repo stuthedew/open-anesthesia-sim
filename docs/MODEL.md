@@ -7635,17 +7635,32 @@ The two arguments are not affected equally, and neither is withdrawn.
   them against a common position whether they are side by side or stacked. It
   never rested on the six being in a single line.
 
-**In practice the row opens at whichever rung the screen affords.**
-`src/anesthesia_sim/app/main.py` opens the window at `WINDOW_SCREEN_FRACTION`
-of the screen's available area and centred (`PL-005`, with the Qt port), so on
-a display whose available width, at that fraction and less the page's own
-padding, falls short of the seven-across width — an available width of
-roughly 1375 logical pixels on the offscreen font above, and a different
-figure on any other — the
-interface starts below the widest rung and the conditional arrangement is the
-ordinary case rather than the resized one. Until that port the window opened
-full screen and the widest breakpoint was the only one a reader met without
-resizing.
+**In practice the row opens at the widest rung the screen affords, because
+the window opens maximized.** `src/anesthesia_sim/app/main.py` shows the
+window with `showMaximized()` over a normal geometry of
+`WINDOW_SCREEN_FRACTION` of the screen's available area, centred (`PL-005`,
+with the Qt port), so the row gets the screen's available width less the
+window's own chrome rather than eight tenths of it. That is what pays for
+seven across on a 1366 px laptop, one of the commonest screen widths there
+is: at the fraction, on the offscreen font above, the row on that screen fell
+21 logical pixels short of the seven-across width (a 1093 px window carrying
+a 1047 px row, where the row's 1068 px want a window of about 1114 px), so
+that machine opened on four columns while a slightly wider one opened on
+seven, and the conditional arrangement was the ordinary case rather than the
+resized one. Maximized, the same screen offers the row about 1320 px, and a
+1280 px screen about 1234 px, so both open on seven — figures that are again
+an example of the rule on one font rather than a specification of it
+(project owner, 2026-09-27, ratified, over raising the fraction to 0.85,
+which clears 1366 px at one font and leaves a 1280 px screen on four columns;
+`PL-Z4K6`). Maximized is not full screen — the title bar and window controls
+stay, and on macOS it is the zoomed window — so `PL-005`'s refusal of a
+full-screen start does not reach it, and it is the reference's own default
+window state (`docs/interface-provenance.md` § "Adopted"). A reader who
+un-maximizes gets the fraction back and meets the ladder above as before, and
+a screen too narrow for seven across at its full width still opens below the
+widest rung: the maximized window changes which rung a screen affords, never
+the rule that decides it. Until the Qt port the window opened full screen and
+the widest breakpoint was the only one a reader met without resizing.
 
 **Why not a significant-figures rule.** A significant-figures rule gives the
 smallest values the most decimal places, and the small values are exactly
