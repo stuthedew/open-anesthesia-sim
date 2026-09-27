@@ -1,8 +1,15 @@
 ---
 id: PL-QRBB
 title: SECONDS_PER_MINUTE is declared in five core modules, one of which no longer uses it, and a reference test borrows it to turn minutes into hours
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: refactor
+touches: src/anesthesia_sim/core/units.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_governing_equations.py, tests/reference/test_published_wash_in_and_elimination.py, tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_coupled_dynamics.py, tests/benchmarks/frame_cost.py, docs/ARCHITECTURE.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
+payoff: a new module imports the time-unit definitions from one home instead of copying its neighbour's header, and the late-washout reference test says minutes-to-hours where it means it
+verify: ! grep -rqE --exclude=units.py '^_?(SECONDS_PER_MINUTE|MINUTES_PER_HOUR|MILLISECONDS_PER_SECOND)\b[^=]*=[^=]' src && ! grep -rqE --exclude=test_coupled_dynamics.py '^_?(SECONDS_PER_MINUTE|MINUTES_PER_HOUR|MILLISECONDS_PER_SECOND)\b[^=]*=[^=]' tests && grep -qF 'MINUTES_PER_HOUR' tests/reference/test_late_washout_against_published_fits.py
 ---
 
 **Problem.** SECONDS_PER_MINUTE is declared in five core modules, one of which no longer uses it, and a reference test borrows it to turn minutes into hours
@@ -57,6 +64,7 @@ that, and the number of declarations reaches neither.
 `tests/reference/test_coupled_dynamics.py`, `tests/benchmarks/frame_cost.py`.
 `docs/ARCHITECTURE.md` for the new module's entry.
 
+[superseded 2026-09-27: answered below, build it as recommended]
 **Decision needed.** Whether to consolidate, and how far. Put to the project
 owner 2026-09-27, who raised it as a general aversion to duplicate
 declarations, and not yet answered.
