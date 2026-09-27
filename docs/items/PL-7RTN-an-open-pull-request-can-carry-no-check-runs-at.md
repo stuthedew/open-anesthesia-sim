@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: .github/workflows/quality.yml, .github/workflows/pr-title.yml, docs/worker.md
 added: 2026-09-06
 closed: 2026-09-27
+pr: 1170
 not-delegable: the first work is confirming a hypothesis about GitHub's own behaviour - whether an event raised by the built-in GITHUB_TOKEN creates no workflow run - against the Actions run list for one head SHA and against how the session that opened #395 authenticated. Both are facts about a third party's servers rather than about this tree, so no command run here can be made to fail before the work and pass after.
 ---
 
