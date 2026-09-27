@@ -1,10 +1,12 @@
 ---
 id: PL-MLRX
 title: Decide whether to file the drafted PySide6 report that six Qt entry points keep a QByteArray * PySide6 does not keep alive, and link it from PL-NDKC's thread once filed
-status: untriaged
+status: dropped
 feature: qbytearray-pointer-trap
 touches: docs/WORKING_NOTES.md
 added: 2026-09-27
+closed: 2026-09-27
+reason: Not filed: the project owner's attempt on 2026-09-27 stopped at the Qt Account's email verification, and was not retried. Nothing here depends on it - PL-NDKC's rule holds without an upstream fix - and the draft below stays as written, re-verified on 2026-09-27, for anyone who files it later.
 ---
 
 **The question.** Whether to file the report drafted below with the Qt

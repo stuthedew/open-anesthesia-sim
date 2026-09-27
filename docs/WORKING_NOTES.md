@@ -1438,8 +1438,9 @@ has been disputed in its comments since, most recently in 2026 against PySide6
 whose own Python signature advertises `bytes | bytearray | memoryview` (which
 the binding then refuses, as measured above); the pointer is held by a `QBuffer`
 the caller never sees, created inside the call; and the outcome is a segfault or
-silently wrong data. A report was recommended to the project owner on
-2026-09-26 and is not filed: `PL-MLRX` holds the draft, and the decision.
+silently wrong data. A report was drafted and is not filed: the project
+owner's attempt on 2026-09-27 stopped at the Qt Account's email
+verification. The draft is kept in `PL-MLRX`.
 
 **The rule: never pass a `QByteArray` where Qt's C++ signature takes
 `QByteArray *`.** Let Qt own the bytes, or copy them. The first table above
