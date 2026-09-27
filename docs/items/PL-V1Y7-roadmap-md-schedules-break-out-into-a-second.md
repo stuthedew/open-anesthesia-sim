@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: interface-areas
+milestone: v0.5.14
 touches: ROADMAP.md, docs/MODEL.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/WORKING_NOTES.md, docs/items/PL-904Y-split-the-whole-interface-visibility-predicate.md, docs/items/PL-HJPY-pl-c842-s-layoutmodel-has-no-representation-for.md, docs/items/PL-L6QR-re-run-the-area-model-queue-audit-when-roadmap.md, docs/items/PL-M3X6-add-required-scope-entry-20-to-v0-6-0-every.md, docs/items/PL-W54S-decide-what-a-broken-out-top-level-window-owes.md, docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md, docs/items/PL-Y04W-build-break-out-an-area-taken-into-its-own-top.md
 added: 2026-09-26
 closed: 2026-09-26

@@ -243,10 +243,13 @@ before finishing.
   pasting a prompt into a new session, `PL-YJG1`): externalize what only the
   conversation holds — the item, `docs/WORKING_NOTES.md` — commit and push it,
   then ask the project owner to type `/compact`, which a session cannot run on
-  itself. Pushed first, compaction lands where a handoff did — the floor, a
-  summary, files re-read, with `CLAUDE.md` and unscoped rules re-injected and
-  path-scoped rules re-attaching on the next matching read — and keeps the
-  branch, claim and pull-request watch. That floor is 81,048–115,320 tokens,
+  itself, and name the clock time an hour on, after which the summary re-reads
+  the whole history uncached (`docs/maintainer.md`). Pushed first, compaction
+  lands where a handoff did — the floor, a summary, files re-read, with
+  `CLAUDE.md` and unscoped rules re-injected — and keeps the branch, claim and
+  pull-request watch. A file it restores counts as already read, but its
+  path-scoped rules may not have come back, so read it again before the first
+  edit to it (`PL-384P`). That floor is 81,048–115,320 tokens,
   not the 25,000 once written here. Past the budget anyway — an item that ran
   long, or a design round holding its reasoning in the conversation — finish
   the item in hand, reset the same way, and say in your reply that you stopped
