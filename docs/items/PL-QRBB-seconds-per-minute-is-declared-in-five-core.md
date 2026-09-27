@@ -94,8 +94,10 @@ values, where independence from the implementation is the point. No guard
 test: what it would stop is harmless by the argument above, so it could not
 change a decision.
 
-Start after `PL-F08Y` (the 24-hour washout tests' recompute cost), which holds
-a live claim on the late-washout test file.
+`PL-F08Y` (the 24-hour washout tests' recompute cost) holds a live claim on
+the late-washout test file. The edits here to that file are one import and
+three names, so whichever lands second takes a small merge; neither waits on
+the other, since a shared file is not a concurrency refusal (`PL-VRMK`).
 
 **Done when.** `grep -rnE '^_?(SECONDS_PER_MINUTE|MINUTES_PER_HOUR|MILLISECONDS_PER_SECOND)\b[^=]*=[^=]' src tests`
 returns `core/units.py` and the one commented oracle in
