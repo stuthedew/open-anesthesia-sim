@@ -44,3 +44,23 @@ to the result; and the record says whether the result bears on § "Supported run
 length"'s 24 hours, putting that question to the project owner if it does. It
 is a measurement recorded beside the validation test, not a new pass/fail gate,
 so caveat 4's refusal of the multi-day curves stands.
+
+**Published hybrid coefficients, read at the source 2026-09-27 for this
+chain** (mean values; SDs on the pages). Each washout is
+$`F_A/F_{A0} = \sum_i A_i e^{-t/\tau_i}`$ with $`A_i`$ printed as
+$`A_i \times 100`$ and $`\tau_i`$ in minutes, compartments in the order lungs,
+vessel-rich group, muscle group, fourth compartment, fat group:
+
+- *Anesth Analg* 1991;72:316-24, Tables 1 and 2, p. 321 (text layer):
+  sevoflurane $`A`$ = 63.6, 24.7, 4.60, 0.717, 0.028 and $`\tau`$ = 0.46,
+  9.17, 81.7, 437, 2230; isoflurane $`A`$ = 55.7, 26.9, 7.19, 1.296, 0.072 and
+  $`\tau`$ = 0.39, 9.80, 85.0, 474, 2310.
+- *Anesthesiology* 1991;74:489-98, Table 1 on p. 494 and Table 2 on p. 495
+  (page images): desflurane $`A`$ = 64.4, 22.5, 4.86, 0.775, 0.031 and
+  $`\tau`$ = 0.441, 5.78, 48.9, 300, 1350; isoflurane $`A`$ = 57.2, 28.4,
+  5.93, 1.125, 0.080 and $`\tau`$ = 0.380, 8.72, 80.0, 482, 2110.
+
+The $`A_i`$ do not sum exactly to 100 (means of per-subject fits), so a
+comparison normalises the curve or states that it does not. The mammillary
+fat-group and fourth-compartment values (Tables 4 and 5) are in
+`docs/MODEL.md` § "Known limitations" and `PL-HBH2`'s closing note.
