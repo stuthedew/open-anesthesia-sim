@@ -1,11 +1,34 @@
 ---
 id: PL-PLSJ
 title: doc_check and the scoped verify replay turn pull requests red every day - 64 of 391 red runs, rising from W37 - and a 15-log sample splits them in two: branch text quoting a file that does not exist, which make check refuses locally, so the push went out unchecked; and a store-wide rule tripped by main's state at CI time, not by the branch
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: infra
 feature: fewer-red-runs
 touches: .claude/hooks/push-check-guard.sh, .claude/settings.json, tests/unit/test_push_check_guard.py, docs/items
 added: 2026-09-27
+payoff: a push whose branch text fails doc_check or branch_id_check is refused before it leaves the container, so CI stops turning red on what make check already refuses locally
+verify: grep -q 'push-check-guard.sh' .claude/settings.json && grep -q 'def test_a_push_whose_doc_check_fails_is_refused' tests/unit/test_push_check_guard.py
 ---
+
+**Problem.** A branch can push text that `make check` refuses. Nothing runs
+the check before a push, so the refusal first appears as a red CI run on the
+pull request. The table below counts how often that happens, and the section
+after it names the two mechanisms behind it.
+
+**Why it matters.** Each of these red runs costs a fix cycle: the session
+notices, diagnoses, commits and pushes again, and CI runs again. For
+mechanism 1 the check that would have caught it already exists and takes
+about 11 seconds. `doc_check` alone turned 21 pull-request runs red in W39,
+and the trend is rising.
+
+**Done when.** A PreToolUse hook denies a `git push` whose working tree fails
+`doc_check` or `branch_id_check`, and prints the check's own output. It passes
+every other push, and every command that only mentions one. It fails open on a
+crash or a timeout, and its unit tests cover the cases listed under the
+design below. Mechanism 2's runs are sorted by the three questions at the end,
+and `PL-85NT` is reopened for `main`'s share, or this item records why not.
 
 **Measured 2026-09-27** by `PL-JYJJ`'s census:
 
