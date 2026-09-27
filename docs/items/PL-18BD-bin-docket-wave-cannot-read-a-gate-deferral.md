@@ -28,7 +28,7 @@ the two readings agree only where the deferred entry's holding condition also
 has an id: `PL-WZVZ` through `PL-TBMK` and `PL-4TWW` (`PL-0H5D`), `PL-Y04W`
 through `blocked-by: v0.7.0`. `PL-B396` is a `needs-decision` stand-in for
 planned-milestone item 28, which has neither an id nor a version a `blocked-by`
-could hold, and the other three are blocked by it alone.
+could hold, and it is the only open blocker of the other three.
 
 **Why it matters.** `roadmap.wave` keeps the beat at `clear` while
 `gate.is_clear` is false, and `is_clear` reads `clearable`. So when every other
@@ -40,10 +40,25 @@ repeated model work" exists to remove. It recurs: Gate 3 inherits the same
 five unless item 28 or machine selection is scheduled before v0.6.0 ships, and
 beat 3 itself calls a gate with a deferral in it the normal case.
 
-**Decision needed.** Whether `wave` should read a deferral the gate section
-records, and how.
+**Decision needed.** Whether `wave` should agree with a deferral the gate
+section records, and how.
 
-1. **Read the current gate's deferral group.** `gate_status` counts an open
+1. **Give the condition an id, as `PL-0H5D` did for `PL-WZVZ`.** File one item
+   off the frozen list holding the question `PL-B396` holds today - which
+   release builds planned-milestone item 28 - and set `PL-B396` to `blocked`
+   on it, so `PL-B396` becomes the work its title names. `_blockers_outside`
+   follows `blocked-by` transitively and skips closed blockers, and `PL-B396`
+   is the only open blocker of the other three (`PL-S6WW`, the other one
+   `PL-0S0V` and `PL-KZ99` name, closed on 2026-09-17), so all four move from
+   `clearable` to `blocked_outside` with no code change. That is the route
+   taken for `PL-WZVZ` through `PL-TBMK` and `PL-4TWW` (project owner,
+   2026-09-21, ratified, over a `blocked-on:` field). When a release schedules
+   item 28, the holding item closes and `PL-B396` takes that version in
+   `blocked-by:`, as `PL-Y04W` took `v0.7.0`. Cost: `PL-B396`'s front matter
+   and brief change, the gate section's "What reads this, and what reads past
+   it" paragraph is rewritten to say the two readings agree, and each later
+   deferral whose condition has no id needs a holding item of its own.
+2. **Read the current gate's deferral group.** `gate_status` counts an open
    entry listed under a count-carrying group heading that opens `Deferred to
    Gate N` apart from `clearable`, as a third carve-out beside `blocked_outside`
    and `self_cleared`, and `wave` prints it as deferred to that gate. The
@@ -53,16 +68,19 @@ records, and how.
    and `render.py` with tests, and reversing `gate_status`'s rule against
    reading headings for this one heading kind, which holds because a deferral
    is the decision itself rather than a summary of one the items compute.
-2. **A field on the item**, `PL-0H5D`'s rejected first option: a
+3. **A field on the item**, `PL-0H5D`'s rejected first option: a
    `deferred-to:` naming the gate. Cost: a new store field holding a second
    copy of a decision beat 3 puts in the section, and two copies drift.
-3. **Leave `wave` as it is.** The v0.6.0 gate section's "What reads this, and
+4. **Leave `wave` as it is.** The v0.6.0 gate section's "What reads this, and
    what reads past it" paragraph already names the four as a known
    disagreement, and whoever calls Gate 2 clear subtracts them by hand. Cost:
    nothing now, and the hand subtraction on every gate report until the four
    close, then again at Gate 3.
 
-*Recommendation: 1.* It reads the decision in the one place beat 3 says it
-lives, adds no field, and the heading it reads is already held to its entries
-by a check. Option 2 would also let `wave` report Gate 2 clear before item 28
-is scheduled, at the price of that second copy; option 3 never would.
+*Recommendation: 1.* It makes `wave` agree for all five with nothing built, by
+the route the project already ratified for this exact problem on `PL-WZVZ`,
+and it leaves `gate_status`'s rule against reading headings intact. Option 2
+is the general fix, and is worth its M change only if deferrals whose
+condition has no id keep arriving: this is the second in two gates, and the
+first was answered by filing its condition as items. Option 3 is the second
+copy option 2 avoids, and option 4 keeps the hand subtraction.
