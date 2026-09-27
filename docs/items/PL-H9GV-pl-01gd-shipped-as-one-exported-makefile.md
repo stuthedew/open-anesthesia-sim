@@ -3,11 +3,13 @@ id: PL-H9GV
 title: PL-01GD shipped as one exported Makefile variable with no test: PYTHONDONTWRITEBYTECODE appears only at Makefile:21, its declared touches names tests/unit/test_tools_portability.py which never changed, and its verify: passes against an untouched suite
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, test
 feature: dev-tooling
 touches: tests/unit/test_bytecode_guard.py, Makefile
 added: 2026-09-12
+closed: 2026-09-27
+pr: 1178
 verify: grep -q 'def test_the_makefile_turns_bytecode_writing_off_for_its_recipes' tests/unit/test_bytecode_guard.py
 ---
 
@@ -67,6 +69,14 @@ variable from its own shell. A dropped `export`, an `unexport`, or the line
 moving under a false conditional fails it, and respelling the line does not.
 This run exports the variable itself, so the probe's environment drops it and
 every `MAKE*` variable, and the same probe without the `Makefile` is the
-control showing it did. Without `make` on PATH it skips with that reason rather
-than passing. The `Makefile`'s comment names the test, so a tidy meets the
-reason before the red.
+control showing it did. Without `make` on PATH it fails saying so, since a skip
+is a suppression `docket verify` refuses and `make check` could not run there
+either. The `Makefile`'s comment names the test, so a tidy meets the reason
+before the red.
+
+**Built, 2026-09-27.** Three edits to the `Makefile` were each run against the
+new test and each turned it red alone: deleting the line, dropping its
+`export`, and adding an `unexport` after it. It passes under an enclosing
+`make`, where the variable arrives from two places, and the control fails if
+the probe's environment is not cleared. A `make` that cannot read the probe
+fails with its own error message rather than a bare exit status.
