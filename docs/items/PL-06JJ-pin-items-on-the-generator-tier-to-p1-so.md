@@ -3,10 +3,12 @@ id: PL-06JJ
 title: Pin items on the generator tier to P1, so readers of the stored priority field - the queue dashboard among them - see what docket next already ranks: docket check refuses one below P1, and docket set raises it automatically
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/picking.md, .claude/skills/docket/modes/triage.md
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/picking.md, .claude/skills/docket/modes/triage.md
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1161
 payoff: A reader of the stored priority field - the queue dashboard among them - sees a generator-tier item at P1, where docket next already ranks it above every band but P0
 verify: grep -q 'def test_an_item_on_the_generator_tier_below_p1_is_refused' subprojects/docket/tests/test_checks.py && grep -q 'def test_set_raises_an_item_it_puts_on_the_generator_tier_to_p1' subprojects/docket/tests/test_cli.py
 ---
@@ -68,6 +70,14 @@ open head on the morning of 2026-09-27, and none once #1160 merged.
   names the blocker to raise first; `set` writes one item.
 - A head that turns `spent` while still open keeps `P1` until lowered by hand.
   Rare: all 30 spent heads were closed on 2026-09-27.
+- **Found at build: two advisories would have told a session to demote a
+  pinned item.** `_groom`'s overfull-top-band remedy split the band into
+  class-pinned and demotable, and its process-work advisory said "demote it" of
+  any `infra`-only item in the band - both would have offered a tier item, the
+  action `check` now refuses, which is what `PL-CW14` stopped them prescribing
+  for a `safety` item. A tier item now counts as pinned in the first and is
+  left out of both sides of the second's comparison. `docket triage`'s rules
+  list (`render._triage_rules`) states the pin beside the safety one.
 
 **Checked before building, 2026-09-27.** No open item carries `generator:
 live` or `impairs-generators:` - `PL-927J`, the last live head, closed done and

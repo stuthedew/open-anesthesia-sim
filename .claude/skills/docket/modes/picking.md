@@ -73,7 +73,8 @@ carrying `root-cause-of:`, naming three or more items it causes.
 2026-09-21, ratified). The count is what records it; a second field,
 `generator:`, is what decides whether it ranks — `live - <why the store is
 still handing this mechanism members>` puts it above every other band, a
-`safety`-classed `P1` included, and `spent - <why it can no longer produce
+`safety`-classed `P1` included, and pins its stored band at `P1`, which `docket
+set` writes on its own (`PL-06JJ`); `spent - <why it can no longer produce
 one>` keeps the record for the audit and leaves it on its own band. Recording
 alone ranks nothing, and `docket check` asks any open generator that has not
 answered. So a three-item cluster you judge finished is now written down
@@ -297,7 +298,13 @@ step calls for.
 Do not promote process work into P1 to move it up that order. `docket check`
 pins `safety`- and `science`-classed items to P1, so the band means "a
 clinician could be misled", and it stops meaning that the moment it also means
-"the release script is annoying".
+"the release script is annoying". **The one exception is not promotion: an item
+on the generator tier** - a live head, or a sound `impairs-generators:` - is
+pinned to P1 as well (project owner, 2026-09-27, `PL-06JJ`). The tier already
+ranks it above every band, so the pin moves nothing in the order; it makes the
+stored field say what the ranking does, for the readers of it that do not rank,
+the queue dashboard among them. `docket set` writes it on its own, and it
+licenses raising nothing else.
 
 `docket next` states which model the work warrants. That is not a suggestion
 to weigh: safety- or science-classed work, and any item whose next step is an

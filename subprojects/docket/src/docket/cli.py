@@ -20,7 +20,14 @@ from pathlib import Path
 from typing import Any
 
 from . import arming, claiming, instructions, notes, render
-from .checks import Report, SettingsSource, analyze, brief_contradictions
+from .checks import (
+    TIER_BANDS,
+    Report,
+    SettingsSource,
+    analyze,
+    brief_contradictions,
+    tier_entrances,
+)
 from .claims import (
     BY_STATUS,
     BY_YIELD,
@@ -1813,6 +1820,13 @@ def cmd_set(args: argparse.Namespace) -> int:
     (`PL-JD4L`). All are what `check` already reports, and a writer repairing
     them on its way past would be choosing a value on nobody's behalf.
 
+    One field is written unasked, and only one. A write leaving an item on the
+    generator tier below `P1` raises it to `P1` and says so, because `check`
+    pins the band there and the owner asked for it to follow on its own
+    (`PL-06JJ`). The value is the rule's rather than anybody's choice, so the
+    raise takes no `--overwrite` - and so a write naming a `priority` is never
+    raised: the pin refuses the band asked for, in its own words.
+
     The file keeps its name. A rename arriving as a side effect of a field
     write is `PL-LBR6`, and bringing a drifted name back is `PL-YTDN`'s pass.
     An empty value removes a field, since the renderer omits what is empty.
@@ -1864,6 +1878,28 @@ def cmd_set(args: argparse.Namespace) -> int:
         return 0
 
     updated = with_fields(item, **changes)
+    # `check` pins an item on the generator tier at P0 or P1, so a write that
+    # leaves one below raises it in the same write rather than being refused
+    # for it (`PL-06JJ`). Not where the write names a priority: a band somebody
+    # asked for is refused by the pin in its own words, never replaced.
+    raised_from = ""
+    if (
+        "priority" not in {attribute for _, attribute, _ in requested}
+        and updated.priority in PRIORITIES
+        and updated.priority not in TIER_BANDS
+        and tier_entrances(
+            updated, {i.identifier for i in items if i.identifier}, config.generator_paths
+        )
+    ):
+        raised_from = updated.priority
+        changes["priority"] = TIER_BANDS[-1]
+        updated = with_fields(item, **changes)
+    raised = (
+        f", with its priority raised from {raised_from} to {TIER_BANDS[-1]} as the "
+        "generator tier pins it"
+        if raised_from
+        else ""
+    )
     after = [updated if i is item else i for i in items]
     today = args.today or date.today()
     # A command written here is written now, whatever the item's age, which is
@@ -1884,7 +1920,7 @@ def cmd_set(args: argparse.Namespace) -> int:
         already = set(analyze(items, today, config, milestones=milestones).errors)
         introduced = [error for error in introduced if error not in already]
     if introduced:
-        print(f"{item.identifier}: nothing was written; `docket check` would then report:")
+        print(f"{item.identifier}: nothing was written; `docket check` would then report{raised}:")
         for error in introduced:
             print(f"  {error}")
         return 1
@@ -1899,13 +1935,20 @@ def cmd_set(args: argparse.Namespace) -> int:
             raise
         if replayed:
             path.write_bytes(original)
-            print(f"{item.identifier}: nothing was written; `docket check` would then report:")
+            print(
+                f"{item.identifier}: nothing was written; `docket check` would then report{raised}:"
+            )
             for error in replayed:
                 print(f"  {error}")
             return 1
     for key, attribute, value in requested:
         if attribute in changes:
             print(f"{item.identifier}: {key}: {_spelled(value) or '(removed)'}")
+    if raised_from:
+        print(
+            f"{item.identifier}: priority: {TIER_BANDS[-1]}, raised from {raised_from} - an "
+            "item on the generator tier is stored at P0 or P1, the rank `docket next` gives it"
+        )
     print(f"  {path}")
     _say_unblocked(item, updated, changes, items, after)
     _say_contradicted(changes, items, after, today)
