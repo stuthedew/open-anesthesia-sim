@@ -1,4 +1,4 @@
-"""Refuse a test file whose side of the lane boundary disagrees with what it imports.
+"""Refuse a file under `tests/` whose side of the lane boundary disagrees with its imports.
 
 `docket.toml`'s `workflow_paths` decides which half of the project an item
 belongs to: `Item.lane()` reads each declared `touches` path against it, and an
@@ -30,8 +30,8 @@ partition is exact and unanimous: 26 of the 38 files under `tests/unit/` import
 `anesthesia_sim` and none of those touches `tools/` or `.claude/` as anything
 but fixture text, while the 12 that do not import it are precisely the twelve
 apparatus tests, and every file under `tests/integration/` and
-`tests/reference/` imports it. There is no file in the tree the rule has to
-guess about, which is what earns it a hard failure rather than an advisory:
+`tests/reference/` imports it. There is no test file in the tree the rule has
+to guess about, which is what earns it a hard failure rather than an advisory:
 whether a file imports a package is decidable, and only *whether the file
 should exist* is not.
 
@@ -41,6 +41,24 @@ script or a shell hook has nothing to import from `src/`. That is why the two
 sets separate cleanly, and it is why the rule keeps working on files nobody has
 written yet - the next `tools/` check's test will import `tools/`, not
 `anesthesia_sim`, without anybody having decided to make it so.
+
+**A support module is held to half the rule, because it has no such obligation
+(`PL-12P8`).** A test file is one pytest collects; anything else under `tests/`
+- a `conftest.py`, a constant or fixture builder the tests import, a harness
+like `tests/benchmarks/frame_cost.py` - supports them, and imports what it
+needs rather than what it serves, which can be nothing at all. So one direction
+stays exact: a support module importing `anesthesia_sim` is built on the
+simulator and is refused a `workflow_paths` entry, as a test would be. The
+other is declined, and a module importing no `anesthesia_sim` sits wherever
+`workflow_paths` puts it - the simulator's unless listed. Enforcing that
+direction too told `PL-4GN8`'s one-constant `tests/reference/mass_balance_gate.py`
+and `tests/conftest.py`, which selects Qt's headless platform for the product's
+tests, to declare themselves apparatus. The conftest's entry then made an item
+touching it and the Qt test it serves `crossing`, offered to neither lane - the
+false entry in the file that draws the boundary which the check exists to
+prevent, reached through its own remedy. The clean report counts the modules
+left to the list, so what the check could not decide is said rather than
+rounded off.
 
 **A second list in the same file drifts the same way, so it is checked here
 too (`PL-BBDD`).** `docket.toml`'s `gate_paths` names the files a delegated diff
@@ -76,6 +94,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import fnmatch
 import sys
 import tomllib
 from pathlib import Path
@@ -93,6 +112,13 @@ CONFIG = Path("docket.toml")
 #: Importing this is what makes a test file the simulator's. Named once here
 #: because the rule is about this package specifically, not about any import.
 PRODUCT_PACKAGE = "anesthesia_sim"
+
+#: What pytest collects as a test module: its default `python_files`, which
+#: this repository does not override. Restated rather than read, and
+#: `tests/unit/test_workflow_paths_check.py` compares it with the setting its
+#: own run collected under, so a changed `python_files` fails a test instead
+#: of quietly turning a new test into a support module.
+TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
 
 
 def imported_modules(tree: ast.Module) -> set[str]:
@@ -113,12 +139,17 @@ def imported_modules(tree: ast.Module) -> set[str]:
     return found
 
 
-def is_apparatus(tree: ast.Module) -> bool:
-    """Whether this test file exercises the apparatus rather than the simulator."""
-    return not any(
+def imports_product(tree: ast.Module) -> bool:
+    """Whether a file imports the simulator, which makes any file under `tests/` the simulator's."""
+    return any(
         module == PRODUCT_PACKAGE or module.startswith(PRODUCT_PACKAGE + ".")
         for module in imported_modules(tree)
     )
+
+
+def is_test_file(name: str) -> bool:
+    """Whether pytest collects a file of this name, rather than it supporting what it collects."""
+    return any(fnmatch.fnmatchcase(name, pattern) for pattern in TEST_FILE_PATTERNS)
 
 
 def is_covered(path: str, roots: tuple[str, ...]) -> bool:
@@ -198,7 +229,11 @@ def gate_problems(root: Path) -> list[str]:
 
 
 def problems(root: Path) -> list[str]:
-    """Every test file whose declared side disagrees with what it imports."""
+    """Every file under `tests/` whose declared side disagrees with what its imports decide.
+
+    A support module importing no `anesthesia_sim` is never one: its imports
+    decide nothing about its side, so the list's declaration stands either way.
+    """
     roots = declared_workflow_paths(root)
     if not roots:
         return [
@@ -217,16 +252,18 @@ def problems(root: Path) -> list[str]:
             # the failure the check exists to stop.
             found.append(f"{relative} could not be parsed, so its side is unknown: {error}")
             continue
-        apparatus = is_apparatus(tree)
+        product = imports_product(tree)
         covered = is_covered(relative, roots)
-        if apparatus and not covered:
+        # A test file only: a support module that imports no product may
+        # serve either side, and telling one to join the list is `PL-12P8`.
+        if not product and not covered and is_test_file(path.name):
             found.append(
                 f"{relative} imports no `{PRODUCT_PACKAGE}`, so it is apparatus, but "
                 f"{CONFIG.as_posix()}'s workflow_paths does not cover it. An item "
                 f"declaring it alongside the thing it tests lands in neither lane. "
                 f'Add "{relative}" to workflow_paths'
             )
-        elif not apparatus and covered:
+        elif product and covered:
             found.append(
                 f"{relative} imports `{PRODUCT_PACKAGE}`, so it is the simulator's, "
                 f"but {CONFIG.as_posix()}'s workflow_paths covers it. A product item "
@@ -244,28 +281,39 @@ def main() -> int:
     found = problems(args.root)
     gate = gate_problems(args.root)
     if not found and not gate:
-        total = sum(1 for _ in (args.root / TESTS_DIR).rglob("*.py"))
         roots = declared_workflow_paths(args.root)
+        files = sorted((args.root / TESTS_DIR).rglob("*.py"))
+        tests = [path for path in files if is_test_file(path.name)]
+        support = [path for path in files if not is_test_file(path.name)]
         apparatus = sum(
+            1 for path in tests if is_covered(path.relative_to(args.root).as_posix(), roots)
+        )
+        declared = sum(
             1
-            for path in (args.root / TESTS_DIR).rglob("*.py")
-            if is_covered(path.relative_to(args.root).as_posix(), roots)
+            for path in support
+            if not imports_product(ast.parse(path.read_text(encoding="utf-8")))
         )
         print(
-            f"workflow-paths: {total} test file(s) under {TESTS_DIR.as_posix()}, "
+            f"workflow-paths: {len(tests)} test file(s) under {TESTS_DIR.as_posix()}, "
             f"{apparatus} of them apparatus, each on the side its imports put it; "
-            f"{len(ruff_configs(args.root))} linter config(s), each covered by gate_paths"
+            f"{len(support)} support module(s), {declared} importing no `{PRODUCT_PACKAGE}` "
+            f"and so on whichever side workflow_paths declares, which imports cannot "
+            f"confirm; {len(ruff_configs(args.root))} linter config(s), each covered by "
+            f"gate_paths"
         )
         return 0
 
     if found:
         print(
-            f"workflow-paths: {len(found)} test file(s) on the wrong side of the lane "
-            f"boundary.\n" + "".join(f"  {problem}\n" for problem in found) + "  A test "
-            "file under tests/ is apparatus when it does not import "
+            f"workflow-paths: {len(found)} file(s) under {TESTS_DIR.as_posix()}/ on the "
+            f"wrong side of the lane boundary.\n"
+            + "".join(f"  {problem}\n" for problem in found)
+            + "  A test file under tests/ is apparatus when it does not import "
             f"`{PRODUCT_PACKAGE}`, and the simulator's when it does. workflow_paths has "
             "to agree, or an item declaring one of these alongside the thing it tests is "
-            "set aside from both lanes and offered to nobody (`PL-JBZK`).",
+            "set aside from both lanes and offered to nobody (`PL-JBZK`). A support "
+            "module, which pytest does not collect, is held to the second half only "
+            "(`PL-12P8`).",
             file=sys.stderr,
         )
     if gate:
