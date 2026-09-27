@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.5.15
 touches: conftest.py, Makefile, docket.toml, tests/unit/test_bytecode_guard.py, docs/items/PL-VZYS-a-hand-run-uv-run-ruff-check-still-reads-the.md
 added: 2026-09-13
 closed: 2026-09-27

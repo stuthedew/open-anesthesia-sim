@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.5.15
 touches: .github/workflows/quality.yml, .github/workflows/pr-title.yml, docs/worker.md
 added: 2026-09-06
 closed: 2026-09-27

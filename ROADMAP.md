@@ -111,7 +111,8 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.11 | Completed | **The release where the in-flight guards started answering who holds an item from the recorded claim rather than from commit subjects, and the release train became something a claim holds.** Sixteen items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `37b0a4c` at v0.5.10 and here, and `tests/reference/` (`a184830`), `docs/MODEL.md` (`fd139ea`) and `README.md` (`9938368`) with it; `.github/` moves only to run `tools/possessive_section_check.py` under `uv` as well (`PL-MB3F`). **Five items put the in-flight machinery on `PL-MB2W`'s claim record**: `PL-N162` moves `show`, `flight`, `next` and the session-start digest onto `claims.holdings`, each hold printed with its kind and state, and `PL-FFR0` gives CI and `flight` one definition of a branch that claims nothing; `PL-J9S0` has CI refuse such a branch, and a claim ordering behind another live one; `PL-H14W` opens a claimed captures-only pull request as a draft, after v0.5.9's `#978` was merged six minutes in, and `PL-DDYD` replaces the arming catalog `CLAUDE.md` restated with `bin/docket arm`. **`PL-331V` makes the release train a claimed resource**, closing `PL-MFM4`'s blind spot for a session that has filed a release but not cut it. **Most of the rest are checks that passed on what they could not see**: `PL-Y1W0`'s `pr_body_check.py --compare` finds 27 of 681 squash bodies differing from their pull request's, and `PL-25JP` recovered the ten that landed empty; `PL-MB3F` names the source files `doc_check` cannot parse instead of skipping them; `PL-KNHX` and `PL-TP75` make `contrast_check` refuse a stale shortfall entry and count the errors its exit code counts; and `PL-4RK2` names a blocked generator head whose rank reaches nothing startable. `PL-SL16` states `PL-B11M`'s commit-attribution rule in `CLAUDE.md`. **Two are Gate 2 entries**, `PL-KNHX` and `PL-MFM4`, which leaves it at 48 of 186 cleared; eight are v0.6.0 deferrals, and `PL-NLXK`, the v0.5.10 cut, closes here because a cut cannot stamp itself. | 16 items |
 | v0.5.12 | Completed | **The release where the nine generator heads the Projects trial's "Fix generators" project set out to retire stopped generating, and the three Bash guards started reading a command the way bash runs it.** 131 items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `37b0a4c` at v0.5.11 and here, and `tests/reference/` (`a184830`) and `README.md` (`9938368`) with it; `docs/MODEL.md` moves only in its cross-references, 101 section marks among them, and `.github/` only by the two checks `pr-title.yml` gained, for a closure's `pr:` number (`PL-HMZZ`) and a recorded body (`PL-979D`). **Each of the nine heads is one fact its members misread, now read one way**: `PL-B8HZ` which copy of an item `verify --self` reads, `PL-HMZZ` which pull request carried an item, `PL-QHCW` which commit a release was cut on, `PL-MB2W` who holds an item, `PL-Q4DF` where a generator-tier rank stands, `PL-XBV4` how fresh a command's refs are, `PL-PVW2` which spelling of a repeated predicate is the answer, `PL-GPJ7` what a hard gate recognises, and `PL-979D` the record of a pull request's body; `bin/docket generators` now lists `PL-MT3R`, recorded on 2026-09-26, alone as still generating. **Thirteen items put the three Bash guards on one shared splitter** that reads groups, reserved words, wrappers, redirections, or-fallbacks and git's own option spellings as bash and git do. `PL-CBDX`, the one `safety` item, read the 13 merges the review hold let through unread and filed one finding, `PL-8YBS`, with no displayed value affected. **24 are Gate 2 entries**, which with three dropped leaves it at 75 of 187 cleared; 89 are v0.6.0 deferrals, and `PL-DRRG`, the v0.5.11 cut, ships in no release under `PL-KRS6`. | 131 items |
 | v0.5.13 | Completed | **The release where no generator head is left generating, and what the remote holds started being read from one listing of it rather than from the clone's own copies.** Eighteen items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and every number above it is spent, v0.6.0 through v0.9.0 being given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `37b0a4c` at v0.5.12 and here, and `tests/reference/` (`a184830`), `docs/MODEL.md` (`9c23c5a`) and `README.md` (`9938368`) with it; `.github/` gains two workflows, a daily sweep of finished `claude/*` branches (`PL-X8SV`) and one that brings `main` into each armed pull request it has moved past (`PL-S5MF`), and `pr-title.yml` stops holding a merge on a recorded body (`PL-3PH2`). **`PL-MT3R` retires the last live head** (project owner, 2026-09-26, ratified, over `git fetch --prune` and per-reader fixes): a command that reads the remote takes one `git ls-remote --heads origin` listing and hands it to every reader beneath it, and `PL-C3MN`, `PL-21KN` and `PL-20DL` move `claim`'s withdrawal check, `bin/docket arm` and the published-copy test in `claim` and `yield` onto it, completing `remote-copy`; `bin/docket generators` now marks no head as still generating. **`PL-61FT` bounds what the three Bash guards promise** (project owner, 2026-09-26, ratified, over filing every probed spelling and over failing closed), so a spelling outside the promise is a `KNOWN_GAPS` test row rather than an item; `PL-M2NV` and `PL-R5N0` close two gaps inside it, and `PL-YFT4` stops the prune guard refusing a `git config` that only reads a setting. `PL-3PH2` makes the squash commit the record of a pull request's body again (project owner, 2026-09-26, ratified, over keeping `PL-979D`'s per-pull-request record). `PL-PB8V` (`#1113`) and `PL-MT3R` (`#1116`) merged inside v0.5.12's tag, whose notes now point here. **None is a Gate 2 entry**, which stands at 75 of 187 cleared at this cut as at the last; eleven are v0.6.0 deferrals, and `PL-5ZLQ`, the v0.5.12 cut, ships in no release under `PL-KRS6`. | 18 items |
-| v0.5.14 | Completed / current baseline | **The release where `docs/MODEL.md` started naming intertissue diffusion as a route this model leaves out, and saying which way leaving it out biases the fat and lean-tissue traces, and where break-out came off the timeline.** Seventeen items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and the next three minor numbers, v0.6.0 through v0.8.0, are given to milestone sections. **Nothing in the simulator's code or reference cases moved**: `src/` resolves to `37b0a4c` at v0.5.13 and here, and `tests/reference/` (`a184830`), `README.md` (`9938368`) and `.github/` (`11d3072`) with it. **`docs/MODEL.md` moves by a statement about the model rather than a change to it** (`9c23c5a` to `83153ba`): `PL-WMCJ` names the route in § "Assumptions" and records in § "Known limitations" that the Yasuda washout fits this model is validated against found a faster fat-like store it does not have, so fat holds too little agent, the fat trace shows the slow fat alone, and the late washout tail loses its largest measured term inside the supported run length; `PL-FBY3` reads Eger and Saidman 2005 at full text, adds the bias in the lean tissues that feed that store, and separates the route, measured once outside Eger's group, from its size, which rests on that group's fits alone. **It completes `bash-guard-bound`**: `PL-R295` and `PL-VM7C` close two routes past the prune guard to deleted refs, `PL-0FGH` and `PL-1DW7` two false refusals the gate guard gave in ordinary work, and `PL-ZS13` the remedies it printed. `PL-8BR0` has `branch` and `arm` read whether a pull request merged from GitHub's own record, `PL-RLTK` stops `landed_whole` reading a restored file as landed, `PL-RW3T` makes gate parity compare a script's mode as well as its path, and `PL-2TDX` and `PL-C0C0` make the unmerged-cut advisory's absorb route work once a cut's notes exist and keep the advisory speaking after a base merge. `PL-V1Y7` takes break-out off the timeline on the owner's word - the schematic is now v0.7.0 and multi-substance v0.8.0 - dropping `PL-Y04W`; `PL-C7XV` completes `interface-pass-narrative`, and `PL-NDKC` records the PySide6 temporary-`QByteArray` trap where the Qt build will meet it. **Two are Gate 2 entries**, `PL-WMCJ` and `PL-NDKC`, which with `PL-Y04W` dropped leaves it at 78 of 187 cleared; ten are v0.6.0 deferrals, and `PL-9MK6`, the v0.5.13 cut, ships in no release under `PL-KRS6`. | 17 items |
+| v0.5.14 | Completed | **The release where `docs/MODEL.md` started naming intertissue diffusion as a route this model leaves out, and saying which way leaving it out biases the fat and lean-tissue traces, and where break-out came off the timeline.** Seventeen items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed, and the next three minor numbers, v0.6.0 through v0.8.0, are given to milestone sections. **Nothing in the simulator's code or reference cases moved**: `src/` resolves to `37b0a4c` at v0.5.13 and here, and `tests/reference/` (`a184830`), `README.md` (`9938368`) and `.github/` (`11d3072`) with it. **`docs/MODEL.md` moves by a statement about the model rather than a change to it** (`9c23c5a` to `83153ba`): `PL-WMCJ` names the route in § "Assumptions" and records in § "Known limitations" that the Yasuda washout fits this model is validated against found a faster fat-like store it does not have, so fat holds too little agent, the fat trace shows the slow fat alone, and the late washout tail loses its largest measured term inside the supported run length; `PL-FBY3` reads Eger and Saidman 2005 at full text, adds the bias in the lean tissues that feed that store, and separates the route, measured once outside Eger's group, from its size, which rests on that group's fits alone. **It completes `bash-guard-bound`**: `PL-R295` and `PL-VM7C` close two routes past the prune guard to deleted refs, `PL-0FGH` and `PL-1DW7` two false refusals the gate guard gave in ordinary work, and `PL-ZS13` the remedies it printed. `PL-8BR0` has `branch` and `arm` read whether a pull request merged from GitHub's own record, `PL-RLTK` stops `landed_whole` reading a restored file as landed, `PL-RW3T` makes gate parity compare a script's mode as well as its path, and `PL-2TDX` and `PL-C0C0` make the unmerged-cut advisory's absorb route work once a cut's notes exist and keep the advisory speaking after a base merge. `PL-V1Y7` takes break-out off the timeline on the owner's word - the schematic is now v0.7.0 and multi-substance v0.8.0 - dropping `PL-Y04W`; `PL-C7XV` completes `interface-pass-narrative`, and `PL-NDKC` records the PySide6 temporary-`QByteArray` trap where the Qt build will meet it. **Two are Gate 2 entries**, `PL-WMCJ` and `PL-NDKC`, which with `PL-Y04W` dropped leaves it at 78 of 187 cleared; ten are v0.6.0 deferrals, and `PL-9MK6`, the v0.5.13 cut, ships in no release under `PL-KRS6`. | 17 items |
+| v0.5.15 | Completed / current baseline | **The release where `docs/MODEL.md` measured the first 24 hours of washout against the published human mean curves, and the window started opening maximized.** Twenty-six items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed - the one change a learner sees is the window opening maximized - and the next three minor numbers, v0.6.0 through v0.8.0, are given to milestone sections. **No equation, parameter or stored value moved**: `core/` changes by one comment (`d9e3ca9` to `9a95dfd`) and `data/` by one source note (`ab3499f` to `b8477a1`). **It completes `late-washout-evidence`**: `PL-KK1Q` adds `tests/reference/test_late_washout_against_published_fits.py` and a `docs/MODEL.md` subsection recording how far, and in which direction, the shipped tail departs from Yasuda 1991's fitted mean curves over the first 24 hours - below them by up to a third from about hour 7 to hour 21, and by up to a half from hour 3.4 to hour 15.3 for desflurane - asserting no agreement and leaving the supported 24 hours where they are; `PL-YD2V` says the tail inside those hours already lacks the fourth compartment, its largest measured term; and `PL-HBH2` weighs the Yasuda fits' fat group beside Heinonen's PET depot measurement, which disagree about the direction of the stored fat flow's error. `PL-Z4K6` opens the window maximized, so a 1366 px laptop gets seven readout columns on the font measured; `PL-SQJ1` measured the Qt playback loop at 98.9 to 99.9% of every rung's nominal rate and leaves the label as it is; `PL-HKTB` records the gridline grey as exempt from WCAG 2.2 SC 1.4.11; and `PL-7TBQ` has a branch nobody has touched read as holding nothing to discard. It also completes `pre-fork-content` and `gate-staleness-sweep`, carries nine `dev-tooling` items, and `PL-LPH9` has § "The cadence" say that gate work ships in patch releases as it clears, which this cut is. **Sixteen are Gate 2 entries**, three of them joining it since v0.5.14, and with three dropped the gate stands at 97 of 190 cleared; five are v0.6.0 deferrals, and `PL-47SP`, the v0.5.14 cut, ships in no release under `PL-KRS6`. | 26 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -213,139 +214,171 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.14
+## Current baseline: v0.5.15
 
-v0.5.14 is the release where `docs/MODEL.md` started naming intertissue
-diffusion as a route this model leaves out, and saying which way leaving it out
-biases what the fat and lean-tissue traces show; and where break-out came off
-the timeline. Seventeen items, and a patch on both halves of § "Versioning
-decision"'s test: no capability boundary is crossed, because nothing a learner
-can reach changed - the one simulator document that moved states a limitation
-of the model rather than changing it - and the next three minor numbers,
-v0.6.0 through v0.8.0, are given to milestone sections. Two of the seventeen
-are entries in Gate 2, the debt gate frozen under v0.6.0, `PL-WMCJ` and
-`PL-NDKC`, and a third, `PL-Y04W`, was dropped when break-out came off the
-timeline, so it stands at 78 of its 187 entries cleared, from 75 at v0.5.13.
-Ten are v0.6.0 deferrals. Two features complete: `bash-guard-bound` and
-`interface-pass-narrative`.
+v0.5.15 is the release where `docs/MODEL.md` measured the first 24 hours of
+washout against the published human mean curves, and said which of its
+omissions the gap belongs to; and where the window started opening maximized.
+Twenty-six items, and a patch on both halves of § "Versioning decision"'s test:
+no capability boundary is crossed, because the one change a learner sees is the
+window's opening state and the rest is a measurement recorded beside the model
+rather than a change to it, and the next three minor numbers, v0.6.0 through
+v0.8.0, are given to milestone sections. It is the first cut taken under
+§ "The cadence" as `PL-LPH9` restated it the same day: gate work ships in patch
+releases as it clears, and a feature finishing is the occasion. Sixteen of the
+twenty-six are entries in Gate 2, the debt gate frozen under v0.6.0 - three of
+them, `PL-KK1Q`, `PL-YD2V` and `PL-HBH2`, joining it since v0.5.14 when the
+triage pass classed them `science` - and three more entries were dropped
+(`PL-LLBV`, `PL-JW9J`, `PL-MSFB`), so it stands at 97 of its 190 entries
+cleared, from 78 of 187 at v0.5.14. Five
+are v0.6.0 deferrals. Three features complete: `late-washout-evidence`,
+`pre-fork-content` and `gate-staleness-sweep`.
 
-**Nothing in the simulator's code or reference cases moved, and this cut says
-so by tree identity:**
+**No equation, parameter, stored value or numerical method moved, and this cut
+says so by tree identity:**
 
-| Tree | v0.5.13 | This cut | What moved |
+| Tree | v0.5.14 | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `37b0a4c` | `37b0a4c` | nothing - `core/` (`d9e3ca9`), `data/` (`ab3499f`) and `app/` (`f3c6e26`) are byte-identical, so no equation, parameter, constant, numerical method, solver step or displayed value moves |
-| `tests/reference/` | `a184830` | `a184830` | nothing - every published-reference case, expected value and tolerance is byte-identical |
-| `docs/MODEL.md` | `9c23c5a` | `83153ba` | +206 -4: intertissue diffusion named in § "Assumptions" and § "Known limitations", with the note on what leaving it out biases (`PL-WMCJ`, `PL-FBY3`); the four lines removed are the one-line perfusion-limited assumption `PL-WMCJ` extends and three `PL-V1Y7` rewrites to name break-out rather than a release for it. No equation, parameter or stated value of the model changes |
-| `README.md` | `9938368` | `9938368` | nothing |
+| `src/` | `37b0a4c` | `1e83b92` | `core/` (`d9e3ca9` to `9a95dfd`) by one comment in `supported_ranges.py`, restating why metabolism may be omitted over a case beside the fourth compartment the tail lacks (`PL-YD2V`); `data/` (`ab3499f` to `b8477a1`) by one source note in `patients/reference_adult.json`, the Heinonen entry naming the Yasuda washout comparison beside its own, with every stored value byte-identical (`PL-HBH2`); `app/` (`f3c6e26` to `0b636de`) by the maximized opening (`PL-Z4K6`), `has_recorded_run` counting from a run's own beginning (`PL-7TBQ`), and prose in `playback.py` and `theme.py` (`PL-SQJ1`, `PL-P55F`, `PL-HKTB`) |
+| `tests/reference/` | `a184830` | `a785f80` | `test_late_washout_against_published_fits.py` is new (`PL-KK1Q`), and the existing module's setup moved into one helper the new module shares, with no assertion, expected value or tolerance changed |
+| `docs/MODEL.md` | `83153ba` | `e278a19` | +440 -56: the late-washout subsection, the supported-run-length, caveat-4 and known-limitations passages brought into line with it, the fat-perfusion note weighed two-sided, and the rate label's and gridline's records (`PL-KK1Q`, `PL-YD2V`, `PL-HBH2`, `PL-SQJ1`, `PL-HKTB`, `PL-Z4K6`) |
+| `README.md` | `9938368` | `3a8f16e` | one sentence naming the new reference module and that it asserts no agreement (`PL-KK1Q`) |
 | `.github/` | `11d3072` | `11d3072` | nothing |
 
 Everything else this release moves is the queue tool, the repository's own
-checks and hooks, and the documents that describe them: seven modules of
-`subprojects/docket/` (`arming.py`, `checks.py`, `cli.py`, `config.py`,
-`release.py`, `render.py` and `vcs.py`) with their tests and its README;
-`tools/doc_check.py` and `tools/open_pull_requests.py`, with their tests under
-`tests/unit/`; two of the Bash guards under `.claude/hooks/`,
-`gate-status-guard.sh` and `no-prune-guard.sh`, and their shared splitter;
-`docket.toml`; `docs/ARCHITECTURE.md`, `docs/WORKING_NOTES.md`,
-`docs/interface-provenance.md` and `docs/references/README.md`; one body under
-`docs/pr-bodies/`, `#1114`'s; and this file.
+checks and hooks, and the documents that describe them: six modules of
+`subprojects/docket/` (`checks.py`, `claims.py`, `cli.py`, `plan.py`,
+`render.py` and `vcs.py`) with their tests, its README and its ruff settings;
+`tools/context_reading.py`, `tools/contrast_check.py`, `tools/doc_check.py`,
+`tools/pr_record_check.py` and `tools/pr_title_check.py`, with their tests
+under `tests/unit/`; the root `conftest.py`, the `Makefile`, `pyproject.toml`
+and `docket.toml`; the session-start digest hook; `CLAUDE.md`, three of the
+docket skill's modes and `.claude/rules/ui-color.md`; `docs/ARCHITECTURE.md`,
+`docs/interface-provenance.md`, `docs/maintainer.md`,
+`docs/references/README.md` and `docs/resident-instructions.md`; and this
+file. The interface's own tests move with the items that changed it:
+`tests/integration/test_controller.py`, `tests/integration/test_qt_widgets.py`
+and `tests/unit/test_dashboard_frame.py`.
 
-### What the model's specification now says it leaves out
+### What the model's specification now measures of the late washout
 
-Every tissue group here exchanges agent with the blood flowing through it and
-with nothing else, so no agent passes directly from a lean tissue into fat
-lying against it. **`PL-WMCJ` (`#1135`)** names that route in § "Assumptions"
-and records in § "Known limitations" what its absence costs. Both Yasuda 1991
-washout papers this model is validated against fitted a fourth compartment
-they read as fat filled from adjacent vessel-rich organs, faster than their fat
-group, and this model's fat time constant sits with their fat group's rather
-than the fourth compartment's, so that faster store is what is missing. Read
-from that structure rather than from a run, leaving it out biases three
-things: fat holds too little agent; the fat trace shows the slow fat alone,
-where fat against well-perfused tissue stands several times higher; and the
-late washout tail loses its largest measured term inside the 24 hours a run is
-supported for, in a direction not measured here, since this model meets human
-washout only at five minutes. **`PL-FBY3` (`#1153`)** reads Eger and Saidman
-2005 at full text from the private corpus, where the note had cited its
-abstract. The review restates the Yasuda fits and names a fourth bias, in the
-lean tissues that lose agent to the fat beside them, on which reading the
-muscle trace runs ahead of the tissue it stands for, with a suggested effect
-acting the other way beside it; and it spares the brain, the tissue this
-model's vessel-rich trace is read as. The note now separates the route,
-measured once outside Eger's group (Allott, Steward and Mapleson 1976,
-perirenal fat against the kidney in two dogs given halothane), from its size,
-which rests on that group's fits alone. The figures are in the note and are not
-restated here, and neither item changes an equation, a parameter or a
-displayed value.
+v0.5.14 named the route this model leaves out - agent passing from a lean
+tissue into fat beside it - and said only which way leaving it out pushes the
+washout tail. **`PL-KK1Q` (`#1175`)** measures how far. A second reference
+module runs the five-minute gate's own protocol - the shipped 30-minute
+wash-in at the reference operating point, then the vaporizer closed - for the
+24 hours a run is supported for, and compares F_A/F_A0 with the published mean
+five-exponential curves of both Yasuda 1991 washout papers, at the papers' own
+sampling minutes, for all four cohorts. The shipped tail sits above the fitted
+curve at five minutes, falls below it from 6 to 13 minutes until 0.8 to 2.0
+hours, runs above it until 3.4 hours for desflurane and 6.9 to 8.4 hours
+for the others, then runs **below it by up to a third, near hour 13, until
+20.7 to 21.8 hours** - by up to a half, near hour 8, until 15.3 hours for
+desflurane - and finishes above it at 24 hours. That middle stretch is where
+the fourth compartment the fits needed is the largest term in every published
+curve, and this model has no such term. Every assertion in the module is a
+regression band around what was measured on 2026-09-27 or a property of the
+published coefficients; none asserts agreement with a human washout, and
+caveat 4's refusal of the multi-day curves stands. The record says the result
+does not move the supported 24 hours (project owner, 2026-09-27, ratified).
 
-### The Bash guards reach their bound
+**`PL-YD2V` (`#1167`)** brings § "Supported run length", caveat 4 and
+§ "Known limitations" into line with it: inside the supported hours the tail
+already lacks its largest measured term, from about 1.8 to 3.1 hours after a
+30-minute administration until about 20.7 to 29.4 hours. **`PL-HBH2`
+(`#1164`)** weighs the stored fat flow against both human comparisons the
+project holds, where the note had cited one: Heinonen's PET measurement of one
+resting subcutaneous depot puts it at about twice the truth, while both Yasuda
+papers estimate the fitted fat group's flow at 2.1 to 2.4 mL per 100 mL of
+tissue per minute, putting the stored 2.07 at or a little below them. The note now says the two
+disagree about the direction of the error, why neither settles it, and that
+fat loading is uncertain by up to about a factor of two with the direction
+unsettled. None of the three changes an equation, a parameter or a displayed
+value.
 
-`PL-61FT` bounded what the three guards promise at v0.5.13, and
-`bash-guard-bound` completes with five fixes inside that bound. The prune guard
-closes two routes to deleted refs: **`PL-R295` (`#1142`)** refuses `git remote
-remove` and `git remote rm`, which delete every remote-tracking ref of the
-remote, a stranded item's only copy among them, and **`PL-VM7C` (`#1150`)**
-refuses a `git config` section removal or rename on `fetch` or a remote's
-section, which drops or writes the prune and mirror settings the section holds.
-The gate guard stops refusing two commands that keep a gate's status, and stops
-printing remedies that do not work: **`PL-1DW7` (`#1151`)** reads a gate's
-status out of `PIPESTATUS` after its pipeline, **`PL-0FGH` (`#1155`)** steps
-over the whole pipeline after a gate's `&&`, since `|` binds tighter than
-`&&`, and **`PL-ZS13` (`#1152`)** prints each remedy as the refused command
-ran the gate, where it had offered one line that exits 126 and another that
-runs the whole suite outside the project's environment.
+### What a learner sees, and what was measured and left
+
+- **`PL-Z4K6` (`#1182`)**: the window opens maximized over the centred
+  eight-tenths geometry it restores to, so a 1366 px laptop, where that
+  geometry left the readout row 21 logical pixels short of seven columns on
+  the font measured, opens on seven.
+  Maximized keeps the title bar and window controls, so `PL-005`'s refusal of
+  a full-screen start is untouched.
+- **`PL-SQJ1` (`#1185`)**: the 73 to 91% playback shortfall the item was filed
+  on was Flet's single event loop. Measured on the Qt loop that shipped, every
+  rung from 1x to 300x delivered 98.9 to 99.9% of its nominal rate, so the
+  label is left as it is and `playback.py` records why (project owner,
+  2026-09-27, ratified). `docs/MODEL.md` and `playback.py` give the floor as
+  99.0%, a tenth of a point above the 20x rung's 98.9%, and `PL-B0JG` is
+  filed to correct both. A host that holds the loop past a tick still loses
+  it, and `PL-2NYN` is filed for the guard that would detect and disclose it.
+  **`PL-P55F`** rides the same pull request, re-pointing `playback.py`'s
+  citation from `SimulationView._run_simulation_timer`, which the PySide6 port
+  deleted, to `RunView.step_tick`.
+- **`PL-HKTB` (`#1180`)**: the gridline grey, 1.31:1 on the panel, is recorded
+  as exempt from WCAG 2.2 SC 1.4.11 in all four things it draws, in an
+  `EXEMPT` table `make check` reports, because every ruling stands at a
+  labelled tick and the readouts and hover state the values it rules (project
+  owner, 2026-09-27, ratified, over darkening it to 3:1). Nothing on screen
+  changes.
+- **`PL-7TBQ` (`#1187`)**: `has_recorded_run` counts a run's progress from its
+  own beginning, its fork on a branch, where it had counted from zero, so a
+  fresh, bookmark-forked or reset branch holds nothing to discard. Nothing on
+  screen changes today: the flag's one reader, the agent-change confirmation,
+  is not reachable from a branch.
 
 ### How the project runs
 
-- **`PL-8BR0` (`#1147`)**: a merged captures-only pull request was never
-  recognised as merged, because `vcs.landed_whole` refuses queue-only commits
-  as merge evidence, so `branch` told its session to merge the base in and
-  `arm` said arm for a pull request that had already merged. Both now read
-  GitHub's own record through `newest_pull_request_command` in `docket.toml`,
-  which runs `tools/open_pull_requests.py --newest`; `docket` itself still
-  knows nothing about GitHub.
-- **`PL-RLTK` (`#1133`)**: `vcs.landed_whole` reads only content `main` wrote
-  after the fork, where it had collected every blob `main`'s history ever held,
-  so a commit restoring a file to an older blob no longer reads as one the base
-  took whole. **`PL-RW3T` (`#1133`)**: `tools/doc_check.py`'s gate parity
-  compares each gate's invocations as the script plus its mode, so a mode one
-  gate runs and the other never does no longer passes as covered.
-- **`PL-2TDX` (`#1148`)** and **`PL-C0C0` (`#1154`)**: the unmerged-cut
-  advisory's absorb route - merge the base in and re-run `make release
-  VERSION=X` - re-cuts an unmerged release once its notes are written, where it
-  had exited 1, and the advisory measures from the commit that wrote the notes,
-  so the base merge that is the route's first step, and the one
-  `update-armed.yml` makes, no longer silences it.
-- **`PL-V1Y7` (`#1134`)**: break-out comes off the timeline, the project owner
-  wanting it eventually rather than soon (2026-09-26). The interface pass
-  becomes `v0.6.x`, the schematic v0.7.0, and multi-substance and nitrous oxide
-  v0.8.0; v0.6.0 keeps both reservations break-out needs, and `PL-Y04W`, its
-  build item, is dropped. `PL-C7XV` (`#1134`) re-dates the UI-structure thread
-  in `docs/WORKING_NOTES.md`, completing `interface-pass-narrative`, and
-  `PL-RH88` (`#1131`) has `docs/ARCHITECTURE.md` name the View contract.
-- **`PL-NDKC` (`#1114`)** records, where the Qt build will meet it, that
-  PySide6 6.11.2 segfaults on a `QDataStream` over a temporary `QByteArray` and
-  that a `QBuffer` over one reads zeros with status `Ok`, with the forms that
-  are safe; `PL-KJXS` is filed for a check that fails when `src/` writes one.
+- **`PL-LPH9` (`#1189`)**: § "The cadence" and § "Versioning decision" say a
+  gate takes no version of its own and that its work ships in patch releases
+  as it clears, on the project owner's answer of 2026-09-27; the Gate 2 to 4
+  timeline rows say the same. `PL-QVSN` is filed for a comment in `plan.py`
+  that still argues from the old rule.
+- **`pre-fork-content` completes** with **`PL-927J`, `PL-P64J` and `PL-WVSX`
+  (`#1160`)**: `landed_whole`, the claim record and `stranded` answer whether
+  the base took a branch's change from one test, where each had read the
+  base's ever-held blob set, so a branch that restores a file to older content
+  no longer reads as merged, spent or behind.
+- **Nine `dev-tooling` items.** `PL-JW39` (`#1171`) has `docket next` name
+  decisions beneath its picks rather than rank one first; `PL-T8PT` (`#1179`)
+  has `make check`'s pull-request title and record checks read the working
+  tree, so a closure not yet committed is checked before the push; `PL-0MLZ`
+  (`#1168`) turns bytecode writing off in the root `conftest.py`, and `PL-H9GV`
+  (`#1178`) fails a test if the `Makefile` stops exporting
+  `PYTHONDONTWRITEBYTECODE`; `PL-VZYS` (`#1181`) declares `anesthesia_sim` and
+  `docket` first-party, so a hand-typed `ruff check` agrees with a cache-free
+  one; `PL-N0MH` (`#1176`) has every command reading a store under library
+  defaults say so; `PL-3LLZ` (`#1177`) gives `test_vcs.py`'s fakes one
+  formatter; `PL-TCKV` (`#1184`) records that `UV_SYSTEM_CERTS` quiets a bare
+  `uv run`; and `PL-7RTN` (`#1170`) closes with its cause named, no check run
+  having been missing.
+- **`PL-DB64` (`#1163`)** defers `PL-WZVZ`, `PL-B396`, `PL-0S0V`, `PL-VJZK`
+  and `PL-KZ99` from Gate 2 to Gate 3, recording why none can clear before
+  v0.6.0 begins, and **`PL-18BD` (`#1165`)** makes `bin/docket wave` count
+  them apart. **`PL-06JJ` (`#1161`)** pins items on the generator tier to
+  `P1`. **`PL-384P` (`#1157`)** tells a compacted session to re-read a
+  restored file before editing it, and states when `/compact` re-reads the
+  whole history uncached.
 
 ### The rest, and this release's tag span
 
-`PL-08HR` (`#1143`), the v0.5.13 tag step, ships here. `PL-9MK6`, the v0.5.13
+`PL-G5MQ` (`#1159`), the v0.5.14 tag step, ships here. `PL-47SP`, the v0.5.14
 cut, ships in no release, because `PL-KRS6` keeps the item a release is cut
-under out of every later release. All seventeen carried their `pr:` number
-before the cut, so every bullet cites its pull request, fifteen of them from
-`#1114` to `#1155`. As at v0.5.13, no open item carries `generator: live`.
+under out of every later release. All twenty-six carried their `pr:` number
+before the cut, so every bullet cites its pull request. As at v0.5.14, no open
+item carries `generator: live`.
 
-**None of the seventeen shipped inside v0.5.13's tag.** Each closing pull
-request merged after `c7fcd6f`, the v0.5.13 cut's own merge (`#1141`), so
-v0.5.13's notes owe no pointer. Apart from the cut's own item, the one done
-item leading a commit inside that span without a bullet in its notes,
-`PL-V1Y7`, leads its capture there (`#1120`) and closed with `#1134`, after
-the tag. `tools/pr_body_check.py` found no squash commit that lost its body.
-This cut is otherwise handled as v0.5.13's was: anything merging after it is
-taken and before the v0.5.14 tag ships inside that tag, is described in the
-next release, and takes a pointer in v0.5.14's notes at that release's cut.
+**None of the twenty-six shipped inside v0.5.14's tag.** The tag sits on
+`863dede`, the v0.5.14 cut's own merge (`#1156`), and each closing pull request
+merged after it, so v0.5.14's notes owe no pointer. Of the ids leading a commit
+inside the span, the eleven with no bullet in these notes are open or dropped:
+seven the interface-areas design round recorded recommendations on (`#1162`),
+`PL-5B1N`, which the presentation-safety round did (`#1169`), and the three
+drops. `tools/pr_body_check.py` found no squash commit that lost its body.
+`PL-RZQ0` files this release's tag step. This cut is otherwise handled as
+v0.5.14's was: anything merging after it is taken and before the
+v0.5.15 tag ships inside that tag, is described in the next release, and takes
+a pointer in v0.5.15's notes at that release's cut.
 
 ## The plan
 

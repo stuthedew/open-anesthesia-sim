@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science, docs
 feature: late-washout-evidence
+milestone: v0.5.15
 touches: docs/MODEL.md, docs/items/PL-KK1Q-compare-this-model-s-washout-over-the-first-24.md, tests/reference/test_published_wash_in_and_elimination.py, src/anesthesia_sim/core/supported_ranges.py
 added: 2026-09-26
 closed: 2026-09-27

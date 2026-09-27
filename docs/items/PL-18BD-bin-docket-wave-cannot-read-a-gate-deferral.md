@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, planning
+milestone: v0.5.15
 touches: ROADMAP.md, docs/items/PL-B396-agent-amounts-are-displayed-in-litres-of-vapour.md, docs/items/PL-KZ99-store-each-agent-s-molar-mass-and-liquid.md, docs/items/PL-0S0V-agent-volume-display-decimals-and-the-other.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; triaged 2026-09-27 on the owner's answer to its decision
 added: 2026-09-27

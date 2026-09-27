@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science, docs
 feature: late-washout-evidence
+milestone: v0.5.15
 touches: docs/MODEL.md, src/anesthesia_sim/data/patients/reference_adult.json, docs/references/README.md, docs/items/PL-YD2V-supported-run-length-and-the-validation-section.md
 added: 2026-09-26
 closed: 2026-09-27

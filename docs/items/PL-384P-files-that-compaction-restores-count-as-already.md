@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs, session-cost
 feature: compaction-reset
+milestone: v0.5.15
 touches: .claude/hooks/docket-digest.sh, CLAUDE.md, docs/maintainer.md, docs/resident-instructions.md, docs/items/PL-YJG1-reset-a-session-at-the-150k-spend-budget-by.md, tools/context_reading.py, tests/unit/test_docket_digest_hook.py, tests/unit/test_context_reading.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-25 triage pass
 added: 2026-09-25

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: presentation-safety
+milestone: v0.5.15
 touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md, tests/unit/test_contrast_check.py, .claude/rules/ui-color.md
 added: 2026-09-08
 closed: 2026-09-27

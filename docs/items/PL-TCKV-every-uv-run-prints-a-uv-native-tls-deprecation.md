@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost, infra
 feature: dev-tooling
+milestone: v0.5.15
 touches: Makefile
 added: 2026-09-14
 closed: 2026-09-27
