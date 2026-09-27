@@ -2,6 +2,7 @@
 id: PL-KJXS
 title: A QByteArray passed where Qt's C++ signature takes QByteArray *, at any of the six entry points PL-NDKC measured, is a use-after-free that segfaults or reads silently wrong zeros, and nothing fails make check when src/ writes one
 status: untriaged
+feature: qbytearray-pointer-trap
 added: 2026-09-26
 ---
 
