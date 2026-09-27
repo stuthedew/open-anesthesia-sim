@@ -5851,6 +5851,28 @@ solution: identical inputs still produce identical run definitions, and
 two learners comparing the same case at different speeds are comparing the
 same arithmetic.
 
+**What the rate label is a statement about, and what was measured**
+(`PL-SQJ1`). The label is the *setting*: the multiple of real time the loop is
+asked for, from which `app/playback.py` derives the steps per tick, so the
+label cannot drift from the loop by construction. The clock is exact at every
+rate, because simulated time is a count of steps taken. Whether the wall
+clock keeps up is the host's to answer: `RunView.step_tick` takes its burst on
+a `PreciseTimer` interval and makes no step up, so a tick the event loop could
+not service is lost and the **delivered rate** is the set rate times the
+fraction of ticks that fired. Measured 2026-09-27 with the real dashboard on
+the offscreen platform and both timers running, every rung from 1× to 300×
+delivered 99.0 to 99.9% of its setting over 8 to 30 s, the tick period holding
+at 100 ms to within 4 ms; the 73 to 91% once measured was the Flet loop's and
+went with the toolkit. The label is therefore left as it is and nothing on
+screen names a delivered rate (project owner, 2026-09-27, ratified, over
+qualifying the label as "up to 300×", which trades a precise claim that holds
+for a vague one, and over building the disclosure now). A host that holds the
+loop past one interval delivers less than the label says and nothing on
+screen says so; `PL-2NYN` is the guard that would show the delivered rate
+beside the set one when fewer than 95% of ticks fire over a 50-tick window,
+and a delivered rate under 99% measured on the owner's own machine reopens
+the decision.
+
 The second is control resolution, and it is the one that limits what the
 sentence above may be taken to mean. Those two learners are comparing the
 same arithmetic, and they are comparing the same *case* only if neither of

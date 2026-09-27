@@ -51,12 +51,11 @@ abrupt manoeuvre is percentage points rather than the hundredths the 1×
 tolerance is stated in.
 
 **A control change timed to the step is available at every rate: pause,
-change, resume.** `SimulationView._run_simulation_timer` takes no steps
-while the run is paused and this application's setters apply
-unconditionally, so a setting changed while paused acts from the step the
-run resumes on. That is the route when *when* a change happened is the
-point of the exercise; the ladder below is for watching a trajectory
-rather than for timing one.
+change, resume.** `RunView.step_tick` takes no steps while the run is
+paused and this application's setters apply unconditionally, so a setting
+changed while paused acts from the step the run resumes on. That is the
+route when *when* a change happened is the point of the exercise; the
+ladder below is for watching a trajectory rather than for timing one.
 
 **The rate is stated as a multiple of real time, because that is what a
 reader can check.** "60x real time" is a claim about the clock on screen,
@@ -68,6 +67,27 @@ not land on a whole number of steps is refused rather than rounded: a
 tick that took 59.5 steps would either take a step of a different size or
 silently play at a rate other than the one displayed, and both are the
 failure this module is here to prevent.
+
+**The claim was measured on the shipped loop, and it holds** (`PL-SQJ1`,
+2026-09-27). `RunView._step_timer` is a `QTimer` of type `PreciseTimer` on
+`SIMULATION_TICK_INTERVAL_S`, and it fires `step_tick` on its interval
+whatever the paint costs: with the real dashboard shown on the offscreen
+platform and both timers running as `main.py` runs them, every rung from 1x
+to 300x delivered 99.0 to 99.9% of its nominal rate over 8 to 30 s of wall
+clock, the tick period holding at 100 ms to within 4 ms at its worst, and
+the shortfall left is the measurement's own edge - the first tick fires one
+interval after start. The 73 to 91% the item was filed on was Flet's, whose
+single asyncio loop serialized both cadences behind `page.update()`, and it
+went with the toolkit. What can still make the label false is the host, not
+the loop: `step_tick` takes a fixed burst and makes no step up, and Qt
+coalesces a timeout the loop was holding through rather than queueing it,
+so a host that holds the loop past one interval loses that tick and
+delivers the nominal rate times the fraction of ticks that fired. Nothing
+on screen says so today: the label is left as it is and this paragraph
+records why (project owner, 2026-09-27, ratified, over qualifying the label
+and over building the disclosure now), and `PL-2NYN` is the guard that
+would name the delivered rate beside the set one when fewer than 95% of
+ticks fire.
 """
 
 import math
