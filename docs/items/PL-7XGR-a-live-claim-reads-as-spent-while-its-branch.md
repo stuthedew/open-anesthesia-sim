@@ -40,3 +40,49 @@ and whether that holder is still live". It was filed 2026-09-25, before
 `PL-MB2W` closed on 2026-09-26 (#1041), and that close-out did not take it into
 its `root-cause-of:`, so it is not a post-close instance. It is triaged as an
 ordinary defect in the record `PL-MB2W` built.
+
+**Second instance, live on `origin`, 2026-09-27 - and not a captures-only
+head.** `PL-W40L` was captured on `PL-12P8`'s work branch (`cbd8065c`), whose
+pull request `#1196` carried seven files of tool, test and `docket.toml`
+change. `PL-W40L`'s session stacked `claude/pl-w40l-kidkwe` on that head
+(`9d08d849`, "stack on PL-12P8's branch (#1196), which carries this item's
+file") and pushed the empty claim `724b40a0` at 19:29:48Z. `#1196`
+squash-merged as `ecb02cdf` at 19:33:02Z. Measured against `ecb02cdf`, read
+only, by the session verifying `PL-8ZGY` and by a subagent that repeated it:
+
+- `vcs._Landings.split` on `724b40a0`: fork `98734b85`, 7 paths landed, none
+  outstanding, `taken_whole` true. So `vcs._unlanded_refs` drops the ref, and
+  `claims.holdings` never reads the claim, nor the hold the branch's name
+  would give, since that comes from the same list.
+- `claims.holdings(...).order("PL-W40L")` was empty. `bin/docket flight`,
+  `bin/docket show PL-W40L` and the session-start digest named no holder.
+- `claiming.claim` asks the same `holdings(...).order(key)` for a rival, so a
+  second session's `bin/docket claim PL-W40L` would have written a competing
+  claim rather than refusing. Read from the code, not run, since running it
+  would have pushed one. `next` would not have offered the item, which was
+  untriaged.
+- `tools/branch_id_check.py --hint docket.toml`, run on a local copy of the
+  branch, printed nothing. The hook's "this branch claims nothing" in the
+  first instance needed a branch not named for the item.
+- Merging `origin/main` into a local copy made `holdings` read the claim
+  `live`, as the 2026-09-26 reading predicted. The session's own merge
+  (`7a091252`) did the same once pushed, a little after 19:48Z, so the window
+  on `origin` was about fifteen minutes.
+
+**What it changes here.** The title, payoff and "Why it matters" say a
+captures-only head. The trigger is any head a claiming branch took, once that
+head squash-merges and before the claiming branch writes a blob of its own. A
+docs sweep files its captures on its own item's work branch, as `PL-12P8` did,
+so starting one of those items before that pull request merges is this shape.
+The "Done when" test is already general. One constraint on the fix, from
+`claiming.claim`'s read-back: a branch that already reads as landed is refused
+at claim time, so the window is specifically the base taking the branch's whole
+content *after* the claim was read back, and the regression test should hold
+that ordering.
+
+Not entered in `recurrences:`, which only `docket new` writes, on a filing.
+This was found and recorded here rather than filed. That makes two instances in
+three days, one defect, so it is not a generator by the count. The fact it
+misreads, who holds an item now, belongs to `PL-MB2W`, `PL-7TVT` and
+`PL-8FJK`, all done and spent. `PL-WK57` is `PL-MB2W`'s one post-close
+instance, and this would be a second if it were filed as one.
