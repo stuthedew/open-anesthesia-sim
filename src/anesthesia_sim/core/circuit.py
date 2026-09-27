@@ -38,13 +38,12 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
     require_supported_fresh_gas_flow,
 )
+from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_fraction,
     require_nonnegative_finite,
     require_positive_finite,
 )
-
-SECONDS_PER_MINUTE = 60.0
 
 TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN = 4.0
 """The fresh gas flow a run opens at when its machine profile states none.

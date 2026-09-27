@@ -85,6 +85,7 @@ from math import isfinite
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.matrix_exponential import Matrix
+from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_fraction,
     require_nonnegative_finite,
@@ -121,9 +122,6 @@ STATE_SIZE = 9
 
 TISSUE_GROUP_COUNT = 3
 """Vessel-rich, muscle and fat: the three groups `patient.py` builds."""
-
-SECONDS_PER_MINUTE = 60.0
-"""Turns a flow held in litres per minute into the litres per second it is read in."""
 
 CARDIAC_OUTPUT_TOLERANCE_L_S = 1e-12
 CARDIAC_OUTPUT_RELATIVE_TOLERANCE = 1e-9

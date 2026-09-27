@@ -135,6 +135,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
+from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 
 # Adding a built-in agent without a verified identification colour would make
 # the selector silently lose a safety cue (ISO 5360 Table 2, footnote b). Fail
@@ -168,10 +169,6 @@ _EMPHASIS_COLOR: Final[Mapping[Emphasis, str]] = {
 _CLOCK_PANEL_INDEX: Final = next(
     index for index, panel in enumerate(READOUT_PANELS) if panel.quantity is None
 )
-
-#: Milliseconds per second, for the timer interval `SIMULATION_TICK_INTERVAL_S`
-#: states in seconds.
-_MILLISECONDS_PER_SECOND: Final = 1000
 
 #: The header badge's inset. Narrower than the chip's, which carries two lines
 #: and sits among controls; a bare spacing literal is decision D9's interim.
@@ -486,7 +483,7 @@ class RunView(QWidget):
 
         self._step_timer = QTimer(self)
         self._step_timer.setTimerType(Qt.TimerType.PreciseTimer)
-        self._step_timer.setInterval(round(SIMULATION_TICK_INTERVAL_S * _MILLISECONDS_PER_SECOND))
+        self._step_timer.setInterval(round(SIMULATION_TICK_INTERVAL_S * MILLISECONDS_PER_SECOND))
         self._step_timer.timeout.connect(self.step_tick)
 
     # ------------------------------------------------------------ reading

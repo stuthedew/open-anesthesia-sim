@@ -23,7 +23,6 @@ from anesthesia_sim.core.governing_equations import (
     EXHAUSTED_AGENT_L,
     FIRST_TISSUE_FRACTION,
     INSPIRED_FRACTION,
-    SECONDS_PER_MINUTE,
     STATE_SIZE,
     TISSUE_GROUP_COUNT,
     UNIT_STATE,
@@ -32,6 +31,7 @@ from anesthesia_sim.core.governing_equations import (
     UptakeEquationSettings,
     build_system_matrix,
 )
+from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 
 # Deliberately unlike each other and unlike the reference adult's: every
 # volume, flow and coefficient below is distinct, so an entry written into

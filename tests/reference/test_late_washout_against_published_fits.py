@@ -173,6 +173,8 @@ and Kharasch ED, *Biotransformation of sevoflurane*, Anesth Analg
 from __future__ import annotations
 
 import math
+import pickle
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
 from typing import Literal
@@ -190,7 +192,13 @@ from test_published_wash_in_and_elimination import (
 )
 
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
-from anesthesia_sim.core.uptake_system import SECONDS_PER_MINUTE, AgentUptakeSystem
+from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_MINUTE
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
+
+try:
+    import fcntl
+except ImportError:  # Windows, where `washout_curve` shares nothing between workers
+    fcntl = None
 
 # The supported run length, in the minutes the published coefficients are
 # stated in. A run of exactly this length is what `docs/MODEL.md` § "Supported
@@ -296,7 +304,7 @@ class PublishedWashoutFit:
         rate_difference = (
             1.0 / self.time_constants_min[first] - 1.0 / self.time_constants_min[second]
         )
-        return math.log(amplitude_ratio) / rate_difference / SECONDS_PER_MINUTE
+        return math.log(amplitude_ratio) / rate_difference / MINUTES_PER_HOUR
 
     @property
     def measurement(self) -> PublishedMeasurement:
@@ -456,7 +464,8 @@ class WashoutCurve:
 
     A value object rather than the system, for the reason the gate's readings
     are: `_washout_curve()` is cached, and a returned system would be a shared
-    mutable one.
+    mutable one. It is also what `washout_curve` hands from one xdist worker to
+    another, as a pickle.
 
     Attributes:
         alveolar_fraction_at_discontinuation: F_A0, the papers' own denominator.
@@ -578,6 +587,66 @@ def _washout_curve(
     )
 
 
+@pytest.fixture(scope="session")
+def washout_curve(
+    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+) -> Callable[..., WashoutCurve]:
+    """`_washout_curve()`, computed once per pytest run however many xdist workers read it.
+
+    A curve is 864,000 steps after the wash-in, about 17 s on one core, and
+    `_washout_curve()`'s cache lives in one process, so every xdist worker
+    that ran a test needing a curve used to compute it again: 18 computations
+    of the 8 distinct curves (`PL-F08Y`). Now the first worker to need a
+    curve computes it under a lock and publishes it where every worker of the
+    run can read it, and a worker needing the same curve meanwhile waits on
+    the lock and reads what was published. Sending each curve's tests to one
+    worker with `--dist loadgroup` computes each curve once too, and was
+    measured and set aside: it slowed the rest of the suite by 8 to 11 s, and
+    the whole run by 19 s against this (`PL-F08Y` has the figures).
+
+    The directory is the run's own base temporary directory, the parent of
+    each worker's, which pytest makes afresh for every run and empties when
+    one is named with `--basetemp`. A curve published there cannot be served
+    to a later run built from different source, which is the hazard `PL-0MLZ`
+    closed for bytecode. For the same reason, whether to share turns on
+    `workerinput`, which xdist sets on a worker's own configuration, and not
+    on `PYTEST_XDIST_WORKER`, which a pytest started inside a worker would
+    inherit: that run's base directory's parent outlives it. A curve is
+    written whole and then renamed into place, and the lock is `flock`, which
+    the kernel releases if the worker holding it dies, so a crash leaves the
+    next worker to compute the curve rather than read half of one or wait for
+    ever.
+    Without xdist one process runs every test and its cache is the whole
+    story. Windows has no `fcntl`, so there each worker computes what it
+    needs, as every worker did before.
+    """
+
+    if fcntl is None or not hasattr(request.config, "workerinput"):
+        return _washout_curve
+
+    store = tmp_path_factory.getbasetemp().parent / "washout-curves"
+    store.mkdir(exist_ok=True)
+
+    @cache
+    def shared(
+        agent_id: str, condition: Condition, hepatic_elimination_rate_constant_per_min: float = 0.0
+    ) -> WashoutCurve:
+        name = f"{agent_id}, {condition}, {hepatic_elimination_rate_constant_per_min}"
+        published = store / f"{name}.pickle"
+        with (store / f"{name}.lock").open("w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            if published.exists():
+                curve: WashoutCurve = pickle.loads(published.read_bytes())
+                return curve
+            curve = _washout_curve(agent_id, condition, hepatic_elimination_rate_constant_per_min)
+            partial = store / f"{name}.partial"
+            partial.write_bytes(pickle.dumps(curve))
+            partial.replace(published)
+            return curve
+
+    return shared
+
+
 def _crossing_hours(curve: WashoutCurve, fit: PublishedWashoutFit) -> tuple[float, ...]:
     """Every hour at which the model passes through the fitted curve.
 
@@ -591,7 +660,7 @@ def _crossing_hours(curve: WashoutCurve, fit: PublishedWashoutFit) -> tuple[floa
     for minute in range(2, ELIMINATION_DURATION_MIN + 1):
         above = curve.ratio_at(minute) > fit.ratio_at(minute)
         if above != previously_above:
-            hours.append(minute / SECONDS_PER_MINUTE)
+            hours.append(minute / MINUTES_PER_HOUR)
             previously_above = above
     return tuple(hours)
 
@@ -599,7 +668,7 @@ def _crossing_hours(curve: WashoutCurve, fit: PublishedWashoutFit) -> tuple[floa
 @pytest.mark.parametrize("condition", CONDITIONS)
 @pytest.mark.parametrize("fit", PUBLISHED_FITS, ids=[f.label for f in PUBLISHED_FITS])
 def test_the_first_24_hours_of_elimination_against_the_published_mean_curves(
-    fit: PublishedWashoutFit, condition: Condition
+    fit: PublishedWashoutFit, condition: Condition, washout_curve: Callable[..., WashoutCurve]
 ) -> None:
     """Hold the ratio table and the crossing hours to what was measured.
 
@@ -611,7 +680,7 @@ def test_the_first_24_hours_of_elimination_against_the_published_mean_curves(
     about agreement: a change that brought every ratio to 1.0 would fail it.
     """
 
-    curve = _washout_curve(fit.agent_id, condition)
+    curve = washout_curve(fit.agent_id, condition)
     recorded = RECORDED_COMPARISONS[fit.label, condition]
 
     for minutes, expected in zip(STATED_MINUTES, recorded.ratios, strict=True):
@@ -638,7 +707,7 @@ def test_the_first_24_hours_of_elimination_against_the_published_mean_curves(
 @pytest.mark.parametrize("condition", CONDITIONS)
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
 def test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio(
-    agent_id: str, condition: Condition
+    agent_id: str, condition: Condition, washout_curve: Callable[..., WashoutCurve]
 ) -> None:
     """The fifth minute of this run is the gate's five-minute point.
 
@@ -651,7 +720,7 @@ def test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio(
     pinned = (
         MODELLED_ELIMINATION_RATIOS if condition == "shipped" else OPEN_CIRCUIT_ELIMINATION_RATIOS
     )[agent_id]
-    ratio = _washout_curve(agent_id, condition).ratio_at(5)
+    ratio = washout_curve(agent_id, condition).ratio_at(5)
 
     assert abs(ratio - pinned) <= 1e-4, (
         f"{agent_id}, {condition}: F_A/F_A0 at five minutes of this run is {ratio:.5f}, "
@@ -733,9 +802,10 @@ def test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours(
         f"{fit.label}: the fat group overtakes the fourth compartment at "
         f"{overtaken_by_fat_h:.2f} h, not the {recorded_end_h} h the note records"
     )
+    elimination_end_h = ELIMINATION_DURATION_MIN / MINUTES_PER_HOUR
     for minutes in STATED_MINUTES:
-        hours = minutes / SECONDS_PER_MINUTE
-        if overtakes_muscle_h < hours < min(overtaken_by_fat_h, ELIMINATION_DURATION_MIN / 60):
+        hours = minutes / MINUTES_PER_HOUR
+        if overtakes_muscle_h < hours < min(overtaken_by_fat_h, elimination_end_h):
             assert fit.leading_term_at(minutes) == FOURTH_COMPARTMENT, (
                 f"{fit.label}: at {minutes} min the largest term is compartment "
                 f"{fit.leading_term_at(minutes) + 1}, not the fourth"
@@ -744,7 +814,7 @@ def test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours(
 
 @pytest.mark.parametrize("condition", CONDITIONS)
 def test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent(
-    condition: Condition,
+    condition: Condition, washout_curve: Callable[..., WashoutCurve]
 ) -> None:
     """Bound what the omitted metabolism could do to the sevoflurane tail.
 
@@ -759,8 +829,8 @@ def test_sevoflurane_s_missing_metabolism_moves_the_tail_by_a_few_percent(
     checked across the removals too, as it is for the open-circuit discards.
     """
 
-    without = _washout_curve("sevoflurane", condition)
-    with_sink = _washout_curve("sevoflurane", condition, HEPATIC_ELIMINATION_RATE_CONSTANT_PER_MIN)
+    without = washout_curve("sevoflurane", condition)
+    with_sink = washout_curve("sevoflurane", condition, HEPATIC_ELIMINATION_RATE_CONSTANT_PER_MIN)
 
     assert with_sink.agent_accounting.passes_validation, (
         f"{condition}: the sink broke the model's agent accounting: {with_sink.agent_accounting}"

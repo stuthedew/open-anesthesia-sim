@@ -563,6 +563,17 @@ deviating from a described deliverable, not acting without one.
   angle-bracket placeholder — `<branch>`, `<id>` — is taken for an HTML tag and
   vanishes with no error, code span or not. `#132` shipped `git branch -dr
   origin/` that way (`PL-1DN9`).
+- **Read only means read only** (project owner, 2026-09-27). Told "read
+  only", or anything meaning look but change nothing, a session writes nothing
+  until the owner lifts it: no file, commit, push, pull request, comment, claim
+  or merge. What it already set going stops unasked - it disarms auto-merge on
+  its own armed pull requests at once and says so, and a check-in it scheduled
+  only reads and reports - because letting it finish is a write nobody
+  approved, and the owner should never have to confirm a hold to prevent a
+  merge. The capture rule and the item-only auto-merge above are suspended
+  while it holds; a finding goes into the reply, to be filed once the mode
+  lifts. `#1213` merged after "Read only for now" because its session left it
+  armed and offered a hold (`PL-LK62`).
 - **Bring `origin/main` into an open pull request once, when it is armed or
   being merged and `behind` is all that stops it; again only if another merge
   lands first.** `main` refuses a branch that is not up to date (project owner,
