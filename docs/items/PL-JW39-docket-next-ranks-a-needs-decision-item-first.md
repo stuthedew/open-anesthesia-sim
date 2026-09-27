@@ -3,11 +3,12 @@ id: PL-JW39
 title: docket next ranks a needs-decision item first, so every fresh session opens on work whose next step is the owner's answer
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: session-cost, infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py, subprojects/docket/README.md, .claude/skills/docket/modes/picking.md, .claude/skills/docket/modes/triage.md
 added: 2026-09-06
+verify: grep -q 'def test_recommend_leaves_a_decision_out_unless_it_is_p0' subprojects/docket/tests/test_plan.py
 ---
 
 **Problem.** `bin/docket next` sorts on band, roadmap placement and feature
