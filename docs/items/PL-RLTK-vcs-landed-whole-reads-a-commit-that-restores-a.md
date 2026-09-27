@@ -77,3 +77,35 @@ filed after those heads closed. A second is filed beside it for
 `claims._landed_through`, the same misread by another reader. That makes two
 post-close instances, one short of the three that would make this a generator
 whose fix did not hold.
+
+**Implementation plan, recorded 2026-09-27 before a reset for length** (no
+code written yet; the claim stands on draft #1133).
+
+- `vcs.py`: add `_written_since(fork_point, base, root, run)` beside
+  `_base_blobs`. It reads `changed_path_args("log", "--raw", "--no-abbrev",
+  "--format=", f"^{fork_point}", base, "--")`, splits on NUL, and for each
+  field that starts with `:` and splits into five words consumes the next
+  field (its path) and keeps the fourth word unless it is all zeros. Measured
+  on git 2.43.0: with `--format=` and `-z` the records run back to back with
+  no separator between commits (45 headers either way over five commits of
+  `origin/main`). A merge commit shows no change by default, so a blob only a
+  merge resolution wrote reads as unwritten, which is the safe direction.
+- `landed_whole` passes `_written_since(...)` where it passed `_base_blobs(...)`.
+  `_unlanded_refs` keeps `_base_blobs` for `_Refs.base_blobs` (claims reads
+  it, `PL-P64J`) and judges each split against `_written_since`, cached per
+  fork point in a local dict.
+- Prose that goes stale: `_landing_split`'s "The default branch's history, not
+  its tip" paragraph and its "held each one at some point" question; the
+  `_Refs.base_blobs` comment and the comment above `_base_blobs` in
+  `_unlanded_refs`; `landed_whole`'s reuse note; `change_landed`'s "Ever held,
+  not held now, which is `_landing_split`'s rule"; and
+  `subprojects/docket/README.md` near line 258, "The content split asks whether
+  the base ever held each blob", so that file joins `touches`.
+- Tests, `subprojects/docket/tests/test_vcs.py`: the fakes `_runner` (near line
+  160) and `_landed_runner` (near line 2680) also answer a `log` carrying
+  `--raw` from `on_base`, keeping their `rev-list --objects` answers; the
+  assertion near line 2818 that no `rev-list --objects` ran goes vacuous and
+  asserts no `--raw` read instead; the docstrings calling `on_base` "held at
+  some point" become "written since the fork". New: the verify-named restore
+  test on a scratch repository, a squash-merged branch still landed, and a
+  renamed file still landed.
