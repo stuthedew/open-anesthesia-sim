@@ -2840,9 +2840,13 @@ def test_the_landed_branch_line_refuses_the_merge_it_replaces() -> None:
 
 
 def _cut_window_runner(
-    *, added: tuple[str, ...] = (), landed: tuple[str, ...] = (), fork: str = "abc123"
+    *,
+    added: tuple[str, ...] = (),
+    landed: tuple[str, ...] = (),
+    fork: str = "abc123",
+    written: str = "c0ffee",
 ):
-    """A git whose `HEAD` introduces `added` notes files and whose base gained `landed`."""
+    """A git whose `HEAD` adds the `added` notes at `written`, and whose base gained `landed`."""
 
     def run(args: list[str], root: Path) -> str:
         args = _bare(args)
@@ -2854,7 +2858,10 @@ def _cut_window_runner(
             return "\n".join(added)
         if args[0] == "merge-base":
             return f"{fork}\n" if fork else ""
+        if args[0] == "log" and "--diff-filter=A" in args:
+            return f"{written}\n" if written else ""
         if args[0] == "log":
+            assert f"{written}..{BASE}" in args, "measured from the commit adding the notes"
             return "\n".join(f"{identifier} Something that landed" for identifier in landed)
         return ""
 
@@ -2891,6 +2898,17 @@ def test_a_cut_whose_fork_point_is_unreadable_declines_rather_than_reading_as_em
     assert window.version == "0.3.8"
     assert window.landed == ()
     assert "no readable history" in window.declined
+
+
+def test_a_cut_whose_notes_no_commit_reads_as_adding_declines() -> None:
+    """`PL-C0C0`: the window is measured from that commit, so without one it is not measured."""
+    window = cut_window(
+        ROOT, runner=_cut_window_runner(added=("docs/releases/v0.3.8.md",), written="")
+    )
+
+    assert window.version == "0.3.8"
+    assert window.landed == ()
+    assert "docs/releases/v0.3.8.md" in window.declined
 
 
 # `filed_with_work`: the shape `PL-3CBS`'s landed-work advisory cannot reach -

@@ -2475,6 +2475,34 @@ def test_absorbing_after_the_notes_are_written_folds_the_new_work_in(
 
 
 @pytest.mark.usefixtures("_no_session")
+def test_merging_the_base_in_leaves_the_newcomer_reported_until_the_re_cut_names_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-C0C0`: measured from the merge-base, the window closed at the merge.
+
+    That merge is the absorb route's first step and what `update-armed.yml`
+    does to an armed release pull request, so the newcomer went unreported with
+    the route half taken and the notes still naming nothing of it.
+    """
+    repo = _unmerged_cut(tmp_path)
+    repo.git("checkout", "-q", "main")
+    repo.commit("PL-N3W1: close it", when=TRAIN_T0 + timedelta(minutes=45), files=NEWCOMER)
+    repo.git("checkout", "-q", "claude/pl-tr4n-cut")
+    repo.git("merge", "-q", "--no-edit", "main", when=TRAIN_T0 + timedelta(minutes=60))
+    capsys.readouterr()
+
+    repo.run("check", "--no-fetch")
+    merged = capsys.readouterr().out
+    assert "v0.2.6 is cut here and not yet merged, and the base has taken PL-N3W1 since" in merged
+
+    assert repo.run("release", "0.2.6", "--no-fetch") == 0
+    repo.commit("re-cut v0.2.6", when=TRAIN_T0 + timedelta(minutes=75))
+    capsys.readouterr()
+    repo.run("check", "--no-fetch")
+    assert "is cut here and not yet merged" not in capsys.readouterr().out
+
+
+@pytest.mark.usefixtures("_no_session")
 def test_an_unmerged_cut_is_refused_as_unmerged_rather_than_as_shipped(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
