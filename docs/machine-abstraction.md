@@ -299,6 +299,25 @@ The fields the survey's evidence admits:
 column per agent: adding an agent adds a key inside every profile, and that is
 agent-milestone work, not machine work.
 
+**`apparatus_volume_l` and the tree's `circuit_volume_l` are two quantities,
+not two names for one** (project owner, 2026-09-27, ratified, over recording
+`circuit_volume_l` as the apparatus alone, `PL-HGB6`). `apparatus_volume_l` is
+the machine's half of the split under § "Three homes, and why the shipped
+constants move" below: the apparatus including its absorber and excluding the
+disposable patient circuit, which is how the survey's section (a1) records every
+figure it found. `circuit_volume_l`, the field the tree ships, is $`V_C`$ whole:
+it is the assembled total, apparatus plus patient circuit, because the model has
+one well-mixed gas compartment in front of the patient and the limbs and Y-piece
+have nowhere else to be. So a
+profile written today from Shin et al.'s figures for a Perseus A500 stores the
+with-circuit 3.3 L, never the 2.1 L apparatus figure, which would give a
+$`\tau_C = V_C/\dot V_F`$ of 31.5 s at 4 L/min where 49.5 s is right. **The
+condition is the split itself:** the two names stay distinct until item 1 moves
+the patient circuit to the run, and from then a machine profile carries
+`apparatus_volume_l` and the run supplies the rest of $`V_C`$. Writing today's
+meaning where a profile author reads it — the schema docstring, the data file
+and `docs/MODEL.md` — is `PL-TBMX`'s.
+
 ### Three homes, and why the shipped constants move
 
 The abstraction separates three things one file currently holds together.
@@ -359,14 +378,26 @@ nothing the model computes until there is a hypoxic guard to consume it.
 
 **The reference profile is a breathing system, not a machine, and stays one.**
 `reference_circle_system.json` is named for what it is. Its `circuit_volume_l`
-of 6.0 L is apparatus-plus-circuit — its own provenance notes reason about the
-sum, comparing 6.0 + 2.5 L against Targ et al.'s measured 9.86 L — and **no
-source apportions it**, so splitting it into an apparatus volume and a circuit
-volume would invent two numbers where one is recorded. It therefore keeps its
-stored figure with a declared statement that it is the sum, and real machines
-are added beside it rather than by retrofitting it into a machine it never
-claimed to be. A profile built from Shin et al.'s figures carries a true
-apparatus volume and takes its 1.2 L circuit from the run.
+of 6.0 L is the assembled total, apparatus plus patient circuit, on three
+grounds. The model has one well-mixed gas compartment in front of the patient,
+so the limbs and Y-piece can only be inside $`V_C`$, as the survey's section
+(a1) says. The file's Targ et al. note refuses the measured 9.86 L chiefly
+because that system held a reservoir bag standing in for the lung, while its
+corrugated limbs and Y-piece were part of the apparatus measured, so the note's
+"the apparatus alone" means without the lung, not without the hoses. And
+`docs/MODEL.md` sets it beside Shin et al.'s with-circuit totals, the Primus's
+5.9 L, rather than beside their apparatus figures. What the note's comparison
+adds to the stored figure before setting it against the measured 9.86 L is the
+reference adult's 2.5 L alveolar compartment, the lung, so it bears on counting
+a lung twice and says nothing about how the 6.0 L divides between apparatus and
+patient circuit. **No source apportions it**, so splitting it into an apparatus
+volume and a patient-circuit volume would invent two numbers where one is
+recorded. It therefore keeps its stored figure with a declared statement that
+it is the sum, which `PL-TBMX` writes, and real machines are added beside it
+rather than by retrofitting it into a machine it never claimed to be. A profile
+built from Shin et al.'s figures carries a true apparatus volume once the split
+lands and takes its 1.2 L patient circuit from the run; until then it stores
+the with-circuit total, as the paragraph under the schema table says.
 
 **`max_delivered_concentration_percent` is mislocated today**, and the survey
 proves it rather than arguing it: desflurane's 18% is the calibrated maximum of
@@ -418,7 +449,8 @@ delivers it, and the argument is short because the footprint is small.
 quantities**, because those three are its entire reach into the model. Each
 resolves to declared fields:
 
-- $`V_C`$ — `apparatus_volume_l` plus the run's circuit volume;
+- $`V_C`$ — `apparatus_volume_l` plus the run's patient-circuit volume (today,
+  the assembled `circuit_volume_l`);
 - $`\dot m_{\mathrm{in}}`$ — the `delivery` strategy and the fields it declares;
 - $`\dot m_{\mathrm{out}}`$ — the `removal` strategy, `sample_gas_flow_l_min`.
 
@@ -490,17 +522,19 @@ later.
 
 **Show the archetype in the running interface; attach the trade name to the
 parameter set.** The machine chooser and the dashboard name a machine by what
-the model represents — "circle system · 3.3 L apparatus · variable-bypass
-vaporizer" — and the trade name appears in the machine's own panel, beside its
-parameters, its sources and its `not_modelled` list. The trade name becomes a
-citation rather than a claim.
+the model represents —
+"circle system · 3.3 L with patient circuit · variable-bypass vaporizer" — and
+the trade name appears in the machine's own panel, beside its parameters, its
+sources and its `not_modelled` list. The trade name becomes a citation rather
+than a claim.
 
 Three facts decide it, and none is a matter of taste:
 
 1. **The model reproduces a known-incomplete subset, and the survey measured
    the shortfall.** Shin et al. found the Perseus A500 and Zeus IE
-   indistinguishable on apparatus volume — 3.3 L against 3.2 L, time constants
-   of 6.6 against 6.4 min at 0.5 L/min — and still significantly different in
+   indistinguishable on volume — 2.1 L against 2.0 L of apparatus, 3.3 L
+   against 3.2 L with the 1.2 L patient circuit, time constants of 6.6 against
+   6.4 min at 0.5 L/min — and still significantly different in
    time to target, attributing the residue to inlet position, decoupling,
    ventilator drive and delivery mode. Every one of those is in this model's
    `not_modelled` list.

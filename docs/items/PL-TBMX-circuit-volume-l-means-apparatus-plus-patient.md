@@ -3,16 +3,65 @@ id: PL-TBMX
 title: circuit_volume_l means apparatus plus patient circuit, so a real machine profile storing a published apparatus figure would understate the circuit time constant by about 40%
 priority: P1
 effort: S
-status: dropped
+status: ready
 classes: safety, anticipated
 feature: machine-profile-framework
 touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md
 added: 2026-09-20
-closed: 2026-09-20
-reason: Premise refuted the same day by the audit's own adversarial verifier and confirmed against the source: the shipped profile states 'This file's circuit_volume_l is the apparatus alone, with the patient modelled separately in data/patients/reference_adult.json', so a real profile storing a published apparatus figure is correct rather than wrong and no circuit time constant is understated. The 6.0 + 2.5 L sum this item reasoned from is apparatus plus the reference adult's ALVEOLAR compartment, not apparatus plus a patient breathing circuit. The genuine finding underneath it - that docs/machine-abstraction.md says the opposite of the data file about what the field means - is refiled as PL-HGB6, which resolves it the other way round.
 payoff: stops the next machine profile shipping a circuit time constant about a third too short, built from a correctly-cited manufacturer apparatus figure that no check can tell from an assembled total
 verify: grep -qF 'is the assembled total, apparatus plus patient circuit' docs/MODEL.md && grep -qF 'is the assembled total, apparatus plus patient circuit' src/anesthesia_sim/core/parameters.py
 ---
+
+**Reopened 2026-09-27 as a `ready` `P1`: the refutation it was dropped on was
+itself the misreading** (project owner, 2026-09-27, ratified, over building
+`PL-HGB6` as written and leaving this item dropped; the machine-profile chain's
+first thread put the choice on a card, recommending this option, and the owner
+picked it at 20:05Z). It was dropped on 2026-09-20 because the shipped profile
+states "This file's `circuit_volume_l` is the apparatus alone". That sentence
+sits in `reference_circle_system.json`'s Targ et al. note, which contrasts the
+stored volume with Targ's measured system plus the latex bag that stood in for
+the lung, and Targ's corrugated limbs and Y-piece were part of the apparatus
+measured. So there "the apparatus alone" means without the lung, not without the
+patient circuit, and the model's one gas compartment in front of the patient
+leaves the limbs nowhere else to be. `docs/machine-survey.md` § "(a1) Apparatus
+gas volume" and `docs/MODEL.md` ("What real workstations hold") already read the
+field that way. `PL-HGB6` was re-scoped the same day to keep the assembled-total
+meaning in `docs/machine-abstraction.md` rather than reverse it, and this item
+joined v0.6.0's frozen gate list as a post-freeze `safety` entry in the product
+lane.
+
+The dropped `reason:` read, in full: "Premise refuted the same day by the
+audit's own adversarial verifier and confirmed against the source: the shipped
+profile states 'This file's circuit_volume_l is the apparatus alone, with the
+patient modelled separately in data/patients/reference_adult.json', so a real
+profile storing a published apparatus figure is correct rather than wrong and no
+circuit time constant is understated. The 6.0 + 2.5 L sum this item reasoned
+from is apparatus plus the reference adult's ALVEOLAR compartment, not apparatus
+plus a patient breathing circuit. The genuine finding underneath it - that
+docs/machine-abstraction.md says the opposite of the data file about what the
+field means - is refiled as PL-HGB6, which resolves it the other way round." Its
+second sentence is right and its first is the misreading.
+
+**Two things the work below owes because of that history**, both inside the
+three places the fix already names:
+
+- **The data-file edit rewords the Targ note's "the apparatus alone"** to say
+  what it excludes (the lung the bag simulated) as well as what it includes (the
+  limbs and Y-piece), since that phrase is the one the 2026-09-20 audit misread
+  and the next reader will meet it first.
+- **"What makes it not live today" below leans on the note's 6.0 + 2.5 L
+  comparison as the file treating its figure "as a declared sum".** It is not:
+  the 2.5 L is the reference adult's alveolar compartment, so that comparison is
+  about counting a lung twice and says nothing about the patient circuit - the
+  same misreading `PL-HGB6` corrected in the design document. The conclusion
+  stands on other ground (nothing apportions the 6.0 L, and `docs/MODEL.md` sets
+  it beside the Primus's with-circuit 5.9 L), so the statement this item writes
+  must not repeat the 8.5 L argument as its evidence.
+
+`docs/machine-abstraction.md` now states the meaning, so the paragraph below
+saying it is recorded "in exactly one place" quotes that document's wording from
+before `PL-HGB6`. The item is `safety`-classed, so it runs on the strongest
+model in a thread of its own rather than in the machine-profile chain.
 
 **Problem.** circuit_volume_l means apparatus plus patient circuit, so a real machine profile storing a published apparatus figure would understate the circuit time constant by about 40%
 
