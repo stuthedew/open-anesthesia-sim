@@ -25,7 +25,12 @@ from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidatorState,
 )
 from anesthesia_sim.core.alveolar import AlveolarCompartment, AlveolarCompartmentState
-from anesthesia_sim.core.circuit import BreathingCircuit, BreathingCircuitState, FreshGasExchange
+from anesthesia_sim.core.circuit import (
+    TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN,
+    BreathingCircuit,
+    BreathingCircuitState,
+    FreshGasExchange,
+)
 from anesthesia_sim.core.concentration import Fraction, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
 from anesthesia_sim.core.governing_equations import (
@@ -235,6 +240,15 @@ class AgentUptakeSystem:
         a run uses comes from a cited data file (`PL-4YY1`). The alveolar
         compartment's two are passed the same way and for the same reason.
 
+        The flow is the one of them a profile may leave out, because no
+        surveyed machine publishes a startup fresh gas flow (`PL-QW19`). A run
+        built from such a profile opens at
+        `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`: a code constant rather than a
+        file value, named here rather than reached by leaving the argument
+        out, so that this path still says where its number came from. Its
+        docstring gives its authority, and a test holds it equal to the
+        shipped profile's own value and provenance row.
+
         That file's deliverable fresh gas flow range travels the same route,
         and today it is `None`: the shipped profile declares no range, because
         none was reachable for any surveyed machine, so the model's envelope
@@ -247,11 +261,16 @@ class AgentUptakeSystem:
         agent = load_agent_parameters(agent_id)
         patient_parameters = load_reference_adult_parameters()
         circuit_parameters = load_reference_circle_system_parameters()
+        opening_fresh_gas_flow_l_min = (
+            TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
+            if circuit_parameters.default_fresh_gas_flow_l_min is None
+            else circuit_parameters.default_fresh_gas_flow_l_min
+        )
 
         return cls(
             circuit=BreathingCircuit(
                 circuit_volume_l=circuit_parameters.circuit_volume_l,
-                fresh_gas_flow_l_min=circuit_parameters.default_fresh_gas_flow_l_min,
+                fresh_gas_flow_l_min=opening_fresh_gas_flow_l_min,
                 delivered_partial_pressure_fraction=(fraction_from_percent(agent.mac_percent)),
                 max_delivered_partial_pressure_fraction=(
                     fraction_from_percent(agent.max_delivered_concentration_percent)

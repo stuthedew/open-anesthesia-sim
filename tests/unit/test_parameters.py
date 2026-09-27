@@ -955,6 +955,54 @@ def test_a_machine_payload_omitting_the_range_declares_none_rather_than_unlimite
     assert machine.deliverable_fresh_gas_flow_range is None
 
 
+@pytest.mark.parametrize("silence", ("omitted", "null"))
+def test_a_machine_payload_may_state_no_default_fresh_gas_flow(silence: str) -> None:
+    """`PL-QW19`: no surveyed machine publishes a startup fresh gas flow.
+
+    So the key is optional, and leaving it out or writing `null` both read as
+    *this profile states none*. What a run opens at instead is `for_agent()`'s
+    to supply, and `tests/unit/test_circuit.py` asserts it.
+    """
+
+    payload = _valid_breathing_circuit_payload()
+    if silence == "omitted":
+        del payload["default_fresh_gas_flow_l_min"]
+    else:
+        payload["default_fresh_gas_flow_l_min"] = None
+
+    machine = parse_breathing_circuit_parameters(payload)
+
+    assert machine.default_fresh_gas_flow_l_min is None
+
+
+def test_a_misspelled_fresh_gas_flow_key_is_refused_rather_than_read_as_silence() -> None:
+    """Optional must not turn a typo into a silent fallback.
+
+    While the key was required, `fresh_gas_flow_l_min` written in its place
+    failed twice over. Now only `extra="forbid"` stands between that typo and
+    a run opening at the teaching default from a file that reads as if it set
+    2.0 L/min, so the refusal is asserted by its reason.
+    """
+
+    payload = _valid_breathing_circuit_payload()
+    del payload["default_fresh_gas_flow_l_min"]
+    payload["fresh_gas_flow_l_min"] = 2.0
+
+    with pytest.raises(SimulationConfigurationError, match="extra_forbidden"):
+        parse_breathing_circuit_parameters(payload)
+
+
+@pytest.mark.parametrize("flow", ("4.0", True, 0.0, -1.0, float("inf")))
+def test_rejects_a_machine_payload_whose_stated_flow_is_not_a_positive_number(flow: object) -> None:
+    """Optional covers leaving the flow out, not what a stated one may be."""
+
+    payload = _valid_breathing_circuit_payload()
+    payload["default_fresh_gas_flow_l_min"] = flow
+
+    with pytest.raises(SimulationConfigurationError):
+        parse_breathing_circuit_parameters(payload)
+
+
 def test_rejects_a_machine_payload_whose_declared_range_is_inverted() -> None:
     """The ordering rule has one statement, in the type that owns the invariant.
 

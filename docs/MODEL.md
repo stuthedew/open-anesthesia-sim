@@ -2604,7 +2604,15 @@ where no provenance row could reach them and changed neither value.
   enough for the machine lag to read as a distinct phase of the early rise,
   short enough to resolve within the first minutes of a teaching run. That is a
   design rationale, and the data file labels it as one rather than as a
-  measurement.
+  measurement. **It is also the flow a run opens at when a machine profile
+  states none** (`PL-QW19`): `default_fresh_gas_flow_l_min` is optional in a
+  profile, because no surveyed machine publishes a startup flow, and a run
+  built from one that omits it opens at `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`
+  in `core/circuit.py`
+  (`test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teaching_default`).
+  That fallback's authority is this rationale and not a source, and
+  `test_the_bare_circuit_defaults_match_the_shipped_machine_file` fails if the
+  constant and this row ever differ.
 
 **One measured circle-system volume is now held, and it bounds the first row
 rather than replacing it** (`PL-QBKQ`). Targ, Yasuda and Eger measured a
@@ -5167,12 +5175,16 @@ directions, and a constant that never entered one is invisible to it.
 `AlveolarCompartment` and `BreathingCircuit` both still carry their two
 figures as dataclass field defaults — `gas_volume_l: float = 2.5` and
 `alveolar_ventilation_l_min: float = 4.0` on the first,
-`circuit_volume_l: float = 6.0` and `fresh_gas_flow_l_min: float = 4.0` on the
-second. They are kept so that a unit test of one compartment's physics need
-not load package data, and they are reached by nothing else: every shipped
-path goes through `AgentUptakeSystem.for_agent()`, which reads all four from
-the two files and passes them explicitly. What makes that safe to keep is that
-neither restatement may drift.
+`circuit_volume_l: float = 6.0` and a fresh gas flow of 4.0 L/min, named
+`TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`, on the second. They are kept so that a
+unit test of one compartment's physics need not load package data, and every
+shipped path goes through `AgentUptakeSystem.for_agent()`, which reads all four
+from the two files and passes them explicitly. The flow is the one that can
+also be reached another way: since `PL-QW19` a machine profile may state no
+startup flow, and a run built from such a profile opens at the named constant,
+whose authority is the teaching-default rationale recorded with the flow's
+provenance row rather than any source. What makes all of this safe to keep is
+that neither restatement may drift.
 `test_the_bare_circuit_defaults_match_the_shipped_machine_file` (`PL-4YY1`)
 and `test_the_bare_alveolar_defaults_match_the_shipped_patient_file`
 (`PL-DJYF`) each assert the literals against the file, and

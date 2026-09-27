@@ -376,6 +376,24 @@ that range's floor and the admission rule above forbids storing it twice.
 `minimum_oxygen_flow_l_min` was not built either, on the same rule: it reaches
 nothing the model computes until there is a hypoxic guard to consume it.
 
+**Built, for the opening fresh gas flow, on 2026-09-27** (`PL-QW19`), which
+brings the tree into line with "The run owns its opening conditions" above.
+`default_fresh_gas_flow_l_min` stays on the machine profile and is **optional,
+defaulting to `None`**, read as *this profile states no startup flow* and never
+as *this machine has none*, so Question 4's refusal of an `unknown` no longer
+reaches it: a real profile states a startup flow only where a source publishes
+one, and no surveyed machine has. A run built from a profile that states none
+opens at `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` in `core/circuit.py`, the
+4.0 L/min `reference_circle_system.json` stores, whose authority is that file's
+teaching-default rationale and not any source. The file keeps its value and its
+provenance row, so nothing displayed changed, and a profile whose declared
+deliverable range excludes the fallback is refused when the run is built, as a
+stated flow outside the range would be. The object that would own all three
+opening conditions was not built, and this did not need it: the dial already
+opens at the agent's 1 MAC by convention, the patient-circuit volume stays
+inside `circuit_volume_l` until item 1's split, and the object, once built,
+subsumes the fallback without undoing it.
+
 **The reference profile is a breathing system, not a machine, and stays one.**
 `reference_circle_system.json` is named for what it is. Its `circuit_volume_l`
 of 6.0 L is the assembled total, apparatus plus patient circuit, on three
