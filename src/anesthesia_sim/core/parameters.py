@@ -214,8 +214,9 @@ class BreathingCircuitParameters:
     """Validated apparatus parameters: the breathing system, not the patient.
 
     A third kind beside `AgentParameters` and `ReferenceAdultParameters`,
-    because circuit volume and fresh gas flow belong to neither. They are
-    properties of the anesthesia machine in front of the patient, and a file
+    because circuit volume and fresh gas flow belong to neither. They describe
+    the breathing system in front of the patient - its volume, and the flow a
+    run opens at, which a profile may leave to the run (`PL-QW19`) - and a file
     that filed them under either would say something false about where they
     came from - the reference adult's eleven values are one product's default
     *patient*, and these are its default *apparatus*.

@@ -247,7 +247,7 @@ class AgentUptakeSystem:
         file value, named here rather than reached by leaving the argument
         out, so that this path still says where its number came from. Its
         docstring gives its authority, and a test holds it equal to the
-        shipped profile's own value and provenance row.
+        shipped profile's own value.
 
         That file's deliverable fresh gas flow range travels the same route,
         and today it is `None`: the shipped profile declares no range, because
