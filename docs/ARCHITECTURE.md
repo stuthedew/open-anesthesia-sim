@@ -376,8 +376,11 @@ and refuses outright on a branch. The circuit volume, applied before any state
 is, because `BreathingCircuit.set_circuit_volume` conserves agent by rewriting
 the inspired fraction and a volume set afterwards would move the branch off the
 state it opened at. The four live controls, replayed from the recorded timeline
-in the units the compartments hold, and then checked against the settings the
-trunk's own stretch carries rather than trusted. And the bookmarks, which is
+in the units the compartments hold. The rebuilt branch is then checked against
+the trunk rather than trusted — the settings the trunk's own stretch carries,
+and the agent's displayed references, since the agent and patient are re-read
+from their data files — and a refusal names each value that differs, with both
+of its values (`PL-NC62`). And the bookmarks, which is
 the opposite case to the timeline below and settles by the same test: a mark is
 a question about what is still to come, and a comparison is two managements
 answering one question, so a learner made to re-enter the marks could compare
