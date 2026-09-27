@@ -58,9 +58,10 @@ class SupportedSchemaVersions:
     meant at its own version, and a changed meaning under an unchanged key
     loads clean and is then misread. So a window whose `minimum` is below
     `current` says in `widened_because` why the older files still read
-    correctly, and one that does not say is refused at import. Raising
-    `current` alone fails loudly rather than admitting every older file by
-    default.
+    correctly, and one that gives no reason is refused at import. That checks
+    that a reason is written, not that it is right, which stays the judgment
+    of whoever reviews the bump; what it guarantees is that raising `current`
+    alone fails loudly rather than admitting every older file by default.
 
     Raises:
         SimulationConfigurationError: the minimum is above the current
@@ -364,7 +365,8 @@ def _validate_schema_version(value: object, supported: SupportedSchemaVersions) 
         )
         raise ValueError(
             f"unsupported schema_version: {value}; this build reads "
-            f"{supported.data_files} at schema_version {accepted}"
+            f"{supported.data_files} at schema_version {accepted} "
+            "(see SupportedSchemaVersions in core/parameters.py)"
         )
 
     return value

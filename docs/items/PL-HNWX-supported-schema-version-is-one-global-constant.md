@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: machine-profile-framework
-touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py, docs/MODEL.md, docs/items/PL-SSQW-decide-the-saved-workspace-file-where-it-lives.md
 added: 2026-09-20
 closed: 2026-09-27
 pr: 1212
@@ -131,8 +131,9 @@ built rather than dropped. What was built, and the calls inside it:
   `current=2`: exact equality under another name, and nothing that loaded
   before loads differently.
 - **Widening has to say why.** A window whose `minimum` is below its `current`
-  is refused at import unless `widened_because` states why the older files
-  still read correctly. The item's recommendation leaves the widening to "the
+  is refused at import unless `widened_because` gives a reason why the older
+  files still read correctly. The check is that a reason is written, not that
+  it is right; that stays the judgment of whoever reviews the bump. The item's recommendation leaves the widening to "the
   first real bump", and the brief's own design point says why that has to be a
   decision rather than a default: an older file is validated against today's
   payload, not translated into it, so a key whose meaning changed between
@@ -144,9 +145,12 @@ built rather than dropped. What was built, and the calls inside it:
   schema_version: 3; this build reads machine profiles (data/machines/) at
   schema_version 2`, and `2 to 3` once a window is wider. The
   `unsupported schema_version:` prefix is kept, so the existing agent test and
-  any search for it still find it.
+  any search for it still find it, and the message ends by pointing at
+  `SupportedSchemaVersions`, whose docstring says why the window is where it is.
 - **Docs.** `docs/MODEL.md` § "Source hierarchy" now says the version is per
   family. `docs/ARCHITECTURE.md` ("validates schema version", "an unsupported
   schema version") and `docs/machine-abstraction.md` Question 4 item 5 ("a
   `schema_version` the loader does not know") were checked and stay true as
-  written, now per family.
+  written, now per family. `PL-SSQW`'s open brief quoted the old exact-equality
+  check as the tree's only precedent, and is repaired in this commit to
+  describe the per-family window.

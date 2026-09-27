@@ -1117,7 +1117,7 @@ def test_a_machine_only_schema_bump_leaves_the_agent_files_loading(monkeypatch: 
 
     with pytest.raises(
         SimulationConfigurationError,
-        match=re.escape("agent files (data/agents/) at schema_version 2"),
+        match=re.escape("agent files (data/agents/) at schema_version 2 (see"),
     ):
         parse_agent_parameters(newer_agent)
 
@@ -1158,7 +1158,7 @@ def test_each_family_refuses_a_version_outside_its_window_and_names_itself(
         SimulationConfigurationError,
         match=re.escape(
             f"unsupported schema_version: {version}; this build reads {data_files} "
-            "at schema_version 2"
+            "at schema_version 2 (see SupportedSchemaVersions in core/parameters.py)"
         ),
     ):
         parse(payload)
@@ -1170,14 +1170,20 @@ def test_a_widened_window_names_both_of_its_ends_when_it_refuses(monkeypatch: An
     payload = _valid_breathing_circuit_payload()
     payload["schema_version"] = 4
 
-    with pytest.raises(SimulationConfigurationError, match="at schema_version 2 to 3"):
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape("machine profiles (data/machines/) at schema_version 2 to 3 (see"),
+    ):
         parse_breathing_circuit_parameters(payload)
 
 
 def test_a_schema_version_window_refuses_a_minimum_above_its_current() -> None:
     """An inverted window admits no file, which would look like a broken file."""
 
-    with pytest.raises(SimulationConfigurationError, match="minimum 3 is above current 2"):
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape("test files: schema_version minimum 3 is above current 2"),
+    ):
         SupportedSchemaVersions(data_files="test files", minimum=3, current=2)
 
 
@@ -1190,7 +1196,36 @@ def test_a_window_reading_older_versions_must_say_why_they_still_read(reason: st
     and be misread. The reason is where the author says it has not.
     """
 
-    with pytest.raises(SimulationConfigurationError, match="without widened_because"):
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape("test files: the window admits schema_version 2 to 3 without widened_"),
+    ):
         SupportedSchemaVersions(
             data_files="test files", minimum=2, current=3, widened_because=reason
         )
+
+
+def test_a_boolean_schema_version_is_refused_even_where_a_window_reads_one(
+    monkeypatch: Any,
+) -> None:
+    """JSON `true` is Python's `1`, so a window reaching down to 1 must not read it.
+
+    Exact equality with 2 refused it by accident. Once a window can widen, the
+    integer check is the only thing standing between a boolean and version 1.
+    """
+
+    monkeypatch.setattr(
+        parameters_module,
+        "AGENT_SCHEMA_VERSIONS",
+        SupportedSchemaVersions(
+            data_files="agent files (data/agents/)",
+            minimum=1,
+            current=2,
+            widened_because="test only: a version 1 that reads correctly under 2",
+        ),
+    )
+    payload = _valid_agent_payload()
+    payload["schema_version"] = True
+
+    with pytest.raises(SimulationConfigurationError, match="schema_version must be an integer"):
+        parse_agent_parameters(payload)
