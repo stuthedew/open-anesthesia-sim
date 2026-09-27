@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py, subprojects/docket/README.md, .claude/skills/docket/modes/picking.md, .claude/skills/docket/modes/triage.md
 added: 2026-09-06
 closed: 2026-09-27
+pr: 1171
 verify: grep -q 'def test_recommend_leaves_a_decision_out_unless_it_is_p0' subprojects/docket/tests/test_plan.py
 ---
 
