@@ -99,8 +99,9 @@ and item 28 has no id or version a `blocked-by` could hold. Measured on
 2026-09-27: `bin/docket wave --no-fetch` prints the same gate line on `main` at
 `19af95d` and on this item's branch after the edit, `78 cleared, 112 open - 95
 this gate can clear, 3 the milestone clears itself, 14 waiting on 5 open items
-outside it`, with `PL-0S0V`, `PL-B396`, `PL-KZ99` and `PL-VJZK` among the 95 and
-`PL-WZVZ` among the 14. The paragraph says so rather than claiming agreement,
+outside it, and on 5 open items the milestone's Required scope names`, with
+`PL-0S0V`, `PL-B396`, `PL-KZ99` and `PL-VJZK` among the 95 and `PL-WZVZ` among
+the 14, and the same again after `main` moved to `25e5711`. The paragraph says so rather than claiming agreement,
 and the gap is `PL-18BD`, filed with the decision it needs.
 
 **Done when.** `ROADMAP.md`'s v0.6.0 gate section defers the five to Gate 3:
