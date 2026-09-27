@@ -9,6 +9,7 @@ feature: late-washout-evidence
 touches: docs/MODEL.md, src/anesthesia_sim/data/patients/reference_adult.json, docs/references/README.md, docs/items/PL-YD2V-supported-run-length-and-the-validation-section.md
 added: 2026-09-26
 closed: 2026-09-27
+pr: 1164
 payoff: a learner reading the fat trace is told that the two human sources disagree about which way its fat loading errs, instead of being told one direction as settled
 verify: grep -qF 'PL-HBH2' docs/MODEL.md && grep -qF 'Yasuda' src/anesthesia_sim/data/patients/reference_adult.json
 ---
