@@ -480,9 +480,11 @@ class AgentUptakeSystem:
         the settings the compartments actually held rather than from a second
         copy kept alongside them.
 
-        Flows are converted to litres per second here, once, because that is
-        the unit `docs/MODEL.md` § "Governing equations" are written in and
-        the compartments hold the litres per minute a clinician sets.
+        Flows are passed on in the litres per minute the compartments hold,
+        which is what a clinician sets, and converted by nothing: the settings
+        derive the litres per second `docs/MODEL.md` § "Governing equations"
+        are written in, so the value a run records is the value that was set
+        (`PL-SM5V`).
         """
 
         patient = self.patient
@@ -492,16 +494,16 @@ class AgentUptakeSystem:
             circuit_volume_l=self.circuit.circuit_volume_l,
             alveolar_volume_l=self.alveoli.gas_volume_l,
             venous_volume_l=venous_blood.volume_l,
-            fresh_gas_flow_l_s=(self.circuit.fresh_gas_flow_l_min / SECONDS_PER_MINUTE),
-            alveolar_ventilation_l_s=(self.alveoli.alveolar_ventilation_l_min / SECONDS_PER_MINUTE),
-            cardiac_output_l_s=(patient.cardiac_output_l_min / SECONDS_PER_MINUTE),
+            fresh_gas_flow_l_min=self.circuit.fresh_gas_flow_l_min,
+            alveolar_ventilation_l_min=self.alveoli.alveolar_ventilation_l_min,
+            cardiac_output_l_min=patient.cardiac_output_l_min,
             blood_gas_partition_coefficient=venous_blood.blood_gas_partition_coefficient,
             delivered_partial_pressure_fraction=self.circuit.delivered_partial_pressure_fraction,
             tissues=tuple(
                 TissueGroupEquationSettings(
                     name=tissue.name,
                     volume_l=tissue.volume_l,
-                    blood_flow_l_s=(tissue.blood_flow_l_min / SECONDS_PER_MINUTE),
+                    blood_flow_l_min=tissue.blood_flow_l_min,
                     tissue_blood_partition_coefficient=tissue.tissue_blood_partition_coefficient,
                 )
                 for tissue in patient.tissues
@@ -561,11 +563,9 @@ class AgentUptakeSystem:
         settings without an entry here fails rather than reintroducing the
         stale propagator this key exists to make unrepresentable.
 
-        Flows are the litres per minute the compartments hold, where the
-        settings carry litres per second. Dividing by 60 is injective on the
-        values that reach it, so equal settings still imply an equal key; and
-        were it ever not, the error would be a rebuild that was not needed
-        rather than a reuse that was not allowed.
+        Flows are the litres per minute the compartments hold, which is what
+        the settings hold too since `PL-SM5V`, so equal settings and an equal
+        key compare the same numbers.
 
         `TissueGroupEquationSettings.name` is the one settings field with no
         entry, because `build_system_matrix()` never reads it - the group's
