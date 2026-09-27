@@ -3,11 +3,13 @@ id: PL-3LLZ
 title: Four fakes in test_vcs.py each answer the same commit-paths question, and each new git read has to be taught to all of them
 priority: P3
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: dev-tooling
 touches: subprojects/docket/tests/test_vcs.py
 added: 2026-09-13
+closed: 2026-09-27
+pr: 1177
 verify: grep -q 'def _default_run' subprojects/docket/tests/test_vcs.py && uv run pytest subprojects/docket/tests/test_vcs.py
 ---
 
@@ -47,7 +49,7 @@ changed-path read, and in this file that meant rewriting nine answers by hand:
 `_name_only`, `_runner` twice, `_files_runner`, `_cut_runner` twice,
 `_landed_runner`, `_filing_runner` and the split-pathspec test's inline fake.
 `_name_only`, extracted by `PL-J16N` for two fakes, already answered from the
-flags a read sent; the five fakes and the inline one wrote NUL themselves. And 16 fakes
+flags a read sent; the five fakes and the inline one wrote NUL themselves. And 15 fakes
 still pass their arguments through `_bare`, which strips the
 `-c core.quotePath=false` prefix `PL-PVW2` stopped sending, so it is a no-op in
 every one.
@@ -75,3 +77,13 @@ override what its own tests turn on; the suite passes unchanged; and no fake
 answers a question whose answer its tests never considered - which is the failure
 this consolidation risks and the reason it is worth doing only for reads whose
 answer is genuinely uniform.
+
+**Built, 2026-09-27.** Of the file's 33 fakes, 19 now end in `_default_run`;
+the rest raise on an unexpected read (2), answer `SILENT` (1), run real git (3),
+hand off to another fake (7), or are the split-pathspec test's inline fake,
+which answers one read and prints it through `_numstat`. No test's expectation
+changed: `test_vcs.py` passes its 241 tests, and the formatters' docstrings
+carry the shapes as git 2.43.0 printed them in a scratch repository. Two
+literal NULs are left, deliberately: `since_filed`'s `--name-status` walk,
+which one test writes and no other fake prints, and `_commits`, which is
+already the one place its `--left-right` format is printed.
