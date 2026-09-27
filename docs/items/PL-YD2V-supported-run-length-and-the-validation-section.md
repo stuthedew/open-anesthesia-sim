@@ -3,11 +3,12 @@ id: PL-YD2V
 title: Supported run length and the validation section's caveat 4 bound the slow tail on metabolism and fat flow alone, but the fourth compartment this model lacks is the largest term in Yasuda 1991's measured washouts from about hour 2-3 to hour 21-29, inside the 24 h envelope, and neither passage says so
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, docs
 feature: late-washout-evidence
-touches: docs/MODEL.md, docs/items/PL-KK1Q-compare-this-model-s-washout-over-the-first-24.md
+touches: docs/MODEL.md, docs/items/PL-KK1Q-compare-this-model-s-washout-over-the-first-24.md, tests/reference/test_published_wash_in_and_elimination.py, src/anesthesia_sim/core/supported_ranges.py
 added: 2026-09-26
+closed: 2026-09-27
 payoff: a reader of Supported run length learns that the washout tail lacks its largest measured term from about the third hour, not only past the 24-hour boundary
 verify: grep -qF 'PL-YD2V' docs/MODEL.md
 ---
@@ -88,3 +89,39 @@ out, so nothing is re-derived:
   line on what a learner would see change (nothing on screen; the run-length
   rationale names the missing compartment); `bin/docket record N` after it
   opens; `bin/docket verify --self PL-YD2V` to `ACCEPT`.
+
+**Closed 2026-09-27.** What changed, and where:
+
+- § "Supported run length": the fat-flow clause of "What bounds it is what
+  this model omits" now carries `PL-HBH2`'s two-sided reading, and a new
+  paragraph after it says the tail inside the boundary is already missing its
+  largest measured term - the fourth compartment, largest in the measured
+  washout from about 1.8-3.1 h after a 30-minute administration until about
+  20.7-29.4 h - that a tail without it falls faster from about the third hour,
+  that how much is `PL-KK1Q`'s measurement, and that the 24 hours certifies
+  nothing about the late tail inside it.
+- Caveat 4 of § "Published wash-in and elimination validation test": its
+  italic lead names both omissions; the body carries the two-sided fat reading
+  and the fourth compartment's hours, and says the gap over those hours
+  belongs to a measurement recorded beside the gate (`PL-KK1Q`), not to the
+  gate, so caveat 4's refusal of the multi-day curves stands.
+- § "Known limitations": the "two omissions" paragraph now says which bound
+  the run length (metabolism; the fat flow on its depot reading) and which the
+  tail inside it (the fourth compartment from about hour 2-3; the fat flow
+  either way, as an uncertainty of up to about a factor of two in the fat
+  trace's loading).
+- Two mirrors kept in step, declared in `touches`: the same caveat 4 in the
+  module docstring of `tests/reference/test_published_wash_in_and_elimination.py`,
+  and the run-length comment in `src/anesthesia_sim/core/supported_ranges.py`,
+  which still restated the one-sided fat reading `PL-HBH2` retired. Neither
+  changes behaviour.
+- "About one part in twenty of what remains" at five minutes, as caveat 4 now
+  says: on the mean hybrid coefficients in `PL-KK1Q`'s brief, the fourth
+  compartment's term at t = 5 min, $`A_4 e^{-5/\tau_4}`$, is 0.709, 1.282,
+  0.762 and 1.113 (x100) against the sum of all five terms 19.4, 24.3, 14.7
+  and 22.8, so 3.7%, 5.3%, 5.2% and 4.9% for sevoflurane and isoflurane
+  (*Anesth Analg*) and desflurane and isoflurane (*Anesthesiology*). The
+  crossing hours were re-derived the same way in this thread (3.1, 3.0, 1.8,
+  2.7 h and 29.4, 28.7, 20.7, 27.5 h) and match the note.
+- The 24 hours did not move. Whether it should is `PL-KK1Q`'s to raise, and
+  its brief already says so.

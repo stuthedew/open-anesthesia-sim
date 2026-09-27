@@ -3848,18 +3848,32 @@ transfers to whatever `PL-N092` writes in its place.
    deviations per cohort. Any statement that this model eliminates more slowly
    than these volunteers did has to carry it, because most of that difference
    is a rebreathing circuit rather than a patient.
-4. *This model has no metabolism, which is why five minutes is the limit.*
+4. *This model has no metabolism, and nothing on the scale of the fourth
+   compartment human washout needs; five minutes is inside what both allow.*
    Over five minutes of elimination metabolism is negligible for all three
    shipped agents, and the papers bound it themselves: recovery — agent
    recovered during elimination over agent taken up — was 101 ± 7% for
    sevoflurane and 101 ± 6% for isoflurane in the first study, and 105 ± 25%
    for desflurane and 102 ± 13% for isoflurane in the second, against 64 ± 9%
-   for halothane, which is the same method detecting a metabolized agent.
-   Both papers also report multi-day elimination curves, and those must not
-   be added to this comparison: over days the missing metabolism is no longer
-   negligible, and neither is the fat group's flow, which "Known limitations"
-   records as about twice the reachable resting measurement and therefore
-   acting directly on the slow tail of washout.
+   for halothane, which is the same method detecting a metabolized agent. Both
+   papers also report multi-day elimination curves, and those must not be added
+   to this comparison: over days the missing metabolism is no longer
+   negligible, and neither is the fat group's flow, which § "Known limitations"
+   weighs against two human sources that disagree about its direction — about
+   twice a resting depot measurement, at or a little below what the same
+   papers' washout fits imply — and which acts on the slow tail of washout
+   either way (`PL-HBH2`). The measured tail leaves what this model can follow
+   long before days, though, and inside the 24 hours a run is supported for
+   (`PL-YD2V`): every washout these papers fitted needed a fourth compartment
+   between muscle and fat, which this model has no counterpart for, and on the
+   published mean coefficients its term is the largest in the measured curve
+   from about 1.8 to 3.1 hours after the 30-minute administration until about
+   20.7 to 29.4 hours (the intertissue-diffusion note under § "Known
+   limitations"). At five minutes that term is about one part in twenty of what
+   remains; from about the third hour it is the largest term there is. A
+   comparison carried into those hours would measure an omission rather than a
+   parameter, so the gap over those hours belongs to a measurement recorded
+   beside this gate (`PL-KK1Q`), not to the gate.
 
 **How sharp a gate this is, measured rather than assumed.** The discriminating
 power was re-measured on 2026-09-06 with the elimination point included, by
@@ -4767,14 +4781,33 @@ boundary is the claim that the solution stands for a patient.
 **What bounds it is what this model omits.** Metabolism, first of all.
 § "Known limitations" records that this model has none, and § "Published
 wash-in and elimination validation test" already draws the consequence: it
-compares against five
-minutes of elimination and explicitly refuses the two Yasuda papers' own
-multi-day curves, because *over days the missing metabolism is no longer
-negligible, and neither is the fat group's flow* — which the same section
-records as about twice the reachable resting measurement, acting directly on
-the slow tail of washout. A run beyond this boundary is therefore displaying
-a trace whose slow component is increasingly the two omissions rather than
-the model.
+compares against five minutes of elimination and explicitly refuses the two
+Yasuda papers' own multi-day curves, because *over days the missing
+metabolism is no longer negligible, and neither is the fat group's flow*. The
+flow is the second omission, and the two human sources § "Known limitations"
+weighs do not agree about which way it errs: a resting depot measurement puts
+the stored figure at about twice the truth, the same papers' washout fits put
+it at or a little below, and either way it acts directly on the slow tail of
+washout (`PL-HBH2`). A run beyond this boundary is therefore displaying a
+trace whose slow component is increasingly the two omissions rather than the
+model.
+
+**Inside the boundary the tail is already missing its largest measured term,
+and the number does not say otherwise** (`PL-YD2V`). Every washout the two
+Yasuda papers fitted needed five compartments, and the fourth — read by their
+authors as fat filled by diffusion from the well-perfused tissue lying against
+it, a route this model has no counterpart for — carries the largest term in
+the measured curve from about 1.8 to 3.1 hours after a 30-minute
+administration until about 20.7 to 29.4 hours, most of the span a run is
+supported for; the intertissue-diffusion note under § "Known limitations"
+has the coefficients and the arithmetic. All else equal, a tail without that
+store falls faster than the measured one from about the third hour of
+elimination. How much faster, and from which hour, is unmeasured, because
+this model meets human washout only at five minutes; `PL-KK1Q` is that
+measurement, and whether its result should move the 24 hours is its to
+raise. So the number is argued against the two omissions above growing past
+negligible over the span, and it certifies nothing about how close the late
+tail runs to a measured washout inside it.
 
 Sevoflurane is the binding agent: 2% to 5% of the absorbed dose is
 metabolized, against far less for isoflurane and desflurane, and metabolism
@@ -8345,12 +8378,25 @@ equipotent to that precision. The interface displays the divisor for exactly
 this reason. Moving all parameters to primary sources is `ROADMAP.md`'s
 planned-milestone item 31.
 
-**The two omissions above are what bound the supported run length.** Metabolism
-and the fat group's flow are both negligible over a case and neither is
+**Two omissions bound the supported run length, and a third bounds the tail
+inside it** (`PL-YD2V`). Metabolism, in the list above, and the fat group's
+flow, in the note below, are both negligible over a case and neither is
 negligible over days, which is why a run is supported to 24 hours and the step
 past it is refused rather than taken. "Supported run length" argues the number
 and gives the measured extent of sevoflurane's metabolism; a longer run is not
 merely unvalidated but increasingly a display of what this model leaves out.
+The flow counts against the number on its depot reading, the one on which the
+stored figure runs about twice high; on the washout reading it sits at or a
+little low, and the note leaves the direction unsettled, so inside the span
+what it does to the tail is an uncertainty of up to about a factor of two in
+the fat trace's loading rather than a bias one way. The intertissue-diffusion
+note after it is the third: the fourth compartment human
+washout needs and this model lacks carries the largest term in the measured
+curve from about hour 2-3 of elimination to about hour 21-29, so inside the
+supported span the tail is already missing its largest measured component
+and, all else equal, falls faster than the measurement from about the third
+hour. Neither moves the 24 hours by itself; whether the measured gap should is
+`PL-KK1Q`'s to raise.
 
 **The fat group's flow is twice a resting depot measurement and where human
 washout fits put it, and the two human sources do not agree about which way
