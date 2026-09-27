@@ -45,3 +45,21 @@ open item whose command already passes, which is exactly the accusation
 the translation appearing in `pyproject.toml`, whose `[tool.uv]` table already
 exists at line 119 and which `PL-0MLZ` independently reads as the cheapest
 carrier. Re-point it if the work chooses `uv.toml` or `.env` instead.
+
+**Note 2026-09-27, from `PL-VZYS`'s design round: the carrier the paragraph
+above names does not exist.** uv 0.12.19's `[tool.uv]` table has no `env` or
+`env-file` field - the `Options` struct in uv's `uv-settings` crate at tag
+0.12.19 carries neither, and `uv sync` on a `pyproject.toml` declaring one
+warns "unknown field" and applies nothing. `uv.toml` reads the same struct, so
+it is not a route either. `.env` is read only when `uv run --env-file` or
+`UV_ENV_FILE` asks for it, which is the entry-point shape this item was filed
+to escape. So `grep -q 'UV_SYSTEM_CERTS' pyproject.toml` can pass only on a
+line that does nothing, and no route inside the repository quiets a bare `uv
+run`: the variable is exported by the container before any file here is read.
+Recommendation: the translation belongs where the export is - the environment's
+own variable renamed from `UV_NATIVE_TLS` to `UV_SYSTEM_CERTS`, which is a
+setting of the Claude Code environment that only the project owner can change,
+outside any checkout - with the Makefile block kept until a fresh container is measured
+quiet, and the `verify:` re-pointed at that measurement rather than at a
+`pyproject.toml` line. `PL-VZYS` § "Design round 2026-09-27" carries the source
+reads.
