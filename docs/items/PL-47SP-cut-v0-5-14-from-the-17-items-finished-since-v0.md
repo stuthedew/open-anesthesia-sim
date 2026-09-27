@@ -3,12 +3,14 @@ id: PL-47SP
 title: Cut v0.5.14 from the 17 items finished since v0.5.13
 priority: P2
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 resource: release-train
 added: 2026-09-27
+closed: 2026-09-27
+pr: 1156
 payoff: the 17 items finished since v0.5.13 ship under their own number and stop being re-offered in every session digest
 verify: grep -q "^version = \"0.5.14\"" pyproject.toml
 ---
@@ -40,3 +42,11 @@ milestone. What did move is `docs/MODEL.md`, +210 lines of prose from
 `PL-WMCJ` and `PL-FBY3`: intertissue diffusion is now a named assumption and
 known limitation, with the direction it biases the fat compartment, which is a
 statement about the model rather than a change to it.
+
+**Cut 2026-09-27, at 17 items**, with `make release VERSION=0.5.14`. The
+project owner asked mid-cut for `main` to be refreshed; the fetch found it
+still at `a264cfcb` (`#1153`), the tip the cut was taken from, so nothing was
+left to absorb. The ROADMAP.md row, its `current baseline` mark and the
+baseline section are written by hand. `tools/pr_body_check.py` found no
+squash commit that lost its body, and no closure among the 17 merged inside
+v0.5.13's tag, so v0.5.13's notes owe no pointer.
