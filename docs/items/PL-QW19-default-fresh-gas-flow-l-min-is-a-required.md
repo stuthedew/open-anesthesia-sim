@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, anticipated
 feature: machine-profile-framework
+milestone: v0.5.17
 touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_circuit.py, tests/unit/test_parameters.py, docs/machine-abstraction.md, docs/MODEL.md, docs/machine-survey.md
 added: 2026-09-20
 closed: 2026-09-27

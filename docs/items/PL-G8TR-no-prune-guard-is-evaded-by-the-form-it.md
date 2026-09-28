@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.5.17
 touches: .claude/hooks/no-prune-guard.sh, .claude/hooks/shell_split.py, tests/unit/test_no_prune_guard.py, .claude/skills/docket/modes/capture.md
 added: 2026-09-06
 closed: 2026-09-27

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: machine-profile-framework
+milestone: v0.5.17
 touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py, docs/MODEL.md, docs/items/PL-SSQW-decide-the-saved-workspace-file-where-it-lives.md
 added: 2026-09-20
 closed: 2026-09-27
