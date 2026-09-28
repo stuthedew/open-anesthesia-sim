@@ -118,3 +118,26 @@ Measured on one 4-vCPU machine, cold, `-n 8 --cov=anesthesia_sim.core
 - Every timing run also failed the two `--discover` tests in
   `tests/unit/test_pr_title_check.py`, a fault of the scratch clone's
   local-path `origin` rather than of this change (`PL-Y4NS`).
+
+**CI after the merge, 2026-09-28.** This is the pytest step of `quality.yml`'s
+`checks` job on its own, which the table above could not show. It comes from
+the Actions API, for every successful run created 2026-09-26 to 2026-09-27
+23:52 UTC, leaving out this item's own branch. The same tree takes about 1.3x
+as long on some runners as on others. `mypy`'s step time tracks pytest's, so it
+sorts the runners: fast ones took 5 s or less over `mypy`, slow ones 7 s or
+more. Medians, runs in brackets:
+
+| pytest step | Before `PL-KK1Q` | File, per-process cache | This fix |
+| --- | ---: | ---: | ---: |
+| Fast runners | 144 s (9) | 259 s (9) | 169 s (2) |
+| Slow runners | 189 s (13) | 359 s (13) | 280 s (8) |
+| Every run, unsorted | 180 s (528) | 344 s (112) | 279 s (11) |
+
+- The fix took 90 s off the step on fast runners and 79 s on slow ones, which
+  is the minute and a half the payoff claims.
+- Over no file at all, the file still costs about 25 s on a fast runner and 91
+  s on a slow one. On slow runners most of that is one tail at the end of the
+  run: the curves start late, because the file sits 522 tests deep in the first
+  worker's slice. `PL-4Z5Y` has the mechanism and the options.
+- The unsorted row after the fix is 8 slow runners out of 11, so it overstates
+  what the file costs. Read the sorted rows.
