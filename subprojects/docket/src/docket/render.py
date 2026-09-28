@@ -21,6 +21,7 @@ from .checks import (
     STATUS_REQUIREMENTS,
     Report,
     SettingsSource,
+    answers_generator_check,
     brief_gaps,
 )
 from .claims import CLAIM, DISPOSITION, LEASE_TERM, LIVE, NAMED, Hold, Holdings, Unclaimed
@@ -37,6 +38,7 @@ from .model import (
     PRIORITIES,
     SELECTABLE_LANES,
     Item,
+    is_under,
     live_recurrences,
     recurrence_count,
     recurrences_of,
@@ -2454,6 +2456,10 @@ def format_triage(
     does under `show`: the marks are drawn from the refs this checkout could
     read, and silence about the ones it could not presents a partial reading
     as a complete one.
+
+    Which items owe a Generator check is mechanical as well - a `touches` path
+    under `workflow_paths`, whatever the lane - so it is marked here, where the
+    `docket` skill asks the question; `_generator_check` has the rule.
     """
     if not report.untriaged:
         return "Nothing is untriaged."
@@ -2498,6 +2504,7 @@ def format_triage(
         declared = _declared(item)
         if declared:
             lines.append(f"  declared: {declared}")
+        lines.extend(_generator_check(item, config.workflow_paths))
         lines.append("")
         lines.extend(
             f"    {line}" if line.strip() else "" for line in item.body.strip().splitlines()
@@ -2568,6 +2575,43 @@ def _declared(item: Item) -> str:
     if item.feature:
         parts.append(f"feature {item.feature}")
     return "; ".join(parts)
+
+
+def _generator_check(item: Item, workflow_paths: tuple[str, ...]) -> list[str]:
+    """Whether a capture owes the question of where it came from, read off its paths.
+
+    Keyed on a `touches` path under `workflow_paths`, never on the lane. The
+    lane says which session can make the change whole, so a capture reaching
+    both halves is `crossing` there and apparatus inflow all the same: keyed on
+    the workflow lane, such a capture was never asked, and a generator reached
+    through one was queued rather than found (`PL-4NZ7`).
+
+    Capture leaves `touches` unset more often than not - twelve of the
+    twenty-two untriaged on 2026-09-28 - so that case says it cannot tell yet
+    rather than falling silent, which would read as "not owed". A brief already
+    carrying the line is answered, and is not asked again.
+
+    With no `workflow_paths` declared there is no apparatus to key on, and
+    nothing is said, as `Item.lane` places nothing there either.
+    """
+    if not workflow_paths:
+        return []
+    if not item.touches:
+        return [
+            "  Generator check: undecided until `touches` is set - owed if any path it",
+            "  names is under workflow_paths.",
+        ]
+    apparatus = [path for path in item.touches if is_under(path, workflow_paths)]
+    if not apparatus:
+        return []
+    shown = ", ".join(apparatus[:3])
+    if len(apparatus) > 3:
+        shown += f", and {len(apparatus) - 3} more"
+    if answers_generator_check(item.body):
+        return [f"  Generator check answered in the brief; it touches {shown}."]
+    return [
+        f"  Owes a Generator check, whatever its lane: it touches {shown}, under workflow_paths."
+    ]
 
 
 def _triage_rules(report: Report, config: Config) -> list[str]:

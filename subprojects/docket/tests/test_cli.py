@@ -2617,6 +2617,78 @@ def test_triage_decides_nothing_and_writes_nothing(
     assert "priority: " not in capsys.readouterr().out
 
 
+WORKFLOW_TOOLS = '[docket]\nworkflow_paths = ["tools"]\n'
+
+CROSSING = """---
+id: PL-C1C1
+title: A tool and the simulator code it reads disagree
+status: untriaged
+touches: tools/check.py, src/model.py
+added: 2026-08-20
+---
+
+**Problem.** The check reads a constant the model renamed.
+"""
+
+SIMULATOR_ONLY = """---
+id: PL-S3S3
+title: The model rounds a concentration too early
+status: untriaged
+touches: src/model.py
+added: 2026-08-20
+---
+
+**Problem.** A displayed value loses a significant figure.
+"""
+
+
+def test_triage_marks_a_crossing_item_as_owing_a_generator_check(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-4NZ7`: keyed on the workflow lane, a capture reaching both halves was never asked.
+
+    `triage.md` asked where an item came from only of one triaged into the
+    workflow lane, and an item touching a tool and the simulator is `crossing`.
+    The mark keys on the apparatus path instead and names only that path, so
+    the simulator-only capture beside it is not asked.
+    """
+    _triage(tmp_path, CROSSING, SIMULATOR_ONLY, config=WORKFLOW_TOOLS)
+    output = capsys.readouterr().out
+
+    assert "Owes a Generator check, whatever its lane: it touches tools/check.py," in output
+    assert output.count("Owes a Generator check") == 1
+
+
+def test_triage_says_a_generator_check_waits_on_touches_capture_left_unset(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Silence would read as "not owed" about an item nobody has placed yet."""
+    _triage(tmp_path, UNTRIAGED, config=WORKFLOW_TOOLS)
+
+    assert "Generator check: undecided until `touches` is set" in capsys.readouterr().out
+
+
+def test_triage_does_not_ask_again_where_the_brief_answers_the_generator_check(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    answered = CROSSING.replace(
+        "renamed.\n", "renamed.\n\n**Generator check.** A one-off: the rename was asked for.\n"
+    )
+    _triage(tmp_path, answered, config=WORKFLOW_TOOLS)
+    output = capsys.readouterr().out
+
+    assert "Generator check answered in the brief; it touches tools/check.py." in output
+    assert "Owes a Generator check" not in output
+
+
+def test_triage_asks_no_generator_check_where_no_workflow_paths_are_declared(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _triage(tmp_path, UNTRIAGED, CROSSING)
+
+    assert "Generator check" not in capsys.readouterr().out
+
+
 def _featured(identifier: str, status: str, **extra: str) -> str:
     """One item carrying a feature, at the status a progress listing has to draw."""
     fields = {
