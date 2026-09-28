@@ -10,6 +10,7 @@ touches: .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/ch
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-28 triage pass
 added: 2026-09-27
 closed: 2026-09-28
+pr: 1224
 payoff: every capture touching an apparatus path is asked where it came from, so a generator reached through a crossing item is found instead of queued
 verify: grep -q 'def test_triage_marks_a_crossing_item_as_owing_a_generator_check' subprojects/docket/tests/test_cli.py
 impairs-generators: render.format_triage marks no untriaged item as owing a Generator check, and triage.md keys that check on Item.lane being workflow, so an apparatus-generated capture that also touches a simulator path is never asked where it came from
