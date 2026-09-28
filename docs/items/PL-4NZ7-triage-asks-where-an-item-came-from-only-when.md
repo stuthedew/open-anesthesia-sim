@@ -5,6 +5,7 @@ priority: P1
 effort: S
 status: ready
 classes: defect
+feature: generator-identification
 touches: .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-28 triage pass
 added: 2026-09-27

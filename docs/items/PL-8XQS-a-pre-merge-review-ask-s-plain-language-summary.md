@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: docs
+feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-27
 payoff: every pre-merge read the owner is asked for opens with a plain-language summary, whichever session asks

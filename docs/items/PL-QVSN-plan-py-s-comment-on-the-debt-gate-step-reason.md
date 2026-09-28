@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: docs
+feature: planning-cadence
 touches: subprojects/docket/src/docket/plan.py
 added: 2026-09-27
 payoff: the comment a maintainer checks before changing the debt-gate line argues from the rule the roadmap states now
