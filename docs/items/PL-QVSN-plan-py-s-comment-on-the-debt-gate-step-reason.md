@@ -1,8 +1,15 @@
 ---
 id: PL-QVSN
 title: plan.py's comment on the debt-gate step reason cites ROADMAP.md's cadence as shipping cleared gate work inside the gated milestone rather than the patch track, which PL-LPH9 reversed on 2026-09-27, so the comment's rationale now argues from a rule the roadmap no longer states
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+feature: planning-cadence
+touches: subprojects/docket/src/docket/plan.py
 added: 2026-09-27
+payoff: the comment a maintainer checks before changing the debt-gate line argues from the rule the roadmap states now
+verify: ! grep -qF 'has cleared gate work ship inside the milestone' subprojects/docket/src/docket/plan.py
 ---
 
 **Problem.** plan.py's comment on the debt-gate step reason cites ROADMAP.md's cadence as shipping cleared gate work inside the gated milestone rather than the patch track, which PL-LPH9 reversed on 2026-09-27, so the comment's rationale now argues from a rule the roadmap no longer states
@@ -25,3 +32,13 @@ work ships, which is now the patch track, rather than from which milestone the
 gate is recorded under, which is what the line actually names. Found by the
 `PL-LPH9` build thread while sweeping for other statements of the old rule; not
 fixed there because the file is outside that item's `touches`.
+
+**Why it matters.** The comment is what a maintainer reads before changing that
+line, and it argues from a rule `ROADMAP.md` no longer states; no output changes.
+
+**Done when.** The comment argues from which milestone the gate is recorded
+under, which is what the printed line names.
+
+**Generator check.** An instance of `PL-G424`'s fact (a comment restating a
+document's rule) in prose its 2026-09-19 decision left open (not a citation); found by `PL-LPH9`'s own sweep and filed
+because `plan.py` was outside that item's `touches`. A one-off.
