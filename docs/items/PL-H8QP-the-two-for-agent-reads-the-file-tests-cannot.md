@@ -1,10 +1,15 @@
 ---
 id: PL-H8QP
 title: The two for_agent reads-the-file tests cannot fail when for_agent() stops reading a data file, because the core defaults equal the files' values, so docs/MODEL.md's claim that they catch it holds only for the fresh gas flow
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: safety, test
 feature: machine-profile-framework
 touches: tests/unit/test_circuit.py, tests/unit/test_alveolar.py, docs/MODEL.md
 added: 2026-09-27
+payoff: a change that stops for_agent() reading the circuit volume or the alveolar values fails a test instead of passing on matching defaults
+verify: grep -q 'def test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume' tests/unit/test_circuit.py && grep -q 'def test_for_agent_builds_the_alveoli_at_changed_patient_file_values' tests/unit/test_alveolar.py
 ---
 
 **Problem.** The two for_agent reads-the-file tests cannot fail when for_agent() stops reading a data file, because the core defaults equal the files' values, so docs/MODEL.md's claim that they catch it holds only for the fresh gas flow
@@ -36,3 +41,14 @@ other than 2.5 L and 4.0 L/min), hand it to `for_agent()` by replacing the
 loader it calls (`monkeypatch.setattr(uptake_system, ...)`, as
 `tests/integration/test_controller.py` already does), and assert the run
 carries the changed value. Then restore the paragraph's claim for all four.
+
+**Reproduced 2026-09-28, in part.** `BreathingCircuit.circuit_volume_l`
+defaults to 6.0 (`core/circuit.py`) and
+`AlveolarCompartment.alveolar_ventilation_l_min` to 4.0 (`core/alveolar.py`),
+the values the brief gives for the shipped files; the mutation run is the
+reviewer's.
+
+**Done when.** A test per file builds a run from a parsed file whose value
+differs from the core default - a circuit volume of 3.3 L; an alveolar volume
+and ventilation other than 2.5 L and 4.0 L/min - and asserts the run carries it,
+and `docs/MODEL.md`'s paragraph claims the guarantee for all four values again.

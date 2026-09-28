@@ -1,8 +1,15 @@
 ---
 id: PL-8XQS
 title: A pre-merge review ask's plain-language summary is a Projects-instructions rule only, so a session outside the Project asks for a read without one
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: review-hold
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-27
+payoff: every pre-merge read the owner is asked for opens with a plain-language summary, whichever session asks
+verify: grep -q 'def test_a_read_hold_asks_for_a_plain_language_summary' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** A pre-merge review ask's plain-language summary is a Projects-instructions rule only, so a session outside the Project asks for a read without one
@@ -29,3 +36,21 @@ name what it replaces), or one line in `bin/docket arm`'s read-hold output,
 which fires at exactly the moment the ask is written and costs no resident
 context but is a change to `arming.py`, itself a path that waits on his read.
 If the Projects trial becomes the only way sessions run, this can be dropped.
+
+**Why it matters.** The owner asked for it as the default on 2026-09-27, and
+only Project threads carry it: a session outside the Project that gets `bin/docket
+arm`'s read hold asks for the read without the summary.
+
+**Carrier, recommended at triage.** `bin/docket arm`'s answer where a pull
+request waits on a read, over a resident rule in
+`.claude/rules/instruction-writing.md`: it fires at exactly the moment the ask is
+written and costs no resident context, and `arming.py` waiting on the owner's
+read costs one read of a change he asked for.
+
+**Done when.** The read-hold answer tells the session to open its ask with the
+summary - one sentence of what the change does, what was wrong and what changed
+in terms a clinician recognises, then numbered points for him to judge, then what
+needs no review - held by a test.
+
+**Generator check.** Work the owner asked for; the request reached the
+Project's instructions and not the repository.
