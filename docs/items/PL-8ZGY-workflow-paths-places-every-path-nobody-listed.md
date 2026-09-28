@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.5.17
 touches: docket.toml, tools/workflow_paths_check.py, tests/unit/test_workflow_paths_check.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_trend.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, docs/ARCHITECTURE.md, docs/items/PL-21RC-docs-maintainer-md-is-apparatus-in-docket-toml.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; generator work, which the pause on new mechanisms exists for
 added: 2026-09-27

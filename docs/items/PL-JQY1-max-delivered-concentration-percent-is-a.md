@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor, docs
 feature: machine-profile-framework
+milestone: v0.5.17
 touches: docs/MODEL.md
 added: 2026-09-19
 closed: 2026-09-27

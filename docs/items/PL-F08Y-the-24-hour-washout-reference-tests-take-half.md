@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, test
 feature: ci-cost
+milestone: v0.5.17
 touches: tests/reference/test_late_washout_against_published_fits.py
 added: 2026-09-27
 closed: 2026-09-27

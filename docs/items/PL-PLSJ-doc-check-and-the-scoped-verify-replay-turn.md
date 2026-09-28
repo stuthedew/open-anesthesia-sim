@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: fewer-red-runs
+milestone: v0.5.17
 touches: .claude/hooks/push-check-guard.sh, .claude/settings.json, tests/unit/test_push_check_guard.py, docs/items, docs/ARCHITECTURE.md, .claude/hooks/shell_split.py, docket.toml
 added: 2026-09-27
 closed: 2026-09-27

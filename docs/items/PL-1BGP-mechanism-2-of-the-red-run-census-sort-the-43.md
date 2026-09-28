@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: fewer-red-runs
+milestone: v0.5.17
 touches: docs/items
 added: 2026-09-27
 closed: 2026-09-27

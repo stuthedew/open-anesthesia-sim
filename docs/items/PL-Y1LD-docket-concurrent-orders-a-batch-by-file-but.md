@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost, infra
 feature: parallel-sessions
+milestone: v0.5.17
 touches: docs/items
 added: 2026-09-06
 closed: 2026-09-27

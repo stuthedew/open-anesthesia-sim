@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.5.17
 touches: CLAUDE.md
 added: 2026-09-27
 closed: 2026-09-27
