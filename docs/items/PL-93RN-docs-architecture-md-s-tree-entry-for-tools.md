@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: parallel-sessions
+milestone: v0.5.17
 touches: docs/ARCHITECTURE.md
 added: 2026-09-27
 closed: 2026-09-27

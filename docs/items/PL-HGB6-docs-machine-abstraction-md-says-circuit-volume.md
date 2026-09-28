@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs, anticipated
 feature: machine-profile-framework
+milestone: v0.5.17
 touches: docs/machine-abstraction.md, ROADMAP.md, docs/items/PL-TBMX-circuit-volume-l-means-apparatus-plus-patient.md
 added: 2026-09-20
 closed: 2026-09-27
