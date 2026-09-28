@@ -3,11 +3,13 @@ id: PL-9FLD
 title: ROADMAP.md's v0.5.17 row and baseline section say the washout fix took about two and a half minutes off every CI run, where #1221 measured 90 s on fast runners and 79 s on slow ones
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: release-process
 touches: ROADMAP.md, docs/items
 added: 2026-09-28
+closed: 2026-09-28
+pr: 1223
 payoff: ROADMAP.md states the washout fix's measured CI saving rather than the estimate its item was filed with
 verify: grep -q "79 s on slow ones" ROADMAP.md
 ---
