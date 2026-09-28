@@ -3,13 +3,15 @@ id: PL-4Z5Y
 title: The 24-hour washout curves start in the last third of the run, because worksteal deals the washout file to the first worker 522 tests deep, so a slow CI runner waits about 70 s for them after every other test has finished
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: infra, test
 feature: ci-cost
 touches: tests/reference/test_late_washout_against_published_fits.py, tests/reference/conftest.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
 payoff: a slow CI runner's pytest step falls from 280 s toward 240 s, and the washout curves stop being the last thing every run waits on
+verify: grep -q 'def pytest_collection_modifyitems' tests/reference/conftest.py
+not-delegable: whether the trial stays is the slow CI runners' median pytest step over at least five runs after it merges, which no command can take beforehand
 ---
 
 **Problem.** The 24-hour washout curves start in the last third of the run, because worksteal deals the washout file to the first worker 522 tests deep, so a slow CI runner waits about 70 s for them after every other test has finished
@@ -99,10 +101,35 @@ than measured.
    safety-critical standard, and an item of its own.
 4. **Accept the tail.**
 
-**Decision needed, and recommended: (1).** It is the only approach that removes
-the tail without leaving the worker's process, and if it fails, the only cost
-is the lost speed. It is the owner's call because it adds a scheduling hook
-tied to an xdist internal, for roughly 40 to 70 s on a slow runner and little
-on a fast one. It is worth building only if it saves at least 30 s at the slow
-runners' median. Measure it the way the table above was measured, within a
-runner class, because an unclassed median moves with the runner mix.
+[superseded 2026-09-28: answered below] **Decision needed, and recommended:
+(1).** It is the only approach that removes the tail without leaving the
+worker's process, and if it fails, the only cost is the lost speed. It is the
+owner's call because it adds a scheduling hook tied to an xdist internal, for
+roughly 40 to 70 s on a slow runner and little on a fast one. It is worth
+building only if it saves at least 30 s at the slow runners' median. Measure it
+the way the table above was measured, within a runner class, because an
+unclassed median moves with the runner mix.
+
+**Answered 2026-09-28: build (1) as a trial** (project owner, 2026-09-28,
+ratified, over accepting the tail). Keep it only if the slow runners' median
+pytest step falls by at least 30 s, over at least five slow-runner runs after
+it merges. If it does not, revert it and record the numbers here.
+
+**How the CI table was taken, to repeat it for the trial.**
+
+- **Runs.** `gh api
+  'repos/stuthedew/open-anesthesia-sim/actions/workflows/quality.yml/runs?per_page=100&created=>=DATE'`,
+  then each run's `actions/runs/ID/jobs`. In the `checks` job, the pytest step
+  is the one whose name starts `Run uv run pytest -n`. Its time is
+  `completed_at` minus `started_at`, on successful runs only.
+- **Runner class.** The same job's step starting `Run uv run mypy`: 5 s or less
+  is fast, 7 s or more is slow.
+- **Which tree a run tested.** A push run tests its `head_sha`, placed with
+  `git merge-base --is-ancestor`. A pull-request run tests the merge with
+  `main`, so it is placed by its `created_at` against the change's merge time.
+- **The tail.** `gh run view RUN --job JOB --log`, reading the timestamps of the
+  progress lines ending in a percentage, counted from the `created: 8/8
+  workers` line.
+- **Which worker ran each washout test locally.** A scratch plugin passed with
+  `-p` appends `time.time()`, `PYTEST_XDIST_WORKER` and the node id from
+  `pytest_runtest_logstart` and `pytest_runtest_logfinish`.

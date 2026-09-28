@@ -63,3 +63,8 @@ both. A regression test, `test_a_checkout_inside_a_claude_directory_*` in
 and inside it a `.claude/worktrees/<name>/` holding a `ROADMAP.md` with a
 malformed id. It asserts that neither is reported, while a malformed id in the
 checkout's own `.claude/` still is.
+
+**Sequenced 2026-09-28.** Fix this first, together with `PL-2P5L` and
+`PL-M9QW`, the other two worktree defects in `agent-worktrees`, in one session
+(project owner, 2026-09-28, ratified, over leaving the three to rank one at a
+time).
