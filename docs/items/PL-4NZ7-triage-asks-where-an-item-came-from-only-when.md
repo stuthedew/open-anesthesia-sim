@@ -3,12 +3,14 @@ id: PL-4NZ7
 title: Triage asks where an item came from only when it is triaged into the workflow lane, so an apparatus item that a missing workflow_paths entry leaves crossing or product is never asked for a generator
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect
 feature: generator-identification
-touches: .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
+touches: .claude/skills/docket/modes/triage.md, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-28 triage pass
 added: 2026-09-27
+closed: 2026-09-28
+pr: 1224
 payoff: every capture touching an apparatus path is asked where it came from, so a generator reached through a crossing item is found instead of queued
 verify: grep -q 'def test_triage_marks_a_crossing_item_as_owing_a_generator_check' subprojects/docket/tests/test_cli.py
 impairs-generators: render.format_triage marks no untriaged item as owing a Generator check, and triage.md keys that check on Item.lane being workflow, so an apparatus-generated capture that also touches a simulator path is never asked where it came from
@@ -53,3 +55,15 @@ on the workflow lane.
 
 **Generator check.** Not a member of any head: it is the identification
 machinery itself, recorded under `impairs-generators:`.
+
+**What landed, 2026-09-28.** `render._generator_check` gives each untriaged
+item one of three answers under `bin/docket triage`: `Owes a Generator check,
+whatever its lane` where a `touches` path is under `workflow_paths`, naming
+those paths; `undecided until touches is set` where capture left them unset,
+twelve of the twenty-two untriaged that day, since silence there would read as
+"not owed"; and `answered in the brief` where the brief already carries the
+line, read by `checks.answers_generator_check` through the heading reader the
+required sections use. `triage.md` § "Ask every item touching the apparatus
+where it came from" keys on the mark. A path under neither lane list is not
+marked: `tests/` is in neither on purpose, so such a mark would fire on most
+simulator test items, and outside `tests/` two of 311 open items declared one.

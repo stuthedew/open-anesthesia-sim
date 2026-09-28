@@ -184,17 +184,23 @@ claim does. `bin/docket set` prints the passages its status or `blocked-by`
 write leaves standing, and `bin/docket check` reports any still unmarked, so
 the repair rides the commit that moved the state (`PL-8YXJ`, `PL-X4RX`).
 
-### Ask every workflow-lane item where it came from
+### Ask every item touching the apparatus where it came from
 
-**Each item triaged into the workflow lane is scrutinized for an unresolved
-generator or a cause the code does not recognize** (project owner,
-2026-09-22). The apparatus is largely built, so its inflow should be falling,
-and an item that arrives anyway is evidence of why. Triage is the first pass
-that knows the lane, because capture leaves `touches` unset. Keep asking *why
-did this exist?* until the answer is a design fact rather than the symptom:
-a representation choice, a missing single source of truth, an invariant no
-code enforces, an external behaviour nothing models, or a rule that forces the
-work.
+**Each item touching the apparatus is scrutinized for an unresolved generator
+or a cause the code does not recognize** (project owner, 2026-09-22). The
+apparatus is largely built, so its inflow should be falling, and an item that
+arrives anyway is evidence of why. **Touching the apparatus means a `touches`
+path under `workflow_paths`, whatever the item's lane** (project owner,
+2026-09-28, ratified, over keying the check on the workflow lane, `PL-4NZ7`):
+a capture reaching both halves is `crossing`, and keyed on the lane it was
+never asked, so a generator reached through one was queued rather than found.
+`bin/docket triage` marks each item that `Owes a Generator check`, and says
+where it cannot tell yet: capture often leaves `touches` unset, and such an
+item owes the check if any path you declare is under `workflow_paths` in
+`docket.toml`. Keep asking *why did this exist?* until the answer is a design
+fact rather than the symptom: a representation choice, a missing single source
+of truth, an invariant no code enforces, an external behaviour nothing models,
+or a rule that forces the work.
 
 **Then name the fact this item's reader misread, and read it against every
 head's.** The fact is the thing that, held once as a record every reader

@@ -101,6 +101,11 @@ DONE_WHEN = "**Done when.**"
 HOUSEKEEPING = "housekeeping"
 DECISION_NEEDED = "**Decision needed.**"
 
+#: The line a triage pass writes once it has asked an item touching the
+#: apparatus where it came from. Not a required section: `bin/docket triage`
+#: marks the items that owe one, and nothing refuses an item without it.
+GENERATOR_CHECK = "**Generator check.**"
+
 #: What a status demands beyond what every triaged item owes, paired with the
 #: rule as `bin/docket triage` states it. One table, read by the checks below and
 #: by `render._triage_rules`, because a requirement enforced and never printed
@@ -358,6 +363,15 @@ def brief_gaps(
         [] if stub else [marker for marker, text in found.items() if text == ""],
         stub,
     )
+
+
+def answers_generator_check(body: str) -> bool:
+    """Whether a brief carries a `**Generator check.**` line with text under it.
+
+    Read by the heading reader the required sections use, so an elaborated
+    heading counts and an empty one does not, as `brief_gaps` judges theirs.
+    """
+    return bool(_section_text(body, GENERATOR_CHECK))
 
 
 # A pull request number, as GitHub allocates them: a bare positive integer.
