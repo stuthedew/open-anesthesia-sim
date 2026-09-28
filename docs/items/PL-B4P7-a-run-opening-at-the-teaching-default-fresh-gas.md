@@ -1,9 +1,14 @@
 ---
 id: PL-B4P7
 title: A run opening at the teaching-default fresh gas flow records nothing saying so, so once a second machine profile can reach a run nothing can label that flow as the project's teaching choice rather than the machine's
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: safety, anticipated, ux
 feature: machine-profile-framework
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/circuit.py
+blocked-by: PL-2FZ9
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21); safety, but anticipated and blocked behind PL-2FZ9, which is what makes it live, so the carve-out for a concern whose feature does not exist yet applies
 added: 2026-09-27
 ---
 
@@ -38,3 +43,9 @@ a property of, or a recommendation for, the selected machine.
 time constant at the reference profile's 6.0 L. At a smaller assembled volume
 the same flow opens a shorter lag, about 50 s at the 3.3 L the survey records
 for a Perseus A500 with its patient circuit (`docs/machine-survey.md` § "(a1)").
+
+**Why it matters.** Once a silent profile can reach a run, a machine-parameter
+display could show the teaching default as the selected machine's own flow or as
+a recommendation for it: the correct number with the wrong provenance, which the
+safety-critical standard counts as a safety failure. Blocked on `PL-2FZ9`, which
+makes that reachable, and classed `anticipated` so it waits at that item's band.

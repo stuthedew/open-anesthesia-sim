@@ -1,9 +1,15 @@
 ---
 id: PL-FDVM
 title: An edit to a file whose path-scoped rules have not loaded since the last compaction could be refused by a PreToolUse guard, where the digest's compact line only asks for the re-read
-status: untriaged
+priority: P3
+effort: M
+status: dropped
+classes: infra
 feature: compaction-reset
+touches: .claude/hooks, .claude/settings.json
 added: 2026-09-27
+closed: 2026-09-28
+reason: Not built without its own trigger: no session has been seen editing a compaction-restored file before reading it since PL-384P's line landed on 2026-09-27, and the guard would be a hard gate on every edit answering from harness internals. Reopen on one observed miss.
 ---
 
 **Problem.** `PL-384P` closes the restored-file gap with one advisory line,
@@ -41,3 +47,10 @@ reminder:
 **The number that would justify it.** A session seen editing a
 compaction-restored file before any Read of it, after `PL-384P`'s line landed.
 None has been observed. Until one is, the line is the cheaper sufficient tier.
+
+**Why it matters.** `PL-384P`'s advisory is followed most of the time and not
+always; a miss is an edit under `src/` written without its path-scoped rules.
+
+**Done when.** Not to be built unless reopened; see `reason`.
+
+**Generator check.** A proposed mechanism rather than a defect; no generator.

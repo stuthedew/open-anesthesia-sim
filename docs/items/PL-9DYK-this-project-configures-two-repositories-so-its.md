@@ -1,10 +1,15 @@
 ---
 id: PL-9DYK
 title: This project configures two repositories, so its threads start above the checkout and load none of .claude/settings.json: no SessionStart digest, no guard hook, no permission rule and no env line applies to a Projects thread
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: infra
 feature: projects-trial
 touches: docs/items/PL-NZC0-a-claude-code-projects-trial-needs-project.md
 added: 2026-09-27
+payoff: confirms Projects threads run with the repository's hooks, permission rules and env again, or reopens the question
+not-delegable: only a thread started in the Project after the 2026-09-27 removal can observe its own shell and SessionStart digest; no command run in another session can
 ---
 
 **Problem.** This project configures two repositories, so its threads start above the checkout and load none of .claude/settings.json: no SessionStart digest, no guard hook, no permission rule and no env line applies to a Projects thread
@@ -81,3 +86,12 @@ whose work needs the references library may add it to its own session.
 **Still to confirm before closing:** the first thread started after the
 removal checks that `CLAUDE_PROJECT_DIR` is set in its shell and that the
 SessionStart digest printed, then closes this item.
+
+**Done when.** The first thread started in the Project after the 2026-09-27
+removal records here whether `CLAUDE_PROJECT_DIR` was set in its shell and
+whether the SessionStart digest printed, then closes this item; if either
+failed, the decision above is reopened.
+
+**Generator check.** An external behaviour nothing models (which
+`.claude/settings.json` a Projects thread reads), met once because the Project's
+repository set changed after `PL-NZC0`'s plan; a one-off.
