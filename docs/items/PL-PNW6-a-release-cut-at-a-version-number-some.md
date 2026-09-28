@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: release-process
+milestone: v0.5.17
 touches: .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_release.py
 added: 2026-09-07
 closed: 2026-09-27

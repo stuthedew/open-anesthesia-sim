@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs
+milestone: v0.5.17
 touches: .claude/rules/instruction-writing.md, docs/resident-instructions.md
 added: 2026-09-27
 closed: 2026-09-27

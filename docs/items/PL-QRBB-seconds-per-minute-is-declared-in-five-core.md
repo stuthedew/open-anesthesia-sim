@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: refactor
+milestone: v0.5.17
 touches: src/anesthesia_sim/core/units.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_governing_equations.py, tests/reference/test_published_wash_in_and_elimination.py, tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_coupled_dynamics.py, tests/benchmarks/frame_cost.py, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
