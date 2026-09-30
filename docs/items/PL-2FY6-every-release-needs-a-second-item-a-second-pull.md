@@ -10,6 +10,7 @@ touches: .github/workflows/, tools/tag_release.py, tests/unit/test_tag_release.p
 deferred-from: v0.6.0 - filed 2026-09-30, after the gate froze: a release-process decision rather than debt the milestone's work created, so it goes to the next gate
 added: 2026-09-30
 closed: 2026-09-30
+pr: 1250
 payoff: a release is one item and one pull request, and the tag lands on the cut's merge commit with nothing for the owner to paste
 verify: grep -q "contents: write" .github/workflows/tag-release.yml && ! grep -q "git tag -a" subprojects/docket/src/docket/release.py && ! grep -q "git tag -a" .claude/skills/docket/modes/release.md
 ---
