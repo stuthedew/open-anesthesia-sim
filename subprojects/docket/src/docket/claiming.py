@@ -206,7 +206,7 @@ def claim(
 
     `opened` is how the forge is asked which branches have a pull request open,
     as `vcs.open_pull_requests` takes it, and is asked only where another
-    branch holds a copy of an item the base does not (`_elsewhere`).
+    branch holds a copy of an item the base does not (`_other_copies`).
     """
     wanted, problem = _keys(keys)
     if problem:
@@ -241,7 +241,7 @@ def claim(
         # a branch that merged a minute ago read from a stale listing would be
         # handed a copy of what the base already holds (`PL-MTHC`).
         base = default_base(root, runner=run)
-        where = _elsewhere(
+        where = _other_copies(
             root, absent, items_dir=items_dir, base=base, branch=branch, opened=opened, run=run
         )
         return Written(
@@ -568,7 +568,7 @@ def _branch(
 
 
 @dataclass(frozen=True)
-class _Elsewhere:
+class _OtherCopies:
     """Other branches holding a copy of an item the base lacks, and which a pull request carries.
 
     `asked` is why this is not a mapping, for the reason `vcs.OpenPullRequests`
@@ -592,7 +592,7 @@ class _Elsewhere:
         return [(name, self.carried[name]) for name in self.refs if name in self.carried]
 
 
-def _elsewhere(
+def _other_copies(
     root: Path,
     keys: Collection[str],
     *,
@@ -601,7 +601,7 @@ def _elsewhere(
     branch: _Branch,
     opened: Callable[[], Mapping[str, int | None] | None] | None,
     run: Runner,
-) -> dict[str, _Elsewhere]:
+) -> dict[str, _OtherCopies]:
     """Each of `keys` some branch other than this one and the base holds a copy of.
 
     **The fact the copy behind `PL-MTHC` was taken without.** An item captured
@@ -635,7 +635,7 @@ def _elsewhere(
         return {}
     answer = opened() if opened is not None else None
     return {
-        key: _Elsewhere(
+        key: _OtherCopies(
             refs=refs,
             carried={}
             if answer is None
@@ -655,12 +655,12 @@ def _pull(branch: str, number: int | None) -> str:
     )
 
 
-def _names(where: _Elsewhere) -> str:
+def _names(where: _OtherCopies) -> str:
     """The branches holding a copy, with the verb that agrees with how many there are."""
     return f"{', '.join(where.refs)} {'holds' if len(where.refs) == 1 else 'hold'}"
 
 
-def _absent(key: str, where: _Elsewhere | None) -> tuple[str, ...]:
+def _absent(key: str, where: _OtherCopies | None) -> tuple[str, ...]:
     """Why `key` is refused where `HEAD` holds no copy of it, and what to do instead.
 
     Four answers, and only the last is the old one. Where a pull request is
@@ -768,7 +768,7 @@ def _second_adds(
     outside = [key for key in keys if key not in on_base]
     if not outside:
         return (), ()
-    where = _elsewhere(
+    where = _other_copies(
         root, outside, items_dir=items_dir, base=base, branch=branch, opened=opened, run=run
     )
     refused: list[str] = []
