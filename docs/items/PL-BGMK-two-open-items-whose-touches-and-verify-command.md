@@ -9,7 +9,9 @@ feature: open-item-overlap-detection
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/src/docket/config.py, docket.toml, subprojects/docket/README.md, docs/items/PL-5GBV-two-items-were-filed-three-days-apart-for-one.md
 added: 2026-09-13
 closed: 2026-09-30
+pr: 1232
 verify: grep -q 'def test_a_discriminating_clause_shared_behind_a_health_clause_is_rejected' subprojects/docket/tests/test_checks.py
+falsifies: record the same `verify:` command
 ---
 
 **Problem.** Two open items whose touches and verify: command overlap are never compared, so PL-1YDK and PL-8PT6 were filed and worked as one finding twice and only docket check --verify on main caught it
