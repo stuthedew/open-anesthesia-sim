@@ -126,6 +126,18 @@ some ref and absent from both the default branch and this checkout, with the
 same finding as one line, and only when there is one, because a session that
 must be told its queue is incomplete cannot find that out by reading the queue.
 
+**Where a pull request is open on the branch, it names the pull request
+instead of a checkout** (`PL-MTHC`). That item is on its way to the default
+branch, and a copy recovered from it is a second add of the same file, which
+the merge bringing the first in conflicts on: `PL-8ZGY`'s agreed corrections
+were lost to a resolution that kept the copy whole, with every check passing.
+The forge is asked through `open_pull_requests_command`, once and only where an
+item is listed, and a forge nobody could ask is said beneath the list rather
+than read as "none is open". `docket claim` answers from the same fact: asked
+for an item the branch holds no copy of, it names the pull request to wait for
+rather than asking for a capture, and it refuses a copy added after the one an
+open pull request carries.
+
 **The comparison is by id and content, never by commit counts**, and that is
 the design rather than an implementation note. A squash-merged branch contains
 none of the commits it merged, so a containment test calls it unmerged forever
