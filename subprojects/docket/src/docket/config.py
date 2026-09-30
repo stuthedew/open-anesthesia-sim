@@ -129,6 +129,15 @@ class Config:
     #: project has not said", which leaves the rule above off rather than
     #: guessing.
     collected_test_paths: tuple[str, ...] = ()
+    #: The clauses of a `verify:` command that prove the tree rather than the
+    #: item - the health half `check_command` already runs, spelled exactly as
+    #: the commands carry it. `docket check` keys its shared-clause rule on
+    #: the clauses outside this set and outside the pytest runs
+    #: `collected_test_paths` covers, so two items both carrying `python3
+    #: tools/doc_check.py check` are not thereby one finding, while two
+    #: carrying the same `grep` behind it are (`PL-BGMK`). Empty means "this
+    #: project has not said", and every clause then counts.
+    health_clauses: tuple[str, ...] = ()
     #: The date from which a `verify:` command may no longer narrow a pytest
     #: run with `-k`. Over a tree `collected_test_paths` names, such a run
     #: either selects tests `check_command` already proves or selects none
@@ -418,6 +427,7 @@ def load(root: Path) -> Config:
         collected_test_paths=_tuple(
             section.get("collected_test_paths"), defaults.collected_test_paths
         ),
+        health_clauses=_tuple(section.get("health_clauses"), defaults.health_clauses),
         verify_k_selector_refused_from=_date(
             section.get("verify_k_selector_refused_from"),
             defaults.verify_k_selector_refused_from,
