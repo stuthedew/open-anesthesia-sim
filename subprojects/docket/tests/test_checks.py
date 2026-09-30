@@ -881,6 +881,79 @@ def test_an_empty_decision_needed_heading_is_still_refused() -> None:
     assert _has(_errors(_item(status="needs-decision", body=body)), "states no decision to make")
 
 
+#: `PL-4ZK8`'s shape on 2026-09-28: the question, a design round recommending
+#: an answer, and the owner's answer recorded beneath them all.
+ANSWERED = (
+    BRIEF
+    + "\n**Decision needed.** Hide them, or mark them?\n\n"
+    + "## Design round 2026-09-27: recommendations\n\n"
+    + "**Q1. Hide them, or mark them?**\n**Recommendation: hide them.**\n\n"
+    + "## Answers 2026-09-27\n\n"
+    + "**Answered 2026-09-27: Q1 ratified** (project owner, 2026-09-27, ratified,\n"
+    + "over marking them). The thread that builds it sets this item's status.\n"
+)
+
+
+def test_an_answer_beneath_the_last_question_refuses_needs_decision() -> None:
+    """`PL-JNWS`: the answer is recorded, and the front matter still says it waits.
+
+    Every reader of the queue takes the front matter's word, so `PL-4ZK8` sat
+    first on `docket next`'s line of open decisions for three days after the
+    owner answered it. Each shape the store records an answer in is read, and
+    the same brief is legal once the status moves.
+    """
+    assert _has(_errors(_item(status="needs-decision", body=ANSWERED)), '"Answered 2026-09-27')
+    question = BRIEF + "\n**Decision needed.** Which way?\n\n"
+    for answer in (
+        "**Decided 2026-09-19 by PL-4FBP's ratified convention.** This way.\n",
+        "**Question 1 is answered (project owner, 2026-09-17, ratified).** Yes.\n",
+        "## Answered 2026-09-25: this way\n",
+    ):
+        errors = _errors(_item(status="needs-decision", body=question + answer))
+        assert _has(errors, "beneath a recorded answer"), answer
+    for status, blocked_by in (("ready", ()), ("blocked", ("PL-0002",)), ("done", ())):
+        errors = _errors(_item(status=status, body=ANSWERED, blocked_by=blocked_by))
+        assert not _has(errors, "beneath a recorded answer"), status
+
+
+def test_a_question_posed_beneath_the_answer_keeps_needs_decision() -> None:
+    """Only the last label decides, so a question still open is posed below the answer.
+
+    A partial answer is the case: the owner settled one question and another
+    waits. `PL-J2TD` is the other one, answered against the source and still
+    waiting on the owner for the narrowing its answer recommended - a marked
+    recommendation standing after an answer is a question that answer raised.
+    """
+    for after in (
+        "\n**Decision needed.** Q2 is still open: which of the two?\n",
+        "\n**Q2. Which of the two?**\n",
+        "\n**Recommended narrowing.** Drop the driver.\n",
+        "\nRecommendation: drop the driver.\n",
+    ):
+        errors = _errors(_item(status="needs-decision", body=ANSWERED + after))
+        assert not _has(errors, "beneath a recorded answer"), after
+
+
+def test_an_answer_that_is_not_the_briefs_own_claim_is_not_read() -> None:
+    """A quoted, code-span, fenced or superseded answer records nothing about this item.
+
+    The `docket` skill quotes the shape it prescribes, and a brief about this
+    rule quotes the answer it is about; neither is an answer to its own
+    question.
+    """
+    question = BRIEF + "\n**Decision needed.** Which way?\n\n"
+    for answer in (
+        "The shape is `**Answered 2026-09-19 under PL-4Q9B**`, beneath the question.\n",
+        'The brief said "**Answered 2026-09-27: Q1 ratified**" and moved nothing.\n',
+        "```\n**Answered 2026-09-27: Q1 ratified**\n```\n",
+        "[superseded 2026-09-29: the owner reopened it] **Answered 2026-09-27: yes.**\n",
+        # A bullet and a multiplication open no emphasis, so nothing here is a label.
+        "* Decided so far: the batch holds 51 * 8 rows, which the owner has not seen.\n",
+    ):
+        errors = _errors(_item(status="needs-decision", body=question + answer))
+        assert not _has(errors, "beneath a recorded answer"), answer
+
+
 def test_safety_work_may_not_sit_in_a_low_band() -> None:
     assert _has(_errors(_item(classes=("safety",), priority="P2")), "starts at P0 or P1")
 

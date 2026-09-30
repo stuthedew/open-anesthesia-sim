@@ -101,6 +101,27 @@ DONE_WHEN = "**Done when.**"
 HOUSEKEEPING = "housekeeping"
 DECISION_NEEDED = "**Decision needed.**"
 
+#: The labels a brief records an answer to its own question under, read by
+#: `_answered_beneath`: the three shapes `docs/worker.md` names for leaving a
+#: question standing with its answer written beneath it - `**Answered
+#: 2026-09-19 under PL-4Q9B**`, `**Decided 2026-09-19 by ...**`, `**Question 2
+#: is answered (...)**` - and the `## Answers 2026-09-27` heading a design
+#: round's answers go under. Matched against a label's opening words, so
+#: `**Answered against the source, 2026-09-14, ...**` is one and prose about an
+#: answer is not.
+ANSWER_LABEL = re.compile(r"(?:Answer(?:ed|s)|Decided|Question \d+ is answered)\b")
+
+#: The labels that put a question: the section `needs-decision` requires, and a
+#: design round's heading and numbered questions. `_answered_beneath` reads a
+#: marked recommendation as one too, since it is a question put to the owner.
+QUESTION_LABEL = re.compile(r"(?:Decision needed|Design round|Q(?:uestion )?\d+[.:])")
+
+# A Markdown heading line, a paragraph - a run of lines none of them blank -
+# and an asterisk CommonMark reads as no emphasis delimiter at all.
+_HEADING_LINE = re.compile(r"^[ \t]{0,3}#{1,6}[ \t]+(.+)$", re.MULTILINE)
+_PARAGRAPH = re.compile(r"[^\n]*\S[^\n]*(?:\n[^\n]*\S[^\n]*)*")
+_NOT_EMPHASIS = re.compile(r"(?<!\S)\*(?=\s)")
+
 #: The line a triage pass writes once it has asked an item touching the
 #: apparatus where it came from. Not a required section: `bin/docket triage`
 #: marks the items that owe one, and nothing refuses an item without it.
@@ -123,7 +144,9 @@ STATUS_REQUIREMENTS: tuple[tuple[str, str], ...] = (
         "what has to be decided, so a later session can answer it, and should mark a "
         "recommendation beside it - the question survives in the item, the reasoning "
         "behind an answer dies with the session that had it. Where none is owed, say "
-        "so and why. `docket check` advises on a brief that marks neither.",
+        "so and why. `docket check` advises on a brief that marks neither. The commit "
+        "that records an answer beneath the question moves the status off "
+        "`needs-decision`, and `docket check` refuses one that does not.",
     ),
     (
         "blocked",
@@ -220,6 +243,87 @@ def _marks_recommendation(body: str) -> bool:
     if "Recommendation:" in flat:
         return True
     return any(re.search(r"recommend", span, re.IGNORECASE) for span in _emphasised(flat))
+
+
+def _answered_beneath(body: str) -> str | None:
+    """The answer a brief records beneath its last question, or `None` while one still waits.
+
+    An item's queue state is held twice, in the front matter every command
+    reads and in the brief that narrates it, and recording an answer is the
+    one brief edit that changes the state: the question is left standing and
+    the answer written beneath it (`docs/worker.md`). So a brief whose last
+    decision label is an answer is waiting on nobody, whatever its front matter
+    says. `PL-4ZK8` sat three days at `needs-decision` that way, first on
+    `bin/docket next`'s line of open decisions (`PL-JNWS`).
+
+    Labels are read in the order they stand, and only the last decides. An
+    answer is a label opening with `ANSWER_LABEL`'s words; a question is one
+    opening with `QUESTION_LABEL`'s, or a marked recommendation in
+    `_marks_recommendation`'s sense, because a recommendation standing after an
+    answer is a question that answer raised. `PL-J2TD` is the case: answered
+    against the source on 2026-09-14, and still waiting on the owner for the
+    narrowing its answer recommended.
+
+    A label is a heading or an emphasised run. One in a code span or a fence is
+    a literal, and one in a quotation or a superseded passage is not the
+    brief's own current claim (`_standing`), so neither is read. Over `main`'s
+    history on 2026-09-30, 17 items met this at `needs-decision` and every one
+    later moved off it with no new question posed, which is what makes the
+    reading exact enough to refuse on.
+    """
+    text = CODE_SPAN_RE.sub(_blanked, fences.without_fences(body))
+    labels: list[tuple[int, bool, str]] = []
+    runs: list[tuple[int, int]] = []
+    for start, end, words in _labels(text):
+        runs.append((start, end))
+        flat = " ".join(words.strip("*_ \t").split())
+        if ANSWER_LABEL.match(flat):
+            labels.append((start, True, flat))
+        elif QUESTION_LABEL.match(flat) or re.search("recommend", flat, re.IGNORECASE):
+            labels.append((start, False, flat))
+    labels.extend(
+        (found.start(), False, found.group(0))
+        for found in re.finditer("Recommendation:", text)
+        if not any(start <= found.start() < end for start, end in runs)
+    )
+    standing = sorted(label for label in labels if _standing(body, label[0]))
+    if not standing or not standing[-1][1]:
+        return None
+    answer = standing[-1][2]
+    return answer if len(answer) <= 80 else answer[:79] + "…"
+
+
+def _labels(text: str) -> Iterator[tuple[int, int, str]]:
+    """Every heading and emphasised run in `text`: where it opens, where it ends, its words.
+
+    `_emphasised`'s tokenising kept positional: split on the delimiter rather
+    than matched by a regex, so the gap between two emphasised runs is never
+    read as one. Split per paragraph, since emphasis never crosses a blank line,
+    so a stray delimiter costs its own paragraph and not the rest of the brief.
+    A `*` with whitespace after it and none before opens nothing - a list
+    bullet, a multiplication - so it is blanked before the split rather than
+    left to turn the words after it into a label.
+    """
+    text = _NOT_EMPHASIS.sub(" ", text)
+    for heading in _HEADING_LINE.finditer(text):
+        yield heading.start(), heading.end(), heading.group(1)
+    for paragraph in _PARAGRAPH.finditer(text):
+        at = paragraph.start()
+        for index, chunk in enumerate(paragraph.group(0).split("**")):
+            if index % 2:
+                yield at - 2, at + len(chunk) + 2, chunk
+            else:
+                inner = at
+                for position, part in enumerate(chunk.split("*")):
+                    if position % 2:
+                        yield inner - 1, inner + len(part) + 1, part
+                    inner += len(part) + 1
+            at += len(chunk) + 2
+
+
+def _blanked(literal: re.Match[str]) -> str:
+    """A match's text as spaces, its line breaks kept, so every offset past it holds."""
+    return re.sub(r"[^\n]", " ", literal.group(0))
 
 
 def _section_text(body: str, marker: str) -> str | None:
@@ -748,6 +852,18 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
         report.errors.append(
             f"{where}: marked needs-decision but states no decision to make; add a "
             f"{DECISION_NEEDED} line so a later session can answer it"
+        )
+    # An error rather than an advisory: the labels are exact, and the session
+    # that left `PL-4ZK8` here did so on purpose, so an advisory would have
+    # printed beside a choice already made (`PL-JNWS`).
+    if item.status == "needs-decision" and (answer := _answered_beneath(item.body)):
+        report.errors.append(
+            f'{where}: sits at `needs-decision` beneath a recorded answer, "{answer}", '
+            "and every reader of the queue takes the front matter's word, so `docket next` "
+            "and `docket gate` go on offering the owner a question already answered; move "
+            "the status in the commit that records the answer - `ready`, `blocked` or "
+            "closed - or, where a question is still open, pose it beneath the answer under "
+            f"a {DECISION_NEEDED} heading"
         )
     if item.verify and "\n" in item.verify:
         report.errors.append(f"{where}: `verify` must be a single-line command")
