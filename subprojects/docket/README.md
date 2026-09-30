@@ -2180,6 +2180,27 @@ way. It was a bare substring test until `PL-VJ1X`, so the one heading an author
 most wants to qualify — who decides, and by when — was the one heading that
 could not be, and the checker contradicted the rule stated above it.
 
+**An answer recorded beneath the question ends the status, and `check` refuses
+an item that keeps it** (`PL-JNWS`). The convention leaves the question standing
+with the answer written under it, and every reader of the queue takes the front
+matter's word, so an answered item left at `needs-decision` is offered to the
+owner as still waiting: `PL-4ZK8` was, first on `next`'s decisions line, for
+three days, and 17 items sat that way on `main` between 2026-09-13 and
+2026-09-30. What the brief still asks is read from its labels in order, and
+only the last decides. An answer is a label opening `Answered`, `Answers`,
+`Decided` or `Question N is answered`, the shapes `docs/worker.md` names, or a
+heading opening `Answered` or `Answers`; a question is a `**Decision needed.**`
+heading, a design round's heading or numbered `Q1.`, or a marked
+recommendation, since one standing after an answer is a question the answer
+raised (`PL-J2TD`'s shape). Labels in code spans, fences, quotations and
+superseded passages are not read. An error rather than an advisory, because
+the labels are exact - none of the 17 was an item still waiting, and each later
+moved off `needs-decision` with no new question posed - and because the design
+round that left `PL-4ZK8` behind did so on purpose, so an advisory would have
+printed beside a choice already made. It also keeps the
+`falsifies:` fold below honest, which reads `needs-decision` on the base's copy
+as the answer still being the closing session's to make.
+
 **The recommendation is the other half of that status, and the half that does
 not survive on its own.** The question is written into the item; the
 recommendation that would let the owner answer it in one read is written into
