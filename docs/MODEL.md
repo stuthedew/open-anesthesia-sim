@@ -1831,16 +1831,21 @@ mostly made of them and says so a few paragraphs down. What it forbids is an
 adoption the reader cannot see. So a stored value whose authority is not a
 primary measurement owes three things, and carries all three today:
 
-- **The tier, on the entry itself.** The `tier` field in the data file,
-  checked by `make check` against the closed vocabulary — not a claim in prose
-  that a reader has to reconstruct.
+- **The tier, on the entry itself, with the values it covers.** The `tier`
+  field in the data file, checked by `make check` against the closed
+  vocabulary, and the entry's `authority_for`, which names the stored values
+  that entry is the authority for — not a claim in prose that a reader has to
+  reconstruct.
 - **Why no tier-1 source was adopted.** On the entry, or in the file's
   `provenance_gap` where the whole file is in that state.
 - **The date and whose decision it was**, where a lower tier is adopted in
   preference to an available primary source rather than for want of one.
   `venous_pool_volume_l` is the worked example: Davis and Mapleson 1981 is
-  tier 2, adopted on the project owner's decision of 2026-09-07, replacing a
-  round number no source ever contained.
+  tier 2, adopted on the project owner's decision of 2026-09-07. It replaced
+  a round 1.0 L that no source then cited for it contained. The Workbook's
+  defaults listing turned out to hold that 1.0 L, as `VEN=1.0`, when its
+  Appendix C was read on 2026-09-15. That changes the history, not the
+  stored value; the file's Workbook entry records it.
 
 That is a higher bar than a tier-1 citation clears, not a lower one, and it is
 deliberately not a licence to prefer the convenient number. Two reasons are
@@ -1940,14 +1945,24 @@ fraction and a standard deviation for each agent, are adopted primary
 measurements: Katoh et al. 1993 for sevoflurane and isoflurane, Chortkoff et al.
 1995 for desflurane.
 
-**Recompute these against the table; do not adjust them as rows arrive.** The
-pair that stood here until 2026-09-13 — 29 rows, 26 tier 3 — was written when
-both were true and survived two changes that made neither: the six MAC-awake
-rows were added, and `PL-8ZJQ` moved `venous_pool_volume_l` off tier 3
-(`PL-7KDC`). Nothing computed reads them, which is why they could go stale
+**Recompute these with `python3 tools/source_tier_counts.py`; do not adjust
+them as rows arrive.** It prints the counts from each `sources` entry's
+`authority_for`, file by file and in total, and names the source behind every
+row.
+
+The pair that stood here until 2026-09-13 — 29 rows, 26 tier 3 — was written
+when both were true and survived two changes that made neither: the six
+MAC-awake rows were added, and `PL-8ZJQ` moved `venous_pool_volume_l` off tier
+3 (`PL-7KDC`). Nothing computed reads them, which is why they could go stale
 silently: `check_provenance` decides that a documented key holds the stated
-value, never what tier its source carries. `PL-9LXK` is the mechanized answer
-to that class.
+value, never what tier its source carries. Until 2026-09-30 nothing recorded
+which source a row rested on at all; only each entry's note said so, in prose,
+so no command could have computed these counts. `PL-9LXK` added the record and
+the command.
+
+The command prints and never checks this paragraph, on the project owner's
+decision of 2026-09-13. Whether a changed count still reads right in the
+sentence around it stays with the author.
 
 `mac_percent` is the one of these that a reader now divides by: it is the
 divisor of the second display unit, so its tier governs a displayed clinical
@@ -2416,28 +2431,42 @@ them.** Data files moved to `schema_version` 2 on 2026-09-07 (`PL-1JDD`), all
 four at once because that change reached every family of them. The version has
 been per family since `PL-HNWX`: agent, patient and machine files are each read
 against their own supported window in `src/anesthesia_sim/core/parameters.py`,
-so a later schema change moves only the family it reaches, and every window
-reads version 2 alone today. At version 2, every `sources` entry carries two
-new required fields, and a data file may carry one new optional top-level
-string. They are written as a list rather
-than a table because the provenance table below is found as the first table in
-this section, and a second one above it would be read in its place:
+so a later schema change moves only the family it reaches. At version 2, every
+`sources` entry carries two new required fields, and a data file may carry one
+new optional top-level string. Version 3 (2026-09-30, `PL-9LXK`) reached every
+family again and added a third required field to each entry. Every window
+reads version 3 alone today. The fields are written as a list rather than a
+table because the provenance table below is found as the first table in this
+section, and a second one above it would be read in its place:
 
 - `tier`, on each `sources` entry: `primary`, `secondary` or
   `reference-implementation` — which of the three tiers above the *document*
   is.
 - `adopted`, on each `sources` entry: whether this file names that source as
   the authority for a value it stores.
+- `authority_for`, on each `sources` entry since version 3: the dotted key
+  paths of the stored values this source is the authority for, spelled as the
+  provenance table spells them. It is empty exactly when `adopted` is false.
+  It records which source each stored value rests on. Until then only a note's
+  prose said so, and the per-row counts under § "Source hierarchy" had nothing
+  to be computed from.
 - `provenance_gap`, optional and top level: why no primary source has been
   adopted, where none has been.
 
-`tools/doc_check.py`'s `check_source_tiers` holds two exact rules: every entry
-declares a tier from the closed vocabulary and an `adopted` flag, and a file
-with no entry that is both `primary` and `adopted` records a non-empty
-`provenance_gap`. Both fail the build rather than raising an advisory, because
-neither needs any context to decide. `src/anesthesia_sim/core/parameters.py`
-validates the same vocabulary at load, so a bad tier fails when the file is
-read rather than when the checker next runs.
+`tools/doc_check.py`'s `check_source_tiers` holds these as exact rules:
+
+- every entry declares a tier from the closed vocabulary, an `adopted` flag
+  and an `authority_for` list;
+- that list is non-empty exactly when the entry is adopted;
+- each path in it is a stored value of the same file, and no stored value is
+  named by two entries;
+- a file with no entry that is both `primary` and `adopted` records a
+  non-empty `provenance_gap`.
+
+Each rule fails the build rather than raising an advisory, because none needs
+any context to decide. `src/anesthesia_sim/core/parameters.py` validates the
+vocabulary and the `authority_for` rules at load, so a bad entry fails when the
+file is read rather than when the checker next runs.
 
 **`tier` and `adopted` are two fields because one would decide nothing.** Every
 agent file cites primary measurements it has explicitly *not* adopted, and so

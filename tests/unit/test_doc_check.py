@@ -155,6 +155,7 @@ SOURCE = {
     "url": "https://example.invalid/",
     "tier": "primary",
     "adopted": True,
+    "authority_for": ["blood_gas_partition_coefficient", FAT_KEY],
     "note": "n",
 }
 
@@ -375,7 +376,7 @@ def test_an_unadopted_primary_does_not_source_the_file(tmp_path: Path) -> None:
     data files primary-sourced while every stored coefficient in them came
     from Gas Man - `docs/MODEL.md` § "Source hierarchy", second rule.
     """
-    root = _repo(tmp_path, data=_sourced(dict(SOURCE) | {"adopted": False}))
+    root = _repo(tmp_path, data=_sourced(dict(SOURCE) | {"adopted": False, "authority_for": []}))
     assert any("no `sources` entry is both tier 'primary' and adopted" in e for e in _errors(root))
 
 
@@ -406,6 +407,85 @@ def test_provenance_gap_is_not_treated_as_a_parameter(tmp_path: Path) -> None:
     """It is prose beside the citations, so the provenance table owes it no row."""
     data = dict(DATA) | {"provenance_gap": "Recorded here, documented nowhere else."}
     assert not any("no provenance row" in e for e in _errors(_repo(tmp_path, data=data)))
+
+
+def test_source_with_no_authority_for_is_an_error(tmp_path: Path) -> None:
+    entry = {key: value for key, value in SOURCE.items() if key != "authority_for"}
+    root = _repo(tmp_path, data=_sourced(entry))
+    assert any("declares authority_for None" in e for e in _errors(root))
+
+
+def test_a_bare_string_authority_for_is_an_error(tmp_path: Path) -> None:
+    """A string is iterable, so reading it loosely would name one value per character."""
+    entry = dict(SOURCE) | {"authority_for": "blood_gas_partition_coefficient"}
+    root = _repo(tmp_path, data=_sourced(entry))
+    assert any(
+        "declares authority_for 'blood_gas_partition_coefficient'" in e for e in _errors(root)
+    )
+
+
+@pytest.mark.parametrize("path", ["", None])
+def test_an_authority_for_path_that_is_not_a_nonempty_string_is_an_error(
+    tmp_path: Path, path: object
+) -> None:
+    entry = dict(SOURCE) | {"authority_for": ["blood_gas_partition_coefficient", path]}
+    root = _repo(tmp_path, data=_sourced(entry))
+    assert any(f"authority_for holds {path!r}" in e for e in _errors(root))
+
+
+def test_a_path_named_twice_by_one_entry_is_an_error(tmp_path: Path) -> None:
+    entry = dict(SOURCE) | {"authority_for": ["blood_gas_partition_coefficient"] * 2}
+    root = _repo(tmp_path, data=_sourced(entry))
+    assert any("names 'blood_gas_partition_coefficient' twice" in e for e in _errors(root))
+
+
+def test_an_adopted_source_naming_no_value_is_an_error(tmp_path: Path) -> None:
+    root = _repo(tmp_path, data=_sourced(dict(SOURCE) | {"authority_for": []}))
+    assert any("is adopted but its authority_for is empty" in e for e in _errors(root))
+
+
+def test_an_unadopted_source_naming_a_value_is_an_error(tmp_path: Path) -> None:
+    root = _repo(tmp_path, data=_sourced(dict(SOURCE) | {"adopted": False}))
+    assert any("is not adopted but its authority_for is not empty" in e for e in _errors(root))
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "mac_percent",  # a key the file does not hold
+        "display_name",  # held, but not a number
+        "tissue_gas_partition_coefficients",  # held, but not a leaf
+        "schema_version",  # a number, but the file format's rather than a stored value
+    ],
+)
+def test_a_path_that_is_not_a_stored_value_is_an_error(tmp_path: Path, path: str) -> None:
+    entry = dict(SOURCE) | {"authority_for": ["blood_gas_partition_coefficient", path]}
+    root = _repo(tmp_path, data=_sourced(entry))
+    assert any(f"authority_for names {path!r}, which is not one of" in e for e in _errors(root))
+
+
+def test_a_value_named_by_two_entries_is_an_error(tmp_path: Path) -> None:
+    """It would be counted under both entries' tiers, which is the wrong number."""
+    second = dict(SOURCE) | {"tier": "reference-implementation", "citation": "Somebody. A table."}
+    root = _repo(tmp_path, data=_sourced(dict(SOURCE), second))
+    assert any(
+        "sources[1] (Somebody. A table.): authority_for names 'blood_gas_partition_coefficient', "
+        "which sources[0] (Nobody. A paper.) already names" in e
+        for e in _errors(root)
+    )
+
+
+def test_adopted_sources_may_split_a_files_values(tmp_path: Path) -> None:
+    primary = dict(SOURCE) | {"authority_for": ["blood_gas_partition_coefficient"]}
+    table = dict(SOURCE) | {"tier": "reference-implementation", "authority_for": [FAT_KEY]}
+    assert _errors(_repo(tmp_path, data=_sourced(primary, table))) == []
+
+
+def test_a_value_no_entry_names_is_not_an_error(tmp_path: Path) -> None:
+    """It adopts no source, as both of the reference circle system's values do."""
+    primary = dict(SOURCE) | {"authority_for": ["blood_gas_partition_coefficient"]}
+    cited = dict(SOURCE) | {"tier": "secondary", "adopted": False, "authority_for": []}
+    assert _errors(_repo(tmp_path, data=_sourced(primary, cited))) == []
 
 
 # --- prose provenance -------------------------------------------------------
