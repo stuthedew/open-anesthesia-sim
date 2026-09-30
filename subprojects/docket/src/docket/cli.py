@@ -120,6 +120,7 @@ from .release import (
     read_version,
     readiness,
     release_notes,
+    reservation,
     restate_references,
     stamp,
     tag_commands,
@@ -3654,13 +3655,15 @@ def cmd_release(args: argparse.Namespace) -> int:
     # item id: a cut stamps other items' `milestone:` (`PL-66FP`). The id the
     # guard reads is the release item's, whose claim holds the release train
     # (`PL-331V`). Questions in the order their answers are certain in: what
-    # the default branch already holds is a merge that has happened; what
+    # the default branch already holds is a merge that has happened; what the
+    # roadmap has given the number to is a statement in this tree; what
     # another ref is cutting, or holds the train to cut, is a claim that may
     # yet be abandoned; and last, whether this branch holds the train itself,
     # so every earlier refusal still refuses for its own reason. A dry run is
     # allowed through each with the warning, on the same reasoning as the
     # untagged one above: it writes nothing, and withholding the notes would
-    # not un-ship what already shipped.
+    # not un-ship what already shipped. The reservation is the exception, and
+    # says why where it is asked.
     #
     # **The fetch is the part without which none of these is worth asking.**
     # The session that lost the v0.3.7 race cut from a checkout that did not
@@ -3668,6 +3671,7 @@ def cmd_release(args: argparse.Namespace) -> int:
     # so every ref it could read was older than the collision it was in. This
     # is the rarest command here and the most expensive to get wrong, which is
     # what makes one network read proportionate where the digest's would not be.
+    landed: list[str] = []
     if git is not None:
         _say_snapshot(args)
         base = released_on_base(
@@ -3683,22 +3687,68 @@ def cmd_release(args: argparse.Namespace) -> int:
             if not args.dry_run:
                 return 1
             print()
-        else:
-            holders, unread, train = _rival_cuts(args, root, git, base)
-            refusal = ""
-            if holders:
-                refusal = _parallel_cut_warning(holders)
-            elif unread:
-                refusal = _unreadable_cut_warning(unread)
-            elif train.ours is None:
-                refusal = _no_train_refusal(
-                    name, len(ready.shippable), current, train, _invocation(args).tracked
+
+    # The plan as it stands before the bump, which is the one reading that
+    # knows whether a milestone number this cut reaches is this release or a
+    # number a patch has taken: after the bump the version file already reads
+    # the cut, and the table still lacks its row (`PL-YS9F`). A resumed cut
+    # whose interrupted run got as far as its bump has no such plan left to
+    # read, so its hand-off keeps both readings rather than deciding from one
+    # computed after the fact. Nor has a re-cut, whose bump is long done.
+    bumped = reclaim.lstrip("v") == current.strip().lstrip("v")
+    plan = None if bumped else _plan(root, items, config)
+
+    # The digest's refusal, asked on the path that writes (`PL-Z85N`): a number
+    # the roadmap has given to a milestone it has not released would put that
+    # milestone's name on whatever happens to have finished, and the tag makes
+    # it permanent. Refused outright, a dry run too, as a backwards number is:
+    # it is a wrong number rather than a state to review, and the train refusal
+    # a dry run reaches next prints a command filing a release item under it.
+    # No flag overrides it; changing the roadmap does. Not asked of a version
+    # the base has already shipped, where the warning above is the true answer
+    # and this branch's roadmap is only behind, nor of a resumed or re-cut
+    # release, which finishes a cut already made rather than starting one.
+    if not landed and not reclaim:
+        held = reservation(version, plan)
+        if held is not None:
+            print(
+                _reserved_cut_refusal(
+                    name, held.name, len(ready.shippable), current, config.roadmap_file
                 )
-            if refusal:
-                print(refusal)
-                if not args.dry_run:
-                    return 1
-                print()
+            )
+            return 1
+        # A reservation found in a partial read is decisive, and none found in
+        # one proves nothing, so a plan not read whole refuses as the tag gate
+        # does rather than taking silence for "free" (`PL-ZPDM`). A project with
+        # no roadmap has nothing to read, and cuts.
+        if plan is not None:
+            unread_plan = "; ".join(plan.problems)
+        elif (root / config.roadmap_file).is_file():
+            unread_plan = "it could not be read as a plan (`docket wave` shows why)"
+        else:
+            unread_plan = ""
+        if unread_plan:
+            print(_unreadable_plan_refusal(name, config.roadmap_file, unread_plan))
+            if not args.dry_run:
+                return 1
+            print()
+
+    if git is not None and not landed:
+        holders, unread, train = _rival_cuts(args, root, git, base)
+        refusal = ""
+        if holders:
+            refusal = _parallel_cut_warning(holders)
+        elif unread:
+            refusal = _unreadable_cut_warning(unread)
+        elif train.ours is None:
+            refusal = _no_train_refusal(
+                name, len(ready.shippable), current, train, _invocation(args).tracked
+            )
+        if refusal:
+            print(refusal)
+            if not args.dry_run:
+                return 1
+            print()
 
     milestone = milestones(stamp(ready.shippable, name))[name]
     notes = release_notes(milestone, args.today or date.today())
@@ -3727,16 +3777,6 @@ def cmd_release(args: argparse.Namespace) -> int:
     if args.dry_run:
         print("Dry run: nothing was changed.")
         return 0
-
-    # The plan as it stands before the bump, which is the one reading that
-    # knows whether a milestone number this cut reaches is this release or a
-    # number a patch has taken: after the bump the version file already reads
-    # the cut, and the table still lacks its row (`PL-YS9F`). A resumed cut
-    # whose interrupted run got as far as its bump has no such plan left to
-    # read, so its hand-off keeps both readings rather than deciding from one
-    # computed after the fact. Nor has a re-cut, whose bump is long done.
-    bumped = reclaim.lstrip("v") == current.strip().lstrip("v")
-    plan = None if bumped else _plan(root, items, config)
 
     # Prove the bump before writing anything, so a version file the bump
     # rejects costs an exit code rather than a stamped store claiming a release
@@ -3891,6 +3931,50 @@ def _backwards_refusal(name: str, current: str, reason: str) -> str:
         [
             f"Cannot cut {name}: {reason}. Nothing was stamped and nothing was written.",
             f"A release moves the version forward, so name a number above {current.strip()}.",
+        ]
+    )
+
+
+def _reserved_cut_refusal(
+    name: str, milestone: str, shippable: int, current: str, roadmap: str
+) -> str:
+    """Say the roadmap has given the number to a milestone, and what frees it.
+
+    The clause the digest prints for the same verdict, so a session that read
+    one recognises the other - but "not released" where the digest says
+    "unfinished", because every version the roadmap names ahead is unreleased
+    by construction and not every one is unfinished. Then the ways out, since
+    a refusal no flag overrides has to say what does: `docket wave` is named
+    because its beat turns to `release` when the milestone is due, which is
+    the moment this number stops being refused.
+    """
+    version = name.lstrip("v")
+    return "\n".join(
+        [
+            f'Cannot cut {name}: the roadmap gives {version} to "{milestone}", which it has not '
+            "released. Nothing was stamped and nothing was written.",
+            f"A cut under that number puts the milestone's name on the {shippable} item(s) "
+            f"finished since {current.strip()}, and a tag makes that permanent. Name a number "
+            "the roadmap leaves free, or cut this one when `docket wave` says it is due; if "
+            f"the plan has changed, change {roadmap} first.",
+        ]
+    )
+
+
+def _unreadable_plan_refusal(name: str, roadmap: str, reason: str) -> str:
+    """Refuse the cut where the roadmap is there and was not read whole.
+
+    A reservation is found by reading the plan, so a plan read in part answers
+    "free" for any number its unread rows hold: the permissive direction, on
+    the question whose wrong answer a tag makes permanent. So this refuses as
+    `_unreadable_tags_refusal` does for the tag gate, and names what went
+    unread.
+    """
+    return "\n".join(
+        [
+            f"Cannot tell whether the roadmap reserves {name}, so that check did not run:",
+            f"{roadmap}: {reason}.",
+            f"Repair {roadmap}, then re-run the cut.",
         ]
     )
 

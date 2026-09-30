@@ -3,11 +3,13 @@ id: PL-Z85N
 title: bin/docket release cuts whatever version it is handed, so the reserved-version answer exists only in the advisory digest and nothing objects on the cut path
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: release-roadmap-seam
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_release.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md
 added: 2026-09-14
+closed: 2026-09-30
+pr: 1228
 verify: grep -q 'def test_a_version_the_roadmap_reserves_is_refused_on_the_cut_path' subprojects/docket/tests/test_cli.py
 ---
 
@@ -25,6 +27,16 @@ Reproduced 2026-09-30 on 0.5.17, with `ROADMAP.md` reserving 0.6.0, 0.7.0 and
 and the only objection it raises - no claim on the release train - prints the
 `bin/docket new --resource release-train "Cut v0.6.0 ..."` line that files a
 release item under the reserved number.
+
+**Found while working it, 2026-09-30.** Asking on the cut path exposed a false
+reservation in the reading itself: `_reserved_versions` in
+`subprojects/docket/src/docket/roadmap.py` counted a `## Current baseline: vX`
+heading as a milestone section, so a roadmap written ahead for the cut of vX
+reserved vX for a milestone with no name. The digest already printed `the
+roadmap gives 0.2.6 to ""` in that state; the new refusal failed
+`test_a_release_whose_roadmap_is_already_written_says_nothing_is_owed`.
+Baseline sections are now left out by kind: they record a release rather than
+plan one.
 
 **Why it matters.** The guard is on the reading path and not on the writing one.
 A session that reads the digest is told the version is reserved; a session that

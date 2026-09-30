@@ -1998,6 +1998,17 @@ release train's row order and releases that shape from whichever row the
 project stands on, and `implement` is returned only where the milestone's own
 scope counts open work (`PL-J45M`, under `PL-2T03`).
 
+**`docket release` asks the same question of the version it is handed**
+(`PL-Z85N`). The answer had lived only in the digest, so a cut named after a
+reserved number went through and a dry run of one exited 0; `release.reservation`
+is now the one reading of the set, shared by the offer and the cut. The cut
+refuses a reserved number outright, a dry run included, because it is a wrong
+number rather than a state to review, and no flag overrides it: the roadmap
+changing does. A `release` beat's own version is not reserved against itself,
+a `Current baseline:` heading reserves nothing, since it records a release
+rather than planning one, and a roadmap not read whole refuses the cut rather
+than taking silence for a free number.
+
 **What a release deliberately does not write is the roadmap.** A project that
 keeps a version table in a hand-maintained plan will find it left behind by
 every release — twice here, the second time one release after the first was

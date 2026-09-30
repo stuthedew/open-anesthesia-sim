@@ -2054,6 +2054,12 @@ def _reserved_versions(
     none, and its `(0, 4, -1)` would in any case match no suggestion.
     Milestone rows and sections at or below the current version are released,
     and a bump only ever suggests a number above it.
+
+    The `Current baseline:` section is left out by kind too. It records the
+    release the roadmap stands on rather than planning one, so one ahead of the
+    version file is the roadmap written ahead for that very cut - which read as
+    a reservation held by a milestone with no name, and refused the cut it
+    describes once `bin/docket release` asked (`PL-Z85N`).
     """
     names: dict[tuple[int, int, int], str] = {}
     for step in steps:
@@ -2064,6 +2070,8 @@ def _reserved_versions(
         names.setdefault(step.version, step.name)
     for section in sections:
         if current is not None and section.version <= current:
+            continue
+        if BASELINE_HEADING_RE.match(section.title):
             continue
         if not names.get(section.version):
             names[section.version] = section.name
