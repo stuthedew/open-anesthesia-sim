@@ -4879,10 +4879,17 @@ def _shallow_pair(tmp_path: Path) -> Path:
     while `^origin/main` still fails to exclude the default branch's own
     commits, which is the intermediate depth the incident of 2026-08-31 hit and
     a `--depth 1` clone does not reach: there the merge-base declines instead.
+
+    The commit the branch forks from carries a claim naming the branch, which
+    is what the guard keeps out of the answer. `main` holds it as it would where
+    the branch's earlier round landed by a merge rather than a squash, so a
+    complete walk excludes it with the rest of `main`, and one run off the graft
+    reads it as the branch's own (`PL-CY8B`).
     """
     origin = tmp_path / "origin"
     (origin / "items").mkdir(parents=True)
     (origin / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    (origin / "items" / "PL-M1BC-claimed.md").write_text(READY.replace("PL-B1B1", "PL-M1BC"))
     dated = os.environ | {
         "GIT_AUTHOR_DATE": "2026-08-20T12:00:00+00:00",
         "GIT_COMMITTER_DATE": "2026-08-20T12:00:00+00:00",
@@ -4901,10 +4908,16 @@ def _shallow_pair(tmp_path: Path) -> Path:
         capture_output=True,
     )
 
+    # Spelled to the id grammar, so the id the test asserts absent is one a
+    # reader could credit.
+    ids = ("PL-M1BC", "PL-M2DF", "PL-M3GH", "PL-M4JK", "PL-M5LM")
+    ids += ("PL-M6NP", "PL-M7QR", "PL-M8ST", "PL-M9VW", "PL-MXYZ")
+
     def commit(number: int) -> None:
         (origin / f"f{number}").write_text(f"main {number}\n")
         git("add", "-A")
-        git("commit", "-qm", f"PL-M0{number} Main work {number}")  # not-an-id
+        claim = f"\n\nClaim: {ids[0]} {BRANCH}" if number == 1 else ""
+        git("commit", "-qm", f"{ids[number - 1]} Main work {number}{claim}")
 
     for number in range(1, 7):
         commit(number)
@@ -5144,10 +5157,10 @@ def test_flight_does_not_answer_from_a_walk_the_clone_truncated(
 ) -> None:
     """The defect: a readable merge-base does not make the walk complete.
 
-    Without the guard the walk reports `PL-M01` - a commit of the default
-    branch's own, below the horizon `^origin/main` can exclude - as work this
-    branch is carrying, and `docket next` then withholds that item under the
-    words "do not start these again".
+    Without the guard the walk reads the claim on `PL-M1BC` - carried by a
+    commit of the default branch's own, below the horizon `^origin/main` can
+    exclude - as this branch's, and `flight` reports that item live on it, so
+    `docket next` stops offering an item nobody is working.
     """
     work = _shallow_pair(tmp_path)
     assert subprocess.run(
@@ -5158,11 +5171,15 @@ def test_flight_does_not_answer_from_a_walk_the_clone_truncated(
         text=True,
     ).stdout.strip(), "the merge-base must resolve, or this tests the case already covered"
 
-    assert main(["--items", str(work / "items"), "flight"]) == 0
+    # Dated inside the claim's lease, so what the report says of that claim is
+    # the fixture's answer and not the calendar's.
+    assert main(["--items", str(work / "items"), "--today", "2026-08-23", "flight"]) == 0
 
     out = capsys.readouterr().out
+    # The consequence the guard prevents, so it leads: removed, `main`'s claim
+    # is reported, live here and lapsed on any date past the lease.
+    assert "PL-M1BC" not in out
     assert "No branch carries an item id" in out
-    assert "PL-M01" not in out  # not-an-id
     assert "1 ref cannot be compared with origin/main" in out
     assert f"  origin/{BRANCH}" in out
 
