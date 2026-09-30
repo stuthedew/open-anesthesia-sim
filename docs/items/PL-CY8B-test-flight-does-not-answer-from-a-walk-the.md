@@ -3,11 +3,13 @@ id: PL-CY8B
 title: test_flight_does_not_answer_from_a_walk_the_clone_truncated asserts PL-M01 is absent, but PL-M01 is not an id ID_PATTERN matches, so that assertion cannot fail
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parallel-sessions
 touches: subprojects/docket/tests/test_cli.py
 added: 2026-09-13
+closed: 2026-09-30
+pr: 1227
 verify: ! grep -q 'PL-M0{number}' subprojects/docket/tests/test_cli.py && uv run pytest subprojects/docket/tests/test_cli.py
 ---
 
