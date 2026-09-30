@@ -3851,6 +3851,40 @@ def test_orphaned_still_reports_work_pushed_after_the_merge_beside_such_a_port(
     assert port not in {commit.commit for commit in branch.commits}
 
 
+def test_a_later_merge_touching_the_file_is_not_work_left_behind(tmp_path: Path) -> None:
+    """A one-path commit its own squash took stays landed when a later merge edits the file.
+
+    `PL-WNQT`'s shape. A one-line docstring fix was squash-merged (`#570`) into
+    a copy the base had already added to, and `#572` then changed another line
+    of that file. The squash wrote a blob the branch never held, and after
+    `#572` the base's copy is no longer a superset of the branch's. A commit
+    with one path gives the partial rule nothing to count, so the commit read
+    as left behind, and its recipe was a checkout that would have reverted
+    `#572`. The replay is what clears it: with `change_landed` unanswered, as
+    on git before 2.40, the commit makes up the whole report.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", f_txt=_LINES)
+    repo.git("checkout", "-qb", "claude/lucid")
+    repo.commit("PL-0001: the work", g_txt="work\n", h_txt="more\n")
+    fix = repo.commit("PL-0001: the docstring names a method", f_txt=_edit(_LINES, n10="ten"))
+    repo.git("checkout", "-q", "main")
+    repo.commit("PL-0002: add to the file (#569)", f_txt=_LINES + "31\n")
+    repo.git("merge", "-q", "--squash", "claude/lucid")
+    repo.git("commit", "-qm", "PL-0001: the work (#570)")
+    repo.commit("PL-0003: a later edit (#572)", f_txt=_edit(repo.read("f.txt"), n25="twenty-five"))
+
+    def no_replay(args: list[str], root: Path) -> str:
+        return SILENT if args[0] == "merge-tree" else _run_git(args, root)
+
+    report = orphaned(repo.root)
+
+    assert report.known, report.declined
+    assert report.branches == ()
+    [unreplayed] = orphaned(repo.root, runner=no_replay).branches
+    assert [commit.commit for commit in unreplayed.commits] == [fix]
+
+
 # --- the forge's word on a merged pull request (`PL-8BR0`) --------------------
 #
 # A squash lands none of a branch's commits by hash, and a commit that only

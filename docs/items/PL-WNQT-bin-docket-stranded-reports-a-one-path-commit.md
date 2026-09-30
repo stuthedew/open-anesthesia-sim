@@ -3,12 +3,14 @@ id: PL-WNQT
 title: bin/docket stranded reports a one-path commit as work left behind whenever a later merge edits that file, and its recovery recipe would revert the newer work
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/vcs.py, tests/unit/test_docket_branch_guard.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-14
-verify: grep -q 'def test_a_later_merge_touching_the_file_is_not_work_left_behind' tests/unit/test_docket_branch_guard.py && uv run pytest tests/unit/test_docket_branch_guard.py
+closed: 2026-09-30
+pr: 1226
+verify: grep -q 'def test_a_later_merge_touching_the_file_is_not_work_left_behind' subprojects/docket/tests/test_vcs.py
 recurrences: 2026-09-25 PL-TFF9 withdrawn 2026-09-25 PL-TFF9
 ---
 
@@ -84,3 +86,44 @@ test is **not a superset** of the portable one even in principle — so `orphane
 is never retired. Where the two disagree, the exact test wins and the
 disagreement is printed rather than resolved silently, which answers the
 question `PL-R808` leaves open.
+
+**Re-confirmed 2026-09-30: the problem changed shape.** 50 commits touched
+`vcs.py` after this was filed, and two of them fixed it, neither under this id:
+
+- **The recipe no longer writes over the base's copy.** `format_orphaned`
+  prints `recover: git cherry-pick <commit>` since `PL-GHHW`. A cherry-pick
+  applies only the commit's change and stops on a conflict. It never writes the
+  branch's copy of the file over the base's.
+- **The brief's shape is no longer reported.** `orphaned` now checks each
+  commit it would report with `change_landed`, which replays it onto the
+  base's commits since the fork, and finds it in the squash. Reproduced on a
+  scratch repository with git 2.43.0, following the brief's steps: a one-path
+  commit, squash-merged into a copy the base had added lines to, then a later
+  merge changing another line of that file. It is not reported. With the
+  replay unanswered, as on git before 2.40, the commit is reported just as
+  the brief shows.
+
+**The mechanism in the brief needs one correction.** At filing, the landing
+split counted every blob in the base's history, so a later edit could not by
+itself make a written blob unlanded. What made the path outstanding was the
+squash. It merged the commit into a copy the base had already changed, so it
+wrote a blob the branch never had. The later merge did one thing: the base's
+copy stopped being a superset of the branch's, so `_superseded` could no
+longer clear the path.
+
+**What was left, and was done here.** No test pinned this shape: the
+`change_landed` tests land the change through *another* pull request. Two
+docstrings also still described the old reading. `_commits_by_landing` said a
+commit none of whose changes reached the base is one nothing took, and
+`orphaned` said its errors all run toward silence. `touches` and `verify:` now
+name `subprojects/docket/tests/test_vcs.py`. The suite this item used to name
+is a shell-hook suite that imports no docket module (`PL-6YL1`).
+
+**The residual, which the first Done-when anticipated.** One case is still
+reported: a one-path commit whose change the squash took beside a later
+commit's edit to the *next* line, in a copy the base had changed. Its replay
+conflicts, which is `change_landed`'s documented recall cost. The recipe it
+gets is a cherry-pick, which stops on that same conflict, as measured on the
+scratch repository. That is the "cannot be decided" half of the first
+Done-when, so it is recorded here and in `orphaned`'s docstring, not filed
+again.

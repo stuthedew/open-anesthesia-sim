@@ -978,6 +978,26 @@ def test_nothing_is_corrected_when_the_bump_already_agrees_with_the_plan() -> No
     assert (offer.kind, offer.version) == (STANDS, "0.3.0")
 
 
+def test_a_release_beats_own_version_is_not_reserved_against_it() -> None:
+    """`wave` counts the version it asks to cut among the unreleased numbers ahead.
+
+    Read without the exemption, `bin/docket release 0.3.0` would be refused
+    under the very beat asking for it (`PL-Z85N`). The milestone after it
+    stays reserved, and the same number is reserved while its gate is open.
+    """
+    from docket.release import reservation
+
+    releasing = _plan("0.2.8", KNOWN_IDS)
+    clearing = _plan("0.2.8", frozenset({"PL-DDDD", "PL-BBBB"}))
+
+    assert releasing.beat == RELEASE
+    assert reservation("0.3.0", releasing) is None
+    after = reservation("0.4.0", releasing)
+    assert after is not None and after.name == "the teachable case"
+    held = reservation("v0.3.0", clearing)
+    assert held is not None and held.name == "the foundation"
+
+
 def test_the_digest_withholds_the_offer_and_says_which_step_owns_the_version() -> None:
     """The two lines the item is about, read together off one render."""
     from docket.checks import Report

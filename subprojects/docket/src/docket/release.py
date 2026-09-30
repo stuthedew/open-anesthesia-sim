@@ -33,7 +33,7 @@ from .model import RELEASE_TRAIN, Item
 from .store import ID_PATTERN
 
 if TYPE_CHECKING:  # `roadmap` reads this module's version grammar, so the
-    from .roadmap import Wave  # runtime import would close the cycle.
+    from .roadmap import ReservedVersion, Wave  # runtime import would close the cycle.
 
 VERSION_RE = re.compile(r'^(version\s*=\s*")([^"]+)(")', re.M)
 SEMVER_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
@@ -848,10 +848,38 @@ def release_offer(ready: Readiness, plan: Wave | None) -> ReleaseOffer:
     # releases that shape from whichever row the project stands on, and
     # `implement` is returned only where an `own_scope` counts open work, so
     # the word has something behind it wherever it is printed (`PL-J45M`).
-    for reserved in plan.reserved:
-        if "{}.{}.{}".format(*reserved.version) == suggested:
-            return ReleaseOffer(RESERVED, suggested, reserved.name)
+    held = reservation(suggested, plan)
+    if held is not None:
+        return ReleaseOffer(RESERVED, suggested, held.name)
     return ReleaseOffer(STANDS, suggested, "")
+
+
+def reservation(version: str, plan: Wave | None) -> ReservedVersion | None:
+    """The unreleased milestone the plan has given `version` to, or `None`.
+
+    The one reading of `plan.reserved` that both the offer and the cut ask, so
+    the digest withholding a number and `bin/docket release` refusing it are
+    one verdict rather than two. Before it, only the digest asked: the cut path
+    never did, and a dry run of the reserved 0.6.0 exited 0 (`PL-Z85N`).
+
+    A `release` beat's own version is not reserved against itself. `wave`
+    counts the version it is asking to cut among the numbers ahead, since it is
+    unreleased like the rest, and refusing it would block the one release the
+    plan is waiting for. No plan reserves nothing: a project with no roadmap is
+    a legitimate state, and telling it from a roadmap that could not be read is
+    the caller's, which knows whether there was a file to read.
+    """
+    from .roadmap import RELEASE
+
+    if plan is None:
+        return None
+    wanted = version.strip().lstrip("v")
+    if plan.beat == RELEASE and plan.release_version is not None:
+        if "{}.{}.{}".format(*plan.release_version) == wanted:
+            return None
+    return next(
+        (held for held in plan.reserved if "{}.{}.{}".format(*held.version) == wanted), None
+    )
 
 
 def stamp(items: list[Item], version: str) -> list[Item]:
