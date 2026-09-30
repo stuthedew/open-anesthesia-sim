@@ -446,9 +446,12 @@ push_reason = (
     "either flag is refused whatever the rest of the push holds.\n\n"
     "To push this branch, name it, without the flag or the setting:\n\n"
     "    git push -u origin <branch>\n\n"
-    "Deleting branches on the remote is left to the project owner: list them in "
-    "the reply, with the command that deletes them (`CLAUDE.md`, the "
-    "housekeeping bullet)."
+    "Deleting branches on the remote is "
+    "left to the branch sweep and the project owner: `branch-sweep.yml` deletes "
+    "a finished `claude/*` branch daily, and `python3 tools/branch_sweep.py` "
+    "names any it keeps. Name any of those that should go anyway in the reply, "
+    "with `git push origin --delete <branch>` for the project owner to run "
+    "(`CLAUDE.md`, the housekeeping bullet)."
 )
 prune_reason = (
     "Pruning remote-tracking refs is refused in this repository. A stale "

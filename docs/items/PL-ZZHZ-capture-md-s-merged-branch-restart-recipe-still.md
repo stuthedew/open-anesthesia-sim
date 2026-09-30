@@ -3,12 +3,14 @@ id: PL-ZZHZ
 title: capture.md's merged-branch restart recipe still hands every remote deletion to the project owner ('say the remote deletion is outstanding and leave it to the owner'), where PL-X8SV's branch sweep now deletes a finished claude/* branch daily and only a branch it keeps reaches the owner, so its copy of the recipe and no-prune-guard.sh's (PL-J3TV) no longer say the same thing
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: parallel-sessions
 touches: .claude/skills/docket/modes/capture.md, .claude/hooks/no-prune-guard.sh
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-30
+closed: 2026-09-30
+pr: 1247
 payoff: a session restarting a merged branch leaves its remote copy to the branch sweep and hands the owner only a branch the sweep keeps, whichever of the two copies of the rule it read
 verify: grep -qF 'python3 tools/branch_sweep.py' .claude/skills/docket/modes/capture.md && grep -qF 'left to the branch sweep and the project owner' .claude/hooks/no-prune-guard.sh
 ---
@@ -50,3 +52,17 @@ drift its rule leaves to the capture rule (`.claude/rules/citation-drift.md`
 it closed, not a new head: two items on the fact (`PL-J3TV`, this one) is under
 the three a head needs, and the third stale copy, the push refusal, is repaired
 here rather than filed.
+
+**Resolution, 2026-09-30 (`#1247`).** The skill's block drops `git push origin
+--delete` and holds the three commands the hook prints, which also makes "these
+three commands" in its `--prune` paragraph true again. The paragraph under the
+block says the remote branch is GitHub's at the merge and `branch-sweep.yml`'s
+otherwise, and why this branch is the sweep's once its carried-across commit
+lands: `vcs.change_landed` clears it for `stranded` and the sweep alike. It
+names the owner only for a branch `python3 tools/branch_sweep.py` keeps that
+should go anyway, and asks that it and the hook be kept in step, as the hook's
+header already asks from its side. The hook's push refusal says the same in one
+sentence. No test was added: both changes are message text, and the 215 hook
+tests pass unchanged. `bin/docket branch`'s restart advice (`render.py`'s
+`_merged_lines`) was checked and makes no claim about who deletes the remote
+branch, so it is not a third copy.
