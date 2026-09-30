@@ -559,16 +559,24 @@ comparison asserts, and what it does not" is where it is argued.
 ## Data files (`data/`)
 
 Each JSON file carries a `schema_version`, an `id`, the parameter values, and
-a `sources` array of citations (`citation`, `url`, `tier`, `adopted`, `note`
-per entry — see `core.parameters.SourceReference`). `tier` is drawn from the
-closed vocabulary `core.parameters.SOURCE_TIERS`, which is the three tiers
-`docs/MODEL.md` § "Source hierarchy" defines; `adopted` says whether the file
-names that source as the authority for a value it stores, which is a separate
-question from what tier the source is. A file that adopts no primary source at
-all carries a top-level `provenance_gap` saying so. `core/parameters.py`
-rejects a file that
+a `sources` array of citations (`citation`, `url`, `tier`, `adopted`,
+`authority_for`, `note` per entry — see `core.parameters.SourceReference`).
+`tier` is drawn from the closed vocabulary `core.parameters.SOURCE_TIERS`,
+which is the three tiers `docs/MODEL.md` § "Source hierarchy" defines. `adopted`
+says whether the file names that source as the authority for a value it
+stores, which is a separate question from what tier the source is.
+`authority_for` names which stored values, by the dotted key path the
+provenance table uses, and is empty exactly when `adopted` is false. A file
+that adopts no primary source at all carries a top-level `provenance_gap`
+saying so. `python3 tools/source_tier_counts.py` reads `authority_for` and
+prints the source and tier behind every stored value, file by file and in
+total. It gates nothing, by the project owner's decision recorded on
+`PL-9LXK`: it prints the counts `docs/MODEL.md` states and never checks them.
+`core/parameters.py` rejects a file that
 is missing required fields, uses an unsupported schema version, declares a
 tier outside the vocabulary or an `adopted` flag that is not a JSON boolean,
+declares an `authority_for` that disagrees with `adopted`, names something
+that is not one of the file's stored values or names a stored value twice,
 contains a
 value outside its validated range (e.g. non-positive volumes, tissue
 perfusion fractions that don't sum to 1), or carries a key the schema does
@@ -668,6 +676,7 @@ tools/
 ├── pr_title_check.py     # refuses a pull request whose title does not lead with the ids its branch closes, because the squash-merge subject is taken from that title and is the one line of `main`'s history that says which items a change was about; it no longer stands for provenance, which `pr_record_check.py` beside it records before the merge (`PL-M7W1`, `PL-HMZZ`)
 ├── required_checks_check.py  # reconciles the jobs that report a status check on `pull_request`, parsed from `.github/workflows/`, against the status checks branch protection requires, read from the GitHub API - in both directions, because a required name nothing reports leaves every pull request pending forever on a check that cannot arrive (`PL-KPP1`, `#377`) and a reporting job nothing requires can go red without blocking a merge (`PL-H8YD`, `#654`); it needs no credential at all, since on a public repository `GET /repos/{owner}/{repo}/branches/{branch}` answers unauthenticated where the `.../protection` endpoint the question was first asked of needs an `administration` grant a workflow token can never hold; it reads both settings surfaces, classic branch protection and rulesets, and treats an empty union as a failure rather than as agreement, because a migration between them would otherwise leave it passing while requiring nothing; and it refuses rather than guesses a matrix job, a reusable workflow call or an unreachable API, a job silently dropped from the reporting set being indistinguishable from nothing to reconcile. It runs as a step inside `quality.yml`'s `checks` job rather than as a job of its own, so the check that guards the required list adds no entry to it, and it is one of several tools here that read the network, `main_ci_status.py`, `open_pull_requests.py`, `left_behind_check.py` and `pr_body_check.py`'s `--record`, `--recover` and `--compare` modes among them
 ├── rules_paths_check.py  # refuses a `.claude/rules/*.md` `paths:` entry that does not begin with `/`, or whose literal prefix resolves to nothing, because an unanchored glob also matches its name at any depth while `./` and a typo'd prefix match nothing at all — so a rule's real scope can differ silently from the one it declares, in either direction
+├── source_tier_counts.py  # prints the source and tier behind every stored value in the data files, per file and in total, read from each `sources` entry's `authority_for`. These are the counts `docs/MODEL.md` § "Source hierarchy" states in prose. It prints no count at all while `check_source_tiers` reports an error, since a plausible count from malformed data is worse than none. It gates nothing, by the project owner's decision recorded on `PL-9LXK`: it prints the counts and never checks or rewrites the sentence that states them
 ├── update_armed.py       # brings `main` into every armed pull request it has moved past, because `main` merges only an up-to-date branch and auto-merge never updates one, so an armed pull request whose session has ended waited at "behind" for somebody to click Update branch (`PL-S5MF`); it passes over a draft, a fork, one level with `main` and one whose required check already failed on its head, updates the rest on the head it read, and lists what it read; it writes only with `UPDATE_BRANCH_TOKEN`, lists what it would have updated without it, and exits 1 when a reading fails or GitHub refuses the token; `.github/workflows/update-armed.yml` runs it on each push to `main`
 ├── workflow_paths_check.py  # holds `docket.toml`'s hand-maintained lists to the tree: `workflow_paths` to what each test file under `tests/` imports — apparatus when it does not import `anesthesia_sim`, the simulator's when it does — because the apparatus tests living in the simulator's test tree were listed by hand and drifted, and an item declaring one alongside the script it tests is set aside from both lanes as reaching both halves, offered only by a `docket next` run without a lane, while a support module pytest does not collect, such as `tests/conftest.py`, imports what it needs rather than what it serves and is held only to the second half, its side otherwise being the list's to declare (`PL-12P8`); every tracked path outside `tests/` to `workflow_paths` or `product_paths`, refusing one under neither and naming both lines that would place it, because a path nobody listed was the simulator's by default and one such file had set 22 items aside from both lanes (`PL-8ZGY`); and `gate_paths` to every `ruff.toml` in the tree, because an uncovered linter config is one `docket verify`'s "the checks themselves are unedited" audit will not defend
 └── ruff.toml             # pins the formatter to the oldest interpreter these tools have to parse under
@@ -684,9 +693,11 @@ the data files and resolves every path and section heading the documentation
 cites.
 
 Its `check_source_tiers` holds the same data files to `docs/MODEL.md`
-§ "Source hierarchy": every `sources` entry declares a `tier` from the closed
-vocabulary and an `adopted` flag, and a file with no entry that is both
-`primary` and `adopted` records a `provenance_gap`. It decides only what a
+§ "Source hierarchy". Every `sources` entry declares a `tier` from the closed
+vocabulary, an `adopted` flag, and an `authority_for` list that is non-empty
+exactly when the entry is adopted and names only the file's own stored values,
+none of them twice. A file with no entry that is both `primary` and `adopted`
+records a `provenance_gap`. It decides only what a
 file *declares*. Whether a citation labelled `primary` really is a primary
 measurement of the quantity needs somebody who has read the paper, and a tool
 guessing at that — by author, by journal, by a denylist on a product name —

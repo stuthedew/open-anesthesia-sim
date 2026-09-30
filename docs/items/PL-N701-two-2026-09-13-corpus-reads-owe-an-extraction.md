@@ -9,6 +9,7 @@ feature: provenance
 touches: docs/references, docs/MODEL.md
 blocked-by: PL-Z3V5
 added: 2026-09-13
+recurrences: 2026-09-30 PL-KN5Y
 ---
 
 **Problem.** `docs/references/README.md` states the obligation: "Reading a
