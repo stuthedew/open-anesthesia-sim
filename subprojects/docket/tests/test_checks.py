@@ -25,6 +25,7 @@ from docket.vcs import (
     ClosureReport,
     CutWindow,
     FlightReport,
+    GoneReport,
     LostItem,
     LostReport,
     PullRequestHistory,
@@ -1676,6 +1677,48 @@ def test_a_declared_item_with_no_filename_is_declined_rather_than_failed() -> No
     assert _has(report.declined, "PL-TFWR")
 
 
+def test_an_open_item_naming_a_stale_touches_path_is_advised_and_nothing_else_is() -> None:
+    """A path the history held and the tree lacks is named with its commit (`PL-8JY7`).
+
+    Only on an open item: a closed item's `touches` records what its work edited
+    then, and 103 closed entries named a path later work moved on 2026-09-30.
+    An entry naming an item file is `_check_touched_items`' error, and an item
+    declaring nothing has nothing to judge. None of it fails the run.
+    """
+    stale = _item("PL-CNCF", touches=("core/run_score.py", "app/controller.py"))
+    closed = _item(
+        "PL-2FM6",
+        status="done",
+        closed=date(2026, 9, 8),
+        commit="cf6f71f8",
+        touches=("core/run_score.py",),
+    )
+    item_file = _item("PL-3V6C", touches=("docs/items/PL-XQRK-moved.md",))
+    moved = _item("PL-XQRK", path="PL-XQRK-now-here.md")
+    undeclared = _item("PL-D143", touches=())
+    gone = GoneReport(
+        (("core/run_score.py", "bc21c320"), ("docs/items/PL-XQRK-moved.md", "0a1b2c3d"))
+    )
+
+    report = analyze([stale, closed, item_file, moved, undeclared], TODAY, gone=gone)
+
+    [advice] = [message for message in report.advisories if "its history held" in message]
+    assert advice.startswith(
+        "1 open item declares a `touches` path this tree lacks and its history held: "
+        "PL-CNCF core/run_score.py (last changed by bc21c320). Re-point each"
+    )
+    assert not any(other in advice for other in ("app/controller.py", "PL-2FM6", "PL-3V6C"))
+    assert not _has(report.errors, "core/run_score.py")
+
+
+def test_a_stale_touches_read_that_could_not_see_the_history_says_so() -> None:
+    """A shallow clone's answer is unread rather than clean, so it is not an empty advisory."""
+    report = analyze([_item()], TODAY, gone=GoneReport(declined="this clone is shallow"))
+
+    assert _has(report.declined, "name a path the tree has lost: this clone is shallow")
+    assert not _has(report.advisories, "its history held")
+
+
 def test_a_drifted_filename_names_the_items_whose_touches_declare_it() -> None:
     """The advisory must not send a reader to break a declaration.
 
@@ -1892,7 +1935,7 @@ def test_two_open_items_recording_one_command_are_rejected() -> None:
         _item(identifier="PL-B1C2", verify="grep -q needle a.py"),
     ]
     report = analyze(items, TODAY)
-    assert _has(report.errors, "record the same `verify:` command")
+    assert _has(report.errors, "record the same `verify:` clause")
     assert _has(report.errors, "PL-B1C2, PL-K7QX")
 
 
@@ -1902,7 +1945,7 @@ def test_a_closed_item_does_not_make_an_open_one_share_a_command() -> None:
         _item(identifier="PL-K7QX", verify="grep -q needle a.py"),
         _item(identifier="PL-D0N3", status="done", closed=TODAY, verify="grep -q needle a.py"),
     ]
-    assert not _has(analyze(items, TODAY).errors, "record the same `verify:` command")
+    assert not _has(analyze(items, TODAY).errors, "record the same `verify:` clause")
 
 
 def test_commands_differing_inside_a_quoted_argument_are_not_one_command() -> None:
@@ -1911,7 +1954,62 @@ def test_commands_differing_inside_a_quoted_argument_are_not_one_command() -> No
         _item(identifier="PL-K7QX", verify="grep -q 'a  b' a.py"),
         _item(identifier="PL-B1C2", verify="grep -q 'a b' a.py"),
     ]
-    assert not _has(analyze(items, TODAY).errors, "record the same `verify:` command")
+    assert not _has(analyze(items, TODAY).errors, "record the same `verify:` clause")
+
+
+HEALTH = Config(
+    health_clauses=("python3 tools/doc_check.py check",), collected_test_paths=("tests",)
+)
+
+
+def test_a_discriminating_clause_shared_behind_a_health_clause_is_rejected() -> None:
+    """`PL-1YDK` and `PL-8PT6`: one clause, two whole strings, worked twice."""
+    items = [
+        _item(identifier="PL-1YDK", verify="git check-ignore -q subprojects/docket/uv.lock"),
+        _item(
+            identifier="PL-8PT6",
+            verify=(
+                "python3 tools/doc_check.py check && git check-ignore -q subprojects/docket/uv.lock"
+            ),
+        ),
+    ]
+    report = analyze(items, TODAY, HEALTH)
+    assert _has(report.errors, "record the same `verify:` clause")
+    assert _has(report.errors, "PL-1YDK, PL-8PT6")
+    assert _has(report.errors, "`git check-ignore -q subprojects/docket/uv.lock`")
+
+
+def test_items_sharing_only_a_health_clause_are_not_one_finding() -> None:
+    """31 open items carried `doc_check.py check` on 2026-09-30; none is a duplicate for it."""
+    items = [
+        _item(identifier="PL-K7QX", verify="python3 tools/doc_check.py check && grep -q one a.py"),
+        _item(identifier="PL-B1C2", verify="python3 tools/doc_check.py check && grep -q two a.py"),
+    ]
+    assert not _has(analyze(items, TODAY, HEALTH).errors, "record the same `verify:` clause")
+
+
+def test_items_sharing_only_a_collected_pytest_run_are_not_one_finding() -> None:
+    """A whole-file run over a collected tree is the health half; unsaid, it counts."""
+    items = [
+        _item(
+            identifier="PL-K7QX", verify="grep -q one a.py && uv run pytest tests/unit/test_a.py"
+        ),
+        _item(
+            identifier="PL-B1C2", verify="grep -q two a.py && uv run pytest tests/unit/test_a.py"
+        ),
+    ]
+    assert not _has(analyze(items, TODAY, HEALTH).errors, "record the same `verify:` clause")
+    unsaid = Config(health_clauses=HEALTH.health_clauses)
+    assert _has(analyze(items, TODAY, unsaid).errors, "record the same `verify:` clause")
+
+
+def test_items_sharing_two_clauses_are_reported_once() -> None:
+    items = [
+        _item(identifier="PL-K7QX", verify="grep -q one a.py && grep -q two a.py"),
+        _item(identifier="PL-B1C2", verify="grep -q one a.py && grep -q two a.py"),
+    ]
+    errors = [e for e in analyze(items, TODAY).errors if "record the same `verify:` clause" in e]
+    assert len(errors) == 1
 
 
 def test_items_sharing_a_command_that_cannot_fail_are_told_once() -> None:
@@ -1919,7 +2017,7 @@ def test_items_sharing_a_command_that_cannot_fail_are_told_once() -> None:
     items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-B1C2", verify="true")]
     report = analyze(items, TODAY)
     assert _has(report.errors, "exits 0 against every tree")
-    assert not _has(report.errors, "record the same `verify:` command")
+    assert not _has(report.errors, "record the same `verify:` clause")
 
 
 def test_piping_docket_checks_output_raises_an_advisory() -> None:

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: release-process
+milestone: v0.5.18
 touches: docs/items/
 added: 2026-09-28
 closed: 2026-09-28

@@ -37,7 +37,12 @@
 # wanted.** A session reaching for `--prune` is usually trying to restart a
 # branch whose pull request merged, and the safe form of that is three
 # commands rather than a prune. Answering the question the caller actually had
-# is what makes a refusal cheaper than the prose was.
+# is what makes a refusal cheaper than the prose was. The message also says
+# what the three leave undone - the branch on the remote - and whose that is.
+# `PL-K2C8` added that to the skill's copy of the recipe
+# (`.claude/skills/docket/modes/capture.md`), and this copy, the one a session
+# reads at the moment it is refused, went without it until `PL-J3TV`. Keep
+# the two in step.
 #
 # Fails open in every error path - no python3, an unreadable payload,
 # `shell_split.py` missing from beside it - because a guard that breaks the
@@ -453,11 +458,20 @@ prune_reason = (
     "`bin/docket stranded` recovers what such a ref holds.\n\n"
     "Run `bin/docket stranded` first: it prints every item that exists only on "
     "a branch, with the `git checkout` line that restores the file.\n\n"
-    "To restart a branch whose pull request has already merged, delete just "
-    "that one ref and rebase the name onto the merged base:\n\n"
+    "To restart a branch whose pull request has already merged, clear the ref "
+    "this clone keeps for it and rebase the name onto the merged base:\n\n"
     "    git branch -dr origin/<branch>\n"
     "    git fetch origin main\n"
     "    git checkout -B <branch> origin/main\n\n"
+    "That leaves the branch on the remote alone: `git branch -dr` clears the "
+    "ref in this clone and nothing else, and while the branch is still there "
+    "the next `git fetch origin` brings the ref back. GitHub deletes a branch "
+    "when its own pull request merges, `branch-sweep.yml` deletes a finished "
+    "`claude/*` branch daily, and `python3 tools/branch_sweep.py` names any the "
+    "sweep keeps. Deleting one that should go anyway is for the project owner "
+    "to run, since a push from a session is refused, so name it in the reply: "
+    "`git push origin --delete <branch>` (`docs/worker.md`, `PL-K2C8`, "
+    "`PL-X8SV`).\n\n"
     "To fetch without pruning, drop the flag or the setting: `git fetch origin`."
 )
 delete_reason = (

@@ -63,6 +63,7 @@ from docket.vcs import (
     filed_with_work,
     files_in_flight,
     find_cut,
+    gone_paths,
     is_shallow,
     lost,
     merged_pull_requests,
@@ -494,6 +495,16 @@ READS: tuple[Read, ...] = (
         "since_filed",
         lambda r, g: since_filed(r, ("src/one.py", "docs/items"), date(2000, 1, 1), runner=g),
         _findings("paths"),
+    ),
+    # The branch this checkout is on captured `PL-L0ST` and then deleted its
+    # file, so the history holds a path the tree lacks: the finding a silence
+    # must not lose. `planned.py` no commit holds, and it is not one.
+    Read(
+        "gone_paths",
+        lambda r, g: gone_paths(
+            r, ("docs/items/PL-L0ST-fixture.md", "src/one.py", "planned.py"), runner=g
+        ),
+        _findings("gone"),
     ),
 )
 
