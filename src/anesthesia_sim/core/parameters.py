@@ -158,9 +158,10 @@ class SourceReference:
     primary measurement cited beside a stored number it did not produce is
     `("primary", False)`, and reading it as provenance for that number is the
     specific error the source hierarchy exists to prevent. `adopted` and
-    `authority_for` are held to agree instead: the loader refuses an entry
-    that is adopted and names no stored value, or names one without being
-    adopted, and a file in which two entries name the same value.
+    `authority_for` are held to agree instead - the loader refuses an adopted
+    entry that names no stored value, and an entry naming one that is not
+    adopted - and every path must name a numeric value the same file stores,
+    which no other entry names.
     """
 
     citation: str
@@ -637,11 +638,11 @@ def _short_citation(citation: str) -> str:
 def _stored_value_paths(payload: BaseModel, prefix: str = "") -> Iterator[str]:
     """Yield every numeric value a validated data file stores, as a dotted key path.
 
-    Paths are spelled as `authority_for` spells them - `tissue_groups.fat.volume_l`
-    - and read off the validated payload rather than the raw JSON. The two have
-    the same keys, because `extra="forbid"` admits none the schema does not
-    declare; an optional value the file omits or writes as `null` stores nothing
-    and is not yielded.
+    Paths are spelled as `authority_for` spells them, `tissue_groups.fat.volume_l`
+    for one, and read off the validated payload rather than the raw JSON. The
+    two have the same keys, because `extra="forbid"` admits none the schema does
+    not declare; an optional value the file omits or writes as `null` stores
+    nothing and is not yielded.
     """
 
     for name in type(payload).model_fields:

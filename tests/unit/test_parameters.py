@@ -703,7 +703,7 @@ def test_rejects_a_nonboolean_adopted_flag(adopted: object) -> None:
 
 
 def test_rejects_a_source_entry_that_declares_no_authority_for() -> None:
-    """Required and not defaulted, for the reason `_SourcePayload` gives for `tier`."""
+    """Required like `tier` and `adopted`, for the reason `_SourcePayload` gives."""
 
     payload = _valid_agent_payload()
     del _source_entries(payload)[0]["authority_for"]
@@ -926,7 +926,7 @@ def test_a_version_2_file_is_refused_by_its_version() -> None:
         parse_agent_parameters(payload)
 
 
-def test_the_shipped_files_load_and_carry_each_source_s_authority_for() -> None:
+def test_the_shipped_files_load_and_carry_authority_for_to_the_public_type() -> None:
     """One pinned example of the loaded link; the mapping itself lives in the data.
 
     De Wolf et al. 2012 is the example because its note once called it the
