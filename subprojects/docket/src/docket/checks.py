@@ -946,7 +946,7 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             f"{where}: marked dropped but records no `reason`; an item closed without "
             "one gets re-raised by the next person who notices it"
         )
-    if item.status in ("done", "dropped") and item.closed is None:
+    if item.status in CLOSED_STATUSES and item.closed is None:
         report.errors.append(f"{where}: marked {item.status} but records no `closed` date")
 
 
@@ -3846,7 +3846,7 @@ def _groom(
     # (`PL-6T44`). Membership is tested inside the existing walk so the
     # advisories still appear in store order.
     ready_now = {item.identifier for item in promotable(report.items)}
-    resolved = {i.identifier for i in report.items if i.status in ("done", "dropped")}
+    resolved = {i.identifier for i in report.items if i.status in CLOSED_STATUSES}
     for item in report.items:
         if item.identifier in ready_now:
             report.advisories.append(

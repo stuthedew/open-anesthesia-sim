@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: ux, infra
 feature: teachable-case
-touches: tools/, src/anesthesia_sim/app/simulation_view.py, .claude/rules/ui-reader.md
+touches: tools/, src/anesthesia_sim/app/simulation_view.py, .claude/rules/ui-reader.md, Makefile, tests/unit/test_standing_text_check.py
 blocked-by: PL-6580, PL-F9TQ
 added: 2026-09-08
 verify: grep -q 'standing_text_check' Makefile && python3 tools/standing_text_check.py && uv run pytest tests/unit/test_standing_text_check.py
