@@ -3899,12 +3899,44 @@ def _check_lost(report: Report, lost: LostReport | None) -> None:
         )
 
 
-def _check_shared_verify(report: Report) -> None:
-    """One `verify:` command recorded against two or more open items.
+def _discriminating_clauses(command: str, config: Config) -> list[str]:
+    """The clauses of a `verify:` command that could prove its own item done.
+
+    A command is one or more clauses cut at `&&`, and only some of them
+    discriminate: `python3 tools/doc_check.py check && git check-ignore -q
+    subprojects/docket/uv.lock` proves its item by the second clause, the first
+    being the health half every consumer runs anyway. Left out, in the order
+    they are decided: a clause that cannot fail (`never_fails`), one the
+    project spells in `health_clauses`, and a selector-less pytest run over the
+    trees `collected_test_paths` says `check_command` already collects - the
+    same reading `_redundant_pytest_clause` gives that shape. A pytest run the
+    project has not said is collected counts as discriminating, which errs
+    toward reporting rather than toward silence. Whitespace outside a clause is
+    dropped and nothing inside it is touched, so the exactness the check below
+    argues for holds within each clause.
+    """
+    found: list[str] = []
+    for clause in shell_words(command).clauses:
+        text = clause.text.strip()
+        if not text or never_fails(text) or text in config.health_clauses:
+            continue
+        targets = _pytest_targets(clause)
+        if (
+            targets is not None
+            and config.collected_test_paths
+            and all(_inside(target, config.collected_test_paths) for target in targets)
+        ):
+            continue
+        found.append(text)
+    return found
+
+
+def _check_shared_verify(report: Report, config: Config) -> None:
+    """One discriminating `verify:` clause recorded against two or more open items.
 
     A command proves an item done by failing until that item's work exists. Two
-    open items recording the same command cannot both be in that relation to it:
-    whichever is worked first makes it pass, and from then on the command
+    open items recording the same clause cannot both be in that relation to it:
+    whichever is worked first makes it pass, and from then on the clause
     accepts a branch that did none of the other's work. So this is the
     non-discriminating reading of a passing command arrived at *with certainty*,
     and it is reached by counting the store rather than by running anything.
@@ -3917,32 +3949,53 @@ def _check_shared_verify(report: Report) -> None:
     two sentences CI printed that day are the two rules that now run here
     (`PL-J3WK`, `PL-4W2L`).
 
-    Exact string equality, and deliberately no normalization. Collapsing runs of
-    whitespace would be right for the words of a shell line and wrong inside a
-    quoted argument, where `grep -q 'a  b'` and `grep -q 'a b'` read different
-    files - so a rule that normalized would report two different commands as one
-    and do it as a hard failure. Exactness costs the case nobody writes and
-    keeps the rule decidable.
+    Keyed by clause rather than by the whole command since `PL-BGMK`, which
+    counted before widening it. `PL-1YDK` recorded `git check-ignore -q
+    subprojects/docket/uv.lock` and `PL-8PT6`, filed twelve days later for the
+    same defect, recorded the same clause behind `python3 tools/doc_check.py
+    check`; the whole strings differ, so both were worked and only the landed
+    replay on `main` said so. Measured 2026-09-30 over 308 open items: the
+    whole-string key and the clause key each report 0 pairs today, and over the
+    21 duplicate pairs the store has recorded the whole string catches 1 and
+    the clause catches 2 - that pair being the second. A key that counted the
+    health clauses too reports 497 pairs, every one sharing `doc_check.py
+    check`, `bin/docket check` or a whole-file pytest run, which is why
+    `_discriminating_clauses` leaves those out. Keying on the test a `grep`
+    half names catches 0 of the 21, and `touches` as a second condition on the
+    clause key filters nothing, both clause catches sharing a path already.
+
+    Exact text equality within a clause, and deliberately no normalization.
+    Collapsing runs of whitespace would be right for the words of a shell line
+    and wrong inside a quoted argument, where `grep -q 'a  b'` and `grep -q
+    'a b'` read different files - so a rule that normalized would report two
+    different commands as one and do it as a hard failure. Exactness costs the
+    case nobody writes and keeps the rule decidable.
 
     Items whose command cannot fail at all are left out: `_check_item` has
     already told each of them to write a command that discriminates, and the
     sharing is a consequence of the placeholder rather than a second defect.
     The subtraction is the one `_check_landed` makes between its own findings,
-    applied across two checks.
+    applied across two checks. A pair sharing two clauses is reported once,
+    under the first.
     """
-    commands: dict[str, list[str]] = {}
+    holders: dict[str, list[str]] = {}
     for item in report.items:
         if item.status in OPEN_STATUSES and item.verify and not never_fails(item.verify):
-            commands.setdefault(item.verify, []).append(item.identifier)
-    for command, identifiers in commands.items():
-        if len(identifiers) > 1:
-            report.errors.append(
-                f"{', '.join(sorted(identifiers))} are open and record the same "
-                f"`verify:` command, `{command}` - whichever is worked first makes it "
-                "pass, so it cannot prove any one of them done and `docket verify` "
-                "would ACCEPT a branch that did none of the others' work. Give each "
-                "one a command naming something only its own work creates"
-            )
+            for clause in dict.fromkeys(_discriminating_clauses(item.verify, config)):
+                holders.setdefault(clause, []).append(item.identifier)
+    reported: set[tuple[str, ...]] = set()
+    for clause, identifiers in holders.items():
+        group = tuple(sorted(identifiers))
+        if len(group) < 2 or group in reported:
+            continue
+        reported.add(group)
+        report.errors.append(
+            f"{', '.join(group)} are open and record the same `verify:` clause, "
+            f"`{clause}` - whichever is worked first makes it pass, so it cannot prove "
+            "any one of them done and `docket verify` would ACCEPT a branch that did "
+            "none of the others' work. Give each one a clause naming something only "
+            "its own work creates"
+        )
 
 
 def _normalized_feature(name: str) -> str:
@@ -4071,7 +4124,7 @@ def analyze(
     _check_generator_defects(report, settings)
     _check_generator_band(report, settings)
     _check_feature_spellings(report)
-    _check_shared_verify(report)
+    _check_shared_verify(report, settings)
     _check_touched_items(report, settings)
     _check_filenames(report, settings)
     _check_gone_touches(report, gone, settings)

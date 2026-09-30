@@ -3,11 +3,14 @@ id: PL-WTXB
 title: Remove the unreferenced docket milestone command
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: docket-store
+milestone: v0.5.18
 touches: subprojects/docket
 added: 2026-09-13
+closed: 2026-09-30
+pr: 1230
 verify: ! bin/docket --help | grep -q milestone && uv run pytest subprojects/docket/tests/test_cli.py
 ---
 

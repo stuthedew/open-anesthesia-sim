@@ -2835,27 +2835,6 @@ def test_feature_draws_a_dropped_entry_distinctly_from_an_open_one(
     assert output.count("[ ]") == 1
 
 
-def test_milestone_draws_a_dropped_entry_distinctly_too(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """The milestone listing counts by the same two rules and drew the same box.
-
-    Fixed from one author rather than twice, so the next status added cannot
-    reach one listing and miss the other.
-    """
-    store = _store(
-        tmp_path,
-        _featured("PL-D1D1", "done", milestone="v0.9.0", closed="2026-08-10"),
-        _featured("PL-X1X1", "dropped", milestone="v0.9.0", closed="2026-08-11", reason="no"),
-    )
-
-    assert _run("milestone", "--items", str(store)) == 0
-
-    output = capsys.readouterr().out
-    assert "[x] PL-D1D1" in output
-    assert "[-] PL-X1X1" in output
-
-
 def test_triage_says_so_when_nothing_is_waiting(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -6262,7 +6241,6 @@ NO_GIT_ARGV: tuple[tuple[str, ...], ...] = (
     ("show", "PL-B1B1"),
     ("concurrent",),
     ("concurrent", "PL-B1B1"),
-    ("milestone",),
     ("release", "0.2.6", "--dry-run"),
     ("delegable",),
     ("verify", "PL-B1B1"),
@@ -9881,7 +9859,6 @@ NOT_READ_COMMANDS = frozenset(
         "gate",
         "feature",
         "generators",
-        "milestone",
         "release",
         "verify",
         "wave",

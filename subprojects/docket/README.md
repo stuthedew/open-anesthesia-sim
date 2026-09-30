@@ -2701,6 +2701,19 @@ discriminator, and two of the 73 are two discriminators rather than a
 prerequisite and a discriminator at all. A tool guessing at that half would be
 worse than no tool, so it stays prose (`PL-09G9`).
 
+**Two open items recording one discriminating clause are refused outright**
+(`PL-J3WK`, widened from the whole string to the clause by `PL-BGMK`).
+Whichever is worked first makes the clause pass, so it can prove neither done.
+The key leaves out the health half - the clauses `health_clauses` spells, and a
+selector-less `pytest` run over `collected_test_paths` - because that half is
+what every command shares: counted in, the rule reported 497 pairs over 308
+open items on 2026-09-30, and left out, 0, while catching the pair that had
+been worked twice (`PL-1YDK`, `PL-8PT6`). It does not decide which clause is an
+item's discriminator, which is the judgment the paragraph above leaves to
+prose: an item whose work is making `doc_check` pass shares that clause with
+nothing the rule can see, and that blind spot is the price of a rule that fires
+on nothing false.
+
 The cutover is read against the item's `added` date, so the commands already
 recorded are a closed set - nothing can join it - and it drains as each item
 is started, which is the repair-as-started policy rather than an exception to
@@ -3915,6 +3928,9 @@ verify_required_from = 2026-08-30   # omit to leave the `verify:` rule off
 verify_prerequisite_refused_from = 2026-09-20   # when a command may no longer
                                    # re-run a tree `check_command` collects
 collected_test_paths = ["tests"]   # the trees it does collect; empty = rule off
+health_clauses = ["python3 tools/doc_check.py check"]   # the clauses that prove
+                                   # the tree, not the item; left out of the
+                                   # shared-clause key
 verify_k_selector_refused_from = 2026-09-23   # when a command may no longer
                                    # narrow a run over those trees with `-k`
 verify_allowlist_from = 2026-09-24 # when a command must be an admitted shape

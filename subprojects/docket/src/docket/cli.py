@@ -3378,24 +3378,6 @@ def cmd_generators(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_milestone(args: argparse.Namespace) -> int:
-    _, items, _ = _load(args)
-    groups = milestones(items)
-    if not groups:
-        print("no items are assigned to a milestone")
-        return 0
-    wanted = [groups[args.name]] if args.name and args.name in groups else list(groups.values())
-    if args.name and args.name not in groups:
-        print(f"no milestone named '{args.name}'")
-        return 1
-    for milestone in wanted:
-        state = "complete" if milestone.is_complete else f"{len(milestone.outstanding)} outstanding"
-        print(f"{milestone.name}: {len(milestone.done)}/{len(milestone.items)} done ({state})")
-        for item in milestone.items:
-            print(f"  [{render.progress_mark(item)}] {item.identifier} {item.title}")
-    return 0
-
-
 @dataclass(frozen=True)
 class _Train:
     """Who holds the release train, as `cmd_release`, the digest and `new` all read it.
@@ -5416,10 +5398,6 @@ def build_parser() -> argparse.ArgumentParser:
     concurrent.add_argument("item", nargs="?", help="check against this item")
     concurrent.add_argument("--limit", type=_at_least_one, default=None)
     concurrent.set_defaults(func=cmd_concurrent)
-
-    milestone = add("milestone", "release membership and progress")
-    milestone.add_argument("name", nargs="?")
-    milestone.set_defaults(func=cmd_milestone)
 
     release = add("release", "cut a release from everything finished and unshipped")
     release.add_argument("version", nargs="?", help="override the inferred version")

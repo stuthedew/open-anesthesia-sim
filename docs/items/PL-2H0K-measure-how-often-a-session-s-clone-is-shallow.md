@@ -26,15 +26,18 @@ a shallow clone at session start, is capped at 60 seconds, and fails silently.
 So a container is provisioned shallow at depth 50, and everything a session
 runs sees a full clone unless that fetch failed. `PL-TQN2`'s 1,301 commits were
 the ordinary case, not an exception. One container is one data point, but what
-the docstrings get wrong is the mechanism, not a rate.
+the docstrings get wrong is the mechanism, not a rate. A second container, on
+2026-09-30, belonged to a session spawned through `create_session`. It showed
+the same two entries and 1,553 commits (`PL-KKX4`).
 
 **Why it matters.** `merged_pull_requests`' docstring says a session's
 container "is normally shallow, so that is the common case", and five more
 sites in `vcs.py` and `checks.py` reason from it. Other places are wrong in the
 same way:
 
-- `cli.py`, `.claude/hooks/stop_hook_patch.py` and `docs/ARCHITECTURE.md` say
-  `--depth 1`, where 50 was observed.
+- `.claude/hooks/stop_hook_patch.py` and `docs/ARCHITECTURE.md` say the
+  harness clones with `git clone --depth 1`, where 50 was observed. `cli.py`
+  said `--depth 1` too, until #1056 removed it on 2026-09-25.
 - `tools/doc_check.py` says `actions/checkout` clones shallow, but every
   workflow here sets `fetch-depth: 0`.
 
@@ -45,5 +48,11 @@ provisioned at depth 50, the session-start hook unshallows it, and it stays
 shallow only where that fetch failed. None of them says `--depth 1`, or that
 the workflows' checkout is shallow.
 
-**Generator check.** A one-off: a fact about the environment written down
-without being measured. No head's `misread:` states a fact about clone depth.
+**Generator check, revised 2026-09-30.** Triage judged this a one-off: a fact
+about the environment written down without being measured. It is not one. The
+`--depth 1` statements were written in #419 and #496, by sessions that had
+started with no checkout and cloned by hand at depth 1 after `add_repo`
+(`PL-KX9N`, `PL-3SGR`, `PL-483K`). That is `PL-KKX4`'s mechanism. `PL-KKX4`
+now lists this item among its members, as a spent generator, because the
+harness clones those sessions itself. `vcs.py`'s "normally shallow" is older
+(2026-08-30), and nobody traced it to that mechanism.
