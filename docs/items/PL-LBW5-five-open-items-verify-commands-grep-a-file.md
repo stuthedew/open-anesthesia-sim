@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: verify-command-health
+milestone: v0.5.19
 touches: docs/items
 added: 2026-09-17
 closed: 2026-09-30

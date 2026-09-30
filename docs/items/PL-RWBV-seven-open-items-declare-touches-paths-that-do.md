@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: queue-hygiene
+milestone: v0.5.19
 touches: docs/items
 added: 2026-09-14
 closed: 2026-09-30
