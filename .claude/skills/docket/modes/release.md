@@ -110,9 +110,12 @@ look up and asking them to is pure friction.
 Where the digest says `No release to offer` instead, the version a bump would
 arrive at is one `ROADMAP.md` has already given to a milestone ahead of the
 current one and not yet finished — placed on the release train, scoped in a
-section, or both — and the line names what holds it. There is nothing to raise then: the beat printed
-under it is the work, and cutting the version anyway would ship a milestone
-under its own name with most of it missing. `bin/docket status` prints that
+section, or both — and the line names what holds it. That number is not one to
+raise: the beat printed under it is the work, and cutting the version anyway
+would ship a milestone under its own name with most of it missing. The line's
+second sentence is the way out, and it is raised as an offer is: a patch cut
+under a number the roadmap leaves free, named for the owner to confirm, which
+`bin/docket release` refuses if the plan has spent it (`PL-SYG4`). `bin/docket status` prints that
 refusal in the same words off the same verdict, and `docket wave`'s `Reserved`
 line is the whole set of numbers the plan has spent rather than the one that
 collided — which is the evidence behind either refusal, and the thing to read
