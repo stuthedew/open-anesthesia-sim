@@ -29,10 +29,12 @@ simulation studies, and neither measured a coefficient. Where a stored value
 is one of theirs, say so, name what the primary literature reports instead,
 and give the difference.
 
-**Which is not to say one may not be adopted, and here most are.** The twelve
-partition coefficients are De Wolf et al.'s table, kept in preference to the
+**Which is not to say one may not be adopted, and here many are.** The
+blood:gas coefficients are De Wolf et al.'s table, kept in preference to the
 primary measurements cited beside them on the project owner's decision of
-2026-09-03 (`PL-D6LX`); ten of the reference patient's eleven parameters are
+2026-09-03 (`PL-D6LX`); the tissue:gas coefficients left that table on
+2026-09-13, when Yasuda, Targ and Eger's measurements were adopted for them
+(`PL-FN5F`). All of the reference patient's parameters but its venous pool are
 the Gas Man Workbook's, for want of a primary source any session can reach.
 Both declare it in the file — `"tier": "reference-implementation"`,
 `"adopted": true` — so what a provenance note has to answer is not whether the
