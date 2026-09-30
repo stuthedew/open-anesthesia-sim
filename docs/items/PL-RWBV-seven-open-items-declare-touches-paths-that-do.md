@@ -3,12 +3,14 @@ id: PL-RWBV
 title: Seven open items declare touches paths that do not exist, three of them naming core/run_score.py which PL-ZX12 renamed to run_definition.py
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: queue-hygiene
 touches: docs/items
 added: 2026-09-14
-verify: grep -q 'def test_a_touches_path_that_neither_exists_nor_is_named_as_new_is_reported' subprojects/docket/tests/test_checks.py && uv run pytest subprojects/docket/tests/test_checks.py
+closed: 2026-09-30
+pr: 1234
+verify: grep -q 'def test_an_open_item_naming_a_stale_touches_path_is_advised_and_nothing_else_is' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** Seven open items declare touches paths that do not exist, three of them naming core/run_score.py which PL-ZX12 renamed to run_definition.py
@@ -71,3 +73,25 @@ size the risk will over-state it.
 **What survives is the plain version.** Nothing checks that a `touches` path
 either exists or is declared as new, so a stale or mistyped path is silently
 accepted. That is still real, still unchecked, and is the whole of the finding.
+
+## Closed 2026-09-30 with `PL-8JY7`
+
+**Both halves are done, the check by a different discriminator than this brief
+proposed.** `docket check` now names every open item whose `touches` holds a
+path the working tree lacks and a commit reachable from `HEAD` held, with the
+commit that last changed it (`PL-8JY7`). Whether a body names a path "as new"
+is prose read for intent, and its mechanical form would have passed the one
+stale path left: `PL-CNCF`'s body named `run_score.py` in the paragraph noting
+that it was stale. Of the five offenders counted on 2026-09-21, `PL-5B1N`,
+`PL-LWMS` and `PL-R808` declare no missing path now; `PL-928V`'s
+`docs/workflow.md` is the file its own `verify:` tests for, which the check
+leaves alone; and `PL-CNCF` is re-pointed at `core/run_definition.py` on this
+branch. `PL-MBP6`'s `assets/branding`, which
+`dfd3e2c0` removed after that count, is re-pointed at the `assets/screenshots/`
+its work will create.
+
+**The `verify:` was rewritten at close-out, because the commissioned one named
+the discriminator that was not built.** It grepped for
+`test_a_touches_path_that_neither_exists_nor_is_named_as_new_is_reported`, and
+a test by that name would describe a check that does not exist. The command
+now names the test that proves the delivered rule.

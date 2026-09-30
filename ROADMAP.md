@@ -3901,7 +3901,10 @@ and the delegation guard alike - so a stale path fails open in all three at
 once. `PL-CNCF`'s is the expensive instance: it still names the pre-rename
 spelling of `core/run_definition.py`, and only the live path is in
 `protected_paths`, so the item reads as delegable when it is not. It is recommended as the first of these nine taken
-off the list.
+off the list. [Corrected 2026-09-30: the stale spelling was protected too.
+`docket.toml` protects the directory `src/anesthesia_sim/core`, which either
+spelling falls under, so the delegation guard never failed open here -
+`PL-RWBV`'s own 2026-09-21 narrowing.]
 
 **Two more from `PL-LHBY`'s own close-out, 2026-09-20**, and both defer by the
 presence rule's own terms rather than by the refilling-queue exception: "The
