@@ -86,3 +86,29 @@ credit". That removes the fixture's two `not-an-id` markers and makes the
 assertion a real check that `main`'s own ids stay out of the report, at no cost
 beyond this item's `S`. Dropping it would leave a fixture that
 `tools/fixture_id_check.py` has to be told is not spelling ids.
+
+**Decided 2026-09-30, by the session that worked it: neither option - Done when
+stands as written.** The note above is right that no respelling reaches the
+report, and right about why: since `PL-N162` a commit of `main`'s own reaches
+`flight` only through a `Claim:` trailer naming the branch being read
+(`claims._events`). That is the payload `claims._history`'s docstring says the
+guard exists to keep out - "the base's own commits, and the claims they carry" -
+so the fixture now carries one. The commit the branch forks from claims
+`PL-M1BC` for the branch, as the branch's earlier round would leave on `main`
+where it landed by a merge rather than a squash, and `PL-M1BC` is an item in
+`main`'s store. All ten subjects lead with ids `ID_PATTERN` matches, and both
+`not-an-id` markers are gone.
+
+Measured with the guard removed, the same way as above: `flight` reports
+`PL-M1BC  origin/roadmap-release-write-failure-nhsjwo  live  claim`, and the
+test fails at the absence assertion, which now leads. The test also passes
+`--today 2026-08-23`, inside the claim's lease. On the wall clock the leaked
+claim reports as lapsed, which still fails the absence assertion but lets
+`"No branch carries an item id" in out` pass, so which assertions caught a
+missing guard depended on the date the suite ran.
+
+The suite's other `not-an-id` exemptions were read for the same shape. Two
+assert that a three-letter lookalike is not read as an id, and fail if the
+reader's pattern loosens (`PL-KYW3`); the rest are rejection tests and
+`tools/fixture_id_check.py`'s own cases. None asserts the absence of a string
+that could never have appeared.
