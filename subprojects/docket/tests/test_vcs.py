@@ -38,6 +38,7 @@ from docket.vcs import (
     FilingCommit,
     FlightFiles,
     FlightReport,
+    GoneReport,
     Landing,
     MergedPullRequest,
     NewestPullRequest,
@@ -76,6 +77,7 @@ from docket.vcs import (
     files_in_flight,
     github_slug,
     github_token,
+    gone_paths,
     landed_whole,
     listed_paths,
     lost,
@@ -683,6 +685,59 @@ def test_since_filed_declines_on_a_shallow_clone_and_keeps_what_the_tree_says(
         ("a.py", True, None),
         ("b.py", False, None),
     ]
+
+
+def test_gone_paths_names_a_stale_touches_path_with_the_newest_commit_to_change_it(
+    tmp_path: Path,
+) -> None:
+    """Newest first, so the first commit naming a path is the one that took it out.
+
+    Only absent paths are put to git, once each; a directory is held by any file
+    beneath it, and `docs/items` is not held by `docs/itemsX/`, which a bare
+    prefix test would say it is. A path no commit names is a file the work will
+    create, and is left out (`PL-8JY7`).
+    """
+    (tmp_path / "kept.py").write_text("k\n")
+    log = "\x1fc2\0\ngone.py\0\x1fc1\0\ngone.py\0old/x.py\0docs/itemsX/y.md\0"
+    asked: list[list[str]] = []
+
+    def run(args: list[str], root: Path) -> str:
+        asked.append(args)
+        return _since_runner(log)(args, root)
+
+    report = gone_paths(
+        tmp_path, ["kept.py", "gone.py", "old/", "docs/items", "planned.py", "gone.py"], runner=run
+    )
+
+    assert report.known
+    assert report.gone == (("gone.py", "c2"), ("old/", "c1"))
+    [walk] = [args for args in asked if "log" in args]
+    assert walk[walk.index("--") + 1 :] == ["docs/items", "gone.py", "old/", "planned.py"]
+
+
+def test_a_stale_touches_read_asks_git_nothing_where_every_path_is_present(tmp_path: Path) -> None:
+    """Nothing present can be gone, so even a shallow clone has its answer without git."""
+    (tmp_path / "a.py").write_text("a\n")
+
+    def run(args: list[str], root: Path) -> str:
+        raise AssertionError(f"asked git {args}")
+
+    assert gone_paths(tmp_path, ["a.py"], runner=run) == GoneReport()
+
+
+def test_a_stale_touches_read_declines_on_a_shallow_clone_or_a_silent_git(tmp_path: Path) -> None:
+    """Either way the history is unread, and a partial reading must not pass as a clean one."""
+
+    def silent(args: list[str], root: Path) -> str:
+        return SILENT if "log" in args else _since_runner("")(args, root)
+
+    shallow = gone_paths(tmp_path, ["gone.py"], runner=_since_runner("\x1fc1\0\ngone.py\0", "true"))
+    unanswered = gone_paths(tmp_path, ["gone.py"], runner=silent)
+
+    assert (shallow.known, shallow.gone) == (False, ())
+    assert "shallow" in shallow.declined
+    assert (unanswered.known, unanswered.gone) == (False, ())
+    assert "did not answer" in unanswered.declined
 
 
 def test_a_git_that_cannot_say_whether_the_checkout_is_complete_declines() -> None:

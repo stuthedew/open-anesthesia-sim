@@ -179,6 +179,7 @@ from .vcs import (
     filed_with_work,
     files_in_flight,
     find_cut,
+    gone_paths,
     is_shallow,
     lost,
     merged_pull_requests,
@@ -867,7 +868,7 @@ def _complete_report(
     # rejects as a pathspec - so these reads decline and say so, which is the
     # honest answer for a queue git cannot be asked about at all.
     #
-    # Under `--no-git` the five git reads below are not asked at all, and
+    # Under `--no-git` the git reads below are not asked at all, and
     # `analyze` reads `None` as a caller that did not ask. `check`, `digest`
     # and `next` all gather here, so all three skip the same inputs and their
     # counts still agree (`PL-NGBM`).
@@ -929,6 +930,15 @@ def _complete_report(
         # of nothing, so the objects proving what it carried stop being
         # reachable. Run here, on a pull request, the evidence is still intact.
         lost=None if git is None else lost(root, items_dir=tracked, runner=git),
+        # Open items' declared paths only, since the advisory judges no other
+        # (`PL-8JY7`). A stat per path, and a git read only where one is absent.
+        gone=(
+            None
+            if git is None
+            else gone_paths(
+                root, (path for i in items if i.is_open for path in i.touches), runner=git
+            )
+        ),
         # Read rather than asked of git: a stamped `milestone:` is judged
         # against the version the project is actually on, and an absent
         # version file leaves the question unasked rather than answered.
@@ -1988,6 +1998,8 @@ def cmd_set(args: argparse.Namespace) -> int:
     print(f"  {path}")
     _say_unblocked(item, updated, changes, items, after)
     _say_contradicted(changes, items, after, today)
+    for line in render.generator_check_on_set(item, updated, config.workflow_paths):
+        print(line)
     return 0
 
 

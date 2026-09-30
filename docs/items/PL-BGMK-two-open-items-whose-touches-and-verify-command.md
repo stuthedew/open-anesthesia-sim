@@ -3,11 +3,16 @@ id: PL-BGMK
 title: Two open items whose touches and verify: command overlap are never compared, so PL-1YDK and PL-8PT6 were filed and worked as one finding twice and only docket check --verify on main caught it
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: open-item-overlap-detection
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+milestone: v0.5.18
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/src/docket/config.py, docket.toml, subprojects/docket/README.md, docs/items/PL-5GBV-two-items-were-filed-three-days-apart-for-one.md
 added: 2026-09-13
+closed: 2026-09-30
+pr: 1232
+verify: grep -q 'def test_a_discriminating_clause_shared_behind_a_health_clause_is_rejected' subprojects/docket/tests/test_checks.py
+falsifies: record the same `verify:` command
 ---
 
 **Problem.** Two open items whose touches and verify: command overlap are never compared, so PL-1YDK and PL-8PT6 were filed and worked as one finding twice and only docket check --verify on main caught it
@@ -60,3 +65,52 @@ stop two sessions working one finding.
 `PL-X5JR` cover a *new capture* checked against the store as it is filed. This
 group is the other direction - two items already in the store, neither of them
 new - which nothing in the recurrence-signal design reaches.
+
+**Re-confirmed 2026-09-30: changed shape.** The narrow reading above - two
+open items whose commands are equal - had already landed as
+`_check_shared_verify` in `#882` (`PL-J3WK`, `PL-PBP5`), keyed on the whole
+`verify:` string. It would not have caught this item's own pair: `PL-1YDK`
+recorded `git check-ignore -q subprojects/docket/uv.lock` and `PL-8PT6` the
+same clause behind `python3 tools/doc_check.py check`. So the question left
+was which key, and the count below answers it.
+
+**Measured 2026-09-30.** Over the 308 open items (47,278 pairs, 198 with a
+`verify:`, 304 with `touches`), and for recall over the 21 duplicate pairs the
+store records - `PL-TZ7T`'s clusters, `PL-JKML`'s settled rows, `PL-5GBV`'s
+pair and this item's - with each item's fields as they stand now:
+
+| rule | open pairs reported today | recorded pairs caught (of 21) |
+| --- | --- | --- |
+| exact `verify:` string (the check as landed) | 0 | 1 |
+| shared clause, health clauses left out | 0 | 2 |
+| shared clause, health clauses counted | 497 | 2 |
+| same test named by the `grep` half | 0 | 0 |
+| same `grep` pattern | 0 | 1 |
+| shared `touches` path, identical / covering | 2,863 / 5,140 | 15 |
+| shared `touches` and title over `DISPLAY_FLOOR` (the filing-time key) | 31 | 12 |
+
+The 497 pairs share exactly four clauses, every one a health check:
+`python3 tools/doc_check.py check` (31 open items), `uv run pytest
+tests/unit/test_doc_check.py` (7), `bin/docket check` (5) and a whole-file run
+of `test_checks.py` (2). Over the 62 live `recurrences:` pairs the same shape
+holds: every `verify:`-keyed rule catches 0, shared `touches` 50, `touches`
+with title 46. And 5 of the 21 recorded pairs carry no `verify:` on one side,
+because a dropped duplicate usually never reached triage - a structural
+ceiling on any key read from that field.
+
+**Decided, by this session, as an apparatus-internal choice.** The
+shared-clause key is built: `_check_shared_verify` now keys on each command's
+discriminating clauses, with the health half spelled in a new `health_clauses`
+setting beside `collected_test_paths` and the selector-less pytest runs those
+trees cover left out by the reading `_redundant_pytest_clause` already gives.
+It reports 0 pairs on this store today and catches the founding pair, as a
+hard error, so it never fires without changing a decision. Refused on the
+count: the `grep`-half test-name key (0 of 21); `touches` as a second
+condition on the clause key (both clause catches already share a path, so it
+filters nothing and could only lose); any `touches`-first rule (thousands);
+and the filing-time key run store-wide as a check - 31 pairs every run, all
+already read by `PL-JKML`'s sweep of 400, which confirmed 5. That key is a
+sweep to repeat by hand when the queue has grown, not a check, and
+`bin/docket new` already runs it at the moment the second item arrives.
+`PL-D188`/`PL-JL2M`, `PL-5GBV`'s pair, shares neither a path nor a clause, so
+no key over fields reaches it; that half of the feature stays with `PL-5GBV`.
