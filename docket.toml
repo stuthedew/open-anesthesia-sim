@@ -156,6 +156,18 @@ verify_prerequisite_refused_from = 2026-09-20
 # and not here makes the rule refuse *less*, never more.
 collected_test_paths = ["tests", "subprojects/docket/tests"]
 
+# The health half of a `verify:` command, spelled as the commands carry it:
+# the clauses that prove the tree rather than the item, which `make check`
+# runs anyway. `docket check`'s shared-clause rule keys on every clause outside
+# this set and outside the pytest runs `collected_test_paths` covers, so two
+# open items both carrying `python3 tools/doc_check.py check` are not thereby
+# one finding, while two carrying the same `git check-ignore` behind it are
+# (`PL-1YDK`/`PL-8PT6`, `PL-BGMK`). Measured 2026-09-30: with these left out
+# the rule reports 0 pairs over 308 open items; counted in, 497. A health
+# clause added to `make check` and not here reports a false pair loudly, as a
+# hard error naming both items, rather than hiding a real one.
+health_clauses = ["python3 tools/doc_check.py check", "bin/docket check"]
+
 # The first obligation `PL-6TP8` put on a command, made mechanical (`PL-Q8RQ`):
 # its failure before the work is an evaluation - an ordinary exit 1 - and never
 # pytest's 5. A pytest run narrowed by `-k` over a tree `collected_test_paths`
