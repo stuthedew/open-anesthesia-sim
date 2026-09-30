@@ -679,13 +679,15 @@ def _validate_authority_for_paths(
     stored = tuple(_stored_value_paths(payload))
     claimed_by: dict[str, str] = {}
 
-    for source in payload.sources:
-        entry = _short_citation(source.citation)
+    for index, source in enumerate(payload.sources):
+        # The index as well as the citation: two papers by one group can share
+        # every word a short citation keeps.
+        entry = f"sources[{index}] ({_short_citation(source.citation)!r})"
 
         for path in source.authority_for:
             if path not in stored:
                 raise ValueError(
-                    f"{payload.id!r} in {data_files}: sources entry {entry!r} names {path!r} "
+                    f"{payload.id!r} in {data_files}: {entry} names {path!r} "
                     "in authority_for, which is not a numeric parameter value this file "
                     f"stores; expected one of {list(stored)}"
                 )
@@ -693,7 +695,7 @@ def _validate_authority_for_paths(
             if path in claimed_by:
                 raise ValueError(
                     f"{payload.id!r} in {data_files}: {path!r} is named in authority_for by "
-                    f"both {claimed_by[path]!r} and {entry!r}; a stored value has one "
+                    f"both {claimed_by[path]} and {entry}; a stored value has one "
                     "authority (see SourceReference in core/parameters.py)"
                 )
 
@@ -946,7 +948,16 @@ def _sources_to_tuple(sources: list[_SourcePayload]) -> tuple[SourceReference, .
 
 
 def parse_agent_parameters(payload: object) -> AgentParameters:
-    """Validate an agent-data payload and return immutable parameters."""
+    """Validate an agent-data payload and return immutable parameters.
+
+    Raises:
+        SimulationConfigurationError: the payload is not a valid agent file.
+            That covers a missing or misspelled key, an unsupported
+            `schema_version`, and a value outside its validated range. It also
+            covers a `sources` entry whose `authority_for` disagrees with
+            `adopted` or names something other than one of this file's stored
+            numeric values, and a stored value that two entries both name.
+    """
 
     try:
         model = _AgentPayload.model_validate(payload)
@@ -978,7 +989,17 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
 
 
 def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameters:
-    """Validate a reference-adult payload and return immutable parameters."""
+    """Validate a reference-adult payload and return immutable parameters.
+
+    Raises:
+        SimulationConfigurationError: the payload is not a valid patient file.
+            That covers a missing or misspelled key, an unsupported
+            `schema_version`, a value outside its validated range, and
+            perfusion fractions that do not sum to 1. It also covers a `sources`
+            entry whose `authority_for` disagrees with `adopted` or names
+            something other than one of this file's stored numeric values, and
+            a stored value that two entries both name.
+    """
 
     try:
         model = _ReferenceAdultPayload.model_validate(payload)
@@ -1012,9 +1033,13 @@ def parse_breathing_circuit_parameters(payload: object) -> BreathingCircuitParam
 
     Raises:
         SimulationConfigurationError: the payload is not a valid machine
-            profile - a missing or misspelled key, a value outside its
-            validated range, or a `deliverable_fresh_gas_flow_range` whose
-            minimum is above its maximum.
+            profile. That covers a missing or misspelled key, an unsupported
+            `schema_version`, a value outside its validated range, and a
+            `deliverable_fresh_gas_flow_range` whose minimum is above its
+            maximum. It also covers a `sources` entry whose `authority_for`
+            disagrees with `adopted` or names something other than one of this
+            file's stored numeric values, and a stored value that two entries
+            both name.
     """
 
     try:

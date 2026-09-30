@@ -880,7 +880,8 @@ def test_rejects_a_stored_value_named_by_two_sources() -> None:
         SimulationConfigurationError,
         match=re.escape(
             "'test-agent' in agent files (data/agents/): 'blood_gas_partition_coefficient' is "
-            "named in authority_for by both 'Test citation' and 'Second test citation'"
+            "named in authority_for by both sources[0] ('Test citation') and "
+            "sources[1] ('Second test citation')"
         ),
     ):
         parse_agent_parameters(payload)
