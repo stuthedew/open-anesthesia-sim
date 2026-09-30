@@ -39,6 +39,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
 
+from docket.model import CLOSED_STATUSES  # noqa: E402
 from docket.store import ID_PATTERN  # noqa: E402
 
 LOG = REPO / ".docket-reads.log"
@@ -48,7 +49,9 @@ ITEMS = REPO / "docs" / "items"
 #: and `PL-B1B` as ids - three characters is an id only when all three are
 #: digits, and no id carries a vowel (`PL-KYW3`).
 ITEM_ID = re.compile(ID_PATTERN)
-CLOSED = ("status: done", "status: dropped")
+#: The front-matter line of each closed status, derived rather than written
+#: out, so a terminal status the model adds counts as closed here too.
+CLOSED = tuple(f"status: {status}" for status in CLOSED_STATUSES)
 
 
 def store() -> tuple[dict[str, Path], set[str]]:

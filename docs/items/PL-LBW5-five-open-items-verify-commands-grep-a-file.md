@@ -3,12 +3,14 @@ id: PL-LBW5
 title: Five open items' verify: commands grep a file their own touches does not declare, so bin/docket concurrent gives a wrong answer for work that will certainly edit it
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: verify-command-health
 touches: docs/items
 added: 2026-09-17
-verify: grep -q '^touches:.*subprojects/docket/tests/test_cli.py' docs/items/PL-L4YG-*.md && bin/docket check
+closed: 2026-09-30
+pr: 1243
+verify: grep -q '^touches:.*tests/unit/test_standing_text_check.py' docs/items/PL-QS9H-*.md && grep -q '^touches:.*tests/unit/test_doc_check.py' docs/items/PL-DHJ7-*.md
 ---
 
 **Problem.** Five open items' verify: commands grep a file their own touches does not declare, so bin/docket concurrent gives a wrong answer for work that will certainly edit it
@@ -101,3 +103,27 @@ artifact and not a finding".
 greps `PL-L4YG`'s `touches` for `subprojects/docket/tests/test_cli.py`, which
 that item does not carry - and, being closed, never will. Point it at one of
 the three live members instead.
+
+## Closed 2026-09-30
+
+Of the three live members the sweep above left, `PL-QS9H` now declares
+`Makefile`, which its discriminating clause greps, and
+`tests/unit/test_standing_text_check.py`, which its command runs. `PL-TCKV`
+closed 2026-09-27 with a command that no longer reads `pyproject.toml`, so it
+needs nothing. `PL-RWBV` is left out on purpose: another branch holds it and
+closes it (`#1234`), and an edit here would collide with that work, while a
+closed item's `touches` answers no concurrency question.
+
+A fifth member turned up while checking: `PL-DHJ7`'s command greps
+`tests/unit/test_doc_check.py` for the test it owes, and it now declares that
+file. A crude scan of the 195 open `verify:` commands on this date flagged 41
+that name a path their `touches` omit, and 38 of those were a tool the command
+runs (`tools/doc_check.py`, `bin/docket`), a path inside a `grep` pattern, or
+one root of a search across two. So a string test alone would mostly fire on
+the wrong thing; the check the brief weighs needs `verify.command_paths`'s
+reading of which clause discriminates, and is filed as `PL-ZB82` rather
+than built here.
+
+This item's `verify:` is re-pointed, as the sweep asked: the commissioned
+command greps `PL-L4YG`, which closed with its `touches` as they were and is
+not edited. The new one greps the two items this work changed.

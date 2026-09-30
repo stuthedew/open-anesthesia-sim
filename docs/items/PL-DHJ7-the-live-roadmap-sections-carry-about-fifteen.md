@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: docs, infra
 feature: dev-tooling
-touches: ROADMAP.md, tools/doc_check.py
+touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-13
 verify: grep -q 'def test_a_live_roadmap_subset_count_is_held_or_dated' tests/unit/test_doc_check.py && uv run pytest tests/unit/test_doc_check.py
 ---

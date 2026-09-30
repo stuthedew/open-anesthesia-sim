@@ -3866,11 +3866,6 @@ def _cited_section(text: str, match: re.Match[str]) -> tuple[str, bool]:
 #: catch what prose writes.
 LINE_CITATION_RE = re.compile(r"`([\w./-]+):(\d+)(?:-(\d+))?`")
 
-#: An item whose `status:` is one of these is a closed brief - a record of what
-#: was true when the work was done, rather than an instruction to a later
-#: session. Its citations are not held to the tree; see `check_line_citations`.
-CLOSED_ITEM_STATUSES = frozenset({"done", "dropped"})
-
 ITEM_STATUS_RE = re.compile(r"^status:\s*(\S+)", re.MULTILINE)
 
 
@@ -3878,8 +3873,9 @@ def _live_item_briefs(root: Path) -> Iterator[tuple[Path, str]]:
     """Every open item brief under `docs/items/`, with its text.
 
     Closed briefs are skipped rather than filtered later, so the reason sits
-    where the decision does: a closed brief describes a tree that no longer
-    exists and is not repaired.
+    where the decision does: a closed brief - one whose `status:` is in
+    `CLOSED_STATUSES` - describes a tree that no longer exists and is not
+    repaired.
     """
     items = root / "docs" / "items"
     if not items.is_dir():
@@ -3887,7 +3883,7 @@ def _live_item_briefs(root: Path) -> Iterator[tuple[Path, str]]:
     for path in sorted(items.glob("*.md")):
         text = path.read_text(encoding="utf-8", errors="replace")
         status = ITEM_STATUS_RE.search(text)
-        if status is not None and status.group(1) in CLOSED_ITEM_STATUSES:
+        if status is not None and status.group(1) in CLOSED_STATUSES:
             continue
         yield path.relative_to(root), text
 
