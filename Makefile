@@ -351,7 +351,14 @@ check: sync
 # themselves, which is what `tests/unit/test_tools_portability.py` holds them
 # to; that suite's docstring states the rule this group is an instance of.
 # `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`, `PL-FZ6T`, `PL-8XPQ`, `PL-7922`.
-	uv run python tools/contrast_check.py
+#
+# `--base origin/main` since `PL-VJFQ`: an entry added to `KNOWN_SHORTFALLS` in
+# the change that introduces or alters its colour fails, compared at the merge
+# base as the verify replay above is. Unlike that line, a base that cannot be
+# read fails rather than declining: this comparison is the only gate on the
+# rule it enforces, where the verify replay's scoped run has the whole-store
+# sweep behind it.
+	uv run python tools/contrast_check.py --base origin/main
 	uv run python tools/agent_identity_check.py
 	uv run python tools/import_boundary_check.py
 	uv run python tools/workflow_paths_check.py
