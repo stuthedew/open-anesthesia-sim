@@ -3,11 +3,13 @@ id: PL-WNQT
 title: bin/docket stranded reports a one-path commit as work left behind whenever a later merge edits that file, and its recovery recipe would revert the newer work
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-14
+closed: 2026-09-30
+pr: 1226
 verify: grep -q 'def test_a_later_merge_touching_the_file_is_not_work_left_behind' subprojects/docket/tests/test_vcs.py
 recurrences: 2026-09-25 PL-TFF9 withdrawn 2026-09-25 PL-TFF9
 ---
