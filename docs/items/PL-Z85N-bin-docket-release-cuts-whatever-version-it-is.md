@@ -6,18 +6,25 @@ effort: S
 status: ready
 classes: defect
 feature: release-roadmap-seam
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, tests/unit/test_docket_digest_hook.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_release.py
 added: 2026-09-14
-verify: grep -q RESERVED subprojects/docket/src/docket/cli.py && uv run pytest tests/unit/test_docket_digest_hook.py
+verify: grep -q 'def test_a_version_the_roadmap_reserves_is_refused_on_the_cut_path' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket release cuts whatever version it is handed, so the reserved-version answer exists only in the advisory digest and nothing objects on the cut path
 
-**Verified 2026-09-14.** `RESERVED` is produced in
-`subprojects/docket/src/docket/release.py:556` and consumed in exactly one
-module: `render.py:1328` and `:1467`, which are the digest's own rendering. It
-appears nowhere in `cli.py`, so `cmd_release` never asks the question. The
-answer therefore exists only as text in an advisory.
+**Verified 2026-09-14, re-confirmed 2026-09-30.** `RESERVED` is produced by
+`release_offer` in `subprojects/docket/src/docket/release.py` and consumed only
+in `render.py`, by `format_status` and `_release_advice` - the survey's and the
+digest's own rendering. It appears nowhere in `cli.py`, so `cmd_release` never
+asks the question: it reads the plan only after every refusal, for the
+hand-off. The answer therefore exists only as text in an advisory.
+
+Reproduced 2026-09-30 on 0.5.17, with `ROADMAP.md` reserving 0.6.0, 0.7.0 and
+0.8.0: `bin/docket release 0.6.0 --dry-run` exits 0 and prints v0.6.0's notes,
+and the only objection it raises - no claim on the release train - prints the
+`bin/docket new --resource release-train "Cut v0.6.0 ..."` line that files a
+release item under the reserved number.
 
 **Why it matters.** The guard is on the reading path and not on the writing one.
 A session that reads the digest is told the version is reserved; a session that
@@ -31,6 +38,12 @@ untagged previous release, and a cut another session is carrying - so this is a
 missing member of a set that exists rather than a new kind of guard.
 
 **Done when.** `bin/docket release` refuses a version the roadmap reserves for
-an unfinished milestone, naming the milestone, the same way it refuses an
+an unfinished milestone, naming the milestone, on the cut path as it refuses an
 untagged previous release - and the refusal is overridable only by the roadmap
-changing, not by a flag. `tests/unit/` covers the refusal.
+changing, not by a flag. A dry run is refused too, as a version below the
+current one is: a reserved number is a wrong number rather than a state a dry
+run exists to review, and the train refusal a dry run would otherwise print
+hands over a command filing a release item under it. A roadmap that exists but
+cannot be read refuses the cut rather than skipping the question, as an
+unreadable tag list does. `subprojects/docket/tests/` covers the refusal - the
+brief first named `tests/unit/`, where the release command has no tests.
