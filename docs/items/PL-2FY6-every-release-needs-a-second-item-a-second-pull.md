@@ -1,13 +1,29 @@
 ---
 id: PL-2FY6
 title: Every release needs a second item, a second pull request and four pasted commands only to record the owner's tag push; a workflow that tags the cut's merge commit when it lands on main would make the release item and its one pull request the whole release
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: infra
 feature: release-process
+touches: .github/workflows/, .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/render.py
 deferred-from: v0.6.0 - filed 2026-09-30, after the gate froze: a release-process decision rather than debt the milestone's work created, so it goes to the next gate
 added: 2026-09-30
+payoff: a release is one item and one pull request, and the tag lands on the cut's merge commit with nothing for the owner to paste
+verify: grep -q "contents: write" .github/workflows/tag-release.yml && ! grep -q "git tag -a" subprojects/docket/src/docket/release.py && ! grep -q "git tag -a" .claude/skills/docket/modes/release.md
 ---
 
 **Problem.** Every release needs a second item, a second pull request and four pasted commands only to record the owner's tag push; a workflow that tags the cut's merge commit when it lands on main would make the release item and its one pull request the whole release
+
+**Why it matters.** Every cut costs a second item, a second pull request, a
+CI run and a paste the owner has to remember, and a tag item left open with a
+passing command turned `main` red once already (`PL-6TQH`).
+
+**Done when.** `.github/workflows/tag-release.yml` tags the commit that adds
+each new `docs/releases/v*.md` on `main`, `bin/docket release` prints a
+confirmation command in place of the four-line tag block, release mode files
+no `Tag vX.Y.Z on ...` item, and the first release cut after it merges is
+tagged with nothing pasted.
 
 **Asked 2026-09-30, by the project owner:** can all the utility commits for a
 new version go on one pull request - one self-contained item that both cuts
