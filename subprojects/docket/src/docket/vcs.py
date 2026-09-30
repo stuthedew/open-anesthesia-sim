@@ -5016,6 +5016,12 @@ def _commits_by_landing(
     itself is there. A commit none of whose changes reached the base is one
     nothing took. Only the second is work left behind.
 
+    **A commit of one path gives that rule nothing to count.** A squash that
+    took such a commit, and merged it into a copy the base had changed, leaves
+    it looking as though the base took none of it. So `orphaned` puts every
+    commit returned here to `change_landed` before reporting it, and that is
+    the step that clears this case (`PL-WNQT`).
+
     That distinction was learned from this check's own first live firing
     (`PL-JHJ3`). `origin/claude/snapshot-run-history-copy-dw6djz` carried the
     v0.3.8 release commit, which `#312` squash-merged while `#311` was landing
@@ -5249,12 +5255,17 @@ def orphaned(
     reads too (`PL-GHHW`), so the two checks no longer disagree about a port.
 
     **What it can get wrong**, now that agreement alone no longer convicts. Two
-    directions, both silence. A commit pushed after the merge that happens to
-    leave one file in a state the base wrote since the fork is not reported;
-    nor is a post-merge push to a branch whose every pre-merge commit was
-    re-merged against a base that had moved under it, since neither side then
-    has a whole commit. Silence is the expensive direction here and both trades
-    are taken deliberately; `_commits_by_landing` says why. The reader decides,
+    shapes of silence and one of noise. A commit pushed after the merge that
+    happens to leave one file in a state the base wrote since the fork is not
+    reported; nor is a post-merge push to a branch whose every pre-merge commit
+    was re-merged against a base that had moved under it, since neither side
+    then has a whole commit. Silence is the expensive direction here and both trades
+    are taken deliberately; `_commits_by_landing` says why. The noise is the
+    recall cost documented on `change_landed`. Take a commit whose change the
+    squash took together with a later commit's edit to the *next* line, in a
+    copy the base had changed. Its replay conflicts, so it is still reported
+    (`PL-WNQT`). Its `recover:` line is a cherry-pick, which stops on that
+    same conflict instead of writing over the base's copy. The reader decides,
     the way they do for `flight` and `stranded`.
     """
     run = _Silences(runner or _run_git)
@@ -5323,11 +5334,13 @@ def orphaned(
             if _duplicated_history(base, root, run, ref=name) is not None:
                 rewritten.append(name)
                 continue
-            # **A commit whose change the base took through another pull
-            # request is not left behind** (`PL-GHHW`), though every path of it
-            # reads as outstanding: that pull request's squash carried the
-            # change and more, so the base never held this commit's blob, and
-            # its copy of the file is ahead of the branch's. The `recover:`
+            # **A commit whose change the base took by a route the blobs
+            # cannot show is not left behind** (`PL-GHHW`, `PL-WNQT`), even
+            # though every path of it reads as outstanding. Either another pull
+            # request's squash carried the change along with more, or its own
+            # squash merged it into a copy the base had changed. Either way the
+            # base never held this commit's blob, and its copy of the file is
+            # ahead of the branch's. The `recover:`
             # line would have handed a reader a checkout reverting it. Asked
             # after the rewrite test, because a rewritten ref's commits all
             # hold changes the base has, and that ref needs its own line.
