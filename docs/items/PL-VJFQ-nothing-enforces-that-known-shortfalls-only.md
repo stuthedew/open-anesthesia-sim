@@ -3,11 +3,12 @@ id: PL-VJFQ
 title: Nothing enforces that KNOWN_SHORTFALLS only shrinks, so the contrast ledger could become the suppression list ui-color.md forbids in prose
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
-touches: tools/contrast_check.py, .claude/rules/ui-color.md, tests/unit/test_contrast_check.py, .github/workflows/quality.yml, Makefile
+touches: tools/contrast_check.py, .claude/rules/ui-color.md, tests/unit/test_contrast_check.py, .github/workflows/quality.yml, Makefile, tools/doc_check.py, docs/items/PL-KJXS-a-qbytearray-passed-where-qt-s-c-signature.md
 added: 2026-09-13
+closed: 2026-09-30
 verify: grep -q 'in the change that introduces or alters its colour' tools/contrast_check.py && grep -q 'introduces or alters its colour' tests/unit/test_contrast_check.py && grep -q 'contrast_check.py --base origin/main' Makefile && grep -q 'contrast_check.py --base' .github/workflows/quality.yml
 ---
 
