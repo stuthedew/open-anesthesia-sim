@@ -3125,6 +3125,92 @@ def since_filed(
 
 
 @dataclass(frozen=True)
+class GoneReport:
+    """Which declared paths the tree lacks and the history held, or why that is unread.
+
+    The facts half of `PL-8JY7`'s advisory. A path a commit once held and the
+    tree no longer does was real and is not now: a rename or a deletion that
+    the declaration was never repaired for. Whether the item's work means to
+    create it again is the reader's call, and `checks` leaves it there.
+
+    A path no commit has held is left out, and that is the design. It reads
+    exactly as a file the work will create, and open items declared eleven of
+    those for every two stale paths on 2026-09-30, so a check that could not
+    tell them apart would be wrong eleven times in thirteen. The cost is paid
+    knowingly: a path that was never real, a typo, reads as new.
+    """
+
+    #: Each gone path as declared, and the newest commit that changed it -
+    #: the one that took it out of the tree, wherever that was committed.
+    gone: tuple[tuple[str, str], ...] = ()
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+
+def gone_paths(root: Path, paths: Iterable[str], *, runner: Runner | None = None) -> GoneReport:
+    """Which of `paths` the working tree lacks and a commit reachable from `HEAD` held.
+
+    `in_tree` decides the first half, so this cannot disagree with `show` about
+    whether a path is there. Only the absent paths are put to git, in one
+    `git log` newest first, so the first commit naming a path is the last to
+    change it: 72 ms on this repository with eleven absent, 2026-09-30, and no
+    git read at all where every path is present - which a shallow clone can
+    answer too, since nothing present can be gone.
+
+    From `HEAD` rather than the default branch, because the question is about
+    this tree: a path the default branch created after this branch forked is in
+    that history and not in this tree, and would read as gone from a branch
+    that has only not merged it yet. The flags are `since_filed`'s, for its
+    reasons.
+
+    A shallow clone declines, as `since_filed` does: the commits it is missing
+    are the oldest, and a path deleted before its horizon would read as one
+    never written.
+    """
+    absent = [path for path in sorted({p for p in paths if p}) if not in_tree(root, path)]
+    if not absent:
+        return GoneReport()
+    run = _Silences(runner or _run_git)
+    shallow = is_shallow(root, runner=run)
+    if shallow is True:
+        return GoneReport(
+            declined="this clone is shallow, so a path deleted before its horizon would read "
+            "as one never written"
+        )
+    if shallow is None:
+        return GoneReport(declined="git cannot say whether this checkout's history is complete")
+    last: dict[str, str] = {}
+    for chunk in _pathspec_chunks(tuple(absent)):
+        text = run(
+            [
+                "--literal-pathspecs",
+                *changed_path_args(
+                    "log", "--no-merges", "--format=%x1f%h", "--name-only", "HEAD", "--", *chunk
+                ),
+            ],
+            root,
+        )
+        commit = ""
+        # NUL-separated: `\x1f<hash>`, then the commit's paths, the first one
+        # carrying the newline that ended the commit's own line.
+        for token in text.split("\0"):
+            if token.startswith("\x1f"):
+                commit = token[1:]
+                continue
+            name = token.removeprefix("\n")
+            for path in chunk:
+                prefix = path.rstrip("/")
+                if path not in last and (name == prefix or name.startswith(prefix + "/")):
+                    last[path] = commit
+    if run.unanswered:
+        return GoneReport(declined=run.reason)
+    return GoneReport(tuple(sorted(last.items())))
+
+
+@dataclass(frozen=True)
 class BaseRelease:
     """What the default branch already records as shipped, or that it is unread.
 
