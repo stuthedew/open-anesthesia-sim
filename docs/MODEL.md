@@ -1841,8 +1841,11 @@ primary measurement owes three things, and carries all three today:
 - **The date and whose decision it was**, where a lower tier is adopted in
   preference to an available primary source rather than for want of one.
   `venous_pool_volume_l` is the worked example: Davis and Mapleson 1981 is
-  tier 2, adopted on the project owner's decision of 2026-09-07, replacing a
-  round number no source ever contained.
+  tier 2, adopted on the project owner's decision of 2026-09-07. It replaced
+  a round 1.0 L that no source then cited for it contained. The Workbook's
+  defaults listing turned out to hold that 1.0 L, as `VEN=1.0`, when its
+  Appendix C was read on 2026-09-15. That changes the history, not the
+  stored value; the file's Workbook entry records it.
 
 That is a higher bar than a tier-1 citation clears, not a lower one, and it is
 deliberately not a licence to prefer the convenient number. Two reasons are

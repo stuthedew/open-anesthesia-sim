@@ -3,12 +3,14 @@ id: PL-R1VD
 title: The Yasuda, Targ and Eger entry in all three agent files opens 'cited but not adopted' while its adopted field has been true since PL-FN5F on 2026-09-13 - the stale opener PL-1JDD removed from Davis and Mapleson
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: provenance
 touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-30
+closed: 2026-09-30
+pr: 1229
 payoff: a reader checking where the nine tissue:gas coefficients come from is told the truth in the first sentence of each note, not its reverse
 verify: ! grep -q 'cited but not adopted. Human tissue study' src/anesthesia_sim/data/agents/sevoflurane.json && ! grep -q 'cited but not adopted. Human tissue study' src/anesthesia_sim/data/agents/isoflurane.json && ! grep -q 'cited but not adopted. Human tissue study' src/anesthesia_sim/data/agents/desflurane.json
 ---

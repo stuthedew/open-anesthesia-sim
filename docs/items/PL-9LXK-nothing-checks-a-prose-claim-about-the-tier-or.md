@@ -3,11 +3,13 @@ id: PL-9LXK
 title: Nothing checks a prose claim about the tier or adoption of a stored value's source, though PL-1JDD made both machine-readable and three such claims went stale within a day
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra, docs
 feature: provenance
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, tools/source_tier_counts.py, tests/unit/test_source_tier_counts.py, docs/MODEL.md, docs/ARCHITECTURE.md, docket.toml, .claude/rules/sources-and-docstrings.md, src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py, tests/reference/test_sevo_patient.py, src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, src/anesthesia_sim/data/patients/reference_adult.json, src/anesthesia_sim/data/machines/reference_circle_system.json
 added: 2026-09-07
+closed: 2026-09-30
+pr: 1229
 verify: python3 tools/source_tier_counts.py && python3 tools/doc_check.py check
 ---
 
@@ -228,3 +230,46 @@ file's `provenance_gap` and its Nickalls and Mapleson notes name De Wolf as the
 source of `mac_percent` too. `authority_for` records both, so that sentence is
 corrected with the field, and `PL-R1VD` (the stale Yasuda openers) rides the
 same edit.
+
+## Done 2026-09-30
+
+Route A shipped in #1229:
+- `authority_for` on every `sources` entry, with schema version 3 in all
+  three families;
+- the loader's four rules, and `check_source_tiers`' copy of them;
+- `tools/source_tier_counts.py`.
+
+On this tree the command prints 37 stored values: 18 tier 1, 1 tier 2, 16
+tier 3 and 2 with no adopted source. That equals the `docs/MODEL.md`
+paragraph, which now cites the command.
+
+**The adversarial review, and what it changed.** Three passes were run: the
+loader's rules exercised on mutated files, the tests mutated, and every
+provenance claim read for truth.
+
+- **Loader.** No reproduced defect. Refusals now name `sources[N]`, and the
+  three `parse_*` functions list the new refusals.
+- **Tests.** 32 of 35 mutants were killed. The survivor that mattered was the
+  counts command listing an unadopted citation under a tier heading. Its
+  fixture now carries one, and a patient-family refusal is pinned.
+- **Provenance claims.** Five findings:
+  - *Refuted, and turned into a record: `weight_kg` under the Workbook.* The
+    Workbook states the 70 kg patient in prose rather than in either appendix,
+    at Chapter 13, "Patient Size", printed page 127, read from the private
+    corpus. That entry's citation and note now name the page, and `PL-KN5Y`
+    owes the corpus-side extraction note.
+  - *Confirmed: each agent file's `provenance_gap` still said the adoption was
+    "unchanged pending the project owner's decision"*, an undated claim the
+    decision of 2026-09-13 had answered. It is now stated as history.
+  - *Confirmed: the rules file said the tissue:gas coefficients "left that
+    table".* The stored numbers did not change; their adopted authority did.
+    Reworded.
+  - *Confirmed: `docs/MODEL.md` said the venous pool replaced "a round number
+    no source ever contained".* The Workbook's defaults listing holds it as
+    `VEN=1.0`, read 2026-09-15. Corrected.
+  - *Confirmed: each De Wolf note pointed at "the Yasuda entry above".* It is
+    below. Corrected.
+- **Left as it stands.** The Yasuda note's "stays tier 1, not adopted" sits
+  inside its block headed "RECORDED 2026-09-13 (PL-ZP7Z)", before the dated
+  "ADOPTED 2026-09-13" block. It is a record, which `docs/MODEL.md` § "How
+  this document is held to the tree" says is not edited to carry a later fact.

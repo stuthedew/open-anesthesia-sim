@@ -887,6 +887,23 @@ def test_rejects_a_stored_value_named_by_two_sources() -> None:
         parse_agent_parameters(payload)
 
 
+def test_a_patient_file_refusal_names_the_patient_family_and_the_entry() -> None:
+    """The refusal says which family of file and which entry, so it traces to one line.
+
+    Each family runs the same shared check, so the family in the message is
+    the one thing that tells a patient file's refusal from an agent file's.
+    """
+
+    payload = _valid_patient_payload()
+    _source_entries(payload)[0]["authority_for"] = ["tissue_groups.fat"]
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape("'test-patient' in patient files (data/patients/): sources[0] ("),
+    ):
+        parse_reference_adult_parameters(payload)
+
+
 def test_rejects_a_path_one_source_names_twice() -> None:
     payload = _valid_agent_payload()
     _source_entries(payload)[0]["authority_for"] = [

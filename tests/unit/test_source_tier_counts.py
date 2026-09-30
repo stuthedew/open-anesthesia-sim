@@ -70,6 +70,15 @@ def _files() -> Files:
                     "adopted": False,
                     "authority_for": [],
                 },
+                {
+                    # Cited beside a tier it shares with adopted entries, and
+                    # never listed under that tier: a reader takes a citation
+                    # printed there as provenance.
+                    "citation": "Measured M. A primary measurement cited and not adopted.",
+                    "tier": "primary",
+                    "adopted": False,
+                    "authority_for": [],
+                },
             ],
         },
         "machines/demo.json": {
@@ -158,8 +167,8 @@ def test_values_are_grouped_by_the_tier_of_their_adopted_source(
         "\n"
         "All files: 10 stored values - 3 tier 1 (primary), 1 tier 2 (secondary), "
         "4 tier 3 (reference implementation), 2 with no adopted source.\n"
-        "sources entries: 7 - 5 adopted (2 tier 1, 1 tier 2, 2 tier 3), "
-        "2 cited and not adopted.\n"
+        "sources entries: 8 - 5 adopted (2 tier 1, 1 tier 2, 2 tier 3), "
+        "3 cited and not adopted.\n"
     )
 
 
