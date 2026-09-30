@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: docket-store
+milestone: v0.5.19
 touches: subprojects/docket, tools
 added: 2026-09-13
 closed: 2026-09-30

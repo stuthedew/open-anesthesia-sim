@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: brief-state-agreement
+milestone: v0.5.19
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed as it was started, 2026-09-30
 added: 2026-09-30

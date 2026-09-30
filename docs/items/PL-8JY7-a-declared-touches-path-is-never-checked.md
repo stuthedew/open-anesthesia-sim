@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.5.19
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/README.md, docs/items/PL-CNCF-controller-drawn-window-costs-6-2-ms-a-frame-at.md, docs/items/PL-MBP6-the-readme-has-no-image-of-the-interface-which.md, ROADMAP.md
 added: 2026-08-30
 closed: 2026-09-30

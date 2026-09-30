@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.5.19
 touches: tools/contrast_check.py, .claude/rules/ui-color.md, tests/unit/test_contrast_check.py, .github/workflows/quality.yml, Makefile, tools/doc_check.py, docs/items/PL-KJXS-a-qbytearray-passed-where-qt-s-c-signature.md
 added: 2026-09-13
 closed: 2026-09-30

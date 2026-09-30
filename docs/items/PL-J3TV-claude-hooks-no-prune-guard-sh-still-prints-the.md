@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: parallel-sessions
+milestone: v0.5.19
 touches: .claude/hooks/no-prune-guard.sh
 added: 2026-09-21
 closed: 2026-09-30

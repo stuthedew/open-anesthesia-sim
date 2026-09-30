@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs, defect
+milestone: v0.5.19
 touches: docs/WORKING_NOTES.md, subprojects/docket/src/docket/vcs.py
 added: 2026-09-19
 closed: 2026-09-30
