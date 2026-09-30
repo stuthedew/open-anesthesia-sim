@@ -81,6 +81,15 @@ starts from a requirement, which is how such an entry used to outlive its
 requirement unread (PL-KNHX). The report line counts the requirements an entry
 excuses rather than the entries, so a dead entry is never counted as a gap.
 
+**Nor can an entry arrive with the colour it excuses (PL-VJFQ).** Given
+`--base`, which `make check` and the pull-request run in CI both pass, an entry
+the merge base lacks fails when its foreground or background is new since that
+base or holds a different value there - the use `.claude/rules/ui-color.md`
+forbids, decided from the diff rather than left to prose. An entry for a colour
+the change leaves alone passes, because that is also how a correct one arrives,
+and a base that cannot be read fails rather than passing unread.
+`shortfalls_added_with_their_colour` says what stays with review.
+
 **Exemptions, and why they are not shortfalls (PL-HKTB).** SC 1.4.11 binds a
 graphical object *required to understand the content*, and its Understanding
 document says which are not: one whose information text also carries ("labels
@@ -209,7 +218,8 @@ from __future__ import annotations
 import argparse
 import ast
 import re
-from collections.abc import Iterator, Sequence
+import subprocess
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
@@ -219,6 +229,8 @@ APP = Path("src/anesthesia_sim/app")
 #: The one module colors belong in (PL-2CS8), read first so that a name another
 #: module aliases from it resolves to a color.
 THEME = APP / "theme.py"
+#: This file, where `--base` reads the base's own `KNOWN_SHORTFALLS` from.
+SHORTFALLS_SOURCE = Path("tools/contrast_check.py")
 
 #: A six-digit sRGB hex literal, the only form a color takes in this tree.
 HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
@@ -824,7 +836,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
 #: that closes it. Not a suppression list: an entry here that starts passing is
 #: reported as an error, so a fix cannot leave its excuse behind, and so is one
 #: whose key names no declared requirement, so a rename or a deletion cannot
-#: either (PL-KNHX).
+#: either (PL-KNHX). Under `--base`, an entry added in the change that
+#: introduces or alters a colour of its pair fails too, so the list grows only
+#: for a colour that change leaves alone (PL-VJFQ).
 #:
 #: **Empty since 2026-09-16, and that is the state to keep it in.** `ACCENT` was
 #: listed twice with the same measured value and two different owners - the
@@ -1138,13 +1152,18 @@ def app_modules(root: Path) -> tuple[Path, ...]:
             there (PL-2CS8), so a tree without it has nothing to measure and
             saying so beats reporting every requirement as missing.
     """
-    modules = sorted(path.relative_to(root) for path in (root / APP).rglob("*.py"))
-    if THEME not in modules:
+    return _theme_first(path.relative_to(root) for path in (root / APP).rglob("*.py"))
+
+
+def _theme_first(modules: Iterable[Path]) -> tuple[Path, ...]:
+    """`app_modules`'s order, for a tree on disk or one read at a base."""
+    ordered = sorted(modules)
+    if THEME not in ordered:
         raise FileNotFoundError(
             f"{THEME.as_posix()} is not in the tree; every color is declared there "
             "(PL-2CS8), so there is nothing to measure without it"
         )
-    return (THEME, *(module for module in modules if module != THEME))
+    return (THEME, *(module for module in ordered if module != THEME))
 
 
 def read_palette(root: Path) -> dict[str, str]:
@@ -1168,10 +1187,23 @@ def read_palette(root: Path) -> dict[str, str]:
         Color name to six-digit sRGB hex. Agent entries are keyed
         `<agent>.fill` and `<agent>.foreground`.
     """
+    return palette_from_sources(
+        (relative, (root / relative).read_text(encoding="utf-8")) for relative in app_modules(root)
+    )
+
+
+def palette_from_sources(sources: Iterable[tuple[Path, str]]) -> dict[str, str]:
+    """`read_palette`'s extraction over source text, so a base read with git shares it.
+
+    Args:
+        sources: Each module's path and text, in `app_modules`'s order.
+
+    Returns:
+        Color name to six-digit sRGB hex, as `read_palette` returns it.
+    """
     palette: dict[str, str] = {}
-    for relative in app_modules(root):
-        path = root / relative
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for relative, source in sources:
+        tree = ast.parse(source, filename=relative.as_posix())
         for statement in tree.body:
             targets: list[ast.expr] = []
             value: ast.expr | None = None
@@ -1525,6 +1557,160 @@ def check_citations(root: Path) -> tuple[str, ...]:
     return tuple(errors)
 
 
+class BaseUnreadable(Exception):
+    """What `--base` names could not be read; the message says which part."""
+
+
+@dataclass(frozen=True)
+class Base:
+    """The palette and the shortfall keys where this change started from."""
+
+    #: The ref `--base` named, as the report prints it.
+    ref: str
+    palette: dict[str, str]
+    shortfalls: frozenset[tuple[str, str]]
+
+
+def _git_read(root: Path, *args: str) -> str:
+    """One git read for `read_base`, raising where it would otherwise answer empty.
+
+    An empty string is a legitimate answer from `ls-tree` and from `show`, so a
+    call that failed must not be able to look like one: that is a partial
+    reading handed over as a whole one.
+    """
+    command = "git " + " ".join(args)
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(root), *args],
+            capture_output=True,
+            encoding="utf-8",
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise BaseUnreadable(f"{command}: {error}") from error
+    if completed.returncode != 0:
+        said = completed.stderr.strip().splitlines()
+        reason = said[-1] if said else f"exit {completed.returncode}, and nothing on stderr"
+        raise BaseUnreadable(f"{command}: {reason}")
+    return completed.stdout
+
+
+def shortfall_keys(source: str) -> frozenset[tuple[str, str]]:
+    """The keys of the `KNOWN_SHORTFALLS` literal in a copy of this file.
+
+    Raises:
+        BaseUnreadable: The copy defines no such literal, or holds a key that
+            is not a literal pair of names, so which entries it has cannot be
+            said.
+    """
+    for statement in ast.parse(source, filename=SHORTFALLS_SOURCE.as_posix()).body:
+        targets: list[ast.expr] = []
+        value: ast.expr | None = None
+        if isinstance(statement, ast.Assign):
+            targets, value = list(statement.targets), statement.value
+        elif isinstance(statement, ast.AnnAssign):
+            targets, value = [statement.target], statement.value
+        if not any(isinstance(t, ast.Name) and t.id == "KNOWN_SHORTFALLS" for t in targets):
+            continue
+        if not isinstance(value, ast.Dict):
+            raise BaseUnreadable("KNOWN_SHORTFALLS is not a literal mapping there")
+        keys: set[tuple[str, str]] = set()
+        for key in value.keys:
+            try:
+                pair = None if key is None else ast.literal_eval(key)
+            except (ValueError, TypeError, SyntaxError):
+                pair = None
+            if not (
+                isinstance(pair, tuple) and len(pair) == 2 and all(isinstance(n, str) for n in pair)
+            ):
+                raise BaseUnreadable("a KNOWN_SHORTFALLS key there is not a literal pair of names")
+            keys.add((pair[0], pair[1]))
+        return frozenset(keys)
+    raise BaseUnreadable("it defines no KNOWN_SHORTFALLS")
+
+
+def read_base(root: Path, ref: str) -> Base:
+    """The palette and the shortfall keys at the merge base of `HEAD` and `ref`.
+
+    The merge base rather than `ref` itself, as `bin/docket check --verify-base`
+    takes its diff: a colour `ref` has changed since this branch left it is not
+    this change's, and read at `ref` it would look altered here. What is on
+    disk is compared with it, so a change not yet committed is part of the
+    change, which is what a gate run before committing has to see.
+
+    Raises:
+        BaseUnreadable: Any part of it could not be read. Nothing is compared
+            then, and the run fails rather than passing on a partial reading.
+    """
+    commit = _git_read(root, "merge-base", "HEAD", ref).strip()
+    listed = _git_read(root, "ls-tree", "-r", "--name-only", commit, "--", APP.as_posix())
+    at = f"{ref} (merge base {commit[:12]})"
+    try:
+        modules = _theme_first(Path(line) for line in listed.splitlines() if line.endswith(".py"))
+    except FileNotFoundError as error:
+        raise BaseUnreadable(f"at {at}: {error}") from error
+    sources = [(path, _git_read(root, "show", f"{commit}:{path.as_posix()}")) for path in modules]
+    ledger = _git_read(root, "show", f"{commit}:{SHORTFALLS_SOURCE.as_posix()}")
+    try:
+        palette = palette_from_sources(sources)
+        shortfalls = shortfall_keys(ledger)
+    except SyntaxError as error:
+        raise BaseUnreadable(f"at {at}: {error.filename} does not parse: {error.msg}") from error
+    except BaseUnreadable as error:
+        raise BaseUnreadable(f"{SHORTFALLS_SOURCE.as_posix()} at {at}: {error}") from error
+    return Base(ref, palette, shortfalls)
+
+
+@dataclass(frozen=True)
+class AddedWithColour:
+    """An entry the base lacks, beside a colour of its pair the change introduces or alters."""
+
+    requirement: AnyRequirement
+    #: The colour of the pair that is new or altered - a foreground or the background.
+    colour: str
+    #: Its value at the base, or `None` where the base has no colour by that name.
+    was: str | None
+    now: str
+
+
+def shortfalls_added_with_their_colour(
+    palette: dict[str, str], base: Base
+) -> tuple[AddedWithColour, ...]:
+    """Every `KNOWN_SHORTFALLS` entry added in the change that introduces or alters its colour.
+
+    `.claude/rules/ui-color.md` forbids an entry added to make a change go
+    green, and this is the part of that rule a diff decides: an entry the base
+    lacks, whose foreground or background is absent from the base palette or
+    holds a different value there. An entry for a colour the change leaves
+    alone passes, because that is also how a correct one arrives - `#187`
+    declared `ACCENT` as text for the first time, found it failing and listed it
+    against the item that fixed it. Whether a layout change has moved an
+    element onto a surface it fails is not in any palette, so that stays with
+    review (PL-VJFQ).
+
+    Names are compared rather than values alone, so a new constant holding a
+    value another already has is still a new colour. The price is that renaming
+    a listed colour reads as introducing one.
+    """
+    by_key = {requirement.key: requirement for requirement in REQUIREMENTS}
+    found: list[AddedWithColour] = []
+    for key in KNOWN_SHORTFALLS:
+        requirement = by_key.get(key)
+        # A key naming no requirement is `stale_shortfalls`' to report, and a
+        # name the palette lacks is `missing`'s, so neither is said twice.
+        if key in base.shortfalls or requirement is None:
+            continue
+        for name in (*requirement.candidates, requirement.background):
+            now = palette.get(name)
+            if now is None:
+                continue
+            was = base.palette.get(name)
+            if was is None or was.upper() != now.upper():
+                found.append(AddedWithColour(requirement, name, was, now))
+    return tuple(found)
+
+
 @dataclass(frozen=True)
 class Result:
     """One evaluated requirement, at the ratio that decided it.
@@ -1563,6 +1749,15 @@ class Report:
     #: requirement was renamed, retyped or deleted is seen here or nowhere
     #: (PL-KNHX).
     stale_shortfalls: tuple[tuple[str, str], ...]
+    #: The ref `--base` named, or `None` when the run compared nothing with one.
+    base: str | None
+    #: Entries the base lacks, beside a colour of their pair the change
+    #: introduces or alters - the use `.claude/rules/ui-color.md` forbids
+    #: (PL-VJFQ).
+    added_with_colour: tuple[AddedWithColour, ...]
+    #: Why the base could not be read, when it could not. An error rather than a
+    #: pass: this comparison is the only gate on the rule it enforces.
+    base_unreadable: tuple[str, ...]
     #: Every use `EXEMPT` records SC 1.4.11 as not binding, with both its names
     #: in the palette. Counted into the verdict line, so a reader of `make
     #: check` sees how many uses rest on a recorded judgment rather than on a
@@ -1612,6 +1807,8 @@ class Report:
                 self.unexpected,
                 self.repaired,
                 self.stale_shortfalls,
+                self.added_with_colour,
+                self.base_unreadable,
                 self.exempt_missing,
                 self.exempt_and_required,
                 self.citations,
@@ -1627,8 +1824,15 @@ class Report:
         return self.error_count > 0
 
 
-def analyze(root: Path) -> Report:
-    """Evaluate every declared requirement against the palette on disk."""
+def analyze(root: Path, base: str | None = None) -> Report:
+    """Evaluate every declared requirement against the palette on disk.
+
+    Args:
+        root: Repository root.
+        base: A ref whose merge base with `HEAD` the shortfall list is compared
+            with, as `shortfalls_added_with_their_colour` says; `None` compares
+            nothing.
+    """
     palette = read_palette(root)
     results: list[Result] = []
     missing: list[str] = []
@@ -1667,6 +1871,13 @@ def analyze(root: Path) -> Report:
     # so an entry that has outlived its requirement is still seen.
     declared = {requirement.key for requirement in REQUIREMENTS}
     stale_shortfalls = tuple(key for key in KNOWN_SHORTFALLS if key not in declared)
+    added_with_colour: tuple[AddedWithColour, ...] = ()
+    base_unreadable: tuple[str, ...] = ()
+    if base is not None:
+        try:
+            added_with_colour = shortfalls_added_with_their_colour(palette, read_base(root, base))
+        except BaseUnreadable as error:
+            base_unreadable = (str(error),)
     exempt: list[tuple[str, Exemption]] = []
     exempt_missing: set[str] = set()
     for name, uses in EXEMPT.items():
@@ -1720,6 +1931,9 @@ def analyze(root: Path) -> Report:
         repaired=repaired,
         excused=excused,
         stale_shortfalls=stale_shortfalls,
+        base=base,
+        added_with_colour=added_with_colour,
+        base_unreadable=base_unreadable,
         exempt=tuple(exempt),
         exempt_missing=tuple(sorted(exempt_missing)),
         exempt_and_required=exempt_and_required,
@@ -1758,6 +1972,17 @@ def format_report(report: Report, *, matrix: bool) -> str:
         lines.append("")
         lines.append("How many controls nothing measures could not be read:")
         lines.extend(report.undeclared_controls_errors)
+
+    if report.base_unreadable:
+        lines.append("")
+        lines.append(
+            f"KNOWN_SHORTFALLS was not compared with {report.base}, which could not be read:"
+        )
+        lines.extend(f"  {reason}" for reason in report.base_unreadable)
+        lines.append(
+            "  Fetch it with its history - a shallow clone shares no merge base with it - or "
+            "name a base that exists. An unread base fails rather than passing unread."
+        )
 
     if report.misplaced_colors:
         lines.append("")
@@ -1822,6 +2047,28 @@ def format_report(report: Report, *, matrix: bool) -> str:
             "entry to the requirement's current key if it still falls short, or remove it."
         )
 
+    if report.added_with_colour:
+        lines.append("")
+        lines.append(
+            "Added to KNOWN_SHORTFALLS in the change that introduces or alters its colour "
+            f"(base {report.base}):"
+        )
+        for added in report.added_with_colour:
+            requirement = added.requirement
+            change = (
+                "new since the base"
+                if added.was is None
+                else f"altered since the base, from {added.was} to {added.now}"
+            )
+            lines.append(
+                f"  {requirement.label} on {requirement.background}, tracked by "
+                f"{KNOWN_SHORTFALLS[requirement.key]}: {added.colour} is {change}"
+            )
+        lines.append(
+            "  An entry is for a shortfall found on a colour this change leaves alone. "
+            "Re-pick it, or fix what is drawn around it (.claude/rules/ui-color.md, judgment 4)."
+        )
+
     if report.exempt_missing:
         lines.append("")
         lines.append("Names in EXEMPT that the palette does not hold:")
@@ -1883,10 +2130,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--matrix", action="store_true", help="also print the chart-trace pairwise ratios"
     )
+    parser.add_argument(
+        "--base",
+        metavar="REF",
+        default=None,
+        help="fail on a KNOWN_SHORTFALLS entry added since the merge base with REF whose "
+        "colour is new or altered since then",
+    )
     args = parser.parse_args(argv)
 
     root = (args.root or Path(__file__).resolve().parent.parent).resolve()
-    report = analyze(root)
+    report = analyze(root, base=args.base)
     print(format_report(report, matrix=args.matrix))
     return 1 if report.errors else 0
 

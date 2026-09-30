@@ -18,11 +18,14 @@ Fixtures build a miniature `src/anesthesia_sim/app/` holding the theme, the
 view and - where a test is about a module the tool used not to read - a third
 module, and the requirement table is substituted per test so a fixture names
 only what it is about. The real palette is checked once, at the end, by the
-same entry point `make check` runs.
+same entry point `make check` runs. A test about `--base` commits that tree on
+`main` in a real repository and then changes it on disk, which is the change
+the comparison reads.
 """
 
 from __future__ import annotations
 
+import subprocess
 from itertools import combinations
 from pathlib import Path
 
@@ -314,6 +317,189 @@ def test_a_shortfall_naming_no_declared_requirement_is_an_error(tmp_path: Path, 
     assert "demoflurane.fill on PANEL, tracked by PL-DDDD" in output
     assert "now passing" not in output, "a stale entry says nothing about the pair"
     assert "0 known shortfalls" in output, "a stale entry is not a gap"
+
+
+# --- an entry cannot arrive with the colour it excuses (PL-VJFQ) ------------
+
+
+def _git(root: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", "-c", "user.email=t@example.com", "-c", "user.name=T"]
+        + ["-c", "commit.gpgsign=false", *args],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+
+
+def _based(tmp_path: Path, *, theme: str = THEME_SOURCE, shortfalls: str = "{}") -> Path:
+    """The miniature tree committed on `main`, with this file's ledger as the base held it."""
+    root = _repo(tmp_path, theme=theme)
+    ledger = root / contrast_check.SHORTFALLS_SOURCE
+    ledger.parent.mkdir(parents=True)
+    ledger.write_text(
+        f"KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {shortfalls}\n", encoding="utf-8"
+    )
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "the base")
+    return root
+
+
+@pytest.mark.parametrize(
+    ("base_theme", "theme", "foreground", "expected"),
+    [
+        pytest.param(
+            THEME_SOURCE,
+            THEME_SOURCE + 'NEW_BADGE = "#AAAAAA"\n',
+            "NEW_BADGE",
+            "NEW_BADGE is new since the base",
+            id="new colour",
+        ),
+        pytest.param(
+            THEME_SOURCE.replace('"#AAAAAA"', '"#767676"'),
+            THEME_SOURCE,
+            "FAINT",
+            "FAINT is altered since the base, from #767676 to #AAAAAA",
+            id="altered colour",
+        ),
+        pytest.param(
+            THEME_SOURCE,
+            THEME_SOURCE.replace('PANEL = "#FFFFFF"', 'PANEL = "#F4F4F4"'),
+            "FAINT",
+            "PANEL is altered since the base, from #FFFFFF to #F4F4F4",
+            id="altered background",
+        ),
+    ],
+)
+def test_an_entry_added_with_the_colour_it_excuses_fails(
+    tmp_path: Path, declare, base_theme: str, theme: str, foreground: str, expected: str
+) -> None:
+    """The use `.claude/rules/ui-color.md` forbids: a change makes a pair fail and lists it.
+
+    Either colour of the pair counts, the surface as much as the foreground,
+    and the entry is the run's only error - the pair itself is excused, which
+    is exactly what the entry was added to do.
+    """
+    root = _based(tmp_path, theme=base_theme)
+    (root / contrast_check.THEME).write_text(theme, encoding="utf-8")
+    declare(
+        (_requirement(foreground, "PANEL", contrast_check.AA_TEXT),),
+        {(foreground, "PANEL"): "PL-DDDD"},
+    )
+
+    report = contrast_check.analyze(root, base="main")
+    output = contrast_check.format_report(report, matrix=False)
+
+    assert report.error_count == len(report.added_with_colour) == 1
+    assert (
+        "Added to KNOWN_SHORTFALLS in the change that introduces or alters its colour (base main):"
+    ) in output
+    assert f"  {foreground} on PANEL, tracked by PL-DDDD: {expected}" in output
+    assert "Re-pick it, or fix what is drawn around it" in output
+
+
+def test_an_entry_for_a_colour_the_change_leaves_alone_passes(tmp_path: Path, declare) -> None:
+    """`#187`'s shape, and the one time the list has grown.
+
+    That change declared `ACCENT` as text for the first time, found it failing
+    and listed it against the item that fixed it, touching neither colour.
+    Refusing it would refuse the ledger's own purpose, so it passes - and stays
+    visible, as every excused gap does.
+    """
+    root = _based(tmp_path)
+    declare(
+        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),), {("FAINT", "PANEL"): "PL-DDDD"}
+    )
+
+    report = contrast_check.analyze(root, base="main")
+
+    assert not report.errors
+    assert "Known shortfalls (tracked, not failing):" in contrast_check.format_report(
+        report, matrix=False
+    )
+
+
+def test_a_change_adding_no_entry_prints_nothing_about_the_base(tmp_path: Path, declare) -> None:
+    """A new colour that meets its minimum needs no entry, and the comparison stays silent."""
+    root = _based(tmp_path)
+    (root / contrast_check.THEME).write_text(
+        THEME_SOURCE + 'NEW_BADGE = "#243B53"\n', encoding="utf-8"
+    )
+    declare((_requirement("NEW_BADGE", "PANEL", contrast_check.AA_TEXT),))
+
+    compared = contrast_check.format_report(contrast_check.analyze(root, base="main"), matrix=False)
+
+    assert compared == contrast_check.format_report(contrast_check.analyze(root), matrix=False)
+    assert compared.splitlines()[0].endswith(", 0 errors")
+
+
+def test_an_entry_the_base_already_has_is_not_added_by_a_partial_fix(
+    tmp_path: Path, declare
+) -> None:
+    """A tracked shortfall whose colour improves without clearing keeps its entry.
+
+    The entry is the base's, so the change did not add it. This is also what
+    shows the base's keys were read at all: read as empty, every entry is new.
+    """
+    root = _based(
+        tmp_path,
+        theme=THEME_SOURCE.replace('"#AAAAAA"', '"#BBBBBB"'),
+        shortfalls='{("FAINT", "PANEL"): "PL-DDDD"}',
+    )
+    # 1.92:1 at the base, 2.32:1 now: better, and still under 4.5.
+    (root / contrast_check.THEME).write_text(THEME_SOURCE, encoding="utf-8")
+    declare(
+        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),), {("FAINT", "PANEL"): "PL-DDDD"}
+    )
+
+    assert not contrast_check.analyze(root, base="main").errors
+
+
+def test_a_colour_the_base_changed_after_the_branch_left_is_not_this_change(
+    tmp_path: Path, declare
+) -> None:
+    """Compared at the merge base, so `main` moving on is not read as this change's edit."""
+    root = _based(tmp_path)
+    _git(root, "checkout", "-q", "-b", "work")
+    _git(root, "checkout", "-q", "main")
+    (root / contrast_check.THEME).write_text(
+        THEME_SOURCE.replace('"#AAAAAA"', '"#999999"'), encoding="utf-8"
+    )
+    _git(root, "commit", "-q", "-am", "main moves on")
+    _git(root, "checkout", "-q", "work")
+    declare(
+        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),), {("FAINT", "PANEL"): "PL-DDDD"}
+    )
+
+    assert contrast_check.analyze(root, base="main").added_with_colour == ()
+
+
+def test_a_base_that_cannot_be_read_fails_and_says_what(
+    tmp_path: Path, declare, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Passing unread would void the one gate this rule has, so it is an error."""
+    root = _based(tmp_path)
+    declare(())
+
+    assert contrast_check.main(["--root", str(root), "--base", "no-such-ref"]) == 1
+    output = capsys.readouterr().out
+    assert "KNOWN_SHORTFALLS was not compared with no-such-ref, which could not be read:" in output
+    assert "git merge-base HEAD no-such-ref" in output
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        pytest.param("NOTHING = {}\n", id="no such name"),
+        pytest.param("KNOWN_SHORTFALLS = dict()\n", id="not a literal mapping"),
+        pytest.param("KNOWN_SHORTFALLS = {PAIR: 'PL-DDDD'}\n", id="key is a name"),
+    ],
+)
+def test_a_base_ledger_that_cannot_be_read_is_refused(source: str) -> None:
+    """Which entries the base holds is the whole comparison, so every way of losing it is loud."""
+    with pytest.raises(contrast_check.BaseUnreadable):
+        contrast_check.shortfall_keys(source)
 
 
 # --- exemptions: a use the criterion does not bind (PL-HKTB) -----------------

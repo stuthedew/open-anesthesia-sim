@@ -363,7 +363,19 @@ jobs:
       # argument `workflow_paths_check.py` makes about `tests/`.
       # `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`, `PL-FZ6T`, `PL-8XPQ`,
       # `PL-7922`.
-      - run: uv run python tools/contrast_check.py
+      #
+      # On a pull request it compares `KNOWN_SHORTFALLS` with the base, passed
+      # as the verify replay passes it, and fails on an entry added in the
+      # change that introduces or alters its colour (`PL-VJFQ`). A push to
+      # `main` compares nothing: the pull request's run was the gate.
+      - name: contrast, with the shortfall list compared to the base
+        if: github.event_name == 'pull_request'
+        env:
+          CONTRAST_BASE: origin/${{ github.base_ref }}
+        run: uv run python tools/contrast_check.py --base "$CONTRAST_BASE"
+      - name: contrast
+        if: github.event_name != 'pull_request'
+        run: uv run python tools/contrast_check.py
       - run: uv run python tools/agent_identity_check.py
       - run: uv run python tools/import_boundary_check.py
       - run: uv run python tools/workflow_paths_check.py

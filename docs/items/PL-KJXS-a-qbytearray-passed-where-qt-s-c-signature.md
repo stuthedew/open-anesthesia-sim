@@ -10,6 +10,7 @@ touches: tools/qbytearray_pointer_check.py, tests/unit/test_qbytearray_pointer_c
 added: 2026-09-26
 payoff: a QByteArray handed to one of the six Qt entry points that keep a pointer to it fails make check when it is written, instead of segfaulting or reading silent zeros at run time
 verify: grep -rq 'def test_a_qbytearray_where_qt_keeps_a_pointer_fails' tests/unit/
+recurrences: 2026-09-30 PL-NDGS withdrawn 2026-09-30 PL-NDGS
 ---
 
 **Problem.** Six Qt entry points keep the `QByteArray *` they are given, and
