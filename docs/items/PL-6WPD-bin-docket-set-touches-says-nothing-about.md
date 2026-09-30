@@ -3,12 +3,14 @@ id: PL-6WPD
 title: bin/docket set --touches says nothing about whether the paths it writes owe a Generator check, so a capture triage marks undecided (12 of 22 on 2026-09-28) is decided by reading workflow_paths in docket.toml by hand, at the moment the question is likeliest to be skipped
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect
 feature: generator-identification
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-30 triage pass
 added: 2026-09-28
+closed: 2026-09-30
+pr: 1240
 payoff: a capture whose touches triage writes in the set that takes it off the list is still asked where it came from, so a generator reached through one is found rather than queued
 verify: grep -q 'def test_set_names_the_paths_a_triage_write_leaves_owing_a_generator_check' subprojects/docket/tests/test_cli.py
 impairs-generators: cli.cmd_set writes the touches render._generator_check reads and moves the item off the triage list that mark prints on, in one call and printing nothing of the check, so a capture with no touches - 12 of 22 on 2026-09-28 - is asked where it came from only if the session holds the rule
@@ -75,3 +77,15 @@ of them: an advisory firing where it changes no decision. The narrowing gives up
 an item triaged with no `touches` at all, whose check was never decidable; that
 is one open item, and the first `touches` written on such an item counts as a
 triage write.
+
+**What landed, 2026-09-30.** `render.generator_check_on_set` reads the item
+before and after a `set` write and, on the writes the scope above names, prints
+`owes a Generator check, whatever its lane: it touches ...` with the paths under
+`workflow_paths`, or that it "leaves triage declaring no `touches`" where the write ends
+triage with the item open and no paths; `cli.cmd_set` prints it after its other
+notes. `render._apparatus_named` is the one reading of which paths owe the
+check, shared with the triage mark. Held by
+`test_set_names_the_paths_a_triage_write_leaves_owing_a_generator_check`, the
+undecided test, and five silent cases in `subprojects/docket/tests/test_cli.py`;
+the two positive tests fail on the old code, and a mutant dropping both scoping
+conditions fails three of the silent ones.

@@ -2601,17 +2601,73 @@ def _generator_check(item: Item, workflow_paths: tuple[str, ...]) -> list[str]:
             "  Generator check: undecided until `touches` is set - owed if any path it",
             "  names is under workflow_paths.",
         ]
-    apparatus = [path for path in item.touches if is_under(path, workflow_paths)]
-    if not apparatus:
+    shown = _apparatus_named(item, workflow_paths)
+    if not shown:
         return []
-    shown = ", ".join(apparatus[:3])
-    if len(apparatus) > 3:
-        shown += f", and {len(apparatus) - 3} more"
     if answers_generator_check(item.body):
         return [f"  Generator check answered in the brief; it touches {shown}."]
     return [
         f"  Owes a Generator check, whatever its lane: it touches {shown}, under workflow_paths."
     ]
+
+
+def generator_check_on_set(before: Item, after: Item, workflow_paths: tuple[str, ...]) -> list[str]:
+    """What a `docket set` write leaves the Generator check owing, said at that write.
+
+    A triage pass usually writes an item's `touches` and its `--status` in one
+    `set`, so the write that decides the check takes the item off the list
+    `_generator_check` marks. A capture with no `touches` - twelve of twenty-two
+    on 2026-09-28 - was marked undecided and never marked again, and was asked
+    where it came from only where the session held the rule (`PL-6WPD`). So the
+    write says it, in the mark's own reading: owed where a path is apparatus and
+    the brief carries no answer, undecided where it ends triage with no paths.
+
+    Only a write that decides it: `touches` or `status` moved on an item that
+    was untriaged, or the first `touches` on one that declared none. On any
+    `touches` write it would reach the 118 of 169 open triaged items on
+    `workflow_paths` that carried no answer on 2026-09-30, most triaged before
+    the rule, whenever a start or a close-out rewrote their paths - a question
+    the rule never poses of them. A drop is asked like any other exit, since
+    13 of the 22 apparatus captures dropped since the rule answered it; but
+    undecided is said only of an item left open, since the remedy it names -
+    writing `touches` - is triage's step for an item that will be worked.
+    """
+    if not workflow_paths or (before.touches and not before.is_untriaged):
+        return []
+    if before.touches == after.touches and before.status == after.status:
+        return []
+    if not after.touches:
+        if not before.is_untriaged or after.is_untriaged or after.status in CLOSED_STATUSES:
+            return []
+        return [
+            f"{after.identifier}: leaves triage declaring no `touches`, so whether it owes a "
+            "Generator check is undecided",
+            "  Owed if any path the work names is under workflow_paths; setting `touches` "
+            "decides it.",
+        ]
+    shown = _apparatus_named(after, workflow_paths)
+    if not shown or answers_generator_check(after.body):
+        return []
+    return [
+        f"{after.identifier}: owes a Generator check, whatever its lane: it touches {shown}, "
+        "under workflow_paths",
+        "  Write the answer into its brief as one **Generator check.** line; nothing asks "
+        "again once it is off the triage list.",
+    ]
+
+
+def _apparatus_named(item: Item, workflow_paths: tuple[str, ...]) -> str:
+    """The item's paths under `workflow_paths`, as the Generator check names them.
+
+    The first three and a count of the rest, or empty where none is apparatus:
+    one reading for the triage mark and `set`'s line, so the two cannot differ
+    on which paths owe the check.
+    """
+    apparatus = [path for path in item.touches if is_under(path, workflow_paths)]
+    shown = ", ".join(apparatus[:3])
+    if len(apparatus) > 3:
+        shown += f", and {len(apparatus) - 3} more"
+    return shown
 
 
 def _triage_rules(report: Report, config: Config) -> list[str]:
