@@ -2070,15 +2070,12 @@ way.
 
 What the check does say, when it can, is which completed releases carry no tag,
 which tags name no release, and which tag sits off its release's cut - the
-commit that added its notes, which the tag commands `release` prints look up
-rather than leave to be filled in (`PL-QHCW`). `docket release` still enforces the tag at the
+commit that added its notes, which `.github/workflows/tag-release.yml` looks up
+and tags once the cut merges (`PL-QHCW`, `PL-2FY6`). `docket release` still enforces the tag at the
 one moment tags are certainly to hand: it refuses to cut the next release while
-the current one is untagged. `status` reads a present tag the other way: a tag
-step filed as `Tag vX.Y.Z on ...`, the title every one has carried, is marked
-`[TAGGED: vX.Y.Z exists - close it]` once the clone holds its tag, rather than
-offered as work (`release.asked_tag`, `PL-53Y6`). A tag not yet fetched leaves
-the step offered as before, so the mark is only ever drawn from a tag that is
-there.
+the current one is untagged. No tag step is filed as an item any more, so `status` no longer reads item
+titles for a tag the clone holds: the `[TAGGED: vX.Y.Z exists - close it]` mark
+it drew on one (`PL-53Y6`) went with the step (`PL-2FY6`).
 
 ## The item format
 

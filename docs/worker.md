@@ -247,12 +247,17 @@ measured at 1. So read the table's `Exit` column as what it says, and check
 
 | Operation | What a session sees | Exit | Whose it is |
 | --- | --- | --- | --- |
-| Push a tag | `send-pack: unexpected disconnect`, then `Everything up-to-date` - and `git push --dry-run` reports `[new tag]` beforehand, so the obvious way to test the capability returns a false green | not established | the project owner (`PL-N936`) |
+| Push a tag | `send-pack: unexpected disconnect`, then `Everything up-to-date` - and `git push --dry-run` reports `[new tag]` beforehand, so the obvious way to test the capability returns a false green | not established | `.github/workflows/tag-release.yml`, on the cut's merge (`PL-N936`, `PL-2FY6`) |
 | Delete a remote branch | `error: RPC failed; HTTP 403 curl 22`, then `send-pack: unexpected disconnect`, then `fatal: the remote end hung up unexpectedly`, then `Everything up-to-date` | 1 | the project owner (`PL-ZM48`) |
 
 So a session **cannot delete a remote branch**, and cannot push a tag. There is
 no second route: the GitHub MCP server offers `create_branch` and
 `list_branches` and no deletion tool.
+
+**A release's tag is pushed by `.github/workflows/tag-release.yml` instead**
+(`PL-2FY6`), which tags the release's cut once it lands on `main`.
+`.claude/skills/docket/modes/release.md` has what to check and what to do where
+the run failed.
 
 **Finished `claude/*` branches are deleted by the branch sweep instead**
 (`PL-X8SV`). `.github/workflows/branch-sweep.yml` runs `tools/branch_sweep.py`

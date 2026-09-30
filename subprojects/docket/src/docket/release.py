@@ -22,7 +22,6 @@ is *for*; a milestone says which release it left in.
 from __future__ import annotations
 
 import re
-import shlex
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -173,19 +172,6 @@ def is_untagged(version: str, existing: frozenset[str]) -> bool:
     return f"v{name}" not in existing and name not in existing
 
 
-#: How a cut's tag step is titled when it is filed for the owner, as all seven
-#: filed by 2026-09-26 were: `Tag v0.5.11 on the merge commit of ...`. A title
-#: is not a field, so this finds only the items that keep the shape; one that
-#: does not is offered as work exactly as it was before `PL-53Y6`.
-TAG_STEP_RE = re.compile(r"^Tag (v\d+\.\d+\.\d+)\b")
-
-
-def asked_tag(title: str) -> str:
-    """The release tag an item's title asks the owner to push, as `vX.Y.Z`, or `""`."""
-    match = TAG_STEP_RE.match(title)
-    return match.group(1) if match else ""
-
-
 def notes_name(version: str) -> str:
     """The notes file a version's release is written to, with no leading path."""
     return f"v{version.strip().lstrip('v')}.md"
@@ -209,7 +195,7 @@ def notes_path(version: str) -> str:
 #: branch in after a release has its own merge commit on its first-parent line,
 #: and that merge added the notes file compared with *its* first parent:
 #: measured 2026-09-26, a scratch branch that merged the v0.5.11 cut `fe2046f7`
-#: named its own merge `4308874b` instead. So the printed commands ask
+#: named its own merge `4308874b` instead. So `TAG_SCRIPT` asks
 #: `origin/main`, and `tools/doc_check.py` asks each tag's own commit
 #: (`PL-QHCW`).
 CUT_FLAGS = ("--first-parent", "--diff-filter=A")
@@ -225,39 +211,22 @@ def cut_query(version: str, ref: str) -> list[str]:
     return ["log", *CUT_FLAGS, "--format=%H", ref, "--", notes_path(version)]
 
 
-def tag_commands(
-    version: str, remote: str = "origin", branch: str = "main"
-) -> tuple[str, str, str, str]:
-    """The four shell lines that tag `version` on its cut, filled in.
+#: What tags a cut once it is on the default branch (`PL-2FY6`), and the script
+#: it runs, which works by hand from any checkout where the workflow cannot run.
+#: Both push from outside a session, which cannot push a tag ref (`PL-N936`).
+#: They replaced four lines printed for the owner to paste after every cut,
+#: which is why nothing here prints a tag command any more.
+TAG_WORKFLOW = ".github/workflows/tag-release.yml"
+TAG_SCRIPT = "tools/tag_release.py"
 
-    The tag line finds the cut *when it runs*, from `remote/branch`, instead
-    of naming a commit here. Printed by the cut, there is no commit on the
-    default branch to name yet; printed later, a named commit is only as good
-    as the moment it was read. Run before the release has merged, the lookup
-    prints nothing and `git tag` refuses the empty name; run late, it still
-    finds the cut, however many merges have landed since (`PL-VYK1`).
 
-    The line before it clears a tag this checkout holds and `remote` says it
-    does not have: a withdrawn tag at a re-used number, which `git fetch` never
-    removes. Left in place, `git tag` refuses the name and the push after it,
-    which a pasted block runs anyway, puts the withdrawn tag back on `remote`
-    (measured 2026-09-27, `PL-PNW6`). Its guards are what make it safe to paste
-    every time. Holding no such tag, it asks nothing and exits 0, so the
-    ordinary first tag does not stop a `bash -e` run. And it deletes only on
-    `ls-remote`'s exit 2, the one status meaning `remote` answered: any other
-    means it could not be asked, and a published tag deleted then comes back
-    from the tag line as a different object, which every later
-    `git fetch --tags` refuses to clobber.
+def tag_confirmation(version: str, remote: str = "origin") -> str:
+    """The one line that shows whether `remote` holds `version`'s tag: nothing to fill in.
+
+    It prints the tag where `remote` holds it and nothing where it does not, and
+    it reads rather than writes, so a session can run it as well as the owner.
     """
-    name = f"v{version.strip().lstrip('v')}"
-    lookup = shlex.join(["git", *cut_query(version, f"{remote}/{branch}")])
-    return (
-        f"git fetch {remote} {branch}",
-        f'[ -z "$(git tag -l {name})" ] || git ls-remote --exit-code {remote} '
-        f"refs/tags/{name} >/dev/null || [ $? -ne 2 ] || git tag -d {name}",
-        f'git tag -a {name} "$({lookup})" -m "{name}"',
-        f"git push {remote} {name}",
-    )
+    return f"git ls-remote --tags {remote} refs/tags/v{version.strip().lstrip('v')}"
 
 
 #: Where a notes file stops claiming work and starts pointing at it. Bullets

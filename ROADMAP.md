@@ -143,8 +143,9 @@ named here instead.
 
 The tag goes on the release's cut: the commit that added its notes file, which
 is the cut's own squash on `main`, not whatever `main` holds when the tag is
-made (PL-QHCW). So between cutting a release and pushing its tag the newest
-version is Completed and carries none. That window is silent
+made (PL-QHCW). `.github/workflows/tag-release.yml` pushes it once the cut
+lands on `main` (PL-2FY6), so between that merge and the run the newest version
+is Completed and carries none. That window is silent
 rather than an error: failing it would turn `make check` red on every release
 branch, which is the failure PL-8HJ2 removed arriving by another door, and the
 advisory it once raised could not tell a tag never pushed from one this

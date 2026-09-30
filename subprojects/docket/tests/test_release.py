@@ -29,7 +29,6 @@ from docket.release import (
     release_notes,
     restate_references,
     suggest_version,
-    tag_commands,
     unreferenced,
     unreferenced_by_version,
     version_key,
@@ -2031,63 +2030,6 @@ def test_a_release_naming_no_version_names_the_cut_another_branch_is_making(
     assert "Name the version to cut it" not in out
 
 
-def _tag_step(identifier: str, version: str, feature: str = "") -> str:
-    """A cut's tag step as release sessions file it for the owner."""
-    grouping = f"feature: {feature}\n" if feature else ""
-    return (
-        f"---\nid: {identifier}\ntitle: Tag {version} on the merge commit of #1: the release "
-        f"is cut\npriority: P2\neffort: S\nstatus: ready\n{grouping}added: 2026-08-01\n---\n\n"
-        "**Problem.** Tag it\n"
-    )
-
-
-def test_a_tag_step_is_read_from_its_title_and_nothing_else_is() -> None:
-    """`Tag releases so ...` is in the store, and asks for no tag."""
-    from docket.release import asked_tag
-
-    assert asked_tag("Tag v0.5.11 on the merge commit of PL-DRRG's cut: the") == "v0.5.11"
-    assert asked_tag("Tag releases so a commit can be mapped to the version it shipped in") == ""
-    assert asked_tag("Retag v0.5.11 on its cut") == ""
-
-
-@pytest.mark.usefixtures("_no_session")
-def test_status_marks_a_tag_step_whose_tag_the_clone_holds(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """PL-53Y6: a tag step has no `verify:`, so `status` offered PL-08D4 (Tag
-    v0.5.10) as work after v0.5.10 was tagged. Both rows an item can be
-    offered from are marked, and a tag the clone lacks leaves its item as it was.
-    """
-    repo = _TrainRepo(tmp_path / "repo")
-    repo.git("tag", "v0.2.4")
-    repo.commit(
-        "file the tag steps",
-        when=TRAIN_T0,
-        files={
-            "items/PL-FTR1-done.md": (
-                "---\nid: PL-FTR1\ntitle: Done work\nstatus: done\nfeature: release-process\n"
-                "added: 2026-08-01\nclosed: 2026-09-01\ncommit: abc1234\n---\n\n**Problem.** x\n"
-            ),
-            "items/PL-TGV5-tag.md": _tag_step("PL-TGV5", "v0.2.5", "release-process"),
-            "items/PL-TGV4-tag.md": _tag_step("PL-TGV4", "v0.2.4"),
-            "items/PL-TGV6-tag.md": _tag_step("PL-TGV6", "v0.2.6"),
-        },
-    )
-
-    assert repo.run("status", "--no-fetch") == 0
-
-    rows = {
-        identifier: line
-        for line in capsys.readouterr().out.splitlines()
-        for identifier in ("PL-TGV5", "PL-TGV4", "PL-TGV6")
-        if identifier in line
-    }
-    assert "next: PL-TGV5" in rows["PL-TGV5"]
-    assert rows["PL-TGV5"].endswith("(S) [TAGGED: v0.2.5 exists - close it]")
-    assert rows["PL-TGV4"].endswith("(S) [TAGGED: v0.2.4 exists - close it]")
-    assert rows["PL-TGV6"].endswith("(S)")
-
-
 @pytest.mark.usefixtures("_no_session")
 def test_a_release_item_closed_on_this_branch_has_released_the_release_train(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -2620,127 +2562,6 @@ def _published(tmp_path: Path) -> tuple[Path, Path]:
     _commit(work, "base", {"pyproject.toml": '[project]\nversion = "0.2.9"\n'})
     _git(work, "push", "-q", "origin", "HEAD:main")
     return origin, work
-
-
-def _run_printed(
-    commands: tuple[str, ...], cwd: Path, *, keep_going: bool = False
-) -> subprocess.CompletedProcess[str]:
-    """Run the printed lines as pasted into a shell, stopping at the first that fails.
-
-    `keep_going` runs each line whatever the one before returned, which is
-    what an interactive shell does with a pasted block (`PL-PNW6`).
-    """
-    identity = {"GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@example.com"}
-    return subprocess.run(
-        ["bash", "-c" if keep_going else "-ec", "\n".join(commands)],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        env={**os.environ, **identity},
-        check=False,
-    )
-
-
-def test_the_printed_tag_commands_tag_the_cut_however_late_they_run(tmp_path: Path) -> None:
-    """`PL-VYK1`: run after another merge, `origin/main` is that merge; the lookup is still the cut.
-
-    An edit to the notes after the cut does not move it either, which is what
-    `--diff-filter=A` is for.
-    """
-    origin, work = _published(tmp_path)
-    cut = _commit(
-        work,
-        "PL-TR4N: cut v0.3.0",
-        {
-            "docs/releases/v0.3.0.md": "## v0.3.0\n",
-            "pyproject.toml": '[project]\nversion = "0.3.0"\n',
-        },
-    )
-    _commit(work, "PL-D1D1: the next merge", {"README.md": "later\n"})
-    _commit(
-        work, "PL-D1D2: an edit to the notes", {"docs/releases/v0.3.0.md": "## v0.3.0\n\nmore\n"}
-    )
-    _git(work, "push", "-q", "origin", "HEAD:main")
-    tagger = tmp_path / "tagger"
-    _git(tmp_path, "clone", "-q", str(origin), str(tagger))
-
-    done = _run_printed(tag_commands("0.3.0"), tagger)
-
-    assert done.returncode == 0, done.stderr
-    assert _git(tagger, "rev-parse", "v0.3.0^{commit}") == cut
-    assert _git(origin, "rev-parse", "v0.3.0^{commit}") == cut
-
-
-def test_the_printed_tag_line_refuses_before_the_release_has_merged(tmp_path: Path) -> None:
-    """Run too early, the lookup names nothing and git refuses the empty name rather than guess."""
-    _, work = _published(tmp_path)
-
-    done = _run_printed(tag_commands("v0.3.0"), work)
-
-    assert done.returncode != 0
-    assert "Failed to resolve ''" in done.stderr
-    assert _git(work, "tag", "--list") == ""
-
-
-def test_the_tag_lines_clear_a_withdrawn_tag_before_tagging(tmp_path: Path) -> None:
-    """`PL-PNW6`: a re-used number, tagged from a checkout still holding the withdrawn tag.
-
-    `git fetch` never removes a tag, so the warm clone keeps it. Pasted as a
-    block, the three lines before this had `git tag` refuse the name and the
-    push put the withdrawn tag back on origin. Run again once the tag has
-    landed, the lines change nothing: an unguarded delete re-creates the tag as
-    a different object, which the push is refused and `git fetch --tags` will
-    not clobber.
-    """
-    origin, work = _published(tmp_path)
-    withdrawn = _git(work, "rev-parse", "HEAD")
-    _git(work, "tag", "-a", "v0.3.0", "-m", "v0.3.0")
-    _git(work, "push", "-q", "origin", "v0.3.0")
-    warm = tmp_path / "warm"
-    _git(tmp_path, "clone", "-q", str(origin), str(warm))
-    _git(origin, "tag", "-d", "v0.3.0")
-    _git(work, "tag", "-d", "v0.3.0")
-    cut = _commit(
-        work,
-        "PL-TR4N: cut v0.3.0",
-        {
-            "docs/releases/v0.3.0.md": "## v0.3.0\n",
-            "pyproject.toml": '[project]\nversion = "0.3.0"\n',
-        },
-    )
-    _git(work, "push", "-q", "origin", "HEAD:main")
-    assert _git(warm, "rev-parse", "v0.3.0^{commit}") == withdrawn
-
-    done = _run_printed(tag_commands("0.3.0"), warm, keep_going=True)
-
-    assert done.returncode == 0, done.stderr
-    assert _git(warm, "rev-parse", "v0.3.0^{commit}") == cut
-    assert _git(origin, "rev-parse", "v0.3.0^{commit}") == cut, "origin took the withdrawn tag"
-
-    landed = (_git(warm, "rev-parse", "v0.3.0"), _git(origin, "rev-parse", "v0.3.0"))
-    _run_printed(tag_commands("0.3.0"), warm, keep_going=True)
-
-    assert (_git(warm, "rev-parse", "v0.3.0"), _git(origin, "rev-parse", "v0.3.0")) == landed
-    _git(warm, "fetch", "-q", "--tags", "origin")
-
-
-def test_the_tag_lines_delete_nothing_when_origin_cannot_answer(tmp_path: Path) -> None:
-    """Only `ls-remote`'s exit 2 says origin lacks the tag; unreachable, a published one stays.
-
-    Deleted on a failed read, the tag line would re-create it as a different
-    object, and every later `git fetch --tags` refuses to clobber that.
-    """
-    _, work = _published(tmp_path)
-    _commit(work, "PL-TR4N: cut v0.3.0", {"docs/releases/v0.3.0.md": "## v0.3.0\n"})
-    _git(work, "push", "-q", "origin", "HEAD:main")
-    assert _run_printed(tag_commands("0.3.0"), work).returncode == 0
-    published = _git(work, "rev-parse", "v0.3.0")
-    _git(work, "remote", "set-url", "origin", str(tmp_path / "gone.git"))
-
-    done = _run_printed(tag_commands("0.3.0"), work, keep_going=True)
-
-    assert "does not appear to be a git repository" in done.stderr
-    assert _git(work, "rev-parse", "v0.3.0") == published
 
 
 def test_find_cut_names_nothing_for_absent_notes_and_no_one_of_notes_added_twice(

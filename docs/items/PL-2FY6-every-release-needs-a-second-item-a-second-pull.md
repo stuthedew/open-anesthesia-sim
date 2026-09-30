@@ -3,12 +3,13 @@ id: PL-2FY6
 title: Every release needs a second item, a second pull request and four pasted commands only to record the owner's tag push; a workflow that tags the cut's merge commit when it lands on main would make the release item and its one pull request the whole release
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
 feature: release-process
-touches: .github/workflows/, .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/render.py
+touches: .github/workflows/, tools/tag_release.py, tests/unit/test_tag_release.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/, subprojects/docket/README.md, .claude/skills/docket/modes/release.md, docs/worker.md, docs/ARCHITECTURE.md, docket.toml, ROADMAP.md
 deferred-from: v0.6.0 - filed 2026-09-30, after the gate froze: a release-process decision rather than debt the milestone's work created, so it goes to the next gate
 added: 2026-09-30
+closed: 2026-09-30
 payoff: a release is one item and one pull request, and the tag lands on the cut's merge commit with nothing for the owner to paste
 verify: grep -q "contents: write" .github/workflows/tag-release.yml && ! grep -q "git tag -a" subprojects/docket/src/docket/release.py && ! grep -q "git tag -a" .claude/skills/docket/modes/release.md
 ---
@@ -100,3 +101,26 @@ authenticated git commands." https://github.com/actions/checkout
 this item retires rather than a new head; no open item carries `generator:
 live`, so the pause on new workflow machinery does not hold it, and the
 owner's question lifts it for this request in any case.
+
+**Done 2026-09-30.** `.github/workflows/tag-release.yml` runs
+`tools/tag_release.py --apply` on each push to `main` that changes a release's
+notes, and on dispatch. The script reads the version `origin/main` declares,
+finds the commit that added its notes through `vcs.find_cut`, and where origin
+lacks the tag, tags that commit and pushes the tag - then reads it back from
+origin before reporting success, because a session's tag push exits clean and
+lands nothing (`PL-N936`). It declines, red, where git will not answer, the
+clone is shallow, the notes were added more than once, or origin holds the tag
+on another commit. `bin/docket release` ends with `git ls-remote --tags origin
+refs/tags/vX.Y.Z` in place of the four pasted lines; its refusal to cut past an
+untagged release names the workflow run, the owner's, as the way back; release
+mode files no tag-step item; and the `[TAGGED: ...]` mark `status` drew on one
+went with `release.asked_tag`, since nothing can file one again. The draft was
+written in the session that filed this item and handed over on 2026-09-30; this
+session reviewed it, added the read-back after the push with its test, retired
+the mark, and re-ran the gate. The last "Done when" clause - the first cut after
+this merges is tagged with nothing pasted - can only be seen at the next
+release. The merge of this pull request changes no notes file, so the
+workflow's first run is a dispatch by the owner (Actions, then tag-release,
+then Run workflow), expected to end green with `v0.5.19 is already on its cut
+... nothing to do`, which proves the checkout, fetch and ls-remote steps and not
+the push; v0.5.20's merge proves the push.
