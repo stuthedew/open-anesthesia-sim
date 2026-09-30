@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: generator-identification
+milestone: v0.5.19
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-30 triage pass
 added: 2026-09-28
