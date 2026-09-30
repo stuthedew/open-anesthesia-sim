@@ -3,11 +3,13 @@ id: PL-4ZK8
 title: bin/docket concurrent offers a batch containing needs-decision and in-flight items, so a fan-out cannot hand it out as-is
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: defect
 feature: parallel-sessions
 touches: subprojects/docket
 added: 2026-09-07
+payoff: a fan-out can paste the bare batch as it stands, and docket next and docket concurrent offer one startable population
+verify: grep -q 'def test_concurrent_batch_offers_only_startable_work' subprojects/docket/tests/test_cli.py && grep -q 'def test_concurrent_names_the_decisions_and_in_flight_work_beneath_the_batch' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket concurrent offers a batch containing needs-decision and in-flight items, so a fan-out cannot hand it out as-is
@@ -32,14 +34,16 @@ precedent, and hiding would make the count disagree with `docket list`.
 **Found while** picking four gate entries to spin up as parallel sessions on
 2026-09-07 — the batch could not be used as the answer, so the four were
 chosen by reading the 95 open gate entries' front matter by hand.
-**Done when.** `bin/docket concurrent`'s batch either excludes `needs-decision`
-and in-flight items or marks each of them the way `[IN FLIGHT]` already marks
-one; the choice is recorded in the command's own docstring with its reason; and
-a test pins it. The decision has to respect both costs the brief names: hiding
-them makes the batch count disagree with `bin/docket list`, and marking them
-leaves a fan-out filtering the list it was handed. `PL-7B3G` is sequenced behind
-this answer, because whether it still has two axes to build depends on which
-way this goes.
+**Done when.** `bin/docket concurrent`'s bare batch offers only the population
+`next` ranks - open, triaged, not `blocked`, not in flight, and not at
+`needs-decision` below `P0` - and names the in-flight ids and the decisions
+beneath it on the two lines `next` already prints; the choice and its `PL-JW39`
+reason are in the command's docstring; and the two tests `verify:` names pin
+it. `PL-7B3G` is sequenced behind this, and is re-triaged once this lands,
+because the startable axis it planned is built here and gate membership is the
+axis that remains. Rewritten 2026-09-30 from the either/or the 2026-09-27
+answer settled; Q1 under § "Design round 2026-09-27: recommendations" keeps
+both endings and the cost each carried.
 
 **Decision needed.** Should `bin/docket concurrent`'s batch hide `needs-decision` and in-flight items, or mark them the way `[IN FLIGHT]` already marks one?
 
@@ -150,3 +154,47 @@ over marking `needs-decision` and in-flight items in the batch the way
 the population `next` ranks, and names the in-flight ids and the decisions
 beneath it, as § "Design round 2026-09-27: recommendations" specifies. The
 thread that builds it sets this item's status and `touches:`.
+
+## Re-confirmed 2026-09-30
+
+**The defect stands, unbuilt, and the item moves to `ready`.**
+`cli.cmd_concurrent` still draws the bare batch from `report.open_items`
+sorted by `sort_key()` and reads no status; `concurrency.parallel_batch` still
+drops only an item with no `touches` and one contending with a pick already
+made. Measured at 20:23 UTC on the working tree: the bare batch offered 55
+items, and 8 of them cannot be started - 7 at `needs-decision` (`PL-4ZK8`
+itself, `PL-08CR`, `PL-3YRT`, `PL-6QZP`, `PL-QV5Y`, `PL-TDBT`, `PL-VJFQ`) and 1
+`blocked` (`PL-L8RN`, on `PL-W9P6`) - with `PL-VJFQ` also in flight under a
+live claim and marked `[IN FLIGHT]`, the one status the line carries. No test
+asserts the mark on a bare-batch row or a `needs-decision` item's presence in
+the batch - `test_concurrent_never_certifies_a_pair_as_safe` and
+`test_concurrent_refuses_a_limit_below_one` read the footer and the count - so
+the build removes no assertion and owes no `falsifies:`.
+
+**Why the status moves here rather than with the build.** The answer was
+ratified on 2026-09-27 and is recorded above, but the front matter still read
+`needs-decision`, so on 2026-09-30 `bin/docket next` and `next workflow` both
+named `PL-4ZK8` first on their "Waiting on a decision" line, 23 days waiting -
+a question the owner had answered three days before, which is this item's own
+defect turned on itself. Every other item answered on 2026-09-27 moved with
+its answer (seven to `blocked`, four closed); this was the one answered item
+still carrying the status. At `ready` the `verify:` names the two tests the
+build adds, both absent from `subprojects/docket/tests/test_cli.py` today, and
+`bin/docket set --verify` ran the command and saw it fail. `touches:` is the
+build thread's to narrow, as § "How, for the build thread" says, and is not
+narrowed here. The Done-when above was rewritten in the decided form at the
+same time.
+
+**Every name § "How, for the build thread" cites still exists as cited.**
+`plan._startable` is still module-private, and `plan.awaits_decision`,
+`plan.awaiting_decision`, `render.format_excluded`, `cli._say_decisions`,
+`cli.NAMED_NOT_OFFERED` and `cli._holdings` carry the signatures the section
+calls them with; `next --limit` still defaults to 3 and `concurrent --limit`
+to none; `subprojects/docket/README.md` § "Concurrency is computed, and
+honestly qualified" and `.claude/skills/docket/modes/picking.md`'s `docket
+concurrent` block are still where the one sentence each goes. `PL-JW39` is
+`done` (#1171) and `PL-Y1LD` is `done` (#1202, the design round's own pull
+request); `PL-7B3G` is still `blocked` on this item; `PL-KS01` is still open.
+No open item carries `generator: live` - `PL-MT3R`, the last head, closed on
+2026-09-26 - so `CLAUDE.md`'s pause is not in force, and the fix is a defect in
+what exists in any case.
