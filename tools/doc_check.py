@@ -1142,7 +1142,7 @@ def _short_citation(entry: object) -> str:
 def check_source_tiers(root: Path, report: Report) -> None:
     """Hold every data file's `sources` to `docs/MODEL.md` § "Source hierarchy".
 
-    Two rules, both exact, and both about what a file *declares* rather than
+    Six rules, all exact, and all about what a file *declares* rather than
     about whether the declaration is true:
 
     1. Every `sources` entry names a `tier` from the closed vocabulary and
@@ -1152,6 +1152,19 @@ def check_source_tiers(root: Path, report: Report) -> None:
        `provenance_gap` saying so. That is the third of the section's three
        rules: where no primary source has been adopted, the absence is
        recorded rather than left to be read as an oversight.
+    3. Every entry carries `authority_for`, a list naming the stored values
+       it is the authority for by dotted key path, each a nonempty string
+       named once.
+    4. `adopted` is true exactly when `authority_for` is not empty.
+    5. Each path names a stored value of the same file: a numeric leaf as
+       `_leaf_numbers` reads it, the set `check_provenance` holds the table to.
+    6. No stored value is named by two entries of one file.
+
+    Rules 3 to 6 repeat the loader's in `core/parameters.py`, so a checkout
+    with no virtualenv still checks them. They are what makes the tier of each
+    stored value readable from the files, which `tools/source_tier_counts.py`
+    prints, and it prints nothing while this check fails (`PL-9LXK`). A stored
+    value no entry names is not an error: it adopts no source.
 
     **The tier and the adoption are separate fields because rule 2 is
     otherwise vacuous.** Every agent file cites primary measurements it has
@@ -1191,6 +1204,8 @@ def check_source_tiers(root: Path, report: Report) -> None:
             )
             continue
 
+        stored_values = {key_path for key_path, _value in _leaf_numbers(document)}
+        named_by: dict[str, int] = {}
         adopted_primary = False
         for index, entry in enumerate(sources):
             where = f"{relative} sources[{index}] ({_short_citation(entry)})"
@@ -1215,6 +1230,53 @@ def check_source_tiers(root: Path, report: Report) -> None:
 
             if tier == "primary" and adopted is True:
                 adopted_primary = True
+
+            paths = entry.get("authority_for")
+            if not isinstance(paths, list):
+                report.errors.append(
+                    f"{where}: declares authority_for {paths!r}; expected a list of the dotted "
+                    "key paths of the stored values this file takes the source as the authority "
+                    "for, empty where it adopts it for none (docs/MODEL.md, 'Source hierarchy')"
+                )
+                continue
+            if adopted is True and not paths:
+                report.errors.append(
+                    f"{where}: is adopted but its authority_for is empty; name the stored values "
+                    "it is the authority for, or declare it not adopted (docs/MODEL.md, "
+                    "'Source hierarchy')"
+                )
+            elif adopted is False and paths:
+                report.errors.append(
+                    f"{where}: is not adopted but its authority_for is not empty; a source is "
+                    "the authority for a stored value only where the file adopts it "
+                    "(docs/MODEL.md, 'Source hierarchy')"
+                )
+            named: set[str] = set()
+            for path in paths:
+                if not isinstance(path, str) or not path:
+                    report.errors.append(
+                        f"{where}: authority_for holds {path!r}; each entry is the dotted key "
+                        "path of a stored value, as a nonempty string"
+                    )
+                elif path in named:
+                    report.errors.append(f"{where}: authority_for names {path!r} twice")
+                elif path not in stored_values:
+                    report.errors.append(
+                        f"{where}: authority_for names {path!r}, which is not one of "
+                        f"{relative}'s stored values - the numbers its provenance-table rows "
+                        "name, by the same key path"
+                    )
+                elif path in named_by:
+                    first = named_by[path]
+                    report.errors.append(
+                        f"{where}: authority_for names {path!r}, which sources[{first}] "
+                        f"({_short_citation(sources[first])}) already names; a stored value has "
+                        "one adopted authority, or it would be counted under two tiers"
+                    )
+                else:
+                    named_by[path] = index
+                if isinstance(path, str):
+                    named.add(path)
 
         gap = document.get("provenance_gap")
         if gap is not None and not (isinstance(gap, str) and gap.strip()):

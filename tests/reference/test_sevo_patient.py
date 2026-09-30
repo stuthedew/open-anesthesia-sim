@@ -84,7 +84,7 @@ def _synthetic_agent(blood_gas_partition_coefficient: float) -> AgentParameters:
     """
 
     payload = {
-        "schema_version": 2,
+        "schema_version": 3,
         "id": "synthetic-solubility-test-agent",
         "display_name": "Synthetic solubility test agent",
         "blood_gas_partition_coefficient": blood_gas_partition_coefficient,
@@ -102,6 +102,7 @@ def _synthetic_agent(blood_gas_partition_coefficient: float) -> AgentParameters:
                 "url": "https://example.com/synthetic-test-agent",
                 "tier": "primary",
                 "adopted": True,
+                "authority_for": ["blood_gas_partition_coefficient"],
                 "note": "Not a real agent; isolates the effect of blood:gas solubility only.",
             }
         ],

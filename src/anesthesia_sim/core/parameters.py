@@ -23,6 +23,8 @@ so `core/` presents one exception hierarchy at its boundary.
 from __future__ import annotations
 
 import json
+from collections import Counter
+from collections.abc import Iterator
 from dataclasses import dataclass
 from importlib.resources import files
 from math import isfinite
@@ -92,13 +94,13 @@ class SupportedSchemaVersions:
 
 
 AGENT_SCHEMA_VERSIONS = SupportedSchemaVersions(
-    data_files="agent files (data/agents/)", minimum=2, current=2
+    data_files="agent files (data/agents/)", minimum=3, current=3
 )
 PATIENT_SCHEMA_VERSIONS = SupportedSchemaVersions(
-    data_files="patient files (data/patients/)", minimum=2, current=2
+    data_files="patient files (data/patients/)", minimum=3, current=3
 )
 MACHINE_SCHEMA_VERSIONS = SupportedSchemaVersions(
-    data_files="machine profiles (data/machines/)", minimum=2, current=2
+    data_files="machine profiles (data/machines/)", minimum=3, current=3
 )
 
 #: How far the tissue perfusion fractions may sum from 1 before the sum is
@@ -116,9 +118,14 @@ FLOW_FRACTION_TOLERANCE = 1e-12
 #: The closed vocabulary a `sources` entry's `tier` is drawn from, in the
 #: order `docs/MODEL.md` § "Source hierarchy" defines them: a study that
 #: measured the quantity, a review that collected such measurements without
-#: making one, and another simulator's parameter set. The tier says what kind
-#: of document the source is; `adopted` says whether this file takes it as the
-#: authority for a value it stores. The two are independent, and separating
+#: making one, and another simulator's parameter set.
+#:
+#: An entry carries three provenance fields, one question each. `tier`
+#: classifies the document. `adopted` says whether this file takes it as an
+#: authority. `authority_for` names which stored values it is the authority
+#: for, as dotted key paths into the same file: it is the recorded link
+#: between a stored value and its source, which prose alone used to carry
+#: (`PL-9LXK`). The tier and the adoption are independent, and separating
 #: them is the whole point of recording either: every agent file cites primary
 #: measurements it has *not* adopted, so a check reading tier alone would
 #: report each of them as primary-sourced while its stored coefficients came
@@ -140,19 +147,28 @@ SOURCE_TIERS: tuple[str, ...] = ("primary", "secondary", "reference-implementati
 class SourceReference:
     """Provenance for one scientific or physiologic parameter set.
 
-    `tier` and `adopted` answer two different questions and neither implies
-    the other. `tier` classifies the *document* against `docs/MODEL.md`
-    § "Source hierarchy"; `adopted` says whether this file names it as the
-    authority for a value it stores. A primary measurement cited beside a
-    stored number it did not produce is `("primary", False)`, and reading it
-    as provenance for that number is the specific error the source hierarchy
-    exists to prevent.
+    Three fields answer three questions. `tier` classifies the *document*
+    against `docs/MODEL.md` § "Source hierarchy". `adopted` says whether this
+    file takes it as an authority. `authority_for` names which stored values
+    it is the authority for, as dotted key paths into the file that cites it -
+    `"tissue_groups.fat.volume_l"` - and is the recorded link between a stored
+    value and its source, which prose alone used to carry (`PL-9LXK`).
+
+    `tier` and `adopted` are independent and neither implies the other. A
+    primary measurement cited beside a stored number it did not produce is
+    `("primary", False)`, and reading it as provenance for that number is the
+    specific error the source hierarchy exists to prevent. `adopted` and
+    `authority_for` are held to agree instead - the loader refuses an adopted
+    entry that names no stored value, and an entry naming one that is not
+    adopted - and every path must name a numeric value the same file stores,
+    which no other entry names.
     """
 
     citation: str
     url: str
     tier: str
     adopted: bool
+    authority_for: tuple[str, ...]
     note: str
 
 
@@ -541,19 +557,149 @@ class _StrictPayload(BaseModel):
 class _SourcePayload(_StrictPayload):
     """Load-time schema for one `sources` entry, discarded into `SourceReference`.
 
-    `tier` and `adopted` are required rather than defaulted. A default would
-    let a source added later be silently classified by whoever wrote this
-    line rather than by whoever read the paper, and the value it would have
-    to pick - "primary", or "not adopted" - is wrong in one direction or the
-    other. Both are cheap to state and neither is guessable, so the schema
-    asks.
+    `tier`, `adopted` and `authority_for` are required rather than defaulted.
+    A default would let a source added later be silently classified by
+    whoever wrote this line rather than by whoever read the paper, and the
+    value it would have to pick - "primary", "not adopted", or the authority
+    for nothing - is wrong in one direction or the other. All three are cheap
+    to state and none is guessable, so the schema asks.
+
+    `adopted` stays beside `authority_for` although the list alone implies it,
+    and the two are held to agree: an adopted entry names at least one stored
+    value, and an entry naming one is adopted. An edit that changes one
+    without the other then fails the load rather than leaving them to
+    disagree. Whether each path names a value the file stores, and whether
+    another entry names it too, needs the whole file, so
+    `_validate_authority_for_paths` decides those.
     """
 
     citation: NonEmptyString
     url: NonEmptyString
     tier: SourceTier
     adopted: DeclaredBool
+    authority_for: list[NonEmptyString]
     note: NonEmptyString
+
+    @model_validator(mode="after")
+    def _adopted_must_agree_with_authority_for(self) -> _SourcePayload:
+        """Reject an adopted entry that names no stored value, and the reverse."""
+
+        if self.adopted and not self.authority_for:
+            raise ValueError(
+                f"sources entry {_short_citation(self.citation)!r} is adopted but its "
+                "authority_for names no stored value; name the values it is the authority "
+                "for, or set adopted to false (see SourceReference in core/parameters.py)"
+            )
+
+        if self.authority_for and not self.adopted:
+            raise ValueError(
+                f"sources entry {_short_citation(self.citation)!r} is not adopted but its "
+                f"authority_for names {self.authority_for}; the authority for a stored value "
+                "is adopted, so set adopted to true or empty the list "
+                "(see SourceReference in core/parameters.py)"
+            )
+
+        return self
+
+    @model_validator(mode="after")
+    def _authority_for_must_not_repeat_a_path(self) -> _SourcePayload:
+        repeated = sorted(path for path, count in Counter(self.authority_for).items() if count > 1)
+
+        if repeated:
+            raise ValueError(
+                f"sources entry {_short_citation(self.citation)!r} names {repeated} more than "
+                "once in authority_for"
+            )
+
+        return self
+
+
+#: Top-level keys of a data file that store no parameter value: its format
+#: version, its identity and its provenance. An `authority_for` path names a
+#: stored value, so none of these can be one.
+_NON_PARAMETER_KEYS = frozenset(
+    {"schema_version", "id", "display_name", "sources", "provenance_gap"}
+)
+
+#: How much of a citation an error message quotes to name a `sources` entry.
+#: Forty characters, cut back to a word, is unique within every shipped file.
+_SHORT_CITATION_LENGTH = 40
+
+
+def _short_citation(citation: str) -> str:
+    """Name a `sources` entry by the opening words of its citation."""
+
+    if len(citation) <= _SHORT_CITATION_LENGTH:
+        return citation
+
+    return citation[:_SHORT_CITATION_LENGTH].rsplit(" ", 1)[0].rstrip(",.;:") + "..."
+
+
+def _stored_value_paths(payload: BaseModel, prefix: str = "") -> Iterator[str]:
+    """Yield every numeric value a validated data file stores, as a dotted key path.
+
+    Paths are spelled as `authority_for` spells them, `tissue_groups.fat.volume_l`
+    for one, and read off the validated payload rather than the raw JSON. The
+    two have the same keys, because `extra="forbid"` admits none the schema does
+    not declare; an optional value the file omits or writes as `null` stores
+    nothing and is not yielded.
+    """
+
+    for name in type(payload).model_fields:
+        if not prefix and name in _NON_PARAMETER_KEYS:
+            continue
+
+        value = getattr(payload, name)
+        path = f"{prefix}.{name}" if prefix else name
+
+        if isinstance(value, BaseModel):
+            yield from _stored_value_paths(value, path)
+        elif isinstance(value, (int, float)) and not isinstance(value, bool):
+            yield path
+
+
+def _validate_authority_for_paths(
+    payload: _AgentPayload | _ReferenceAdultPayload | _BreathingCircuitPayload, data_files: str
+) -> None:
+    """Reject an `authority_for` path that names no stored value, or one named twice.
+
+    The file-level half of the rules `_SourcePayload` states, shared by every
+    family of data file. A path must name a numeric value this same file
+    stores, never one of `_NON_PARAMETER_KEYS` and never a group such as
+    `mac_awake`, because a group's values can each have a different
+    authority. No value may be named by two entries, because a stored number
+    has one source it was taken from.
+
+    Raises:
+        ValueError: a path names nothing this file stores as a number, or two
+            entries name the same path. Pydantic collects it, and the
+            `parse_*` function reraises it as `SimulationConfigurationError`.
+    """
+
+    stored = tuple(_stored_value_paths(payload))
+    claimed_by: dict[str, str] = {}
+
+    for index, source in enumerate(payload.sources):
+        # The index as well as the citation: two papers by one group can share
+        # every word a short citation keeps.
+        entry = f"sources[{index}] ({_short_citation(source.citation)!r})"
+
+        for path in source.authority_for:
+            if path not in stored:
+                raise ValueError(
+                    f"{payload.id!r} in {data_files}: {entry} names {path!r} "
+                    "in authority_for, which is not a numeric parameter value this file "
+                    f"stores; expected one of {list(stored)}"
+                )
+
+            if path in claimed_by:
+                raise ValueError(
+                    f"{payload.id!r} in {data_files}: {path!r} is named in authority_for by "
+                    f"both {claimed_by[path]} and {entry}; a stored value has one "
+                    "authority (see SourceReference in core/parameters.py)"
+                )
+
+            claimed_by[path] = entry
 
 
 def _validate_sources_nonempty(value: list[_SourcePayload]) -> list[_SourcePayload]:
@@ -647,6 +793,12 @@ class _AgentPayload(_StrictPayload):
 
         return self
 
+    @model_validator(mode="after")
+    def _authority_for_must_name_stored_values_once(self) -> _AgentPayload:
+        _validate_authority_for_paths(self, AGENT_SCHEMA_VERSIONS.data_files)
+
+        return self
+
 
 class _TissueGroupPayload(_StrictPayload):
     """The file's nesting for one tissue group; `ReferenceAdultParameters` is flat."""
@@ -696,6 +848,12 @@ class _ReferenceAdultPayload(_StrictPayload):
             raise ValueError("tissue perfusion fractions must sum to 1")
 
         return value
+
+    @model_validator(mode="after")
+    def _authority_for_must_name_stored_values_once(self) -> _ReferenceAdultPayload:
+        _validate_authority_for_paths(self, PATIENT_SCHEMA_VERSIONS.data_files)
+
+        return self
 
 
 class _DeliverableFreshGasFlowRangePayload(_StrictPayload):
@@ -768,6 +926,12 @@ class _BreathingCircuitPayload(_StrictPayload):
     sources: Sources
     provenance_gap: OptionalNonEmptyString = None
 
+    @model_validator(mode="after")
+    def _authority_for_must_name_stored_values_once(self) -> _BreathingCircuitPayload:
+        _validate_authority_for_paths(self, MACHINE_SCHEMA_VERSIONS.data_files)
+
+        return self
+
 
 def _sources_to_tuple(sources: list[_SourcePayload]) -> tuple[SourceReference, ...]:
     return tuple(
@@ -776,6 +940,7 @@ def _sources_to_tuple(sources: list[_SourcePayload]) -> tuple[SourceReference, .
             url=source.url,
             tier=source.tier,
             adopted=source.adopted,
+            authority_for=tuple(source.authority_for),
             note=source.note,
         )
         for source in sources
@@ -783,7 +948,16 @@ def _sources_to_tuple(sources: list[_SourcePayload]) -> tuple[SourceReference, .
 
 
 def parse_agent_parameters(payload: object) -> AgentParameters:
-    """Validate an agent-data payload and return immutable parameters."""
+    """Validate an agent-data payload and return immutable parameters.
+
+    Raises:
+        SimulationConfigurationError: the payload is not a valid agent file.
+            That covers a missing or misspelled key, an unsupported
+            `schema_version`, and a value outside its validated range. It also
+            covers a `sources` entry whose `authority_for` disagrees with
+            `adopted` or names something other than one of this file's stored
+            numeric values, and a stored value that two entries both name.
+    """
 
     try:
         model = _AgentPayload.model_validate(payload)
@@ -815,7 +989,17 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
 
 
 def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameters:
-    """Validate a reference-adult payload and return immutable parameters."""
+    """Validate a reference-adult payload and return immutable parameters.
+
+    Raises:
+        SimulationConfigurationError: the payload is not a valid patient file.
+            That covers a missing or misspelled key, an unsupported
+            `schema_version`, a value outside its validated range, and
+            perfusion fractions that do not sum to 1. It also covers a `sources`
+            entry whose `authority_for` disagrees with `adopted` or names
+            something other than one of this file's stored numeric values, and
+            a stored value that two entries both name.
+    """
 
     try:
         model = _ReferenceAdultPayload.model_validate(payload)
@@ -849,9 +1033,13 @@ def parse_breathing_circuit_parameters(payload: object) -> BreathingCircuitParam
 
     Raises:
         SimulationConfigurationError: the payload is not a valid machine
-            profile - a missing or misspelled key, a value outside its
-            validated range, or a `deliverable_fresh_gas_flow_range` whose
-            minimum is above its maximum.
+            profile. That covers a missing or misspelled key, an unsupported
+            `schema_version`, a value outside its validated range, and a
+            `deliverable_fresh_gas_flow_range` whose minimum is above its
+            maximum. It also covers a `sources` entry whose `authority_for`
+            disagrees with `adopted` or names something other than one of this
+            file's stored numeric values, and a stored value that two entries
+            both name.
     """
 
     try:
