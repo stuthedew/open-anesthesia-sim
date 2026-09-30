@@ -1892,7 +1892,7 @@ def test_two_open_items_recording_one_command_are_rejected() -> None:
         _item(identifier="PL-B1C2", verify="grep -q needle a.py"),
     ]
     report = analyze(items, TODAY)
-    assert _has(report.errors, "record the same `verify:` command")
+    assert _has(report.errors, "record the same `verify:` clause")
     assert _has(report.errors, "PL-B1C2, PL-K7QX")
 
 
@@ -1902,7 +1902,7 @@ def test_a_closed_item_does_not_make_an_open_one_share_a_command() -> None:
         _item(identifier="PL-K7QX", verify="grep -q needle a.py"),
         _item(identifier="PL-D0N3", status="done", closed=TODAY, verify="grep -q needle a.py"),
     ]
-    assert not _has(analyze(items, TODAY).errors, "record the same `verify:` command")
+    assert not _has(analyze(items, TODAY).errors, "record the same `verify:` clause")
 
 
 def test_commands_differing_inside_a_quoted_argument_are_not_one_command() -> None:
@@ -1911,7 +1911,62 @@ def test_commands_differing_inside_a_quoted_argument_are_not_one_command() -> No
         _item(identifier="PL-K7QX", verify="grep -q 'a  b' a.py"),
         _item(identifier="PL-B1C2", verify="grep -q 'a b' a.py"),
     ]
-    assert not _has(analyze(items, TODAY).errors, "record the same `verify:` command")
+    assert not _has(analyze(items, TODAY).errors, "record the same `verify:` clause")
+
+
+HEALTH = Config(
+    health_clauses=("python3 tools/doc_check.py check",), collected_test_paths=("tests",)
+)
+
+
+def test_a_discriminating_clause_shared_behind_a_health_clause_is_rejected() -> None:
+    """`PL-1YDK` and `PL-8PT6`: one clause, two whole strings, worked twice."""
+    items = [
+        _item(identifier="PL-1YDK", verify="git check-ignore -q subprojects/docket/uv.lock"),
+        _item(
+            identifier="PL-8PT6",
+            verify=(
+                "python3 tools/doc_check.py check && git check-ignore -q subprojects/docket/uv.lock"
+            ),
+        ),
+    ]
+    report = analyze(items, TODAY, HEALTH)
+    assert _has(report.errors, "record the same `verify:` clause")
+    assert _has(report.errors, "PL-1YDK, PL-8PT6")
+    assert _has(report.errors, "`git check-ignore -q subprojects/docket/uv.lock`")
+
+
+def test_items_sharing_only_a_health_clause_are_not_one_finding() -> None:
+    """31 open items carried `doc_check.py check` on 2026-09-30; none is a duplicate for it."""
+    items = [
+        _item(identifier="PL-K7QX", verify="python3 tools/doc_check.py check && grep -q one a.py"),
+        _item(identifier="PL-B1C2", verify="python3 tools/doc_check.py check && grep -q two a.py"),
+    ]
+    assert not _has(analyze(items, TODAY, HEALTH).errors, "record the same `verify:` clause")
+
+
+def test_items_sharing_only_a_collected_pytest_run_are_not_one_finding() -> None:
+    """A whole-file run over a collected tree is the health half; unsaid, it counts."""
+    items = [
+        _item(
+            identifier="PL-K7QX", verify="grep -q one a.py && uv run pytest tests/unit/test_a.py"
+        ),
+        _item(
+            identifier="PL-B1C2", verify="grep -q two a.py && uv run pytest tests/unit/test_a.py"
+        ),
+    ]
+    assert not _has(analyze(items, TODAY, HEALTH).errors, "record the same `verify:` clause")
+    unsaid = Config(health_clauses=HEALTH.health_clauses)
+    assert _has(analyze(items, TODAY, unsaid).errors, "record the same `verify:` clause")
+
+
+def test_items_sharing_two_clauses_are_reported_once() -> None:
+    items = [
+        _item(identifier="PL-K7QX", verify="grep -q one a.py && grep -q two a.py"),
+        _item(identifier="PL-B1C2", verify="grep -q one a.py && grep -q two a.py"),
+    ]
+    errors = [e for e in analyze(items, TODAY).errors if "record the same `verify:` clause" in e]
+    assert len(errors) == 1
 
 
 def test_items_sharing_a_command_that_cannot_fail_are_told_once() -> None:
@@ -1919,7 +1974,7 @@ def test_items_sharing_a_command_that_cannot_fail_are_told_once() -> None:
     items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-B1C2", verify="true")]
     report = analyze(items, TODAY)
     assert _has(report.errors, "exits 0 against every tree")
-    assert not _has(report.errors, "record the same `verify:` command")
+    assert not _has(report.errors, "record the same `verify:` clause")
 
 
 def test_piping_docket_checks_output_raises_an_advisory() -> None:

@@ -91,3 +91,12 @@ stop two sessions working one finding.
 `PL-X5JR` cover a *new capture* checked against the store as it is filed. This
 group is the other direction - two items already in the store, neither of them
 new - which nothing in the recurrence-signal design reaches.
+
+**Measured against the store 2026-09-30 (`PL-BGMK`).** `PL-D188`/`PL-JL2M`
+share no declared `touches` path and no `verify:` clause, so neither the
+shared-clause key `PL-BGMK` landed in `docket check` nor the filing-time key
+`bin/docket new` runs (`PL-TZ7T`) reaches this pair, and the title comparison
+the "Where" paragraph sketches was refuted by count in `PL-TZ7T` - 0 of 13
+known pairs at any usable threshold. What remains of this item is the
+gate-side half its title names: a frozen list that counts one finding once,
+which no comparison over fields can supply.
