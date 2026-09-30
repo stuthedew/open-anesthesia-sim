@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
@@ -1624,6 +1625,39 @@ def test_the_digest_declines_the_number_of_a_milestone_it_says_to_scope() -> Non
 
     assert "Offer 0.5.0 before taking new work" not in digest
     assert 'No release to offer: the roadmap gives 0.5.0 to "the schematic"' in digest
+
+
+def test_the_reserved_refusal_names_the_way_out() -> None:
+    """`PL-SYG4`: the refusal named its evidence and no way out.
+
+    The live arrangement: a patch track between numbered steps, the next
+    milestone placed ahead of it, and a bump arriving at that milestone's
+    number. The number is spoken for and the track is not, so both surfaces
+    say a patch cut is still available and name the command that takes one.
+    The number stays the reader's - the owner chose on 2026-09-17 that the
+    sentence names none - so the only version either refusal carries is the
+    one it refuses.
+    """
+    from docket.checks import Report
+    from docket.render import format_digest, format_status
+
+    plan = wave(UNSCOPED_AHEAD_ROADMAP, "0.4.0", GATED_SCOPE_IDS, GATED_SCOPE_IDS, {})
+    ready, report = _ready("0.4.0", "0.5.0"), Report(items=[_item("PL-4444")])
+    digest = format_digest(report, None, ready, plan)
+    status = format_status(report, ready, None, plan)
+    refusals = [
+        line[line.index("No release to offer") :]
+        for line in (digest + "\n" + status).splitlines()
+        if "No release to offer" in line
+    ]
+
+    assert len(refusals) == 2
+    for refusal in refusals:
+        assert refusal.endswith(
+            "A patch cut under a number the roadmap leaves free is still available: "
+            "`make release VERSION=` that number."
+        )
+        assert re.findall(r"\d+\.\d+\.\d+", refusal) == ["0.5.0"]
 
 
 def test_the_reserved_set_carries_every_version_the_plan_names_ahead() -> None:

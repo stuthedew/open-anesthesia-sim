@@ -3,11 +3,13 @@ id: PL-SYG4
 title: The digest's RESERVED verdict suppresses the release offer entirely rather than naming the next free patch number, so on the v0.4.x track with v0.5.0 reserved a session never offers a cut the plan actually wants
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: release-roadmap-seam
-touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py, .claude/skills/docket/modes/release.md
 added: 2026-09-15
+closed: 2026-09-30
+pr: 1245
 verify: grep -q 'def test_the_reserved_refusal_names_the_way_out' subprojects/docket/tests/test_release.py && uv run pytest subprojects/docket/tests/test_release.py
 ---
 
@@ -277,3 +279,28 @@ the beat is "step 5 of 14: v0.5.0"; `render.py:1466` is no longer the refusal;
 the `held` branch is `render.py:464-470`; and `PL-Y1L0` closed 2026-09-19.
 The RESERVED branch is dormant rather than dead - which is why the sentence
 still has to be right when it next fires.
+
+**Closed 2026-09-30.** Re-confirmed first, and the brief held: `_reserved_refusal`
+in `render.py` still printed its evidence and no way out. The one fact the tree
+had moved on was the cut path, which `PL-Z85N` gave a guard in v0.5.18, so a
+reserved number named to `bin/docket release` is now refused whichever surface
+sent the reader there.
+
+The refusal now ends with the way out the 2026-09-17 decision chose: "A patch
+cut under a number the roadmap leaves free is still available: `make release
+VERSION=` that number." It names no number, and it borrows the cut path's own
+phrase, "a number the roadmap leaves free", so a session that read one refusal
+recognises the other. That is how the tension above resolves: the command is
+concrete and its argument is the reader's to name, which a manual version
+policy asks of every cut anyway. One helper serves both surfaces, so the digest
+and `bin/docket status` carry the same sentence.
+
+`test_the_reserved_refusal_names_the_way_out` pins it on the live arrangement -
+a patch track between numbered steps, the next milestone placed ahead, a bump
+arriving at that milestone's number - on both surfaces, and pins that the only
+version either refusal carries is the one it refuses. The docket skill's release
+mode said "There is nothing to raise then", which the new sentence contradicts;
+it now says the reserved number is not one to raise and the patch cut is raised
+as an offer is, with the number named for the owner to confirm, so
+`.claude/skills/docket/modes/release.md` joins `touches`. `format_wave`'s
+comment on the `Reserved` line no longer calls this item an open question.

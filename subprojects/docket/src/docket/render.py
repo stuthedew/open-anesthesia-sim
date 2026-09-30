@@ -3083,8 +3083,9 @@ def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
         # plan has spent its numbers, never whether a cut should take a free
         # one. Stepping over a reservation drops the skipped milestone's
         # section out of the train's unreleased set; whether a cut may do that
-        # is a judgment for the reader and `PL-SYG4`'s open question, and the
-        # stale block at the foot of this output is what reports it done.
+        # is a judgment for the reader, which the reserved refusal leaves to
+        # them by naming no number (`PL-SYG4`), and the stale block at the
+        # foot of this output is what reports it done.
         spent = ", ".join("{}.{}.{}".format(*entry.version) for entry in plan.reserved)
         lines.append(f"Reserved  {spent} - spent by ROADMAP.md, nearest first")
 
@@ -3335,10 +3336,19 @@ def _reserved_refusal(offer: ReleaseOffer, pointer: str) -> str:
     would print it. Sending the digest's reader to `docket wave` for what is
     already on the next line would be prose restating what a command prints,
     which is the bloat `.claude/rules/apparatus-standard.md` cuts.
+
+    The second sentence is the way out. Every other release refusal names one
+    (`PL-66FP`), and this one named only its evidence, so a patch track running
+    beside a reserved milestone read as having nothing to cut (`PL-SYG4`). It
+    names no number, by the owner's choice of 2026-09-17 over offering the next
+    unreserved patch, so it says what the cut path's own refusal says - a number
+    the roadmap leaves free - with the command that takes one, and `bin/docket
+    release` refuses a reserved number whichever is named (`PL-Z85N`).
     """
     return (
         f'No release to offer: the roadmap gives {offer.version} to "{offer.milestone}", '
-        f"which is unfinished - {pointer}."
+        f"which is unfinished - {pointer}. A patch cut under a number the roadmap "
+        "leaves free is still available: `make release VERSION=` that number."
     )
 
 
