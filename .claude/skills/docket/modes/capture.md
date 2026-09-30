@@ -137,7 +137,6 @@ branch `stranded` named, written out rather than held in a variable:
 variable reads the same as a loop's (`PL-G8TR`).
 
 ```bash
-git push origin --delete <branch>   # the branch itself - the owner's to run
 git branch -dr origin/<branch>      # this clone's remote-tracking ref
 git fetch origin main
 git checkout -B <branch> origin/main
@@ -150,21 +149,26 @@ holds a whole commit of the branch (`PL-8M8H`). That is the session holding the
 commit being told, rather than the next session finding it stranded. Reaching
 `stranded` still means the push already happened.
 
-**The first command is the project owner's, and the second is not a substitute
-for it.** `git branch -dr` clears this clone's remote-tracking ref and nothing
-else, so where the branch still exists on the remote the next `git fetch
-origin` recreates it under the default refspec `+refs/heads/*:refs/remotes/origin/*`.
-The deletion does not survive the next fetch, let alone the next session:
-`bin/docket stranded` names the branch again and the next session repeats the
-whole recovery, which is the re-discovery loop `CLAUDE.md`'s housekeeping rule
-exists to stop, arriving through the procedure rather than through the absence
-of one. Measured 2026-09-05 on `origin/claude/next-item-75htc6`, where `git
-ls-remote --heads origin` still returned the branch after the ref had been
-cleared. Deleting a branch on the remote is destructive and outward-facing, so
-run the other three, then **say the remote deletion is outstanding and leave it
-to the owner** (`PL-K2C8`). This is also why none of it weakens the `--prune`
-prohibition below: prune and `branch -dr` clear local refs and nothing else, so
-neither one finishes the job.
+**None of the three deletes the branch on the remote; the branch sweep does.**
+`git branch -dr` clears this clone's remote-tracking ref and nothing else, so
+while the branch is still on the remote the next `git fetch origin` recreates
+the ref under the default refspec `+refs/heads/*:refs/remotes/origin/*` -
+measured 2026-09-05 on `origin/claude/next-item-75htc6`, where `git ls-remote
+--heads origin` still returned the branch after the ref had been cleared
+(`PL-K2C8`). GitHub deletes a branch when its own pull request merges, and
+`.github/workflows/branch-sweep.yml` deletes a finished `claude/*` branch daily
+(`PL-X8SV`). This one is not finished while its commit reads as left behind,
+but a commit carried across stops reading that way once its change is on `main`
+(`vcs.change_landed`): from then on `stranded` stops naming the branch, and the
+sweep copies its tip to `refs/archive/<branch>/<tip>` and deletes it. So run the
+three and delete nothing on the remote. The reply names a branch to the project owner
+only where `python3 tools/branch_sweep.py` keeps one that should go anyway,
+with `git push origin --delete <branch>` for them to run, since the same push
+from a session is refused (`docs/worker.md` § "Ref operations a session cannot
+perform"). `.claude/hooks/no-prune-guard.sh` prints this rule when it refuses a
+prune; keep the two in step. None of it weakens the `--prune` prohibition
+below: prune and `branch -dr` clear local refs and nothing else, so neither one
+finishes the job.
 
 **These commands destroy a branch, so confirm the merge before running
 them.** The check now requires the base to have taken one of the branch's
