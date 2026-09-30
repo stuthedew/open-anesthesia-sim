@@ -67,6 +67,7 @@ from .vcs import (
     DEFAULT_BRANCHES,
     ClosureReport,
     CutWindow,
+    GoneReport,
     LostReport,
     PullRequestHistory,
     RecordReport,
@@ -157,8 +158,9 @@ BRIEF_HEADING = re.compile(r"^\*\*", re.MULTILINE)
 # how a reader imports the wrong one.
 DECLARED_ITEM_RE = re.compile(rf"^({ID_PATTERN})-.+\.md$")
 
-# What a dangling declaration costs, said once because both branches of the
-# rule below end with it, and kept to one clause because it prints per
+# What a dangling declaration costs, said once because every rule reporting
+# one ends with it - both branches of `_check_touched_items`, and
+# `_check_gone_touches` - and kept to one clause because it prints per
 # instance: the reasoning is in `_check_touched_items`, where it is read once.
 DANGLING_TOUCHES = (
     "a path no file holds reads as a path nobody touches to `docket concurrent`, "
@@ -2621,6 +2623,54 @@ def _check_filenames(report: Report, config: Config) -> None:
     )
 
 
+def _check_gone_touches(report: Report, gone: GoneReport | None, config: Config) -> None:
+    """Advise on an open item whose `touches` names a path the tree has lost (`PL-8JY7`).
+
+    `PL-CNCF` declared `core/run_score.py`, and five days later `PL-ZX12`
+    renamed it to `run_definition.py`, which `PL-73ZN` declared - so `docket
+    concurrent` reported the two items independent while both edited one module.
+
+    An advisory, as the project owner decided on 2026-08-30: the reader judges
+    whether the work creates the path again. Open items only, because a closed
+    item's `touches` is a record of what its work edited then - 103 closed
+    entries name a path later work moved, and none of them is read for
+    concurrency. An entry naming an item file is `_check_touched_items`' to
+    judge, and it fails the run. One line for all of them, for the reason
+    `_check_filenames` gives.
+    """
+    if gone is None:
+        return
+    if not gone.known:
+        report.declined.append(
+            f"whether open items' `touches` name a path the tree has lost: {gone.declined}"
+        )
+        return
+    last = dict(gone.gone)
+    found = [
+        f"{item.identifier} "
+        + ", ".join(f"{entry} (last changed by {last[entry]})" for entry in entries)
+        for item in sorted(report.items, key=lambda i: i.identifier)
+        if item.status in OPEN_STATUSES
+        and (
+            entries := [
+                entry
+                for entry in item.touches
+                if entry in last and _declared_item_file(entry, config.items_dir) is None
+            ]
+        )
+    ]
+    if not found:
+        return
+    one = len(found) == 1
+    report.advisories.append(
+        f"{len(found)} open item{'' if one else 's'} declare{'s' if one else ''} a `touches` "
+        f"path this tree lacks and its history held: {'; '.join(found)}. Re-point each at "
+        "the path the work will edit - `git show --stat -M` on the commit named says where "
+        "a rename went - or, where the work creates it again, at the file it will create; "
+        f"{DANGLING_TOUCHES}"
+    )
+
+
 def _outranks_its_blocker(report: Report, known_items: dict[str, Item]) -> None:
     """Refuse an item that ranks above the work it is waiting on.
 
@@ -3999,6 +4049,7 @@ def analyze(
     assertions: tuple[Assertion, ...] | None = None,
     settings_source: SettingsSource | None = None,
     written: WrittenReport | None = None,
+    gone: GoneReport | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -4052,6 +4103,10 @@ def analyze(
     it is writing. A caller that does not supply it leaves a command written for
     an item older than `verify_allowlist_from` unjudged, as before `PL-1P5V`.
 
+    `gone` is which open items' declared paths the tree lacks and the history
+    held (`PL-8JY7`), read from the filesystem and git, which this module reads
+    neither of. A caller that does not supply it leaves the advisory unraised.
+
     `settings_source` is which `docket.toml` the caller resolved `config` from,
     and whether it was there. It is the one input that says nothing about the
     store and everything about the reading of it, which is why it cannot be
@@ -4072,6 +4127,7 @@ def analyze(
     _check_shared_verify(report, settings)
     _check_touched_items(report, settings)
     _check_filenames(report, settings)
+    _check_gone_touches(report, gone, settings)
     _check_milestones(report, version)
     _check_release_notes(report, notes, version)
     _check_notes_references(report, unreferenced)

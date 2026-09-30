@@ -7192,6 +7192,45 @@ def test_show_says_what_changed_since_an_item_was_filed(
     )
 
 
+def test_check_advises_on_a_stale_touches_path_in_a_real_repository(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Real git, because the read's spelling and its wiring into `check` are what this proves.
+
+    A deleted file and a deleted directory are named with the commit that
+    removed them, a file never committed - one the work will create - is not,
+    and the run still passes (`PL-8JY7`).
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-B1B1-ready.md").write_text(
+        READY.replace("touches: a.py", "touches: a.py, gone.py, old/, planned.py")
+    )
+
+    def git(*args: str) -> str:
+        done = subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, text=True)
+        return done.stdout.strip()
+
+    git("-c", "init.defaultBranch=main", "init", "-q")
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    (root / "old").mkdir()
+    for name in ("a.py", "gone.py", "old/x.py"):
+        (root / name).write_text("one\n")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    git("rm", "-rq", "gone.py", "old")
+    git("commit", "-qm", "delete paths the open item names")
+    removed = git("rev-parse", "--short", "HEAD")
+
+    assert _run_with_git("check", "--items", str(root / "items")) == 0
+
+    assert (
+        "1 open item declares a `touches` path this tree lacks and its history held: "
+        f"PL-B1B1 gone.py (last changed by {removed}), old/ (last changed by {removed})."
+    ) in capsys.readouterr().out
+
+
 def test_show_asks_for_re_confirmation_only_past_the_line(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
