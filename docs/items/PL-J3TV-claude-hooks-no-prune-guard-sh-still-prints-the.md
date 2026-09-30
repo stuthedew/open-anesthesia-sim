@@ -3,11 +3,13 @@ id: PL-J3TV
 title: .claude/hooks/no-prune-guard.sh still prints the pre-PL-K2C8 three-command restart recipe, so the incomplete version survives in the louder of the two places - the message a session reads at the moment it is refused a prune
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: parallel-sessions
 touches: .claude/hooks/no-prune-guard.sh
 added: 2026-09-21
+closed: 2026-09-30
+pr: 1238
 payoff: a session refused a prune reads the recipe that finishes the job, instead of the one PL-K2C8 found incomplete
 verify: grep -qE 'push origin --delete|modes/capture\.md' .claude/hooks/no-prune-guard.sh
 ---
@@ -81,3 +83,27 @@ if it points at the skill as the one place the recipe lives. Both are the
 endings this item's **Done when** allows, and neither string is in the file
 today.
 
+
+**Resolution, 2026-09-30 (`#1238`).** Both of the brief's open choices were
+taken as obvious calls:
+
+- **The hook keeps its three commands inline rather than pointing at the skill
+  file.** Its deny message exists to answer the refused session at that moment
+  (the hook's own header), and `tests/unit/test_no_prune_guard.py` pins those
+  commands in the prune, section-rename, prune-and-mirror and branch-delete
+  reasons, so pointing away would have changed a tested contract to fix a
+  message. The drift the brief names is answered by a header note naming the
+  skill's copy and asking that the two be kept in step.
+- **"delete just that one ref" is gone.** The message now says `git branch -dr`
+  clears the ref in this clone and nothing else, and says who deletes the
+  branch on the remote as the tree now has it: GitHub at the merge,
+  `branch-sweep.yml` daily for a finished `claude/*` branch (`PL-X8SV`, which
+  postdates this brief), and the project owner for one the sweep keeps, with
+  `git push origin --delete <branch>` on one source line so a grep finds it. A
+  session's own push of that is refused (`docs/worker.md` § "Ref operations a
+  session cannot perform").
+
+No test was added: the change is message text, the 215 hook tests pass
+unchanged, and this item's `verify:` asserts the added string. The skill's
+copy of the recipe predates `PL-X8SV` too, and still hands every remote
+deletion to the owner; that is `PL-ZZHZ`, filed rather than widened here.
