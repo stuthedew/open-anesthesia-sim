@@ -1079,3 +1079,159 @@ def test_a_closure_landing_between_the_check_and_the_read_back_is_named_as_one(
     assert "and pushed" in out
     assert "origin/main closed it after the read this claim was checked against" in out
     assert "defect in docket" not in out
+
+
+#: The branch another session captured an item on and has a pull request open
+#: for, standing in for `claude/pl-w40l-kidkwe` and `#1199` (`PL-MTHC`).
+CARRIER = "claude/carrier-h7t3wq"
+CAPTURE = "docs/items/PL-G5G5-carried.md"
+
+
+def _forge(clone: _Clone, answer: str | None) -> None:
+    """Say how `clone` asks the forge: `answer` is its one line, and `None` a forge not asked.
+
+    Written after every commit the test makes, so no `git add -A` commits it.
+    """
+    if answer is not None:
+        (clone.root / "docket.toml").write_text(
+            f"[docket]\nopen_pull_requests_command = 'echo {answer}'\n", encoding="utf-8"
+        )
+
+
+def _carrier(remote: _Remote, *, when: datetime = T0 - 2 * HOUR) -> _Clone:
+    """Another session's pushed branch, the only place PL-G5G5 exists."""
+    other = remote.clone("carrier", CARRIER)
+    other.commit("PL-G5G5: capture", when=when, files={CAPTURE: _item("PL-G5G5")})
+    other.git("push", "-q", "-u", "origin", CARRIER)
+    return other
+
+
+@pytest.mark.parametrize(
+    ("answer", "said", "unsaid"),
+    [
+        (
+            f"{CARRIER} 1199",
+            f"pull request #1199 on {CARRIER} is open and carries it to the default branch",
+            "bin/docket stranded",
+        ),
+        ("", f"only {CARRIER} holds it, with no pull request open", "Wait for it to merge"),
+        (None, f"{CARRIER} holds it, and whether a pull request is open", "#1199"),
+    ],
+)
+def test_an_item_only_another_branch_holds_is_refused_with_where_it_is(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    answer: str | None,
+    said: str,
+    unsaid: str,
+) -> None:
+    """The refusal `0207afd7` read as licence to copy now says where the item is (`PL-MTHC`).
+
+    It used to say "commit a capture" whatever held the item, and the session
+    copied `PL-8ZGY`'s file off the branch `#1199` was still open on. Where a
+    pull request carries it, the answer is to wait for it; where the forge
+    says none does, the branch is `stranded`'s to judge; where the forge could
+    not be asked, both are said, and neither is presented as the answer.
+    """
+    remote = _Remote(tmp_path)
+    _carrier(remote)
+    work = remote.clone("work", BRANCH)
+    _forge(work, answer)
+    before = work.head()
+
+    assert _claim(monkeypatch, work, "PL-G5G5") == claiming.REFUSED
+
+    out = capsys.readouterr().out
+    assert "claim: HEAD holds no item PL-G5G5" in out
+    assert said in out and unsaid not in out
+    assert "commit a capture" not in out
+    assert work.head() == before
+
+
+def test_a_later_copy_of_an_item_an_open_pull_request_carries_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-MTHC`'s own shape: the copy `0207afd7` took of a file `#1199` was carrying.
+
+    Claimed, it was the base of a design round and a closure, and the merge
+    that brought `#1199`'s corrected copy in kept this one whole. Refused, the
+    copy can still be given up before anything is built on it.
+    """
+    remote = _Remote(tmp_path)
+    _carrier(remote)
+    work = remote.clone("work", BRANCH)
+    work.git("checkout", "-q", f"origin/{CARRIER}", "--", CAPTURE)
+    work.commit("PL-G5G5: recover the item file", when=T0 - HOUR)
+    _forge(work, f"{CARRIER} 1199")
+    before = work.head()
+
+    assert _claim(monkeypatch, work, "PL-G5G5") == claiming.REFUSED
+
+    out = capsys.readouterr().out
+    assert (
+        f"claim: PL-G5G5 is on {CARRIER} as well, where pull request #1199 on {CARRIER} is open"
+        in out
+    )
+    assert "HEAD's copy is a second add of the file, made after that one" in out
+    assert "Remove this branch's copy in a commit of its own" in out
+    assert work.head() == before
+
+
+@pytest.mark.parametrize(
+    ("shape", "answer", "said"),
+    [
+        ("earlier", f"{CARRIER} 1199", f"PL-G5G5: {CARRIER} holds a later copy of it"),
+        ("later", None, f"PL-G5G5: {CARRIER} holds it too, and the default branch does not"),
+        ("later", "", ""),
+        ("continued", f"{CARRIER} 1199", ""),
+    ],
+)
+def test_every_other_shape_of_a_second_copy_is_claimed_and_at_most_told(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    shape: str,
+    answer: str | None,
+    said: str,
+) -> None:
+    """Refusing needs the order and the open pull request both; anything less is a note or silence.
+
+    `earlier` is the session that captured the item, copied since by a branch
+    with a pull request open: the claim belongs here, and the copy's branch is
+    the one with the conflict coming. `later` with the forge not asked cannot
+    tell a carried item from a stranded one, and says so; with the forge
+    answering that nothing is open, it is a recovery `stranded` handed out, and
+    says nothing. `continued` shares the carrier's commit, so there is one add
+    and not two.
+    """
+    remote = _Remote(tmp_path)
+    if shape == "continued":
+        _carrier(remote)
+        work = remote.clone("work")
+        work.git("checkout", "-q", "-b", BRANCH, f"origin/{CARRIER}")
+        work.git("branch", "-q", "--unset-upstream")
+    elif shape == "earlier":
+        work = remote.clone("work", BRANCH)
+        work.commit("PL-G5G5: capture", when=T0 - 2 * HOUR, files={CAPTURE: _item("PL-G5G5")})
+        work.git("push", "-q", "-u", "origin", BRANCH)
+        other = remote.clone("carrier", CARRIER)
+        other.git("checkout", "-q", f"origin/{BRANCH}", "--", CAPTURE)
+        other.commit("PL-G5G5: recover the item file", when=T0 - HOUR)
+        other.git("push", "-q", "-u", "origin", CARRIER)
+    else:
+        _carrier(remote)
+        work = remote.clone("work", BRANCH)
+        work.git("checkout", "-q", f"origin/{CARRIER}", "--", CAPTURE)
+        work.commit("PL-G5G5: recover the item file", when=T0 - HOUR)
+    _forge(work, answer)
+
+    assert _claim(monkeypatch, work, "PL-G5G5") in {claiming.CLAIMED, claiming.LOCAL_ONLY}
+
+    out = capsys.readouterr().out
+    assert _trailer(work, "Claim").startswith(f"PL-G5G5 {BRANCH}")
+    if said:
+        assert said in out
+    else:
+        assert CARRIER not in out
+    assert "second add of the file, made after" not in out

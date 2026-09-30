@@ -3077,6 +3077,43 @@ def test_stranded_finds_an_item_that_exists_only_on_a_branch(
     assert "git checkout abandoned -- items/PL-K7QX-lost.md" in out
 
 
+@pytest.mark.parametrize(
+    ("forge", "said", "recovered"),
+    [
+        (
+            "echo abandoned 1199",
+            "carried: pull request #1199 is open on abandoned; wait for it to merge rather than "
+            "recovering a copy, which would be a second add of the same file",
+            False,
+        ),
+        ("echo elsewhere 1200", "", True),
+        ("", "Whether a pull request is open on these branches was not asked here", True),
+    ],
+)
+def test_stranded_hands_an_item_a_pull_request_carries_the_pull_request_not_a_checkout(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], forge: str, said: str, recovered: bool
+) -> None:
+    """PL-MTHC: where a pull request carries the item, the recovery `stranded` gave is a second add.
+
+    `PL-8ZGY` was copied off the branch `#1199` was open on, and the merge that
+    brought `#1199` in kept the copy whole, dropping the corrections it had
+    landed. A forge naming the branch withholds the `git checkout`; one naming
+    another branch leaves it; and a forge nobody asked leaves it with a line
+    saying the question went unasked, rather than reading as "none is open".
+    """
+    root = _branched_repo(tmp_path)
+    if forge:
+        _forge(root, forge)
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    out = capsys.readouterr().out
+    assert "only on: abandoned" in out
+    assert said in out
+    assert ("git checkout abandoned -- items/PL-K7QX-lost.md" in out) is recovered
+    assert ("was not asked here" in out) is not bool(forge)
+
+
 def test_settings_are_read_from_the_repository_root_not_the_store_s_parent(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

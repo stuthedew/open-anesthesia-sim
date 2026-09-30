@@ -41,6 +41,13 @@ another writer pushed after this clone last fetched: that is said as not known
 rather than as local, and nothing is pushed (`PL-20DL`). The message says
 which, and names the `claim` that publishes it.
 
+**An item a pull request is carrying is not claimed from a copy** (`PL-MTHC`).
+Asked for an item `HEAD` holds no copy of, `claim` names the branches that do
+and the pull request open on one, to wait for; a copy committed instead is a
+second add of the same file, and the merge bringing the first in conflicts on
+it. A copy already committed is refused where it was added after the one a
+pull request carries, and noted in every shape short of that.
+
 **A claim never pushed yields to one already published** (`PL-ZLJ9`). Claims
 order by author date and git records no push time, so a claim written first
 and published last would order first, and take the item from a session told
@@ -69,7 +76,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -181,6 +188,7 @@ def claim(
     trailers: Sequence[str] = (),
     fetch: bool = True,
     push: bool = False,
+    opened: Callable[[], Mapping[str, int | None] | None] | None = None,
     runner: Runner | None = None,
 ) -> Written:
     """Claim `keys` for the branch `HEAD` is on, in one empty commit.
@@ -195,6 +203,10 @@ def claim(
 
     An item this branch already holds first is left alone, so running `claim`
     twice writes one commit.
+
+    `opened` is how the forge is asked which branches have a pull request open,
+    as `vcs.open_pull_requests` takes it, and is asked only where another
+    branch holds a copy of an item the base does not (`_elsewhere`).
     """
     wanted, problem = _keys(keys)
     if problem:
@@ -208,9 +220,9 @@ def claim(
             ("claim: `--over` and `--reason` go together: a takeover records why it was sound",),
         )
     run = runner or _run_git
-    branch, refused = _branch(root, run, items_dir, wanted, "claim")
+    branch, refused, absent = _branch(root, run, items_dir, wanted, "claim")
     if refused:
-        return Written(REFUSED, refused)
+        return Written(REFUSED, (*refused, *(f"claim: HEAD holds no item {key}" for key in absent)))
     if fetch:
         fetched = _git(["fetch", "--quiet", REMOTE], root)
         if fetched.code != 0:
@@ -224,6 +236,17 @@ def claim(
                 ),
             )
         run = _run_git
+    if absent:
+        # After the fetch, because the answer names where the item is instead:
+        # a branch that merged a minute ago read from a stale listing would be
+        # handed a copy of what the base already holds (`PL-MTHC`).
+        base = default_base(root, runner=run)
+        where = _elsewhere(
+            root, absent, items_dir=items_dir, base=base, branch=branch, opened=opened, run=run
+        )
+        return Written(
+            REFUSED, tuple(line for key in absent for line in _absent(key, where.get(key)))
+        )
     # Listed once, since nothing before the push `_publish` decides on moves the
     # remote's copy of this branch, and read by both questions put to the remote
     # below: who holds each item, and whether this branch is there to push onto.
@@ -241,6 +264,12 @@ def claim(
     closed = _closed_on_base(root, read.base, wanted, items_dir, run)
     if closed:
         return Written(REFUSED, (*notes, *closed))
+    copied, told = _second_adds(
+        root, wanted, items_dir=items_dir, base=read.base, branch=branch, opened=opened, run=run
+    )
+    if copied:
+        return Written(REFUSED, (*notes, *copied))
+    notes.extend(told)
     remote = _on_remote(heads, branch.name)
     # Which of this branch's claims are on that copy is what `_displaced` asks;
     # where the remote could not say, nothing is pushed, so the check waits for
@@ -364,7 +393,7 @@ def yield_claims(
     if bad:
         return Written(USAGE, (f"yield: {bad}",))
     run = runner or _run_git
-    branch, refused = _branch(root, run, items_dir, (), "yield")
+    branch, refused, _ = _branch(root, run, items_dir, (), "yield")
     if refused:
         return Written(REFUSED, refused)
     # One listing for every question this puts to the remote, as `claim` takes.
@@ -472,8 +501,8 @@ def _bad_trailers(trailers: Sequence[str]) -> str:
 
 def _branch(
     root: Path, run: Runner, items_dir: str, keys: Sequence[str], command: str
-) -> tuple[_Branch, tuple[str, ...]]:
-    """The branch `HEAD` is on, or why nothing may be written on it.
+) -> tuple[_Branch, tuple[str, ...], tuple[str, ...]]:
+    """The branch `HEAD` is on, why nothing may be written on it, and the ids it holds no copy of.
 
     Refused on a detached `HEAD`, on the default branch, whose own commits are
     never read for claims, and on a branch pushing to one of another name,
@@ -486,18 +515,24 @@ def _branch(
     claim is pushed.
 
     For `claim`, each id must be an item `HEAD` holds and at a status that does
-    not release a claim the moment it is written.
+    not release a claim the moment it is written. An id `HEAD` holds no copy of
+    is returned apart rather than refused here, because what to say about it
+    depends on where the item is, which is read after the fetch (`_absent`).
     """
     remotes = _remotes(root, run)
     name = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
     empty = _Branch(name="", remotes=remotes)
     if name in {"", "HEAD"}:
-        return empty, (f"{command}: HEAD is detached; a claim names the branch it is on",)
+        return empty, (f"{command}: HEAD is detached; a claim names the branch it is on",), ()
     base = _head_name(default_base(root, runner=run), remotes)
     if name == base:
-        return empty, (
-            f"{command}: HEAD is on {name}, the default branch, whose commits are never read "
-            "for claims; start a work branch first",
+        return (
+            empty,
+            (
+                f"{command}: HEAD is on {name}, the default branch, whose commits are never "
+                "read for claims; start a work branch first",
+            ),
+            (),
         )
     upstream = run(
         ["for-each-ref", "--format=%(upstream:short)", f"refs/heads/{name}"], root
@@ -505,19 +540,22 @@ def _branch(
     if upstream and _head_name(upstream, remotes) == base:
         upstream = ""
     if upstream and _head_name(upstream, remotes) != name:
-        return empty, (
-            f"{command}: {name} pushes to {upstream}, and a claim names one branch; "
-            "give them one name first",
+        return (
+            empty,
+            (
+                f"{command}: {name} pushes to {upstream}, and a claim names one branch; "
+                "give them one name first",
+            ),
+            (),
         )
     branch = _Branch(name=name, remotes=remotes)
     problems: list[str] = []
+    absent: list[str] = []
     copies = _item_paths_on("HEAD", items_dir, root, run) if keys else {}
     for key in keys:
         path = copies.get(key, "")
         if not path:
-            problems.append(
-                f"{command}: HEAD holds no item {key}; commit a capture before claiming it"
-            )
+            absent.append(key)
             continue
         fields, _ = parse_front_matter(run(["show", f"HEAD:{path}"], root))
         status = fields.get("status", "").strip()
@@ -526,7 +564,256 @@ def _branch(
                 f"{command}: {key} is `{status}` in HEAD's copy, which releases a claim as soon "
                 "as it is written; set its status first"
             )
-    return branch, tuple(problems)
+    return branch, tuple(problems), tuple(absent)
+
+
+@dataclass(frozen=True)
+class _Elsewhere:
+    """Other branches holding a copy of an item the base lacks, and which a pull request carries.
+
+    `asked` is why this is not a mapping, for the reason `vcs.OpenPullRequests`
+    has it: a branch missing from `carried` has no pull request open only where
+    the forge answered, and "could not look" read as "none is open" is the
+    answer that sends a session to copy a file a pull request is about to land
+    (`PL-MTHC`).
+    """
+
+    #: Each branch holding a copy, by the name the remote gives it, mapped to
+    #: the ref this checkout reads that copy from.
+    refs: Mapping[str, str]
+    #: Per branch with a pull request open on it, its number, or `None` where
+    #: the forge named the branch without one.
+    carried: Mapping[str, int | None]
+    #: Whether the forge answered at all.
+    asked: bool
+
+    def carriers(self) -> list[tuple[str, int | None]]:
+        """Each branch holding a copy that a pull request is open on, in listing order."""
+        return [(name, self.carried[name]) for name in self.refs if name in self.carried]
+
+
+def _elsewhere(
+    root: Path,
+    keys: Collection[str],
+    *,
+    items_dir: str,
+    base: str,
+    branch: _Branch,
+    opened: Callable[[], Mapping[str, int | None] | None] | None,
+    run: Runner,
+) -> dict[str, _Elsewhere]:
+    """Each of `keys` some branch other than this one and the base holds a copy of.
+
+    **The fact the copy behind `PL-MTHC` was taken without.** An item captured
+    on a branch exists nowhere else until that branch merges, so `claim` on any
+    other branch finds no copy to claim, and its refusal used to say only
+    "commit a capture". `0207afd7` took that as licence to copy `PL-8ZGY`'s
+    file from the branch `#1199` was still open on; the copy was a second,
+    independent add of the same path, `#1199` corrected its own afterwards,
+    and the merge that brought it in resolved the add/add conflict by keeping
+    the copy whole, so `#1210` put the uncorrected brief on `main` with every
+    check passing. Whether a pull request is open on the branch holding the
+    first copy is `PL-WNCT`'s fact, and the one that says to wait instead.
+
+    Every branch holding a copy is named, local and remote-tracking read as one
+    branch, and the forge is asked once and only where there is a branch to
+    ask about, so the common case - a capture this branch made itself, which no
+    other branch holds - costs one tree listing per ref and no request.
+    """
+    listing = run(["for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"], root)
+    skip = {_head_name(base, branch.remotes), branch.name, "HEAD"}
+    found: dict[str, dict[str, str]] = {}
+    for ref in (line.strip() for line in listing.splitlines()):
+        name = _head_name(ref, branch.remotes)
+        if not ref or name in skip or ref in branch.remotes:
+            continue
+        held = _item_paths_on(ref, items_dir, root, run)
+        for key in keys:
+            if key in held:
+                found.setdefault(key, {}).setdefault(name, ref)
+    if not found:
+        return {}
+    answer = opened() if opened is not None else None
+    return {
+        key: _Elsewhere(
+            refs=refs,
+            carried={}
+            if answer is None
+            else {name: answer[name] for name in refs if name in answer},
+            asked=answer is not None,
+        )
+        for key, refs in found.items()
+    }
+
+
+def _pull(branch: str, number: int | None) -> str:
+    """A pull request open on `branch`, by its number where the forge gave one."""
+    return (
+        f"pull request #{number} on {branch}"
+        if number is not None
+        else f"the pull request open on {branch}"
+    )
+
+
+def _names(where: _Elsewhere) -> str:
+    """The branches holding a copy, with the verb that agrees with how many there are."""
+    return f"{', '.join(where.refs)} {'holds' if len(where.refs) == 1 else 'hold'}"
+
+
+def _absent(key: str, where: _Elsewhere | None) -> tuple[str, ...]:
+    """Why `key` is refused where `HEAD` holds no copy of it, and what to do instead.
+
+    Four answers, and only the last is the old one. Where a pull request is
+    open on a branch holding the item, the answer is to wait for it: a copy
+    committed here is a second add of the same file, which is how `PL-MTHC`'s
+    brief lost its corrections. Where the forge answered and none is open, the
+    branch is stranded work or live work nobody has opened yet, and the reply's
+    judgment `bin/docket stranded` leaves it; where the forge was not asked,
+    both are said. Where no branch holds it, there is nothing to copy from and
+    a capture is the answer.
+    """
+    if where is None:
+        return (f"claim: HEAD holds no item {key}; commit a capture before claiming it",)
+    carriers = where.carriers()
+    if carriers:
+        name, number = carriers[0]
+        pull = _pull(name, number)
+        return (
+            f"claim: HEAD holds no item {key}; {pull} is open and carries it to the "
+            "default branch.",
+            f"  Wait for it to merge, bring the default branch in, and claim {key} then. A copy "
+            "committed here would be a second add of the same file: the merge bringing the "
+            "first one in conflicts on it, and keeping either side whole there drops what the "
+            "other recorded since.",
+        )
+    if where.asked:
+        return (
+            f"claim: HEAD holds no item {key}; only {_names(where)} it, with no pull request open.",
+            "  Where nobody will merge that, `bin/docket stranded` names the file to recover: "
+            f"commit it on its own, then claim {key}.",
+        )
+    return (
+        f"claim: HEAD holds no item {key}; {_names(where)} it, and whether a pull request is "
+        "open there could not be asked.",
+        "  `bin/docket flight` says. Where one is, wait for it to merge rather than committing "
+        "a copy here, which would be a second add of the same file; where none is, "
+        "`bin/docket stranded` names the file to recover.",
+    )
+
+
+def _first_add(
+    root: Path, rev: str, key: str, items_dir: str, base: str
+) -> tuple[str, datetime] | None:
+    """The oldest commit `rev` has since the base that added a file for `key`, and its author date.
+
+    By id rather than by path, since a retitle renames the file: `--no-renames`
+    makes the new name an add of its own, and the oldest add is the capture or
+    the copy either way. `None` where git gave no answer it can be read from.
+    """
+    done = _git(
+        [
+            "log",
+            "--no-renames",
+            "--diff-filter=A",
+            "--format=%H %aI",
+            rev,
+            "--not",
+            base,
+            "--",
+            f":(glob){items_dir.strip('/')}/{key}-*",
+        ],
+        root,
+    )
+    lines = [line.split() for line in done.out.splitlines() if line.strip()]
+    if done.code != 0 or not lines or len(lines[-1]) != 2:
+        return None
+    commit, stamp = lines[-1]
+    try:
+        return commit, datetime.fromisoformat(stamp)
+    except ValueError:
+        return None
+
+
+def _second_adds(
+    root: Path,
+    keys: Sequence[str],
+    *,
+    items_dir: str,
+    base: str,
+    branch: _Branch,
+    opened: Callable[[], Mapping[str, int | None] | None] | None,
+    run: Runner,
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Refusals and notes for items `HEAD` holds that the base lacks and another branch adds too.
+
+    **Refused where this branch's copy is the later add and a pull request is
+    open on the earlier one's branch** - `PL-MTHC`'s own shape, the copy
+    `0207afd7` made of a file `#1199` was carrying. That pull request lands its
+    copy first, so this branch's merge of the base is the one that meets the
+    add/add conflict, and nothing reports a resolution that keeps one side
+    whole. Before the claim is where the copy can still be given up at no cost.
+
+    **Only told, never refused, in every other shape.** Where this branch's add
+    is the earlier - it captured the item, and another branch copied it - the
+    claim belongs here and the copy's branch is the one with the conflict
+    coming. Where the adds are one commit, the branches share the item's
+    history rather than each adding it. Where git could not date both, or the
+    forge could not be asked, refusing would be a guess; the note says what
+    could not be told. A branch the forge says has no pull request open is
+    stranded work or live work nobody has published, and whether to recover
+    from it is the reader's call `bin/docket stranded` leaves them, so it is
+    not mentioned at all.
+    """
+    on_base = _item_paths_on(base, items_dir, root, run)
+    outside = [key for key in keys if key not in on_base]
+    if not outside:
+        return (), ()
+    where = _elsewhere(
+        root, outside, items_dir=items_dir, base=base, branch=branch, opened=opened, run=run
+    )
+    refused: list[str] = []
+    notes: list[str] = []
+    for key in outside:
+        found = where.get(key)
+        if found is None:
+            continue
+        if not found.asked:
+            notes.append(
+                f"{key}: {_names(found)} it too, and the default branch does not; whether a pull "
+                "request is open there could not be asked, and where one is, one of the two "
+                "copies is a second add of the same file."
+            )
+            continue
+        mine = _first_add(root, "HEAD", key, items_dir, base)
+        for name, number in found.carriers():
+            theirs = _first_add(root, found.refs[name], key, items_dir, base)
+            if mine is not None and theirs is not None and mine[0] == theirs[0]:
+                continue
+            pull = _pull(name, number)
+            if mine is not None and theirs is not None and mine[1] > theirs[1]:
+                refused.extend(
+                    (
+                        f"claim: {key} is on {name} as well, where {pull} is open and carries it "
+                        "to the default branch, and HEAD's copy is a second add of the file, "
+                        "made after that one.",
+                        "  Remove this branch's copy in a commit of its own, wait for that pull "
+                        f"request to merge, bring the default branch in, and claim {key} then: "
+                        "the merge bringing its copy in conflicts on the file, and keeping "
+                        "either side whole there drops what the other recorded since.",
+                    )
+                )
+                break
+            order = (
+                "holds a later copy of it"
+                if mine is not None and theirs is not None and mine[1] < theirs[1]
+                else "holds a copy too, and git could not say which was added first"
+            )
+            notes.append(
+                f"{key}: {name} {order}, and {pull} is open; the default branch holds neither, "
+                "so whichever merges second conflicts on the file, and keeping either side "
+                "whole there drops what the other recorded."
+            )
+    return tuple(refused), tuple(notes)
 
 
 def _closed_on_base(
