@@ -294,7 +294,10 @@ session has ended does not wait for you (`PL-S5MF`, and its token in the next
 section). **A pull request already green and current is the
 exception: the session tells you it cannot arm it, and the Squash and merge is
 yours** (project owner, 2026-09-26, ratified, over the session merging it
-directly through the API, `PL-V2X5`). GitHub offers auto-merge "only on pull
+directly through the API, `PL-V2X5`). A hook refuses the session's own merge
+call and hands it this answer to give you (`.claude/hooks/direct-merge-guard.sh`),
+since a session with the rule in front of it merged `#1224` anyway
+(`PL-S17R`). GitHub offers auto-merge "only on pull
 requests that cannot be merged immediately" ([GitHub
 Docs](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request)),
 and a session merges only by arming, because its GitHub calls are yours and an
