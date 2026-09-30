@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect, infra, docs
 feature: provenance
-touches: tools/doc_check.py, tests/unit/test_doc_check.py, tools/source_tier_counts.py, tests/unit/test_source_tier_counts.py, docs/MODEL.md, .claude/rules/sources-and-docstrings.md, src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py, tests/reference/test_sevo_patient.py, src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, src/anesthesia_sim/data/patients/reference_adult.json, src/anesthesia_sim/data/machines/reference_circle_system.json
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, tools/source_tier_counts.py, tests/unit/test_source_tier_counts.py, docs/MODEL.md, docs/ARCHITECTURE.md, docket.toml, .claude/rules/sources-and-docstrings.md, src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py, tests/reference/test_sevo_patient.py, src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, src/anesthesia_sim/data/patients/reference_adult.json, src/anesthesia_sim/data/machines/reference_circle_system.json
 added: 2026-09-07
 verify: python3 tools/source_tier_counts.py && python3 tools/doc_check.py check
 ---
