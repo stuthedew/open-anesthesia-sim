@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: parallel-sessions
+milestone: v0.5.18
 touches: subprojects/docket/tests/test_cli.py
 added: 2026-09-13
 closed: 2026-09-30

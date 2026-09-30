@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: open-item-overlap-detection
+milestone: v0.5.18
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/src/docket/config.py, docket.toml, subprojects/docket/README.md, docs/items/PL-5GBV-two-items-were-filed-three-days-apart-for-one.md
 added: 2026-09-13
 closed: 2026-09-30
