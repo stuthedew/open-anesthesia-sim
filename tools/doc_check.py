@@ -4633,6 +4633,13 @@ GATE_ONLY: dict[str, tuple[str, str]] = {
         "item being closed, which a branch cannot have changed (`PL-P3B6`), so both "
         "gates run the `--verify-base` form on a branch instead",
     ),
+    "tools/contrast_check.py": (
+        "ci",
+        "the run without a base, which `quality.yml` makes on a push to `main` and its "
+        "step's `if:` keeps off every pull request, where the pull request's run with "
+        "`--base` was the gate - recorded here because this rule does not read an `if:` "
+        "yet (`PL-ZXM1`). Both gates run the `--base` form on a branch (`PL-VJFQ`)",
+    ),
     "tools/pr_record_check.py": (
         "ci",
         "the event mode: it reads the pull request's number from `PR_NUMBER`, which "
