@@ -14,8 +14,8 @@ closed: 2026-09-23
 pr: 935
 payoff: a brief can no longer tell a session its item waits on a decision or blocker the front matter says has cleared, and the next such passage is reported when the status moves
 verify: grep -q 'def test_a_brief_naming_a_closed_prerequisite_is_advised' subprojects/docket/tests/test_checks.py && grep -q 'def test_a_brief_narrating_a_status_it_has_left_is_advised' subprojects/docket/tests/test_checks.py
-root-cause-of: PL-X4RX, PL-7G5M, PL-9K7K
-generator: spent - a status or blocked-by write still leaves narration behind, but docket set now prints each passage it leaves and docket check reports any left unmarked, so an instance is repaired in the commit that made it instead of becoming an item
+root-cause-of: PL-X4RX, PL-7G5M, PL-9K7K, PL-JNWS
+generator: spent - a status or blocked-by write still leaves narration behind, but docket set now prints each passage it leaves and docket check reports any left unmarked; and the mirror, an answer written into a brief whose front matter stays at needs-decision (PL-JNWS, filed after this closed), docket check now refuses; so an instance either way is repaired in the commit that made it instead of becoming an item
 misread: An item's current queue state: its status, what blocks it, and what it must land after
 ---
 
