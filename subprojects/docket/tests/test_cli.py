@@ -1941,6 +1941,104 @@ def test_a_version_the_default_branch_has_not_seen_is_cut_as_before(tmp_path: Pa
     assert (root / "docs" / "releases" / "v0.2.6.md").is_file()
 
 
+@pytest.mark.parametrize("dry_run", [False, True], ids=["cut", "dry-run"])
+def test_a_version_the_roadmap_reserves_is_refused_on_the_cut_path(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], dry_run: bool
+) -> None:
+    """PL-Z85N: the digest withheld a reserved number and the cut path cut it.
+
+    `release_offer` answered only for the digest, so a session asked to cut
+    0.6.0, or reading the withheld number as the next one, was not stopped -
+    and a dry run exited 0 printing a command that filed a release item under
+    it. The dry run is refused too: a wrong number, not a state to review.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    (root / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+    flags = ["--dry-run"] if dry_run else []
+
+    assert main(["release", "0.3.0", *flags, "--items", str(root / "items")]) == 1
+
+    out = capsys.readouterr().out
+    assert 'Cannot cut v0.3.0: the roadmap gives 0.3.0 to "the foundation"' in out
+    assert "## v0.3.0" not in out
+    assert "milestone:" not in (root / "items" / "done.md").read_text(encoding="utf-8")
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert not (root / "docs" / "releases").exists()
+
+
+def test_the_reservation_is_asked_without_git(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The roadmap is read from the tree, so `--no-git` skips the git guards, not this one."""
+    root = _release_repo(tmp_path, git=False)
+    (root / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+
+    assert main(["release", "0.3.0", "--no-git", "--items", str(root / "items")]) == 1
+    assert 'the roadmap gives 0.3.0 to "the foundation"' in capsys.readouterr().out
+
+
+def test_a_number_the_roadmap_leaves_free_is_cut_beside_a_reserved_one(tmp_path: Path) -> None:
+    """A patch of unrelated finished work is legitimate while a milestone waits ahead."""
+    root = _release_repo(tmp_path, "v0.2.5")
+    (root / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    assert (root / "docs" / "releases" / "v0.2.6.md").is_file()
+
+
+def test_a_reserved_version_the_default_branch_has_shipped_is_answered_by_the_base(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A branch behind the base still reads the number as reserved, and is wrong.
+
+    Asked ahead of the base, the reservation told a stale branch the milestone
+    was unreleased when the base had released it. What the base holds is the
+    certain answer, so it is asked first and the reservation not at all.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
+    notes = root / "docs" / "releases"
+    notes.mkdir(parents=True)
+    (notes / "v0.3.0.md").write_text("## v0.3.0\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "Release v0.3.0"], cwd=root, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "checkout", "-q", TRAIN_BRANCH], cwd=root, check=True, capture_output=True
+    )
+    (root / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+
+    assert main(["release", "0.3.0", "--items", str(root / "items")]) == 1
+
+    out = capsys.readouterr().out
+    assert "v0.3.0 is already released on" in out
+    assert "the roadmap gives" not in out
+
+
+def test_a_roadmap_not_read_whole_refuses_the_cut_rather_than_calling_the_number_free(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A row the parser skipped reserves nothing it can see, so silence is not "free".
+
+    v0.3.0's row lost its bold and it has no section, so the one statement
+    reserving it goes unread. The dry run is let through with the warning, as
+    it is where the tag list could not be read.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    unbolded = WAVE_ROADMAP.replace("**v0.3.0 — the foundation**", "v0.3.0 — the foundation")
+    (root / "ROADMAP.md").write_text(unbolded, encoding="utf-8")
+
+    assert main(["release", "0.3.0", "--items", str(root / "items")]) == 1
+    out = capsys.readouterr().out
+    assert "Cannot tell whether the roadmap reserves v0.3.0" in out
+    assert "timeline step 'v0.3.0 — the foundation' is not bold" in out
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text(encoding="utf-8")
+
+    assert main(["release", "0.3.0", "--dry-run", "--items", str(root / "items")]) == 0
+    assert "Cannot tell whether the roadmap reserves v0.3.0" in capsys.readouterr().out
+
+
 def _side_cut(root: Path, version: str) -> None:
     """A second branch carrying a release nobody has merged, left off the base."""
     base = subprocess.run(
