@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: release-process
+milestone: v0.5.18
 touches: ROADMAP.md, docs/items
 added: 2026-09-28
 closed: 2026-09-28
