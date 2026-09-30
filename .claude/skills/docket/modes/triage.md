@@ -209,7 +209,10 @@ never asked, so a generator reached through one was queued rather than found.
 `bin/docket triage` marks each item that `Owes a Generator check`, and says
 where it cannot tell yet: capture often leaves `touches` unset, and such an
 item owes the check if any path you declare is under `workflow_paths` in
-`docket.toml`. Keep asking *why did this exist?* until the answer is a design
+`docket.toml`. `bin/docket set` says so at the write that declares those paths
+or ends triage, where the brief carries no answer yet, since that write takes
+the item off the list the mark prints on (`PL-6WPD`). Keep asking *why did
+this exist?* until the answer is a design
 fact rather than the symptom: a representation choice, a missing single source
 of truth, an invariant no code enforces, an external behaviour nothing models,
 or a rule that forces the work.

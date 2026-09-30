@@ -1242,6 +1242,18 @@ just closed, a prerequisite it no longer declares - to the session holding the
 context, which repairs each in the same commit: reworded, or opened with
 `[superseded YYYY-MM-DD]` where the passage is history worth keeping.
 
+**A triage write says what it leaves the Generator check owing.** `docket
+triage` marks each untriaged item whose `touches` reach `workflow_paths`, but a
+pass usually writes an item's `touches` and its `--status` in one `set`, which
+takes the item off the list before the mark can print - twelve of twenty-two
+captures on 2026-09-28 had no `touches` for it to read (`PL-6WPD`). So a write
+moving `touches` or `status` on an untriaged item, or writing the first
+`touches` of one that declared none, prints what the mark would have: owed,
+naming the apparatus paths, where the brief carries no `**Generator check.**`
+line; undecided, where it ends triage with the item open and no paths declared.
+A later write is not asked, since the check is triage's question of what
+arrives.
+
 It names, per item, whether a branch already carries that id — and which refs
 it could not read to answer that. Triage is the more exposed of the two entry
 points rather than the less: `show` guards the path where a session has

@@ -1998,6 +1998,8 @@ def cmd_set(args: argparse.Namespace) -> int:
     print(f"  {path}")
     _say_unblocked(item, updated, changes, items, after)
     _say_contradicted(changes, items, after, today)
+    for line in render.generator_check_on_set(item, updated, config.workflow_paths):
+        print(line)
     return 0
 
 
