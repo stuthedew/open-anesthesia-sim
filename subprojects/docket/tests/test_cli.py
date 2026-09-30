@@ -2787,6 +2787,118 @@ def test_triage_asks_no_generator_check_where_no_workflow_paths_are_declared(
     assert "Generator check" not in capsys.readouterr().out
 
 
+GENERATOR_CAPTURE = """---
+id: PL-G1G1
+title: A tool reads a field the store renamed
+status: untriaged
+added: 2026-08-20
+---
+
+**Problem.** The check reads a field the store renamed.
+**Why it matters.** Its answer is wrong.
+**Done when.** It reads the new name.
+"""
+
+TRIAGED = ("--priority", "P2", "--effort", "S", "--classes", "defect", "--status", "ready")
+
+
+def _set_under_workflow_paths(tmp_path: Path, document: str, *args: str) -> Path:
+    """One `set` on the item in `document`, in a store placing `tools/` as apparatus."""
+    store = _store(tmp_path, document)
+    (tmp_path / "docket.toml").write_text(WORKFLOW_TOOLS, encoding="utf-8")
+    assert _run("set", parse_item(document).identifier, *args, "--items", str(store)) == 0
+    return store
+
+
+def test_set_names_the_paths_a_triage_write_leaves_owing_a_generator_check(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-6WPD`: the write that sets the paths takes the item off the list the mark prints on.
+
+    The capture had no `touches`, so `triage` could only call its check
+    undecided, and one `set` wrote the paths and the status together. The line
+    names the apparatus path and not the simulator one, as the mark does.
+    """
+    _set_under_workflow_paths(
+        tmp_path, GENERATOR_CAPTURE, "--touches", "tools/check.py, src/model.py", *TRIAGED
+    )
+
+    out = capsys.readouterr().out
+    assert (
+        "PL-G1G1: owes a Generator check, whatever its lane: it touches tools/check.py, "
+        "under workflow_paths\n"
+    ) in out
+    assert "one **Generator check.** line" in out
+
+
+def test_set_calls_a_generator_check_undecided_where_triage_ends_with_no_touches(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Silence would read as "not owed", and nothing would ask again.
+
+    The first `touches` written afterwards is the write that decides it, so it
+    is read as a triage write whatever the status.
+    """
+    store = _set_under_workflow_paths(tmp_path, GENERATOR_CAPTURE, *TRIAGED)
+    assert (
+        "PL-G1G1: leaves triage declaring no `touches`, so whether it owes a Generator "
+        "check is undecided\n"
+    ) in capsys.readouterr().out
+
+    assert _run("set", "PL-G1G1", "--touches", "tools/check.py", "--items", str(store)) == 0
+    assert "PL-G1G1: owes a Generator check" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("document", "args"),
+    [
+        (
+            GENERATOR_CAPTURE.replace(
+                "new name.\n", "new name.\n**Generator check.** A one-off: the rename was asked.\n"
+            ),
+            ("--touches", "tools/check.py", *TRIAGED),
+        ),
+        (GENERATOR_CAPTURE, ("--touches", "src/model.py", *TRIAGED)),
+        (
+            READY.replace("touches: a.py", "touches: tools/check.py"),
+            ("--touches", "tools/check.py, tools/other.py", "--overwrite"),
+        ),
+        (
+            GENERATOR_CAPTURE,
+            ("--status", "dropped", "--reason", "a duplicate", "--closed", "2026-08-24"),
+        ),
+        (
+            READY.replace("touches: a.py\n", "").replace(
+                "**Done when.** z\n", "**Done when.** z\n**Decision needed.** Which of two.\n"
+            ),
+            ("--status", "needs-decision"),
+        ),
+    ],
+    ids=[
+        "the brief answers it",
+        "no path is apparatus",
+        "a rewrite after triage",
+        "a drop, undecided",
+        "triage ended before",
+    ],
+)
+def test_set_says_nothing_of_a_generator_check_where_the_write_leaves_none_to_ask(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], document: str, args: tuple[str, ...]
+) -> None:
+    """Asked only where a triage write leaves it owed or undecided.
+
+    A rewrite after triage is not asked: 118 of the 169 open triaged items on
+    `workflow_paths` carried no answer on 2026-09-30, most triaged before the
+    rule, so a start or a close-out rewriting their paths would be told of a
+    check nothing asks. Undecided is not said of a drop, whose remedy - writing
+    `touches` - is triage's step for an item that will be worked, nor of an item
+    triage had already left before this write.
+    """
+    _set_under_workflow_paths(tmp_path, document, *args)
+
+    assert "Generator check" not in capsys.readouterr().out
+
+
 def _featured(identifier: str, status: str, **extra: str) -> str:
     """One item carrying a feature, at the status a progress listing has to draw."""
     fields = {
@@ -7190,6 +7302,45 @@ def test_show_says_what_changed_since_an_item_was_filed(
         line.startswith("  RE-CONFIRM before starting: filed more than 14 days ago")
         for line in lines
     )
+
+
+def test_check_advises_on_a_stale_touches_path_in_a_real_repository(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Real git, because the read's spelling and its wiring into `check` are what this proves.
+
+    A deleted file and a deleted directory are named with the commit that
+    removed them, a file never committed - one the work will create - is not,
+    and the run still passes (`PL-8JY7`).
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "PL-B1B1-ready.md").write_text(
+        READY.replace("touches: a.py", "touches: a.py, gone.py, old/, planned.py")
+    )
+
+    def git(*args: str) -> str:
+        done = subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, text=True)
+        return done.stdout.strip()
+
+    git("-c", "init.defaultBranch=main", "init", "-q")
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    (root / "old").mkdir()
+    for name in ("a.py", "gone.py", "old/x.py"):
+        (root / name).write_text("one\n")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    git("rm", "-rq", "gone.py", "old")
+    git("commit", "-qm", "delete paths the open item names")
+    removed = git("rev-parse", "--short", "HEAD")
+
+    assert _run_with_git("check", "--items", str(root / "items")) == 0
+
+    assert (
+        "1 open item declares a `touches` path this tree lacks and its history held: "
+        f"PL-B1B1 gone.py (last changed by {removed}), old/ (last changed by {removed})."
+    ) in capsys.readouterr().out
 
 
 def test_show_asks_for_re_confirmation_only_past_the_line(

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra, docs
 feature: provenance
+milestone: v0.5.18
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, tools/source_tier_counts.py, tests/unit/test_source_tier_counts.py, docs/MODEL.md, docs/ARCHITECTURE.md, docket.toml, .claude/rules/sources-and-docstrings.md, src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py, tests/reference/test_sevo_patient.py, src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, src/anesthesia_sim/data/patients/reference_adult.json, src/anesthesia_sim/data/machines/reference_circle_system.json
 added: 2026-09-07
 closed: 2026-09-30

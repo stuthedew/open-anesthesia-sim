@@ -33,7 +33,11 @@
 # directory there is this project's, so a linked worktree is checked and
 # another repository is not. Like `make check`, the checks read the working
 # tree, so an uncommitted edit counts. Each runs from that tree's own copy of
-# its script, and is skipped in a tree without one.
+# its script, and is skipped in a tree without one. A push sends an
+# uncommitted edit only once it is committed, so where `doc_check` or `docket
+# check` fails in a tree `git status` shows changes in, the refusal says so and
+# how to settle which tree was meant; `branch_id_check` reads the history, where
+# no uncommitted edit can be the cause (`PL-GR0L`).
 #
 # **Known gaps**, each costing a push CI would then catch, never a false
 # refusal of a clean tree: in `git commit ... && git push` the hook runs before
@@ -86,6 +90,7 @@ CHECKS = (
     ("branch_id_check", ("python3", "tools/branch_id_check.py")),
     ("docket check", ("bin/docket", "check", "--verify", "--verify-base", "origin/main", "--no-fetch")),
 )
+READS_THE_TREE = frozenset(("doc_check", "docket check"))
 DEADLINE = 100
 SHOWN = 40
 
@@ -170,6 +175,12 @@ def common_directory(where):
     return os.path.realpath(found) if found else None
 
 
+def uncommitted(top):
+    """How many paths `git status --short` lists in `top`, or 0 where git cannot say."""
+    listed = git(top, "status", "--porcelain")
+    return len(listed.splitlines()) if listed else 0
+
+
 def excerpt(text):
     """The report a refusal shows: its first line and its errors, up to its advisories, at most SHOWN lines."""
     report = text.splitlines()
@@ -221,11 +232,11 @@ for top in trees:
                 stderr=subprocess.PIPE,
                 text=True,
             )
-            running.append((name, argv, process))
+            running.append((top, name, argv, process))
 
 deadline = time.monotonic() + DEADLINE
-refusals = []
-for name, argv, process in running:
+refusals, readers, read_trees = [], set(), set()
+for top, name, argv, process in running:
     try:
         out, err = process.communicate(timeout=max(0.0, deadline - time.monotonic()))
     except subprocess.TimeoutExpired:
@@ -235,15 +246,30 @@ for name, argv, process in running:
         rerun = " ".join(argv)
         report = "\n".join(part for part in (out.rstrip(), err.rstrip()) if part)
         refusals.append(f"`{name}` failed (`{rerun}` re-runs it):\n\n{excerpt(report)}")
+        if name in READS_THE_TREE:
+            readers.add(name)
+            read_trees.add(top)
 if not refusals:
     sys.exit(0)
 
 reason = (
-    "This push is refused until the tree it sends passes the checks CI runs on "
-    "every pull request, since each would turn the pull request red and cost a "
-    "fix cycle there (`PL-PLSJ`, `PL-S1BG`).\n\n"
-    + "\n\n".join(refusals)
-    + "\n\nFix what it names, commit, and push again. A work-in-progress push to "
+    "This push is refused until the checks CI runs on every pull request pass "
+    "in this checkout, since each would turn the pull request red and cost a "
+    "fix cycle there (`PL-PLSJ`, `PL-S1BG`).\n\n" + "\n\n".join(refusals)
+)
+changed = sum(uncommitted(top) for top in read_trees)
+if changed:
+    names = " and ".join("`" + name + "`" for name, _ in CHECKS if name in readers)
+    paths = "1 path" if changed == 1 else f"{changed} paths"
+    reason += (
+        f"\n\n{names} read the working tree, and `git status --short` lists {paths} "
+        "there with uncommitted changes, which a push sends only once they are "
+        "committed. Commit them if this push should carry them, and the refusal "
+        "stands. If it should not, stash them with `git stash --include-untracked`, "
+        "push again so the checks read only what is sent, and `git stash pop` after."
+    )
+reason += (
+    "\n\nFix what it names, commit, and push again. A work-in-progress push to "
     "a branch with no pull request open runs no CI, and only that push may go "
     "out unchecked, with `git push --no-verify`."
 )

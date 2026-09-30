@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: release-roadmap-seam
+milestone: v0.5.18
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md
 added: 2026-09-14
 closed: 2026-09-30
