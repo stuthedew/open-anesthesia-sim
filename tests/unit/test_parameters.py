@@ -32,7 +32,7 @@ from anesthesia_sim.core.parameters import (
 
 def _valid_agent_payload() -> dict[str, object]:
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "id": "test-agent",
         "display_name": "Test Agent",
         "blood_gas_partition_coefficient": 0.5,
@@ -50,6 +50,7 @@ def _valid_agent_payload() -> dict[str, object]:
                 "url": "https://example.com/source",
                 "tier": "primary",
                 "adopted": True,
+                "authority_for": ["blood_gas_partition_coefficient"],
                 "note": "Test source only",
             }
         ],
@@ -58,7 +59,7 @@ def _valid_agent_payload() -> dict[str, object]:
 
 def _valid_patient_payload() -> dict[str, object]:
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "id": "test-patient",
         "display_name": "Test Patient",
         "weight_kg": 70.0,
@@ -77,10 +78,43 @@ def _valid_patient_payload() -> dict[str, object]:
                 "url": "https://example.com/source",
                 "tier": "primary",
                 "adopted": True,
+                "authority_for": ["weight_kg"],
                 "note": "Test source only",
             }
         ],
     }
+
+
+def _valid_breathing_circuit_payload() -> dict[str, object]:
+    return {
+        "schema_version": 3,
+        "id": "test-circle-system",
+        "display_name": "Test circle system",
+        "circuit_volume_l": 7.0,
+        "default_fresh_gas_flow_l_min": 2.0,
+        "sources": [
+            {
+                "citation": "Test source.",
+                "url": "https://example.invalid/",
+                "tier": "reference-implementation",
+                "adopted": False,
+                "authority_for": [],
+                "note": "test only",
+            }
+        ],
+        "provenance_gap": "test only",
+    }
+
+
+def _source_entries(payload: dict[str, object]) -> list[dict[str, object]]:
+    """A fixture payload's `sources` entries, for a test to edit in place."""
+
+    sources = payload["sources"]
+
+    assert isinstance(sources, list)
+    assert all(isinstance(source, dict) for source in sources)
+
+    return sources
 
 
 def test_payload_model_rejects_empty_string() -> None:
@@ -222,7 +256,7 @@ def test_loads_reference_adult_parameters() -> None:
 
 def test_rejects_unknown_schema_version() -> None:
     payload = _valid_agent_payload()
-    payload["schema_version"] = 3
+    payload["schema_version"] = 4
 
     with pytest.raises(SimulationConfigurationError, match="unsupported schema_version"):
         parse_agent_parameters(payload)
@@ -668,6 +702,252 @@ def test_rejects_a_nonboolean_adopted_flag(adopted: object) -> None:
         parse_agent_parameters(payload)
 
 
+def test_rejects_a_source_entry_that_declares_no_authority_for() -> None:
+    """Required and not defaulted, for the reason `_SourcePayload` gives for `tier`."""
+
+    payload = _valid_agent_payload()
+    del _source_entries(payload)[0]["authority_for"]
+
+    with pytest.raises(
+        SimulationConfigurationError, match=r"sources\.0\.authority_for\n\s+Field required"
+    ):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_an_adopted_source_that_names_no_stored_value() -> None:
+    payload = _valid_agent_payload()
+    _source_entries(payload)[0]["authority_for"] = []
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape(
+            "sources entry 'Test citation' is adopted but its authority_for names no stored value"
+        ),
+    ):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_a_source_that_names_stored_values_while_not_adopted() -> None:
+    """The two fields must not disagree, or a reader of each gets a different answer.
+
+    A check reading `adopted` would report this source as cited only, and one
+    reading `authority_for` would report it as the provenance of a stored
+    number.
+    """
+
+    payload = _valid_agent_payload()
+    _source_entries(payload)[0]["adopted"] = False
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape(
+            "sources entry 'Test citation' is not adopted but its authority_for names "
+            "['blood_gas_partition_coefficient']"
+        ),
+    ):
+        parse_agent_parameters(payload)
+
+
+@pytest.mark.parametrize(
+    ("parse", "valid_payload", "path"),
+    (
+        (
+            parse_agent_parameters,
+            _valid_agent_payload,
+            "vessel_rich_tissue_gas_partition_coefficient",
+        ),
+        (parse_agent_parameters, _valid_agent_payload, "tissue_gas_partition_coefficients.brain"),
+        (parse_reference_adult_parameters, _valid_patient_payload, "vessel_rich_volume_l"),
+        (
+            parse_breathing_circuit_parameters,
+            _valid_breathing_circuit_payload,
+            "fresh_gas_flow_l_min",
+        ),
+    ),
+)
+def test_rejects_an_authority_for_path_that_names_nothing_the_file_stores(
+    parse: Callable[[object], object], valid_payload: Callable[[], dict[str, object]], path: str
+) -> None:
+    """A path is spelled as the file spells the value, not as the public type does.
+
+    `AgentParameters` and `ReferenceAdultParameters` carry nested values under
+    flat names, so a path copied from one of them is the likeliest mistake. All
+    three families are exercised because each payload applies the rule itself.
+    """
+
+    payload = valid_payload()
+    source = _source_entries(payload)[0]
+    source["adopted"] = True
+    source["authority_for"] = [path]
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape(
+            f"names {path!r} in authority_for, which is not a numeric parameter value this file "
+            "stores; expected one of ["
+        ),
+    ):
+        parse(payload)
+
+
+@pytest.mark.parametrize(
+    ("parse", "valid_payload", "path"),
+    (
+        (parse_agent_parameters, _valid_agent_payload, "mac_awake"),
+        (parse_agent_parameters, _valid_agent_payload, "tissue_gas_partition_coefficients"),
+        (parse_reference_adult_parameters, _valid_patient_payload, "tissue_groups.fat"),
+    ),
+)
+def test_rejects_an_authority_for_path_that_names_a_group_rather_than_a_value(
+    parse: Callable[[object], object], valid_payload: Callable[[], dict[str, object]], path: str
+) -> None:
+    """The values in a group can each have a different authority.
+
+    Naming `tissue_groups.fat` would claim its volume and its perfusion
+    fraction for one source without saying so of either.
+    """
+
+    payload = valid_payload()
+    _source_entries(payload)[0]["authority_for"] = [path]
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape(f"names {path!r} in authority_for, which is not a numeric parameter"),
+    ):
+        parse(payload)
+
+
+@pytest.mark.parametrize("path", ("schema_version", "id", "mac_awake.mac_reference_basis"))
+def test_rejects_an_authority_for_path_that_names_no_numeric_parameter(path: str) -> None:
+    """`schema_version` is a number in the file and still not a stored parameter.
+
+    The other two are strings the file holds, and `authority_for` names the
+    numeric values the provenance table's rows are.
+    """
+
+    payload = _valid_agent_payload()
+    _source_entries(payload)[0]["authority_for"] = [path]
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape(f"names {path!r} in authority_for, which is not a numeric parameter"),
+    ):
+        parse_agent_parameters(payload)
+
+
+def test_an_optional_value_the_file_leaves_out_has_no_authority_to_name() -> None:
+    """A machine profile silent on its startup flow stores none, so nothing backs one.
+
+    The same path loads while the flow is stated, which is also the machine
+    family carrying `authority_for` through to the public type.
+    """
+
+    stated = _valid_breathing_circuit_payload()
+    source = _source_entries(stated)[0]
+    source["adopted"] = True
+    source["authority_for"] = ["default_fresh_gas_flow_l_min"]
+
+    machine = parse_breathing_circuit_parameters(stated)
+
+    assert machine.sources[0].authority_for == ("default_fresh_gas_flow_l_min",)
+
+    silent = deepcopy(stated)
+    del silent["default_fresh_gas_flow_l_min"]
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape("names 'default_fresh_gas_flow_l_min' in authority_for"),
+    ):
+        parse_breathing_circuit_parameters(silent)
+
+
+def test_rejects_a_stored_value_named_by_two_sources() -> None:
+    """A stored number was taken from one place, so it has one authority."""
+
+    payload = _valid_agent_payload()
+    _source_entries(payload).append(
+        {
+            "citation": "Second test citation",
+            "url": "https://example.com/second-source",
+            "tier": "reference-implementation",
+            "adopted": True,
+            "authority_for": ["mac_percent", "blood_gas_partition_coefficient"],
+            "note": "Test source only",
+        }
+    )
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape(
+            "'test-agent' in agent files (data/agents/): 'blood_gas_partition_coefficient' is "
+            "named in authority_for by both 'Test citation' and 'Second test citation'"
+        ),
+    ):
+        parse_agent_parameters(payload)
+
+
+def test_rejects_a_path_one_source_names_twice() -> None:
+    payload = _valid_agent_payload()
+    _source_entries(payload)[0]["authority_for"] = [
+        "blood_gas_partition_coefficient",
+        "blood_gas_partition_coefficient",
+    ]
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape(
+            "sources entry 'Test citation' names ['blood_gas_partition_coefficient'] more than "
+            "once in authority_for"
+        ),
+    ):
+        parse_agent_parameters(payload)
+
+
+def test_a_version_2_file_is_refused_by_its_version() -> None:
+    """Version 2 predates `authority_for`, and no family's window reaches back to it.
+
+    A version 2 entry has no `authority_for`, so the file cannot be read as a
+    version 3 one. The refusal names the version, so its reader learns that the
+    file is older than the loader and not only that a field is missing.
+    """
+
+    payload = _valid_agent_payload()
+    payload["schema_version"] = 2
+    for source in _source_entries(payload):
+        del source["authority_for"]
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=re.escape(
+            "unsupported schema_version: 2; this build reads agent files (data/agents/) at "
+            "schema_version 3"
+        ),
+    ):
+        parse_agent_parameters(payload)
+
+
+def test_the_shipped_files_load_and_carry_each_source_s_authority_for() -> None:
+    """One pinned example of the loaded link; the mapping itself lives in the data.
+
+    De Wolf et al. 2012 is the example because its note once called it the
+    authority for blood_gas_partition_coefficient alone, while the same file
+    took mac_percent from it too (`PL-9LXK`).
+    """
+
+    for agent_id in AGENT_DATA_FILENAMES:
+        load_agent_parameters(agent_id)
+    load_reference_adult_parameters()
+    load_reference_circle_system_parameters()
+
+    (de_wolf,) = (
+        source
+        for source in load_sevoflurane_parameters().sources
+        if source.citation.startswith("De Wolf AM")
+    )
+
+    assert de_wolf.authority_for == ("blood_gas_partition_coefficient", "mac_percent")
+
+
 def test_provenance_gap_is_absent_by_default() -> None:
     assert parse_agent_parameters(_valid_agent_payload()).provenance_gap is None
     assert parse_reference_adult_parameters(_valid_patient_payload()).provenance_gap is None
@@ -853,26 +1133,6 @@ def test_the_perfusion_tolerance_is_defined_once_for_both_guards() -> None:
     )
 
     assert definitions == ["src/anesthesia_sim/core/parameters.py"]
-
-
-def _valid_breathing_circuit_payload() -> dict[str, object]:
-    return {
-        "schema_version": 2,
-        "id": "test-circle-system",
-        "display_name": "Test circle system",
-        "circuit_volume_l": 7.0,
-        "default_fresh_gas_flow_l_min": 2.0,
-        "sources": [
-            {
-                "citation": "Test source.",
-                "url": "https://example.invalid/",
-                "tier": "reference-implementation",
-                "adopted": False,
-                "note": "test only",
-            }
-        ],
-        "provenance_gap": "test only",
-    }
 
 
 def test_the_shipped_run_takes_its_circuit_volume_and_flow_from_the_data_file() -> None:
@@ -1075,17 +1335,17 @@ def test_the_breathing_circuit_loader_shares_the_boundary_type_too(
     assert isinstance(raised.value.__cause__, OSError)
 
 
-def _machine_window_widened_to_3(monkeypatch: Any) -> None:
-    """Widen the machine family to read 2 and 3, as a first real bump might."""
+def _machine_window_widened_to_4(monkeypatch: Any) -> None:
+    """Widen the machine family to read 3 and 4, as a first real widening might."""
 
     monkeypatch.setattr(
         parameters_module,
         "MACHINE_SCHEMA_VERSIONS",
         SupportedSchemaVersions(
             data_files=MACHINE_SCHEMA_VERSIONS.data_files,
-            minimum=2,
-            current=3,
-            widened_because="test only: a version 3 in which every version 2 key keeps its meaning",
+            minimum=3,
+            current=4,
+            widened_because="test only: a version 4 in which every version 3 key keeps its meaning",
         ),
     )
 
@@ -1097,15 +1357,15 @@ def test_a_machine_only_schema_bump_leaves_the_agent_files_loading(monkeypatch: 
     and machines together, so raising it for a machine-only change refused the
     three agent files and the patient file until each was edited for a change
     it had nothing to do with. The last assertion is the independence itself:
-    the machine family reading 3 must not teach the agent family to.
+    the machine family reading 4 must not teach the agent family to.
     """
 
-    _machine_window_widened_to_3(monkeypatch)
+    _machine_window_widened_to_4(monkeypatch)
 
     newer_machine = _valid_breathing_circuit_payload()
-    newer_machine["schema_version"] = 3
+    newer_machine["schema_version"] = 4
 
-    assert parse_breathing_circuit_parameters(newer_machine).schema_version == 3
+    assert parse_breathing_circuit_parameters(newer_machine).schema_version == 4
     assert load_reference_circle_system_parameters().id == "reference_circle_system"
 
     for agent_id in AGENT_DATA_FILENAMES:
@@ -1113,16 +1373,16 @@ def test_a_machine_only_schema_bump_leaves_the_agent_files_loading(monkeypatch: 
     assert load_reference_adult_parameters().id == "reference_adult_70kg"
 
     newer_agent = _valid_agent_payload()
-    newer_agent["schema_version"] = 3
+    newer_agent["schema_version"] = 4
 
     with pytest.raises(
         SimulationConfigurationError,
-        match=re.escape("agent files (data/agents/) at schema_version 2 (see"),
+        match=re.escape("agent files (data/agents/) at schema_version 3 (see"),
     ):
         parse_agent_parameters(newer_agent)
 
 
-@pytest.mark.parametrize("version", (1, 3))
+@pytest.mark.parametrize("version", (2, 4))
 @pytest.mark.parametrize(
     ("parse", "valid_payload", "data_files"),
     (
@@ -1158,21 +1418,21 @@ def test_each_family_refuses_a_version_outside_its_window_and_names_itself(
         SimulationConfigurationError,
         match=re.escape(
             f"unsupported schema_version: {version}; this build reads {data_files} "
-            "at schema_version 2 (see SupportedSchemaVersions in core/parameters.py)"
+            "at schema_version 3 (see SupportedSchemaVersions in core/parameters.py)"
         ),
     ):
         parse(payload)
 
 
 def test_a_widened_window_names_both_of_its_ends_when_it_refuses(monkeypatch: Any) -> None:
-    _machine_window_widened_to_3(monkeypatch)
+    _machine_window_widened_to_4(monkeypatch)
 
     payload = _valid_breathing_circuit_payload()
-    payload["schema_version"] = 4
+    payload["schema_version"] = 5
 
     with pytest.raises(
         SimulationConfigurationError,
-        match=re.escape("machine profiles (data/machines/) at schema_version 2 to 3 (see"),
+        match=re.escape("machine profiles (data/machines/) at schema_version 3 to 4 (see"),
     ):
         parse_breathing_circuit_parameters(payload)
 
@@ -1220,8 +1480,8 @@ def test_a_boolean_schema_version_is_refused_even_where_a_window_reads_one(
         SupportedSchemaVersions(
             data_files="agent files (data/agents/)",
             minimum=1,
-            current=2,
-            widened_because="test only: a version 1 that reads correctly under 2",
+            current=3,
+            widened_because="test only: a version 1 that reads correctly under 3",
         ),
     )
     payload = _valid_agent_payload()
