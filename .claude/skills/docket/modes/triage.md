@@ -176,6 +176,18 @@ what it was chosen over, or the plain form where the owner specified it
 Overwriting the question loses what was weighed, and an undated answer cannot
 be told from the question it answers (`PL-RWJD`).
 
+**And move the status in the same commit** - to `ready`, `blocked`, or closed.
+Every reader of the queue takes the front matter's word, so an answer left
+beneath a `needs-decision` front matter is a question `bin/docket next` and
+`gate` go on putting to the owner. `PL-4ZK8`'s design round left the move "to
+the thread that builds it", and the owner saw it listed as waiting for three
+days after answering; 17 items sat that way on `main` before `bin/docket check`
+refused it (`PL-JNWS`). Where the answer leaves work, shaping it for `ready` -
+the `verify:` run and seen failing, the Done-when rewritten in the decided
+form - is part of recording it. Where a question is still open beneath a
+partial answer, pose it below the answer under a `**Decision needed.**`
+heading: the check reads only the last question or answer label in the brief.
+
 **Then mark every passage above it that the answer ended.** A paragraph saying
 the item is "Left at `needs-decision`", or that it waits on work since closed,
 opens with `[superseded YYYY-MM-DD: what replaced it]`, dated for when it
