@@ -3,7 +3,7 @@ id: PL-9LXK
 title: Nothing checks a prose claim about the tier or adoption of a stored value's source, though PL-1JDD made both machine-readable and three such claims went stale within a day
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect, infra, docs
 feature: provenance
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, tools/source_tier_counts.py, tests/unit/test_source_tier_counts.py, docs/MODEL.md, .claude/rules/sources-and-docstrings.md, src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py, tests/reference/test_sevo_patient.py, src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, src/anesthesia_sim/data/patients/reference_adult.json, src/anesthesia_sim/data/machines/reference_circle_system.json
@@ -218,3 +218,13 @@ A source `id` field is a schema change after all.
 
 **Fields.** `touches` now names what route A reaches. Under B it shrinks to
 `docs/MODEL.md` and the rules file, and the `verify:` changes with it.
+
+**Answered 2026-09-30: route A** (project owner, 2026-09-30, ratified, over B,
+dating the MODEL.md counts and building nothing, and C, a provenance-table
+column naming each row's source). Being built on this branch. One consequence
+found while mapping the entries: each agent file's De Wolf et al. note says it
+"is now the authority for blood_gas_partition_coefficient alone", but the same
+file's `provenance_gap` and its Nickalls and Mapleson notes name De Wolf as the
+source of `mac_percent` too. `authority_for` records both, so that sentence is
+corrected with the field, and `PL-R1VD` (the stale Yasuda openers) rides the
+same edit.
