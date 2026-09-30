@@ -3,11 +3,13 @@ id: PL-WHQS
 title: Centralize the closed-item filter now duplicated across twelve call sites
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: docket-store
 touches: subprojects/docket, tools
 added: 2026-09-13
+closed: 2026-09-30
+pr: 1243
 verify: ! grep -rqF --exclude=model.py '"done", "dropped"' subprojects/docket/src tools && grep -qF 'CLOSED_STATUSES' tools/item_reads.py
 ---
 
