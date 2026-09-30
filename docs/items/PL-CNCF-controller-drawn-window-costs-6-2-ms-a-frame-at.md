@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: perf
 feature: chart-readout
-touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
 added: 2026-09-08
 verify: grep -qF 'drawn_window costs' docs/MODEL.md && python3 tools/doc_check.py check
 ---
@@ -51,7 +51,7 @@ control changes that no selection over recorded samples could give
 (`PL-4RBD` measured the old path at 0.32 MAC of departure at the 12-hour
 base). This is the price of that, stated.
 
-**Worth checking before sizing any fix**: whether `RunScore.evaluate_anchored`
+**Worth checking before sizing any fix**: whether `RunDefinition.evaluate_anchored`
 re-propagates columns whose values cannot have changed. `PL-2FM6`'s brief
 records that anchoring keeps the columns in fixed *positions* so that a steady
 frame moves only the newest one; if the evaluation nonetheless recomputes all
@@ -64,7 +64,7 @@ drawn window costs agrees with the measurement.
 
 **Why it matters, and it survives the port.** This is the one frame cost in the
 2026-09-08 measurements that is not Flet's. `controller.drawn_window` is the
-score evaluation - `core/run_score.py` and the controller, no toolkit in it - so
+score evaluation - `core/run_definition.py` and the controller, no toolkit in it - so
 the PySide6 port removes the 26-45 ms `page.update()` term and leaves this one
 standing at 6.2 ms. Inside Flet it was invisible under the diff; on Qt it is
 about 99% of the frame's read and roughly eighty times the simulation at 1x.
@@ -135,7 +135,9 @@ was never computed under, which is `CLAUDE.md`'s plausible-but-incorrect value
 rather than a stale pixel. So any fix owes its invalidation key against those
 two shapes before its speed-up is worth measuring.
 
-**`touches` above still names `core/run_score.py`, which `PL-ZX12` renamed.**
-Left as it stands deliberately: `PL-RWBV` holds the re-point for eight open
-items together, and names the consequence for this one - the real path,
-`core/run_definition.py`, is in `protected_paths` and the stale spelling is not.
+**`touches` re-pointed 2026-09-30, from `core/run_score.py` to the
+`core/run_definition.py` that `PL-ZX12` renamed it to.** `PL-8JY7`'s advisory
+found it, and `PL-RWBV`, which had held the re-point, closed with it. The
+consequence once claimed for the stale spelling, that it escaped
+`protected_paths`, never held: `docket.toml` protects the directory
+`src/anesthesia_sim/core`, which either spelling matches (`PL-RWBV`, 2026-09-21).
