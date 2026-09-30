@@ -25,6 +25,7 @@ from docket.vcs import (
     ClosureReport,
     CutWindow,
     FlightReport,
+    GoneReport,
     LostItem,
     LostReport,
     PullRequestHistory,
@@ -1674,6 +1675,48 @@ def test_a_declared_item_with_no_filename_is_declined_rather_than_failed() -> No
 
     assert not _has(report.errors, "`touches` names")
     assert _has(report.declined, "PL-TFWR")
+
+
+def test_an_open_item_naming_a_stale_touches_path_is_advised_and_nothing_else_is() -> None:
+    """A path the history held and the tree lacks is named with its commit (`PL-8JY7`).
+
+    Only on an open item: a closed item's `touches` records what its work edited
+    then, and 103 closed entries named a path later work moved on 2026-09-30.
+    An entry naming an item file is `_check_touched_items`' error, and an item
+    declaring nothing has nothing to judge. None of it fails the run.
+    """
+    stale = _item("PL-CNCF", touches=("core/run_score.py", "app/controller.py"))
+    closed = _item(
+        "PL-2FM6",
+        status="done",
+        closed=date(2026, 9, 8),
+        commit="cf6f71f8",
+        touches=("core/run_score.py",),
+    )
+    item_file = _item("PL-3V6C", touches=("docs/items/PL-XQRK-moved.md",))
+    moved = _item("PL-XQRK", path="PL-XQRK-now-here.md")
+    undeclared = _item("PL-D143", touches=())
+    gone = GoneReport(
+        (("core/run_score.py", "bc21c320"), ("docs/items/PL-XQRK-moved.md", "0a1b2c3d"))
+    )
+
+    report = analyze([stale, closed, item_file, moved, undeclared], TODAY, gone=gone)
+
+    [advice] = [message for message in report.advisories if "its history held" in message]
+    assert advice.startswith(
+        "1 open item declares a `touches` path this tree lacks and its history held: "
+        "PL-CNCF core/run_score.py (last changed by bc21c320). Re-point each"
+    )
+    assert not any(other in advice for other in ("app/controller.py", "PL-2FM6", "PL-3V6C"))
+    assert not _has(report.errors, "core/run_score.py")
+
+
+def test_a_stale_touches_read_that_could_not_see_the_history_says_so() -> None:
+    """A shallow clone's answer is unread rather than clean, so it is not an empty advisory."""
+    report = analyze([_item()], TODAY, gone=GoneReport(declined="this clone is shallow"))
+
+    assert _has(report.declined, "name a path the tree has lost: this clone is shallow")
+    assert not _has(report.advisories, "its history held")
 
 
 def test_a_drifted_filename_names_the_items_whose_touches_declare_it() -> None:

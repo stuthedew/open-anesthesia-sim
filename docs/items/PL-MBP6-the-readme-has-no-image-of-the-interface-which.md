@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: docs, ux
 feature: project-introduction
-touches: README.md, assets/branding
+touches: README.md, assets/screenshots/
 blocked-by: PL-YCWZ
 added: 2026-09-06
 payoff: gives a clinician deciding whether to put this in front of a resident a picture of the interface, which is the whole of what they can see while there is no packaged build
@@ -111,3 +111,10 @@ the tree at all as of 2026-09-20. Paragraph 2's requirements are unaffected —
 the image still has to show the agent name, the 1 MAC divisor and the playback
 rate, uncropped — and the `verify:` now recorded pins the README referencing an
 image under `assets/`, which is the path this brief names.
+
+**`touches` re-pointed 2026-09-30, from `assets/branding` to
+`assets/screenshots/`.** `dfd3e2c0` (#589) removed the old directory, so it read
+as a path the tree had lost; no commit has held the new one, so `PL-8JY7`'s
+advisory reads it as the work's to create, which it is. The name is a
+prediction the `verify:` above does not depend on: the session that works this
+item picks the real one and puts it in `touches`.

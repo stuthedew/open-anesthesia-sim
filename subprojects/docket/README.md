@@ -3876,9 +3876,16 @@ decidable, but renaming the file is not, because whoever does it has to know
 which open branch is holding that file first. It also names the items whose
 `touches` declare that file, because renaming it without repairing them turns
 an advisory into the error above - `PL-3V6C` and `PL-GNXG` both sat on the
-default branch declaring a path a rename had moved. But it will not tell you what to
-work on instead, and it does not try to decide whether an item is still worth
-doing. A tool that guessed at that would produce output that looks
+default branch declaring a path a rename had moved. The same holds for any other
+path in an open item's `touches`: one the working tree lacks and a commit
+reachable from `HEAD` held is named with the newest commit that changed it,
+because a rename or deletion left it naming nothing and `concurrent` then misses
+the overlap. A path no commit has held is not named, because it reads exactly as
+a file the work will create - eleven of the thirteen absent paths open items
+declared on 2026-09-30 were those - so a typo is not named either, and a shallow
+clone declines rather than answer from a truncated history (`PL-8JY7`). But it
+will not tell you what to work on instead, and it does not try to decide
+whether an item is still worth doing. A tool that guessed at that would produce output that looks
 authoritative and is not. Where it does fail the run — an open item whose own
 `verify:` command already passes — it still names the two readings and both
 repairs rather than picking one: it does not close the item whose command
