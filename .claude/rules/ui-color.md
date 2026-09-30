@@ -193,6 +193,18 @@ comment nobody re-measures. Two rules keep it honest:
   shortfall that starts passing as an error, so a fix that leaves its excuse
   behind fails `make check`.
 
+**`make check` and CI refuse the first rule's plainest breach, and only that
+one** (`PL-VJFQ`). Run with `--base`, the tool fails on an entry the merge base
+lacks whose foreground or background is new since it or holds a different value
+there: an entry added in the change that introduces or alters its colour. An
+entry for a colour the change leaves alone passes, and that half is yours to
+judge. It is correct when a requirement is newly declared or a measurement
+changes - `#187` declared `ACCENT` as text for the first time, found it failing,
+and listed it against the item that fixed it. It is not correct when a layout
+change has moved an element onto a surface it fails, which no palette
+comparison can see, so a reviewer of a colour change still reads every entry
+added.
+
 **Neither is the exemption table.** `EXEMPT`, beside it, records a use of a
 colour that SC 1.4.11 does not bind - a graphic whose information text also
 carries, or a control boundary that visible content already identifies - with
