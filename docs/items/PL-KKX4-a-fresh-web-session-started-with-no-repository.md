@@ -3,12 +3,17 @@ id: PL-KKX4
 title: A fresh web session started with no repository checked out at all
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: infra
 feature: dev-tooling
 touches: docs/items
 added: 2026-08-31
+closed: 2026-09-30
+reason: Fixed in the environment. All four sightings (2026-08-31 to 2026-09-07) were sessions spawned by another session through create_session with no outcome branch; one spawned the same way on 2026-09-30, container 2.1.286, was cloned by the harness and started in the checkout with CLAUDE.md loaded. The brief's last three paragraphs carry the sessions and the evidence.
 not-delegable: the cause is outside this repository and no command here can reach it; the only action this queue can carry is to add a dated observation when it recurs, and the disposition - drop as a one-off, or escalate to the harness - is decidable only on a second sighting
+root-cause-of: PL-KX9N, PL-3SGR, PL-483K, PL-2H0K
+generator: spent - the harness now clones the sessions another session spawns (reproduced 2026-09-30, container 2.1.286), the one path seen handing a session a depth-1 clone made by hand
+misread: What clone a session's checkout is: how much history it holds and which branches it fetches
 ---
 
 **Problem.** A web session on 2026-08-31 started with no checkout. The
@@ -86,3 +91,48 @@ second sighting, so admitting it would put an entry on the frozen list that
 nothing in the tree can close, holding the gate open indefinitely. That limit
 is written into "What the freeze closes" so the case does not have to be
 re-argued.
+
+**Dropped 2026-09-30: it recurred three times, and the harness has since fixed
+it.** This was not a one-off, and the cause is now known. Every sighting was a
+session that another session had started through `create_session`, never one
+the project owner started. `get_session` on each shows
+`origin: claude_code_mcp_seed`, a `parent_session_id`, and the repository
+recorded as a source. None of them has an `outcomes` block, which is where a
+harness-named branch appears, so this is the missing branch the Notes above
+describe:
+
+| Created (UTC) | Session | Working | Container | Recorded in |
+| --- | --- | --- | --- | --- |
+| 2026-08-31 | `session_01SnmsWdVQXrmjLK5S7cwJEQ` | `PL-ZN0N`, `PL-69J3` | 2.1.251 | this item |
+| 2026-09-06 | `session_01CrynufWsZmGzLuNUfeGa2t` | `PL-GYH2` | 2.1.263 | `PL-KX9N` |
+| 2026-09-07 | `session_014rf4LaX2Y9djHMUp1BpPgW` | `PL-GBBZ` | 2.1.263 | `PL-483K` |
+| 2026-09-07 | `session_01ESsFLCrxiiVBFtHj6SgGfg` | `PL-GZP6` | 2.1.263 | `PL-3SGR` |
+
+The second sighting this item was waiting for came on 2026-09-06, six days
+after it was filed. It was written into another item instead of this one, so
+the escalation it called for never happened. The later three recovered with
+`add_repo` and a hand clone at `--depth 1`, and that clone cost more than the
+recovery did. Because it was shallow and single-branch, it made `bin/docket
+record` write four wrong pull request numbers (`PL-KX9N`). It made the stop
+hook demand a push of work that was already pushed (`PL-3SGR`, and `PL-483K`'s
+second observation - that item's first trigger was a restart). And it put
+"the harness clones with `git clone --depth 1`" into the tree (#419, #496),
+which `PL-2H0K` is correcting. Hence the `root-cause-of:` above, recorded as
+spent.
+
+**Reproduced 2026-09-30, and it no longer fails.** A session was spawned the
+same way: `session_01WdkRb9z8M4nz11r99XkHML`, through `create_session` with
+`source_url` and no `outcome_branch`, on container 2.1.286. Its provisioning
+log ran a clone step, "Fetching repository stuthedew/open-anesthesia-sim", in
+seven seconds. It started in `/home/user/open-anesthesia-sim` on the tip of
+`main`, with `CLAUDE.md` loaded and the session-start digest shown. Its clone
+was the harness's depth-50 one, which the session-start hook then unshallowed
+to 1,553 commits. So the environment was fixed at some point between
+container 2.1.263 and 2.1.286.
+
+**One difference remains, and it is by design.** A spawned session given no
+`outcome_branch` starts on a detached `HEAD` (`## HEAD (no branch)`), so it has
+to make its own branch before it commits. `create_session`'s `outcome_branch`
+names one. Nothing in the current workflow spawns sessions: `PL-YJG1` weighed a
+session starting its own successor and declined it on 2026-09-25. So the
+difference is recorded here rather than filed.
