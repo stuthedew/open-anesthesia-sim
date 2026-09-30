@@ -1,8 +1,8 @@
 """Tests for `.claude/hooks/push-check-guard.sh`, the checks run before a push (`PL-PLSJ`).
 
 The hook runs `tools/doc_check.py`, `tools/branch_id_check.py` and `bin/docket
-check --verify` (`PL-S1BG`) from the tree a `git push` sends, and denies the
-push while any fails. Each test builds a scratch repository whose three scripts
+check --verify` (`PL-S1BG`) in the working tree a `git push` runs from, and
+denies the push while any fails. Each test builds a scratch repository whose three scripts
 are stubs printing a known report, and points `CLAUDE_PROJECT_DIR` at it, so
 what is pinned is the hook's own rule: which commands are pushes, which tree is
 checked, what a refusal shows, and that every error path lets the push through.
@@ -142,6 +142,39 @@ def test_a_push_whose_store_check_fails_is_refused(project: Path) -> None:
 
 def test_a_push_every_check_passes_goes_through(project: Path) -> None:
     assert _decision("git push -u origin claude/x", cwd=project, project=project) is None
+
+
+def test_a_refusal_names_uncommitted_work_the_checks_read(project: Path) -> None:
+    # The commit passes and an uncommitted edit fails, so the refusal says what
+    # it read and how to settle which tree is meant (`PL-GR0L`).
+    _stub(project, doc=DOC_FAILS)
+    (project / "untracked.md").write_text("new\n")
+    decision = _decision("git push", cwd=project, project=project)
+    assert decision is not None
+    reason = decision["permissionDecisionReason"]
+    assert "the tree it sends" not in reason
+    assert (
+        "`doc_check` read the working tree, and `git status --short` lists 2 paths "
+        "there with uncommitted changes"
+    ) in reason
+    assert "git stash --include-untracked" in reason
+
+
+def test_a_refusal_blames_no_uncommitted_work_where_none_was_read(project: Path) -> None:
+    # A clean tree holds none.
+    _stub(project, doc=DOC_FAILS)
+    _git(project, "add", "-A")
+    _git(project, "commit", "-q", "-m", "fails")
+    decision = _decision("git push", cwd=project, project=project)
+    assert decision is not None
+    assert "uncommitted" not in decision["permissionDecisionReason"]
+    # `branch_id_check` reads the history, where uncommitted work cannot be the cause.
+    _stub(project, branch=BRANCH_FAILS)
+    decision = _decision("git push", cwd=project, project=project)
+    assert decision is not None
+    reason = decision["permissionDecisionReason"]
+    assert "`branch_id_check` failed" in reason
+    assert "uncommitted" not in reason
 
 
 PUSHES = (
