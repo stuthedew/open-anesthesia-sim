@@ -559,16 +559,24 @@ comparison asserts, and what it does not" is where it is argued.
 ## Data files (`data/`)
 
 Each JSON file carries a `schema_version`, an `id`, the parameter values, and
-a `sources` array of citations (`citation`, `url`, `tier`, `adopted`, `note`
-per entry — see `core.parameters.SourceReference`). `tier` is drawn from the
-closed vocabulary `core.parameters.SOURCE_TIERS`, which is the three tiers
-`docs/MODEL.md` § "Source hierarchy" defines; `adopted` says whether the file
-names that source as the authority for a value it stores, which is a separate
-question from what tier the source is. A file that adopts no primary source at
-all carries a top-level `provenance_gap` saying so. `core/parameters.py`
-rejects a file that
+a `sources` array of citations (`citation`, `url`, `tier`, `adopted`,
+`authority_for`, `note` per entry — see `core.parameters.SourceReference`).
+`tier` is drawn from the closed vocabulary `core.parameters.SOURCE_TIERS`,
+which is the three tiers `docs/MODEL.md` § "Source hierarchy" defines. `adopted`
+says whether the file names that source as the authority for a value it
+stores, which is a separate question from what tier the source is.
+`authority_for` names which stored values, by the dotted key path the
+provenance table uses, and is empty exactly when `adopted` is false. A file
+that adopts no primary source at all carries a top-level `provenance_gap`
+saying so. `python3 tools/source_tier_counts.py` reads `authority_for` and
+prints the source and tier behind every stored value, file by file and in
+total. It gates nothing, by the project owner's decision recorded on
+`PL-9LXK`: it prints the counts `docs/MODEL.md` states and never checks them.
+`core/parameters.py` rejects a file that
 is missing required fields, uses an unsupported schema version, declares a
 tier outside the vocabulary or an `adopted` flag that is not a JSON boolean,
+declares an `authority_for` that disagrees with `adopted`, names something
+that is not one of the file's stored values or names a stored value twice,
 contains a
 value outside its validated range (e.g. non-positive volumes, tissue
 perfusion fractions that don't sum to 1), or carries a key the schema does
@@ -684,9 +692,11 @@ the data files and resolves every path and section heading the documentation
 cites.
 
 Its `check_source_tiers` holds the same data files to `docs/MODEL.md`
-§ "Source hierarchy": every `sources` entry declares a `tier` from the closed
-vocabulary and an `adopted` flag, and a file with no entry that is both
-`primary` and `adopted` records a `provenance_gap`. It decides only what a
+§ "Source hierarchy". Every `sources` entry declares a `tier` from the closed
+vocabulary, an `adopted` flag, and an `authority_for` list that is non-empty
+exactly when the entry is adopted and names only the file's own stored values,
+none of them twice. A file with no entry that is both `primary` and `adopted`
+records a `provenance_gap`. It decides only what a
 file *declares*. Whether a citation labelled `primary` really is a primary
 measurement of the quantity needs somebody who has read the paper, and a tool
 guessing at that — by author, by journal, by a denylist on a product name —
