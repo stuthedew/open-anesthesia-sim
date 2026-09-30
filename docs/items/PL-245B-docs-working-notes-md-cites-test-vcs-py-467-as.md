@@ -3,10 +3,12 @@ id: PL-245B
 title: docs/WORKING_NOTES.md cites test_vcs.py:467 as the test asserting _superseded's inverted direction, but that line has never held such a test - PL-Q9Z1's live thread rests on it
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, defect
 touches: docs/WORKING_NOTES.md, subprojects/docket/src/docket/vcs.py
 added: 2026-09-19
+closed: 2026-09-30
+pr: 1235
 verify: ! grep -q 'test_vcs\.py:467' docs/WORKING_NOTES.md
 ---
 
