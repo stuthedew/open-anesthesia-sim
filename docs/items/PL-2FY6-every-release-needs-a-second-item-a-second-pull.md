@@ -31,6 +31,11 @@ the owner's.
 **Decision needed.** Build the tag-on-merge workflow and retire the tag step,
 or keep the owner's paste and the tag-step item as they are.
 
+**Answered 2026-09-30: build it** (project owner, 2026-09-30, ratified, over
+keeping the owner's four-command paste and a tag-step item closed in its own
+pull request after every cut). The workflow tags the cut's merge commit, and
+the tag step is retired from `bin/docket release`'s output and release mode.
+
 **Recommendation: tag on merge in CI, and retire the tag step.** A workflow on
 `push` to `main`, with `permissions: contents: write` and nothing else, that
 for each `docs/releases/v*.md` added in the pushed range with no tag on origin
