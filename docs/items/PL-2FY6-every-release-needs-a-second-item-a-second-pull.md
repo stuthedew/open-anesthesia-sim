@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: infra
 feature: release-process
-touches: .github/workflows/, .claude/skills/docket/modes/release.md, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/render.py
+touches: .github/workflows/, tools/tag_release.py, tests/unit/test_tag_release.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/, subprojects/docket/README.md, .claude/skills/docket/modes/release.md, docs/worker.md, docs/ARCHITECTURE.md, docket.toml, ROADMAP.md
 deferred-from: v0.6.0 - filed 2026-09-30, after the gate froze: a release-process decision rather than debt the milestone's work created, so it goes to the next gate
 added: 2026-09-30
 payoff: a release is one item and one pull request, and the tag lands on the cut's merge commit with nothing for the owner to paste

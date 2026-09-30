@@ -2070,8 +2070,8 @@ way.
 
 What the check does say, when it can, is which completed releases carry no tag,
 which tags name no release, and which tag sits off its release's cut - the
-commit that added its notes, which the tag commands `release` prints look up
-rather than leave to be filled in (`PL-QHCW`). `docket release` still enforces the tag at the
+commit that added its notes, which `.github/workflows/tag-release.yml` looks up
+and tags once the cut merges (`PL-QHCW`, `PL-2FY6`). `docket release` still enforces the tag at the
 one moment tags are certainly to hand: it refuses to cut the next release while
 the current one is untagged. `status` reads a present tag the other way: a tag
 step filed as `Tag vX.Y.Z on ...`, the title every one has carried, is marked

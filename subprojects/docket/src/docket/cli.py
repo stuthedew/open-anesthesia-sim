@@ -105,6 +105,8 @@ from .release import (
     NOTES_DIR,
     SEMVER_GRAMMAR,
     SEMVER_RE,
+    TAG_SCRIPT,
+    TAG_WORKFLOW,
     Readiness,
     already_released,
     asked_tag,
@@ -123,7 +125,7 @@ from .release import (
     reservation,
     restate_references,
     stamp,
-    tag_commands,
+    tag_confirmation,
     unrecorded_milestones,
     unreferenced_by_version,
 )
@@ -3836,14 +3838,13 @@ def _hand_off(root: Path, config: Config, name: str, plan: Wave | None = None) -
     lines.append("Then:")
     lines.append(f"  {config.check_command}")
     lines.append("  review the diff and commit")
-    # No placeholder to fill: the tag line finds the cut itself when it runs.
-    # An angle-bracketed one was read by a shell as input redirection
-    # (`PL-HKF4`), and the bare `MERGE_COMMIT` that replaced it still left the
-    # commit to whoever pasted it, who reached for `origin/main` - the next
-    # merge as often as this one (`PL-VYK1`).
+    # Nothing to paste: the workflow tags the cut once it is on the default
+    # branch (`PL-2FY6`), where four printed lines once did, so the release
+    # item and its one pull request are the whole release.
     lines.append("")
-    lines.append("Once it has merged, tag the commit that cut it:")
-    lines.extend(f"  {command}" for command in tag_commands(name))
+    lines.append(f"Once it has merged, {TAG_WORKFLOW} tags the commit that cut it.")
+    lines.append("To see that it landed:")
+    lines.append(f"  {tag_confirmation(name)}")
     return "\n".join(lines)
 
 
@@ -4159,23 +4160,26 @@ def _no_train_refusal(name: str, count: int, current: str, train: _Train, store:
 
 
 def _untagged_warning(version: str, root: Path, git: Runner) -> str:
-    """Say which tag is missing and give the commands, not the instruction.
+    """Say which tag is missing, and how to have the workflow put it on.
 
-    Asking someone to "tag v0.2.5" makes them go and reconstruct the
-    commands at the moment they are trying to do something else. They are
-    `_hand_off`'s, which find the cut when they run; the line beneath says
-    which commit that is from here, so what is about to be tagged can be seen
-    before it is. It once printed a `--grep` for a subject no cut is written
-    with and a `RELEASE_COMMIT` to fill from it (`PL-QHCW`).
+    `TAG_WORKFLOW` tags every cut on merge, so reaching here means its run
+    failed or never ran, and the remedy is running it again rather than
+    reconstructing the tag by hand. The line beneath says which commit it will
+    tag from here, so what is about to be tagged can be seen before it is. It
+    once printed a `--grep` for a subject no cut is written with and a
+    `RELEASE_COMMIT` to fill from it (`PL-QHCW`), and until `PL-2FY6` the four
+    lines the owner pasted after every cut.
     """
     name = f"v{version.lstrip('v')}"
     return "\n".join(
         [
             f"{name} shipped and carries no tag, so no commit in its span can be",
             "mapped to the release it went out in. That gap cannot be closed later",
-            "with any confidence. Tag the commit that cut it first:",
+            f"with any confidence. {TAG_WORKFLOW} tags a cut once it merges,",
+            "so its run failed or never ran, and its log says which. Once the cause is",
+            "fixed, run it from Actions > tag-release > Run workflow, or from a checkout:",
             "",
-            *(f"  {command}" for command in tag_commands(name)),
+            f"  python3 {TAG_SCRIPT} --apply",
             "",
             _cut_seen_here(name, root, git),
         ]
@@ -4183,7 +4187,7 @@ def _untagged_warning(version: str, root: Path, git: Runner) -> str:
 
 
 def _cut_seen_here(version: str, root: Path, git: Runner) -> str:
-    """Which commit the printed tag line will find, read from this checkout's base.
+    """Which commit `TAG_SCRIPT` will tag, read from this checkout's base.
 
     A shallow clone is not asked, because its oldest commit reads as adding
     every file and would be named as the cut (`vcs.find_cut`).
@@ -4196,11 +4200,11 @@ def _cut_seen_here(version: str, root: Path, git: Runner) -> str:
     if not cut.known:
         return f"git did not answer for {base}, so the commit is not named here."
     if not cut.commits:
-        return f"{base} has no commit adding {notes}, so that line will refuse as it stands."
+        return f"{base} has no commit adding {notes}, so a run will tag nothing as it stands."
     if not cut.commit:
         added = ", ".join(commit[:8] for commit in cut.commits)
         return (
-            f"{base} added {notes} {len(cut.commits)} times ({added}), so that line will "
+            f"{base} added {notes} {len(cut.commits)} times ({added}), so a run will "
             "refuse: the cut is whichever of those the release shipped from."
         )
     named = git(["log", "-1", "--format=%h %s", cut.commit], root).strip()
@@ -4212,8 +4216,8 @@ def _unreadable_tags_refusal(version: str, declined: str) -> str:
 
     `_untagged_warning` is the wrong message here for the reason it is the
     right one there: it names a specific fact - this version carries no tag -
-    and sends the operator to run the tag commands, which end by pushing a
-    tag that may already exist. What is true is weaker and worth saying
+    and sends the operator to run the tag workflow, whose run is wasted where
+    the tag already exists. What is true is weaker and worth saying
     in its own words: nothing was read, so the gate did not run.
 
     Refusing rather than warning through, because the two costs are not

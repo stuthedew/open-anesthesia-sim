@@ -1,0 +1,58 @@
+name: tag-release
+
+# Tags each release on the commit that cut it, once that commit is on `main`
+# (`PL-2FY6`). The tag has to sit on the squash merge that lands a cut, which
+# exists only after the release pull request merges, and a session cannot push
+# a tag ref (`PL-N936`), so without this every cut ended with four commands for
+# the project owner to paste and an item to close once they had.
+# `tools/tag_release.py` holds the rule: the version `main` declares, tagged on
+# the commit that added its notes, where `origin` does not hold the tag yet.
+#
+# Red means nothing was tagged because a reading failed, the notes were added
+# more than once, or the tag already names another commit; the log says which.
+# `bin/docket release` refuses the next cut while this one is untagged, so a
+# red run cannot be passed over. It never runs on a pull request, so it gates
+# nothing.
+on:
+  push:
+    branches: [main]
+    # A cut adds its notes here, so a push that changes none has nothing to tag.
+    paths:
+      - 'docs/releases/v*.md'
+  # To tag now, once a red run's cause is fixed, from Actions > tag-release >
+  # Run workflow.
+  workflow_dispatch:
+
+# `contents: write` is the tag push, and the only write.
+permissions:
+  contents: write
+
+concurrency:
+  group: tag-release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    # A dispatch from another branch would run that branch's copy of the script
+    # with the token.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      # The whole history: the cut is found by walking `main`'s first parents,
+      # and a shallow clone's oldest commit reads as adding every file.
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      # The floor `subprojects/docket/pyproject.toml` declares, as in `pr-title.yml`.
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      - name: tag the release main declares on its cut
+        env:
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: python3 tools/tag_release.py --apply
