@@ -3,10 +3,12 @@ id: PL-HC8P
 title: Name the three inference shapes in .claude/rules/apparatus-standard.md so a session adding a reader of a fact to the apparatus asks whether the project already records it before writing one more reader (project owner, 2026-10-01)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 touches: .claude/rules/apparatus-standard.md
 added: 2026-10-01
+closed: 2026-10-01
+pr: 1270
 payoff: a session writing apparatus code meets the three inference shapes and the record-or-read test before it adds the next reader, instead of triage finding the item it caused
 verify: grep -q "## Read the fact from its record" .claude/rules/apparatus-standard.md
 ---

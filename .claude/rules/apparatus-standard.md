@@ -104,3 +104,39 @@ of.
 polish, no coverage target, no abstraction, no prose. A five-line script that
 prints the right answer clears it; a well-factored, well-tested mechanism that
 quietly answers from a partial read does not.
+
+## Read the fact from its record; where none exists, write one
+
+The floor above refuses an answer that is incomplete. This refuses one that is
+reconstructed: true today because a proxy happened to hold, and the mechanism
+under most of this apparatus's generators. `PL-6ZQY` found it under 47% of the
+workflow lane on 2026-09-12 - *the apparatus infers a fact it could have
+recorded* - and `bin/docket generators --misread` names each head by the fact
+its readers misread. Triage asks which fact a capture misread after the item
+exists; this asks it before the reader does. **Before adding a reader of a
+fact - who holds an item, which pull request carried it, whether a change
+landed, what a sentence claims - say which of three shapes it is**, because
+they want different fixes, and the wrong fix adds a second reader that can
+disagree with the first:
+
+- **Nobody records the fact.** Record it at the moment it is known - a field,
+  a commit trailer, one snapshot per command - and read that. Not a commit
+  subject, a branch name, file content compared against the base, or an age
+  standing in for liveness: each held until the one case it was not written
+  for, and that case was an item (`PL-MB2W`, `PL-HMZZ`, `PL-XBV4`).
+- **The project already records it.** Read the record it has - `docket.model`'s
+  parser, `vcs.leading_ids`, `vcs.default_base`, the claims record, a parsed
+  roadmap table - rather than a second regex over the same text. One fact read
+  by four readers gave it four heads before one record named it (`PL-5MYR`,
+  `PL-PVW2`).
+- **It is a judgment**, such as whether prose means what a gate checks. A hard
+  check matches an explicit syntax the writer put there on purpose; the
+  judgment half is an advisory, never a refusal (`CLAUDE.md` § "Prefer
+  deterministic tooling over repeated model work", `PL-GPJ7`).
+
+The test that separates the first two is cheap, and is what split them
+(`docs/WORKING_NOTES.md`, 2026-09-19): does a document or module already state
+this fact with a grammar? If so, read it; if not, the fix is a place to write
+it, never a sharper heuristic. This is prose rather than a check because
+whether a reader infers or reads is the judgment half, which `CLAUDE.md`
+refuses to script (project owner, 2026-10-01, `PL-HC8P`).
