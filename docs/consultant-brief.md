@@ -120,9 +120,11 @@ Two items to read properly rather than skim, because they are better instruments
 than anything you would improvise: **`PL-SZ56`** (assess the v0.3.0 loop trial
 against its pre-registered readouts) pre-registered its criteria *before* the
 window ran, on the stated ground that assessing a process after the fact
-produces a narrative. **`PL-NG3G`** (build `bin/docket vitals`) is the queued
-work to mechanize four of the five. Check your conclusions against those
-readouts rather than restating them.
+produces a narrative. **`PL-NG3G`** (build `bin/docket vitals`) would have
+mechanized four of the five. It was dropped on 2026-10-01, no gate after v0.3.0
+having scored them, and its reason records where each readout's question went —
+for the apparatus balance, to `PL-04KR`'s two causal signals. Check your
+conclusions against those readouts rather than restating them.
 
 ## Questions worth your attention
 
