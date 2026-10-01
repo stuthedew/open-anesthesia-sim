@@ -7917,10 +7917,21 @@ once someone is ready to scope it.
 
     *Also unsupported at rest, one layer down.* The regional half needs
     per-tissue flow under anaesthesia, and the reachable measurements are
-    largely animal; `docs/MODEL.md` already records that the stored fat flow
-    is about twice Heinonen et al.'s human resting PET measurement. A varying
-    fraction on top of a resting one that far out is a second storey on the
-    same foundation.
+    largely animal. The two human comparisons the project holds for the
+    stored resting fat flow point different ways, and `docs/MODEL.md`
+    § "Known limitations" weighs them (`PL-HBH2`): Heinonen et al.'s PET
+    measurement of resting subcutaneous adipose perfusion in one depot of six
+    healthy young women (J Appl Physiol 2012;112:1059-63, PMID 22223450) is
+    close to half what the stored fraction implies, while both Yasuda 1991
+    washout studies (Anesth Analg 1991;72:316-24, PMID 1994760; Anesthesiology
+    1991;74:489-98, PMID 2001028) fit a slowest compartment, read as fat,
+    whose flow per 100 mL of tissue sits at or a little above the stored
+    figure. Neither settles it - one depot at rest against a whole-body lumped
+    compartment on one side, a fitted assignment rather than an anatomy on the
+    other - so the resting flow is uncertain by up to about a factor of two
+    and the direction of its error is unsettled. A varying fraction on top of
+    a resting one whose sign of error the two human sources cannot agree on
+    is a second storey on the same foundation.
 
 
 36. Build the catalogue of **views** an area can hold, as work separate from
