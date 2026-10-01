@@ -10,6 +10,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-01
 payoff: a closed head's record and the generator register agree, so whether the pause binds is read from the store rather than measured
 verify: grep -q 'def test_a_closed_head_cannot_stay_live' subprojects/docket/tests/test_checks.py
+recurrences: 2026-10-01 PL-DHGC withdrawn 2026-10-01 PL-KGYT
 ---
 
 **Problem.** PL-MT3R is done and bin/docket generators lists it drained, yet its front matter still carries generator: live and docket check is silent, so the field and the register disagree about one head while the pause rule reads only open items
