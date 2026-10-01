@@ -446,24 +446,15 @@ means cutting a release. Record that in `not-delegable:` rather than inventing
 a command to satisfy the checker. An item saying why it cannot be proven is
 better specified than one carrying a command nobody ran.
 
-**Items older than the rule are asked for one when they come up, not before.**
-A closed set of items reached `ready` before `verify_required_from`, and they
-carry no command. `docket check` raises an advisory for them only as `docket
-next` is about to offer them, naming those and the number still outstanding.
-So the answer on meeting one is to write its command — having run it — as part
-of starting it, which is the first moment there is any work to run it against.
-Do not treat the advisory as a backlog to clear in one pass: that would mean
-writing commands away from the work, which is how all six of the wrong ones
-above came to exist.
-
-**Closing one is where the exemption ends, and that is an error rather than an
-advisory.** `verify_required_at_close_from` holds any item *closed* on or after
-its date to the same rule, whatever its capture date, so a grandfathered item
-cannot be finished while still saying nothing about what proved it. The
-advisory above asks; this refuses. Nothing about it needs judgment — whether
-the field is present is decidable, and only what it should say is not — which
-is why it is a hard failure and why the advisory was not simply made louder
-(`PL-J49T`).
+**Closing an item asks for the command too, and that is an error.**
+`verify_required_at_close_from` holds any item *closed* on or after its date to
+the same rule, because the `ready` gate fires on `status == "ready"` alone and
+an item can go `needs-decision` to `done` in one commit without ever holding
+it. Nothing about it needs judgment — whether the field is present is
+decidable, and only what it should say is not — which is why it is a hard
+failure (`PL-J49T`). It is also what drained the set of `ready` items a second
+date, `verify_required_from`, once exempted for predating the rule; that date
+and its grooming advisory were retired at zero (`PL-Z34C`).
 
 There is no new burden in it if the command is written where the rule above
 already says to write it: at the moment the item is started, having been run.

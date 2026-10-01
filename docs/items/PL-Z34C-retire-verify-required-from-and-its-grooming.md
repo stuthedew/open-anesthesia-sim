@@ -3,10 +3,11 @@ id: PL-Z34C
 title: Retire verify_required_from and its grooming advisory once the grandfathered set reaches zero
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra, session-cost
-touches: docket.toml, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_config.py, .claude/skills/docket/modes/triage.md, docs/items/PL-024-document-what-the-venous-pool-does-to-early.md, docs/items/PL-029-surface-the-iso-5360-color-reference-in-the.md, docs/items/PL-41YP-assert-every-required-displayed-output-reaches.md, docs/items/PL-8LDF-tie-model-md-s-required-invariants-to-named.md, docs/items/PL-NC2P-main-s-no-primary-screen-guard-is-the-one.md, docs/items/PL-Z7LY-pan-the-chart-window-horizontally-with-live.md
+touches: docket.toml, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_config.py, .claude/skills/docket/modes/triage.md, docs/items/PL-024-document-what-the-venous-pool-does-to-early.md, docs/items/PL-029-surface-the-iso-5360-color-reference-in-the.md, docs/items/PL-41YP-assert-every-required-displayed-output-reaches.md, docs/items/PL-8LDF-tie-model-md-s-required-invariants-to-named.md, docs/items/PL-NC2P-main-s-no-primary-screen-guard-is-the-one.md, docs/items/PL-Z7LY-pan-the-chart-window-horizontally-with-live.md, subprojects/docket/tests/test_verify.py
 added: 2026-09-03
+closed: 2026-10-01
 verify: ! grep -qF 'verify_required_from =' docket.toml
 ---
 

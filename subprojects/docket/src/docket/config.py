@@ -91,26 +91,21 @@ class Config:
     #: is what `notes_file` and `open_pull_requests_command` are also empty to
     #: avoid.
     instruction_paths: tuple[str, ...] = ()
-    #: The date the `verify:` requirement started applying. An item that
-    #: reaches `ready` must name the command that proves it done, but a store
-    #: written before the rule existed holds items that predate it, and
-    #: turning every one of them into an error at once makes the checker
-    #: useless from its first run rather than making the queue better. So the
-    #: requirement is anchored to a date a project records here: items
-    #: captured on or after it are held to the rule, and the ones before it
-    #: raise a grooming advisory only as each is about to be offered, which is
-    #: also the first moment its command could be run before being written.
-    #: `None` leaves the
-    #: requirement off entirely, which is the right default for a project that
-    #: does not delegate work and therefore has nothing riding on the field.
-    verify_required_from: date | None = None
-    #: The same requirement at the other end of an item's life: an item
-    #: *closed* on or after this date must name a command or a
-    #: `not-delegable` reason, as an error rather than an advisory. Anchored
-    #: to the closure date rather than the capture date on purpose, since
-    #: that is what lets it reach the set `verify_required_from` grandfathers
-    #: - exempt at `ready`, and closing one is the first moment its command
-    #: could be run before being written. `None` leaves it off.
+    #: The `verify:` requirement, and the one setting that adopts it. An
+    #: item that reaches `ready` must name the command that proves it done,
+    #: whatever its capture date; an item *closed* on or after this date must
+    #: name one too, or a `not-delegable` reason, as an error rather than an
+    #: advisory. The closing half is what reaches an item that goes to `done`
+    #: without ever holding `ready`, and the date keeps the items closed before
+    #: it out of reach, since a command backfilled onto merged work has nothing
+    #: left to run against. `None` leaves both halves off, which is the right
+    #: default for a project that does not delegate work and therefore has
+    #: nothing riding on the field.
+    #:
+    #: A second date, `verify_required_from`, once grandfathered the `ready`
+    #: half for items captured before the rule. That set drained to zero and
+    #: the date was retired (`PL-Z34C`); a store adopting the rule late can
+    #: set this date and triage its `ready` items in the same commit.
     verify_required_at_close_from: date | None = None
     #: The date from which a `verify:` command may no longer stand a pytest
     #: run beside a separate discriminating clause. The field records the
@@ -158,7 +153,7 @@ class Config:
     verify_allowlist_from: date | None = None
     #: The date the `payoff:` requirement started applying: an item reaching
     #: `ready` must carry one plain-language line of what closing it buys.
-    #: Dated for the reason `verify_required_from` is - a store written before
+    #: Dated for the reason `verify:` once was - a store written before
     #: the rule holds items that predate it, and turning every one of them
     #: into an error at once makes the checker useless from its first run
     #: rather than making the queue better. Items captured before it raise a
@@ -358,7 +353,7 @@ class Config:
         )
 
 
-def _date(value: object, fallback: date | None, name: str = "verify_required_from") -> date | None:
+def _date(value: object, fallback: date | None, name: str) -> date | None:
     """Read a date written either as a TOML date literal or as a quoted string.
 
     Both spellings are accepted because both are natural to write and the
@@ -411,9 +406,6 @@ def load(root: Path) -> Config:
             section.get("instruction_stale_days", defaults.instruction_stale_days)
         ),
         instruction_paths=_tuple(section.get("instruction_paths"), defaults.instruction_paths),
-        verify_required_from=_date(
-            section.get("verify_required_from"), defaults.verify_required_from
-        ),
         verify_required_at_close_from=_date(
             section.get("verify_required_at_close_from"),
             defaults.verify_required_at_close_from,

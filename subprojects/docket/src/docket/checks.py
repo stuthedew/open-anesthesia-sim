@@ -137,7 +137,8 @@ GENERATOR_CHECK = "**Generator check.**"
 #: rules block the `docket` skill calls complete, and found the expensive way.
 #:
 #: Only statuses a triage pass can set. `ready` has its own rule, printed
-#: conditionally on `verify_required_from`, and `done` is not a triage outcome.
+#: conditionally on `verify_required_at_close_from`, and `done` is not a triage
+#: outcome.
 STATUS_REQUIREMENTS: tuple[tuple[str, str], ...] = (
     (
         "needs-decision",
@@ -677,7 +678,13 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
     # release-time fix means cutting a release - and an item saying so is
     # better specified than one carrying a command invented to satisfy a
     # checker. What is refused is silence.
-    if item.status == "ready" and _verify_required(item, config):
+    #
+    # Every item is held to it, whatever its capture date. The set captured
+    # before the rule was grandfathered from 2026-08-30 until it drained to
+    # zero on 2026-10-01, and the date that grandfathered it went with it
+    # (`PL-Z34C`). The closing gate's date is the one that stays, so it is also
+    # what says the project has adopted the rule at all.
+    if item.status == "ready" and config.verify_required_at_close_from is not None:
         if not item.verify and not item.not_delegable:
             report.errors.append(
                 f"{where}: is ready but names no `verify:` command; give the command "
@@ -708,14 +715,14 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
                 "what closing it buys - the consequence, not a restatement of the title"
             )
 
-    # The same requirement at the other end of the item's life, and this half
-    # is what reaches the set the gate above grandfathers. An item captured
-    # before `verify_required_from` is exempt at `ready` and stays exempt
-    # however long it sits there, so the only thing asking for its command was
-    # a grooming advisory - which works if somebody reads it. Closing the item
-    # is the moment the work exists and what proved it is known, so it is the
-    # first moment the command can be written *having been run*, which is the
-    # objection that earned the grandfathering in the first place (`PL-J49T`).
+    # The same requirement at the other end of the item's life, and the half
+    # that is permanent. The gate above fires on `status == "ready"`, so an
+    # item that goes `needs-decision` to `done` in one commit is never asked
+    # by it - `PL-VYXP`, `PL-BNPY` and `PL-H1JD` all did - and this is what
+    # asks it. It is also what drained the set the gate above once
+    # grandfathered (`PL-J49T`, `PL-Z34C`): closing an item is the moment the
+    # work exists and what proved it is known, so it is the first moment the
+    # command can be written *having been run*.
     #
     # An error rather than an advisory because nothing here needs judgment.
     # Whether the field is present is decidable; only what it should say is
@@ -950,36 +957,22 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
         report.errors.append(f"{where}: marked {item.status} but records no `closed` date")
 
 
-def _verify_required(item: Item, config: Config) -> bool:
-    """Whether the `verify:` rule applies to this item at all.
-
-    Anchored to the item's capture date rather than to the moment it reached
-    `ready`, because capture is the only date the file records. That leaks: an
-    item captured before the cutover and triaged after it escapes the rule.
-    The leak is bounded and shrinking - it can only cover items already in the
-    store when the rule was adopted - and the alternative, a second date field
-    written by hand at triage, is a field that can be wrong.
-    """
-    if config.verify_required_from is None:
-        return False
-    return item.added is not None and item.added >= config.verify_required_from
-
-
 def _payoff_required(item: Item, config: Config) -> bool:
     """Whether the `payoff:` rule applies to this item at all.
 
-    Anchored to the capture date, and it leaks in the same bounded way
-    `_verify_required` leaks: an item captured before the cutover and triaged
-    after it escapes the rule. The alternative is a second date written by
-    hand at triage, which is a field that can be wrong, and the leak can only
-    ever cover items already in the store when the rule was adopted.
+    Anchored to the capture date, and it leaks in a bounded way: an item
+    captured before the cutover and triaged after it escapes the rule. The
+    alternative is a second date written by hand at triage, which is a field
+    that can be wrong, and the leak can only ever cover items already in the
+    store when the rule was adopted.
 
     The set it grandfathers is closed at whatever the store held on the day
     the rule began working, which is why the date a project records here is
     the day *after* it is set rather than the same day. Backfilling that set
-    was refused for `verify:` and is refused here for the cheaper half of the
-    same reason: a sentence written for an item nobody has started is written
-    away from the only context that makes it accurate.
+    was refused for `verify:` while that rule had a cutover of its own, and is
+    refused here for the cheaper half of the same reason: a sentence written
+    for an item nobody has started is written away from the only context that
+    makes it accurate.
     """
     if config.payoff_required_from is None:
         return False
@@ -1010,11 +1003,12 @@ def _recommendation_required(item: Item, config: Config) -> bool:
 def _verify_required_at_close(item: Item, config: Config) -> bool:
     """Whether the closing `verify:` rule applies to this item.
 
-    Anchored to `closed:` rather than `added:`, which is the whole difference
-    from `_verify_required` and the reason this one can reach the items that
-    predate `verify_required_from`. Those are exempt at `ready` by design - a
-    command written for an item nobody has started cannot be run before it is
-    written - and closing one is exactly when that objection lapses.
+    Anchored to `closed:` rather than `added:`, which is what let it reach the
+    items captured before the `ready` gate began - exempt there until that set
+    drained to zero and its date was retired (`PL-Z34C`), because a command
+    written for an item nobody has started cannot be run before it is written,
+    and closing one is exactly when that objection lapses. It is permanent for
+    a second reason: an item can reach `done` without ever holding `ready`.
 
     An item already closed before this cutover is untouched, deliberately.
     Backfilling a command onto work that has merged would mean writing one
@@ -1251,10 +1245,9 @@ def _verify_prerequisite_refused(item: Item, config: Config) -> bool:
     join it, since the test is the capture date - which is the property that
     makes the grandfathering drain rather than persist.
 
-    It leaks in the same bounded way `_verify_required` does: an item
-    captured before the cutover can still have a command written after it.
-    The alternative is a second date written by hand when the command is
-    recorded, which is a field that can be wrong.
+    It leaks in a bounded way: an item captured before the cutover can still
+    have a command written after it. The alternative is a second date written
+    by hand when the command is recorded, which is a field that can be wrong.
     """
     if config.verify_prerequisite_refused_from is None:
         return False
@@ -1886,7 +1879,7 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     # An error rather than an advisory since `PL-71P4`, and the ordering is what
     # made that affordable: `PL-L9JS` repaired the seven items that passed on a
     # clean tree first, so the rule needed no cutover date, no grandfathered set
-    # and no second dated policy beside `verify_required_from`. Both states it
+    # and no second dated policy beside `verify_required_at_close_from`. Both states it
     # reports are actionable and neither may sit - a command that passes without
     # its work is the delegation gate open, and one whose work landed is an item
     # that should have closed. The transient case, a session that ran the work
@@ -3722,53 +3715,13 @@ def _groom(
             f"ago ({', '.join(i.identifier for i in stale)}); triage or drop them"
         )
 
-    # Only worth saying where the rule is in force: a project that has not
-    # adopted it is not carrying a backlog against it.
-    #
-    # Reported against what is about to be offered, not against the whole
-    # backlog. Naming all of it fired on every run and could be discharged by
-    # nothing short of a campaign, so it was an advisory that could not reach
-    # zero - and the cost of one of those is not the items it names but the
-    # next advisory, which gets read the same way. `docket check`'s advisories
-    # are the only channel grooming has.
-    #
-    # Narrowing it here rather than burning the backlog down also puts the
-    # command where it can be run before it is written. Every command this
-    # store has ever carried that was written away from the work was wrong, so
-    # a command invented for an item nobody has started is not a gap closed
-    # but a false claim opened. The moment an item is offered is the first
-    # moment there is something to run.
-    unspecified = [
-        item
-        for item in report.open_items
-        if config.verify_required_from is not None
-        and item.status == "ready"
-        and not item.verify
-        and not item.not_delegable
-        and not _verify_required(item, config)
-    ]
-    due = [item for item in unspecified if item.identifier in (offered or frozenset())]
-    if due:
-        one = len(due) == 1
-        report.advisories.append(
-            f"{', '.join(item.identifier for item in due)} "
-            f"{'is' if one else 'are'} next to be offered and {'names' if one else 'name'} "
-            f"no `verify:` command ({len(due)} of {len(unspecified)} ready item(s) predating "
-            f"the requirement, {config.verify_required_from}); give the command when you "
-            "start it, having run it first"
-        )
-
-    # The same shape for `payoff:`, and a separate advisory rather than a
-    # clause on the one above: the two ask for different things from whoever
-    # reads them - a command that has been run, and a sentence about
-    # consequence - and an item can owe either without owing both.
-    #
-    # Narrowed to what is about to be offered for the reason the `verify:`
-    # advisory is: naming the whole grandfathered backlog is an advisory that
-    # cannot reach zero without a campaign, and the cost of one of those is
-    # not the items it names but the next advisory, which gets read the same
-    # way. The moment an item is offered is also when the sentence is worth
-    # most, since that is the moment somebody is being asked to weigh it.
+    # The `payoff:` rule's grandfathered set, reported against what is about
+    # to be offered rather than against the whole of it. Naming the whole
+    # backlog is an advisory that cannot reach zero without a campaign, and
+    # the cost of one of those is not the items it names but the next
+    # advisory, which gets read the same way. The moment an item is offered
+    # is also when the sentence is worth most, since that is the moment
+    # somebody is being asked to weigh it.
     unstated = [
         item
         for item in report.open_items

@@ -3598,7 +3598,7 @@ def test_a_not_delegable_item_close_out_is_not_a_missing_command(tmp_path: Path,
     Both shapes leave the branch no command to have removed: an item filed and
     closed on one branch, which is `PL-L4KX`'s case and about half of every
     closure, and one the base holds without a command - grandfathered past
-    `verify_required_from`, and asked for one only as it closes. This test used
+    the retired `verify_required_from`, and asked for one only as it closes. This test used
     to close an item whose base held `verify: true`, which is the self-grant
     `PL-KSV2` refuses below.
     """
