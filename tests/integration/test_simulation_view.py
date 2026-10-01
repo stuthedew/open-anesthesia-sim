@@ -3099,9 +3099,7 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
         assert panel.mapTo(page, panel.rect().bottomRight()).x() <= page.width()
 
 
-def test_the_sidebar_panels_measured_are_the_ones_the_page_holds(
-    application: QApplication,
-) -> None:
+def test_the_sidebar_panels_measured_are_the_ones_the_page_holds(application: QApplication) -> None:
     """Each panel the width test measures is the page's only panel of its kind, and is shown.
 
     Matched against the page's own children by the object name the panel's
