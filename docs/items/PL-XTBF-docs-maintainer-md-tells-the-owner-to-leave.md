@@ -1,8 +1,12 @@
 ---
 id: PL-XTBF
 title: docs/maintainer.md tells the owner to leave auto-merge armed while a session fixes a held pull request's failed check, but bin/docket arm's hold tells that session to leave auto-merge off and disarm an armed one, so the fix may stall unarmed where the owner expects it to land
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect
 touches: docs/maintainer.md, subprojects/docket/src/docket/arming.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
 ---
 
@@ -38,3 +42,11 @@ reading of the two texts side by side.
 request stays armed through a repair push, and the hold line says so, or the
 repair disarms it and `docs/maintainer.md` tells the owner to re-arm once they
 have read the fix.
+
+**Why it matters.** Two carriers give a session opposite instructions for one push on the owner's merge path: obeying the hold line strands a green fix unarmed while the owner expects it to land, and obeying `docs/maintainer.md` lands a repair unread with nothing on the session's side saying that is intended.
+
+**Done when.** `docs/maintainer.md` and the hold line `Verdict.lines` prints say the same thing about a repair push to a held pull request the owner has armed, per the answer recorded below the question.
+
+**Decision needed.** Whether an owner-armed held pull request stays armed through a repair push. **Recommended: it stays armed**, and the hold line excepts a pull request the owner armed after reading. The owner has read and armed it, `docs/maintainer.md` already accepts the repair landing unread, and the alternative costs a second read and a re-arm on every repair. The cost is a session's repair reaching `main` unread, which that document accepts. The exception is prose, not a computed branch: a session's GitHub calls are the owner's, so the code cannot tell who armed it.
+
+**Generator check.** The fact is whether an armed held pull request stays armed through a repair, stated oppositely by two documents; no head states it, and no instance has been observed. One-off.
