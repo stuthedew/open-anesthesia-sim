@@ -89,7 +89,9 @@ session hunting for a user agent that will never work.
 
 **`WebFetch` tells them apart where `curl` does not**, and is the cheaper
 check: it returns a structured `EGRESS_BLOCKED` naming the domain for a refused
-host, and the page itself for an allowed one. Verified 2026-09-19 — it returned
+host, and for an allowed one a small model's answer about the page rather than
+the page itself, which settles reachability and nothing it quotes: a quotation
+or a value is read from the page with `curl` (`PL-B1BW`). Verified 2026-09-19 — it returned
 `{"error_type":"EGRESS_BLOCKED","domain":"www.nejm.org", ...}` for NEJM and
 resolved `api.crossref.org/works/10.1073/pnas.2400215121` to its title,
 journal, volume and DOI.
