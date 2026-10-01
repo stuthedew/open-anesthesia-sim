@@ -95,10 +95,17 @@ by the milestone" to "cleared before it begins".
 
 The digest names an item that exists only on a branch when it finds one, and
 `bin/docket stranded` prints it with the `git checkout` line that restores the
-file. The command cannot tell live work from an abandoned branch, so that
-judgment is the reply's: leave a branch someone is working, and recover from
-one nobody will merge - restore the file, commit it on its own, and say in the
-reply which branch it came off.
+file - **except where a pull request is open on that branch, when it prints the
+pull request instead: wait for it to merge.** A copy recovered from a branch
+whose pull request will land the item is a second add of the same file, and
+the merge that brings the first one in conflicts on it; keeping either side
+whole there drops what the other recorded, which is how `PL-8ZGY`'s agreed
+corrections were lost (`PL-MTHC`). `bin/docket claim` says the same when asked
+for an item this branch holds no copy of, and refuses a copy made after the one
+a pull request carries. Past that, the command cannot tell live work from an
+abandoned branch, so that judgment is the reply's: leave a branch someone is
+working, and recover from one nobody will merge - restore the file, commit it
+on its own, and say in the reply which branch it came off.
 
 **Run the command; do not act on the digest's copy of its line.** The digest is
 written once, at session start, and then resent on every turn for the rest of

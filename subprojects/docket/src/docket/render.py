@@ -755,7 +755,9 @@ def format_digest(
     return "\n".join(lines)
 
 
-def format_stranded(report: StrandedReport, rests_on: str = "") -> str:
+def format_stranded(
+    report: StrandedReport, rests_on: str = "", carried: Mapping[str, int | None] | None = None
+) -> str:
     """What exists only on a branch, with the command that brings each one back.
 
     Organized by item rather than by branch, because the loss is of an item and
@@ -791,6 +793,15 @@ def format_stranded(report: StrandedReport, rests_on: str = "") -> str:
     would discard whatever the base has recorded on it since - which is what
     `PL-THPB` was offered and `PL-XLQ5` was actually dealt (`PL-MBTZ`,
     `PL-KSCW`).
+
+    **An item a pull request carries is handed the pull request, not a
+    checkout** (`PL-MTHC`). `carried` names each ref with one open, keyed as
+    the report spells the ref, and such an item is on its way to the base: a
+    copy recovered from its branch is a second add of the same file, which
+    the merge bringing the first in conflicts on, and `PL-8ZGY`'s agreed
+    corrections were lost to a resolution that kept the copy whole. `None` is
+    a forge nobody asked, which is said beneath the list rather than read as
+    "none is open".
     """
     if not report.known and not report.items and not report.edits:
         return f"Stranded items not checked: {report.declined}."
@@ -825,12 +836,27 @@ def format_stranded(report: StrandedReport, rests_on: str = "") -> str:
     for item in report.items:
         lines.append(f"{item.identifier}  {item.title or '(title unreadable)'}")
         lines.append(f"  only on: {', '.join(item.branches)}")
-        lines.append(f"  recover: git checkout {item.branches[0]} -- {item.path}")
+        open_on = [ref for ref in item.branches if carried is not None and ref in carried]
+        if open_on:
+            number = carried[open_on[0]] if carried is not None else None
+            pull = f"pull request #{number}" if number is not None else "a pull request"
+            lines.append(
+                f"  carried: {pull} is open on {open_on[0]}; wait for it to merge rather than "
+                "recovering a copy, which would be a second add of the same file"
+            )
+        else:
+            lines.append(f"  recover: git checkout {item.branches[0]} -- {item.path}")
         lines.append("")
     lines.append(
         "A branch on live work will appear here and that is expected; the hole is a "
         "branch nobody will merge."
     )
+    if carried is None:
+        lines.append(
+            "Whether a pull request is open on these branches was not asked here; "
+            "`bin/docket flight` says, and an item one carries waits for it to merge - a copy "
+            "recovered from it is a second add of the same file."
+        )
     lines.append(
         "Every other branch read carries no item missing from both the default branch "
         "and this checkout's store."

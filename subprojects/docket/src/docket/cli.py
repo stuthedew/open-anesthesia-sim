@@ -776,6 +776,30 @@ def _stranded(items: Sequence[Item], args: argparse.Namespace) -> StrandedReport
     )
 
 
+def _carried(
+    args: argparse.Namespace, inv: Invocation, report: StrandedReport
+) -> Mapping[str, int | None] | None:
+    """Which refs holding a stranded item have a pull request open, or `None` where none was asked.
+
+    Keyed by the ref as the report spells it - `origin/claude/x` - since that
+    is the spelling the rendered row names, and valued by the pull request's
+    number, `None` where the forge gave none. `None` for the whole answer is a
+    forge not asked, which `render.format_stranded` says rather than reading
+    it as "none is open" (`PL-MTHC`).
+    """
+    lookup = _open_pull_requests(args, inv.root, inv.config)
+    if lookup is None or inv.git is None or not report.items:
+        return None
+    answer = lookup()
+    if answer is None:
+        return None
+    remotes = _remotes(inv.root, inv.git)
+    refs = {ref for item in report.items for ref in item.branches}
+    return {
+        ref: answer[head] for ref in sorted(refs) if (head := _head_name(ref, remotes)) in answer
+    }
+
+
 def _orphaned(args: argparse.Namespace) -> OrphanedReport | None:
     """Work a branch carries that its own pull request left behind, or `None`.
 
@@ -4433,6 +4457,13 @@ def cmd_stranded(args: argparse.Namespace) -> int:
     for an item the base does not hold at all. An item it holds is handed a
     diff to read, and a branch holding a copy the base is ahead of is not
     listed at all (`PL-MBTZ`).
+
+    **Nor for an item a pull request open on its branch carries** (`PL-MTHC`).
+    That item is on its way to the base, and a copy recovered from the branch
+    is a second add of the same file, which the merge bringing the first in
+    conflicts on: `PL-8ZGY`'s agreed corrections were lost that way. So the
+    forge is asked, once and only where an item is listed, and the item is
+    handed the pull request to wait for instead.
     """
     _, items, _ = _load(args)
     inv = _invocation(args)
@@ -4448,7 +4479,11 @@ def cmd_stranded(args: argparse.Namespace) -> int:
             "which items exist only on a branch"
         )
         return 0
-    print(render.format_stranded(report, rests_on=_refs_line(args)))
+    print(
+        render.format_stranded(
+            report, rests_on=_refs_line(args), carried=_carried(args, inv, report)
+        )
+    )
     left = _orphaned(args)
     if left is not None:
         print()
@@ -4541,7 +4576,7 @@ def _open_pull_requests(
     `SettledReport.asked` and the wording changes with it.
     """
     command = config.open_pull_requests_command
-    if args.no_remote or not command:
+    if getattr(args, "no_remote", False) or not command:
         return None
 
     def ask() -> Mapping[str, int | None] | None:
@@ -4759,6 +4794,7 @@ def cmd_claim(args: argparse.Namespace) -> int:
         trailers=args.trailer,
         fetch=not args.no_fetch,
         push=args.push,
+        opened=_open_pull_requests(args, inv.root, inv.config),
         runner=inv.git,
     )
     for line in written.lines:
