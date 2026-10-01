@@ -280,6 +280,24 @@ The judgment stays yours. What changed is the cost of reading: `PL-T7Y1` ran
 this comparison once by reading every brief, with 262 agents, and the list
 makes it one screen.
 
+**On a grooming pass, sweep what fired for obvious fluff** (project owner,
+2026-10-01, `PL-562K`). Nothing measures whether a check still earns its place:
+`PL-ZBJ0`'s counter was dropped on the build gate, and every retirement so far
+was found by a session that happened to be working beside the check
+(`PL-G6J5`, `PL-Z909`). So the pass does the cheap half by hand, bounded so it
+stays cheap. Read one `make check` run and `bin/docket check`'s advisories -
+output the pass already has - and ask of each line that fired without failing
+anything the retirement clause's question (`CLAUDE.md` § "Prefer deterministic
+tooling over repeated model work"): what decision was it built to change, and
+where is that decision taken? Taken somewhere the line does not reach: file an
+item to route it there. No such decision: file an item to retire it, with the
+count `.claude/rules/expert-review.md` § "Name the number that would change
+your mind" asks for. Do not open the check list for what did not fire: a
+silent check may be a guard doing its job, and that question is asked when a
+session meets the check, not here. "Nothing" is the common answer, and the
+reply says so. Each outcome is an item rather than a fix-now edit, because
+keeping a check is a defensible choice.
+
 ### The `verify:` command, and running it before writing it down
 
 Triaging an item to `ready` means naming the command that proves it done.

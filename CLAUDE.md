@@ -311,8 +311,12 @@ context in every session that needs it. `tools/doc_check.py` and
   costs attention forever and trains a session to skim the output where a real
   advisory also appears. Removing one is a legitimate outcome of a workflow
   pass, not a loss of coverage. Reserve hard failure for exact rules; a signal
-  needing context is an advisory, and an advisory nobody acts on is a candidate
-  for retirement rather than promotion. `PL-ZBJ0` carries the evidence.
+  needing context is an advisory, and an advisory nobody acts on is retired only after naming the decision it
+  was built to change and where that decision is taken: if that decision is
+  still taken somewhere, route the advisory to that moment first, and retire
+  it only if it still changes nothing there; if no such decision exists, it
+  is fluff and goes. Nobody reading it is the symptom, not the test (project
+  owner, 2026-10-01, ratified, over an item of its own, `PL-1XZD`). `PL-ZBJ0` carries the evidence.
 
 New tools use the standard library only, so a hook or a bare checkout can run
 them without the project virtualenv. A script also answers identically every
