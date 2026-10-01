@@ -230,14 +230,16 @@ class Verdict:
                 )
                 said.append(
                     f"  Restart the branch on {self.base} and carry "
-                    f"{'it' if count == 1 else 'them'} - `bin/docket branch` prints the commands "
-                    "- then push and open a new pull request."
+                    f"{'it' if count == 1 else 'them'}, then push over the old branch the "
+                    "remote may still hold, never `git pull`, and open a new pull request - "
+                    "`bin/docket branch` prints the commands."
                 )
             else:
                 said.append(
                     f"  Everything {self.branch} holds is on {self.base}: restart it there before "
-                    "the next commit, which would otherwise land nowhere - `bin/docket branch` "
-                    "prints the command."
+                    "the next commit, which would otherwise land nowhere, and push over the old "
+                    "branch the remote may still hold, never `git pull` - `bin/docket branch` "
+                    "prints the commands."
                 )
             return (*said, *notes)
         read = ", so its pull request waits on a read" if self.outside or self.gate else ""
