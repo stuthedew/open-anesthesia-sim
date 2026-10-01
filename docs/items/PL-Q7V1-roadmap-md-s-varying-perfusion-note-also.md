@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science, docs
 feature: late-washout-evidence
+milestone: v0.5.20
 touches: ROADMAP.md
 added: 2026-09-27
 closed: 2026-10-01
