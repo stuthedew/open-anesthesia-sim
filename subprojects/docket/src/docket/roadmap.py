@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from .model import MILESTONE_BLOCKER_RE
 from .release import SEMVER_RE
 from .store import ID_PATTERN
+from .vcs import leading_ids
 
 # --- markdown primitives ----------------------------------------------------
 
@@ -338,12 +339,6 @@ SCOPE_SUBSECTION = "required scope"
 EXCLUDED_SUBSECTION = "explicitly out of scope"
 REQUIRED_SUBSECTIONS = ("goal", SCOPE_SUBSECTION, "definition of done", "explicitly out of scope")
 
-# An item id at the head of a gate entry, possibly the second of a pair
-# ("PL-Z4GF **and PL-SWFM**"), possibly wrapped in emphasis. Only the head of
-# the entry is read: an id mentioned later in the sentence is prose about
-# another item, not a second thing the entry is waiting on.
-LEADING_ID_RE = re.compile(rf"^[*_\s]*(?:and[*_\s]+)?[*_\s]*(?P<id>{ID_PATTERN})")
-
 # An id wherever it sits in a sentence. Left to `Explicitly out of scope`,
 # whose heading has already said what every id beneath it means, because
 # elsewhere the sentence around an id is unreadable and a section says far
@@ -387,12 +382,12 @@ SECTION_ID_RE = re.compile(ID_PATTERN)
 # file's own idiom to a rule rather than asking the document to be rewritten
 # (`PL-HWW1`).
 #
-# The run stops at the first token that is neither an id nor a connective, so
-# a citation *inside* the parenthetical is prose like any other: v0.5.0's
-# fourth entry reads "(queue item PL-8LXM, moved with `PL-2FM6` into the
-# `v0.4.x` track on 2026-09-08 and shipped there)" and declares one item.
+# The run is `vcs.leading_ids`, read from where the slot opens, and stops at
+# the first token that is neither an id nor a connective, so a citation
+# *inside* the parenthetical is prose like any other: v0.5.0's fourth entry
+# reads "(queue item PL-8LXM, moved with `PL-2FM6` into the `v0.4.x` track on
+# 2026-09-08 and shipped there)" and declares one item.
 DECLARATION_RE = re.compile(r"\(queue items?\b")
-DECLARED_ID_RE = re.compile(rf"^[`,\s]*(?:and[`\s]+)?[`\s]*(?P<id>{ID_PATTERN})`?")
 
 
 @dataclass(frozen=True)
@@ -507,17 +502,6 @@ class MilestoneSection:
         return any(title.startswith(SCOPE_SUBSECTION) for title in lowered)
 
 
-def _leading_ids(text: str) -> tuple[str, ...]:
-    ids: list[str] = []
-    rest = text
-    while True:
-        match = LEADING_ID_RE.match(rest)
-        if match is None:
-            return tuple(ids)
-        ids.append(match.group("id"))
-        rest = rest[match.end() :]
-
-
 def _subsection_ids(lines: Sequence[str], start: int) -> Iterator[str]:
     """Every item id named under one `###` heading, in the order they appear.
 
@@ -613,20 +597,19 @@ def _subsection_text(lines: Sequence[str], start: int) -> str:
 def _declared_ids(text: str) -> tuple[str, ...]:
     """Every id declared in a `(queue item ...)` slot of `text`, in order.
 
-    Each slot is walked to its first token that is neither an id nor a
+    Each slot is read to its first token that is neither an id nor a
     connective, so a pair declares two and a parenthetical that goes on to cite
     another item declares only what it opened with.
+
+    Its backticks are unwrapped first: a slot writes its ids as code, which
+    `vcs.leading_ids` does not take because a gate entry's head uses code for
+    the opposite - an id cited, not one held.
     """
-    ids: list[str] = []
-    for opening in DECLARATION_RE.finditer(text):
-        rest = text[opening.end() :]
-        while True:
-            match = DECLARED_ID_RE.match(rest)
-            if match is None:
-                break
-            ids.append(match.group("id"))
-            rest = rest[match.end() :]
-    return tuple(ids)
+    return tuple(
+        identifier
+        for opening in DECLARATION_RE.finditer(text)
+        for identifier in leading_ids(text[opening.end() :].replace("`", " "))
+    )
 
 
 def _gate_entries(lines: Sequence[str], start: int) -> tuple[GateEntry, ...]:
@@ -637,10 +620,15 @@ def _gate_entries(lines: Sequence[str], start: int) -> tuple[GateEntry, ...]:
     which of them the milestone clears itself - is left where it is: it is a
     person's summary of the same facts, and reading it would mean parsing
     sentences.
+
+    An entry's ids are the run `vcs.leading_ids` reads at its head - a pair is
+    written "PL-Z4GF **and PL-SWFM**" - and only that run: an id later in the
+    sentence is prose about another item, not a second thing the entry is
+    waiting on.
     """
     entries: list[GateEntry] = []
     for line_number, text in list_entries(lines, start):
-        ids = _leading_ids(text)
+        ids = leading_ids(text)
         if ids:
             entries.append(GateEntry(line=line_number, ids=ids, text=text))
     return tuple(entries)

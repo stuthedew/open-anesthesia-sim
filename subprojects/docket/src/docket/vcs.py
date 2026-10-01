@@ -764,7 +764,32 @@ BRANCH_ID_RE = re.compile(rf"(?:^|[/_-])({ID_PATTERN})(?:$|[/_-])", re.I)
 # A subject may lead with more than one id, because one branch may carry two
 # items (`PL-N7R9, PL-J295: the pull request stops being a question`), so the
 # whole leading run is read rather than only its first id.
-LEADING_IDS_RE = re.compile(rf"^\s*{ID_PATTERN}(?:\s*(?:,|&|and)\s*{ID_PATTERN})*", re.I)
+#
+# **This is the one reading of a leading run, not a subject's alone**
+# (`PL-SVRW`). `roadmap` reads a debt gate's entries and a `Required scope`
+# slot through it, so an id may sit in the emphasis a roadmap line wraps it in
+# - `PL-Z4GF **and PL-SWFM**` - and ids may be joined by a run of connectives,
+# as in "PL-A, PL-B, and PL-C". Each document used to carry its own copy, and
+# each copy dropped the ids another's syntax wrote: a gate entry joined the way
+# a subject is, `PL-A, PL-B`, would have been read as `PL-A` alone, and the
+# release train would have undercounted its gate with nothing saying so.
+#
+# A backtick is not a wrapper here, because at a gate entry's head it means
+# the opposite of membership: `ROADMAP.md` cites an id as code in the bullets
+# that explain a gate rather than list it. Five such bullets stood on
+# 2026-10-01, three of them naming the items v0.6.0 deferred *off* its gate,
+# and read as entries they would have put those items back on. A slot writes
+# its ids as code, so `roadmap` unwraps a slot before reading it rather than
+# this taking them.
+#
+# Ids joined by whitespace alone are still not a run - `PL-A PL-B` names
+# `PL-A`, as it always did for a subject. Measured 2026-10-01, this reads all
+# 1,578 subjects on `main`, every gate entry and every slot in `ROADMAP.md`
+# exactly as their own readers did.
+_RUN_WRAP = r"[\s*_]*"
+LEADING_IDS_RE = re.compile(
+    rf"^{_RUN_WRAP}{ID_PATTERN}(?:{_RUN_WRAP}(?:(?:,|&|and){_RUN_WRAP})+{ID_PATTERN})*", re.I
+)
 ANY_ID_RE = re.compile(ID_PATTERN, re.I)
 
 # An item file is named `<id>-<slug>.md`, so the id can be read from a tree
@@ -946,12 +971,17 @@ class FlightReport:
         return not self.declined
 
 
-def leading_ids(subject: str) -> list[str]:
-    """Every item id in the run of them a commit subject opens with."""
-    match = LEADING_IDS_RE.match(subject)
+def leading_ids(line: str) -> tuple[str, ...]:
+    """Every item id in the run a line opens with, upper-cased.
+
+    The line is a commit subject or pull request title, a debt gate's entry,
+    or the text after a `(queue item` slot opens - `LEADING_IDS_RE` gives why
+    one grammar reads all three.
+    """
+    match = LEADING_IDS_RE.match(line)
     if match is None:
-        return []
-    return [found.group(0).upper() for found in ANY_ID_RE.finditer(match.group(0))]
+        return ()
+    return tuple(found.group(0).upper() for found in ANY_ID_RE.finditer(match.group(0)))
 
 
 def _annotates_only(paths: list[str], prefix: str) -> bool:
