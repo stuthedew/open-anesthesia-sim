@@ -1,8 +1,15 @@
 ---
 id: PL-KLN5
 title: The env block in .claude/settings.json may not reach a cloud session: CLAUDE_CODE_SUBAGENT_MODEL was unset in the Bash shell of a one-repository session whose project hooks ran (2026-10-01), though the settings reference says env reaches every subprocess, so docs/maintainer.md's claim that it picks the exploration-subagent model is unverified
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+touches: docs/maintainer.md, docs/items
 added: 2026-10-01
+payoff: docs/maintainer.md says truthfully which model exploration subagents run on in a cloud session, so the owner's cost lever is one that works
+verify: grep -qE '^\*\*Subagent model measured [0-9]{4}-[0-9]{2}-[0-9]{2}' docs/items/PL-KLN5*.md
+not-delegable: the deciding measurement reads a probe subagent's transcript, which the auto-mode classifier refused on 2026-10-01; it needs a session whose permission mode allows that read
 ---
 
 **Problem.** The env block in .claude/settings.json may not reach a cloud session: CLAUDE_CODE_SUBAGENT_MODEL was unset in the Bash shell of a one-repository session whose project hooks ran (2026-10-01), though the settings reference says env reaches every subprocess, so docs/maintainer.md's claim that it picks the exploration-subagent model is unverified
@@ -41,3 +48,7 @@ it stops at the shell measurement.
 **Done when.** One measurement says whether a `general-purpose` subagent in a
 one-repository cloud session runs on `haiku`, and `docs/maintainer.md`'s line
 is corrected or confirmed by it.
+
+**Reproduced 2026-10-01**, in a second one-repository cloud session whose hooks ran: `echo ${CLAUDE_CODE_SUBAGENT_MODEL:-}` printed nothing, while `.claude/settings.json` line 4 sets it to `haiku`.
+
+**Generator check.** The fact is which parts of `.claude/settings.json` take effect in a cloud session, an external behaviour nothing in the tree models. `PL-9DYK` and `PL-0MLZ` read the variable's absence as the file not loading; neither was filed because of it and `PL-9DYK`'s conclusion held on other evidence, so it is below a head's three and no head states it. Recorded so a third reading counts.

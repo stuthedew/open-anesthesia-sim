@@ -1,9 +1,15 @@
 ---
 id: PL-18ZB
 title: A debt-gate bullet that writes its id as code is read as commentary and never as an entry, and nothing a session reads before writing a gate says so
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
 feature: gate-list-integrity
+touches: .claude/skills/docket/modes/release.md
 added: 2026-10-01
+payoff: a session writing a gate entry learns before writing it that an id written as code takes the entry off the gate
+verify: grep -qiF 'read as commentary' .claude/skills/docket/modes/release.md
 ---
 
 **Problem.** A debt-gate bullet that writes its id as code is read as commentary and never as an entry, and nothing a session reads before writing a gate says so
@@ -26,3 +32,7 @@ while writing an entry.
 **Done when.** The text a session reads before writing a gate entry says that
 an entry opens with its bare id and that a bullet citing an id as code is read
 as commentary.
+
+**Reproduced 2026-10-01.** `grep -ciF 'read as commentary' .claude/skills/docket/modes/release.md` prints 0, and the freeze mode says nothing about an id written as code.
+
+**Generator check.** The fact is `PL-HWW1`'s - which ids a milestone section declares as members, as distinct from ids its prose cites - at the frozen list rather than `Required scope`, filed after that head closed. No reader has misread it yet; this is the anticipated exposure, so it records no re-filing and is not a new generator.
