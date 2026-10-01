@@ -22,7 +22,7 @@ How the 09-19 risks are handled:
 - The coordinator starts threads on its own, and a first project posts setup recommendations with routines switched on: send the first message at creation, switch recommended routines off, and the instructions below make the queue the only source of work.
 - Thread limits are preferences, not caps: git is the backstop. Recorded claims make a second thread on a held item visible (`show`, `flight` and `next` read them since `#1002`), and a third concurrent code thread surfaces as a merge conflict rather than a silent error.
 - Project memory is prose Anthropic stores outside git: the instructions put decisions in item files, and the trial's end checks **Project settings > Memory**.
-- Hooks and permission rules load only in a single-repository project: the project has one.
+- Hooks and permission rules load only in a single-repository project: the project has one. It carried a second repository for a time, and threads then read none of this repository's hooks; the owner removed it on 2026-09-27, and a thread started after that ran them again (`PL-9DYK`, confirmed 2026-10-01).
 - Not raised on 09-19: the docs load `CLAUDE.md` from each thread's clone and do not say the coordinator conversation has one, so the instructions carry the approach gate themselves.
 
 Sources: https://code.claude.com/docs/en/claude-projects (fetched 2026-09-25); the evidence on coordination (Kim et al., arXiv:2512.08296: independent agents amplify errors 17.2x against 4.4x under central coordination, and lose 70% on sequential work) is why the plan runs two serial streams rather than one thread per item.

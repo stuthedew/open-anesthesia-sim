@@ -3,11 +3,13 @@ id: PL-9DYK
 title: This project configures two repositories, so its threads start above the checkout and load none of .claude/settings.json: no SessionStart digest, no guard hook, no permission rule and no env line applies to a Projects thread
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: projects-trial
 touches: docs/items/PL-NZC0-a-claude-code-projects-trial-needs-project.md
 added: 2026-09-27
+closed: 2026-10-01
+pr: 1253
 payoff: confirms Projects threads run with the repository's hooks, permission rules and env again, or reopens the question
 not-delegable: only a thread started in the Project after the 2026-09-27 removal can observe its own shell and SessionStart digest; no command run in another session can
 ---
@@ -95,3 +97,54 @@ failed, the decision above is reopened.
 **Generator check.** An external behaviour nothing models (which
 `.claude/settings.json` a Projects thread reads), met once because the Project's
 repository set changed after `PL-NZC0`'s plan; a one-off.
+
+## Confirmed 2026-10-01
+
+**The decision holds: a thread started after the removal read this
+repository's `.claude/settings.json`.** Measured from the transcript of
+`session_01N7QD5ZmCCj9PX3dUwRPNQ8`, the "Machine profiles chain" thread
+(`origin: claude-in-hearth`, tag `hearth-thread`, one repository), created
+2026-09-27T19:53:16Z, about 53 minutes after the removal. It is the earliest
+post-removal thread found here, through its claim on
+`claude/machine-profile-framework-6htksu`. It did not record this itself, so a
+session outside the Project read its events.
+
+- **The SessionStart digest printed.** Two `SessionStart:startup` hooks ran at
+  19:53:24Z, both exit 0. Event `43fc9b56` carries the digest, opening "Branch:
+  claude/machine-profile-framework-6htksu, current with origin/main (0
+  ahead). Docket: 307 open"; event `309e1f5b` carries the empty output
+  `stop_hook_patch.py` gives. Both were read with `get_event`.
+- **It started inside the checkout.** Its `init` events report `cwd:
+  /home/user/open-anesthesia-sim`, the condition the documentation names.
+- **The guard hooks fired as well, as corroboration.** Each Bash call fired
+  exactly three `PreToolUse:Bash` hooks. This file declared three until
+  `2149e938` added `push-check-guard.sh` at 2026-09-27T23:52Z. The thread's
+  harness adds hooks of its own, so the count only corroborates; the digest is
+  the proof.
+
+**The `CLAUDE_PROJECT_DIR` half of the test could never pass, so it is void
+rather than failed.** Claude Code exports that variable "on the spawned
+process" of a hook, and "also sets this variable in the environment of stdio
+MCP servers and plugin LSP servers" (https://code.claude.com/docs/en/hooks,
+§ "Exec form and shell form" and § "Reference scripts by path", read from the
+page's markdown 2026-10-01). The
+Bash tool is not among them. Measured the same day: the variable is unset in
+the Bash shell of an ordinary one-repository cloud session whose two
+SessionStart hooks ran and printed the digest, its diagnostics log recording
+both `hook_spawn_started`. Read as written, the test would have reopened a
+sound decision. The same holds for the evidence the problem statement opens
+with: `CLAUDE_CODE_SUBAGENT_MODEL` is unset in that session's shell too, so
+neither variable told the two layouts apart. The conclusion stood on the
+documentation, which now says it of every cloud session with several
+repositories, not only of Projects threads: "A session with several
+repositories starts above the clones and reads only the `enabledPlugins` and
+`extraKnownMarketplaces` keys from each repository's `.claude/settings.json`,
+not permission rules, hooks, `env`, or other keys"
+(https://code.claude.com/docs/en/settings, § "Settings in cloud sessions",
+read 2026-10-01). The 2026-09-27 quotation above was re-read against the
+claude-projects page's markdown on 2026-10-01 and is verbatim.
+
+**Not measured: permission rules and `env`.** By the documentation they come
+from the same file, and the hooks show that file was read. Whether the `env`
+block reaches a cloud session's shell at all is a separate question, open
+even in a one-repository session, and is `PL-KLN5`.
