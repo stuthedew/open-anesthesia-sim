@@ -3,12 +3,14 @@ id: PL-DHGC
 title: Ten reads parse item front matter by hand instead of through docket.model, and one is wrong today: item_reads looks for status: done in a file's first 400 characters, so it reads 20 of 1,624 closed items as open; the others are generator_check's own parser, open-status set, list splits and a closure count that misses dropped, item_reads's --- split, and model's own parser restating FIELD_ORDER and LIST_FIELDS
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: read-facts-through-docket
 touches: tools/item_reads.py, tools/generator_check.py, subprojects/docket/src/docket/model.py, tests/unit/test_item_read_log.py, tests/unit/test_generator_check.py, subprojects/docket/tests/test_model.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-01
+pr: 1277
 payoff: the item-read summary counts closed items from their front matter, so the closed share a store-design argument cites is the store's own, and the generator advisory counts a dropped item as a closure
 verify: grep -q 'def test_the_summariser_reads_status_from_the_front_matter' tests/unit/test_item_read_log.py && grep -q 'def test_a_dropped_item_counts_as_a_closure' tests/unit/test_generator_check.py
 ---
@@ -23,4 +25,4 @@ verify: grep -q 'def test_the_summariser_reads_status_from_the_front_matter' tes
 
 **Done when.** `tools/item_reads.py` and `tools/generator_check.py` read every item through `docket.model` (`parse_item`, or `parse_front_matter` for a body), with no character window, `---` split, hand parser, open-status set or comma split of their own left. `generator_check` counts a closure with `CLOSED_STATUSES`, so a dropped item counts as one. `parse_item` takes its known keys from `FIELD_ORDER` and splits the fields `LIST_FIELDS` names. A regression test fails on the old `store()` (a closed status past 400 characters, and a title quoting `status: done`), and another on the old closure count.
 
-**Generator check.** A member of `PL-KGYT` (spent), filed by that head's own sweep in the commit that closed it, so not a post-close instance; the fact is the head's: which spelling of a repeated predicate is the answer. Not `impairs-generators`: the one disagreement inside the generator machinery is the closure count, and leaving dropped items out of the ratio's denominator can only make a cluster read as not shrinking, so it surfaces more and hides nothing.
+**Generator check.** A member of `PL-KGYT` (spent), filed by that head's own sweep in the commit that closed it, so not a post-close instance; the fact is the head's: which spelling of a repeated predicate is the answer. Not `impairs-generators`: the one disagreement inside the generator machinery is the advisory's closure count, and the advisory ranks nothing. Counting dropped items moves its ratio column either way, since their children join the numerator as they join the denominator, and on this tree it changed no cluster's signals (measured 2026-10-01: the ratio moved on 21 of the 32 clusters with three open items, `src/anesthesia_sim/app` from 0.20 over 5 closed to 0.29 over 7).

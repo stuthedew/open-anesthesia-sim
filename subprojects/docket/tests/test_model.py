@@ -17,6 +17,7 @@ from docket.model import (
     LANE_PRODUCT,
     LANE_UNPLACED,
     LANE_WORKFLOW,
+    LIST_FIELDS,
     MISREAD_LIMIT,
     Item,
     block_list_keys,
@@ -90,6 +91,20 @@ def test_list_fields_are_split_on_commas() -> None:
 
     assert item.classes == ("safety", "ux")
     assert item.touches == ("a.py", "b.py")
+
+
+def test_the_parser_reads_its_keys_and_list_fields_from_the_exports() -> None:
+    """Every `FIELD_ORDER` key is known and every `LIST_FIELDS` field split (`PL-DHGC`).
+
+    The parser restated both sets until then, so a key or a list field added to
+    the writer's set and missed in the reader's would have read as unknown, or
+    as one unsplit string.
+    """
+    item = parse_item("---\n" + "".join(f"{name}: a, b\n" for name in FIELD_ORDER) + "---\n")
+
+    assert item.unknown_fields == ()
+    for name in LIST_FIELDS:
+        assert getattr(item, name.replace("-", "_")) == ("a", "b"), name
 
 
 def test_missing_fields_come_back_empty_rather_than_defaulted() -> None:
