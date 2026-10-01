@@ -3,12 +3,14 @@ id: PL-24BC
 title: verify.py read_commission and front_matter_check find an item's file on the base by startswith(id-) rather than ITEM_FILE_RE and _items_at, a second spelling of the item-file grammar
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: recorded-not-inferred
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-01
+pr: 1271
 payoff: the next change to the item-file grammar reaches the audit's two readers of it without a second edit
 verify: ! grep -qF 'held_name.startswith(f"{item.identifier}-")' subprojects/docket/src/docket/verify.py
 ---

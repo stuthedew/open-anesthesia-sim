@@ -1702,6 +1702,20 @@ def _store_at(root: Path, base: str, items_dir: str) -> tuple[str, ...] | None:
     return tuple(line.strip() for line in listing.splitlines() if line.strip())
 
 
+def _base_copy(held: tuple[str, ...], identifier: str) -> str:
+    """The file among `held` that is `identifier`'s, by the grammar `vcs.ITEM_FILE_RE` states.
+
+    Read rather than respelt as a `startswith`, so the next change to how an
+    item file is named reaches this audit's two readers of the base's copy
+    without a second edit (`PL-24BC`).
+    """
+    for name in held:
+        match = vcs.ITEM_FILE_RE.match(name)
+        if match and match.group(1) == identifier:
+            return name
+    return ""
+
+
 #: A `pr:` line as `cmd_record` writes it, and nothing else. Anchored at both
 #: ends so that `pr: 495 and also something` is not read as one.
 PR_LINE_RE = re.compile(r"^pr:\s*\d+\s*$")
@@ -2004,7 +2018,7 @@ def read_commission(root: Path, base: str, items_dir: str, item: Item) -> Commis
     held = _store_at(root, base, items_dir)
     if held is None:
         return Commission(unread=f"no item store at {base}:{items_dir} to read the commission from")
-    was = next((held_name for held_name in held if held_name.startswith(f"{item.identifier}-")), "")
+    was = _base_copy(held, item.identifier)
     if not was:
         return Commission()
     status, before = _run(["git", "show", f"{base}:{items_dir}/{was}"], root)
@@ -2147,7 +2161,7 @@ def front_matter_check(
             f"no item store at {base}:{items_dir} to compare against",
             advisory=advisory,
         )
-    was = next((held_name for held_name in held if held_name.startswith(f"{item.identifier}-")), "")
+    was = _base_copy(held, item.identifier)
     if not was:
         return Check(name, True, f"a new item file - {base} holds no copy to differ from")
     status, before = _run(["git", "show", f"{base}:{items_dir}/{was}"], root)
