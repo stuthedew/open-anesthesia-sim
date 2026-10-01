@@ -3,10 +3,12 @@ id: PL-1XZD
 title: CLAUDE.md's retirement sentence reads 'nobody acts on it' as the test for fluff, so an advisory whose decision is still taken somewhere it never reaches is retired instead of routed; name the decision and where it is taken before retiring (project owner, 2026-10-01, ratified)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 touches: CLAUDE.md, docs/resident-instructions.md, docs/WORKING_NOTES.md
 added: 2026-10-01
+closed: 2026-10-01
+pr: 1270
 payoff: an advisory whose decision is still taken somewhere is routed to that moment instead of deleted, and only fluff is retired
 verify: grep -q "Nobody reading it is the symptom, not the test" CLAUDE.md
 ---
