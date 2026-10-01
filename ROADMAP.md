@@ -116,7 +116,8 @@ exception recorded here, the capability-boundary rule above governs.
 | v0.5.16 | Completed | **The release where a refused branch started naming each value it differs on, and a run's record started holding each flow as it was set.** Five items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed - nothing a learner can reach looks different, the one new message being a refusal a branch meets only when a data file changed after its trunk was built - and the next three minor numbers, v0.6.0 through v0.8.0, are given to milestone sections. **No equation, parameter or stored value moved, and the trajectories are bit-identical**: `core/` changes (`9a95dfd` to `4fd5842`) because `UptakeEquationSettings` and `TissueGroupEquationSettings` now store each flow in the litres per minute it was set to and derive the litres per second the equations read, by the same division `equation_settings()` performed before (`PL-SM5V`), and 7,290 sampled states across the three agents, nine cardiac outputs and three fresh gas flows hash identically at both ends; `data/` and `tests/reference/` resolve to the same trees. **It finishes the `scenario-branching` chain's five Gate 2 entries**: `PL-NC62` has a refused branch list every value the rebuild holds that its trunk did not, both values each and no cause, and check the agent's name, vaporizer maximum, MAC and MAC-awake beside the settings; `PL-SM5V` makes a recorded segment rebuild the settings it ran under at every 0.1 L/min setting of all three flow controls, where 7 of the 101 cardiac outputs had not; and `PL-7TXJ` closes on its measurement, the per-change rebuild copying one reference per segment and never a keyframe, 0.53 ms at 100,000 segments beside the 1 ms matrix exponential every change pays. `PL-12P8` holds a support module under `tests/` to the half of the lane rule its imports decide, which takes `tests/conftest.py` out of `workflow_paths`. **Four are Gate 2 entries**, and the gate stands at 101 of 190 cleared, from 97 at v0.5.15; `PL-NC62` shipped inside the v0.5.15 tag, and `PL-ZZTF`, the v0.5.15 cut, ships in no release under `PL-KRS6`. | 5 items |
 | v0.5.17 | Completed | **The release where each family of data files started reading its own schema version, a machine profile stopped having to invent a startup fresh gas flow, and the 24-hour washout tests stopped recomputing the same curves in every test worker.** Twenty items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed - nothing a learner can reach looks different - and the next three minor numbers, v0.6.0 through v0.8.0, are given to milestone sections. **No equation, parameter or stored value moved, and the trajectories are bit-identical**: `data/` resolves to `b8477a1` at both ends, and `core/` changes (`4fd5842` to `0520984`) by a supported schema-version window per family of data files (`PL-HNWX`), a startup flow a machine profile may omit, falling back to `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`, the 4.0 L/min the shipped profile still states (`PL-QW19`), and one home for the time-unit factors in `core/units.py` (`PL-QRBB`); 5,040 states sampled once a minute across the three agents, nine cardiac outputs and three fresh gas flows, and each agent's own opening flow, hash identically at both ends. **`docs/MODEL.md` says where the vaporizer maximum is kept and why** (`PL-JQY1`): a device-capability default stored under the agent on purpose, with the condition that moves it to a machine profile. `PL-HGB6` keeps `circuit_volume_l` as the assembled breathing-system total and reopened `PL-TBMX` as a post-freeze `safety` entry on v0.6.0's list; `PL-F08Y` computes each 24-hour washout curve once per test run and shares it between xdist workers, which took a median 90 s off the CI pytest step on fast runners and 79 s on slow ones (`#1221`). The other fourteen are workflow tooling, and complete two features: `fewer-red-runs`, the push guard now refusing a push that `doc_check`, `branch_id_check` or the store check would turn red (`PL-PLSJ`, `PL-1BGP`, `PL-S1BG`), and `tag-error-names-its-cause`, a stale local tag named for what it is (`PL-LT77`). **Seven are Gate 2 entries**, and the gate stands at 109 of 191 cleared; `PL-G8TR` shipped inside the v0.5.16 tag, and `PL-HHCD`, this cut, ships in no release under `PL-KRS6`. | 20 items |
 | v0.5.18 | Completed | **The release where each stored value's source started being named on the source entry itself, and `bin/docket release` started refusing a version the roadmap has given to an unfinished milestone.** Ten items, and a patch on both halves of § "Versioning decision"'s test: nothing a learner can reach looks different, and v0.6.0 through v0.8.0 are given to milestone sections. **No equation, parameter or stored value moved, and the trajectories are bit-identical**: every number in `data/` is unchanged, and the data files move (`b8477a1` to `2b4bd16`) only by schema version 3 and a new `authority_for` on each source entry, naming the stored values that entry is the authority for; `core/parameters.py` validates it, and `tools/source_tier_counts.py` prints the per-tier counts in `docs/MODEL.md` from it (`PL-9LXK`). The Yasuda, Targ and Eger entry in all three agent files stops opening "cited but not adopted" (`PL-R1VD`). 5,040 states sampled once a minute across the three agents, nine cardiac outputs and three fresh gas flows, and each agent's own opening flow, hash identically at both ends. The other eight are workflow tooling. Six are Gate 2 entries, and the gate stands at 115 of 194 cleared. |
-| v0.5.19 | Completed / current baseline | **The release where a session stopped being able to merge a pull request itself, and a declared `touches` path started being checked against the tree.** Thirteen items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: nothing a learner can reach looks different, and v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `07f4da7` at v0.5.18 and here, and `tests/reference/` (`3613c87`), `docs/MODEL.md` (`1ec5a21`) and `README.md` (`3a8f16e`) with it; `.github/` moves only by `quality.yml` failing a contrast shortfall entry added in the change that introduces its colour (`PL-VJFQ`). `PL-S17R` refuses `merge_pull_request` with a hook naming the owner's Squash and merge; `PL-8JY7` and `PL-RWBV` have `docket check` advise on a `touches` path the tree no longer holds; `PL-SYG4` names the next free patch number where a reserved version held the release offer back; and `PL-GR0L` completes `fewer-red-runs`. **Seven are Gate 2 entries**, and the gate stands at 122 of 194 cleared; `PL-245B` and `PL-J3TV` shipped inside the v0.5.18 tag. | 13 items |
+| v0.5.19 | Completed | **The release where a session stopped being able to merge a pull request itself, and a declared `touches` path started being checked against the tree.** Thirteen items, all apparatus and documentation, and a patch on both halves of § "Versioning decision"'s test: nothing a learner can reach looks different, and v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `07f4da7` at v0.5.18 and here, and `tests/reference/` (`3613c87`), `docs/MODEL.md` (`1ec5a21`) and `README.md` (`3a8f16e`) with it; `.github/` moves only by `quality.yml` failing a contrast shortfall entry added in the change that introduces its colour (`PL-VJFQ`). `PL-S17R` refuses `merge_pull_request` with a hook naming the owner's Squash and merge; `PL-8JY7` and `PL-RWBV` have `docket check` advise on a `touches` path the tree no longer holds; `PL-SYG4` names the next free patch number where a reserved version held the release offer back; and `PL-GR0L` completes `fewer-red-runs`. **Seven are Gate 2 entries**, and the gate stands at 122 of 194 cleared; `PL-245B` and `PL-J3TV` shipped inside the v0.5.18 tag. | 13 items |
+| v0.5.20 | Completed / current baseline | **The release where a release started being tagged by a workflow when its cut merges, so the release item and its one pull request became the whole release.** Five items, and a patch on both halves of § "Versioning decision"'s test: nothing a learner can reach looks different, and v0.6.0 through v0.8.0 are given to milestone sections. **Nothing in the simulator moved**: `src/` resolves to `07f4da7` at v0.5.19 and here, and `tests/reference/` (`3613c87`), `docs/MODEL.md` (`1ec5a21`) and `README.md` (`3a8f16e`) with it; `.github/` moves only by `tag-release.yml`, which tags each cut on its merge (`PL-2FY6`). `PL-WT9L` closed the v0.5.19 tag step, the last of its kind; `PL-MTHC` sends `claim` and `stranded` to the open pull request carrying an item; `PL-ZZHZ` aligns the skill's restart recipe with the branch sweep; and `PL-Q7V1` weighs both human fat-flow sources in the varying-perfusion note. **One is a Gate 2 entry**, `PL-Q7V1`, and the gate stands at 123 of 194 cleared. | 5 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -219,60 +220,53 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.19
+## Current baseline: v0.5.20
 
-v0.5.19 is the release where a session stopped being able to merge a pull
-request itself, and where a `touches` path an item declares started being
-checked against the tree. Thirteen items, all apparatus and documentation, and
-a patch on both halves of § "Versioning decision"'s test: no capability
-boundary is crossed, because nothing a learner can reach looks different, and
-the next three minor numbers, v0.6.0 through v0.8.0, are given to milestone
-sections. Seven are Gate 2 entries - `PL-245B`, `PL-J3TV`, `PL-LBW5`,
-`PL-RWBV`, `PL-SYG4`, `PL-VJFQ` and `PL-WHQS` - and `bin/docket wave` puts the
-gate at 122 of 194 cleared at this cut, where v0.5.18 recorded 115 of 194: the
-seven here account for the whole of the difference. It completes
-`fewer-red-runs`.
+v0.5.20 is the release where a release started being tagged by a workflow
+when its cut merges on `main`, so the release item and its one pull request
+are now the whole release: no second tag-step item, no second pull request and
+no pasted commands. Five items, and a patch on both halves of § "Versioning
+decision"'s test: no capability boundary is crossed, because nothing a learner
+can reach looks different, and the next three minor numbers, v0.6.0 through
+v0.8.0, are given to milestone sections. One is a Gate 2 entry - `PL-Q7V1` -
+and `bin/docket wave` puts the gate at 123 of 194 cleared at this cut, where
+v0.5.19 recorded 122 of 194: that one entry accounts for the whole of the
+difference.
 
 **Nothing in the simulator moved, and this cut says so by tree identity:**
 
-| Tree | v0.5.18 | This cut | What moved |
+| Tree | v0.5.19 | This cut | What moved |
 | --- | --- | --- | --- |
 | `src/` | `07f4da7` | `07f4da7` | nothing: `core/` (`3be6a48`), `data/` (`2b4bd16`) and `app/` (`f93830c`) are byte-identical |
 | `tests/reference/` | `3613c87` | `3613c87` | nothing |
 | `docs/MODEL.md` | `1ec5a21` | `1ec5a21` | nothing |
 | `README.md` | `3a8f16e` | `3a8f16e` | nothing |
-| `.github/` | `11d3072` | `8802b79` | `.github/workflows/quality.yml` fails a `KNOWN_SHORTFALLS` entry added in the change that introduces or alters its colour, so the contrast ledger can only shrink (`PL-VJFQ`) |
+| `.github/` | `8802b79` | `e988978` | `.github/workflows/tag-release.yml` runs `tools/tag_release.py` when a cut merges, and pushes the annotated tag onto the cut's own squash commit (`PL-2FY6`) |
 
 No trajectory was re-run, because `core/` and `data/` are the same trees at
 both ends.
 
-Everything this release moves is the workflow apparatus and the documents
-around it. A `PreToolUse` hook refuses `merge_pull_request` and names the
-owner's Squash and merge for a pull request already clean, after a session told
-"Merge" merged `#1224` through the API against `PL-V2X5`'s ratified decision
-(`PL-S17R`). `docket check` advises on a declared `touches` path the history
-held and the tree no longer does (`PL-8JY7`), which corrected seven open items
-(`PL-RWBV`), and two items now declare the files their `verify:` commands
-read (`PL-LBW5`). The digest names the next free patch number where a reserved
-version used to suppress the release offer (`PL-SYG4`); `docket check`
-refuses an answered decision left at `needs-decision` (`PL-JNWS`); `bin/docket set --touches` says which
-paths owe a Generator check (`PL-6WPD`); and the closed-item filter has one
-home instead of twelve (`PL-WHQS`). The push guard's refusal says its checks
-read the working tree, and how to settle uncommitted edits (`PL-GR0L`), which completes
-`fewer-red-runs`; the no-prune refusal stops printing the superseded restart
-recipe (`PL-J3TV`); and a working-notes sentence names its tests rather than a
-line number (`PL-245B`). `PL-Y65G` closed the v0.5.18 tag step. The release
-item is `PL-84MH`, whose `resource: release-train` keeps it out of every later
-release. All thirteen carried their `pr:` number before the cut, so every
-bullet cites its pull request.
+Everything else this release moves is the workflow apparatus and the documents
+around it. `PL-2FY6` retires the tag step: the owner no longer pastes a tag
+push, and `bin/docket release` ends by printing the `git ls-remote` line that
+shows the workflow's tag landed. `PL-WT9L` closed the v0.5.19 tag step, the
+last such item. `PL-MTHC` has `claim` and `stranded` send a session to the
+open pull request carrying an item rather than to a copy of it, after `#1210`
+silently overwrote corrections `#1199` had put on `main`. `PL-ZZHZ` has the
+skill's merged-branch restart recipe leave the remote branch to the daily
+branch sweep, as the no-prune hook already did. `PL-Q7V1` has `ROADMAP.md`'s
+varying-perfusion note weigh Yasuda 1991's washout fits beside Heinonen's
+measurement of fat flow, rather than reading the stored figure against
+Heinonen alone. The release item is `PL-WSJJ`, whose `resource:
+release-train` keeps it out of every later release. All five carried their
+`pr:` number before the cut, so every bullet cites its pull request, and
+`tools/pr_body_check.py` found no squash commit that lost its body.
 
-**Two of the thirteen shipped inside v0.5.18's tag**: `PL-245B` (`#1235`) and
-`PL-J3TV` (`#1238`) merged before the v0.5.18 cut's own merge, `9ace0a3`, where
-that tag sits, and after its branch was cut, so v0.5.18's notes now point here
-for both. `tools/pr_body_check.py` found no squash commit that lost its body.
-Anything merging after this cut and before the v0.5.19 tag ships inside that
-tag, is described in the next release, and takes a pointer in v0.5.19's notes
-at that release's cut.
+None of the five shipped inside v0.5.19's tag: all merged after `f52adae`,
+the v0.5.19 cut where that tag sits. This is the first cut the workflow tags,
+so anything merging after this cut and before the v0.5.20 tag ships inside
+that tag, is described in the next release, and takes a pointer in v0.5.20's
+notes at that release's cut.
 
 ## The plan
 

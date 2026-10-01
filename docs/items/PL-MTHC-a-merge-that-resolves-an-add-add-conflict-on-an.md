@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: queue-hygiene
+milestone: v0.5.20
 touches: subprojects/docket/src/docket, .claude/skills/docket/modes/capture.md, subprojects/docket/tests, subprojects/docket/README.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-28 triage pass
 added: 2026-09-27
