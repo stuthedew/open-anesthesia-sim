@@ -4192,6 +4192,44 @@ def test_the_merged_branch_line_carries_every_commit_and_never_merges() -> None:
     assert "git merge" not in nothing
 
 
+def test_the_restart_recipe_says_what_the_push_meets() -> None:
+    """A restart's first push meets the old branch wherever the remote kept it (`PL-K3W5`).
+
+    git refuses it as non-fast-forward and its hint points at `git pull`, which
+    merges the merged history back in. So every landed recipe names the
+    refusal before it arrives, refuses the pull, and prints the push that
+    replaces the old branch after the commands it follows - with both flags,
+    since the lease alone overwrote a commit another writer had pushed and a
+    docket read had fetched. The end-to-end run is in `test_cli.py`.
+    """
+    from docket.render import format_branch_state
+
+    carried = (CarriedCommit("a" * 40, "PL-0003: capture another", False),)
+    merged = MergedPullRequest(number=12, head="c" * 40, carried=carried)
+    state = BranchState(branch=CAPTURE_BRANCH, base=BASE, behind=0, ahead=2, merged=merged)
+    push = f"  git push --force-with-lease --force-if-includes origin {CAPTURE_BRANCH}\n"
+    printed = {
+        "carried": format_branch_state(state),
+        "nothing-carried": format_branch_state(replace(state, merged=replace(merged, carried=()))),
+        "forge-unasked": format_branch_state(
+            BranchState(branch=CAPTURE_BRANCH, base=BASE, behind=2, ahead=1, landed_whole=True)
+        ),
+    }
+    bound = {"carried": "c" * 9, "nothing-carried": "c" * 9, "forge-unasked": BASE}
+
+    for shape, text in printed.items():
+        assert "refused as non-fast-forward" in text, shape
+        assert "Never `git pull`, which merges the merged history back in" in text, shape
+        assert push in text, shape
+        assert text.index(push) > text.index(f"git checkout -B {CAPTURE_BRANCH} {BASE}"), shape
+        assert f"git log --oneline {bound[shape]}..origin/{CAPTURE_BRANCH}`" in text, shape
+        assert "--force " not in text and " -f " not in text, shape
+    assert "that push is refused" in printed["carried"]
+    assert printed["carried"].index(push) > printed["carried"].index("git cherry-pick aaaaaaaaa")
+    assert "the first push after it is refused" in printed["nothing-carried"]
+    assert "the first push after it is refused" in printed["forge-unasked"]
+
+
 # --- a subject is one line, whatever it holds (`PL-139L`) --------------------
 #
 # `str.splitlines` breaks at `\x0b`, `\x0c`, `\x1c`-`\x1e`, `\x85`, U+2028 and

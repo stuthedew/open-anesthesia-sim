@@ -2308,6 +2308,7 @@ def format_branch_state(
         lines.append("  Restart on the merged base and carry anything of your own forward:")
         lines.append(f"  git fetch origin main && git checkout -B {branch} {base}")
         lines.append(f"  Check what only this branch holds first: git diff {base}...HEAD")
+        lines.extend(_push_over_lines(branch, "the first push after it", since=base))
     else:
         lines.append(f"Branch: {branch} is {state.behind} behind {base} and {state.ahead} ahead.")
         lines.append(f"  Merge {base} before your first edit, not at push time:")
@@ -2356,6 +2357,7 @@ def _merged_lines(state: BranchState, merged: MergedPullRequest) -> list[str]:
             "commit lands nowhere:"
         )
         lines.append(restart)
+        lines.extend(_push_over_lines(branch, "the first push after it", since=merged.head[:9]))
         return lines
     count = len(merged.carried)
     lines.append(
@@ -2371,7 +2373,46 @@ def _merged_lines(state: BranchState, merged: MergedPullRequest) -> list[str]:
     lines.append(restart)
     empty = "--allow-empty " if any(commit.empty for commit in merged.carried) else ""
     lines.append(f"  git cherry-pick {empty}{' '.join(c.sha[:9] for c in merged.carried)}")
+    lines.extend(_push_over_lines(branch, "that push", since=merged.head[:9]))
     return lines
+
+
+def _push_over_lines(branch: str, push: str, *, since: str) -> list[str]:
+    """The push after a restart, which meets the old branch wherever the remote still holds it.
+
+    It does whenever anything was pushed after the merge, or the branch was
+    never deleted, and a plain push is then refused as non-fast-forward, with
+    git's own hint pointing at `git pull` - which merges the squash-merged
+    history back in, the duplicate the restart exists to prevent (`PL-K3W5`).
+    So the refusal is named before it arrives, and so is the push that
+    replaces the old branch.
+
+    **Both flags, because `--force-with-lease` alone protects nothing here.**
+    Its lease is the tracking ref, and every `docket` read command fetches, so
+    a commit another writer pushed to the branch is in that ref without having
+    been carried: measured 2026-10-01 against scratch repositories, the lease
+    alone overwrote it, while `--force-if-includes` refused it as "remote ref
+    updated since checkout" and the lease refused one never fetched as "stale
+    info". The pair passes where the remote holds only what this checkout's
+    branch has held - the merged commits and the originals of the
+    cherry-picks - because the branch's reflog still holds the tip it was
+    pushed from. That is a check on what was held, not on what was carried, so
+    the cherry-pick above has to carry the whole list, which it is built from.
+    Where the pair refuses, the remote holds a commit this checkout never had,
+    and the line says to stop and read it: a recipe for that case would have
+    to guess at whose it is. Conditional on a refusal, since a remote that deleted the branch takes
+    the plain push, where the lease, measured against a stale tracking ref,
+    would refuse. `since` bounds the read to what came after the merge where
+    the merged head is known.
+    """
+    return [
+        f"  Where the remote still holds the old branch, {push} is refused as non-fast-forward. "
+        "Never `git pull`, which merges the merged history back in; replace the old branch "
+        "with a push that refuses where the remote holds a commit this checkout never had:",
+        f"  git push --force-with-lease --force-if-includes origin {branch}",
+        "  Refused even then: stop, `git fetch origin`, and read what the remote holds with "
+        f"`git log --oneline {since}..origin/{branch}` before pushing anything.",
+    ]
 
 
 def _rewrite_recovery(rewrite: RewriteReport, branch: str, base: str) -> list[str]:
