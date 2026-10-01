@@ -3904,26 +3904,31 @@ def _cited_section(text: str, match: re.Match[str]) -> tuple[str, bool]:
 #: catch what prose writes.
 LINE_CITATION_RE = re.compile(r"`([\w./-]+):(\d+)(?:-(\d+))?`")
 
-ITEM_STATUS_RE = re.compile(r"^status:\s*(\S+)", re.MULTILINE)
-
 
 def _live_item_briefs(root: Path) -> Iterator[tuple[Path, str]]:
-    """Every open item brief under `docs/items/`, with its text.
+    """Every open item brief in the store, with its text.
 
     Closed briefs are skipped rather than filtered later, so the reason sits
     where the decision does: a closed brief - one whose `status:` is in
     `CLOSED_STATUSES` - describes a tree that no longer exists and is not
     repaired.
+
+    Which briefs are closed is the store's answer, read once by `_read_store`,
+    so a status is the field `docket.model` parses rather than the first token
+    a regex found after `status:` (`PL-X766`): that read a quoted `"done"` with
+    its quotes, a value in no status set, and put a closed brief under the
+    live checks. A store that will not read yields nothing here, since no
+    other reading of it is the store's; `bin/docket check` is what says why.
     """
-    items = root / "docs" / "items"
-    if not items.is_dir():
+    store = _read_store(root)
+    if store is None:
         return
-    for path in sorted(items.glob("*.md")):
-        text = path.read_text(encoding="utf-8", errors="replace")
-        status = ITEM_STATUS_RE.search(text)
-        if status is not None and status.group(1) in CLOSED_STATUSES:
+    items = root / store.config.items_dir
+    for item in sorted(store.items.values(), key=lambda entry: entry.path):
+        if item.status in CLOSED_STATUSES:
             continue
-        yield path.relative_to(root), text
+        path = items / item.path
+        yield path.relative_to(root), path.read_text(encoding="utf-8", errors="replace")
 
 
 def _cited_file(root: Path, basenames: Mapping[str, list[Path]], token: str) -> Path | None:

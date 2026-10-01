@@ -5280,8 +5280,13 @@ def _line_citation_errors(root: Path) -> list[str]:
     return report.errors
 
 
-def _brief(status: str, body: str) -> str:
-    return f"id: PL-T3ST\nstatus: {status}\n\n**Problem.** {body}\n"
+def _brief(status: str, body: str, identifier: str = "PL-T3ST") -> str:
+    """One item file as the store holds it: front matter, then the brief.
+
+    Fenced, because the store reads a status from the front matter and nowhere
+    else, and `_live_item_briefs` reads it through the store (`PL-X766`).
+    """
+    return f"---\nid: {identifier}\nstatus: {status}\n---\n\n**Problem.** {body}\n"
 
 
 def test_a_line_citation_past_the_end_of_its_file_is_an_error(tmp_path: Path) -> None:
@@ -5327,7 +5332,19 @@ def test_a_closed_brief_is_exempt(tmp_path: Path) -> None:
     # Spelled out rather than derived from the status, because `f"PL-{status.upper()}"`
     # mints `PL-DONE` and `PL-DROPPED`, neither of which is in `store.ID_ALPHABET`.
     for status, identifier in (("done", "PL-D0N3"), ("dropped", "PL-DRPD")):
-        _items(root, {identifier: _brief(status, "See `core/thing.py:900`.")})
+        _items(root, {identifier: _brief(status, "See `core/thing.py:900`.", identifier)})
+
+    assert _line_citation_errors(root) == []
+
+
+def test_a_quoted_closed_status_is_read_as_the_store_reads_it(tmp_path: Path) -> None:
+    """`PL-X766`: whether a brief is live is the store's reading of its status.
+
+    `ITEM_STATUS_RE` took the first token after `status:`, so a quoted `"done"`
+    came back with its quotes - a value in no status set - and the closed brief
+    went under the live checks, where its stale citation was an error.
+    """
+    root = _items(_repo(tmp_path), {"PL-8888-done": _brief('"done"', "See `core/thing.py:900`.")})
 
     assert _line_citation_errors(root) == []
 
