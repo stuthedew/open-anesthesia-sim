@@ -1,13 +1,13 @@
 ---
 id: PL-Z34C
 title: Retire verify_required_from and its grooming advisory once the grandfathered set reaches zero
-status: blocked
 priority: P3
 effort: S
+status: ready
 classes: infra, session-cost
-blocked-by: PL-005, PL-024, PL-027, PL-029, PL-036, PL-038, PL-043, PL-41YP, PL-8LDF, PL-LJVD, PL-NC2P, PL-RZPX, PL-YMY7, PL-Z7LY, PL-ZBR6
-touches: docket.toml, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py
+touches: docket.toml, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_config.py, .claude/skills/docket/modes/triage.md, docs/items/PL-024-document-what-the-venous-pool-does-to-early.md, docs/items/PL-029-surface-the-iso-5360-color-reference-in-the.md, docs/items/PL-41YP-assert-every-required-displayed-output-reaches.md, docs/items/PL-8LDF-tie-model-md-s-required-invariants-to-named.md, docs/items/PL-NC2P-main-s-no-primary-screen-guard-is-the-one.md, docs/items/PL-Z7LY-pan-the-chart-window-horizontally-with-live.md
 added: 2026-09-03
+verify: ! grep -qF 'verify_required_from =' docket.toml
 ---
 
 **Problem.** `verify_required_from` grandfathers 22 `ready` items from the
@@ -199,3 +199,24 @@ paragraph is the evidence for it.
 advisory, `_verify_required` and the skill paragraph when the set reaches zero;
 keep `verify_required_at_close_from` and `_verify_required_at_close`, which are
 permanent for the two reasons this brief records.
+
+## Worked 2026-10-01: the set reached zero by triage, and the date was also the rule's on-switch
+
+**The six that remained were triaged, not worked.** PL-024, PL-029, PL-41YP,
+PL-8LDF, PL-NC2P and PL-Z7LY each re-read against the tree; none was gone.
+PL-NC2P had been expected to drop with the Flet files, but the 2026-09-22
+grooming had already re-scoped it to the one uncovered guard the Qt port left,
+and coverage over `tests/unit/test_bootstrap.py` confirmed it today:
+`app/main.py` 92%, lines 69 (the no-primary-screen `raise`) and 83 (the
+`__main__` call) missed. Four gained a `verify:` that fails on today's tree
+(PL-NC2P, PL-8LDF, PL-41YP, PL-Z7LY); PL-024 and PL-029 gained
+`not-delegable:`, because each turns on a judgment a `grep` would pass for the
+wrong work - the framing of the first-minute lag, and a surface touch and
+keyboard users can reach. `blocked-by` is dropped rather than rewritten: the
+condition it stood in for is met.
+
+**What the brief did not record:** `verify_required_from` was also the switch
+that turned the `ready` rule on at all - `None` left it off for a project that
+does not delegate. Retiring the date keeps that switch by reading it from
+`verify_required_at_close_from`, the permanent date, so one setting adopts the
+rule at both ends of an item's life and no field is added.
