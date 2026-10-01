@@ -274,6 +274,21 @@ def _page_of(view: SimulationView) -> QWidget:
     return page
 
 
+def _sidebar_panels(run: RunView) -> tuple[QWidget, QWidget]:
+    """The accounting and control-change panels a run placed in the sidebar, in that order.
+
+    Reached through the heading placed in each, never built again: a second
+    `build_sidebar_panels()` call returns panels with no parent and moves
+    the run's live labels into them (`PL-N67T`).
+    """
+
+    accounting = run._accounting_heading_text.parentWidget()
+    timeline = run._control_timeline_heading_text.parentWidget()
+    assert accounting is not None and timeline is not None, "a sidebar heading is in no panel"
+
+    return accounting, timeline
+
+
 def _stacked_sections(view: SimulationView) -> QSplitter:
     """The vertical splitter of readouts, settings and the chart row."""
 
@@ -3055,6 +3070,12 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
     so the page's minimum is well inside the window and the scroll area
     never widens it; the chart column alone asks for less than a thousand
     pixels.
+
+    The sidebar panels measured are the ones the page holds, which the test
+    below proves. They used to come from a second `build_sidebar_panels()`
+    call, whose panels have no parent: `mapTo(page, ...)` assumes the page is
+    an ancestor and checks nothing, so the last two assertions compared
+    coordinates that never reached the page and could not fail (`PL-JS0X`).
     """
 
     controller = SimulationController()
@@ -3073,10 +3094,29 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
 
         assert right_edge <= page.width(), "a setting control is laid beyond the page"
 
-    accounting_panel, timeline_panel = view.runs[0].build_sidebar_panels()
-
-    for panel in (accounting_panel, timeline_panel):
+    for panel in _sidebar_panels(view.runs[0]):
+        assert page.isAncestorOf(panel), "a sidebar panel measured is not on the page"
         assert panel.mapTo(page, panel.rect().bottomRight()).x() <= page.width()
+
+
+def test_the_sidebar_panels_measured_are_the_ones_the_page_holds(application: QApplication) -> None:
+    """Each panel the width test measures is the page's only panel of its kind, and is shown.
+
+    Matched against the page's own children by the object name the panel's
+    stylesheet is scoped by, so a rebuilt panel fails here, and so does a
+    widget the heading might come to sit in between it and the panel. The
+    second `build_sidebar_panels()` call this replaced also moved the run's
+    live labels out of the sidebar the assertions before it had measured
+    (`PL-JS0X`, `PL-N67T`).
+    """
+
+    view = _shown_view(application, SimulationController())
+    page = _page_of(view)
+    accounting, timeline = _sidebar_panels(view.runs[0])
+
+    for panel, name in ((accounting, "accountingPanel"), (timeline, "controlTimelinePanel")):
+        assert page.findChildren(QWidget, name) == [panel], f"{name} is not the page's own"
+        assert panel.isVisible(), f"{name} is not shown"
 
 
 def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QApplication) -> None:
@@ -3939,13 +3979,59 @@ def test_taking_a_fork_adds_the_branch_to_the_dashboard(application: QApplicatio
     assert view.runs[1].is_running is False
 
 
+def test_taking_a_fork_redraws_the_chart_without_prompting(application: QApplication) -> None:
+    """The press draws the frame the branch appears on, and nothing else has to ask for it.
+
+    A fork is a discrete action, so it draws once and at once (`PL-R2YM`)
+    rather than leaving the frame owed: both runs stand paused afterwards, so
+    a frame left to the render tick would never be drawn. Nothing here
+    presents after the press, so the frame read is the one the press drew,
+    and a fork that added the run without redrawing fails on the one-run
+    frame `_case_view` drew (`PL-624C`).
+
+    The legend is narrowed to the pair the cap would draw first. From a wider
+    selection the second run makes the legend cap it, and that change draws a
+    frame of its own from inside `_rename_runs` before `_handle_fork` draws -
+    two frames for one press, the first from a run set not yet named
+    (`PL-B1R9`). That redraw would stand in for the fork's own here and hide
+    its loss, so the test takes the fork where the press is the only thing
+    that can draw.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+
+    for quantity in view._legend.shown[COMPARED_COMPARTMENT_CAP:]:
+        view._legend.set_compartment_shown(quantity, False)
+
+    presented = view.presented_frames
+
+    _take_fork(view, 60.0)
+
+    assert view.presented_frames == presented + 1, "taking the branch did not draw it"
+
+    frame = view._frame
+    assert frame is not None
+    assert len(frame.runs) == 2
+
+    branch_times, _ = view._concentration_chart.drawn_points(1, RecordedQuantity.ALVEOLAR)
+
+    assert branch_times, "the chart holds no curve for the branch"
+    assert min(branch_times) == pytest.approx(60.0)
+
+
 def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApplication) -> None:
-    """One frame, both runs, and the branch's curve begins where it was taken."""
+    """One frame, both runs, and the branch's curve begins where it was taken.
+
+    The frame read is the one the press drew, from the default selection
+    rather than the narrowed one the test above takes the fork from. It used
+    to present a frame itself first, which made every assertion below hold
+    whether the fork redrew or not (`PL-624C`).
+    """
 
     case = _branched_case()
     view = _case_view(application, case)
     _take_fork(view, 60.0)
-    view.present(False)
 
     frame = view._frame
     assert frame is not None

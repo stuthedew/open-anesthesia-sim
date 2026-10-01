@@ -19,8 +19,9 @@ without changing a decision is a defect in the check". What frame cost
 *should* be is a judgment, and it belongs in the item that asks the
 question.
 
-Everything runs at 1x over a short warm-up, so the suite pays a frame rather
-than the three seconds a real measurement takes.
+Both configurations, the one-run dashboard and the trunk-and-branch one,
+run at 1x over a short warm-up, so the suite pays a few frames rather than
+the seconds a real measurement takes.
 
 `frame_cost` imports as a bare module because this directory holds no
 `__init__.py`: pytest's default `prepend` import mode puts the first
@@ -43,6 +44,7 @@ from frame_cost import (
 )
 
 from anesthesia_sim.app.dashboard_frame import (
+    MAX_DISPLAYED_RUNS,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
@@ -61,9 +63,16 @@ _STAGES = ("advance_s", "present_s", "paint_s", "settled_s")
 
 @pytest.fixture(scope="module")
 def measurement() -> Measurement:
-    """One short run of the harness, shared by every test here."""
+    """One short run of the harness at its default run count, shared by every test here."""
 
     return measure(multiplier=1, frames=_FRAMES, warm_up_s=_WARM_UP_S)
+
+
+@pytest.fixture(scope="module")
+def two_run_measurement() -> Measurement:
+    """One short run of the harness over a trunk and a branch on one chart."""
+
+    return measure(multiplier=1, frames=_FRAMES, warm_up_s=_WARM_UP_S, runs=2)
 
 
 # ------------------------------------------------------- the cadence maths
@@ -149,6 +158,7 @@ def test_the_measurement_records_the_configuration_it_ran(measurement: Measureme
     """What was measured travels with the numbers rather than with whoever ran it."""
 
     assert measurement.multiplier == 1
+    assert measurement.runs == 1
     assert measurement.steps_per_frame == steps_per_frame(1)
     assert measurement.budget_s == RENDER_INTERVAL_S
     assert measurement.warm_up_s == _WARM_UP_S
@@ -160,6 +170,27 @@ def test_the_median_and_the_worst_come_from_the_samples(measurement: Measurement
 
         assert measurement.worst_s(stage) == max(timings)
         assert min(timings) <= measurement.median_s(stage) <= max(timings)
+
+
+def test_the_harness_measures_a_two_run_dashboard(two_run_measurement: Measurement) -> None:
+    """A trunk and its branch on one chart, which is what v0.5.0 draws (`PL-WPDB`).
+
+    The run count is read off the dashboard rather than echoed from the
+    request, so this fails if the branch never reached it. That the chart
+    was in view for the paint and that every run advanced its full share of
+    every frame are the harness's own checks, which raise rather than return
+    a measurement, so this fixture is what exercises them.
+    """
+
+    assert two_run_measurement.runs == 2
+    assert len(two_run_measurement.samples) == _FRAMES
+
+    for sample in two_run_measurement.samples:
+        for stage in _STAGES:
+            seconds = getattr(sample, stage)
+
+            assert math.isfinite(seconds)
+            assert seconds >= 0.0
 
 
 # -------------------------------------------------------------- the report
@@ -178,6 +209,15 @@ def test_the_report_names_every_stage_and_the_configuration(measurement: Measure
     assert "not a frame rate" in printed
 
 
+def test_the_report_names_how_many_runs_were_drawn(
+    measurement: Measurement, two_run_measurement: Measurement
+) -> None:
+    """Two columns measured side by side differ only in this, so the report says it."""
+
+    assert "1 run on the dashboard" in report(measurement)
+    assert "2 runs on the dashboard" in report(two_run_measurement)
+
+
 # ------------------------------------------- the configurations it refuses
 
 
@@ -187,3 +227,11 @@ def test_a_configuration_that_would_measure_nothing_is_refused(
 ) -> None:
     with pytest.raises(ValueError):
         measure(multiplier=1, frames=frames, warm_up_s=warm_up_s)
+
+
+@pytest.mark.parametrize("runs", [0, MAX_DISPLAYED_RUNS + 1])
+def test_a_run_count_the_dashboard_cannot_draw_is_refused(runs: int) -> None:
+    """Refused by the harness before it builds anything, not by the dashboard after the warm-up."""
+
+    with pytest.raises(ValueError, match="a dashboard draws between 1 and"):
+        measure(multiplier=1, frames=1, warm_up_s=1.0, runs=runs)
