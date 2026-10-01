@@ -40,6 +40,18 @@ on its own when the limit resets. The trial's instructions were written
 without it, no other item reads it, and no head's `misread:` states it
 (`bin/docket generators --misread`, 2026-09-26).
 
+**Re-checked 2026-10-01: the trial's recorded Goal is met.** `bin/docket
+generators` lists all nine heads that `PL-NZC0`'s verbatim Goal line names as
+drained: `PL-B8HZ`, `PL-HMZZ`, `PL-QHCW` and `PL-MB2W`, plus the five added
+on 2026-09-25 (`PL-Q4DF`, `PL-XBV4`, `PL-PVW2`, `PL-GPJ7`, `PL-979D`). The
+last of them drained on 2026-09-26, and no open item carries `generator:
+live`. The owner may have given the project work since then, which no session
+can see, because `list_sessions` lists no Projects thread. Otherwise a resumed
+thread has nothing left in its instructions, and every usage window it resumes
+into is spent with no goal to serve. That makes the recommendation below
+immediate: pause the project now with step 1, rather than at the end of the
+next sitting. The stop-line alternative no longer has a run to time-box.
+
 **Decision needed.** How the trial stops spending while the owner is away:
 pause the project at the end of each sitting, or a stop line in its project
 instructions. Only the owner can reach **Project settings**.
