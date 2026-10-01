@@ -9714,6 +9714,73 @@ def test_a_squash_merged_captures_only_pull_request_is_landed_to_branch_and_arm(
     assert f"{second[:9]} edit docs/items/PL-G5G5-next.md" in out
 
 
+@pytest.mark.parametrize("another_writer", [False, True], ids=["carried", "another-writer"])
+def test_the_landed_recipe_run_as_printed_pushes_over_the_old_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], another_writer: bool
+) -> None:
+    """`PL-K3W5`'s reproduction, with the recipe run exactly as `branch` prints it.
+
+    A branch pushed, squash-merged and deleted, then one more commit pushed to
+    it, so the remote holds the old branch again. The printed restart and
+    cherry-pick are run, and a plain push is refused as non-fast-forward. The
+    printed push then replaces the old branch with the merged base and the
+    carried commit alone. Where another writer pushed a commit this checkout
+    never had, fetched as every docket read fetches, it refuses rather than
+    overwrite it, which `--force-with-lease` alone did not.
+    """
+    root, git = _arm_repo(tmp_path)
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+    head = git("rev-parse", "HEAD").strip()
+    git("push", "-q", "-u", "origin", ARM_BRANCH)
+    elsewhere = _other_writer(tmp_path)
+    elsewhere("merge", "--squash", "-q", f"origin/{ARM_BRANCH}")
+    elsewhere("commit", "-qm", "PL-F4F4: file the new item (#12)")
+    elsewhere("push", "-q", "origin", "main")
+    elsewhere("push", "-q", "origin", "--delete", ARM_BRANCH)
+    _forge_says(root, f"12 merged {head}")
+    _commit_file(git, root, "docs/items/PL-G5G5-next.md", _item_document("PL-G5G5"), ARM_T0)
+    git("push", "-q", "origin", ARM_BRANCH)
+    if another_writer:
+        elsewhere("fetch", "-q", "origin")
+        elsewhere("checkout", "-q", "-b", "theirs", f"origin/{ARM_BRANCH}")
+        elsewhere("commit", "-q", "--allow-empty", "-m", "a commit this checkout never had")
+        elsewhere("push", "-q", "origin", f"theirs:{ARM_BRANCH}")
+        git("fetch", "-q", "origin")
+    else:
+        assert _arm(root) == 1
+        said = capsys.readouterr().out
+        assert "then push over the old branch the remote may still hold, never `git pull`" in said
+    remote_tip = git("rev-parse", f"origin/{ARM_BRANCH}").strip()
+
+    assert main(["branch", "--items", str(root / "docs" / "items")]) == 0
+    printed = [line.strip() for line in capsys.readouterr().out.splitlines()]
+    assert "refused as non-fast-forward" in " ".join(printed)
+    restart, pick, push = (
+        next(line for line in printed if line.startswith(start))
+        for start in ("git fetch origin main && git checkout -B", "git cherry-pick", "git push")
+    )
+    for command in (restart, pick):
+        subprocess.run(command, shell=True, cwd=root, check=True, capture_output=True)
+
+    plain = subprocess.run(
+        ["git", "push", "origin", ARM_BRANCH], cwd=root, capture_output=True, text=True
+    )
+    assert plain.returncode != 0
+    assert "non-fast-forward" in plain.stderr
+    forced = subprocess.run(push, shell=True, cwd=root, capture_output=True, text=True)
+    on_remote = git("ls-remote", "origin", f"refs/heads/{ARM_BRANCH}").split()[0]
+    if another_writer:
+        assert forced.returncode != 0
+        assert on_remote == remote_tip
+        return
+    assert forced.returncode == 0, forced.stderr
+    assert on_remote == git("rev-parse", "HEAD").strip()
+    assert git("rev-list", "--count", f"origin/main..{on_remote}").strip() == "1"
+    assert git("diff", "--name-only", "origin/main", on_remote).split() == [
+        "docs/items/PL-G5G5-next.md"
+    ]
+
+
 def test_a_forge_that_could_not_be_asked_is_unknown_to_arm_and_said_by_branch(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -9876,6 +9943,45 @@ def test_arm_names_the_gate_beside_the_paths_outside_the_tooling(
         "on a read\n"
         "  src/anesthesia_sim/core/uptake.py\n"
     )
+
+
+@pytest.mark.parametrize(
+    "path", ["src/anesthesia_sim/core/uptake.py", ARM_GATE], ids=["outside", "gate"]
+)
+def test_a_read_hold_asks_for_a_plain_language_summary_once_no_claim_holds_the_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
+) -> None:
+    """Every pre-merge read the owner is asked for opens with a plain-language summary.
+
+    The owner asked for it as the default on 2026-09-27, and only the Projects
+    instructions carried it (`PL-8XQS`). While a claim holds the branch its
+    pull request is a draft, which nobody is asked to read, so the line waits
+    for the read to be the only hold.
+    """
+    root, git = _arm_repo(tmp_path)
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
+    _put(git, root, path, "2026-09-01T12:00:30+00:00")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert "keep the pull request a draft" in out
+    assert "plain-language summary" not in out
+
+    closed = _item_document("PL-B1B1", "done")
+    _commit_file(git, root, "docs/items/PL-B1B1-held.md", closed, "2026-09-01T12:00:40+00:00")
+
+    assert _arm(root) == 1
+    first, *rest = capsys.readouterr().out.splitlines()
+    assert first.endswith("so its pull request waits on a read")
+    (ask,) = (line for line in rest if "plain-language summary" in line)
+    parts = (
+        "one sentence of what the change does, what was wrong and what changed",
+        "in terms a clinician recognises",
+        "numbered points for the owner to judge",
+        "what needs no review",
+    )
+    places = [ask.index(part) for part in parts]
+    assert places == sorted(places)
 
 
 def test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer() -> None:

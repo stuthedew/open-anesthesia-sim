@@ -3,11 +3,13 @@ id: PL-8XQS
 title: A pre-merge review ask's plain-language summary is a Projects-instructions rule only, so a session outside the Project asks for a read without one
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-27
+closed: 2026-10-01
+pr: 1272
 payoff: every pre-merge read the owner is asked for opens with a plain-language summary, whichever session asks
 verify: grep -q 'def test_a_read_hold_asks_for_a_plain_language_summary' subprojects/docket/tests/test_cli.py
 ---
@@ -54,3 +56,12 @@ needs no review - held by a test.
 
 **Generator check.** Work the owner asked for; the request reached the
 Project's instructions and not the repository.
+
+**Built (2026-10-01, `#1272`).** `arming.READ_ASK` is printed under a `hold`
+whose reasons include the read - a path outside the store, the tooling and the
+records, or a change to `arming.py` - once no claim holds the branch. While a
+claim holds it the pull request is a draft, which nobody is asked to read, and
+the hold already says to keep it one; printed on every push during the work,
+the line would be skimmed by the time it mattered. The test,
+`test_a_read_hold_asks_for_a_plain_language_summary_once_no_claim_holds_the_branch`,
+checks both sides of that, over a path outside the tooling and over the gate.
