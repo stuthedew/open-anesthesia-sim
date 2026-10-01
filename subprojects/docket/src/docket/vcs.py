@@ -673,7 +673,12 @@ class GitRunner:
         return started
 
     def _drop(self, root: Path) -> None:
-        """Forget a batch that answered in a shape this cannot read."""
+        """Forget a batch that answered in a shape this cannot read, for good.
+
+        Permanent for the root on purpose (`PL-28HG`): every drop is a protocol
+        shape that recurs or a child that died, and a fresh batch inherits
+        either, so a retry would spend a process to learn the same thing.
+        """
         held = str(root)
         self._unbatchable.add(held)
         dead = self._batch.pop(held, None)
