@@ -6,8 +6,9 @@ effort: M
 status: ready
 classes: ux, feature
 feature: chart-readout
-touches: src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/simulation_view.py
+touches: src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_chart_time_base.py
 added: 2026-08-25
+verify: grep -qE 'def test_pan' tests/unit/test_chart_time_base.py
 ---
 
 > **Groomed 2026-09-22 (`PL-Y4YG`): still owed; its precondition landed and

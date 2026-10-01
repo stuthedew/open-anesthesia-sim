@@ -8,6 +8,7 @@ classes: docs, ux
 feature: chart-readout
 touches: docs/MODEL.md, src/anesthesia_sim/app/dashboard_frame.py
 added: 2026-08-24
+not-delegable: two judgments no command can make: whether the first-minute lag is framed as a modelling artifact or as the lumped stand-in for venous transit, checked against Davis and Mapleson 1981, and whether the Mixed venous readout gains a cue; a grep could pin only a sentence chosen before either is settled
 ---
 
 > **Groomed 2026-09-22 (`PL-Y4YG`): still owed, but the numbers below are for

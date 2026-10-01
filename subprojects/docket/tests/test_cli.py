@@ -1599,7 +1599,7 @@ def test_next_leads_with_what_the_current_step_names(
     assert "the step the project is on" not in out
 
 
-def test_the_verify_advisory_follows_the_plan_the_way_next_does(
+def test_the_payoff_advisory_follows_the_plan_the_way_next_does(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """`check` must resolve the same roadmap `next` does, from the repository root.
@@ -1607,7 +1607,9 @@ def test_the_verify_advisory_follows_the_plan_the_way_next_does(
     PL-B1B1 is `P3` and named by the current step; the three others are `P1`
     and named nowhere, so they fill the offering on band alone. A `check` that
     looked for ROADMAP.md beside the store instead of above it would find no
-    plan, rank by band, and advise about the wrong three.
+    plan, rank by band, and advise about the wrong three. It read the `verify:`
+    advisory until that retired with its date (`PL-Z34C`); the `payoff:` one
+    is drawn from the same offering.
     """
     store = _wave_project(
         tmp_path,
@@ -1618,7 +1620,7 @@ def test_the_verify_advisory_follows_the_plan_the_way_next_does(
         ),
     )
     (tmp_path / "docket.toml").write_text(
-        "[docket]\nverify_required_from = 2026-08-02\n", encoding="utf-8"
+        "[docket]\npayoff_required_from = 2026-08-02\n", encoding="utf-8"
     )
 
     assert _run("check", "--items", str(store)) == 0
@@ -2637,7 +2639,9 @@ def test_triage_states_the_rules_the_answers_must_satisfy(
         tmp_path,
         UNTRIAGED,
         READY,
-        config='[docket]\nprotected_paths = ["src/core"]\nverify_required_from = 2026-08-01\n',
+        config=(
+            '[docket]\nprotected_paths = ["src/core"]\nverify_required_at_close_from = 2026-08-01\n'
+        ),
     )
     output = capsys.readouterr().out
 

@@ -69,30 +69,20 @@ top_band_limit = 12
 # Past this, an untriaged capture has become a second queue nobody reads.
 untriaged_stale_days = 14
 
-# The date this project adopted the rule that a `ready` item names the command
-# that proves it done (PL-G049). Items captured on or after it must carry
-# `verify:`, or record in `not-delegable:` why no command can prove them, so
-# the rule started working immediately without making `docket check` useless
-# on the day it landed.
+# The `verify:` rule (PL-G049), and the one date that adopts it. Every item
+# set to `ready` must carry `verify:`, or record in `not-delegable:` why no
+# command can prove it; and an item closed on or after this date must too, as
+# an **error** (PL-J49T).
 #
-# The items captured before it are a closed set - nothing can be added to it,
-# since the test is the capture date - and it burns down as work is picked up
-# rather than in a campaign (PL-5YK8). `checks.py` raises the advisory only
-# for the ones `docket next` is about to offer, and carries the remaining
-# total inside the message, so it names work a session can do in the session
-# that sees it and reaches zero on a normal day. Backfilling the rest was
-# rejected: a command written for an item nobody has started cannot be run
-# before it is written, and every command in this store that was written that
-# way was wrong.
+# A second date, `verify_required_from` (2026-08-30), once exempted the items
+# captured before the rule from the `ready` half, and raised a grooming
+# advisory for each only as `docket next` was about to offer it. That set
+# drained to zero on 2026-10-01 and the date was retired with its advisory
+# (PL-Z34C). The closing half below is what drained it, and is permanent: an
+# item can reach `done` without ever holding `ready`.
 #
-# Moving this date earlier remains available and would make the whole set an
-# error at once. Do not, without first giving each item a command that has
-# actually been run.
-verify_required_from = 2026-08-30
-
-# The same requirement at the other end of an item's life, and the half that
-# actually drains the set above (PL-J49T). An item closed on or after this date
-# must name a command or a `not-delegable` reason, as an **error**.
+# What follows is the closing half's original case, kept because it is still
+# why this date is an error and not an advisory.
 #
 # Keyed on the closure date rather than the capture date, which is what lets it
 # reach the grandfathered items at all: they are exempt at `ready` and stay

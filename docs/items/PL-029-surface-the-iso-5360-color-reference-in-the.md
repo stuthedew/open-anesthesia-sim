@@ -8,6 +8,7 @@ classes: ux, docs
 feature: vaporizer-controls
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/theme.py
 added: 2026-08-24
+not-delegable: the work is choosing a surface that keyboard and touch users can reach, and a command reading run_view.py for standard_color_name passes equally for a hover-only tooltip, the surface the brief rules out
 ---
 
 > **Groomed 2026-09-22 (`PL-Y4YG`): still owed; the surface has moved to Qt.**
