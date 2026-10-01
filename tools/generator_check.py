@@ -82,25 +82,28 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.model import (  # noqa: E402
+    CLOSED_STATUSES,
+    MIN_ROOT_CAUSE_ITEMS,
+    OPEN_STATUSES,
+    Item,
+    parse_item,
+)
 from docket.store import ID_PATTERN  # noqa: E402
 from docket.vcs import leading_ids  # noqa: E402
 
 ITEM_DIR = Path("docs/items")
 
-#: A `touches` entry is compared after stripping any trailing separator:
-#: `docs/items/` and `docs/items` are the same cluster.
-OPEN_STATUSES = {"ready", "blocked", "needs-decision", "untriaged"}
-
 #: The floor for showing a cluster, and it is the recorded definition's own:
 #: `CLAUDE.md` calls a mechanism causing three or more items a generator, so a
 #: path with fewer than three open items cannot host one. It selects what to
 #: print and asserts nothing about what is printed.
-MIN_OPEN = 3
+MIN_OPEN = MIN_ROOT_CAUSE_ITEMS
 
 #: How many other open items have to name an id before its citation count is
 #: worth showing. Three for the same reason as `MIN_OPEN`, and it is emphatically
 #: not a promotion rule - 33 items clear it on this tree.
-CITED_BY = 3
+CITED_BY = MIN_ROOT_CAUSE_ITEMS
 
 #: The ratio at which a cluster is not shrinking: each closure hands back at
 #: least one new item in the same cluster. It was this script's whole verdict
@@ -184,26 +187,17 @@ class Cluster:
         return self.produced / self.closed
 
 
-def read_front_matter(path: Path) -> dict[str, str]:
-    """Return an item file's front matter as plain strings.
+def read_item(path: Path) -> Item | None:
+    """Return an item file as `docket.model` reads it, or `None` where it cannot be read.
 
-    Deliberately not a YAML parser: the store is flat `key: value` pairs and a
-    dependency here would stop this running from a bare checkout.
+    The parser every `docket` command reads an item through, rather than one of
+    this script's own: it is standard library too, so a bare checkout still runs
+    this, and a change to the item format reaches both at once (`PL-DHGC`).
     """
-    fields: dict[str, str] = {}
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        return parse_item(path.read_text(encoding="utf-8"), str(path))
     except OSError:
-        return fields
-    if not lines or lines[0].strip() != "---":
-        return fields
-    for line in lines[1:]:
-        if line.strip() == "---":
-            break
-        key, sep, value = line.partition(":")
-        if sep and not key.startswith(" "):
-            fields[key.strip()] = value.strip()
-    return fields
+        return None
 
 
 def creation_parents(repo: Path) -> dict[str, set[str]]:
@@ -268,13 +262,12 @@ def citations(repo: Path, open_ids: set[str]) -> Counter[str]:
     """
     counts: Counter[str] = Counter()
     for path in sorted((repo / ITEM_DIR).glob("PL-*.md")):
-        fields = read_front_matter(path)
-        source = fields.get("id", "")
-        if source not in open_ids:
-            continue
         try:
             text = path.read_text(encoding="utf-8")
         except OSError:
+            continue
+        source = parse_item(text).identifier
+        if source not in open_ids:
             continue
         for target in set(ID_RE.findall(text)) & open_ids:
             if target != source:
@@ -290,32 +283,29 @@ def clusters(repo: Path, *, attributed: bool = True) -> list[Cluster]:
     unmeasured and signals nothing, which is how `main` still reports the two
     signals that need no history.
     """
-    items: dict[str, dict[str, str]] = {}
+    items: dict[str, Item] = {}
     for path in sorted((repo / ITEM_DIR).glob("PL-*.md")):
-        fields = read_front_matter(path)
-        if fields.get("id"):
-            items[fields["id"]] = fields
+        item = read_item(path)
+        if item is not None and item.identifier:
+            items[item.identifier] = item
 
     parents = creation_parents(repo) if attributed else {}
-    open_ids = {i for i, f in items.items() if f.get("status") in OPEN_STATUSES}
+    open_ids = {i for i, item in items.items() if item.status in OPEN_STATUSES}
     cited = citations(repo, open_ids)
 
     # Ids already inside a recorded claim - carrying `root-cause-of:` or named
     # by one. Those clusters have had the judgment made and are marked rather
     # than dropped: a recorded claim can be wrong, and hiding the evidence
     # under it is how it would stay wrong.
-    claimants = {i for i, f in items.items() if f.get("root-cause-of", "").strip()}
-    explained = {
-        part.strip()
-        for i in claimants
-        for part in items[i].get("root-cause-of", "").split(",")
-        if part.strip()
-    }
+    claimants = {i for i, item in items.items() if item.root_cause_of}
+    explained = {part for i in claimants for part in items[i].root_cause_of}
     in_a_claim = claimants | explained
 
+    # A `touches` entry is compared after stripping any trailing separator:
+    # `docs/items/` and `docs/items` are the same cluster.
     def declared(identifier: str) -> set[str]:
-        raw = items.get(identifier, {}).get("touches", "")
-        return {t.strip().rstrip("/") for t in raw.split(",") if t.strip()}
+        item = items.get(identifier)
+        return {t.rstrip("/") for t in item.touches} if item else set()
 
     #: ancestor -> path -> number of children that landed in that same cluster.
     spawned: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -328,9 +318,9 @@ def clusters(repo: Path, *, attributed: bool = True) -> list[Cluster]:
                 spawned[ancestor][touch] += 1
 
     by_path: dict[str, list[str]] = defaultdict(list)
-    for identifier, fields in items.items():
-        for raw in fields.get("touches", "").split(","):
-            touch = raw.strip().rstrip("/")
+    for identifier, item in items.items():
+        for raw in item.touches:
+            touch = raw.rstrip("/")
             if touch:
                 by_path[touch].append(identifier)
 
@@ -339,8 +329,10 @@ def clusters(repo: Path, *, attributed: bool = True) -> list[Cluster]:
         here = sorted(i for i in ids if i in open_ids)
         if len(here) < MIN_OPEN:
             continue
-        closed = [i for i in ids if items[i].get("status") == "done"]
-        features = Counter(items[i].get("feature", "") for i in here if items[i].get("feature"))
+        # Dropped counts as closed: it leaves the open set as surely as done
+        # does, which is what the ratio asks about (`PL-DHGC`).
+        closed = [i for i in ids if items[i].status in CLOSED_STATUSES]
+        features = Counter(items[i].feature for i in here if items[i].feature)
         name, count = features.most_common(1)[0] if features else ("", 0)
         found.append(
             Cluster(

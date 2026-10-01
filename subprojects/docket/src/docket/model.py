@@ -72,11 +72,6 @@ STATUSES = OPEN_STATUSES + CLOSED_STATUSES
 # lower priority bands however small the task looks.
 SAFETY_CLASSES = ("safety", "science")
 
-# Work on the development process rather than on the product it builds. An
-# item counts as process work only when every one of its classes is in this
-# set, so a `science`-and-`infra` item is still science.
-PROCESS_CLASSES = ("session-cost", "docs", "infra")
-
 LIST_FIELDS = ("classes", "touches", "blocked-by", "root-cause-of", "recurrences")
 
 # What a `resource:` may name: the one thing in the repository that more than
@@ -696,11 +691,6 @@ class Item:
         """
         milestones = set(self.blocking_milestones)
         return tuple(e for e in self.blocked_by if e not in milestones)
-
-    @property
-    def is_process_work(self) -> bool:
-        """Whether this improves how the project is developed, not the product."""
-        return bool(self.classes) and all(c in PROCESS_CLASSES for c in self.classes)
 
     def lane(self, workflow_paths: tuple[str, ...]) -> str:
         """Which half of the project this work sits in, from its declared paths.
@@ -1418,45 +1408,23 @@ def parse_item(text: str, path: str = "") -> Item:
     is an item with no priority, and `checks.py` decides whether that is
     allowed for its status. Guessing would turn a validation failure into a
     silently wrong queue position.
+
+    The keys it knows are `FIELD_ORDER`'s and the fields it splits are
+    `LIST_FIELDS`', read rather than restated, so the reader and the writers
+    cannot come to disagree about which keys exist or which hold a list
+    (`PL-DHGC`).
     """
     fields, body = parse_front_matter(text)
-    known = {
-        "id",
-        "title",
-        "priority",
-        "effort",
-        "status",
-        "classes",
-        "touches",
-        "resource",
-        "blocked-by",
-        "deferred-from",
-        "feature",
-        "milestone",
-        "added",
-        "closed",
-        "commit",
-        "pr",
-        "reason",
-        "payoff",
-        "verify",
-        "not-delegable",
-        "falsifies",
-        "root-cause-of",
-        "generator",
-        "misread",
-        "impairs-generators",
-        "recurrences",
-    }
+    lists = {name: _split_list(fields.get(name, "")) for name in LIST_FIELDS}
     return Item(
         identifier=fields.get("id", ""),
         title=fields.get("title", ""),
         priority=fields.get("priority", ""),
         effort=fields.get("effort", ""),
         status=fields.get("status", ""),
-        classes=_split_list(fields.get("classes", "")),
-        touches=_split_list(fields.get("touches", "")),
-        blocked_by=_split_list(fields.get("blocked-by", "")),
+        classes=lists["classes"],
+        touches=lists["touches"],
+        blocked_by=lists["blocked-by"],
         feature=fields.get("feature", ""),
         milestone=fields.get("milestone", ""),
         added=_parse_date(fields.get("added", "")),
@@ -1468,16 +1436,16 @@ def parse_item(text: str, path: str = "") -> Item:
         verify=fields.get("verify", ""),
         not_delegable=fields.get("not-delegable", ""),
         falsifies=fields.get("falsifies", ""),
-        root_cause_of=_split_list(fields.get("root-cause-of", "")),
+        root_cause_of=lists["root-cause-of"],
         generator=fields.get("generator", ""),
         misread=fields.get("misread", ""),
         impairs_generators=fields.get("impairs-generators", ""),
-        recurrences=_split_list(fields.get("recurrences", "")),
+        recurrences=lists["recurrences"],
         deferred_from=fields.get("deferred-from", ""),
         resource=fields.get("resource", ""),
         body=body,
         path=path,
-        unknown_fields=tuple(sorted(set(fields) - known)),
+        unknown_fields=tuple(sorted(set(fields) - set(FIELD_ORDER))),
         duplicate_fields=repeated_front_matter_keys(text),
         block_list_fields=block_list_keys(text),
         unread_lines=unread_front_matter_lines(text),

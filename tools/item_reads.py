@@ -39,7 +39,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
 
-from docket.model import CLOSED_STATUSES  # noqa: E402
+from docket.model import CLOSED_STATUSES, parse_front_matter, parse_item  # noqa: E402
 from docket.store import ID_PATTERN  # noqa: E402
 
 LOG = REPO / ".docket-reads.log"
@@ -49,13 +49,17 @@ ITEMS = REPO / "docs" / "items"
 #: and `PL-B1B` as ids - three characters is an id only when all three are
 #: digits, and no id carries a vowel (`PL-KYW3`).
 ITEM_ID = re.compile(ID_PATTERN)
-#: The front-matter line of each closed status, derived rather than written
-#: out, so a terminal status the model adds counts as closed here too.
-CLOSED = tuple(f"status: {status}" for status in CLOSED_STATUSES)
 
 
 def store() -> tuple[dict[str, Path], set[str]]:
-    """Return `{id: path}` for every item, and the set of ids that are closed."""
+    """Return `{id: path}` for every item, and the set of ids that are closed.
+
+    Closed is the front matter's `status`, read by `docket.model`'s parser as
+    every `docket` command reads it. A search for a status line in a file's
+    first 400 characters stood here, and read 20 of 1,626 closed items as open,
+    their status line past the window, and `PL-DHGC` as closed, its title
+    quoting the words (`PL-DHGC`).
+    """
     paths: dict[str, Path] = {}
     closed: set[str] = set()
     for path in ITEMS.glob("*.md"):
@@ -64,15 +68,13 @@ def store() -> tuple[dict[str, Path], set[str]]:
             continue
         identifier = f"{parts[0]}-{parts[1]}"
         paths[identifier] = path
-        head = path.read_text(encoding="utf-8")[:400]
-        if any(marker in head for marker in CLOSED):
+        if parse_item(path.read_text(encoding="utf-8")).status in CLOSED_STATUSES:
             closed.add(identifier)
     return paths, closed
 
 
 def citations(path: Path, self_id: str) -> set[str]:
-    text = path.read_text(encoding="utf-8")
-    body = text.split("---", 2)[2] if text.startswith("---") else text
+    _fields, body = parse_front_matter(path.read_text(encoding="utf-8"))
     return set(ITEM_ID.findall(body)) - {self_id}
 
 
