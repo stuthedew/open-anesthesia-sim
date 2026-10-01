@@ -96,7 +96,6 @@ from anesthesia_sim.app.dashboard_frame import (
     compared_run_line,
     compared_run_notice,
     comparing_fork_lock_text,
-    delivered_fraction,
     fork_offer,
     format_mac_target,
     format_time_bookmark,
@@ -345,7 +344,7 @@ def _snapshot(
         agent_mac_awake=agent_mac_awake,
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=4.0,
-        delivered_partial_pressure_fraction=Fraction(0.08),
+        delivered_concentration_percent=Percent(8.0),
         alveolar_ventilation_l_min=4.0,
         cardiac_output_l_min=5.0,
         inspired_partial_pressure_fraction=Fraction(compartments[RecordedQuantity.CIRCUIT]),
@@ -1110,8 +1109,8 @@ def test_every_slider_endpoint_is_a_setting_the_core_accepts() -> None:
         ControlInput.FRESH_GAS_FLOW: controller.set_fresh_gas_flow,
         ControlInput.ALVEOLAR_VENTILATION: controller.set_alveolar_ventilation,
         ControlInput.CARDIAC_OUTPUT: controller.set_cardiac_output,
-        ControlInput.DELIVERED: lambda percent: controller.set_delivered_partial_pressure_fraction(
-            delivered_fraction(percent)
+        ControlInput.DELIVERED: lambda percent: controller.set_delivered_concentration_percent(
+            Percent(percent)
         ),
     }
 
@@ -1278,11 +1277,14 @@ def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
     assert _settings_by_control(snapshot)[ControlInput.DELIVERED].secondary == "1.00 ×MAC"
 
 
-def test_delivered_concentration_slider_converts_percent_to_fraction() -> None:
+def test_the_delivered_dial_is_held_in_percent_and_read_as_a_fraction() -> None:
+    """The dial's percent is what is held, and the model reads its fraction (`PL-NJPB`)."""
+
     controller = SimulationController()
 
-    controller.set_delivered_partial_pressure_fraction(delivered_fraction(6.5))
+    controller.set_delivered_concentration_percent(Percent(6.5))
 
+    assert controller.snapshot().delivered_concentration_percent == 6.5
     assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.065)
     assert _settings_by_control(controller.snapshot())[ControlInput.DELIVERED].value_text == (
         "6.50%"

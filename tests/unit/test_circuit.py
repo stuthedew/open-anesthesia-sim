@@ -34,7 +34,7 @@ def test_rejects_agent_amount_above_circuit_capacity() -> None:
 
 def test_one_time_constant_reaches_expected_fraction() -> None:
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, fresh_gas_flow_l_min=6.0, delivered_partial_pressure_fraction=1.0
+        circuit_volume_l=6.0, fresh_gas_flow_l_min=6.0, delivered_concentration_percent=100.0
     )
 
     circuit.advance(circuit.time_constant_s)
@@ -45,7 +45,7 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
 def test_zero_fresh_gas_flow_preserves_concentration() -> None:
     circuit = BreathingCircuit(
         fresh_gas_flow_l_min=0.0,
-        delivered_partial_pressure_fraction=1.0,
+        delivered_concentration_percent=100.0,
         inspired_partial_pressure_fraction=0.25,
     )
 
@@ -59,7 +59,7 @@ def test_zero_delivered_concentration_washes_out_circuit() -> None:
     circuit = BreathingCircuit(
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=6.0,
-        delivered_partial_pressure_fraction=0.0,
+        delivered_concentration_percent=0.0,
         inspired_partial_pressure_fraction=1.0,
     )
 
@@ -77,8 +77,8 @@ def test_exact_update_is_independent_of_step_size() -> None:
     stayed at zero, which is agreement about nothing.
     """
 
-    one_step = BreathingCircuit(delivered_partial_pressure_fraction=1.0)
-    many_steps = BreathingCircuit(delivered_partial_pressure_fraction=1.0)
+    one_step = BreathingCircuit(delivered_concentration_percent=100.0)
+    many_steps = BreathingCircuit(delivered_concentration_percent=100.0)
 
     one_step.advance(60.0)
 
@@ -103,12 +103,10 @@ def test_rejects_invalid_fresh_gas_flow(fresh_gas_flow_l_min: float) -> None:
         BreathingCircuit(fresh_gas_flow_l_min=fresh_gas_flow_l_min)
 
 
-@pytest.mark.parametrize("delivered_partial_pressure_fraction", [-0.01, 1.01, float("nan")])
-def test_rejects_invalid_delivered_concentration(
-    delivered_partial_pressure_fraction: float,
-) -> None:
+@pytest.mark.parametrize("delivered_concentration_percent", [-1.0, 101.0, float("nan")])
+def test_rejects_invalid_delivered_concentration(delivered_concentration_percent: float) -> None:
     with pytest.raises(SimulationConfigurationError):
-        BreathingCircuit(delivered_partial_pressure_fraction=(delivered_partial_pressure_fraction))
+        BreathingCircuit(delivered_concentration_percent=delivered_concentration_percent)
 
 
 def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
@@ -119,50 +117,50 @@ def test_rejects_delivered_concentration_above_the_vaporizer_maximum() -> None:
     """
 
     circuit = BreathingCircuit(
-        delivered_partial_pressure_fraction=0.02, max_delivered_partial_pressure_fraction=0.05
+        delivered_concentration_percent=2.0, max_delivered_concentration_percent=5.0
     )
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
-        circuit.set_delivered_partial_pressure_fraction(0.50)
+        circuit.set_delivered_concentration_percent(50.0)
 
-    assert circuit.delivered_partial_pressure_fraction == 0.02
+    assert circuit.delivered_concentration_percent == 2.0
 
 
 def test_rejects_construction_above_the_vaporizer_maximum() -> None:
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
         BreathingCircuit(
-            delivered_partial_pressure_fraction=0.08, max_delivered_partial_pressure_fraction=0.05
+            delivered_concentration_percent=8.0, max_delivered_concentration_percent=5.0
         )
 
 
 def test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum() -> None:
     circuit = BreathingCircuit(
-        delivered_partial_pressure_fraction=0.02, max_delivered_partial_pressure_fraction=0.05
+        delivered_concentration_percent=2.0, max_delivered_concentration_percent=5.0
     )
-    circuit.set_delivered_partial_pressure_fraction(0.05)
+    circuit.set_delivered_concentration_percent(5.0)
 
-    assert circuit.delivered_partial_pressure_fraction == 0.05
+    assert circuit.delivered_concentration_percent == 5.0
 
 
 def test_accepts_a_delivered_concentration_of_zero() -> None:
     """The vaporizer off is always a valid dial position: it is washout."""
 
     circuit = BreathingCircuit(
-        delivered_partial_pressure_fraction=0.02, max_delivered_partial_pressure_fraction=0.05
+        delivered_concentration_percent=2.0, max_delivered_concentration_percent=5.0
     )
-    circuit.set_delivered_partial_pressure_fraction(0.0)
+    circuit.set_delivered_concentration_percent(0.0)
 
-    assert circuit.delivered_partial_pressure_fraction == 0.0
+    assert circuit.delivered_concentration_percent == 0.0
 
 
 @pytest.mark.parametrize(
-    "max_delivered_partial_pressure_fraction", [0.0, -0.01, 1.01, float("nan"), float("inf")]
+    "max_delivered_concentration_percent", [0.0, -1.0, 101.0, float("nan"), float("inf")]
 )
-def test_rejects_invalid_vaporizer_maximum(max_delivered_partial_pressure_fraction: float) -> None:
+def test_rejects_invalid_vaporizer_maximum(max_delivered_concentration_percent: float) -> None:
     with pytest.raises(SimulationConfigurationError):
         BreathingCircuit(
-            delivered_partial_pressure_fraction=0.0,
-            max_delivered_partial_pressure_fraction=max_delivered_partial_pressure_fraction,
+            delivered_concentration_percent=0.0,
+            max_delivered_concentration_percent=max_delivered_concentration_percent,
         )
 
 
@@ -263,21 +261,21 @@ def test_a_circuit_volume_exactly_equal_to_its_agent_is_accepted() -> None:
 def test_a_bare_circuit_starts_with_the_vaporizer_off() -> None:
     """Regression (PL-019): the class holds no agent-shaped dial position.
 
-    `delivered_partial_pressure_fraction` defaulted to 0.08 - sevoflurane's
-    vaporizer maximum - on a class that knows nothing about agents. Two
-    consequences, and the second is the one that made it worth removing:
-    declaring any lower device limit raised at construction, and the
-    message reported an "8% requested" the caller had never written.
+    The delivered dial defaulted to 8% - sevoflurane's vaporizer maximum -
+    on a class that knows nothing about agents. Two consequences, and the
+    second is the one that made it worth removing: declaring any lower
+    device limit raised at construction, and the message reported an "8%
+    requested" the caller had never written.
 
     Zero is the only dial position every vaporizer of every agent has, so
     it is the only one this class can hold without knowing which agent is
     in use. `AgentUptakeSystem.for_agent()` sets the real starting dial.
     """
 
-    circuit = BreathingCircuit(max_delivered_partial_pressure_fraction=0.05)
+    circuit = BreathingCircuit(max_delivered_concentration_percent=5.0)
 
-    assert circuit.delivered_partial_pressure_fraction == 0.0
-    assert circuit.max_delivered_partial_pressure_fraction == 0.05
+    assert circuit.delivered_concentration_percent == 0.0
+    assert circuit.max_delivered_concentration_percent == 5.0
 
     circuit.advance(60.0)
 

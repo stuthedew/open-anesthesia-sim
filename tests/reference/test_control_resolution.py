@@ -108,9 +108,9 @@ PUBLICATION_RELATIVE_TOLERANCE = 0.05
 
 @dataclass(frozen=True)
 class OperatingPoint:
-    """The four settings the interface can move, at one instant."""
+    """The four settings the interface can move, at one instant, in the units they are set in."""
 
-    delivered_fraction: float
+    delivered_percent: float
     fresh_gas_flow_l_min: float
     alveolar_ventilation_l_min: float
     cardiac_output_l_min: float
@@ -147,12 +147,12 @@ def _case_opening(agent_id: str) -> Manoeuvre:
 
     patient = load_reference_adult_parameters()
     closed = OperatingPoint(
-        delivered_fraction=0.0,
+        delivered_percent=0.0,
         fresh_gas_flow_l_min=REFERENCE_FRESH_GAS_FLOW_L_MIN,
         alveolar_ventilation_l_min=patient.default_alveolar_ventilation_l_min,
         cardiac_output_l_min=patient.default_cardiac_output_l_min,
     )
-    one_mac = load_agent_parameters(agent_id).mac_percent / 100.0
+    one_mac = load_agent_parameters(agent_id).mac_percent
 
     return Manoeuvre(closed, _with_dial(closed, one_mac), hold_s=60.0)
 
@@ -173,13 +173,13 @@ def _unperfused_load_then_dial_off(agent_id: str) -> Manoeuvre:
 
     return Manoeuvre(
         before=OperatingPoint(
-            delivered_fraction=_max_dial(agent_id),
+            delivered_percent=_max_dial(agent_id),
             fresh_gas_flow_l_min=supported_ranges.MAXIMUM_FRESH_GAS_FLOW_L_MIN,
             alveolar_ventilation_l_min=supported_ranges.MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
             cardiac_output_l_min=supported_ranges.MINIMUM_CARDIAC_OUTPUT_L_MIN,
         ),
         after=OperatingPoint(
-            delivered_fraction=0.0,
+            delivered_percent=0.0,
             fresh_gas_flow_l_min=supported_ranges.MAXIMUM_FRESH_GAS_FLOW_L_MIN,
             alveolar_ventilation_l_min=supported_ranges.MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
             cardiac_output_l_min=supported_ranges.MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -203,7 +203,7 @@ def _ventilator_start(agent_id: str) -> Manoeuvre:
     """
 
     corner = OperatingPoint(
-        delivered_fraction=_max_dial(agent_id),
+        delivered_percent=_max_dial(agent_id),
         fresh_gas_flow_l_min=supported_ranges.MAXIMUM_FRESH_GAS_FLOW_L_MIN,
         alveolar_ventilation_l_min=supported_ranges.MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
         cardiac_output_l_min=supported_ranges.MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -269,16 +269,16 @@ PUBLISHED_CASE_OPENING_AT_300X_PP = 1.5
 
 
 def _max_dial(agent_id: str) -> float:
-    """The agent's own vaporizer maximum, as a fraction."""
+    """The agent's own vaporizer maximum, in the percent its dial is set in."""
 
-    return load_agent_parameters(agent_id).max_delivered_concentration_percent / 100.0
+    return load_agent_parameters(agent_id).max_delivered_concentration_percent
 
 
-def _with_dial(point: OperatingPoint, delivered_fraction: float) -> OperatingPoint:
+def _with_dial(point: OperatingPoint, delivered_percent: float) -> OperatingPoint:
     """`point` with the vaporizer moved and nothing else."""
 
     return OperatingPoint(
-        delivered_fraction=delivered_fraction,
+        delivered_percent=delivered_percent,
         fresh_gas_flow_l_min=point.fresh_gas_flow_l_min,
         alveolar_ventilation_l_min=point.alveolar_ventilation_l_min,
         cardiac_output_l_min=point.cardiac_output_l_min,
@@ -289,7 +289,7 @@ def _with_ventilation(point: OperatingPoint, alveolar_ventilation_l_min: float) 
     """`point` with the ventilator moved and nothing else."""
 
     return OperatingPoint(
-        delivered_fraction=point.delivered_fraction,
+        delivered_percent=point.delivered_percent,
         fresh_gas_flow_l_min=point.fresh_gas_flow_l_min,
         alveolar_ventilation_l_min=alveolar_ventilation_l_min,
         cardiac_output_l_min=point.cardiac_output_l_min,
@@ -321,7 +321,7 @@ def _apply(system: AgentUptakeSystem, point: OperatingPoint) -> None:
     system.set_fresh_gas_flow(point.fresh_gas_flow_l_min)
     system.set_alveolar_ventilation(point.alveolar_ventilation_l_min)
     system.set_cardiac_output(point.cardiac_output_l_min)
-    system.set_delivered_partial_pressure_fraction(point.delivered_fraction)
+    system.set_delivered_concentration_percent(point.delivered_percent)
 
 
 def _displayed_states(system: AgentUptakeSystem) -> tuple[float, ...]:

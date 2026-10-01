@@ -36,11 +36,15 @@ import pytest
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-# Declared here rather than imported from `core/units.py`, like every equation
-# in `_build_derivative`: agreement is evidence only while the specification
-# is written out independently of the code under test, and a factor taken
-# from that code would check it against itself (`PL-QRBB`).
+# Declared here rather than imported from `core/units.py` and
+# `core/concentration.py`, like every equation in `_build_derivative`:
+# agreement is evidence only while the specification is written out
+# independently of the code under test, and a factor taken from that code
+# would check it against itself (`PL-QRBB`). An operating point carries each
+# control in the unit it is set in - the vaporizer dial in percent, as the
+# circuit holds it since `PL-NJPB` - and the oracle converts with these.
 SECONDS_PER_MINUTE = 60.0
+PERCENT_PER_UNIT_FRACTION = 100.0
 
 AGENT_IDS = ("sevoflurane", "isoflurane", "desflurane")
 
@@ -72,7 +76,7 @@ HORIZONS_S = (60.0, 600.0, 3600.0)
 # below are its solution. 5% is the highest concentration all three shipped
 # vaporizers can deliver (isoflurane's maximum), so one dial setting serves
 # every agent.
-DELIVERED_FRACTION = 0.05
+DELIVERED_PERCENT = 5.0
 FRESH_GAS_FLOW_L_MIN = 4.0
 CIRCUIT_VOLUME_L = 6.0
 
@@ -120,7 +124,7 @@ class OperatingPoint:
     range it would need if it became one.
     """
 
-    delivered_fraction: float
+    delivered_percent: float
     fresh_gas_flow_l_min: float
     alveolar_ventilation_l_min: float
     cardiac_output_l_min: float
@@ -146,7 +150,7 @@ def _default_operating_point() -> OperatingPoint:
     patient = load_reference_adult_parameters()
 
     return OperatingPoint(
-        delivered_fraction=DELIVERED_FRACTION,
+        delivered_percent=DELIVERED_PERCENT,
         fresh_gas_flow_l_min=FRESH_GAS_FLOW_L_MIN,
         alveolar_ventilation_l_min=patient.default_alveolar_ventilation_l_min,
         cardiac_output_l_min=patient.default_cardiac_output_l_min,
@@ -154,9 +158,9 @@ def _default_operating_point() -> OperatingPoint:
 
 
 def _max_dial(agent_id: str) -> float:
-    """The agent's own vaporizer maximum, as a fraction."""
+    """The agent's own vaporizer maximum, in the percent its dial is set in."""
 
-    return load_agent_parameters(agent_id).max_delivered_concentration_percent / 100.0
+    return load_agent_parameters(agent_id).max_delivered_concentration_percent
 
 
 def _envelope_corner(agent_id: str) -> OperatingPoint:
@@ -194,7 +198,7 @@ def _envelope_corner(agent_id: str) -> OperatingPoint:
     """
 
     return OperatingPoint(
-        delivered_fraction=_max_dial(agent_id),
+        delivered_percent=_max_dial(agent_id),
         fresh_gas_flow_l_min=MAX_FRESH_GAS_FLOW_L_MIN,
         alveolar_ventilation_l_min=MAX_ALVEOLAR_VENTILATION_L_MIN,
         cardiac_output_l_min=MAX_CARDIAC_OUTPUT_L_MIN,
@@ -289,7 +293,7 @@ def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
         Phase(
             300.0,
             OperatingPoint(
-                MIN_DELIVERED_CONCENTRATION_PERCENT / 100.0,
+                MIN_DELIVERED_CONCENTRATION_PERCENT,
                 MAX_FRESH_GAS_FLOW_L_MIN,
                 MAX_ALVEOLAR_VENTILATION_L_MIN,
                 MAX_CARDIAC_OUTPUT_L_MIN,
@@ -313,7 +317,7 @@ def _ordinary_use(agent_id: str) -> tuple[Phase, ...]:
         Phase(
             ENVELOPE_HORIZON_S,
             OperatingPoint(
-                load_agent_parameters(agent_id).mac_percent / 100.0,
+                load_agent_parameters(agent_id).mac_percent,
                 FRESH_GAS_FLOW_L_MIN,
                 patient.default_alveolar_ventilation_l_min,
                 patient.default_cardiac_output_l_min,
@@ -902,7 +906,7 @@ def _build_derivative(agent_id: str, point: OperatingPoint) -> Derivative:
     fresh_gas_l_s = point.fresh_gas_flow_l_min / SECONDS_PER_MINUTE
     ventilation_l_s = point.alveolar_ventilation_l_min / SECONDS_PER_MINUTE
     cardiac_output_l_s = point.cardiac_output_l_min / SECONDS_PER_MINUTE
-    delivered_fraction = point.delivered_fraction
+    delivered_fraction = point.delivered_percent / PERCENT_PER_UNIT_FRACTION
 
     def derivative(state: list[float]) -> list[float]:
         circuit, alveolar, venous = state[0], state[1], state[2]
@@ -990,7 +994,7 @@ def _apply_operating_point(system: AgentUptakeSystem, point: OperatingPoint) -> 
     system.set_fresh_gas_flow(point.fresh_gas_flow_l_min)
     system.set_alveolar_ventilation(point.alveolar_ventilation_l_min)
     system.set_cardiac_output(point.cardiac_output_l_min)
-    system.set_delivered_partial_pressure_fraction(point.delivered_fraction)
+    system.set_delivered_concentration_percent(point.delivered_percent)
 
 
 def _shipped_system(agent_id: str, point: OperatingPoint) -> AgentUptakeSystem:

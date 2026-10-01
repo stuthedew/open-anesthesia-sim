@@ -122,8 +122,8 @@ COMPARTMENTS = (
             {
                 "circuit_volume_l",
                 "fresh_gas_flow_l_min",
-                "delivered_partial_pressure_fraction",
-                "max_delivered_partial_pressure_fraction",
+                "delivered_concentration_percent",
+                "max_delivered_concentration_percent",
                 "deliverable_fresh_gas_flow_range",
             }
         ),
@@ -434,10 +434,7 @@ def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
             lambda s: setattr(s.patient.venous_blood, "blood_gas_partition_coefficient", 0.9),
             "blood:gas partition coefficient",
         ),
-        (
-            lambda s: s.set_delivered_partial_pressure_fraction(0.03),
-            "delivered partial pressure fraction",
-        ),
+        (lambda s: s.set_delivered_concentration_percent(3.0), "delivered concentration percent"),
         (lambda s: setattr(s.patient.tissues[0], "volume_l", 9.0), "a tissue volume"),
         (lambda s: setattr(s.patient.tissues[1], "blood_flow_l_min", 1.5), "a tissue blood flow"),
         (

@@ -31,11 +31,11 @@ MASS_BALANCE_RELATIVE_GATE = 1e-10
 # and each circuit carries its own agent's maximum, so construction refuses
 # this value if it ever stops being deliverable.
 #
-# Deliberately not the 0.05 the equilibrium test fills every compartment to:
-# at that dial the circuit would already sit at its own delivered
-# concentration, and that test's `set_fresh_gas_flow(0.0)` would stop being
-# load-bearing - it would pass at any flow, testing less than it reads as.
-DELIVERED_CONCENTRATION_FRACTION = 0.04
+# Deliberately not the 5% - a fraction of 0.05 - the equilibrium test fills
+# every compartment to: at that dial the circuit would already sit at its own
+# delivered concentration, and that test's `set_fresh_gas_flow(0.0)` would stop
+# being load-bearing - it would pass at any flow, testing less than it reads as.
+DELIVERED_CONCENTRATION_PERCENT = 4.0
 
 
 def _run_for(system: AgentUptakeSystem, duration_s: float, simulation_step_s: float) -> None:
@@ -64,10 +64,8 @@ def _build_system_for_agent(agent_id: str) -> AgentUptakeSystem:
 
     return AgentUptakeSystem(
         circuit=BreathingCircuit(
-            delivered_partial_pressure_fraction=DELIVERED_CONCENTRATION_FRACTION,
-            max_delivered_partial_pressure_fraction=(
-                agent.max_delivered_concentration_percent / 100.0
-            ),
+            delivered_concentration_percent=DELIVERED_CONCENTRATION_PERCENT,
+            max_delivered_concentration_percent=agent.max_delivered_concentration_percent,
         ),
         alveoli=AlveolarCompartment(
             gas_volume_l=patient_parameters.alveolar_gas_volume_l,
@@ -83,7 +81,7 @@ def test_wash_in_and_washout_validates_agent_simulation(agent_id: str) -> None:
 
     _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
-    system.set_delivered_partial_pressure_fraction(0.0)
+    system.set_delivered_concentration_percent(0.0)
 
     _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 

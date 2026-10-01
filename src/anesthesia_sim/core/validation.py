@@ -32,6 +32,7 @@ here, so the sentence a reader will see is readable in the line that raises it.
 
 from math import isfinite
 
+from anesthesia_sim.core.concentration import PERCENT_PER_UNIT_FRACTION
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 
@@ -65,3 +66,16 @@ def require_fraction(name: str, value: float) -> None:
 
     if not isfinite(value) or not 0.0 <= value <= 1.0:
         raise SimulationConfigurationError(f"{name} must be between 0 and 1")
+
+
+def require_percent(name: str, value: float) -> None:
+    """Require a finite percent of one atmosphere from zero through one hundred.
+
+    `require_fraction`'s range in the unit a vaporizer dial reads. The circuit
+    holds the dial as the percent it was set to (`PL-NJPB`), so its guard
+    speaks that unit: checking the derived fraction instead would quote a
+    refused setting back a hundred times smaller than the one that was set.
+    """
+
+    if not isfinite(value) or not 0.0 <= value <= PERCENT_PER_UNIT_FRACTION:
+        raise SimulationConfigurationError(f"{name} must be between 0 and 100")

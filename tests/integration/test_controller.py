@@ -14,7 +14,12 @@ from anesthesia_sim.app.run_series import (
 )
 from anesthesia_sim.app.wash_in import is_wash_in
 from anesthesia_sim.core import uptake_system
-from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent
+from anesthesia_sim.core.concentration import (
+    MacMultiple,
+    Percent,
+    fraction_from_percent,
+    percent_from_fraction,
+)
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -77,7 +82,7 @@ def test_explicit_delivered_concentration_above_the_agent_max_is_rejected() -> N
     """
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
-        SimulationController(agent_id="isoflurane", delivered_partial_pressure_fraction=0.08)
+        SimulationController(agent_id="isoflurane", delivered_concentration_percent=8.0)
 
 
 def test_setting_a_delivered_concentration_above_the_agent_max_is_rejected() -> None:
@@ -90,7 +95,7 @@ def test_setting_a_delivered_concentration_above_the_agent_max_is_rejected() -> 
     controller = SimulationController(agent_id="isoflurane")
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
-        controller.set_delivered_partial_pressure_fraction(0.50)
+        controller.set_delivered_concentration_percent(50.0)
 
     snapshot = controller.snapshot()
 
@@ -102,9 +107,9 @@ def test_delivered_concentration_exactly_at_the_agent_max_is_accepted() -> None:
     """The boundary is inclusive: 5.0% is a real isoflurane dial position."""
 
     controller = SimulationController(agent_id="isoflurane")
-    controller.set_delivered_partial_pressure_fraction(0.05)
+    controller.set_delivered_concentration_percent(5.0)
 
-    assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.05)
+    assert controller.snapshot().delivered_concentration_percent == 5.0
 
 
 def test_delivered_concentration_can_be_turned_off() -> None:
@@ -113,9 +118,9 @@ def test_delivered_concentration_can_be_turned_off() -> None:
     """
 
     controller = SimulationController(agent_id="isoflurane")
-    controller.set_delivered_partial_pressure_fraction(0.0)
+    controller.set_delivered_concentration_percent(0.0)
 
-    assert controller.snapshot().delivered_partial_pressure_fraction == 0.0
+    assert controller.snapshot().delivered_concentration_percent == 0.0
 
 
 def test_patient_defaults_come_from_the_data_file() -> None:
@@ -174,9 +179,7 @@ def test_set_agent_resets_delivered_concentration_to_the_new_agent_one_mac() -> 
     is 1 MAC of sevoflurane but only about a third of a MAC of desflurane).
     """
 
-    controller = SimulationController(
-        agent_id="sevoflurane", delivered_partial_pressure_fraction=0.08
-    )
+    controller = SimulationController(agent_id="sevoflurane", delivered_concentration_percent=8.0)
 
     controller.set_agent("isoflurane")
     snapshot = controller.snapshot()
@@ -204,7 +207,7 @@ def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration()
         agent_id="sevoflurane",
         circuit_volume_l=5.0,
         fresh_gas_flow_l_min=3.0,
-        delivered_partial_pressure_fraction=0.03,
+        delivered_concentration_percent=3.0,
         alveolar_ventilation_l_min=5.5,
         cardiac_output_l_min=6.0,
     )
@@ -476,14 +479,14 @@ def test_parameter_changes_do_not_reset_dynamic_state() -> None:
     before = controller.snapshot()
 
     controller.set_fresh_gas_flow(3.0)
-    controller.set_delivered_partial_pressure_fraction(0.06)
+    controller.set_delivered_concentration_percent(6.0)
 
     after = controller.snapshot()
 
     assert after.elapsed_s == before.elapsed_s
     assert after.stored_agent_l == pytest.approx(before.stored_agent_l)
     assert after.fresh_gas_flow_l_min == 3.0
-    assert after.delivered_partial_pressure_fraction == 0.06
+    assert after.delivered_concentration_percent == 6.0
     # The circuit volume is a fixed model parameter, so a settings change
     # must leave it exactly where the session was built with it (`PL-GYH2`).
     assert after.circuit_volume_l == before.circuit_volume_l
@@ -629,13 +632,13 @@ def test_a_refused_setting_does_not_fail_the_session() -> None:
     before = controller.snapshot()
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
-        controller.set_delivered_partial_pressure_fraction(0.50)
+        controller.set_delivered_concentration_percent(50.0)
 
     after = controller.snapshot()
 
     assert after.failure_reason is None
     assert after.is_running is True
-    assert after.delivered_partial_pressure_fraction == before.delivered_partial_pressure_fraction
+    assert after.delivered_concentration_percent == before.delivered_concentration_percent
 
 
 class _FatThatRefusesTheStep(TissueGroup):
@@ -772,7 +775,7 @@ def test_every_control_records_under_its_own_stable_identifier() -> None:
     controller = SimulationController()
 
     controller.set_fresh_gas_flow(3.0)
-    controller.set_delivered_partial_pressure_fraction(0.03)
+    controller.set_delivered_concentration_percent(3.0)
     controller.set_alveolar_ventilation(5.0)
     controller.set_cardiac_output(4.0)
 
@@ -788,7 +791,7 @@ def test_every_recorded_control_carries_its_declared_unit() -> None:
     controller = SimulationController()
 
     controller.set_fresh_gas_flow(3.0)
-    controller.set_delivered_partial_pressure_fraction(0.03)
+    controller.set_delivered_concentration_percent(3.0)
     controller.set_alveolar_ventilation(5.0)
     controller.set_cardiac_output(4.0)
 
@@ -796,24 +799,46 @@ def test_every_recorded_control_carries_its_declared_unit() -> None:
         assert change.unit == CONTROL_INPUT_UNITS[change.control]
 
 
-def test_the_delivered_dial_is_recorded_as_the_fraction_the_core_holds() -> None:
-    """Recording the interface's percent would break re-application.
+def test_the_delivered_dial_is_recorded_as_the_percent_the_core_holds() -> None:
+    """Recording the model's fraction would break re-application.
 
     The timeline's claim is that re-applying it reproduces the run, and
-    re-applying means calling the setter, which takes a fraction. A record
-    of 3.0 where the model holds 0.03 would be a hundredfold error handed
-    to whatever replays it.
+    re-applying means calling the setter, which takes the percent the dial
+    was set to (`PL-NJPB`). A record of 0.03 where the circuit holds 3.0
+    would be a hundredfold error handed to whatever replays it.
     """
 
     controller = SimulationController()
 
-    controller.set_delivered_partial_pressure_fraction(0.03)
+    controller.set_delivered_concentration_percent(3.0)
 
     (change,) = controller.snapshot().control_timeline
-    assert change.new_value == pytest.approx(0.03)
-    assert change.new_value == pytest.approx(
-        controller.snapshot().delivered_partial_pressure_fraction
-    )
+    assert change.new_value == 3.0
+    assert change.new_value == controller.snapshot().delivered_concentration_percent
+
+
+def test_the_control_timeline_records_the_vaporizer_percent_as_dialled() -> None:
+    """The recorded change and the run segment both give back the dial exactly.
+
+    `PL-NJPB`. Both records held the fraction the dial's percent was divided
+    into, and a fraction times a hundred misses the percent it came from at
+    some dial positions: 0.9% read back as 0.9000000000000001. The first
+    assertion establishes 0.9 as such a position, and both recorded values
+    are compared with it by equality rather than to a tolerance.
+    """
+
+    assert percent_from_fraction(fraction_from_percent(Percent(0.9))) != 0.9
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=1.0)
+
+    controller.set_delivered_concentration_percent(Percent(0.9))
+
+    (change,) = controller.snapshot().control_timeline
+    assert change.control is ControlInput.DELIVERED
+    assert change.new_value == 0.9
+    assert controller.run_segments[-1].settings.delivered_concentration_percent == 0.9
 
 
 def test_a_setting_equal_to_the_one_in_place_records_nothing() -> None:
@@ -838,7 +863,7 @@ def test_a_refused_setting_records_nothing() -> None:
     controller = SimulationController()
 
     with pytest.raises(SimulationConfigurationError):
-        controller.set_delivered_partial_pressure_fraction(0.5)
+        controller.set_delivered_concentration_percent(50.0)
 
     assert controller.snapshot().control_timeline == ()
     assert not controller.has_failed
@@ -856,12 +881,12 @@ def test_changes_within_one_step_collapse_to_what_the_model_integrated() -> None
     controller.start()
     _advance_for(controller, 1.0)
 
-    controller.set_delivered_partial_pressure_fraction(0.03)
-    controller.set_delivered_partial_pressure_fraction(0.04)
+    controller.set_delivered_concentration_percent(3.0)
+    controller.set_delivered_concentration_percent(4.0)
 
     (change,) = controller.snapshot().control_timeline
-    assert change.previous_value == pytest.approx(0.02)
-    assert change.new_value == pytest.approx(0.04)
+    assert change.previous_value == pytest.approx(2.0)
+    assert change.new_value == pytest.approx(4.0)
     assert change.elapsed_s == pytest.approx(1.0)
 
 
@@ -870,8 +895,8 @@ def test_a_change_undone_within_one_step_leaves_no_entry() -> None:
 
     controller = SimulationController()
 
-    controller.set_delivered_partial_pressure_fraction(0.03)
-    controller.set_delivered_partial_pressure_fraction(0.02)
+    controller.set_delivered_concentration_percent(3.0)
+    controller.set_delivered_concentration_percent(2.0)
 
     assert controller.snapshot().control_timeline == ()
 
@@ -882,13 +907,13 @@ def test_the_same_control_changed_across_two_steps_records_both() -> None:
     controller = SimulationController()
     controller.start()
 
-    controller.set_delivered_partial_pressure_fraction(0.03)
+    controller.set_delivered_concentration_percent(3.0)
     _advance_for(controller, 1.0)
-    controller.set_delivered_partial_pressure_fraction(0.04)
+    controller.set_delivered_concentration_percent(4.0)
 
     first, second = controller.snapshot().control_timeline
-    assert (first.previous_value, first.new_value) == pytest.approx((0.02, 0.03))
-    assert (second.previous_value, second.new_value) == pytest.approx((0.03, 0.04))
+    assert (first.previous_value, first.new_value) == pytest.approx((2.0, 3.0))
+    assert (second.previous_value, second.new_value) == pytest.approx((3.0, 4.0))
 
 
 def test_consecutive_changes_to_one_control_are_one_adjustment() -> None:
@@ -1283,7 +1308,7 @@ def _run_with_two_changes(controller: SimulationController) -> None:
 
     controller.start()
     _advance_through_halts(controller, duration_s=30.0)
-    controller.set_delivered_partial_pressure_fraction(0.04)
+    controller.set_delivered_concentration_percent(4.0)
     _advance_through_halts(controller, duration_s=30.0)
     controller.set_alveolar_ventilation(6.0)
     _advance_through_halts(controller, duration_s=60.0)
@@ -1320,7 +1345,7 @@ def test_a_refused_setting_leaves_the_run_definition_describing_the_run() -> Non
     _advance_for(controller, duration_s=10.0)
 
     with pytest.raises(SimulationConfigurationError):
-        controller.set_delivered_partial_pressure_fraction(0.5)
+        controller.set_delivered_concentration_percent(50.0)
 
     assert len(controller.run_segments) == 1
     assert controller.snapshot().control_timeline == ()
@@ -1522,7 +1547,7 @@ def test_a_control_change_is_drawn_at_every_time_base_the_reader_can_select() ->
     controller.start()
     _advance_for(controller, duration_s=60.0)
     # Turned *up* mid-rise: the case a selection of extremes could not reach.
-    controller.set_delivered_partial_pressure_fraction(0.04)
+    controller.set_delivered_concentration_percent(4.0)
     change_s = controller.snapshot().elapsed_s
     _advance_for(controller, duration_s=60.0)
 
@@ -1857,7 +1882,7 @@ def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from() -> No
     trunk = SimulationController()
     trunk.start()
     _advance_for(trunk, duration_s=55.3)
-    trunk.set_delivered_partial_pressure_fraction(0.04)
+    trunk.set_delivered_concentration_percent(4.0)
     _advance_for(trunk, duration_s=64.7)
     trunk.pause()
 
@@ -1908,7 +1933,7 @@ def test_a_control_moved_before_a_branch_steps_reopens_its_first_segment() -> No
 
     assert len(branch.run_segments) == 1
 
-    branch.set_delivered_partial_pressure_fraction(0.01)
+    branch.set_delivered_concentration_percent(1.0)
 
     assert len(branch.run_segments) == 1
     assert branch.run_segments[0].opening.instant_s == fork_s
@@ -1919,7 +1944,7 @@ def test_a_control_moved_before_a_branch_steps_reopens_its_first_segment() -> No
     _advance_for(branch, duration_s=10.0)
     branch.pause()
 
-    assert branch.run_segments[0].settings.delivered_partial_pressure_fraction == 0.01
+    assert branch.run_segments[0].settings.delivered_concentration_percent == 1.0
     assert len(branch.run_segments) == 1
 
 
@@ -2603,7 +2628,7 @@ def _trunk_halted_on_a_bookmark() -> SimulationController:
     controller.add_time_bookmark(TimeBookmark(45.3, "the decision point"))
     controller.start()
     _advance_for(controller, duration_s=30.0)
-    controller.set_delivered_partial_pressure_fraction(0.04)
+    controller.set_delivered_concentration_percent(4.0)
     _advance_until_halted(controller, limit_s=60.0)
 
     return controller
@@ -2620,7 +2645,7 @@ def _the_same_case_never_marked(steps: int) -> SimulationController:
     controller = SimulationController()
     controller.start()
     _advance_for(controller, duration_s=30.0)
-    controller.set_delivered_partial_pressure_fraction(0.04)
+    controller.set_delivered_concentration_percent(4.0)
 
     for _ in range(steps - controller._state.step_count):
         controller.advance(MAXIMUM_SIMULATION_STEP_S)
@@ -2915,7 +2940,7 @@ def test_a_branch_reset_under_new_settings_is_drawn_from_where_it_stands() -> No
     fork_state = marked._run_definition.state_at(fork_s)
     branch = marked.resumed_at_halt()
 
-    branch.set_delivered_partial_pressure_fraction(0.06)
+    branch.set_delivered_concentration_percent(6.0)
     branch.reset()
 
     assert branch.snapshot().elapsed_s == fork_s
@@ -3339,7 +3364,7 @@ def test_a_setting_changed_while_halted_makes_the_bookmark_fork_a_keyframe_fork(
     _advance_until_halted(marked, limit_s=60.0)
 
     fork_s = marked.snapshot().elapsed_s
-    marked.set_delivered_partial_pressure_fraction(Fraction(0.04))
+    marked.set_delivered_concentration_percent(Percent(4.0))
 
     assert [segment.opening.instant_s for segment in marked.run_segments] == [0.0, fork_s]
     assert marked.snapshot().bookmark_halt is not None

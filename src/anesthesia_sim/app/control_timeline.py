@@ -36,7 +36,7 @@ from typing import Final
 
 from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.formatting import format_elapsed, format_flow, format_percent
-from anesthesia_sim.core.concentration import Fraction
+from anesthesia_sim.core.concentration import Percent, fraction_from_percent
 
 __all__ = [
     "CONTROL_INPUT_LABELS",
@@ -220,12 +220,13 @@ class AdjustmentGrouping:
 def format_control_value(control: ControlInput, value: float) -> str:
     """Render one recorded value in the unit a reader expects to see it in.
 
-    The stored unit and the displayed unit differ for exactly one control.
-    The delivered dial is stored as the fraction the core is set with, so
-    that re-applying a timeline is a sequence of setter calls, and it is
-    displayed as the percent every other concentration on the page is
-    displayed as - through `format_percent`, so the timeline and the
-    readouts cannot come to state one quantity at two resolutions.
+    Every control is stored in the unit the core is set with, so that
+    re-applying a timeline is a sequence of setter calls, and for the
+    delivered dial that is the percent it was set to (`PL-NJPB`). It is
+    displayed through `format_percent`, as every other concentration on the
+    page is, so the timeline and the readouts cannot come to state one
+    quantity at two resolutions; that formatter takes the model's fraction,
+    so the recorded percent is converted on its way in.
 
     Args:
         control: Which setting the value belongs to.
@@ -245,7 +246,7 @@ def format_control_value(control: ControlInput, value: float) -> str:
         # than a flow, which is what naming the type here asserts.
         # `ControlChange.value` is one field for four controls, so it
         # cannot carry the distinction itself.
-        return format_percent(Fraction(value))
+        return format_percent(fraction_from_percent(Percent(value)))
 
     return format_flow(value)
 

@@ -332,7 +332,7 @@ def test_the_maximum_simulation_step_does_not_bind_a_bare_compartment() -> None:
     misstate what the bound is about.
     """
 
-    circuit = BreathingCircuit(delivered_partial_pressure_fraction=1.0)
+    circuit = BreathingCircuit(delivered_concentration_percent=100.0)
     step_s = 60.0
 
     assert step_s > MAXIMUM_SIMULATION_STEP_S
@@ -366,12 +366,12 @@ def test_a_rejected_setting_stays_a_configuration_error() -> None:
     """A refused vaporizer dial must not be reported as a broken run."""
 
     system = _sevoflurane_at_one_mac()
-    before = system.circuit.delivered_partial_pressure_fraction
+    before = system.circuit.delivered_concentration_percent
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
-        system.set_delivered_partial_pressure_fraction(0.5)
+        system.set_delivered_concentration_percent(50.0)
 
-    assert system.circuit.delivered_partial_pressure_fraction == before
+    assert system.circuit.delivered_concentration_percent == before
 
 
 def test_the_ordinary_step_is_unaffected() -> None:

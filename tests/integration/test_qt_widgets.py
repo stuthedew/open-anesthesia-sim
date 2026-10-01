@@ -36,7 +36,6 @@ from anesthesia_sim.app.dashboard_frame import (
     WIDEST_READOUT_VALUE,
     Readout,
     SettingReadout,
-    delivered_fraction,
     new_case_question,
     readout_columns,
     readouts,
@@ -60,6 +59,7 @@ from anesthesia_sim.app.qt_widgets import (
     transport_button_stylesheet,
 )
 from anesthesia_sim.app.theme import ACCENT, INK, MUTED, PANEL, WARNING
+from anesthesia_sim.core.concentration import Percent, fraction_from_percent
 
 
 @pytest.fixture(scope="module")
@@ -142,7 +142,7 @@ def _printed_value(setting: SettingReadout, value: float) -> float:
     """The number the readout beside the slider prints for `value`, read back."""
 
     if setting.control is ControlInput.DELIVERED:
-        return float(format_percent(delivered_fraction(value)).rstrip("%"))
+        return float(format_percent(fraction_from_percent(Percent(value))).rstrip("%"))
 
     return float(format_flow(value).split(" ")[0])
 

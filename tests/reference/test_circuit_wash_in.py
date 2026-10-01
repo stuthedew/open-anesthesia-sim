@@ -3,18 +3,24 @@ from math import exp
 import pytest
 
 from anesthesia_sim.core.circuit import BreathingCircuit
+from anesthesia_sim.core.concentration import Percent, fraction_from_percent
 
 
 @pytest.mark.parametrize("elapsed_s", [0.0, 30.0, 60.0, 120.0, 300.0])
 def test_circuit_matches_analytic_wash_in(elapsed_s: float) -> None:
+    delivered_percent = Percent(8.0)
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, fresh_gas_flow_l_min=6.0, delivered_partial_pressure_fraction=0.08
+        circuit_volume_l=6.0,
+        fresh_gas_flow_l_min=6.0,
+        delivered_concentration_percent=delivered_percent,
     )
 
     if elapsed_s > 0.0:
         circuit.advance(elapsed_s)
 
-    expected_concentration_fraction = 0.08 * (1.0 - exp(-elapsed_s / circuit.time_constant_s))
+    expected_concentration_fraction = fraction_from_percent(delivered_percent) * (
+        1.0 - exp(-elapsed_s / circuit.time_constant_s)
+    )
 
     assert circuit.inspired_partial_pressure_fraction == pytest.approx(
         expected_concentration_fraction, rel=1e-12, abs=1e-15
@@ -22,7 +28,7 @@ def test_circuit_matches_analytic_wash_in(elapsed_s: float) -> None:
 
 
 def test_wash_in_is_monotonic_and_never_overshoots() -> None:
-    circuit = BreathingCircuit(delivered_partial_pressure_fraction=0.08)
+    circuit = BreathingCircuit(delivered_concentration_percent=8.0)
     observed_concentrations = [circuit.inspired_partial_pressure_fraction]
 
     for _ in range(1_200):

@@ -52,17 +52,17 @@ def test_a_drag_reads_as_one_act_spanning_the_settings_the_model_saw() -> None:
     """
 
     timeline = (
-        _change(10.0, ControlInput.DELIVERED, 0.02, 0.025, adjustment=1),
-        _change(10.1, ControlInput.DELIVERED, 0.025, 0.031, adjustment=1),
-        _change(10.2, ControlInput.DELIVERED, 0.031, 0.04, adjustment=1),
+        _change(10.0, ControlInput.DELIVERED, 2.0, 2.5, adjustment=1),
+        _change(10.1, ControlInput.DELIVERED, 2.5, 3.1, adjustment=1),
+        _change(10.2, ControlInput.DELIVERED, 3.1, 4.0, adjustment=1),
     )
 
     (adjustment,) = group_adjustments(timeline)
 
     assert adjustment.started_at_s == 10.0
     assert adjustment.ended_at_s == 10.2
-    assert adjustment.from_value == 0.02
-    assert adjustment.to_value == 0.04
+    assert adjustment.from_value == 2.0
+    assert adjustment.to_value == 4.0
     assert adjustment.change_count == 3
 
 
@@ -107,13 +107,15 @@ def test_every_control_has_a_display_label() -> None:
 
 
 def test_the_delivered_dial_is_displayed_in_percent_not_as_a_fraction() -> None:
-    """Stored as the core's fraction, read as the page's percent.
+    """Stored as the percent it was dialled (`PL-NJPB`), read as the page's percent.
 
-    Displaying 0.02 where every other concentration on the page reads
-    "2.00%" would make one quantity read two ways on one screen.
+    Displayed through the formatter every other concentration on the page
+    goes through, which takes the model's fraction, so the recorded percent is
+    converted on its way in: formatted unconverted, a 2% setting would read
+    "200.00%" beside readouts that read "2.00%".
     """
 
-    assert format_control_value(ControlInput.DELIVERED, 0.02) == "2.00%"
+    assert format_control_value(ControlInput.DELIVERED, 2.0) == "2.00%"
 
 
 def test_flow_settings_are_displayed_in_the_unit_their_sliders_are() -> None:
@@ -147,8 +149,8 @@ def test_a_single_change_reads_as_the_instant_it_was() -> None:
 
 def test_a_multi_setting_adjustment_states_its_span_and_its_count() -> None:
     timeline = (
-        _change(10.0, ControlInput.DELIVERED, 0.02, 0.03, adjustment=1),
-        _change(10.2, ControlInput.DELIVERED, 0.03, 0.04, adjustment=1),
+        _change(10.0, ControlInput.DELIVERED, 2.0, 3.0, adjustment=1),
+        _change(10.2, ControlInput.DELIVERED, 3.0, 4.0, adjustment=1),
     )
 
     (adjustment,) = group_adjustments(timeline)
@@ -163,7 +165,7 @@ def test_a_rendered_adjustment_carries_a_unit_on_both_of_its_values() -> None:
 
     timeline = (
         _change(10.0, ControlInput.CARDIAC_OUTPUT, 5.0, 2.5, adjustment=1),
-        _change(20.0, ControlInput.DELIVERED, 0.02, 0.04, adjustment=2),
+        _change(20.0, ControlInput.DELIVERED, 2.0, 4.0, adjustment=2),
     )
 
     for adjustment in group_adjustments(timeline):
@@ -185,8 +187,8 @@ def test_a_rendered_line_uses_only_glyphs_the_interface_can_draw() -> None:
     """
 
     timeline = (
-        _change(10.0, ControlInput.DELIVERED, 0.02, 0.03, adjustment=1),
-        _change(10.2, ControlInput.DELIVERED, 0.03, 0.04, adjustment=1),
+        _change(10.0, ControlInput.DELIVERED, 2.0, 3.0, adjustment=1),
+        _change(10.2, ControlInput.DELIVERED, 3.0, 4.0, adjustment=1),
     )
     confirmed = set(" ·–->()sL/min%0123456789.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
