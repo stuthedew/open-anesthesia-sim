@@ -86,7 +86,6 @@ from anesthesia_sim.app.dashboard_frame import (
     compared_panel_heading,
     compared_run_line,
     compared_run_notice,
-    delivered_fraction,
     halt_disposition,
     new_case_question,
     notice,
@@ -133,6 +132,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
     AgentColorScheme,
 )
+from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
@@ -785,9 +785,9 @@ class RunView(QWidget):
         self._apply_setting(lambda: self.controller.set_fresh_gas_flow(flow_l_min), coalesce=True)
 
     def _handle_delivered_concentration_change(self, percent: float) -> None:
-        fraction = delivered_fraction(percent)
         self._apply_setting(
-            lambda: self.controller.set_delivered_partial_pressure_fraction(fraction), coalesce=True
+            lambda: self.controller.set_delivered_concentration_percent(Percent(percent)),
+            coalesce=True,
         )
 
     def _handle_alveolar_ventilation_change(self, flow_l_min: float) -> None:

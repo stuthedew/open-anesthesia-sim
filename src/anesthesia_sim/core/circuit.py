@@ -10,7 +10,7 @@ halothane. `docs/MODEL.md` "Known limitations" carries the measurement and the
 reason the simplification is kept (`PL-LS3H`).
 
 The circuit also owns the vaporizer delivery limit
-(`max_delivered_partial_pressure_fraction`), because it owns the delivered
+(`max_delivered_concentration_percent`), because it owns the delivered
 concentration itself: enforcing the limit here means every path that can
 change that value — core, controller, or UI — is bounded by the same
 guard, rather than relying on the presentation layer to bound it. Fresh
@@ -31,7 +31,7 @@ below 0.5 L/min must not move the model's floor for every other machine.
 from dataclasses import dataclass
 from math import exp, inf
 
-from anesthesia_sim.core.concentration import Fraction, percent_from_fraction
+from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -42,6 +42,7 @@ from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_fraction,
     require_nonnegative_finite,
+    require_percent,
     require_positive_finite,
 )
 
@@ -170,10 +171,23 @@ class BreathingCircuit:
     leaves at, so only the post-vaporizer total balances; see
     `docs/MODEL.md`, "Breathing circuit".
 
-    `max_delivered_partial_pressure_fraction` is the vaporizer's calibrated
-    dial maximum for the agent in use. It defaults to 1.0, meaning "no
-    device limit declared", which is only appropriate for a circuit built
-    without an agent (a bare unit test of circuit physics). Every
+    **The dial is held as the percent it was set to, and the fraction is
+    derived from it** (`PL-NJPB`). `delivered_concentration_percent` is the
+    record, and `delivered_partial_pressure_fraction`, which the governing
+    equations read, is `fraction_from_percent` of it on every read. Stored the
+    other way round, the setting could not be recovered as dialled: a
+    fraction times a hundred misses the percent it came from, in binary
+    floating point, for 126 of the 801 settings a 0 to 8% dial makes at 0.01%
+    steps, 0.9% reading back as 0.9000000000000001. The equations lose
+    nothing, because the one division the interface used to make is made
+    here instead. `PL-SM5V` chose the same rule for the flows, which are held
+    in L/min and read by the equations in L/s.
+
+    `max_delivered_concentration_percent` is the vaporizer's calibrated
+    dial maximum for the agent in use, in the unit of the dial it bounds. It
+    defaults to 100.0, meaning "no device limit declared", which is only
+    appropriate for a circuit built without an agent (a bare unit test of
+    circuit physics). Every
     agent-aware path builds the circuit through
     `AgentUptakeSystem.for_agent()`, which sets both the real limit and
     that agent's own starting dial from the agent data file.
@@ -195,9 +209,9 @@ class BreathingCircuit:
 
     circuit_volume_l: float = 6.0
     fresh_gas_flow_l_min: float = TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
-    delivered_partial_pressure_fraction: Fraction = Fraction(0.0)
+    delivered_concentration_percent: Percent = Percent(0.0)
     inspired_partial_pressure_fraction: Fraction = Fraction(0.0)
-    max_delivered_partial_pressure_fraction: Fraction = Fraction(1.0)
+    max_delivered_concentration_percent: Percent = Percent(100.0)
     deliverable_fresh_gas_flow_range: DeliverableFreshGasFlowRange | None = None
 
     def __post_init__(self) -> None:
@@ -205,16 +219,14 @@ class BreathingCircuit:
         self._require_the_two_flow_claims_overlap()
         require_supported_fresh_gas_flow(self.fresh_gas_flow_l_min)
         self._require_deliverable_flow(self.fresh_gas_flow_l_min)
-        require_fraction(
-            "max_delivered_partial_pressure_fraction", self.max_delivered_partial_pressure_fraction
+        require_percent(
+            "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
         require_positive_finite(
-            "max_delivered_partial_pressure_fraction", self.max_delivered_partial_pressure_fraction
+            "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
-        require_fraction(
-            "delivered_partial_pressure_fraction", self.delivered_partial_pressure_fraction
-        )
-        self._require_deliverable(self.delivered_partial_pressure_fraction)
+        require_percent("delivered_concentration_percent", self.delivered_concentration_percent)
+        self._require_deliverable(self.delivered_concentration_percent)
         require_fraction(
             "inspired_partial_pressure_fraction", self.inspired_partial_pressure_fraction
         )
@@ -295,7 +307,7 @@ class BreathingCircuit:
                 f'"Supported input ranges")'
             )
 
-    def _require_deliverable(self, delivered_partial_pressure_fraction: Fraction) -> None:
+    def _require_deliverable(self, delivered_concentration_percent: Percent) -> None:
         """Reject a concentration the vaporizer in use cannot produce.
 
         Rejecting rather than clamping is deliberate: a silently clamped
@@ -305,12 +317,23 @@ class BreathingCircuit:
         the vaporizer turned off, which is how washout begins.
         """
 
-        if delivered_partial_pressure_fraction > self.max_delivered_partial_pressure_fraction:
+        if delivered_concentration_percent > self.max_delivered_concentration_percent:
             raise SimulationConfigurationError(
-                "delivered_partial_pressure_fraction exceeds the vaporizer maximum "
-                f"({percent_from_fraction(delivered_partial_pressure_fraction):g}% requested, "
-                f"{percent_from_fraction(self.max_delivered_partial_pressure_fraction):g}% maximum)"
+                "delivered_concentration_percent exceeds the vaporizer maximum "
+                f"({delivered_concentration_percent:g}% requested, "
+                f"{self.max_delivered_concentration_percent:g}% maximum)"
             )
+
+    @property
+    def delivered_partial_pressure_fraction(self) -> Fraction:
+        """The fraction of an atmosphere the dial delivers, derived from its percent.
+
+        What `advance_fresh_gas()` and the governing equations read. Derived
+        on every read rather than stored beside the percent, so there is one
+        record of the setting and nothing to disagree with it (`PL-NJPB`).
+        """
+
+        return fraction_from_percent(self.delivered_concentration_percent)
 
     @property
     def agent_amount_l(self) -> float:
@@ -386,14 +409,12 @@ class BreathingCircuit:
         self._require_deliverable_flow(fresh_gas_flow_l_min)
         self.fresh_gas_flow_l_min = fresh_gas_flow_l_min
 
-    def set_delivered_partial_pressure_fraction(
-        self, delivered_partial_pressure_fraction: Fraction
-    ) -> None:
-        """Set the vaporizer dial, rejecting anything it cannot deliver."""
+    def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
+        """Set the vaporizer dial in the percent it reads, rejecting what it cannot deliver."""
 
-        require_fraction("delivered_partial_pressure_fraction", delivered_partial_pressure_fraction)
-        self._require_deliverable(delivered_partial_pressure_fraction)
-        self.delivered_partial_pressure_fraction = delivered_partial_pressure_fraction
+        require_percent("delivered_concentration_percent", delivered_concentration_percent)
+        self._require_deliverable(delivered_concentration_percent)
+        self.delivered_concentration_percent = delivered_concentration_percent
 
     def set_inspired_partial_pressure_fraction(
         self, inspired_partial_pressure_fraction: Fraction

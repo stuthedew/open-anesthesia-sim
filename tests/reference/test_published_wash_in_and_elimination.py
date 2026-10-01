@@ -353,7 +353,7 @@ FRESH_GAS_FLOW_L_MIN = 10.0
 # `test_ratio_does_not_depend_on_the_delivered_fraction`, over the published
 # concentrations themselves — read off `PUBLISHED_MEASUREMENTS` below rather
 # than restated, so the checked range cannot drift from the cited one.
-DELIVERED_FRACTION = 0.01
+DELIVERED_PERCENT = 1.0
 
 # The published spread is the tolerance. Nothing here is fitted: the width of
 # this gate is the standard deviation Yasuda reported, so a parameter or
@@ -658,7 +658,7 @@ def _configured_system(
     alveolar_ventilation_l_min: float | None = None,
     cardiac_output_l_min: float | None = None,
     fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
-    delivered_fraction: float = DELIVERED_FRACTION,
+    delivered_percent: float = DELIVERED_PERCENT,
     vessel_rich_tissue_gas_partition_coefficient: float | None = None,
 ) -> AgentUptakeSystem:
     """Return a fresh system at the published protocol's operating point.
@@ -697,7 +697,7 @@ def _configured_system(
         )
 
     system.set_fresh_gas_flow(fresh_gas_flow_l_min)
-    system.set_delivered_partial_pressure_fraction(delivered_fraction)
+    system.set_delivered_concentration_percent(delivered_percent)
     system.set_alveolar_ventilation(
         patient_parameters.default_alveolar_ventilation_l_min
         if alveolar_ventilation_l_min is None
@@ -718,7 +718,7 @@ def _wash_in_system(
     alveolar_ventilation_l_min: float | None = None,
     cardiac_output_l_min: float | None = None,
     fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
-    delivered_fraction: float = DELIVERED_FRACTION,
+    delivered_percent: float = DELIVERED_PERCENT,
 ) -> AgentUptakeSystem:
     """Return the system after 30 minutes of wash-in at one operating point.
 
@@ -737,7 +737,7 @@ def _wash_in_system(
         alveolar_ventilation_l_min,
         cardiac_output_l_min,
         fresh_gas_flow_l_min,
-        delivered_fraction,
+        delivered_percent,
     )
 
     for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
@@ -751,7 +751,7 @@ def _wash_in_ratio(
     alveolar_ventilation_l_min: float | None = None,
     cardiac_output_l_min: float | None = None,
     fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
-    delivered_fraction: float = DELIVERED_FRACTION,
+    delivered_percent: float = DELIVERED_PERCENT,
 ) -> float:
     """F_A/F_I after 30 minutes of wash-in at one operating point.
 
@@ -767,7 +767,7 @@ def _wash_in_ratio(
         alveolar_ventilation_l_min,
         cardiac_output_l_min,
         fresh_gas_flow_l_min,
-        delivered_fraction,
+        delivered_percent,
     )
 
     return (
@@ -780,7 +780,7 @@ def _private_washed_in_system(
     alveolar_ventilation_l_min: float | None,
     cardiac_output_l_min: float | None,
     fresh_gas_flow_l_min: float,
-    delivered_fraction: float,
+    delivered_percent: float,
     vessel_rich_tissue_gas_partition_coefficient: float | None = None,
 ) -> AgentUptakeSystem:
     """Return an unshared system after the published 30 minutes of wash-in.
@@ -804,7 +804,7 @@ def _private_washed_in_system(
         alveolar_ventilation_l_min,
         cardiac_output_l_min,
         fresh_gas_flow_l_min,
-        delivered_fraction,
+        delivered_percent,
         vessel_rich_tissue_gas_partition_coefficient,
     )
 
@@ -852,7 +852,7 @@ def _eliminate(
     alveolar_ventilation_l_min: float | None = None,
     cardiac_output_l_min: float | None = None,
     fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
-    delivered_fraction: float = DELIVERED_FRACTION,
+    delivered_percent: float = DELIVERED_PERCENT,
 ) -> EliminationReading:
     """Wash in for the published 30 minutes, then eliminate for five.
 
@@ -874,11 +874,11 @@ def _eliminate(
         alveolar_ventilation_l_min,
         cardiac_output_l_min,
         fresh_gas_flow_l_min,
-        delivered_fraction,
+        delivered_percent,
     )
     alveolar_fraction_at_discontinuation = system.alveoli.partial_pressure_fraction
 
-    system.set_delivered_partial_pressure_fraction(0.0)
+    system.set_delivered_concentration_percent(0.0)
 
     for _ in range(round(ELIMINATION_DURATION_S / SIMULATION_STEP_S)):
         system.advance(SIMULATION_STEP_S)
@@ -965,7 +965,7 @@ def _eliminate_without_rebreathing(
     alveolar_ventilation_l_min: float | None = None,
     cardiac_output_l_min: float | None = None,
     fresh_gas_flow_l_min: float = FRESH_GAS_FLOW_L_MIN,
-    delivered_fraction: float = DELIVERED_FRACTION,
+    delivered_percent: float = DELIVERED_PERCENT,
     elimination_fresh_gas_flow_l_min: float | None = None,
     vessel_rich_tissue_gas_partition_coefficient: float | None = None,
 ) -> OpenCircuitEliminationReading:
@@ -1021,12 +1021,12 @@ def _eliminate_without_rebreathing(
         alveolar_ventilation_l_min,
         cardiac_output_l_min,
         fresh_gas_flow_l_min,
-        delivered_fraction,
+        delivered_percent,
         vessel_rich_tissue_gas_partition_coefficient,
     )
     alveolar_fraction_at_discontinuation = system.alveoli.partial_pressure_fraction
 
-    system.set_delivered_partial_pressure_fraction(0.0)
+    system.set_delivered_concentration_percent(0.0)
 
     if elimination_fresh_gas_flow_l_min is not None:
         system.set_fresh_gas_flow(elimination_fresh_gas_flow_l_min)
@@ -1172,7 +1172,7 @@ def test_ratio_does_not_depend_on_the_delivered_fraction(agent_id: str) -> None:
     """
 
     ratios = [
-        _wash_in_ratio(agent_id, delivered_fraction=percent / 100.0)
+        _wash_in_ratio(agent_id, delivered_percent=percent)
         for percent in PUBLISHED_INSPIRED_PERCENTS
     ]
 
@@ -1409,7 +1409,7 @@ def test_elimination_ratio_does_not_depend_on_the_delivered_fraction(agent_id: s
     """
 
     ratios = [
-        _eliminate(agent_id, delivered_fraction=percent / 100.0).ratio
+        _eliminate(agent_id, delivered_percent=percent).ratio
         for percent in PUBLISHED_INSPIRED_PERCENTS
     ]
 

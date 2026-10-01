@@ -72,12 +72,7 @@ from anesthesia_sim.app.formatting import (
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
-from anesthesia_sim.core.concentration import (
-    Fraction,
-    Percent,
-    fraction_from_percent,
-    percent_from_fraction,
-)
+from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import (
@@ -1005,7 +1000,7 @@ def setting_readouts(snapshot: SimulationSnapshot) -> tuple[SettingReadout, ...]
 
     for control in PARAMETER_CONTROLS:
         if control.control is ControlInput.DELIVERED:
-            value: float = percent_from_fraction(delivered)
+            value: float = snapshot.delivered_concentration_percent
             value_text = format_percent(delivered)
             secondary = format_mac_multiple(delivered, snapshot.agent_mac_percent)
         else:
@@ -1068,23 +1063,6 @@ def slider_value(position: int, decimals: int) -> float:
     """
 
     return position / 10.0**decimals
-
-
-def delivered_fraction(percent: float) -> Fraction:
-    """The fraction the core is set with, from the delivered dial's percent.
-
-    Through `core.concentration.fraction_from_percent` and never a division
-    by hand, so the one unit conversion between the dial and the model is
-    made in the one place that owns it.
-
-    Args:
-        percent: The dial's position, in percent of one atmosphere.
-
-    Returns:
-        The same partial pressure as a fraction of one atmosphere.
-    """
-
-    return fraction_from_percent(Percent(percent))
 
 
 @dataclass(frozen=True, slots=True)

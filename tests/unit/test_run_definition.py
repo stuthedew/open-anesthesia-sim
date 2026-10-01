@@ -29,7 +29,7 @@ from math import inf, nan
 import pytest
 
 from anesthesia_sim.core import run_definition
-from anesthesia_sim.core.concentration import Fraction
+from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
@@ -102,7 +102,7 @@ def _stepped_run(
 
     if changes is None:
         changes = {
-            300: ("set_delivered_partial_pressure_fraction", 0.04),
+            300: ("set_delivered_concentration_percent", 4.0),
             1200: ("set_alveolar_ventilation", 6.0),
         }
 
@@ -217,7 +217,7 @@ def test_a_window_reads_only_the_segments_it_covers(monkeypatch: pytest.MonkeyPa
 
     for change in range(1, 1501):
         definition.advance_to(change * total_s / 1501)
-        system.set_delivered_partial_pressure_fraction(0.01 + 0.005 * (change % 4))
+        system.set_delivered_concentration_percent(1.0 + 0.5 * (change % 4))
         definition.record_change(system.equation_settings())
 
     definition.advance_to(total_s)
@@ -257,7 +257,7 @@ def test_two_changes_at_one_instant_are_one_segment() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
     definition.advance_to(10.0)
-    system.set_delivered_partial_pressure_fraction(0.03)
+    system.set_delivered_concentration_percent(3.0)
     definition.record_change(system.equation_settings())
     system.set_cardiac_output(4.0)
     definition.record_change(system.equation_settings())
@@ -265,9 +265,7 @@ def test_two_changes_at_one_instant_are_one_segment() -> None:
     assert len(definition.segments) == 2
     assert definition.segments[-1].opening.instant_s == 10.0
     assert definition.segments[-1].settings.cardiac_output_l_s == pytest.approx(4.0 / 60.0)
-    assert definition.segments[-1].settings.delivered_partial_pressure_fraction == pytest.approx(
-        0.03
-    )
+    assert definition.segments[-1].settings.delivered_concentration_percent == 3.0
 
 
 def _configured_from(settings: UptakeEquationSettings) -> AgentUptakeSystem:
@@ -275,7 +273,7 @@ def _configured_from(settings: UptakeEquationSettings) -> AgentUptakeSystem:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     system.set_fresh_gas_flow(settings.fresh_gas_flow_l_min)
-    system.set_delivered_partial_pressure_fraction(settings.delivered_partial_pressure_fraction)
+    system.set_delivered_concentration_percent(settings.delivered_concentration_percent)
     system.set_alveolar_ventilation(settings.alveolar_ventilation_l_min)
     system.set_cardiac_output(settings.cardiac_output_l_min)
 
@@ -319,6 +317,40 @@ def test_a_recorded_setting_round_trips_to_what_was_set(control: str, maximum_l_
             or _configured_from(recorded).equation_settings() != recorded
         ):
             unrecovered.append(set_l_min)
+
+    assert unrecovered == []
+
+
+def test_a_recorded_segment_gives_back_each_vaporizer_percent_as_dialled() -> None:
+    """A segment holds the vaporizer setting as the percent dialled, at every dial position.
+
+    `PL-NJPB`. Segments held the fraction the interface divided the dial's
+    percent by, and a fraction times a hundred misses the percent it came from
+    for 126 of the 801 positions a 0 to 8% dial makes at 0.01% steps - 0.23%
+    first, and 0.9% reading back as 0.9000000000000001 - so the setting could
+    not be recovered as dialled. Every position of sevoflurane's dial is
+    checked, formed as `dashboard_frame.slider_value` forms it, and each one
+    that fails is named.
+    """
+
+    circuit = AgentUptakeSystem.for_agent("sevoflurane").circuit
+    maximum_percent = circuit.max_delivered_concentration_percent
+    unrecovered: list[float] = []
+
+    for hundredths in range(round(maximum_percent * 100) + 1):
+        dialled_percent = Percent(hundredths / 100)
+        system = AgentUptakeSystem.for_agent("sevoflurane")
+        system.set_delivered_concentration_percent(dialled_percent)
+        definition = RunDefinition(
+            system.equation_settings(), system.state_vector(), opened_at_s=0.0
+        )
+        recorded = definition.segments[-1].settings
+
+        if (
+            recorded.delivered_concentration_percent != dialled_percent
+            or _configured_from(recorded).equation_settings() != recorded
+        ):
+            unrecovered.append(dialled_percent)
 
     assert unrecovered == []
 
@@ -549,11 +581,11 @@ def _opening_after_zero() -> RunDefinition:
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
-    system.set_delivered_partial_pressure_fraction(0.02)
+    system.set_delivered_concentration_percent(2.0)
     definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=600.0)
 
     definition.advance_to(900.0)
-    system.set_delivered_partial_pressure_fraction(0.005)
+    system.set_delivered_concentration_percent(0.5)
     definition.record_change(system.equation_settings())
 
     definition.advance_to(1200.0)
@@ -713,12 +745,12 @@ def test_a_change_undone_before_a_step_runs_leaves_no_segment() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
     definition.advance_to(10.0)
-    system.set_delivered_partial_pressure_fraction(0.03)
+    system.set_delivered_concentration_percent(3.0)
     definition.record_change(system.equation_settings())
 
     assert len(definition.segments) == 2
 
-    system.set_delivered_partial_pressure_fraction(0.02)
+    system.set_delivered_concentration_percent(2.0)
     definition.record_change(system.equation_settings())
 
     assert len(definition.segments) == 1
@@ -735,13 +767,11 @@ def test_the_first_stretch_is_kept_even_when_a_change_returns_to_it() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
-    system.set_delivered_partial_pressure_fraction(0.05)
+    system.set_delivered_concentration_percent(5.0)
     definition.record_change(system.equation_settings())
 
     assert len(definition.segments) == 1
-    assert definition.segments[0].settings.delivered_partial_pressure_fraction == pytest.approx(
-        0.05
-    )
+    assert definition.segments[0].settings.delivered_concentration_percent == 5.0
 
 
 def test_recording_a_change_copies_no_segment_already_recorded() -> None:
@@ -764,7 +794,7 @@ def test_recording_a_change_copies_no_segment_already_recorded() -> None:
     for change in range(1, 301):
         before = definition.segments
         definition.advance_to(change * 10.0)
-        system.set_delivered_partial_pressure_fraction(0.01 + 0.005 * (change % 4))
+        system.set_delivered_concentration_percent(1.0 + 0.5 * (change % 4))
         definition.record_change(system.equation_settings())
         after = definition.segments
 
@@ -787,14 +817,14 @@ def test_a_record_handed_out_is_not_changed_by_later_changes() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
     definition.advance_to(10.0)
-    system.set_delivered_partial_pressure_fraction(0.03)
+    system.set_delivered_concentration_percent(3.0)
     definition.record_change(system.equation_settings())
     held = definition.segments
     contents = list(held)
 
-    for fraction, reach_s in ((0.04, 10.0), (0.02, 10.0), (0.05, 20.0)):
+    for percent, reach_s in ((4.0, 10.0), (2.0, 10.0), (5.0, 20.0)):
         definition.advance_to(reach_s)
-        system.set_delivered_partial_pressure_fraction(fraction)
+        system.set_delivered_concentration_percent(percent)
         definition.record_change(system.equation_settings())
 
         assert len(held) == len(contents)
@@ -967,7 +997,7 @@ def _two_change_run() -> RunDefinition:
     definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
 
     definition.advance_to(300.0)
-    system.set_delivered_partial_pressure_fraction(Fraction(0.02))
+    system.set_delivered_concentration_percent(Percent(2.0))
     definition.record_change(system.equation_settings())
     definition.advance_to(600.0)
     system.set_fresh_gas_flow(1.0)
@@ -1036,10 +1066,10 @@ def test_a_pixel_wide_chord_misses_an_extremum_by_under_the_readout_s_resolution
     system.set_fresh_gas_flow(10.0)
     system.set_alveolar_ventilation(12.0)
     system.set_cardiac_output(10.0)
-    system.set_delivered_partial_pressure_fraction(0.12)
+    system.set_delivered_concentration_percent(12.0)
     definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
     definition.advance_to(600.0)
-    system.set_delivered_partial_pressure_fraction(0.06)
+    system.set_delivered_concentration_percent(6.0)
     definition.record_change(system.equation_settings())
     definition.advance_to(43_200.0)
 

@@ -37,15 +37,19 @@ class ControlInput(StrEnum):
     `PL-3TLK` and `PL-9SH6` renamed both of the forwarding setters these
     members stand for - `set_delivered_concentration` became
     `set_delivered_partial_pressure_fraction`, and the circuit fraction
-    became `inspired_partial_pressure_fraction` - and a timeline that had
-    stored accessor names would now carry two retired ones in the history
-    of every run recorded before the rename. The member names followed the
-    code; the strings did not move.
+    became `inspired_partial_pressure_fraction` - and `PL-NJPB` renamed the
+    first again, to `set_delivered_concentration_percent`, so a timeline
+    that had stored accessor names would now carry three retired ones in the
+    history of every run recorded before the renames. The member names
+    followed the code; the strings did not move.
 
     `DELIVERED` is the vaporizer dial: the concentration delivered into the
     circuit, which is not the same quantity as the inspired concentration
     the circuit reaches. Naming it for the dial would have tied it to one
-    machine's control rather than to the quantity the model applies.
+    machine's control rather than to the quantity the model applies. Its
+    recorded value is the percent the dial was set to, which is what the
+    circuit holds (`PL-NJPB`), so every control's value is in the unit it
+    was set in.
 
     These are the four live controls and there is no fifth. A
     `CIRCUIT_VOLUME` member was recorded here until `PL-GYH2` established
@@ -76,15 +80,15 @@ class ControlInput(StrEnum):
 # displayed value traceable to them; this is both halves.
 #
 # The values are the model's own units, not the interface's. The delivered
-# concentration is stored as the fraction the core is set with, so
-# re-applying a recorded timeline is a sequence of setter calls with the
-# numbers already in them - the reconstruction property this item exists
-# for - and the percent a reader sees is that fraction converted once, at
-# the display, by the same formatter every other concentration goes
-# through.
+# concentration is stored as the percent the core is set with, which is
+# the percent that was dialled (`PL-NJPB`), so re-applying a recorded
+# timeline is a sequence of setter calls with the numbers already in them -
+# the reconstruction property this item exists for - and the percent a
+# reader sees is rendered by the same formatter every other concentration
+# goes through.
 CONTROL_INPUT_UNITS: Final[Mapping[ControlInput, str]] = {
     ControlInput.FRESH_GAS_FLOW: "L/min",
-    ControlInput.DELIVERED: "fraction of 1 atm",
+    ControlInput.DELIVERED: "percent of 1 atm",
     ControlInput.ALVEOLAR_VENTILATION: "L/min",
     ControlInput.CARDIAC_OUTPUT: "L/min",
 }

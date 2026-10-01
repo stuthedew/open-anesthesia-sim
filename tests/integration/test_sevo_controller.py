@@ -94,7 +94,7 @@ def test_reset_preserves_all_user_settings() -> None:
     controller = SimulationController(
         circuit_volume_l=5.0,
         fresh_gas_flow_l_min=3.0,
-        delivered_partial_pressure_fraction=0.06,
+        delivered_concentration_percent=6.0,
         alveolar_ventilation_l_min=5.5,
         cardiac_output_l_min=6.0,
     )
@@ -111,7 +111,7 @@ def test_reset_preserves_all_user_settings() -> None:
 
     assert snapshot.circuit_volume_l == 5.0
     assert snapshot.fresh_gas_flow_l_min == 3.0
-    assert snapshot.delivered_partial_pressure_fraction == 0.06
+    assert snapshot.delivered_concentration_percent == 6.0
     assert snapshot.alveolar_ventilation_l_min == 5.5
     assert snapshot.cardiac_output_l_min == 6.0
     assert snapshot.agent_accounting_passes_validation is True
@@ -131,7 +131,7 @@ def test_identical_runs_produce_identical_snapshots_and_history() -> None:
         controller.set_alveolar_ventilation(6.0)
         controller.set_cardiac_output(4.5)
         _advance_for(controller, duration_s=20.0)
-        controller.set_delivered_partial_pressure_fraction(0.05)
+        controller.set_delivered_concentration_percent(5.0)
         _advance_for(controller, duration_s=20.0)
         return controller
 
@@ -167,7 +167,7 @@ def _scripted_run(
             elif steps_taken == 250:
                 controller.set_cardiac_output(4.5)
             elif steps_taken == 400:
-                controller.set_delivered_partial_pressure_fraction(0.05)
+                controller.set_delivered_concentration_percent(5.0)
 
         # What a frame does between ticks: read the run, and never move it.
         controller.drawn_window(
@@ -274,7 +274,7 @@ def test_extreme_ui_slider_range_stays_valid_through_wash_in_and_washout() -> No
     controller.start()
     max_delivered_concentration_percent = controller.snapshot().max_delivered_concentration_percent
     controller.set_fresh_gas_flow(MAXIMUM_FRESH_GAS_FLOW_L_MIN)
-    controller.set_delivered_partial_pressure_fraction(max_delivered_concentration_percent / 100.0)
+    controller.set_delivered_concentration_percent(max_delivered_concentration_percent)
     controller.set_alveolar_ventilation(MAXIMUM_ALVEOLAR_VENTILATION_L_MIN)
     controller.set_cardiac_output(MAXIMUM_CARDIAC_OUTPUT_L_MIN)
 
@@ -294,7 +294,7 @@ def test_extreme_ui_slider_range_stays_valid_through_wash_in_and_washout() -> No
         assert isfinite(fraction)
         assert 0.0 <= fraction <= 1.0
 
-    controller.set_delivered_partial_pressure_fraction(0.0)
+    controller.set_delivered_concentration_percent(0.0)
     _advance_for(controller, duration_s=300.0)
 
     washout_snapshot = controller.snapshot()

@@ -83,12 +83,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import isfinite
 
+from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.matrix_exponential import Matrix
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
-    require_fraction,
     require_nonnegative_finite,
+    require_percent,
     require_positive_finite,
 )
 
@@ -271,11 +272,18 @@ class UptakeEquationSettings:
     rebuilt from that differ in all three tissue flows (`PL-SM5V`).
     `docs/MODEL.md` § "Time" states which of the two is the record.
 
+    **The delivered concentration is held in the percent it was dialled, and
+    read as a fraction**, for the same reason (`PL-NJPB`). The equations read
+    $`F_D`$ through `delivered_partial_pressure_fraction`, and a fraction times
+    a hundred misses the percent it came from for 126 of the 801 settings a 0
+    to 8% dial makes at 0.01% steps, so a fraction stored here would not give
+    back what was set. `docs/MODEL.md` § "Concentrations" states it.
+
     Raises:
         SimulationConfigurationError: a volume or the blood:gas partition
             coefficient is not positive and finite, a flow is not nonnegative
-            and finite, the delivered concentration is not a fraction in
-            [0, 1], or the number of tissue groups is not the three
+            and finite, the delivered concentration is not a percent in
+            [0, 100], or the number of tissue groups is not the three
             `patient.py` builds.
     """
 
@@ -286,7 +294,7 @@ class UptakeEquationSettings:
     alveolar_ventilation_l_min: float
     cardiac_output_l_min: float
     blood_gas_partition_coefficient: float
-    delivered_partial_pressure_fraction: float
+    delivered_concentration_percent: Percent
     tissues: tuple[TissueGroupEquationSettings, ...]
 
     def __post_init__(self) -> None:
@@ -299,9 +307,7 @@ class UptakeEquationSettings:
         require_positive_finite(
             "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
         )
-        require_fraction(
-            "delivered_partial_pressure_fraction", self.delivered_partial_pressure_fraction
-        )
+        require_percent("delivered_concentration_percent", self.delivered_concentration_percent)
 
         if len(self.tissues) != TISSUE_GROUP_COUNT:
             raise SimulationConfigurationError(
@@ -320,6 +326,12 @@ class UptakeEquationSettings:
                 f"but cardiac output is {self.cardiac_output_l_s} L/s; the venous balance "
                 "returns what the tissues receive, so the two must agree"
             )
+
+    @property
+    def delivered_partial_pressure_fraction(self) -> Fraction:
+        """Return $`F_D`$, the delivered fraction, as the circuit balance reads it."""
+
+        return fraction_from_percent(self.delivered_concentration_percent)
 
     @property
     def fresh_gas_flow_l_s(self) -> float:

@@ -37,7 +37,7 @@ from dataclasses import replace
 import pytest
 
 from anesthesia_sim.core.agent_simulation_validation import AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L
-from anesthesia_sim.core.concentration import Fraction
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
@@ -104,7 +104,7 @@ def _run(
         definition.advance_to(step * SIMULATION_STEP_S)
 
         if step == dial_step:
-            system.set_delivered_partial_pressure_fraction(Fraction(0.008))
+            system.set_delivered_concentration_percent(Percent(0.8))
             definition.record_change(system.equation_settings())
 
         if step == flow_step:
@@ -139,9 +139,7 @@ def _like(parent: AgentUptakeSystem) -> AgentUptakeSystem:
 
     system = _fresh_system()
     system.set_fresh_gas_flow(parent.circuit.fresh_gas_flow_l_min)
-    system.set_delivered_partial_pressure_fraction(
-        parent.circuit.delivered_partial_pressure_fraction
-    )
+    system.set_delivered_concentration_percent(parent.circuit.delivered_concentration_percent)
     system.set_alveolar_ventilation(parent.alveoli.alveolar_ventilation_l_min)
     system.set_cardiac_output(parent.patient.cardiac_output_l_min)
 

@@ -35,7 +35,7 @@ from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange
 # Nothing else about `app/formatting.py` is reached: no string is built here.
 from anesthesia_sim.app.formatting import mac_multiple
 from anesthesia_sim.app.run_series import COMPARTMENT_STATE_INDEX, DrawnWindow, RecordedQuantity
-from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -102,7 +102,7 @@ class SimulationSnapshot:
     """
     circuit_volume_l: float
     fresh_gas_flow_l_min: float
-    delivered_partial_pressure_fraction: Fraction
+    delivered_concentration_percent: Percent
     alveolar_ventilation_l_min: float
     cardiac_output_l_min: float
     # The six compartment values, and they are `agent_id`'s. Flat named
@@ -219,6 +219,17 @@ class SimulationSnapshot:
     """
 
     @property
+    def delivered_partial_pressure_fraction(self) -> Fraction:
+        """The delivered fraction of an atmosphere, derived from the percent dialled.
+
+        The snapshot carries the dial as the circuit holds it, the percent it
+        was set to, so the dial is drawn from what was dialled rather than
+        from a fraction multiplied back (`PL-NJPB`).
+        """
+
+        return fraction_from_percent(self.delivered_concentration_percent)
+
+    @property
     def has_recorded_run(self) -> bool:
         """Whether this run holds anything that starting over would destroy.
 
@@ -323,7 +334,7 @@ class SimulationController:
         agent_id: str = "sevoflurane",
         circuit_volume_l: float | None = None,
         fresh_gas_flow_l_min: float | None = None,
-        delivered_partial_pressure_fraction: Fraction | None = None,
+        delivered_concentration_percent: Percent | None = None,
         alveolar_ventilation_l_min: float | None = None,
         cardiac_output_l_min: float | None = None,
     ) -> None:
@@ -363,7 +374,7 @@ class SimulationController:
             agent_id=agent_id,
             circuit_volume_l=circuit_volume_l,
             fresh_gas_flow_l_min=fresh_gas_flow_l_min,
-            delivered_partial_pressure_fraction=delivered_partial_pressure_fraction,
+            delivered_concentration_percent=delivered_concentration_percent,
             alveolar_ventilation_l_min=alveolar_ventilation_l_min,
             cardiac_output_l_min=cardiac_output_l_min,
         )
@@ -391,7 +402,7 @@ class SimulationController:
         agent_id: str,
         circuit_volume_l: float | None,
         fresh_gas_flow_l_min: float | None,
-        delivered_partial_pressure_fraction: Fraction | None,
+        delivered_concentration_percent: Percent | None,
         alveolar_ventilation_l_min: float | None,
         cardiac_output_l_min: float | None,
     ) -> None:
@@ -414,10 +425,8 @@ class SimulationController:
         if fresh_gas_flow_l_min is not None:
             uptake_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
 
-        if delivered_partial_pressure_fraction is not None:
-            uptake_system.set_delivered_partial_pressure_fraction(
-                delivered_partial_pressure_fraction
-            )
+        if delivered_concentration_percent is not None:
+            uptake_system.set_delivered_concentration_percent(delivered_concentration_percent)
 
         if alveolar_ventilation_l_min is not None:
             uptake_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
@@ -589,7 +598,7 @@ class SimulationController:
             agent_id=agent_id,
             circuit_volume_l=current.circuit_volume_l,
             fresh_gas_flow_l_min=current.fresh_gas_flow_l_min,
-            delivered_partial_pressure_fraction=None,
+            delivered_concentration_percent=None,
             alveolar_ventilation_l_min=current.alveolar_ventilation_l_min,
             cardiac_output_l_min=current.cardiac_output_l_min,
         )
@@ -614,7 +623,7 @@ class SimulationController:
             agent_mac_awake=self._agent_mac_awake,
             circuit_volume_l=circuit.circuit_volume_l,
             fresh_gas_flow_l_min=circuit.fresh_gas_flow_l_min,
-            delivered_partial_pressure_fraction=circuit.delivered_partial_pressure_fraction,
+            delivered_concentration_percent=circuit.delivered_concentration_percent,
             alveolar_ventilation_l_min=alveoli.alveolar_ventilation_l_min,
             cardiac_output_l_min=patient.cardiac_output_l_min,
             inspired_partial_pressure_fraction=circuit.inspired_partial_pressure_fraction,
@@ -952,9 +961,9 @@ class SimulationController:
             fresh_gas_flow_l_min=self._setting_at(
                 ControlInput.FRESH_GAS_FLOW, fork_at_s, circuit.fresh_gas_flow_l_min
             ),
-            delivered_partial_pressure_fraction=Fraction(
+            delivered_concentration_percent=Percent(
                 self._setting_at(
-                    ControlInput.DELIVERED, fork_at_s, circuit.delivered_partial_pressure_fraction
+                    ControlInput.DELIVERED, fork_at_s, circuit.delivered_concentration_percent
                 )
             ),
             alveolar_ventilation_l_min=self._setting_at(
@@ -1533,16 +1542,14 @@ class SimulationController:
             ControlInput.FRESH_GAS_FLOW, previous_value, circuit.fresh_gas_flow_l_min
         )
 
-    def set_delivered_partial_pressure_fraction(
-        self, delivered_partial_pressure_fraction: Fraction
-    ) -> None:
+    def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
         circuit = self._state.uptake_system.circuit
-        previous_value = circuit.delivered_partial_pressure_fraction
-        self._state.uptake_system.set_delivered_partial_pressure_fraction(
-            delivered_partial_pressure_fraction
+        previous_value = circuit.delivered_concentration_percent
+        self._state.uptake_system.set_delivered_concentration_percent(
+            delivered_concentration_percent
         )
         self._record_control_change(
-            ControlInput.DELIVERED, previous_value, circuit.delivered_partial_pressure_fraction
+            ControlInput.DELIVERED, previous_value, circuit.delivered_concentration_percent
         )
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:

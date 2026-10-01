@@ -16,6 +16,7 @@ rather than for these numbers.
 
 import pytest
 
+from anesthesia_sim.core.concentration import Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
@@ -46,7 +47,8 @@ FRESH_GAS_FLOW_L_S = FRESH_GAS_FLOW_L_MIN / SECONDS_PER_MINUTE
 ALVEOLAR_VENTILATION_L_S = ALVEOLAR_VENTILATION_L_MIN / SECONDS_PER_MINUTE
 CARDIAC_OUTPUT_L_S = CARDIAC_OUTPUT_L_MIN / SECONDS_PER_MINUTE
 BLOOD_GAS = 0.65
-DELIVERED_FRACTION = 0.02
+DELIVERED_PERCENT = Percent(2.0)
+DELIVERED_FRACTION = fraction_from_percent(DELIVERED_PERCENT)
 
 TISSUES = (
     ("vessel_rich", 6.0, 5.85, 1.7),
@@ -70,7 +72,7 @@ def _settings(**overrides: object) -> UptakeEquationSettings:
         "alveolar_ventilation_l_min": ALVEOLAR_VENTILATION_L_MIN,
         "cardiac_output_l_min": CARDIAC_OUTPUT_L_MIN,
         "blood_gas_partition_coefficient": BLOOD_GAS,
-        "delivered_partial_pressure_fraction": DELIVERED_FRACTION,
+        "delivered_concentration_percent": DELIVERED_PERCENT,
         "tissues": tuple(
             TissueGroupEquationSettings(
                 name=name,
@@ -354,9 +356,9 @@ def test_a_zero_tissue_flow_leaves_that_group_alone() -> None:
             "^blood_gas_partition_coefficient must be positive and finite$",
         ),
         (
-            "delivered_partial_pressure_fraction",
-            1.5,
-            "^delivered_partial_pressure_fraction must be between 0 and 1$",
+            "delivered_concentration_percent",
+            150.0,
+            "^delivered_concentration_percent must be between 0 and 100$",
         ),
     ],
 )
@@ -445,7 +447,7 @@ def test_equal_settings_compare_equal_so_the_propagator_cache_is_keyed_by_value(
     """
 
     assert _settings() == _settings()
-    assert _settings() != _settings(delivered_partial_pressure_fraction=0.03)
+    assert _settings() != _settings(delivered_concentration_percent=3.0)
 
     fatter = tuple(
         TissueGroupEquationSettings(

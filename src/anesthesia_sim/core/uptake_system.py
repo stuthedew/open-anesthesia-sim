@@ -31,7 +31,7 @@ from anesthesia_sim.core.circuit import (
     BreathingCircuitState,
     FreshGasExchange,
 )
-from anesthesia_sim.core.concentration import Fraction, fraction_from_percent
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
@@ -269,10 +269,8 @@ class AgentUptakeSystem:
             circuit=BreathingCircuit(
                 circuit_volume_l=circuit_parameters.circuit_volume_l,
                 fresh_gas_flow_l_min=opening_fresh_gas_flow_l_min,
-                delivered_partial_pressure_fraction=(fraction_from_percent(agent.mac_percent)),
-                max_delivered_partial_pressure_fraction=(
-                    fraction_from_percent(agent.max_delivered_concentration_percent)
-                ),
+                delivered_concentration_percent=agent.mac_percent,
+                max_delivered_concentration_percent=agent.max_delivered_concentration_percent,
                 deliverable_fresh_gas_flow_range=(
                     circuit_parameters.deliverable_fresh_gas_flow_range
                 ),
@@ -305,10 +303,8 @@ class AgentUptakeSystem:
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
         self.circuit.set_fresh_gas_flow(fresh_gas_flow_l_min)
 
-    def set_delivered_partial_pressure_fraction(
-        self, delivered_partial_pressure_fraction: Fraction
-    ) -> None:
-        self.circuit.set_delivered_partial_pressure_fraction(delivered_partial_pressure_fraction)
+    def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
+        self.circuit.set_delivered_concentration_percent(delivered_concentration_percent)
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:
         self.alveoli.set_alveolar_ventilation(alveolar_ventilation_l_min)
@@ -501,7 +497,9 @@ class AgentUptakeSystem:
         which is what a clinician sets, and converted by nothing: the settings
         derive the litres per second `docs/MODEL.md` § "Governing equations"
         are written in, so the value a run records is the value that was set
-        (`PL-SM5V`).
+        (`PL-SM5V`). The delivered concentration is passed on in the percent it
+        was dialled, for the same reason, and the settings derive the fraction
+        (`PL-NJPB`).
         """
 
         patient = self.patient
@@ -515,7 +513,7 @@ class AgentUptakeSystem:
             alveolar_ventilation_l_min=self.alveoli.alveolar_ventilation_l_min,
             cardiac_output_l_min=patient.cardiac_output_l_min,
             blood_gas_partition_coefficient=venous_blood.blood_gas_partition_coefficient,
-            delivered_partial_pressure_fraction=self.circuit.delivered_partial_pressure_fraction,
+            delivered_concentration_percent=self.circuit.delivered_concentration_percent,
             tissues=tuple(
                 TissueGroupEquationSettings(
                     name=tissue.name,
@@ -581,8 +579,9 @@ class AgentUptakeSystem:
         stale propagator this key exists to make unrepresentable.
 
         Flows are the litres per minute the compartments hold, which is what
-        the settings hold too since `PL-SM5V`, so equal settings and an equal
-        key compare the same numbers.
+        the settings hold too since `PL-SM5V`, and the delivered concentration
+        is the percent the circuit holds, as the settings have since
+        `PL-NJPB`, so equal settings and an equal key compare the same numbers.
 
         `TissueGroupEquationSettings.name` is the one settings field with no
         entry, because `build_system_matrix()` never reads it - the group's
@@ -603,7 +602,7 @@ class AgentUptakeSystem:
             self.alveoli.alveolar_ventilation_l_min,
             patient.cardiac_output_l_min,
             venous_blood.blood_gas_partition_coefficient,
-            self.circuit.delivered_partial_pressure_fraction,
+            self.circuit.delivered_concentration_percent,
             *(
                 value
                 for tissue in patient.tissues
