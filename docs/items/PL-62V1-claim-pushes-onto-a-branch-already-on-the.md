@@ -3,12 +3,15 @@ id: PL-62V1
 title: claim pushes onto a branch already on the remote where the forge reports no pull request open on it, so a rider claim under the push-first protocol reaches the remote without a second push by hand
 priority: P3
 effort: S
-status: blocked
+status: done
 classes: infra, session-cost
 feature: claim-integrity
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_claiming.py, .claude/skills/docket/modes/start.md
-blocked-by: PL-979D, PL-GPJ7, PL-HMZZ, PL-MT3R, PL-PVW2, PL-QHCW
 added: 2026-09-25
+closed: 2026-10-01
+pr: 1265
+payoff: a rider claimed on a branch with no pull request open reaches every other session at once, instead of waiting on a second command a session can forget
+verify: grep -q 'def test_a_rider_on_a_pushed_branch_is_pushed_where_the_forge_names_no_open_pull_request' subprojects/docket/tests/test_claiming.py
 recurrences: 2026-09-30 PL-PTD8
 ---
 
@@ -46,7 +49,7 @@ branch. It holds the claim back with exit 4, as now, where one is open or the
 forge could not be asked. A real-git test in
 `subprojects/docket/tests/test_claiming.py` with a fake forge holds all three.
 
-**Held by the generator pause, triage 2026-09-26.**
+[superseded 2026-10-01: the pause ended - `bin/docket generators` marks no head still generating - and the owner's 2026-10-01 request for the session-cost items lifts it for this one regardless (`PL-6Q9L`)] **Held by the generator pause, triage 2026-09-26.**
 - It is a new mechanism, not a fix to existing behaviour. It adds a forge read
   to `claim`, which has none, to spare a step the current behaviour already
   gets right: exit 4 is the correct answer for a claim left local (`PL-1X56`),
