@@ -28,6 +28,7 @@ import pytest
 
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
+from anesthesia_sim.core.concentration import Percent, fraction_from_percent
 from anesthesia_sim.core.tissue import TissueGroup
 
 # The fraction each compartment is loaded to, and the constant input each is
@@ -42,8 +43,14 @@ from anesthesia_sim.core.tissue import TissueGroup
 # Unequal for a second reason: a step that did nothing and a step that drove
 # the compartment all the way to its input are the same measurement when the
 # loaded and driving fractions agree.
+#
+# The driving input is written as a percent because the circuit's is its
+# vaporizer dial, which is set in percent (`PL-NJPB`). The fraction the two
+# patient compartments are driven with is derived from it, so all three are
+# driven by the same number.
 LOADED_FRACTION = 1e-6
-DRIVING_FRACTION = 1.0
+DRIVING_PERCENT = Percent(100.0)
+DRIVING_FRACTION = fraction_from_percent(DRIVING_PERCENT)
 
 # The one coarse step and the many fine ones a closed form must agree across.
 COARSE_STEP_S = 60.0
@@ -105,7 +112,7 @@ def _build_circuit(fresh_gas_flow_l_min: float) -> BreathingCircuit:
     return BreathingCircuit(
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=fresh_gas_flow_l_min,
-        delivered_partial_pressure_fraction=DRIVING_FRACTION,
+        delivered_concentration_percent=DRIVING_PERCENT,
         inspired_partial_pressure_fraction=LOADED_FRACTION,
     )
 

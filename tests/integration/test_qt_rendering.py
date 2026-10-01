@@ -81,8 +81,8 @@ def dashboard(application: QApplication) -> Iterator[SimulationView]:
     controller.start()
     _advance(controller, 300.0)
     controller.begin_control_adjustment()
-    controller.set_delivered_partial_pressure_fraction(
-        controller.snapshot().delivered_partial_pressure_fraction * 1.5
+    controller.set_delivered_concentration_percent(
+        controller.snapshot().delivered_concentration_percent * 1.5
     )
     _advance(controller, 180.0)
     view = SimulationView((controller,))

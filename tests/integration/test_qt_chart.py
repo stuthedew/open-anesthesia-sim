@@ -83,7 +83,7 @@ from anesthesia_sim.app.theme import (
     WASH_IN_STROKE_WIDTH,
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
-from anesthesia_sim.core.concentration import Fraction
+from anesthesia_sim.core.concentration import Percent
 
 _STEP_S = 0.1
 
@@ -107,8 +107,8 @@ def _run_with_a_dial_change(agent_id: str = "sevoflurane") -> SimulationControll
     controller.start()
     _advance(controller, 600.0)
     controller.begin_control_adjustment()
-    controller.set_delivered_partial_pressure_fraction(
-        controller.snapshot().delivered_partial_pressure_fraction * 1.5
+    controller.set_delivered_concentration_percent(
+        controller.snapshot().delivered_concentration_percent * 1.5
     )
     _advance(controller, 600.0)
 
@@ -409,7 +409,7 @@ def test_the_wash_in_trace_ends_on_the_equilibrium_line_with_a_terminus_dot(
     controller = SimulationController()
     controller.start()
     _advance(controller, 600.0)
-    controller.set_delivered_partial_pressure_fraction(0.0)
+    controller.set_delivered_concentration_percent(0.0)
     _advance(controller, 300.0)
     frame = _frame(controller)
     chart = _shown(application, WashInChart(), 300)
@@ -487,7 +487,7 @@ def test_the_hover_answers_for_every_run_in_reach_on_a_real_branched_case(
     branch = case.fork_at(600.0)
     branch.start()
     branch.begin_control_adjustment()
-    branch.set_delivered_partial_pressure_fraction(Fraction(0.0))
+    branch.set_delivered_concentration_percent(Percent(0.0))
     _advance(branch, 600.0)
 
     shown = (RecordedQuantity.ALVEOLAR, RecordedQuantity.FAT)

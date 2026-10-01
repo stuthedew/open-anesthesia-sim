@@ -126,10 +126,8 @@ def _build_system_with_blood_gas_coefficient(
 
     return AgentUptakeSystem(
         circuit=BreathingCircuit(
-            delivered_partial_pressure_fraction=(agent.mac_percent / 100.0),
-            max_delivered_partial_pressure_fraction=(
-                agent.max_delivered_concentration_percent / 100.0
-            ),
+            delivered_concentration_percent=agent.mac_percent,
+            max_delivered_concentration_percent=agent.max_delivered_concentration_percent,
         ),
         alveoli=AlveolarCompartment(
             gas_volume_l=patient_parameters.alveolar_gas_volume_l,
@@ -141,7 +139,7 @@ def _build_system_with_blood_gas_coefficient(
 
 def test_no_delivered_agent_keeps_every_store_zero() -> None:
     system = AgentUptakeSystem.default()
-    system.set_delivered_partial_pressure_fraction(0.0)
+    system.set_delivered_concentration_percent(0.0)
 
     _run_for(system, duration_s=300.0, simulation_step_s=0.1)
 
@@ -325,7 +323,7 @@ def test_long_wash_in_and_washout_validate_agent_simulation() -> None:
 
     _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
-    system.set_delivered_partial_pressure_fraction(0.0)
+    system.set_delivered_concentration_percent(0.0)
 
     _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
@@ -361,7 +359,7 @@ def test_washout_never_increases_total_system_mass() -> None:
     by construction whatever the transfer rates are, because every internal
     transfer is applied as an equal-and-opposite pair. Confirmed by mutation
     2026-09-07 rather than argued: dropping the write-back in
-    `AgentUptakeSystem.set_delivered_partial_pressure_fraction`, so that the dial never
+    `AgentUptakeSystem.set_delivered_concentration_percent`, so that the dial never
     actually reaches zero, fails this test at the first washout step while
     `test_long_wash_in_and_washout_validate_agent_simulation` still passes.
 
@@ -387,7 +385,7 @@ def test_washout_never_increases_total_system_mass() -> None:
 
     assert loaded_agent_l > 0.0
 
-    system.set_delivered_partial_pressure_fraction(0.0)
+    system.set_delivered_concentration_percent(0.0)
 
     previous_agent_l = loaded_agent_l
     step_count = round(WASHOUT_DURATION_S / WASHOUT_STEP_S)

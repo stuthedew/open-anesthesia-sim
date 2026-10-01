@@ -28,7 +28,7 @@ from anesthesia_sim.app.bookmarks import (
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.formatting import mac_multiple
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
-from anesthesia_sim.core.concentration import Fraction, MacMultiple
+from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
@@ -790,7 +790,7 @@ def test_a_target_halts_on_every_crossing_in_either_direction() -> None:
     assert rising.mac_targets == (target,)
 
     # The vaporizer off, and the same height crossed again coming down.
-    run.set_delivered_partial_pressure_fraction(Fraction(0.0))
+    run.set_delivered_concentration_percent(Percent(0.0))
     run.start()
     falling = _step_until_halt(run)
 
