@@ -3,11 +3,13 @@ id: PL-SPZT
 title: The web container's uv is 0.8.17 against pyproject's required-version >= 0.12.5, and both uv self update and the standalone installer are blocked from it, so a session that wants the quality suite has to find the pip route itself
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra, session-cost, docs
 feature: dev-tooling
 touches: docs/worker.md
 added: 2026-09-14
+closed: 2026-10-01
+pr: 1263
 verify: grep -q 'pip install -U' docs/worker.md && grep -q 'uv' docs/worker.md
 ---
 

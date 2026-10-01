@@ -27,6 +27,9 @@ anything you thought should have been done differently.
 uv sync --locked --dev
 ```
 
+If that refuses with "Required uv version `>=0.12.5` does not match the running version", the container's `uv` is stale, and `uv self update` and the astral.sh installer are both blocked in a web container: run `python3 -m pip install -U 'uv>=0.12.5'`.
+pip puts it in `/usr/local/bin`, which is behind the stale `/root/.local/bin/uv` on `PATH`, so link it over with `ln -sf /usr/local/bin/uv /root/.local/bin/uv` before `make check` (`PL-SPZT`).
+
 ## Seeing the interface
 
 A session with no display can render the dashboard and look at it: under
