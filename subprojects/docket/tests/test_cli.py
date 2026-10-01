@@ -9878,6 +9878,45 @@ def test_arm_names_the_gate_beside_the_paths_outside_the_tooling(
     )
 
 
+@pytest.mark.parametrize(
+    "path", ["src/anesthesia_sim/core/uptake.py", ARM_GATE], ids=["outside", "gate"]
+)
+def test_a_read_hold_asks_for_a_plain_language_summary_once_no_claim_holds_the_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
+) -> None:
+    """Every pre-merge read the owner is asked for opens with a plain-language summary.
+
+    The owner asked for it as the default on 2026-09-27, and only the Projects
+    instructions carried it (`PL-8XQS`). While a claim holds the branch its
+    pull request is a draft, which nobody is asked to read, so the line waits
+    for the read to be the only hold.
+    """
+    root, git = _arm_repo(tmp_path)
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
+    _put(git, root, path, "2026-09-01T12:00:30+00:00")
+
+    assert _arm(root) == 1
+    out = capsys.readouterr().out
+    assert "keep the pull request a draft" in out
+    assert "plain-language summary" not in out
+
+    closed = _item_document("PL-B1B1", "done")
+    _commit_file(git, root, "docs/items/PL-B1B1-held.md", closed, "2026-09-01T12:00:40+00:00")
+
+    assert _arm(root) == 1
+    first, *rest = capsys.readouterr().out.splitlines()
+    assert first.endswith("so its pull request waits on a read")
+    (ask,) = (line for line in rest if "plain-language summary" in line)
+    parts = (
+        "one sentence of what the change does, what was wrong and what changed",
+        "in terms a clinician recognises",
+        "numbered points for the owner to judge",
+        "what needs no review",
+    )
+    places = [ask.index(part) for part in parts]
+    assert places == sorted(places)
+
+
 def test_the_gate_arm_holds_for_a_read_is_the_module_that_decides_the_answer() -> None:
     """A move of `arming.py` would leave the exception naming a file nothing reads.
 

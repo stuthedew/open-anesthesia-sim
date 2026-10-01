@@ -25,7 +25,9 @@ every later push while a pull request is open.
   together while the work goes on. A lapsed claim is unreleased too - it is
   work nobody finished or handed back. A path outside the store, the tooling
   and the records holds it unarmed, and so does a change to this module,
-  because that work waits on a read rather than merging on green CI.
+  because that work waits on a read rather than merging on green CI. Once no
+  claim holds it, that hold also says what the ask for the read opens with
+  (`READ_ASK`).
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
@@ -117,6 +119,19 @@ EXIT = {ARM: 0, HOLD: 1, BEHIND: 1, LANDED: 1, UNKNOWN: 2}
 #: How many paths outside the store, the tooling and the records a `hold`
 #: names before counting the rest.
 SHOWN = 5
+
+#: What a `hold` for a read tells the session to put in the owner's ask, once
+#: no claim keeps the pull request a draft. The owner asked for it as the
+#: default for every pre-merge read on 2026-09-27, and only the Projects
+#: instructions carried it, so a session outside the Project asked for the
+#: read without one (`PL-8XQS`). It is said here, where the ask is decided,
+#: rather than in a resident rule every session pays for.
+READ_ASK = (
+    "  Open the ask for this read with a plain-language summary: one sentence of what the "
+    "change does, what was wrong and what changed, in terms a clinician recognises; then "
+    "numbered points for the owner to judge, such as a decision taken on the owner's behalf, "
+    "a new docs/MODEL.md statement or a change a learner would see; then what needs no review."
+)
 
 #: The queue's own tooling, which arms on green beside the store. The path is
 #: this repository's layout.
@@ -259,6 +274,9 @@ class Verdict:
                 else "."
             )
         )
+        # A claim keeps the pull request a draft, which nobody is asked to read.
+        if read and not self.claims:
+            said.append(READ_ASK)
         return (*said, *notes)
 
     @property
