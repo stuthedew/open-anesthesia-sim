@@ -3,11 +3,13 @@ id: PL-877T
 title: A new Claude Code project runs its cloud threads in Anthropic's default environment until Project settings > Environment names Default, and nothing the owner reads when creating one says so, so the next project's threads will pay PL-QKXZ's uv and libegl1 repair again
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: projects-trial
 touches: docs/maintainer.md
 added: 2026-09-26
+closed: 2026-10-01
+pr: 1276
 payoff: the next Claude Code project the owner creates starts its threads in Default, so none of them pays PL-QKXZ's uv and libegl1 repair before make check will run
 verify: grep -qF 'Project settings > Environment' docs/maintainer.md
 ---

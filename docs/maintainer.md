@@ -181,6 +181,21 @@ set it when the session opens rather than toggling it.
   as the work is pushed and nothing needs the pull-request watch. Start a
   fresh session for an unrelated topic instead: that is where a clean prompt
   beats a carried conversation.
+- **When you create a Claude Code project, set its cloud environment to
+  `Default` before you send it work.** The **New project** dialog asks only
+  for a name, a goal and context, and "Cloud threads use a default
+  Anthropic-hosted environment until you pick one in
+  **Project settings > Environment**"
+  ([Projects](https://code.claude.com/docs/en/claude-projects),
+  "Choose an environment for threads", read 2026-10-01). That environment
+  runs none of `Default`'s setup script, so each of its threads finds a `uv`
+  older than `pyproject.toml` requires and no `libegl1`, and has to repair
+  both before `make check` will run (`PL-QKXZ`). Both projects so far started
+  there. Open the project, click the gear icon in its header to open
+  **Project settings**, go to **Environment**, and set **Cloud environment**
+  to **Default**; it saves as you change it. The change reaches new threads
+  only, so make it before the first task. A thread can confirm it:
+  `get_session` reads `environment_id` `env_01JWikdPctorEBXoFK7bJnCq`.
 
 ## Read a simulator change before you arm it
 
