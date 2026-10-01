@@ -3,11 +3,13 @@ id: PL-NG3G
 title: Build bin/docket vitals to score the five loop-trial readouts, in the shape the v0.3.0 trial argued for
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: infra, session-cost
 feature: planning-cadence
-touches: subprojects/docket/, docs/items/
+touches: subprojects/docket/, docs/items/, docs/consultant-brief.md
 added: 2026-09-02
+closed: 2026-10-01
+reason: Re-confirmed 2026-10-01: the problem is gone. The brief's case was recurrence - 'Gates 1, 2 and 3 each want these same five readouts' (docs/releases/v0.3.0.md:185) - and it did not recur: Gate 1 cleared across the v0.4.x patches and v0.5.0 (shipped 2026-09-21) with no readout scored, `grep -n -i 'readout [1-5]' docs/releases/*.md ROADMAP.md` finds them in v0.3.0.md alone, readout 3's causal rule was never frozen (the phrase is in no later release note or ROADMAP.md), and no Definition of done through v0.6.0 asks for any readout. The two readouts that needed new code were then refused as measures: on 2026-09-19 the owner ruled out 'any product-to-workflow ratio' and backlog counts (`PL-04KR`; CLAUDE.md § 'What this project is': 'no ratio is tracked or enforced'), which are readout 1's pass/fail (apparatus <= product) and readout 2's (net <= +20). The rest already has a home: churn by partition is `bin/docket trend`, which computes and decides nothing; stranded items are `bin/docket stranded` (`PL-21GS` done); readout 5's unreadable-refs line prints itself when it fires and its other limb closed with `PL-K2ZK`; and whether a fix held, readout 3's question, is `PL-04KR`'s re-entry signal, with `PL-WXKD` the inflow gap. Built now it fails CLAUDE.md's gate for new tooling: it would not genuinely run again.
 verify: bin/docket vitals --base v0.2.8 && python3 -m pytest subprojects/docket/tests/test_vitals.py
 ---
 
