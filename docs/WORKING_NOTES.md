@@ -2257,3 +2257,50 @@ the figures from `get_session` on itself, read as its last step:
 items examined and generator heads found, by id, from its own work. A sweep
 done through subagents counts as one row. A sweep sharing its session with
 other work says so in the row, as the 09-12 one should have.
+
+## Open thread: recorded-not-inferred - the head `PL-KGYT` and its six members, triaged from nine captures (2026-10-01)
+
+A survey on 2026-10-01 of every apparatus reader that still infers a fact
+rather than reading a record found 20 sites: 9 named by open items, 4
+deliberate and documented in `subprojects/docket/README.md` (provenance from
+`(#N)` subjects, `_answered_beneath`, `_duplicated_history`, `anchor`), and 7
+unfiled. The seven are `feature: recorded-not-inferred` - `PL-M9R6`,
+`PL-2BWP`, `PL-FYV7`, `PL-KGLH`, `PL-X766`, `PL-XSL4`, `PL-24BC`, `PL-9KLN`
+(eight files: the hard-coded default branch was filed beside them) - plus
+`PL-JLBD`, a drained head still carrying `generator: live`. Each item's brief
+ends with the record that would replace the inference. `PL-HC8P` wrote the
+three shapes into `.claude/rules/apparatus-standard.md` as the write-time half
+of the question triage asks after the fact.
+
+**What triage will have to decide, and was not decided here because the
+session reset at 132,892 spend before reading the triage mode.** Five of the
+eight are one fact: a tool spelling its own parser for a predicate the docket
+package already reads - `PL-2BWP` (which commits are an item's), `PL-X766`
+(item status), `PL-XSL4` (`pr:` and `id:`), `PL-24BC` (the item-file grammar),
+`PL-9KLN` (the default branch). That is `PL-PVW2`'s `misread:`, drained
+2026-09-26. `.claude/skills/docket/modes/triage.md` counts three post-close
+instances of one head as a generator whose fix did not hold, which ranks the
+mechanism live again above every band but `P0` and re-engages `CLAUDE.md`'s
+pause. The head would be a new item naming why the 09-26 unification left
+these readers - nothing says tools read the store and git through `docket`,
+and nothing refuses a second spelling - with the five as `root-cause-of:`.
+Reading order inside the group: `PL-M9R6` first, a hard check passing while
+its guarantee is void; the five as one fix if the head goes live; `PL-KGLH`
+and `PL-FYV7` last, both documented trade-offs the claim record may now make
+unnecessary. Triage should weigh that rather than assume it.
+
+**Triaged 2026-10-01, in the same session once compacted.** Six, not five:
+`PL-M9R6`'s substring read is a second spelling of `release.REFERENCED_RE`, so
+it joins `PL-2BWP`, `PL-X766`, `PL-XSL4`, `PL-24BC` and `PL-9KLN` as a
+post-close instance of `PL-PVW2`'s fact. Six after that head said spent on
+2026-09-26 is three times the count that makes a generator whose fix did not
+hold, so `PL-KGYT` is the head: `generator: live`, `misread:` in `PL-PVW2`'s
+words so the two sort together, `P1` on the tier. The pause on new workflow
+mechanisms is back on while it is open. `PL-KGLH` was dropped: `read_docket`
+already keeps every branch the claim record holds unfinished work on, the
+72-hour grace covers only the window before any record exists, and the fact it
+stands for is one nothing can record. `PL-FYV7` is blocked by `PL-KGYT`: its
+fix is a new record, which the pause captures and does not build. `PL-JLBD` is
+ready at `P3`, decided as a `docket check` refusal of `generator: live` on a
+closed item. The sweep for other readers that closes the head is its own work,
+recorded in its brief under `**Swept <date>.**`, which its `verify:` names.
