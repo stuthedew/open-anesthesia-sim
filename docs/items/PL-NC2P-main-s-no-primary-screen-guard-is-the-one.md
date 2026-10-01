@@ -1,13 +1,14 @@
 ---
 id: PL-NC2P
 title: `main()`'s no-primary-screen guard is the one testable line `app/main.py` leaves uncovered after the Qt port
-status: ready
 priority: P3
 effort: S
+status: ready
 classes: test, infra
 feature: core-guard-coverage
 touches: tests/unit/test_bootstrap.py, src/anesthesia_sim/app/main.py
 added: 2026-08-25
+verify: grep -qE 'def test_\w*no_primary_screen' tests/unit/test_bootstrap.py
 ---
 
 > **Groomed 2026-09-22 (`PL-Y4YG`): the Qt port transformed this, and one line

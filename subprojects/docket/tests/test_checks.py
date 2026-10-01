@@ -2127,7 +2127,7 @@ def test_a_pipe_belonging_to_a_later_command_is_not_read_as_reading_check() -> N
     assert not _has(analyze([item], TODAY).advisories, "docket check")
 
 
-CUTOVER = Config(verify_required_from=date(2026, 8, 1))
+CUTOVER = Config(verify_required_at_close_from=date(2026, 8, 1))
 
 
 def test_a_ready_item_must_name_the_command_that_proves_it_done() -> None:
@@ -2171,58 +2171,17 @@ def test_an_item_still_being_decided_is_not_asked_for_one() -> None:
 OLD = date(2026, 7, 31)
 
 
-def test_items_captured_before_the_cutover_are_advised_rather_than_failed() -> None:
-    """47 errors on the day the rule lands is a checker nobody runs again."""
+def test_an_item_captured_before_the_cutover_is_held_to_the_rule_too() -> None:
+    """No grandfathering at `ready` any more, whatever the capture date.
+
+    `verify_required_from` once exempted items captured before the rule and
+    advised on each as it was offered. That set drained to zero and the date
+    went with it (`PL-Z34C`), so an old capture is an error like any other.
+    """
     report = analyze([_item(added=OLD)], TODAY, CUTOVER, offered=_offering("PL-K7QX"))
 
-    assert report.errors == []
-    assert _has(report.advisories, "names no `verify:` command")
-
-
-def test_a_grandfathered_item_nobody_is_about_to_be_offered_is_not_raised() -> None:
-    """An advisory naming the whole backlog cannot reach zero, so it gets skimmed.
-
-    The cost of that is not the items it names but the next advisory, which is
-    then read the same way; `docket check`'s advisories are grooming's only
-    channel.
-    """
-    report = analyze([_item(added=OLD)], TODAY, CUTOVER, offered=_offering())
-
-    assert report.errors == []
-    assert report.advisories == []
-
-
-def test_the_advisory_carries_how_many_are_still_outstanding() -> None:
-    """Narrowing it must not hide the size of the set it is drawn from."""
-    backlog = [_item(f"PL-000{n}", added=OLD) for n in range(1, 4)]
-    report = analyze(backlog, TODAY, CUTOVER, offered=_offering("PL-0001"))
-
-    assert _has(report.advisories, "PL-0001 is next to be offered")
-    assert _has(report.advisories, "1 of 3 ready item(s)")
-
-
-def test_the_advisory_reaches_zero_once_the_offered_items_name_a_command() -> None:
-    """The whole point: a normal day ends with nothing pending, backlog or not."""
-    backlog = [_item(f"PL-000{n}", added=OLD) for n in (2, 3)]
-    started = _item("PL-0001", added=OLD, verify="uv run pytest")
-    report = analyze([started, *backlog], TODAY, CUTOVER, offered=_offering("PL-0001"))
-
-    assert report.advisories == []
-
-
-def test_an_offered_item_held_to_the_rule_is_left_to_the_error() -> None:
-    """A post-cutover item is already an error; advising as well would double it."""
-    item = _item(added=date(2026, 8, 2))
-    report = analyze([item], TODAY, CUTOVER, offered=_offering("PL-K7QX"))
-
-    assert _has(report.errors, "names no `verify:` command")
-    assert report.advisories == []
-
-
-def test_an_offered_item_that_names_a_command_is_not_advised() -> None:
-    item = _item(added=OLD, verify="uv run pytest")
-
-    assert analyze([item], TODAY, CUTOVER, offered=_offering("PL-K7QX")).advisories == []
+    assert _has(report.errors, "is ready but names no `verify:` command")
+    assert not _has(report.advisories, "verify:")
 
 
 def test_a_project_that_has_not_adopted_the_rule_hears_nothing_about_it() -> None:
@@ -2945,24 +2904,29 @@ def test_genuinely_different_features_are_left_alone() -> None:
     assert not any("differ only in case or separator" in e for e in errors)
 
 
-# The closing half of the same rule. The dates matter to the point being made:
-# `added` sits before `verify_required_from`, so every item below is one the
-# opening gate grandfathers and would never ask for a command.
-CLOSE_CUTOVER = Config(
-    verify_required_from=date(2026, 8, 1), verify_required_at_close_from=date(2026, 8, 20)
-)
+# The closing half of the same rule, which outlived the retired
+# `verify_required_from` because the `ready` gate never reaches an item that
+# goes straight to `done` (`PL-Z34C`).
+CLOSE_CUTOVER = Config(verify_required_at_close_from=date(2026, 8, 20))
 
 
-def test_closing_a_grandfathered_item_demands_the_command_the_ready_gate_never_could() -> None:
-    """The point of the closing gate, and the only reason it is keyed on `closed`.
-
-    An item captured before `verify_required_from` is exempt at `ready` and
-    stays exempt however long it sits there, so nothing but a grooming
-    advisory ever asks it for a command. Closing it is the first moment the
-    command can be written having been run, which is the objection that
-    earned the exemption - so that is where the exemption lapses.
-    """
+def test_closing_an_item_without_a_command_is_refused() -> None:
+    """The point of the closing gate, and the only reason it is keyed on `closed`."""
     item = _item(status="done", added=date(2026, 7, 1), closed=date(2026, 8, 24), pr="48")
+
+    assert _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, "is done but names no `verify:`")
+
+
+def test_an_item_that_never_held_ready_is_still_asked_for_its_command_at_close() -> None:
+    """Why the closing gate is permanent rather than retired with the opening date.
+
+    The `ready` gate fires on the status alone, so an item that goes
+    `needs-decision` to `done` in one commit - `PL-VYXP`, `PL-BNPY` and
+    `PL-H1JD` all did - is never asked by it. Captured *after* the cutover, so
+    nothing about its age exempts it; only the closing gate stands between it
+    and a store that cannot say what proved it.
+    """
+    item = _item(status="done", added=date(2026, 8, 22), closed=date(2026, 8, 24), pr="48")
 
     assert _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, "is done but names no `verify:`")
 
@@ -3008,7 +2972,7 @@ def test_a_dropped_item_is_never_asked_what_proved_it() -> None:
 
 def test_the_closing_gate_is_off_when_a_project_declares_no_cutover() -> None:
     """A project that never turned the rule on is not retroactively holding it."""
-    off = Config(verify_required_from=date(2026, 8, 1))
+    off = Config()
     item = _item(status="done", added=date(2026, 7, 1), closed=date(2026, 8, 24), pr="48")
 
     assert not _has(analyze([item], TODAY, off).errors, "is done but names no")
@@ -3148,7 +3112,9 @@ def test_the_payoff_and_verify_advisories_are_separate_asks() -> None:
     payoff would read as having discharged neither, and the reader would go
     looking for work already done.
     """
-    both = Config(verify_required_from=date(2026, 8, 1), payoff_required_from=date(2026, 8, 1))
+    both = Config(
+        verify_required_at_close_from=date(2026, 8, 1), payoff_required_from=date(2026, 8, 1)
+    )
     item = _item(added=OLD, verify="grep -q 'def test_it' tests/test_it.py")
     report = analyze([item], TODAY, both, offered=_offering("PL-K7QX"))
 
