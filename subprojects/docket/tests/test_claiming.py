@@ -354,6 +354,68 @@ def test_a_claim_left_unpushed_on_a_branch_the_remote_has_exits_4_because_no_oth
     assert [hold.key for hold in holdings(other.root, now=T0 + HOUR).holds] == ["PL-F4F4"]
 
 
+@pytest.mark.parametrize(
+    ("command", "code", "said"),
+    [
+        ("echo", claiming.CLAIMED, f"names no pull request open on {BRANCH}"),
+        (
+            "echo claude/elsewhere-pl62v1 1199",
+            claiming.CLAIMED,
+            f"names no pull request open on {BRANCH}",
+        ),
+        (f"echo {BRANCH} 7", claiming.LOCAL_ONLY, f"pull request #7 on {BRANCH} as open"),
+        (f"echo {BRANCH}", claiming.LOCAL_ONLY, f"the pull request open on {BRANCH} as open"),
+        (None, claiming.LOCAL_ONLY, "could not be asked"),
+        ("false", claiming.LOCAL_ONLY, "could not be asked"),
+        ("no-such-forge-command-pl62v1", claiming.LOCAL_ONLY, "could not be asked"),
+        ("echo 'unbalanced", claiming.LOCAL_ONLY, "could not be asked"),
+    ],
+)
+def test_a_rider_on_a_pushed_branch_is_pushed_where_the_forge_names_no_open_pull_request(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    command: str | None,
+    code: int,
+    said: str,
+) -> None:
+    """A rider on a pushed branch is published where nothing on it can be armed (`PL-62V1`).
+
+    The hold `PL-1X56` kept is for an armed pull request merging the claim away
+    with the branch, and a branch the forge answers for without naming it -
+    an empty listing, or one naming only other branches - carries none. An
+    open one, named with its number or without, holds the claim back as
+    before; so does every way the forge could not be asked: no command, one
+    that fails, one that is not there, and one `shlex` cannot split.
+    """
+    remote = _Remote(tmp_path)
+    work = remote.clone("work", BRANCH)
+    work.commit(
+        "PL-F4F4: capture", when=T0 - HOUR, files={"docs/items/PL-F4F4-new.md": _item("PL-F4F4")}
+    )
+    work.git("push", "-q", "-u", "origin", BRANCH)
+    pushed = work.head()
+    if command is not None:
+        (work.root / "docket.toml").write_text(
+            f'[docket]\nopen_pull_requests_command = "{command}"\n', encoding="utf-8"
+        )
+
+    assert _claim(monkeypatch, work, "PL-F4F4") == code
+
+    out = capsys.readouterr().out
+    assert said in out
+    other = remote.clone("other")
+    if code == claiming.CLAIMED:
+        assert "and pushed" in out and "--push" not in out
+        assert remote.tip(BRANCH) == work.head() != pushed
+        assert [hold.key for hold in holdings(other.root, now=T0 + HOUR).holds] == ["PL-F4F4"]
+    else:
+        assert "not pushed, so only this checkout can see it" in out
+        assert "`bin/docket claim PL-F4F4 --push`, not `git push`" in out
+        assert remote.tip(BRANCH) == pushed != work.head()
+        assert holdings(other.root, now=T0 + HOUR).holds == ()
+
+
 def test_a_fetch_that_fails_refuses_before_anything_is_written(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
