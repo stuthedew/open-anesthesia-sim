@@ -200,13 +200,16 @@ def claim(
     `get_session` showing that session archived or failed) is the session's to
     have, since nothing here can ask for it. `push` pushes a branch the remote
     already has, which the caller says is safe: no pull request on it armed.
+    Where the caller has not said so, the forge is asked, and a branch it
+    names no pull request open on is pushed too (`_forge_clears`).
 
     An item this branch already holds first is left alone, so running `claim`
     twice writes one commit.
 
     `opened` is how the forge is asked which branches have a pull request open,
     as `vcs.open_pull_requests` takes it, and is asked only where another
-    branch holds a copy of an item the base does not (`_other_copies`).
+    branch holds a copy of an item the base does not (`_other_copies`), or
+    where a claim is about to be published onto a branch the remote has.
     """
     wanted, problem = _keys(keys)
     if problem:
@@ -324,6 +327,7 @@ def claim(
             return Written(CLAIMED, tuple(notes))
         # An earlier run wrote the claim and could not push it; this run is
         # its retry, and a claim no other session can see is not held.
+        push = _forge_clears(remote, branch, push=push, opened=opened, notes=notes)
         return _publish(
             root,
             branch,
@@ -339,6 +343,7 @@ def claim(
             check=_claimed,
         )
 
+    push = _forge_clears(remote, branch, push=push, opened=opened, notes=notes)
     token = _session_token()
     lines = []
     for key in writing:
@@ -1090,6 +1095,54 @@ def _commit(
     return _git(
         ["commit", "--quiet", "--allow-empty", "--only", "-m", "\n\n".join(paragraphs)], root
     )
+
+
+def _forge_clears(
+    remote: _OnRemote,
+    branch: _Branch,
+    *,
+    push: bool,
+    opened: Callable[[], Mapping[str, int | None] | None] | None,
+    notes: list[str],
+) -> bool:
+    """Whether to push onto the branch: `push`, or the forge naming no pull request open on it.
+
+    **The step `PL-62V1` spares.** Under the push-first protocol a branch is on
+    the remote from its first claim, so every rider took `_publish`'s held-back
+    path and waited on a `claim --push` the session had to remember, leaving
+    the rider invisible to every other session until it did. The hold exists
+    because an armed pull request would merge the claim away with the branch
+    (`PL-QP9Z`), and a branch the forge names no pull request open on carries
+    none to arm.
+
+    **Only an answer clears it.** `opened` returns `None` for every way the
+    forge could not be asked - no command configured, `--no-remote`, a command
+    that failed, timed out or could not run (`cli._open_pull_requests`) - and
+    each of those holds the claim back exactly as an open one does. Asked only
+    where the answer decides something: a branch the remote has, which the
+    caller has not already cleared, on a remote that answered at all. What it
+    found is added to `notes`, so the held-back message says which it was.
+    """
+    if push or not remote.tip or remote.failed:
+        return push
+    answer = opened() if opened is not None else None
+    if answer is None:
+        notes.append(
+            "note: the forge could not be asked whether a pull request is open on "
+            f"{branch.name}, so the claim is held back as if one were"
+        )
+        return False
+    if branch.name in answer:
+        notes.append(
+            f"note: the forge names {_pull(branch.name, answer[branch.name])} as open, "
+            "so the claim is held back"
+        )
+        return False
+    notes.append(
+        f"note: the forge names no pull request open on {branch.name}, "
+        "so none is armed and the claim is pushed"
+    )
+    return True
 
 
 def _publish(

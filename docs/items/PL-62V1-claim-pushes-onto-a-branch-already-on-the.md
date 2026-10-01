@@ -3,13 +3,15 @@ id: PL-62V1
 title: claim pushes onto a branch already on the remote where the forge reports no pull request open on it, so a rider claim under the push-first protocol reaches the remote without a second push by hand
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra, session-cost
 feature: claim-integrity
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_claiming.py, .claude/skills/docket/modes/start.md
 added: 2026-09-25
+closed: 2026-10-01
+pr: 1265
 payoff: a rider claimed on a branch with no pull request open reaches every other session at once, instead of waiting on a second command a session can forget
-verify: grep -q 'def test_a_claim_on_a_branch_the_remote_has_is_pushed_only_where_the_forge_names_no_pull_request_open' subprojects/docket/tests/test_claiming.py
+verify: grep -q 'def test_a_rider_on_a_pushed_branch_is_pushed_where_the_forge_names_no_open_pull_request' subprojects/docket/tests/test_claiming.py
 recurrences: 2026-09-30 PL-PTD8
 ---
 

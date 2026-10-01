@@ -39,8 +39,9 @@ added below it afterwards turns the claim into prose. On a branch the remote
 does not have yet it pushes with `--set-upstream`, fetches again and re-reads,
 so a claim another session pushed in the same minute is seen: exit 3 then
 prints the line to yield by, and exit 4 means the claim is only in this
-checkout - the push failed, or the branch was already on the remote and none
-was tried - so nobody else can see it until `claim` publishes it (`PL-1X56`),
+checkout - the push failed, or the branch was already on the remote with a pull
+request open on it or a forge that could not be asked, and none was tried - so
+nobody else can see it until `claim` publishes it (`PL-1X56`),
 or that the remote could not be asked whether it has the branch, so nothing was
 pushed, or that git could not say whether the branch's copy there carries the
 claim, since another writer moved it after this clone fetched (`PL-20DL`). Run
@@ -76,10 +77,14 @@ item picked up mid-session - one filed as housekeeping, or the item the first
 turned out to be waiting on - and a session named after one item is invisible
 under every other: `PL-HX5C` implemented `PL-W8XP` in full inside a session
 titled for other work, and `PL-N2PP`'s rider was seen by no guard until its
-push. On a branch the remote already has, `claim` commits and does not push,
-because a pull request may be open and armed and the push would merge the claim
-away with the branch (`PL-QP9Z`); it says so and exits 4, since until the claim
-is pushed no other session can see it. Disarm auto-merge if it is armed, then
+push. On a branch the remote already has, `claim` asks the forge first, through
+the same `open_pull_requests_command` `flight` reads. Where the forge answers and
+names no pull request open on the branch, nothing there can be armed, so the
+claim is pushed as on a new branch (`PL-62V1`). Where it names one, or could not
+be asked - no command, `--no-remote`, a failure or a timeout - `claim` commits
+and does not push, because that pull request may be armed and the push would
+merge the claim away with the branch (`PL-QP9Z`); it says which and exits 4,
+since until the claim is pushed no other session can see it. Disarm auto-merge if it is armed, then
 publish it with the `bin/docket claim <id> --push` the message names, before
 any other push: a claim left to ride your next work push is published without
 the check for one another session published meanwhile. It asks the remote
