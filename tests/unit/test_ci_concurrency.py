@@ -9,11 +9,13 @@ is taken by whichever run arrives next. 31 of the 257 completed `main` push
 runs in that window - 12.1% - were evicted from it, each having started no job
 at all (`PL-SMN4`).
 
-Nothing else in this tree would catch that coming back. The expression is
-configuration rather than code, GitHub evaluates it, and the failure is silent
-by construction: an evicted run reports `cancelled`, which
-`tools/main_ci_status.py` correctly declines to read as a verdict, so a commit
-with no whole-store check looks exactly like a commit nobody has asked about.
+Nothing else in this tree would reliably catch that coming back. The expression
+is configuration rather than code, GitHub evaluates it, and the failure is all
+but silent by construction: an evicted run reports `cancelled`, which
+`tools/main_ci_status.py` declines to read as a verdict and reports only until
+a later run reaches one (`PL-JTHW`). Once the run that evicted it finishes, a
+commit with no whole-store check looks exactly like a commit nobody has asked
+about.
 
 So these tests render the group the way GitHub would, for a `main` push and for
 a pull request, and assert the property rather than the spelling. `_evaluate`

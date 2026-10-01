@@ -159,3 +159,20 @@ def test_an_unparseable_file_is_left_to_mypy(tmp_path: Path) -> None:
     (tree / "broken.py").write_text("def (\n", encoding="utf-8")
 
     assert ignore_check.directives(tmp_path) == []
+
+
+def test_a_second_conftest_does_not_stop_mypy(tmp_path: Path) -> None:
+    """A `conftest.py` in each tree is two modules rather than one defined twice.
+
+    Without `--explicit-package-bases` mypy names a module from its file alone,
+    stops on `Duplicate module named "conftest"` having evaluated nothing, and
+    the check declines, so neither tree could hold a second one (`PL-CR36`).
+    """
+    for tree in ignore_check.TREES:
+        (tmp_path / tree).mkdir(parents=True)
+        (tmp_path / tree / "conftest.py").write_text('"""Fixtures."""\n', encoding="utf-8")
+
+    result = ignore_check.run_mypy(tmp_path)
+    code, printed = ignore_check.report([], result.returncode, result.stdout, result.stderr)
+
+    assert (code, printed) == (0, "type: ignore directives: 0 evaluated, 0 inert"), printed

@@ -78,6 +78,18 @@ from a genuine disagreement - rather than passing on the assumption that
 nothing has changed. `CLAUDE.md`: prefer an obvious failure to a plausible
 answer when correctness cannot be established.
 
+A `paths:` or `paths-ignore:` filter under a `pull_request` or
+`pull_request_target` trigger is refused too, for the opposite reason: the name
+is knowable, and agreement would be false. GitHub runs nothing for a pull
+request the filter excludes and reports nothing for it, so "checks associated
+with that workflow will remain in a "Pending" state", and "a pull request that
+requires those checks to be successful will be blocked from merging" (*Workflow
+syntax for GitHub Actions*, docs.github.com, read 2026-10-01) - `PL-KPP1`'s
+pending-forever merge, with both lists agreeing (`PL-NWSK`). The same page says
+a branch filter can strand a check the same way. That one is read as reporting,
+because whether it strands one depends on which branch the requirement
+protects, which this parser does not compare.
+
 **What agreement here does and does not prove.** It proves that every job
 reporting onto a pull request is in the required list, and that every name in
 that list is reported by a job. It does not prove that the list blocks a merge:
@@ -126,6 +138,10 @@ API_VERSION = "2022-11-28"
 # `schedule` and `workflow_dispatch` and reports on no pull request at all.
 PULL_REQUEST_EVENTS = frozenset({"pull_request", "pull_request_target"})
 
+# A `paths:` or `paths-ignore:` key under one of those triggers, in block or flow
+# form. The module docstring says why its presence is refused (`PL-NWSK`).
+PATH_FILTER = re.compile(r"(?:^|[{,\s])(paths-ignore|paths)\s*:")
+
 NOT_REQUIRED = re.compile(r"#\s*not-required:\s*(?P<reason>\S.*?)\s*$")
 
 
@@ -162,6 +178,9 @@ def _triggers(lines: list[str]) -> set[str]:
     Three spellings are accepted, which are the three the YAML spec allows and
     the three this repository uses across its history: a block mapping, a flow
     sequence (`on: [push, pull_request]`), and a bare scalar (`on: push`).
+
+    Raises `Undecidable` on a path filter under a pull-request trigger, which
+    only the block mapping can carry (`PL-NWSK`).
     """
     for index, line in enumerate(lines):
         if _key_at(line, 0) != "on":
@@ -174,14 +193,29 @@ def _triggers(lines: list[str]) -> set[str]:
         if inline and not inline.startswith("#"):
             return {inline.strip("'\"")}
         events = set()
+        event: str | None = None
         for following in lines[index + 1 :]:
             if not following.strip() or following.lstrip().startswith("#"):
                 continue
-            if len(following) - len(following.lstrip(" ")) == 0:
+            indent = len(following) - len(following.lstrip(" "))
+            if indent == 0:
                 break
             key = _key_at(following, 2)
             if key is not None:
                 events.add(key)
+                event = key
+                nested = following.split(":", 1)[1]
+            elif indent > 2:
+                nested = following
+            else:
+                continue
+            filtered = PATH_FILTER.search(nested) if event in PULL_REQUEST_EVENTS else None
+            if filtered:
+                raise Undecidable(
+                    f"`{event}` carries a `{filtered.group(1)}:` filter - GitHub reports "
+                    "nothing for a pull request the filter excludes, so a required check "
+                    "on these jobs would stay pending forever while the two lists agree"
+                )
         return events
     raise Undecidable("no `on:` block at the top level")
 

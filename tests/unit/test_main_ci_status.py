@@ -95,10 +95,11 @@ class TestRepoSlug:
 
 class TestPickRun:
     def test_passes_over_a_cancelled_run_to_the_newest_real_verdict(self) -> None:
-        """The workflow cancels superseded runs, so this is the common case.
+        """A cancelled run never stands in for a verdict.
 
         Reading `cancelled` as an answer would report nothing about a red
         `main`, which is exactly the blindness the script exists to remove.
+        The cancelled run gets a line of its own instead (`PL-JTHW`).
         """
         runs = [_run("cancelled", 1555), _run(None, 1554), _run("failure", 1553)]
         assert main_ci_status.pick_run(runs)["run_number"] == 1553
@@ -113,6 +114,59 @@ class TestPickRun:
     def test_returns_none_on_an_empty_or_malformed_page(self) -> None:
         assert main_ci_status.pick_run([]) is None
         assert main_ci_status.pick_run(["not a dict", 7]) is None
+
+
+class TestPickCancelled:
+    """The cancelled run that earns a line: the newest one above every verdict (`PL-JTHW`)."""
+
+    def test_takes_a_cancelled_run_newer_than_every_verdict(self) -> None:
+        runs = [_run("cancelled", 1555), _run("success", 1553)]
+        assert main_ci_status.pick_cancelled(runs)["run_number"] == 1555
+
+    def test_takes_the_newest_of_several(self) -> None:
+        """Re-running the newest checks the whole store again, so it answers for the rest."""
+        runs = [_run("cancelled", 1556), _run("cancelled", 1555), _run("failure", 1553)]
+        assert main_ci_status.pick_cancelled(runs)["run_number"] == 1556
+
+    def test_passes_over_a_cancelled_run_a_later_verdict_covers(self) -> None:
+        """Run 1556 checked the whole store on a tree containing 1555's commit."""
+        runs = [_run("success", 1556), _run("cancelled", 1555), _run("success", 1553)]
+        assert main_ci_status.pick_cancelled(runs) is None
+
+    def test_looks_past_a_run_that_is_neither_a_verdict_nor_cancelled(self) -> None:
+        runs = [_run("skipped", 1556), _run("cancelled", 1555), _run("success", 1553)]
+        assert main_ci_status.pick_cancelled(runs)["run_number"] == 1555
+
+    def test_takes_a_cancelled_run_when_none_reached_a_verdict(self) -> None:
+        runs = [_run("cancelled", 1555), _run("cancelled", 1554)]
+        assert main_ci_status.pick_cancelled(runs)["run_number"] == 1555
+
+    def test_returns_none_without_a_cancelled_run_above_the_verdict(self) -> None:
+        assert main_ci_status.pick_cancelled([]) is None
+        assert main_ci_status.pick_cancelled([_run("success"), _run("cancelled")]) is None
+        assert main_ci_status.pick_cancelled(["not a dict", 7]) is None
+
+    def test_skips_a_malformed_entry_above_it(self) -> None:
+        runs = ["not a dict", _run("cancelled", 1555)]
+        assert main_ci_status.pick_cancelled(runs)["run_number"] == 1555
+
+
+class TestCancelledAdvisory:
+    def test_names_the_cancelled_run_and_the_older_verdict(self) -> None:
+        """Which commit each answer is about is the reader's whole question.
+
+        This reads completed runs only, so a newer merge's run still going is
+        invisible to it; the line says so rather than send a reader to re-run
+        a commit that run is already checking again.
+        """
+        line = main_ci_status.cancelled_advisory(
+            _run("cancelled", 1555, "c0ffee9900"), _run("success", 1553, "abcdef1234")
+        )
+        assert "#1555 on c0ffee99 was cancelled" in line
+        assert "no whole-store verdict" in line
+        assert "#1553 on abcdef12" in line
+        assert "Re-run it, unless a newer merge's run is still going" in line
+        assert line.endswith("https://github.com/o/r/actions/runs/1555")
 
 
 class TestAdvisory:
@@ -214,6 +268,70 @@ class TestMain:
         monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: [_run("success", 1553)])
         assert main_ci_status.main() == 0
         assert capsys.readouterr().out == ""
+
+    def test_a_cancelled_main_run_is_reported(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`main`'s newest run was cancelled, so its commit has no whole-store verdict.
+
+        The green verdict below it is about an older commit, and printing
+        nothing handed that answer to a reader as `main`'s - true of that
+        commit and silent about the one that lost its run (`PL-JTHW`). The line
+        costs no second request: the verdict is green, so no step is asked about.
+        """
+        asked: list[object] = []
+
+        def _jobs(slug: str, run_id: object) -> list[object]:
+            asked.append(run_id)
+            return [_REPLAY_ONLY]
+
+        runs = [_run("cancelled", 1555, "c0ffee9900"), _run("success", 1553)]
+        monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: runs)
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", _jobs)
+        assert main_ci_status.main() == 0
+        out = capsys.readouterr().out
+        assert "#1555 on c0ffee99 was cancelled" in out
+        assert "Re-run it" in out
+        assert out.rstrip("\n").endswith("https://github.com/o/r/actions/runs/1555")
+        assert asked == [], "a green verdict must cost one request, not two"
+
+    def test_a_cancelled_run_a_later_verdict_covers_prints_nothing(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The silence rule holds over an older cancellation.
+
+        Run 1556 checked the whole store again on a tree containing 1555's
+        commit, so there is nothing to re-run 1555 for, and `main` is green.
+        """
+        runs = [_run("success", 1556), _run("cancelled", 1555), _run("success", 1553)]
+        monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: runs)
+        assert main_ci_status.main() == 0
+        assert capsys.readouterr().out == ""
+
+    def test_reports_a_cancelled_run_above_a_red_verdict_before_the_red_line(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Both lines, the newer commit first, and the red one still attributed."""
+        runs = [_run("cancelled", 1555, "c0ffee9900"), _run("failure", 1553)]
+        monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: runs)
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", lambda slug, run_id: [_REPLAY_ONLY])
+        assert main_ci_status.main() == 0
+        lines = capsys.readouterr().out.splitlines()
+        assert len(lines) == 2
+        assert "#1555 on c0ffee99 was cancelled" in lines[0]
+        assert "#1553 on abcdef12 concluded failure" in lines[1]
+        assert main_ci_status.REPLAY_STEP in lines[1]
+
+    def test_reports_a_cancelled_run_when_no_run_reached_a_verdict(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        runs = [_run("cancelled", 1555, "c0ffee9900"), _run("cancelled", 1554)]
+        monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: runs)
+        assert main_ci_status.main() == 0
+        lines = capsys.readouterr().out.splitlines()
+        assert len(lines) == 1, "one line, for the newest"
+        assert "#1555 on c0ffee99 was cancelled" in lines[0]
+        assert "no run readable here reached one" in lines[0]
 
     @pytest.mark.parametrize("boom", _NETWORK_FAILURES)
     def test_stays_silent_and_exits_zero_when_the_fetch_fails(

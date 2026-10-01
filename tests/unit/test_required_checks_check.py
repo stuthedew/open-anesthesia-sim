@@ -235,6 +235,41 @@ def test_a_reusable_workflow_call_is_refused_rather_than_guessed(tmp_path: Path)
         rcc.reporting_jobs(directory)
 
 
+@pytest.mark.parametrize(
+    ("trigger", "spelling"),
+    [
+        ("  pull_request:\n    paths:\n      - 'src/**'\n", "paths"),
+        ("  pull_request_target:\n    paths-ignore: ['docs/**']\n", "paths-ignore"),
+        ("  pull_request: {paths: ['src/**']}\n", "paths"),
+    ],
+)
+def test_a_paths_filtered_pull_request_job_is_undecidable(
+    tmp_path: Path, trigger: str, spelling: str
+) -> None:
+    """A pull request the filter excludes gets no run, so a requirement on the job hangs.
+
+    The check name is knowable here, and that is the trap: the reconciliation
+    would read agreement while merges wait forever (`PL-NWSK`).
+    """
+    directory = _workflows(
+        tmp_path, quality=f"on:\n{trigger}\njobs:\n  checks:\n    runs-on: ubuntu-latest\n"
+    )
+    with pytest.raises(rcc.Undecidable, match=f"`{spelling}:` filter"):
+        rcc.reporting_jobs(directory)
+
+
+def test_a_paths_filter_under_push_is_not_refused(tmp_path: Path) -> None:
+    """A push run reports onto no pull request, so its filter strands no requirement."""
+    directory = _workflows(
+        tmp_path,
+        quality=(
+            "on:\n  push:\n    paths:\n      - 'docs/**'\n  pull_request:\n\n"
+            "jobs:\n  checks:\n    runs-on: ubuntu-latest\n"
+        ),
+    )
+    assert [job.check_name for job in rcc.reporting_jobs(directory)] == ["checks"]
+
+
 def test_a_workflow_with_no_jobs_block_is_refused(tmp_path: Path) -> None:
     directory = _workflows(tmp_path, quality="on:\n  pull_request:\n")
     with pytest.raises(rcc.Undecidable, match="jobs"):

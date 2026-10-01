@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Say when the default branch's last quality run failed, and stay silent otherwise.
+"""Say when the default branch's last quality run failed or was cancelled, and otherwise nothing.
 
 `.github/workflows/quality.yml` runs the whole-store `verify:` replay only on
 push to `main` — deliberately, because a pull request cannot have changed
@@ -22,19 +22,25 @@ appears in.
 
 Two consequences of that rule are worth stating, because both look like gaps:
 
-- **A `cancelled` run is not a verdict.** This reports the newest run that
-  actually *reached* a conclusion, which is the most recent real answer about
-  `main`. That skip used to carry more than it looks: until `PL-SMN4` every
+- **A `cancelled` run is not a verdict, but one newer than every verdict is
+  reported.** The verdict reported is the newest run that actually *reached* a
+  conclusion, the most recent real answer about `main`. Until `PL-SMN4` every
   push to `main` shared one concurrency group, so a merge arriving while an
-  earlier one was still pending evicted it, and 31 of the 257 completed `main`
-  push runs between 2026-09-05 and 2026-09-16 - 12.1% - were passed over here
-  for that reason alone. A per-commit group ended the eviction, so a cancelled
-  run on `main` now means a hand cancellation or a lost runner. Those are still
-  passed over in silence, and the commit behind one has no whole-store verdict
-  at all: `PL-JTHW`.
-- **Silence is not a green tree.** It means "no failing verdict was readable
-  from here", which is also what an offline container gets. The line exists to
-  surface a red nobody would otherwise see, never to certify a green one.
+  earlier one was still pending evicted it: 31 of the 257 completed `main` push
+  runs between 2026-09-05 and 2026-09-16 - 12.1% - were cancelled that way. A
+  per-commit group ended the eviction, and none of the 640 completed from its
+  merge to 2026-10-01 was cancelled, so one now means a hand cancellation or a
+  lost runner, and its commit has no whole-store verdict at all. Passing over
+  it in silence reported an older commit's verdict as `main`'s answer
+  (`PL-JTHW`), so a cancelled run newer than every verdict prints a line of its
+  own, naming both runs and asking for a re-run. One older than a verdict
+  still prints nothing: the later run checked the whole store again on a tree
+  that contains it, so there is nothing to ask for, and a green `main` prints
+  nothing.
+- **Silence is not a green tree.** It means "no failing verdict, and no
+  cancelled run newer than the verdict, was readable from here", which is also
+  what an offline container gets. The line exists to surface a red nobody would
+  otherwise see, never to certify a green one.
 
 **The line names the failing step, and that is the whole of what `PL-T83R`
 changed.** Attributed over all 819 completed `main` push runs from 2026-08-22
@@ -199,6 +205,31 @@ def pick_run(runs: list[object]) -> dict[str, object] | None:
     return None
 
 
+def pick_cancelled(runs: list[object]) -> dict[str, object] | None:
+    """Return the newest cancelled run newer than every verdict, or None.
+
+    Its commit has no whole-store verdict, and whatever `pick_run` answers - or
+    the silence of a green answer - is about an older commit, which a reader
+    would otherwise take as `main`'s (`PL-JTHW`). Several cancelled above the
+    verdict return the newest, because re-running it checks the whole store
+    again on a tree that contains the rest.
+
+    A cancelled run *older* than a verdict returns None, which is the
+    green-`main`-prints-nothing rule rather than a gap: the later run checked
+    the whole store on a tree that contains it, so a re-run would answer
+    nothing the verdict has not.
+    """
+    for run in runs:
+        if not isinstance(run, dict):
+            continue
+        conclusion = run.get("conclusion")
+        if conclusion in VERDICTS:
+            return None
+        if conclusion == "cancelled":
+            return run
+    return None
+
+
 def step_conclusions(jobs: list[object]) -> tuple[tuple[str, str], ...]:
     """Every step's (name, conclusion), in the order CI ran them.
 
@@ -276,6 +307,11 @@ def _quoted(step: str) -> str:
     return f'"{step[: STEP_WIDTH - 1].rstrip()}..." (cut)'
 
 
+def _short_sha(run: dict[str, object]) -> str:
+    """The run's head commit as a line prints it, or `?` when the payload carries none."""
+    return str(run.get("head_sha", ""))[:8] or "?"
+
+
 def _is_queue_failure(run: dict[str, object], steps: tuple[tuple[str, str], ...]) -> bool:
     """Whether the replay failing is attributable to an item's own `verify:` command.
 
@@ -323,7 +359,7 @@ def advisory(run: dict[str, object], steps: tuple[tuple[str, str], ...] = ()) ->
     if conclusion == "success":
         return None
     number = run.get("run_number", "?")
-    sha = str(run.get("head_sha", ""))[:8] or "?"
+    sha = _short_sha(run)
     url = run.get("html_url", "")
     head = f"main's quality run #{number} on {sha} concluded {conclusion}"
     if _is_queue_failure(run, steps):
@@ -342,6 +378,31 @@ def advisory(run: dict[str, object], steps: tuple[tuple[str, str], ...] = ()) ->
     failed = failing_steps(steps)
     where = f" at {', '.join(_quoted(name) for name in failed)}" if failed else ""
     return f"{head}{where} - main is red and no pull request will show it. {url}"
+
+
+def cancelled_advisory(cancelled: dict[str, object], verdict: dict[str, object] | None) -> str:
+    """The line for a cancelled run newer than every verdict, from `pick_cancelled`.
+
+    It names the newest verdict as well as the cancelled run, because which
+    commit each answer is about is the reader's whole question. The action is
+    a re-run, with one exception the line states rather than detects: a newer
+    merge's run still going will answer for the commit too, and the completed
+    runs `fetch_runs` asks for cannot show one.
+    """
+    number = cancelled.get("run_number", "?")
+    url = cancelled.get("html_url", "")
+    if verdict is None:
+        older = "and no run readable here reached one"
+    else:
+        older = (
+            f"and the newest run that reached one, #{verdict.get('run_number', '?')} on "
+            f"{_short_sha(verdict)}, checked an older commit"
+        )
+    return (
+        f"main's quality run #{number} on {_short_sha(cancelled)} was cancelled, so that "
+        f"commit has no whole-store verdict, {older}. Re-run it, unless a newer merge's run "
+        f"is still going: {url}"
+    )
 
 
 def fetch_runs(slug: str) -> list[object]:
@@ -405,6 +466,13 @@ def main() -> int:
         return 0
 
     run = pick_run(runs)
+
+    # First, because it is about a newer commit than any verdict line below it,
+    # and whatever that verdict is: under a green one it is the only line.
+    cancelled = pick_cancelled(runs)
+    if cancelled is not None:
+        print(cancelled_advisory(cancelled, run))
+
     if run is None:
         return 0
 
