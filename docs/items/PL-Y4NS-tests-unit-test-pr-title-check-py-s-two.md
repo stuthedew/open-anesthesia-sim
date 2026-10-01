@@ -3,12 +3,14 @@ id: PL-Y4NS
 title: tests/unit/test_pr_title_check.py's two --discover tests read the real checkout's origin, because repo_slug comes from tools/open_pull_requests.py and the _git stub never reaches it, so both fail in any clone whose origin is not a GitHub URL
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, test
 feature: ci-cost
 touches: tests/unit/test_pr_title_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-28 triage pass
 added: 2026-09-27
+closed: 2026-10-01
+pr: 1261
 payoff: the PR-title tests pass in a clone whose origin is not GitHub, so timing runs in local clones stop reporting false failures
 not-delegable: the fault shows only in a clone whose origin is not a GitHub URL, and every checkout the replay runs in has the GitHub origin, so no admitted command fails before the fix; the proof is both tests passing in a git clone --shared of the branch
 ---
@@ -42,3 +44,14 @@ tests do, and pass in a clone whose `origin` is a local path.
 
 **Generator check.** A one-off: two tests missing a stub the file's later tests
 carry.
+
+**Resolved 2026-10-01.** The helper `_remote(url, ...)` became
+`_on_a_branch(monkeypatch, **refs)`, which stubs `repo_slug` beside `_git`; its
+`remote get-url` arm went with it, because nothing in `tools/pr_title_check.py`
+asks that since `PL-Q664`, and the dead arm is what made the stub look as if it
+set the slug. A third test had the same gap and passed rather than failed:
+`test_no_pull_request_to_read_is_a_silent_skip_that_never_reads_the_trees`
+skipped on the missing slug before its stubbed lookup was called, so in such a
+clone it asserted nothing about the path it names. It stubs `repo_slug` too.
+In a `git clone --shared` with a local-path `origin`: 2 failed and 23 passed
+before, 25 passed after.

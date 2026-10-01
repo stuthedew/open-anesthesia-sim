@@ -1412,7 +1412,12 @@ class TraceLegend(QWidget):
     """
 
     visibility_changed = Signal()
-    """Emitted after a reader shows or hides a compartment."""
+    """Emitted after a reader shows or hides a compartment, and only then.
+
+    Not for the selection `set_run_count` holds to the cap: that change is the
+    caller's, made while it changes the run set, and the frame it owes is the
+    caller's to draw once the run set is whole (`PL-B1R9`).
+    """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -1533,6 +1538,17 @@ class TraceLegend(QWidget):
         keeps what was just asked for instead.
         """
 
+        self._check_exactly(shown)
+        self.visibility_changed.emit()
+
+    def _check_exactly(self, shown: Sequence[RecordedQuantity]) -> None:
+        """Check exactly these compartments, held to the cap, and rewrite the compare row.
+
+        `set_shown` without the announcement, which is how `set_run_count`
+        holds the selection to the cap without reporting the caller's own
+        change back to it as a reader's.
+        """
+
         wanted = tuple(shown)
 
         while True:
@@ -1552,7 +1568,6 @@ class TraceLegend(QWidget):
             wanted = drawn
 
         self._refresh_compared_row()
-        self.visibility_changed.emit()
 
     def set_compartment_shown(self, quantity: RecordedQuantity, shown: bool) -> None:
         """Show or hide one compartment, by exactly the route a reader's click takes.
@@ -1582,6 +1597,14 @@ class TraceLegend(QWidget):
         checked boxes against two curves is the disagreement this class
         exists to make impossible.
 
+        **Announces nothing, even where it unchecks a box** (`PL-B1R9`). The
+        change is the caller's, made in the middle of changing its run set,
+        and the caller already owes the frame that draws the new run set.
+        Announced from here, it drew that frame early - from inside
+        `SimulationView._rename_runs`, before the wash-in legend or either run
+        had been told there were two runs - and the fork that caused it then
+        drew its own.
+
         Args:
             run_count: How many runs the dashboard is displaying.
 
@@ -1605,9 +1628,9 @@ class TraceLegend(QWidget):
             # Reduced to exactly what the chart will draw, rather than to some
             # other pair this class chose: `compared_compartments` is the one
             # rule, and a legend applying a second one is how a checked box
-            # comes to name a curve that is not on the plot. `set_shown`
-            # refreshes the compare row and announces the change.
-            self.set_shown(drawn)
+            # comes to name a curve that is not on the plot. `_check_exactly`
+            # refreshes the compare row.
+            self._check_exactly(drawn)
         else:
             self._refresh_compared_row()
 

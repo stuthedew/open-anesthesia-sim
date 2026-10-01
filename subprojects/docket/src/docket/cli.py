@@ -4772,7 +4772,8 @@ def cmd_claim(args: argparse.Namespace) -> int:
     Exit 3 means another branch holds one of them first, or holds one that this
     branch's unpushed claim would have taken from it, now withdrawn; exit 4 that
     the claim was written and did not reach the remote - its push failed, or the
-    branch's copy on the remote meant none was tried - so only this checkout can
+    branch's copy on the remote meant none was tried, the forge naming a pull
+    request open on it or not answering - so only this checkout can
     see it until the `claim` the message names publishes it - or that the remote
     could not be asked whether it has the branch, so nothing was pushed. Neither
     is a failure of the command; each is a different next step.
