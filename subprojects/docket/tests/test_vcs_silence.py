@@ -60,6 +60,7 @@ from docket.vcs import (
     cut_window,
     cuts_in_flight,
     default_base,
+    default_branch,
     filed_with_work,
     files_in_flight,
     find_cut,
@@ -489,6 +490,9 @@ READS: tuple[Read, ...] = (
     # reads the mark, so a silence that stops every candidate resolving declines
     # here rather than answering `main` (`PL-73P0`).
     Read("default_base", lambda r, g: default_base(r, runner=g), _findings()),
+    # The same answer by its name on the remote, so a guess has to come back
+    # marked here too: `removeprefix` alone would drop the mark (`PL-9KLN`).
+    Read("default_branch", lambda r, g: default_branch(r, runner=g), _findings()),
     # A file the fixture changes and a directory it adds to, from a date every
     # fixture commit is after, so the truthful read counts something to lose.
     Read(

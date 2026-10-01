@@ -30,8 +30,8 @@ Lists by default; `--apply` tags and pushes, then reads the tag back from
 and lands nothing (`PL-N936`). `.github/workflows/tag-release.yml` runs it on
 each push to `main` that changes a release's notes, with a token that may push
 tags; run by hand from a clone, it pushes with that clone's credentials, which
-is the project owner's to do. It fetches `origin main` first. Standard library
-only.
+is the project owner's to do. It fetches the default branch first, by the name
+`vcs.default_branch` reads (`PL-9KLN`). Standard library only.
 """
 
 from __future__ import annotations
@@ -46,10 +46,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.release import notes_path, version_in  # noqa: E402
-from docket.vcs import find_cut, is_shallow  # noqa: E402
+from docket.vcs import default_branch, find_cut, is_shallow  # noqa: E402
 
 REMOTE = "origin"
-BRANCH = "main"
 VERSION_FILE = "pyproject.toml"
 
 #: `git ls-remote --exit-code`'s status where the remote answered and holds no
@@ -88,13 +87,14 @@ def held_on(name: str, root: Path, remote: str = REMOTE) -> tuple[str, str]:
     return named.get(f"{ref}^{{}}", named.get(ref, "")), ""
 
 
-def run(root: Path, *, apply: bool, remote: str = REMOTE, branch: str = BRANCH) -> int:
+def run(root: Path, *, apply: bool, remote: str = REMOTE, branch: str | None = None) -> int:
     """Tag the version `remote/branch` declares on its cut where `remote` lacks it; the exit status.
 
     Everything is read from `remote/branch` once fetched, never from the
     working tree: run by hand from a checkout behind it, the tree still
-    declares the release before.
+    declares the release before. `branch` is the default branch unless named.
     """
+    branch = branch or default_branch(root)
     ref = f"{remote}/{branch}"
     fetched = _git(["fetch", "--quiet", remote, branch], root)
     if fetched.returncode != 0:

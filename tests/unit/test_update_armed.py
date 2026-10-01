@@ -232,3 +232,23 @@ def test_main_stops_red_and_says_why_when_a_reading_fails(
 
     assert update_armed.main(["--repo", SLUG]) == 1
     assert "the required checks on main could not be read" in capsys.readouterr().err
+
+
+def test_main_reads_the_base_off_docket_when_none_is_passed(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """No `--base` is the branch `vcs.default_branch` names, not a literal here (`PL-9KLN`)."""
+    asked: list[str] = []
+
+    def unreachable(repo: str, branch: str, token: str | None) -> tuple[set[str], list[str]]:
+        asked.append(branch)
+        raise RuntimeError("could not read https://api.github.com/...: timed out")
+
+    monkeypatch.setattr(update_armed, "required_contexts", unreachable)
+    monkeypatch.setattr(update_armed, "default_branch", lambda root: "trunk")
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+
+    assert update_armed.main(["--repo", SLUG]) == 1
+    assert asked == ["trunk"]
+    assert "the required checks on trunk could not be read" in capsys.readouterr().err

@@ -3,12 +3,14 @@ id: PL-9KLN
 title: Five tools and the Makefile hard-code main or origin/main as the default branch beside vcs.default_base (main_ci_status, tag_release, update_armed, pr_record_check, required_checks_check): read it against PL-PVW2's misread as a post-close instance
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: recorded-not-inferred
-touches: tools/main_ci_status.py, tools/tag_release.py, tools/update_armed.py, tools/pr_record_check.py, tools/required_checks_check.py, Makefile, tests/unit/test_main_ci_status.py, tests/unit/test_tag_release.py, tests/unit/test_update_armed.py, tests/unit/test_pr_record_check.py, tests/unit/test_required_checks_check.py
+touches: tools/main_ci_status.py, tools/tag_release.py, tools/update_armed.py, tools/pr_record_check.py, tools/required_checks_check.py, Makefile, tests/unit/test_main_ci_status.py, tests/unit/test_tag_release.py, tests/unit/test_update_armed.py, tests/unit/test_pr_record_check.py, tests/unit/test_required_checks_check.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-01
+pr: 1271
 payoff: which branch is the base is one answer in docket and in every CI tool, so a clone where main is only local, or a renamed default, cannot split them
 verify: ! grep -qF 'BRANCH = "main"' tools/main_ci_status.py && ! grep -qF 'BRANCH = "main"' tools/tag_release.py && ! grep -qF 'default="main"' tools/update_armed.py
 ---

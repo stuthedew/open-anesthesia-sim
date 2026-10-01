@@ -126,7 +126,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.vcs import github_slug, github_token  # noqa: E402
+from docket.vcs import default_branch, github_slug, github_token  # noqa: E402
 
 API_ROOT = "https://api.github.com"
 API_VERSION = "2022-11-28"
@@ -452,10 +452,11 @@ def main(argv: list[str] | None = None) -> int:
         "--branch",
         # On a `pull_request` run this is the branch the pull request targets,
         # which is exactly the branch whose protection is about to gate it. Off
-        # a pull request there is no such branch, and `main` is the one every
-        # trigger and the release process already name.
-        default=os.environ.get("GITHUB_BASE_REF") or "main",
-        help="the protected branch to read; defaults to $GITHUB_BASE_REF, then to main",
+        # a pull request there is no such branch, and the default branch is the
+        # one every trigger and the release process name - read from
+        # `vcs.default_branch` rather than spelt here (`PL-9KLN`).
+        default=os.environ.get("GITHUB_BASE_REF") or default_branch(root),
+        help="the protected branch to read; defaults to $GITHUB_BASE_REF, then the default branch",
     )
     args = parser.parse_args(argv)
 

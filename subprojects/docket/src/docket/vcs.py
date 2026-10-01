@@ -124,7 +124,8 @@ class GuessedBase(str):
 
     **The mark survives no string operation**, exactly as `GitSilence`'s does
     not: `f"{base}"`, `base.strip()` and `base + ""` are all plain `str`. Read
-    it off `default_base`'s own return value and nowhere else - or, inside this
+    it off the return value of `default_base`, or of `default_branch`, which
+    marks its name again, and nowhere else - or, inside this
     module, let the read's `_Silences` wrapper carry it, which is what
     `default_base` marks on the way past.
     """
@@ -2119,6 +2120,21 @@ def default_base(root: Path, *, runner: Runner | None = None) -> str:
     if isinstance(run, _Silences):
         run.guessed_base = True
     return GUESSED_BASE
+
+
+def default_branch(root: Path, *, runner: Runner | None = None) -> str:
+    """The default branch by its name on the remote: `default_base` without `origin/`.
+
+    `default_base` answers a ref in this checkout, `origin/main`, where GitHub's
+    API asks for `branch=main` and `git fetch origin` for `main`. Four tools held
+    that name as a literal of their own beside this module's answer, so a
+    default renamed to `master` would have been read one way here and another in
+    CI (`PL-9KLN`); they read it here instead. A guessed base comes back marked,
+    since the mark survives no string operation and `removeprefix` is one.
+    """
+    base = default_base(root, runner=runner)
+    name = base.removeprefix(f"{REMOTE}/")
+    return name if resolved(base) else GuessedBase(name)
 
 
 def behind_remote(root: Path, base: str, *, runner: Runner | None = None) -> int | None:

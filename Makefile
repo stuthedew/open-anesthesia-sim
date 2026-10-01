@@ -213,6 +213,12 @@ check: sync
 # ref is read without a fetch, so the gate needs no network, and a stale one
 # can only widen the scope, never hide this branch's own changes: the diff is
 # taken from the merge base, which a stale ref moves earlier and no later.
+#
+# `origin/main` stays a literal, read against `vcs.default_base` (`PL-9KLN`).
+# It is the ref that answers first there on any clone with a remote. No
+# `bin/docket` command prints that answer for `make` to pass, and
+# `.claude/hooks/push-check-guard.sh` hands a session this argv word for word
+# to re-run, so the two change together or not at all.
 	bin/docket check --verify --verify-base origin/main
 # Bare `python3`, like the three lines after it: none of them reads project
 # source, so the 3.11 floor parser has nothing it cannot read, and a bare run is
@@ -358,6 +364,10 @@ check: sync
 # read fails rather than declining: this comparison is the only gate on the
 # rule it enforces, where the verify replay's scoped run has the whole-store
 # sweep behind it.
+#
+# The ref stays a literal for the verify replay's first reason (`PL-9KLN`): no
+# `bin/docket` command prints `vcs.default_base` for `make` to pass. Where
+# `origin/main` is gone, it cannot pass quietly either: an unread base fails here.
 	uv run python tools/contrast_check.py --base origin/main
 	uv run python tools/agent_identity_check.py
 	uv run python tools/import_boundary_check.py

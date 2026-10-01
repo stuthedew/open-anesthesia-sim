@@ -696,3 +696,32 @@ class TestStepNamesMatchTheWorkflow:
         """It has no `name:`, so GitHub calls it `Run ` plus the `run:` line verbatim."""
         command = main_ci_status.BARE_CHECK_STEP.removeprefix("Run ")
         assert f"- run: {command}\n" in _workflow()
+
+
+class TestFetchRuns:
+    """The branch the runs are asked for is docket's rather than a literal here (`PL-9KLN`)."""
+
+    def test_asks_for_the_runs_on_the_branch_docket_names(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        urls: list[str] = []
+
+        class _Response:
+            def __enter__(self) -> io.BytesIO:
+                return io.BytesIO(json.dumps({"workflow_runs": []}).encode())
+
+            def __exit__(self, *exc: object) -> None:
+                return None
+
+        def _open(request: urllib.request.Request, timeout: float = 0) -> _Response:
+            urls.append(request.full_url)
+            return _Response()
+
+        monkeypatch.setattr(main_ci_status, "default_branch", lambda root: "trunk")
+        monkeypatch.setattr(main_ci_status.urllib.request, "urlopen", _open)
+
+        assert main_ci_status.fetch_runs("o/r") == []
+        assert urls == [
+            "https://api.github.com/repos/o/r/actions/workflows/quality.yml/runs"
+            "?branch=trunk&event=push&status=completed&per_page=10"
+        ]

@@ -115,7 +115,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.vcs import github_slug  # noqa: E402
+from docket.vcs import default_branch, github_slug  # noqa: E402
 
 # Every way a read of the API can fail, and it is a named tuple rather than an
 # inline one because both call sites have to catch the same set: a gap in either
@@ -128,7 +128,6 @@ NETWORK_FAILURES = (OSError, ValueError, http.client.HTTPException)
 
 API = "https://api.github.com"
 WORKFLOW = "quality.yml"
-BRANCH = "main"
 TIMEOUT_S = 8
 
 # A conclusion that judged the tree. `cancelled` and `skipped` did not, and
@@ -408,13 +407,16 @@ def cancelled_advisory(cancelled: dict[str, object], verdict: dict[str, object] 
 def fetch_runs(slug: str) -> list[object]:
     """Fetch recent completed `quality.yml` runs on the default branch.
 
+    The branch is `vcs.default_branch`'s, the one docket compares against,
+    rather than a literal of this script's own (`PL-9KLN`).
+
     Unauthenticated: this repository is public, so no token is needed and none
     is read, which keeps the script runnable from a bare checkout and keeps a
     credential out of a session-start path.
     """
     url = (
         f"{API}/repos/{slug}/actions/workflows/{WORKFLOW}/runs"
-        f"?branch={BRANCH}&event=push&status=completed&per_page=10"
+        f"?branch={default_branch(ROOT)}&event=push&status=completed&per_page=10"
     )
     request = urllib.request.Request(
         url, headers={"Accept": "application/vnd.github+json", "User-Agent": "docket-digest"}

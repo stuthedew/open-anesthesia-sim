@@ -500,3 +500,23 @@ def test_this_repository_reports_exactly_checks_and_pr_title() -> None:
     assert sorted(job.check_name for job in jobs) == ["checks", "pr-title"]
     assert {job.workflow for job in jobs} == {"quality.yml", "pr-title.yml"}
     assert all(job.not_required is None for job in jobs)
+
+
+def test_off_a_pull_request_the_branch_is_docket_s(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """No `--branch` and no `GITHUB_BASE_REF` reads `vcs.default_branch` (`PL-9KLN`)."""
+    monkeypatch.delenv("GITHUB_BASE_REF", raising=False)
+    monkeypatch.setenv("GH_TOKEN", "from-gh-token")
+    monkeypatch.setattr(rcc, "default_branch", lambda root: "trunk")
+    asked: list[str] = []
+
+    def fake(repo: str, branch: str, token: str | None) -> tuple[set[str], list[str]]:
+        asked.append(branch)
+        return {"checks", "pr-title"}, ["classic branch protection"]
+
+    monkeypatch.setattr(rcc, "required_contexts", fake)
+
+    assert rcc.main(["--repo", "o/r"]) == 0
+    assert asked == ["trunk"]
+    assert "required-checks: o/r @ trunk" in capsys.readouterr().out
