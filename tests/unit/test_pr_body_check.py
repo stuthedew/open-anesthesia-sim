@@ -36,6 +36,8 @@ subjects and bodies, not git and not GitHub.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pr_body_check
 import pytest
 
@@ -242,6 +244,39 @@ def test_item_ids_judges_a_subject_by_the_stores_own_grammar() -> None:
     """
     assert pr_body_check.item_ids("PL-001: the early work (#12)", 12, {}) == ["PL-001"]
     assert pr_body_check.item_ids("Rework the PL-CAP fixture (#13)", 13, {}) == []  # not-an-id
+
+
+def test_item_ids_takes_a_subjects_leading_ids_and_not_a_citation() -> None:
+    """`PL-XSL4`: an id cited mid-subject is not an item the pull request is about.
+
+    `re.findall` over the whole subject took every id in it, where the store's
+    reader, `vcs.leading_ids`, takes the run a subject opens with - so a
+    recovery record could be filed under an item its pull request only cited.
+    """
+    assert pr_body_check.item_ids("PL-K7QX, PL-B2B2: both (#14)", 14, {}) == ["PL-B2B2", "PL-K7QX"]
+    assert pr_body_check.item_ids("PL-K7QX: fix what PL-B2B2 broke (#15)", 15, {}) == ["PL-K7QX"]
+    assert pr_body_check.item_ids("Cut a release (#16)", 16, {16: {"PL-B2B2"}}) == ["PL-B2B2"]
+
+
+def test_queue_backlinks_reads_a_pr_field_past_two_thousand_characters(tmp_path: Path) -> None:
+    """`PL-XSL4`: `pr:` is read from the whole front matter, as the store reads it.
+
+    The backlinks were a regex over each file's first 2,000 characters. Five
+    items' front matter ran longer than that on 2026-10-01, so a sixth recording
+    its `pr:` past that point would have been written into a recovery record
+    without the item it names.
+    """
+    items = tmp_path / "docs" / "items"
+    items.mkdir(parents=True)
+    (tmp_path / "docket.toml").write_text('items_dir = "docs/items"\n', encoding="utf-8")
+    (items / "PL-K7QX-long.md").write_text(
+        "---\nid: PL-K7QX\ntitle: A long one\npriority: P2\neffort: S\nstatus: done\n"
+        f"classes: docs\nadded: 2026-09-06\nclosed: 2026-09-07\npayoff: {'x' * 2100}\n"
+        "pr: 42\n---\n\n**Problem.** A thing.\n",
+        encoding="utf-8",
+    )
+
+    assert pr_body_check.queue_backlinks(tmp_path) == {42: {"PL-K7QX"}}
 
 
 def _serve(

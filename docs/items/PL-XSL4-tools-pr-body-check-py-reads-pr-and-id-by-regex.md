@@ -3,12 +3,14 @@ id: PL-XSL4
 title: tools/pr_body_check.py reads pr: and id: by regex over an item's first 2000 characters and takes ids from anywhere in a subject rather than vcs.leading_ids, so a long front matter or a mid-subject citation answers differently from the store's reader
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: recorded-not-inferred
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-01
+pr: 1271
 payoff: the recovery record pr_body_check writes into the store reads pr:, id: and a subject's ids the way the store does, so a long front matter or a cited id cannot write a wrong record
 verify: ! grep -qF '[:2000]' tools/pr_body_check.py && ! grep -qF 're.findall(ID_PATTERN, subject)' tools/pr_body_check.py
 ---
