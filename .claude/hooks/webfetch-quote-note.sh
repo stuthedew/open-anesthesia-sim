@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# PostToolUse hook on WebFetch: attach to every result a note that it is a
-# small model's answer about the page, not the page, so nothing in it is
-# recorded as the page's words (`PL-B1BW`).
+# PostToolUse hook on WebFetch: attach to every result a note that it is most
+# likely a small model's answer about the page, not the page, so nothing in it
+# is recorded as the page's words (`PL-B1BW`).
 #
 # **The failure.** On 2026-10-01 a session asked WebFetch to "Quote verbatim"
 # code.claude.com's settings-reference entry for `env`, and was handed a list
@@ -45,5 +45,5 @@ set -uo pipefail
 cat >/dev/null
 
 cat <<'JSON'
-{"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "This WebFetch result is a small model's answer about the page, not the page: WebFetch is lossy by design and truncates a large page before that model reads it (https://code.claude.com/docs/en/tools-reference, § \"WebFetch tool behavior\"), and on 2026-10-01 it put a sentence into a documentation quote that the page does not carry (`PL-B1BW`). Use it for leads. Before you record or report a quotation, an exact value, or that the page does not say something, read the page itself with curl - adding `.md` to the URL where the site serves Markdown, as code.claude.com does - and take the words and the § heading from that."}}
+{"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "This WebFetch result is most likely a small model's answer about the page, not the page: WebFetch returns that model's answer for most fetches, nothing in the result says which you got, and it is lossy by design and truncates a large page before that model reads it (https://code.claude.com/docs/en/tools-reference, § \"WebFetch tool behavior\"), and on 2026-10-01 it put a sentence into a documentation quote that the page does not carry (`PL-B1BW`). Use it for leads. Before you record or report a quotation, an exact value, or that the page does not say something, read the page itself with curl - adding `.md` to the URL where the site serves Markdown, as code.claude.com does - and take the words and the § heading from that."}}
 JSON
