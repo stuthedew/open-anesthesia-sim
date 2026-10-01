@@ -3,10 +3,13 @@ id: PL-1T6T
 title: Re-test the refusal of compaction now that root CLAUDE.md is known to reload after a compact
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: session-cost
 touches: CLAUDE.md
 added: 2026-09-16
+closed: 2026-10-01
+pr: 1264
+verify: grep -q 'The reset is in place, not a new session' CLAUDE.md && grep -q 'start a fresh one for an' CLAUDE.md && grep -q 'The premise the remaining sentence rests on' docs/items/PL-1T6T-re-test-the-refusal-of-compaction-now-that-root.md
 ---
 
 > **Evidence added 2026-09-24 by `PL-038`: the reload claim now rests on the
@@ -78,3 +81,46 @@ a long one" - survives the reload finding. This changes how every session works,
 so it is the project owner's; `PL-H253` records their earlier decision against
 four options including a low `/autocompact`, and this item is the one premise
 under that decision which was never put to the test.
+
+**Answered, 2026-10-01: the decision was taken in `PL-YJG1`, and every
+condition above is met.**
+
+- **The decision.** `PL-YJG1` (done 2026-09-25; project owner, ratified, over
+  a handoff the owner carries by pasting a prompt into a new session) made
+  compaction the routine reset at the 150k spend budget. `CLAUDE.md`'s reset
+  bullet now reads "**The reset is in place, not a new session**". So the
+  grouping this item questioned no longer reaches a long session on one topic.
+  It survives only in "start a fresh one for an unrelated topic rather than
+  continuing or compacting a long one", which covers a change of topic. That
+  is not reopened here.
+- **The reload claim, from the primary pages.** Fetched as Markdown with curl
+  on 2026-10-01. The context-window page, § "What survives compaction", has a
+  table row "Project-root CLAUDE.md and unscoped rules | Re-injected from
+  disk" ([context window](https://code.claude.com/docs/en/context-window)).
+  That closes the one gap the 2026-09-24 note left open: the rules without
+  `paths:` are named, beside `CLAUDE.md`. The memory page still says
+  "Project-root CLAUDE.md survives compaction: after `/compact`, Claude
+  re-reads it from disk and re-injects it into the session"
+  ([memory](https://code.claude.com/docs/en/memory), § "Instructions seem lost
+  after `/compact`"). Anthropic's context-engineering post was not re-fetched;
+  nothing here rests on it.
+- **The skill-truncation half.** The same table: "Invoked skill bodies |
+  Re-injected, capped at 5,000 tokens per skill and 25,000 tokens total;
+  oldest dropped first". `PL-2XM2` (done) answered it by splitting the docket
+  skill into a short front page and `modes/*.md` files, which a read reaches
+  after a compaction whatever the cap. Compaction is now lossless for the
+  resident set and, for this project's one large skill, no longer lossy in a
+  way that matters.
+
+**The premise the remaining sentence rests on.** Not cost and not reload. A
+compacted session carries its old topic forward: the branch, the claim, the
+session title and a summary written about the old work. Every in-flight guard
+reads the branch and the claim, and the session list is searched by title
+(`.claude/skills/docket/modes/start.md`). So a new topic in a compacted
+session is filed under the old one's name, and its summary spends context on
+work the new topic does not need. A fresh session starts at about the same
+floor, roughly 92k tokens on 2026-10-01 against compaction's
+81,048-115,320, with its own branch and title. The sentence is about scoping,
+not about compaction losing anything. It stops holding if a session could move
+to a new branch, claim and title in place; on this harness a session cannot
+rename the branch it was started on.

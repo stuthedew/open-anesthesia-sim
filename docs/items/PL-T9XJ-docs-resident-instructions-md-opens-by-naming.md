@@ -3,11 +3,13 @@ id: PL-T9XJ
 title: docs/resident-instructions.md opens by naming two resident files when there are three, in the document that governs resident cost
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, session-cost
 feature: dev-tooling
 touches: docs/resident-instructions.md
 added: 2026-09-13
+closed: 2026-10-01
+pr: 1264
 verify: head -12 docs/resident-instructions.md | grep -q 'expert-review' && python3 tools/doc_check.py check
 ---
 
