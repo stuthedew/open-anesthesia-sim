@@ -1,10 +1,16 @@
 ---
 id: PL-K9Z5
 title: The vacuity guard in test_a_legend_checkbox_draws_its_indicator_in_the_theme fails on macOS - a bare checkbox under the dark host draws the theme's #FFFFFF panel colour there too - so the test cannot show PL-7W9N's fix holds on that platform
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, ux
 feature: platform-palette
 touches: tests/integration/test_dark_appearance.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-09-27
+payoff: the dark-appearance test proves the legend's checkbox is themed on macOS as well as Linux, instead of failing there undiagnosed
+not-delegable: diagnosing it needs a macOS host: the test passes on Linux and in CI and fails only on the owner's Mac
 ---
 
 **Problem.** The vacuity guard in test_a_legend_checkbox_draws_its_indicator_in_the_theme fails on macOS - a bare checkbox under the dark host draws the theme's #FFFFFF panel colour there too - so the test cannot show PL-7W9N's fix holds on that platform
@@ -36,3 +42,9 @@ or not `TraceLegend` themes the indicator.
 
 The first step is to dump the bare box's palette roles, and the pixels where
 `#FFFFFF` falls, on macOS.
+
+**Why it matters.** The guard is what makes the test prove anything: a bare checkbox draws no panel colour, so the themed one's panel colour must come from the theme. On macOS it fails, so the test cannot show `PL-7W9N`'s fix holds on the platform whose Dark appearance `PL-DHBX` named, and the suite is red on the owner's machine.
+
+**Done when.** The diagnosis is recorded here - which role or path paints `#FFFFFF` on a bare box on macOS - and either the guard uses a colour that platform cannot supply or the legend's indicator is themed there too, with the test passing on macOS.
+
+**Not reproducible here.** Cloud sessions run Linux, where the test passes.
