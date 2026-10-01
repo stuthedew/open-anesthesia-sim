@@ -3,12 +3,14 @@ id: PL-SVRW
 title: roadmap.py spells the leading-id grammar a second time, which vcs.py's own comment says must not happen
 priority: P3
 effort: S
+status: done
 classes: infra
-status: ready
 feature: dev-tooling
 touches: subprojects/docket
-not-delegable: Touches subprojects/docket, and the question is whether two implementations of one grammar agree in every case rather than whether a command passes.
 added: 2026-09-02
+closed: 2026-10-01
+pr: 1258
+not-delegable: Touches subprojects/docket, and the question is whether two implementations of one grammar agree in every case rather than whether a command passes.
 ---
 
 **Problem.** Three readers in docket each spell their own grammar for the run

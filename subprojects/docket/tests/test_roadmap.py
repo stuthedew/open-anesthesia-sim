@@ -13,6 +13,8 @@ of scope".
 
 from __future__ import annotations
 
+import pytest
+
 from docket.checks import Report
 from docket.model import Item, parse_item
 from docket.render import format_digest, format_wave
@@ -213,6 +215,47 @@ def test_a_gate_records_entries_not_every_id_in_its_prose() -> None:
         ("PL-KLMN",),
     ]
     assert "PL-MNPQ" not in {identifier for entry in gate.gate_entries for identifier in entry.ids}
+
+
+@pytest.mark.parametrize("pair", ["PL-BCDF, PL-GHJK", "PL-BCDF & PL-GHJK"])
+def test_a_gate_entry_joined_the_way_a_subject_is_reads_both_ids(pair: str) -> None:
+    """`PL-SVRW`: a gate entry's head and a commit subject are one grammar.
+
+    The gate had its own copy, which joined ids by `**and**` and nothing else,
+    so an entry written the way `CLAUDE.md` tells a subject to join them was
+    read as its first id alone - the gate undercounted with nothing saying so.
+    """
+    text = ROADMAP.replace("PL-BCDF **and PL-GHJK**", pair)
+    gate = {section.version: section for section in parse_milestones(text)}[(0, 4, 0)]
+
+    assert [entry.ids for entry in gate.gate_entries] == [
+        ("PL-001",),
+        ("PL-BCDF", "PL-GHJK"),
+        ("PL-KLMN",),
+    ]
+
+
+def test_a_bullet_citing_an_id_as_code_explains_the_gate_and_is_not_on_it() -> None:
+    """A backticked id at a bullet's head is a citation, not an entry.
+
+    `ROADMAP.md` writes the bullets that explain a gate that way - three of them
+    name the items v0.6.0 deferred *off* its gate - so a reader taking the
+    backtick as a wrapper, as the `(queue item ...)` slot needs, would put those
+    items back on. The slot unwraps its own backticks for that reason, and this
+    holds the shared grammar to not taking them (`PL-SVRW`).
+    """
+    text = ROADMAP.replace(
+        "- Not an entry at all:",
+        "- `PL-CDFG` is deferred to the next gate, so this bullet explains it.\n"
+        "- Not an entry at all:",
+    )
+    gate = {section.version: section for section in parse_milestones(text)}[(0, 4, 0)]
+
+    assert [entry.ids for entry in gate.gate_entries] == [
+        ("PL-001",),
+        ("PL-BCDF", "PL-GHJK"),
+        ("PL-KLMN",),
+    ]
 
 
 def test_wave_prints_each_deferral_with_its_state_and_release() -> None:
@@ -713,6 +756,23 @@ def test_a_declaration_wrapped_across_a_line_break_is_read_whole() -> None:
     section = next(one for one in parse_milestones(SCOPE_PAIR_ROADMAP) if one.version == (0, 4, 0))
 
     assert section.own_scope_ids == ("PL-MNPQ", "PL-BCDF", "PL-GHJK")
+
+
+def test_a_declaration_joined_by_a_serial_comma_declares_every_id() -> None:
+    """A serial comma's last id follows two connectives in a row, and still counts.
+
+    The slot had its own walk, which took a comma and an `and` together, as in
+    "`PL-A`, `PL-B`, and `PL-C`". It now reads through `vcs.leading_ids`, so
+    that grammar has to as well, or the last id of a list written with a serial
+    comma would drop out of scope silently (`PL-SVRW`).
+    """
+    text = ROADMAP.replace(
+        "A displayed clinical unit (queue item PL-MNPQ).",
+        "- **Three items, one entry** (queue items `PL-HJKL`, `PL-QRST`, and `PL-TVWX`).",
+    )
+    section = next(one for one in parse_milestones(text) if one.version == (0, 4, 0))
+
+    assert section.own_scope_ids == ("PL-HJKL", "PL-QRST", "PL-TVWX")
 
 
 def test_a_numbered_scope_entry_is_an_entry_like_a_bulleted_one() -> None:
