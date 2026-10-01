@@ -3,12 +3,14 @@ id: PL-NK5K
 title: Steer every compaction from CLAUDE.md with a Compact Instructions section, so the summary keeps the sources cited, the routes refuted, and which claims were verified
 priority: P3
 effort: S
-status: blocked
+status: ready
 classes: session-cost, docs
 feature: compaction-reset
 touches: CLAUDE.md, docs/resident-instructions.md
 blocked-by: PL-GPJ7, PL-HMZZ, PL-MB2W, PL-PVW2, PL-QHCW, PL-XBV4
 added: 2026-09-25
+payoff: a compaction summary keeps the sources, refuted routes and verified-or-inferred marks a design round produces, instead of dropping them first
+verify: grep -q '^## Compact Instructions' CLAUDE.md && grep -q 'PL-NK5K' docs/resident-instructions.md
 ---
 
 **Problem.** Compaction writes its summary from a fixed prompt. Claude Code
@@ -115,3 +117,14 @@ resident growth too, so it names what it replaces.
   context at about 8x less of it (Huang JY, et al., *Do LLMs Benefit From
   Their Own Words?*, COLM 2026, arXiv:2602.24287). Claude Code's compaction
   prompt keeps every user message too.
+
+**Unblocked 2026-10-01.** All six `blocked-by` items are done, and `bin/docket
+generators` marks no head "still generating", so the pause this waited on has
+ended. The owner's request of 2026-10-01 to work the session-cost items lifts
+it in any case (`PL-6Q9L`). Re-confirmed against the installed Claude Code
+2.1.286: its compaction prompt still says "There may be additional
+summarization instructions provided in the included context", with `##
+Compact Instructions` as its first example, and the
+[best practices](https://code.claude.com/docs/en/best-practices) page still
+says to "Customize compaction behavior in CLAUDE.md". `CLAUDE.md` held no such
+section.
