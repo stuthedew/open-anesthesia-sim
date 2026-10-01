@@ -3,11 +3,13 @@ id: PL-CQRL
 title: Record how to see and drive the Qt interface from a container session
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, infra
 feature: dev-tooling
-touches: .claude/skills/run-the-app/SKILL.md, docs/worker.md, docs/WORKING_NOTES.md
+touches: .claude/skills/run-the-app/SKILL.md, docs/worker.md, docs/WORKING_NOTES.md, docs/ARCHITECTURE.md
 added: 2026-09-02
+closed: 2026-10-01
+pr: 1257
 verify: grep -rqF 'view.present(False)' .claude/skills/ && grep -qF '.claude/skills/run-the-app/SKILL.md' docs/worker.md && ! grep -qF 'step it before the grab' docs/worker.md && grep -qF 'FLET_WEB_NO_CDN' docs/WORKING_NOTES.md && ! grep -qF 'renderer cannot load' docs/WORKING_NOTES.md
 ---
 

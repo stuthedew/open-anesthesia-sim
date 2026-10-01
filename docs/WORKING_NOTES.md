@@ -1038,13 +1038,24 @@ on screen for that purpose.
 
 `PL-2QMK` records that no session in the web container can visually confirm a
 chart change, because Flet's web renderer fetches Flutter assets the egress
-proxy denies. `qt_spike.py --screenshot` writes a PNG of the running interface
+proxy denies. `qt_spike.py --screenshot` wrote a PNG of the running interface
 in that very container, with a dial change drawn in it. So the claim `PL-QXSB`
 made for Qt is now exercised rather than asserted: headless screenshot review
 of the real interface is available, which is what `PL-90Y6`, `PL-3355`,
 `PL-W8DQ`, `PL-GVXP` and the rest of `presentation-safety` are waiting on.
 That is a point for Qt independent of speed, and it is the one `PL-QXSB` said
 would be worth the most.
+
+**Corrected 2026-10-01 (`PL-CQRL`).** The premise was false when it was
+written. Flet's renderer did load in this container once `FLET_WEB_NO_CDN=true`
+pointed the Flutter bootstrap at the CanvasKit build `flet_web` ships, and the
+Flet build was rendered and driven that way on 2026-09-02 and 2026-09-04, as
+`PL-CQRL` records. What Qt bought was not the possibility of a headless look but
+its form: an in-process grab a test can assert over, in
+`tests/integration/test_qt_rendering.py`, where Flet offered a browser clicked by
+screen coordinate. `qt_spike.py` went with the spike tree at `PL-7SVX`, and
+`.claude/skills/run-the-app/SKILL.md` is the route now.
+<!-- absent: qt_spike.py -->
 
 ### The result that bears on a different decision: `PL-GS3R`
 
@@ -1174,8 +1185,10 @@ add is that the *remaining* case is now measured rather than argued:
   run definition evaluation, which both toolkits pay; the per-point charge that made it
   unaffordable is Flet's alone.
 - **Headless verification**: `PL-2QMK`, exercised rather than argued -
-  `qt_spike.py --screenshot` writes a PNG of the running interface in the very
-  container where Flet's renderer cannot load.
+  `qt_spike.py --screenshot` wrote a PNG of the running interface in this
+  container. Corrected 2026-10-01: Flet's renderer loaded here too, so this is
+  a point about the form of the look rather than its possibility (§ "One
+  capability confirmed rather than argued").
 
 None of those four is speed. That is the shape the decision should be taken in.
 

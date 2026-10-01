@@ -1276,8 +1276,9 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   controllers (`test_simulation_view.py`), which reads every widget's text,
   enablement and visibility back, and the whole dashboard rendered headless
   at one fixed size (`test_qt_rendering.py`), which reads the painted pixels
-  and the laid-out geometry back and writes the screenshot `docs/worker.md`
-  shows a session how to take (`PL-YCWZ`), and what the interface draws when
+  and the laid-out geometry back and writes the kind of screenshot
+  `.claude/skills/run-the-app/SKILL.md` shows a session how to take
+  (`PL-YCWZ`, `PL-CQRL`), and what the interface draws when
   the *host* is set to a dark appearance (`test_dark_appearance.py`), which
   sets the palette such a host supplies on the `QApplication` - where the
   others set it on one widget - because the declarations it tests are
