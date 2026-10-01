@@ -3,11 +3,13 @@ id: PL-624C
 title: test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis draws its own frame, so it cannot detect a fork that fails to redraw
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, test
 feature: branch-display-tests
 touches: tests/integration/test_simulation_view.py
 added: 2026-09-20
+closed: 2026-10-01
+pr: 1260
 payoff: makes a fork that adds a run without redrawing the chart fail a test, where today the test supplies the frame itself and cannot see it
 verify: grep -q 'def test_taking_a_fork_redraws_the_chart_without_prompting' tests/integration/test_simulation_view.py
 ---

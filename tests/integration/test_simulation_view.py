@@ -3939,13 +3939,59 @@ def test_taking_a_fork_adds_the_branch_to_the_dashboard(application: QApplicatio
     assert view.runs[1].is_running is False
 
 
+def test_taking_a_fork_redraws_the_chart_without_prompting(application: QApplication) -> None:
+    """The press draws the frame the branch appears on, and nothing else has to ask for it.
+
+    A fork is a discrete action, so it draws once and at once (`PL-R2YM`)
+    rather than leaving the frame owed: both runs stand paused afterwards, so
+    a frame left to the render tick would never be drawn. Nothing here
+    presents after the press, so the frame read is the one the press drew,
+    and a fork that added the run without redrawing fails on the one-run
+    frame `_case_view` drew (`PL-624C`).
+
+    The legend is narrowed to the pair the cap would draw first. From a wider
+    selection the second run makes the legend cap it, and that change draws a
+    frame of its own from inside `_rename_runs` before `_handle_fork` draws -
+    two frames for one press, the first from a run set not yet named
+    (`PL-B1R9`). That redraw would stand in for the fork's own here and hide
+    its loss, so the test takes the fork where the press is the only thing
+    that can draw.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+
+    for quantity in view._legend.shown[COMPARED_COMPARTMENT_CAP:]:
+        view._legend.set_compartment_shown(quantity, False)
+
+    presented = view.presented_frames
+
+    _take_fork(view, 60.0)
+
+    assert view.presented_frames == presented + 1, "taking the branch did not draw it"
+
+    frame = view._frame
+    assert frame is not None
+    assert len(frame.runs) == 2
+
+    branch_times, _ = view._concentration_chart.drawn_points(1, RecordedQuantity.ALVEOLAR)
+
+    assert branch_times, "the chart holds no curve for the branch"
+    assert min(branch_times) == pytest.approx(60.0)
+
+
 def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApplication) -> None:
-    """One frame, both runs, and the branch's curve begins where it was taken."""
+    """One frame, both runs, and the branch's curve begins where it was taken.
+
+    The frame read is the one the press drew, from the default selection
+    rather than the narrowed one the test above takes the fork from. It used
+    to present a frame itself first, which made every assertion below hold
+    whether the fork redrew or not (`PL-624C`).
+    """
 
     case = _branched_case()
     view = _case_view(application, case)
     _take_fork(view, 60.0)
-    view.present(False)
 
     frame = view._frame
     assert frame is not None
