@@ -3,12 +3,15 @@ id: PL-Y7WF
 title: A Claude Code project resumes its threads by itself when the plan's five-hour usage window resets, so the PL-NZC0 trial project keeps spending each new window unattended unless it is paused or its instructions carry a stop time
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: session-cost
 feature: projects-trial
 touches: docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
+closed: 2026-10-01
+pr: 1263
+verify: grep -q 'Answered 2026-10-01: the owner archived' docs/items/PL-Y7WF-a-claude-code-project-resumes-its-threads-by.md
 ---
 
 **Problem.** A Claude Code project resumes its threads by itself when the plan's five-hour usage window resets, so the PL-NZC0 trial project keeps spending each new window unattended unless it is paused or its instructions carry a stop time
@@ -39,6 +42,18 @@ nothing in the tree models: a Projects thread waiting at a plan limit resumes
 on its own when the limit resets. The trial's instructions were written
 without it, no other item reads it, and no head's `misread:` states it
 (`bin/docket generators --misread`, 2026-09-26).
+
+**Re-checked 2026-10-01: the trial's recorded Goal is met.** `bin/docket
+generators` lists all nine heads that `PL-NZC0`'s verbatim Goal line names as
+drained: `PL-B8HZ`, `PL-HMZZ`, `PL-QHCW` and `PL-MB2W`, plus the five added
+on 2026-09-25 (`PL-Q4DF`, `PL-XBV4`, `PL-PVW2`, `PL-GPJ7`, `PL-979D`). The
+last of them drained on 2026-09-26, and no open item carries `generator:
+live`. The owner may have given the project work since then, which no session
+can see, because `list_sessions` lists no Projects thread. Otherwise a resumed
+thread has nothing left in its instructions, and every usage window it resumes
+into is spent with no goal to serve. That makes the recommendation below
+immediate: pause the project now with step 1, rather than at the end of the
+next sitting. The stop-line alternative no longer has a run to time-box.
 
 **Decision needed.** How the trial stops spending while the owner is away:
 pause the project at the end of each sitting, or a stop line in its project
@@ -77,6 +92,20 @@ The alternative, if the owner prefers it, is this line at the end of
 **Project settings > Memory > Project instructions**, with the time rewritten
 each sitting: `Stop time: HH:MM UTC today. Before each new step, run date -u;
 once it is past, push, report one line, and start nothing new.`
+
+**Answered 2026-10-01: the owner archived the "Fix generators" project, then
+paused it as well** (project owner, 2026-10-01). Archiving was their own
+choice rather than the recommended Pause, and it is the stronger control for a
+trial that has ended. The Projects page, fetched raw at 14:05 UTC on
+2026-10-01, says three things about it. Archiving "hides the project from the
+sidebar and archives its threads, which stops any thread that was running or
+watching a pull request". Routines "don't run while it's archived". A project
+idle with no running threads "doesn't use your plan ..., and neither does an
+archived project". The first two are in § "Pause, archive, or delete a
+project" and the third in § "What draws on your plan"
+(https://code.claude.com/docs/en/claude-projects). The page does not say how a
+pause combines with an archive. Nothing in the tree changes, which is the first
+branch of this item's done-when.
 
 **Done when.** The owner's answer is recorded under the question, dated and
 with its kind. Under the recommendation nothing in the tree changes; under the
