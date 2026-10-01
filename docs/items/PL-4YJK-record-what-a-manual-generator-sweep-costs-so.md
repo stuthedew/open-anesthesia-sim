@@ -9,6 +9,7 @@ feature: generator-identification
 touches: docs/WORKING_NOTES.md, docs/items
 added: 2026-09-19
 closed: 2026-10-01
+pr: 1267
 verify: grep -q 'manual generator sweep cost' docs/WORKING_NOTES.md
 ---
 

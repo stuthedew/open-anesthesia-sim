@@ -9,6 +9,7 @@ feature: commit-provenance
 touches: tools, .claude
 added: 2026-09-16
 closed: 2026-10-01
+pr: 1267
 not-delegable: closed unbuilt on a decision: whether any project decision consumes the served model is a judgment about the rules, and the count behind it is read from the harness session list, which no command in the tree can reach
 ---
 
