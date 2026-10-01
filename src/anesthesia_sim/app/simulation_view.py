@@ -733,6 +733,14 @@ class SimulationView(QWidget):
         apart from; two runs are named by `run_label`, which is what the
         legend entries call them. The same count decides whether an agent
         selector may be used at all, because two runs share one MAC axis.
+
+        **It draws nothing, and nothing it calls may** (`PL-B1R9`). A frame
+        assembled before the last of these has been told is drawn from a run
+        set half told that it has changed, so the frame the change owes is
+        drawn by whatever changed the run set, once this returns: the press
+        that took a branch, the Reset that dropped one, or `main()` after the
+        window is shown. `TraceLegend.set_run_count` announces nothing for
+        that reason, though it may uncheck a box.
         """
 
         comparing = len(self._runs) > 1
@@ -1180,7 +1188,7 @@ class SimulationView(QWidget):
         self.present(False)
 
     def _handle_trace_visibility_change(self) -> None:
-        """Redraw at once when a compartment is shown or hidden, so legend and plot agree."""
+        """Redraw at once when a reader shows or hides a compartment, so legend and plot agree."""
 
         self.present(False)
 
