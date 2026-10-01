@@ -3,10 +3,12 @@ id: PL-562K
 title: A grooming pass sweeps the checks and advisories that fired for obvious fluff, on the retirement clause's decision test, and files what it would retire (project owner, 2026-10-01)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: .claude/skills/docket/modes/triage.md
 added: 2026-10-01
+closed: 2026-10-01
+pr: 1270
 payoff: a check that fires every run and changes nothing is asked the retirement question on a cadence, instead of waiting for a session to happen to work beside it
 verify: grep -qF 'sweep what fired for obvious fluff' .claude/skills/docket/modes/triage.md
 ---
