@@ -38,7 +38,7 @@ def test_reset_preserves_settings_and_clears_dynamic_state() -> None:
     system = AgentUptakeSystem.default()
     system.circuit.set_circuit_volume(5.0)
     system.set_fresh_gas_flow(3.0)
-    system.set_delivered_partial_pressure_fraction(0.06)
+    system.set_delivered_concentration_percent(6.0)
     system.set_alveolar_ventilation(5.5)
     system.set_cardiac_output(6.0)
 
@@ -54,7 +54,7 @@ def test_reset_preserves_settings_and_clears_dynamic_state() -> None:
 
     assert state.uptake_system.circuit.circuit_volume_l == 5.0
     assert state.uptake_system.circuit.fresh_gas_flow_l_min == 3.0
-    assert state.uptake_system.circuit.delivered_partial_pressure_fraction == 0.06
+    assert state.uptake_system.circuit.delivered_concentration_percent == 6.0
     assert state.uptake_system.alveoli.alveolar_ventilation_l_min == 5.5
     assert state.uptake_system.patient.cardiac_output_l_min == 6.0
 

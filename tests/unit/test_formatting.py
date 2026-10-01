@@ -1166,13 +1166,11 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
     """
 
     step_s = 0.1
-    below_resolution = 1e-8  # a fraction, i.e. 1e-6 percentage points
+    below_resolution = 1e-6  # percentage points, i.e. a fraction of 1e-8
 
-    def run_at(delivered_partial_pressure_fraction: float) -> tuple[float, str]:
+    def run_at(delivered_concentration_percent: float) -> tuple[float, str]:
         controller = SimulationController()
-        controller.set_delivered_partial_pressure_fraction(
-            Fraction(delivered_partial_pressure_fraction)
-        )
+        controller.set_delivered_concentration_percent(Percent(delivered_concentration_percent))
         controller.start()
 
         for _ in range(round(120.0 / step_s)):
@@ -1184,8 +1182,8 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
             snapshot.alveolar_partial_pressure_fraction
         )
 
-    baseline_fraction, baseline_displayed = run_at(0.02)
-    perturbed_fraction, perturbed_displayed = run_at(0.02 + below_resolution)
+    baseline_fraction, baseline_displayed = run_at(2.0)
+    perturbed_fraction, perturbed_displayed = run_at(2.0 + below_resolution)
 
     assert baseline_fraction != perturbed_fraction, (
         "a change four orders of magnitude below the display resolution left "

@@ -133,7 +133,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
-from anesthesia_sim.core.concentration import Fraction, MacMultiple, fraction_from_percent
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -809,14 +809,21 @@ def test_fresh_gas_flow_slider_forwards_value_to_controller(application: QApplic
     assert run._fresh_gas_flow_slider.value_label.text() == "7.0 L/min"
 
 
-def test_the_delivered_dial_reaches_the_core_as_a_fraction(application: QApplication) -> None:
-    """The dial is in percent; the model is set in fractions of one atmosphere."""
+def test_the_delivered_dial_reaches_the_core_as_the_percent_dialled(
+    application: QApplication,
+) -> None:
+    """The dial is in percent and so is what the core holds (`PL-NJPB`).
+
+    The model reads that as a fraction of one atmosphere, which is the
+    magnitude the second assertion holds.
+    """
 
     controller = SimulationController()
     run = _shown_view(application, controller).runs[0]
 
     _set_delivered_percent(run, 6.5)
 
+    assert controller.snapshot().delivered_concentration_percent == 6.5
     assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.065)
     assert run._delivered_concentration_slider.value_label.text() == "6.50%"
 
@@ -924,7 +931,7 @@ def test_a_refused_setting_is_reported_without_stopping_the_run(application: QAp
     controller = SimulationController(agent_id="isoflurane")
     run = _shown_view(application, controller).runs[0]
     controller.start()
-    delivered_before = controller.snapshot().delivered_partial_pressure_fraction
+    delivered_before = controller.snapshot().delivered_concentration_percent
 
     run._handle_delivered_concentration_change(50.0)
 
@@ -939,8 +946,8 @@ def test_a_refused_setting_is_reported_without_stopping_the_run(application: QAp
 
     # The control must not keep showing a dial position the simulation is
     # not running at: that is the correct number under the wrong label.
-    assert controller.snapshot().delivered_partial_pressure_fraction == delivered_before
-    assert run._delivered_concentration_slider.value() == pytest.approx(delivered_before * 100.0)
+    assert controller.snapshot().delivered_concentration_percent == delivered_before
+    assert run._delivered_concentration_slider.value() == pytest.approx(delivered_before)
 
 
 def test_a_refusal_notice_clears_once_a_setting_is_accepted(application: QApplication) -> None:
@@ -953,7 +960,7 @@ def test_a_refusal_notice_clears_once_a_setting_is_accepted(application: QApplic
     run._handle_delivered_concentration_change(2.0)
 
     assert run._notice_text.isHidden() is True
-    assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.02)
+    assert controller.snapshot().delivered_concentration_percent == 2.0
 
 
 @pytest.mark.parametrize(
@@ -2305,7 +2312,7 @@ def test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it(
 
     controller = SimulationController()
     controller.start()
-    controller.set_delivered_partial_pressure_fraction(Fraction(0.08))
+    controller.set_delivered_concentration_percent(Percent(8.0))
     _advance(controller, 600.0)
     view = _shown_view(application, controller)
     run = view.runs[0]
@@ -3206,7 +3213,7 @@ def test_each_run_draws_only_its_own_recorded_values(application: QApplication) 
 
     single = SimulationController()
     double = SimulationController()
-    double.set_delivered_partial_pressure_fraction(Fraction(0.04))
+    double.set_delivered_concentration_percent(Percent(4.0))
     single.start()
     double.start()
     _advance(single, 60.0)
@@ -3729,8 +3736,8 @@ def _halted_branch_view(application: QApplication) -> SimulationView:
     _take_fork(view, 60.0)
 
     branch = view.runs[1].controller
-    branch.set_delivered_partial_pressure_fraction(
-        fraction_from_percent(branch.snapshot().max_delivered_concentration_percent)
+    branch.set_delivered_concentration_percent(
+        branch.snapshot().max_delivered_concentration_percent
     )
     branch.start()
 
@@ -4142,7 +4149,7 @@ def test_the_wash_in_state_and_off_scale_lines_name_their_run(application: QAppl
 
     trunk = SimulationController()
     trunk.start()
-    trunk.set_delivered_partial_pressure_fraction(Fraction(0.08))
+    trunk.set_delivered_concentration_percent(Percent(8.0))
     _advance_to(trunk, 600.0)
     trunk.set_fresh_gas_flow(2.0)
     trunk.pause()
@@ -4171,7 +4178,7 @@ def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplicat
 
     controller = SimulationController()
     controller.start()
-    controller.set_delivered_partial_pressure_fraction(Fraction(0.08))
+    controller.set_delivered_concentration_percent(Percent(8.0))
     _advance(controller, 600.0)
     view = _shown_view(application, controller)
     run = view.runs[0]

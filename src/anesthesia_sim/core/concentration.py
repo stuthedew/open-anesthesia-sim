@@ -29,12 +29,19 @@ way this could be read as promising more than it does:
 - **They are erased at runtime too.** `Fraction(x)` is `x`; nothing checks
   anything. `core/validation.py`'s `require_fraction` is what
   rejects a value outside [0, 1], and it is unaffected by any of this.
-- **They cannot catch a wrong magnitude.** `Fraction(0.0005)` and
-  `Fraction(0.05)` are 0.05% and 5%, and both type-check. `PL-WVSK` measured
-  that band: it is bounded above by the agent's own vaporizer maximum, because
-  `BreathingCircuit._require_deliverable` refuses anything above it. What is
-  caught here is a *missing conversion*, which is the error that produces those
-  two values from one slider reading.
+- **They cannot catch a wrong magnitude.** `Percent(0.02)` and `Percent(2.0)`
+  are 0.02% and 2%, and both type-check. What is caught here is a *missing
+  conversion*, which is the error that produces those two values from one
+  fraction. Since `PL-NJPB` the vaporizer dial is held as the percent it was
+  set to, so that error is a fraction passed where the dial's percent is
+  wanted, and nothing at runtime refuses it: every fraction lands under 1%,
+  below every agent's vaporizer maximum, so
+  `BreathingCircuit._require_deliverable` passes it. The types are the whole
+  of that guard - `mypy` refuses a `Fraction` where
+  `set_delivered_concentration_percent` wants a `Percent` - which is why the
+  dial's writers are few and each one passes a value already in percent.
+  `PL-WVSK` measured the band when the dial was held as a fraction, and the
+  vaporizer maximum bounded it then.
 
 **Why one module rather than a convention.** Before `PL-WVSK` the factor 100
 was written out twelve times across six modules. Six of the twelve were on the

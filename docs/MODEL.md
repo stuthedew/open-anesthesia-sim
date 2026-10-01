@@ -545,7 +545,7 @@ Four things it does not cover, none of them a defect:
 
 ### Concentrations
 
-All model concentrations are stored internally as dimensionless partial-pressure-equivalent fractions from 0 through 1.
+Every concentration the model computes is a dimensionless partial-pressure-equivalent fraction from 0 through 1. The one concentration that is set rather than computed, the vaporizer dial, is held as the percent it was dialled, and $`F_D`$ is derived from it (below).
 
 The gas-phase cascade is named as the inhaled-anesthetic literature names it,
 $`F_D \rightarrow F_I \rightarrow F_A`$, which means that
@@ -568,13 +568,25 @@ $$
 `src/anesthesia_sim/core/concentration.py` is the only place that arithmetic
 is written, in both directions, and the two forms are distinct types there so
 that a type checker refuses a percent where a fraction is wanted. It is used
-in three places and no others: the agent data files' published percents become
-fractions when `AgentUptakeSystem.for_agent()` builds a circuit; a refused
-vaporizer setting is quoted back in percent, the unit the dial is read in; and
-the interface converts for display. Before `PL-WVSK` the factor was written
+in two places and no others: the circuit and the recorded settings derive
+$`F_D`$ from the dial's percent where the governing equations read it, and the
+interface converts for display. Before `PL-WVSK` the factor was written
 out twelve times across six modules, seven of them on the path to a displayed
 value, and this section said the interface alone converted — which `core/` had
 contradicted since the agent data files began carrying a MAC.
+
+**The percent dialled is the record, and $`F_D`$ is derived from it.** The
+circuit, the settings a run records per stretch, and the control timeline
+hold the vaporizer setting as the percent it was dialled, and
+`AgentUptakeSystem.for_agent()` opens the dial at the agent data file's
+published percent unconverted. The conversion does not run backwards:
+multiplying a fraction by 100 returns something other than the percent it came
+from for 126 of the 801 settings a 0 to 8% dial makes at 0.01% steps (the first
+at 0.23%, and 0.9% reads back as 0.9000000000000001), so a fraction record
+could not give back what a learner dialled. It is the rule § "Time" states for
+the flows, and `PL-NJPB` records the measurement. A refused setting is quoted
+back in the percent it was set in, against a vaporizer maximum held in the
+same unit.
 
 The interface also converts to the second display unit, a multiple of the
 running agent's 1 MAC. It is a rescaling of the percent above by one

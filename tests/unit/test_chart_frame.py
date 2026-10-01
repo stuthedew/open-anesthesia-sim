@@ -41,7 +41,7 @@ from anesthesia_sim.app.chart_frame import (
     wash_in_stretches,
 )
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER, time_base_for_span
-from anesthesia_sim.app.control_record import ControlInput
+from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import run_label
@@ -79,7 +79,15 @@ def _input(controller: SimulationController, *marks_at_s: float, run_index: int 
         controller,
         controller.snapshot(),
         tuple(
-            ControlAdjustment(ControlInput.DELIVERED, at_s, at_s, 0.02, 0.04, "fraction", 1)
+            ControlAdjustment(
+                ControlInput.DELIVERED,
+                at_s,
+                at_s,
+                2.0,
+                4.0,
+                CONTROL_INPUT_UNITS[ControlInput.DELIVERED],
+                1,
+            )
             for at_s in marks_at_s
         ),
     )
@@ -398,12 +406,12 @@ def test_a_crossing_above_the_ceiling_is_not_drawn() -> None:
 
 def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> None:
     controller = SimulationController()
-    controller.set_delivered_partial_pressure_fraction(0.02)
+    controller.set_delivered_concentration_percent(2.0)
     controller.start()
     _advance(controller, 600.0)
     # Shutting the vaporizer lets the circuit fall below the alveoli: the
     # patient returns agent, which is elimination and not wash-in.
-    controller.set_delivered_partial_pressure_fraction(0.0)
+    controller.set_delivered_concentration_percent(0.0)
     _advance(controller, 300.0)
     frame = assemble_chart_frame(
         [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
@@ -905,7 +913,7 @@ def test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports(compar
 
     trunk = _run(600.0)
     trunk.begin_control_adjustment()
-    trunk.set_delivered_partial_pressure_fraction(Fraction(0.03))
+    trunk.set_delivered_concentration_percent(Percent(3.0))
     _advance(trunk, 600.0)
     controllers = [trunk]
 
@@ -913,7 +921,7 @@ def test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports(compar
         branch = BranchedCase(trunk).fork_at(600.0)
         branch.start()
         branch.begin_control_adjustment()
-        branch.set_delivered_partial_pressure_fraction(Fraction(0.0))
+        branch.set_delivered_concentration_percent(Percent(0.0))
         _advance(branch, 600.0)
         controllers.append(branch)
 

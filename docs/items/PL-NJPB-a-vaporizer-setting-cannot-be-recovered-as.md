@@ -3,12 +3,14 @@ id: PL-NJPB
 title: A vaporizer setting cannot be recovered as dialled from RunSegment.settings: fraction times 100 misses the percent for 126 of the dial's 801 settings
 priority: P3
 effort: M
-status: needs-decision
+status: done
 classes: defect, anticipated
 feature: scenario-branching
-touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/control_timeline.py, src/anesthesia_sim/app/control_record.py, docs/MODEL.md, tests/integration/test_controller.py, tests/integration/test_qt_chart.py, tests/integration/test_qt_rendering.py, tests/integration/test_sevo_controller.py, tests/integration/test_simulation_view.py, tests/reference/test_circuit_wash_in.py, tests/reference/test_control_resolution.py, tests/reference/test_coupled_dynamics.py, tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_multi_agent.py, tests/reference/test_published_wash_in_and_elimination.py, tests/reference/test_sevo_patient.py, tests/unit/test_bookmarks.py, tests/unit/test_chart_frame.py, tests/unit/test_circuit.py, tests/unit/test_compartment_primitives.py, tests/unit/test_concentration.py, tests/unit/test_dashboard_frame.py, tests/unit/test_formatting.py, tests/unit/test_governing_equations.py, tests/unit/test_resume_at.py, tests/unit/test_run_definition.py, tests/unit/test_simulation.py, tests/unit/test_state_capture.py, tests/unit/test_uptake_system_failure.py
+touches: docs/MODEL.md, docs/machine-survey.md, src/anesthesia_sim/app/control_record.py, src/anesthesia_sim/app/control_timeline.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/validation.py, tests/integration/test_controller.py, tests/integration/test_qt_chart.py, tests/integration/test_qt_rendering.py, tests/integration/test_qt_widgets.py, tests/integration/test_sevo_controller.py, tests/integration/test_simulation_view.py, tests/reference/test_canonical_evaluation.py, tests/reference/test_circuit_wash_in.py, tests/reference/test_control_resolution.py, tests/reference/test_coupled_dynamics.py, tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_multi_agent.py, tests/reference/test_published_wash_in_and_elimination.py, tests/reference/test_sevo_patient.py, tests/unit/test_bookmarks.py, tests/unit/test_chart_frame.py, tests/unit/test_circuit.py, tests/unit/test_compartment_primitives.py, tests/unit/test_concentration.py, tests/unit/test_control_timeline.py, tests/unit/test_dashboard_frame.py, tests/unit/test_formatting.py, tests/unit/test_governing_equations.py, tests/unit/test_resume_at.py, tests/unit/test_run_definition.py, tests/unit/test_simulation.py, tests/unit/test_state_capture.py, tests/unit/test_uptake_system_failure.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-28 triage pass
 added: 2026-09-27
+closed: 2026-10-01
+pr: 1274
 payoff: a recorded segment gives back the vaporizer percent the learner dialled, so save and load can restore it exactly
 verify: grep -q 'def test_a_recorded_segment_gives_back_each_vaporizer_percent_as_dialled' tests/unit/test_run_definition.py
 ---
@@ -78,7 +80,7 @@ derived property. `tests/` is outside the `mypy` gate (`pyproject.toml`,
 `[tool.mypy] files`), so `Fraction` and `Percent` guard the 11 source sites
 and only the tests themselves guard the 111. Effort is M, not S.
 
-**Decision needed.** Build the recovery now, or leave it to the save and load
+**The decision that was put.** Build the recovery now, or leave it to the save and load
 format (planned item 9), which is its only consumer?
 
 1. **Now: the percent dialled is the record, and the fraction is derived** -
@@ -104,6 +106,21 @@ writes the interface's resolution into `core/`).
 **Recommended.** Option 1, now: its cost only grows, it is the rule `PL-SM5V`
 already chose for flows, so a run records what was set one way rather than
 two, and it moves the one conversion rather than adding one.
+
+**Decided.** Option 1, built now (project owner, 2026-10-01, ratified, over
+deferring it to the save and load format, planned item 9).
+
+**Built, 2026-10-01.** As option 1 describes, with two things the case did not
+carry. The snapshot the dashboard reads holds the percent too, so the dial is
+drawn from what was dialled. And the runtime guard against a missing
+conversion narrowed: a fraction passed where the dial's percent is wanted lands
+under 1%, below every agent's vaporizer maximum, so no range check refuses it,
+where a percent passed as a fraction used to exceed 1 and be refused. `mypy`
+refuses that call in `src/`, every writer of the dial passes a value already in
+percent, and a branch rebuilt from the timeline is compared against its
+recorded segment, so the narrower guard was judged not to reopen the decision;
+`core/concentration.py` states it. `dashboard_frame.delivered_fraction` is
+gone, having no caller once the dial passed its percent straight through.
 
 **Done when.** A recorded segment gives back every setting the dial can make,
 0.00 to 8.00 % at 0.01 %, exactly as dialled, held by a test in

@@ -559,7 +559,7 @@ def _washout_curve(
     alveolar_fraction_at_discontinuation = system.alveoli.partial_pressure_fraction
     agent_taken_up_l = system.patient.total_agent_amount_l + metabolised
 
-    system.set_delivered_partial_pressure_fraction(0.0)
+    system.set_delivered_concentration_percent(0.0)
     if condition == "open circuit":
         _discard_circuit_contents(system)
 

@@ -293,7 +293,7 @@ decision about whether this model claims to hold at one ambient pressure.
 ### (b2) Vaporizer dial range and maximum, and where that number belongs
 
 **Why it reaches a number.** The dial maximum bounds $`F_D`$ and is enforced in
-`src/anesthesia_sim/core/circuit.py` as `max_delivered_partial_pressure_fraction`.
+`src/anesthesia_sim/core/circuit.py` as `max_delivered_concentration_percent`.
 
 **What the survey found: the maximum is a property of the device, not of the
 agent.** The model stores `max_delivered_concentration_percent` per *agent* —
