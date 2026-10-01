@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
+from .model import SAFETY_CLASSES
+
 CONFIG_NAME = "docket.toml"
 
 #: Classes `checks.py` branches on that no setting above names. `anticipated`
@@ -28,7 +30,7 @@ class Config:
 
     items_dir: str = "docs/items"
     #: Classes whose subject matter may not sit in the lower priority bands.
-    safety_classes: tuple[str, ...] = ("safety", "science")
+    safety_classes: tuple[str, ...] = SAFETY_CLASSES
     #: Classes describing work on the process rather than on the product.
     #:
     #: `housekeeping` is one of them, and is also the class `checks.py` reads
@@ -39,6 +41,10 @@ class Config:
     #: still gets the class; and the top-band rule counts an item as process
     #: work only when *every* class it carries is in this list, which a
     #: housekeeping-only item must satisfy.
+    #:
+    #: This is the one record of the set. `docket.model` kept a second copy,
+    #: without `housekeeping`, for an `Item.is_process_work` nothing called,
+    #: and both went (`PL-W560`).
     process_classes: tuple[str, ...] = ("session-cost", "docs", "infra", "housekeeping")
     #: Classes that make an open item recorded debt. Work already recognized
     #: as owed, as against work not yet begun: a project clearing debt before
