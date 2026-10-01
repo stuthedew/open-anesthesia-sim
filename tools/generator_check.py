@@ -82,7 +82,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.model import CLOSED_STATUSES, OPEN_STATUSES, Item, parse_item  # noqa: E402
+from docket.model import (  # noqa: E402
+    CLOSED_STATUSES,
+    MIN_ROOT_CAUSE_ITEMS,
+    OPEN_STATUSES,
+    Item,
+    parse_item,
+)
 from docket.store import ID_PATTERN  # noqa: E402
 from docket.vcs import leading_ids  # noqa: E402
 
@@ -92,12 +98,12 @@ ITEM_DIR = Path("docs/items")
 #: `CLAUDE.md` calls a mechanism causing three or more items a generator, so a
 #: path with fewer than three open items cannot host one. It selects what to
 #: print and asserts nothing about what is printed.
-MIN_OPEN = 3
+MIN_OPEN = MIN_ROOT_CAUSE_ITEMS
 
 #: How many other open items have to name an id before its citation count is
 #: worth showing. Three for the same reason as `MIN_OPEN`, and it is emphatically
 #: not a promotion rule - 33 items clear it on this tree.
-CITED_BY = 3
+CITED_BY = MIN_ROOT_CAUSE_ITEMS
 
 #: The ratio at which a cluster is not shrinking: each closure hands back at
 #: least one new item in the same cluster. It was this script's whole verdict

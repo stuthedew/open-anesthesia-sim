@@ -3,12 +3,14 @@ id: PL-W560
 title: Five reads restate sets docket.model exports: config's default safety and process classes, whose process set adds housekeeping that model.PROCESS_CLASSES lacks; cli's effort choices; and generator_check's two thresholds of three, which are MIN_ROOT_CAUSE_ITEMS
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: read-facts-through-docket
 touches: subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/cli.py, tools/generator_check.py, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_model.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-01
+pr: 1277
 payoff: each class set and threshold docket.model exports has one copy, so changing it changes every reader, and no dead property answers which classes are process work from a different list than the top-band rule
 verify: ! grep -qF 'def is_process_work' subprojects/docket/src/docket/model.py && grep -qF 'MIN_OPEN = MIN_ROOT_CAUSE_ITEMS' tools/generator_check.py
 ---

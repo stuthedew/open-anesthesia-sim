@@ -378,11 +378,6 @@ def test_safety_classes_are_recognized() -> None:
     assert _item(classes=("perf",)).safety_classes == ()
 
 
-def test_process_work_needs_every_class_to_be_process() -> None:
-    assert _item(classes=("session-cost", "docs")).is_process_work
-    assert not _item(classes=("science", "infra")).is_process_work
-
-
 def test_model_guidance_flags_safety_and_open_decisions() -> None:
     assert _item(classes=("science",)).model_guidance == "science-tagged"
     assert _item(status="needs-decision").model_guidance == "open design decision"

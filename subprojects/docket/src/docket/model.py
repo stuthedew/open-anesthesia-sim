@@ -72,11 +72,6 @@ STATUSES = OPEN_STATUSES + CLOSED_STATUSES
 # lower priority bands however small the task looks.
 SAFETY_CLASSES = ("safety", "science")
 
-# Work on the development process rather than on the product it builds. An
-# item counts as process work only when every one of its classes is in this
-# set, so a `science`-and-`infra` item is still science.
-PROCESS_CLASSES = ("session-cost", "docs", "infra")
-
 LIST_FIELDS = ("classes", "touches", "blocked-by", "root-cause-of", "recurrences")
 
 # What a `resource:` may name: the one thing in the repository that more than
@@ -696,11 +691,6 @@ class Item:
         """
         milestones = set(self.blocking_milestones)
         return tuple(e for e in self.blocked_by if e not in milestones)
-
-    @property
-    def is_process_work(self) -> bool:
-        """Whether this improves how the project is developed, not the product."""
-        return bool(self.classes) and all(c in PROCESS_CLASSES for c in self.classes)
 
     def lane(self, workflow_paths: tuple[str, ...]) -> str:
         """Which half of the project this work sits in, from its declared paths.
