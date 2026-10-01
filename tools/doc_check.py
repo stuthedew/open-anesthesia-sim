@@ -129,7 +129,14 @@ try:
     from docket.fences import blocks, fenced_lines
     from docket.fences import without_fences as without_fences
     from docket.model import CLOSED_STATUSES, Item
-    from docket.release import NOTES_DIR, SPAN_HEADING, notes_path
+    from docket.release import (
+        NOTES_BULLET_RE,
+        NOTES_DIR,
+        REFERENCED_RE,
+        SPAN_HEADING,
+        notes_claims,
+        notes_path,
+    )
     from docket.roadmap import (
         BASELINE_MARK,
         DECLARATION_RE,
@@ -3299,6 +3306,34 @@ def span_bullet(identifiers: Sequence[str], number: str, described: str) -> str:
     return f"- {', '.join(identifiers)} - #{number} - described in {described}"
 
 
+#: The pull request a `span_bullet` line names, read back in its writer's own
+#: spelling. The two sit together so that a change to one is made beside the
+#: other, and `test_naming_the_closure_in_the_notes_clears_it` holds each to the
+#: other by writing one and reading it.
+SPAN_BULLET_RE = re.compile(r"^- .+? - #(\d+) - described in .+$", re.M)
+
+
+def _pull_requests_named(text: str) -> frozenset[str]:
+    """The pull requests one notes file names as a reference, never as a substring.
+
+    Two places name one, each in its writer's grammar: a claimed bullet's tail,
+    ` — #N` as `release.reference` writes it and `release.REFERENCED_RE` reads
+    it, and a pointer under `SPAN_HEADING`, as `span_bullet` writes it. Read as
+    a substring of the file, `#12` was named by any note naming `#123`, so a
+    span holding a closure its notes never name passed whenever its number was
+    a prefix of a longer one the notes carry (`PL-M9R6`) - every pull request
+    under 1000, against the four-digit numbers the notes carry now.
+    """
+    claims, pointers = notes_claims(text)
+    named = {
+        reference.group(1).removeprefix("#")
+        for _identifier, tail in NOTES_BULLET_RE.findall(claims)
+        if (reference := REFERENCED_RE.search(tail)) and reference.group(1).startswith("#")
+    }
+    named.update(SPAN_BULLET_RE.findall(pointers))
+    return frozenset(named)
+
+
 @dataclass(frozen=True)
 class _TagSpans:
     """One read of this checkout's tagged history, in the shapes the rule needs."""
@@ -3448,6 +3483,7 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     # two different cuts went on to stamp - #225 closed `PL-SZ56`, stamped by
     # v0.3.0, and `PL-21GS`, stamped twelve releases later by v0.4.15.
     uncovered: dict[str, dict[tuple[str, str], list[Item]]] = {}
+    named: dict[str, frozenset[str]] = {}
     for item in sorted(store.items.values(), key=lambda entry: entry.identifier):
         # `done` rather than `CLOSED_STATUSES`: a dropped item shipped nothing,
         # so no release's notes owe it a line and its pull request is not a
@@ -3463,7 +3499,9 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
         notes = root / NOTES_DIR / f"v{version}.md"
         if not notes.is_file():
             continue
-        if f"#{item.pr}" in notes.read_text(encoding="utf-8"):
+        if version not in named:
+            named[version] = _pull_requests_named(notes.read_text(encoding="utf-8"))
+        if item.pr in named[version]:
             continue
         described = item.milestone or "a later release"
         uncovered.setdefault(version, {}).setdefault((item.pr, described), []).append(item)

@@ -5408,8 +5408,8 @@ def test_a_family_member_may_declare_no_test_yet_against_a_historical_id(tmp_pat
 # --- what a tag's span covers -----------------------------------------------
 
 
-NOTES_0_2_4 = "## v0.2.4 - 2026-09-01\n\n### defect\n\n- PL-9WX1 The stamped one - #10\n"
-NOTES_0_2_5 = "## v0.2.5 - 2026-09-08\n\n### defect\n\n- PL-7KD2 The late one - #11\n"
+NOTES_0_2_4 = "## v0.2.4 - 2026-09-01\n\n### defect\n\n- PL-9WX1 The stamped one — #10\n"
+NOTES_0_2_5 = "## v0.2.5 - 2026-09-08\n\n### defect\n\n- PL-7KD2 The late one — #11\n"
 
 
 def _git_run(root: Path, *command: str) -> None:
@@ -5535,7 +5535,7 @@ def test_naming_the_closure_in_the_notes_clears_it(tmp_path: Path) -> None:
 
 def test_a_span_whose_notes_name_every_closure_is_quiet(tmp_path: Path) -> None:
     """The common case, and the one that decides whether this check earns its place."""
-    notes = NOTES_0_2_4 + "- PL-7KD2 The late one - #11\n"
+    notes = NOTES_0_2_4 + "- PL-7KD2 The late one — #11\n"
     history = tuple(
         (subject, {"docs/releases/v0.2.4.md": notes}, tag)
         if tag == "v0.2.4"
@@ -5546,6 +5546,34 @@ def test_a_span_whose_notes_name_every_closure_is_quiet(tmp_path: Path) -> None:
     report = _span_report(_span_repo(tmp_path, history, SPAN_ITEMS))
 
     assert (report.errors, report.advisories, report.declined) == ([], [], [])
+
+
+def test_a_span_note_names_its_pull_request_as_a_token(tmp_path: Path) -> None:
+    """`PL-M9R6`: `#11` is not named by a note naming `#110` or `#111`.
+
+    Read as a substring of the file it was, so a span holding a closure its
+    notes never name passed whenever the number was a prefix of a longer one
+    they carry. Both places a note names a pull request are held to the token:
+    a claimed bullet's ` — #N` tail, and a pointer under `SPAN_HEADING`.
+    """
+    notes = (
+        NOTES_0_2_4
+        + "- PL-4MV8 A longer number — #110\n"
+        + f"\n{doc_check.SPAN_HEADING}\n\n"
+        + doc_check.span_bullet(("PL-5HQ3",), "111", "v0.2.5")
+        + "\n"
+    )
+    history = tuple(
+        (subject, {"docs/releases/v0.2.4.md": notes}, tag)
+        if tag == "v0.2.4"
+        else (subject, files, tag)
+        for subject, files, tag in SPAN_HISTORY
+    )
+
+    errors = _span_report(_span_repo(tmp_path, history, SPAN_ITEMS)).errors
+
+    assert len(errors) == 1
+    assert "(#11)" in errors[0]
 
 
 def test_a_releases_own_cut_is_not_a_closure_its_notes_owe_a_line(tmp_path: Path) -> None:
@@ -5656,7 +5684,7 @@ def test_one_pull_request_stamped_by_two_releases_gets_a_line_for_each(tmp_path:
     """
     items = dict(SPAN_ITEMS)
     items["PL-9WX1"] = _closed("11", "v0.3.0")
-    notes = NOTES_0_2_4.replace("- PL-9WX1 The stamped one - #10\n", "")
+    notes = NOTES_0_2_4.replace("- PL-9WX1 The stamped one — #10\n", "")
     history = tuple(
         (subject, {"docs/releases/v0.2.4.md": notes}, tag)
         if tag == "v0.2.4"
