@@ -70,3 +70,11 @@ re-deriving one.
 **Done when.** `docs/releases/v0.3.0.md` states the command that produces
 readout 2, both windows are counted by that same command, and the v0.3.0
 disposition is restated - held or reversed - against the recomputed baseline.
+
+**2026-10-01, from `PL-NG3G`'s re-confirm.** `PL-NG3G` - the `bin/docket
+vitals` command this rule had to precede - is dropped: no gate since v0.3.0 has
+scored the readouts, Gate 1 having cleared without them, and on 2026-09-19 the
+owner ruled out backlog counts as a measure (`PL-04KR`). So the forward-looking
+reason above, that the rule "is reused three more times unless it is fixed
+now", no longer holds. What is left is the v0.3.0 record itself, and whether
+correcting it is still worth a session is this item's own re-confirm.
