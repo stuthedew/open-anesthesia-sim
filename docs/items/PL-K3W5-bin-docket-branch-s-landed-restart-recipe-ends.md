@@ -3,11 +3,13 @@ id: PL-K3W5
 title: bin/docket branch's landed restart recipe ends at 'then push' without saying that a remote still holding the old branch - the case whenever a commit was pushed after the merge - refuses a plain push as non-fast-forward, so a session following it is left to choose between git pull, which brings the merged history back, and a force push the recipe never sanctioned
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
-touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-27
+closed: 2026-10-01
+pr: 1273
 payoff: a session restarting a branch whose pull request merged is told how to push over the old remote branch, instead of choosing between a pull that brings the merged history back and an unsanctioned force push
 verify: grep -rq 'def test_the_restart_recipe_says_what_the_push_meets' subprojects/docket/tests/
 ---
@@ -41,3 +43,18 @@ refs, and whether the clone's copies still match them - filed after that head
 closed (2026-09-26): the recipe assumes the remote no longer holds the branch,
 which is true only until something is pushed after the merge. The first
 instance filed since that close.
+
+**Resolution, 2026-10-01.** `render._push_over_lines` runs in all three
+landed shapes - carried, nothing carried, and the forge-unasked `landed_whole`
+arm - and `arming`'s `landed` pointer says the same in both of its cases. Each
+names the non-fast-forward refusal before it arrives, refuses `git pull`, and
+prints `git push --force-with-lease --force-if-includes origin` with the
+branch, to run only where the plain push was refused, since a remote that
+deleted the branch takes the plain push. Both flags, measured against scratch
+repositories: every `docket` read fetches, so a commit another writer pushed
+to the branch is in the tracking ref without having been carried, and the
+lease alone overwrote it while `--force-if-includes` refused it; the lease
+refused one never fetched as "stale info". A refusal of the guarded push says
+to stop and read the remote with a bounded `git log` rather than guess.
+`test_cli.py` runs the printed recipe against a real remote in both cases, and
+fails with `--force-if-includes` removed.
