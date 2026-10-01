@@ -377,7 +377,7 @@ that range's floor and the admission rule above forbids storing it twice.
 nothing the model computes until there is a hypoxic guard to consume it.
 
 **Built, for the opening fresh gas flow, on 2026-09-27** (`PL-QW19`), which
-brings the tree into line with "The run owns its opening conditions" above.
+brings the tree into line with § "The run owns its opening conditions" above.
 `default_fresh_gas_flow_l_min` stays on the machine profile and is **optional,
 defaulting to `None`**, read as *this profile states no startup flow* and never
 as *this machine has none*, so Question 4's refusal of an `unknown` no longer
