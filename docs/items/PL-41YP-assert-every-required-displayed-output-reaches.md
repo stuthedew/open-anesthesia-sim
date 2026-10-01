@@ -8,6 +8,7 @@ classes: test
 feature: dev-tooling
 touches: tests/
 added: 2026-08-25
+verify: grep -rqE 'def test_every_minimum_displayed_output\w*widget' tests/integration/
 ---
 
 > **Groomed 2026-09-22 (`PL-Y4YG`): still owed, and its premise has moved.**

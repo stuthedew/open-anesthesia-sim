@@ -2731,7 +2731,7 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
                 "that edits the checks, so offering the work would mean refusing it "
                 "once done."
             )
-    if config.verify_required_from is not None:
+    if config.verify_required_at_close_from is not None:
         rules.append(
             "an item set to `ready` must name a `verify:` command, or record in "
             "`not-delegable` why no command can prove it. Run the command before "
