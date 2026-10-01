@@ -3989,13 +3989,12 @@ def test_taking_a_fork_redraws_the_chart_without_prompting(application: QApplica
     and a fork that added the run without redrawing fails on the one-run
     frame `_case_view` drew (`PL-624C`).
 
-    The legend is narrowed to the pair the cap would draw first. From a wider
-    selection the second run makes the legend cap it, and that change draws a
-    frame of its own from inside `_rename_runs` before `_handle_fork` draws -
-    two frames for one press, the first from a run set not yet named
-    (`PL-B1R9`). That redraw would stand in for the fork's own here and hide
-    its loss, so the test takes the fork where the press is the only thing
-    that can draw.
+    The legend is narrowed to the pair the cap would draw first, so the second
+    run leaves the selection as it stands.
+    `test_a_fork_from_the_default_selection_draws_one_frame` takes the fork
+    from a selection the second run makes the legend reduce, which drew a
+    second frame until `PL-B1R9`; between them a press draws once from either
+    kind of selection.
     """
 
     case = _branched_case()
@@ -4043,6 +4042,57 @@ def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApp
     assert min(trunk_times) == pytest.approx(0.0)
     assert min(branch_times) == pytest.approx(60.0)
     assert max(branch_times) <= max(trunk_times) + SIMULATION_STEP_S
+
+
+@pytest.mark.parametrize("door", ["keyframe", "halt"])
+def test_a_fork_from_the_default_selection_draws_one_frame(
+    application: QApplication, door: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One press, one frame, assembled once both legends and both runs know there are two.
+
+    The default selection is wider than `COMPARED_COMPARTMENT_CAP`, so the
+    second run makes the legend reduce it. The reduction used to announce
+    itself as a reader's change, and the dashboard drew a frame for it from
+    inside `_rename_runs` - while the wash-in legend still counted one run and
+    neither run had been named - before the press drew its own: two
+    assemblies for one discrete action where `PL-R2YM` says one (`PL-B1R9`).
+    `test_taking_a_fork_redraws_the_chart_without_prompting` holds the count
+    from a selection the cap leaves alone; this holds it from one the cap
+    reduces, through both doors a branch is taken by.
+    """
+
+    if door == "halt":
+        _, view = _halted_trunk_case(application)
+    else:
+        view = _case_view(application, _branched_case())
+
+    assert len(view._legend.shown) > COMPARED_COMPARTMENT_CAP, (
+        "the default selection is inside the cap, so the press has nothing to reduce"
+    )
+
+    told: list[tuple[int, tuple[str, ...]]] = []
+    assemble = view._refresh_view
+
+    def recording_assemble() -> None:
+        told.append(
+            (view._wash_in_legend._run_count, tuple(run._run_name_text.text() for run in view.runs))
+        )
+        assemble()
+
+    monkeypatch.setattr(view, "_refresh_view", recording_assemble)
+    presented = view.presented_frames
+
+    if door == "halt":
+        view._fork_panel.halt_button.click()
+    else:
+        _take_fork(view, 60.0)
+
+    assert len(view.runs) == 2
+    assert len(view._legend.shown) == COMPARED_COMPARTMENT_CAP, "the cap reduced nothing"
+    assert view.presented_frames == presented + 1, "one press drew other than one frame"
+    assert told == [(2, (run_label(0), run_label(1)))], (
+        "the frame was assembled before the run set had been told it had grown"
+    )
 
 
 def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
