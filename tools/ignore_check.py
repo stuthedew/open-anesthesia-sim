@@ -57,9 +57,20 @@ from pathlib import Path
 #: has ever carried a `type: ignore`.
 TREES = ("tests", "subprojects/docket/tests")
 
-#: Not optional, and not a convenience: without these, six live directives
-#: report as unused. See the module docstring.
-MYPY_PATH = ("subprojects/docket/src", "tools", ".claude/hooks")
+#: Not optional, and not a convenience: without the first three, six live
+#: directives report as unused. See the module docstring. The last two hold
+#: tests that import a sibling module by bare name, which pytest resolves by
+#: putting the test's own directory on `sys.path` and `--explicit-package-bases`
+#: does not, so without them those imports go unresolved and the check declines
+#: (`PL-CR36`). A bare sibling import in another directory declines the same way,
+#: and the remedy is that directory here.
+MYPY_PATH = (
+    "subprojects/docket/src",
+    "tools",
+    ".claude/hooks",
+    "tests/benchmarks",
+    "tests/reference",
+)
 
 #: The one finding this check exists to raise.
 INERT = "[unused-ignore]"
@@ -114,6 +125,12 @@ def run_mypy(root: Path, *, cold: bool = False) -> subprocess.CompletedProcess[s
     in that config still applies, `strict = true` among it - which is what
     turns `warn_unused_ignores` on.
 
+    `--explicit-package-bases` names a module from its path below a
+    `MYPY_PATH` entry or the working directory rather than from the file alone,
+    so `tests/conftest.py` and a second `conftest.py` in either tree are two
+    modules. Without it they are one module defined twice, and mypy stops on
+    `Duplicate module named "conftest"` having evaluated nothing (`PL-CR36`).
+
     `cold` discards the incremental cache, and is used only to confirm a
     finding: see the module docstring on why that is the shape rather than
     always or never.
@@ -122,7 +139,7 @@ def run_mypy(root: Path, *, cold: bool = False) -> subprocess.CompletedProcess[s
     env = dict(os.environ)
     env["MYPYPATH"] = os.pathsep.join(str(root / path) for path in MYPY_PATH)
     return subprocess.run(
-        (sys.executable, "-m", "mypy", *extra, *TREES),
+        (sys.executable, "-m", "mypy", "--explicit-package-bases", *extra, *TREES),
         cwd=root,
         capture_output=True,
         text=True,
