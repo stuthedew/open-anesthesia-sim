@@ -3,11 +3,13 @@ id: PL-4YJK
 title: Record what a manual generator sweep costs, so the fix-or-retire decision on tools/generator_check.py rests on a number rather than on the 0-for-8 record alone
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra, session-cost
 feature: generator-identification
 touches: docs/WORKING_NOTES.md, docs/items
 added: 2026-09-19
+closed: 2026-10-01
+pr: 1267
 verify: grep -q 'manual generator sweep cost' docs/WORKING_NOTES.md
 ---
 
