@@ -1521,7 +1521,7 @@ def _git(args: list[str], root: Path) -> str:
 
 
 def item_commits(root: Path, base: str, identifier: str) -> tuple[str, ...]:
-    """Commits on this branch whose subject carries the item's id.
+    """Commits on this branch whose subject leads with the item's id.
 
     One commit per item is what `docs/worker.md` asks of a worker, and this is
     what that rule buys. A batch branch carries several items' work, so
@@ -1530,13 +1530,27 @@ def item_commits(root: Path, base: str, identifier: str) -> tuple[str, ...]:
     actually changed - which is also what lets a reviewer take four items and
     reject the fifth.
 
+    **Read through `vcs.leading_ids`, the one reading of which ids a subject
+    claims** (`PL-2BWP`). This read `git log --grep`, which matches the id
+    anywhere in the message, while `other_items_named` and the claim record
+    read the subject's leading run - so a commit citing the id in its body, as
+    `PL-HC8P`'s capture commit cited `PL-PVW2`, was the item's to one reader of
+    the same branch and not to the other.
+
     Raises `GitUnanswered` where the log cannot be read. Returning nothing
     would send the audit to the whole branch diff instead. Returning what came
     back, as this did until `PL-9RFP`, handed git's three-line complaint about
     the base on as three commit hashes.
     """
-    output = _git(["log", "--format=%H", f"--grep={identifier}", f"{base}..HEAD"], root)
-    return tuple(line.strip() for line in output.splitlines() if line.strip())
+    # NUL-terminated, so a record is split only where git ended it.
+    output = _git(["log", "-z", "--format=%H%x09%s", f"{base}..HEAD"], root)
+    wanted = identifier.upper()
+    commits: list[str] = []
+    for record in output.split("\0"):
+        commit, _, subject = record.strip().partition("\t")
+        if commit and wanted in vcs.leading_ids(subject):
+            commits.append(commit)
+    return tuple(commits)
 
 
 def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple[str, ...]:
