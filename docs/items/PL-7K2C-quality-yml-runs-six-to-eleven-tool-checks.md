@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, infra
-touches: .github/workflows/quality.yml, tests/unit
+touches: .github/workflows/quality.yml, tests/unit, docket.toml
 added: 2026-09-20
 closed: 2026-10-01
 pr: 1259
