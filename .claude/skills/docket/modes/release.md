@@ -248,50 +248,42 @@ session that has pushed nothing**, so a clean answer still means "nothing
 visible", never "nothing" — which is why the session check under **Mode: start an item**, in
 `.claude/skills/docket/modes/start.md`, is worth running before offering a release too.
 
-**Never ask the owner to "tag vX.Y.Z". Paste the commands, filled in. The tag
-line finds the release's cut itself - the commit that added its notes file -
-so nothing is left to fill and nothing turns on when it is run:**
+**The tag is the workflow's, not the owner's.** Once the release pull request
+merges, `.github/workflows/tag-release.yml` runs `tools/tag_release.py`, which
+puts the annotated tag on the release's cut - the commit that added its notes
+file on `main`, the squash merge that landed it - and pushes it (`PL-2FY6`).
+Nothing is pasted and no tag item is filed: the release item and its one pull
+request are the whole release. `bin/docket release` ends by printing the one
+line that shows the tag landed:
 
 ```bash
-git fetch origin main
-[ -z "$(git tag -l v0.3.0)" ] || git ls-remote --exit-code origin refs/tags/v0.3.0 >/dev/null || [ $? -ne 2 ] || git tag -d v0.3.0
-git tag -a v0.3.0 "$(git log --first-parent --diff-filter=A --format=%H origin/main -- docs/releases/v0.3.0.md)" -m "v0.3.0"
-git push origin v0.3.0
+git ls-remote --tags origin refs/tags/v0.3.0
 ```
 
-Every time, not only the first. Asking for a tag without them makes the owner
-reconstruct four commands at the moment they are trying to do something else.
-`bin/docket release` prints them, filled in for the version it cut, at the end
-of every cut; paste those rather than editing these. Run before the release has
-merged, the lookup finds nothing and `git tag` refuses with `Failed to resolve
-''`; run after another merge, it still tags the cut, where `origin/main` would
-have tagged that merge (`PL-VYK1`). The second line is for a re-used number:
-it deletes a tag the owner's checkout still holds after origin withdrew it,
-which `git fetch` never removes. Left there, `git tag` would refuse the name,
-and the push, which a pasted block runs anyway, would put the withdrawn tag
-back on origin. It deletes nothing where origin lists the tag or cannot be
-asked, so the block stays safe to paste twice (`PL-PNW6`). The lines hold no
-angle-bracket placeholder, which is the one thing a pull request body silently
-eats (`PL-1DN9`).
+It reads rather than writes, so run it yourself once the pull request has
+merged and the workflow has had a minute, and say in the reply what it showed.
 
-**Do not try to push the tag yourself first - it fails, and it fails
-convincingly (`PL-N936`).** `git push --dry-run` reports `[new tag]` and the
-real push then dies with `send-pack: unexpected disconnect`, ending on
-`Everything up-to-date` while `git ls-remote --tags` shows nothing. Branch
-pushes from the same session work throughout, so this is tag refs specifically,
-and it is the same family as `PL-TFWR`'s branch deletion: an operation a
-session will reasonably attempt, that does not look like it failed. The tag is
-the owner's to run.
+**Do not try to push the tag yourself - it fails, and it fails convincingly
+(`PL-N936`).** `git push --dry-run` reports `[new tag]` and the real push then
+dies with `send-pack: unexpected disconnect`, ending on `Everything up-to-date`
+while `git ls-remote --tags` shows nothing. Branch pushes from the same session
+work throughout, so this is tag refs specifically. The workflow pushes with its
+own token, from outside the session.
 
-**Say the tag is outstanding until they confirm it, and check rather than
-assume.** `bin/docket release` refuses to cut the next release while the
-previous one is untagged, and `tools/doc_check.py` will not catch the gap - the
-baseline-tag advisory was removed in v0.3.4 because a local checkout cannot
-tell a release never tagged from one tagged since it last fetched. So nothing
-in the tree reports it; `git ls-remote --tags origin` is what answers.
+**Where the tag has not landed, the run failed or never ran, and its log says
+which.** It declines, tagging nothing and going red, where git would not
+answer, where the notes were added more than once so that no one commit is the
+cut, or where origin already holds the tag on another commit, which a person
+settles. `bin/docket release` refuses to cut the next release while the
+previous one is untagged, and its refusal names the remedy: once the cause is
+fixed, the owner runs the workflow from Actions > tag-release > Run workflow,
+or `python3 tools/tag_release.py --apply` from a checkout. Both are theirs,
+since either pushes a tag. Say the tag is outstanding until `git ls-remote`
+shows it, and check rather than assume: `tools/doc_check.py` will not catch the
+gap, because a local checkout cannot tell a release never tagged from one
+tagged since it last fetched (the advisory that tried was removed in v0.3.4).
 
-File the outstanding tag as `Tag v0.3.0 on ...`, the title every tag step has
-carried. `status` reads that title, and once the clone holds the tag it marks
-the item `[TAGGED: v0.3.0 exists - close it]` rather than offering it as work;
-a tag step titled otherwise is offered as work after the tag exists
-(`PL-53Y6`).
+File no tag-step item. `status` used to read an open `Tag v0.3.0 on ...` item
+against the clone's tags and mark it `[TAGGED: v0.3.0 exists - close it]`
+(`PL-53Y6`); the last one, `PL-WT9L`, closed with v0.5.19, and the mark went
+with the step (`PL-2FY6`).

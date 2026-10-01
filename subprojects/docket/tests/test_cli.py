@@ -32,7 +32,7 @@ from docket.claims import SESSION_VARIABLE, Holdings
 from docket.cli import build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
-from docket.release import tag_commands
+from docket.release import TAG_SCRIPT, tag_confirmation
 from docket.vcs import FETCHED, Fetch, commands_written_here, leading_ids, lost, records_on_base
 from docket.verify import LANDED_GUARD, GitUnanswered
 
@@ -1744,13 +1744,13 @@ def test_a_release_is_refused_while_the_previous_one_is_untagged(
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 1
     out = capsys.readouterr().out
     assert "v0.2.5 shipped and carries no tag" in out
-    assert all(f"  {command}" in out for command in tag_commands("v0.2.5")), out
+    assert f"  python3 {TAG_SCRIPT} --apply" in out, out
     assert "main has no commit adding docs/releases/v0.2.5.md" in out
     assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text()
 
 
-def test_the_untagged_warning_names_the_commit_its_tag_line_will_find(tmp_path: Path) -> None:
-    """`PL-QHCW`: the lookup is printed, and the commit it resolves to here is named under it.
+def test_the_untagged_warning_names_the_commit_the_tag_script_will_tag(tmp_path: Path) -> None:
+    """`PL-QHCW`: the script is printed, and the commit it will tag from here is named under it.
 
     The cut is followed by another merge, which is the commit `origin/main` -
     what the warning once had a reader tag - would have named instead.
@@ -1773,7 +1773,7 @@ def test_the_untagged_warning_names_the_commit_its_tag_line_will_find(tmp_path: 
 
     warning = cli._untagged_warning("0.2.5", root, vcs._run_git)
 
-    assert all(f"  {command}" in warning for command in tag_commands("v0.2.5")), warning
+    assert f"  python3 {TAG_SCRIPT} --apply" in warning, warning
     assert f"From main here, that is {cut} PL-TR4N: cut v0.2.5." in warning
 
 
@@ -2479,7 +2479,7 @@ def test_a_cut_release_names_the_roadmap_edits_it_did_not_write(
     assert "still marked" in out
     assert "still names v0.2.5" in out
     assert "make check" in out
-    assert all(f"  {command}" in out for command in tag_commands("v0.2.6")), out
+    assert f"  {tag_confirmation('v0.2.6')}" in out, out
     assert "MERGE_COMMIT" not in out
 
 
@@ -2527,7 +2527,7 @@ def test_a_project_with_no_roadmap_still_gets_the_rest_of_the_hand_off(
     assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
     out = capsys.readouterr().out
     assert "Stale in" not in out
-    assert "git push origin v0.2.6" in out
+    assert "refs/tags/v0.2.6" in out
 
 
 UNTRIAGED = """---
