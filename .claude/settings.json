@@ -98,6 +98,15 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/item_read_log.py\""
           }
         ]
+      },
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/webfetch-quote-note.sh\""
+          }
+        ]
       }
     ]
   }
