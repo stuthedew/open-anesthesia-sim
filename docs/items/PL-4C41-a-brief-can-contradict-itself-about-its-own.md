@@ -3,10 +3,12 @@ id: PL-4C41
 title: A brief can contradict itself about its own sequencing and no check sees it
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: docs, infra
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, docs/items/PL-WB0X-split-simulation-view-py-formatting-and-chart.md
 added: 2026-09-01
+closed: 2026-10-01
+reason: Measured 2026-10-01 on main at the end of every day since filing (28 snapshots, 244 to 1,885 items): the decidable sliver fired 8 times, all narration naming a closed item; kept to open pairs it had nothing to read on any day; and it would have missed PL-WB0X itself, whose Gate 1 placement was prose no milestone section parsed. It does not earn its upkeep; the brief records the count and what would reopen it.
 verify: grep -qF 'def check_sequencing_placement' subprojects/docket/src/docket/checks.py && bin/docket check
 ---
 
@@ -117,3 +119,62 @@ since the store itself no longer contains an instance; or the item is `dropped`
 with the reason that the decidable sliver does not earn its upkeep, leaving
 this brief as the record. The second is now the more likely close, per
 **Instance resolved** above.
+
+**Measured 2026-10-01, and dropped on it.** The number that would have made
+building it right, named before the count: on some day since filing, the rule
+as it can be specified catches at least one real contradiction, and its false
+fires do not outnumber its real ones.
+
+*The rule as counted.* An ordering cue within one clause of an id - `before`,
+`ahead of`, `prior to`, `precede(s/d)`, `preceding` (this item first), or
+`after`, `follow(s/ed/ing)`, `sequenced after`, `sequenced behind`, `behind`,
+`once` (this item second) - in an open item's body, with the clause window
+`_cue_pattern` in `subprojects/docket/src/docket/checks.py` uses; kept where
+`roadmap.parse_milestones` places the two items in different milestone
+sections, and fired where the stated order runs against the versions'. Run on
+`main` as it stood at the end of each UTC day from 2026-09-01 to 2026-10-01: 28
+days with a new commit, 244 items growing to 1,885. A scratch script,
+deliberately not committed, since it was going to run once.
+
+*What it found.*
+
+- **Eight distinct firings, all false.** Each is narration naming a closed
+  item, never a sequencing claim: "Before `PL-LHBY` that was safe by accident"
+  (`PL-FPY2`); "that table had eight rows before `PL-XWCY` and has nine after
+  it" (`PL-DBGT`, still firing today); "Message before `PL-9SH6`" (`PL-SPN6`);
+  "Before `PL-YDL6` an absent entry meant no commit named a number at all"
+  (`PL-QNYF`); "the same before-and-after scan `PL-0RZ0` ran" (`PL-1K9G`); "in
+  hand before they are asked, is the measurement `PL-0RZ0` owes" (`PL-QYBW`);
+  and two quoting a since-dropped "before `PL-011`" edge as history (`PL-4RBD`,
+  `PL-C4PH`).
+- **The obvious repair has nothing to read.** Kept to pairs whose items are
+  both open, the rule met no hit across two milestones on any of the 28 days,
+  including every day from 2026-09-14 on, when two sections each placed open
+  items (v0.4.26 beside v0.5.0, then v0.5.0 beside v0.6.0, scoped two releases
+  early). That is structural rather than luck: the rolling wave
+  (`ROADMAP.md` § "The planning model: a rolling wave") details one milestone
+  at a time, and today's 40 cue hits in open briefs split into 33 naming an
+  item no section places, five naming a closed item, and two between open
+  items that share v0.6.0, where there is no order to contradict.
+- **It would have missed the instance it was filed on.** On 2026-09-01
+  `PL-WB0X`'s brief did read "before PL-DHV7", and v0.4.0's Required scope
+  placed `PL-DHV7`. No section placed `PL-WB0X`: its Gate 1 placement was the
+  prose under "One presence-qualifying finding deliberately deferred to Gate 1"
+  in v0.4.0's own section, and v0.5.0 had no section until 2026-09-06. Reading
+  that sentence as a placement is the judgment the *Not decidable* paragraph
+  above excludes.
+
+*An earlier count agrees.* `PL-ZBRB` (2026-09-04) measured the same two cues
+for the prose-prerequisite advisory and left both out, `after` reading as
+narration about eight times to three real waits; the comment above
+`DECLARING_CUES` in `checks.py` carries it. And the declared half of this
+concern already reaches every session: `roadmap.gate_status` follows
+`blocked-by` from each frozen entry and collects the open blockers its gate
+does not hold, which the session-start digest prints as the entries "blocked
+outside it".
+
+*What would reopen it.* A contradiction in the store that this rule, as
+specified, would catch - the founding one was not - recorded here as an
+instance, with this count re-run before anything is built. Or a cadence that
+keeps two scoped milestones holding open items as its normal state, which
+would give the rule something to read.
