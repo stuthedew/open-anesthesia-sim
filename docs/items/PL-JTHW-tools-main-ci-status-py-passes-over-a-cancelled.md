@@ -61,3 +61,31 @@ run. A check reporting confidently about a question it did not answer is the
 silent-wrong-answer shape `CLAUDE.md` names, and it reaches the session-start
 digest, which is where a session forms its first view of whether `main` is
 sound.
+
+**Handoff, 2026-10-01 (CI and tooling tweaks thread).** Claimed on
+`claude/ci-tooling-tweaks-53wk39` with `PL-7K2C`, `PL-CR36` and `PL-NWSK`, all
+three closed there with `pr: 1259`. The thread stopped for length before
+starting this item, so nothing below is done yet:
+
+1. Re-confirm the brief against `tools/main_ci_status.py` (`VERDICTS`,
+   `pick_run`, the docstring that points here); `show` asks for it, since this
+   was filed more than 14 days ago.
+2. Measure first, as the brief says: count `quality.yml` runs on `main` with
+   event `push` and conclusion `cancelled` since `PL-SMN4` merged
+   (`actions_list`, `list_workflow_runs`, resource `quality.yml`, branch
+   `main`). Every one in the brief's window was an eviction.
+3. Choose the shape on that count and record why here. A green `main` still
+   prints nothing; a cancelled run on a commit newer than the verdict reported
+   is a line a session can act on (re-run it).
+4. `def test_a_cancelled_main_run_is_reported` in
+   `tests/unit/test_main_ci_status.py`, failing before the change, which is what
+   this item's `verify:` greps for.
+5. Close it with `bin/docket set PL-JTHW --status done --closed DATE` and
+   `bin/docket record 1259`, in one commit with the work, retitling `#1259` to
+   lead with all four ids first.
+6. For the whole pull request: sweep the docs (`make doc-check`, and
+   `python3 tools/doc_check.py candidates --base origin/main`), run
+   `bin/docket verify --self PL-7K2C PL-CR36 PL-NWSK PL-JTHW` to `ACCEPT`,
+   write the body, mark it ready and leave it unarmed: it changes `tests/`, so
+   it waits on the project owner's read, with the review summary the project
+   instructions describe.
