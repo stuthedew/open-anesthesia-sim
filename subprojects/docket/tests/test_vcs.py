@@ -72,6 +72,7 @@ from docket.vcs import (
     cut_window,
     cuts_in_flight,
     default_base,
+    default_branch,
     fetch_remote,
     filed_with_work,
     files_in_flight,
@@ -558,6 +559,22 @@ def test_a_base_every_candidate_was_read_for_is_not_marked() -> None:
     """
     assert resolved(default_base(ROOT, runner=_refs({"origin/main": "abc123"})))
     assert resolved(default_base(ROOT, runner=_refs({"origin/main": "a", "main": "b"})))
+
+
+def test_the_default_branch_is_the_default_base_by_its_name_on_the_remote() -> None:
+    """What GitHub's API and `git fetch origin` take, read off the ref (`PL-9KLN`)."""
+    assert default_branch(ROOT, runner=_refs({"origin/main": "a", "main": "b"})) == "main"
+    assert default_branch(ROOT, runner=_refs({"origin/master": "abc123"})) == "master"
+    assert default_branch(ROOT, runner=_refs({"main": "def456"})) == "main"
+
+
+def test_a_guessed_default_branch_is_still_marked_as_one() -> None:
+    """The name is cut from the ref, which drops the mark, so it is put back."""
+    guessed = default_branch(ROOT, runner=_refs({}))
+
+    assert guessed == "main"
+    assert not resolved(guessed)
+    assert resolved(default_branch(ROOT, runner=_refs({"origin/main": "abc123"})))
 
 
 def test_a_local_base_behind_its_remote_is_counted() -> None:

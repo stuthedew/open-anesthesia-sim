@@ -915,6 +915,29 @@ def test_the_diff_is_scoped_to_the_item_s_own_commits(tmp_path: Path) -> None:
     assert verify(root, _item(), _config(), base).passed
 
 
+def test_item_commits_reads_leading_ids_only(tmp_path: Path) -> None:
+    """`PL-2BWP`: a commit citing the id in its body or mid-subject is not the item's.
+
+    `item_commits` read `git log --grep`, which matches the whole message, while
+    `other_items_named` reads `vcs.leading_ids` - so `PL-HC8P`'s capture commit,
+    led by its own id and citing `PL-PVW2` in its body, was `PL-PVW2`'s to the
+    first reader and not to the second. Both now read the subject's leading run.
+    """
+    root = _repo(tmp_path)
+    base = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    _work(root, "PL-K7QX: mine", "tests/a.py", "a = 1\n")
+    _work(root, "PL-ZZZZ, PL-K7QX: a batch closing both", "tests/b.py", "b = 1\n")
+    _work(root, "PL-ZZZZ: a capture\n\nIt cites PL-K7QX in its body.", "tests/c.py", "c = 1\n")
+    _work(root, "PL-ZZZZ: cite PL-K7QX mid-subject", "tests/d.py", "d = 1\n")
+
+    commits = item_commits(root, base, "PL-K7QX")
+
+    assert len(commits) == 2
+    assert sorted(changed_paths(root, base, commits)) == ["tests/a.py", "tests/b.py"]
+
+
 def test_changed_paths_declines_an_unresolvable_base(tmp_path: Path) -> None:
     """A base git cannot resolve means the read never happened (`PL-9RFP`).
 

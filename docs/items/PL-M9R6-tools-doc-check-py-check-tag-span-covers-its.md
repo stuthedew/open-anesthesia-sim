@@ -3,12 +3,14 @@ id: PL-M9R6
 title: tools/doc_check.py check_tag_span_covers_its_notes tests the release notes for pull request #N as a substring, so #12 is covered by a note naming #123 and the check passes while the span it stands for is uncovered
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: recorded-not-inferred
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
+closed: 2026-10-01
+pr: 1271
 payoff: a tag whose span holds a closure its notes never name is refused instead of passing on a longer number that happens to contain it
 verify: grep -q 'def test_a_span_note_names_its_pull_request_as_a_token' tests/unit/test_doc_check.py
 ---

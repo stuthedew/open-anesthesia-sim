@@ -64,6 +64,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.vcs import default_branch  # noqa: E402
+
 from open_pull_requests import repo_slug  # noqa: E402
 from required_checks_check import required_contexts  # noqa: E402
 
@@ -327,13 +329,19 @@ def run(api: GitHub, base: str, required: set[str], emit: Emit) -> None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
-    parser.add_argument("--base", default="main", help="the branch whose pull requests are read")
+    parser.add_argument(
+        "--base",
+        default=None,
+        help="the branch whose pull requests are read; defaults to the default branch",
+    )
     parser.add_argument(
         "--repo",
         default=os.environ.get("GITHUB_REPOSITORY") or None,
         help="owner/name; defaults to GITHUB_REPOSITORY, then to origin",
     )
     args = parser.parse_args(argv)
+    # Read off docket rather than spelt here, as every tool reads it (`PL-9KLN`).
+    base = args.base or default_branch(ROOT)
     lines: list[str] = []
 
     def emit(line: str) -> None:
@@ -347,14 +355,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise Declined("the repository could not be named from origin; pass --repo owner/name")
         read_token = os.environ.get("GITHUB_TOKEN") or None
         try:
-            required, _ = required_contexts(slug, args.base, read_token)
+            required, _ = required_contexts(slug, base, read_token)
         except RuntimeError as error:
-            raise Declined(
-                f"the required checks on {args.base} could not be read: {error}"
-            ) from error
-        run(
-            GitHub(slug, read_token, os.environ.get(WRITE_TOKEN) or None), args.base, required, emit
-        )
+            raise Declined(f"the required checks on {base} could not be read: {error}") from error
+        run(GitHub(slug, read_token, os.environ.get(WRITE_TOKEN) or None), base, required, emit)
     except Declined as declined:
         lines.append(f"Stopped: {declined}")
         print(f"::error::{declined}" if in_actions else f"Stopped: {declined}", file=sys.stderr)

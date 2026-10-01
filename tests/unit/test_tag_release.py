@@ -229,3 +229,27 @@ def test_a_shallow_clone_is_declined(
 
     assert "shallow" in capsys.readouterr().out
     assert _git(origin, "tag", "--list") == ""
+
+
+def test_a_default_branch_other_than_main_is_read_off_the_clone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An origin whose default is `master` is tagged there, not declined (`PL-9KLN`).
+
+    `BRANCH = "main"` fetched a branch this origin does not hold, so the run
+    declined where `bin/docket`'s own `vcs.default_base` read `origin/master`.
+    """
+    for name, value in (("NAME", "T"), ("EMAIL", "t@example.com")):
+        monkeypatch.setenv(f"GIT_AUTHOR_{name}", value)
+        monkeypatch.setenv(f"GIT_COMMITTER_{name}", value)
+    origin = tmp_path / "origin.git"
+    _git(tmp_path, "-c", "init.defaultBranch=master", "init", "-q", "--bare", str(origin))
+    work = tmp_path / "work"
+    _git(tmp_path, "-c", "init.defaultBranch=master", "clone", "-q", str(origin), str(work))
+    _commit(work, "base", {"pyproject.toml": '[project]\nversion = "0.2.9"\n'})
+    cut = _cut(work, "0.3.0")
+    _git(work, "push", "-q", "origin", "HEAD:master")
+
+    assert run(work, apply=True) == 0
+
+    assert _git(origin, "rev-parse", "v0.3.0^{commit}") == cut

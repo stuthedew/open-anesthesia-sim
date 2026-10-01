@@ -194,8 +194,15 @@ from typing import NamedTuple
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.store import ID_PATTERN  # noqa: E402
-from docket.vcs import default_base, github_slug, resolved, subject_pull_request  # noqa: E402
+from docket.config import load as load_docket_config  # noqa: E402
+from docket.store import read_items  # noqa: E402
+from docket.vcs import (  # noqa: E402
+    default_base,
+    github_slug,
+    leading_ids,
+    resolved,
+    subject_pull_request,
+)
 
 #: Relative, as a message names a file; `RECOVERY_DIR` is where they are read.
 RECORD_PATH = "docs/pr-bodies"
@@ -481,23 +488,24 @@ def compare(ref: str) -> list[str]:
     return [head, *report, *tail]
 
 
-def queue_backlinks() -> dict[int, set[str]]:
+def queue_backlinks(root: Path = ROOT) -> dict[int, set[str]]:
     """Map each pull request number to the items whose `pr:` field names it.
+
+    Read through the store's own reader, at the directory `docket.toml` names,
+    so `pr:` and `id:` are the fields docket parses rather than a regex's
+    reading of them (`PL-XSL4`). This read the first 2,000 characters of each
+    file where the store reads the whole front matter, so a `pr:` past that
+    point went unread - five items' front matter ran longer on 2026-10-01 - and
+    a recovery record written from it lost the item it names.
 
     Built once and reused, rather than per pull request: the queue is 1,378
     files, and asking it 187 times is 257,000 reads for an answer that does not
     change between them.
     """
     links: dict[int, set[str]] = {}
-    items_dir = ROOT / "docs" / "items"
-    if not items_dir.is_dir():
-        return links
-    for path in items_dir.glob("*.md"):
-        head = path.read_text(encoding="utf-8")[:2000]
-        pr_match = re.search(r"^pr:\s*(\d+)\s*$", head, re.M)
-        id_match = re.search(r"^id:\s*(\S+)", head, re.M)
-        if pr_match and id_match:
-            links.setdefault(int(pr_match.group(1)), set()).add(id_match.group(1))
+    for item in read_items(root / load_docket_config(root).items_dir):
+        if item.pr.isdigit():
+            links.setdefault(int(item.pr), set()).add(item.identifier)
     return links
 
 
@@ -509,8 +517,12 @@ def item_ids(subject: str, pr: int, backlinks: dict[int, set[str]]) -> list[str]
     over the 187: the subject alone leaves 50 without an id, the `pr:` field
     alone leaves 4 - the four release commits - and together they leave the
     same 4.
+
+    A subject's ids are its leading run, read through `vcs.leading_ids` as the
+    store reads one: an id cited mid-subject is a citation, not an item the
+    pull request is about (`PL-XSL4`).
     """
-    found = set(re.findall(ID_PATTERN, subject))
+    found = set(leading_ids(subject))
     found.update(backlinks.get(pr, set()))
     return sorted(found)
 

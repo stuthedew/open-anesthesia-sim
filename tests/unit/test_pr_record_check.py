@@ -326,3 +326,21 @@ def test_discover_refuses_a_closure_on_disk_that_records_no_number(
     err = capsys.readouterr().err
     assert "this checkout closes PL-K7QX in its working tree" in err
     assert "bin/docket record 1050" in err
+
+
+def test_with_no_base_named_the_base_is_docket_s(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """No `--base` and no `PR_BASE` is `vcs.default_base`, as the title check reads (`PL-9KLN`)."""
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        _git_answering(head={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="done", extra="")}),
+    )
+    monkeypatch.setattr(pr_record_check, "default_base", lambda root: "no-such-default")
+    monkeypatch.delenv("PR_BASE", raising=False)
+    monkeypatch.setenv("PR_NUMBER", "1050")
+    monkeypatch.setattr("sys.argv", ["pr_record_check.py", "--head", "head"])
+
+    assert pr_record_check.main() == 1
+    assert "trees at no-such-default and head could not be read" in capsys.readouterr().err

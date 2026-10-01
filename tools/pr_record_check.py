@@ -58,6 +58,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.vcs import default_base  # noqa: E402
+
 from open_pull_requests import repo_slug  # noqa: E402
 from pr_title_check import (  # noqa: E402
     WORKING_TREE,
@@ -86,7 +88,8 @@ def closures(base: str, head: str) -> dict[str, str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base", default=os.environ.get("PR_BASE", "origin/main"))
+    # `vcs.default_base` off a pull request, as `pr_title_check.py` reads it (`PL-9KLN`).
+    parser.add_argument("--base", default=os.environ.get("PR_BASE") or default_base(ROOT))
     parser.add_argument("--head", default=os.environ.get("PR_HEAD"))
     parser.add_argument(
         "--discover",
