@@ -3,11 +3,13 @@ id: PL-JS0X
 title: test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar calls build_sidebar_panels a second time and then measures mapTo(page, ...) on panels that are not in the page, so its last two assertions are vacuous and the sidebar they claim to measure has been dismantled
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, test
 feature: sidebar-panel-rebuild
 touches: tests/integration/test_simulation_view.py
 added: 2026-09-21
+closed: 2026-10-01
+pr: 1260
 payoff: the test that claims the dashboard fits its window can fail when it does not
 verify: grep -q 'def test_the_sidebar_panels_measured_are_the_ones_the_page_holds' tests/integration/test_simulation_view.py
 ---

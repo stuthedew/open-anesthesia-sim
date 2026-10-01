@@ -274,6 +274,21 @@ def _page_of(view: SimulationView) -> QWidget:
     return page
 
 
+def _sidebar_panels(run: RunView) -> tuple[QWidget, QWidget]:
+    """The accounting and control-change panels a run placed in the sidebar, in that order.
+
+    Reached through the heading placed in each, never built again: a second
+    `build_sidebar_panels()` call returns panels with no parent and moves
+    the run's live labels into them (`PL-N67T`).
+    """
+
+    accounting = run._accounting_heading_text.parentWidget()
+    timeline = run._control_timeline_heading_text.parentWidget()
+    assert accounting is not None and timeline is not None, "a sidebar heading is in no panel"
+
+    return accounting, timeline
+
+
 def _stacked_sections(view: SimulationView) -> QSplitter:
     """The vertical splitter of readouts, settings and the chart row."""
 
@@ -3055,6 +3070,12 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
     so the page's minimum is well inside the window and the scroll area
     never widens it; the chart column alone asks for less than a thousand
     pixels.
+
+    The sidebar panels measured are the ones the page holds, which the test
+    below proves. They used to come from a second `build_sidebar_panels()`
+    call, whose panels have no parent: `mapTo(page, ...)` assumes the page is
+    an ancestor and checks nothing, so the last two assertions compared
+    coordinates that never reached the page and could not fail (`PL-JS0X`).
     """
 
     controller = SimulationController()
@@ -3073,10 +3094,31 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
 
         assert right_edge <= page.width(), "a setting control is laid beyond the page"
 
-    accounting_panel, timeline_panel = view.runs[0].build_sidebar_panels()
-
-    for panel in (accounting_panel, timeline_panel):
+    for panel in _sidebar_panels(view.runs[0]):
+        assert page.isAncestorOf(panel), "a sidebar panel measured is not on the page"
         assert panel.mapTo(page, panel.rect().bottomRight()).x() <= page.width()
+
+
+def test_the_sidebar_panels_measured_are_the_ones_the_page_holds(
+    application: QApplication,
+) -> None:
+    """Each panel the width test measures is the page's only panel of its kind, and is shown.
+
+    Matched against the page's own children by the object name the panel's
+    stylesheet is scoped by, so a rebuilt panel fails here, and so does a
+    widget the heading might come to sit in between it and the panel. The
+    second `build_sidebar_panels()` call this replaced also moved the run's
+    live labels out of the sidebar the assertions before it had measured
+    (`PL-JS0X`, `PL-N67T`).
+    """
+
+    view = _shown_view(application, SimulationController())
+    page = _page_of(view)
+    accounting, timeline = _sidebar_panels(view.runs[0])
+
+    for panel, name in ((accounting, "accountingPanel"), (timeline, "controlTimelinePanel")):
+        assert page.findChildren(QWidget, name) == [panel], f"{name} is not the page's own"
+        assert panel.isVisible(), f"{name} is not shown"
 
 
 def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QApplication) -> None:
