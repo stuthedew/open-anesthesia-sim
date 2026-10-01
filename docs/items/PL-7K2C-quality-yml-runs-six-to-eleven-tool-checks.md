@@ -3,10 +3,12 @@ id: PL-7K2C
 title: quality.yml runs six to eleven tool checks after the whole-store verify replay, so a replay failure skips contrast, import-boundary, core-vocabulary and glyph checks on that main commit entirely - moving the replay to the end of the job would cost nothing and close the gap
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 touches: .github/workflows/quality.yml, tests/unit
 added: 2026-09-20
+closed: 2026-10-01
+pr: 1259
 payoff: a replay failure stops taking the contrast, import-boundary, core-vocabulary and glyph checks down with it, so a palette or layering regression is still caught on that main commit
 verify: grep -rq 'def test_the_whole_store_replay_is_the_last_step_in_the_job' tests/unit
 ---

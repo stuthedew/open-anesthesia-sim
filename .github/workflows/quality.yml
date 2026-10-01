@@ -270,63 +270,6 @@ jobs:
       # declared dependency that job upgrades and was never running, so
       # `PL-55JM` put `-n auto --dist worksteal` on both of its pytest lines.
       - run: uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
-      # `--verify` replays every open item's own `verify:` command. It used to
-      # be unconditional, which meant `make check` paid about 31 s per run for a
-      # finding about work that had already *merged* - see the Makefile's note
-      # on the same command. The flag moves the bill here without moving the
-      # coverage: this is the job and these are the events it ran on before
-      # (`PL-P3B6`). CI wall clock is not what that item was optimizing.
-      #
-      # It is now, and the two steps below are one decision (`PL-SDHR`).
-      # Measured on run 33998014593: the sweep was **87 s of this job's 152 s**,
-      # more than the whole 1820-test suite, because 111 open items carry a
-      # command and 79 of them start a fresh `uv run pytest`. That bill grows
-      # with the size of the queue rather than with the size of the change, and
-      # it is paid on every push to every open pull request.
-      #
-      # So the scope follows the event, which is `PL-P3B6`'s own argument one
-      # step on. That item took the replay off `make check` because a
-      # pre-commit gate cannot have changed whether some *other* item's work
-      # merged - and neither can a pull request. What a branch can have changed
-      # is two sets, both read from the diff by `--verify-base`: the items it
-      # edited, and the open items whose `verify:` command reads a file it
-      # edited (`PL-XMNC` - the second is the command a branch *invalidates*,
-      # which every one of six recorded breaks was and which the first replays
-      # never). The findings a session can act on - "you finished this item's
-      # work and left it open", "you have just stopped this command
-      # discriminating" - are kept; the rest of the store is not a pull
-      # request's question.
-      #
-      # **`make check` runs this scoped form too, since `PL-0HPV`**, against
-      # `origin/main`, so what this step finds reaches a session before it
-      # pushes rather than as a red run here. It was the commonest failing
-      # step: 20 of the 56 failed `pull_request` runs from 2026-09-10 to
-      # 2026-09-22, a median of 8 minutes each before a fix was green. It stays,
-      # because a branch pushed without a local `make check` is still gated
-      # here - the reason the two lists are reconciled rather than merged
-      # (`PL-PBP5`). The whole-store step below does not join it, for the
-      # reason the Makefile gives beside the same command.
-      #
-      # The whole-store sweep still runs on every push to the default branch,
-      # which is where it is a fact about `main` rather than about a branch. A
-      # scoped run says what it was scoped to on `docket check`'s own cost
-      # line, including when the scope held nothing, so a narrowed answer can
-      # never be read as a clean whole-store one.
-      #
-      # Two steps rather than one job, deliberately: this job's name is
-      # load-bearing for branch protection (see the note on `checks:` above), so
-      # the alternative of splitting the sweep into a parallel job would have
-      # orphaned a required check as well as buying a second rounded-up minute.
-      - name: verify replay, scoped to what this branch changed
-        if: github.event_name == 'pull_request'
-        # Through the environment rather than a `${{ }}` interpolation in the
-        # `run:` line, as in `pr-title.yml` and for the same reason.
-        env:
-          VERIFY_BASE: origin/${{ github.base_ref }}
-        run: bin/docket check --verify --verify-base "$VERIFY_BASE"
-      - name: verify replay, the whole store
-        if: github.event_name != 'pull_request'
-        run: bin/docket check --verify
       # Repeated from the floor section above, unlike the seven lines after
       # them. `branch_id_check.py` reads `git log` and the branch name, never
       # project source, so the 3.11 parser has nothing it cannot read
@@ -409,6 +352,74 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 tools/required_checks_check.py
+
+      # **Last in the job, and that is the point** (`PL-7K2C`). No step reads the
+      # replay's answer, and it is the most expensive and the most failure-prone
+      # step here. It ran straight after the test suite until then, ahead of the
+      # eleven checks now above it, so a replay failure on `main` meant the
+      # contrast audit, the import-boundary, core-vocabulary and glyph checks and
+      # the reconciliation never ran against that commit, and a palette or
+      # layering regression waited for whichever later run went green.
+      # `tests/unit/test_quality_step_order.py` fails on a step added after
+      # these two.
+      #
+      # `--verify` replays every open item's own `verify:` command. It used to
+      # be unconditional, which meant `make check` paid about 31 s per run for a
+      # finding about work that had already *merged* - see the Makefile's note
+      # on the same command. The flag moves the bill here without moving the
+      # coverage: this is the job and these are the events it ran on before
+      # (`PL-P3B6`). CI wall clock is not what that item was optimizing.
+      #
+      # It is now, and the two steps below are one decision (`PL-SDHR`).
+      # Measured on run 33998014593: the sweep was **87 s of this job's 152 s**,
+      # more than the whole 1820-test suite, because 111 open items carry a
+      # command and 79 of them start a fresh `uv run pytest`. That bill grows
+      # with the size of the queue rather than with the size of the change, and
+      # it is paid on every push to every open pull request.
+      #
+      # So the scope follows the event, which is `PL-P3B6`'s own argument one
+      # step on. That item took the replay off `make check` because a
+      # pre-commit gate cannot have changed whether some *other* item's work
+      # merged - and neither can a pull request. What a branch can have changed
+      # is two sets, both read from the diff by `--verify-base`: the items it
+      # edited, and the open items whose `verify:` command reads a file it
+      # edited (`PL-XMNC` - the second is the command a branch *invalidates*,
+      # which every one of six recorded breaks was and which the first replays
+      # never). The findings a session can act on - "you finished this item's
+      # work and left it open", "you have just stopped this command
+      # discriminating" - are kept; the rest of the store is not a pull
+      # request's question.
+      #
+      # **`make check` runs this scoped form too, since `PL-0HPV`**, against
+      # `origin/main`, so what this step finds reaches a session before it
+      # pushes rather than as a red run here. It was the commonest failing
+      # step: 20 of the 56 failed `pull_request` runs from 2026-09-10 to
+      # 2026-09-22, a median of 8 minutes each before a fix was green. It stays,
+      # because a branch pushed without a local `make check` is still gated
+      # here - the reason the two lists are reconciled rather than merged
+      # (`PL-PBP5`). The whole-store step below does not join it, for the
+      # reason the Makefile gives beside the same command.
+      #
+      # The whole-store sweep still runs on every push to the default branch,
+      # which is where it is a fact about `main` rather than about a branch. A
+      # scoped run says what it was scoped to on `docket check`'s own cost
+      # line, including when the scope held nothing, so a narrowed answer can
+      # never be read as a clean whole-store one.
+      #
+      # Two steps rather than one job, deliberately: this job's name is
+      # load-bearing for branch protection (see the note on `checks:` above), so
+      # the alternative of splitting the sweep into a parallel job would have
+      # orphaned a required check as well as buying a second rounded-up minute.
+      - name: verify replay, scoped to what this branch changed
+        if: github.event_name == 'pull_request'
+        # Through the environment rather than a `${{ }}` interpolation in the
+        # `run:` line, as in `pr-title.yml` and for the same reason.
+        env:
+          VERIFY_BASE: origin/${{ github.base_ref }}
+        run: bin/docket check --verify --verify-base "$VERIFY_BASE"
+      - name: verify replay, the whole store
+        if: github.event_name != 'pull_request'
+        run: bin/docket check --verify
 
       # The pull-request title check lived here and moved to its own workflow,
       # `.github/workflows/pr-title.yml`, under `PL-3V8K`: it has to run on
