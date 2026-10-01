@@ -241,18 +241,24 @@ def test_an_unset_title_is_not_a_failure(
 # request for, and in a checkout with no token.
 
 
-def _remote(url: str, **refs: dict[str, str]):
-    """`_git` as `_tree`, plus an answer for `remote get-url` and the branch."""
+def _on_a_branch(monkeypatch: pytest.MonkeyPatch, **refs: dict[str, str]) -> None:
+    """`_git` as `_tree` plus an answer for the branch, and `origin` as GitHub's.
+
+    `repo_slug` is stubbed beside `_git` rather than answered through it. It
+    has lived in `open_pull_requests.py` since `PL-Q664` and asks git through
+    that module, so an answer for `remote get-url` here never reached it: these
+    tests read the checkout's real `origin`, and failed in any clone where that
+    is not a GitHub URL (`PL-Y4NS`).
+    """
     tree = _tree(**refs)
 
     def fake(args: list[str]) -> str:
-        if args[:2] == ["remote", "get-url"]:
-            return url + "\n"
         if args[:2] == ["rev-parse", "--abbrev-ref"]:
             return "claude/pl-j3bb-slug\n"
         return tree(args)
 
-    return fake
+    monkeypatch.setattr(pr_title_check, "_git", fake)
+    monkeypatch.setattr(pr_title_check, "repo_slug", lambda: "o/r")
 
 
 def test_a_stale_title_on_the_open_pull_request_fails_locally(
@@ -260,17 +266,13 @@ def test_a_stale_title_on_the_open_pull_request_fails_locally(
 ) -> None:
     # The sequencing failure this exists for: the title was right when the pull
     # request opened, and a second item closed on the branch afterwards.
-    monkeypatch.setattr(
-        pr_title_check,
-        "_git",
-        _remote(
-            "https://github.com/stuthedew/open-anesthesia-sim.git",
-            base={},
-            head={
-                "PL-P909-a.md": CLOSED.format(id="PL-P909", status="done"),
-                "PL-YHF1-b.md": CLOSED.format(id="PL-YHF1", status="done"),
-            },
-        ),
+    _on_a_branch(
+        monkeypatch,
+        base={},
+        head={
+            "PL-P909-a.md": CLOSED.format(id="PL-P909", status="done"),
+            "PL-YHF1-b.md": CLOSED.format(id="PL-YHF1", status="done"),
+        },
     )
     monkeypatch.delenv("PR_TITLE", raising=False)
     monkeypatch.setattr(pr_title_check, "open_pull_request", lambda *_: (366, "PL-P909: the first"))
@@ -289,14 +291,8 @@ def test_a_stale_title_on_the_open_pull_request_fails_locally(
 def test_a_discovered_title_that_leads_with_everything_passes(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(
-        pr_title_check,
-        "_git",
-        _remote(
-            "https://github.com/stuthedew/open-anesthesia-sim.git",
-            base={},
-            head={"PL-P909-a.md": CLOSED.format(id="PL-P909", status="done")},
-        ),
+    _on_a_branch(
+        monkeypatch, base={}, head={"PL-P909-a.md": CLOSED.format(id="PL-P909", status="done")}
     )
     monkeypatch.delenv("PR_TITLE", raising=False)
     monkeypatch.setattr(pr_title_check, "open_pull_request", lambda *_: (366, "PL-P909: the first"))
@@ -316,11 +312,14 @@ def test_no_pull_request_to_read_is_a_silent_skip_that_never_reads_the_trees(
     # so a branch with nothing open must not reach the second. A `_git` that
     # raises is how that is asserted rather than assumed.
     def explode(args: list[str]) -> str:
-        if args[:2] in (["remote", "get-url"], ["rev-parse", "--abbrev-ref"]):
-            return "https://github.com/o/r\n" if args[0] == "remote" else "branch\n"
+        if args[:2] == ["rev-parse", "--abbrev-ref"]:
+            return "branch\n"
         raise AssertionError(f"the trees must not be read when there is nothing to check: {args}")
 
     monkeypatch.setattr(pr_title_check, "_git", explode)
+    # Without it the real `origin` decides, and where that is not GitHub's the
+    # run skips before the lookup and passes without asserting anything.
+    monkeypatch.setattr(pr_title_check, "repo_slug", lambda: "o/r")
     monkeypatch.delenv("PR_TITLE", raising=False)
     monkeypatch.setattr(pr_title_check, "open_pull_request", lambda *_: None)
     monkeypatch.setattr("sys.argv", ["pr_title_check.py", "--discover"])
