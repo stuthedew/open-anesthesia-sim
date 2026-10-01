@@ -678,3 +678,35 @@ and not in which zone, and takes its zone from rule 15 now.
 in the scope line. It retires only if the zone replies are read in changes.
 Moving the conversion into the tools would spare the command and not the
 rule, since git and GitHub print UTC as well.
+
+## `## Compact Instructions`, added 2026-10-01
+
+Compaction is the routine reset since `PL-YJG1`, and it writes its summary
+from a fixed prompt that asks for no sources, no refuted routes and no line
+between what was checked and what was inferred. The first live compaction, on
+2026-09-25, kept 8 of the 20 references its session had cited (`PL-NK5K`).
+The same prompt, read from the Claude Code 2.1.286 binary on 2026-10-01, tells
+the summarizer to follow "additional summarization instructions provided in
+the included context", with a `## Compact Instructions` section as its first
+example, and `CLAUDE.md` is in that context. Asked for by the owner on
+2026-10-01, which lifted the generator pause for it; the pause had ended in
+any case.
+
+**The carrier test.** The moment is the summarizer's prompt, which reads the
+context as it stands. A check cannot write the summary, a skill is re-injected
+truncated and only if it was invoked, and a path-scoped rule loaded mid-session
+is summarized away with everything else. `CLAUDE.md` is the one carrier the
+summarizer certainly sees, so disposition 4 is the only one left.
+
+**What it replaced.** Two historical asides in the reset bullet of § "Session
+and tool-use efficiency": the 176,689-token reading of the session that wrote
+the start-budget rule, and "not the 25,000 once written here" beside the
+compaction floor. Both are provenance, which `PL-NW76` holds, rather than
+instruction. That paid about 200 of the section's roughly 470 characters;
+`CLAUDE.md` went from 48,851 to 49,123. Nothing else was cut, because the
+rest of the bullet is the rule.
+
+**What it costs and what should retire it.** 272 characters net. It retires
+if the compaction prompt stops honouring instructions in context, which the
+2.1.286 binary was read for and a later version could change. Whether it changes a summary is seen only at the next
+compaction, which a session cannot run on itself; until then it is untested.

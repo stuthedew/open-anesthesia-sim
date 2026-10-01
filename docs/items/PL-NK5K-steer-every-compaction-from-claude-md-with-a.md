@@ -3,12 +3,14 @@ id: PL-NK5K
 title: Steer every compaction from CLAUDE.md with a Compact Instructions section, so the summary keeps the sources cited, the routes refuted, and which claims were verified
 priority: P3
 effort: S
-status: ready
+status: done
 classes: session-cost, docs
 feature: compaction-reset
 touches: CLAUDE.md, docs/resident-instructions.md
 blocked-by: PL-GPJ7, PL-HMZZ, PL-MB2W, PL-PVW2, PL-QHCW, PL-XBV4
 added: 2026-09-25
+closed: 2026-10-01
+pr: 1264
 payoff: a compaction summary keeps the sources, refuted routes and verified-or-inferred marks a design round produces, instead of dropping them first
 verify: grep -q '^## Compact Instructions' CLAUDE.md && grep -q 'PL-NK5K' docs/resident-instructions.md
 ---
@@ -128,3 +130,20 @@ Compact Instructions` as its first example, and the
 [best practices](https://code.claude.com/docs/en/best-practices) page still
 says to "Customize compaction behavior in CLAUDE.md". `CLAUDE.md` held no such
 section.
+
+**Closed 2026-10-01, on the half a session can see.** `CLAUDE.md` now ends
+with a `## Compact Instructions` section of six lines. It asks the summary to
+keep the item ids and their status, each source with its URL, path or command,
+each refuted route with its reason, and the branch and pull request, and to
+mark each conclusion *verified* or *inferred*. It is paid for in part by two
+historical asides cut from the reset bullet; `docs/resident-instructions.md` §
+"`## Compact Instructions`, added 2026-10-01" carries the ledger. Resident
+total: 80,117 characters before and 80,419 after, by `make check`; `CLAUDE.md`
+is 272 of the 302, and the other 30 are the session-start digest's output
+(4,980 to 5,010), which changes with the queue rather than with this edit.
+
+**Not observed.** The "Done when" lines about what the next compaction keeps
+can be seen only at a compaction, which a session cannot run on itself. This
+item does not claim them. `PL-YZY4` (read the first summary after this lands)
+holds that check, and an owner who types `/compact` on a session with this
+section loaded produces the evidence.
