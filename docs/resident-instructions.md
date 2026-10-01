@@ -710,3 +710,39 @@ rest of the bullet is the rule.
 if the compaction prompt stops honouring instructions in context, which the
 2.1.286 binary was read for and a later version could change. Whether it changes a summary is seen only at the next
 compaction, which a session cannot run on itself; until then it is untested.
+
+## The retirement clause's decision test, added 2026-10-01
+
+`CLAUDE.md` § "Prefer deterministic tooling over repeated model work" ended its
+retirement bullet with "an advisory nobody acts on is a candidate for
+retirement rather than promotion". It now says an advisory is retired only
+after naming the decision it was built to change and where that decision is
+taken: still taken somewhere, the advisory is routed to that moment first and
+retired only if it still changes nothing there; no such decision, it is fluff
+and goes. Nobody reading it is the symptom, not the test (project owner,
+2026-10-01, ratified, over an item of its own, `PL-1XZD`).
+
+**What it replaces, and the cost.** The clause it replaces is the one quoted
+above, 85 characters; the new one is 449 characters, so the
+resident set grows by 364. Nothing else was cut: the bullet's other
+sentences each carry a different fact (the build gate, the cost of a check
+that fires uselessly, that removal is a legitimate outcome, that hard failure
+is for exact rules), and `PL-ZBJ0`'s evidence citation is what a later session
+would reopen the bullet against.
+
+**Why "nobody acts on it" was the wrong test.** It conflates no decision
+existing, which is fluff, with a decision existing that the signal never
+reaches at the moment it is taken, which is the routing question `CLAUDE.md`
+asks of every rule and had never asked of a check. The project already
+practised the second reading - `PL-G6J5` retired the slow-command advisory on
+a count, and `.claude/rules/expert-review.md` lists a check retirement among
+the things not tightened without measuring the suppressed side - but the
+resident sentence did not point at it, and a reply on 2026-10-01 used the
+naive proxy ("nothing would read it") in the owner's hearing.
+
+**The carrier test.** The clause fires when a reply proposes retiring a check,
+which is a design round: no read precedes it, so a `paths:` scope arrives too
+late, and no check can decide whether a decision still exists somewhere,
+which is the judgment half. `.claude/rules/expert-review.md` carries the
+count that follows once the decision is named; this clause carries the step
+before it.
