@@ -8,6 +8,7 @@ classes: docs, test
 feature: dev-tooling
 touches: docs/MODEL.md, tools/doc_check.py
 added: 2026-08-25
+verify: grep -qF 'heading="Required invariants"' tools/doc_check.py
 ---
 
 > **Groomed 2026-09-22 (`PL-Y4YG`): still owed; the re-scope below holds.** §

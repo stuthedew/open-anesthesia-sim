@@ -2276,7 +2276,7 @@ because a short fragment folds assertions it was never meant to, a concrete
 harm, where a thin payoff harms only the reader looking straight at it.
 
 The requirement starts at `ready`, from the date `payoff_required_from`
-records, and the dated cutover is `verify_required_from`'s pattern taken whole,
+records, and the dated cutover is the retired `verify_required_from`'s pattern taken whole,
 for the same reason it was adopted there: a store written before a rule holds
 items that predate it, and making every one of them an error at once makes the
 checker useless from its first run rather than making the queue better. Items
@@ -2561,17 +2561,19 @@ An item at `ready` must carry one of them: the command that would prove it
 done, or a recorded reason why no command can. The gate sits at `ready` rather
 than at capture deliberately — demanding a command at the moment an idea occurs
 is the same tax as demanding a priority, and `ready` is the first point at
-which the question is answerable at all. `verify_required_from` is the date a
-project adopts the rule; items captured before it raise a grooming advisory
-rather than an error each, so adopting the rule does not mean rewriting the
-whole store on the same day. The advisory names only the ones `next` is about
-to offer, and carries the number still outstanding: naming the whole backlog
-made it an advisory that could not reach zero, and the cost of one of those is
-not the items it names but the next advisory, which is then read the same way.
-It also puts the command where it can be run before it is written, since the
-moment an item is offered is the first moment there is anything to run. Leaving that setting unset
-leaves the requirement off, which is right for a project that does not delegate
-and therefore has nothing riding on the field.
+which the question is answerable at all. `verify_required_at_close_from` is
+the date a project adopts the rule: from it every `ready` item must carry a
+command or a reason, and so must every item closed on or after it, which is
+what reaches an item that goes to `done` without ever holding `ready`. Leaving
+that setting unset leaves the requirement off, which is right for a project
+that does not delegate and therefore has nothing riding on the field.
+
+A second date, `verify_required_from`, once grandfathered the `ready` half for
+items captured before the rule, with a grooming advisory naming only the ones
+`next` was about to offer. That set drained to zero and the date and its
+advisory were retired (`PL-Z34C`), since an advisory that cannot fire changes
+no decision. A store adopting the rule late triages its `ready` items in the
+commit that sets the date.
 
 Write the command only after running it. Every one of the six that existed in
 the project this grew in was wrong and none had been executed — a check nobody
@@ -2759,7 +2761,7 @@ on nothing false.
 The cutover is read against the item's `added` date, so the commands already
 recorded are a closed set - nothing can join it - and it drains as each item
 is started, which is the repair-as-started policy rather than an exception to
-it. It leaks in the same bounded way `verify_required_from` does: an item
+it. It leaks in the bounded way the retired `verify_required_from` did: an item
 captured before the cutover can still have a command written after it. Because
 `docket set` refuses any write `docket check` would then fail, the rule is met
 at the moment the command is typed rather than at the next run.
@@ -3966,7 +3968,7 @@ instruction_stale_days = 90        # a dated assertion goes this long
                                    # unchecked before it is named
 instruction_paths = []             # the instruction files it reads;
                                    # empty = the audit is off
-verify_required_from = 2026-08-30   # omit to leave the `verify:` rule off
+verify_required_at_close_from = 2026-09-03   # omit to leave the `verify:` rule off
 verify_prerequisite_refused_from = 2026-09-20   # when a command may no longer
                                    # re-run a tree `check_command` collects
 collected_test_paths = ["tests"]   # the trees it does collect; empty = rule off
