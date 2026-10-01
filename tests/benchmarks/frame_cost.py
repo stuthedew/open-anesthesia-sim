@@ -1,6 +1,8 @@
 """What one frame of the running dashboard costs, split into simulation, assembly and paint.
 
-Run it: `uv run python tests/benchmarks/frame_cost.py`, about three seconds.
+Run it: `uv run python tests/benchmarks/frame_cost.py`, about three seconds,
+for the one-run dashboard the application opens with. Add `--runs 2` for the
+trunk and branch that taking a fork draws on one chart, about four.
 
 **Why this is written down rather than re-derived.** `PL-YSZN`, `PL-KP7H`,
 `PL-R2YM` and `PL-SQJ1` were each answered by a throwaway harness, and
@@ -9,19 +11,23 @@ numbers survived in the items; the *method* did not, and it is the method
 that is subtle enough to get wrong. This is the fifth writing of it and the
 first one kept (`PL-ZG5J`).
 
-**What a frame is here.** The running application holds two timers
-(`app/simulation_view.py`): the simulation ticks every
+**What a frame is here.** The running application holds a step timer for
+each run it draws (`app/run_view.py`) and one render timer
+(`app/simulation_view.py`): every run ticks every
 `SIMULATION_TICK_INTERVAL_S` real seconds, taking
 `PlaybackRate.steps_per_tick` steps of `SIMULATION_STEP_S`, and the display
 redraws every `RENDER_INTERVAL_S` real seconds. So a *frame* is one render
 interval's worth of both: `RENDER_INTERVAL_S / SIMULATION_TICK_INTERVAL_S`
-ticks of simulation, then one presentation. At 300x that is 600 steps against
-a 200 ms budget. Both numbers are derived from the shipped constants here,
-never written in, so a cadence change moves this measurement with it.
+ticks of every run's simulation, then one presentation. At 300x that is 600
+steps a run against a 200 ms budget, and a second run doubles the steps
+without widening the budget. Both numbers are derived from the shipped
+constants here, never written in, so a cadence change moves this measurement
+with it.
 
 **The three stages, and why the third is what a harness gets wrong.**
 
-1. `controller.advance(SIMULATION_STEP_S)`, once per step - the simulation.
+1. `controller.advance(SIMULATION_STEP_S)`, once per step of every run - the
+   simulation.
 2. `SimulationView.present(False)` - assembling the frame and handing it to
    the widgets.
 3. `QApplication.processEvents()` - the paint.
@@ -30,27 +36,43 @@ Stage 3 is not bookkeeping. `qt_chart.ChartPlot.draw` is `setData`, `setPos`
 and `setTicks` throughout: it schedules a repaint and rasterizes nothing, so
 `present` returns before the frame has been drawn and the frame is complete
 only once the event loop dispatches the paint event. This harness at its
-defaults, 2026-09-19 in the web container, medians over three runs: advance
-12.0 ms, present 15.3 ms, paint 13.1 ms, so the interface costs 28.4 ms of a
-40.4 ms frame. A two-stage harness would have reported that interface at
-15.3 ms - 46% low, in the flattering direction - and the control below is
-what rules out the alternative reading, that stage 3 is the event loop
-rather than the frame.
+defaults, 2026-09-19 in the web container, one run, medians over three
+invocations: advance 12.0 ms, present 15.3 ms, paint 13.1 ms, so the
+interface costs 28.4 ms of a 40.4 ms frame. A two-stage harness would have
+reported that interface at 15.3 ms - 46% low, in the flattering direction -
+and the control below is what rules out the alternative reading, that stage
+3 is the event loop rather than the frame.
+
+**Two runs on one chart** (`PL-WPDB`). The same defaults, 2026-10-01 in the
+web container, medians over three invocations of each, alternated. One run:
+advance 12.8 ms, present 16.8 ms, paint 14.2 ms, a 44.2 ms frame, 22% of the
+budget. Two runs: advance 25.1 ms, present 30.2 ms, paint 13.7 ms, a 68.9 ms
+frame, 34% of it. The second run doubles the simulation and nearly doubles
+the assembly, bringing its own readouts and control timeline with it. The
+paint holds level, but it rasterizes a different chart: comparing caps it at
+two compartments a run (`COMPARED_COMPARTMENT_CAP`), so it draws four curves
+where one run draws six, at wider pens. The level paint is measured with the
+chart in view, which `_bring_chart_into_view` arranges. Opening the
+dashboard over a case, so the branch control is drawn and refreshed, moved
+the one-run frame by less than the spread between invocations: `main`'s
+harness read 44.2 ms in the same container, so what moved it from
+2026-09-19's 40.4 ms is the container or the tree since then, not the case.
 
 Under Flet the same third position was held by `page.update()` against a
 session whose connection serialized each outbound message; that was the
 subtle part then, for the same reason it is the paint now. The stage the
 toolkit charges for is never the one the code makes obvious.
 
-`_settled` is the control for stage 3: a second `processEvents()` with
-nothing owed. It comes back near zero, which is what says the 15.5 ms is
-this frame's rasterization rather than fixed event-loop overhead. Read it on
-every run - a paint that stops being distinguishable from it means either
-the measurement or the chart has changed.
+`settled_s` is the control for stage 3: a second `processEvents()` with
+nothing owed. It comes back near zero, which is what says the paint is this
+frame's rasterization rather than fixed event-loop overhead. Read it on
+every invocation - a paint that stops being distinguishable from it means
+either the measurement or the chart has changed.
 
 **What this does not measure.** Not a wall-clock frame rate: nothing here
 sleeps, so the stages run back to back rather than at the cadence the timers
-impose, and a run of this harness is not a claim about what a reader sees.
+impose, and an invocation of this harness is not a claim about what a reader
+sees.
 Not the first frame either, which reads the plot's laid-out width and is
 warmed away deliberately. Not an unwarmed run: cost grows with recorded
 history, so the warm-up is part of the configuration and is printed with the
@@ -77,15 +99,18 @@ import sys
 from dataclasses import dataclass
 from time import perf_counter
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QPoint
+from PySide6.QtWidgets import QApplication, QScrollArea
 
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
+    MAX_DISPLAYED_RUNS,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
 )
 from anesthesia_sim.app.playback import playback_rate_for
+from anesthesia_sim.app.qt_chart import ConcentrationChart
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND, SECONDS_PER_MINUTE
 
@@ -112,13 +137,18 @@ DEFAULT_FRAMES = 20
 #: run measures the cheapest case the application ever has.
 DEFAULT_WARM_UP_MINUTES = 60
 
+#: Runs drawn: the one the application opens with. A second is the branch a
+#: learner takes, and `--runs` measures it, up to `MAX_DISPLAYED_RUNS`.
+DEFAULT_RUNS = 1
+
 
 @dataclass(frozen=True, slots=True)
 class FrameSample:
     """What one frame's three stages cost, in seconds.
 
     Attributes:
-        advance_s: Every `controller.advance` call this frame takes.
+        advance_s: Every `controller.advance` call this frame takes, across
+            every run the dashboard draws.
         present_s: `SimulationView.present(False)` - assembling the frame.
         paint_s: The `processEvents()` that dispatches the repaint `present`
             scheduled.
@@ -151,13 +181,19 @@ class Measurement:
     Attributes:
         multiplier: The playback rate measured, in simulated seconds per
             real second.
-        steps_per_frame: Simulation steps one frame advances at that rate.
+        runs: How many runs the dashboard drew, counted on the dashboard
+            rather than taken from the request, so the figure names what
+            was measured.
+        steps_per_frame: Simulation steps one frame advances each run at
+            that rate.
         budget_s: Real seconds a frame has, which is `RENDER_INTERVAL_S`.
-        warm_up_s: Simulated seconds run before the first measured frame.
+        warm_up_s: Simulated seconds every run ran before the first
+            measured frame.
         samples: One per measured frame, in order.
     """
 
     multiplier: int
+    runs: int
     steps_per_frame: int
     budget_s: float
     warm_up_s: float
@@ -235,34 +271,88 @@ def _application() -> QApplication:
     return existing if isinstance(existing, QApplication) else QApplication(sys.argv[:1])
 
 
+def _bring_chart_into_view(view: SimulationView) -> None:
+    """Scroll the dashboard's page until the concentration chart is wholly in the window.
+
+    The event loop paints only what is in view, so a chart below the fold
+    is measured as nearly free to paint: a plausible number for a paint that
+    did not happen. At this window a second run's readouts push the chart
+    below the fold. Measured 2026-10-01, the one-run chart spans y 520-880
+    of the 1000 px page viewport and the two-run chart 848-1208, and the
+    two-run paint read 5.5 ms against one run's 14.9 ms until the chart was
+    scrolled into view. A reader comparing two runs scrolls to the chart, so
+    that is the frame measured. Where the chart is already in view, as the
+    one-run dashboard's is at this size, nothing moves.
+
+    Raises:
+        ValueError: If the dashboard does not hold exactly one scrolling
+            page and one concentration chart, since which to scroll would
+            then be a guess.
+        RuntimeError: If the chart is still not wholly in view, as it
+            would not be in a window shorter than the chart.
+    """
+
+    (page,) = view.findChildren(QScrollArea)
+    (chart,) = view.findChildren(ConcentrationChart)
+    page.ensureWidgetVisible(chart, 0, 0)
+    viewport = page.viewport()
+    top = chart.mapTo(viewport, QPoint(0, 0)).y()
+
+    if top < 0 or top + chart.height() > viewport.height():
+        raise RuntimeError(
+            f"the concentration chart spans y {top} to {top + chart.height()} of a "
+            f"{viewport.height()} px page, so part of it is out of view and its paint "
+            "would be measured as cheaper than it is"
+        )
+
+
 def measure(
     *,
     multiplier: int = DEFAULT_MULTIPLIER,
     frames: int = DEFAULT_FRAMES,
     warm_up_s: float = DEFAULT_WARM_UP_MINUTES * SECONDS_PER_MINUTE,
+    runs: int = DEFAULT_RUNS,
 ) -> Measurement:
     """Drive a real dashboard frame by frame and time each frame's three stages.
 
-    The setup is the one `main.py` performs, in its order: build the
-    controller and the view, size and show it, let the layout settle, then
-    present. The first presentation reads the plot's laid-out width, so it
-    happens before the warm-up rather than inside the measurement.
+    The dashboard is opened as `main.py` opens it: a case over a fresh
+    trunk, and the view over that trunk with the case beside it, so the
+    branch control is drawn and refreshed every frame as it is in the
+    application. It is then sized to the fixed window below rather than
+    maximized, because the chart's pixel width is part of the configuration,
+    shown, left to settle its layout, and presented. That first frame reads
+    the plot's laid-out width, so it is drawn before the measured frames
+    rather than among them.
+
+    Each run past the first is a branch the case takes at induction before
+    the warm-up, added to the shown dashboard by `SimulationView.add_run`,
+    the route the branch control takes. The page is then scrolled to bring
+    the chart into view (`_bring_chart_into_view` says why) and presented
+    once more before the measured frames. A branch taken at induction holds
+    as much recorded run as the trunk, so this is the dearest two-run frame
+    at a given warm-up: a branch taken later is drawn only from its fork
+    instant.
 
     Args:
         multiplier: The playback rate to measure, in simulated seconds per
             real second.
         frames: How many frames to time. At least one.
-        warm_up_s: Simulated seconds to run before the first measured
-            frame. Not negative.
+        warm_up_s: Simulated seconds every run runs before the first
+            measured frame. Not negative.
+        runs: How many runs the dashboard draws, from one to
+            `MAX_DISPLAYED_RUNS`.
 
     Returns:
         The configuration and one `FrameSample` per measured frame.
 
     Raises:
-        ValueError: If `frames` is below one or `warm_up_s` is negative.
+        ValueError: If `frames` is below one, `warm_up_s` is negative, or
+            `runs` is a count the dashboard cannot draw. The last is checked
+            before the warm-up, which a dashboard refusing the extra run
+            would otherwise pay for first.
         SimulationConfigurationError: If the rate is not one the interface
             offers, per `steps_per_frame`.
-        RuntimeError: If the run did not advance by exactly the steps this
+        RuntimeError: If a run did not advance by exactly the steps this
             harness asked for. A halted or capped run makes
             `controller.advance` a no-op that returns immediately, which
             would report the simulation as free - a plausible number for a
@@ -275,29 +365,51 @@ def measure(
     if warm_up_s < 0.0:
         raise ValueError(f"warm_up_s is a length of simulated run, not {warm_up_s}")
 
+    if not 1 <= runs <= MAX_DISPLAYED_RUNS:
+        raise ValueError(f"a dashboard draws between 1 and {MAX_DISPLAYED_RUNS} runs, not {runs}")
+
     per_frame = steps_per_frame(multiplier)
     application = _application()
-    controller = SimulationController()
-    controller.start()
+    case = BranchedCase(SimulationController())
+    # The trunk's first fork point is its opening, at induction.
+    induction_s = case.fork_points_s[0]
 
-    for _ in range(round(warm_up_s / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+    for _ in range(runs - 1):
+        case.fork_at(induction_s)
 
-    view = SimulationView((controller,))
+    for controller in case.runs:
+        controller.start()
+
+        for _ in range(round(warm_up_s / SIMULATION_STEP_S)):
+            controller.advance(SIMULATION_STEP_S)
+
+    view = SimulationView((case.trunk,), case=case)
     view.resize(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX)
     view.show()
     application.processEvents()
     view.present(False)
     application.processEvents()
 
+    for branch in case.branches:
+        view.add_run(branch)
+
+    application.processEvents()
+    _bring_chart_into_view(view)
+    view.present(False)
+    application.processEvents()
+
+    # What the dashboard draws, and so what each frame advances: in the
+    # application every displayed run's own step timer advances it.
+    drawn = tuple(run.controller for run in view.runs)
     samples = []
 
     try:
         for _ in range(frames):
             started = perf_counter()
 
-            for _ in range(per_frame):
-                controller.advance(SIMULATION_STEP_S)
+            for controller in drawn:
+                for _ in range(per_frame):
+                    controller.advance(SIMULATION_STEP_S)
 
             advanced = perf_counter()
             view.present(False)
@@ -319,17 +431,21 @@ def measure(
         view.close()
 
     expected_s = warm_up_s + frames * per_frame * SIMULATION_STEP_S
-    elapsed_s = controller.snapshot().elapsed_s
 
-    if not math.isclose(elapsed_s, expected_s, rel_tol=0.0, abs_tol=SIMULATION_STEP_S / 2):
-        raise RuntimeError(
-            f"the run advanced {elapsed_s} simulated seconds where this measurement asked "
-            f"for {expected_s}; a run that is halted or past its supported length takes no "
-            f"steps, so the timings above are not a measurement of the simulation"
-        )
+    for index, controller in enumerate(drawn):
+        elapsed_s = controller.snapshot().elapsed_s
+
+        if not math.isclose(elapsed_s, expected_s, rel_tol=0.0, abs_tol=SIMULATION_STEP_S / 2):
+            raise RuntimeError(
+                f"run {index + 1} of {len(drawn)} advanced {elapsed_s} simulated seconds where "
+                f"this measurement asked for {expected_s}; a run that is halted or past its "
+                f"supported length takes no steps, so the timings above are not a measurement "
+                f"of the simulation"
+            )
 
     return Measurement(
         multiplier=multiplier,
+        runs=len(drawn),
         steps_per_frame=per_frame,
         budget_s=RENDER_INTERVAL_S,
         warm_up_s=warm_up_s,
@@ -359,11 +475,12 @@ def report(measurement: Measurement) -> str:
         ("present (assembly)", "present_s"),
         ("paint (event loop)", "paint_s"),
     )
+    runs = f"{measurement.runs} run" if measurement.runs == 1 else f"{measurement.runs} runs"
     lines = [
-        f"Frame cost at {measurement.multiplier}x real time, "
+        f"Frame cost at {measurement.multiplier}x real time, {runs} on the dashboard, "
         f"{len(measurement.samples)} frames, warmed to "
         f"{measurement.warm_up_s / SECONDS_PER_MINUTE:g} min of simulated run.",
-        f"{measurement.steps_per_frame} steps advanced per frame, against a "
+        f"{measurement.steps_per_frame} steps advanced per frame in each run, against a "
         f"{_milliseconds(budget)} budget.",
         "",
         f"  {'stage':<22}{'median':>12}{'worst':>12}",
@@ -421,6 +538,13 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_WARM_UP_MINUTES,
         help=f"simulated run before the first measured frame (default {DEFAULT_WARM_UP_MINUTES})",
     )
+    parser.add_argument(
+        "--runs",
+        type=int,
+        choices=range(1, MAX_DISPLAYED_RUNS + 1),
+        default=DEFAULT_RUNS,
+        help=f"runs the dashboard draws, the trunk and its branches (default {DEFAULT_RUNS})",
+    )
     arguments = parser.parse_args(argv)
 
     print(
@@ -429,6 +553,7 @@ def main(argv: list[str] | None = None) -> int:
                 multiplier=arguments.rate,
                 frames=arguments.frames,
                 warm_up_s=arguments.warm_up_minutes * SECONDS_PER_MINUTE,
+                runs=arguments.runs,
             )
         )
     )
