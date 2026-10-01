@@ -2212,3 +2212,48 @@ inspection. `PL-Z4K6` is the sharpest case, since `ROADMAP.md` already reasons
 that two of its three levers wait on planned-milestone item 33 in `v0.7.x`
 rather than on this milestone. Titles read in a design round are not evidence,
 which is what this pass existed to demonstrate.
+
+## What a manual generator sweep costs - PL-4YJK, for PL-LSR0's retire-or-keep count and PL-04KR (recorded 2026-10-01)
+
+`PL-LSR0` kept `tools/generator_check.py` and fixed its blind spot rather than
+retiring it. It said a retire-or-keep count is worth running again once the
+corrected tool has had time to go 0-for-N or not. That count trades the tool's
+record against the cost of the manual sweeps that would replace it. These are
+the sweeps' figures, read from the harness session list on 2026-10-01 before
+archiving could clear them. Archived sessions were still listed then.
+
+| Sweep | Session | Cost | Tokens: output / cache read / cache write / input | Items examined | Generator heads found |
+| --- | --- | --- | --- | --- | --- |
+| Workflow-lane backlog sweep, 2026-09-19 | `session_01Dtf4wPAszKSSsSgFFThCR5` | $99.73 | 813,418 / 120.0M / 2.63M / 6,636 | 166 open workflow-lane items, all read (12 Explore subagents) | 1: `PL-G424`, 21 verified members |
+| Consolidation fan-out, 2026-09-12 | not confirmed (see below) | not confirmed | - | 134 (105 workflow, 29 crossing) | 6 clusters, all later given heads |
+
+The 2026-09-19 sweep's other outcomes: 12 items dropped (7 overtaken, 5 never
+an issue), 10 partly overtaken and 144 fully real. It filed `PL-JB3Z`.
+
+**Three corrections to the figures this was filed with.**
+
+1. **The second 2026-09-19 figure was not a sweep.** The figure was 383,270
+   tokens / $95.34. Its session was titled "Stale-slug rename advisory impact"
+   and drove `PL-Y5JX` to green. It carries no generator count. `PL-LSR0`'s
+   "~$95-100 per manual sweep" therefore rests on one sweep, not two.
+2. **"456,600 tokens" is context size, not spend.** It is
+   `context_usage.used_tokens`, the size of the context when the session
+   ended. What the sweep consumed is the usage row above.
+3. **Record the session's `usage.cost_usd`, not the last result event's
+   total.** The last result event's `total_cost_usd` read $54.07 against the
+   record's $99.73. It covers less than the whole session.
+
+**The 2026-09-12 cost is unrecovered.** The only 09-12 session that fits is
+`session_01PSFju1Ymvn4Un2kDicWht4`, "Outstanding workflow items count": $239.02,
+2.0M output tokens and 272.9M cache read. Its last turns worked other things
+(`PL-CSHL`'s batch), though, and the subagent that read it found no trace of
+the fan-out in the events it paged. Read $239.02 as an upper bound on a session
+that probably included the sweep, never as the sweep's cost.
+
+**How to record the next sweep.** A session that runs a generator sweep adds a
+row to this table before its closing reply, under its own item's id. It takes
+the figures from `get_session` on itself, read as its last step:
+`external_metadata.usage` for `cost_usd` and the four token counts. It counts
+items examined and generator heads found, by id, from its own work. A sweep
+done through subagents counts as one row. A sweep sharing its session with
+other work says so in the row, as the 09-12 one should have.
