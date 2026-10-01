@@ -3,11 +3,13 @@ id: PL-JTHW
 title: tools/main_ci_status.py passes over a cancelled main run in silence, so after PL-SMN4 a commit with no whole-store verdict is indistinguishable from one nobody asked about
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: ci-cost
-touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py
+touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py, .github/workflows/quality.yml, tests/unit/test_ci_concurrency.py, .claude/hooks/docket-digest.sh, docs/ARCHITECTURE.md
 added: 2026-09-16
+closed: 2026-10-01
+pr: 1259
 verify: grep -q 'def test_a_cancelled_main_run_is_reported' tests/unit/test_main_ci_status.py && uv run pytest tests/unit/test_main_ci_status.py
 ---
 
@@ -62,30 +64,28 @@ silent-wrong-answer shape `CLAUDE.md` names, and it reaches the session-start
 digest, which is where a session forms its first view of whether `main` is
 sound.
 
-**Handoff, 2026-10-01 (CI and tooling tweaks thread).** Claimed on
-`claude/ci-tooling-tweaks-53wk39` with `PL-7K2C`, `PL-CR36` and `PL-NWSK`, all
-three closed there with `pr: 1259`. The thread stopped for length before
-starting this item, so nothing below is done yet:
+**Measured 2026-10-01, and the shape it chose.** GitHub's run list for
+`quality.yml` filtered to `main` push runs that were cancelled,
+`curl 'https://api.github.com/repos/stuthedew/open-anesthesia-sim/actions/workflows/quality.yml/runs?branch=main&event=push&status=cancelled&created=>=2026-09-16T02:24:44Z'`,
+returned no run created between `PL-SMN4`'s fix merging (`#615`,
+2026-09-16 02:24 UTC) and 2026-10-01 03:16 UTC, against 640 completed `main`
+push runs over the same window. The same query from 2026-09-05 to that merge
+returned 31, the count above, so the filter reads what it says. At zero in 640
+the line cannot become one a reader learns to skim, so the brief's cheapest
+shape was taken: no new state, and one line from `tools/main_ci_status.py`
+when a cancelled run is newer than every verdict among the completed runs it
+reads. That commit has no whole-store verdict, and the verdict reported, or
+the silence of a green one, is about an older commit, so the line names both
+runs and asks for a re-run.
 
-1. Re-confirm the brief against `tools/main_ci_status.py` (`VERDICTS`,
-   `pick_run`, the docstring that points here); `show` asks for it, since this
-   was filed more than 14 days ago.
-2. Measure first, as the brief says: count `quality.yml` runs on `main` with
-   event `push` and conclusion `cancelled` since `PL-SMN4` merged
-   (`actions_list`, `list_workflow_runs`, resource `quality.yml`, branch
-   `main`). Every one in the brief's window was an eviction.
-3. Choose the shape on that count and record why here. A green `main` still
-   prints nothing; a cancelled run on a commit newer than the verdict reported
-   is a line a session can act on (re-run it).
-4. `def test_a_cancelled_main_run_is_reported` in
-   `tests/unit/test_main_ci_status.py`, failing before the change, which is what
-   this item's `verify:` greps for.
-5. Close it with `bin/docket set PL-JTHW --status done --closed DATE` and
-   `bin/docket record 1259`, in one commit with the work, retitling `#1259` to
-   lead with all four ids first.
-6. For the whole pull request: sweep the docs (`make doc-check`, and
-   `python3 tools/doc_check.py candidates --base origin/main`), run
-   `bin/docket verify --self PL-7K2C PL-CR36 PL-NWSK PL-JTHW` to `ACCEPT`,
-   write the body, mark it ready and leave it unarmed: it changes `tests/`, so
-   it waits on the project owner's read, with the review summary the project
-   instructions describe.
+A cancelled run older than a verdict still prints nothing, which is the
+brief's own rule rather than a gap: the later run checked the whole store
+again on a tree containing it, so there is nothing to act on, and printing it
+would make a green `main` speak. The line says "unless a newer merge's run is
+still going", because the tool reads completed runs only and cannot see one;
+teaching it to would change the request every session start makes, for a case
+measured at zero. `.github/workflows/quality.yml`,
+`tests/unit/test_ci_concurrency.py`, `.claude/hooks/docket-digest.sh` and
+`docs/ARCHITECTURE.md` each described the old silence and were corrected in the same commit, which is why
+they are in `touches`. Built in `#1259` after the thread that closed
+`PL-7K2C`, `PL-CR36` and `PL-NWSK` there stopped for length.

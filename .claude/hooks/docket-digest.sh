@@ -122,11 +122,12 @@ python3 "$root/tools/dead_ends.py" emit 2>/dev/null || true
 # `main` was red across three consecutive merges with every session believing
 # the tree was clean (`PL-0ZGK`).
 #
-# This reads that verdict and prints a line only when it is a failure - nothing
-# when `main` is green, and nothing when the read itself fails, so an offline
-# container starts exactly as it did before. It is deliberately not `bin/docket
-# digest`'s job: `docket` answers from a bare checkout without a network and
-# knows nothing about GitHub, and it should stay that way.
+# This reads that verdict and prints a line only when it is a failure, or when a
+# newer run was cancelled before reaching one (`PL-JTHW`) - nothing when `main`
+# is green, and nothing when the read itself fails, so an offline container
+# starts exactly as it did before. It is deliberately not `bin/docket digest`'s
+# job: `docket` answers from a bare checkout without a network and knows nothing
+# about GitHub, and it should stay that way.
 #
 # Placed after the digest rather than before it because it is the exception
 # line: on a normal session start it contributes nothing at all, and on a bad

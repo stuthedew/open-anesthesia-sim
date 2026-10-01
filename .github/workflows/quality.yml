@@ -62,7 +62,7 @@ on:
 # and 215 seconds, and every one of them reporting `total_count: 0` jobs, which
 # is eviction while pending rather than the shape a hand cancellation leaves.
 # So roughly one commit in eight on `main` got no whole-store `bin/docket check
-# --verify` at all, and `tools/main_ci_status.py` passes over a cancelled run,
+# --verify` at all, and `tools/main_ci_status.py` passed over a cancelled run,
 # so nothing said so. Run 2036 (`df3b1dec`) was the fix for a red `main`, which
 # is the correlation worth pricing rather than the average rate: merges cluster
 # during an outage, so the loss is likeliest exactly when the verdict matters
