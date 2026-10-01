@@ -236,9 +236,7 @@ before finishing.
   `context_usage.used_tokens` is written at turn boundaries, so it never moves
   inside a turn and reads 0 before the first (`PL-W80S`, `PL-BZVY`). Checked
   before the spend the budget cannot be overshot, and work never started cannot
-  be cut off half-done; as a stopping rule it was open to both, and the session
-  that wrote it was already at 176,689 of context, an absolute reading, when
-  it first looked (`PL-NW76`). **The reset is in place, not a new session**
+  be cut off half-done (`PL-NW76`). **The reset is in place, not a new session**
   (project owner, 2026-09-25, ratified, over a handoff the owner carries by
   pasting a prompt into a new session, `PL-YJG1`): externalize what only the
   conversation holds — the item, `docs/WORKING_NOTES.md` — commit and push it,
@@ -249,8 +247,8 @@ before finishing.
   `CLAUDE.md` and unscoped rules re-injected — and keeps the branch, claim and
   pull-request watch. A file it restores counts as already read, but its
   path-scoped rules may not have come back, so read it again before the first
-  edit to it (`PL-384P`). That floor is 81,048–115,320 tokens,
-  not the 25,000 once written here. Past the budget anyway — an item that ran
+  edit to it (`PL-384P`). That floor is 81,048–115,320 tokens.
+  Past the budget anyway — an item that ran
   long, or a design round holding its reasoning in the conversation — finish
   the item in hand, reset the same way, and say in your reply that you stopped
   for length rather than for the work. This is the largest adherence lever
@@ -669,3 +667,12 @@ Do not limit review or recommendations to conventional software-engineering conc
 - The goal is not to maximize the number of suggestions. Surface the few recommendations that would materially improve the quality of the product, and explain them at the level needed to make a sound engineering or design decision.
 
 The fields this review reaches across, and the design principles that follow from them, are in `.claude/rules/expert-review.md`. It carries no `paths:` and is resident, because the moment it governs is a design round — an approach chosen in a reply, which no read precedes — and path-scoping deferred it past its own moment (`PL-WWDT`). The provenance and docstring rules that do fire with a file already open are in `.claude/rules/sources-and-docstrings.md`. The concrete bar for `core/` — that it should read like the domain — is in `.claude/rules/core-domain.md`.
+
+## Compact Instructions
+
+When summarizing this conversation, keep every item id in play with its status;
+each source cited, with its URL, path or command; each route weighed and
+refuted, with the reason; and the branch and pull request. Mark each conclusion
+carried forward *verified* (name the source or command that checked it) or
+*inferred*. The item file and `docs/WORKING_NOTES.md` stay the record; this
+only steers what the summary keeps (`PL-NK5K`).
