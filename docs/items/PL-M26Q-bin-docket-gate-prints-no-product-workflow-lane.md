@@ -5,15 +5,21 @@ priority: P3
 effort: S
 status: ready
 classes: infra
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests, subprojects/docket/README.md, .claude/skills/docket/modes/release.md, .claude/skills/docket/modes/capture.md
 added: 2026-09-06
 verify: grep -rq 'def test_gate_reports_lanes' subprojects/docket/tests
 ---
 
-**Problem.** `bin/docket gate` prints the open debt split into what a milestone
-clears itself and what clears before it, with effort totals for each. It says
-nothing about the product/workflow lane split, which `docket.toml`'s
+**Problem.** `bin/docket gate` prints the store's open debt, split by whether
+each item carries the feature `--feature` names, with effort totals for each.
+It says nothing about the product/workflow lane split, which `docket.toml`'s
 `workflow_paths` already decides and which `docket next` already computes.
+
+Re-confirmed against the tree on 2026-10-03, 27 days after filing: still true.
+Only the split this sentence first described had moved - since `PL-RFHH` the
+groups are named for the feature and never for what a milestone clears itself -
+and the work reaches `plan.py`, where `Gate` is computed, and the three
+documents that describe `gate`'s output, so `touches` names them.
 
 **Why it matters.** The lane split is the number that decides how a gate is
 *worked*. Freezing Gate 1 on 2026-09-06 meant answering "can this be cleared in
