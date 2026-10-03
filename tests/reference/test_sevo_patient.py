@@ -293,12 +293,12 @@ def test_step_refinement_converges() -> None:
     Each comparison is between successive halvings rather than against the
     finest step, which is the ordinary grid-refinement idiom and is also
     what leaves the documented tolerance meaning exactly what it did when
-    this gate compared two steps. Comparing 0.1 s straight to 0.025 s is a
-    longer lever and does exceed the relative tolerance, in mixed venous
-    alone: at 60 s that compartment is only starting to fill, so 1.4e-6 in
-    fraction - a seventh of a count of the last displayed digit - is 0.55%
-    of it. Loosening a release tolerance to accommodate that would be a
-    change to what the gate certifies, and this item did not measure one.
+    this gate compared two steps. Under the operator split, comparing 0.1 s
+    straight to 0.025 s was a longer lever that exceeded the relative
+    tolerance in mixed venous alone: at 60 s that compartment is only
+    starting to fill, so the split's 1.4e-6 in fraction - a seventh of a
+    count of the last displayed digit - was 0.55% of it. Under the exact
+    step the two land about 4e-17 apart there (measured 2026-10-03).
 
     This is not the reference gate. `tests/reference/test_coupled_dynamics.py`
     asks whether the shipped composition converges to the *right* answer, by

@@ -3259,10 +3259,11 @@ floor where § "Supported simulation step" declares it.
 
 The release comparison tolerance is 5e-3 relative or 1e-8 absolute, either
 satisfying, on the alveolar, vessel-rich and mixed-venous fractions after
-60 s of the default sevoflurane wash-in. Comparing 0.1 s straight to 0.025 s
-would exceed it in mixed venous alone — that compartment has barely begun to
-fill at 60 s, so a difference of 1.4e-6 in fraction, a seventh of a count of
-the last displayed digit, is 0.55% of it.
+60 s of the default sevoflurane wash-in. Under the operator split, comparing
+0.1 s straight to 0.025 s exceeded it in mixed venous alone — that compartment
+has barely begun to fill at 60 s, so the split's 1.4e-6 in fraction, a seventh
+of a count of the last displayed digit, was 0.55% of it. Under the exact step
+the two land about 4e-17 apart there (measured 2026-10-03).
 
 This gate is self-consistency across the supported steps, not correctness: a
 wrong transfer rate is exactly as step-independent as a right one and passes
