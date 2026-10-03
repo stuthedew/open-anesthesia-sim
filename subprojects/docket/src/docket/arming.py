@@ -26,8 +26,8 @@ every later push while a pull request is open.
   work nobody finished or handed back. A path outside the store, the tooling
   and the records holds it unarmed, and so does a change to this module,
   because that work waits on a read rather than merging on green CI. Once no
-  claim holds it, that hold also says what the ask for the read opens with
-  (`READ_ASK`).
+  claim holds it, that hold also says where the ask for the read goes and what
+  it carries (`READ_ASK`).
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
@@ -127,11 +127,21 @@ SHOWN = 5
 #: instructions carried it, so a session outside the Project asked for the
 #: read without one (`PL-8XQS`). It is said here, where the ask is decided,
 #: rather than in a resident rule every session pays for.
+#:
+#: It names the closing block's line because its first wording said what the
+#: ask *opens* with, and was followed to the letter: on 2026-10-03 three
+#: sessions opened the reply with the summary and closed it on a bare "read
+#: #N", the line the owner acts on, with housekeeping among the points
+#: (`PL-9KHK`).
 READ_ASK = (
-    "  Open the ask for this read with a plain-language summary: one sentence of what the "
-    "change does, what was wrong and what changed, in terms a clinician recognises; then "
-    "numbered points for the owner to judge, such as a decision taken on the owner's behalf, "
-    "a new docs/MODEL.md statement or a change a learner would see; then what needs no review."
+    "  Ask for this read in the closing block's own line, never as 'read #N', and repeat that "
+    "line whole in every later reply that still waits on it: a plain-language summary, one "
+    "sentence of what the change does, what was wrong and what changed, in terms a clinician "
+    "recognises; then numbered points for the owner to judge, only what is theirs - a "
+    "clinical value or a docs/MODEL.md statement, what a learner sees, how sessions work, a "
+    "departure from what they asked for; then what needs no review, in one clause, which is "
+    "where housekeeping goes - tests, docstrings, filed items, audit notes, the apparatus's "
+    "internals. With no point to judge, say so and ask for the merge word alone."
 )
 
 #: The queue's own tooling, which arms on green beside the store. The path is

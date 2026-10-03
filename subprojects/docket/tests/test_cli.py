@@ -10027,7 +10027,7 @@ def test_arm_names_the_gate_beside_the_paths_outside_the_tooling(
 def test_a_read_hold_asks_for_a_plain_language_summary_once_no_claim_holds_the_branch(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
 ) -> None:
-    """Every pre-merge read the owner is asked for opens with a plain-language summary.
+    """Every pre-merge read the owner is asked for carries a plain-language summary.
 
     The owner asked for it as the default on 2026-09-27, and only the Projects
     instructions carried it (`PL-8XQS`). While a claim holds the branch its
@@ -10057,6 +10057,28 @@ def test_a_read_hold_asks_for_a_plain_language_summary_once_no_claim_holds_the_b
         "what needs no review",
     )
     places = [ask.index(part) for part in parts]
+    assert places == sorted(places)
+
+
+def test_a_read_hold_puts_its_ask_in_the_closing_block_line() -> None:
+    """The ask is the line the owner acts on, so it carries the points itself.
+
+    Worded as what the ask opens with, it was followed to the letter: three
+    sessions opened the reply with the summary and closed on a bare "read #N",
+    the line the owner acts on, with housekeeping among the points (`PL-9KHK`).
+    """
+    parts = (
+        "the closing block's own line",
+        "never as 'read #N'",
+        "every later reply that still waits on it",
+        "numbered points for the owner to judge, only what is theirs",
+        "what needs no review",
+        "housekeeping",
+        "With no point to judge",
+        "the merge word alone",
+    )
+    places = [arming.READ_ASK.index(part) for part in parts]
+
     assert places == sorted(places)
 
 

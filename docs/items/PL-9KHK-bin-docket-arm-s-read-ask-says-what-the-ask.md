@@ -3,11 +3,12 @@ id: PL-9KHK
 title: bin/docket arm's read ask says what the ask opens with, so sessions open the reply with the summary and close on a bare 'read #N', the line the owner acts on
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 added: 2026-10-03
+closed: 2026-10-03
 payoff: the owner's read of a held pull request is asked for in the line they act on, naming only what is theirs to judge
 verify: grep -q 'def test_a_read_hold_puts_its_ask_in_the_closing_block_line' subprojects/docket/tests/test_cli.py
 ---
@@ -82,3 +83,12 @@ wording is then not enough, and the next carrier is a resident line in rule 14.
 
 **Generator check.** Not a generator: one wording defect in `READ_ASK`, and it
 explains no other item.
+
+**Built (2026-10-03).** `READ_ASK` now says to ask for the read in the closing
+block's own line, never as "read #N", repeated whole in every later reply that
+still waits on it: the plain-language summary, the points that are the owner's,
+and one no-review clause where housekeeping goes; with no point to judge, it
+says so and asks for the merge word alone. The comment above it records why.
+`test_a_read_hold_puts_its_ask_in_the_closing_block_line` pins the order of
+those parts, and `PL-8XQS`'s test, which checks the line is printed once no
+claim holds the branch, passes unchanged.
