@@ -6888,6 +6888,77 @@ def test_concurrent_refuses_a_limit_below_one(
     assert "A batch that can be worked at once (1 items, best-first)" in capsys.readouterr().out
 
 
+def _offer_store(tmp_path: Path) -> str:
+    """`PL-4ZK8`'s store: each kind of item `next` keeps out of its picks, and two it offers.
+
+    Real git, so `PL-0001` is in flight on a live claim (`_flight_repo`). Each
+    item declares a file no other declares, and the blocker is not in the
+    store, so contention cannot be what keeps any of them out of the batch.
+    """
+    root = _flight_repo(tmp_path, "PL-0001 Do the thing")
+    kinds = {
+        "PL-B1B1": ("P1", "ready", "b.py"),
+        "PL-D3C1": ("P1", "needs-decision", "c.py"),
+        "PL-K5K5": ("P1", "blocked\nblocked-by: PL-Z9Z9", "d.py"),
+        "PL-F0F0": ("P0", "needs-decision", "e.py"),
+    }
+    for identifier, (priority, status, path) in kinds.items():
+        document = (
+            READY.replace("PL-B1B1", identifier)
+            .replace("priority: P1", f"priority: {priority}")
+            .replace("status: ready", f"status: {status}")
+            .replace("touches: a.py", f"touches: {path}")
+        )
+        (root / "items" / f"{identifier}.md").write_text(document, encoding="utf-8")
+    return str(root / "items")
+
+
+def test_concurrent_batch_offers_only_startable_work(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The bare batch is `next`'s population, so a fan-out can paste it as it stands (`PL-4ZK8`).
+
+    The decision, the blocked item and the one in flight each held a row, and
+    a session handed any of them could not start it. The `P0` decision stays,
+    as it does under `next`.
+    """
+    store = _offer_store(tmp_path)
+
+    assert main(["--items", store, "--today", "2026-08-23", "concurrent"]) == 0
+    batch = capsys.readouterr().out.split("\n\n")[0]
+
+    assert batch.splitlines() == [
+        "A batch that can be worked at once (2 items, best-first):",
+        "  P0 PL-F0F0 A ready item",
+        "  P1 PL-B1B1 A ready item",
+    ]
+
+
+def test_concurrent_names_the_decisions_and_in_flight_work_beneath_the_batch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """What the batch leaves out is named one line lower, on `next`'s own two lines.
+
+    Dropped silently, a decision the owner could answer in the sitting would
+    vanish from the command a fan-out reads. The `<id>` form is unchanged: a
+    free item somebody is already working stays in its answer, flagged.
+    """
+    store = _offer_store(tmp_path)
+
+    assert main(["--items", store, "--today", "2026-08-23", "concurrent"]) == 0
+    beneath = capsys.readouterr().out.split("\n\n", 1)[1]
+    assert main(["--items", store, "--today", "2026-08-23", "concurrent", "PL-B1B1"]) == 0
+    against_one = capsys.readouterr().out
+
+    assert (
+        "Waiting on a decision, oldest first (1): PL-D3C1 (added 2026-08-01, 22 days waiting)."
+        in beneath
+    )
+    assert "a session handed one as a pick could only read it and stop" in beneath
+    assert "Excluded, already in flight: PL-0001 (live claim)" in beneath
+    assert "    PL-0001 A ready item [IN FLIGHT]" in against_one
+
+
 def test_next_oldest_reads_what_counts_as_new_work_from_the_config(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

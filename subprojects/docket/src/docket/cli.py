@@ -89,6 +89,7 @@ from .plan import (
     generator_defects,
     is_new_work,
     longest_waiting,
+    offerable,
     overlaps,
     placement_clause,
     placement_line,
@@ -2544,9 +2545,21 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
     file lists are predictions made when each item was written, so an absence
     of declared overlap is an absence of evidence rather than evidence of
     absence.
+
+    **The bare batch offers only what `next` ranks** (`plan.offerable`), and
+    names the decisions and the work in flight beneath it on `next`'s own two
+    lines (`PL-4ZK8`, project owner, 2026-09-27, ratified, over marking them in
+    the batch the way `[IN FLIGHT]` marked one). The batch is what a fan-out
+    pastes, so each row is a session started, and `PL-JW39`'s reason for
+    keeping a decision out of `next`'s picks - a session handed one can only
+    read it and stop - is paid there once per session. A blocked item gets no
+    line, as under `next`: its own `blocked-by` names its next step. The `<id>`
+    form keeps its `[IN FLIGHT]` flag, because there a free item somebody is
+    already working is part of the answer rather than an offer.
     """
     _, items, config = _load(args)
-    report = analyze(items, args.today or date.today(), config)
+    today = args.today or date.today()
+    report = analyze(items, today, config)
     flight = _flight(args)
     candidates = sorted(report.open_items, key=lambda i: i.sort_key())
 
@@ -2596,12 +2609,13 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
         _say_unread(args, flight)
         return 0
 
-    batch = parallel_batch(candidates, args.limit)
+    # `--limit` fills out from the same population, so it cannot reach past it.
+    startable = offerable(candidates, flight.ids)
+    batch = parallel_batch(startable, args.limit)
     print(f"A batch that can be worked at once ({len(batch)} items, best-first):")
     ordered = False
     for position, item in enumerate(batch):
-        flag = " [IN FLIGHT]" if item.identifier in flight.ids else ""
-        print(f"  {item.priority} {item.identifier} {item.title}{flag}")
+        print(f"  {item.priority} {item.identifier} {item.title}")
         shared: dict[str, list[str]] = {}
         for conflict in conflicts_for(item, batch[:position]):
             for path in conflict.paths:
@@ -2617,13 +2631,20 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
     else:
         print("No declared overlap between these. That is not a guarantee: `touches` is")
     print("a prediction made when each item was written, so verify before starting.")
-    waiting = sequenceable(candidates, batch)
+    waiting = sequenceable(startable, batch)
     if waiting and args.limit is None:
         count = len(waiting)
         print()
         print(f"Outside the batch is not refused: {count} more items share a file with")
         print("something above, which orders the work rather than forbidding it.")
         print("`docket concurrent --limit N` fills the batch out with them.")
+    pending = awaiting_decision(items, flight.ids)
+    if pending or flight.ids:
+        print()
+    limit = NEXT_LIMIT if args.limit is None else args.limit
+    _say_decisions(pending, today, limit, NAMED_NOT_OFFERED)
+    if flight.ids:
+        print(render.format_excluded(flight.ids, _holdings(args)))
     _say_unread(args, flight)
     return 0
 
@@ -2833,6 +2854,10 @@ NAMED_NOT_AGED = (
     "Not ranked above - each one's next step is the project owner's answer rather than "
     "a session's work, and ranked by age the oldest would hold the top for good."
 )
+
+#: `next`'s default `--limit`, and the cut on the decisions line a bare
+#: `concurrent` prints, so the two name the same decisions.
+NEXT_LIMIT = 3
 
 
 def _say_decisions(decisions: list[Item], today: date, limit: int, because: str) -> None:
@@ -5365,7 +5390,7 @@ def build_parser() -> argparse.ArgumentParser:
     nxt.add_argument(
         "--effort", choices=EFFORTS, default=None, help="only work that fits the time available"
     )
-    nxt.add_argument("--limit", type=_at_least_one, default=3)
+    nxt.add_argument("--limit", type=_at_least_one, default=NEXT_LIMIT)
     nxt.add_argument(
         "--oldest",
         action="store_true",
