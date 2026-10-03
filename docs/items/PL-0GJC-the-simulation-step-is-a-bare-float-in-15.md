@@ -22,6 +22,11 @@ them the guard and count functions in `supported_ranges.py` and
 compartment's own `advance` checks only `require_positive_finite`, which is
 `PL-WP52`'s open question.
 
+**Decided 2026-10-03: yes** (project owner, 2026-10-03, ratified, over a
+guard added to each compartment by hand and over the `NewType` and
+frozen-dataclass designs): the step becomes the `float` subclass recommended
+below, with the runtime backstop the holes paragraph names.
+
 **Recommended:** a `SimulationStep` class that subclasses `float` and calls
 `require_supported_simulation_step` in its `__new__`, taken by every function
 that now takes `simulation_step_s: float`. Construction becomes the one place a
