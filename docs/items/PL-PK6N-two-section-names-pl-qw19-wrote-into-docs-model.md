@@ -3,10 +3,12 @@ id: PL-PK6N
 title: Two section names PL-QW19 wrote into docs/MODEL.md and docs/machine-abstraction.md lack the section mark, so make doc-check has advised on them every run since 2026-09-27
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 touches: docs/MODEL.md, docs/machine-abstraction.md
 added: 2026-10-01
+closed: 2026-10-01
+pr: 1279
 payoff: make doc-check stops printing two advisories nobody acts on, so the ones that need a reader get read
 verify: ! grep -qF 'as "What real workstations hold" below' docs/MODEL.md && ! grep -qF 'with "The run owns its opening conditions" above' docs/machine-abstraction.md
 ---

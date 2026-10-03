@@ -2660,7 +2660,7 @@ where no provenance row could reach them and changed neither value.
   `test_the_bare_circuit_defaults_match_the_shipped_machine_file` fails if the
   constant and the file's value ever differ. The rationale is stated for this
   file's 6.0 L circuit: at a smaller assembled volume the same flow opens a
-  shorter lag, as "What real workstations hold" below computes.
+  shorter lag, as § "What real workstations hold" below computes.
 
 **One measured circle-system volume is now held, and it bounds the first row
 rather than replacing it** (`PL-QBKQ`). Targ, Yasuda and Eger measured a
