@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, session-cost
 feature: dev-tooling
+milestone: v0.5.21
 touches: docs/resident-instructions.md
 added: 2026-09-13
 closed: 2026-10-01

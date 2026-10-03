@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost, docs
 feature: compaction-reset
+milestone: v0.5.21
 touches: CLAUDE.md, docs/resident-instructions.md
 blocked-by: PL-GPJ7, PL-HMZZ, PL-MB2W, PL-PVW2, PL-QHCW, PL-XBV4
 added: 2026-09-25

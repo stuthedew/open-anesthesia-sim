@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost
 feature: compaction-reset
+milestone: v0.5.21
 touches: CLAUDE.md, docs/items, docs/resident-instructions.md
 added: 2026-10-01
 closed: 2026-10-03

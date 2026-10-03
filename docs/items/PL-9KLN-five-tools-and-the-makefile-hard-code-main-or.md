@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: recorded-not-inferred
+milestone: v0.5.21
 touches: tools/main_ci_status.py, tools/tag_release.py, tools/update_armed.py, tools/pr_record_check.py, tools/required_checks_check.py, Makefile, tests/unit/test_main_ci_status.py, tests/unit/test_tag_release.py, tests/unit/test_update_armed.py, tests/unit/test_pr_record_check.py, tests/unit/test_required_checks_check.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01

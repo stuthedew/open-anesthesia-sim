@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs
+milestone: v0.5.21
 touches: CLAUDE.md, docs/resident-instructions.md, docs/WORKING_NOTES.md
 added: 2026-10-01
 closed: 2026-10-01

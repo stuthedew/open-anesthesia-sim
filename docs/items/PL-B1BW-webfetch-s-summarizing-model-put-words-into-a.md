@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.5.21
 touches: .claude/hooks/webfetch-quote-note.sh, .claude/settings.json, tests/unit/test_webfetch_quote_note.py, docs/ARCHITECTURE.md, .claude/rules/citing-sources.md, docket.toml
 added: 2026-10-01
 closed: 2026-10-01

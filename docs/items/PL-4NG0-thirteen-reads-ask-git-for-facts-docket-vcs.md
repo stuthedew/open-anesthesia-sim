@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: read-facts-through-docket
+milestone: v0.5.21
 touches: tools/tag_release.py, tools/branch_sweep.py, subprojects/docket/src/docket/claiming.py, tools/required_checks_check.py, tools/main_ci_status.py, tools/open_pull_requests.py, tools/pr_body_check.py, tools/left_behind_check.py, subprojects/docket/src/docket/vcs.py, tools/update_armed.py, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, tests/unit/test_update_armed.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, test
 feature: branch-display-tests
+milestone: v0.5.21
 touches: tests/integration/test_simulation_view.py
 added: 2026-09-20
 closed: 2026-10-01

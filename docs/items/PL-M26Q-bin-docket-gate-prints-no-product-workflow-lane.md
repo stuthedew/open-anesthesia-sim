@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: infra
+milestone: v0.5.21
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests, subprojects/docket/README.md, .claude/skills/docket/modes/release.md, .claude/skills/docket/modes/capture.md
 added: 2026-09-06
 closed: 2026-10-03

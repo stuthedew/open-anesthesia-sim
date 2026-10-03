@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, session-cost, docs
 feature: dev-tooling
+milestone: v0.5.21
 touches: docs/worker.md
 added: 2026-09-14
 closed: 2026-10-01

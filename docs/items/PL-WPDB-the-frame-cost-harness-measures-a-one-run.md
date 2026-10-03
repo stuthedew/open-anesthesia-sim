@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, perf
 feature: frame-cost-harness
+milestone: v0.5.21
 touches: tests/benchmarks/frame_cost.py, tests/benchmarks/test_frame_cost.py
 added: 2026-09-19
 closed: 2026-10-01

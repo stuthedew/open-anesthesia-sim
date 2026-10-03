@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, session-cost
 feature: generator-identification
+milestone: v0.5.21
 touches: docs/WORKING_NOTES.md, docs/items
 added: 2026-09-19
 closed: 2026-10-01
