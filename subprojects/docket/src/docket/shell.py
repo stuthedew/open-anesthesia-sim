@@ -7,7 +7,12 @@ readings of their own, quote regexes and `shlex` beside a lexer, and the
 readings disagreed: an apostrophe inside double quotes blanked a real
 `bin/docket verify` for one of them, and `a.md|curl` was one word to another
 (`PL-P7J7`). So there is one reading, here, and both `checks.py` and
-`verify.py` take it.
+`verify.py` take it. `tools/doc_check.py` takes it too, for the scripts a
+workflow's steps run (`PL-CWBJ`), which are many lines where a field is one:
+`script_lines` cuts a script where bash ends a line, so a command a backslash,
+a quote or a substitution carries past its newline is one piece, and a
+here-document's body is the input it is rather than lines of commands
+(`PL-Q9LK`).
 
 It stays docket's own rather than the hooks' `.claude/hooks/shell_split.py`
 for two reasons: `bin/docket` puts this package alone on the path, and those
@@ -33,6 +38,7 @@ SHELL_OPERATORS = frozenset("|&;<>()")
 OPERATORS = (
     ";;&",
     "<<<",
+    "<<-",
     "&>>",
     "&&",
     "||",
@@ -116,6 +122,18 @@ class _Lexer:
         self.refusal: str | None = None
         #: Each body read so far, with the offset it opens at, so they sort into order.
         self.bodies: list[tuple[int, tuple[Clause, ...]]] = []
+        #: How many substitutions the read stands inside. A newline there ends a
+        #: command in the body, and the line the substitution stands on goes on.
+        self.nested = 0
+        #: Each newline that ends a line, with where the next line starts: past
+        #: the bodies of the here-documents the line opened, where it opened any.
+        self.breaks: list[tuple[int, int]] = []
+        #: Whether a `<<` waits for the word naming its delimiter, and if so
+        #: whether it is a `<<-`, which strips tabs; `None` where none waits.
+        self.introducer: bool | None = None
+        #: The here-documents whose bodies start after the next newline: each
+        #: delimiter, and whether its lines' leading tabs are stripped.
+        self.pending: list[tuple[str, bool]] = []
 
     def refuse(self, reason: str) -> None:
         if self.refusal is None:
@@ -143,8 +161,12 @@ class _Lexer:
         def finish() -> None:
             nonlocal begin, quoted, globbed, bang
             if begin >= 0:
-                tokens.append(Word("".join(text), quoted, globbed, bang))
+                word = Word("".join(text), quoted, globbed, bang)
+                tokens.append(word)
                 spans.append((begin, index))
+                if self.introducer is not None:  # the word after `<<` names the delimiter
+                    self.pending.append((word.text, self.introducer))
+                    self.introducer = None
             text.clear()
             begin = -1
             quoted = globbed = bang = False
@@ -154,11 +176,25 @@ class _Lexer:
             if char in " \t":
                 finish()
                 index += 1
+            elif char == "\n":
+                finish()
+                if self.introducer is not None:
+                    raise _Unreadable("has a `<<` with no word after it")
+                self.refuse("carries a newline, which no admitted shape uses")
+                tokens.append(char)
+                spans.append((index, index + 1))
+                resume = self.here_documents(index + 1, stop)
+                if not self.nested:
+                    self.breaks.append((index, resume))
+                index = resume
             elif char == "#" and begin < 0:
                 self.refuse("carries an unquoted `#`, which no admitted shape uses")
-                if closes:  # the comment runs to the end of the line, past the `)`
-                    raise _Unreadable("has an unclosed command substitution")
-                index = stop  # a comment runs to the end of its line, and a field is one line
+                end = command.find("\n", index, stop)
+                if end < 0:
+                    if closes:  # the comment runs to the end, past the `)`
+                        raise _Unreadable("has an unclosed command substitution")
+                    end = stop
+                index = end  # a comment runs to the end of its line
             elif char == "'":
                 end = command.find("'", index + 1, stop)
                 if end < 0:
@@ -174,18 +210,25 @@ class _Lexer:
             elif char == "\\":
                 if index + 1 >= stop:
                     raise _Unreadable("ends in a backslash")
+                if command[index + 1] == "\n":  # a continuation: bash removes the pair
+                    index += 2
+                    continue
                 start()
                 text.append(command[index + 1])
                 quoted = True
                 index += 2
             elif char in SHELL_OPERATORS:
                 finish()
+                if self.introducer is not None:
+                    raise _Unreadable("has a `<<` with no word after it")
                 operator = next(each for each in OPERATORS if command.startswith(each, index, stop))
                 if closes and operator == ")" and not depth:
                     return self.cut(tokens, spans), index + 1
                 depth += {"(": 1, ")": -1}.get(operator, 0)
                 if operator != "&&":
                     self.refuse(f"carries `{operator}`, which no admitted shape uses")
+                if operator in ("<<", "<<-"):
+                    self.introducer = operator == "<<-"
                 tokens.append(operator)
                 spans.append((index, index + len(operator)))
                 index += len(operator)
@@ -204,6 +247,8 @@ class _Lexer:
         if closes:
             raise _Unreadable("has an unclosed command substitution")
         finish()
+        if self.introducer is not None:
+            raise _Unreadable("has a `<<` with no word after it")
         return self.cut(tokens, spans), stop
 
     def double_quoted(self, index: int, stop: int, text: list[str]) -> int:
@@ -225,6 +270,9 @@ class _Lexer:
                 text.append(command[index:end])
                 index = end
                 continue
+            if inner == "\\" and index + 1 < stop and command[index + 1] == "\n":
+                index += 2  # a continuation, removed inside double quotes as outside them
+                continue
             if inner == "\\" and index + 1 < stop and command[index + 1] in '"\\$`':
                 index += 1
                 inner = command[index]
@@ -241,7 +289,9 @@ class _Lexer:
         """
         command = self.command
         if command.startswith("$(", index, stop):
+            self.nested += 1
             clauses, end = self.read(index + 2, stop, closes=True)
+            self.nested -= 1
             self.bodies.append((index, clauses))
             return end
         if command[index] == "`":
@@ -250,10 +300,36 @@ class _Lexer:
                 close += 2 if command[close] == "\\" else 1
             if close >= stop:
                 raise _Unreadable("has an unclosed command substitution")
+            self.nested += 1
             clauses, _ = self.read(index + 1, close, closes=False)
+            self.nested -= 1
             self.bodies.append((index, clauses))
             return close + 1
         return index + 1
+
+    def here_documents(self, index: int, stop: int) -> int:
+        """The offset past the bodies of the here-documents waiting on the newline before `index`.
+
+        Each body runs to the line equal to its delimiter, leading tabs
+        stripped for a `<<-`, and that line goes with it (Bash Reference Manual
+        §3.6.6 "Here Documents"). Bash reads a body its delimiter never ends to
+        the end of the input, with a warning; here that is unreadable instead,
+        because the likelier cause is a `<<` this reading took for one - a shift
+        inside `(( ))` - and everything after it would go unread unannounced.
+        """
+        command = self.command
+        for delimiter, strip_tabs in self.pending:
+            while True:
+                if index >= stop:
+                    raise _Unreadable(f"has a here-document that `{delimiter}` never ends")
+                end = command.find("\n", index, stop)
+                end = stop if end < 0 else end
+                line = command[index:end]
+                index = min(end + 1, stop)
+                if (line.lstrip("\t") if strip_tabs else line) == delimiter:
+                    break
+        self.pending.clear()
+        return index
 
     def cut(self, tokens: list[Word | str], spans: list[tuple[int, int]]) -> tuple[Clause, ...]:
         """The tokens cut into clauses at each `&&`."""
@@ -284,10 +360,18 @@ def shell_words(command: str) -> Reading:
     literal; in `"..."` a backslash escapes only `"`, a backslash, `$` and a
     backtick; outside quotes it escapes the next character; an operator is the
     longest match in `OPERATORS`; `#` opens a comment only where no word is in
-    progress; and a `$( )` or a backquote, quoted or not, runs a command, so
-    its body is read by these same rules into `Reading.substitutions`. Not
+    progress, and it runs to the end of its line; and a `$( )` or a backquote,
+    quoted or not, runs a command, so its body is read by these same rules into
+    `Reading.substitutions`. A newline is read as bash reads one, though no
+    field holds one, because `script_lines` hands this a script's lines: a
+    backslash before it removes both, quoted or not, as long as it is not in
+    single quotes; unquoted, it ends a command as `;` does, and the bodies of
+    the here-documents a `<<` or `<<-` opened before it are skipped to their
+    delimiters (§3.1.2.1 "Escape Character", §3.6.6 "Here Documents"). Not
     read, as bash would read them: a command run through `sh -c` or `eval`,
-    and `$'...'`, which the admitted shapes refuse at its `$`.
+    `$'...'`, which the admitted shapes refuse at its `$`, and a `<<` inside
+    `(( ))`, which reads as a here-document here and is unreadable unless a
+    line happens to match the word after it.
 
     Every operator is read rather than stopped at, because a pipe answering
     with another command's status is what the `-k` rule looks for. Every one
@@ -296,7 +380,8 @@ def shell_words(command: str) -> Reading:
     redirection or a subshell is a shape nobody has argued for. So are an
     unquoted character outside `PLAIN` and a `$` or backtick inside double
     quotes, where the shell expands it. A command the shell cannot read - an
-    unbalanced quote, a trailing backslash, an unclosed substitution - has no
+    unbalanced quote, a trailing backslash, an unclosed substitution, a `<<`
+    with no word after it, a here-document its delimiter never ends - has no
     clauses, and its refusal says why unless something earlier already had.
     """
     lexer = _Lexer(command)
@@ -306,3 +391,38 @@ def shell_words(command: str) -> Reading:
         return Reading((), lexer.refusal or str(unreadable))
     bodies = tuple(body for _, body in sorted(lexer.bodies, key=lambda opened: opened[0]))
     return Reading(clauses, lexer.refusal, bodies)
+
+
+def script_lines(script: str) -> tuple[tuple[str, int], ...]:
+    """The script cut where bash ends a line, each piece with the offset it starts at.
+
+    A line ends at a newline that stands outside every quote and substitution
+    and that no backslash escapes. So the lines a backslash, a quote or a
+    `$( )` carries a command across are one piece, and the bodies of the
+    here-documents a line opens come after its newline and belong to no piece,
+    since bash reads them as input rather than as commands (Bash Reference
+    Manual §3.1.2.1 "Escape Character", §3.6.6 "Here Documents"). A newline
+    after `&&` or `|` ends a piece too: the command goes on, and each piece
+    still reads whole.
+
+    Each piece is spelled as the script spells it, from where its line starts
+    to the newline ending it, so `shell_words` reads it as it stands in the
+    script. Its continuations, and the body of any here-document opened inside
+    a substitution, are left for that reading to remove: cut out here, a body
+    would leave its `<<` to take whatever line came next. Where the script
+    stops being readable, everything from the start of that line is one piece,
+    which `shell_words` declines in turn.
+    """
+    lexer = _Lexer(script)
+    try:
+        lexer.read(0, len(script), closes=False)
+    except _Unreadable:
+        pass  # the lines before it stand; the rest is the last piece, read as unreadable
+    pieces: list[tuple[str, int]] = []
+    start = 0
+    for end, resume in lexer.breaks:
+        pieces.append((script[start:end], start))
+        start = resume
+    if start < len(script):
+        pieces.append((script[start:], start))
+    return tuple(pieces)
