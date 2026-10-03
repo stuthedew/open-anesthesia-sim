@@ -40,6 +40,7 @@ from .model import (
     generator_defect_faults,
     generator_faults,
     is_generator,
+    is_under,
     live_recurrences,
     misread_faults,
     ranks_as_generator,
@@ -1088,11 +1089,6 @@ def _run_targets(arguments: Sequence[str]) -> list[str]:
     return targets
 
 
-def _inside(target: str, collected: Sequence[str]) -> bool:
-    """Whether a pytest target lies in one of the trees `check_command` collects."""
-    return any(target == root or target.startswith(f"{root}/") for root in collected)
-
-
 def _pytest_targets(clause: Clause) -> list[str] | None:
     """The paths a pytest clause runs, or `None` if it is not one to read.
 
@@ -1122,7 +1118,7 @@ def _pytest_targets(clause: Clause) -> list[str] | None:
     return _run_targets(arguments)
 
 
-def _redundant_pytest_clause(command: str, collected: Sequence[str]) -> str | None:
+def _redundant_pytest_clause(command: str, collected: tuple[str, ...]) -> str | None:
     """The clause that re-runs tests `check_command` already collects, if any.
 
     The shape `PL-6TP8` retired, reduced to the half that needs no judgment.
@@ -1158,12 +1154,12 @@ def _redundant_pytest_clause(command: str, collected: Sequence[str]) -> str | No
         return None
     for clause in pytest_clauses:
         targets = _pytest_targets(clause) or []
-        if all(_inside(target, collected) for target in targets):
+        if all(is_under(target, collected) for target in targets):
             return clause.text
     return None
 
 
-def _k_selector_clause(command: str, collected: Sequence[str]) -> str | None:
+def _k_selector_clause(command: str, collected: tuple[str, ...]) -> str | None:
     """The clause that narrows a pytest run with `-k` and answers with its status, if any.
 
     `PL-6TP8`'s first obligation on a command, made mechanical (`PL-Q8RQ`): its
@@ -1214,7 +1210,7 @@ def _k_selector_clause(command: str, collected: Sequence[str]) -> str | None:
             continue
         if any(argument.startswith("--cov") for argument in arguments):
             continue
-        if all(_inside(target, collected) for target in _run_targets(arguments)):
+        if all(is_under(target, collected) for target in _run_targets(arguments)):
             return clause.text
     return None
 
@@ -3993,7 +3989,7 @@ def _discriminating_clauses(command: str, config: Config) -> list[str]:
         if (
             targets is not None
             and config.collected_test_paths
-            and all(_inside(target, config.collected_test_paths) for target in targets)
+            and all(is_under(target, config.collected_test_paths) for target in targets)
         ):
             continue
         found.append(text)

@@ -41,7 +41,14 @@ from pathlib import Path
 from . import vcs
 from .arming import RECORDS
 from .config import Config
-from .model import CLOSED_STATUSES, WITHDRAWN_MARKER, Item, _split_list, parse_front_matter
+from .model import (
+    CLOSED_STATUSES,
+    WITHDRAWN_MARKER,
+    Item,
+    _split_list,
+    is_under,
+    parse_front_matter,
+)
 from .shell import Clause, Word, shell_words
 
 # Suppressions matched as text. `noqa` is deliberately absent: a project whose
@@ -1331,7 +1338,7 @@ def reads_any(command: str, paths: Collection[str]) -> bool:
     """Whether this command reads any of `paths`.
 
     A directory named by the command covers everything under it - `grep -rq …
-    docs/items/` reads an item file the branch added - which is `_within`'s
+    docs/items/` reads an item file the branch added - which is `is_under`'s
     containment rule, the same one an item's `touches` is judged by.
 
     Containment is offered only to a candidate carrying a `/`, and the rest
@@ -1342,7 +1349,7 @@ def reads_any(command: str, paths: Collection[str]) -> bool:
     """
     named = command_paths(command)
     directories = tuple(candidate for candidate in named if "/" in candidate)
-    return any(path in named or _within(path, directories) for path in paths)
+    return any(path in named or is_under(path, directories) for path in paths)
 
 
 #: Appended to a commission check's detail when it is reporting rather than
@@ -1569,7 +1576,7 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
     **Both halves read `-z`, the one form in which git quotes no path**
     (`PL-8HSX`): the committed half because `changed_path_args` asks every read
     for it, parsed by `vcs.listed_paths`, and `status` by its own flag. A quoted
-    path starts with `"`, so `_within` matches it against nothing protected.
+    path starts with `"`, so `is_under` matches it against nothing protected.
     Git quotes a path outside ASCII while `core.quotePath` is on, one holding a
     tab, newline, `"` or `\\` however that is set, and in `status` one holding
     a space as well: measured on git 2.43.0, 2026-09-25, a
@@ -1595,15 +1602,6 @@ def changed_paths(root: Path, base: str, commits: tuple[str, ...] = ()) -> tuple
             paths.add(next(entries, ""))
     paths.discard("")
     return tuple(sorted(paths))
-
-
-def _within(path: str, allowed: tuple[str, ...]) -> bool:
-    candidate = path.strip().strip("/")
-    for entry in allowed:
-        target = entry.strip().strip("/")
-        if target and (candidate == target or candidate.startswith(target + "/")):
-            return True
-    return False
 
 
 def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
@@ -1810,7 +1808,7 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     and still fails, which is the case the audit exists for and the reason
     this reads the diff rather than the path.
     """
-    if _within(path, (RECORDS,)):
+    if is_under(path, (RECORDS,)):
         return "record" if _added_record(root, base, path) else ""
     scope = ["git", "show", "--format=", *commits] if commits else ["git", "diff", f"{base}...HEAD"]
     status, diff = _run([*scope, "--", path], root)
@@ -2463,7 +2461,7 @@ def _check_item(
     # to the front matter; `--self` reports it, as it reports every commission
     # check.
     scope = commission.touches or item.touches
-    candidates = [p for p in paths if not _within(p, scope) and Path(p).name != own_file]
+    candidates = [p for p in paths if not is_under(p, scope) and Path(p).name != own_file]
     # An edit the workflow itself asked for is separated from the rest rather
     # than excused silently: the audit says which paths it declined to count
     # and why, so a reader can disagree with the exemption (`PL-66PR`,
@@ -2472,11 +2470,11 @@ def _check_item(
     sanctioned = {
         path: kind
         for path in candidates
-        if _within(path, (config.items_dir, RECORDS))
+        if is_under(path, (config.items_dir, RECORDS))
         and (kind := sanctioned_queue_edit(root, base, commits, path))
     }
     outside = [path for path in candidates if path not in sanctioned]
-    widened = [path for path in outside if commission.touches and _within(path, item.touches)]
+    widened = [path for path in outside if commission.touches and is_under(path, item.touches)]
     if outside:
         detail = f"{len(outside)} path(s) outside"
         if widened:
@@ -2531,7 +2529,7 @@ def _check_item(
             )
         )
 
-    protected = [p for p in paths if _within(p, config.protected_paths)]
+    protected = [p for p in paths if is_under(p, config.protected_paths)]
     report.checks.append(
         Check(
             "no protected path modified",
@@ -2543,7 +2541,7 @@ def _check_item(
         )
     )
 
-    gates = [p for p in paths if _within(p, config.gate_paths)]
+    gates = [p for p in paths if is_under(p, config.gate_paths)]
     report.checks.append(
         Check(
             "the checks themselves are unedited",

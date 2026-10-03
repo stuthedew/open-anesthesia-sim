@@ -109,7 +109,8 @@ source with `ast`, and `tests/` is free to use the language `.python-version`
 pins, so it can only run under the project interpreter -
 `tests/unit/test_tools_portability.py` states that rule and names
 `contrast_check.py` and `import_boundary_check.py` as the other two. Like them,
-this file itself imports only the standard library and parses at the declared
+this file itself imports only what that suite admits - the standard library,
+and the in-tree `docket` package for `is_under` - and parses at the declared
 floor, which is what keeps it in that suite's scope.
 """
 
@@ -124,6 +125,9 @@ import tomllib
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
+
+from docket.model import is_under  # noqa: E402
 
 #: Where this check looks. `subprojects/*/tests/` is out of scope: those trees
 #: are already covered whole by the `subprojects` entry, so no file in them can
@@ -181,28 +185,6 @@ def imports_product(tree: ast.Module) -> bool:
 def is_test_file(name: str) -> bool:
     """Whether pytest collects a file of this name, rather than it supporting what it collects."""
     return any(fnmatch.fnmatchcase(name, pattern) for pattern in TEST_FILE_PATTERNS)
-
-
-def is_covered(path: str, roots: tuple[str, ...]) -> bool:
-    """Whether one path falls inside any of `roots`, as `workflow_paths` reads it.
-
-    The same `/`-separated prefix comparison as `docket.model.is_under`, which
-    is what actually assigns the lane. Restated here rather than imported
-    because every tool in this directory may depend on the standard library
-    only, so that a bare checkout can run it; `tests/unit/test_tools_portability.py`
-    is the rule. The duplication is pinned instead by
-    `tests/unit/test_workflow_paths_check.py`, which imports both and asserts
-    they agree on this repository's own list - so a change to one that the
-    other does not follow fails a test rather than going unnoticed.
-    """
-    candidate = path.strip().strip("/")
-    for root in roots:
-        target = root.strip().strip("/")
-        if not target:
-            continue
-        if candidate == target or candidate.startswith(target + "/"):
-            return True
-    return False
 
 
 def declared_workflow_paths(root: Path) -> tuple[str, ...]:
@@ -267,7 +249,7 @@ def gate_problems(root: Path) -> list[str]:
         f"`docket verify` would accept a delegated diff that relaxed it. Add "
         f'"{relative}" to gate_paths, or an entry covering it'
         for relative in ruff_configs(root)
-        if not is_covered(relative, roots)
+        if not is_under(relative, roots)
     ]
 
 
@@ -296,7 +278,7 @@ def problems(root: Path) -> list[str]:
             found.append(f"{relative} could not be parsed, so its side is unknown: {error}")
             continue
         product = imports_product(tree)
-        covered = is_covered(relative, roots)
+        covered = is_under(relative, roots)
         # A test file only: a support module that imports no product may
         # serve either side, and telling one to join the list is `PL-12P8`.
         if not product and not covered and is_test_file(path.name):
@@ -356,7 +338,7 @@ def unplaced_ancestor(relative: str, entries: tuple[str, ...]) -> str:
     parts = PurePosixPath(relative.strip("/")).parts
     for depth in range(1, len(parts) + 1):
         prefix = "/".join(parts[:depth])
-        if not any(entry.strip().strip("/").startswith(prefix + "/") for entry in entries):
+        if not any(is_under(entry, (prefix,)) for entry in entries):
             return prefix
     return relative
 
@@ -378,7 +360,7 @@ def placement_problems(root: Path) -> list[str]:
         return []
     found: list[str] = []
     for entry in product:
-        if is_covered(entry, workflow):
+        if is_under(entry, workflow):
             found.append(
                 f'"{entry}" is in product_paths, but workflow_paths covers it, so the two lists '
                 f"disagree about its side. Remove it from one of them"
@@ -386,7 +368,7 @@ def placement_problems(root: Path) -> list[str]:
     listed_as_product = {entry.strip().strip("/") for entry in product}
     for entry in workflow:
         # An entry both lists name verbatim was reported once already, above.
-        if entry.strip().strip("/") not in listed_as_product and is_covered(entry, product):
+        if entry.strip().strip("/") not in listed_as_product and is_under(entry, product):
             found.append(
                 f'"{entry}" is in workflow_paths, but product_paths covers it, so the two lists '
                 f"disagree about its side. Remove it from one of them"
@@ -407,7 +389,7 @@ def placement_problems(root: Path) -> list[str]:
         prefixes.update("/".join(parts[:depth]) for depth in range(1, len(parts) + 1))
         if parts[0] == TESTS_DIR.name:
             continue
-        if is_covered(relative, workflow) or is_covered(relative, product):
+        if is_under(relative, workflow) or is_under(relative, product):
             continue
         ancestor = unplaced_ancestor(relative, entries)
         unplaced[ancestor] = unplaced.get(ancestor, 0) + 1
@@ -447,7 +429,7 @@ def main() -> int:
         tests = [path for path in files if is_test_file(path.name)]
         support = [path for path in files if not is_test_file(path.name)]
         apparatus = sum(
-            1 for path in tests if is_covered(path.relative_to(args.root).as_posix(), roots)
+            1 for path in tests if is_under(path.relative_to(args.root).as_posix(), roots)
         )
         declared = sum(
             1
