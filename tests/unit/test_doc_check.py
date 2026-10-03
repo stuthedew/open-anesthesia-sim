@@ -1113,6 +1113,22 @@ def test_a_marked_citation_of_an_item_no_file_holds_is_an_error(tmp_path: Path) 
     )
 
 
+def test_a_marked_citation_resolves_to_a_brief_only_by_docket_s_name_grammar(
+    tmp_path: Path,
+) -> None:
+    """Which file holds an id's brief is `vcs.ITEM_FILE_RE`'s reading of its name (`PL-5QG4`).
+
+    A glob of this tool's own took a slug-less `PL-T3ST.md` for the brief and
+    passed the citation against it, where every `docket` reader of the store's
+    history reads that name as no item's.
+    """
+    readme = '# Demo\n\nWho holds an item is `PL-T3ST` § "Design round".\n'
+    root = _repo(tmp_path, readme=readme)
+    _item(root, "PL-T3ST", _brief("done", "**Design round.** The recorded claim decides."))
+
+    assert any("quotes PL-T3ST, which no file under docs/items/ holds" in e for e in _errors(root))
+
+
 def test_an_item_listed_under_a_heading_is_not_held_to_its_brief(tmp_path: Path) -> None:
     """After an id only the mark claims the brief holds the words.
 

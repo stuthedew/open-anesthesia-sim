@@ -98,6 +98,7 @@ from .claims import (
 from .model import CLOSED_STATUSES, parse_front_matter
 from .store import ID_PATTERN
 from .vcs import (
+    ITEM_FILE_RE,
     REMOTE,
     RemoteHeads,
     Runner,
@@ -711,26 +712,41 @@ def _first_add(
 
     By id rather than by path, since a retitle renames the file: `--no-renames`
     makes the new name an add of its own, and the oldest add is the capture or
-    the copy either way. `None` where git gave no answer it can be read from.
+    the copy either way. Whose file an add is, is `vcs.ITEM_FILE_RE`'s reading
+    of its name, as every other reader of the store's history takes it, rather
+    than a pathspec spelling the grammar again (`PL-5QG4`). `None` where git
+    gave no answer it can be read from.
     """
     done = _git(
         [
             "log",
             "--no-renames",
             "--diff-filter=A",
-            "--format=%H %aI",
+            "--name-only",
+            "--format=%x00%H %aI",
             rev,
             "--not",
             base,
             "--",
-            f":(glob){items_dir.strip('/')}/{key}-*",
+            items_dir.strip("/"),
         ],
         root,
     )
-    lines = [line.split() for line in done.out.splitlines() if line.strip()]
-    if done.code != 0 or not lines or len(lines[-1]) != 2:
+    if done.code != 0:
         return None
-    commit, stamp = lines[-1]
+    # Newest first, so the last commit naming `key`'s file is the oldest add.
+    oldest: list[str] = []
+    stamped: list[str] = []
+    for line in done.out.splitlines():
+        if line.startswith("\x00"):
+            stamped = line[1:].split()
+            continue
+        found = ITEM_FILE_RE.match(line.strip().rsplit("/", 1)[-1])
+        if found is not None and found.group(1) == key:
+            oldest = stamped
+    if len(oldest) != 2:
+        return None
+    commit, stamp = oldest
     try:
         return commit, datetime.fromisoformat(stamp)
     except ValueError:
