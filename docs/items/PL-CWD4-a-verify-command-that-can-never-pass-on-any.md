@@ -3,11 +3,13 @@ id: PL-CWD4
 title: A verify: command that can never pass on any tree is indistinguishable from one whose work is simply not done, so PL-4PC5 carried a dead command for five days after wave stopped printing the line it grepped
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect
 feature: verify-command-meaning
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+touches: docs/items
 added: 2026-09-19
+closed: 2026-10-03
+verify: grep -qF 'Answered 2026-10-03: Q1 ratified' docs/items/PL-CWD4-a-verify-command-that-can-never-pass-on-any.md
 ---
 
 **Problem.** A verify: command that can never pass on any tree is indistinguishable from one whose work is simply not done, so PL-4PC5 carried a dead command for five days after wave stopped printing the line it grepped
@@ -126,3 +128,15 @@ item by exit status alone. One branch on the replayed status, one test.
 
 **What would change the answer.** A second open item whose `grep` names a path
 that has since moved. One reopens this, with the exit-2 report as the build.
+
+## Answers 2026-10-03
+
+**Answered 2026-10-03: Q1 ratified** (project owner, 2026-10-03, ratified,
+over building the file-half advisory on the admitted shapes, the filed
+recommendation). Not built. The record: a `verify:` that fails is read as
+outstanding; `PL-1P5V`'s allowlist is the enforcement at write; the
+reworded-line half is undecidable before the work; and the file half had
+nothing to fire on, 0 of 125 commands on 2026-10-03. A second open item whose
+`grep` names a path that has since moved reopens this, with the replay's
+`grep` exit-2 report as the build. Closed on this record in the design round's
+own pull request, with no build thread.
