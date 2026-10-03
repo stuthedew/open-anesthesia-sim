@@ -406,10 +406,13 @@ def test_an_annihilated_propagator_cannot_reach_the_accounting_check(
     0.0 - the plausible-looking number `CLAUDE.md` puts above every other
     failure, produced with every guard in the path satisfied.
 
-    What fixes it is upstream, in `core/matrix_exponential.py`, which now
-    refuses a zero propagator because `exp(A*dt)` is nonsingular. This test
-    pins the end of the path rather than that refusal, so it still fails if
-    the guard is removed and the arithmetic reverts.
+    What fixed it is upstream, in `core/matrix_exponential.py`, which refused
+    a zero propagator because `exp(A*dt)` is nonsingular. Since `PL-2MD9` this
+    volume stops earlier, at `MAXIMUM_SQUARINGS`, and the constant state can no
+    longer be annihilated with the rest - which is why the cap is needed, since
+    restoring that state alone let this volume advance again with every other
+    entry destroyed. This test pins the end of the path rather than either
+    refusal, so it still fails if the arithmetic reverts to returning a value.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -419,6 +422,27 @@ def test_an_annihilated_propagator_cannot_reach_the_accounting_check(
         system.advance(0.1)
 
     assert system.alveoli.agent_amount_l == 0.0
+    assert system.agent_simulation_validator.delivered_agent_l == 0.0
+
+
+def test_a_propagator_wrong_in_every_entry_cannot_reach_the_accounting_check() -> None:
+    """`PL-2MD9`: the regression at an alveolar volume of 1e-18 L.
+
+    The propagator there needs 58 squarings, and each can double the error the
+    scaled propagator carries. Before the cap, every entry came back wrong by
+    about 100% and the run advanced three steps with its accounting check
+    passing: 6.4e-32 L delivered where the vaporizer had delivered 0.0004 L,
+    with the stored and exhausted totals destroyed to match. That is
+    `PL-3PRZ`'s shape again, a residual formed from quantities one failure
+    reached together, and it is refused now before any arithmetic runs.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    system.alveoli.gas_volume_l = 1e-18
+
+    with pytest.raises(SimulationNumericalError, match="could not be completed"):
+        system.advance(0.1)
+
     assert system.agent_simulation_validator.delivered_agent_l == 0.0
 
 

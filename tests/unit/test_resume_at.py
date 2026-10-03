@@ -152,12 +152,25 @@ def _like(parent: AgentUptakeSystem) -> AgentUptakeSystem:
 
 
 def test_a_resumed_system_holds_the_state_it_was_given() -> None:
-    """Element for element across the six fractions, not to within a tolerance.
+    """Each fraction arrives within the one rounding its compartment makes.
 
-    This is the property the branch's whole claim rests on. A fork that opened
-    a rounding away from its parent would be a reproduction of the case rather
-    than a continuation of it, and the difference is invisible in the first
-    frame and compounding thereafter.
+    A compartment stores an amount and derives its fraction back from its
+    capacity, so writing a fraction and reading it back is not the identity.
+    `PL-J2TD` measured a different float for 11.7% of alveolar fractions, and
+    for 3.5% to 14% of fractions in the alveolar, venous and tissue
+    compartments no stored amount reads back as the value given at all
+    (`PL-2MD9`). That is why a branch's definition opens from the parent's
+    `Keyframe` and never from this system's `state_vector()`: the exactness a
+    branch rests on is that definition's, and
+    `tests/integration/test_controller.py` holds a branch against its parent
+    element for element on the canonical path.
+
+    What this system can promise is that `resume_at` writes the state it was
+    given and nothing else reaches it - one multiplication into each
+    compartment and one division out, which is provably within one unit in the
+    last place of the value given. This asserted equality until `PL-2MD9`
+    moved the canonical path by a unit in the last place, after which the six
+    fractions it draws no longer happened to round-trip.
     """
 
     system_parent, definition = _run()
@@ -169,7 +182,9 @@ def test_a_resumed_system_holds_the_state_it_was_given() -> None:
     resumed = system.state_vector()
 
     for entry in FRACTION_STATES:
-        assert resumed[entry] == opening.state[entry], f"state[{entry}] did not arrive intact"
+        assert abs(resumed[entry] - opening.state[entry]) <= math.ulp(opening.state[entry]), (
+            f"state[{entry}] did not arrive within the rounding its compartment makes"
+        )
 
     assert resumed[UNIT_STATE] == 1.0
 

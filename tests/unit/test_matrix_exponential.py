@@ -11,13 +11,14 @@ step cannot carry a compartment below zero through a rounding artifact and be
 reported as a numerical failure of the model.
 """
 
-from math import exp, isclose, ulp
+from math import exp, expm1, isclose
 
 import pytest
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.matrix_exponential import (
     MAXIMUM_SERIES_ARGUMENT_NORM,
+    MAXIMUM_SQUARINGS,
     Matrix,
     matrix_exponential,
     multiply,
@@ -139,23 +140,74 @@ def test_a_constant_forcing_row_integrates_exactly() -> None:
     assert advanced[0] == pytest.approx(rate * interval_s, rel=1e-14)
 
 
-@pytest.mark.parametrize("interval_s", [0.1, 60.0, 3600.0])
-def test_the_constant_state_survives_the_shift(interval_s: float) -> None:
-    """Bound the one cost the module's shift is documented as having.
+FORCED_DECAY_LEVEL = 0.04
+"""Where `_forced_decay` settles: the forcing column's exact long-run entry."""
 
-    A state whose own rate is far below the shift - the constant forcing
-    state, whose exact propagator entry is 1 - is recovered as a product of
-    two separately rounded factors rather than landing on 1 exactly. It must
-    stay within a few units in the last place, because every accumulator row
-    integrates against it: a constant that drifted would scale delivered agent
-    with it.
+
+def _forced_decay(rate_per_s: float) -> Matrix:
+    """`d x/dt = rate (level - x)`, with the level carried by a constant state.
+
+    The shape of every forcing term in the uptake system: a state driven
+    toward a level the constant state supplies, as the circuit is toward the
+    dialled fraction. Its closed form over an interval `t` is
+    `x(t) = level (1 - exp(-rate t))` from `x = 0`, which is the forcing
+    column's entry, and the constant's row is the identity's.
     """
 
-    matrix = ((-0.5, 0.5, 0.0), (0.0125, -0.0125, 0.0), (0.0, 0.0, 0.0))
+    return ((-rate_per_s, rate_per_s * FORCED_DECAY_LEVEL), (0.0, 0.0))
 
-    constant = matrix_exponential(matrix, interval_s)[2][2]
 
-    assert abs(constant - 1.0) <= 8.0 * ulp(1.0)
+@pytest.mark.parametrize(
+    ("matrix", "interval_s"),
+    [
+        (((-0.5, 0.5, 0.0), (0.0125, -0.0125, 0.0), (0.0, 0.0, 0.0)), 0.1),
+        (((-0.5, 0.5, 0.0), (0.0125, -0.0125, 0.0), (0.0, 0.0, 0.0)), 60.0),
+        (((-0.5, 0.5, 0.0), (0.0125, -0.0125, 0.0), (0.0, 0.0, 0.0)), 3600.0),
+        (_forced_decay(1e4), 60.0),
+        (_forced_decay(1e7), 1.0),
+        (_forced_decay(2e8), 0.1),
+        (_forced_decay(2.0**28), 1.0),
+    ],
+)
+def test_a_zero_row_propagates_to_its_exact_basis_row(matrix: Matrix, interval_s: float) -> None:
+    """`PL-2MD9`: a state nothing moves is moved by no interval, to the last bit.
+
+    A zero row of `A` is a zero row of every power of it, so the same row of
+    `exp(A * t)` is the identity's exactly. The shift used to recover it as a
+    product of two rounded factors, `1 + delta`, and the squarings raised that
+    to `(1 + delta) ** 2**s`. The last four cases take 24, 28, 29 and 32
+    squarings, the most the module performs, and the first three are where
+    that drift was measured before the fix - 0.9999999981 at 24, 0.99999997
+    at 28 and 0.99999994 at 29 - against `governing_equations.UNIT_STATE`'s
+    guarantee that no step can perturb it.
+    """
+
+    constant_row = len(matrix) - 1
+    basis_row = tuple(float(column == constant_row) for column in range(len(matrix)))
+
+    assert matrix_exponential(matrix, interval_s)[constant_row] == basis_row
+
+
+@pytest.mark.parametrize(("rate_per_s", "interval_s"), [(1e4, 60.0), (1e7, 1.0), (2e8, 0.1)])
+def test_the_forcing_integral_does_not_carry_the_constant_rows_drift(
+    rate_per_s: float, interval_s: float
+) -> None:
+    """The drift reached every state that reads the constant, not only the constant.
+
+    Each squaring multiplies the constant's entry into the forcing column, so
+    before `PL-2MD9` this column was off by the same factor as the constant:
+    -1.9e-9, -3.0e-8 and -6.0e-8 relative at these three cases, a delivered
+    fraction scaled without any setting changing. With the row restored it is
+    within 1.4e-15 of the closed form at all three, measured 2026-10-03, and
+    the tolerance below sits ten times above that and five orders below the
+    drift.
+    """
+
+    propagator = matrix_exponential(_forced_decay(rate_per_s), interval_s)
+
+    assert propagator[0][1] == pytest.approx(
+        FORCED_DECAY_LEVEL * -expm1(-rate_per_s * interval_s), rel=1.4e-14
+    )
 
 
 @pytest.mark.parametrize(
@@ -333,12 +385,17 @@ def test_multiply_rejects_a_ragged_operand() -> None:
 
 
 def test_refuses_the_zero_matrix_the_squarings_can_produce() -> None:
-    """The route an alveolar volume of 1e-300 L reaches.
+    """Every mode of a system with no constant state decaying past the floor.
 
-    The scaled interval is small enough that the series entries land near the
-    subnormal floor; the first squaring multiplies two of them to zero and
-    every squaring after that keeps the matrix there. The zero matrix is finite
-    and entrywise nonnegative, so both properties this module states hold of it.
+    Over 100 s the two modes fall to `exp(-1000)` and `exp(-900)`, and eleven
+    squarings carry both below the smallest subnormal. The zero matrix is
+    finite and entrywise nonnegative, so both properties this module states
+    hold of it.
+
+    This was first reached at an alveolar volume of 1e-300 L (`PL-3PRZ`),
+    which since `PL-2MD9` stops earlier, at `MAXIMUM_SQUARINGS`; and a matrix
+    with a constant state no longer reaches it at all, because that state's row
+    is kept as the identity's.
     """
 
     with pytest.raises(
@@ -349,7 +406,47 @@ def test_refuses_the_zero_matrix_the_squarings_can_produce() -> None:
             r"solves the system$"
         ),
     ):
-        matrix_exponential(((-1e299, 0.0), (0.0, 0.0)), 0.1)
+        matrix_exponential(((-10.0, 0.0), (0.0, -9.0)), 100.0)
+
+
+def test_refuses_an_interval_needing_more_squarings_than_its_error_bound_allows() -> None:
+    """`PL-2MD9`: past `MAXIMUM_SQUARINGS` the result is refused, not returned.
+
+    Each squaring can double the error the scaled propagator carries, and past
+    32 of them that bound passes one part in a million. A rate of 2**29 per
+    second over 1 s needs 33. The refusal comes before any arithmetic, which is
+    what stops an alveolar volume of 1e-18 L returning a propagator wrong in
+    every entry.
+    """
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            r"^the shifted matrix has a row sum of 536870912\.0 over 1\.0 s, which takes "
+            r"33 squarings to scale to the series bound of 0\.0625; past 32 the rounding "
+            r"error they amplify can exceed one part in a million, so the result could not "
+            r"be established in double precision$"
+        ),
+    ):
+        matrix_exponential(((-(2.0**29), 0.0), (0.0, 0.0)), 1.0)
+
+
+def test_the_most_squarings_the_module_performs_are_still_performed() -> None:
+    """The boundary of the refusal above, from the side it must not catch.
+
+    A rate of 2**28 per second over 1 s needs exactly `MAXIMUM_SQUARINGS`, and
+    is propagated: its decaying mode is far below the smallest subnormal and
+    its constant state is the identity's.
+    """
+
+    shifted_row_sum = 2.0**28
+
+    assert MAXIMUM_SQUARINGS == 32
+    assert shifted_row_sum / MAXIMUM_SERIES_ARGUMENT_NORM == 2.0**MAXIMUM_SQUARINGS
+    assert matrix_exponential(((-shifted_row_sum, 0.0), (0.0, 0.0)), 1.0) == (
+        (0.0, 0.0),
+        (0.0, 1.0),
+    )
 
 
 def test_a_single_mode_decaying_past_the_subnormal_floor_is_not_refused() -> None:
