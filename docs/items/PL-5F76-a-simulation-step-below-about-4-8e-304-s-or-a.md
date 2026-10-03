@@ -44,11 +44,11 @@ floor there needs its own argument, not merely the arithmetic one above.
 Regression tests at `4.7e-304` and `10**5000` that fail today.
 
 **Narrowed at triage, 2026-10-03.** The step half is `PL-YZ17`'s: pull request
-1306 adds `MINIMUM_SIMULATION_STEP_S` and refuses a step below it, so this item
-keeps the count half only, as `PL-TS7L` recorded. Reproduced on `main` at
-triage: `SimulationState(step_count=10**5000, simulation_step_s=0.1)` raises
+1306 (`7a6ec289`, merged during this pass) declares a 1 ms floor on the step, so this item
+keeps the count half only, as `PL-TS7L` recorded. Reproduced on `main` after
+1306 merged: `SimulationState(step_count=10**5000, simulation_step_s=0.1)` raises
 `ValueError` ("Exceeds the limit (4300 digits) for integer string conversion"),
-and a step of `4.7e-304` s still raises `OverflowError` until 1306 merges.
+while a step of `4.7e-304` s is now refused by name.
 
 **Done when.** `SimulationState(step_count=10**5000, simulation_step_s=0.1)`
 raises `SimulationConfigurationError` naming the supported limit, without

@@ -59,7 +59,8 @@ alone has five members filed since its fact's heads closed on 2026-09-23.
 
 **State at triage, 2026-10-03.** Pull requests 1308 (`bafb6438`) and 1309
 (`8d916ddf`) have merged, so clusters 1 and 2 can be read on `main`; 1306,
-which carries cluster 3's other members, has not. The triage pass recorded each
+which carries cluster 3's other members, merged as `7a6ec289` during this
+pass, so all three can be read there now. The triage pass recorded each
 member's own `**Generator check.**` and left the heads to this item: cluster 1
 is `PL-P72R` and `PL-Z8RS`, with `PL-F66M` an instance of `PL-NGBM` instead;
 cluster 2's members on `main` are `PL-QWF8`, `PL-JV5Q` and `PL-Z64T`, the last
