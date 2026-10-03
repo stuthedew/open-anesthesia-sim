@@ -357,6 +357,10 @@ change lands first. Treating a shared file as a refusal is what `PL-VRMK`
 fixed, and it had already cost a real answer — Gate 1's science half all
 declares `docs/MODEL.md`, so the whole of it read as unstartable at once.
 
+**The bare batch offers only startable work**, the population `docket next`
+ranks, and names the decisions and the work in flight beneath it, so it can be
+handed out as it stands (`PL-4ZK8`).
+
 The `<id>` form adds what the branches in flight have **already changed**,
 read from the branches rather than from anybody's `touches`. That section is
 the stronger evidence of the two — it fires only where work is underway, and it
