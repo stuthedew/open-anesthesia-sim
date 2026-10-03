@@ -2964,8 +2964,9 @@ def _ready_with_an_open_blocker(report: Report, known_items: dict[str, Item]) ->
     This is `PL-ZBRB`'s defect displaced by one step rather than fixed: that
     advisory made an undeclared prose prerequisite visible, and this is the
     state an author reaches after acting on it and stopping one field early.
-    `PL-ZBRB`'s message has to name both fields to work around it, which is a
-    message doing a checker's job.
+    `PL-ZBRB`'s message names both fields so that one repair satisfies both
+    checks; this error is the backstop for the half-repair, not the reason the
+    message is worded as it is (`PL-TP5M`).
 
     **`needs-decision` is deliberately not reached**, though it can hold the
     same contradiction. Forcing it to `blocked` would take it out of
@@ -3082,10 +3083,11 @@ def _undeclared_prerequisites(item: Item, known: dict[str, Item]) -> list[tuple[
     The message names `status: blocked` alongside the edge because `blocked-by`
     on its own changes nothing here: `plan` filters on `status`, so an item can
     carry the edge, satisfy this check, and still be offered ahead of the work
-    it waits on. Naming only the field this check reads would be a fix that
-    does not fix what it claims to - the same silent wrong answer, moved one
-    step along. Three items are in that state today; `PL-KBD0` is whether the
-    checker should hold the two fields together.
+    it waits on. Since `PL-KBD0` (2026-09-13) `_ready_with_an_open_blocker`
+    refuses that state outright, and the message still names both because
+    one repair then satisfies both checks: a reader told only the field would
+    land on that error at the next run (`PL-TP5M`, the two read side by side
+    on 2026-10-03).
 
     What it cannot see, which is most of the problem:
 
