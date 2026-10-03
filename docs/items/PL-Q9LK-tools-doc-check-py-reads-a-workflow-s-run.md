@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 payoff: a workflow step whose command is continued across lines or feeds a heredoc keeps its path check, and a heredoc body naming a path is not read as a command that runs it
 verify: grep -q 'def test_workflow_commands_reads_a_script_as_bash_does' tests/unit/test_doc_check.py
+recurrences: 2026-10-03 PL-Z8RS
 ---
 
 **Problem.** tools/doc_check.py reads a workflow's run: script one line at a time through docket's one-line reader, so a heredoc body's lines are read as commands, and a command continued by a backslash or a quote across lines is declined rather than read

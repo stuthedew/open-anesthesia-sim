@@ -734,6 +734,30 @@ def test_an_absent_marker_covers_only_the_paragraph_it_sits_under(tmp_path: Path
     assert any("cites `setup.py`, which does not exist" in e for e in errors)
 
 
+def test_a_path_cited_after_a_wrapped_span_on_its_line_is_checked(tmp_path: Path) -> None:
+    """`PL-9L39`: a span wrapped across a line break is one span, as docket reads one.
+
+    Read a line at a time, the wrapped span's closing run opened a span that the
+    next citation's opening run closed, so the citation read as prose and went
+    unchecked; `subprojects/docket/README.md` held one that way.
+    """
+    readme = f"{README}\nRun `bin/docket\nwave`, then read `docs/missing.md` for it.\n"
+
+    errors = _errors(_repo(tmp_path, readme=readme))
+
+    assert any("cites `docs/missing.md`, which does not exist" in e for e in errors)
+
+
+def test_a_path_cited_as_a_span_in_a_fenced_block_is_checked(tmp_path: Path) -> None:
+    """A fence holds no code span in CommonMark, but a package map's comments
+    cite paths as spans, and those are held to the tree as well (`PL-9L39`)."""
+    readme = f"{README}\n```text\nrun.py  # reads `docs/missing.md`\n```\n"
+
+    errors = _errors(_repo(tmp_path, readme=readme))
+
+    assert any("cites `docs/missing.md`, which does not exist" in e for e in errors)
+
+
 def test_an_absent_marker_beside_a_provenance_marker_leaves_both_readable(tmp_path: Path) -> None:
     """Sibling markers are skipped when either finds its paragraph."""
     model = MODEL.replace(
@@ -1685,6 +1709,12 @@ def test_candidates_reports_a_distinctive_identifier_without_backticks(
     assert "as code: thing." in output
 
 
+def test_a_term_is_code_only_inside_a_span_docket_reads() -> None:
+    """`PL-9L39`: a count of backticks read a double-backtick span inside out."""
+    assert doc_check.mentions("token", "``a token``")
+    assert not doc_check.mentions("token", "``a`b`` token")
+
+
 def test_candidates_does_not_read_a_prose_line_beginning_class_as_a_definition(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1987,6 +2017,13 @@ def test_a_documented_target_the_makefile_never_names_is_an_error(tmp_path: Path
 
 def test_a_target_named_in_a_fenced_block_is_read(tmp_path: Path) -> None:
     errors = _errors(_with_make(tmp_path, mentions="\n```bash\nmake lint\n```\n"))
+
+    assert any("make lint" in message for message in errors)
+
+
+def test_a_target_named_in_a_span_wrapped_across_a_line_is_read(tmp_path: Path) -> None:
+    """`PL-9L39`: the span is docket's reading of one, which a line break does not end."""
+    errors = _errors(_with_make(tmp_path, mentions="\nRun `make\nlint` first.\n"))
 
     assert any("make lint" in message for message in errors)
 
@@ -4071,6 +4108,17 @@ def test_math_shell_snippet_is_not_an_unclosed_expression(tmp_path: Path) -> Non
     body = 'Comparing `"$upstream..HEAD"` against a deleted tip overcounts.\n'
 
     assert _math_errors(tmp_path / "repo", "docs/NOTE.md", body) == []
+
+
+def test_math_between_backtick_runs_of_unequal_length_is_reported(tmp_path: Path) -> None:
+    r"""`PL-9L39`: two backticks are not closed by three, so the `\(t\)` is prose.
+
+    The run-pairing regex closed a run with the first as long, inside a longer
+    run as readily as alone, and blanked the delimiter GitHub renders as `(t)`.
+    """
+    body = "The step `` \\(t\\) ``` is read.\n"
+
+    assert len(_math_errors(tmp_path / "repo", "docs/NOTE.md", body)) == 2
 
 
 def test_math_display_fence_is_quiet(tmp_path: Path) -> None:

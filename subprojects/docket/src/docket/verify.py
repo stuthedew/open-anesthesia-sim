@@ -49,6 +49,7 @@ from .model import (
     is_under,
     parse_front_matter,
 )
+from .release import CODE_SPAN_PATTERN
 from .shell import Clause, Word, shell_words
 
 # Suppressions matched as text. `noqa` is deliberately absent: a project whose
@@ -186,7 +187,10 @@ QUOTING_SUFFIXES = (".py", ".pyi")
 #: backtick syntax, so a backtick is always inside a string or a comment
 #: already - but a diff hands this *one line* of a multi-line docstring, whose
 #: delimiters are on other lines, so the string alternative cannot see it and
-#: the markup is the only evidence left on the line.
+#: the markup is the only evidence left on the line. It is docket's one reading
+#: of a span, `release.CODE_SPAN_PATTERN`, so a reST-style ``literal`` is
+#: blanked whole rather than read as two empty spans around a bare token
+#: (`PL-9L39`).
 #:
 #: **The comment alternative is safe only because `SUPPRESSIONS` now holds no
 #: comment-form marker**, and that coupling is why `PL-G21K`'s two halves were
@@ -203,7 +207,7 @@ NON_CODE_RE = re.compile(
     r"|'''(?:[^'\\]|\\.|'(?!''))*'''"
     r'|"(?:[^"\\\n]|\\.)*"'
     r"|'(?:[^'\\\n]|\\.)*'"
-    r"|`[^`]*`"  # a backtick span: prose markup, and never Python
+    rf"|{CODE_SPAN_PATTERN}"  # a backtick span: prose markup, and never Python
     r"|#.*"  # a comment, which the alternatives above keep out of a string
 )
 

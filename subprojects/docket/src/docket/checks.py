@@ -2946,7 +2946,6 @@ OWN_STATUS = re.compile(
 # A new passage starts at a blank line, and at a list item or table row within
 # a paragraph: one bullet marked superseded says nothing about its siblings.
 _PASSAGE_START = re.compile(r"^[ \t]*(?:[-*+][ \t]|\d+\.[ \t]|\|)", re.MULTILINE)
-_CODE_SPAN = re.compile(r"`[^`\n]*`")
 _SENTENCE_BREAK = re.compile(r"[.!?][*`)\]]*\s")
 _ANY_ID = re.compile(ID_PATTERN)
 
@@ -3305,7 +3304,7 @@ def _standing(body: str, position: int) -> bool:
     start, end = _passage(body, position)
     if SUPERSEDED.search(body, start, end):
         return False
-    prose = _CODE_SPAN.sub("", body[start:position])
+    prose = CODE_SPAN_RE.sub("", body[start:position])
     return prose.count('"') % 2 == 0 and prose.count("“") <= prose.count("”")
 
 

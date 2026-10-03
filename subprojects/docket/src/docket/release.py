@@ -534,8 +534,23 @@ def release_notes(milestone: Milestone, today: date) -> str:
 
 
 #: A code span, as CommonMark delimits one: a run of backticks and the next run
-#: of exactly as many, neither part of a longer run.
-CODE_SPAN_RE = re.compile(r"(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)", re.S)
+#: of exactly as many, neither part of a longer run, inside one paragraph. The
+#: one reading of a span in docket and `tools/` (`PL-9L39`), where four regexes
+#: and a backtick count of their own each answered differently: on a
+#: double-backtick span, on runs of unequal length, and on a span wrapped
+#: across a line break, which none of them read.
+#:
+#: `content` is the text between the runs as written, before CommonMark turns
+#: its line breaks into spaces and trims a space from each end, which no reader
+#: has needed. A blank line closes the paragraph, so a span open across one is
+#: not a span, which keeps a stray backtick from pairing with a run paragraphs
+#: below and reading every span after it inside out. The other places a
+#: paragraph ends - a heading, a list item - are not read. The pattern carries
+#: no flags, so `verify.NON_CODE_RE` takes it into an alternation as it stands.
+CODE_SPAN_PATTERN = (
+    r"(?<!`)(?P<run>`+)(?!`)(?P<content>(?:(?!\n[ \t]*\n)[\s\S])+?)(?<!`)(?P=run)(?!`)"
+)
+CODE_SPAN_RE = re.compile(CODE_SPAN_PATTERN)
 
 #: An opening angle bracket no backslash already escapes.
 UNESCAPED_LT_RE = re.compile(r"(?<!\\)<")
