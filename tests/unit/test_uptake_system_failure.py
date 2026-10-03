@@ -11,7 +11,8 @@ configuration error before the step begins. Since PL-GS5X that bound is the
 longest interval settings are held constant over rather than a numerical
 applicability domain, and the refusal it produces is unchanged. PL-YZ17
 gives the step a floor, `MINIMUM_SIMULATION_STEP_S`, refused the same way
-and for the same reason.
+for a different reason: the floor is numerical, the finest step the solution
+has been shown to be the shipped one at.
 
 PL-0MLQ applies the same distinction to the four controls a user sets. A
 setting outside `core/supported_ranges.py` is refused by the compartment it

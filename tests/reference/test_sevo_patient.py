@@ -36,14 +36,16 @@ MASS_BALANCE_RELATIVE_GATE = 1e-10
 
 # The steps docs/MODEL.md § "Step-refinement test" specifies, coarsest first.
 # All three are supported steps: the first is `MAXIMUM_SIMULATION_STEP_S`
-# itself, and refinement only moves inward.
+# itself, and the finest is 25 times `MINIMUM_SIMULATION_STEP_S`.
 STEP_REFINEMENT_STEPS_S = (0.1, 0.05, 0.025)
 STEP_REFINEMENT_HORIZON_S = 60.0
 
 # The release comparison tolerance docs/MODEL.md § "Step-refinement test"
 # requires be documented before tagging. Unchanged from the two-step version
-# of this gate: at 60 s the coarsest and finest steps differ by about 4e-4
-# relative in the alveolar fraction, an order of magnitude inside this.
+# of this gate, under the operator split, when the coarsest and finest steps
+# differed by about 4e-4 relative in the alveolar fraction at 60 s, an order of
+# magnitude inside this. Under the exact step they differ by about 1.4e-13
+# relative (measured 2026-10-03).
 STEP_REFINEMENT_RELATIVE_TOLERANCE = 5e-3
 STEP_REFINEMENT_ABSOLUTE_TOLERANCE = 1e-8
 
@@ -304,9 +306,9 @@ def test_step_refinement_converges() -> None:
     this gate compared two steps. Under the operator split, comparing 0.1 s
     straight to 0.025 s was a longer lever that exceeded the relative
     tolerance in mixed venous alone: at 60 s that compartment is only
-    starting to fill, so the split's 1.4e-6 in fraction - a seventh of a
-    count of the last displayed digit - was 0.55% of it. Under the exact
-    step the two land about 4e-17 apart there (measured 2026-10-03).
+    starting to fill, so the split's 1.4e-6 in fraction was 0.55% of it.
+    Under the exact step the two land about 4e-17 apart there (measured
+    2026-10-03).
 
     This is not the reference gate. `tests/reference/test_coupled_dynamics.py`
     asks whether the shipped composition converges to the *right* answer, by

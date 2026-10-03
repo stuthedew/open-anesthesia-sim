@@ -1583,13 +1583,13 @@ has intact. The two bounds are different kinds of statement: the ceiling is a
 declared tolerance on control timing, argued first below, and the floor is
 numerical, argued after it.
 
-**What the bound now means, and what it no longer rests on.** Until v0.4.x it
-was an *applicability domain*: the method was first order, so its error grew
+**What the ceiling now means, and what it no longer rests on.** Until v0.4.x
+it was an *applicability domain*: the method was first order, so its error grew
 with the step, and 0.1 s was the largest step at which every claim "Displayed
 precision" makes about the last displayed digit still held. That derivation is
 void. The exact step has no truncation error at any step size and its
-propagator keeps every fraction in range at any step size, so there is no
-accuracy-derived domain left to be outside of.
+propagator keeps every fraction in range at any step size, so accuracy no
+longer sets a largest step.
 
 What a longer step still costs is **control resolution**. Settings are held
 constant across a step, so the step is the interval over which a change to a
@@ -1640,7 +1640,7 @@ precision" carries the measurement). So at 0.1 s an ordinary control action is
 timed to about a tenth of one parameter SD, which is the sense in which the
 step is fine enough.
 
-**Both tables in this section are held by a test**, which is not a formality:
+**Both control-resolution tables are held by a test**, which is not a formality:
 since `PL-X9KD` retired the accuracy derivation these figures are the whole
 content of `MAXIMUM_SIMULATION_STEP_S`, and until `PL-ZVS7` they were asserted
 by prose here and in `core/uptake_system.py` and by nothing else.
@@ -1748,8 +1748,8 @@ Three things follow, and the third is why the behaviour was left alone.
   more often — would resolve control timing that the display cannot show. What
   was wrong here was the documentation, and it is what has been fixed.
 
-The supported step and the shipped step are the same number, and the interface
-runs at it.
+The largest supported step and the shipped step are the same number, and the
+interface runs at it.
 
 **The floor.** `MINIMUM_SIMULATION_STEP_S` is 1 ms, and it is the one bound on
 the step that is numerical (`PL-YZ17`, 2026-10-03). Until then any positive
@@ -1788,11 +1788,13 @@ floor is declared rather than derived.
 
 **Where it is declared, and what holds it.** 1 ms is the finest step at which
 the solution has been shown to be the shipped one: it is the bottom of the
-sweep `PL-X9KD` took, and the step-refinement gate (§ "Step-refinement test")
-drives it. Nothing runs finer: apart from the tests of the floor itself, the
-finest step any test takes is 0.02304 s. The table is a dated measurement rather than a gate, because the steps below the
-first row are outside the domain and no test can take them; lowering the floor
-is a measurement rather than an edit, starting with that gate at the new floor.
+sweep `PL-X9KD` took, and a test beside the step-refinement gate
+(§ "Step-refinement test") drives it and pins the constant there. Nothing runs
+finer: apart from the tests of the floor itself, the finest step any test takes
+is 0.02304 s. The table is a dated measurement rather than a gate, because the
+steps below the first row are outside the domain and no test can take them;
+lowering the floor is a measurement rather than an edit, starting with that
+test at the new floor.
 
 **It also bounds the run's own arithmetic, which nothing did before.** At the
 floor the supported run length is 86 400 000 steps, and a float holds every
@@ -3238,8 +3240,8 @@ dt = 0.025 s
 ```
 
 All three are inside the supported domain: the first is
-`MAXIMUM_SIMULATION_STEP_S` itself, and refinement only moves inward from
-there.
+`MAXIMUM_SIMULATION_STEP_S` itself, and the finest is 25 times
+`MINIMUM_SIMULATION_STEP_S`.
 
 The gate compares *successive* halvings — 0.1 against 0.05, then 0.05
 against 0.025 — rather than each step against the finest, and additionally
@@ -3257,7 +3259,7 @@ that they stay at that floor. Measured 2026-09-06, the worst successive-halving
 gap across the four reported values is 8.1e-16, against the 1.4e-11 a
 first-order method would show at these steps.
 
-**The gate also drives the bottom of the supported domain**,
+**A second test beside the gate drives the bottom of the supported domain**,
 `MINIMUM_SIMULATION_STEP_S` (`PL-YZ17`): a minute in 1 ms steps must land within
 3e-14 of the minute in 0.1 s steps, in each compared fraction. The bound is
 wider than the halvings' because that minute takes 60 000 steps rather than at
@@ -3267,7 +3269,7 @@ allows about twelve times it, the halvings' own margin. The gap depends on how
 the propagator happens to round at that step rather than smoothly on the step -
 steps near 1 ms reach 1.2e-14 - so against a machine that rounds differently the
 margin is nearer two and a half times. What this holds is the floor's claim,
-that the solution at the declared floor is the shipped one; the gate pins the
+that the solution at the declared floor is the shipped one; that test pins the
 floor at 1 ms as well, so moving it means re-taking these figures rather than
 editing a constant.
 
@@ -3275,9 +3277,9 @@ The release comparison tolerance is 5e-3 relative or 1e-8 absolute, either
 satisfying, on the alveolar, vessel-rich and mixed-venous fractions after
 60 s of the default sevoflurane wash-in. Under the operator split, comparing
 0.1 s straight to 0.025 s exceeded it in mixed venous alone — that compartment
-has barely begun to fill at 60 s, so the split's 1.4e-6 in fraction, a seventh
-of a count of the last displayed digit, was 0.55% of it. Under the exact step
-the two land about 4e-17 apart there (measured 2026-10-03).
+has barely begun to fill at 60 s, so the split's 1.4e-6 in fraction was 0.55%
+of it. Under the exact step the two land about 4e-17 apart there (measured
+2026-10-03).
 
 This gate is self-consistency across the supported steps, not correctness: a
 wrong transfer rate is exactly as step-independent as a right one and passes

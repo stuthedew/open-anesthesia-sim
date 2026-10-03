@@ -172,7 +172,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
 )
-from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
+from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, MINIMUM_SIMULATION_STEP_S
 
 #: The agent every fixture here runs unless it says otherwise. Named once
 #: because the snapshot and the recorded run have to agree on it.
@@ -541,10 +541,13 @@ def test_the_shipped_step_is_within_the_maximum_simulation_step() -> None:
     and this is what stops them from parting company unnoticed. The
     relation is `<=` rather than equality on purpose: a numerical method
     that supported a coarser step would not make a coarser step a good
-    render cadence.
+    render cadence. The domain's other end, `MINIMUM_SIMULATION_STEP_S`, is
+    held here too (`PL-YZ17`), though no cadence a display would want comes
+    near it.
     """
 
     assert SIMULATION_STEP_S <= MAXIMUM_SIMULATION_STEP_S
+    assert SIMULATION_STEP_S >= MINIMUM_SIMULATION_STEP_S
 
 
 def test_a_tick_is_one_simulation_step_of_real_time() -> None:

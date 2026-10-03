@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect, science
 feature: numerical-domain
-touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, tests/unit/test_uptake_system_failure.py, tests/unit/test_simulation.py, tests/reference/test_sevo_patient.py
+touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, tests/unit/test_uptake_system_failure.py, tests/unit/test_simulation.py, tests/reference/test_sevo_patient.py, tests/unit/test_dashboard_frame.py, tests/unit/test_supported_ranges.py
 added: 2026-10-03
 closed: 2026-10-03
 pr: 1306
@@ -49,8 +49,8 @@ safety-critical standard's "an obvious failure rather than a plausible number"
 asks for, and the question left was only where.
 
 1 ms because it is the finest step the solution has been shown to be the
-shipped one at - the bottom of `PL-X9KD`'s sweep, and now driven by the
-step-refinement gate, which requires a minute in 1 ms steps to land within
+shipped one at - the bottom of `PL-X9KD`'s sweep, and now driven by a test
+beside the step-refinement gate, which requires a minute in 1 ms steps to land within
 3e-14 of the 0.1 s solution (measured 2.4e-15) - and nothing in the tree runs
 finer: apart from the tests of the floor itself, the finest step any test takes
 is 0.02304 s. It also covers the brief's
