@@ -100,7 +100,7 @@ display, an event loop or a plugin. A stylesheet composer needs none of Qt's
 types either - it returns strings - so the two may not actually be in tension,
 which is the thing to establish before choosing.
 
-**Recommendation: keep the no-toolkit rule, and move the composers rather than
+[superseded 2026-10-03: the rule half stands; the composers go in a module beside `theme.py`, not into it] **Recommendation: keep the no-toolkit rule, and move the composers rather than
 the toolkit.** A function returning `f"QPushButton {{ color: {INK}; }}"` imports
 nothing, so the 27 sites can be centralised here without a PySide6 import at
 all. That gets the single place without giving up the property worth having.
@@ -145,3 +145,7 @@ Every stylesheet composer in `app/` returns a string built from `theme.py`'s hex
 **Recommendation: keep the no-toolkit rule, and centralise the ten composers in one toolkit-free module beside `theme.py` rather than inside it.** `theme.py` stays the token file: the values a clinician could be misled by, read by `tools/contrast_check.py` and `tools/agent_identity_check.py` with `ast`, importable without Qt. The composers carry Qt's selector vocabulary (`QComboBox QAbstractItemView`, `QSlider::handle:horizontal`), which is the toolkit's styling even though it imports nothing, so they belong in a module of their own that imports `theme` - `app/stylesheets.py`, or a name the build thread prefers - and the 34 sites import from there. Moving them into `theme.py` itself, the earlier recommendation, costs nothing in the import sense and is the near alternative; it is weaker only in that it puts toolkit text into the one file the two tools parse as tokens, and `contrast_check.read_palette` resolves names in file order, which functions interleaved with constants make harder to read. `theme.py`'s comment then says the rule holds because tokens are values and composers are strings, and names the module they live in.
 
 Two things the build thread checks rather than assumes: `tools/agent_identity_check.py`'s rule 2 reads agent-colour writes at construction sites in the view modules (`PL-Y5ZB`), so moving `_surface_stylesheet(..., scheme)` out of `run_view.py` wants that reading re-run; and `PL-NGF7`'s `check_disabled_states_are_the_style_s` refuses a `:disabled` rule wherever the string is composed, so it is unaffected.
+
+## Answers 2026-10-03
+
+Keep the no-toolkit rule; centralise the ten composers in one toolkit-free module beside `theme.py`, not inside it (project owner, 2026-10-03, ratified, over moving them into `theme.py` as strings, and over `theme.py` becoming the place the Qt styling layer is composed behind a toolkit import). Status moved to `ready` with this answer; the build thread names the module.
