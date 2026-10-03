@@ -5639,7 +5639,7 @@ named here, for the reason beat 3 gives.
 - PL-YD2V (S) Supported run length and the validation section's caveat 4 bound the slow tail on metabolism and fat flow alone, but the fourth compartment this model lacks is the largest term in Yasuda 1991's measured washouts from about hour 2-3 to hour 21-29, inside the 24 h envelope, and neither passage says so
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
 
-**Cleared before v0.6.0 begins, the workflow lane - 115 entries**
+**Cleared before v0.6.0 begins, the workflow lane - 116 entries**
 
 - PL-LN69 (L) Instruction-set growth is measured but never tested for effect, so a rule can be added on an argument and can never be retired on evidence
 - PL-087W (M) bin/docket verify unions removed assertions per commit and never nets them against a later restore, so a line a session puts back on the check's own advice keeps refusing the branch
@@ -5676,6 +5676,7 @@ named here, for the reason beat 3 gives.
 - PL-X3NY (M) bin/docket stranded reports in-flight pull-request work and abandoned-branch work identically because it reasons from refs alone, where the GitHub API can classify the two - so the reader re-derives every session what one API read would settle
 - PL-Y1LD (M) docket concurrent orders a batch by file, but the lane mechanism separates only two sessions, so the third and fourth simultaneous session have no command that picks for them
 - PL-Y5ZB (M) agent_identity_check's rule 2 reads only construction (self.X = <agent colour>), so a method other than _apply_agent_color_scheme writing self.X.color = AGENT_COLOR_SCHEMES[...] is a second writer of agent colour that neither rule sees
+- PL-YVV4 (M) Run the suppression count expert-review.md requires before any triage-bar change
 - PL-ZPDM (M) vcs.tags and vcs.changed_items answer with a bare frozenset, so a git that does not answer is indistinguishable from a repository with no tags and a branch that changed nothing
 - PL-0HPV (S) make check omits the verify replay on a cost measured before --verify-base narrowed it, so a PR-only failure class is only ever found from CI
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
@@ -5794,6 +5795,16 @@ fat-perfusion note weighed against one source, the 24-hour tail never compared
 with the published fits, and the supported run length silent on the missing
 fourth compartment. The triage pass that classed them placed them in the
 product lane.
+
+`PL-YVV4` (`planning`, filed 2026-09-13) was let in on 2026-10-03 and sits in
+the workflow lane with `PL-VV6N`, which waits on it. It was in the store at the
+cut, but the class filter left it off, so `bin/docket wave` read `PL-VV6N` as
+blocked outside the gate and left it out of what this gate is asked to clear: a
+deferral nobody had decided. What an entry needs is let in and worked with the
+entry it completes, per § "The gate is a snapshot, not a moving target", so the
+two are one piece of work (`PL-D388`, project owner, 2026-10-03, ratified, over
+admitting every open prerequisite of an entry automatically and over deferring
+the pair to Gate 3).
 
 The first 43 were recorded here in prose subsections, one per triage pass from
 `PL-2JRC`'s to the generator heads `PL-T7Y1`'s audit and `PL-TH9K`'s session

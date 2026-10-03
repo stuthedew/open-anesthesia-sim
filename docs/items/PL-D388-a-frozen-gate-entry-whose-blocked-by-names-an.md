@@ -173,3 +173,8 @@ recorded in the gate's section with its reason, and the check refuses the
 silent half of it: a deferred prerequisite under an entry still listed as this
 gate's work. Status moved to `ready` with this answer, as `docket check`
 requires of an answered question.
+
+Step 3's admission was made the same day: `PL-YVV4` is on Gate 2's workflow
+lane with `ROADMAP.md` § "Deferred from this gate" naming the date and the
+ground, so `bin/docket wave` counts `PL-VV6N` and `PL-YVV4` among the entries
+this gate can clear. The pair's design round, and steps 1 and 2, remain.
