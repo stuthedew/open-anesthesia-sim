@@ -109,7 +109,22 @@ cut it closed is never offered again as the next release (`PL-KRS6`).
 next.** The session-start digest says when there is enough finished work to be
 worth raising, and the release itself takes no arguments: the store already
 knows what has shipped and what has not, so there is nothing for the owner to
-look up and asking them to is pure friction.
+look up and asking them to is pure friction. **Since 2026-09-27 the occasion
+for a cut is a feature finishing**: a session cuts a release with what is in
+it, and none while another holds the release train (project owner, 2026-09-27,
+`PL-LPH9`; `ROADMAP.md` § "The cadence" records it as the instance the
+judgment currently turns on). The train claim below is what "another holds
+it" reads from.
+
+**A milestone's own release is cut only after its Definition of done has been
+checked, bullet by bullet, against the tree**, in a session of its own that
+reports which bullets hold and which do not, before the cut is filed (project
+owner, 2026-09-27, for v0.6.0: "Before v0.6.0 is cut, one thread checks every
+Definition of done bullet against the tree and reports which hold"; written
+here for every milestone, since each has a Definition of done for exactly this
+read, and v0.6.0 is the instance). A patch on the preceding milestone's track
+owes no such pass: its number marks no capability boundary (`ROADMAP.md`
+§ "Versioning decision").
 
 Where the digest says `No release to offer` instead, the version a bump would
 arrive at is one `ROADMAP.md` has already given to a milestone ahead of the

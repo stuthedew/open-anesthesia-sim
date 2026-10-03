@@ -242,7 +242,11 @@ before finishing.
   conversation holds — the item, `docs/WORKING_NOTES.md` — commit and push it,
   then ask the project owner to type `/compact`, which a session cannot run on
   itself, and name the clock time an hour on, after which the summary re-reads
-  the whole history uncached (`docs/maintainer.md`). Pushed first, compaction
+  the whole history uncached (`docs/maintainer.md`). A Projects thread, into
+  which the owner cannot type `/compact`, instead writes its next steps into
+  the item file, commits and pushes that, says so in one line and stops, and
+  the coordinator starts a fresh thread on the branch (the Projects trial's
+  instructions, read 2026-10-03, kind unrecorded, `PL-PDVF`). Pushed first, compaction
   lands where a handoff did — the floor, a summary, files re-read, with
   `CLAUDE.md` and unscoped rules re-injected — and keeps the branch, claim and
   pull-request watch. A file it restores counts as already read, but its
@@ -546,12 +550,22 @@ deviating from a described deliverable, not acting without one.
   pull request", `PL-WNCT`), and `update-armed.yml` brings `main` in if `main`
   moves past it first (`PL-S5MF`). **Whether it arms is `bin/docket arm`'s
   answer, asked before arming and before every later push while a pull request
-  is open.** `arm`: mark it ready and arm it. `hold`: leave it unarmed, disarming
-  it before the push that brings the hold or green CI merges half the work,
-  and a draft while the hold is a claim. `behind N`: bring `origin/main` in and
-  ask again. `subprojects/docket/src/docket/arming.py` carries the rules and
-  the decisions behind them (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`, `PL-3FYK`,
-  `PL-H14W`).
+  is open.** `arm`: mark it ready and arm it, and name in the report the paths
+  outside the store it armed, unless the change raises a question for the
+  owner, which is your call and holds it. `hold`, for a claim or a path on the
+  owner's read list - `src/`, `tests/`, `docs/MODEL.md`,
+  `src/anesthesia_sim/data/`, `README.md` and `arming.py` - leave it unarmed,
+  disarming it before the push that brings the hold or green CI merges half
+  the work, a draft while the hold is a claim, and once no claim holds it ask
+  for the read as `arm` says; it merges on the owner's word alone (the
+  Projects trial's instructions, 2026-10-03, kind unrecorded, over holding
+  every path outside the store, `PL-KKHD`). `behind N`: bring `origin/main` in
+  and ask again. `subprojects/docket/src/docket/arming.py` carries the rules
+  and the decisions behind them (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`, `PL-3FYK`,
+  `PL-H14W`). **`main` red for a reason outside the item, or the same check
+  failing twice, stops the session**: say so to the owner before any retry,
+  and wait (project owner, 2026-09-25, ratified, in the Projects trial's
+  instructions, `PL-NZC0`; the retry clause by 2026-10-03, kind unrecorded).
   Where the **web harness
   says not to open one unless the
   owner explicitly asks**, this bullet is that ask, standing rather than per
