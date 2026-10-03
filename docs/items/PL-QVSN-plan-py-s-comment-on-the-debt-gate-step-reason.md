@@ -3,11 +3,13 @@ id: PL-QVSN
 title: plan.py's comment on the debt-gate step reason cites ROADMAP.md's cadence as shipping cleared gate work inside the gated milestone rather than the patch track, which PL-LPH9 reversed on 2026-09-27, so the comment's rationale now argues from a rule the roadmap no longer states
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: planning-cadence
 touches: subprojects/docket/src/docket/plan.py
 added: 2026-09-27
+closed: 2026-10-03
+pr: 1284
 payoff: the comment a maintainer checks before changing the debt-gate line argues from the rule the roadmap states now
 verify: ! grep -qF 'has cleared gate work ship inside the milestone' subprojects/docket/src/docket/plan.py
 ---
@@ -42,3 +44,17 @@ under, which is what the printed line names.
 **Generator check.** An instance of `PL-G424`'s fact (a comment restating a
 document's rule) in prose its 2026-09-19 decision left open (not a citation); found by `PL-LPH9`'s own sweep and filed
 because `plan.py` was outside that item's `touches`. A one-off.
+
+**Closed 2026-10-03.** The comment now argues from what the printed line
+names: the milestone the gate is recorded under, and that the gate clears
+before that milestone is implemented, "whichever release carries each fix".
+It keeps `PL-TNB6`'s evidence that naming the step as clearing the gate handed
+it the whole of Gate 1, of which 3 entries in 119 were its own, and no longer
+restates where gate work ships, so a later change to § "The cadence" cannot
+strand it the same way. No output changed.
+
+Read and left: the comment opening the `IN_SCOPE` block above it (`PL-1J0P`)
+and `Scope.step_label`'s docstring in `roadmap.py` both explain why the step can
+differ from the anchor. Neither says where cleared gate work ships. The first
+describes Gate 0's v0.3.0, the exception § "The cadence" still records, and
+the second holds for every gate since `PL-LPH9`, so neither is this defect.
