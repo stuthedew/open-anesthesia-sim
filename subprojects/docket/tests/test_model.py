@@ -107,6 +107,26 @@ def test_the_parser_reads_its_keys_and_list_fields_from_the_exports() -> None:
         assert getattr(item, name.replace("-", "_")) == ("a", "b"), name
 
 
+def test_every_version_grammar_in_docket_is_built_from_the_one_token() -> None:
+    """MAJOR.MINOR.PATCH is written once, as `SEMVER_PATTERN` (`PL-8P31`).
+
+    Each of these spelled it itself until then, so a change to what a version
+    is would have reached the copy it was made in and none of the others.
+    """
+    from docket import roadmap
+    from docket.model import MILESTONE_BLOCKER_RE, SEMVER_PATTERN
+    from docket.release import SEMVER_RE
+
+    for compiled in (
+        MILESTONE_BLOCKER_RE,
+        SEMVER_RE,
+        roadmap.BASELINE_HEADING_RE,
+        roadmap.MILESTONE_RE,
+        roadmap.SECTION_VERSION_RE,
+    ):
+        assert SEMVER_PATTERN in compiled.pattern, compiled.pattern
+
+
 def test_missing_fields_come_back_empty_rather_than_defaulted() -> None:
     """A wrong-but-plausible default is worse than an obvious absence."""
     item = parse_item("---\nid: PL-001\n---\n\nBody\n")

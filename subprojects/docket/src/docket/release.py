@@ -28,14 +28,14 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .model import RELEASE_TRAIN, Item
+from .model import RELEASE_TRAIN, SEMVER_PATTERN, Item
 from .store import ID_PATTERN
 
 if TYPE_CHECKING:  # `roadmap` reads this module's version grammar, so the
     from .roadmap import ReservedVersion, Wave  # runtime import would close the cycle.
 
 VERSION_RE = re.compile(r'^(version\s*=\s*")([^"]+)(")', re.M)
-SEMVER_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
+SEMVER_RE = re.compile(rf"^v?{SEMVER_PATTERN}$")
 
 #: What `SEMVER_RE` accepts, in the words a refusal of anything else uses, so
 #: the grammar a reader is told and the one enforced sit on adjacent lines.

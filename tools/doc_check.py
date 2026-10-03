@@ -128,7 +128,7 @@ try:
     # reads it from here.
     from docket.fences import blocks, fenced_lines
     from docket.fences import without_fences as without_fences
-    from docket.model import CLOSED_STATUSES, Item
+    from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item
     from docket.release import (
         NOTES_BULLET_RE,
         NOTES_DIR,
@@ -580,7 +580,7 @@ STALE_VERSION_CLAIM_RE = re.compile(
 # `: v0.1.0, v0.2.0 and v0.3.0` - read one version at a time so the list ends
 # where the prose resumes, rather than sweeping up every version in the region.
 LIST_SEPARATOR_RE = re.compile(r"[\s,:]*(?:and\s+)?")
-LIST_VERSION_RE = re.compile(r"v(?P<version>\d+\.\d+\.\d+)")
+LIST_VERSION_RE = re.compile(rf"v(?P<version>{SEMVER_PATTERN})")
 # A tag naming a release, as against `v1.2.3-rc1` or a name of another shape.
 RELEASE_TAG_RE = re.compile(r"^v?(?P<version>\d+\.\d+\.\d+)$")
 # The status cell that says a version has gone out.
@@ -1971,7 +1971,7 @@ def check_gate_counts(root: Path, report: Report) -> None:
 # and the version has to be the section's own - a list naming another
 # milestone's self-clearing would be a different claim, and not one this file
 # has made.
-SELF_CLEARED_GROUP_RE = re.compile(r"^\*{1,2}Cleared by (?P<version>v\d+\.\d+\.\d+) itself\b")
+SELF_CLEARED_GROUP_RE = re.compile(rf"^\*{{1,2}}Cleared by (?P<version>v{SEMVER_PATTERN}) itself\b")
 
 
 def check_self_cleared_group(root: Path, report: Report) -> None:

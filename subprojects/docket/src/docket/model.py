@@ -123,6 +123,16 @@ MISREAD_LIMIT = 100
 # specified).
 MIN_RECURRENCES = MIN_ROOT_CAUSE_ITEMS - 1
 
+#: MAJOR.MINOR.PATCH as a token: unanchored, with no `v`, and with its three
+#: parts named. Every version grammar in docket and in the tools that read it
+#: is built from this one - `release.SEMVER_RE` anchors it, the blocker below
+#: prefixes its `v`, and the roadmap's headings embed it - so a change to what
+#: a version is reaches every reader (`PL-8P31`). Here rather than beside
+#: `SEMVER_RE` because this module imports nothing of docket's, which is what
+#: lets every module read it. A name cannot repeat inside one pattern, so embed
+#: it once per pattern; `.groups()` still gives the parts in order.
+SEMVER_PATTERN = r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
+
 # The second kind of entry `blocked-by` accepts: a milestone version, written
 # exactly as the roadmap's timeline writes it.
 #
@@ -138,7 +148,7 @@ MIN_RECURRENCES = MIN_ROOT_CAUSE_ITEMS - 1
 # The two are told apart syntactically, and can never collide: an id is
 # `PL-`-prefixed and a milestone is `v`-prefixed. An entry matching neither is
 # a typo rather than a third kind, and `checks.py` refuses it by name.
-MILESTONE_BLOCKER_RE = re.compile(r"^v\d+\.\d+\.\d+$")
+MILESTONE_BLOCKER_RE = re.compile(rf"^v{SEMVER_PATTERN}$")
 
 # Efforts a delegated item may carry. An `L` item is a milestone in disguise;
 # nothing that large has a brief precise enough to be worked without judgment.
