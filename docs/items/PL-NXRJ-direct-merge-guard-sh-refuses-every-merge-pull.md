@@ -3,11 +3,13 @@ id: PL-NXRJ
 title: direct-merge-guard.sh refuses every merge_pull_request call, so a pull request the owner says Merge on that GitHub will not arm, being already green and current, waits on the owner's Squash and merge; since 2026-10-03 main's protection binds admins, so GitHub itself refuses a stale or red merge from a session
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra, docs
 feature: review-hold
 touches: .claude/hooks/direct-merge-guard.sh, tests/unit/test_direct_merge_guard.py, CLAUDE.md, docs/maintainer.md
 added: 2026-10-03
+closed: 2026-10-03
+pr: 1283
 payoff: a pull request the owner says Merge on that is already green and current merges without the owner's click, and only while GitHub itself refuses a stale or red merge from the owner's account
 verify: grep -qF 'enforcement_level' .claude/hooks/direct-merge-guard.sh && grep -qF 'def test_a_merge_is_let_through_while_the_base_binds_admins' tests/unit/test_direct_merge_guard.py && ! grep -qF 'so a session merges only by arming auto-merge' CLAUDE.md && grep -qF 'PL-NXRJ' docs/maintainer.md
 ---
