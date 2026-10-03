@@ -1,12 +1,13 @@
 ---
 id: PL-KKRP
 title: Re-examine the debt gate's freeze trigger: scoping a milestone has not frozen its gate for the last two milestones scoped, so the cadence's beat 1 no longer describes what the project does
-status: needs-decision
-added: 2026-09-16
 priority: P2
 effort: M
+status: ready
 classes: planning
 touches: ROADMAP.md, .claude/skills/docket/SKILL.md
+added: 2026-09-16
+verify: grep -q 'freezes on the later of two days' ROADMAP.md && grep -q 'freezes on the later of two days' .claude/skills/docket/modes/release.md && ! grep -q 'Scoping is the act that freezes the list' ROADMAP.md
 ---
 
 **Problem.** Re-examine the debt gate's freeze trigger: scoping a milestone has not frozen its gate for the last two milestones scoped, so the cadence's beat 1 no longer describes what the project does
