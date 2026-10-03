@@ -1,9 +1,16 @@
 ---
 id: PL-ZYHX
 title: The resident instruction set is 75 KB, 72% process and 1.5% engineering discipline, and the architecture rules that hold are the ones with a check: decide whether the resident rules without one, the single-source-of-truth rule first, move to checks with their prose retired
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: docs, session-cost
+touches: CLAUDE.md, .claude/rules, docs/resident-instructions.md
+blocked-by: PL-40SJ, PL-YXFF
 deferred-from: v0.6.0 - a decision about how the resident instruction set carries engineering rules is not debt the layout milestone clears
 added: 2026-10-03
+payoff: the two architecture rules that kept recurring are carried by a check and by a rule that loads with app/, and the resident set shrinks by the prose they replace
+verify: ! grep -qF 'Put no simulation calculations in UI callbacks.' CLAUDE.md && ! grep -qF 'Keep scientific/simulation code independent of the UI toolkit.' CLAUDE.md && ! grep -qF 'Do not add executable equations to data files.' CLAUDE.md
 ---
 
 **Problem.** The resident instruction set is 75 KB, 72% process and 1.5% engineering discipline, and the architecture rules that hold are the ones with a check: decide whether the resident rules without one, the single-source-of-truth rule first, move to checks with their prose retired
@@ -16,4 +23,8 @@ added: 2026-10-03
 
 **What this does not reopen.** "There is too much apparatus" was refuted in `CLAUDE.md` § "What this project is" and stays refuted. This reopens one ratified point on ordinary evidence, as `CLAUDE.md` allows: that resident prose is an adequate carrier for an engineering rule a check could carry.
 
-**Done when.** The owner answers. A yes becomes items per rule under the resident-set editing rule; a no closes this as dropped with the reason recorded.
+**Decided 2026-10-03: yes** (project owner, 2026-10-03, ratified, over leaving resident prose as the carrier for an engineering rule a check could carry), in the recommendation's order, and as this one item rather than one per rule: the three edits are one rewrite of `CLAUDE.md` § "Architecture and development discipline" under the resident-set editing rule, naming what each replaces, so the resident set is re-read once rather than three times. Two corrections, found while recording it. No sentence in `CLAUDE.md`, `docs/ARCHITECTURE.md` or `docs/resident-instructions.md` states the single-source rule - grepped 2026-10-03 for "single source", "source of truth" and "one home"; `docs/ARCHITECTURE.md`'s tree listing says of `core/units.py` only "each written once" - so PL-40SJ's check has no resident prose to retire and that rule enters as the check alone; PL-40SJ's brief, which says the rule is resident prose, is the session in flight on it to correct. And the bullet PL-YXFF retires is "Keep scientific/simulation code independent of the UI toolkit", which `tools/import_boundary_check.py` carries for the toolkit names today and carries for `core/` importing `app/` once PL-YXFF lands. Blocked on both: on PL-YXFF for that bullet, and on PL-40SJ because moving a bullet into a new file under `.claude/rules/` is apparatus housekeeping, which `CLAUDE.md` § "What this project is" pauses while PL-40SJ carries `generator: live`.
+
+**Done when.** `CLAUDE.md` § "Architecture and development discipline" no longer carries "Keep scientific/simulation code independent of the UI toolkit", "Put no simulation calculations in UI callbacks" or "Do not add executable equations to data files". The first is retired under `docs/resident-instructions.md` § "When a resident rule is retired", with the ledger naming `tools/import_boundary_check.py` as what catches its failure; the second moves, in its own words, to a rule under `.claude/rules/` whose `paths:` is `src/anesthesia_sim/app/**`, with the ledger saying where it went; the third is reworded to point at the typed payloads of `core/parameters.py` that already refuse an expression. The edit names what it replaces, as every resident-set edit must, and `make check`'s resident character total falls by what left.
+
+**Generator check.** An instance of PL-LN69's fact - "whether each resident instruction changes session behaviour" - filed after that head closed as spent on 2026-09-21, and read against it rather than as a new head. Its reopening clause names an adherence failure traceable to resident *size*, which this is not: the bullets that hold and the two that recur sit in one section at one depth, and what separates them is a check, so the finding is about the carrier rather than the length. It asks for the disposition rule the resident set already states to be applied, not for the effect test the owner declined.
