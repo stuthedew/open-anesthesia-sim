@@ -31,8 +31,8 @@ import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 
-from .model import MILESTONE_BLOCKER_RE
-from .release import SEMVER_RE
+from .model import MILESTONE_BLOCKER_RE, SEMVER_PATTERN
+from .release import SEMVER_RE, version_key
 from .store import ID_PATTERN
 from .vcs import leading_ids
 
@@ -95,7 +95,7 @@ VERSION_TABLE_HEADING = "Versioning decision"
 # project writes "Completed / current baseline" on the row it is standing on.
 COMPLETED = "Completed"
 BASELINE_MARK = "current baseline"
-BASELINE_HEADING_RE = re.compile(r"^Current baseline:\s*v?(?P<version>\d+\.\d+\.\d+)\b")
+BASELINE_HEADING_RE = re.compile(rf"^Current baseline:\s*v?(?P<version>{SEMVER_PATTERN})\b")
 
 
 @dataclass(frozen=True)
@@ -169,9 +169,7 @@ TIMELINE_HEADING = "The timeline"
 STEP_SEPARATOR = "—"
 
 BOLD_RE = re.compile(r"^\*\*(?P<label>.+)\*\*$")
-MILESTONE_RE = re.compile(
-    rf"^v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+) {STEP_SEPARATOR} (?P<name>\S.*)$"
-)
+MILESTONE_RE = re.compile(rf"^v{SEMVER_PATTERN} {STEP_SEPARATOR} (?P<name>\S.*)$")
 PATCH_TRACK_RE = re.compile(
     rf"^v(?P<major>\d+)\.(?P<minor>\d+)\.x {STEP_SEPARATOR} (?P<name>\S.*)$"
 )
@@ -320,7 +318,7 @@ def _timeline_order(steps: Sequence[TimelineStep]) -> Iterator[str]:
 # words around it: this repository writes "Completed:", "Current baseline:",
 # "Next milestone:" and "Milestone after next:", and which prefix a milestone
 # carries is editorial. The version is the identity.
-SECTION_VERSION_RE = re.compile(r"\bv(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)\b")
+SECTION_VERSION_RE = re.compile(rf"\bv{SEMVER_PATTERN}\b")
 # Punctuation a heading may put between the version and the milestone's name.
 SECTION_SEPARATORS = " -–—: "
 
@@ -1003,7 +1001,7 @@ class GateStatus:
         return tuple(
             sorted(
                 (i for i in self._outside if MILESTONE_BLOCKER_RE.match(i) is not None),
-                key=lambda version: version_tuple(version) or (0, 0, 0),
+                key=version_key,
             )
         )
 
