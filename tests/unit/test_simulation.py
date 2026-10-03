@@ -101,6 +101,25 @@ def test_rejects_a_step_above_the_maximum_simulation_step() -> None:
     assert state.elapsed_s == before_s
 
 
+def test_rejects_a_step_below_the_minimum_simulation_step() -> None:
+    """The regression PL-YZ17 was filed for, met by a fresh run's first step.
+
+    The step's guard accepted 5e-324 s and the run-length guard then divided
+    the 86 400 s span by it, which overflows, so `advance()` raised a bare
+    `OverflowError`: not one of the simulator's own exceptions, so a caller
+    catching `AnesthesiaSimulationError` did not catch it at all. The floor
+    refuses the step first now, and the run records no step.
+    """
+
+    state = SimulationState()
+
+    with pytest.raises(SimulationConfigurationError, match="smallest supported step"):
+        state.advance(5e-324)
+
+    assert state.elapsed_s == 0.0
+    assert state.simulation_step_s is None
+
+
 def test_elapsed_time_is_the_step_count_times_the_step() -> None:
     """Simulated time is a function of the steps taken, not of the additions.
 
@@ -207,6 +226,22 @@ def test_rejects_an_initial_step_above_the_largest_supported_one() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="largest supported step"):
         SimulationState(step_count=1, simulation_step_s=MAXIMUM_SIMULATION_STEP_S * 10.0)
+
+
+@pytest.mark.parametrize("simulation_step_s", [5e-324, 4e-304, 1e-12])
+def test_rejects_an_initial_step_below_the_smallest_supported_one(simulation_step_s: float) -> None:
+    """The state PL-YZ17 was found as, and a step between it and the floor.
+
+    `SimulationState(step_count=0, simulation_step_s=5e-324)` raised
+    `OverflowError` from `maximum_step_count`, as did every step below about
+    4.8e-304 s. A state at 1e-12 s was built, at a step where a day is more
+    steps than a float counts exactly, so `elapsed_s` would round the count
+    before multiplying it. All three are refused by the step's own guard
+    now, before any run length is read from the step.
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="smallest supported step"):
+        SimulationState(step_count=0, simulation_step_s=simulation_step_s)
 
 
 # --- The supported run length (PL-Y5WR) -------------------------------------

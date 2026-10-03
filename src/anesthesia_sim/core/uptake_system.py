@@ -122,22 +122,65 @@ from anesthesia_sim.core.validation import require_nonnegative_finite, require_p
 # tolerance the code no longer held, with make check passing.
 MAXIMUM_SIMULATION_STEP_S = 0.1
 
+# The smallest simulation step `advance()` accepts (PL-YZ17).
+#
+# Unlike the ceiling above, this bound is numerical. The exact step has no
+# truncation error at any step size, so what a finer step costs is rounding:
+# each step adds what it changed to what was already stored, and the finer the
+# step, the smaller that change is beside the store it is added to, so the same
+# rounding is a larger share of it. Measured 2026-10-03 over 10 000 steps from
+# 60 s into the default sevoflurane wash-in, what the alveolar, vessel-rich,
+# muscle and fat fractions changed by is wrong by at most 3e-12 of itself at
+# 1 ms, 7e-9 at 1 us, 1e-4 at 1e-10 s and a third at 1e-14 s, and nothing
+# raises at any of them. The growth has no knee, so - as with the ceiling - no
+# step is the one at which the answer "becomes wrong", and this constant is
+# declared rather than derived.
+#
+# It is declared at the finest step the solution has been shown to be the
+# shipped one at: the bottom of the step sweep PL-X9KD took, and a step the
+# step-refinement gate in tests/reference/test_sevo_patient.py drives, which
+# holds it. Nothing runs finer; the finest step any test takes is 0.02304 s.
+#
+# It also keeps the run's own arithmetic exact. At this step the supported run
+# length is 86 400 000 steps, well inside the 2**53 below which a float holds
+# every whole count. Below about 9.6e-12 s a day's count passes that and
+# `elapsed_s` would round it before multiplying, and below about 4.8e-304 s the
+# run length divided by the step overflows, which `maximum_step_count` met as
+# an `OverflowError` from outside the simulator's own exceptions.
+#
+# Lowering it is a measurement rather than an edit: drive the gate at the new
+# floor and re-measure the figures above. docs/MODEL.md "Supported simulation
+# step" carries the measurement in full.
+MINIMUM_SIMULATION_STEP_S = 1e-3
+
 
 def require_supported_simulation_step(simulation_step_s: float) -> None:
-    """Require a step the model's control resolution is stated for.
+    """Require a step inside the interval the coupled system is supported over.
 
-    The guard belongs to the coupled system rather than to a compartment,
-    because the interval settings are held constant over is a property of the
-    step the whole system takes.
+    The guard belongs to the coupled system rather than to a compartment, and
+    for a different reason at each end. The ceiling is how long settings are
+    held constant for, which is a property of the step the whole system takes.
+    The floor is where the solution has been verified, and a compartment is
+    stepped at a run's step only by `AgentUptakeSystem.advance()`, which has
+    checked it here first.
 
     Raises:
-        SimulationConfigurationError: the step is not positive and finite, or
-            exceeds `MAXIMUM_SIMULATION_STEP_S`. Nothing is calculated either
-            way, so a caller can retry inside the supported range with the run
-            it already has.
+        SimulationConfigurationError: the step is not positive and finite, is
+            shorter than `MINIMUM_SIMULATION_STEP_S`, or exceeds
+            `MAXIMUM_SIMULATION_STEP_S`. Nothing is calculated in any of these
+            cases, so a caller can retry inside the supported range with the
+            run it already has.
     """
 
     require_positive_finite("simulation_step_s", simulation_step_s)
+
+    if simulation_step_s < MINIMUM_SIMULATION_STEP_S:
+        raise SimulationConfigurationError(
+            f"simulation_step_s of {simulation_step_s} s is shorter than the "
+            f"smallest supported step of {MINIMUM_SIMULATION_STEP_S} s, below which "
+            "rounding is a growing share of what each step changes "
+            '(docs/MODEL.md, "Supported simulation step")'
+        )
 
     if simulation_step_s > MAXIMUM_SIMULATION_STEP_S:
         raise SimulationConfigurationError(
@@ -350,10 +393,10 @@ class AgentUptakeSystem:
 
         Raises:
             SimulationConfigurationError: `simulation_step_s` is not a
-                positive finite number, or is larger than
-                `MAXIMUM_SIMULATION_STEP_S`. Checked before anything is
-                changed, so the system is untouched and the caller can
-                retry with a valid step.
+                positive finite number, or is outside
+                `MINIMUM_SIMULATION_STEP_S` to `MAXIMUM_SIMULATION_STEP_S`.
+                Checked before anything is changed, so the system is
+                untouched and the caller can retry with a valid step.
             SimulationNumericalError: the step began and could not be
                 completed — a compartment guard rejected a value produced
                 by the step itself. The exact propagator cannot reach this

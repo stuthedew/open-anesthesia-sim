@@ -10,7 +10,11 @@ from anesthesia_sim.core.parameters import (
     parse_agent_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.uptake_system import AgentUptakeSystem
+from anesthesia_sim.core.uptake_system import (
+    MAXIMUM_SIMULATION_STEP_S,
+    MINIMUM_SIMULATION_STEP_S,
+    AgentUptakeSystem,
+)
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 
@@ -53,6 +57,17 @@ STEP_REFINEMENT_ABSOLUTE_TOLERANCE = 1e-8
 # room for another machine's rounding and still four orders below the 1.4e-11
 # a genuinely first-order method would show at these steps.
 STEP_REFINEMENT_SETTLED_GAP = 1e-14
+
+# How far the floor of the supported steps may leave a fraction from the
+# ceiling's after the same 60 s (PL-YZ17).
+#
+# Wider than the gap above because the floor takes the minute in 60 000 steps
+# rather than at most 2 400, and the residual is rounding accumulated once per
+# step. Measured 2026-10-03, it is 2.4e-15 in the alveolar fraction, 3.6e-16 in
+# vessel rich and 2.5e-16 in mixed venous. This bound allows about twelve times
+# the worst, the margin the gap above allows itself, and is still more than nine
+# orders of magnitude below one count of the last displayed digit, 1e-4.
+FLOOR_SETTLED_GAP = 3e-14
 
 
 # The washout gate's run, matching the wash-in and washout legs of
@@ -315,6 +330,34 @@ def test_step_refinement_converges() -> None:
             f"{label} has not settled across the supported steps: successive "
             f"halvings move it by {gaps}, above the {STEP_REFINEMENT_SETTLED_GAP:.1e} "
             "a solution that does not depend on the step may move by"
+        )
+
+
+def test_the_smallest_supported_step_lands_on_the_ceilings_solution() -> None:
+    """The floor of the supported steps is held here, as the ceiling is (PL-YZ17).
+
+    `MINIMUM_SIMULATION_STEP_S` is declared at the finest step the solution
+    has been shown to be the shipped one at, and this is the showing: a
+    minute of the default wash-in taken in steps of the floor lands where the
+    same minute in steps of the ceiling does, to within accumulated rounding.
+    Below the floor that rounding is a growing share of what each step
+    changes, so a lower floor has to pass this test before it can be declared.
+
+    Compared against the ceiling rather than the gate's finest step, because
+    tying the two ends of the supported interval together is the claim; the
+    successive halvings above cover the steps between.
+    """
+
+    ceiling = _states_after_one_minute(MAXIMUM_SIMULATION_STEP_S)
+    floor = _states_after_one_minute(MINIMUM_SIMULATION_STEP_S)
+
+    for label, value in ceiling.items():
+        gap = abs(value - floor[label])
+
+        assert gap <= FLOOR_SETTLED_GAP, (
+            f"{label} after a minute of {MINIMUM_SIMULATION_STEP_S} s steps is {gap:.1e} from "
+            f"the {MAXIMUM_SIMULATION_STEP_S} s solution, above the {FLOOR_SETTLED_GAP:.0e} "
+            "the floor of the supported steps may sit from it"
         )
 
 

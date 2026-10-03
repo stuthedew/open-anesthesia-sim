@@ -9,7 +9,9 @@ Also cover for PL-VP7N, which added the other half of the same distinction:
 a step larger than `MAXIMUM_SIMULATION_STEP_S` is refused as a
 configuration error before the step begins. Since PL-GS5X that bound is the
 longest interval settings are held constant over rather than a numerical
-applicability domain, and the refusal it produces is unchanged.
+applicability domain, and the refusal it produces is unchanged. PL-YZ17
+gives the step a floor, `MINIMUM_SIMULATION_STEP_S`, refused the same way
+and for the same reason.
 
 PL-0MLQ applies the same distinction to the four controls a user sets. A
 setting outside `core/supported_ranges.py` is refused by the compartment it
@@ -45,7 +47,7 @@ empty would leave the residual check reporting a failure against a run that
 is perfectly accounted for.
 """
 
-from math import inf, nan
+from math import inf, nan, nextafter
 
 import pytest
 
@@ -63,7 +65,11 @@ from anesthesia_sim.core.exceptions import (
 )
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.tissue import TissueGroup
-from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
+from anesthesia_sim.core.uptake_system import (
+    MAXIMUM_SIMULATION_STEP_S,
+    MINIMUM_SIMULATION_STEP_S,
+    AgentUptakeSystem,
+)
 
 # How much of a run the injected failures below happen after.
 #
@@ -340,6 +346,46 @@ def test_the_maximum_simulation_step_does_not_bind_a_bare_compartment() -> None:
     circuit.advance_fresh_gas(step_s)
 
     assert circuit.inspired_partial_pressure_fraction > 0.0
+
+
+@pytest.mark.parametrize(
+    "simulation_step_s", [nextafter(MINIMUM_SIMULATION_STEP_S, 0.0), 1e-6, 1e-14, 5e-324]
+)
+def test_a_step_below_the_minimum_simulation_step_is_refused_and_changes_nothing(
+    simulation_step_s: float,
+) -> None:
+    """The floor PL-YZ17 declares: each of these used to return a step.
+
+    At 1e-14 s rounding left what the step changed about a third wrong, and
+    it was returned as an ordinary step; 5e-324 s, the smallest positive
+    float, was taken too. The refusal is a configuration error before the
+    step begins, as the ceiling's is, so the run the caller holds is the one
+    it had - and it says which step was refused and where the floor is
+    argued.
+    """
+
+    system = _sevoflurane_at_one_mac()
+    system.advance(MAXIMUM_SIMULATION_STEP_S)
+    before = system.capture_state()
+
+    with pytest.raises(SimulationConfigurationError, match="smallest supported step") as raised:
+        system.advance(simulation_step_s)
+
+    assert not isinstance(raised.value, SimulationNumericalError)
+    assert system.capture_state() == before
+    assert f"{simulation_step_s} s" in str(raised.value)
+    assert '"Supported simulation step"' in str(raised.value)
+
+
+def test_the_minimum_simulation_step_itself_is_accepted() -> None:
+    """The domain is closed at its floor as it is at its ceiling."""
+
+    system = _sevoflurane_at_one_mac()
+
+    result = system.advance(MINIMUM_SIMULATION_STEP_S)
+
+    assert result.fresh_gas_exchange.delivered_agent_l > 0.0
+    assert result.agent_accounting.passes_validation
 
 
 @pytest.mark.parametrize("simulation_step_s", [0.0, -0.1, inf, nan])
