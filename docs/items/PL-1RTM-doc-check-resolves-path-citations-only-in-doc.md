@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: doc-consistency-checks
-touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md, docs/items/PL-5B1N-simulated-traces-should-be-solid-and-a-dotted.md, docs/items/PL-5N7T-nothing-checks-a-prose-enumeration-of-quality.md, docs/items/PL-CNCF-controller-drawn-window-costs-6-2-ms-a-frame-at.md, docs/items/PL-DBGT-desflurane-json-points-at-the-five-other.md, docs/items/PL-H2K2-nothing-signals-a-run-approaching-the-supported.md, docs/items/PL-MBP6-the-readme-has-no-image-of-the-interface-which.md, docs/items/PL-PGZF-pl-gs3r-made-the-chart-s-column-budget-follow.md, docs/items/PL-S5YM-doc-check-s-covered-directory-branch-now-has-no.md, docs/items/PL-W4M9-write-the-flet-interface-s-parity-inventory-the.md, docs/items/PL-X5L4-app-chart-series-py-s-wash-in-docstrings-still.md
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md, .claude/rules/citation-drift.md, docs/items/PL-5B1N-simulated-traces-should-be-solid-and-a-dotted.md, docs/items/PL-5N7T-nothing-checks-a-prose-enumeration-of-quality.md, docs/items/PL-CNCF-controller-drawn-window-costs-6-2-ms-a-frame-at.md, docs/items/PL-DBGT-desflurane-json-points-at-the-five-other.md, docs/items/PL-H2K2-nothing-signals-a-run-approaching-the-supported.md, docs/items/PL-MBP6-the-readme-has-no-image-of-the-interface-which.md, docs/items/PL-PGZF-pl-gs3r-made-the-chart-s-column-budget-follow.md, docs/items/PL-S5YM-doc-check-s-covered-directory-branch-now-has-no.md, docs/items/PL-W4M9-write-the-flet-interface-s-parity-inventory-the.md, docs/items/PL-X5L4-app-chart-series-py-s-wash-in-docstrings-still.md
 blocked-by: PL-H0CF
 added: 2026-09-15
 closed: 2026-10-03
