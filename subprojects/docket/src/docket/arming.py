@@ -13,21 +13,24 @@ every later push while a pull request is open.
 
 **Five answers, and an exit status for each.**
 
-- `arm` (0): the net change a squash would land - `base...HEAD` - lies under
-  the store, the queue's own tooling, `subprojects/docket/`, or the pull
-  requests' recovered bodies, `docs/pr-bodies/`, and leaves this module alone,
-  which `arms_on_green` answers path by path; no
-  claim bound to this branch is unreleased; HEAD holds every commit of the
-  branch's copy on the remote; and the branch contains the base's tip.
+- `arm` (0): the net change a squash would land - `base...HEAD` - reaches
+  nothing on the owner's read list (`READ_PATHS`) and leaves this module
+  alone, which `arms_on_green` answers path by path; no claim bound to this
+  branch is unreleased; HEAD holds every commit of the branch's copy on the
+  remote; and the branch contains the base's tip. A path outside the store,
+  the queue's own tooling, `subprojects/docket/`, and the pull requests'
+  recovered bodies, `docs/pr-bodies/`, is named beside the answer: the owner's
+  rule arms it on green unless the change raises a question for them, which
+  stays the session's judgment, and asks for the reason in the report.
 - `hold` (1), naming what holds it. A claim holds the pull request unarmed and
   a draft, whichever push carried it, until the branch's own copy closes or
   blocks the item or the branch yields it: merged, the branch and its claim go
   together while the work goes on. A lapsed claim is unreleased too - it is
-  work nobody finished or handed back. A path outside the store, the tooling
-  and the records holds it unarmed, and so does a change to this module,
-  because that work waits on a read rather than merging on green CI. Once no
-  claim holds it, that hold also says where the ask for the read goes and what
-  it carries (`READ_ASK`).
+  work nobody finished or handed back. A path on the owner's read list holds
+  it unarmed, and so does a change to this module, because that work waits on
+  a read rather than merging on green CI, and merges on the owner's word
+  alone. Once no claim holds it, that hold also says where the ask for the
+  read goes and what it carries (`READ_ASK`).
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
@@ -70,7 +73,20 @@ has already merged; what went unread is said beside it.
 - a body record arms on green beside them (2026-09-25, ratified with the
   record's form, over every pull request holding on the record it writes
   before its merge, `PL-979D`): the record is a copy of the body, never a
-  change to read.
+  change to read;
+- only the owner's read list waits on a read - `src/`, `tests/` outside
+  `subprojects/`, `docs/MODEL.md`, `src/anesthesia_sim/data/`, `README.md`
+  and this module - and every other path arms on green, named beside the
+  answer, unless the change raises a question for the owner (the Projects
+  trial's instructions, 2026-10-03, kind unrecorded, over holding every path
+  outside the store, the tooling and the records; built by `PL-KKHD`). The
+  rule was written there alone, so on one day `#1298` armed under it while
+  `#1308` held under the old one. It reopens `PL-0JGZ` (project owner,
+  2026-09-26, ratified), which kept `ROADMAP.md` and `docs/WORKING_NOTES.md`
+  off what arms because the roadmap is where the owner sets direction:
+  neither is on the list, so both arm now, and `PL-KKHD` puts that back to
+  the owner beside the list, with whether `.github/workflows/` and
+  `.claude/hooks/`, which decide merges as this module does, should join it.
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge
@@ -165,40 +181,77 @@ RECORDS = "docs/pr-bodies/"
 #: naming a file nothing reads.
 GATE = TOOLING + "src/docket/arming.py"
 
+#: The owner's read list, spelt as they spelt the rule (2026-10-03, `PL-KKHD`):
+#: a change reaching one of these waits on their read, the gate beside them,
+#: and everything else arms on green. A directory holds what is under it, a
+#: file is itself. `tests/` is the simulator's, at the root:
+#: `subprojects/docket/tests/` starts with `subprojects/`, so the prefix leaves
+#: it to the tooling. `src/anesthesia_sim/data/` lies under `src/` and is kept
+#: for the reader who looks for it by name.
+READ_PATHS = ("src/", "tests/", "docs/MODEL.md", "src/anesthesia_sim/data/", "README.md")
 
-def arms_on_green(path: str, items_dir: str) -> bool:
+#: The list as the answers name it, the gate included.
+READ_LIST = "src/, tests/, docs/MODEL.md, src/anesthesia_sim/data/, README.md and arming.py"
+
+
+def waits_on_read(path: str) -> bool:
+    """Whether a change to `path` waits on the owner's read: the read list, or the gate."""
+    if path == GATE:
+        return True
+    return any(
+        path == entry or (entry.endswith("/") and path.startswith(entry)) for entry in READ_PATHS
+    )
+
+
+def arms_on_green(path: str) -> bool:
     """Whether a change to `path` may merge on green CI without the owner's read.
 
-    A path under the store, the tooling or the body records may, `GATE`
-    excepted; anything else waits on a read, `ROADMAP.md` and
-    `docs/WORKING_NOTES.md` included. `arm` holds a branch for each path this
-    answers no to.
+    Everything but the owner's read list and `GATE` may (the Projects trial's
+    instructions, 2026-10-03, kind unrecorded, over holding every path outside
+    the store, the tooling and the records, `PL-SQTR`; built by `PL-KKHD`).
+    `arm` holds a branch for each path this answers no to, and names beside
+    an `arm` each path `outside_the_store` answers yes to, since the owner's
+    rule arms those only while the change raises no question for them - a
+    judgment this module does not make - and asks for the reason in the
+    report.
 
     It is not `claims.in_queue`, which asks whether a change owes a claim and
     counts the roadmap and the notes as queue records, since a triage pass and
-    a design round write them and nothing else (`PL-3CTW`). Whether they arm
-    as well was asked and answered no (project owner, 2026-09-26, ratified,
-    over treating them as queue records here, `PL-0JGZ`): the roadmap is the
-    milestone map the owner sets direction in, and an unread merge of it is a
-    different risk from an item file's. A `ROADMAP.md`-only triage pass
-    therefore owes no claim and still waits on a read. The rule is spelt here,
-    in the one module the gate holds, rather than beside `in_queue`, so that
-    widening what arms still takes an edit the gate holds (same date,
-    ratified, over two named predicates in `claims`, `PL-0JGZ`), as `RECORDS`
-    is kept here for `PL-F6MM`.
+    a design round write them and nothing else (`PL-3CTW`). The two answers
+    were kept apart on purpose: `ROADMAP.md` and `docs/WORKING_NOTES.md` owe
+    no claim, and until 2026-10-03 still waited on a read (project owner,
+    2026-09-26, ratified, over treating them as queue records here,
+    `PL-0JGZ`), because the roadmap is the milestone map the owner sets
+    direction in. The owner's read list leaves both off, so they arm now;
+    `PL-KKHD` records the reopening. The rule is spelt here, in the one
+    module the gate holds, rather than beside `in_queue`, so that widening
+    what arms still takes an edit the gate holds (2026-09-26, ratified, over
+    two named predicates in `claims`, `PL-0JGZ`), as `RECORDS` is kept here
+    for `PL-F6MM`.
+    """
+    return not waits_on_read(path)
+
+
+def outside_the_store(path: str, items_dir: str) -> bool:
+    """Whether `path` lies outside the store, the tooling and the records.
+
+    Until 2026-10-03 this was what held a pull request for a read; now it is
+    what `arm` names beside its answer, so the report can carry the reason
+    the old hold would have given.
     """
     prefix = items_dir.strip("/") + "/"
-    return path.startswith((prefix, TOOLING, RECORDS)) and path != GATE
+    return not path.startswith((prefix, TOOLING, RECORDS))
 
 
 @dataclass(frozen=True)
 class Verdict:
     """`arm`'s answer for `HEAD`, and what it rests on.
 
-    `claims` are the unreleased claims bound to this branch, `outside` the
-    paths a merge would land outside the store, the tooling and the records,
-    `gate` whether it would change this module, and `behind` how many of the
-    base's commits the branch lacks. `unpulled` is what the branch's copy on
+    `claims` are the unreleased claims bound to this branch, `read` the paths
+    a merge would land on the owner's read list, `outside` the paths it would
+    land outside the store, the tooling and the records that arm all the same
+    and are named, `gate` whether it would change this module, and `behind`
+    how many of the base's commits the branch lacks. `unpulled` is what the branch's copy on
     the remote holds that HEAD lacks, with what brings it in, or why that
     could not be read, said before anything else. `unread` is why the answer
     is `unknown`, or what went unread beside a `hold` or a `landed`. `merged`
@@ -210,6 +263,7 @@ class Verdict:
     base: str = ""
     items_dir: str = ""
     claims: tuple[Hold, ...] = ()
+    read: tuple[str, ...] = ()
     outside: tuple[str, ...] = ()
     gate: bool = False
     behind: int = 0
@@ -238,11 +292,22 @@ class Verdict:
                 "push - then ask again.",
             )
         if self.answer == ARM:
-            return (
-                f"arm - {self.branch} changes nothing outside {self._arming}, leaves "
-                f"{GATE.rpartition('/')[2]} alone, holds no open claim, and contains "
-                f"{self.base}'s tip: mark its pull request ready and arm it",
-            )
+            said = [
+                f"arm - {self.branch} changes nothing on the owner's read list ({READ_LIST}), "
+                f"holds no open claim, and contains {self.base}'s tip: mark its pull request "
+                "ready and arm it"
+            ]
+            if self.outside:
+                count = len(self.outside)
+                noun = "path" if count == 1 else "paths"
+                said.append(
+                    f"  It changes {count} {noun} outside {self._arming}, which arm on green "
+                    "under the owner's rule of 2026-10-03 unless the change raises a question "
+                    "for them - this session's judgment, not this answer's - so name "
+                    f"{'it' if count == 1 else 'them'} in the report as the hold's reason:"
+                )
+                said.append(f"  {self._shown(self.outside)}")
+            return tuple(said)
         if self.answer == LANDED and (merged := self.merged) is not None:
             said = [
                 f"landed - #{merged.number} merged {self.branch} at {merged.head[:12]}, and "
@@ -272,16 +337,14 @@ class Verdict:
                     "prints the commands."
                 )
             return (*said, *notes)
-        read = ", so its pull request waits on a read" if self.outside or self.gate else ""
+        read = ", so its pull request waits on a read" if self.read or self.gate else ""
         said = [f"hold - {self.branch}: " + " and ".join(self._holding()) + read]
         if self.unpulled:
             said.append(f"  {self.unpulled}")
         for hold in self.claims:
             said.append(f"  {_described(hold)}")
-        if self.outside:
-            shown = ", ".join(self.outside[:SHOWN])
-            more = len(self.outside) - SHOWN
-            said.append(f"  {shown}{f', and {more} more' if more > 0 else ''}")
+        if self.read:
+            said.append(f"  {self._shown(self.read)}")
         said.append(
             "  Leave auto-merge off, disarming it before the push that brings this if it is "
             "armed"
@@ -298,19 +361,26 @@ class Verdict:
 
     @property
     def _arming(self) -> str:
-        """The directories a change arms on green under, as `arm` and `hold` both name them."""
+        """The store, the tooling and the records, as `arm` names the paths outside them."""
         return f"{self.items_dir}, {TOOLING.rstrip('/')} and {RECORDS.rstrip('/')}"
 
+    @staticmethod
+    def _shown(paths: tuple[str, ...]) -> str:
+        """The first `SHOWN` paths, and a count of the rest."""
+        shown = ", ".join(paths[:SHOWN])
+        more = len(paths) - SHOWN
+        return f"{shown}{f', and {more} more' if more > 0 else ''}"
+
     def _holding(self) -> list[str]:
-        """The one-clause reasons a `hold` names: claims, then paths, then the gate."""
+        """The one-clause reasons a `hold` names: claims, then the read list, then the gate."""
         reasons = []
         if self.claims:
             keys = ", ".join(hold.key for hold in self.claims)
             reasons.append(f"a merge would erase its open claim on {keys}")
-        if self.outside:
-            count = len(self.outside)
+        if self.read:
+            count = len(self.read)
             noun = "path" if count == 1 else "paths"
-            reasons.append(f"it changes {count} {noun} outside {self._arming}")
+            reasons.append(f"it changes {count} {noun} on the owner's read list")
         if self.gate:
             reasons.append(f"it changes {GATE}, the gate itself")
         return reasons
@@ -413,6 +483,7 @@ def arm(
     # Both sides of a rename, so a file moved into the store shows the deletion
     # it made outside it, which a rename would print as one path under the store.
     changed = run(changed_path_args("diff", "--name-only", f"{base}...HEAD", "--"), root)
+    on_list: tuple[str, ...] = ()
     outside: tuple[str, ...] = ()
     gate = False
     if answered(changed):
@@ -420,7 +491,11 @@ def arm(
         # The gate is reported apart, and asked for directly rather than read
         # back out of what `arms_on_green` holds.
         gate = GATE in paths
-        outside = tuple(sorted(path for path in paths - {GATE} if not arms_on_green(path, prefix)))
+        rest = paths - {GATE}
+        on_list = tuple(sorted(path for path in rest if not arms_on_green(path)))
+        outside = tuple(
+            sorted(path for path in rest if arms_on_green(path) and outside_the_store(path, prefix))
+        )
     else:
         unread.append(f"git would not diff {name} against {base}, so what a merge lands is unknown")
 
@@ -455,19 +530,20 @@ def arm(
         base=base,
         items_dir=prefix.rstrip("/"),
         claims=claims,
+        read=on_list,
         outside=outside,
         gate=gate,
         behind=behind,
         unpulled=unpulled,
         unread=tuple(unread),
     )
-    if claims or outside or gate:
+    if claims or on_list or gate:
         return found
     if unpulled or unread:
         return Verdict(UNKNOWN, branch=name, base=base, unpulled=unpulled, unread=tuple(unread))
     if behind:
         return Verdict(BEHIND, branch=name, base=base, items_dir=found.items_dir, behind=behind)
-    return Verdict(ARM, branch=name, base=base, items_dir=found.items_dir)
+    return Verdict(ARM, branch=name, base=base, items_dir=found.items_dir, outside=outside)
 
 
 def _unpulled(root: Path, run: Runner, heads: RemoteHeads | None, name: str, branch: str) -> str:

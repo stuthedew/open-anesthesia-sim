@@ -9520,7 +9520,7 @@ def test_arm_arms_a_branch_carrying_only_item_files_whatever_another_branch_clai
 
     assert _arm(root) == 0
     out = capsys.readouterr().out
-    assert out.startswith(f"arm - {ARM_BRANCH} changes nothing outside docs/items")
+    assert out.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
 
 
 @pytest.mark.parametrize(
@@ -9567,23 +9567,28 @@ def test_arm_holds_a_lapsed_claim_and_says_how_to_end_it(
     assert "`bin/docket yield PL-B1B1` ends it" in out
 
 
-def test_arm_holds_a_branch_changing_paths_outside_the_store_and_names_them(
+def test_arm_names_a_path_outside_the_store_beside_an_arm_and_a_move_in_is_still_a_deletion(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Work outside the store waits on a read, and a move into the store is still a deletion.
+    """A path outside the store arms under the owner's rule, named so the report carries it.
 
     Read with rename detection, the file moved in from `docs/` prints as one
-    path under the store, and the branch would arm with a file gone from
-    outside it.
+    path under the store, and the branch would arm with nothing said about a
+    file gone from outside it.
     """
     root, git = _arm_repo(tmp_path)
     git("mv", "docs/PL-D3D3-drafted.md", "docs/items/PL-D3D3-drafted.md")
     git("commit", "-qm", "PL-D3D3: file the drafted item", when=ARM_T0)
 
-    assert _arm(root) == 1
+    assert _arm(root) == 0
     out = capsys.readouterr().out
-    assert out.startswith(f"hold - {ARM_BRANCH}: it changes 1 path outside docs/items")
-    assert "docs/PL-D3D3-drafted.md" in out
+    assert out.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
+    assert (
+        "\n  It changes 1 path outside docs/items, subprojects/docket and docs/pr-bodies, which "
+        "arm on green under the owner's rule of 2026-10-03 unless the change raises a question "
+        "for them - this session's judgment, not this answer's - so name it in the report as "
+        "the hold's reason:\n  docs/PL-D3D3-drafted.md\n"
+    ) in out
     assert "keep the pull request a draft" not in out
 
 
@@ -9986,9 +9991,10 @@ def test_arm_arms_a_docket_only_pull_request_on_green(
     assert _arm(root) == 0
     out = capsys.readouterr().out
     assert out.startswith(
-        f"arm - {ARM_BRANCH} changes nothing outside docs/items, subprojects/docket and "
-        "docs/pr-bodies, leaves arming.py alone, holds no open claim"
+        f"arm - {ARM_BRANCH} changes nothing on the owner's read list (src/, tests/, "
+        "docs/MODEL.md, src/anesthesia_sim/data/, README.md and arming.py), holds no open claim"
     )
+    assert "outside docs/items" not in out
 
 
 def test_arm_arms_a_pull_request_body_record_on_green(
@@ -10004,7 +10010,9 @@ def test_arm_arms_a_pull_request_body_record_on_green(
     _put(git, root, "docs/pr-bodies/1059.md")
 
     assert _arm(root) == 0
-    assert capsys.readouterr().out.startswith(f"arm - {ARM_BRANCH} changes nothing outside")
+    out = capsys.readouterr().out
+    assert out.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
+    assert "outside docs/items" not in out
 
 
 @pytest.mark.parametrize(
@@ -10015,32 +10023,113 @@ def test_arm_arms_a_pull_request_body_record_on_green(
         "tests/unit/test_uptake.py",
         "docs/MODEL.md",
         "README.md",
-        "CLAUDE.md",
-        "subprojects/docketeer/tool.py",
     ],
 )
-def test_arm_holds_for_a_read_a_path_outside_the_store_and_the_tooling(
+def test_arm_holds_for_a_read_a_path_on_the_owners_read_list(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
 ) -> None:
-    """Everything but the store, the tooling and the records waits on a read, the simulator first.
+    """The owner's read list waits on a read: the simulator, its tests, the model and the README.
 
-    The branch also changes a docket module, which would arm alone, so the
-    hold is the path's own. `subprojects/docketeer/` shares the tooling's
-    letters and not its directory.
+    The branch also changes a docket module and `CLAUDE.md`, which arm alone,
+    so the hold is the listed path's own and the answer names it alone.
     """
     root, git = _arm_repo(tmp_path)
     _put(git, root, "subprojects/docket/src/docket/render.py")
+    _put(git, root, "CLAUDE.md")
     _put(git, root, path)
 
     assert _arm(root) == 1
     out = capsys.readouterr().out
     assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes 1 path outside docs/items, subprojects/docket and "
-        "docs/pr-bodies, so its pull request waits on a read\n"
+        f"hold - {ARM_BRANCH}: it changes 1 path on the owner's read list, so its pull request "
+        "waits on a read\n"
     )
     assert f"\n  {path}\n" in out
     assert "subprojects/docket/src/docket/render.py" not in out
+    assert "CLAUDE.md" not in out
     assert "keep the pull request a draft" not in out
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "CLAUDE.md",
+        "ROADMAP.md",
+        "docs/WORKING_NOTES.md",
+        ".claude/rules/instruction-writing.md",
+        ".github/workflows/update-armed.yml",
+        "tools/doc_check.py",
+        "subprojects/docketeer/tool.py",
+        "subprojects/docket/tests/test_render.py",
+        "docs/items-archive.md",
+    ],
+)
+def test_a_change_outside_the_owners_read_list_arms_on_green(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
+) -> None:
+    """Everything off the owner's read list arms on green, named so the report carries the reason.
+
+    The owner's rule of 2026-10-03 narrowed the read to the simulator paths
+    and the gate, and until `PL-KKHD` only the Projects trial's instructions
+    carried it: `arm` held every path outside the store for a read, so a
+    session outside the Project asked for reads the owner had said they did
+    not want, and a Project thread read two rules. `ROADMAP.md` and
+    `docs/WORKING_NOTES.md` are the paths `PL-0JGZ` had kept held, and
+    `subprojects/docketeer/` shares the tooling's letters and not its
+    directory, so it is named as outside the store while arming all the same.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "subprojects/docket/src/docket/render.py")
+    _put(git, root, path)
+
+    assert _arm(root) == 0
+    first, *rest = capsys.readouterr().out.splitlines()
+    assert first.startswith(f"arm - {ARM_BRANCH} changes nothing on the owner's read list")
+    if path.startswith("subprojects/docket/"):
+        assert rest == []
+    else:
+        assert rest[0].startswith(
+            "  It changes 1 path outside docs/items, subprojects/docket and docs/pr-bodies, "
+            "which arm on green under the owner's rule of 2026-10-03 unless the change raises a "
+            "question for them"
+        )
+        assert rest[1] == f"  {path}"
+        assert "subprojects/docket/src/docket/render.py" not in rest[1]
+
+
+def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
+    """The list holds the five paths the owner named, with the gate, and `tests/` is the root's.
+
+    `tests/` outside `subprojects/` was the owner's wording: the docket
+    package's own tests arm with the tooling.
+    """
+    assert arming.READ_PATHS == (
+        "src/",
+        "tests/",
+        "docs/MODEL.md",
+        "src/anesthesia_sim/data/",
+        "README.md",
+    )
+    for path in (
+        "src/anesthesia_sim/app/main.py",
+        "src/anesthesia_sim/data/reference_adult.json",
+        "tests/unit/test_uptake.py",
+        "tests/conftest.py",
+        "docs/MODEL.md",
+        "README.md",
+        ARM_GATE,
+    ):
+        assert arming.waits_on_read(path), path
+        assert not arming.arms_on_green(path), path
+    for path in (
+        "subprojects/docket/tests/test_cli.py",
+        "docs/MODEL.md.bak",
+        "docs/README.md",
+        "srcs/x.py",
+        "tests.md",
+    ):
+        assert not arming.waits_on_read(path), path
+        assert arming.arms_on_green(path), path
 
 
 @pytest.mark.parametrize("change", ["edit", "move"])
@@ -10071,13 +10160,13 @@ def test_arm_holds_a_change_to_arming_py_for_a_read_although_it_lies_under_the_t
         f"hold - {ARM_BRANCH}: it changes {ARM_GATE}, the gate itself, "
         "so its pull request waits on a read\n"
     )
-    assert "outside docs/items" not in out
+    assert "owner's read list" not in out
 
 
-def test_arm_names_the_gate_beside_the_paths_outside_the_tooling(
+def test_arm_names_the_gate_beside_the_paths_on_the_read_list(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Both reasons are said, and the listed paths are the ones outside, not the gate."""
+    """Both reasons are said, and the listed paths are the ones on the list, not the gate."""
     root, git = _arm_repo(tmp_path)
     _put(git, root, ARM_GATE)
     _put(git, root, "src/anesthesia_sim/core/uptake.py")
@@ -10085,9 +10174,8 @@ def test_arm_names_the_gate_beside_the_paths_outside_the_tooling(
     assert _arm(root) == 1
     out = capsys.readouterr().out
     assert out.startswith(
-        f"hold - {ARM_BRANCH}: it changes 1 path outside docs/items, subprojects/docket and "
-        f"docs/pr-bodies and it changes {ARM_GATE}, the gate itself, so its pull request waits "
-        "on a read\n"
+        f"hold - {ARM_BRANCH}: it changes 1 path on the owner's read list and it changes "
+        f"{ARM_GATE}, the gate itself, so its pull request waits on a read\n"
         "  src/anesthesia_sim/core/uptake.py\n"
     )
 

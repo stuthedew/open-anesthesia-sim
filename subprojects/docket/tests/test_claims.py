@@ -1562,30 +1562,41 @@ def test_the_gate_keeps_its_own_copy_of_the_body_records() -> None:
     assert RECORDS == arming.RECORDS
 
 
-def test_what_arms_on_green_is_the_store_the_tooling_and_the_records_but_the_gate() -> None:
+def test_what_arms_on_green_is_everything_but_the_owners_read_list_and_the_gate() -> None:
+    """The store, the tooling and the records arm as before, and so does every path off the list."""
     items = QUEUE.items_dir
-    assert arming.arms_on_green("docs/items/PL-B1B1-held.md", items)
-    assert arming.arms_on_green("subprojects/docket/src/docket/render.py", items)
-    assert arming.arms_on_green("docs/pr-bodies/1066.md", items)
-    assert not arming.arms_on_green(arming.GATE, items)
-    assert not arming.arms_on_green("docs/items-archive.md", items)
-    assert not arming.arms_on_green("src/work.py", items)
+    assert arming.arms_on_green("docs/items/PL-B1B1-held.md")
+    assert arming.arms_on_green("subprojects/docket/src/docket/render.py")
+    assert arming.arms_on_green("docs/pr-bodies/1066.md")
+    assert arming.arms_on_green("docs/items-archive.md")
+    assert not arming.arms_on_green(arming.GATE)
+    assert not arming.arms_on_green("src/work.py")
+    assert not arming.outside_the_store("docs/items/PL-B1B1-held.md", items)
+    assert not arming.outside_the_store("subprojects/docket/src/docket/render.py", items)
+    assert not arming.outside_the_store("docs/pr-bodies/1066.md", items)
+    assert arming.outside_the_store("docs/items-archive.md", items)
+    assert arming.outside_the_store("src/work.py", items)
 
 
-def test_a_roadmap_only_branch_is_queue_work_but_not_armable(tmp_path: Path) -> None:
+def test_a_roadmap_only_branch_is_queue_work_and_arms_named_as_outside_the_store(
+    tmp_path: Path,
+) -> None:
     """Whether a change owes a claim and whether it merges unread are two questions, answered apart.
 
     A triage pass that puts an item on a gate list writes `ROADMAP.md` and
-    nothing else, so it owes no claim (`in_queue`, `PL-3CTW`), and it still
-    waits on the owner's read, because `arm` keeps to the store, the tooling
-    and the body records (project owner, 2026-09-26, ratified, over widening
-    it to the roadmap and the notes, `PL-0JGZ`). Both answers are pinned on one
-    branch, so that neither drifts into the other unseen.
+    nothing else, so it owes no claim (`in_queue`, `PL-3CTW`). Until
+    2026-10-03 it still waited on the owner's read, because `arm` kept to the
+    store, the tooling and the body records (project owner, 2026-09-26,
+    ratified, over widening it to the roadmap and the notes, `PL-0JGZ`); the
+    owner's read list of that day leaves the roadmap and the notes off, so
+    both arm now, named beside the answer as the paths the old hold would
+    have held (`PL-KKHD`, which records the reopening). Both answers are
+    pinned on one branch, so that neither drifts into the other unseen.
     """
     assert in_queue("ROADMAP.md", QUEUE)
-    assert not arming.arms_on_green("ROADMAP.md", QUEUE.items_dir)
+    assert arming.arms_on_green("ROADMAP.md")
     assert in_queue("docs/WORKING_NOTES.md", QUEUE)
-    assert not arming.arms_on_green("docs/WORKING_NOTES.md", QUEUE.items_dir)
+    assert arming.arms_on_green("docs/WORKING_NOTES.md")
 
     repo = _Repo(tmp_path / "repo")
     repo.branch("claude/gate-list-a1b2c3")
@@ -1595,7 +1606,8 @@ def test_a_roadmap_only_branch_is_queue_work_but_not_armable(tmp_path: Path) -> 
     assert unclaimed(repo.root, holdings(repo.root, now=T0 + HOUR), QUEUE) == Unclaimed()
 
     verdict = arming.arm(repo.root, items_dir=QUEUE.items_dir, now=T0 + HOUR, fetch=False)
-    assert verdict.answer == arming.HOLD
+    assert verdict.answer == arming.ARM
+    assert verdict.read == ()
     assert verdict.outside == ("ROADMAP.md",)
 
 

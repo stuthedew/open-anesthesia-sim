@@ -3,12 +3,13 @@ id: PL-KKHD
 title: The owner's arm rule for read holds lives only in the Projects trial's instructions: arm on green unless the change reaches src/, tests/, docs/MODEL.md, README.md or arming.py, while bin/docket arm, CLAUDE.md and docs/maintainer.md hold every change outside the store unarmed for his read
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: owner-rules-in-repo
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, docs/maintainer.md, CLAUDE.md
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_claims.py, docs/maintainer.md, CLAUDE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) and not safety or science; the Projects trial began on 2026-09-25, so the problem was not present at the freeze, and nothing on the frozen list names it
 added: 2026-10-03
+closed: 2026-10-03
 payoff: every session holds for the owner's read only a change to the simulator paths or arming.py, and arms any other on green, as his rule asks
 verify: grep -q 'def test_a_change_outside_the_owners_read_list_arms_on_green' subprojects/docket/tests/test_cli.py
 ---
@@ -80,3 +81,44 @@ repository, as `PL-8XQS` and `PL-F23S` found for two other rules.
 other change outside the store, naming those paths in its answer; tests in
 `subprojects/docket/tests/test_cli.py` hold both answers; and
 `docs/maintainer.md` states the rule.
+
+**Built 2026-10-03, in `PL-PDVF`'s pull request.** `arming.READ_PATHS` holds the
+owner's list as he spelt it - `src/`, `tests/` (the root's; the docket
+package's own tests arm with the tooling), `docs/MODEL.md`,
+`src/anesthesia_sim/data/`, `README.md` - with `arming.GATE` beside it.
+`arming.waits_on_read` answers for a path, `arming.arms_on_green` is its
+negation and takes the path alone now, and `arming.outside_the_store` names
+what an `arm` answer reports. `arm` holds for a claim, a path on the list or
+the gate, prints the list in every answer, and under `arm` names each path
+outside `docs/items/`, `subprojects/docket/` and `docs/pr-bodies/` with the
+owner's rule of 2026-10-03, so the report carries the hold's old reason;
+whether the change raises a question for him stays the session's call, and
+the answer says so. `test_a_change_outside_the_owners_read_list_arms_on_green`
+and `test_arm_holds_for_a_read_a_path_on_the_owners_read_list` in
+`subprojects/docket/tests/test_cli.py` hold both answers,
+`test_the_owners_read_list_is_spelt_as_the_owner_spelt_it` the list, and
+`subprojects/docket/tests/test_claims.py`'s two predicate tests the rest.
+`CLAUDE.md`'s `hold` clause and `docs/maintainer.md` § "Read a simulator change
+before you arm it" state the rule.
+
+**What it reopens.** `ROADMAP.md` and `docs/WORKING_NOTES.md` arm on green
+now. `PL-0JGZ` (project owner, 2026-09-26, ratified, over widening `arm` to
+treat them as queue records) had kept `arm` holding them, because the roadmap
+is where the owner sets direction; his list of 2026-10-03 is the later word
+and names neither, so the build followed the list. That is the ratified
+decision reopened on ordinary evidence, and it is put to him in the review
+ask rather than decided here.
+
+**Decision needed.** Should `.github/workflows/` and `.claude/hooks/` join the
+read list?
+
+**Recommendation:** yes, both directories whole. `update-armed.yml`,
+`tag-release.yml` and `direct-merge-guard.sh` decide what merges and what is
+tagged, which is the reason `arming.py` is on the list, and under the list as
+written a change to any of them arms itself on green, so the one file the
+owner holds for a read can be loosened from beside it. The cost is a read on
+each change to them: 51 commits touched the two directories in the fourteen
+days to 2026-10-03, most in the Bash-guard burst of 2026-09-26, and the rate
+since 2026-09-30 is about one a day. Not added on his behalf: the list is his,
+and the build keeps it as he spelt it.
+
