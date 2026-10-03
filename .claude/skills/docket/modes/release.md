@@ -26,9 +26,13 @@ bin/docket gate --feature teachable-case
 ```
 
 That is the whole decidable pass: every open debt item in the store, split by
-whether it carries the milestone's feature, with effort totals for each.
-Recording Gate 0 by hand meant reading 48 items and applying the rule to each;
-do not repeat that. **The feature is a first cut, not the rule.** What the
+whether it carries the milestone's feature and then by lane, with effort totals
+for each. Recording Gate 0 by hand meant reading 48 items and applying the rule
+to each, and Gate 1's lane split took a script; do not repeat either. Group the
+list the way `gate` prints its lanes - product, workflow, and the crossing and
+unplaced entries neither lane offers - because that is how a frozen list is
+worked, two sessions in lanes that share no files (`PL-M26Q`). **The feature is
+a first cut, not the rule.** What the
 milestone clears itself is what its `Required scope` names (`ROADMAP.md` §
 "Debt inside the milestone's own scope"), and the two differ in both
 directions - Gate 2's list did on four entries on 2026-09-23 - so write that

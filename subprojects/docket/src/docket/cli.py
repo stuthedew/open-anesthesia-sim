@@ -3266,19 +3266,19 @@ def _say_answer_lane(
 
 
 def cmd_gate(args: argparse.Namespace) -> int:
-    """Every open debt item in the store, split by feature: what a freeze starts from.
+    """Every open debt item in the store, split by feature and by lane: what a freeze starts from.
 
     `ROADMAP.md` records the frozen list by hand, and doing that means reading
-    every open item's classes and status and splitting the result by scope.
-    That is decidable, so it is decided here; freezing the list stays the
-    deliberate act it is meant to be, and this command writes nothing.
+    every open item's classes and status and splitting the result by scope,
+    then by the lane each item is worked in. That is decidable, so it is
+    decided here; freezing the list stays the deliberate act it is meant to
+    be, and this command writes nothing.
     """
     _, items, config = _load(args)
-    print(
-        render.format_gate(
-            gate(items, args.feature or "", config.debt_classes), config.debt_classes
-        )
+    computed = gate(
+        items, args.feature or "", config.debt_classes, workflow_paths=config.workflow_paths
     )
+    print(render.format_gate(computed, config.debt_classes))
     return 0
 
 

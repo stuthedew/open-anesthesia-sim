@@ -89,9 +89,11 @@ two-to-five item fix would otherwise scatter.
 large one inside its band, because `recommend` orders by open items
 remaining, fewest first - so grouping tightly also pulls the rest of a group
 up `docket next` once one of them lands, which is the point rather than a
-side effect. And `docket gate --feature <name>` splits a milestone's debt by
-this same field, so moving an item into a fine group moves it from "cleared
-by the milestone" to "cleared before it begins".
+side effect. And `docket gate --feature <name>` splits the store's debt by
+this same field, so moving an item into a fine group moves it out of the
+milestone feature's list a gate freeze starts from - a first cut only, since
+what a milestone clears itself is whatever its `Required scope` names
+(`PL-RFHH`).
 
 The digest names an item that exists only on a branch when it finds one, and
 `bin/docket stranded` prints it with the `git checkout` line that restores the

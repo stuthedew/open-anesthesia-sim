@@ -32,7 +32,7 @@ docket set PL-K7QX --priority P2 --effort S --classes defect   # write triage's 
 docket withdraw PL-K7QX PL-B2B2 --because PL-34BG   # disown a recorded filing whose match was wrong
 docket concurrent PL-K7QX    # what can be worked alongside it, and what a live branch is already changing
 docket feature halted-step   # progress on one feature
-docket gate --feature x      # every open debt item, split by feature: a freeze's first cut
+docket gate --feature x      # every open debt item, split by feature and lane: a freeze's first cut
 docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
 docket verify PL-K7QX        # prove one item's work stayed in its commission
@@ -1725,6 +1725,15 @@ milestone clears itself is whether its `Required scope` names the id, the two
 differ in both directions, and so the output names its split for the feature
 and never for the rule; once a list is frozen, `docket wave` reads it against
 the rule (`PL-RFHH`).
+
+Each side is split by lane as well: its lane counts beside its sizes, then its
+items under each lane with that lane's sizes. The lane is what decides how a
+gate is *worked*, whether it divides into two sessions' worth and how evenly,
+and freezing Gate 1 took a script importing `docket.model` to answer that
+(`PL-M26Q`). It is `Item.lane` against `workflow_paths`, the reading `docket
+next` ranks by, so the two cannot place one item differently. With no
+`workflow_paths` declared there is no split to print, and `gate` says so rather
+than listing every item as `unplaced`.
 
 Debt is an open item classed `defect`, `safety`, `science`, `refactor` or
 `perf` — `debt_classes`, configurable — or one at `needs-decision`, since a

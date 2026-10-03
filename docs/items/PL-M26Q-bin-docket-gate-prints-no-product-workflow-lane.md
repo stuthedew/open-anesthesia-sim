@@ -3,10 +3,12 @@ id: PL-M26Q
 title: bin/docket gate prints no product/workflow lane split, so the session freezing a milestone's gate computes it by hand
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests, subprojects/docket/README.md, .claude/skills/docket/modes/release.md, .claude/skills/docket/modes/capture.md
 added: 2026-09-06
+closed: 2026-10-03
+pr: 1287
 verify: grep -rq 'def test_gate_reports_lanes' subprojects/docket/tests
 ---
 
