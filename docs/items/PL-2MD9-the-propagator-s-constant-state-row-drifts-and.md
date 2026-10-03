@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: numerical-domain
+milestone: v0.5.22
 touches: src/anesthesia_sim/core/matrix_exponential.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_matrix_exponential.py, tests/unit/test_agent_simulation_validation.py, tests/unit/test_resume_at.py, docs/MODEL.md
 added: 2026-09-14
 closed: 2026-10-03
