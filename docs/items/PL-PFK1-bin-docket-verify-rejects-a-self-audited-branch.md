@@ -3,11 +3,13 @@ id: PL-PFK1
 title: bin/docket verify REJECTs a self-audited branch on commission checks alone without ever naming --self, so a session reaching the command from CLAUDE.md or --help still hits the wall PL-7XTS closed for the skill
 priority: P3
 effort: S
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: delegation
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-15
+payoff: a session that audits its own branch without --self is told so above the verdict, instead of reading a REJECT on correct work as a commission breach
+verify: grep -qF 'def test_verify_names_self_when_the_claim_is_this_sessions_own' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket verify REJECTs a self-audited branch on commission checks alone without ever naming --self, so a session reaching the command from CLAUDE.md or --help still hits the wall PL-7XTS closed for the skill
@@ -79,3 +81,67 @@ mode is for - with that condition held strictly, so a branch that also removed
 an assertion or failed `make check` is never told the flag would have helped,
 because it would not have - or a recorded decision here says the wait is
 deliberate and names what would reopen it.
+
+## Design round 2026-10-03: recommendation
+
+**Re-checked against the tree, 2026-10-03.** `cli.cmd_verify` prints a footer
+only in `--self` mode and names `--self` nowhere on a bare run. Of the three
+routes: `CLAUDE.md`'s fix-now test 2 still names `bin/docket verify` bare
+(`PL-6QZP`'s recommendation (a) rewrites that clause with `--self` in it);
+`--help` now describes the flag in a full sentence ("this session is auditing
+its own branch, not reviewing a delegated one: report the four commission
+checks instead of refusing on them"); `subprojects/docket/README.md` documents
+it, and the close-out mode says "`--self` is not optional, and the bare command
+asks the wrong question" (`.claude/skills/docket/modes/close-out.md`). One
+instance is recorded, `PL-KY7M`'s close-out on 2026-09-12 (`PL-7XTS`), and
+none since: the twenty items filed after 2026-09-15 that mention `--self` are
+defects inside the self mode - an empty `verify:`, `falsifies:`, an assertion
+cancelled against its removal - not a bare run on a session's own branch. An
+unreported instance cannot be ruled out, because a session that hits the wall
+reads `--help` and files nothing.
+
+**The condition is decidable exactly, which the brief did not have.**
+`claims.Hold.mine` is true when the item's live claim carries this session's
+token - `claims.SESSION_VARIABLE`, which `claim` writes and `show` and `flight`
+read - and a delegated reviewer's session never matches. So the tool can know
+*whose* branch it is auditing, rather than inferring it from which checks
+failed.
+
+**Q. Build the mirror footer now on one observed instance, or record "wait for
+a second report" and close?**
+**Recommendation: build it, in the exact form rather than the brief's.** When
+`--self` is absent, the item's live claim is this session's own, and at least
+one commission check failed, print one line *above* the item's report: this
+branch's claim on the item is this session's, so this run is a self-audit asked
+as a delegated review; `bin/docket verify --self <id>` reports the four
+commission checks that refuse below. Silent on a bare checkout with no session
+id, silent for a reviewer, silent on a clean run, so it never fires without
+changing what the reader does next. Refused: switching the mode automatically
+(a mode the caller did not ask for is a hidden mode; the line keeps the verdict
+asked for and names the other) and the brief's "all failures are commission
+checks" condition (it reads the symptom where the cause, whose claim it is, is
+readable, and would stay silent on the mixed case it was designed around, where
+the line is still true). Why build on one instance: the failure is a `REJECT` on
+correct work, the costliest wrong answer a check gives, and the count that
+would settle it cannot be taken, since the session that hits it files nothing;
+against that the fix is about a dozen lines in `cmd_verify` plus one test, no
+resident text, and silent except on the mismatch. If the owner prefers
+`CLAUDE.md`'s gate reading - "where the benefit is unclear, the answer is no" -
+the record is the brief's: wait, and a second report reopens. Size S, as filed;
+`touches` as declared.
+
+**What would change the answer.** For "build": nothing more, it is the
+recommendation. For "wait": a second report of a bare-run `REJECT` on a
+session's own branch.
+
+## Answers 2026-10-03
+
+**Answered 2026-10-03: Q1 ratified: build** (project owner, 2026-10-03,
+ratified, over recording "wait for a second report" and closing, the brief's
+own lean, and over the brief's "all failures are commission checks"
+condition). The build, in `cli.cmd_verify`: when `--self` is absent, the
+item's live claim is this session's own (`claims.Hold.mine`) and at least one
+commission check failed, print one line above the item's report naming
+`bin/docket verify --self` and what it reports; silent otherwise; one test in
+`subprojects/docket/tests/test_cli.py`. Status moves to `ready` with this answer, as
+`docket check` requires of a recorded answer.
