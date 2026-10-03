@@ -279,10 +279,25 @@ which.** It declines, tagging nothing and going red, where git would not
 answer, where the notes were added more than once so that no one commit is the
 cut, or where origin already holds the tag on another commit, which a person
 settles. `bin/docket release` refuses to cut the next release while the
-previous one is untagged, and its refusal names the remedy: once the cause is
-fixed, the owner runs the workflow from Actions > tag-release > Run workflow,
-or `python3 tools/tag_release.py --apply` from a checkout. Both are theirs,
-since either pushes a tag. Say the tag is outstanding until `git ls-remote`
+previous one is untagged, and its refusal names the remedy.
+
+**Once the cause is fixed, running the workflow again is the session's, not
+the owner's** (project owner, 2026-10-03, `PL-F23S`; its bounds ratified over
+the owner's go after every red run and over asking before every dispatch).
+Dispatch a new run on `main` with the GitHub tools' `actions_run_trigger` -
+`method: run_workflow`, `workflow_id: tag-release.yml`, `ref: main` - then read
+the tag back with the `git ls-remote` line above. A new run, not
+`rerun_workflow_run` on the red one: a re-run uses "the same `GITHUB_SHA`
+(commit SHA) and `GITHUB_REF` (git ref) of the original event" (GitHub Docs,
+*Re-running workflows and jobs*), so it runs the script as it stood before the
+fix. The owner keeps only what a session cannot do: a dispatch GitHub refuses
+the session, which they run from Actions > tag-release > Run workflow or as
+`python3 tools/tag_release.py --apply` from a clone, since a session's own tag
+push is dropped without an error (`PL-N936`); and a tag origin already holds on
+another commit. Whether GitHub lets a session dispatch is not measured yet -
+the workflow has tagged every release since it landed, v0.5.20 to v0.5.22 -
+so the first untagged release is the measurement, and the session that meets it says in its reply what the call
+returned. Say the tag is outstanding until `git ls-remote`
 shows it, and check rather than assume: `tools/doc_check.py` will not catch the
 gap, because a local checkout cannot tell a release never tagged from one
 tagged since it last fetched (the advisory that tried was removed in v0.3.4).
