@@ -6,8 +6,8 @@ The fifth bounds the *run* - how much elapsed simulated time the model is
 claimed to represent a patient over - and is checked as each step is taken,
 because a run length is reached rather than set. It is also checked where a
 run is *handed* a point on that span instead of reaching it - a state built
-part-way through a run, a run definition's opening - because there the value
-handed in is what is wrong. It is otherwise the same kind of statement as the
+part-way through a run, a run definition's opening or its reach - because
+there the value handed in is what is wrong. It is otherwise the same kind of statement as the
 four, and lives here for that reason.
 
 `docs/MODEL.md` § "Supported input ranges" is the specification; this module
@@ -77,14 +77,14 @@ simulated time inside the supported span.
 
 Two more guards refuse a point on the span that is handed in rather than
 reached: `require_supported_step_count` for a `SimulationState` built
-part-way through a run, and `require_supported_case_instant` for the instant
-a `RunDefinition` opens at. A branch is both, built where its parent stood,
-so these are what refuse one taken past the span before anything reads it
-(`PL-BMY5`, `PL-73ZN`). The first is built on the same `maximum_step_count`
+part-way through a run, and `require_supported_case_instant` for the instants
+a `RunDefinition` opens at and is moved to. A branch is both, built where its
+parent stood, so these are what refuse one taken past the span before
+anything reads it (`PL-BMY5`, `PL-73ZN`). The first is built on the same `maximum_step_count`
 as the step's guard, so the count a run stops on at the limit is exactly the
-last one a state may be built at, whatever the step - including the few
-computed steps where that count is itself one step too many or one too few
-(`PL-8H2R`).
+last one a state may be built at, whatever the step. That count is decided on
+the simulated time it lands at, so the instant a run stops on is one the
+second accepts and the instant one step later is one it refuses (`PL-8H2R`).
 
 Widening any interval is a safety-critical change and not a convenience, but
 the work it now takes is different: argue that the compartment structure still
@@ -118,8 +118,8 @@ MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10.0
 # rather than refused at entry, so `require_supported_run_length` below
 # refuses the step that would cross it instead of a value a caller passed.
 # Where a caller does pass a point on it - a step count, a run's opening
-# instant - `require_supported_step_count` and `require_supported_case_instant`
-# refuse that value.
+# instant or its reach - `require_supported_step_count` and
+# `require_supported_case_instant` refuse that value.
 #
 # **It is a validity limit, and it was a memory one.** The 30-day figure it
 # replaces was set on 2026-08-25 to size a concentration history that no
@@ -269,9 +269,23 @@ def maximum_step_count(simulation_step_s: float) -> int:
     `MAXIMUM_ELAPSED_SIMULATION_TIME_S` or the largest simulated time below
     it that a whole number of steps can reach. That matches the closed
     intervals the three flows above declare - an endpoint is supported, not
-    the first refused value. It holds at the shipped 0.1 s step; at a few
-    computed steps the division rounds the count to one step too many, whose
-    last step lands past the span, or to one too few (`PL-8H2R`).
+    the first refused value.
+
+    **Decided on the product, not the quotient** (`PL-8H2R`). The count is
+    the largest whose simulated time - `SimulationState.elapsed_s`, the count
+    times the step, rounded once - is no later than the limit, so the step's
+    guard and the case-instant guard read one span. The quotient alone puts
+    it a step either side at some computed steps: at `768 / 1_000_000 * 100`
+    s it rounds up to a count whose last step lands at 86400.00000000001 s,
+    and at 0.02304 s down to one short of the step that lands on 86400.0 s.
+    So the floored quotient is only the first guess, kept where its product
+    is inside the span and the next count's is not. Otherwise the answer is
+    bracketed - no steps at all lands inside, and counts past the guess are
+    tried at doubling distances until one lands past - and the bracket is
+    halved. That is well defined because the product never falls as the
+    count rises, and it ends however small the step, where a count walked
+    one at a time need not: below about 1e-11 s a whole run of counts
+    rounds to one product.
 
     **Derived once from the step rather than compared against a running
     total**, which is what makes the boundary reproducible. `docs/MODEL.md`
@@ -285,7 +299,28 @@ def maximum_step_count(simulation_step_s: float) -> int:
     exactly the point the test exists to hold.
     """
 
-    return floor(MAXIMUM_ELAPSED_SIMULATION_TIME_S / simulation_step_s)
+    def lands_inside(step_count: int) -> bool:
+        return step_count * simulation_step_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S
+
+    estimate = floor(MAXIMUM_ELAPSED_SIMULATION_TIME_S / simulation_step_s)
+
+    if lands_inside(estimate) and not lands_inside(estimate + 1):
+        return estimate
+
+    inside, past, stride = 0, estimate, 1
+
+    while lands_inside(past):
+        inside, past, stride = past, past + stride, 2 * stride
+
+    while past - inside > 1:
+        middle = (inside + past) // 2
+
+        if lands_inside(middle):
+            inside = middle
+        else:
+            past = middle
+
+    return inside
 
 
 def require_supported_run_length(step_count: int, simulation_step_s: float) -> None:
@@ -327,10 +362,11 @@ def require_supported_step_count(step_count: int, simulation_step_s: float) -> N
     derivation, so a state built at the count a run stops on at the limit is
     accepted and the next count is not, at every step size - a run reached
     by stepping and one built at the same count cannot disagree about
-    whether it is inside the span. Where `maximum_step_count` is one step
-    too many or one too few, at a few computed steps, this guard is off by
-    the same step (`PL-8H2R`): agreeing with the step's guard is what keeps a
-    branch taken where its parent stopped from being refused.
+    whether it is inside the span. Agreeing with the step's guard is what
+    keeps a branch taken where its parent stopped from being refused; and
+    because that count is decided on the time it lands at, this guard also
+    accepts a count exactly where `require_supported_case_instant` accepts
+    the count times the step (`PL-8H2R`).
 
     `SimulationConfigurationError` rather than `SimulationDomainLimitError`,
     the reverse of the step's guard and for its reason: here a value handed
@@ -370,13 +406,15 @@ def require_supported_case_instant(instant_s: float) -> None:
     length" says. Closed at
     both ends like every interval here, so an instant of exactly
     `MAXIMUM_ELAPSED_SIMULATION_TIME_S` is accepted, and that is where a run
-    at the shipped 0.1 s step stops. At the few computed steps whose last
-    step lands a float past it (`PL-8H2R`), an opening there is refused.
+    at the shipped 0.1 s step stops. At any step, the instant a run stops on
+    is accepted and the instant one step later is refused, because
+    `maximum_step_count` decides the last step on the time it lands at
+    (`PL-8H2R`).
 
-    It guards the one instant a run is handed rather than reaches - a
-    `RunDefinition`'s opening, which a branch takes from its parent - and
-    raises `SimulationConfigurationError` for the reason
-    `require_supported_step_count` gives (`PL-73ZN`).
+    It guards the instants a run is handed rather than reaches - a
+    `RunDefinition`'s opening, which a branch takes from its parent, and the
+    reach it is moved to - and raises `SimulationConfigurationError` for the
+    reason `require_supported_step_count` gives (`PL-73ZN`).
 
     Raises:
         SimulationConfigurationError: `instant_s` is not finite, or is

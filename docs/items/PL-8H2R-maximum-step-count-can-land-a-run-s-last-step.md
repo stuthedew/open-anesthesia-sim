@@ -1,9 +1,16 @@
 ---
 id: PL-8H2R
 title: maximum_step_count can land a run's last step one float past 86 400 s, or stop it one step short of 86 400 s, for some computed step sizes, so the step-count and time-axis bounds on the supported run length disagree there
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
 feature: numerical-domain
+touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_supported_ranges.py, tests/unit/test_run_definition.py, tests/unit/test_simulation.py, docs/MODEL.md
 added: 2026-10-03
+closed: 2026-10-03
+pr: 1305
+verify: grep -q 'def test_the_step_count_and_the_case_instant_bound_the_same_span' tests/unit/test_supported_ranges.py && uv run pytest tests/unit/test_supported_ranges.py tests/unit/test_run_definition.py tests/unit/test_simulation.py
 ---
 
 **Problem.** maximum_step_count can land a run's last step one float past 86 400 s, or stop it one step short of 86 400 s, for some computed step sizes, so the step-count and time-axis bounds on the supported run length disagree there
@@ -68,3 +75,35 @@ Once the bounds agree, `RunDefinition.advance_to` could carry the same guard as
 the opening; today that would turn an overshoot into a refusal after the state
 had already stepped, which is why the reach is unguarded (`advance_to`'s
 docstring).
+
+**Resolved 2026-10-03.** `maximum_step_count` now returns the largest count
+whose product with the step - `SimulationState.elapsed_s`'s own expression -
+is no later than the span. The floored quotient is kept as the first guess
+where its product is inside and the next count's is not; otherwise the count
+is bracketed - 0 lands inside, and counts past the guess are tried at doubling
+distances until one lands past - and the bracket is halved. The candidate's
+two `while` loops were not taken: below about 1e-11 s many consecutive counts
+round to one product, so walking one count at a time is unbounded (at 1e-12 s
+the quotient was already 8 counts short; at 1e-300 s the walk would never
+end). A first draft bracketed with `2 * estimate + 2`, which overflowed the
+float range for about half the steps between 4.8e-304 and 9.6e-304 s, where
+the floored quotient had returned a count; stepping out from the guess
+reaches no further than the answer, so the new code raises only where the
+old one did. The search is exact for every step whose quotient is finite, at
+most about 2 000 probes, and costs 0.48 us a call on the shipped step against
+0.09 us before (measured 2026-10-03). Checked with zero violations over all
+200 000 `0.1 / n` steps, every literal and computed `ke-6` step to 0.1,
+200 000 uniform random steps from 1e-6 to 0.1, 20 000 log-uniform steps from
+1e-300 to 0.1, and 20 000 uniform steps from 4.81e-304 to 9.6e-304.
+
+`RunDefinition.advance_to` now carries `require_supported_case_instant`, as
+the brief proposed: every instant the application passes it is a step
+count's `elapsed_s`, which can no longer be past the span.
+`test_a_window_reads_only_the_segments_it_covers` built a 30-day run, a
+leftover of the retired 30-day cap; it now fills the 24-hour span with the
+same 1 500 changes and reads the last 100 s, which covers at most three
+segments as the last hour did before.
+
+Steps whose quotient overflows to infinity (below about 4.8e-304 s) still
+raise `OverflowError` from the `floor`, as they did before; that is
+`PL-YZ17`.

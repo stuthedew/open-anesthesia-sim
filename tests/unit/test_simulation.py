@@ -290,9 +290,11 @@ def test_reset_returns_a_run_stopped_at_the_limit_to_a_startable_one() -> None:
 # is handed a point on the span rather than reaching one. Checked at a step that
 # does not divide 24 hours evenly (0.07 s) and one that does (0.025 s) as well
 # as the shipped one, because the limit is a whole number of steps of whatever
-# size the run is taken at.
+# size the run is taken at; and at the two computed steps whose quotient put
+# that number a step too many (0.07680000000000001 s, which stood at
+# 86400.00000000001 s) and a step too few (0.02304 s) before `PL-8H2R`.
 
-STEPS_A_RUN_MAY_TAKE_S = (MAXIMUM_SIMULATION_STEP_S, 0.07, 0.025)
+STEPS_A_RUN_MAY_TAKE_S = (MAXIMUM_SIMULATION_STEP_S, 0.07, 0.025, 768 / 1_000_000 * 100, 0.02304)
 
 
 @pytest.mark.parametrize("simulation_step_s", STEPS_A_RUN_MAY_TAKE_S)
