@@ -9,6 +9,7 @@ feature: late-washout-evidence
 touches: docs/MODEL.md, tests/reference/test_late_washout_against_published_fits.py
 added: 2026-09-27
 closed: 2026-10-03
+pr: 1313
 payoff: turns docs/MODEL.md's untested explanation of the late washout tail into a measured one, or corrects it
 verify: ! grep -qF 'was not tested by varying them' docs/MODEL.md
 recurrences: 2026-10-03 PL-921Y
