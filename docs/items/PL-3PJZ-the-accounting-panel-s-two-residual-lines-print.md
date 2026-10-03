@@ -41,7 +41,9 @@ passing. One significant digit, or the order of magnitude alone, would carry
 everything the line is for; which form is a display decision for triage, not
 settled here.
 
-**Closed 2026-10-03: each line prints the power of ten it lies below.**
+**Closed 2026-10-03: each line prints the power of ten it lies below**
+(project owner, 2026-10-03, ratified, over one significant digit, over the
+nearest decade and over keeping the sign).
 `format_agent_residual` now renders `<1e-13 L` - the smallest power of ten the
 residual's magnitude lies strictly below, from `Decimal(abs(x)).adjusted() + 1`
 so the decade is exact for the float's own value - and `0 L` for exactly zero.

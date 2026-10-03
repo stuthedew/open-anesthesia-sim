@@ -7920,8 +7920,9 @@ setting in force.
 
 **The agent-accounting panel's three amounts are displayed to 0.1 L, and its
 two residual lines as the power of ten each lies below, because they answer
-different questions** (`PL-TG60`, 2026-09-15; the residuals' form `PL-3PJZ`,
-2026-10-03). The residual lines are a numerical diagnostic whose job is to
+different questions** (`PL-TG60`, 2026-09-15; the residuals' form project
+owner, 2026-10-03, ratified, over one significant digit, over the nearest
+decade and over keeping the sign, `PL-3PJZ`). The residual lines are a numerical diagnostic whose job is to
 make a residual of order 10⁻¹² L visible against amounts of order 1 to 100 L,
 which no fixed decimal count can do.
 
