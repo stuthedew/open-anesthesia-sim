@@ -708,8 +708,12 @@ rest of the bullet is the rule.
 
 **What it costs and what should retire it.** 272 characters net. It retires
 if the compaction prompt stops honouring instructions in context, which the
-2.1.286 binary was read for and a later version could change. Whether it changes a summary is seen only at the next
-compaction, which a session cannot run on itself; until then it is untested.
+2.1.286 binary was read for and 2.1.288's still does. Read against the
+summaries on 2026-10-03 (`PL-YZY4`): the six written with it in context mark
+checked conclusions *verified*, 1 to 7 times each, where none of five written
+without it does so more than once, and the first lists its refused routes with
+their reasons. It stays. Still unmeasured: whether it keeps sources under a
+citation load like the 20 above.
 
 ## The retirement clause's decision test, added 2026-10-01
 
