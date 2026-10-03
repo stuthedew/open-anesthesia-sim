@@ -174,6 +174,23 @@ def test_a_cluster_reproducing_into_itself_says_so(repo: Path) -> None:
     assert found.open_ids == sorted(found.open_ids)
 
 
+def test_a_dropped_item_counts_as_a_closure(repo: Path) -> None:
+    """Dropped leaves the open set as surely as done, so the ratio counts it (`PL-DHGC`).
+
+    Counting only `done`, this cluster read `r = 1.00`, not shrinking, though
+    half the items that left it were dropped.
+    """
+    _closers(repo, "src/thing.py", 3, kids_touch="src/thing.py")
+    for identifier in ("PL-D000", "PL-D001", "PL-D002"):
+        _write(repo, identifier, touches="src/thing.py", status="dropped")
+
+    found = next(c for c in generator_check.clusters(repo) if c.path == "src/thing.py")
+
+    assert found.closed == 6
+    assert found.ratio == 0.5
+    assert not any("not shrinking" in signal for signal in found.signals)
+
+
 def test_a_cluster_with_nothing_open_is_history_not_friction(repo: Path) -> None:
     """A cluster already closed out is not work anyone can act on."""
     _closers(repo, "src/thing.py", 3, kids_touch="src/thing.py")

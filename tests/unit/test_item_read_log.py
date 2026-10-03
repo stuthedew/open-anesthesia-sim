@@ -144,3 +144,32 @@ def test_the_summariser_counts_a_real_citation_edge(tmp_path: Path, monkeypatch,
     # s1 reached PL-BBBB having read PL-8888, which cites it; s2 reached one
     # item and traversed nothing.
     assert "Distinct items reached        2 of 2" in out
+
+
+def test_the_summariser_reads_status_from_the_front_matter(tmp_path: Path, monkeypatch) -> None:
+    """Closed is the front matter's `status`, wherever its line falls (`PL-DHGC`).
+
+    A search for a status line in a file's first 400 characters read a closed
+    item whose long title pushed that line past the window as open, and an open
+    item whose title quoted a status line as closed.
+    """
+    import item_reads
+
+    items = tmp_path / "docs" / "items"
+    items.mkdir(parents=True)
+    long_title = "a title long enough to push the status line out of the window " * 8
+    (items / "PL-8888-closed-late.md").write_text(
+        f"---\nid: PL-8888\ntitle: {long_title}\nstatus: done\n---\n\n**Problem.** Nothing.\n",
+        encoding="utf-8",
+    )
+    (items / "PL-BBBB-open-quoting.md").write_text(
+        "---\nid: PL-BBBB\ntitle: a reader looks for status: done in the head\n"
+        "status: ready\n---\n\n**Problem.** Nothing.\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(item_reads, "ITEMS", items)
+
+    paths, closed = item_reads.store()
+
+    assert set(paths) == {"PL-8888", "PL-BBBB"}
+    assert closed == {"PL-8888"}

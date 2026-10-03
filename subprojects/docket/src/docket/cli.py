@@ -5366,10 +5366,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="narrow to one half of the project, so two sessions do not collide",
     )
     nxt.add_argument(
-        "--effort",
-        choices=("S", "M", "L"),
-        default=None,
-        help="only work that fits the time available",
+        "--effort", choices=EFFORTS, default=None, help="only work that fits the time available"
     )
     nxt.add_argument("--limit", type=_at_least_one, default=3)
     nxt.add_argument(
