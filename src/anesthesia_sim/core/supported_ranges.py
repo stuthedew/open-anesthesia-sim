@@ -99,6 +99,7 @@ chain is cut: neither is derived from anything measured over this envelope.
 from math import floor, isfinite
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
+from anesthesia_sim.core.units import SECONDS_PER_HOUR
 
 # Fresh gas flow into the breathing circuit.
 MINIMUM_FRESH_GAS_FLOW_L_MIN = 0.0
@@ -346,9 +347,10 @@ def require_supported_run_length(step_count: int, simulation_step_s: float) -> N
         raise SimulationDomainLimitError(
             f"this run has reached {step_count * simulation_step_s:g} s of simulated time, "
             f"which is the supported run length of {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
-            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h); beyond it this model's "
-            f"omitted metabolism and its fat perfusion dominate the trace, so it is not "
-            f'claimed to represent a patient (docs/MODEL.md, "Supported run length")'
+            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h); beyond it "
+            f"this model's omitted metabolism and its fat perfusion dominate the trace, "
+            f'so it is not claimed to represent a patient (docs/MODEL.md, "Supported run '
+            f'length")'
         )
 
 
@@ -390,9 +392,9 @@ def require_supported_step_count(step_count: int, simulation_step_s: float) -> N
         raise SimulationConfigurationError(
             f"a run of {step_count} steps of {simulation_step_s} s is past the supported run "
             f"length of {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
-            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h), which allows at most {limit} "
-            f"steps of that size; past it this model is not claimed to represent a patient "
-            f'(docs/MODEL.md, "Supported run length")'
+            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), which allows "
+            f"at most {limit} steps of that size; past it this model is not claimed to "
+            f'represent a patient (docs/MODEL.md, "Supported run length")'
         )
 
 
@@ -425,6 +427,7 @@ def require_supported_case_instant(instant_s: float) -> None:
         raise SimulationConfigurationError(
             f"a case instant of {instant_s} s is outside the supported run length of 0 to "
             f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
-            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h), the span this model is claimed "
-            f'to represent a patient over (docs/MODEL.md, "Supported run length")'
+            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), the span this "
+            f'model is claimed to represent a patient over (docs/MODEL.md, "Supported run '
+            f'length")'
         )

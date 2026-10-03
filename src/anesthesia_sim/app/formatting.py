@@ -45,6 +45,7 @@ from typing import Final
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION, APP_VERSION_IS_KNOWN
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, percent_from_fraction
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
+from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 
 __all__ = [
     "AGENT_VOLUME_DISPLAY_DECIMALS",
@@ -740,7 +741,7 @@ def format_supported_run_length() -> str:
     two now agree about the quantity and differ only in how they are read.
     """
 
-    return f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} hours"
+    return f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} hours"
 
 
 def format_playback_rate(multiplier: int) -> str:
@@ -797,10 +798,10 @@ def _duration_components(duration_s: float) -> tuple[int, int, float]:
     if not isfinite(duration_s) or duration_s < 0.0:
         raise ValueError(f"duration must be finite and non-negative, got {duration_s!r}")
 
-    hours = int(duration_s // 3600.0)
-    minutes = int((duration_s - hours * 3600.0) // 60.0)
+    hours = int(duration_s // SECONDS_PER_HOUR)
+    minutes = int((duration_s - hours * SECONDS_PER_HOUR) // SECONDS_PER_MINUTE)
 
-    return hours, minutes, duration_s - hours * 3600.0 - minutes * 60.0
+    return hours, minutes, duration_s - hours * SECONDS_PER_HOUR - minutes * SECONDS_PER_MINUTE
 
 
 def _format_duration_compound(duration_s: float, *, zero: str) -> str:
