@@ -147,5 +147,5 @@ the 183-character clause in `CLAUDE.md`'s fix-now test 2 with the
 221-character clause quoted in the design round above, batched with any other
 `CLAUDE.md` edit open at the time, and names the 38-character growth as a
 false claim exchanged for a true one. (c) stays recorded as the route if the
-deterrent is wanted back. Status stays `needs-decision` in this round; the
-thread that builds it sets `ready` first.
+deterrent is wanted back. Status moves to `ready` with this answer, as
+`docket check` requires of a recorded answer.
