@@ -3,11 +3,13 @@ id: PL-TDBT
 title: docs/pr-bodies holds 187 historical documents that read as current: 21 cited paths no longer exist, 30 cite an unresolvable sha, and 22 angle-bracket placeholders in 15 files vanish in GitHub's own blob view, with doc_check blind to all of it by design
 priority: P3
 effort: M
-status: needs-decision
+status: ready
 classes: docs, infra
 feature: pr-body-integrity
-touches: docs/pr-bodies
+touches: docs/pr-bodies, tools/pr_body_check.py, tests/unit/test_pr_body_check.py
 added: 2026-09-20
+payoff: a reader who opens a recovered pull-request body learns on its first lines that it is a verbatim, unmaintained record, so a dead citation in it stops reading as a defect
+verify: grep -qF 'def test_recovery_header_says_the_record_is_historical' tests/unit/test_pr_body_check.py
 ---
 
 **Problem.** docs/pr-bodies holds 187 historical documents that read as current: 21 cited paths no longer exist, 30 cite an unresolvable sha, and 22 angle-bracket placeholders in 15 files vanish in GitHub's own blob view, with doc_check blind to all of it by design
@@ -49,3 +51,57 @@ live work whichever way this goes.
 a tool, a check, or a documented workflow that cites one as the authority for a
 present-day fact. None is known; if one exists, the corpus is documentation and
 the answer flips.
+
+## Design round 2026-10-03: recommendation
+
+**Re-checked against the tree, 2026-10-03.** The corpus has grown from 187
+files to 265, because `tools/pr_body_check.py --recover` writes one for each
+squash commit that lost its body, in a batch at each release (`PL-3PH2`). Every
+file opens with front matter `write_recovery` emits - `pr`, `recovered`,
+`commit`, `merged`, `items`, `subject`, `squash` - and `recovered:` is the fetch
+date, so `PL-73G8`'s half has landed; there is no `README.md`. Nothing reads a
+record as current: `subprojects/docket/src/docket/arming.py` and `claims.py`
+name the directory as `RECORDS`, `docket.toml` places it in `workflow_paths` as
+"the pull-request record `tools/pr_body_check.py` writes", and
+`tools/doc_check.py`'s `DOC_GLOBS` is `docs/*.md`, one level only, so the
+directory is outside the citation sweep rather than excluded by name. No tool,
+check or workflow cites a record as the authority for a present-day fact.
+Angle-bracket placeholders now sit in 11 files, 16 of them (`<id>` three
+times, `<ref>`, `<path>` and `<n>` twice each, seven singletons); the dead-path
+and dead-sha counts were not retaken, since the answer does not turn on them.
+`recovered()` lists only digit-named files, so a `README.md` beside the records
+is safe for the tool.
+
+**Q. Historical records, or current documentation?**
+**Recommendation: historical records - the filed recommendation stands - and
+one statement, met in both of the places a reader arrives by.** A one-paragraph
+`docs/pr-bodies/README.md`, which a GitHub directory visitor meets, and one
+header line in every record, which `cat` meets: written by `write_recovery`
+for new records and backfilled once by a script across the 265 existing ones,
+one commit a reviewer reads as a single diff. The statement says what a record
+is: the body as GitHub served it on `recovered:`, verbatim; its citations
+describe the tree at `merged:` and are not maintained; an angle-bracket
+placeholder in it renders invisibly on GitHub. No citation is repaired - the
+drift is not a finding, by the rule `.claude/rules/citation-drift.md` already
+applies to a closed brief - and `tools/doc_check.py` stays outside the
+directory by design, which the README records so the next reader does not
+re-derive it. Size S rather than M. The README-only variant is cheaper and was
+refused because a reader who opens a record directly never meets it, which is
+what "Done when" asks for.
+
+**What would change the answer.** Any reader - a tool, a check, a documented
+workflow - that cites a record as current. None exists; one would make the
+corpus documentation and flip this.
+
+## Answers 2026-10-03
+
+**Answered 2026-10-03: Q1 ratified** (project owner, 2026-10-03, ratified,
+over treating the records as current documentation and repairing their
+citations). Historical records. The build is one statement in two places:
+`docs/pr-bodies/README.md`, and one header line per record, emitted by
+`write_recovery` in `tools/pr_body_check.py` for new records and backfilled
+once by script across the existing ones; no citation is repaired, and
+`tools/doc_check.py` stays outside the directory by design, which the README
+says. `touches:` is re-pointed here at the writer and its test as well as the
+records. Status moves to `ready` with this answer, as `docket check`
+requires of a recorded answer. Size S in practice, whatever the field says.
