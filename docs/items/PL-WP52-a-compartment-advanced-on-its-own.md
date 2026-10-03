@@ -1,8 +1,14 @@
 ---
 id: PL-WP52
 title: A compartment advanced on its own (BreathingCircuit.advance_fresh_gas, TissueGroup.advance, the blood compartment's advance) accepts any positive finite step, so it takes steps below MINIMUM_SIMULATION_STEP_S, where rounding is a growing share of what a step changes (measured on the coupled system, PL-YZ17); only AgentUptakeSystem.advance refuses them, and whether a compartment should too is undecided
-status: untriaged
+priority: P3
+effort: S
+status: blocked
+classes: defect
 feature: numerical-domain
+touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/circuit.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_circuit.py, docs/MODEL.md
+blocked-by: PL-0GJC
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
 ---
 
@@ -25,3 +31,32 @@ the ceiling does not bind one, and no test steps one alone below the 0.1 s
 `tests/reference/test_circuit_wash_in.py` uses. The case for the guard: the compartments are public, and a notebook
 stepping one finely gets a plausible number. Measure a compartment alone first;
 the decision follows from whether it shares the coupled system's growth.
+
+**Reproduced 2026-10-03 at triage** on `81debc03`: `TissueGroup.advance`,
+`VenousBloodCompartment.advance`, `BreathingCircuit.advance_fresh_gas` and
+`BreathingCircuit.advance` each took a 1e-14 s step without error, while
+`require_supported_simulation_step` refused it. At that one step the inferred
+rounding showed: a tissue group built as `tests/unit/test_tissue.py` builds one
+(time constant 480 s), stepped toward an arterial fraction of 1.0, returned 0 L
+where the exact change, computed with `expm1`, is 8.3e-17 L, because
+`exp(-step/tau)` rounds to exactly 1.0. The venous blood compartment of
+`tests/unit/test_blood.py` (12 s) returned 5.77e-16 L against an exact
+5.42e-16 L, 6.6% high. One step, not the growth curve this item asks for.
+
+**Why it matters.** The compartments are public, and a caller stepping one
+below the floor gets a plausible number with none of the run's refusal: at
+1e-14 s, none at all for the tissue. That is the safety standard's plausible
+value where an error state belongs, though no screen path reaches it today.
+
+**Blocked on `PL-0GJC`** (the run's step as a validated type). That item's
+session put to the owner on 2026-10-03 whether a compartment stepped on its own
+takes the type. Its recommendation moves the compartment clause here, to be
+decided on this item's measurement; the alternative, a floor-only type the
+compartments take now, would answer this item with that work. Either way this
+item's shape follows that answer, so it waits on it.
+
+**Done when.** Each compartment stepped on its own below
+`MINIMUM_SIMULATION_STEP_S` raises the simulator's own error, with a test per
+compartment pinning it, or this brief records the measured error against step
+for a compartment alone and why it needs no floor; `docs/MODEL.md` §
+"Supported simulation step" says which.

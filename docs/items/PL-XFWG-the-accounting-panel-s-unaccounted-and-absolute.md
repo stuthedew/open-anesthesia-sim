@@ -3,12 +3,15 @@ id: PL-XFWG
 title: The accounting panel's Unaccounted and Absolute error lines always read the same string since PL-3PJZ printed each as the power of ten it lies below and dropped the sign, so the panel shows one fact twice; whether one line should carry it is a change to what a learner sees
 priority: P3
 effort: S
-status: needs-decision
+status: ready
 classes: ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_dashboard_frame.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+payoff: the accounting panel states the run's unaccounted agent once, so a learner is not sent looking for a difference between two identical lines
+verify: grep -q 'def test_the_accounting_panel_prints_the_residual_once' tests/unit/test_dashboard_frame.py && ! grep -qF 'Absolute error' src/anesthesia_sim/app/dashboard_frame.py
+falsifies: Absolute error
 ---
 
 **Problem.** The accounting panel's Unaccounted and Absolute error lines always read the same string since PL-3PJZ printed each as the power of ten it lies below and dropped the sign, so the panel shows one fact twice; whether one line should carry it is a change to what a learner sees
@@ -35,5 +38,18 @@ failing check prints to six figures. The alternative worth weighing is keeping
 "Absolute error" instead, since it is the quantity the check holds against its
 tolerance.
 
-**Done when.** The answer is recorded beneath the question, and the panel shows
-what it decided, with a test pinning the residual lines.
+**Answered 2026-10-03** (project owner, 2026-10-03, ratified, over keeping both
+residual lines and over keeping "Absolute error" in place of "Unaccounted"): show
+the residual once, as "Unaccounted".
+
+[superseded 2026-10-03: the answer above] **Done when.** The answer is recorded
+beneath the question, and the panel shows what it decided, with a test pinning
+the residual lines.
+
+**Done when.** The accounting panel prints one residual line, "Unaccounted",
+and no "Absolute error" line; `format_agent_residual`'s docstring no longer
+speaks of two lines reading alike; the test pinning `Absolute error: <1e-12 L`
+in `tests/unit/test_dashboard_frame.py` pins the single line instead; and a test
+named `test_the_accounting_panel_prints_the_residual_once` asserts that no
+residual is printed twice. The failure notice keeps its signed six-figure
+values.
