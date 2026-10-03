@@ -1,9 +1,11 @@
 ---
 id: PL-YXFF
 title: tests/unit/test_formatting.py:108 says tools/import_boundary_check.py forbids core/ importing app/; it matches top-level package names only and declares no such boundary, so the claim is false; declare core-to-app as a dotted boundary and correct the comment
-status: untriaged
-touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, tests/unit/test_formatting.py
+status: done
+touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, tests/unit/test_formatting.py, docs/ARCHITECTURE.md, docs/items/PL-L8RN-nothing-enforces-the-one-adapter-qsplitter.md
 added: 2026-10-03
+closed: 2026-10-03
+verify: uv run pytest -q tests/unit/test_import_boundary_check.py -k 'dotted or compartments_may_not_import' && uv run python tools/import_boundary_check.py
 ---
 
 **Problem.** tests/unit/test_formatting.py:108 says tools/import_boundary_check.py forbids core/ importing app/; it matches top-level package names only and declares no such boundary, so the claim is false; declare core-to-app as a dotted boundary and correct the comment
@@ -23,3 +25,5 @@ added: 2026-10-03
 - *Declare* `anesthesia_sim.app` permitted in no module under `src/anesthesia_sim/core`, its `why` citing the layering in `docs/ARCHITECTURE.md` § "Layering" and `CLAUDE.md`'s rule that simulation code stays independent of the interface. Update the module docstring (a boundary may name a dotted prefix; a fourth invariant) and `module_imports`' line on relative imports.
 - *Tests*: a fixture under `core/` importing `app` absolutely, by `from anesthesia_sim import app`, and relatively, each fails; `app/` importing `core/` passes; existing assertions on `Imported` fields updated to the new shape.
 - *Then* reword the comment in `test_concentration_decimals_are_a_choice_within_a_recorded_band` to name the boundary that exists. Reading `from X import name` as `X.name` also gives PL-L8RN the granularity it asked for; say so, do not widen this item.
+
+**Built as designed, 2026-10-03.** `Imported` carries every dotted name a statement makes available, and `reaches(package)` is the match; a `from` statement now renders the names it imports, so `from anesthesia_sim import app` reads as that rather than as `from anesthesia_sim import ...`. `test_the_compartments_may_not_import_the_interface` fails on the root-only reader with the new boundary declared - measured by putting the old reader back with only the entry added: exit 0 where it should be 1 - and passes on this one. The real tree passes: 13 boundaries, 42 modules, 0 errors. `docs/ARCHITECTURE.md` now counts four claims the tool measures, and `PL-L8RN`'s brief records that its prerequisite landed, with the one limit its entry should state.

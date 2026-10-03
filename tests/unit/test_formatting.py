@@ -105,9 +105,12 @@ def test_concentration_decimals_are_a_choice_within_a_recorded_band() -> None:
 
     # `PL-X9KD` cut the dependency that ran from this count back into `core/`.
     # This keeps the *named* route cut, and is honest about being only that: a
-    # textual check, because `tools/import_boundary_check.py` already forbids
-    # `core/` importing from `app/`, so the identifier can only reach `core/`
-    # through a comment.
+    # textual check. An import is the other route, and
+    # `tools/import_boundary_check.py` refuses `core/` importing
+    # `anesthesia_sim.app` by any form it can read - absolute, relative, or a
+    # dynamic import with a literal name (`PL-YXFF`) - so what is left for this
+    # to catch is the identifier typed into `core/` by hand: in a comment, or as
+    # a second definition, which `tools/literal_home_check.py` also refuses.
     #
     # It would not have caught the defect it commemorates. What
     # `core/supported_ranges.py` actually said was that the ranges rested on
