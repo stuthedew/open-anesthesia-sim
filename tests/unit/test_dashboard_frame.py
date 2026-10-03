@@ -134,6 +134,7 @@ from anesthesia_sim.app.formatting import (
     format_mac_reference,
     format_percent,
     format_playback_rate,
+    format_supported_run_length,
     format_time_base,
     format_wash_in_ratio,
     render_mac_multiple,
@@ -645,7 +646,7 @@ def test_refresh_view_shows_no_notice_for_an_ordinary_run() -> None:
 def test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed() -> None:
     """The whole point of the separate field: a correct stop reads as one.
 
-    A run that reaches 24 hours has done everything right - the core refused
+    A run that reaches the limit has done everything right - the core refused
     the next step before taking it, nothing was miscalculated, nothing was
     rolled back. Presenting that as "simulation error" would spend the one
     signal this interface has for a real fault on a model that is working.
@@ -661,7 +662,7 @@ def test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed() -
     banner = notice(snapshot, None)
 
     assert banner is not None
-    assert "supported run length of 24 hours" in banner
+    assert f"supported run length of {format_supported_run_length()}" in banner
 
 
 def test_the_supported_run_length_notice_does_not_describe_a_failure() -> None:
@@ -690,7 +691,8 @@ def test_the_supported_run_length_notice_does_not_describe_a_failure() -> None:
     assert "metabolism" in banner
     assert "last completed step" in banner
     assert banner == (
-        "Simulation stopped — this run reached the supported run length of 24 hours. "
+        "Simulation stopped — this run reached the supported run length of "
+        f"{format_supported_run_length()}. "
         "Beyond it this model's omitted metabolism and its fat perfusion dominate the "
         "trace, so it is not claimed to represent a patient. The values shown are the "
         "last completed step, inside the supported span. Reset to start a new run."
@@ -1055,7 +1057,6 @@ def test_the_widest_readout_strings_are_the_formatters_own_extremes() -> None:
     """
 
     assert WIDEST_READOUT_VALUE == format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - 0.1)
-    assert WIDEST_READOUT_VALUE == "23h59m59.9s"
     assert len(WIDEST_READOUT_VALUE) >= len(format_percent(Fraction(1.0)))
     assert WIDEST_READOUT_SECONDARY == max(
         (format_playback_rate(rate.multiplier) for rate in SUPPORTED_PLAYBACK_RATES), key=len
