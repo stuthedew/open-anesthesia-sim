@@ -3,11 +3,13 @@ id: PL-6QZP
 title: CLAUDE.md's fix-now test 2 says a wider fix fails the touches audit, but under verify --self that check reports and the branch still ACCEPTs, so the deterrent the rule describes does not fire on a session's own branch
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: defect, docs
 feature: worker-instructions
 touches: CLAUDE.md
 added: 2026-09-15
+payoff: CLAUDE.md's fix-now test 2 stops promising a refusal the self-audit does not make, so a session reads the real rule: reported by name, obeyed by the session, refused only at a delegated review
+verify: grep -qF 'names every file changed outside the item' CLAUDE.md
 ---
 
 **Problem.** CLAUDE.md's fix-now test 2 says a wider fix fails the touches audit, but under verify --self that check reports and the branch still ACCEPTs, so the deterrent the rule describes does not fire on a session's own branch
