@@ -101,5 +101,5 @@ citations). Historical records. The build is one statement in two places:
 once by script across the existing ones; no citation is repaired, and
 `tools/doc_check.py` stays outside the directory by design, which the README
 says. `touches:` is re-pointed here at the writer and its test as well as the
-records. Status stays `needs-decision` in this round; the thread that builds
-it sets `ready` first. Size S in practice, whatever the field says.
+records. Status moves to `ready` with this answer, as `docket check`
+requires of a recorded answer. Size S in practice, whatever the field says.
