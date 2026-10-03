@@ -30,10 +30,11 @@ from anesthesia_sim.app.formatting import mac_multiple
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 #: The step every run in this file is taken at, matching the interface's own.
-STEP_S = 0.1
+STEP_S = SimulationStep(0.1)
 
 #: A burst of steps one tick advances at 300× real time, which is the coarsest
 #: rung `app/playback.py` offers and the worst case `PL-CTD7` is about: 30

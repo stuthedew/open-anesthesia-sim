@@ -1429,16 +1429,17 @@ Three constants sit at 0.1 s, and they are three different kinds of
 statement:
 
 ```text
-MAXIMUM_SIMULATION_STEP_S  = 0.1   # core/uptake_system.py
-SIMULATION_STEP_S          = 0.1   # app/dashboard_frame.py
-SIMULATION_TICK_INTERVAL_S = 0.1   # app/dashboard_frame.py
+MAXIMUM_SIMULATION_STEP_S  = 0.1                   # core/simulation_step.py
+SIMULATION_STEP_S          = SimulationStep(0.1)   # app/dashboard_frame.py
+SIMULATION_TICK_INTERVAL_S = 0.1                   # app/dashboard_frame.py
 ```
 
 `MAXIMUM_SIMULATION_STEP_S` is the top of the model's supported domain and
 `MINIMUM_SIMULATION_STEP_S`, 1 ms, the bottom, both closed at their endpoints:
-any step from 1 ms to 0.1 s is supported, and both
-`AgentUptakeSystem.advance()` and `SimulationState.advance()` refuse one outside
-that. `SIMULATION_STEP_S` is the step the interface takes, which sits at that
+any step from 1 ms to 0.1 s is supported, a `SimulationStep` cannot be built
+outside that, and both `AgentUptakeSystem.advance()` and
+`SimulationState.advance()` take only a `SimulationStep`. `SIMULATION_STEP_S`
+is the step the interface takes, which sits at that
 ceiling deliberately; § "Supported simulation step" below states what the bound
 tolerates and says why those two coincide. Neither is derived from the other,
 and the coincidence is a fact about this configuration rather than an
@@ -1574,12 +1575,17 @@ the equations above.
 
 #### Supported simulation step
 
-`MAXIMUM_SIMULATION_STEP_S` is the largest step `AgentUptakeSystem.advance()`
-and `SimulationState.advance()` accept and `MINIMUM_SIMULATION_STEP_S` the
-smallest; a step outside the two is refused as a
-`SimulationConfigurationError` before anything is calculated, so nothing is
-miscalculated and a caller can retry inside the range with the run it already
-has intact. The two bounds are different kinds of statement: the ceiling is a
+`MAXIMUM_SIMULATION_STEP_S` is the largest step a run may be taken at and
+`MINIMUM_SIMULATION_STEP_S` the smallest, both declared in
+`core/simulation_step.py`. A step outside the two cannot be built:
+`SimulationStep` refuses it as a `SimulationConfigurationError` when it is
+constructed, so nothing is miscalculated and a caller can retry inside the
+range with the run it already has intact. Every function that takes a run's
+step takes a `SimulationStep`, so the step is checked once, where it is
+chosen, rather than at each entry point a fix had reached (`PL-0GJC`); for the
+callers `mypy` does not read, `SimulationState`, `AgentUptakeSystem.advance()`
+and `PlaybackRate.steps_per_tick` refuse anything else as a `TypeError`. The
+two bounds are different kinds of statement: the ceiling is a
 declared tolerance on control timing, argued first below, and the floor is
 numerical, argued after it.
 
@@ -1806,10 +1812,11 @@ of steps, not a running total").
 **It binds the run and not a compartment stepped on its own**, like the
 ceiling, though for a different reason. Rounding would cost a compartment
 stepped alone the same, but a compartment is stepped at a run's step only by
-`AgentUptakeSystem.advance()`, which refuses a step below the floor before any
-compartment sees it. Whether a compartment should refuse one too is `PL-WP52`.
-The step a playback tick counts in is the run's own, so
-`PlaybackRate.steps_per_tick` refuses one outside the range as the run does.
+`AgentUptakeSystem.advance()`, which takes a `SimulationStep`, so no step below
+the floor reaches a compartment through a run. A compartment stepped on its own
+takes a plain `float`, and whether it should refuse one below the floor too is
+`PL-WP52`. The step a playback tick counts in is the run's own, so
+`PlaybackRate.steps_per_tick` takes a `SimulationStep` as the run does.
 The chart's grid is deliberately not held to it: `RunDefinition` chains a
 column spacing at most once per column, so the rounding cannot accumulate past
 what the columns asked for, and a grid at a tenth of the floor still lands on

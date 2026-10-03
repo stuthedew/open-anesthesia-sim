@@ -3,14 +3,13 @@ id: PL-0GJC
 title: The simulation step is a bare float in 15 signatures and 2 fields, and its 1 ms floor is checked at 4 call sites, so each entry point that skips the check becomes a capture: carry it as a SimulationStep type that refuses an unsupported step when it is constructed
 priority: P2
 effort: M
-status: ready
+status: needs-decision
 classes: refactor
 feature: numerical-domain
-touches: src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/chart_frame.py, tests, docs/MODEL.md
+touches: src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/chart_frame.py, tests, docs/MODEL.md, docs/ARCHITECTURE.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 session that claimed it
 added: 2026-10-03
 payoff: a run's step is checked once, where it is chosen, so the next function written to take one cannot be the next entry point that forgot the 1 ms floor
-verify: grep -q '^class SimulationStep(float):' src/anesthesia_sim/core/simulation_step.py && grep -q 'def test_a_bare_float_step_is_refused_at_each_run_entry' tests/unit/test_simulation_step.py && ! grep -q 'simulation_step_s: float' src/anesthesia_sim/core/simulation.py src/anesthesia_sim/core/uptake_system.py src/anesthesia_sim/core/supported_ranges.py src/anesthesia_sim/app/playback.py src/anesthesia_sim/app/controller.py
 ---
 
 **Problem.** The simulation step is a bare float in 15 signatures and 2 fields, and its 1 ms floor is checked at 4 call sites, so each entry point that skips the check becomes a capture: carry it as a SimulationStep type that refuses an unsupported step when it is constructed
@@ -103,6 +102,23 @@ measurement and, if the answer is yes, whether a floor-only type carries it.
 The alternative is a second, floor-only type the compartments take now, which
 answers `PL-WP52` without the measurement. The run's half is the same under
 either answer, so it is built while this is open.
+
+**Built 2026-10-03, the run's half, while the question is open.**
+`core/simulation_step.py` now holds the two bounds, their guard and
+`SimulationStep`, moved out of `core/uptake_system.py` because
+`supported_ranges.py` needs the type and `uptake_system.py` already imports it.
+The 10 parameters and 2 fields take a `SimulationStep`; the four run entries
+call `require_simulation_step`, which raises `TypeError` for anything else;
+`app/dashboard_frame.py`'s shipped step is built as one; 74 test call sites
+build the step at the call, so each refusal test there now meets the
+constructor's refusal with the same message; and
+`tests/unit/test_simulation_step.py` pins the type and the four entries. One
+test was passing for the wrong reason once the check landed - it injects a
+`TypeError` mid-step and expected to see it, and a bare float raised one first -
+and now builds its step. The compartments are unchanged. The `verify:` is
+removed until the answer: no command can tell the two answers' remaining work
+apart, and the one written for the run's half passes now, which
+`docket check` refuses on an open item.
 
 **Done when.** Every function that takes a run's step takes a
 `SimulationStep`; the step is checked once, when constructed; a compartment

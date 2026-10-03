@@ -7,6 +7,7 @@ import pytest
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.run_series import RecordedQuantity, RecordedSeries
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -17,7 +18,7 @@ from anesthesia_sim.core.supported_ranges import (
 #: `app/simulation_view.SIMULATION_STEP_S`. Restated rather than imported:
 #: that module needs Flet, and `tests/unit/test_simulation_view.py` is what
 #: holds the interface to the core's supported step.
-SIMULATION_STEP_S = 0.1
+SIMULATION_STEP_S = SimulationStep(0.1)
 
 
 def _advance_for(
@@ -26,7 +27,7 @@ def _advance_for(
     step_count = round(duration_s / simulation_step_s)
 
     for _ in range(step_count):
-        controller.advance(simulation_step_s)
+        controller.advance(SimulationStep(simulation_step_s))
 
 
 def test_snapshot_exposes_patient_and_agent_accounting_state() -> None:
@@ -159,7 +160,7 @@ def _scripted_run(
 
     for burst in bursts:
         for _ in range(burst):
-            controller.advance(simulation_step_s)
+            controller.advance(SimulationStep(simulation_step_s))
             steps_taken += 1
 
             if steps_taken == 100:

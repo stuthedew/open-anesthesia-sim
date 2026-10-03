@@ -29,8 +29,8 @@ from anesthesia_sim.core.exceptions import (
 from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, EXHAUSTED_AGENT_L, STATE_SIZE
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.run_definition import RunDefinition, RunSegment
+from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.tissue import TissueGroup
-from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
 
 
 def _advance_for(controller: SimulationController, duration_s: float) -> None:
@@ -42,7 +42,7 @@ def _advance_for(controller: SimulationController, duration_s: float) -> None:
     """
 
     for _ in range(round(duration_s / MAXIMUM_SIMULATION_STEP_S)):
-        controller.advance(MAXIMUM_SIMULATION_STEP_S)
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
 
 def test_default_controller_starts_with_sevoflurane() -> None:
@@ -243,7 +243,7 @@ def test_set_agent_rejects_unknown_agent_id() -> None:
 def test_pause_blocks_advancement() -> None:
     controller = SimulationController()
 
-    controller.advance(0.1)
+    controller.advance(SimulationStep(0.1))
 
     assert controller.snapshot().elapsed_s == 0.0
 
@@ -254,8 +254,8 @@ def test_start_advance_pause_sequence_is_deterministic() -> None:
 
     for controller in (first, second):
         controller.start()
-        controller.advance(0.1)
-        controller.advance(0.1)
+        controller.advance(SimulationStep(0.1))
+        controller.advance(SimulationStep(0.1))
         controller.pause()
 
     assert first.snapshot() == second.snapshot()
@@ -456,7 +456,7 @@ def test_the_window_starts_at_the_time_asked_for_and_never_after_it() -> None:
 def test_reset_pauses_and_clears_concentration_history() -> None:
     controller = SimulationController()
     controller.start()
-    controller.advance(0.1)
+    controller.advance(SimulationStep(0.1))
 
     controller.reset()
 
@@ -527,11 +527,11 @@ def test_a_failed_session_is_not_the_same_state_as_a_pause() -> None:
 
     controller = SimulationController()
     controller.start()
-    controller.advance(0.1)
+    controller.advance(SimulationStep(0.1))
 
     paused = SimulationController()
     paused.start()
-    paused.advance(0.1)
+    paused.advance(SimulationStep(0.1))
     paused.pause()
 
     controller.fail("SimulationNumericalError: the step could not be completed")
@@ -563,11 +563,11 @@ def test_a_failed_session_cannot_be_resumed() -> None:
 def test_a_failed_session_does_not_advance() -> None:
     controller = SimulationController()
     controller.start()
-    controller.advance(0.1)
+    controller.advance(SimulationStep(0.1))
     controller.fail("SimulationNumericalError: boom")
     elapsed_at_failure = controller.snapshot().elapsed_s
 
-    controller.advance(0.1)
+    controller.advance(SimulationStep(0.1))
 
     assert controller.snapshot().elapsed_s == elapsed_at_failure
 
@@ -588,7 +588,7 @@ def test_the_first_failure_reason_is_the_one_kept() -> None:
 def test_reset_clears_a_failure_and_restores_a_startable_session() -> None:
     controller = SimulationController()
     controller.start()
-    controller.advance(0.1)
+    controller.advance(SimulationStep(0.1))
     controller.fail("SimulationNumericalError: boom")
 
     controller.reset()
@@ -598,7 +598,7 @@ def test_reset_clears_a_failure_and_restores_a_startable_session() -> None:
     assert controller.snapshot().elapsed_s == 0.0
 
     controller.start()
-    controller.advance(0.1)
+    controller.advance(SimulationStep(0.1))
 
     assert controller.snapshot().is_running is True
     assert controller.snapshot().elapsed_s == pytest.approx(0.1)
@@ -609,7 +609,7 @@ def test_switching_agent_clears_a_failure() -> None:
 
     controller = SimulationController()
     controller.start()
-    controller.advance(0.1)
+    controller.advance(SimulationStep(0.1))
     controller.fail("SimulationNumericalError: boom")
 
     controller.set_agent("desflurane")
@@ -628,7 +628,7 @@ def test_a_refused_setting_does_not_fail_the_session() -> None:
 
     controller = SimulationController(agent_id="isoflurane")
     controller.start()
-    controller.advance(0.1)
+    controller.advance(SimulationStep(0.1))
     before = controller.snapshot()
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
@@ -702,7 +702,7 @@ def test_a_failed_step_adds_nothing_to_the_chart_history() -> None:
     before = controller.drawn_window(0.0, before_s, 150)
 
     with pytest.raises(SimulationNumericalError):
-        controller.advance(MAXIMUM_SIMULATION_STEP_S)
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
     after = controller.drawn_window(0.0, controller.snapshot().elapsed_s, 150)
 
@@ -725,7 +725,7 @@ def test_a_failed_step_leaves_every_displayed_value_bit_identical() -> None:
     before = controller.snapshot()
 
     with pytest.raises(SimulationNumericalError):
-        controller.advance(MAXIMUM_SIMULATION_STEP_S)
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
     after = controller.snapshot()
 
@@ -1143,7 +1143,7 @@ def test_a_branch_advanced_one_step_past_its_fork_holds_something_to_destroy() -
     trunk = _trunk_with_two_changes()
     branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
     branch.start()
-    branch.advance(MAXIMUM_SIMULATION_STEP_S)
+    branch.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
     assert branch.snapshot().has_recorded_run is True
 
@@ -1193,7 +1193,7 @@ def test_stopping_at_the_supported_run_length_is_not_a_failure() -> None:
 
     controller = SimulationController()
     controller.start()
-    controller.advance(0.1)
+    controller.advance(SimulationStep(0.1))
     controller.halt_at_supported_limit("reached 86400 s of simulated time")
 
     snapshot = controller.snapshot()
@@ -1239,7 +1239,7 @@ def test_reset_clears_the_supported_limit_and_restores_a_startable_session() -> 
 
     controller = SimulationController()
     controller.start()
-    controller.advance(0.1)
+    controller.advance(SimulationStep(0.1))
     controller.halt_at_supported_limit("reached 86400 s of simulated time")
 
     controller.reset()
@@ -1300,7 +1300,7 @@ def _advance_through_halts(controller: SimulationController, duration_s: float) 
         if not controller.is_running:
             controller.start()
 
-        controller.advance(MAXIMUM_SIMULATION_STEP_S)
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
 
 def _run_with_two_changes(controller: SimulationController) -> None:
@@ -2606,7 +2606,7 @@ def _advance_until_halted(controller: SimulationController, limit_s: float) -> N
     """
 
     for _ in range(round(limit_s / MAXIMUM_SIMULATION_STEP_S)):
-        controller.advance(MAXIMUM_SIMULATION_STEP_S)
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
         if controller.snapshot().bookmark_halt is not None:
             return
@@ -2648,7 +2648,7 @@ def _the_same_case_never_marked(steps: int) -> SimulationController:
     controller.set_delivered_concentration_percent(4.0)
 
     for _ in range(steps - controller._state.step_count):
-        controller.advance(MAXIMUM_SIMULATION_STEP_S)
+        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
     return controller
 
@@ -2887,7 +2887,7 @@ def test_resuming_past_a_bookmark_withdraws_the_fork_it_offered() -> None:
 
     marked = _trunk_halted_on_a_bookmark()
     marked.start()
-    marked.advance(MAXIMUM_SIMULATION_STEP_S)
+    marked.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
     with pytest.raises(SimulationConfigurationError, match="not standing on"):
         marked.resumed_at_halt()

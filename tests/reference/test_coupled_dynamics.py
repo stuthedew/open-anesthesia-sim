@@ -34,6 +34,7 @@ from pathlib import Path
 import pytest
 
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # Declared here rather than imported from `core/units.py` and
@@ -422,7 +423,7 @@ ENVELOPE_HORIZON_S = 600.0
 #     turn, and a shipped step that moved while this one did not would move
 #     those turns off the instants these measurements were taken at.
 #
-# What is *not* a reason any more: `core.uptake_system.MAXIMUM_SIMULATION_STEP_S`
+# What is *not* a reason any more: `core.simulation_step.MAXIMUM_SIMULATION_STEP_S`
 # is not derived from anything measured here. `docs/MODEL.md` § "Supported
 # simulation step" records its old derivation as void and the value as carried
 # forward pending `PL-X9KD`. Until PL-VP7N the step was restated here without
@@ -764,12 +765,17 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 # machine parameter file (`PL-4YY1`) and used by one assertion — that the
 # operating point restated above is still the shipped one. It reads a JSON
 # document and solves nothing, which is the property this list is about.
+#
+# `SimulationStep` is the type the system under test takes its step as
+# (`PL-0GJC`). It checks a number against the supported range and solves
+# nothing, so the property holds of it too.
 ALLOWED_PACKAGE_IMPORTS = frozenset(
     {
         "load_agent_parameters",
         "load_reference_adult_parameters",
         "load_reference_circle_system_parameters",
         "AgentUptakeSystem",
+        "SimulationStep",
         "dashboard_frame",
         "formatting",
         "supported_ranges",
@@ -1029,7 +1035,7 @@ def _run_shipped(
     system = _shipped_system(agent_id, point)
 
     for _ in range(round(duration_s / step_s)):
-        system.advance(step_s)
+        system.advance(SimulationStep(step_s))
 
     return _shipped_states(system)
 
@@ -1106,7 +1112,7 @@ def _worst_error_over_phases(
         derivative = _build_derivative(agent_id, phase.point)
 
         for _ in range(round(phase.duration_s / shipped_step_s)):
-            system.advance(shipped_step_s)
+            system.advance(SimulationStep(shipped_step_s))
 
             for _ in range(oracle_steps_per_shipped_step):
                 reference = _rk4_step(derivative, reference, oracle_step_s)
@@ -1528,7 +1534,7 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
         derivative = _build_derivative(agent_id, phase.point)
 
         for _ in range(round(phase.duration_s / SHIPPED_STEP_S)):
-            system.advance(SHIPPED_STEP_S)
+            system.advance(SimulationStep(SHIPPED_STEP_S))
 
             for _ in range(round(SHIPPED_STEP_S / oracle_step_s)):
                 reference = _rk4_step(derivative, reference, oracle_step_s)

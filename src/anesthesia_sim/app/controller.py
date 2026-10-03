@@ -48,6 +48,7 @@ from anesthesia_sim.core.governing_equations import (
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
 from anesthesia_sim.core.run_definition import Keyframe, RunDefinition, RunSegment
 from anesthesia_sim.core.simulation import SimulationState
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -321,7 +322,7 @@ class ResumePoint:
     segment: RunSegment
     fork: Keyframe
     step_count: int
-    simulation_step_s: float | None
+    simulation_step_s: SimulationStep | None
     accounting_anchor_l: float
     crossing: BookmarkCrossing | None
 
@@ -1737,7 +1738,7 @@ class SimulationController:
             run_failed=self._failure_reason is not None,
         )
 
-    def advance(self, simulation_step_s: float) -> None:
+    def advance(self, simulation_step_s: SimulationStep) -> None:
         """No-op while paused; otherwise advance state, record history, and halt on a crossing.
 
         The run definition's reach is moved after the step rather than before it, so a
