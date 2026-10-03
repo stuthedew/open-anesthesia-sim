@@ -12,9 +12,10 @@ That refusal stands. What this module adds is the *size* of the omission, from
 which hour and in which direction, so that a reader of the washout tail has a
 number where the intertissue-diffusion note under `docs/MODEL.md` § "Known
 limitations" could give only a direction (`PL-KK1Q`). Every assertion below is
-a regression band around what this module itself measured on 2026-09-27, or a
-property of the published coefficients; none asserts agreement with a human
-washout, and none may be restated as one.
+a regression band around what this module itself measured, on 2026-09-27 and,
+for the muscle group's variation, on 2026-10-03; the reading such a band
+supports; or a property of the published coefficients. None asserts agreement
+with a human washout, and none may be restated as one.
 
 **What is compared.** Both papers fit each volunteer's elimination to a sum of
 five exponentials, $`F_A/F_{A0} = \\sum_i A_i e^{-t/\\tau_i}`$, and publish the
@@ -85,12 +86,17 @@ is the largest in every fitted curve from 1.8 to 3.1 hours until 20.7 to 29.4
 hours (`test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours`),
 this model has no such term, and over those hours its tail falls faster than
 the measured mean - later than the third hour in the shipped condition,
-because the rebreathing circuit holds it above the curve until the seventh
-(with the circuit's return taken away the same hours sit at or below it), and
-from the start with the apparatus gone. The model's muscle group also returns
-more slowly than the fitted muscle term, its isolated time constant being 1.5
-to 1.7 times the fitted one's (`docs/MODEL.md` has the arithmetic and the
-inference drawn from it). The late
+because the rebreathing circuit and the muscle group's slow return hold it
+above the curve until the seventh (with the circuit's return taken away the
+same hours sit at or below it), and from the start with the apparatus gone.
+The model's muscle group returns more slowly than the fitted muscle term, its
+isolated time constant being 1.5 to 1.7 times the fitted one's, and that is
+what puts the peak of model over fit in hours 2 to 4: with the group's
+coefficient lowered until that constant is the fitted one's, six-hour runs
+peak before the second hour in both conditions and every cohort, and the tail
+at four hours is 24 to 60% lower
+(`test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`;
+`docs/MODEL.md` has the numbers). The late
 excess is the model's fat group returning more than the fitted fat term's
 small amplitude (0.028 to 0.080%, with SDs of 53 to 94% of the means), and
 it is still growing at 24 hours - the ratio rises between minutes 1400 and
@@ -175,7 +181,7 @@ from __future__ import annotations
 import math
 import pickle
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import cache
 from typing import Literal
 
@@ -192,6 +198,7 @@ from test_published_wash_in_and_elimination import (
 )
 
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
+from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -204,6 +211,12 @@ except ImportError:  # Windows, where `washout_curve` shares nothing between wor
 # stated in. A run of exactly this length is what `docs/MODEL.md` § "Supported
 # run length" argues for, so the measurement ends where the claim does.
 ELIMINATION_DURATION_MIN = 1440
+
+# How long a run that varies the muscle group's coefficient eliminates for.
+# Six hours holds the stretch the variation asks about, hours 2 to 4, and the
+# fall after it, in both conditions and every cohort; the whole day would cost
+# four times the steps and read nothing more about that stretch.
+MUSCLE_VARIATION_DURATION_MIN = 360
 
 # Once a minute is fine enough to place a crossing to the tenth of an hour
 # and coarse enough to keep 24 hours of samples small; every step in between
@@ -459,8 +472,106 @@ RECORDED_TAIL_REDUCTIONS: dict[Condition, tuple[float, ...]] = {
 
 
 @dataclass(frozen=True, slots=True)
+class RecordedMuscleVariation:
+    """What a muscle group at the fitted time constant did, for one cohort in one condition.
+
+    Attributes:
+        rise_as_stored: where model over fit peaks after its early dip on the
+            stored coefficient, as (hours, ratio), read from the 24-hour run.
+        rise_at_fitted_time_constant: the same peak with the muscle group's
+            coefficient lowered until its isolated time constant is the fitted
+            muscle term's.
+        ratio_at_four_hours_at_fitted_time_constant: model over fit at 240 min
+            with that coefficient; the stored one's is in `RECORDED_COMPARISONS`.
+        crossing_hours_at_fitted_time_constant: as `RecordedComparison`'s,
+            over the six hours the varied run lasts.
+    """
+
+    rise_as_stored: tuple[float, float]
+    rise_at_fitted_time_constant: tuple[float, float]
+    ratio_at_four_hours_at_fitted_time_constant: float
+    crossing_hours_at_fitted_time_constant: tuple[float, ...]
+
+
+# Measured 2026-10-03 (`PL-95NW`). Model outputs, kept apart from
+# `PUBLISHED_FITS` for the reason `RECORDED_COMPARISONS` is.
+RECORDED_MUSCLE_VARIATIONS: dict[tuple[str, Condition], RecordedMuscleVariation] = {
+    ("sevoflurane/Anesth Analg 1991;72:316-24", "shipped"): RecordedMuscleVariation(
+        rise_as_stored=(4.15, 1.205),
+        rise_at_fitted_time_constant=(1.28, 1.005),
+        ratio_at_four_hours_at_fitted_time_constant=0.770,
+        crossing_hours_at_fitted_time_constant=(0.15, 1.07, 1.60),
+    ),
+    ("sevoflurane/Anesth Analg 1991;72:316-24", "open circuit"): RecordedMuscleVariation(
+        rise_as_stored=(3.92, 0.815),
+        rise_at_fitted_time_constant=(1.13, 0.700),
+        ratio_at_four_hours_at_fitted_time_constant=0.497,
+        crossing_hours_at_fitted_time_constant=(0.07,),
+    ),
+    ("isoflurane/Anesth Analg 1991;72:316-24", "shipped"): RecordedMuscleVariation(
+        rise_as_stored=(4.08, 1.255),
+        rise_at_fitted_time_constant=(1.97, 1.101),
+        ratio_at_four_hours_at_fitted_time_constant=0.959,
+        crossing_hours_at_fitted_time_constant=(0.22, 0.73, 3.65),
+    ),
+    ("isoflurane/Anesth Analg 1991;72:316-24", "open circuit"): RecordedMuscleVariation(
+        rise_as_stored=(3.72, 0.856),
+        rise_at_fitted_time_constant=(1.45, 0.775),
+        ratio_at_four_hours_at_fitted_time_constant=0.619,
+        crossing_hours_at_fitted_time_constant=(0.10,),
+    ),
+    ("desflurane/Anesthesiology 1991;74:489-98", "shipped"): RecordedMuscleVariation(
+        rise_as_stored=(2.27, 1.120),
+        rise_at_fitted_time_constant=(0.65, 0.960),
+        ratio_at_four_hours_at_fitted_time_constant=0.367,
+        crossing_hours_at_fitted_time_constant=(0.13,),
+    ),
+    ("desflurane/Anesthesiology 1991;74:489-98", "open circuit"): RecordedMuscleVariation(
+        rise_as_stored=(2.17, 0.762),
+        rise_at_fitted_time_constant=(0.62, 0.662),
+        ratio_at_four_hours_at_fitted_time_constant=0.236,
+        crossing_hours_at_fitted_time_constant=(0.05,),
+    ),
+    ("isoflurane/Anesthesiology 1991;74:489-98", "shipped"): RecordedMuscleVariation(
+        rise_as_stored=(3.78, 1.524),
+        rise_at_fitted_time_constant=(1.65, 1.363),
+        ratio_at_four_hours_at_fitted_time_constant=1.092,
+        crossing_hours_at_fitted_time_constant=(4.48,),
+    ),
+    ("isoflurane/Anesthesiology 1991;74:489-98", "open circuit"): RecordedMuscleVariation(
+        rise_as_stored=(3.47, 1.047),
+        rise_at_fitted_time_constant=(1.23, 0.966),
+        ratio_at_four_hours_at_fitted_time_constant=0.698,
+        crossing_hours_at_fitted_time_constant=(0.12,),
+    ),
+}
+
+# The coefficient that gives each cohort's fitted muscle time constant, as a
+# share of the stored one, which is the fitted constant over the stored
+# isolated one; and what the muscle group then holds at discontinuation, as a
+# share of what it holds on the stored coefficient.
+RECORDED_MUSCLE_COEFFICIENT_SHARES: dict[str, float] = {
+    "sevoflurane/Anesth Analg 1991;72:316-24": 0.6035,
+    "isoflurane/Anesth Analg 1991;72:316-24": 0.6697,
+    "desflurane/Anesthesiology 1991;74:489-98": 0.5775,
+    "isoflurane/Anesthesiology 1991;74:489-98": 0.6303,
+}
+RECORDED_MUSCLE_STORE_SHARES: dict[str, float] = {
+    "sevoflurane/Anesth Analg 1991;72:316-24": 0.9462,
+    "isoflurane/Anesth Analg 1991;72:316-24": 0.9609,
+    "desflurane/Anesthesiology 1991;74:489-98": 0.9039,
+    "isoflurane/Anesthesiology 1991;74:489-98": 0.9537,
+}
+MUSCLE_STORE_SHARE_TOLERANCE = 0.002
+
+# The fourth hour: one of the papers' own sampling times, and the end of the
+# stretch the reading about the muscle group names.
+FOUR_HOURS_MIN = 240
+
+
+@dataclass(frozen=True, slots=True)
 class WashoutCurve:
-    """One 24-hour elimination, sampled once a minute.
+    """One elimination, sampled once a minute: 24 hours unless a run is shorter.
 
     A value object rather than the system, for the reason the gate's readings
     are: `_washout_curve()` is cached, and a returned system would be a shared
@@ -468,6 +579,8 @@ class WashoutCurve:
     another, as a pickle.
 
     Attributes:
+        muscle_tissue_gas_partition_coefficient: the coefficient the run gave
+            the muscle group in place of the stored one, `None` for the stored.
         alveolar_fraction_at_discontinuation: F_A0, the papers' own denominator.
         ratios_by_minute: F_A/F_A0 at each whole minute of elimination, index
             0 being discontinuation itself, so `ratios_by_minute[5]` is the
@@ -475,7 +588,10 @@ class WashoutCurve:
         agent_taken_up_l: what the patient held at discontinuation plus what
             the sink had already removed, which is the uptake over the
             administration; the share below is taken of this.
-        agent_metabolised_l: the sink's total by 24 hours, zero without one.
+        muscle_agent_at_discontinuation_l: what the muscle group alone held at
+            discontinuation, the store its return draws on.
+        agent_metabolised_l: the sink's total by the end of the run, zero
+            without one.
         agent_accounting: the model's own conservation check at the end of
             the run, carried out so a failure can name the totals.
     """
@@ -483,9 +599,11 @@ class WashoutCurve:
     agent_id: str
     condition: Condition
     hepatic_elimination_rate_constant_per_min: float
+    muscle_tissue_gas_partition_coefficient: float | None
     alveolar_fraction_at_discontinuation: float
     ratios_by_minute: tuple[float, ...]
     agent_taken_up_l: float
+    muscle_agent_at_discontinuation_l: float
     agent_metabolised_l: float
     agent_accounting: AgentSimulationValidationResult
 
@@ -533,9 +651,13 @@ def _metabolise(system: AgentUptakeSystem, rate_constant_per_min: float) -> floa
 
 @cache
 def _washout_curve(
-    agent_id: str, condition: Condition, hepatic_elimination_rate_constant_per_min: float = 0.0
+    agent_id: str,
+    condition: Condition,
+    hepatic_elimination_rate_constant_per_min: float = 0.0,
+    muscle_tissue_gas_partition_coefficient: float | None = None,
+    elimination_duration_min: int = ELIMINATION_DURATION_MIN,
 ) -> WashoutCurve:
-    """Wash in as the gate does, then eliminate for 24 hours in one condition.
+    """Wash in as the gate does, then eliminate in one condition, for 24 hours by default.
 
     The wash-in is the shipped one whatever the condition, rebreathing and
     all, because that limb is inside the published spread at every supported
@@ -546,9 +668,23 @@ def _washout_curve(
     `test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio`
     holds it to. With one, the sink runs through the administration as well,
     since a human's does.
+
+    `muscle_tissue_gas_partition_coefficient` is a coefficient the data files
+    do not hold, for the one question that needs it: whether the muscle
+    group's slow return is what fills hours 2 to 4 (`PL-95NW`). It is applied
+    as `_configured_system()` applies its own override, before any step, where
+    the group's stored amount is zero and no propagator has been built, and
+    through `dataclasses.replace` so that `TissueGroup.__post_init__` validates
+    it exactly as it validates a shipped one. The group's blood flow, already
+    set from the cardiac output, is carried over unchanged.
     """
 
     system = _configured_system(agent_id)
+    if muscle_tissue_gas_partition_coefficient is not None:
+        system.patient.muscle = replace(
+            system.patient.muscle,
+            tissue_gas_partition_coefficient=muscle_tissue_gas_partition_coefficient,
+        )
     metabolised = 0.0
 
     for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
@@ -558,13 +694,14 @@ def _washout_curve(
 
     alveolar_fraction_at_discontinuation = system.alveoli.partial_pressure_fraction
     agent_taken_up_l = system.patient.total_agent_amount_l + metabolised
+    muscle_agent_at_discontinuation_l = system.patient.muscle.agent_amount_l
 
     system.set_delivered_concentration_percent(0.0)
     if condition == "open circuit":
         _discard_circuit_contents(system)
 
     ratios = [1.0]
-    for _ in range(ELIMINATION_DURATION_MIN):
+    for _ in range(elimination_duration_min):
         for _ in range(STEPS_PER_SAMPLE):
             system.advance(SIMULATION_STEP_S)
             if condition == "open circuit":
@@ -579,9 +716,11 @@ def _washout_curve(
         agent_id=agent_id,
         condition=condition,
         hepatic_elimination_rate_constant_per_min=hepatic_elimination_rate_constant_per_min,
+        muscle_tissue_gas_partition_coefficient=muscle_tissue_gas_partition_coefficient,
         alveolar_fraction_at_discontinuation=alveolar_fraction_at_discontinuation,
         ratios_by_minute=tuple(ratios),
         agent_taken_up_l=agent_taken_up_l,
+        muscle_agent_at_discontinuation_l=muscle_agent_at_discontinuation_l,
         agent_metabolised_l=metabolised,
         agent_accounting=system.agent_simulation_validation,
     )
@@ -629,16 +768,29 @@ def washout_curve(
 
     @cache
     def shared(
-        agent_id: str, condition: Condition, hepatic_elimination_rate_constant_per_min: float = 0.0
+        agent_id: str,
+        condition: Condition,
+        hepatic_elimination_rate_constant_per_min: float = 0.0,
+        muscle_tissue_gas_partition_coefficient: float | None = None,
+        elimination_duration_min: int = ELIMINATION_DURATION_MIN,
     ) -> WashoutCurve:
-        name = f"{agent_id}, {condition}, {hepatic_elimination_rate_constant_per_min}"
+        name = (
+            f"{agent_id}, {condition}, {hepatic_elimination_rate_constant_per_min}, "
+            f"{muscle_tissue_gas_partition_coefficient}, {elimination_duration_min}"
+        )
         published = store / f"{name}.pickle"
         with (store / f"{name}.lock").open("w") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             if published.exists():
                 curve: WashoutCurve = pickle.loads(published.read_bytes())
                 return curve
-            curve = _washout_curve(agent_id, condition, hepatic_elimination_rate_constant_per_min)
+            curve = _washout_curve(
+                agent_id,
+                condition,
+                hepatic_elimination_rate_constant_per_min,
+                muscle_tissue_gas_partition_coefficient,
+                elimination_duration_min,
+            )
             partial = store / f"{name}.partial"
             partial.write_bytes(pickle.dumps(curve))
             partial.replace(published)
@@ -657,12 +809,70 @@ def _crossing_hours(curve: WashoutCurve, fit: PublishedWashoutFit) -> tuple[floa
 
     hours = []
     previously_above = curve.ratio_at(1) > fit.ratio_at(1)
-    for minute in range(2, ELIMINATION_DURATION_MIN + 1):
+    for minute in range(2, len(curve.ratios_by_minute)):
         above = curve.ratio_at(minute) > fit.ratio_at(minute)
         if above != previously_above:
             hours.append(minute / MINUTES_PER_HOUR)
             previously_above = above
     return tuple(hours)
+
+
+def _muscle_coefficient_at_the_fitted_time_constant(fit: PublishedWashoutFit) -> float:
+    """The muscle tissue:gas coefficient that gives the fitted muscle term's time constant.
+
+    The isolated group's time constant is its volume times its tissue:gas
+    coefficient over its blood flow times the blood:gas coefficient, the
+    arithmetic `docs/MODEL.md` compares with the fitted one. This solves it
+    for the coefficient, on the reference adult the run is configured from,
+    so the volume, the flow and the blood:gas coefficient stay the stored
+    ones and only the muscle group's solubility moves.
+    """
+
+    patient = load_reference_adult_parameters()
+    agent = load_agent_parameters(fit.agent_id)
+    blood_flow_l_min = patient.muscle_perfusion_fraction * patient.default_cardiac_output_l_min
+
+    return (
+        fit.time_constants_min[MUSCLE_GROUP]
+        * blood_flow_l_min
+        * agent.blood_gas_partition_coefficient
+        / patient.muscle_volume_l
+    )
+
+
+def _rise_toward_the_fitted_curve(
+    curve: WashoutCurve, fit: PublishedWashoutFit
+) -> tuple[float, float]:
+    """Where model over fit peaks after its early dip, as (hours, ratio).
+
+    Every run here turns the same three times in its first day: model over
+    fit dips inside the first half hour, rises to a peak, and falls to a
+    trough the fat group's return later lifts it out of. This is the peak:
+    the first maximum after the first minimum, read from the second minute
+    on, as `_crossing_hours()` reads, to the minute the curve is sampled at.
+    """
+
+    ratios = [
+        curve.ratio_at(minute) / fit.ratio_at(minute)
+        for minute in range(len(curve.ratios_by_minute))
+    ]
+    turns = [
+        minute
+        for minute in range(2, len(ratios) - 1)
+        if (ratios[minute] - ratios[minute - 1]) * (ratios[minute + 1] - ratios[minute]) < 0
+    ]
+    dips = [minute for minute in turns if ratios[minute] < ratios[minute - 1]]
+    peaks = [
+        minute
+        for minute in turns
+        if ratios[minute] > ratios[minute - 1] and dips and minute > dips[0]
+    ]
+    if not peaks:
+        raise AssertionError(
+            f"{fit.label}, {curve.condition}: model over fit never rises to a peak after a "
+            f"dip within {len(ratios) - 1} min, so there is no rise toward the curve to place"
+        )
+    return peaks[0] / MINUTES_PER_HOUR, ratios[peaks[0]]
 
 
 @pytest.mark.parametrize("condition", CONDITIONS)
@@ -810,6 +1020,108 @@ def test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours(
                 f"{fit.label}: at {minutes} min the largest term is compartment "
                 f"{fit.leading_term_at(minutes) + 1}, not the fourth"
             )
+
+
+@pytest.mark.parametrize("condition", CONDITIONS)
+@pytest.mark.parametrize("fit", PUBLISHED_FITS, ids=[f.label for f in PUBLISHED_FITS])
+def test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4(
+    fit: PublishedWashoutFit, condition: Condition, washout_curve: Callable[..., WashoutCurve]
+) -> None:
+    """Vary the muscle group's coefficient, to test what fills hours 2 to 4.
+
+    `PL-KK1Q` read the tail's rise toward the fitted curve over hours 2 to 4
+    off the time constants alone: the model's isolated muscle group returns
+    on a constant 1.5 to 1.7 times the fitted muscle term's. This runs the
+    counterfactual instead (`PL-95NW`): the same protocol with the group's
+    tissue:gas coefficient lowered until its isolated time constant is the
+    cohort's fitted one, everything else stored.
+
+    It checks first that the change moves the rate of return and not the
+    store: the group holds 4 to 10% less at discontinuation, because over a
+    30-minute wash-in it is far from equilibrium and takes up agent about as
+    fast as its blood flow brings it, whatever its capacity. A variation
+    that emptied the store would lower the tail for a reason the reading
+    does not name. Then it holds where the rise peaks on each coefficient,
+    and the four-hour ratio and the crossings on the lowered one, to what
+    was measured on 2026-10-03, and asserts the reading itself: the rise
+    peaks after the second hour as stored and before it at the fitted time
+    constant, and the tail at four hours is lower.
+    """
+
+    coefficient = _muscle_coefficient_at_the_fitted_time_constant(fit)
+    stored_coefficient = load_agent_parameters(fit.agent_id).muscle_tissue_gas_partition_coefficient
+    as_stored = washout_curve(fit.agent_id, condition)
+    varied = washout_curve(fit.agent_id, condition, 0.0, coefficient, MUSCLE_VARIATION_DURATION_MIN)
+    recorded = RECORDED_MUSCLE_VARIATIONS[fit.label, condition]
+
+    share = coefficient / stored_coefficient
+    assert abs(share - RECORDED_MUSCLE_COEFFICIENT_SHARES[fit.label]) <= 1e-4, (
+        f"{fit.label}: the fitted muscle time constant now takes {share:.4f} of the stored "
+        f"coefficient where this module recorded {RECORDED_MUSCLE_COEFFICIENT_SHARES[fit.label]}; "
+        "a stored muscle, blood or flow parameter has changed"
+    )
+    assert varied.agent_accounting.passes_validation, (
+        f"{fit.label}, {condition}: the lowered coefficient broke the model's agent accounting: "
+        f"{varied.agent_accounting}"
+    )
+
+    store_share = (
+        varied.muscle_agent_at_discontinuation_l / as_stored.muscle_agent_at_discontinuation_l
+    )
+    assert store_share >= 0.9, (
+        f"{fit.label}: the lowered coefficient leaves the muscle group holding {store_share:.1%} "
+        "of its stored amount at discontinuation, so the variation moves the store as well as "
+        "the rate of return, and the tail it draws no longer tests the rate alone"
+    )
+    assert abs(store_share - RECORDED_MUSCLE_STORE_SHARES[fit.label]) <= (
+        MUSCLE_STORE_SHARE_TOLERANCE
+    ), (
+        f"{fit.label}: the muscle group holds {store_share:.4f} of its stored amount at "
+        f"discontinuation where this module measured {RECORDED_MUSCLE_STORE_SHARES[fit.label]}"
+    )
+
+    rise_as_stored = _rise_toward_the_fitted_curve(as_stored, fit)
+    rise_varied = _rise_toward_the_fitted_curve(varied, fit)
+    for which, (hours, ratio), (expected_hours, expected_ratio) in (
+        ("stored", rise_as_stored, recorded.rise_as_stored),
+        ("fitted time constant", rise_varied, recorded.rise_at_fitted_time_constant),
+    ):
+        assert (
+            abs(hours - expected_hours) <= CROSSING_TOLERANCE_H
+            and abs(ratio - expected_ratio) <= RATIO_REGRESSION_TOLERANCE * expected_ratio
+        ), (
+            f"{fit.label}, {condition}, {which}: the rise toward the curve now peaks at "
+            f"{ratio:.3f} at {hours:.2f} h where this module measured {expected_ratio} at "
+            f"{expected_hours} h on 2026-10-03; re-measure it here and in docs/MODEL.md"
+        )
+    assert rise_varied[0] < 2.0 < rise_as_stored[0], (
+        f"{fit.label}, {condition}: the rise toward the curve peaks at {rise_as_stored[0]:.2f} h "
+        f"as stored and {rise_varied[0]:.2f} h at the fitted time constant, so the muscle "
+        "group's rate of return no longer decides whether it falls in hours 2 to 4"
+    )
+
+    four_hours = varied.ratio_at(FOUR_HOURS_MIN) / fit.ratio_at(FOUR_HOURS_MIN)
+    four_hours_as_stored = as_stored.ratio_at(FOUR_HOURS_MIN) / fit.ratio_at(FOUR_HOURS_MIN)
+    expected = recorded.ratio_at_four_hours_at_fitted_time_constant
+    assert four_hours < four_hours_as_stored, (
+        f"{fit.label}, {condition}: at four hours the tail is {four_hours:.3f} of the fitted "
+        f"curve at the fitted time constant and {four_hours_as_stored:.3f} as stored"
+    )
+    assert abs(four_hours - expected) <= RATIO_REGRESSION_TOLERANCE * expected, (
+        f"{fit.label}, {condition}: at four hours the tail is {four_hours:.3f} of the fitted "
+        f"curve at the fitted time constant where this module measured {expected}"
+    )
+
+    crossings = _crossing_hours(varied, fit)
+    expected_crossings = recorded.crossing_hours_at_fitted_time_constant
+    assert len(crossings) == len(expected_crossings) and all(
+        abs(found - crossing) <= CROSSING_TOLERANCE_H
+        for found, crossing in zip(crossings, expected_crossings, strict=True)
+    ), (
+        f"{fit.label}, {condition}: at the fitted time constant the tail now crosses the curve at "
+        f"{tuple(round(h, 2) for h in crossings)} h where this module measured "
+        f"{expected_crossings} on 2026-10-03"
+    )
 
 
 @pytest.mark.parametrize("condition", CONDITIONS)
