@@ -56,11 +56,11 @@ and prunes nothing, so it cannot destroy a ref `bin/docket stranded` needs.
 **Reported upstream, so both halves are temporary.** The stale-ref count is
 anthropics/claude-code#83490, and the narrow refspec is the second false
 positive of anthropics/claude-code#82624, both open on 2026-10-03. `PL-90CJ`
-confirmed that day that the container still ships the line, and drafted a
-reproduction for the first that `docs/maintainer.md` hands the project owner to
-post. Retire the half a fix covers rather than widening a match: a fix that
-writes `CORRECTED` leaves this hook silent, and any other form makes it print
-`UNPATCHED` at every session start.
+confirmed that day that the container still ships the line, and the project
+owner posted its reproduction on the first; `docs/maintainer.md` says when to
+retire this hook. Retire the half a fix covers rather than widening a match: a
+fix that writes `CORRECTED` leaves this hook silent, and any other form makes
+it print `UNPATCHED` at every session start.
 
 **Silent on the path it takes every session.** Standard output from a
 SessionStart hook enters the session's context and is resent on every turn, so

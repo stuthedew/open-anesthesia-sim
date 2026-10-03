@@ -35,11 +35,11 @@ answers, and `PL-WW08` records the diagnosis.
 
 **Done when** (rewritten 2026-10-03 from "reported to the container's
 maintainers with the reproduction", since the report already existed - below).
-`docs/maintainer.md` records the two upstream reports and that a comment carrying
-the reproduction is drafted here for the project owner to post, and
-`.claude/hooks/stop_hook_patch.py` names them where a session meets the patch -
-so a later session neither re-reports it nor assumes it was fixed. Posting is the
-owner's: a session cannot write to that repository.
+`docs/maintainer.md` records the two upstream reports and the comment carrying
+the reproduction, and `.claude/hooks/stop_hook_patch.py` names them where a
+session meets the patch - so a later session neither re-reports it nor assumes
+it was fixed. Posting was the owner's, since a session cannot write to that
+repository, and they posted it on 2026-10-03.
 
 **Left standing 2026-09-19 by `PL-4Q9B`** (record clone trust and the permitted ref
 operations), which closed with the finding that its ten members are not one
@@ -89,12 +89,13 @@ item changed shape.** What was checked, and what each check showed:
   was, because the fixed line contains the line it writes - so if upstream ships
   the fix as drafted, the patch goes quiet by itself.
 
-**Recommendation:** the project owner posts this as a comment on
-https://github.com/anthropics/claude-code/issues/83490, as it stands. It gives a
-maintainer a run on the current build, the second route to a stale ref (the one
-seeded at session start), and a fix scoped the way upstream already scoped the
-signing check. `docs/maintainer.md` carries the steps, so the offer outlives
-this item.
+**Posted** by the project owner on 2026-10-03, as a comment on
+https://github.com/anthropics/claude-code/issues/83490, from the text below. It
+gives a maintainer a run on the current build, the second route to a stale ref
+(the one seeded at session start), and a fix scoped the way upstream already
+scoped the signing check. This session could not read the comment back: the
+container's proxy refuses that page, and WebFetch's summary of it showed no
+comments, which a summary of a page that long cannot settle either way.
 
 ````markdown
 Still reproducible in the current Claude Code on the web container (Claude Code 2.1.288, checked 2026-10-03). The signing check has since been scoped to `HEAD --not --remotes`, but the unpushed count after it still compares against whatever `origin/<branch>` resolves to locally:

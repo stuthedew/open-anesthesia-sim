@@ -404,7 +404,7 @@ Success is `* [new branch]` on the last line. `git ls-remote origin
 'refs/archive/*'` lists every archived tip, if the log has expired. An archive
 ref is not shown on GitHub's Branches page and no clone fetches it unasked.
 
-## Post the stop hook's reproduction upstream, and retire the patch once it is fixed
+## Retire the stop hook patch once Anthropic fixes it
 
 The cloud container's `Stop` hook, `~/.claude/stop-hook-git-check.sh`, is
 Anthropic's and is rewritten at every container start, so
@@ -415,20 +415,16 @@ already reported at Anthropic's public tracker, so neither needs a new report
 
 - [anthropics/claude-code#83490](https://github.com/anthropics/claude-code/issues/83490),
   the stale `origin/<branch>` a merged pull request leaves behind. Claude Code
-  2.1.288 still ships the unpushed count it reports.
+  2.1.288 still ships the unpushed count it reports. You commented there on
+  2026-10-03 with the reproduction drafted in `PL-90CJ` - a runnable script
+  against the shipped hook, and a five-line fix - so do not post it again.
+  Commenting subscribed you, so GitHub notifies you when the issue closes
+  ([About notifications](https://docs.github.com/en/subscriptions-and-notifications/concepts/about-notifications),
+  section "Default subscriptions").
 - [anthropics/claude-code#82624](https://github.com/anthropics/claude-code/issues/82624),
   whose second false positive is a `git clone --depth 1` that fetches `main`
-  only, so a push records no `origin/<branch>`.
-
-**To post the reproduction:** copy the contents of the last code block in
-`docs/items/PL-90CJ-report-the-container-stop-hook-s-stale-ref.md` (in the raw
-file, everything between its four-backtick fences), paste it into the comment
-field at the bottom of #83490, and select **Comment**. It renders as a short
-note, a bash script, its output and a five-line diff. A session cannot post it,
-since its GitHub access stops at this repository. Commenting also subscribes
-you, so GitHub notifies you when the issue closes
-([About notifications](https://docs.github.com/en/subscriptions-and-notifications/concepts/about-notifications),
-section "Default subscriptions").
+  only, so a push records no `origin/<branch>`. The half of the patch that
+  answers it costs nothing to keep running, so it needs no watching.
 
 **Once either closes as fixed,** ask a session to retire the half of
 `stop_hook_patch.py` that the fix covers. Nothing in this repository will say
