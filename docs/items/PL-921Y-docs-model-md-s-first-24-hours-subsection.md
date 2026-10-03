@@ -3,11 +3,12 @@ id: PL-921Y
 title: docs/MODEL.md's first-24-hours subsection compares the model's isolated muscle time constant with Yasuda's fitted one, which is an apparent constant read off the whole washout curve; read the same way, off the eigenvalues of the model's open-circuit system, the model's muscle term runs 1.9 to 2.0 times the fitted one at about half its amplitude (measured 2026-10-03), not 1.5 to 1.7
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, docs, test
 feature: late-washout-evidence
-touches: docs/MODEL.md, tests/reference/test_late_washout_against_published_fits.py
+touches: docs/MODEL.md, tests/reference/test_late_washout_against_published_fits.py, pyproject.toml, uv.lock, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md
 added: 2026-10-03
+closed: 2026-10-03
 payoff: docs/MODEL.md's explanation of the washout tail's middle hours compares the model's muscle and fat terms with the fitted ones like for like, so the size of the difference it names is the real one
 verify: grep -q 'def test_[a-z0-9_]*apparent' tests/reference/test_late_washout_against_published_fits.py
 ---
@@ -59,3 +60,34 @@ it for the tests and decomposing with `numpy.linalg.eig` adds no new code to
 verify, and the reconstruction check is the test that the modes describe the
 stepped run. The other route, a pure-Python solve of the 5-by-5 block, is code
 that would need verifying in its own right.
+
+**Built (2026-10-03).** The test writes the open circuit's elimination out as
+five equations, those of `docs/MODEL.md` § "Governing equations" with nothing
+inspired, from the parameter loaders alone, the way `test_coupled_dynamics.py`
+builds its system. It does not read `core/governing_equations.py`'s matrix,
+because `docs/ARCHITECTURE.md` keeps a reference case from reaching the code it
+checks; the two agree to 2e-16 (measured once). Decomposed with
+`numpy.linalg.eig` from the state each run held at discontinuation, the modes
+reproduce the stepped open-circuit run to within 0.08% at every minute from the
+fifth, the run lying above them. Halving the step halved that, 0.052 to 0.026%
+at five minutes, so it is the driver re-breathing within each step and not the
+decomposition. A 1% change to one rate moves the modes 2.1 to 2.3% off the run,
+so the check fails on a wrong equation.
+
+Two corrections to the brief above, which is left as it was written:
+
+- Sevoflurane's and isoflurane's two fastest modes are a complex-conjugate
+  pair, a damped oscillation that falls e-fold in about a quarter of a minute,
+  so the model's curve is not five real exponentials. The three slower modes
+  are real, and the comparison reads only those.
+- At the coefficient `PL-95NW` ran, isoflurane's apparent muscle constant
+  against the *Anesth Analg* cohort is 108.4 minutes, not 108.5.
+
+numpy is declared in the `dev` group by the owner's rule in
+`docs/WORKING_NOTES.md` § "Decided: no numpy", decide it in the commit that
+wants it; that note and `docs/ARCHITECTURE.md` say so, and no module under
+`src/` imports it. `docs/MODEL.md` now sets the model's apparent muscle and fat
+terms against the fitted ones in a table, says why the isolated constants are
+shorter, and says `PL-95NW`'s variation brings the apparent muscle constant to
+1.09 to 1.28 times the fitted. `test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones`
+pins every number it prints.
