@@ -50,11 +50,13 @@ from anesthesia_sim.core.run_definition import (
     RunSegment,
     SampledWindow,
 )
+from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    maximum_step_count,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -201,6 +203,10 @@ def test_a_window_reads_only_the_segments_it_covers(monkeypatch: pytest.MonkeyPa
     clock: a matrix exponential is what a window pays per segment it covers,
     so counting them says whether the run's other 1 498 segments were touched.
     A timing assertion would say the same thing and fail on a busy machine.
+
+    The run fills the supported run length rather than a longer one, since a
+    reach past it is refused (`PL-8H2R`); what the claim needs is many
+    segments behind the window, not any particular length.
     """
 
     exponentials = 0
@@ -214,7 +220,7 @@ def test_a_window_reads_only_the_segments_it_covers(monkeypatch: pytest.MonkeyPa
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
-    total_s = 30 * 24 * 3600.0
+    total_s = MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
     for change in range(1, 1501):
         definition.advance_to(change * total_s / 1501)
@@ -226,9 +232,9 @@ def test_a_window_reads_only_the_segments_it_covers(monkeypatch: pytest.MonkeyPa
     assert len(definition.segments) == 1501
 
     monkeypatch.setattr(run_definition, "matrix_exponential", counting_exponential)
-    definition.evaluate(total_s - 3600.0, total_s, 600)
+    definition.evaluate(total_s - 100.0, total_s, 600)
 
-    # This run changes a setting every 1 728 s, so the last hour covers three
+    # This run changes a setting every 57.6 s, so the last 100 s covers three
     # segments at most, and a segment costs two propagators - one for the
     # offset from its keyframe to its first column, one for the column
     # spacing. An implementation that walked the run instead of the window
@@ -594,6 +600,62 @@ def test_a_run_refuses_a_non_finite_reach() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="not a finite instant"):
         definition.advance_to(inf)
+
+
+def test_a_run_may_reach_the_end_of_the_supported_run_length() -> None:
+    """The reach's bound is the opening's and closed like it: a run may reach the far end."""
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
+
+    definition.advance_to(MAXIMUM_ELAPSED_SIMULATION_TIME_S)
+
+    assert definition.reached_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+
+
+@pytest.mark.parametrize(
+    "instant_s",
+    [nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf), MAXIMUM_ELAPSED_SIMULATION_TIME_S + 0.1],
+)
+def test_a_reach_past_the_supported_run_length_is_refused(instant_s: float) -> None:
+    """Refused before the reach moves, so the run cannot be evaluated past the span.
+
+    Until `PL-8H2R` the reach was unguarded, because at a step whose
+    quotient rounded up the last step a run took landed a float past the
+    span, and a bound here would have refused it. The count now stops on
+    the last step inside, so the reach can carry the opening's bound.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
+    definition.advance_to(3_600.0)
+
+    with pytest.raises(SimulationConfigurationError, match="supported run length") as raised:
+        definition.advance_to(instant_s)
+
+    assert f"{instant_s} s" in str(raised.value)
+    assert definition.reached_s == 3_600.0
+
+
+@pytest.mark.parametrize("simulation_step_s", [0.1, 768 / 1_000_000 * 100, 0.02304])
+def test_a_run_may_reach_the_last_step_it_is_allowed_to_take(simulation_step_s: float) -> None:
+    """The reach follows the step count to its limit at every step, never past it.
+
+    The application moves the reach to each step's `elapsed_s`, so the guard
+    on it must accept the last step `SimulationState` allows - at
+    `768 / 1_000_000 * 100` s that step stood at 86400.00000000001 s before
+    `PL-8H2R`, and this guard would have refused it after it had been taken.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
+    last_step_s = SimulationState(
+        step_count=maximum_step_count(simulation_step_s), simulation_step_s=simulation_step_s
+    ).elapsed_s
+
+    definition.advance_to(last_step_s)
+
+    assert definition.reached_s == last_step_s
 
 
 @pytest.mark.parametrize("instant_s", [nan, inf])

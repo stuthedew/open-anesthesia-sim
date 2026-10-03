@@ -170,14 +170,27 @@ def test_the_supported_run_length_is_twenty_four_hours() -> None:
     assert MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600 == 24.0
 
 
-@pytest.mark.parametrize("simulation_step_s", [0.01, 0.05, 0.1, 0.2, 0.25, 0.5, 1.0])
+@pytest.mark.parametrize(
+    "simulation_step_s",
+    [0.01, 0.05, 0.1, 0.2, 0.25, 0.5, 1.0, 768 / 1_000_000 * 100, 0.02304, 1e-12, 1e-300, 5e-304],
+)
 def test_the_last_supported_step_lands_inside_the_declared_span(simulation_step_s: float) -> None:
     """The step count is whole, and the run it allows stays inside the span.
 
     Checked across every step a run might be taken at rather than only the
     shipped 0.1 s, because the count is derived from the step: a step that
     does not divide the span evenly must round *down*, leaving the last
-    completed step at or below the boundary and never past it.
+    completed step at or below the boundary and never past it, and the next
+    step past it.
+
+    The last five are the regression cases (`PL-8H2R`). At
+    `768 / 1_000_000 * 100` s, which is 0.07680000000000001, the floored
+    quotient was one step too many and stopped at 86400.00000000001 s; at
+    0.02304 s it was one short of the step that lands on 86400.0 s. At 1e-12
+    s it was eight short and at 1e-300 s further still, where many counts
+    round to one simulated time and only a search on that time finds the
+    last. At 5e-304 s the count is near the largest a float holds, so a
+    search bracket built by doubling the guess would itself overflow there.
     """
 
     count = maximum_step_count(simulation_step_s)
@@ -185,6 +198,55 @@ def test_the_last_supported_step_lands_inside_the_declared_span(simulation_step_
     assert isinstance(count, int)
     assert count * simulation_step_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S
     assert (count + 1) * simulation_step_s > MAXIMUM_ELAPSED_SIMULATION_TIME_S
+
+
+def test_every_step_in_a_family_that_rounds_both_ways_stops_inside_the_span() -> None:
+    """Swept over a family of computed steps, not only the two found by hand.
+
+    The steps `0.1 / n` held 54 counts one step too many and 104 one too few
+    for n up to 2 000 before `PL-8H2R` (measured 2026-10-03), so this sweep
+    fails in both directions on a count read off the quotient alone. Each
+    step is checked on the two products that define the count, which is
+    what a run's `elapsed_s` is, rather than on the quotient.
+    """
+
+    wrong = [
+        n
+        for n in range(1, 2_001)
+        if not (
+            maximum_step_count(0.1 / n) * (0.1 / n)
+            <= MAXIMUM_ELAPSED_SIMULATION_TIME_S
+            < (maximum_step_count(0.1 / n) + 1) * (0.1 / n)
+        )
+    ]
+
+    assert wrong == []
+
+
+def test_the_step_that_lands_on_the_limit_is_counted_at_a_step_the_quotient_undercounts() -> None:
+    """0.02304 s divides 24 hours exactly in floating point, so the run reaches it.
+
+    3 750 000 steps of 0.02304 s land on exactly 86400.0 s, and the quotient
+    rounds down to 3 749 999, which stopped the run 0.02304 s short of the
+    limit a learner would read (`PL-8H2R`).
+    """
+
+    assert maximum_step_count(0.02304) == 3_750_000
+    assert 3_750_000 * 0.02304 == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+
+
+def test_a_step_whose_quotient_overcounts_stops_one_step_earlier() -> None:
+    """The count whose last step lands a float past the limit is not allowed.
+
+    1 125 000 steps of `768 / 1_000_000 * 100` s land at 86400.00000000001 s,
+    which the case-instant guard refuses; the count stops at 1 124 999,
+    the last whose simulated time is inside the span (`PL-8H2R`).
+    """
+
+    simulation_step_s = 768 / 1_000_000 * 100
+
+    assert 1_125_000 * simulation_step_s > MAXIMUM_ELAPSED_SIMULATION_TIME_S
+    assert maximum_step_count(simulation_step_s) == 1_124_999
 
 
 def test_the_shipped_step_reaches_the_boundary_exactly() -> None:
@@ -285,12 +347,10 @@ def test_a_run_may_be_built_where_stepping_stops_it_and_no_further(
 ) -> None:
     """The count a run stops on is legal to stand on and illegal to step from.
 
-    Both guards read `maximum_step_count`, so they agree at every step - even
-    the last two, where at the 24-hour limit that count is itself off by one
-    (`PL-8H2R`): `768 / 1_000_000 * 100` takes one step too many and stops at
-    86400.00000000001 s, and `0.02304` stops one step short of the step that
-    lands on 86400.0 s. Agreeing with the step's guard is what this guard
-    promises; where that guard puts the limit is `PL-8H2R`'s to fix.
+    Both guards read `maximum_step_count`, so they agree at every step,
+    including the last two, at which the quotient alone put that count a step
+    either side of the span (`PL-8H2R`). Where the count falls is the next
+    test's question; this one asks only that the two count guards agree.
     """
 
     limit = maximum_step_count(simulation_step_s)
@@ -303,6 +363,42 @@ def test_a_run_may_be_built_where_stepping_stops_it_and_no_further(
 
     with pytest.raises(SimulationConfigurationError, match="supported run length"):
         require_supported_step_count(limit + 1, simulation_step_s)
+
+
+def _accepted(guard: Callable[[], None]) -> bool:
+    try:
+        guard()
+    except SimulationConfigurationError:
+        return False
+
+    return True
+
+
+@pytest.mark.parametrize("steps_past_the_limit", [-1, 0, 1])
+@pytest.mark.parametrize(
+    "simulation_step_s", [0.1, 0.07, 0.03, 0.025, 0.01, 768 / 1_000_000 * 100, 0.02304]
+)
+def test_the_step_count_and_the_case_instant_bound_the_same_span(
+    simulation_step_s: float, steps_past_the_limit: int
+) -> None:
+    """A count is accepted exactly where the instant it stands at is (`PL-8H2R`).
+
+    A branch at a bookmark is built from its parent's step count and a branch
+    at a control event from its parent's instant, so the two guards have to
+    draw the span's end in the same place or the same fork is built one way
+    and refused the other. At `768 / 1_000_000 * 100` s the count guard
+    accepted a run standing at 86400.00000000001 s, which the instant guard
+    refuses; at 0.02304 s it refused a count standing on 86400.0 s, which the
+    instant guard accepts.
+    """
+
+    step_count = maximum_step_count(simulation_step_s) + steps_past_the_limit
+
+    by_count = _accepted(lambda: require_supported_step_count(step_count, simulation_step_s))
+    by_instant = _accepted(lambda: require_supported_case_instant(step_count * simulation_step_s))
+
+    assert by_count == by_instant
+    assert by_count == (steps_past_the_limit <= 0)
 
 
 def test_the_step_count_refusal_names_the_count_the_step_and_the_limit() -> None:
