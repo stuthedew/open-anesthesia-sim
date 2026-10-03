@@ -3,11 +3,14 @@ id: PL-V67Q
 title: Add y-axis range control to the agent graph: optional auto-scale, and a settable MAC / volume-percent scale
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: feature, ux
 feature: chart-readout
-touches: src/anesthesia_sim/app
+touches: docs/items
 added: 2026-09-08
+closed: 2026-10-03
+pr: 1296
+verify: grep -qF 'Answered 2026-10-03' docs/items/PL-V67Q-add-y-axis-range-control-to-the-agent-graph.md
 ---
 
 **Problem.** Add y-axis range control to the agent graph: optional auto-scale, and a settable MAC / volume-percent scale
@@ -96,3 +99,9 @@ is direction rather than implementation.
 **If the owner wants continuous auto-scale anyway**, the terms the evidence allows: off by default; on only while one run is drawn, and off again the moment a branch is taken; the plot marked in words beside the axis ("axis follows the data") and the ceiling labelled in both units; never while two runs share the axis. Recorded so the build thread does not re-derive them, and marked as the weaker route.
 
 **Items to write from this round once answered**, under `feature: chart-readout`: the range control, its ladder and its mode display (one `M`); the `docs/MODEL.md` paragraph recording the ladder, the mode display and the refusal of continuous auto-scale beside § "Why the axis is fixed rather than fitted" (rides the same item); and the off-scale notice carrying both units (one `S`).
+
+## Answers 2026-10-03
+
+Answered 2026-10-03: a reader-chosen fixed MAC ceiling from a short ladder (1.5, 3 default, 4.5 MAC), one axis labelled in both units, the range displayed in words beside the plot, holding across runs and across a comparison, and no continuous auto-scale (project owner, 2026-10-03, ratified, over optional continuous auto-scale off by default and marked when on, over a typed range, and over per-unit or per-agent ranges). The five questions above are answered as recommended.
+
+Items written from this round, both under `feature: chart-readout` and untriaged: `PL-K1VH` (the ceiling ladder, its display and the `docs/MODEL.md` paragraph) and `PL-DVDY` (the off-scale notice naming the top in both units). The one-shot "fit to run" convenience is recorded in `PL-K1VH`'s brief as optional. With the questions answered and the items written, this item's Done-when is met and it closes on this record.
