@@ -141,5 +141,5 @@ condition). The build, in `cli.cmd_verify`: when `--self` is absent, the
 item's live claim is this session's own (`claims.Hold.mine`) and at least one
 commission check failed, print one line above the item's report naming
 `bin/docket verify --self` and what it reports; silent otherwise; one test in
-`subprojects/docket/tests/test_cli.py`. Status stays `needs-decision` in this
-round; the thread that builds it sets `ready` first.
+`subprojects/docket/tests/test_cli.py`. Status moves to `ready` with this answer, as
+`docket check` requires of a recorded answer.
