@@ -47,7 +47,7 @@ settles.
 `plan.promotable` already reports - or whether the two shapes are different
 enough work that naming them together misleads more than the reach buys.
 
-**Recommended:** report it, under wording of its own. `PL-B9PY`'s lesson is
+[superseded 2026-10-03: the count the brief asked for came back zero; see the design round] **Recommended:** report it, under wording of its own. `PL-B9PY`'s lesson is
 about *status*, not about reach: what it cost was a milestone-blocked item
 parked at `needs-decision` and then hidden from `next` for two days, and the
 repair for that is exactly the reader being told. The two are different work -
@@ -64,3 +64,34 @@ correctly for an item the milestone's own `Required scope` names (`PL-L09X`).
 milestone-blocked-and-now-scoped state at any one time. If it is routinely
 zero or one, the reach is not worth a second sentence in `next`'s output and
 dropping this with that reason is the better answer.
+
+## Design round 2026-10-03: recommendation
+
+**Re-checked against the tree, 2026-10-03.** `plan.promotable` and
+`cli._say_promotable` carry the item-blocker case to `bin/docket next`;
+`checks.py` carries the milestone case through `roadmap.is_cleared` and
+`ships_with`, as the brief describes.
+
+**The number the brief asked for, counted.** `bin/docket check` on 2026-10-03
+prints three promotable advisories, every one the item-blocker shape
+(`PL-5XG1`, `PL-QFCR`, `PL-VF3C`: "every blocker has closed; it is ready to
+promote") and none of the milestone shape. One open item carries a milestone
+blocker at all - `PL-L6QR`, `blocked-by: v0.7.0` - and over the store's whole
+history only two ever have, the other `PL-Y04W`, since dropped. So the state
+this would report is zero now and can hold at most one item, which `check`'s
+advisory already names.
+
+**Q. Should `next` name an item whose `blocked-by` milestone has since been
+scoped, beside the item-blocker case?**
+**Recommendation: drop this item, on the count.** The brief's own test: "if it
+is routinely zero or one, the reach is not worth a second sentence in `next`'s
+output and dropping this with that reason is the better answer." It is zero,
+with a ceiling of one. The two shapes being different work stands as written,
+and is a second reason not to fold them; it is not the one that decides this.
+No test is owed by a drop - the test "Done when" names drives the report
+branch, which is not taken. Close with `bin/docket set PL-162Y --status dropped
+--reason "..." --closed DATE`, the reason being this count.
+
+**What would change the answer.** Three or more open items blocked on a
+milestone at once. Then the report branch above is the build, under its own
+wording and composed in `cmd_next` rather than grown into `plan.promotable`.
