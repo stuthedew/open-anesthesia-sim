@@ -126,7 +126,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.vcs import default_branch, github_slug, github_token  # noqa: E402
+from docket.vcs import REMOTE, default_branch, github_slug, github_token  # noqa: E402
 
 API_ROOT = "https://api.github.com"
 API_VERSION = "2022-11-28"
@@ -427,16 +427,16 @@ def _repo_from_git(root: Path) -> str:
     """Return `owner/name` from the origin remote."""
     try:
         url = subprocess.run(
-            ["git", "-C", str(root), "remote", "get-url", "origin"],
+            ["git", "-C", str(root), "remote", "get-url", REMOTE],
             capture_output=True,
             text=True,
             check=True,
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError) as exc:
-        raise RuntimeError("no --repo given and no origin remote to read one from") from exc
+        raise RuntimeError(f"no --repo given and no {REMOTE} remote to read one from") from exc
     slug = github_slug(url)
     if slug is None:
-        raise RuntimeError(f"cannot read owner/name out of the origin remote: {url}")
+        raise RuntimeError(f"cannot read owner/name out of the {REMOTE} remote: {url}")
     return slug
 
 

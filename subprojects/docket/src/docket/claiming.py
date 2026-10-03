@@ -98,6 +98,7 @@ from .claims import (
 from .model import CLOSED_STATUSES, parse_front_matter
 from .store import ID_PATTERN
 from .vcs import (
+    REMOTE,
     RemoteHeads,
     Runner,
     _head_name,
@@ -121,9 +122,6 @@ REFUSED = 1
 USAGE = 2
 HELD_ELSEWHERE = 3
 LOCAL_ONLY = 4
-
-#: The remote a claim is fetched from and pushed to, as `vcs.fetch_remote` has it.
-REMOTE = "origin"
 
 #: How long one write is given. A push through the harness proxy is seconds, but
 #: this is a write whose failure is reported rather than retried, so it is given

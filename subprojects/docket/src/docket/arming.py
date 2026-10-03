@@ -85,9 +85,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from .claiming import REMOTE, _git
+from .claiming import _git
 from .claims import LAPSED, RELEASED, Hold, holdings
 from .vcs import (
+    REMOTE,
     MergedPullRequest,
     PullRequestLookup,
     RemoteHeads,

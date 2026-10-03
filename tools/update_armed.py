@@ -27,13 +27,16 @@ they would finish on a base that has already moved.
 The call carries `expected_head_sha`, so a commit pushed after the read is never
 merged over. GitHub refuses the update instead, and the next run reads again.
 
-**Two tokens.** Everything is read with the workflow's own `GITHUB_TOKEN`. The
-update is made with `UPDATE_BRANCH_TOKEN`, a fine-grained personal access token
-the project owner creates (`docs/maintainer.md`), because an update made with
-`GITHUB_TOKEN` "creates workflow runs in an approval-required state" (GitHub
-Docs, *Triggering a workflow*): the required checks would wait on a click, which
-is the stall again. Without that secret nothing is written, and each pull
-request that would have been updated is listed as such.
+**Two tokens.** Everything is read with the token `docket.vcs.github_token`
+reads, `GH_TOKEN` before `GITHUB_TOKEN` as the GitHub CLI orders them, so the
+workflow, which sets no `GH_TOKEN`, reads with its own `GITHUB_TOKEN`
+(`PL-4NG0`). The update is made with `UPDATE_BRANCH_TOKEN`, a fine-grained
+personal access token the project owner creates (`docs/maintainer.md`), because
+an update made with `GITHUB_TOKEN` "creates workflow runs in an
+approval-required state" (GitHub Docs, *Triggering a workflow*): the required
+checks would wait on a click, which is the stall again. Without that secret
+nothing is written, and each pull request that would have been updated is
+listed as such.
 
 **What passes and what fails.** Exit 1 means a reading failed or GitHub refused
 the token, and nothing after it was tried; the output says which, and for a
@@ -64,7 +67,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.vcs import default_branch  # noqa: E402
+from docket.vcs import default_branch, github_token  # noqa: E402
 
 from open_pull_requests import repo_slug  # noqa: E402
 from required_checks_check import required_contexts  # noqa: E402
@@ -353,7 +356,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         slug = args.repo or repo_slug()
         if not slug:
             raise Declined("the repository could not be named from origin; pass --repo owner/name")
-        read_token = os.environ.get("GITHUB_TOKEN") or None
+        read_token = github_token()
         try:
             required, _ = required_contexts(slug, base, read_token)
         except RuntimeError as error:

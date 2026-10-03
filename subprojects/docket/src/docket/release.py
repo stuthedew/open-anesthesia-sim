@@ -250,12 +250,16 @@ TAG_WORKFLOW = ".github/workflows/tag-release.yml"
 TAG_SCRIPT = "tools/tag_release.py"
 
 
-def tag_confirmation(version: str, remote: str = "origin") -> str:
+def tag_confirmation(version: str, remote: str | None = None) -> str:
     """The one line that shows whether `remote` holds `version`'s tag: nothing to fill in.
 
     It prints the tag where `remote` holds it and nothing where it does not, and
     it reads rather than writes, so a session can run it as well as the owner.
+    `remote` is `vcs.REMOTE` unless one is named (`PL-4NG0`).
     """
+    from .vcs import REMOTE  # `vcs` reads this module's version grammar: a cycle at import.
+
+    remote = REMOTE if remote is None else remote
     return f"git ls-remote --tags {remote} refs/tags/v{version.strip().lstrip('v')}"
 
 

@@ -252,3 +252,32 @@ def test_main_reads_the_base_off_docket_when_none_is_passed(
     assert update_armed.main(["--repo", SLUG]) == 1
     assert asked == ["trunk"]
     assert "the required checks on trunk could not be read" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("environment", "handed"),
+    [
+        # `PL-4NG0`: a shell holding only the GitHub CLI's variable read no token here.
+        ({"GH_TOKEN": "from-gh"}, "from-gh"),
+        # The workflow sets no `GH_TOKEN`, so it still reads with its own token.
+        ({"GITHUB_TOKEN": "from-actions"}, "from-actions"),
+    ],
+)
+def test_main_reads_with_the_token_docket_reads(
+    monkeypatch: pytest.MonkeyPatch, environment: dict[str, str], handed: str
+) -> None:
+    """The reads carry `vcs.github_token`'s answer rather than `GITHUB_TOKEN` alone."""
+    seen: list[str | None] = []
+
+    def unreachable(repo: str, branch: str, token: str | None) -> tuple[set[str], list[str]]:
+        seen.append(token)
+        raise RuntimeError("could not read https://api.github.com/...: timed out")
+
+    monkeypatch.setattr(update_armed, "required_contexts", unreachable)
+    for name in ("GH_TOKEN", "GITHUB_TOKEN", "GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY"):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in environment.items():
+        monkeypatch.setenv(name, value)
+
+    assert update_armed.main(["--repo", SLUG, "--base", "main"]) == 1
+    assert seen == [handed]

@@ -65,7 +65,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.vcs import github_slug, github_token  # noqa: E402
+from docket.vcs import REMOTE, github_slug, github_token  # noqa: E402
 
 #: Where the lookup goes. Named here rather than inline so a test can point it
 #: somewhere that is not the network.
@@ -127,7 +127,7 @@ def repo_slug() -> str | None:
     Parsed by `docket`'s one reading, `vcs.github_slug`, which a token-bearing
     URL does not defeat (`PL-2TV9`).
     """
-    return github_slug(_git(["remote", "get-url", "origin"]))
+    return github_slug(_git(["remote", "get-url", REMOTE]))
 
 
 def _listing(slug: str, query: dict[str, str | int]) -> list[object] | None:

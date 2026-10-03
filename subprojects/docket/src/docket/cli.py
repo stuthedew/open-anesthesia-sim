@@ -147,6 +147,7 @@ from .vcs import (
     DEFAULT_BRANCHES,
     FETCHED,
     PULL_STATES,
+    REMOTE,
     UNASKED,
     BaseCopies,
     BaseCopy,
@@ -1474,10 +1475,10 @@ def _train_refusal(args: argparse.Namespace) -> int:
         return claiming.USAGE
     heads: RemoteHeads | None = None
     if not args.no_fetch:
-        fetched = claiming._git(["fetch", "--quiet", claiming.REMOTE], inv.root)
+        fetched = claiming._git(["fetch", "--quiet", REMOTE], inv.root)
         if fetched.code != 0:
             print(
-                f"new: `git fetch {claiming.REMOTE}` failed, so a release another session "
+                f"new: `git fetch {REMOTE}` failed, so a release another session "
                 "has claimed cannot be ruled out; nothing was written"
             )
             for line in claiming._indented(fetched.err):

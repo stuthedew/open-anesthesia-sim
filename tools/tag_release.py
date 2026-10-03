@@ -46,9 +46,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.release import notes_path, version_in  # noqa: E402
-from docket.vcs import default_branch, find_cut, is_shallow  # noqa: E402
+from docket.vcs import REMOTE, default_branch, find_cut, is_shallow  # noqa: E402
 
-REMOTE = "origin"
 VERSION_FILE = "pyproject.toml"
 
 #: `git ls-remote --exit-code`'s status where the remote answered and holds no
