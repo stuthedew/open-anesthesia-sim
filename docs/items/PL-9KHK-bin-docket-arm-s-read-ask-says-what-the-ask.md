@@ -58,8 +58,9 @@ they do not act on.
 
 **Done when.** The read hold's ask names the closing block's own line and
 refuses "read #N", is repeated whole in every later reply that still waits on
-it, limits the points to what is the owner's and sends housekeeping to what
-needs no review, and covers a pull request with no point to judge - held by
+it, runs the points most important first and limits them to what matters to
+the owner, sends housekeeping to what needs no review, stays short, and covers
+a pull request with no point to judge - held by
 `test_a_read_hold_puts_its_ask_in_the_closing_block_line`.
 
 **Fix.** `READ_ASK` names the closing block's own line as where the ask goes. It
@@ -93,3 +94,12 @@ says so and asks for the merge word alone. The comment above it records why.
 `test_a_read_hold_puts_its_ask_in_the_closing_block_line` pins the order of
 those parts, and `PL-8XQS`'s test, which checks the line is printed once no
 claim holds the branch, passes unchanged.
+
+**Revised in review (2026-10-03).** Asked whether anything on the housekeeping
+list was wanted after all, the owner answered on `#1307`: "it's not that I
+don't want to see things. It's just hard to know what's important in long text.
+Relevant or important stuff." So the need is salience, not exclusion: the
+points now run most important first and are chosen by what matters to the
+owner rather than by whose decision each is, a risk to what already works joins
+the list, and the line is kept short enough to take in at a glance. Housekeeping
+still appears, in the one no-review clause.

@@ -132,16 +132,20 @@ SHOWN = 5
 #: ask *opens* with, and was followed to the letter: on 2026-10-03 three
 #: sessions opened the reply with the summary and closed it on a bare "read
 #: #N", the line the owner acts on, with housekeeping among the points
-#: (`PL-9KHK`).
+#: (`PL-9KHK`). The points run most important first because the owner's need
+#: is not less to see but what matters in it made plain: "it's just hard to
+#: know what's important in long text" (project owner, 2026-10-03).
 READ_ASK = (
     "  Ask for this read in the closing block's own line, never as 'read #N', and repeat that "
-    "line whole in every later reply that still waits on it: a plain-language summary, one "
-    "sentence of what the change does, what was wrong and what changed, in terms a clinician "
-    "recognises; then numbered points for the owner to judge, only what is theirs - a "
-    "clinical value or a docs/MODEL.md statement, what a learner sees, how sessions work, a "
-    "departure from what they asked for; then what needs no review, in one clause, which is "
-    "where housekeeping goes - tests, docstrings, filed items, audit notes, the apparatus's "
-    "internals. With no point to judge, say so and ask for the merge word alone."
+    "line whole in every later reply that still waits on it, short enough to take in at a "
+    "glance: a plain-language summary, one sentence of what the change does, what was wrong "
+    "and what changed, in terms a clinician recognises; then numbered points for the owner "
+    "to judge, most important first and only what matters to them - a clinical value or a "
+    "docs/MODEL.md statement, what a learner sees, how sessions work, a departure from what "
+    "they asked for, a risk to what already works; then what needs no review, in one "
+    "clause, which is where housekeeping goes - tests, docstrings, filed items, audit notes, "
+    "the apparatus's internals. With no point to judge, say so and ask for the merge word "
+    "alone."
 )
 
 #: The queue's own tooling, which arms on green beside the store. The path is

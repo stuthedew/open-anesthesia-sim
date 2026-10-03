@@ -10066,12 +10066,16 @@ def test_a_read_hold_puts_its_ask_in_the_closing_block_line() -> None:
     Worded as what the ask opens with, it was followed to the letter: three
     sessions opened the reply with the summary and closed on a bare "read #N",
     the line the owner acts on, with housekeeping among the points (`PL-9KHK`).
+    In review the owner put the need as finding what matters in long text, so
+    the points run most important first.
     """
     parts = (
         "the closing block's own line",
         "never as 'read #N'",
         "every later reply that still waits on it",
-        "numbered points for the owner to judge, only what is theirs",
+        "short enough to take in at a glance",
+        "numbered points for the owner to judge, most important first",
+        "a risk to what already works",
         "what needs no review",
         "housekeeping",
         "With no point to judge",
