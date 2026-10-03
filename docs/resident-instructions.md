@@ -790,8 +790,9 @@ which is the resident case; the `hold` clause was resident already and is a
 rewrite, not a growth, though the advisory counts the longer wording. **Why
 nothing is cut.** No resident sentence said what to do with a red `main` or a
 second failure: the base-merge bullet waits for `main` to be green again and
-did not say to stop. About 290 characters for the stop rules and 420 for the
-longer `hold` clause.
+did not say to stop. About 290 characters for the stop rules and 559 for the
+longer `hold` clause, the two directories the owner added the same day
+included.
 
 **What should retire each.** The obvious-calls test, nothing short of the
 owner withdrawing it. The Projects-thread sentence, the trial's end

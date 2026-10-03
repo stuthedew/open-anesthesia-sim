@@ -9992,7 +9992,8 @@ def test_arm_arms_a_docket_only_pull_request_on_green(
     out = capsys.readouterr().out
     assert out.startswith(
         f"arm - {ARM_BRANCH} changes nothing on the owner's read list (src/, tests/, "
-        "docs/MODEL.md, src/anesthesia_sim/data/, README.md and arming.py), holds no open claim"
+        "docs/MODEL.md, src/anesthesia_sim/data/, README.md, .github/workflows/, "
+        ".claude/hooks/ and arming.py), holds no open claim"
     )
     assert "outside docs/items" not in out
 
@@ -10023,12 +10024,14 @@ def test_arm_arms_a_pull_request_body_record_on_green(
         "tests/unit/test_uptake.py",
         "docs/MODEL.md",
         "README.md",
+        ".github/workflows/update-armed.yml",
+        ".claude/hooks/direct-merge-guard.sh",
     ],
 )
 def test_arm_holds_for_a_read_a_path_on_the_owners_read_list(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], path: str
 ) -> None:
-    """The owner's read list waits on a read: the simulator, its tests, the model and the README.
+    """The owner's read list waits on a read: the simulator, the model, the workflows, the hooks.
 
     The branch also changes a docket module and `CLAUDE.md`, which arm alone,
     so the hold is the listed path's own and the answer names it alone.
@@ -10057,7 +10060,8 @@ def test_arm_holds_for_a_read_a_path_on_the_owners_read_list(
         "ROADMAP.md",
         "docs/WORKING_NOTES.md",
         ".claude/rules/instruction-writing.md",
-        ".github/workflows/update-armed.yml",
+        ".claude/settings.json",
+        ".github/CODEOWNERS",
         "tools/doc_check.py",
         "subprojects/docketeer/tool.py",
         "subprojects/docket/tests/test_render.py",
@@ -10098,10 +10102,12 @@ def test_a_change_outside_the_owners_read_list_arms_on_green(
 
 
 def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
-    """The list holds the five paths the owner named, with the gate, and `tests/` is the root's.
+    """The list holds the owner's five paths, the two he added and the gate; `tests/` is the root's.
 
     `tests/` outside `subprojects/` was the owner's wording: the docket
-    package's own tests arm with the tooling.
+    package's own tests arm with the tooling. `.github/workflows/` and
+    `.claude/hooks/` are directories whole, so `.github/CODEOWNERS` and
+    `.claude/settings.json` arm.
     """
     assert arming.READ_PATHS == (
         "src/",
@@ -10109,6 +10115,8 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "docs/MODEL.md",
         "src/anesthesia_sim/data/",
         "README.md",
+        ".github/workflows/",
+        ".claude/hooks/",
     )
     for path in (
         "src/anesthesia_sim/app/main.py",
@@ -10117,6 +10125,8 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "tests/conftest.py",
         "docs/MODEL.md",
         "README.md",
+        ".github/workflows/update-armed.yml",
+        ".claude/hooks/direct-merge-guard.sh",
         ARM_GATE,
     ):
         assert arming.waits_on_read(path), path
@@ -10127,6 +10137,9 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "docs/README.md",
         "srcs/x.py",
         "tests.md",
+        ".github/CODEOWNERS",
+        ".claude/settings.json",
+        ".claude/rules/core-domain.md",
     ):
         assert not arming.waits_on_read(path), path
         assert arming.arms_on_green(path), path

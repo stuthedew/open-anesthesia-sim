@@ -123,3 +123,12 @@ days to 2026-10-03, most in the Bash-guard burst of 2026-09-26, and the rate
 since 2026-09-30 is about one a day. Not added on his behalf: the list is his,
 and the build keeps it as he spelt it.
 
+**Answered 2026-10-03: yes, both** (project owner, 2026-10-03, ratified, over
+leaving them armed on green), "Agree with recs" in the project chat at
+23:22Z on the two recommendations put there, and built in `#1320`:
+`arming.READ_PATHS` holds `.github/workflows/` and `.claude/hooks/` whole, so
+`.github/CODEOWNERS` and `.claude/settings.json` arm. The same answer settles
+the reopening above: `ROADMAP.md` and `docs/WORKING_NOTES.md` stay arming on
+green (project owner, 2026-10-03, ratified, over holding them as `PL-0JGZ`
+had), recorded there too.
+

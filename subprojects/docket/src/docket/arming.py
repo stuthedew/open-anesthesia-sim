@@ -81,12 +81,14 @@ has already merged; what went unread is said beside it.
   trial's instructions, 2026-10-03, kind unrecorded, over holding every path
   outside the store, the tooling and the records; built by `PL-KKHD`). The
   rule was written there alone, so on one day `#1298` armed under it while
-  `#1308` held under the old one. It reopens `PL-0JGZ` (project owner,
+  `#1308` held under the old one. It reopened `PL-0JGZ` (project owner,
   2026-09-26, ratified), which kept `ROADMAP.md` and `docs/WORKING_NOTES.md`
   off what arms because the roadmap is where the owner sets direction:
-  neither is on the list, so both arm now, and `PL-KKHD` puts that back to
-  the owner beside the list, with whether `.github/workflows/` and
-  `.claude/hooks/`, which decide merges as this module does, should join it.
+  neither is on the list, so both arm, and the owner settled it so (project
+  owner, 2026-10-03, ratified, over holding them as before). `.github/workflows/`
+  and `.claude/hooks/` joined the list the same day, since they decide merges
+  and tags as this module does (project owner, 2026-10-03, ratified, over
+  leaving them armed on green; `PL-KKHD` records both answers).
 
 Status dispositions and release cuts never hold arming (`PL-MB2W` § "Other
 holds"): a triage pass moving statuses is the queue-only work auto-merge
@@ -188,10 +190,23 @@ GATE = TOOLING + "src/docket/arming.py"
 #: `subprojects/docket/tests/` starts with `subprojects/`, so the prefix leaves
 #: it to the tooling. `src/anesthesia_sim/data/` lies under `src/` and is kept
 #: for the reader who looks for it by name.
-READ_PATHS = ("src/", "tests/", "docs/MODEL.md", "src/anesthesia_sim/data/", "README.md")
+#: `.github/workflows/` and `.claude/hooks/` decide merges and tags as this
+#: module does, and joined on the owner's answer of 2026-10-03.
+READ_PATHS = (
+    "src/",
+    "tests/",
+    "docs/MODEL.md",
+    "src/anesthesia_sim/data/",
+    "README.md",
+    ".github/workflows/",
+    ".claude/hooks/",
+)
 
 #: The list as the answers name it, the gate included.
-READ_LIST = "src/, tests/, docs/MODEL.md, src/anesthesia_sim/data/, README.md and arming.py"
+READ_LIST = (
+    "src/, tests/, docs/MODEL.md, src/anesthesia_sim/data/, README.md, "
+    ".github/workflows/, .claude/hooks/ and arming.py"
+)
 
 
 def waits_on_read(path: str) -> bool:

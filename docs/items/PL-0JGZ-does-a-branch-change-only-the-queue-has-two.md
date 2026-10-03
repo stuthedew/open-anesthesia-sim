@@ -56,3 +56,6 @@ and `arming.arms_on_green` takes the path alone. The answer of 2026-09-26
 above is put back to the owner there; the `verify:` line here reads the tree
 as it stood at closure.
 
+**Settled 2026-10-03** (project owner, 2026-10-03, ratified, over holding them
+as before, on `PL-KKHD`'s review ask): both arm on green.
+

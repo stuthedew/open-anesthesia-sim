@@ -554,12 +554,14 @@ deviating from a described deliverable, not acting without one.
   outside the store it armed, unless the change raises a question for the
   owner, which is your call and holds it. `hold`, for a claim or a path on the
   owner's read list - `src/`, `tests/`, `docs/MODEL.md`,
-  `src/anesthesia_sim/data/`, `README.md` and `arming.py` - leave it unarmed,
-  disarming it before the push that brings the hold or green CI merges half
-  the work, a draft while the hold is a claim, and once no claim holds it ask
-  for the read as `arm` says; it merges on the owner's word alone (the
-  Projects trial's instructions, 2026-10-03, kind unrecorded, over holding
-  every path outside the store, `PL-KKHD`). `behind N`: bring `origin/main` in
+  `src/anesthesia_sim/data/`, `README.md`, `.github/workflows/`,
+  `.claude/hooks/` and `arming.py` - leave it unarmed, disarming it before the
+  push that brings the hold or green CI merges half the work, a draft while
+  the hold is a claim, and once no claim holds it ask for the read as `arm`
+  says; it merges on the owner's word alone (the Projects trial's
+  instructions, 2026-10-03, kind unrecorded, over holding every path outside
+  the store; the workflows and hooks project owner, 2026-10-03, ratified, over
+  leaving them armed on green, `PL-KKHD`). `behind N`: bring `origin/main` in
   and ask again. `subprojects/docket/src/docket/arming.py` carries the rules
   and the decisions behind them (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`, `PL-3FYK`,
   `PL-H14W`). **`main` red for a reason outside the item, or the same check

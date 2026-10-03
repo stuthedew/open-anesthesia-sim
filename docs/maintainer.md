@@ -237,10 +237,13 @@ set it when the session opens rather than toggling it.
 `bin/docket arm` holds a pull request for your read where it changes `src/`,
 `tests/` outside `subprojects/`, `docs/MODEL.md`, `src/anesthesia_sim/data/`
 or `README.md` - the paths where a wrong clinical value could reach the screen
-- or `subprojects/docket/src/docket/arming.py`, the gate itself, whose change
-could loosen the rule (the Projects trial's instructions, 2026-10-03, kind
-unrecorded, over holding every path outside `docs/items/`, `docs/pr-bodies/`
-and `subprojects/docket/`; built by `PL-KKHD`). A session leaves a held pull
+- or `.github/workflows/`, `.claude/hooks/` and
+`subprojects/docket/src/docket/arming.py`, which decide what merges and what
+is tagged and could loosen the rule (the Projects trial's instructions,
+2026-10-03, kind unrecorded, over holding every path outside `docs/items/`,
+`docs/pr-bodies/` and `subprojects/docket/`; the workflows and hooks project
+owner, 2026-10-03, ratified, over leaving them armed on green; built by
+`PL-KKHD`). A session leaves a held pull
 request unarmed, asks for the read with the plain-language summary `arm`
 prints under the hold (`PL-8XQS`), and merges it on your word alone - "Merge
 it" - by the route § "Bring a stale base in when you merge, with Update
@@ -248,7 +251,7 @@ branch" describes. Every other change arms on green: the store, the body
 records (`PL-979D`) and the queue's tooling as before (project owner,
 2026-09-25, ratified, over holding every path outside `docs/items/`,
 `PL-SQTR`; built by `PL-K6B2`), and since 2026-10-03 `CLAUDE.md`, `ROADMAP.md`,
-`tools/`, `.claude/`, `.github/` and the rest too. `arm` names the paths
+`tools/`, the rest of `.claude/` and `.github/`, and everything else. `arm` names the paths
 outside the store it armed, so the session's report carries the reason the
 old hold would have given, and the session still holds a change it judges
 raises a question for you, whatever path it is on. The old hold fired on
@@ -256,14 +259,15 @@ every change outside the store, and you confirmed on 2026-09-25 that those
 holds were being clicked through, so it was guarding nothing; `PL-CBDX` reads
 the diffs merged unread since 2026-09-23.
 
-Two things the list leaves off, recorded so that the leaving is a decision
-rather than an oversight. `ROADMAP.md` and `docs/WORKING_NOTES.md` arm on
-green now, where `PL-0JGZ` (project owner, 2026-09-26, ratified) had held
-them because the roadmap is where you set direction; `PL-KKHD` puts that
-back to you. `.github/workflows/` and `.claude/hooks/` arm on green too,
-although `update-armed.yml`, `tag-release.yml` and `direct-merge-guard.sh`
-decide merges and tags as `arming.py` does; `PL-KKHD` asks whether they join
-the list, and until you answer they arm.
+Two answers of 2026-10-03, recorded so that the list reads as decided rather
+than defaulted. `ROADMAP.md` and `docs/WORKING_NOTES.md` arm on green, where
+`PL-0JGZ` (project owner, 2026-09-26, ratified) had held them because the
+roadmap is where you set direction: your list reopened it, and you settled it
+so (project owner, 2026-10-03, ratified, over holding them as before,
+`PL-KKHD`). `.github/workflows/` and `.claude/hooks/` joined the list, since
+`update-armed.yml`, `tag-release.yml` and `direct-merge-guard.sh` decide
+merges and tags as `arming.py` does, at about one read a day lately (project
+owner, 2026-10-03, ratified, over leaving them armed on green, `PL-KKHD`).
 
 ## Merge on the Mac or by auto-merge, never in the GitHub app
 
