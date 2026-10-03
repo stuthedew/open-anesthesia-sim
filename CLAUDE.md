@@ -585,9 +585,11 @@ deviating from a described deliverable, not acting without one.
   Waiting on review behind is neither red nor conflicted, and is not work. At
   merge time the owner's *Update branch* brings it in (`docs/maintainer.md`);
   an armed one is brought in by `update-armed.yml` on each push to `main`
-  (`PL-S5MF`), since auto-merge never updates a branch. The
-  refusal does not bind an admin, and a session's GitHub calls are the owner's,
-  so a session merges only by arming auto-merge. Sooner only on a genuine
+  (`PL-S5MF`), since auto-merge never updates a branch. Since 2026-10-03 the
+  refusal binds an admin too, and a session's GitHub calls are the owner's, so a
+  session squash-merges a pull request GitHub will not arm because it is already
+  green and current (project owner, 2026-10-03, ratified, over the owner's
+  click, `PL-NXRJ`). Sooner only on a genuine
   conflict, a notice that `main` is green again, or before editing work it will
   push anyway, as `bin/docket branch` prints (`PL-6MW8`, revising `PL-WC72`).
 - **Capture intent, and route it by how ready it is.** A **specific change** is
