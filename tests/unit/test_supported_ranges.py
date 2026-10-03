@@ -274,8 +274,8 @@ def test_a_run_may_be_built_where_stepping_stops_it_and_no_further(
     """The count a run stops on is legal to stand on and illegal to step from.
 
     Both guards read `maximum_step_count`, so they agree at every step - even
-    the last two, where that count is itself off by one (`PL-8H2R`):
-    `768 / 1_000_000 * 100` takes one step too many and stops at
+    the last two, where at the 24-hour limit that count is itself off by one
+    (`PL-8H2R`): `768 / 1_000_000 * 100` takes one step too many and stops at
     86400.00000000001 s, and `0.02304` stops one step short of the step that
     lands on 86400.0 s. Agreeing with the step's guard is what this guard
     promises; where that guard puts the limit is `PL-8H2R`'s to fix.
@@ -296,20 +296,24 @@ def test_a_run_may_be_built_where_stepping_stops_it_and_no_further(
 def test_the_step_count_refusal_names_the_count_the_step_and_the_limit() -> None:
     """Counts rather than a time, because the counts are exact.
 
-    One step past 24 hours at a step that does not divide it would print as
+    One step past the limit at a step that does not divide it would print as
     a time indistinguishable from the limit at the precision a message
     rounds to; the count beside the largest one allowed cannot be misread.
+    The limit is read from its constant, which
+    `test_the_supported_run_length_is_twenty_four_hours` pins.
     """
 
+    limit = maximum_step_count(0.1)
+
     with pytest.raises(SimulationConfigurationError) as raised:
-        require_supported_step_count(864_001, 0.1)
+        require_supported_step_count(limit + 1, 0.1)
 
     message = str(raised.value)
 
-    assert "864001 steps of 0.1 s" in message
-    assert "at most 864000" in message
-    assert "86400 s" in message
-    assert "24 h" in message
+    assert f"{limit + 1} steps of 0.1 s" in message
+    assert f"at most {limit}" in message
+    assert f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s" in message
+    assert f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h)" in message
     assert "Supported run length" in message
 
 
@@ -331,7 +335,7 @@ def test_the_step_count_refusal_prints_the_step_it_was_given_in_full() -> None:
 
 @pytest.mark.parametrize("instant_s", [0.0, 3_600.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S])
 def test_a_case_instant_is_supported_over_the_closed_span(instant_s: float) -> None:
-    """Both ends included, like every interval here: a run may stand on 24 h."""
+    """Both ends included, like every interval here: a run may stand on the far end."""
 
     require_supported_case_instant(instant_s)
 
@@ -340,7 +344,7 @@ def test_a_case_instant_is_supported_over_the_closed_span(instant_s: float) -> N
     "instant_s",
     [
         nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf),
-        100_000.0,
+        MAXIMUM_ELAPSED_SIMULATION_TIME_S + 3_600.0,
         nextafter(0.0, -inf),
         -1.0,
         nan,
@@ -371,9 +375,9 @@ def test_the_case_instant_refusal_names_the_instant_and_the_span() -> None:
     message = str(raised.value)
 
     assert f"{past} s" in message
-    assert "86400 s is" not in message
-    assert "0 to 86400 s" in message
-    assert "24 h" in message
+    assert f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s is" not in message
+    assert f"0 to {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s" in message
+    assert f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h)" in message
     assert "Supported run length" in message
 
 

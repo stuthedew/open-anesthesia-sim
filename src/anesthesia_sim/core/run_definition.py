@@ -248,8 +248,8 @@ class RunDefinition:
                 is the fork for a branch taken at a control event and the
                 keyframe before it for one taken at a bookmark
                 (`app/controller.py`, `SimulationController._open_at`).
-                At most the supported run length, which is the case's 24
-                hours and not this run's.
+                At most the supported run length, which is the case's and not
+                this run's.
 
         Raises:
             SimulationConfigurationError: `opened_at_s` is not finite or is
@@ -340,7 +340,7 @@ class RunDefinition:
         - and `SimulationState.advance` refuses the step that would carry that
         count past the supported run length before the reach could follow it.
         A bound here would disagree with that guard by a float at the few
-        computed steps whose last step lands past 24 hours (`PL-8H2R`), and
+        computed steps whose last step lands past the span (`PL-8H2R`), and
         refuse a step already taken.
 
         Raises:

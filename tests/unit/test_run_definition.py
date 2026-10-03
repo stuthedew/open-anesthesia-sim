@@ -543,7 +543,7 @@ def test_a_run_may_open_at_the_end_of_the_supported_run_length() -> None:
 
     A branch taken where its trunk stopped at the limit opens exactly there;
     refusing the instant would refuse that branch. It opens with no time left
-    to run, which is the parent's 24 hours being spent rather than an error.
+    to run, which is the parent's span being spent rather than an error.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -576,7 +576,7 @@ def test_opening_past_the_supported_envelope_is_refused(opened_at_s: float) -> N
         RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=opened_at_s)
 
     assert f"{opened_at_s} s" in str(raised.value)
-    assert "0 to 86400 s" in str(raised.value)
+    assert f"0 to {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s" in str(raised.value)
 
 
 def test_a_run_refuses_to_go_backwards() -> None:

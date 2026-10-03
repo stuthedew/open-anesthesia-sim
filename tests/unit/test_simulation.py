@@ -338,8 +338,12 @@ def test_the_state_measured_past_the_limit_is_refused() -> None:
     Measured 2026-09-14 constructing without complaint and reporting an
     `elapsed_s` of 100 000 s, which every reader of the state - a snapshot, a
     readout, a chart axis - would have presented as an ordinary run until
-    something tried to step it.
+    something tried to step it. Written as its distance past the limit,
+    136 000 steps, so it is that state at the 24-hour limit and stays past the
+    limit wherever the limit is set.
     """
 
+    step_count = maximum_step_count(0.1) + 136_000
+
     with pytest.raises(SimulationConfigurationError, match="supported run length"):
-        SimulationState(step_count=1_000_000, simulation_step_s=0.1)
+        SimulationState(step_count=step_count, simulation_step_s=0.1)

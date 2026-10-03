@@ -365,8 +365,9 @@ def require_supported_case_instant(instant_s: float) -> None:
 
     The case's axis is simulated time since induction, which a branch shares
     with its parent, so this bounds where an instant falls and not how long
-    whatever holds it has lasted: a branch opened at 23 h has one hour of the
-    span left, as `docs/MODEL.md` § "Supported run length" says. Closed at
+    whatever holds it has lasted: a branch spends what is left of its parent's
+    span rather than a span of its own, as `docs/MODEL.md` § "Supported run
+    length" says. Closed at
     both ends like every interval here, so an instant of exactly
     `MAXIMUM_ELAPSED_SIMULATION_TIME_S` is accepted, and that is where a run
     at the shipped 0.1 s step stops. At the few computed steps whose last
