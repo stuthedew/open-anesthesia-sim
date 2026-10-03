@@ -5278,8 +5278,9 @@ bound.** The same measurement, continued downward at the shipped 0.1 s step: an
 alveolar volume of $`10^{-8}`$ to $`10^{-10}`$ L halts the run through
 `AgentSimulationValidationError`, the mass-balance guard rather than any
 declared domain, and from $`10^{-11}`$ L down the propagator is refused before
-any arithmetic, because it would need more squarings than
-`core/matrix_exponential.py` performs (below). Both are the required "obvious
+any arithmetic: as far as $`10^{-308}`$ L because it would need more squarings
+than `core/matrix_exponential.py` performs (below), and past that because
+scaling the matrix down overflows, then the matrix itself. Both are the required "obvious
 failure rather than a plausible-looking number" arriving by accident of
 arithmetic. Neither is a limit this document declares and neither may be read
 as one — they sit far below any volume a caller would pass by mistake, and
@@ -5311,12 +5312,19 @@ produce the zero matrix at all, and those volumes stop earlier, at the cap on
 the squarings described below. The second still fires first wherever the
 scaling overflows.
 
-**Measured across every decade from $`10^{0}`$ to $`10^{-323}`$ L**, before
-and after: 120 advance with the constant state row exact, and the same 120
-advance now; 77 were already refused as non-finite and 194 are refused now;
-the 116 that returned a zero propagator silently, and the one that raised
-`OverflowError`, make up the difference exactly. Nothing that advanced before
-is refused now. A single mode decaying below the smallest subnormal is still
+**Measured across every decade from $`10^{0}`$ to $`10^{-323}`$ L when that
+refusal landed**, before and after: 120 advanced with the constant state row
+exact, and the same 120 advanced after; 77 had been refused as non-finite and
+194 were refused after; the 116 that returned a zero propagator silently, and
+the one that raised `OverflowError`, made up the difference exactly. Nothing
+that had advanced was refused. Since `PL-2MD9` the same sweep at the 0.1 s
+step returns a propagator at 11 decades, $`10^{0}`$ to $`10^{-10}`$ L, each
+with the constant state row exact, and refuses the other 313 before any
+arithmetic. Of the 119 that returned a propagator before and are refused now,
+the mass-balance guard had halted the run at 117 and a fraction outside zero
+to one at another; the last, $`10^{-18}`$ L, advanced with every value wrong
+(below). A
+single mode decaying below the smallest subnormal is still
 propagated as 0.0, which is correct — `exp(-0.5 * 3600)` is a real number no
 double can hold — and is what separates a decayed entry from an annihilated
 matrix.
