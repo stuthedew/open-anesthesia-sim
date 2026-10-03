@@ -278,11 +278,13 @@ when you come to merge:
    captures-only pull request a session armed, skip this step: your update
    leaves it armed. Otherwise click **Enable auto-merge**, check that the
    message box holds the pull request's description, and click **Confirm
-   auto-merge**. Leave **Merge without waiting for requirements to be met
-   (bypass branch protections)** unticked. It is offered because `main`'s
-   required checks bind non-admins only, and ticking it merges on the stale
-   base, the merge skew the setting exists to stop. It stays as your escape
-   hatch for a broken CI, not a route for ordinary merges.
+   auto-merge**. Since 2026-10-03 `main`'s rule has **Do not allow bypassing
+   the above settings** on (`PL-NXRJ`), so its checks and the up-to-date rule
+   bind you as they bind everyone else. To merge past a broken CI, switch it
+   off first: **Settings**, then **Branches**, then **Edit** beside the `main`
+   rule; untick it and click **Save changes**, merge, then tick it again the
+   same way. While it is off, a session will not merge a pull request that is
+   already green and current, and hands it to you.
 3. Come back in about five minutes. Success is the pull request marked
    **Merged**. If another pull request landed first, `update-armed.yml` has
    brought `main` in again and the checks are running: come back in another
@@ -306,20 +308,20 @@ to merge it: it arms auto-merge and brings the base in itself, with the same
 merge the button makes. GitHub never updates an armed pull request that falls
 behind, so `update-armed.yml` does, on each push to `main`, and one whose
 session has ended does not wait for you (`PL-S5MF`, and its token in the next
-section). **A pull request already green and current is the
-exception: the session tells you it cannot arm it, and the Squash and merge is
-yours** (project owner, 2026-09-26, ratified, over the session merging it
-directly through the API, `PL-V2X5`). A hook refuses the session's own merge
-call and hands it this answer to give you (`.claude/hooks/direct-merge-guard.sh`),
-since a session with the rule in front of it merged `#1224` anyway
-(`PL-S17R`). GitHub offers auto-merge "only on pull
-requests that cannot be merged immediately" ([GitHub
-Docs](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request)),
-and a session merges only by arming, because its GitHub calls are yours and an
-admin's merge passes the up-to-date check `main` holds everyone else to:
-merging directly, it would land a stale branch whenever another pull request
-merged between its read and its call. Merge it on the Mac, as step 1 says for
-a branch that is already current.
+section). **A pull request already green and current the session
+squash-merges itself**, since GitHub offers auto-merge "only on pull requests
+that cannot be merged immediately" ([GitHub
+Docs](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request))
+(project owner, 2026-10-03, ratified, over keeping that merge yours,
+`PL-NXRJ`, which reopened `PL-V2X5`). That is safe only while `main`'s rule
+binds admins. A session's GitHub calls are yours, and with admins exempt its
+merge would pass the up-to-date check `main` holds everyone else to, landing a
+stale branch whenever another pull request merged between its read and its
+call. So `.claude/hooks/direct-merge-guard.sh` asks GitHub at each merge call
+and refuses the merge while **Do not allow bypassing the above settings** is
+off (`PL-S17R`, `PL-NXRJ`). The session then tells you it cannot arm the pull
+request and the Squash and merge is yours: merge it on the Mac, as step 1 says
+for a branch that is already current.
 
 ## Give update-armed its token, and renew it
 
