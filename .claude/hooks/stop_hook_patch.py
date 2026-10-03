@@ -53,6 +53,15 @@ tracking ref, so the offline test the paragraph above argues for keeps working
 instead of being traded for a network call at every `Stop`. It fetches nothing
 and prunes nothing, so it cannot destroy a ref `bin/docket stranded` needs.
 
+**Reported upstream, so both halves are temporary.** The stale-ref count is
+anthropics/claude-code#83490, and the narrow refspec is the second false
+positive of anthropics/claude-code#82624, both open on 2026-10-03. `PL-90CJ`
+confirmed that day that the container still ships the line, and the project
+owner posted its reproduction on the first; `docs/maintainer.md` says when to
+retire this hook. Retire the half a fix covers rather than widening a match: a
+fix that writes `CORRECTED` leaves this hook silent, and any other form makes
+it print `UNPATCHED` at every session start.
+
 **Silent on the path it takes every session.** Standard output from a
 SessionStart hook enters the session's context and is resent on every turn, so
 a line announcing the ordinary success would cost tokens in every session
