@@ -76,7 +76,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.vcs import github_token  # noqa: E402
+from docket.vcs import REMOTE, github_token, is_shallow  # noqa: E402
 
 from open_pull_requests import GITHUB_API, LOOKUP_TIMEOUT, repo_slug  # noqa: E402
 
@@ -144,6 +144,19 @@ def git_runner(root: Path) -> Runner:
     return run
 
 
+def _stdout(run: Runner) -> Callable[[list[str], Path], str]:
+    """`run` as `docket.vcs` asks git: the output where git succeeded, "" where it did not.
+
+    So `vcs.is_shallow` answers through the runner a test serves (`PL-4NG0`).
+    """
+
+    def ask(args: list[str], _root: Path) -> str:
+        done = run(args)
+        return done.out if done.code == 0 else ""
+
+    return ask
+
+
 @dataclass(frozen=True)
 class Remote:
     """What `origin` holds right now: its default branch, branch tips, frozen heads."""
@@ -166,11 +179,11 @@ def read_remote(run: Runner) -> Remote:
     from the same answer as the tips, so the two cannot come from different
     moments. On a clone whose default is `master` both name `master`.
     """
-    done = run(["ls-remote", "--symref", "origin", "HEAD", "refs/heads/*", "refs/pull/*/head"])
+    done = run(["ls-remote", "--symref", REMOTE, "HEAD", "refs/heads/*", "refs/pull/*/head"])
     if done.code != 0:
         first = (done.err.strip().splitlines() or ["no error text"])[0]
         kind = NO_PERMISSION if any(mark in done.err for mark in _REFUSALS) else NO_NETWORK
-        raise Declined(f"{kind}: git ls-remote origin failed ({first})")
+        raise Declined(f"{kind}: git ls-remote {REMOTE} failed ({first})")
     default = ""
     heads: dict[str, str] = {}
     frozen: dict[int, str] = {}
@@ -185,7 +198,7 @@ def read_remote(run: Runner) -> Remote:
             if number.isdigit():
                 frozen[int(number)] = value
     if not default or default not in heads:
-        raise Declined(f"{UNREADABLE}: origin did not name its default branch")
+        raise Declined(f"{UNREADABLE}: {REMOTE} did not name its default branch")
     return Remote(default=default, heads=heads, frozen=frozen)
 
 
@@ -414,9 +427,8 @@ def check(root: Path, *, run: Runner | None = None, lookup: Lookup | None = None
     run = run or git_runner(root)
     slug = repo_slug()
     if slug is None:
-        return Report(declined=f"{UNREADABLE}: origin is not a GitHub repository")
-    shallow = run(["rev-parse", "--is-shallow-repository"])
-    if shallow.code != 0 or shallow.out.strip() != "false":
+        return Report(declined=f"{UNREADABLE}: {REMOTE} is not a GitHub repository")
+    if is_shallow(root, runner=_stdout(run)) is not False:
         return Report(declined="this checkout is shallow, so ancestry past its boundary is unknown")
     try:
         remote = read_remote(run)
@@ -425,7 +437,7 @@ def check(root: Path, *, run: Runner | None = None, lookup: Lookup | None = None
     base = remote.heads[remote.default]
     if not _has_commit(base, run):
         return Report(
-            declined=f"{remote.default} {base[:9]} is not in this checkout; git fetch origin"
+            declined=f"{remote.default} {base[:9]} is not in this checkout; git fetch {REMOTE}"
         )
     lookup = lookup or github_lookup(slug, remote.default)
     branches = sorted(name for name in remote.heads if name != remote.default)
@@ -455,7 +467,7 @@ def orphaned_branches(root: Path) -> frozenset[str] | None:
         return None
     if not report.known:
         return None
-    return frozenset(branch.ref.removeprefix("origin/") for branch in report.branches)
+    return frozenset(branch.ref.removeprefix(f"{REMOTE}/") for branch in report.branches)
 
 
 def lines(report: Report, orphaned: frozenset[str] | None, *, every: bool = False) -> list[str]:

@@ -197,8 +197,10 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.config import load as load_docket_config  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import (  # noqa: E402
+    REMOTE,
     default_base,
     github_slug,
+    is_shallow,
     leading_ids,
     resolved,
     subject_pull_request,
@@ -327,7 +329,15 @@ def missing(ref: str) -> list[tuple[str, int, str]]:
 
 def repo_slug() -> str | None:
     """`owner/repo` from origin's URL, or None if it is not a GitHub remote (`vcs.github_slug`)."""
-    return github_slug(_git("remote", "get-url", "origin"))
+    return github_slug(_git("remote", "get-url", REMOTE))
+
+
+def _shallow() -> bool | None:
+    """Whether this clone is shallow, by `docket`'s one reading (`vcs.is_shallow`, `PL-4NG0`).
+
+    Asked through `_git`, so a test serving this module's git serves the question too.
+    """
+    return is_shallow(ROOT, runner=lambda args, _root: _git(*args))
 
 
 #: `fetch_body` answers in three states, and the difference decides whether a
@@ -454,7 +464,7 @@ def compare(ref: str) -> list[str]:
     """The `--compare` report, as the lines to print."""
     slug = repo_slug()
     if slug is None:
-        return ["pr-body: origin is not a GitHub remote; nothing to compare against."]
+        return [f"pr-body: {REMOTE} is not a GitHub remote; nothing to compare against."]
     commits = comparable(ref)
     listed, short = listed_bodies(slug, {pr for _, pr, _ in commits})
     report: list[str] = []
@@ -605,7 +615,9 @@ def recover(ref: str) -> int:
     """Fetch and record every missing body. Returns the number written."""
     slug = repo_slug()
     if slug is None:
-        print("pr-body: origin is not a GitHub remote; nothing to recover from.", file=sys.stderr)
+        print(
+            f"pr-body: {REMOTE} is not a GitHub remote; nothing to recover from.", file=sys.stderr
+        )
         return 0
     backlinks = queue_backlinks()
     written = 0
@@ -629,11 +641,9 @@ def recover(ref: str) -> int:
 
 def anchors(ref: str | None) -> int:
     """`--anchors`: every recovered file's `commit:` must be on `ref`'s first-parent line."""
-    shallow = _git("rev-parse", "--is-shallow-repository").strip()
+    shallow = _shallow()
     line = (
-        set(_git("rev-list", "--first-parent", ref).split())
-        if ref and shallow == "false"
-        else set()
+        set(_git("rev-list", "--first-parent", ref).split()) if ref and shallow is False else set()
     )
     if not line:
         print("pr-body: recovery anchors not checked: no full default branch is readable here.")
@@ -684,7 +694,7 @@ def main(argv: list[str]) -> int:
 
     gaps = missing(ref)
     if not gaps:
-        shallow = _git("rev-parse", "--is-shallow-repository").strip() == "true"
+        shallow = _shallow() is True
         read = "; this clone is shallow, so only the commits it holds were read" if shallow else ""
         print(f"pr-body: no squash commit on {ref} lost its body without a recovered file{read}.")
         return 0

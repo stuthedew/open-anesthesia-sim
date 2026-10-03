@@ -60,7 +60,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.claims import holdings, unfinished_work  # noqa: E402
 from docket.model import CLOSED_STATUSES  # noqa: E402
 from docket.store import read_items  # noqa: E402
-from docket.vcs import orphaned, stranded  # noqa: E402
+from docket.vcs import REMOTE, orphaned, stranded  # noqa: E402
 
 import left_behind_check  # noqa: E402
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
@@ -76,7 +76,6 @@ ARCHIVE = "refs/archive"
 #: How long after its last commit a branch is kept whatever else holds.
 GRACE = timedelta(hours=72)
 
-REMOTE = "origin"
 ITEMS = "docs/items"
 
 

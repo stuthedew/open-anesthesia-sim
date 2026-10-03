@@ -57,11 +57,16 @@ from .release import (
 )
 from .store import ID_PATTERN
 
+#: The remote every fetch here goes to, and the one a snapshot dates its refs by.
+#: Every reader of the remote's name reads it here (`PL-4NG0`).
+REMOTE = "origin"
+
 # The default branch, in the order it is looked for: a branch whose tip that
 # one already contains is finished rather than in flight. Trying several means
 # a repository using a different name for it still gets the filtering, and a
-# checkout with no remote falls back to its local branch.
-DEFAULT_BRANCHES = ("origin/main", "origin/master", "main", "master")
+# checkout with no remote falls back to its local branch. Spelled from `REMOTE`
+# because `default_branch` strips the remote's prefix by it (`PL-4NG0`).
+DEFAULT_BRANCHES = (f"{REMOTE}/main", f"{REMOTE}/master", "main", "master")
 
 Runner = Callable[[list[str], Path], str]
 
@@ -2158,7 +2163,7 @@ def behind_remote(root: Path, base: str, *, runner: Runner | None = None) -> int
     run = runner or _run_git
     if "/" in base:
         return None
-    remote = f"origin/{base}"
+    remote = f"{REMOTE}/{base}"
     if not run(["rev-parse", "--verify", "--quiet", remote], root).strip():
         return None
     counts = run(["rev-list", "--count", f"{base}..{remote}"], root).strip()
@@ -2453,9 +2458,6 @@ def _duplicated_history(
         merges = merges or is_merge
     return RewriteReport(duplicated=duplicated, own=tuple(own), merges=merges)
 
-
-#: The remote every fetch here goes to, and the one a snapshot dates its refs by.
-REMOTE = "origin"
 
 # What a command did about the network before it read, as `Snapshot.fetch`
 # carries it. Strings rather than an enum so a report can print one as it is,
