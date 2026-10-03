@@ -5543,6 +5543,121 @@ def test_this_repository_resolves_every_live_line_citation() -> None:
     assert report.errors == []
 
 
+# --- path citations in item briefs ------------------------------------------
+
+
+def _removed(tmp_path: Path, relative: str) -> Path:
+    """A checkout whose history holds `relative` and whose tree no longer does."""
+    root = _repo(tmp_path)
+    removed = root / relative
+    removed.parent.mkdir(parents=True, exist_ok=True)
+    removed.write_text("", encoding="utf-8")
+    _git_init(root)
+    _git(root, "rm", "-q", relative)
+    _git(root, "commit", "-qm", "remove it")
+    return root
+
+
+def _brief_path_report(root: Path) -> doc_check.Report:
+    report = doc_check.Report()
+    doc_check.check_citations(root, {}, report)
+    return report
+
+
+@pytest.mark.parametrize(
+    ("relative", "token"),
+    [
+        ("src/anesthesia_sim/core/gone.py", "core/gone.py"),
+        ("src/anesthesia_sim/core/gone.py", "src/anesthesia_sim/core/gone.py"),
+        ("src/anesthesia_sim/core/gone.py", "/src/anesthesia_sim/core/gone.py"),
+        ("src/anesthesia_sim/core/gone.py", "gone.py"),
+        ("tools/retired/run.py", "tools/retired/"),
+    ],
+    ids=["package-relative", "repository-relative", "anchored", "bare", "directory"],
+)
+def test_a_path_citation_in_an_item_brief_is_resolved(
+    tmp_path: Path, relative: str, token: str
+) -> None:
+    """`PL-1RTM`: a live brief citing a file the tree has lost is told so.
+
+    The queue is where this project writes most of its prose and most of its
+    paths, and no path citation in it was resolved. The removal is read from
+    git rather than inferred, so the finding names the commit that made it.
+    """
+    root = _removed(tmp_path, relative)
+    _items(root, {"PL-8888-open": _brief("ready", f"See `{token}`.")})
+    commit = _git(root, "log", "-1", "--format=%h")
+
+    errors = _brief_path_report(root).errors
+
+    assert len(errors) == 1, errors
+    assert f"cites `{token}`, which {commit} removed from the tree" in errors[0]
+
+
+def test_a_brief_may_name_a_file_no_commit_ever_held(tmp_path: Path) -> None:
+    """`PL-3NKZ`: a brief names the module its work will create, which is not drift.
+
+    Measured 2026-10-03, most of the live queue's unresolved path citations
+    were of this kind - planned files, examples, another repository's paths -
+    and none of them was wrong. A complete history is what can say a path was
+    never held, so a full checkout declines nothing.
+    """
+    root = _removed(tmp_path, "src/anesthesia_sim/core/gone.py")
+    _items(root, {"PL-8888-open": _brief("ready", "It will add `core/planned.py`.")})
+
+    report = _brief_path_report(root)
+
+    assert report.errors == []
+    assert report.declined == []
+
+
+def test_a_closed_brief_citing_a_removed_file_is_not_held_to_the_tree(tmp_path: Path) -> None:
+    """A closed brief records the tree its work was done against (`PL-G424`)."""
+    root = _removed(tmp_path, "src/anesthesia_sim/core/gone.py")
+    _items(root, {"PL-D0N3": _brief("done", "See `core/gone.py`.", "PL-D0N3")})
+
+    assert _brief_path_report(root).errors == []
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "The port removed `core/gone.py`.\n<!-- absent: core/gone.py -->\n",
+        "It still says:\n\n```text\nSee `core/gone.py`.\n```\n",
+    ],
+    ids=["marked", "fenced"],
+)
+def test_a_brief_naming_a_removal_on_purpose_can_say_so(tmp_path: Path, body: str) -> None:
+    """A brief recording a rename or a removal names the old path deliberately.
+
+    The `absent:` marker the documents use says so beside the sentence, and a
+    fence shows a citation without making one, as for a stale line citation.
+    """
+    root = _removed(tmp_path, "src/anesthesia_sim/core/gone.py")
+    _items(root, {"PL-8888-open": _brief("ready", body)})
+
+    assert _brief_path_report(root).errors == []
+
+
+def test_a_brief_s_unresolved_citations_are_declined_where_history_is_partial(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Unread or truncated history is said, never passed as a clean answer."""
+    root = _items(_repo(tmp_path), {"PL-8888-open": _brief("ready", "It adds `core/planned.py`.")})
+
+    unread = _brief_path_report(root)
+    _git_init(root)
+    monkeypatch.setattr(doc_check, "is_shallow", lambda *_: True)
+    truncated = _brief_path_report(root)
+
+    assert any(
+        "git could not read" in line and "1 path citation " in line for line in unread.declined
+    )
+    assert any(
+        "shallow clone" in line and "1 path citation " in line for line in truncated.declined
+    )
+
+
 def test_a_family_member_may_declare_no_test_yet_against_a_historical_id(tmp_path: Path) -> None:
     """The declared-none form took a four-character id only, so `PL-001` failed it.
 

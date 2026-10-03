@@ -25,6 +25,7 @@ not, because `README.md` is frozen** (`.claude/rules/readme-hold.md`), and the
 freeze is explicit that a doc sweep does not override it: record and move on.
 So the README statement is wrong as of 2026-09-05 and stays wrong until the
 freeze lifts.
+<!-- absent: .claude/rules/readme-hold.md -->
 
 **Why it matters.** Two halves, and the second is the one worth building for.
 
@@ -73,6 +74,7 @@ Note the sixth command is the shortest-lived: `PL-N092` deletes
 `readme_hold_check.py` when it writes the deliberate README, so the
 enumeration will change again in the other direction. A check would catch that
 removal too; a reader would not.
+<!-- absent: readme_hold_check.py -->
 
 **Where, now.** `docs/ARCHITECTURE.md` (the paragraph beginning "The floor
 section of `.github/workflows/quality.yml`'s `checks` job performs the run they
@@ -95,6 +97,7 @@ commands, not the six the paragraph above counts: `doc_check.py check`,
 `branch_id_check.py`, `rules_paths_check.py`, `readme_hold_check.py` and
 `bin/docket check`. `docs/ARCHITECTURE.md` was corrected in that branch, by
 hand again, and `make check` stayed green again.
+<!-- absent: readme_hold_check.py -->
 
 So the enumeration has now drifted three times in one day - two additions and
 one removal - and been repaired three times by a session that happened to be
@@ -123,3 +126,4 @@ is gone (`PL-N092`, closed 2026-09-06), which is the fifth command the brief
 expected to be there; and `README.md` exists again after `PL-WB5K` deleted it,
 but carries none of these commands, so this item's `docs/ARCHITECTURE.md`-only
 scope is still right.
+<!-- absent: tools/readme_hold_check.py -->

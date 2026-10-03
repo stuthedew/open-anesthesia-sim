@@ -15,7 +15,9 @@ verify: grep -qF '](assets/' README.md
 
 **Problem.** `README.md` describes the interface in prose - the readouts, the
 two units, the chart, the wash-in panel, the control marks - and shows none of
-it. `assets/branding/` holds only a `.gitkeep`.
+it. The tree holds no image of it: `assets/branding/`, which held only a
+`.gitkeep`, was removed by #589.
+<!-- absent: assets/branding/ -->
 
 **Why it matters.** Both of `PL-RM83`'s audiences are answering a question a
 picture answers faster than a paragraph. Audience B, the clinician-user, is
@@ -33,8 +35,8 @@ wherever simulated time is, and requires the agent identified by name and ISO
 conventions are real than a sentence asserting them.
 
 **Where.** `README.md`, between § "What it simulates" and its diagram or
-immediately after the opening; `assets/branding/`, or a new `assets/` path for
-screenshots.
+immediately after the opening; `assets/screenshots/`, where `touches` was
+re-pointed on 2026-09-30, for the image.
 
 **Two things to decide, and they are not the same question.**
 
@@ -106,11 +108,12 @@ being able to render Flet, so a hand capture was the owner's alone. That was a
 fact about Flet; `PL-YCWZ`'s headless Qt rendering is what changes it.
 
 **One stale line, corrected here rather than left to mislead.** The brief says
-"`assets/branding/` holds only a `.gitkeep`". There is no `assets/` directory in
+"`assets/branding/` holds only a `.gitkeep`", since repaired in place. There is no `assets/` directory in
 the tree at all as of 2026-09-20. Paragraph 2's requirements are unaffected —
 the image still has to show the agent name, the 1 MAC divisor and the playback
 rate, uncropped — and the `verify:` now recorded pins the README referencing an
 image under `assets/`, which is the path this brief names.
+<!-- absent: assets/branding/ assets/ -->
 
 **`touches` re-pointed 2026-09-30, from `assets/branding` to
 `assets/screenshots/`.** `dfd3e2c0` (#589) removed the old directory, so it read

@@ -166,8 +166,9 @@ interaction and gone on commit or cancel; it reads as lighter than the run and
 is labelled as well as styled, so a screenshot taken mid-drag is not
 ambiguous; and it is computed by a pure deterministic read of `core/` at the
 run's own model and version, touching none of the run's state. `PL-GVXP`'s
-derivation still holds afterwards, and `tests/unit/test_simulation_view.py`
-covers the preview appearing, disappearing on both exits, and never being
+derivation still holds afterwards, and the interface's tests - since the Qt
+port, `tests/unit/test_chart_frame.py` and `tests/unit/test_dashboard_frame.py` -
+cover the preview appearing, disappearing on both exits, and never being
 drawn in a style a compartment uses.
 
 ## Design round 2026-09-27: recommendations

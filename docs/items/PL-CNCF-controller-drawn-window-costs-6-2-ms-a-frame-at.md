@@ -90,6 +90,7 @@ the module `PL-ZX12` renamed `run_score.py` to) allocates `states` fresh on
 every call and walks every column in the window; nothing survives the call. The
 anchoring `PL-2FM6` bought holds the column *times* still so the drawn points do
 not all move each frame - it was never a claim that their *values* are reused.
+<!-- absent: run_score.py -->
 
 **The cost has two terms, and which one dominates is a function of the budget.**
 Inside one segment, consecutive grid columns are carried by a single propagator
@@ -141,3 +142,4 @@ found it, and `PL-RWBV`, which had held the re-point, closed with it. The
 consequence once claimed for the stale spelling, that it escaped
 `protected_paths`, never held: `docket.toml` protects the directory
 `src/anesthesia_sim/core`, which either spelling matches (`PL-RWBV`, 2026-09-21).
+<!-- absent: core/run_score.py -->

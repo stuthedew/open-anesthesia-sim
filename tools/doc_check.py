@@ -3801,7 +3801,11 @@ def _unresolved(token: str) -> str:
 
 
 def check_citations(root: Path, documents: dict[Path, str], report: Report) -> None:
-    """Resolve every path and section a documentation file cites."""
+    """Resolve every path and section a documentation file cites, and a live brief's paths.
+
+    A brief's path citations are held to a narrower rule than a document's,
+    which `_check_brief_paths` gives with the measurement behind it.
+    """
     basenames = frozenset(path.name for path in _walk(root))
     headings = {path: _headings(text) for path, text in documents.items()}
     every_heading = [heading for titles in headings.values() for heading in titles]
@@ -3883,6 +3887,132 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                     f'{path}:{_line_of(prose, match.start())}: "{term}" names a section '
                     f'without the mark, so a rename of it would pass unreported; write § "{term}"'
                 )
+
+    _check_brief_paths(root, basenames, report)
+
+
+def _check_brief_paths(root: Path, basenames: frozenset[str], report: Report) -> None:
+    """Hold each live brief's path citations to the files this repository has deleted.
+
+    **Only a path the tree once held is a finding** (`PL-1RTM`, `PL-3NKZ`). A
+    brief names files that do not exist for reasons a standing document does
+    not: the module its work will create, an example (`tools/x_check.py`), a
+    file in another repository or on the container. Measured 2026-10-03, 95
+    of the 1,843 path citations in live briefs resolved to nothing, and the
+    `touches` exemption `PL-3NKZ` proposed would have excused 11 of them - so
+    holding them as the documents are held fires about 80 times on sentences
+    that are right. 22 named a path git history holds and the tree does not,
+    which is a record rather than a reading of intent: the file existed and
+    went, so the citation was true once and the brief is now wrong about where
+    to look, or names the deletion on purpose and says so with the
+    `absent:` marker the documents use. A path no commit ever held - a
+    misspelling among them - is not judged, which is the trade.
+
+    Live briefs only, and a fence is not read, as in `check_line_citations`:
+    a closed brief records the tree its work was done against
+    (`.claude/rules/citation-drift.md`), and an item reporting a stale citation
+    must be able to show it. A checkout whose history git cannot read, or
+    holds only part of, says so in `declined` rather than reading as clean.
+    """
+    deleted: dict[str, str] | None = None
+    asked = False
+    unjudged = 0
+    for path, raw in _live_item_briefs(root):
+        text = without_fences(raw)
+        absent = _absent_paths(root, basenames, path, text, report)
+        for match in CODE_SPAN_RE.finditer(text):
+            token = match["content"]
+            if not _is_path_citation(token) or _resolves(root, basenames, token):
+                continue
+            line = _line_of(text, match.start())
+            if token in absent.get(line, ()):
+                continue
+            if not asked:
+                asked, deleted = True, _deleted_paths(root)
+            commit = None if deleted is None else _deleted_by(token, deleted)
+            if commit is None:
+                unjudged += 1
+                continue
+            if _covered_by_gitignore(root, token):
+                continue
+            report.errors.append(
+                f"{path}:{line}: cites `{token}`, which {commit} removed from the tree; point it "
+                "where the content went, or where the brief names the removal on purpose, say "
+                f"so under its paragraph: <!-- absent: {token} -->"
+            )
+    if not unjudged:
+        return
+    count = _plural(unjudged, "path citation", "path citations")
+    if deleted is None:
+        report.declined.append(
+            f"item briefs: git could not read this checkout's history, so {count} in live "
+            "briefs that resolve to nothing were not checked for a file the tree once held"
+        )
+    elif (shallow := is_shallow(root)) is not False:
+        why = (
+            "the checkout is a shallow clone"
+            if shallow
+            else "git cannot say whether this checkout is complete"
+        )
+        report.declined.append(
+            f"item briefs: {why}, so {count} in live briefs that resolve to nothing were "
+            "checked against the "
+            "history it holds; a file removed before that is not reported, and `git fetch "
+            "--unshallow` reads the rest"
+        )
+
+
+def _deleted_paths(root: Path) -> dict[str, str] | None:
+    """Every path a commit on this checkout's history deleted, to the newest such commit.
+
+    `None` where git cannot answer. `--no-renames`, so a move is read as what
+    it is to a citation of the old path - that path deleted. A path deleted and
+    later restored is in the tree again, so a citation of it resolves before
+    this is asked.
+    """
+    text = _git_text(
+        root,
+        "-c",
+        "core.quotePath=false",
+        "log",
+        "--no-renames",
+        "--diff-filter=D",
+        "--name-only",
+        "--format=%x00%h",
+        "HEAD",
+    )
+    if text is None:
+        return None
+    deleted: dict[str, str] = {}
+    for record in text.split("\x00")[1:]:
+        lines = [line for line in record.splitlines() if line.strip()]
+        for gone in lines[1:]:
+            deleted.setdefault(gone, lines[0])
+    return deleted
+
+
+def _deleted_by(token: str, deleted: Mapping[str, str]) -> str | None:
+    """The newest commit that deleted what `token` cites, or `None` where none did.
+
+    Read the way `_resolves` reads a citation: under every root in
+    `PATH_ROOTS`, a directory answered by any file deleted under it, and a bare
+    filename by any deleted file of that name. A pattern is not matched - it
+    cites a set rather than a file - so a glob whose every match went is not
+    reported.
+    """
+    if "*" in token:
+        return None
+    for path in _repository_paths(token):
+        normal = posixpath.normpath(path)
+        if path.endswith("/"):
+            commit = next((c for gone, c in deleted.items() if gone.startswith(normal + "/")), None)
+        else:
+            commit = deleted.get(normal)
+        if commit is not None:
+            return commit
+    if "/" in token:
+        return None
+    return next((c for gone, c in deleted.items() if PurePosixPath(gone).name == token), None)
 
 
 def _absent_paths(
