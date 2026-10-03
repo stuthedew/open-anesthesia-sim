@@ -280,9 +280,13 @@ Both timer slots are guarded — `RunView.step_tick` steps the run and
 exception, because a `TypeError` from a refactor is exactly as silent inside a
 Qt slot as a modelling failure is. Which halt is `dashboard_frame.halt_disposition`'s
 call, and `RunView.halt` routes by it: through `SimulationController.fail()`
-for a failure, through `halt_at_supported_limit()` for the supported run
-length, which `step_tick` meets as a `SimulationDomainLimitError` the core
-raises before taking the step past it. `fail()` is a third run state, carried
+for a failure, through `halt_at_supported_limit()` for a
+`SimulationDomainLimitError` raised on a path the controller does not step
+itself, such as a setting. A run stepping onto the supported run length meets
+no raise: `SimulationController.advance()` halts it on the arriving step, and
+the snapshot reads the limit from the run's own state, so a run forked or
+reset onto that step reads as stopped there too (`PL-5291`). `fail()` is a
+third run state, carried
 on the snapshot as `failure_reason` and rendered as "Stopped — simulation
 error" with a banner over the values: a halted run must never present as a
 pause, because a pause is a run that continues when asked and a halt is one
