@@ -1678,6 +1678,11 @@ asked for three concurrent gate items withheld the strongest one it had
 unlimited, and fills out with same-file work — annotated with what it shares
 and with which item — when `--limit` asks for a batch of a given size.
 
+**The batch draws only on what `docket next` would offer** — open, triaged,
+not `blocked`, not in flight, and not waiting on the project owner below `P0`
+— and names the decisions and the work in flight beneath it on the two lines
+`next` prints, so a fan-out can hand the batch out as it stands (`PL-4ZK8`).
+
 **The same-file tier is reported by path rather than by item, rarest group
 first** (`PL-PGZK`). Tiering stopped the false refusals; it left a list whose
 entries all read alike, so the whole of it had to be read to find the two lines
