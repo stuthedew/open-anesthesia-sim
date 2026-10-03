@@ -3,11 +3,12 @@ id: PL-Y4YX
 title: PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
 priority: P3
 effort: S
-status: needs-decision
+status: ready
 classes: defect
 feature: qt-port
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/qt_chart.py
 added: 2026-09-16
+verify: ! grep -q 'def _surface_stylesheet' src/anesthesia_sim/app/run_view.py && ! grep -q 'def _slider_stylesheet' src/anesthesia_sim/app/qt_widgets.py
 ---
 
 **Problem.** PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
