@@ -131,3 +131,15 @@ the record is the brief's: wait, and a second report reopens. Size S, as filed;
 **What would change the answer.** For "build": nothing more, it is the
 recommendation. For "wait": a second report of a bare-run `REJECT` on a
 session's own branch.
+
+## Answers 2026-10-03
+
+**Answered 2026-10-03: Q1 ratified: build** (project owner, 2026-10-03,
+ratified, over recording "wait for a second report" and closing, the brief's
+own lean, and over the brief's "all failures are commission checks"
+condition). The build, in `cli.cmd_verify`: when `--self` is absent, the
+item's live claim is this session's own (`claims.Hold.mine`) and at least one
+commission check failed, print one line above the item's report naming
+`bin/docket verify --self` and what it reports; silent otherwise; one test in
+`subprojects/docket/tests/test_cli.py`. Status stays `needs-decision` in this
+round; the thread that builds it sets `ready` first.
