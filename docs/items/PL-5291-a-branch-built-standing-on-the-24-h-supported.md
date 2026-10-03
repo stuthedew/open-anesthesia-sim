@@ -3,11 +3,13 @@ id: PL-5291
 title: A branch built standing on the 24 h supported run length still offers Start, because SimulationController._open_at never sets _supported_limit_reason, the only limit signal the transport's stopped state reads, against Transport's own docstring
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, safety
 feature: numerical-domain
-touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-10-03
+closed: 2026-10-03
+pr: 1317
 payoff: a run standing on the 24-hour limit reads as stopped there before anyone presses Start, whichever route put it there
 verify: grep -q 'def test_a_run_standing_on_the_supported_run_length_reads_as_stopped' tests/integration/test_controller.py
 ---

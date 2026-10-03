@@ -6,6 +6,8 @@ from anesthesia_sim.app.bookmarks import MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.dashboard_frame import SUPPORTED_LIMIT_NOTICE_TEMPLATE, notice, transport
+from anesthesia_sim.app.formatting import format_supported_run_length
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
     COMPARTMENT_STATE_INDEX,
@@ -29,6 +31,11 @@ from anesthesia_sim.core.exceptions import (
 from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, EXHAUSTED_AGENT_L, STATE_SIZE
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.run_definition import RunDefinition, RunSegment
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    maximum_step_count,
+    require_supported_run_length,
+)
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
 
@@ -3467,3 +3474,200 @@ def test_a_branch_reset_under_new_settings_records_them_at_its_fork() -> None:
     assert branch.run_segments[1].opening.state == fork_state
     assert branch._run_definition.state_at(fork_s) == fork_state
     assert branch.drawn_window(0.0, fork_s, 150).times_s == (fork_s,)
+
+
+# --- Standing on the supported run length with no step refused (PL-5291) ------
+#
+# The core refuses the step *from* the last supported count, so a run that
+# stops only when a step is refused reads as an ordinary pause on every route
+# that puts it on 24:00:00 without one: a trunk halted there on a mark, a
+# branch forked there, and a branch reset onto such a fork. Each of these
+# offered Start, showed no limit notice, and told a learner an unreached mark
+# was still ahead of a run that could not step. Every assertion below is read
+# end to end - the controller's snapshot through the pure dashboard functions a
+# frame is written from - at the shipped 0.1 s step, because that is the step
+# whose last supported count lands exactly on 24 hours (`PL-8H2R`).
+#
+# Stepping a run to 24 hours costs about 30 s, so the two runs that do it are
+# built once per module and nothing below changes what another test reads of
+# them: a fork leaves its parent untouched, and the one dial moved on a stopped
+# run alters nothing a stopped run is asked about.
+
+#: A height the fat group cannot reach at 1 MAC delivered, so the mark stays
+#: outstanding on every run below and its standing is the question.
+_UNREACHABLE_TARGET = MacTarget(RecordedQuantity.FAT, MacMultiple(3.0), "never")
+
+
+def _step_onto_the_supported_run_length(controller: SimulationController) -> None:
+    """Take exactly the supported number of 0.1 s steps, and no refused one.
+
+    `maximum_step_count` is the count the run may stand on; the step after it
+    is the one the core refuses, and nothing here takes it.
+    """
+
+    controller.start()
+
+    for _ in range(maximum_step_count(MAXIMUM_SIMULATION_STEP_S)):
+        controller.advance(MAXIMUM_SIMULATION_STEP_S)
+
+
+@pytest.fixture(scope="module")
+def trunk_stepped_onto_the_limit() -> SimulationController:
+    """An unmarked trunk that took the last supported step and was never refused one."""
+
+    controller = SimulationController()
+    _step_onto_the_supported_run_length(controller)
+
+    return controller
+
+
+@pytest.fixture(scope="module")
+def trunk_halted_on_a_mark_at_the_limit() -> SimulationController:
+    """A trunk halted by a time mark on 24:00:00, carrying a mark it never reached."""
+
+    controller = SimulationController()
+    controller.add_time_bookmark(TimeBookmark(MAXIMUM_ELAPSED_SIMULATION_TIME_S, "the end"))
+    controller.add_mac_target(_UNREACHABLE_TARGET)
+    _step_onto_the_supported_run_length(controller)
+
+    return controller
+
+
+def _the_reason_the_refused_step_would_give(run: SimulationController) -> str:
+    """The message the core refuses this run's next step with, asked of the core."""
+
+    with pytest.raises(SimulationDomainLimitError) as refusal:
+        require_supported_run_length(run._state.step_count, MAXIMUM_SIMULATION_STEP_S)
+
+    return str(refusal.value)
+
+
+def _assert_reads_as_stopped_at_the_supported_run_length(run: SimulationController) -> None:
+    """What `PL-5291` is done when: every reader says the run stands at the limit.
+
+    The snapshot carries the reason the refused step would give, Start is
+    refused and not offered, the banner names the limit, and a mark the run
+    never reached is "not reached within the supported run length" rather than
+    still ahead. Not a failure, on any of them.
+    """
+
+    snapshot = run.snapshot()
+
+    assert snapshot.elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+    assert snapshot.is_running is False
+    assert run.has_reached_supported_limit is True
+    assert snapshot.supported_limit_reason == _the_reason_the_refused_step_would_give(run)
+    assert run.has_failed is False
+    assert snapshot.failure_reason is None
+
+    with pytest.raises(SimulationDomainLimitError, match="supported run length"):
+        run.start()
+
+    assert run.snapshot().is_running is False
+    assert transport(snapshot).start_enabled is False
+    assert notice(snapshot, None) == SUPPORTED_LIMIT_NOTICE_TEMPLATE.format(
+        run_length=format_supported_run_length()
+    )
+
+    if _UNREACHABLE_TARGET in snapshot.bookmarks.mac_targets:
+        standing = snapshot.bookmark_standings.of_mac_target(_UNREACHABLE_TARGET)
+
+        assert standing is MarkStanding.NOT_REACHED_WITHIN_CAP
+
+
+def test_a_run_standing_on_the_supported_run_length_reads_as_stopped_from_the_arriving_step(
+    trunk_stepped_onto_the_limit: SimulationController,
+) -> None:
+    """The run halts where it stands rather than one refused tick later.
+
+    No step was refused: the run took exactly the supported count and stopped
+    on it. Reading the limit from the state is what makes that the same stop
+    the refusal used to produce, and halting on arrival is what keeps the
+    snapshot's contract - `is_running` false wherever a limit reason is set -
+    without a flag that only a refusal could set.
+    """
+
+    trunk = trunk_stepped_onto_the_limit
+
+    assert trunk._state.step_count == maximum_step_count(MAXIMUM_SIMULATION_STEP_S)
+    _assert_reads_as_stopped_at_the_supported_run_length(trunk)
+
+    # A further tick is the no-op a paused run's is: nothing raised, and the
+    # clock exactly where the last supported step left it.
+    trunk.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    assert trunk.snapshot().elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+
+
+def test_a_trunk_halted_on_a_mark_at_the_supported_run_length_reads_as_stopped_there(
+    trunk_halted_on_a_mark_at_the_limit: SimulationController,
+) -> None:
+    """The first row of `PL-5291`'s table: halted on a mark at 24:00:00, "Paused", Start offered."""
+
+    trunk = trunk_halted_on_a_mark_at_the_limit
+    snapshot = trunk.snapshot()
+
+    assert snapshot.bookmark_halt is not None
+    assert snapshot.bookmark_standings.of_time_bookmark(
+        TimeBookmark(MAXIMUM_ELAPSED_SIMULATION_TIME_S, "the end")
+    ) is (MarkStanding.PASSED)
+    _assert_reads_as_stopped_at_the_supported_run_length(trunk)
+
+
+def test_a_branch_forked_at_a_halt_on_the_supported_run_length_reads_as_stopped_there(
+    trunk_halted_on_a_mark_at_the_limit: SimulationController,
+) -> None:
+    """The route the item is titled for: a branch built standing on 24:00:00.
+
+    `_open_at` builds the state at the parent's count and never asks whether
+    it has room for a step, and nothing refuses one until Start is pressed. A
+    branch is a new controller, so a flag the parent held would not have
+    reached it either; the limit has to be read from the state the branch
+    stands in.
+    """
+
+    branch = trunk_halted_on_a_mark_at_the_limit.resumed_at_halt()
+
+    assert branch.opened_from is not None
+    _assert_reads_as_stopped_at_the_supported_run_length(branch)
+
+
+def test_a_branch_forked_where_a_dial_moved_on_the_supported_run_length_reads_as_stopped_there(
+    trunk_stepped_onto_the_limit: SimulationController,
+) -> None:
+    """The other fork door: a keyframe a dial laid on 24:00:00 after the run stopped there.
+
+    The dial is moved here, on the shared trunk, because a dial moved on a
+    stopped run changes nothing a stopped run is asked about: the control
+    change is recorded at the instant the run stands on, and the run goes on
+    standing there.
+    """
+
+    trunk = trunk_stepped_onto_the_limit
+    trunk.set_fresh_gas_flow(6.0)
+
+    assert trunk.run_segments[-1].opening.instant_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+
+    branch = trunk.resumed_at(MAXIMUM_ELAPSED_SIMULATION_TIME_S)
+    branch.add_mac_target(_UNREACHABLE_TARGET)
+
+    _assert_reads_as_stopped_at_the_supported_run_length(branch)
+    _assert_reads_as_stopped_at_the_supported_run_length(trunk)
+
+
+def test_a_branch_reset_onto_a_fork_on_the_supported_run_length_reads_as_stopped_there(
+    trunk_halted_on_a_mark_at_the_limit: SimulationController,
+) -> None:
+    """Reset returns a branch to its fork, and a fork on the limit has no span left.
+
+    The last row of `PL-5291`'s table. Reset clears the recorded reason, as it
+    must for a trunk going back to zero; a branch going back to a fork on
+    24:00:00 then read as paused again, with Start offered again. Read from
+    the state, the limit is where the branch stands, and a reset leaves it
+    standing there.
+    """
+
+    branch = trunk_halted_on_a_mark_at_the_limit.resumed_at_halt()
+    branch.reset()
+
+    _assert_reads_as_stopped_at_the_supported_run_length(branch)
