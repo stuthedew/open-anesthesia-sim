@@ -1,8 +1,14 @@
 ---
 id: PL-74T0
 title: Record or refuse generator heads for the three clusters 2026-10-03's captures fall into - PL-KGYT's fact past its sweep, a frozen gate's entries past PL-WD5Z, and the supported step guarded entry point by entry point - once pull requests 1306, 1308 and 1309 merge
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: housekeeping
+touches: docs/items
 added: 2026-10-03
+payoff: the day's three candidate root causes are each ranked as a generator or refused with a reason, so their next members are stopped at the source rather than fixed one at a time
+not-delegable: The deliverable is a judgment - whether each cluster's members misread one fact no head states - and a grep for the recorded fields would pass on a head recorded wrongly
 ---
 
 **Problem.** Record or refuse generator heads for the three clusters 2026-10-03's captures fall into - PL-KGYT's fact past its sweep, a frozen gate's entries past PL-WD5Z, and the supported step guarded entry point by entry point - once pull requests 1306, 1308 and 1309 merge
@@ -45,6 +51,24 @@ three clusters share a fact. Most members of the second and third are not on
    built once and taken by every entry point, so the type checker finds the one
    that skips it.
 
+**Why it matters.** An unrecorded generator ranks nowhere: until a head
+carries `root-cause-of:`, `generator:` and `misread:`, nothing in the store
+says these clusters exist, their members are triaged one at a time, and each
+local fix leaves the mechanism to hand the store its next member. Cluster 2
+alone has five members filed since its fact's heads closed on 2026-09-23.
+
+**State at triage, 2026-10-03.** Pull requests 1308 (`bafb6438`) and 1309
+(`8d916ddf`) have merged, so clusters 1 and 2 can be read on `main`; 1306,
+which carries cluster 3's other members, merged as `7a6ec289` during this
+pass, so all three can be read there now. The triage pass recorded each
+member's own `**Generator check.**` and left the heads to this item: cluster 1
+is `PL-P72R` and `PL-Z8RS`, with `PL-F66M` an instance of `PL-NGBM` instead;
+cluster 2's members on `main` are `PL-QWF8`, `PL-JV5Q` and `PL-Z64T`, the last
+blocked on this item; `PL-5F76` now keeps only its count half, the step half
+being `PL-YZ17`'s.
+
 **Done when.** Each cluster is recorded as a head - `root-cause-of:`,
 `generator:` and `misread:` - or refused with its reason in this brief, after
 1306, 1308 and 1309 have merged.
+
+**Generator check.** Work the project owner asked for: this item is the recording step for three candidate heads, answering their 2026-10-03 question whether that day's captures come from known failure modes, and it is a member of no cluster.
