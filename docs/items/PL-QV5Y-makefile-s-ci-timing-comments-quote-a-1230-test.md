@@ -3,11 +3,13 @@ id: PL-QV5Y
 title: Makefile's CI-timing comments quote a 1230-test suite at 78 s serial and 27 s parallel, measured 2026-09-03; the suite is now 2096 tests at about 43 s parallel, so a reader sizing a CI-cost decision from them is reading stale figures
 priority: P3
 effort: S
-status: needs-decision
+status: dropped
 classes: docs
 feature: ci-cost
 touches: Makefile
 added: 2026-09-07
+closed: 2026-10-03
+reason: The figures are dated records by the project's own convention (PL-4FBP clause 4: a dated statement is a record, held to its date and never to the tree), nobody has sized a decision from them since filing (PL-FZ58 and PL-YRYR each measured their own 78 s), and dropping the absolutes would strip the evidence for two flags without ending the drift, since a ratio decays with the suite too. Decided 2026-10-03 in the Gate 2 design round as an obvious call; the item's own section carries the count.
 ---
 
 **Problem.** Makefile's CI-timing comments quote a 1230-test suite at 78 s serial and 27 s parallel, measured 2026-09-03; the suite is now 2096 tests at about 43 s parallel, so a reader sizing a CI-cost decision from them is reading stale figures
@@ -50,7 +52,7 @@ rather than an implementation detail:
 2. **Keep the argument and the citation, drop the absolutes.** The comments
    keep every claim they make and lose only the part that decays; a reader
    wanting the numbers follows `PL-WCZV`, `PL-VZ8P` or `PL-FX3N` to the item
-   that measured them. *Recommended.*
+   that measured them. *Recommended at filing; option 3 was taken instead, below.*
 3. **Leave them.** Each is already dated and labelled with its suite size, so a
    reader has what it needs to discount them. Costs nothing and accepts that
    the figures read as current to a reader who skips the date.
@@ -60,3 +62,51 @@ carry no absolute wall-clock or test count that will be wrong within a week
 without anything reporting it - either because they no longer carry one, or
 because a re-measured one has been written with whatever re-measures it named
 beside it.
+
+## Decided 2026-10-03 - option 3, on the count: the figures stay, and the item is dropped
+
+**Recommendation:** leave the figures where they are and file nothing further
+on them. **Decided 2026-10-03** by the design-round session, as the obvious call
+the project owner's standing instruction of 2026-09-27 asks a thread to take
+(when one option is clearly correct, take it, record why in the item, and say
+so in one line), over option 2 - keeping the argument and the citation and
+dropping the absolutes - which the brief marked at filing. Four reasons, the
+second of which is the count:
+
+- **The figures are dated records by the project's own convention.** Every
+  block names its date and its suite size ("measured 2026-09-03, 1230 tests"),
+  and `PL-4FBP`'s clause 4, ratified 2026-09-19, reads: a dated statement is a
+  record, held to its date and never to the tree - "Anywhere: dated, and it is
+  a record." `PL-G424`, this item's generator head, then refused extending the
+  annotation convention across the apparatus and left a stale measurement to
+  judgment. This is that judgment, taken.
+- **Nobody sized a decision from them.** No item filed since this one quotes
+  the Makefile's figures. The two CI-cost decisions taken since, `PL-FZ58` and
+  `PL-YRYR` (both 2026-09-19), each quote a 78 s run - and each measured it
+  itself (77.8 s wall against 272 s serial on four cores; 77.83 s against
+  78.78 s). Zero of two readers took the file's absolute, which is the number
+  the brief's exposure rests on.
+- **Option 2 removes evidence, not decay.** The five-row worksteal table and
+  the serial-against-parallel pair are the evidence for two flags in `check`'s
+  recipe; without them the comment asserts "neither change helps alone; the
+  pair does" and sends the reader to a closed item for the numbers. A ratio
+  decays with the suite's composition as surely as an absolute does, so the
+  drift would have survived the edit and only the evidence would have gone.
+- **Option 1 is the treadmill the brief refuses**, and today's count shows the
+  speed: `pytest --collect-only` reports 5,862 tests on 2026-10-03, against
+  the 2,148 this brief counted on 2026-09-07 and the 1,230 the oldest block
+  names.
+
+What a reader does instead is what both readers since filing did unprompted:
+re-measure before sizing a CI-cost decision. No note is added to the Makefile.
+A sentence at the top of the file is not where a session grepping to the
+`check` recipe lands, and the date and suite size already sit beside every
+figure, which is the discount signal the convention relies on.
+
+Dropped rather than done because no edit is made: the finding is refused as a
+finding, not fixed. The blocks the brief lists have moved since filing and are
+now the `check` recipe's parallelism argument (`PL-WCZV`), its worksteal table
+(`PL-VZ8P`), the `test` recipe's serial-against-parallel pair (`PL-FX3N`) and
+the coverage-flag difference (`PL-22Z3`); a newer dated block, the verify
+replay's re-timing of 2026-09-22 (`PL-0HPV`), has joined them and is a record
+on the same ground.
