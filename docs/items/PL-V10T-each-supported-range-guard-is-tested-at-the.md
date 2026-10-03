@@ -34,6 +34,11 @@ module. Which functions sit behind which guard is today a list someone keeps;
 with `PL-0GJC`'s type it is every function annotated with it, which
 `typing.get_type_hints` finds.
 
+**Decided 2026-10-03: yes** (project owner, 2026-10-03, ratified, over a
+shared edge-value table that adds no dependency): Hypothesis joins the dev
+dependencies, with the known edges as explicit examples and the runs
+derandomized.
+
 **Recommended:** property-based tests with Hypothesis, added as a dev
 dependency, drawing values across and beyond each range, with the edges above
 written as explicit examples that always run, and derandomized so a red run
