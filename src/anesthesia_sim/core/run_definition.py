@@ -334,11 +334,14 @@ class RunDefinition:
         `_reached_s` - a reset in place, a deserializer restoring a saved run -
         would have to re-establish it rather than assume it.
 
-        Nor an upper bound, unlike the opening: the opening is handed in, while
-        the reach is moved to the instant a step count stands at
-        (`app/controller.py`), and `SimulationState.advance` refuses the step
-        that would carry that count past the supported run length before the
-        reach could follow it.
+        Nor an upper bound, unlike the opening, so called directly it accepts
+        any later instant. The application moves it only to the instant a step
+        count stands at - each step's, or a branch's fork (`app/controller.py`)
+        - and `SimulationState.advance` refuses the step that would carry that
+        count past the supported run length before the reach could follow it.
+        A bound here would disagree with that guard by a float at the few
+        computed steps whose last step lands past 24 hours (`PL-8H2R`), and
+        refuse a step already taken.
 
         Raises:
             SimulationConfigurationError: `instant_s` is not finite, or is

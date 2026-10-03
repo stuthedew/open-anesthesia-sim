@@ -68,11 +68,11 @@ The shipped `reference_circle_system` profile declares no range at all, so
 this interval is the only bound today; `docs/MODEL.md` § "Supported input
 ranges" carries both claims and what separates them.
 
-The run-length bound is enforced on `SimulationState`, which is the only
-object that knows how far a run has gone, rather than on a compartment: a
-compartment advanced alone has no run length to be past the end of. It
-refuses the step that would cross the boundary rather than raising after
-crossing it, so a run that stops here stands on a completed step at a
+The step that would cross the run-length bound is refused on
+`SimulationState`, which counts the steps a run takes, rather than on a
+compartment: a compartment advanced alone has no run length to be past the
+end of. It refuses the step that would cross the boundary rather than raising
+after crossing it, so a run that stops here stands on a completed step at a
 simulated time inside the supported span.
 
 Two more guards refuse a point on the span that is handed in rather than
@@ -82,7 +82,9 @@ a `RunDefinition` opens at. A branch is both, built where its parent stood,
 so these are what refuse one taken past the span before anything reads it
 (`PL-BMY5`, `PL-73ZN`). The first is built on the same `maximum_step_count`
 as the step's guard, so the count a run stops on at the limit is exactly the
-last one a state may be built at, whatever the step.
+last one a state may be built at, whatever the step - including the few
+computed steps where that count is itself one step too many or one too few
+(`PL-8H2R`).
 
 Widening any interval is a safety-critical change and not a convenience, but
 the work it now takes is different: argue that the compartment structure still
@@ -267,7 +269,9 @@ def maximum_step_count(simulation_step_s: float) -> int:
     `MAXIMUM_ELAPSED_SIMULATION_TIME_S` or the largest simulated time below
     it that a whole number of steps can reach. That matches the closed
     intervals the three flows above declare - an endpoint is supported, not
-    the first refused value.
+    the first refused value. It holds at the shipped 0.1 s step; at a few
+    computed steps the division rounds the count to one step too many, whose
+    last step lands past the span, or to one too few (`PL-8H2R`).
 
     **Derived once from the step rather than compared against a running
     total**, which is what makes the boundary reproducible. `docs/MODEL.md`
@@ -314,7 +318,7 @@ def require_supported_run_length(step_count: int, simulation_step_s: float) -> N
 
 
 def require_supported_step_count(step_count: int, simulation_step_s: float) -> None:
-    """Require a run standing at `step_count` steps to be inside the supported run length.
+    """Require `step_count` to be no more steps than the supported run length allows.
 
     The question a run *handed* a position asks, where
     `require_supported_run_length` is the one a run *taking* a step asks,
@@ -323,7 +327,10 @@ def require_supported_step_count(step_count: int, simulation_step_s: float) -> N
     derivation, so a state built at the count a run stops on at the limit is
     accepted and the next count is not, at every step size - a run reached
     by stepping and one built at the same count cannot disagree about
-    whether it is inside the span.
+    whether it is inside the span. Where `maximum_step_count` is one step
+    too many or one too few, at a few computed steps, this guard is off by
+    the same step (`PL-8H2R`): agreeing with the step's guard is what keeps a
+    branch taken where its parent stopped from being refused.
 
     `SimulationConfigurationError` rather than `SimulationDomainLimitError`,
     the reverse of the step's guard and for its reason: here a value handed
@@ -332,7 +339,9 @@ def require_supported_step_count(step_count: int, simulation_step_s: float) -> N
     present it as one (`PL-BMY5`).
 
     Like `maximum_step_count`, it takes `simulation_step_s` to be a step
-    `uptake_system.require_supported_simulation_step` has already accepted.
+    `uptake_system.require_supported_simulation_step` has already accepted,
+    and `step_count` to be a whole, nonnegative count; `SimulationState`
+    checks both before it calls this.
 
     Raises:
         SimulationConfigurationError: `step_count` is more than
@@ -359,7 +368,9 @@ def require_supported_case_instant(instant_s: float) -> None:
     whatever holds it has lasted: a branch opened at 23 h has one hour of the
     span left, as `docs/MODEL.md` § "Supported run length" says. Closed at
     both ends like every interval here, so an instant of exactly
-    `MAXIMUM_ELAPSED_SIMULATION_TIME_S` is one a run may stand on.
+    `MAXIMUM_ELAPSED_SIMULATION_TIME_S` is accepted, and that is where a run
+    at the shipped 0.1 s step stops. At the few computed steps whose last
+    step lands a float past it (`PL-8H2R`), an opening there is refused.
 
     It guards the one instant a run is handed rather than reaches - a
     `RunDefinition`'s opening, which a branch takes from its parent - and

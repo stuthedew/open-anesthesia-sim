@@ -65,6 +65,23 @@ def test_rejects_invalid_simulation_step(simulation_step_s: float) -> None:
         SimulationState().advance(simulation_step_s)
 
 
+@pytest.mark.parametrize("simulation_step_s", [0.0, -0.1, float("nan"), float("inf")])
+def test_an_invalid_initial_step_is_refused_before_a_run_length_is_read_from_it(
+    simulation_step_s: float,
+) -> None:
+    """The step is checked before the supported run length is derived from it.
+
+    The run-length guard divides the span by the step, so taken first it would
+    answer a zero step with `ZeroDivisionError`, `nan` with `ValueError`, a
+    negative step with a run-length refusal and an infinite one with no refusal
+    at all - none of them the refusal naming the step that `__post_init__`
+    promises (`PL-BMY5`).
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="simulation_step_s"):
+        SimulationState(step_count=0, simulation_step_s=simulation_step_s)
+
+
 def test_rejects_a_step_above_the_maximum_simulation_step() -> None:
     """Elapsed time must not move for a step that was never simulated.
 
@@ -270,9 +287,10 @@ def test_reset_returns_a_run_stopped_at_the_limit_to_a_startable_one() -> None:
 # --- Built part-way through a run (PL-BMY5) ----------------------------------
 #
 # A branch is built at its parent's step count, so construction is where a run
-# is handed a point on the span rather than reaching one. Checked at steps that
-# do not divide 24 hours evenly as well as the shipped one, because the limit
-# is a whole number of steps of whatever size the run is taken at.
+# is handed a point on the span rather than reaching one. Checked at a step that
+# does not divide 24 hours evenly (0.07 s) and one that does (0.025 s) as well
+# as the shipped one, because the limit is a whole number of steps of whatever
+# size the run is taken at.
 
 STEPS_A_RUN_MAY_TAKE_S = (MAXIMUM_SIMULATION_STEP_S, 0.07, 0.025)
 

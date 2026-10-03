@@ -86,5 +86,9 @@ reached ...") say that no value handed in was wrong. The new
 `maximum_step_count(simulation_step_s)`, raises `SimulationConfigurationError`
 naming the count, the step and the largest count allowed, and reads the same
 `maximum_step_count` derivation as the step's guard, so the two agree exactly
-at every step size - tested at 0.1, 0.07, 0.03, 0.025 and 0.01 s. No bound is
-restated.
+at every step size - tested at 0.1, 0.07, 0.03, 0.025 and 0.01 s, and at
+`768 / 1_000_000 * 100` and `0.02304`, where `maximum_step_count` itself is one
+step too many and one too few (`PL-8H2R`, found while building this). No bound
+is restated. The review of #1292 added a constructor test pinning the step's
+check ahead of this one: taken first, this guard answers a zero, `nan` or
+infinite step with `ZeroDivisionError`, `ValueError` or nothing at all.

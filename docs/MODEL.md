@@ -5059,7 +5059,10 @@ a step count beyond it, or a `RunDefinition` opening at an instant beyond it,
 which is how a branch is built - is refused where it is built, with
 `SimulationConfigurationError`, because there the value handed in is what is
 wrong (`PL-BMY5`, `PL-73ZN`). The step count a run stops on at the limit is
-one it may be built at; only the step from it is refused.
+one it may be built at; only the step from it is refused. The step's guard and
+the state's read that count from one derivation, `maximum_step_count`, which at
+the shipped 0.1 s step puts the last step exactly on 24 hours and at a few
+computed steps rounds to one step too many or one too few (`PL-8H2R`).
 
 | Quantity | Limit | Declared and refused by |
 | --- | --- | --- |
@@ -5070,9 +5073,9 @@ be branched.** The limit is what this model's omissions are argued against
 below, and those are properties of how long the *patient* has been anesthetized
 — so a branch spends the same envelope its parent was spending, from where it
 was taken. A fork at 23 h leaves one hour, not another twenty-four. Nothing
-enforces this separately: the guard reads a step count, and a branch continues
-its parent's, so the arithmetic that bounds a trunk bounds every branch of it
-(`PL-J2TD`).
+enforces this separately: every guard on it reads the case's axis - a step
+count or a case instant - and a branch continues its parent's, so the
+arithmetic that bounds a trunk bounds every branch of it (`PL-J2TD`).
 
 **It is the same kind of statement as the four ranges above, and it is
 reached rather than set.** A flow is a setting, refused when a caller offers

@@ -265,14 +265,20 @@ def test_the_run_length_refusal_is_not_a_configuration_error() -> None:
 # no run could reach would be accepted.
 
 
-@pytest.mark.parametrize("simulation_step_s", [0.1, 0.07, 0.03, 0.025, 0.01])
+@pytest.mark.parametrize(
+    "simulation_step_s", [0.1, 0.07, 0.03, 0.025, 0.01, 768 / 1_000_000 * 100, 0.02304]
+)
 def test_a_run_may_be_built_where_stepping_stops_it_and_no_further(
     simulation_step_s: float,
 ) -> None:
     """The count a run stops on is legal to stand on and illegal to step from.
 
-    Both guards read `maximum_step_count`, so they cannot disagree at any
-    step, including the ones that do not divide 24 hours evenly.
+    Both guards read `maximum_step_count`, so they agree at every step - even
+    the last two, where that count is itself off by one (`PL-8H2R`):
+    `768 / 1_000_000 * 100` takes one step too many and stops at
+    86400.00000000001 s, and `0.02304` stops one step short of the step that
+    lands on 86400.0 s. Agreeing with the step's guard is what this guard
+    promises; where that guard puts the limit is `PL-8H2R`'s to fix.
     """
 
     limit = maximum_step_count(simulation_step_s)
@@ -305,6 +311,22 @@ def test_the_step_count_refusal_names_the_count_the_step_and_the_limit() -> None
     assert "86400 s" in message
     assert "24 h" in message
     assert "Supported run length" in message
+
+
+def test_the_step_count_refusal_prints_the_step_it_was_given_in_full() -> None:
+    """A computed step is named exactly, not rounded to one that reads as another.
+
+    `768 / 1_000_000 * 100` is 0.07680000000000001; rounded to six figures it
+    would read as 0.0768, a step the run was not taken at.
+    """
+
+    simulation_step_s = 768 / 1_000_000 * 100
+    past = maximum_step_count(simulation_step_s) + 1
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_supported_step_count(past, simulation_step_s)
+
+    assert f"{past} steps of 0.07680000000000001 s" in str(raised.value)
 
 
 @pytest.mark.parametrize("instant_s", [0.0, 3_600.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S])

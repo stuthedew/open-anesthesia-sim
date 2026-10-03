@@ -128,10 +128,10 @@ class SimulationState:
 
         The run length is checked here too, and it is the one guard this
         class could not delegate: the supported span is a limit on elapsed
-        simulated time, and `step_count` is the only record of that anywhere
-        in `core/`. A compartment advanced on its own has no run length to
-        be past the end of, which is why the three flow ranges are enforced
-        on the compartments and this is not.
+        simulated time, which this class counts in `step_count`. A
+        compartment advanced on its own has no run length to be past the end
+        of, which is why the three flow ranges are enforced on the
+        compartments and this is not.
 
         Raises `SimulationDomainLimitError` when the run has reached the
         supported length. That is not a failure - see
