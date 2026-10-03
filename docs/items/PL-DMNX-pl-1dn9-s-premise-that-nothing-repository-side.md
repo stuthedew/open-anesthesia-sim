@@ -3,11 +3,13 @@ id: PL-DMNX
 title: PL-1DN9's premise that nothing repository-side runs when a pull request is created is now false, so the published-body read-back it bought 337 resident characters for may be scriptable
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: docs, infra
 feature: pr-body-integrity
-touches: CLAUDE.md, tools/pr_body_check.py
+touches: docs/items
 added: 2026-09-20
+closed: 2026-10-03
+verify: grep -qF 'Answered 2026-10-03: Q1 ratified' docs/items/PL-DMNX-pl-1dn9-s-premise-that-nothing-repository-side.md
 ---
 
 **Problem.** PL-1DN9's premise that nothing repository-side runs when a pull request is created is now false, so the published-body read-back it bought 337 resident characters for may be scriptable
@@ -105,3 +107,15 @@ code, no `CLAUDE.md` edit.
 its session sent - a session's own read-back is the only instrument that can
 see it - or the resident set needing the characters. Either reopens this with
 the `--sent <file>` shape above as the build.
+
+## Answers 2026-10-03
+
+**Answered 2026-10-03: Q1 ratified** (project owner, 2026-10-03, ratified,
+over building `tools/pr_body_check.py --sent <file>` now and cutting the
+resident rule to point at it). Not built. The read-back stays resident at 336
+characters; this item is the live carrier of the corrected premise, that
+`.github/workflows/pr-title.yml` runs on `opened`, so `PL-1DN9`'s reason for
+prose over a check no longer holds; and the `--sent` diff is the build if a
+published body is ever found to differ from what its session sent, or the
+resident set needs the characters back. Closed on this record in the design
+round's own pull request, with no build thread.
