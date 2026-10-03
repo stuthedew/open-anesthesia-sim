@@ -3,11 +3,13 @@ id: PL-4ZK8
 title: bin/docket concurrent offers a batch containing needs-decision and in-flight items, so a fan-out cannot hand it out as-is
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: parallel-sessions
-touches: subprojects/docket
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/picking.md, docs/items/PL-7B3G-bin-docket-concurrent-ranks-its-batch-by.md
 added: 2026-09-07
+closed: 2026-10-03
+pr: 1299
 payoff: a fan-out can paste the bare batch as it stands, and docket next and docket concurrent offer one startable population
 verify: grep -q 'def test_concurrent_batch_offers_only_startable_work' subprojects/docket/tests/test_cli.py && grep -q 'def test_concurrent_names_the_decisions_and_in_flight_work_beneath_the_batch' subprojects/docket/tests/test_cli.py
 ---
