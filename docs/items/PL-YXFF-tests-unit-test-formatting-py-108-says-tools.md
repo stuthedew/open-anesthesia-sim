@@ -5,6 +5,7 @@ status: done
 touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, tests/unit/test_formatting.py, docs/ARCHITECTURE.md, docs/items/PL-L8RN-nothing-enforces-the-one-adapter-qsplitter.md, ROADMAP.md
 added: 2026-10-03
 closed: 2026-10-03
+pr: 1326
 verify: uv run pytest -q tests/unit/test_import_boundary_check.py -k 'dotted or compartments_may_not_import' && uv run python tools/import_boundary_check.py
 ---
 

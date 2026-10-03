@@ -6,6 +6,7 @@ feature: one-home-for-constants
 touches: src/anesthesia_sim/core/units.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/app/formatting.py, tests/unit
 added: 2026-10-03
 closed: 2026-10-03
+pr: 1326
 verify: uv run pytest -q tests/unit/test_units.py tests/unit/test_supported_ranges.py tests/unit/test_formatting.py
 ---
 
