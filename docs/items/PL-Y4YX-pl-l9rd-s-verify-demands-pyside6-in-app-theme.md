@@ -136,8 +136,8 @@ statements in conflict" is no longer the finding.
 contradiction pointed at is unresolved in the tree: whether `app/theme.py`
 keeps its no-toolkit rule, or the stylesheet-composing helpers centralise into
 it. They are still spread across `qt_widgets.py`, `run_view.py`, `qt_chart.py`
-and `simulation_view.py`. The item stays `needs-decision` on that question
-alone.
+and `simulation_view.py`. [superseded 2026-10-03: answered, and `ready` since] The item stayed `needs-decision` on that question
+alone until the design round.
 
 ## Design round 2026-10-03: the composers measured
 
