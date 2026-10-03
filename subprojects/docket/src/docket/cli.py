@@ -4185,11 +4185,14 @@ def _untagged_warning(version: str, root: Path, git: Runner) -> str:
 
     `TAG_WORKFLOW` tags every cut on merge, so reaching here means its run
     failed or never ran, and the remedy is running it again rather than
-    reconstructing the tag by hand. The line beneath says which commit it will
-    tag from here, so what is about to be tagged can be seen before it is. It
-    once printed a `--grep` for a subject no cut is written with and a
-    `RELEASE_COMMIT` to fill from it (`PL-QHCW`), and until `PL-2FY6` the four
-    lines the owner pasted after every cut.
+    reconstructing the tag by hand. Running it is the session's (`PL-F23S`):
+    a new dispatch on `main`, since a re-run of the red one runs the commit it
+    first ran on, and the owner keeps only the dispatch GitHub refuses a
+    session. The line beneath says which commit it will tag from here, so what
+    is about to be tagged can be seen before it is. It once printed a `--grep`
+    for a subject no cut is written with and a `RELEASE_COMMIT` to fill from it
+    (`PL-QHCW`), and until `PL-2FY6` the four lines the owner pasted after
+    every cut.
     """
     name = f"v{version.lstrip('v')}"
     return "\n".join(
@@ -4198,9 +4201,15 @@ def _untagged_warning(version: str, root: Path, git: Runner) -> str:
             "mapped to the release it went out in. That gap cannot be closed later",
             f"with any confidence. {TAG_WORKFLOW} tags a cut once it merges,",
             "so its run failed or never ran, and its log says which. Once the cause is",
-            "fixed the project owner runs it again, from Actions > tag-release > Run",
-            "workflow, or from a clone on the Mac; a session's tag push is dropped without",
-            "an error (PL-N936), and the script reads the tag back and says so:",
+            "fixed the session runs it again, as a new run on main rather than a re-run",
+            "of the red one: actions_run_trigger with method run_workflow, workflow_id",
+            "tag-release.yml and ref main, then reads the tag back:",
+            "",
+            f"  {tag_confirmation(name)}",
+            "",
+            "Where GitHub refuses that dispatch, the project owner runs it from Actions >",
+            "tag-release > Run workflow, or from a clone on the Mac; a session's tag push",
+            "is dropped without an error (PL-N936), and the script reads the tag back:",
             "",
             f"  python3 {TAG_SCRIPT} --apply",
             "",

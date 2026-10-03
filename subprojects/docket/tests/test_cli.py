@@ -1777,6 +1777,10 @@ def test_the_untagged_warning_names_the_commit_the_tag_script_will_tag(tmp_path:
 
     assert f"  python3 {TAG_SCRIPT} --apply" in warning, warning
     assert f"From main here, that is {cut} PL-TR4N: cut v0.2.5." in warning
+    # `PL-F23S`: the re-run is the session's, as a new dispatch read back after.
+    assert "fixed the session runs it again, as a new run on main" in warning, warning
+    assert "method run_workflow" in warning, warning
+    assert f"  {tag_confirmation('0.2.5')}" in warning, warning
 
 
 def test_a_release_is_refused_where_git_will_not_say_which_tags_exist(
