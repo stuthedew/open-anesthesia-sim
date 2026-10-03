@@ -5421,6 +5421,19 @@ written). It is `ready` rather than `blocked` behind `PL-2FZ9`, so the
 second profile can be loaded, because that gap is the whole of its exposure. It
 is product-lane work and is listed in that group.
 
+**`PL-5291` joined this list on 2026-10-03, after the freeze, under the same
+exception.** Filed that day by the first review of `#1292`, it is a run standing
+on the 24-hour supported run length that reads as an ordinary paused run, and
+offers Start, until a refused step stops it: a branch forked on 86 400.0 s, that
+branch after a reset, and a trunk halted on a mark at 24:00:00. Its triage classed
+it `defect` and `safety`, on the precedent of `PL-N3N5` and on `docs/MODEL.md`
+§ "Supported run length", which forbids presenting that stop as a pause. It would
+re-enter by presence as well, read from the code at the `v0.5.0` tag rather than
+measured: that release, cut the day this list froze, already shipped the 24-hour
+stop, branches and step-exact bookmark halts, and its `_open_at` already opened a
+branch without setting the limit's reason. It is product-lane work and is listed
+in that group.
+
 **Three kinds of group, and only the third is a precondition.** The first is
 debt inside this milestone's own Required scope, cleared *by* it per § "Debt
 inside the milestone's own scope" - the test is whether `Required scope` below
@@ -5636,12 +5649,13 @@ named here, for the reason beat 3 gives.
 
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
 
-**Cleared before v0.6.0 begins, the product lane - 48 entries**
+**Cleared before v0.6.0 begins, the product lane - 49 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
 - PL-2MD9 (M) "The propagator's constant state row drifts and the squarings amplify it: 2.28e+222 at an alveolar volume of 1e-19 L, where governing_equations.UNIT_STATE promises no step can perturb it"
 - PL-3JP0 (S) Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it
+- PL-5291 (S) A branch built standing on the 24 h supported run length still offers Start, because SimulationController._open_at never sets _supported_limit_reason, the only limit signal the transport's stopped state reads, against Transport's own docstring
 - PL-59WB (S) chart_time_base.fit_to_run takes a parameter called run_length_s but is passed a case instant, which is the duration_s-was-not-a-duration defect one module over
 - PL-624C (S) test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis draws its own frame, so it cannot detect a fork that fails to redraw
 - PL-73ZN (S) RunDefinition bounds opened_at_s below at induction but not above, so a definition may declare an opening past the 24 h envelope the model is claimed over
