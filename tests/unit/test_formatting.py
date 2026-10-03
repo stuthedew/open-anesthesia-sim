@@ -11,6 +11,8 @@ string on the panel - stays in `tests/unit/test_simulation_view.py`, which
 is where a displayed value can be read off the control that carries it.
 """
 
+import math
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -1159,12 +1161,72 @@ def test_format_agent_volume_leaves_an_impossible_negative_visible() -> None:
     assert format_agent_volume(-2.0) == "-2.0 L"
 
 
-def test_format_agent_residual_keeps_the_order_of_magnitude() -> None:
-    """The two residual lines exist for their exponent, so they keep the exponent form."""
+def test_format_agent_residual_prints_the_power_of_ten_it_lies_below() -> None:
+    """The two residual lines exist for their order of magnitude (`PL-TG60`), and print only it."""
 
-    assert format_agent_residual(1.5e-13) == "1.500e-13 L"
-    assert format_agent_residual(-3.289e-15) == "-3.289e-15 L"
-    assert format_agent_residual(0.0) == "0.000e+00 L"
+    assert format_agent_residual(1.5e-13) == "<1e-12 L"
+    assert format_agent_residual(5.601e-14) == "<1e-13 L"
+    assert format_agent_residual(3.289e-15) == "<1e-14 L"
+    assert format_agent_residual(0.5) == "<1e+00 L"
+    assert format_agent_residual(12.0) == "<1e+02 L"
+
+
+def test_format_agent_residual_prints_no_digit_a_last_bit_change_redraws() -> None:
+    """Regression for `PL-3PJZ`: one passing check, before and after a correct change, reads alike.
+
+    `PL-2MD9` moved the propagator at the last bits, and the same branch sample
+    read `5.601e-14 L` on the v0.5.21 tag and `5.609e-14 L` on v0.5.22, with
+    the residual moving by up to 5.9 times elsewhere inside one decade.
+    Four significant digits printed that rounding as if it were a reading.
+    """
+
+    assert format_agent_residual(5.601e-14) == format_agent_residual(5.609e-14)
+    assert format_agent_residual(1.1e-14) == format_agent_residual(9.4e-14)
+
+
+def test_format_agent_residual_drops_the_sign_the_rounding_chose() -> None:
+    """A passing residual's sign is the direction its rounding fell, so the two lines read alike.
+
+    The signed value is still on screen where it means something: a check
+    that fails halts the run, and the failure notice prints it to six figures.
+    """
+
+    assert format_agent_residual(-3.289e-15) == "<1e-14 L"
+    assert format_agent_residual(-3.289e-15) == format_agent_residual(3.289e-15)
+
+
+@pytest.mark.parametrize("power", range(-17, 3))
+def test_format_agent_residual_bound_is_strict_and_tight_at_every_power_of_ten(power: int) -> None:
+    """The printed decade is exact for the float's own value, either side of each power of ten.
+
+    `math.log10` would place the float written `1e-16`, which is 9.99...e-17
+    exactly, in the decade above; the bound must be the one it lies in.
+    """
+
+    nearest = float(f"1e{power}")
+
+    for litres in (math.nextafter(nearest, 0.0), nearest, math.nextafter(nearest, math.inf)):
+        rendered = format_agent_residual(litres)
+        exponent = int(rendered.removeprefix("<1e").removesuffix(" L"))
+
+        assert Decimal(litres) < Decimal(10) ** exponent, rendered
+        assert Decimal(litres) >= Decimal(10) ** (exponent - 1), rendered
+
+    assert format_agent_residual(1e-16) == "<1e-16 L"
+
+
+def test_format_agent_residual_reads_zero_as_zero() -> None:
+    """Exactly zero, as before a run starts, is exact and needs no bound."""
+
+    assert format_agent_residual(0.0) == "0 L"
+    assert format_agent_residual(-0.0) == "0 L"
+
+
+@pytest.mark.parametrize("litres", [math.nan, math.inf, -math.inf])
+def test_format_agent_residual_leaves_a_non_finite_value_visible(litres: float) -> None:
+    """The accounting check cannot produce one; if it does, it shows instead of being bounded."""
+
+    assert format_agent_residual(litres) == f"{litres} L"
 
 
 def test_the_model_keeps_precision_the_display_throws_away() -> None:

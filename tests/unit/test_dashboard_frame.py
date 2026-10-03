@@ -1296,7 +1296,7 @@ def test_the_delivered_dial_is_held_in_percent_and_read_as_a_fraction() -> None:
 
 
 def test_refresh_view_reports_valid_agent_accounting() -> None:
-    """The three amounts at one decimal of a litre (`PL-TG60`); the residuals in exponent form."""
+    """The three amounts at one decimal of a litre (`PL-TG60`); each residual as a decade."""
 
     panel = accounting(_snapshot(passes_validation=True))
 
@@ -1307,8 +1307,8 @@ def test_refresh_view_reports_valid_agent_accounting() -> None:
         "Delivered: <0.1 L\n"
         "Exhausted: <0.1 L\n"
         "Stored: <0.1 L\n"
-        "Unaccounted: 1.500e-13 L\n"
-        "Absolute error: 1.500e-13 L"
+        "Unaccounted: <1e-12 L\n"
+        "Absolute error: <1e-12 L"
     )
 
 
