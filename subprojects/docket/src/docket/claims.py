@@ -98,7 +98,7 @@ from pathlib import Path
 
 from .config import Config
 from .model import CLOSED_STATUSES, parse_front_matter
-from .release import NOTES_DIR
+from .release import NOTES_DIR, notes_name
 from .store import ID_PATTERN
 from .vcs import (
     BRANCH_ID_RE,
@@ -1514,7 +1514,8 @@ def _cuts(
         mine = bool(head) and run(["merge-base", head, "HEAD"], root).strip() == head
         for version in _cut_versions(tip, base, notes_dir, released, root, run):
             written = run(
-                ["log", "-1", "--format=%H%x1f%aI", tip, "--", f"{prefix}v{version}.md"], root
+                ["log", "-1", "--format=%H%x1f%aI", tip, "--", f"{prefix}{notes_name(version)}"],
+                root,
             )
             commit, _, stamp = written.strip().partition("\x1f")
             try:

@@ -137,6 +137,7 @@ from docket.claims import (  # noqa: E402
 )
 from docket.config import Config  # noqa: E402
 from docket.config import load as load_config  # noqa: E402
+from docket.model import SEMVER_PATTERN  # noqa: E402
 from docket.vcs import (  # noqa: E402
     BRANCH_ID_RE,
     DEFAULT_BRANCHES,
@@ -153,7 +154,7 @@ from docket.vcs import (  # noqa: E402
 
 #: What `make release` writes and `git tag -a vX.Y.Z` marks. Anchored, so a
 #: subject that merely mentions a release is not one.
-RELEASE_RE = re.compile(r"^Release\s+v\d+\.\d+\.\d+")
+RELEASE_RE = re.compile(rf"^Release\s+v{SEMVER_PATTERN}")
 
 #: `%p` is empty only for a commit whose parents this checkout does not hold.
 #: A walk that emits one ran off the end of a truncated history instead of

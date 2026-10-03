@@ -22,6 +22,9 @@ from docket.release import (
     is_untagged,
     milestones,
     notes_claims,
+    notes_files,
+    notes_name,
+    notes_version,
     outstanding_roadmap_edits,
     prepare_bump,
     read_version,
@@ -2609,3 +2612,21 @@ def test_notes_added_answers_every_commit_and_keeps_a_silence_distinct(tmp_path:
     }
     assert notes_added([cut], work, runner=lambda args, root: SILENT) is None
     assert notes_added([], work) == {}
+
+
+def test_a_notes_file_name_gives_back_the_version_notes_name_wrote() -> None:
+    """`notes_version` inverts `notes_name`, and names nothing else (`PL-M6GY`)."""
+    assert notes_version(notes_name("0.5.10")) == "0.5.10"
+    assert notes_version(notes_name("v0.5.10")) == "0.5.10"
+    for name in ("README.md", "0.5.10.md", "v0.5.10.md.bak", "v0.5.md", "vnext.md"):
+        assert notes_version(name) == "", name
+
+
+def test_the_notes_files_come_back_by_version_and_without_a_readme(tmp_path: Path) -> None:
+    """By name, `v0.5.10.md` sorts before `v0.5.9.md` (`PL-M6GY`)."""
+    releases = tmp_path / "docs" / "releases"
+    releases.mkdir(parents=True)
+    for name in ("v0.5.9.md", "v0.5.10.md", "README.md", "v0.4.0.md"):
+        (releases / name).write_text("# notes\n", encoding="utf-8")
+
+    assert [path.name for path in notes_files(tmp_path)] == ["v0.4.0.md", "v0.5.9.md", "v0.5.10.md"]

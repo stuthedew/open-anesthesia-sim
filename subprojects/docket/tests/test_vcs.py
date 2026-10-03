@@ -2607,6 +2607,28 @@ def test_a_ref_carrying_release_notes_the_base_lacks_is_cutting_that_version() -
     )
 
 
+def test_a_ref_cuts_only_the_versions_its_notes_are_named_for_oldest_first() -> None:
+    """`PL-M6GY`: any added leaf read as a version, and versions ordered by name."""
+    report = cuts_in_flight(
+        ROOT,
+        notes_dir="docs/releases",
+        runner=_cut_runner(
+            {
+                "origin/claude/a": [
+                    "docs/releases/README.md",
+                    "docs/releases/v0.5.10.md",
+                    "docs/releases/v0.5.9.md",
+                ],
+                "origin/claude/b": ["docs/releases/README.md"],
+            }
+        ),
+    )
+
+    assert [(branch.ref, branch.versions) for branch in report.branches] == [
+        ("origin/claude/a", ("0.5.9", "0.5.10"))
+    ]
+
+
 def test_a_version_the_base_already_holds_is_not_in_flight() -> None:
     """The squash-merge case: the branch stays unlanded long after its release merged.
 
@@ -3086,6 +3108,28 @@ def test_a_cut_whose_notes_no_commit_reads_as_adding_declines() -> None:
     assert window.version == "0.3.8"
     assert window.landed == ()
     assert "docs/releases/v0.3.8.md" in window.declined
+
+
+def test_a_cut_window_takes_the_newest_version_by_number_rather_than_by_name() -> None:
+    """`PL-M6GY`: taken as the last of the names sorted, `0.5.9` outranked `0.5.10`."""
+    window = cut_window(
+        ROOT,
+        runner=_cut_window_runner(added=("docs/releases/v0.5.9.md", "docs/releases/v0.5.10.md")),
+    )
+
+    assert window.version == "0.5.10"
+
+
+def test_a_readme_added_beside_the_notes_is_not_a_cut() -> None:
+    """`PL-M6GY`: its stem read as a version called `README`."""
+    alone = cut_window(ROOT, runner=_cut_window_runner(added=("docs/releases/README.md",)))
+    beside = cut_window(
+        ROOT,
+        runner=_cut_window_runner(added=("docs/releases/README.md", "docs/releases/v0.3.8.md")),
+    )
+
+    assert (alone.version, alone.landed, alone.declined) == ("", (), "")
+    assert beside.version == "0.3.8"
 
 
 # `filed_with_work`: the shape `PL-3CBS`'s landed-work advisory cannot reach -

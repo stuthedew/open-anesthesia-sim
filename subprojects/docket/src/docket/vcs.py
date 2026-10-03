@@ -46,7 +46,15 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from .model import CLOSED_STATUSES, parse_front_matter, parse_item
-from .release import CUT_FLAGS, NOTES_DIR, cut_query, version_in
+from .release import (
+    CUT_FLAGS,
+    NOTES_DIR,
+    cut_query,
+    notes_name,
+    notes_version,
+    version_in,
+    version_key,
+)
 from .store import ID_PATTERN
 
 # The default branch, in the order it is looked for: a branch whose tip that
@@ -3494,10 +3502,13 @@ def cut_window(
         ).splitlines()
         if line.strip().startswith(prefix)
     ]
-    if not added:
+    # By the version each notes file is named for, so a README or a draft added
+    # beside them is not a cut, and the newest by number rather than by name,
+    # which would rank 0.5.9 above 0.5.10 (`PL-M6GY`).
+    paths = {version: name for name in added if (version := notes_version(name[len(prefix) :]))}
+    if not paths:
         return CutWindow(declined=run.reason)
-    paths = {name[len(prefix) :].removesuffix(".md").lstrip("v"): name for name in added}
-    version = sorted(paths)[-1]
+    version = max(paths, key=version_key)
     # From the commit that wrote the notes, not from `HEAD`: merging the base in
     # moves the merge-base to the base's tip (`PL-C0C0`). Newest first, so notes
     # deleted and written again are measured from the copy `HEAD` holds.
@@ -3581,7 +3592,7 @@ def _cut_versions(
 ) -> tuple[str, ...]:
     """The versions a ref is cutting: notes it changed since its fork that the base lacks.
 
-    Without their `v`, sorted. Shared by `cuts_in_flight` and
+    Without their `v`, oldest first. Shared by `cuts_in_flight` and
     `claims.holdings`'s cut holds, so the two cannot disagree about what a
     ref is cutting.
     """
@@ -3599,8 +3610,9 @@ def _cut_versions(
                 )
                 if (leaf := path.rsplit("/", 1)[-1])
                 and leaf not in on_base
-                and (version := leaf.removesuffix(".md").lstrip("v"))
-            }
+                and (version := notes_version(leaf))
+            },
+            key=version_key,
         )
     )
 
@@ -3608,7 +3620,7 @@ def _cut_versions(
 def _cut_date(ref: str, notes_dir: str, version: str, root: Path, run: Runner) -> date | None:
     """When the notes for a version were written on a ref, or `None` if unreadable."""
     stamp = run(
-        ["log", "-1", "--format=%cI", ref, "--", f"{notes_dir}/v{version}.md"], root
+        ["log", "-1", "--format=%cI", ref, "--", f"{notes_dir}/{notes_name(version)}"], root
     ).strip()
     try:
         return datetime.fromisoformat(stamp).astimezone(UTC).date()
