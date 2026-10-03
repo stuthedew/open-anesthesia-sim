@@ -98,6 +98,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
 
 from docket.store import ID_PATTERN  # noqa: E402
+from docket.vcs import ITEM_FILE_RE  # noqa: E402
 
 DEAD_ENDS = REPO / "docs" / "dead-ends.md"
 ITEMS = REPO / "docs" / "items"
@@ -150,12 +151,15 @@ def emitted(text: str) -> str:
 
 
 def known_ids() -> set[str]:
-    ids = set()
-    for path in ITEMS.glob("*.md"):
-        parts = path.name.split("-")
-        if len(parts) >= 2:
-            ids.add(f"{parts[0]}-{parts[1]}")
-    return ids
+    """Every id an item's file in the store carries, by `vcs.ITEM_FILE_RE`.
+
+    That is the reading every `docket` reader of the store's history makes of
+    a name. A split on hyphens stood here and took a file whose name carries
+    no slug for an item, under an id that kept its `.md` (`PL-5QG4`).
+    """
+    return {
+        found.group(1) for path in ITEMS.glob("*.md") if (found := ITEM_FILE_RE.match(path.name))
+    }
 
 
 def budget(text: str) -> list[str]:

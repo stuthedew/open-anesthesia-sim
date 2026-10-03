@@ -16,6 +16,12 @@ from pathlib import Path
 
 from .model import Item, parse_item, render_item, with_front_matter_field, with_front_matter_value
 
+# Which files the store reads, and not whose they are. The store takes an
+# item's id from its front matter, and reads every markdown file so that
+# `docket check` sees each one; a reader that has only a name - a tree listing,
+# a diff, a glob - takes the id from it by `vcs.ITEM_FILE_RE`, which is the
+# grammar `filename_for` writes. A file named otherwise is still read here, and
+# `checks._check_filenames` names it, as it names any drifted slug (`PL-5QG4`).
 ITEM_GLOB = "*.md"
 
 # Ids are random, not sequential, and that is the point. A sequential id has
