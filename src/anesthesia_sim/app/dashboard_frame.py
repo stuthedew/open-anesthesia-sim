@@ -486,8 +486,9 @@ COMPARING_AGENT_LOCK_TEXT: Final = "Locked while comparing"
 
 # The agent-accounting panel. The amounts are litres of equivalent pure agent
 # gas - not the unit anyone consumes agent in - so the caption says so
-# (`PL-TG60`); the two residual lines keep the exponent form because their
-# whole purpose is an order of magnitude.
+# (`PL-TG60`); the two residual lines print only the power of ten they lie
+# below, because an order of magnitude is their whole purpose and the only
+# digit a rounding residual has (`PL-3PJZ`).
 ACCOUNTING_HEADING: Final = "Agent accounting validation"
 ACCOUNTING_VALID_TEXT: Final = "Valid"
 ACCOUNTING_FAILED_TEXT: Final = "Validation failed"
@@ -1233,8 +1234,9 @@ class Accounting:
         detail: One sentence under it saying what the status means.
         amounts: Five lines: delivered, exhausted and stored agent at the
             resolution `format_agent_volume` derives, then the unaccounted
-            amount and the absolute error in exponent form, since an order
-            of magnitude is what those two are for (`PL-TG60`).
+            amount and the absolute error as the power of ten each lies
+            below, since an order of magnitude is what those two are for
+            (`PL-TG60`, `PL-3PJZ`).
     """
 
     status: StatusWord

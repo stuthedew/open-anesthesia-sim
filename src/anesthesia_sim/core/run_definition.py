@@ -334,21 +334,25 @@ class RunDefinition:
         `_reached_s` - a reset in place, a deserializer restoring a saved run -
         would have to re-establish it rather than assume it.
 
-        Nor an upper bound, unlike the opening, so called directly it accepts
-        any later instant. The application moves it only to the instant a step
-        count stands at - each step's, or a branch's fork (`app/controller.py`)
-        - and `SimulationState.advance` refuses the step that would carry that
-        count past the supported run length before the reach could follow it.
-        A bound here would disagree with that guard by a float at the few
-        computed steps whose last step lands past the span (`PL-8H2R`), and
-        refuse a step already taken.
+        Its upper bound is the opening's, the end of the supported run length,
+        so a reach moved past it is refused before the run definition could be
+        evaluated over a stretch the model is not claimed for. The application
+        moves it only to the instant a step count stands at - each step's, or a
+        branch's fork (`app/controller.py`) - and `SimulationState.advance`
+        refuses the step that would carry that count past the span, so this
+        never refuses a step already taken: `maximum_step_count` decides the
+        last step on the time it lands at, which is the instant passed here
+        (`PL-8H2R`).
 
         Raises:
-            SimulationConfigurationError: `instant_s` is not finite, or is
-                earlier than the time already reached. A run cannot un-happen,
+            SimulationConfigurationError: `instant_s` is not finite, is
+                earlier than the time already reached, or is past the
+                supported run length (`core/supported_ranges.py`'s
+                `require_supported_case_instant`). A run cannot un-happen,
                 and rewinding the reach would leave the segments recorded
                 after it describing a stretch the run definition would then refuse to
-                evaluate.
+                evaluate. Checked before the reach moves, so a refused call
+                leaves it where it was.
         """
 
         if not isfinite(instant_s):
@@ -360,6 +364,8 @@ class RunDefinition:
             raise SimulationConfigurationError(
                 f"a run cannot go back from {self._reached_s} s to {instant_s} s"
             )
+
+        require_supported_case_instant(instant_s)
 
         self._reached_s = instant_s
 

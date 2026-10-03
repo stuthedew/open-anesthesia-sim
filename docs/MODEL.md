@@ -5056,17 +5056,24 @@ that would carry a run past it is refused by `SimulationState.advance()`,
 which raises `SimulationDomainLimitError` before anything advances. A run
 handed a point past it instead of reaching one - a `SimulationState` built at
 a step count beyond it, or a `RunDefinition` opening at an instant beyond it,
-which is how a branch is built - is refused where it is built, with
-`SimulationConfigurationError`, because there the value handed in is what is
-wrong (`PL-BMY5`, `PL-73ZN`). The step count a run stops on at the limit is
-one it may be built at; only the step from it is refused. The step's guard and
-the state's read that count from one derivation, `maximum_step_count`, which at
-the shipped 0.1 s step puts the last step exactly on 24 hours and at a few
-computed steps rounds to one step too many or one too few (`PL-8H2R`).
+which is how a branch is built, or moved to one - is refused where it is
+handed in, with `SimulationConfigurationError`, because there the value handed
+in is what is wrong (`PL-BMY5`, `PL-73ZN`). The step count a run stops on at
+the limit is one it may be built at; only the step from it is refused. The
+step's guard and the state's read that count from one derivation,
+`maximum_step_count`: the largest count whose simulated time - the count times
+the step, rounded once, which is `elapsed_s` - is no later than 24 hours. At the
+shipped 0.1 s step that puts the last step exactly on 24 hours. It is decided on
+that product rather than on the quotient of 24 hours by the step, which at some
+computed steps rounds a whole step either way - to a last step a float past 24
+hours, or one short of a step landing on it - so a count is accepted exactly
+where the instant it stands at is, and a branch is built or refused alike
+whether it is taken from its parent's count or its parent's instant
+(`PL-8H2R`).
 
 | Quantity | Limit | Declared and refused by |
 | --- | --- | --- |
-| Elapsed simulated time | 0 to 24 h (86 400 s) | `core/supported_ranges.py`, enforced on `SimulationState` and on a `RunDefinition`'s opening |
+| Elapsed simulated time | 0 to 24 h (86 400 s) | `core/supported_ranges.py`, enforced on `SimulationState` and on a `RunDefinition`'s opening and reach |
 
 **It is the case's 24 hours and not each run's, which matters once a case can
 be branched.** The limit is what this model's omissions are argued against
@@ -7919,10 +7926,36 @@ own label rounds away would leave a reader unable to tell which value is the
 setting in force.
 
 **The agent-accounting panel's three amounts are displayed to 0.1 L, and its
-two residual lines in scientific notation, because they answer different
-questions** (`PL-TG60`, 2026-09-15). The residual lines are a numerical
-diagnostic whose job is to make a residual of order 10⁻¹² L visible against
-amounts of order 1 to 100 L, which no fixed decimal count can do. The amounts
+two residual lines as the power of ten each lies below, because they answer
+different questions** (`PL-TG60`, 2026-09-15; the residuals' form project
+owner, 2026-10-03, ratified, over one significant digit, over the nearest
+decade and over keeping the sign, `PL-3PJZ`). The residual lines are a numerical diagnostic whose job is to
+make a residual of order 10⁻¹² L visible against amounts of order 1 to 100 L,
+which no fixed decimal count can do.
+
+**The decade is the only digit a passing residual has.** It is the rounding
+left over from summing the initial, delivered, exhausted and stored amounts,
+so its mantissa and its sign are set by the order the arithmetic ran in rather
+than by anything modelled, and a correct change at the last bits redraws them.
+`PL-2MD9`'s change to the propagator is the measurement. Replaying the 81-run
+protocol `PL-KXW1` records (three agents, three dial pairs, three cardiac
+outputs, three fresh gas flows; each run forked at minute 30 with the dial set
+back and its branch played 30 minutes) on the v0.5.21 tag and on v0.5.22, a
+branch's residual moved by up to 5.9 times between the two trees, and of 2,511
+branch samples four significant digits read differently on 1,975, two on 634,
+one on 154, and the decade on 22, where the two trees' residuals fall either
+side of a power of ten. Every residual was below 2.1 × 10⁻¹¹ L and every check
+passed in both; a run's own path, which `PL-2MD9` left bit-identical, read
+identically in every form. So each line prints `<1e-13 L`: the smallest power
+of ten the magnitude lies strictly below, computed from the float's exact
+value, with `<` meaning what it means on the amounts. The sign goes with the
+mantissa, so both lines read alike; where it means something, in a check that
+fails, the run halts and the failure notice prints the signed values to six
+figures. Exactly zero reads `0 L`. `format_agent_residual` holds the form, and
+`tests/unit/test_formatting.py` pins it, including the pair of strings
+`5.601e-14 L` and `5.609e-14 L` that the two trees printed for one sample.
+
+The amounts
 are read against each other — delivered against exhausted plus stored — and
 against a reader's sense of scale, so they take one uniform resolution on the
 same argument as the readouts above. Perturbing one stored coefficient by one
@@ -7937,7 +7970,7 @@ SD by 24 h. The six decimals printed until `PL-TG60` asserted a millilitre of
 a quantity the parameters place to within a decilitre, and the justification
 this section carried for them — that the amounts made the residual visible —
 did not hold, since a residual twelve orders below the last printed digit is
-visible only on the lines that print it in scientific notation. Delivered
+visible only on the lines that print its order of magnitude. Delivered
 agent carries no parameter uncertainty, being the dial times the flow times
 the time, and takes the same resolution so the three amounts read at one
 scale. The unit is stated on the panel as this document states it, litres of
