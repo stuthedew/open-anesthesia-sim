@@ -86,9 +86,10 @@ from anesthesia_sim.core.supported_ranges import (
 )
 
 # The step each simulation tick advances by. What range of steps is
-# *supported* is `core/`'s to declare: `core.uptake_system.MAXIMUM_SIMULATION_STEP_S`
-# is that declaration, and a step above it is refused there rather than
-# displayed here. This is a cadence choice inside that range, at its ceiling
+# *supported* is `core/`'s to declare: `core.uptake_system.MINIMUM_SIMULATION_STEP_S`
+# and `MAXIMUM_SIMULATION_STEP_S` are that declaration, and a step outside them
+# is refused there rather than displayed here. This is a cadence choice inside
+# that range, at its ceiling
 # deliberately: running finer buys nothing a reader could see (halving the
 # step moves a displayed fraction by around 1e-16), and running coarser
 # costs control resolution. The two coinciding is a fact about this

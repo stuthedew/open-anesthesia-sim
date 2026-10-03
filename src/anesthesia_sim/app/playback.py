@@ -95,6 +95,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.uptake_system import require_supported_simulation_step
 
 #: How far the derived step count may sit from a whole number and still be
 #: treated as that whole number. The conversion is a ratio of two float
@@ -140,17 +141,22 @@ class PlaybackRate:
         Args:
             tick_interval_s: Real seconds the run loop waits between
                 wakeups. Must be positive.
-            simulation_step_s: Simulated seconds one step advances. Must be
-                positive, and is returned to the caller unchanged in every
-                case — this method decides how many steps a tick takes and
-                never how large one is.
+            simulation_step_s: Simulated seconds one step advances. Must be a
+                step `core` supports, since it is a run's step, and is
+                returned to the caller unchanged in every case — this method
+                decides how many steps a tick takes and never how large one
+                is.
 
         Returns:
             The whole number of steps, at least one.
 
         Raises:
-            SimulationConfigurationError: If either interval is not
-                positive, or if this rate does not land on a whole number
+            SimulationConfigurationError: If the tick interval is not
+                positive and finite; if the step is outside
+                `core.uptake_system`'s supported range; if the step count
+                these give is too large to count, which a vanishing step or
+                an enormous tick used to raise as a bare `OverflowError`
+                (`PL-YZ17`); or if this rate does not land on a whole number
                 of steps at these intervals. Refusing is the point: the
                 alternatives are a step of a different size or a run
                 playing at a rate other than the one displayed.
@@ -162,13 +168,17 @@ class PlaybackRate:
                 f"not {tick_interval_s!r}"
             )
 
-        if simulation_step_s <= 0.0 or not math.isfinite(simulation_step_s):
-            raise SimulationConfigurationError(
-                f"simulation_step_s must be a positive number of simulated seconds, "
-                f"not {simulation_step_s!r}"
-            )
+        require_supported_simulation_step(simulation_step_s)
 
         exact = self.multiplier * tick_interval_s / simulation_step_s
+
+        if not math.isfinite(exact):
+            raise SimulationConfigurationError(
+                f"playing at {self.multiplier}x real time with a {tick_interval_s} s tick "
+                f"and a {simulation_step_s} s step needs more steps per tick than can be "
+                "counted"
+            )
+
         steps = round(exact)
 
         if steps < 1 or not math.isclose(exact, steps, rel_tol=STEP_COUNT_TOLERANCE):

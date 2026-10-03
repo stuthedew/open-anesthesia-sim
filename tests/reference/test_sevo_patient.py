@@ -10,7 +10,11 @@ from anesthesia_sim.core.parameters import (
     parse_agent_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.uptake_system import AgentUptakeSystem
+from anesthesia_sim.core.uptake_system import (
+    MAXIMUM_SIMULATION_STEP_S,
+    MINIMUM_SIMULATION_STEP_S,
+    AgentUptakeSystem,
+)
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 
@@ -32,14 +36,16 @@ MASS_BALANCE_RELATIVE_GATE = 1e-10
 
 # The steps docs/MODEL.md § "Step-refinement test" specifies, coarsest first.
 # All three are supported steps: the first is `MAXIMUM_SIMULATION_STEP_S`
-# itself, and refinement only moves inward.
+# itself, and the finest is 25 times `MINIMUM_SIMULATION_STEP_S`.
 STEP_REFINEMENT_STEPS_S = (0.1, 0.05, 0.025)
 STEP_REFINEMENT_HORIZON_S = 60.0
 
 # The release comparison tolerance docs/MODEL.md § "Step-refinement test"
 # requires be documented before tagging. Unchanged from the two-step version
-# of this gate: at 60 s the coarsest and finest steps differ by about 4e-4
-# relative in the alveolar fraction, an order of magnitude inside this.
+# of this gate, under the operator split, when the coarsest and finest steps
+# differed by about 4e-4 relative in the alveolar fraction at 60 s, an order of
+# magnitude inside this. Under the exact step they differ by about 1.4e-13
+# relative (measured 2026-10-03).
 STEP_REFINEMENT_RELATIVE_TOLERANCE = 5e-3
 STEP_REFINEMENT_ABSOLUTE_TOLERANCE = 1e-8
 
@@ -53,6 +59,25 @@ STEP_REFINEMENT_ABSOLUTE_TOLERANCE = 1e-8
 # room for another machine's rounding and still four orders below the 1.4e-11
 # a genuinely first-order method would show at these steps.
 STEP_REFINEMENT_SETTLED_GAP = 1e-14
+
+# How far the floor of the supported steps may leave a fraction from the
+# ceiling's after the same 60 s (PL-YZ17).
+#
+# Wider than the gap above because the floor takes the minute in 60 000 steps
+# rather than at most 2 400, and the residual is rounding accumulated once per
+# step. Measured 2026-10-03, it is 2.4e-15 in the alveolar fraction, 3.6e-16 in
+# vessel rich and 2.5e-16 in mixed venous. This bound allows about twelve times
+# the worst, the margin the gap above allows itself, and is still more than nine
+# orders of magnitude below one count of the last displayed digit, 1e-4. The gap
+# follows how the propagator rounds at that one step rather than the step
+# smoothly - steps near 1 ms reach 1.2e-14 - so against a machine that rounds
+# differently the margin is nearer two and a half times.
+FLOOR_SETTLED_GAP = 3e-14
+
+# The floor that bound and docs/MODEL.md's figures were measured at. Pinned so a
+# floor moved without re-measuring them fails here instead of passing quietly:
+# the gate passes at floors ten times lower too, so it cannot catch that itself.
+FLOOR_MEASURED_AT_S = 1e-3
 
 
 # The washout gate's run, matching the wash-in and washout legs of
@@ -278,12 +303,12 @@ def test_step_refinement_converges() -> None:
     Each comparison is between successive halvings rather than against the
     finest step, which is the ordinary grid-refinement idiom and is also
     what leaves the documented tolerance meaning exactly what it did when
-    this gate compared two steps. Comparing 0.1 s straight to 0.025 s is a
-    longer lever and does exceed the relative tolerance, in mixed venous
-    alone: at 60 s that compartment is only starting to fill, so 1.4e-6 in
-    fraction - a seventh of a count of the last displayed digit - is 0.55%
-    of it. Loosening a release tolerance to accommodate that would be a
-    change to what the gate certifies, and this item did not measure one.
+    this gate compared two steps. Under the operator split, comparing 0.1 s
+    straight to 0.025 s was a longer lever that exceeded the relative
+    tolerance in mixed venous alone: at 60 s that compartment is only
+    starting to fill, so the split's 1.4e-6 in fraction was 0.55% of it.
+    Under the exact step the two land about 4e-17 apart there (measured
+    2026-10-03).
 
     This is not the reference gate. `tests/reference/test_coupled_dynamics.py`
     asks whether the shipped composition converges to the *right* answer, by
@@ -315,6 +340,40 @@ def test_step_refinement_converges() -> None:
             f"{label} has not settled across the supported steps: successive "
             f"halvings move it by {gaps}, above the {STEP_REFINEMENT_SETTLED_GAP:.1e} "
             "a solution that does not depend on the step may move by"
+        )
+
+
+def test_the_smallest_supported_step_lands_on_the_ceilings_solution() -> None:
+    """The floor of the supported steps is held here, as the ceiling is (PL-YZ17).
+
+    `MINIMUM_SIMULATION_STEP_S` is declared at the finest step the solution
+    has been shown to be the shipped one at, and this is the showing: a
+    minute of the default wash-in taken in steps of the floor lands where the
+    same minute in steps of the ceiling does, to within accumulated rounding.
+    Below the floor that rounding is a growing share of what each step
+    changes, so a lower floor has to pass this test before it can be declared.
+
+    Compared against the ceiling rather than the gate's finest step, because
+    tying the two ends of the supported interval together is the claim; the
+    successive halvings above cover the steps between.
+    """
+
+    assert MINIMUM_SIMULATION_STEP_S == FLOOR_MEASURED_AT_S, (
+        f"the floor moved to {MINIMUM_SIMULATION_STEP_S} s; FLOOR_SETTLED_GAP and the "
+        'figures in docs/MODEL.md "Supported simulation step" were measured at '
+        f"{FLOOR_MEASURED_AT_S} s, so re-measure them at the new floor before moving it"
+    )
+
+    ceiling = _states_after_one_minute(MAXIMUM_SIMULATION_STEP_S)
+    floor = _states_after_one_minute(MINIMUM_SIMULATION_STEP_S)
+
+    for label, value in ceiling.items():
+        gap = abs(value - floor[label])
+
+        assert gap <= FLOOR_SETTLED_GAP, (
+            f"{label} after a minute of {MINIMUM_SIMULATION_STEP_S} s steps is {gap:.1e} from "
+            f"the {MAXIMUM_SIMULATION_STEP_S} s solution, above the {FLOOR_SETTLED_GAP:.0e} "
+            "the floor of the supported steps may sit from it"
         )
 
 

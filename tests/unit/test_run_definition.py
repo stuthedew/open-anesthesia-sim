@@ -58,7 +58,7 @@ from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     maximum_step_count,
 )
-from anesthesia_sim.core.uptake_system import AgentUptakeSystem
+from anesthesia_sim.core.uptake_system import MINIMUM_SIMULATION_STEP_S, AgentUptakeSystem
 
 SIMULATION_STEP_S = 0.1
 COMPARTMENT_STATES = (
@@ -1055,6 +1055,47 @@ def test_an_anchored_window_refuses_a_spacing_that_is_not_an_interval(spacing_s:
 
     with pytest.raises(SimulationConfigurationError):
         definition.evaluate_anchored(0.0, 10.0, spacing_s)
+
+
+@pytest.mark.parametrize("spacing_s", [5e-324, 1e-310])
+def test_an_anchored_window_refuses_a_spacing_too_fine_to_count(spacing_s: float) -> None:
+    """A spacing whose grid cannot be counted is refused by name (`PL-YZ17`).
+
+    `_anchored_columns` takes `int(stop_s // spacing_s)`, which is infinite
+    here, so `int()` raised a bare `OverflowError`, outside the simulator's
+    own exceptions.
+    """
+
+    _, definition, _ = _stepped_run(steps=100)
+
+    with pytest.raises(SimulationConfigurationError, match="than can be counted") as raised:
+        definition.evaluate_anchored(6.0, 7.0, spacing_s)
+
+    assert f"{spacing_s} s" in str(raised.value)
+
+
+def test_an_anchored_window_draws_a_spacing_finer_than_the_smallest_step_exactly() -> None:
+    """A spacing below `MINIMUM_SIMULATION_STEP_S` is accepted, and on purpose.
+
+    The floor exists because a run chains its step without limit, so the
+    rounding in each step's change accumulates over the run. A grid chains
+    its spacing at most once per column, so it cannot: every column here
+    still lands on the run's own state to the display tolerance. Flooring
+    the spacing would refuse narrow axes the controller draws today
+    (`PL-YZ17`).
+    """
+
+    _, definition, _ = _stepped_run(steps=100)
+    spacing_s = MINIMUM_SIMULATION_STEP_S / 10.0
+    window = definition.evaluate_anchored(6.0, 6.01, spacing_s)
+
+    assert len(window.times_s) > 90
+
+    for time_s, state in zip(window.times_s, window.states, strict=True):
+        exact = definition.state_at(time_s)
+
+        for index in COMPARTMENT_STATES:
+            assert abs(state.values[index] - exact[index]) < WORST_DISPLAY_DIFFERENCE
 
 
 def test_an_anchored_window_refuses_bounds_the_run_has_not_reached() -> None:
