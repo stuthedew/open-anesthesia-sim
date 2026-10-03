@@ -2,7 +2,7 @@
 id: PL-YXFF
 title: tests/unit/test_formatting.py:108 says tools/import_boundary_check.py forbids core/ importing app/; it matches top-level package names only and declares no such boundary, so the claim is false; declare core-to-app as a dotted boundary and correct the comment
 status: done
-touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, tests/unit/test_formatting.py, docs/ARCHITECTURE.md, docs/items/PL-L8RN-nothing-enforces-the-one-adapter-qsplitter.md
+touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, tests/unit/test_formatting.py, docs/ARCHITECTURE.md, docs/items/PL-L8RN-nothing-enforces-the-one-adapter-qsplitter.md, ROADMAP.md
 added: 2026-10-03
 closed: 2026-10-03
 verify: uv run pytest -q tests/unit/test_import_boundary_check.py -k 'dotted or compartments_may_not_import' && uv run python tools/import_boundary_check.py
