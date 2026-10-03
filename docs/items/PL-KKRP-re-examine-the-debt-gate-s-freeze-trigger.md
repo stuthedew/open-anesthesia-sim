@@ -52,3 +52,5 @@ The alternative the brief names, keeping "scoping freezes the list" with excepti
 ## Answers 2026-10-03
 
 The list freezes on the later of two days, the milestone's scoping and the preceding milestone's ship, and the 2026-09-16 exception folds into the rule as its first instance (project owner, 2026-10-03, ratified, over keeping "scoping freezes the list" with exceptions recorded against it). This reopens the 2026-09-16 ratified decision on the ordinary evidence above. The build is the prose change in `ROADMAP.md` § "The cadence" and `.claude/skills/docket/modes/release.md`; status moved to `ready` with this answer.
+
+The `verify:` asks both files to carry the trigger sentence with the phrase `freezes on the later of two days` on one line, so the build writes it that way.

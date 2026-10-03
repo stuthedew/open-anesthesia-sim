@@ -112,3 +112,5 @@ The alternative is to close on the counting - four constants, all pinned by name
 ## Answers 2026-10-03
 
 Build the screen as one unit test under `tests/unit/`, reading `dataclasses.fields()` defaults against `docs/MODEL.md`'s Selected-value column (project owner, 2026-10-03, ratified, over a home in `tools/core_vocabulary_check.py`, `tools/doc_check.py` or a third tool, and over closing on the counting). `touches` re-pointed from `tools, tests/unit, Makefile` to `tests/unit` and status moved to `ready` with this answer.
+
+The test file is named here so the `verify:` can name it before it exists: `tests/unit/test_core_constant_provenance.py`. The build thread may rename it with the `verify:`.

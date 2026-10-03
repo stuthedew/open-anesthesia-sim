@@ -149,3 +149,5 @@ Two things the build thread checks rather than assumes: `tools/agent_identity_ch
 ## Answers 2026-10-03
 
 Keep the no-toolkit rule; centralise the ten composers in one toolkit-free module beside `theme.py`, not inside it (project owner, 2026-10-03, ratified, over moving them into `theme.py` as strings, and over `theme.py` becoming the place the Qt styling layer is composed behind a toolkit import). Status moved to `ready` with this answer; the build thread names the module.
+
+The `verify:` asks that no `def ..._stylesheet` remain in `app/qt_widgets.py` or `app/run_view.py` once the composers have moved.
