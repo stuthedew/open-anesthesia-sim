@@ -18,6 +18,7 @@ no longer be written *before* the rewrite it was meant to guard - the 200 tests
 in `tests/unit/test_simulation_view.py` have already been replaced. The `v0.4.25`
 tag still holds them, so the record is recoverable rather than lost, and that is
 what keeps this worth doing rather than dropping.
+<!-- absent: tests/unit/test_simulation_view.py -->
 
 **Why it matters.** The port's definition of done is parity with an interface
 that now exists only in a tag, which means "is the port finished?" is currently
@@ -36,3 +37,4 @@ behaviour the Flet interface had, recovered from `v0.4.25`'s
 `tests/unit/test_simulation_view.py`, marked as ported, deliberately dropped
 with a reason, or outstanding - and the port's remaining items can be read off
 the outstanding rows.
+<!-- absent: tests/unit/test_simulation_view.py -->

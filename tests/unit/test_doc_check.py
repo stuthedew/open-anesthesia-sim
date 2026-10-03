@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import json
 import subprocess
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
+from typing import Any
 
 import doc_check
 import pytest
@@ -661,6 +662,45 @@ def test_a_citation_the_process_cannot_stat_is_reported_not_raised(
     # The regression is the second line, not the first: an unguarded stat
     # aborted `analyze` before any later citation was judged at all.
     assert any("cites `core/moved.py`" in e for e in errors)
+
+
+@pytest.mark.parametrize("token", ["/docs/MODEL.md", "/docs/*.md", "/core/thing.py"])
+def test_an_absolute_citation_is_repository_anchored(tmp_path: Path, token: str) -> None:
+    """`PL-H0CF`: the spelling `.claude/rules/` frontmatter uses is a repository path.
+
+    Read from the filesystem's root instead, a file that is there was reported
+    dangling, and an absolute pattern went to `glob`, which refuses one.
+    """
+    readme = f"{README}\nSee `{token}`.\n"
+
+    assert not any("cites `" in e for e in _errors(_repo(tmp_path, readme=readme)))
+
+
+def test_a_path_outside_the_repository_is_reported_wherever_the_check_runs(tmp_path: Path) -> None:
+    """`PL-H0CF`: one commit gave root and CI's unprivileged runner two verdicts.
+
+    Both tokens name a file that exists on this machine, outside the checkout,
+    and both resolved: the check was asking the machine rather than the tree.
+    The container's agent-proxy README resolved for a session's root and not
+    for the CI user, and `#880` failed in CI after passing where it was written.
+    """
+    outside = tmp_path / "outside.md"
+    outside.write_text("", encoding="utf-8")
+    readme = f"{README}\nSee `{outside}` and `../outside.md`.\n"
+
+    errors = _errors(_repo(tmp_path, readme=readme))
+
+    assert any(f"cites `{outside}`, which is not in this repository" in e for e in errors)
+    # Read under the package root this is `src/outside.md`, which is not there
+    # either; what matters is that no reading of it leaves the checkout.
+    assert any("cites `../outside.md`" in e for e in errors)
+
+
+def test_slashes_and_dots_alone_are_not_citations(tmp_path: Path) -> None:
+    """Read from the repository root, `../` would climb out of it and be reported."""
+    readme = f"{README}\nA `/` separates names; `./` is here and `../` is one up.\n"
+
+    assert not any("cites `" in e for e in _errors(_repo(tmp_path, readme=readme)))
 
 
 def test_identifiers_are_not_mistaken_for_paths(tmp_path: Path) -> None:
@@ -2720,15 +2760,100 @@ def test_workflow_paths_reads_a_quoted_path_as_one_word(tmp_path: Path) -> None:
     )
 
 
-def test_a_line_running_past_its_end_is_declined_rather_than_read(tmp_path: Path) -> None:
-    """A backslash continues the command onto the next line, which a one-line reading cannot place.
+# PL-Q9LK: a step's script was read one line at a time, so a here-document's
+# body was read as commands and a command continued past its line was declined.
+# It is cut where bash ends a line now, by docket's `shell.script_lines`.
+
+
+def test_workflow_commands_reads_a_script_as_bash_does() -> None:
+    """The brief's reproduction: read a line at a time, this was five commands where bash runs two.
+
+    The body and delimiter are the input of `python3 -`, and the backslash
+    carries the second command onto the line after it.
+    """
+    text = (
+        "      - run: |\n"
+        "          python3 - <<'PY'\n"
+        "          print('tools/harness/gone.py')\n"
+        "          PY\n"
+        "          python3 tools/doc_check.py \\\n"
+        "            check\n"
+    )
+
+    assert list(doc_check.workflow_commands(text)) == [
+        ("python3 - <<'PY'", 2),
+        ("python3 tools/doc_check.py \\\n  check", 5),
+    ]
+
+
+def test_a_heredoc_body_naming_a_path_runs_nothing(tmp_path: Path) -> None:
+    """The body is input, and the line after its delimiter is read again."""
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n",
+        "      - run: |\n"
+        "          python3 - <<'PY'\n"
+        "          bin/gone --flag\n"
+        "          PY\n"
+        "          tools/harness/gone.py\n",
+    )
+
+    errors = _errors(_with_workflow(_repo(tmp_path), body=body))
+
+    assert not any("bin/gone" in message for message in errors), errors
+    assert any(
+        "runs `tools/harness/gone.py`, which does not exist" in message for message in errors
+    )
+
+
+def test_a_command_continued_past_its_line_is_read_whole(tmp_path: Path) -> None:
+    """Its path is checked where it was declined, at the line it starts on.
+
+    YAML hands bash the block less its own indentation, so the `check` below
+    stands two spaces past `bin/runner\\`, and bash reads two words where
+    joining stripped lines would run `bin/runnercheck`.
+    """
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n",
+        "      - run: |\n"
+        "          bin/runner\\\n"
+        "            check\n"
+        "          python3 tools/harness/gone.py \\\n"
+        "            --flag\n",
+    )
+    report = doc_check.Report()
+
+    doc_check.check_workflow_paths(_with_workflow(_repo(tmp_path), body=body), report)
+
+    assert report.declined == []
+    assert report.errors == [
+        ".github/workflows/quality.yml:14: runs `tools/harness/gone.py`, which does not exist"
+    ]
+
+
+def test_a_quote_carried_across_lines_is_read_as_one_command(tmp_path: Path) -> None:
+    """Read a line at a time, both ends of the quote were declined and the path after it unread."""
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n",
+        '      - run: |\n          python3 -c "\n          import sys\n'
+        '          " tools/harness/gone.py\n',
+    )
+    report = doc_check.Report()
+
+    doc_check.check_workflow_paths(_with_workflow(_repo(tmp_path), body=body), report)
+
+    assert report.declined == []
+    assert any("runs `tools/harness/gone.py`" in message for message in report.errors)
+
+
+def test_a_quote_that_never_closes_is_declined_rather_than_read(tmp_path: Path) -> None:
+    """Left open, the quote runs to the end of the step, so no word after it is a fact.
 
     Read as it stands the line would be a guess at the command, so the check
     says it did not read it rather than reporting it resolved.
     """
     body = WORKFLOW.replace(
         "      - run: bin/runner check\n",
-        "      - run: |\n          bin/runner \\\n            check\n",
+        '      - run: |\n          bin/runner "check\n          tools/harness/gone.py\n',
     )
     report = doc_check.Report()
 
@@ -2736,7 +2861,8 @@ def test_a_line_running_past_its_end_is_declined_rather_than_read(tmp_path: Path
 
     assert report.errors == []
     assert any(
-        "`bin/runner \\`" in message and "were not resolved" in message
+        '`bin/runner "check` and the 1 line(s) after it' in message
+        and "were not resolved" in message
         for message in report.declined
     ), report.declined
 
@@ -4759,21 +4885,38 @@ def test_a_table_below_the_provenance_table_does_not_displace_it(tmp_path: Path)
     assert not any("provenance header" in error for error in _errors(_repo(tmp_path, model=model)))
 
 
-def test_an_absolute_glob_citation_is_reported_rather_than_raised(tmp_path: Path) -> None:
+def test_a_citation_glob_refuses_is_reported_rather_than_raised(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A citation `glob` refuses to parse is a finding about that line, not a crash.
 
-    `PL-0M7L`: `Path.glob` raises `NotImplementedError` for a non-relative
+    `PL-0M7L`: `Path.glob` raised `NotImplementedError` for a non-relative
     pattern, and the call was unguarded - so one such token aborted the whole
     run on a traceback and the checker reported nothing at all about the
     several hundred citations around it. The failure also looked like a broken
     tool rather than a broken line.
+
+    The raise is driven rather than staged, as the unstattable citation's is
+    above. `PL-H0CF` reads a leading `/` from the repository root, so no
+    absolute pattern reaches `glob` any more, and the shape still refused - a
+    `**` inside a name, before 3.13 - parses under the interpreter running
+    these tests.
     """
-    model = MODEL + "\nEverything under `/docs/*.md` is checked.\n"
-    root = _repo(tmp_path, model=model)
+    unpatched = Path.glob
 
-    report = doc_check.analyze(root)  # must not raise
+    # `rglob` calls `glob` with keyword options, so they pass through untouched.
+    def refusing_glob(self: Path, pattern: str, **options: Any) -> Iterator[Path]:
+        if "refused" in pattern:
+            raise ValueError("Invalid pattern: '**' can only be an entire path component")
+        return unpatched(self, pattern, **options)
 
-    assert any("/docs/*.md" in error for error in report.errors), report.errors
+    monkeypatch.setattr(Path, "glob", refusing_glob)
+    model = MODEL + "\nEverything under `refused/**.md` is checked; `core/moved.py` is not.\n"
+
+    report = doc_check.analyze(_repo(tmp_path, model=model))  # must not raise
+
+    assert any("refused/**.md" in error for error in report.errors), report.errors
+    assert any("cites `core/moved.py`" in error for error in report.errors), report.errors
 
 
 #: `ROADMAP` with one scoped milestone section, so the two scope headings exist
@@ -5463,6 +5606,19 @@ def test_an_ambiguous_bare_filename_declines(tmp_path: Path) -> None:
     assert _line_citation_errors(root) == []
 
 
+def test_a_line_citation_with_a_leading_slash_is_read_from_the_repository_root(
+    tmp_path: Path,
+) -> None:
+    """`PL-H0CF`, one line finer: the file was looked for on the filesystem's root.
+
+    So a citation of a file that is there was never compared with its length,
+    and one of a file outside the checkout was stat'd as whoever ran the check.
+    """
+    root = _items(_repo(tmp_path), {"PL-8888-open": _brief("ready", "See `/core/thing.py:900`.")})
+
+    assert any("/core/thing.py:900" in error for error in _line_citation_errors(root))
+
+
 def test_this_repository_resolves_every_live_line_citation() -> None:
     # The rule against the real store rather than a fixture: this is the one
     # that catches the third generation of a hand-repaired line number.
@@ -5471,6 +5627,121 @@ def test_this_repository_resolves_every_live_line_citation() -> None:
     doc_check.check_line_citations(root, doc_check.read_docs(root), report)
 
     assert report.errors == []
+
+
+# --- path citations in item briefs ------------------------------------------
+
+
+def _removed(tmp_path: Path, relative: str) -> Path:
+    """A checkout whose history holds `relative` and whose tree no longer does."""
+    root = _repo(tmp_path)
+    removed = root / relative
+    removed.parent.mkdir(parents=True, exist_ok=True)
+    removed.write_text("", encoding="utf-8")
+    _git_init(root)
+    _git(root, "rm", "-q", relative)
+    _git(root, "commit", "-qm", "remove it")
+    return root
+
+
+def _brief_path_report(root: Path) -> doc_check.Report:
+    report = doc_check.Report()
+    doc_check.check_citations(root, {}, report)
+    return report
+
+
+@pytest.mark.parametrize(
+    ("relative", "token"),
+    [
+        ("src/anesthesia_sim/core/gone.py", "core/gone.py"),
+        ("src/anesthesia_sim/core/gone.py", "src/anesthesia_sim/core/gone.py"),
+        ("src/anesthesia_sim/core/gone.py", "/src/anesthesia_sim/core/gone.py"),
+        ("src/anesthesia_sim/core/gone.py", "gone.py"),
+        ("tools/retired/run.py", "tools/retired/"),
+    ],
+    ids=["package-relative", "repository-relative", "anchored", "bare", "directory"],
+)
+def test_a_path_citation_in_an_item_brief_is_resolved(
+    tmp_path: Path, relative: str, token: str
+) -> None:
+    """`PL-1RTM`: a live brief citing a file the tree has lost is told so.
+
+    The queue is where this project writes most of its prose and most of its
+    paths, and no path citation in it was resolved. The removal is read from
+    git rather than inferred, so the finding names the commit that made it.
+    """
+    root = _removed(tmp_path, relative)
+    _items(root, {"PL-8888-open": _brief("ready", f"See `{token}`.")})
+    commit = _git(root, "log", "-1", "--format=%h")
+
+    errors = _brief_path_report(root).errors
+
+    assert len(errors) == 1, errors
+    assert f"cites `{token}`, which {commit} removed from the tree" in errors[0]
+
+
+def test_a_brief_may_name_a_file_no_commit_ever_held(tmp_path: Path) -> None:
+    """`PL-3NKZ`: a brief names the module its work will create, which is not drift.
+
+    Measured 2026-10-03, most of the live queue's unresolved path citations
+    were of this kind - planned files, examples, another repository's paths -
+    and none of them was wrong. A complete history is what can say a path was
+    never held, so a full checkout declines nothing.
+    """
+    root = _removed(tmp_path, "src/anesthesia_sim/core/gone.py")
+    _items(root, {"PL-8888-open": _brief("ready", "It will add `core/planned.py`.")})
+
+    report = _brief_path_report(root)
+
+    assert report.errors == []
+    assert report.declined == []
+
+
+def test_a_closed_brief_citing_a_removed_file_is_not_held_to_the_tree(tmp_path: Path) -> None:
+    """A closed brief records the tree its work was done against (`PL-G424`)."""
+    root = _removed(tmp_path, "src/anesthesia_sim/core/gone.py")
+    _items(root, {"PL-D0N3": _brief("done", "See `core/gone.py`.", "PL-D0N3")})
+
+    assert _brief_path_report(root).errors == []
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "The port removed `core/gone.py`.\n<!-- absent: core/gone.py -->\n",
+        "It still says:\n\n```text\nSee `core/gone.py`.\n```\n",
+    ],
+    ids=["marked", "fenced"],
+)
+def test_a_brief_naming_a_removal_on_purpose_can_say_so(tmp_path: Path, body: str) -> None:
+    """A brief recording a rename or a removal names the old path deliberately.
+
+    The `absent:` marker the documents use says so beside the sentence, and a
+    fence shows a citation without making one, as for a stale line citation.
+    """
+    root = _removed(tmp_path, "src/anesthesia_sim/core/gone.py")
+    _items(root, {"PL-8888-open": _brief("ready", body)})
+
+    assert _brief_path_report(root).errors == []
+
+
+def test_a_brief_s_unresolved_citations_are_declined_where_history_is_partial(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Unread or truncated history is said, never passed as a clean answer."""
+    root = _items(_repo(tmp_path), {"PL-8888-open": _brief("ready", "It adds `core/planned.py`.")})
+
+    unread = _brief_path_report(root)
+    _git_init(root)
+    monkeypatch.setattr(doc_check, "is_shallow", lambda *_: True)
+    truncated = _brief_path_report(root)
+
+    assert any(
+        "git could not read" in line and "1 path citation " in line for line in unread.declined
+    )
+    assert any(
+        "shallow clone" in line and "1 path citation " in line for line in truncated.declined
+    )
 
 
 def test_a_family_member_may_declare_no_test_yet_against_a_historical_id(tmp_path: Path) -> None:

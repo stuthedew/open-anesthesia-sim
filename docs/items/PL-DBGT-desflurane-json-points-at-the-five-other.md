@@ -30,6 +30,7 @@ verify: ! grep -q 'test_published_wash_in.py' src/anesthesia_sim/data/agents/des
   named is real -
   `test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination`
   - but the path does not resolve.
+<!-- absent: tests/reference/test_published_wash_in.py -->
 
 **Not fixed in `PL-XWCY`'s branch on purpose.** `desflurane.json` is outside
 that item's declared `touches`, so `CLAUDE.md`'s fix-now rule refuses it on
@@ -58,6 +59,7 @@ hand is not a fix that stays fixed.
   `test_coupled_dynamics.py`, `test_multi_agent.py`,
   `test_published_wash_in_and_elimination.py` and `test_sevo_patient.py`. The
   assertion is presumably in the last of those, under its longer name.
+<!-- absent: tests/reference/test_published_wash_in.py -->
 
 **Why it matters.** This is a parameter file's provenance note, and provenance
 is the half of a stored value this project treats as safety-critical in its own
