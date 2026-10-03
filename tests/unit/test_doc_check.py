@@ -2720,15 +2720,100 @@ def test_workflow_paths_reads_a_quoted_path_as_one_word(tmp_path: Path) -> None:
     )
 
 
-def test_a_line_running_past_its_end_is_declined_rather_than_read(tmp_path: Path) -> None:
-    """A backslash continues the command onto the next line, which a one-line reading cannot place.
+# PL-Q9LK: a step's script was read one line at a time, so a here-document's
+# body was read as commands and a command continued past its line was declined.
+# It is cut where bash ends a line now, by docket's `shell.script_lines`.
+
+
+def test_workflow_commands_reads_a_script_as_bash_does() -> None:
+    """The brief's reproduction: read a line at a time, this was five commands where bash runs two.
+
+    The body and delimiter are the input of `python3 -`, and the backslash
+    carries the second command onto the line after it.
+    """
+    text = (
+        "      - run: |\n"
+        "          python3 - <<'PY'\n"
+        "          print('tools/harness/gone.py')\n"
+        "          PY\n"
+        "          python3 tools/doc_check.py \\\n"
+        "            check\n"
+    )
+
+    assert list(doc_check.workflow_commands(text)) == [
+        ("python3 - <<'PY'", 2),
+        ("python3 tools/doc_check.py \\\n  check", 5),
+    ]
+
+
+def test_a_heredoc_body_naming_a_path_runs_nothing(tmp_path: Path) -> None:
+    """The body is input, and the line after its delimiter is read again."""
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n",
+        "      - run: |\n"
+        "          python3 - <<'PY'\n"
+        "          bin/gone --flag\n"
+        "          PY\n"
+        "          tools/harness/gone.py\n",
+    )
+
+    errors = _errors(_with_workflow(_repo(tmp_path), body=body))
+
+    assert not any("bin/gone" in message for message in errors), errors
+    assert any(
+        "runs `tools/harness/gone.py`, which does not exist" in message for message in errors
+    )
+
+
+def test_a_command_continued_past_its_line_is_read_whole(tmp_path: Path) -> None:
+    """Its path is checked where it was declined, at the line it starts on.
+
+    YAML hands bash the block less its own indentation, so the `check` below
+    stands two spaces past `bin/runner\\`, and bash reads two words where
+    joining stripped lines would run `bin/runnercheck`.
+    """
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n",
+        "      - run: |\n"
+        "          bin/runner\\\n"
+        "            check\n"
+        "          python3 tools/harness/gone.py \\\n"
+        "            --flag\n",
+    )
+    report = doc_check.Report()
+
+    doc_check.check_workflow_paths(_with_workflow(_repo(tmp_path), body=body), report)
+
+    assert report.declined == []
+    assert report.errors == [
+        ".github/workflows/quality.yml:14: runs `tools/harness/gone.py`, which does not exist"
+    ]
+
+
+def test_a_quote_carried_across_lines_is_read_as_one_command(tmp_path: Path) -> None:
+    """Read a line at a time, both ends of the quote were declined and the path after it unread."""
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n",
+        '      - run: |\n          python3 -c "\n          import sys\n'
+        '          " tools/harness/gone.py\n',
+    )
+    report = doc_check.Report()
+
+    doc_check.check_workflow_paths(_with_workflow(_repo(tmp_path), body=body), report)
+
+    assert report.declined == []
+    assert any("runs `tools/harness/gone.py`" in message for message in report.errors)
+
+
+def test_a_quote_that_never_closes_is_declined_rather_than_read(tmp_path: Path) -> None:
+    """Left open, the quote runs to the end of the step, so no word after it is a fact.
 
     Read as it stands the line would be a guess at the command, so the check
     says it did not read it rather than reporting it resolved.
     """
     body = WORKFLOW.replace(
         "      - run: bin/runner check\n",
-        "      - run: |\n          bin/runner \\\n            check\n",
+        '      - run: |\n          bin/runner "check\n          tools/harness/gone.py\n',
     )
     report = doc_check.Report()
 
@@ -2736,7 +2821,8 @@ def test_a_line_running_past_its_end_is_declined_rather_than_read(tmp_path: Path
 
     assert report.errors == []
     assert any(
-        "`bin/runner \\`" in message and "were not resolved" in message
+        '`bin/runner "check` and the 1 line(s) after it' in message
+        and "were not resolved" in message
         for message in report.declined
     ), report.declined
 
