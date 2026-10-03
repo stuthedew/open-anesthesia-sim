@@ -6,7 +6,7 @@ effort: M
 status: needs-decision
 classes: docs, infra
 feature: pr-body-integrity
-touches: docs/pr-bodies
+touches: docs/pr-bodies, tools/pr_body_check.py, tests/unit/test_pr_body_check.py
 added: 2026-09-20
 ---
 
@@ -90,3 +90,16 @@ what "Done when" asks for.
 **What would change the answer.** Any reader - a tool, a check, a documented
 workflow - that cites a record as current. None exists; one would make the
 corpus documentation and flip this.
+
+## Answers 2026-10-03
+
+**Answered 2026-10-03: Q1 ratified** (project owner, 2026-10-03, ratified,
+over treating the records as current documentation and repairing their
+citations). Historical records. The build is one statement in two places:
+`docs/pr-bodies/README.md`, and one header line per record, emitted by
+`write_recovery` in `tools/pr_body_check.py` for new records and backfilled
+once by script across the existing ones; no citation is repaired, and
+`tools/doc_check.py` stays outside the directory by design, which the README
+says. `touches:` is re-pointed here at the writer and its test as well as the
+records. Status stays `needs-decision` in this round; the thread that builds
+it sets `ready` first. Size S in practice, whatever the field says.
