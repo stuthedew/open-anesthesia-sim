@@ -45,3 +45,59 @@ maximum_step_count(simulation_step_s)` directly. The second leaves no second
 mode to keep in step with the first. Regression tests at 0.1 s: a fork on
 86 400.0 and a branch reset there each give `start_enabled` false and the
 limit notice.
+
+**Triage 2026-10-03: wider than the title, and classed safety.** Re-measured
+on `origin/main` at `9ea31db2`, after `PL-8H2R`, by a probe stepping a
+controller to 86 400.0 s at 0.1 s. Any run standing there that no refused step
+has stopped reads as an ordinary paused one, and the trunk is one of them:
+
+| Run standing on 86 400.0 s | Limit reason | Status word | Start offered |
+| --- | --- | --- | --- |
+| trunk halted on a time mark at 24:00:00 | unset | `Paused` | yes |
+| branch forked at that halt | unset | `Paused` | yes |
+| trunk after its refused step | set | `Stopped — supported run length reached` | no |
+| branch at the keyframe a dial laid at 24 h | unset | `Paused` | yes |
+| that branch after one refused tick | set | `Stopped — supported run length reached` | no |
+| that branch after a reset | unset | `Paused` | yes |
+
+No row with the reason unset shows the limit notice. The marks panel follows
+the same latch: an unreached MAC target (fat, 3 ×MAC) stands `still_running`
+on the first two rows and `not_reached_within_cap` on the third, which is
+`PL-N3N5`'s hazard - a mark read as still ahead of a run that cannot step -
+back through the limit's latch rather than the failure's. One more route, read
+from the code and not measured: Pause pressed on a tick whose last step lands
+on 24:00:00 leaves the trunk paused there with the latch unset.
+
+**Classes `defect, safety`, so `P1` by the safety pin.** Nothing is
+miscalculated, as with `PL-N3N5`, which carries the same classes; what is wrong
+is the run's state as presented. `docs/MODEL.md` § "Supported run length" says
+"What the interface must equally not do is present the stop as a pause", and
+`CLAUDE.md`'s clinical-output standard asks that simulation state cannot be
+easily misread. A `safety` item runs on the strongest model under the
+project's rules, so the triaging session stopped here and yielded its claim.
+
+**What any fix has to reach, read from the code.** Four readers take the
+latch: `snapshot()`, `start()`, `_bookmark_standings()` (as `stopped_at_cap`)
+and `has_reached_supported_limit`. The second candidate applied to the
+snapshot alone would leave `start()` accepting a run whose Start the transport
+refuses, and the marks panel as it is. The latch cannot simply go:
+`halt_at_supported_limit` records the reason it is handed for a domain limit
+raised on any path, which
+`test_a_domain_limit_in_a_setting_reaches_the_supported_limit_channel_through_apply_setting`
+and `test_the_first_supported_limit_reason_is_the_one_kept` pin. And a reason
+derived from the state would also stand on a run still running, on a tick
+whose last step lands on 24:00:00, and say `Stopped` beside a live Pause until
+the next tick's refused step; halting on arrival in `advance()`, as `_halt_on`
+does on a crossing, would close that (inferred, not measured).
+
+**Test cost, measured.** Stepping a controller to 86 400.0 s at 0.1 s took
+26.3 s with no mark set and 35.1 s with one, in this container.
+
+**Done when.** Every run standing on the supported run length reads as stopped
+there before any step is refused, whichever route put it there: a branch
+forked on 86 400.0 s at a keyframe or at a halt, such a branch after a reset,
+and a trunk halted on a mark at 24:00:00. For each,
+`snapshot().supported_limit_reason` carries the reason the refused step would
+give, `start()` raises `SimulationDomainLimitError`, `transport` gives
+`start_enabled` false, `notice` gives the limit notice, and an unreached mark
+stands `NOT_REACHED_WITHIN_CAP`. Regression tests at 0.1 s cover each route.
