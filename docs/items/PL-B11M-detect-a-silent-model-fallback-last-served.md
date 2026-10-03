@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, session-cost
 feature: commit-provenance
+milestone: v0.5.21
 touches: tools, .claude
 added: 2026-09-16
 closed: 2026-10-01

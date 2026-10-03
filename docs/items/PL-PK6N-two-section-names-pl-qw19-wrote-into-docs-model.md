@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs
+milestone: v0.5.21
 touches: docs/MODEL.md, docs/machine-abstraction.md
 added: 2026-10-01
 closed: 2026-10-01

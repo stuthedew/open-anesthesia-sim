@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.5.21
 touches: tools/required_checks_check.py, tests/unit/test_required_checks_check.py
 added: 2026-09-19
 closed: 2026-10-01

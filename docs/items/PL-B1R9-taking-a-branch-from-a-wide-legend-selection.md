@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect, perf
+milestone: v0.5.21
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/qt_chart.py, tests/integration/test_simulation_view.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science: the extra frame is never painted
 added: 2026-10-01

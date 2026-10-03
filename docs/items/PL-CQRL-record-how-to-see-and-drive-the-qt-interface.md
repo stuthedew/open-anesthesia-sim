@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, infra
 feature: dev-tooling
+milestone: v0.5.21
 touches: .claude/skills/run-the-app/SKILL.md, docs/worker.md, docs/WORKING_NOTES.md, docs/ARCHITECTURE.md
 added: 2026-09-02
 closed: 2026-10-01

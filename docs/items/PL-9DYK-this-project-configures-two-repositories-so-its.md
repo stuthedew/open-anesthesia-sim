@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: projects-trial
+milestone: v0.5.21
 touches: docs/items/PL-NZC0-a-claude-code-projects-trial-needs-project.md
 added: 2026-09-27
 closed: 2026-10-01

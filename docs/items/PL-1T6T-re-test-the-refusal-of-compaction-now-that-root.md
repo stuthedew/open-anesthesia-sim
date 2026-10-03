@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: session-cost
+milestone: v0.5.21
 touches: CLAUDE.md
 added: 2026-09-16
 closed: 2026-10-01

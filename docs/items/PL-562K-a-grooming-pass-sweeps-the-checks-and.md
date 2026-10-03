@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.5.21
 touches: .claude/skills/docket/modes/triage.md
 added: 2026-10-01
 closed: 2026-10-01

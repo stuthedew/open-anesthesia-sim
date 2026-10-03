@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: ci-cost
+milestone: v0.5.21
 touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py, .github/workflows/quality.yml, tests/unit/test_ci_concurrency.py, .claude/hooks/docket-digest.sh, docs/ARCHITECTURE.md
 added: 2026-09-16
 closed: 2026-10-01

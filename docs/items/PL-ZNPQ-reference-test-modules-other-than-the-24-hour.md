@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost
 feature: ci-cost
+milestone: v0.5.21
 touches: tests/reference/test_published_wash_in_and_elimination.py, tests/reference/test_control_resolution.py, tests/reference/test_coupled_dynamics.py
 added: 2026-09-27
 closed: 2026-10-01

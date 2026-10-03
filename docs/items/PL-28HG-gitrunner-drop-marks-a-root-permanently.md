@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: perf, session-cost
+milestone: v0.5.21
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_git_runner.py
 added: 2026-09-19
 closed: 2026-10-01

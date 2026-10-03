@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: read-facts-through-docket
+milestone: v0.5.21
 touches: tools/item_reads.py, tools/generator_check.py, subprojects/docket/src/docket/model.py, tests/unit/test_item_read_log.py, tests/unit/test_generator_check.py, subprojects/docket/tests/test_model.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01

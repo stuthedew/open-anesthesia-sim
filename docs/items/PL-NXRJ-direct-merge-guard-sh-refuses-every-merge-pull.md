@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, docs
 feature: review-hold
+milestone: v0.5.21
 touches: .claude/hooks/direct-merge-guard.sh, tests/unit/test_direct_merge_guard.py, CLAUDE.md, docs/maintainer.md
 added: 2026-10-03
 closed: 2026-10-03

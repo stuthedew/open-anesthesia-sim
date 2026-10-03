@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, session-cost
 feature: claim-integrity
+milestone: v0.5.21
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_claiming.py, .claude/skills/docket/modes/start.md
 added: 2026-09-25
 closed: 2026-10-01

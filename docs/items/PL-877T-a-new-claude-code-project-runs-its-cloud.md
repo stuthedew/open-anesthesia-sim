@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: projects-trial
+milestone: v0.5.21
 touches: docs/maintainer.md
 added: 2026-09-26
 closed: 2026-10-01

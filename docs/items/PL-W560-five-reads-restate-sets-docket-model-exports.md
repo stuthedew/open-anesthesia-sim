@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: read-facts-through-docket
+milestone: v0.5.21
 touches: subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/cli.py, tools/generator_check.py, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_model.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-01 triage pass
 added: 2026-10-01
