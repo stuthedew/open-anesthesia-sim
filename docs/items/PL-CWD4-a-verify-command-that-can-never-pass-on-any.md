@@ -9,6 +9,7 @@ feature: verify-command-meaning
 touches: docs/items
 added: 2026-09-19
 closed: 2026-10-03
+pr: 1297
 verify: grep -qF 'Answered 2026-10-03: Q1 ratified' docs/items/PL-CWD4-a-verify-command-that-can-never-pass-on-any.md
 ---
 

@@ -9,6 +9,7 @@ feature: pr-body-integrity
 touches: docs/items
 added: 2026-09-20
 closed: 2026-10-03
+pr: 1297
 verify: grep -qF 'Answered 2026-10-03: Q1 ratified' docs/items/PL-DMNX-pl-1dn9-s-premise-that-nothing-repository-side.md
 ---
 
