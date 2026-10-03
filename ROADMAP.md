@@ -5434,7 +5434,7 @@ product-lane and neither-lane groups until 2026-09-23, because `#862` declared
 them in Required scope after `#850` had grouped this list. They moved into the
 first group when `tools/doc_check.py` began holding it to Required scope
 (`PL-J6HP`), and the three group counts moved with them. The second is what
-this gate defers to Gate 3, in the two groups below that say so. The rest clears
+this gate defers to Gate 3, in the three groups below that say so. The rest clears
 before implementation of this milestone begins, and is recorded in three groups
 rather than one because that
 is how it is meant to be worked: `docket.toml` computes a lane from each item's
@@ -5549,6 +5549,51 @@ ratified, over teaching `wave` to read this section's group headings), which is
 the route `PL-0H5D` took for `PL-WZVZ`. A later deferral whose condition has no
 id is given one the same way, since `wave` reads no group heading.
 
+**`PL-5B1N` is deferred to Gate 3 on § "The cadence" beat 3's terms**
+(project owner, 2026-09-27, ratified, over building the preview now as the
+next item of the presentation-safety chain; `PL-YBFB`). It is the preview a
+control draws while it is grabbed and not yet released: the trajectory the new
+setting would give, inside a tinted region right of the run's reach, labelled
+in the plot. The presentation-safety design round settled that design on
+2026-09-27 and the item's brief records it, which cleared nothing here, since
+an entry clears at `done` or `dropped`. What is left is an M build of a
+`feature`-classed entry, which sat on this list only because it was at
+`needs-decision` on the day of the freeze. Building it before v0.6.0 begins
+would put a feature in front of the layout milestone, a scheduling choice the
+owner made the other way, and nothing is done twice whichever gate builds it:
+the preview draws on the pyqtgraph chart, which v0.6.0 wraps in an Area rather
+than rewrites.
+
+The deferral names **Gate 3**, which freezes when v0.6.0 ships and clears
+before v0.7.0's implementation begins, and v0.6.0 ships without it. It stays
+written on this list, moved out of the product-lane group into a group of its
+own below, as the five were. Gate 3's freeze will not take it up by itself:
+the freeze lists open debt, which is what `bin/docket gate` prints, and a
+`feature` entry is not debt, so the session that freezes Gate 3 writes it onto
+that list from this paragraph.
+
+**Its hazard is not live, read against the tree at `9ea31db2`**, though beat 3
+asks that record only of a `safety`- or `science`-classed entry. Nothing under
+`src/anesthesia_sim/app/` draws a predicted trajectory - the one widget named
+for a preview, the bookmark dialog's `instant_preview`, shows a chosen instant
+in the clock's form - and a run cannot be asked for one, since
+`core/run_definition.py`'s `_require_within_run` refuses any instant past the
+run's reach as "a prediction rather than the run". So nothing on screen can be
+mistaken for a prediction, and the three failure modes the item's brief names
+(a preview outliving the interaction, carrying the run's visual weight, or
+reaching a screenshot unlabelled) bind whoever builds it.
+
+**What `bin/docket wave` reads.** `PL-5B1N` is `blocked` on `v0.7.0`, as
+`PL-Y04W` was, so `wave` counts it apart from the entries this gate can clear,
+and `bin/docket next` no longer offers a build the owner deferred. A milestone
+blocker clears when that milestone is scoped, so once v0.7.0 is scoped
+`bin/docket check` names `PL-5B1N` ready to promote. The design round set it
+`ready`, the status a recorded answer moves `needs-decision` to; left there,
+`wave` would go on counting it among the entries this gate can clear, and a
+`ready` item naming a blocker says both that the work can start and that it
+cannot, so it moved to `blocked` when this deferral was recorded, on
+2026-10-03.
+
 **What this list is not swept for yet.** Beat 3 of the cadence requires a
 staleness pass before any of it is worked - a `verify:` command tests for the
 presence of the fix and never for the presence of the fault, so an entry whose
@@ -5587,14 +5632,17 @@ named here, for the reason beat 3 gives.
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
 - PL-WZVZ (M) Make an inter-machine difference attributable: which parameter differs, and what it does to the result
 
-**Cleared before v0.6.0 begins, the product lane - 49 entries**
+**Deferred to Gate 3 on 2026-09-27, because its build is feature work for after v0.6.0 ships - 1 entry**
+
+- PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
+
+**Cleared before v0.6.0 begins, the product lane - 48 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
 - PL-2MD9 (M) "The propagator's constant state row drifts and the squarings amplify it: 2.28e+222 at an alveolar volume of 1e-19 L, where governing_equations.UNIT_STATE promises no step can perturb it"
 - PL-3JP0 (S) Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it
 - PL-59WB (S) chart_time_base.fit_to_run takes a parameter called run_length_s but is passed a case instant, which is the duration_s-was-not-a-duration defect one module over
-- PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
 - PL-624C (S) test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis draws its own frame, so it cannot detect a fork that fails to redraw
 - PL-73ZN (S) RunDefinition bounds opened_at_s below at induction but not above, so a definition may declare an opening past the 24 h envelope the model is claimed over
 - PL-7CRY (S) The fresh gas flow slider reads the model envelope alone, so a machine profile declaring a narrower deliverable range would offer settings the circuit refuses
@@ -5639,7 +5687,7 @@ named here, for the reason beat 3 gives.
 - PL-YD2V (S) Supported run length and the validation section's caveat 4 bound the slow tail on metabolism and fat flow alone, but the fourth compartment this model lacks is the largest term in Yasuda 1991's measured washouts from about hour 2-3 to hour 21-29, inside the 24 h envelope, and neither passage says so
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
 
-**Cleared before v0.6.0 begins, the workflow lane - 115 entries**
+**Cleared before v0.6.0 begins, the workflow lane - 116 entries**
 
 - PL-LN69 (L) Instruction-set growth is measured but never tested for effect, so a rule can be added on an argument and can never be retired on evidence
 - PL-087W (M) bin/docket verify unions removed assertions per commit and never nets them against a later restore, so a line a session puts back on the check's own advice keeps refusing the branch
@@ -5676,6 +5724,7 @@ named here, for the reason beat 3 gives.
 - PL-X3NY (M) bin/docket stranded reports in-flight pull-request work and abandoned-branch work identically because it reasons from refs alone, where the GitHub API can classify the two - so the reader re-derives every session what one API read would settle
 - PL-Y1LD (M) docket concurrent orders a batch by file, but the lane mechanism separates only two sessions, so the third and fourth simultaneous session have no command that picks for them
 - PL-Y5ZB (M) agent_identity_check's rule 2 reads only construction (self.X = <agent colour>), so a method other than _apply_agent_color_scheme writing self.X.color = AGENT_COLOR_SCHEMES[...] is a second writer of agent colour that neither rule sees
+- PL-YVV4 (M) Run the suppression count expert-review.md requires before any triage-bar change
 - PL-ZPDM (M) vcs.tags and vcs.changed_items answer with a bare frozenset, so a git that does not answer is indistinguishable from a repository with no tags and a branch that changed nothing
 - PL-0HPV (S) make check omits the verify replay on a cost measured before --verify-base narrowed it, so a PR-only failure class is only ever found from CI
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
@@ -5794,6 +5843,16 @@ fat-perfusion note weighed against one source, the 24-hour tail never compared
 with the published fits, and the supported run length silent on the missing
 fourth compartment. The triage pass that classed them placed them in the
 product lane.
+
+`PL-YVV4` (`planning`, filed 2026-09-13) was let in on 2026-10-03 and sits in
+the workflow lane with `PL-VV6N`, which waits on it. It was in the store at the
+cut, but the class filter left it off, so `bin/docket wave` read `PL-VV6N` as
+blocked outside the gate and left it out of what this gate is asked to clear: a
+deferral nobody had decided. What an entry needs is let in and worked with the
+entry it completes, per § "The gate is a snapshot, not a moving target", so the
+two are one piece of work (`PL-D388`, project owner, 2026-10-03, ratified, over
+admitting every open prerequisite of an entry automatically and over deferring
+the pair to Gate 3).
 
 The first 43 were recorded here in prose subsections, one per triage pass from
 `PL-2JRC`'s to the generator heads `PL-T7Y1`'s audit and `PL-TH9K`'s session
