@@ -49,3 +49,44 @@ live work whichever way this goes.
 a tool, a check, or a documented workflow that cites one as the authority for a
 present-day fact. None is known; if one exists, the corpus is documentation and
 the answer flips.
+
+## Design round 2026-10-03: recommendation
+
+**Re-checked against the tree, 2026-10-03.** The corpus has grown from 187
+files to 265, because `tools/pr_body_check.py --recover` writes one for each
+squash commit that lost its body, in a batch at each release (`PL-3PH2`). Every
+file opens with front matter `write_recovery` emits - `pr`, `recovered`,
+`commit`, `merged`, `items`, `subject`, `squash` - and `recovered:` is the fetch
+date, so `PL-73G8`'s half has landed; there is no `README.md`. Nothing reads a
+record as current: `subprojects/docket/src/docket/arming.py` and `claims.py`
+name the directory as `RECORDS`, `docket.toml` places it in `workflow_paths` as
+"the pull-request record `tools/pr_body_check.py` writes", and
+`tools/doc_check.py`'s `DOC_GLOBS` is `docs/*.md`, one level only, so the
+directory is outside the citation sweep rather than excluded by name. No tool,
+check or workflow cites a record as the authority for a present-day fact.
+Angle-bracket placeholders now sit in 11 files, 16 of them (`<id>` three
+times, `<ref>`, `<path>` and `<n>` twice each, seven singletons); the dead-path
+and dead-sha counts were not retaken, since the answer does not turn on them.
+`recovered()` lists only digit-named files, so a `README.md` beside the records
+is safe for the tool.
+
+**Q. Historical records, or current documentation?**
+**Recommendation: historical records - the filed recommendation stands - and
+one statement, met in both of the places a reader arrives by.** A one-paragraph
+`docs/pr-bodies/README.md`, which a GitHub directory visitor meets, and one
+header line in every record, which `cat` meets: written by `write_recovery`
+for new records and backfilled once by a script across the 265 existing ones,
+one commit a reviewer reads as a single diff. The statement says what a record
+is: the body as GitHub served it on `recovered:`, verbatim; its citations
+describe the tree at `merged:` and are not maintained; an angle-bracket
+placeholder in it renders invisibly on GitHub. No citation is repaired - the
+drift is not a finding, by the rule `.claude/rules/citation-drift.md` already
+applies to a closed brief - and `tools/doc_check.py` stays outside the
+directory by design, which the README records so the next reader does not
+re-derive it. Size S rather than M. The README-only variant is cheaper and was
+refused because a reader who opens a record directly never meets it, which is
+what "Done when" asks for.
+
+**What would change the answer.** Any reader - a tool, a check, a documented
+workflow - that cites a record as current. None exists; one would make the
+corpus documentation and flip this.
