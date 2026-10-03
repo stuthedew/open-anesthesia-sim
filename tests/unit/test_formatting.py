@@ -952,7 +952,6 @@ def test_the_supported_run_length_is_stated_from_the_model_s_own_constant() -> N
     safety defect rather than a typo.
     """
 
-    assert format_supported_run_length() == "24 hours"
     assert format_supported_run_length() == (f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} hours")
 
 
@@ -1032,10 +1031,17 @@ def test_the_clock_reads_the_supported_limit_the_way_the_limit_is_stated() -> No
     case. `format_supported_run_length` had already refused to reuse the old
     form for exactly this reason; now the two agree about the quantity and
     differ only in register.
+
+    That holds for a limit of whole hours, which every limit declared so far
+    has been. At any other, the clock's `24h30m` against the sentence's
+    `24.5 hours` would differ in more than register, and this fails so that
+    the pairing is looked at rather than shipped.
     """
 
-    assert format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S) == "24h"
-    assert format_supported_run_length() == "24 hours"
+    hours = MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600
+
+    assert format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S) == f"{hours:g}h"
+    assert format_supported_run_length() == f"{hours:g} hours"
 
 
 def test_the_clock_still_resolves_the_step_the_simulation_advances_by() -> None:
@@ -1063,6 +1069,12 @@ def test_the_widest_reachable_clock_string_is_what_the_reserved_width_assumes() 
     the fixed pixel guess the Flet build carried as `theme.ELAPSED_VALUE_WIDTH`
     was retired with that port (`PL-25KS`). This test is what holds the
     premise honest if either the form or the envelope changes.
+
+    So it checks the premise rather than a string (`PL-T5J5`): no hour of the
+    span may read wider than the reading the reservation is measured from.
+    An hour's widest reading is its last tenth, where the minutes and seconds
+    are both present at two digits and the tenth is shown, so that instant
+    stands for the whole hour, at whatever limit the model declares.
     """
 
     widest = max(
@@ -1072,9 +1084,12 @@ def test_the_widest_reachable_clock_string_is_what_the_reserved_width_assumes() 
         ),
         key=len,
     )
+    last_tenth_of_each_hour = (
+        format_elapsed(hour * 3600.0 + 3599.9)
+        for hour in range(int(MAXIMUM_ELAPSED_SIMULATION_TIME_S // 3600))
+    )
 
-    assert widest == "23h59m59.9s"
-    assert len(widest) == 11
+    assert all(len(reading) <= len(widest) for reading in last_tenth_of_each_hour)
 
 
 @pytest.mark.parametrize("bad_elapsed_s", [-0.1, float("nan"), float("inf")])
