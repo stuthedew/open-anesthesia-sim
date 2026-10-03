@@ -1434,10 +1434,11 @@ SIMULATION_STEP_S          = 0.1   # app/dashboard_frame.py
 SIMULATION_TICK_INTERVAL_S = 0.1   # app/dashboard_frame.py
 ```
 
-`MAXIMUM_SIMULATION_STEP_S` is the model's supported domain, closed at its
-endpoint: any positive step at or below it is supported, and both
-`AgentUptakeSystem.advance()` and `SimulationState.advance()` refuse a larger
-one. `SIMULATION_STEP_S` is the step the interface takes, which sits at that
+`MAXIMUM_SIMULATION_STEP_S` is the top of the model's supported domain and
+`MINIMUM_SIMULATION_STEP_S`, 1 ms, the bottom, both closed at their endpoints:
+any step from 1 ms to 0.1 s is supported, and both
+`AgentUptakeSystem.advance()` and `SimulationState.advance()` refuse one outside
+that. `SIMULATION_STEP_S` is the step the interface takes, which sits at that
 ceiling deliberately; § "Supported simulation step" below states what the bound
 tolerates and says why those two coincide. Neither is derived from the other,
 and the coincidence is a fact about this configuration rather than an
@@ -1574,18 +1575,21 @@ the equations above.
 #### Supported simulation step
 
 `MAXIMUM_SIMULATION_STEP_S` is the largest step `AgentUptakeSystem.advance()`
-and `SimulationState.advance()` accept; a longer one is refused as a
+and `SimulationState.advance()` accept and `MINIMUM_SIMULATION_STEP_S` the
+smallest; a step outside the two is refused as a
 `SimulationConfigurationError` before anything is calculated, so nothing is
 miscalculated and a caller can retry inside the range with the run it already
-has intact.
+has intact. The two bounds are different kinds of statement: the ceiling is a
+declared tolerance on control timing, argued first below, and the floor is
+numerical, argued after it.
 
-**What the bound now means, and what it no longer rests on.** Until v0.4.x it
-was an *applicability domain*: the method was first order, so its error grew
+**What the ceiling now means, and what it no longer rests on.** Until v0.4.x
+it was an *applicability domain*: the method was first order, so its error grew
 with the step, and 0.1 s was the largest step at which every claim "Displayed
 precision" makes about the last displayed digit still held. That derivation is
 void. The exact step has no truncation error at any step size and its
-propagator keeps every fraction in range at any step size, so there is no
-accuracy-derived domain left to be outside of.
+propagator keeps every fraction in range at any step size, so accuracy no
+longer sets a largest step.
 
 What a longer step still costs is **control resolution**. Settings are held
 constant across a step, so the step is the interval over which a change to a
@@ -1636,7 +1640,7 @@ precision" carries the measurement). So at 0.1 s an ordinary control action is
 timed to about a tenth of one parameter SD, which is the sense in which the
 step is fine enough.
 
-**Both tables in this section are held by a test**, which is not a formality:
+**Both control-resolution tables are held by a test**, which is not a formality:
 since `PL-X9KD` retired the accuracy derivation these figures are the whole
 content of `MAXIMUM_SIMULATION_STEP_S`, and until `PL-ZVS7` they were asserted
 by prose here and in `core/uptake_system.py` and by nothing else.
@@ -1744,8 +1748,76 @@ Three things follow, and the third is why the behaviour was left alone.
   more often — would resolve control timing that the display cannot show. What
   was wrong here was the documentation, and it is what has been fixed.
 
-The supported step and the shipped step are the same number, and the interface
-runs at it.
+The largest supported step and the shipped step are the same number, and the
+interface runs at it.
+
+**The floor.** `MINIMUM_SIMULATION_STEP_S` is 1 ms, and it is the one bound on
+the step that is numerical (`PL-YZ17`, 2026-10-03). Until then any positive
+step at or below the ceiling was accepted, so the bottom of the domain sat
+wherever the arithmetic happened to fail rather than where anybody had looked.
+It failed at about $`4.8\times10^{-304}`$ s, where the 86 400 s run length
+divided by the step overflows and `SimulationState` raised a bare
+`OverflowError` from outside the simulator's own exceptions.
+
+What a finer step costs is rounding, and the sweep above already shows the
+start of it in "a finer step is slightly worse". Each step adds what it changed
+to what was already stored, and the finer the step, the smaller that change is
+beside the store it is added to, so the same rounding is a larger share of it.
+Measured over 10 000 steps from 60 s into the default sevoflurane wash-in,
+against the same span taken in 0.1 s steps or as one exact step, this is the
+largest relative error in what any of the alveolar, vessel-rich, muscle and fat
+fractions changed by:
+
+| Step | Worst relative error in the change |
+| --- | --- |
+| 1 ms | 3.3×10⁻¹² |
+| 0.1 ms | 2.4×10⁻¹¹ |
+| 10 µs | 7.8×10⁻¹⁰ |
+| 1 µs | 7.2×10⁻⁹ |
+| 10 ns | 3.8×10⁻⁷ |
+| 0.1 ns | 1.0×10⁻⁴ |
+| 1 ps | 5.8×10⁻³ |
+| 10 fs | 3.2×10⁻¹ |
+
+Nothing raises at any of them: at $`10^{-14}`$ s the change those steps compute
+is a third wrong, and a single step's nearly half, and each is returned as an
+ordinary step. From about $`10^{-16}`$ s down a step changes nothing at all,
+and still returns normally. The growth has no knee, so, as
+with the ceiling, no step is the one at which the answer becomes wrong, and the
+floor is declared rather than derived.
+
+**Where it is declared, and what holds it.** 1 ms is the finest step at which
+the solution has been shown to be the shipped one: it is the bottom of the
+sweep `PL-X9KD` took, and a test beside the step-refinement gate
+(§ "Step-refinement test") drives it and pins the constant there. Nothing runs
+finer: apart from the tests of the floor itself, the finest step any test takes
+is 0.02304 s. The table is a dated measurement rather than a gate, because the
+steps below the first row are outside the domain and no test can take them;
+lowering the floor is a measurement rather than an edit, starting with that
+test at the new floor.
+
+**It also bounds the run's own arithmetic, which nothing did before.** At the
+floor the supported run length is 86 400 000 steps, and a float holds every
+whole count up to $`2^{53}\approx9.0\times10^{15}`$ exactly. Below about
+$`9.6\times10^{-12}`$ s a day is more steps than that, and `elapsed_s` would
+round the count before multiplying it by the step (§ "Simulated time is a count
+of steps, not a running total").
+
+**It binds the run and not a compartment stepped on its own**, like the
+ceiling, though for a different reason. Rounding would cost a compartment
+stepped alone the same, but a compartment is stepped at a run's step only by
+`AgentUptakeSystem.advance()`, which refuses a step below the floor before any
+compartment sees it. Whether a compartment should refuse one too is `PL-WP52`.
+The step a playback tick counts in is the run's own, so
+`PlaybackRate.steps_per_tick` refuses one outside the range as the run does.
+The chart's grid is deliberately not held to it: `RunDefinition` chains a
+column spacing at most once per column, so the rounding cannot accumulate past
+what the columns asked for, and a grid at a tenth of the floor still lands on
+the run's own state to within 5e-14. Flooring it would refuse narrow axes the
+controller draws correctly today (`PL-6QYJ`).
+
+The value was chosen by the session that took the measurement above
+(`PL-YZ17`), not by the project owner, so ordinary evidence reopens it.
 
 **The measurements the old bound rested on are kept as history**, because they
 describe a method this project shipped for eleven releases and a reader
@@ -3076,7 +3148,8 @@ The implementation must preserve the following invariants:
 - Pause prevents simulation-time advancement;
 - Reset clears dynamic state while preserving settings;
 - a delivered concentration above the agent's vaporizer maximum is rejected, not clamped;
-- a simulation step above `MAXIMUM_SIMULATION_STEP_S` is refused, not simulated;
+- a simulation step outside `MINIMUM_SIMULATION_STEP_S` to
+  `MAXIMUM_SIMULATION_STEP_S` is refused, not simulated;
 - a simulation step that cannot be completed leaves every dynamic value, and
   simulation time, exactly as the last completed step left them;
 - zero fresh gas flow prevents new external delivery;
@@ -3167,8 +3240,8 @@ dt = 0.025 s
 ```
 
 All three are inside the supported domain: the first is
-`MAXIMUM_SIMULATION_STEP_S` itself, and refinement only moves inward from
-there.
+`MAXIMUM_SIMULATION_STEP_S` itself, and the finest is 25 times
+`MINIMUM_SIMULATION_STEP_S`.
 
 The gate compares *successive* halvings — 0.1 against 0.05, then 0.05
 against 0.025 — rather than each step against the finest, and additionally
@@ -3186,12 +3259,27 @@ that they stay at that floor. Measured 2026-09-06, the worst successive-halving
 gap across the four reported values is 8.1e-16, against the 1.4e-11 a
 first-order method would show at these steps.
 
+**A second test beside the gate drives the bottom of the supported domain**,
+`MINIMUM_SIMULATION_STEP_S` (`PL-YZ17`): a minute in 1 ms steps must land within
+3e-14 of the minute in 0.1 s steps, in each compared fraction. The bound is
+wider than the halvings' because that minute takes 60 000 steps rather than at
+most 2 400, and the residual is rounding accumulated once per step. Measured
+2026-10-03, the worst is 2.4e-15, in the alveolar fraction, and the bound
+allows about twelve times it, the halvings' own margin. The gap depends on how
+the propagator happens to round at that step rather than smoothly on the step -
+steps near 1 ms reach 1.2e-14 - so against a machine that rounds differently the
+margin is nearer two and a half times. What this holds is the floor's claim,
+that the solution at the declared floor is the shipped one; that test pins the
+floor at 1 ms as well, so moving it means re-taking these figures rather than
+editing a constant.
+
 The release comparison tolerance is 5e-3 relative or 1e-8 absolute, either
 satisfying, on the alveolar, vessel-rich and mixed-venous fractions after
-60 s of the default sevoflurane wash-in. Comparing 0.1 s straight to 0.025 s
-would exceed it in mixed venous alone — that compartment has barely begun to
-fill at 60 s, so a difference of 1.4e-6 in fraction, a seventh of a count of
-the last displayed digit, is 0.55% of it.
+60 s of the default sevoflurane wash-in. Under the operator split, comparing
+0.1 s straight to 0.025 s exceeded it in mixed venous alone — that compartment
+has barely begun to fill at 60 s, so the split's 1.4e-6 in fraction was 0.55%
+of it. Under the exact step the two land about 4e-17 apart there (measured
+2026-10-03).
 
 This gate is self-consistency across the supported steps, not correctness: a
 wrong transfer rate is exactly as step-independent as a right one and passes
@@ -4908,10 +4996,12 @@ simulation step" above draws between a refused argument and a step that
 broke down.
 
 **Enforced on the compartment, not on the coupled system**, which is the
-opposite of where `MAXIMUM_SIMULATION_STEP_S` sits, and for a reason the two
-cases do not share. A step is an argument to one call, and a compartment
-advanced alone is exact at any step, so guarding a compartment there would
-refuse an exact calculation. A flow is persistent state, reachable through
+opposite of where the step's two bounds sit, and for a reason the two cases do
+not share. A step is an argument to one call, and a compartment advanced alone
+has no truncation error at any step, so guarding a compartment at
+`MAXIMUM_SIMULATION_STEP_S` would refuse an exact calculation; why the floor
+binds the run rather than the compartment is argued in § "Supported simulation
+step". A flow is persistent state, reachable through
 `AgentUptakeSystem`, through the compartment it belongs to, and through that
 compartment's constructor; the compartment is the only point all three pass
 through.
@@ -5435,13 +5525,14 @@ stops short of the declared domain or reaches past it.
 
 **The simulation step is bounded too, and separately.** It is not a control a
 user sets, but it is an input to every `advance()` call, and what a caller
-may pass is bounded by `MAXIMUM_SIMULATION_STEP_S` rather than by these
-ranges; § "Supported simulation step" above derives it.
+may pass is bounded by `MINIMUM_SIMULATION_STEP_S` and
+`MAXIMUM_SIMULATION_STEP_S` rather than by these ranges; § "Supported
+simulation step" above argues both.
 
 **The two bounds are now independent, and were not before** (`PL-X9KD`). While
 the operator split shipped, the coefficient the step bound inverted was
 measured over the trajectories *these* ranges produce, so widening a range
-meant re-deriving both. That chain is cut. The step bound is a declared
+meant re-deriving both. That chain is cut. The step's ceiling is a declared
 control-resolution tolerance in seconds, these intervals are a claim about
 where the compartment structure represents a patient, and neither is computed
 from the other. Widening a range means re-running the reference gates at the

@@ -8,6 +8,7 @@ step is refused rather than rounded into one.
 """
 
 import dataclasses
+from math import nextafter
 
 import pytest
 
@@ -18,6 +19,7 @@ from anesthesia_sim.app.playback import (
     playback_rate_for,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.uptake_system import MINIMUM_SIMULATION_STEP_S
 
 #: The intervals the interface ships, restated here rather than imported from
 #: `app/simulation_view.py`, which needs Flet. `test_simulation_view.py` holds
@@ -191,6 +193,27 @@ def test_an_unusable_interval_is_refused(interval: float) -> None:
 
     with pytest.raises(SimulationConfigurationError):
         PlaybackRate(1).steps_per_tick(tick_interval_s=0.1, simulation_step_s=interval)
+
+
+@pytest.mark.parametrize(
+    "simulation_step_s", [5e-324, nextafter(MINIMUM_SIMULATION_STEP_S, 0.0), 0.2]
+)
+def test_a_step_outside_the_supported_range_is_refused(simulation_step_s: float) -> None:
+    """The step a tick counts in is a run's step, so it has the run's bounds.
+
+    5e-324 s reached `round()` as an infinite step count and raised a bare
+    `OverflowError`, outside the simulator's own exceptions (`PL-YZ17`).
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="supported step"):
+        PlaybackRate(1).steps_per_tick(tick_interval_s=0.1, simulation_step_s=simulation_step_s)
+
+
+def test_a_step_count_too_large_to_count_is_refused() -> None:
+    """An enormous tick gives an infinite count, refused rather than rounded."""
+
+    with pytest.raises(SimulationConfigurationError, match="than can be counted"):
+        PlaybackRate(300).steps_per_tick(tick_interval_s=1e307, simulation_step_s=0.1)
 
 
 def test_a_rate_is_looked_up_by_multiplier() -> None:
