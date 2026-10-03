@@ -100,7 +100,12 @@ so after $`s`$ of them the state carries up to about $`2^{s}\\varepsilon`$,
 with $`\\varepsilon = 2^{-52}`$. At an hour-long interval, sixteen squarings,
 that bound is $`1.5\\times10^{-11}`$, and the analytic comparisons in the tests
 measure $`2\\times10^{-12}`$. `MAXIMUM_SQUARINGS` is where this module stops,
-because past it the bound passes one part in a million.
+because past it the bound passes one part in a million. That accuracy falls
+with the number of squarings is the method's known weakness rather than this
+module's: Higham's revision of it is "typically more accurate, owing to the
+fewer required squarings" (Higham NJ. The scaling and squaring method for the
+matrix exponential revisited. SIAM J Matrix Anal Appl 2005;26(4):1179-1193.
+doi:10.1137/04061101X).
 
 **One kind of state is exempt, and exactly.** A row of $`A`$ with no nonzero
 entry is a state nothing moves - the constant forcing state is one - and its
@@ -109,7 +114,14 @@ would recover it as $`1+\\delta`$ and the squarings would raise that to
 $`(1+\\delta)^{2^{s}}`$, which was measured at $`2.28\\times10^{222}`$ with the
 alveolar volume driven to 1e-19 L (`PL-2MD9`). So that row is written as the
 identity's before the squarings, which then keep it to the last bit;
-`_with_constant_rows_restored` says why they do.
+`_with_constant_rows_restored` says why they do. It is the simplest case of a
+published remedy: for a triangular matrix, Al-Mohy and Higham "compute the
+diagonal elements in the squaring phase as exponentials instead of from
+powers" of the approximant, and a state nothing moves is a one-by-one diagonal
+block whose exponential is one (Al-Mohy AH, Higham NJ. A new scaling and
+squaring algorithm for the matrix exponential. SIAM J Matrix Anal Appl
+2009;31(3):970-989. doi:10.1137/09074721X). Both Higham citations were read
+from their abstracts in Crossref's records on 2026-10-03, not in full text.
 
 ## The series constants, derived rather than inherited
 
