@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect, science
 feature: numerical-domain
-touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation.py, docs/MODEL.md, tests/unit/test_uptake_system_failure.py, tests/unit/test_simulation.py, tests/reference/test_sevo_patient.py
+touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, tests/unit/test_uptake_system_failure.py, tests/unit/test_simulation.py, tests/reference/test_sevo_patient.py
 added: 2026-10-03
 closed: 2026-10-03
 pr: 1306
@@ -52,7 +52,8 @@ asks for, and the question left was only where.
 shipped one at - the bottom of `PL-X9KD`'s sweep, and now driven by the
 step-refinement gate, which requires a minute in 1 ms steps to land within
 3e-14 of the 0.1 s solution (measured 2.4e-15) - and nothing in the tree runs
-finer; the finest step any test takes is 0.02304 s. It also covers the brief's
+finer: apart from the tests of the floor itself, the finest step any test takes
+is 0.02304 s. It also covers the brief's
 second point: 24 h at 1 ms is 86 400 000 steps, far inside 2^53. The growth
 has no knee, so the value is declared rather than derived, as the ceiling is.
 **The value was chosen by this session on that measurement, not by the

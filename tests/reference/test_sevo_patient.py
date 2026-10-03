@@ -66,8 +66,16 @@ STEP_REFINEMENT_SETTLED_GAP = 1e-14
 # step. Measured 2026-10-03, it is 2.4e-15 in the alveolar fraction, 3.6e-16 in
 # vessel rich and 2.5e-16 in mixed venous. This bound allows about twelve times
 # the worst, the margin the gap above allows itself, and is still more than nine
-# orders of magnitude below one count of the last displayed digit, 1e-4.
+# orders of magnitude below one count of the last displayed digit, 1e-4. The gap
+# follows how the propagator rounds at that one step rather than the step
+# smoothly - steps near 1 ms reach 1.2e-14 - so against a machine that rounds
+# differently the margin is nearer two and a half times.
 FLOOR_SETTLED_GAP = 3e-14
+
+# The floor that bound and docs/MODEL.md's figures were measured at. Pinned so a
+# floor moved without re-measuring them fails here instead of passing quietly:
+# the gate passes at floors ten times lower too, so it cannot catch that itself.
+FLOOR_MEASURED_AT_S = 1e-3
 
 
 # The washout gate's run, matching the wash-in and washout legs of
@@ -347,6 +355,12 @@ def test_the_smallest_supported_step_lands_on_the_ceilings_solution() -> None:
     tying the two ends of the supported interval together is the claim; the
     successive halvings above cover the steps between.
     """
+
+    assert MINIMUM_SIMULATION_STEP_S == FLOOR_MEASURED_AT_S, (
+        f"the floor moved to {MINIMUM_SIMULATION_STEP_S} s; FLOOR_SETTLED_GAP and the "
+        'figures in docs/MODEL.md "Supported simulation step" were measured at '
+        f"{FLOOR_MEASURED_AT_S} s, so re-measure them at the new floor before moving it"
+    )
 
     ceiling = _states_after_one_minute(MAXIMUM_SIMULATION_STEP_S)
     floor = _states_after_one_minute(MINIMUM_SIMULATION_STEP_S)

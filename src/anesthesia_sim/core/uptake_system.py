@@ -139,7 +139,8 @@ MAXIMUM_SIMULATION_STEP_S = 0.1
 # It is declared at the finest step the solution has been shown to be the
 # shipped one at: the bottom of the step sweep PL-X9KD took, and a step the
 # step-refinement gate in tests/reference/test_sevo_patient.py drives, which
-# holds it. Nothing runs finer; the finest step any test takes is 0.02304 s.
+# holds it. Nothing runs finer: apart from the tests of this floor itself, the
+# finest step any test takes is 0.02304 s.
 #
 # It also keeps the run's own arithmetic exact. At this step the supported run
 # length is 86 400 000 steps, well inside the 2**53 below which a float holds

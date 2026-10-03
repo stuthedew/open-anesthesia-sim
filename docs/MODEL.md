@@ -1779,16 +1779,18 @@ fractions changed by:
 | 1 ps | 5.8×10⁻³ |
 | 10 fs | 3.2×10⁻¹ |
 
-Nothing raises at any of them: at $`10^{-14}`$ s the model computes a change a
-third wrong and returns it as an ordinary step. The growth has no knee, so, as
+Nothing raises at any of them: at $`10^{-14}`$ s the change those steps compute
+is a third wrong, and a single step's nearly half, and each is returned as an
+ordinary step. From about $`10^{-16}`$ s down a step changes nothing at all,
+and still returns normally. The growth has no knee, so, as
 with the ceiling, no step is the one at which the answer becomes wrong, and the
 floor is declared rather than derived.
 
 **Where it is declared, and what holds it.** 1 ms is the finest step at which
 the solution has been shown to be the shipped one: it is the bottom of the
 sweep `PL-X9KD` took, and the step-refinement gate (§ "Step-refinement test")
-drives it. Nothing runs finer; the finest step any test takes is 0.02304 s. The
-table is a dated measurement rather than a gate, because the steps below the
+drives it. Nothing runs finer: apart from the tests of the floor itself, the
+finest step any test takes is 0.02304 s. The table is a dated measurement rather than a gate, because the steps below the
 first row are outside the domain and no test can take them; lowering the floor
 is a measurement rather than an edit, starting with that gate at the new floor.
 
@@ -3254,8 +3256,13 @@ first-order method would show at these steps.
 wider than the halvings' because that minute takes 60 000 steps rather than at
 most 2 400, and the residual is rounding accumulated once per step. Measured
 2026-10-03, the worst is 2.4e-15, in the alveolar fraction, and the bound
-allows about twelve times it, the halvings' own margin. This is what holds the
-floor where § "Supported simulation step" declares it.
+allows about twelve times it, the halvings' own margin. The gap depends on how
+the propagator happens to round at that step rather than smoothly on the step -
+steps near 1 ms reach 1.2e-14 - so against a machine that rounds differently the
+margin is nearer two and a half times. What this holds is the floor's claim,
+that the solution at the declared floor is the shipped one; the gate pins the
+floor at 1 ms as well, so moving it means re-taking these figures rather than
+editing a constant.
 
 The release comparison tolerance is 5e-3 relative or 1e-8 absolute, either
 satisfying, on the alveolar, vessel-rich and mixed-venous fractions after
