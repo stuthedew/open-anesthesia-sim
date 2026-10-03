@@ -45,7 +45,7 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from .model import CLOSED_STATUSES, parse_front_matter, parse_item
+from .model import CLOSED_STATUSES, is_under, parse_front_matter, parse_item
 from .release import (
     CUT_FLAGS,
     NOTES_DIR,
@@ -3152,7 +3152,6 @@ def since_filed(
     )
     if run.unanswered:
         return SinceFiled.unread(root, touches, filed, run.reason)
-    bare = {path: path.rstrip("/") for path in touches}
     counts: Counter[str] = Counter()
     deleted: set[str] = set()
     in_commit: set[str] = set()
@@ -3168,8 +3167,8 @@ def since_filed(
         elif not status:
             status = token.lstrip("\n")
         else:
-            for path, prefix in bare.items():
-                if token == prefix or token.startswith(prefix + "/"):
+            for path in touches:
+                if is_under(token, (path,)):
                     in_commit.add(path)
                     if status == "D":
                         deleted.add(path)
@@ -3263,8 +3262,7 @@ def gone_paths(root: Path, paths: Iterable[str], *, runner: Runner | None = None
                 continue
             name = token.removeprefix("\n")
             for path in chunk:
-                prefix = path.rstrip("/")
-                if path not in last and (name == prefix or name.startswith(prefix + "/")):
+                if path not in last and is_under(name, (path,)):
                     last[path] = commit
     if run.unanswered:
         return GoneReport(declined=run.reason)

@@ -18,12 +18,11 @@ Two others carry the design rather than the behavior.
 statement of what the item asked for, run against this repository's real
 settings through the same `Item.lane` that ranks the queue - so it fails if the
 check passes while the thing the check is *for* is still broken. And
-`test_the_prefix_comparison_agrees_with_the_lane_it_mirrors` pins a knowing
-duplication in the tool: `is_covered` restates `docket.model.is_under` because
-tools here may import the standard library only, and this is what stops the
-two drifting apart in silence. `TEST_FILE_PATTERNS`, restating pytest's
-`python_files`, is the other, pinned by
-`test_a_test_file_is_what_this_run_of_pytest_collects`.
+`test_a_test_file_is_what_this_run_of_pytest_collects` pins the tool's one
+knowing duplication, `TEST_FILE_PATTERNS` restating pytest's `python_files`.
+Which side of a list a path falls on is not duplicated: the tool reads it
+through `docket.model.is_under`, the comparison `Item.lane` makes
+(`PL-PFD9`).
 
 A support module - anything under `tests/` pytest does not collect - is held
 to half the rule, and its tests cover both halves: the direction its imports
@@ -46,7 +45,7 @@ from pathlib import Path
 
 import pytest
 import workflow_paths_check
-from docket.model import LANE_PRODUCT, LANE_WORKFLOW, is_under, parse_item
+from docket.model import LANE_PRODUCT, LANE_WORKFLOW, parse_item
 
 ROOT = Path(workflow_paths_check.__file__).resolve().parent.parent
 
@@ -319,7 +318,7 @@ def test_the_owners_own_notes_are_apparatus_like_the_workers() -> None:
     deliberate absences each carry their reason, so an entry missing without one
     is an oversight, and this is what stops it being dropped again as a tidy-up.
 
-    Asserted through `Item.lane` rather than through `is_covered`, for the same
+    Asserted through `Item.lane` rather than through `is_under`, for the same
     reason as the test above: `lane` is the code that actually decides which
     session `docket next` offers the item to. `PL-90CJ` is the live instance -
     reporting a hook's stale-ref count upstream, apparatus work end to end, with
@@ -611,34 +610,6 @@ def test_a_test_file_is_what_this_run_of_pytest_collects(pytestconfig: pytest.Co
     than with a copy of pytest's default, so the comparison cannot drift too.
     """
     assert tuple(pytestconfig.getini("python_files")) == workflow_paths_check.TEST_FILE_PATTERNS
-
-
-def test_the_prefix_comparison_agrees_with_the_lane_it_mirrors() -> None:
-    """`is_covered` restates `docket.model.is_under`; this is what pins them together.
-
-    The tool may not import `docket` - every script in `tools/` is standard
-    library only so a bare checkout can run it - so the comparison is written
-    twice on purpose. Asserted over this repository's own list and every file
-    the check reads, plus the edge cases a trailing slash gets wrong.
-    """
-    paths = workflow_paths_check.declared_workflow_paths(ROOT)
-    candidates = [
-        path.relative_to(ROOT).as_posix()
-        for path in sorted((ROOT / workflow_paths_check.TESTS_DIR).rglob("*.py"))
-    ]
-    candidates += [
-        "tools/doc_check.py",
-        "tools",
-        "toolsmith/other.py",
-        "docs/items/PL-JBZK.md",
-        "src/anesthesia_sim/core/blood.py",
-        "docket.toml",
-        "docket.toml.bak",
-    ]
-    for candidate in candidates:
-        assert workflow_paths_check.is_covered(candidate, paths) == is_under(candidate, paths), (
-            candidate
-        )
 
 
 def test_this_repository_passes_its_own_check() -> None:

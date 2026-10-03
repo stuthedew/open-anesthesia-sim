@@ -3961,6 +3961,27 @@ def test_a_run_over_a_tree_the_project_check_does_not_collect_is_left_alone() ->
     assert not _has(_shape_errors(verify=command), TWICE)
 
 
+def test_a_tree_declared_with_a_trailing_slash_still_collects_what_is_under_it() -> None:
+    """`collected_test_paths` is read through `docket.model.is_under`, as `touches` is.
+
+    The rule's own comparison put a `/` after each tree as written, so a project
+    declaring `tests/` compared every target with `tests//`, and the rule went
+    off for every run naming a path, in silence (`PL-PFD9`).
+    """
+    config = Config(
+        verify_prerequisite_refused_from=AFTER,
+        collected_test_paths=("tests/", "subprojects/docket/tests/"),
+    )
+    command = (
+        "uv run pytest subprojects/docket/tests/test_cli.py && "
+        "grep -q 'def test_flight_fetches' subprojects/docket/tests/test_cli.py"
+    )
+
+    errors = analyze([_item(verify=command, added=AFTER)], TODAY, config).errors
+
+    assert _has(errors, TWICE)
+
+
 def test_a_bare_run_beside_a_discriminator_is_refused() -> None:
     """No path is the whole suite, which is exactly what `check_command` runs."""
     assert _has(_shape_errors(verify="uv run pytest && grep -q 'def test_x' a.py"), TWICE)
@@ -4105,6 +4126,20 @@ def test_a_k_selector_over_a_tree_the_project_check_does_not_collect_is_left_alo
     """The falsifying case: a test nothing else runs can be failing before the work,
     so a `-k` over one can be an evaluation after all."""
     assert not _has(_selector_errors(verify="uv run pytest spikes/test_probe.py -k probe"), NARROWS)
+
+
+def test_a_k_selector_over_a_tree_declared_with_a_trailing_slash_is_refused() -> None:
+    """The same declared tree, read the same way: `tests/` collects `tests/unit` (`PL-PFD9`)."""
+    config = Config(
+        verify_k_selector_refused_from=SELECTOR_FROM,
+        collected_test_paths=("tests/", "subprojects/docket/tests/"),
+    )
+
+    errors = analyze(
+        [_item(verify="uv run pytest tests/unit -kcommit_msg", added=SELECTOR_FROM)], TODAY, config
+    ).errors
+
+    assert _has(errors, NARROWS)
 
 
 def test_a_command_without_a_k_selector_is_not_this_rule_s() -> None:
