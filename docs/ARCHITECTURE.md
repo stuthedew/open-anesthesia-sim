@@ -668,6 +668,7 @@ tools/
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── item_reads.py         # reports, from the local untracked `.docket-reads.log` that `.claude/hooks/item_read_log.py` writes, how many distinct items sessions actually open, what share of those are closed, and how many citation edges are traversed within a session - the read-side measurements every argument about the store's shape had been assuming; states the sample size first and chooses between none of the readings a low count admits
 ├── left_behind_check.py  # names the commits a branch carries past the head its newest merged pull request merged, because nothing merges a merged pull request a second time and a push made after the merge lands nowhere with no conflict, red check or advisory (`#284`); exact rather than a content comparison - the tip is compared by ancestry against the frozen `refs/pull/<n>/head`, read with one `ls-remote`, so a squash, a base that rewrote the file afterwards and identical lines from two sessions cannot confound it the way they have confounded `vcs.orphaned`, which stays beside it as the half that answers offline (`PL-VV4D`, `PL-BHVM`); the one case ancestry cannot see, a commit past the head whose change reached the base through another pull request, it puts to `vcs.change_landed`, the three-way replay `vcs.orphaned` reads too, and reports as landed there, naming the pull request (`PL-GHHW`, `PL-PXZ3`); git records no link from a branch to its pull request, so that mapping is GitHub's pull-request listing and needs a token; it declines, under its own prefix, on no network, no permission and a `refs/pull/<n>/head` GitHub has deleted (`PL-LF2C`), and never reads a missing answer as clear, because in the session-start digest that calls it silence is the all-clear; where it and `vcs.orphaned` disagree it prints the disagreement and wins
+├── literal_home_check.py  # refuses a bare numeric literal anywhere under `src/anesthesia_sim/` outside the value of a module-level assignment - 0, 1 and 2 exempt, and never a `bool` - and a numeric constant defined in more than one module, so a number has one named home and a second copy cannot drift from the first; its `BASELINE` holds the literals the tree carried when it landed, keyed by file, scope and value rather than line, and may only shrink, and a finding names any constant of the same value without deciding that it is the same quantity (`PL-40SJ`)
 ├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because the whole-store `verify:` replay runs only on push to `main` and its failures therefore land on a run no pull request shows; a run newer than that verdict that was cancelled gets a line of its own whatever the verdict, since its commit has no whole-store verdict and the one reported is an older commit's (`PL-JTHW`); on a failure it makes a second request for the run's jobs and names the step that failed, because 93 of the 109 failures on record are the whole-store replay alone and a line naming no step cannot separate those from a broken tree (`PL-T83R`); the session-start hook calls it, it gates nothing, and it is not the only tool here that reads the network - `required_checks_check.py` does too and gates, and `pr_body_check.py` does in its `--record`, `--recover` and `--compare` modes
 ├── open_pull_requests.py  # prints the branch name and number of every open pull request, one per line, so `bin/docket flight` can tell a branch waiting on review from one nobody opened - the half of "is anybody still on this branch" that git cannot answer, and the half that left `claude/hopeful-allen-tetrje` reported as live work for three hours with every item on it closed - and can say on every row which pull request is open, since a branch outlives its session and an age alone cannot say so in the first hour (`PL-7TVT`); the contract is the exit status, zero meaning it looked and non-zero with an empty stdout meaning it could not, because "could not look" read as "nothing is open" would announce that finished work has stalled on every branch under review; it lives here rather than in `subprojects/docket/` for the reason `main_ci_status.py` does - that package answers from a bare checkout with no network and knows nothing about GitHub - and `docket.toml`'s `open_pull_requests_command` is what points `flight` at it; `pr_title_check.py` shares the request rather than making its own, so the token, the timeout and the every-failure-is-a-skip rule have one spelling; `--newest BRANCH BASE` prints `NUMBER STATE HEAD` for the newest pull request from one branch, which `bin/docket branch` and `bin/docket arm` read through `newest_pull_request_command` as the merge evidence a squash leaves no commit of, so a branch whose pull request merged is told to restart rather than to merge the base in (`PL-8BR0`)
 ├── possessive_section_check.py  # reports a possessive citation whose quotation matches a `#` heading in the file it names, and prints the `§` line it should become, because admitting the possessive to `CITATION_CONNECTIVE` (`PL-316G`) settled whether such a citation is *checked* and left what it tells a reader: `§` says the quotation is a section title and the possessive says nothing, this project writing it to quote a sentence as often as to cite a section. Only the direction that is a fact about the tree is reported - a quotation matching a heading is a section citation - while one matching no heading may be a faithful quotation of prose and is left alone, which is the judgment half `CLAUDE.md` refuses to script. A `**Bold.**` marker is in that half, being often a lead sentence as well as a title, so either form quotes one correctly (`PL-FKH6`). Closed briefs never reach it, `_quoting_sources` having exempted them since `PL-ZM8P`
@@ -1137,16 +1138,17 @@ become unparseable by the interpreter that runs it.
 `tests/unit/test_tools_portability.py` covers both directories by path rather
 than by filename, so the guard follows the next hook without being extended.
 
-Eight of them are nonetheless *invoked* only under `uv run python`, and two
+Nine of them are nonetheless *invoked* only under `uv run python`, and two
 more both bare and under it (below), and the distinction is worth keeping
 straight, because it is about what a tool reads
 rather than what it needs. `ignore_check.py` is the odd one and the only one
-of the eight with a reason of its own: it shells out to mypy, so it wants the
+of the nine with a reason of its own: it shells out to mypy, so it wants the
 virtualenv that gate runs in.
 
-The other seven are one reason repeated. `import_boundary_check.py`,
+The other eight are one reason repeated. `import_boundary_check.py`,
 `contrast_check.py`, `agent_identity_check.py`, `workflow_paths_check.py`,
-`core_vocabulary_check.py`, `glyph_check.py` and `fixture_id_check.py` each
+`core_vocabulary_check.py`, `glyph_check.py`, `fixture_id_check.py` and
+`literal_home_check.py` each
 parse repository source
 with `ast`, and that
 source targets 3.14: `app_metadata.py` writes `except OSError,
@@ -1164,7 +1166,7 @@ being absent from the CI floor section.
 tool's own docstring. It ran bare until `PL-L17Q`, green only because the two
 files it then read happened to carry no 3.12+ syntax, so one PEP 695 generic added
 to either would have failed the floor section on a tool nobody had touched. The
-rule the seven are an instance of is stated in
+rule the eight are an instance of is stated in
 `tests/unit/test_tools_portability.py`'s module docstring, and a tool joining
 them belongs on the `uv run python` lines in both `Makefile` and
 `.github/workflows/quality.yml`, never in that workflow's floor section.
@@ -1323,6 +1325,16 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   unit construction, the default is pinned to the file by a test, as
   `test_the_bare_circuit_defaults_match_the_shipped_machine_file` pins
   `BreathingCircuit`'s.
+- A number the code needs → one home, read through its name at every use: a
+  cited data file under `data/` for a scientific value, `core/units.py` for a
+  factor between units, and otherwise a module-level constant in the module
+  that owns the quantity - imported elsewhere, never declared a second time.
+  `tools/literal_home_check.py` refuses the two shapes a copy takes: a bare
+  numeric literal anywhere under `src/anesthesia_sim/` other than 0, 1 and 2,
+  and a numeric constant defined in more than one module. Its baseline holds
+  the literals that predate it and only shrinks, and a finding names any
+  constant of the same value without deciding that it is the same quantity,
+  which stays the reader's call (`PL-40SJ`).
 - A new display panel or control → what it *claims*, as a plain value with a
   test in `tests/unit/test_dashboard_frame.py`, in `app/dashboard_frame.py`;
   the widget that draws it, deciding nothing, in `app/qt_widgets.py`; and its

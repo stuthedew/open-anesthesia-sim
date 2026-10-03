@@ -1,10 +1,12 @@
 ---
 id: PL-40SJ
 title: A simulator number has no enforced single home: nothing refuses a second literal copy of a value src/ already names, so the copies drift (PL-T5J5, PL-TCW5, PL-QRBB, PL-DJYF, PL-4YY1, PL-8DJ7, PL-017) and the rule lives only in prose; extend the colours' one-home check to numeric literals, ratcheted from today's count
-status: untriaged
+status: done
 feature: one-home-for-constants
 touches: tools, Makefile, .github/workflows/quality.yml, tests/unit, src/anesthesia_sim, docket.toml, docs/ARCHITECTURE.md
 added: 2026-10-03
+closed: 2026-10-03
+verify: uv run pytest -q tests/unit/test_literal_home_check.py && uv run python tools/literal_home_check.py
 root-cause-of: PL-T5J5, PL-TCW5, PL-QRBB, PL-DJYF, PL-4YY1, PL-8DJ7, PL-017
 generator: live - three of its members were filed on 2026-10-03 alone (PL-T5J5 and its two derived-state siblings PL-8H2R and PL-5291), and nothing in make check yet refuses a second literal copy of a named value
 misread: the value of a named constant, read from its one definition rather than typed again at the use
@@ -12,7 +14,7 @@ misread: the value of a named constant, read from its one definition rather than
 
 **Problem.** A simulator number has no enforced single home: nothing refuses a second literal copy of a value src/ already names, so the copies drift (PL-T5J5, PL-TCW5, PL-QRBB, PL-DJYF, PL-4YY1, PL-8DJ7, PL-017) and the rule lives only in prose; extend the colours' one-home check to numeric literals, ratcheted from today's count
 
-**Why it matters.** Seven closed or open items are one mechanism: a value `src/` already names was typed again somewhere else, and nothing held the two equal until they disagreed. The rule against it is resident prose in `CLAUDE.md` § "Architecture and development discipline", and prose is applied at a session's discretion at the moment of writing; a check in `make check` is applied at every commit. The three architecture bullets that have a check today (toolkit independence, no wall clock in `core/`, determinism) hold with zero violations in the tree; the two without one recur. The project owner asked on 2026-10-03 how to make best practice hold rather than be asked for again.
+**Why it matters.** Seven closed or open items are one mechanism: a value `src/` already names was typed again somewhere else, and nothing held the two equal until they disagreed. No rule against it was ever written down - `CLAUDE.md` § "Architecture and development discipline" carries none (corrected at close; this said it was resident prose there) - so it was applied at a session's discretion at the moment of writing; a check in `make check` is applied at every commit. The three architecture bullets that have a check today (toolkit independence, no wall clock in `core/`, determinism) hold with zero violations in the tree; the two without one recur. The project owner asked on 2026-10-03 how to make best practice hold rather than be asked for again.
 
 **Mechanism, measured 2026-10-03.** An `ast` walk over `src/anesthesia_sim/` (run with `uv run python`, since the package uses 3.14 syntax) counting numeric `Constant` nodes outside a module-level assignment, excluding 0, 1 and -1: 80 literals, 68 in `app/` and 12 in `core/`, 16 distinct values. `2` is 27 of them; `3600.0` is 7 (PL-06M7); `12`, `6`, `4` and `8` are display geometry in `app/qt_widgets.py` (25) and `app/qt_chart.py` (13). So the retrofit is small, and the ratchet starts from a baseline of at most 80, every entry named in the tool with its file.
 
@@ -38,3 +40,12 @@ misread: the value of a named constant, read from its one definition rather than
 - *Floor.* A tree with no Python files is an error, not a pass; a file that does not parse reports as not checked and fails.
 - *Wiring.* It reads 3.14 source, so `uv run python` beside `import_boundary_check.py` in `Makefile` and `.github/workflows/quality.yml`, and in neither floor section; both files' comments and `tests/unit/test_tools_portability.py`'s docstring count "seven" tools in that group, now eight. Add `tests/unit/test_literal_home_check.py` to `docket.toml` `workflow_paths`, the tool to `docs/ARCHITECTURE.md` § "Developer tooling (`tools/`)", which `tools/doc_check.py` holds to the tree, and point the single-source paragraph at it.
 - *Tests* (apparatus bar): a new literal fails naming file, line and scope; a module-level constant and a nested table pass; the exempt values and `bool` pass; a class default is flagged; the baseline covers, overflows, goes stale and names a missing file; the suggestion finds a derived constant and never crosses `core/` to `app/`; an empty tree and an unparseable file fail; the real tree passes.
+
+**Corrected at close, 2026-10-03.** Four things in the brief did not hold, each checked against the tree:
+
+- *No resident rule.* `grep -n -i -E "single source|source of truth|one home|single home|typed again" CLAUDE.md` matches nothing, so "Why it matters" is corrected in place: the rule enters as the check alone. The session that filed this found it first, while recording `PL-ZYHX`, and sent it here.
+- *No paragraph to point at.* `docs/ARCHITECTURE.md` had no single-source paragraph either - the same grep finds only the package map's comment on `core/units.py`. So the work writes one, as the "A number the code needs" bullet of § "Where new code belongs", where a session decides where new code goes, and it names the tool.
+- *The literal rule alone catches four of the seven, not seven.* `PL-QRBB` (`SECONDS_PER_MINUTE` in five `core/` modules) and `PL-TCW5` (`FLOW_FRACTION_TOLERANCE = 1e-12` in two) were second copies written as module-level constants, which that rule exempts as homes. So the tool carries a second rule, one definition per numeric name: a module-level name bound to a number is defined in one module and imported by the rest. Exact on today's tree - 0 of the 120 module-level numeric constants under `src/anesthesia_sim/` share a name with another module's, measured 2026-10-03 - and equal values under different names are deliberately not refused, since `SECONDS_PER_MINUTE` and `MINUTES_PER_HOUR` are both 60.0.
+- *`PL-T5J5` is outside it.* Its eight copies were in tests, which this does not read; the docstring names it as the one it would not have caught, and `PL-0Z0F` is the test-side half.
+
+The baseline landed at 44 occurrences under 31 keys in 9 files: the 71 left after `PL-06M7`, less the 27 twos the exemption covers. So the Done-when reads: `make check` fails on a new bare numeric literal or a second definition of a numeric name; the baseline cannot grow; the docstring names the seven, six as caught and `PL-T5J5` as not; `docs/ARCHITECTURE.md` carries a single-source paragraph naming the tool.

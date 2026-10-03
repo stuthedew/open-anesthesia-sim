@@ -302,7 +302,7 @@ check: sync
 # decays, and this is what stops the next session
 # writing a section citation in a form that says nothing to its reader.
 	uv run python tools/possessive_section_check.py
-# Under `uv run`, all seven of them, like the two lines above, and for a reason
+# Under `uv run`, all eight of them, like the two lines above, and for a reason
 # about the *input* rather than about the tool. These read `app/`, `tests/` and
 # modules under `src/anesthesia_sim/` with `ast`, and that source
 # targets 3.14. PEP 695 (3.12) type parameters in `app/bookmarks.py`
@@ -352,11 +352,17 @@ check: sync
 # an example carrying one is copied (`PL-DPY6`, `PL-3BZS`). The rule was
 # `subprojects/docket/tests/test_store.py`'s and globbed that directory alone.
 #
+# `literal_home_check.py` joined them under `PL-40SJ`. It reads every module
+# under `src/anesthesia_sim/` with `ast` to refuse a number typed where a
+# named one belongs, and a numeric constant defined in two modules: the
+# colours' one-home rule in `contrast_check.py`, extended to numbers.
+#
 # `tools/ignore_check.py` above is the same category for a different reason.
-# All seven tools here stay standard-library-only and parse at the floor
+# All eight tools here stay standard-library-only and parse at the floor
 # themselves, which is what `tests/unit/test_tools_portability.py` holds them
 # to; that suite's docstring states the rule this group is an instance of.
-# `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`, `PL-FZ6T`, `PL-8XPQ`, `PL-7922`.
+# `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`, `PL-FZ6T`, `PL-8XPQ`, `PL-7922`,
+# `PL-40SJ`.
 #
 # `--base origin/main` since `PL-VJFQ`: an entry added to `KNOWN_SHORTFALLS` in
 # the change that introduces or alters its colour fails, compared at the merge
@@ -375,6 +381,7 @@ check: sync
 	uv run python tools/core_vocabulary_check.py
 	uv run python tools/glyph_check.py
 	uv run python tools/fixture_id_check.py
+	uv run python tools/literal_home_check.py
 
 fix:
 	uv run ruff format .
