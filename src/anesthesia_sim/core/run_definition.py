@@ -594,8 +594,13 @@ class RunDefinition:
         Raises:
             SimulationConfigurationError: `spacing_s` is not positive or not
                 finite; either bound is not finite; either bound precedes
-                `opened_at_s`; `stop_s` precedes `start_s`; or `stop_s` is
-                past the time the run has reached.
+                `opened_at_s`; `stop_s` precedes `start_s`; `stop_s` is past
+                the time the run has reached; or `spacing_s` is so fine that
+                the grid's multiples up to `stop_s` cannot be counted, which
+                raised a bare `OverflowError` before `PL-YZ17`. A fine spacing
+                is otherwise accepted: unlike a run's step it is chained at
+                most once per column, so its rounding does not accumulate past
+                what the columns asked for.
         """
 
         if not isfinite(spacing_s) or spacing_s <= 0.0:
@@ -609,6 +614,12 @@ class RunDefinition:
         if stop_s < start_s:
             raise SimulationConfigurationError(
                 f"a window from {start_s} s to {stop_s} s ends before it begins"
+            )
+
+        if not isfinite(stop_s / spacing_s):
+            raise SimulationConfigurationError(
+                f"a column spacing of {spacing_s} s puts more grid columns before {stop_s} s "
+                "than can be counted"
             )
 
         times_s, grid_index = self._anchored_columns(start_s, stop_s, spacing_s)

@@ -1806,6 +1806,13 @@ ceiling, though for a different reason. Rounding would cost a compartment
 stepped alone the same, but a compartment is stepped at a run's step only by
 `AgentUptakeSystem.advance()`, which refuses a step below the floor before any
 compartment sees it. Whether a compartment should refuse one too is `PL-WP52`.
+The step a playback tick counts in is the run's own, so
+`PlaybackRate.steps_per_tick` refuses one outside the range as the run does.
+The chart's grid is deliberately not held to it: `RunDefinition` chains a
+column spacing at most once per column, so the rounding cannot accumulate past
+what the columns asked for, and a grid at a tenth of the floor still lands on
+the run's own state to within 5e-14. Flooring it would refuse narrow axes the
+controller draws correctly today (`PL-6QYJ`).
 
 The value was chosen by the session that took the measurement above
 (`PL-YZ17`), not by the project owner, so ordinary evidence reopens it.
