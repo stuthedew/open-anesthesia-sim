@@ -315,7 +315,7 @@ def test_the_bare_circuit_defaults_match_the_shipped_machine_file() -> None:
 
 
 def test_for_agent_builds_the_circuit_at_the_machine_file_s_values() -> None:
-    """The shipped path reads the file rather than falling through to a default.
+    """A run from the shipped profile carries its values, and the 90 s they give.
 
     Before `PL-4YY1` `for_agent()` named neither, so a run took its circuit
     volume and fresh gas flow from `core/circuit.py`'s field defaults and no
@@ -323,6 +323,12 @@ def test_for_agent_builds_the_circuit_at_the_machine_file_s_values() -> None:
     constant as well as the two inputs is the point of the pair: the 90 s
     machine lag is the quantity a learner reads off the early rise, and it is
     what a silent change to either value would move.
+
+    It cannot show that the file was read, because the shipped values equal
+    those field defaults. A profile stating other values shows it:
+    `test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume` for
+    the volume and `test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow`
+    for the flow, both below (`PL-H8QP`).
     """
 
     machine = load_reference_circle_system_parameters()
@@ -428,6 +434,34 @@ def test_a_silent_profile_whose_range_excludes_the_teaching_default_is_refused(
     )
     with pytest.raises(SimulationConfigurationError, match=re.escape(refusal)):
         _run_built_from(monkeypatch, payload)
+
+
+# --- A profile stating another volume (PL-H8QP) -------------------------------
+
+# The shipped profile's volume equals `BreathingCircuit`'s field default, so no
+# run built from it shows whether `for_agent()` read the volume at all. A run
+# built from a profile stating another one does, handed over as the profiles
+# above are.
+
+
+def test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A `for_agent()` that stopped passing the profile's volume fails here.
+
+    It would build the run at the 6.0 L field default instead, and every
+    provenance row pointing at `data/machines/reference_circle_system.json`
+    would quietly become a claim about a file the model no longer consults.
+    3.3 L at the shipped 4.0 L/min is 49.5 s.
+    """
+
+    payload = _shipped_machine_payload()
+    payload["circuit_volume_l"] = 3.3
+
+    circuit = _run_built_from(monkeypatch, payload).circuit
+
+    assert circuit.circuit_volume_l == 3.3
+    assert circuit.time_constant_s == pytest.approx(49.5)
 
 
 # --- The machine's deliverable flow range (PL-8PS6) --------------------------

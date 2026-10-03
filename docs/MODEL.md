@@ -5382,15 +5382,18 @@ and `test_the_bare_alveolar_defaults_match_the_shipped_patient_file`
 (`PL-DJYF`) each assert the literals against the file, and
 `test_for_agent_builds_the_circuit_at_the_machine_file_s_values` and
 `test_for_agent_builds_the_alveoli_at_the_patient_file_s_values` each assert
-that the shipped path arrives at the file's values. That second pair cannot
-tell reading a file from falling through to the defaults, because the two are
-equal, and that is the consequential failure: a change that stopped
-`for_agent()` reading a file would move no number, and every provenance row in
-this table would silently become a claim about a file the model no longer
-consults. For the fresh gas flow it is caught, by
-`test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow`, which
-builds a run from a profile stating a different flow; for the other three
-nothing catches it yet (`PL-H8QP`).
+that the shipped path arrives at the file's values. Those cannot tell reading a
+file from falling through to the defaults, because the two are equal, and that
+is the consequential failure: a change that stopped `for_agent()` reading a
+file would move no number, and every provenance row in this table would
+silently become a claim about a file the model no longer consults. So each of
+the four is also held by a run built from a file stating another value, which
+fails when `for_agent()` stops passing it:
+`test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume` (3.3 L)
+and `test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow`
+(2.0 L/min) for the machine file, and
+`test_for_agent_builds_the_alveoli_at_changed_patient_file_values` (3.0 L and
+5.0 L/min) for the patient file (`PL-H8QP`, checked by breaking each in turn).
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4 -->
 <!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6.0, default_fresh_gas_flow_l_min = 4.0 -->
 
