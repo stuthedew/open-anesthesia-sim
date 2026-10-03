@@ -41,6 +41,7 @@ sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
 
 from docket.model import CLOSED_STATUSES, parse_front_matter, parse_item  # noqa: E402
 from docket.store import ID_PATTERN  # noqa: E402
+from docket.vcs import ITEM_FILE_RE  # noqa: E402
 
 LOG = REPO / ".docket-reads.log"
 ITEMS = REPO / "docs" / "items"
@@ -59,14 +60,19 @@ def store() -> tuple[dict[str, Path], set[str]]:
     first 400 characters stood here, and read 20 of 1,626 closed items as open,
     their status line past the window, and `PL-DHGC` as closed, its title
     quoting the words (`PL-DHGC`).
+
+    Which file is an item's, and whose, is `vcs.ITEM_FILE_RE`'s reading of its
+    name, as every `docket` reader of the store's history makes it. A split on
+    hyphens stood here and took a file whose name carries no slug for an item,
+    under an id that kept its `.md` (`PL-5QG4`).
     """
     paths: dict[str, Path] = {}
     closed: set[str] = set()
     for path in ITEMS.glob("*.md"):
-        parts = path.name.split("-")
-        if len(parts) < 2:
+        found = ITEM_FILE_RE.match(path.name)
+        if found is None:
             continue
-        identifier = f"{parts[0]}-{parts[1]}"
+        identifier = found.group(1)
         paths[identifier] = path
         if parse_item(path.read_text(encoding="utf-8")).status in CLOSED_STATUSES:
             closed.add(identifier)

@@ -90,7 +90,7 @@ from docket.model import (  # noqa: E402
     parse_item,
 )
 from docket.store import ID_PATTERN  # noqa: E402
-from docket.vcs import leading_ids  # noqa: E402
+from docket.vcs import ITEM_FILE_RE, leading_ids  # noqa: E402
 
 ITEM_DIR = Path("docs/items")
 
@@ -118,6 +118,8 @@ SHOW = 6
 #: three-digit ids `store.ID_PATTERN` still accepts: 219 citation edges and
 #: 44 item filenames went unread, so `citations` undercounted exactly the
 #: oldest items and `creation_parents` attributed none of them (`PL-KYW3`).
+#: It reads the ids an item cites; which file is an item's, and whose, is
+#: `vcs.ITEM_FILE_RE`, built on the same pattern (`PL-5QG4`).
 ID_RE = re.compile(ID_PATTERN)
 
 
@@ -200,6 +202,20 @@ def read_item(path: Path) -> Item | None:
         return None
 
 
+def item_files(repo: Path) -> list[Path]:
+    """Every item's file in the store, in filename order.
+
+    Which file is an item's is `vcs.ITEM_FILE_RE`'s reading of its name, the
+    one every `docket` reader of the store's history makes, rather than a glob
+    of this script's own: `PL-*.md` stood here and took a file whose name
+    carries no slug for an item, which those readers do not and `docket check`
+    refuses (`PL-5QG4`).
+    """
+    return [
+        path for path in sorted((repo / ITEM_DIR).glob("*.md")) if ITEM_FILE_RE.match(path.name)
+    ]
+
+
 def creation_parents(repo: Path) -> dict[str, set[str]]:
     """Map each item id to the ids of the items whose work created its file.
 
@@ -241,9 +257,14 @@ def creation_parents(repo: Path) -> dict[str, set[str]]:
             line = line.strip()
             if not line.startswith(f"{ITEM_DIR}/"):
                 continue
-            found = ID_RE.search(Path(line).name.upper().replace("_", "-"))
+            # Whose file it is, as `item_files` reads one. An id searched for
+            # anywhere in the upper-cased name, underscores read as hyphens,
+            # stood here: it answered alike on each of the 1,945 paths ever
+            # added to the store on `main` by 2026-10-03, and differently on a
+            # name `docket` reads as no item's (`PL-5QG4`).
+            found = ITEM_FILE_RE.match(Path(line).name)
             if found:
-                created.add(found.group(0))
+                created.add(found.group(1))
         # A capture commit leads with the ids of the items it is creating, and
         # `bin/docket new` takes several titles at once - so every id this
         # commit creates is excluded, not just the one being attributed.
@@ -261,7 +282,7 @@ def citations(repo: Path, open_ids: set[str]) -> Counter[str]:
     and it cannot be evidence that a mechanism is still standing.
     """
     counts: Counter[str] = Counter()
-    for path in sorted((repo / ITEM_DIR).glob("PL-*.md")):
+    for path in item_files(repo):
         try:
             text = path.read_text(encoding="utf-8")
         except OSError:
@@ -284,7 +305,7 @@ def clusters(repo: Path, *, attributed: bool = True) -> list[Cluster]:
     signals that need no history.
     """
     items: dict[str, Item] = {}
-    for path in sorted((repo / ITEM_DIR).glob("PL-*.md")):
+    for path in item_files(repo):
         item = read_item(path)
         if item is not None and item.identifier:
             items[item.identifier] = item

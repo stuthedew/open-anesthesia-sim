@@ -391,6 +391,26 @@ def test_a_commit_leading_with_a_three_digit_id_attributes_what_it_created(repo:
     assert parents["PL-001"] == set()
 
 
+def test_a_file_whose_name_carries_no_slug_is_no_item_here_either(repo: Path) -> None:
+    """Which file is an item's is `vcs.ITEM_FILE_RE`'s answer, read rather than restated.
+
+    `PL-*.md`, and an id searched for anywhere in an upper-cased name, both
+    took a slug-less `PL-DDDD.md` for an item - counted in the cluster, its
+    citation counted, its add attributed - where every `docket` reader of the
+    store's history reads the name as no item's (`PL-5QG4`).
+    """
+    _open_trio(repo, "src/thing.py", feature="one-problem")
+    slugless = _write(repo, "PL-DDDD", touches="src/thing.py", status="ready", body="PL-8888")
+    slugless.rename(slugless.with_name("PL-DDDD.md"))
+    _commit(repo, "PL-8888: work that spawned a finding")
+
+    found = next(c for c in generator_check.clusters(repo) if c.path == "src/thing.py")
+
+    assert found.open_ids == ["PL-8888", "PL-BBBB", "PL-CCCC"]
+    assert generator_check.citations(repo, {"PL-8888", "PL-DDDD"})["PL-8888"] == 0
+    assert "PL-DDDD" not in generator_check.creation_parents(repo)
+
+
 @pytest.mark.parametrize(
     ("subject", "led_by"),
     [
