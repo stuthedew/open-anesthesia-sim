@@ -665,7 +665,7 @@ def test_a_citation_the_process_cannot_stat_is_reported_not_raised(
 
 
 @pytest.mark.parametrize("token", ["/docs/MODEL.md", "/docs/*.md", "/core/thing.py"])
-def test_a_leading_slash_is_read_from_the_repository_root(tmp_path: Path, token: str) -> None:
+def test_an_absolute_citation_is_repository_anchored(tmp_path: Path, token: str) -> None:
     """`PL-H0CF`: the spelling `.claude/rules/` frontmatter uses is a repository path.
 
     Read from the filesystem's root instead, a file that is there was reported

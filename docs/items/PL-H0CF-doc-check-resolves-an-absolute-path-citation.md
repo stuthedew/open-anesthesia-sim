@@ -146,7 +146,7 @@ unresolved token outside the repository is now told so - `which is not in this
 repository` - rather than that it does not exist, which folds in the wording
 the `PL-D1NT` paragraph above left for whichever reading landed; the
 `absent:` marker is offered for it, as for a planned or deleted file. Tests:
-`test_a_leading_slash_is_read_from_the_repository_root`,
+`test_an_absolute_citation_is_repository_anchored`,
 `test_a_path_outside_the_repository_is_reported_wherever_the_check_runs`,
 `test_slashes_and_dots_alone_are_not_citations`,
 `test_a_line_citation_with_a_leading_slash_is_read_from_the_repository_root`,
