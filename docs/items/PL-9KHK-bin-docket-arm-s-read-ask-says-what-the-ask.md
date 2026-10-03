@@ -9,6 +9,7 @@ feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 added: 2026-10-03
 closed: 2026-10-03
+pr: 1307
 payoff: the owner's read of a held pull request is asked for in the line they act on, naming only what is theirs to judge
 verify: grep -q 'def test_a_read_hold_puts_its_ask_in_the_closing_block_line' subprojects/docket/tests/test_cli.py
 ---
