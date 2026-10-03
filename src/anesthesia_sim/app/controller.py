@@ -49,7 +49,10 @@ from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_paramet
 from anesthesia_sim.core.run_definition import Keyframe, RunDefinition, RunSegment
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SimulationStep
-from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    require_supported_run_length,
+)
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
@@ -189,15 +192,16 @@ class SimulationSnapshot:
     marked instant and a marked height are answered in different words.
     """
     supported_limit_reason: str | None
-    """Why the run stopped at a declared limit of the model's domain, or
-    `None` if it did not.
+    """Why the run stands at a declared limit of the model's domain, or
+    `None` if it does not.
 
-    A non-`None` value means the run reached the supported run length and
-    the core refused the next step. `is_running` is `False`, and this is
-    neither a pause nor a failure: nothing was miscalculated, no step was
-    rolled back, and every value in this snapshot is a completed step's at
-    a simulated time inside the supported span. What ended is the claim
-    that a further step would stand for a patient.
+    A non-`None` value means the run stands at the supported run length,
+    where the core would refuse the next step - whether it stepped there,
+    was forked there, or was reset to a fork there (`PL-5291`). `is_running`
+    is `False`, and this is neither a pause nor a failure: nothing was
+    miscalculated, no step was rolled back, and every value in this snapshot
+    is a completed step's at a simulated time inside the supported span.
+    What ended is the claim that a further step would stand for a patient.
 
     It is separate from `failure_reason` because the interface must not
     present the two alike. Telling a reader the simulator broke, when it
@@ -351,7 +355,7 @@ class SimulationController:
 
         self._is_running = False
         self._failure_reason: str | None = None
-        self._supported_limit_reason: str | None = None
+        self._recorded_supported_limit_reason: str | None = None
         # What this run has done with the marks, as opposed to what is marked.
         # Both are the run's product rather than the learner's question, so
         # both are cleared wherever a new run begins - `_build_state`, which
@@ -462,7 +466,7 @@ class SimulationController:
         # session that has nothing wrong with it. A stale limit reason would
         # do the same to a run that has taken no steps at all.
         self._failure_reason = None
-        self._supported_limit_reason = None
+        self._recorded_supported_limit_reason = None
 
     def _clear_control_timeline(self) -> None:
         """Drop the recorded timeline, for a run that is starting over."""
@@ -505,19 +509,67 @@ class SimulationController:
 
     @property
     def has_reached_supported_limit(self) -> bool:
-        """Whether the run stopped at a declared limit of the model's domain."""
+        """Whether the run stands at a declared limit of the model's domain."""
 
-        return self._supported_limit_reason is not None
+        return self.supported_limit_reason is not None
+
+    @property
+    def supported_limit_reason(self) -> str | None:
+        """Why the run stands at the supported run length, or `None` if it does not.
+
+        Read from the run itself and never from a flag alone (`PL-5291`). A
+        run stands at the limit when the core would refuse its next step, and
+        that is what the state is asked, so the reason here is the one the
+        refused step would give, word for word. Three routes put a run there
+        - stepping onto the last supported step, a fork taken on it, and a
+        branch reset to such a fork - and only the first ever refused a
+        step, so a flag set by the refusal alone left the other two reading
+        as an ordinary pause: Start offered, no limit notice, and the marks
+        panel saying an unreached mark was still ahead of a run that could
+        not step.
+
+        A reason `halt_at_supported_limit` recorded outranks the derived one,
+        because it was first and because the domain limit it carries may have
+        been raised on a path the state cannot be asked about.
+        """
+
+        if self._recorded_supported_limit_reason is not None:
+            return self._recorded_supported_limit_reason
+
+        return self._reason_the_next_step_would_be_refused()
+
+    def _reason_the_next_step_would_be_refused(self) -> str | None:
+        """What `SimulationState.advance` would refuse the next step with, or `None`.
+
+        The core's own guard is asked rather than its rule restated, so the
+        controller and the stepper cannot disagree about which count is the
+        last supported one - `maximum_step_count` decides that once, on the
+        product of count and step (`PL-8H2R`) - and the message is the
+        guard's own. A run that has not stepped has no cadence to measure
+        the span in, and stands at nothing.
+        """
+
+        simulation_step_s = self._state.simulation_step_s
+
+        if simulation_step_s is None:
+            return None
+
+        try:
+            require_supported_run_length(self._state.step_count, simulation_step_s)
+        except SimulationDomainLimitError as refusal:
+            return str(refusal)
+
+        return None
 
     def halt_at_supported_limit(self, reason: str) -> None:
-        """Stop the run because it reached the end of the supported domain.
+        """Stop the run because a raise reached the end of the supported domain.
 
         Distinct from `fail()`, which records that something went wrong,
         and from `pause()`, which the run resumes from. Here nothing went
-        wrong and there is nothing to resume *to*: the core refused the
-        next step before taking it, so the run stands on a completed step
-        at a simulated time the model is claimed to represent a patient at,
-        and the step after it would be refused identically.
+        wrong and there is nothing to resume *to*: the core refused a step
+        before taking it, so the run stands on a completed step at a
+        simulated time the model is claimed to represent a patient at, and
+        the step after it would be refused identically.
 
         Resuming is therefore not offered, for the reason `fail()` gives -
         a Start that does nothing is a control presenting itself as
@@ -526,14 +578,20 @@ class SimulationController:
         difference is required rather than cosmetic: see
         `SimulationSnapshot.supported_limit_reason`.
 
-        The first reason is kept, like `fail()`'s, so a later tick reaching
-        the same boundary cannot overwrite the one that explains it.
+        A run that steps onto the limit never needs this: `advance` halts it
+        on the arriving step, and `supported_limit_reason` reads the limit
+        from the state (`PL-5291`). What is recorded here is a
+        `SimulationDomainLimitError` the interface caught on some other path
+        - a setting, through `run_view.halt` - which the state cannot be
+        asked about. The first reason is kept, like `fail()`'s, so a later
+        raise at the same boundary cannot overwrite the one that explains
+        it, and it outranks the derived reason for the same reason.
         """
 
         self._is_running = False
 
-        if self._supported_limit_reason is None:
-            self._supported_limit_reason = reason
+        if self._recorded_supported_limit_reason is None:
+            self._recorded_supported_limit_reason = reason
 
     def set_agent(self, agent_id: str) -> None:
         """Start fresh with a different agent at that agent's own 1 MAC.
@@ -647,7 +705,7 @@ class SimulationController:
             bookmarks=self._bookmarks,
             bookmark_halt=self._bookmark_halt,
             bookmark_standings=self._bookmark_standings(),
-            supported_limit_reason=self._supported_limit_reason,
+            supported_limit_reason=self.supported_limit_reason,
             failure_reason=self._failure_reason,
         )
 
@@ -1469,10 +1527,12 @@ class SimulationController:
                 f"cannot resume a failed simulation ({self._failure_reason}); reset it first"
             )
 
-        if self._supported_limit_reason is not None:
+        supported_limit_reason = self.supported_limit_reason
+
+        if supported_limit_reason is not None:
             raise SimulationDomainLimitError(
                 f"this run has reached the supported run length "
-                f"({self._supported_limit_reason}); reset it to start a new run"
+                f"({supported_limit_reason}); reset it to start a new run"
             )
 
         self._is_running = True
@@ -1499,12 +1559,15 @@ class SimulationController:
         state that never happened, which is the outcome `CLAUDE.md`'s
         safety-critical standard puts an obvious failure ahead of. Its clock
         goes back to the fork instant with it, so the case's supported run
-        length is spent from where the branch actually starts.
+        length is spent from where the branch actually starts - and a branch
+        forked on the limit itself has none left to spend, so a reset leaves
+        it standing there, stopped, rather than offering a Start the core
+        would refuse (`PL-5291`).
         """
 
         self.pause()
         self._failure_reason = None
-        self._supported_limit_reason = None
+        self._recorded_supported_limit_reason = None
         self._forget_reached_marks()
         self._state.reset()
         uptake_system = self._state.uptake_system
@@ -1721,7 +1784,7 @@ class SimulationController:
         **Both of `start`'s refusals are passed, because both end the run's
         reach** (`PL-N3N5`). A standing says whether a mark can still be
         reached, and this method is the only thing that knows: the two
-        reasons live here, `_supported_limit_reason` and `_failure_reason`,
+        reasons live here, `supported_limit_reason` and `_failure_reason`,
         and `start` reads exactly these two to decide that the run cannot be
         resumed at all. Passing the cap and withholding the failure left
         every mark on a failed run reading as one the run had not reached
@@ -1734,7 +1797,7 @@ class SimulationController:
             opened_at_s=self.began_at_s,
             elapsed_s=self._state.elapsed_s,
             run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
-            stopped_at_cap=self._supported_limit_reason is not None,
+            stopped_at_cap=self.has_reached_supported_limit,
             run_failed=self._failure_reason is not None,
         )
 
@@ -1780,6 +1843,18 @@ class SimulationController:
         The readings are taken only where something is marked, so an unmarked
         run pays nothing: a marked one pays two `state_vector()` reads and six
         divisions per step.
+
+        **The run halts on the step that lands it on the supported run
+        length, not on the one refused after it** (`PL-5291`). The core
+        refuses the step *from* the last supported count, so a run stopped
+        only by that refusal stands on that count between the arriving step
+        and the refused one reading as running - or, where Pause lands
+        there, as paused with Start offered - though no step is left to
+        take. Halting on arrival, as `_halt_on` does on a crossing, keeps
+        `is_running` false wherever `supported_limit_reason` is set, which is
+        the contract `SimulationSnapshot.supported_limit_reason` states. The
+        values the run stops on are the same completed step's either way;
+        what moves is when the stop is said.
         """
 
         if not self._is_running:
@@ -1792,31 +1867,44 @@ class SimulationController:
         if self._bookmarks.is_empty:
             self._state.advance(simulation_step_s)
             self._run_definition.advance_to(self._state.elapsed_s)
-            return
+        else:
+            before_s = self._state.elapsed_s
+            before = self._compartment_mac_multiples()
 
-        before_s = self._state.elapsed_s
-        before = self._compartment_mac_multiples()
+            self._state.advance(simulation_step_s)
+            # The clock and the definition's reach are one quantity on one
+            # axis, on a branch as much as on a trunk, so the reach is the
+            # clock and no offset is named here or anywhere. That is what
+            # `docs/MODEL.md` § "The canonical evaluation rule" now requires:
+            # a branch asked for an instant of the case computes its interval
+            # from the same two floats its parent did, rather than from a
+            # difference that may not round-trip.
+            self._run_definition.advance_to(self._state.elapsed_s)
 
-        self._state.advance(simulation_step_s)
-        # The clock and the definition's reach are one quantity on one axis, on
-        # a branch as much as on a trunk, so the reach is the clock and no
-        # offset is named here or anywhere. That is what `docs/MODEL.md`
-        # § "The canonical evaluation rule" now requires: a branch asked for an
-        # instant of the case computes its interval from the same two floats
-        # its parent did, rather than from a difference that may not round-trip.
-        self._run_definition.advance_to(self._state.elapsed_s)
+            crossing = self._bookmarks.crossings_between(
+                before_s=before_s,
+                after_s=self._state.elapsed_s,
+                before=before,
+                after=self._compartment_mac_multiples(),
+            )
 
-        crossing = self._bookmarks.crossings_between(
-            before_s=before_s,
-            after_s=self._state.elapsed_s,
-            before=before,
-            after=self._compartment_mac_multiples(),
-        )
+            if crossing is not None:
+                self._halt_on(crossing)
 
-        if crossing is None:
-            return
+        self._halt_on_arrival_at_supported_limit()
 
-        self._halt_on(crossing)
+    def _halt_on_arrival_at_supported_limit(self) -> None:
+        """Pause the run where the step just taken was the last supported one.
+
+        Nothing is recorded: `supported_limit_reason` reads the limit from the
+        state, and the run stands at it from this step on. Only `_is_running`
+        changes, because that is the one fact the state does not carry and
+        the snapshot's contract needs - a limit reason beside a live Pause
+        would be a stopped run presenting itself as running.
+        """
+
+        if self._reason_the_next_step_would_be_refused() is not None:
+            self._is_running = False
 
     def _halt_on(self, crossing: BookmarkCrossing) -> None:
         """Pause the run on the step that crossed these marks, and record it.
