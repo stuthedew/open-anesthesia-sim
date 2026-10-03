@@ -167,8 +167,9 @@ try:
     # `shell_words` is the one reading of how a shell command splits
     # (`PL-PVW2`). A CI step's line and a Makefile recipe line are read through
     # it rather than a split of this tool's own, which cut inside quotes and
-    # read `python3 "tools/my file.py"` as `tools/my` (`PL-CWBJ`).
-    from docket.shell import Reading, Word, shell_words
+    # read `python3 "tools/my file.py"` as `tools/my` (`PL-CWBJ`), and a step's
+    # script is cut into those lines by the same reading (`PL-Q9LK`).
+    from docket.shell import Reading, Word, script_lines, shell_words
     from docket.store import ID_PATTERN, read_items
 
     # Reading `git tag` is a second borrowing, for the same reason as the first.
@@ -4454,7 +4455,20 @@ def check_make_targets(root: Path, documents: dict[Path, str], report: Report) -
 
 
 def workflow_commands(text: str) -> Iterator[tuple[str, int]]:
-    """Every shell line a workflow's `run:` steps execute, with its line number."""
+    """Every line of shell a workflow's `run:` steps execute, with the line number it starts on.
+
+    A block scalar's body reaches bash as one script, so it is read as one,
+    cut by docket's `shell.script_lines`: the lines a backslash, a quote or a
+    substitution carries a command across are one line here, spelled as the
+    workflow spells them, and a here-document's body and delimiter are no
+    line at all, being the input of the command before them. Read one line at
+    a time, as it was until `PL-Q9LK`, `drift.yml`'s `python3 - <<'PY'` body
+    was a run of commands, and a continued command was declined.
+
+    YAML hands bash the body less its own indentation, which its first
+    non-blank line sets, and keeps the rest: `x\\` over an indented `y` is
+    two words to bash, where stripping each line first would make it `xy`.
+    """
     lines = text.splitlines()
     index = 0
     while index < len(lines):
@@ -4467,13 +4481,18 @@ def workflow_commands(text: str) -> Iterator[tuple[str, int]]:
             yield inline, index
             continue
         indent = len(match.group("indent"))
+        first = index
         while index < len(lines):
             body = lines[index]
             if body.strip() and len(body) - len(body.lstrip()) <= indent:
                 break
             index += 1
-            if body.strip():
-                yield body.strip(), index
+        block = lines[first:index]
+        margin = next((len(line) - len(line.lstrip(" ")) for line in block if line.strip()), 0)
+        script = "".join(f"{line[margin:]}\n" for line in block)
+        for command, offset in script_lines(script):
+            if command.strip():
+                yield command.strip(), first + 1 + script.count("\n", 0, offset)
 
 
 def _shell_words(where: str, command: str, report: Report, unread: str) -> tuple[str, ...]:
@@ -4485,10 +4504,13 @@ def _shell_words(where: str, command: str, report: Report, unread: str) -> tuple
     file.py"` read as `tools/my`. A command substitution's body is read as
     the command it is, so a path named inside one is read as well.
 
-    The reading is of one line, which is how both callers hand a command over.
-    A line whose quote, substitution or trailing backslash runs past its end
-    is a command this cannot place, so it is declined, naming `unread`, and
-    answers no words rather than a guess at them.
+    The reading is of one line as bash reads one: a workflow's, which
+    `workflow_commands` cuts so that a line holds every physical line a
+    command spans, or a Makefile recipe's, which is still one physical line.
+    One whose quote, substitution or trailing backslash runs past its end, or
+    whose `<<` never meets its delimiter, is a command this cannot place, so
+    it is declined, naming `unread`, and answers no words rather than a guess
+    at them.
     """
     reading = _shell_reading(where, command, report, unread)
     if reading is None:
@@ -4505,7 +4527,7 @@ def _shell_words(where: str, command: str, report: Report, unread: str) -> tuple
 #: word after it as its file and leaves the command it stands in running on;
 #: every other operator there ends that command (Bash Reference Manual §3.6
 #: "Redirections", §2 "Definitions" for "control operator").
-REDIRECTIONS = frozenset({"<", ">", ">>", "<<", "<<<", "<&", ">&", "<>", ">|", "&>", "&>>"})
+REDIRECTIONS = frozenset({"<", ">", ">>", "<<", "<<-", "<<<", "<&", ">&", "<>", ">|", "&>", "&>>"})
 
 
 def _shell_commands(
@@ -4553,9 +4575,12 @@ def _shell_reading(where: str, command: str, report: Report, unread: str) -> Rea
     """Docket's reading of one shell line, or `None` once it is declined, naming `unread`."""
     reading = shell_words(command)
     if not reading.clauses:
+        first, _, rest = command.partition("\n")
+        more = rest.count("\n") + 1 if rest else 0
+        shown = f"`{first}`" + (f" and the {more} line(s) after it" if more else "")
         report.declined.append(
-            f"{where}: `{command}` does not end where its line does - a quote, a command "
-            f"substitution or a backslash runs past it - so {unread}"
+            f"{where}: {shown} cannot be read to its end - a quote, a command substitution "
+            f"or a backslash runs past it, or a `<<` has no delimiter - so {unread}"
         )
         return None
     return reading
