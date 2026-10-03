@@ -3,11 +3,13 @@ id: PL-90CJ
 title: Report the container stop hook's stale-ref unpushed count upstream, since PL-WW08 fixes it for this project only
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
 touches: docs/maintainer.md, .claude/hooks/stop_hook_patch.py
 added: 2026-09-04
+closed: 2026-10-03
+pr: 1302
 not-delegable: the deliverable is a defect report to the maintainers of the container's stop hook, outside this repository; no command in this tree can prove it filed
 ---
 
@@ -88,10 +90,11 @@ item changed shape.** What was checked, and what each check showed:
   the fix as drafted, the patch goes quiet by itself.
 
 **Recommendation:** the project owner posts this as a comment on
-https://github.com/anthropics/claude-code/issues/83490, as it stands. It adds
-what the open issue lacks for a maintainer: a run on the current build, the
-second route to a stale ref, and a one-line fix that reuses upstream's own
-scoping.
+https://github.com/anthropics/claude-code/issues/83490, as it stands. It gives a
+maintainer a run on the current build, the second route to a stale ref (the one
+seeded at session start), and a fix scoped the way upstream already scoped the
+signing check. `docs/maintainer.md` carries the steps, so the offer outlives
+this item.
 
 ````markdown
 Still reproducible in the current Claude Code on the web container (Claude Code 2.1.288, checked 2026-10-03). The signing check has since been scoped to `HEAD --not --remotes`, but the unpushed count after it still compares against whatever `origin/<branch>` resolves to locally:
