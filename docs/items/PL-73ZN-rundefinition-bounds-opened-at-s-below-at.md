@@ -3,11 +3,13 @@ id: PL-73ZN
 title: RunDefinition bounds opened_at_s below at induction but not above, so a definition may declare an opening past the 24 h envelope the model is claimed over
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: numerical-domain
-touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py
+touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py, docs/MODEL.md
 added: 2026-09-14
+closed: 2026-10-03
+pr: 1292
 verify: grep -q 'def test_opening_past_the_supported_envelope_is_refused' tests/unit/test_run_definition.py && uv run pytest tests/unit/test_run_definition.py
 ---
 
@@ -67,3 +69,32 @@ down, on `SimulationState`, and the two are worth doing together.
 run length with a message naming the envelope and the value, the bound is read
 from `core/supported_ranges.py` rather than restated, and
 `tests/unit/test_run_definition.py` covers both edges.
+
+**Re-confirmed 2026-10-03, and the brief's question settled** (numerical-domain
+chain, link 2, #1292). Still true against the tree: the constructor checked
+`opened_at_s` for finiteness and for `>= 0.0` and for nothing above. What has
+changed since filing is that the constructor is reached by every branch -
+`SimulationController._open_at` opens a definition at a parent keyframe's
+instant - so the check runs on every fork, with values the trunk's step-count
+guard has already bounded.
+
+The brief leaned toward a docstring and the Done-when asks for a refusal. The
+refusal was built, as a clear call rather than a close one. Neither of the
+brief's arguments for the docstring holds: `CLAUDE.md`'s "a check earns its
+place every run, or it is retired" is about the apparatus's checks wired into
+`make check`, hooks and CI, not input validation in `src/`, which the
+safety-critical standard asks for before calculation; and reading the bound
+through `core/supported_ranges.py` gives the envelope one home and two
+enforcement points, not two homes. The reach stays unguarded on purpose: it is
+moved to a step count's instant, which `SimulationState.advance` bounds before
+the reach can follow, and `advance_to`'s docstring now says so.
+
+Built as `supported_ranges.require_supported_case_instant` - the closed span 0
+to `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, `SimulationConfigurationError`, the
+value printed exactly so a refusal one float past the limit does not read as
+the limit - called from `RunDefinition.__init__` after its existing finite and
+negative checks. "`RunDefinition.open`" in the Done-when is that constructor;
+the class has no `open`. `docs/MODEL.md` § "Supported run length" records
+both construction-time refusals. The guard agrees with the step-count bound
+at every literal decimal step; `PL-8H2R` records the computed steps where it
+does not.

@@ -31,7 +31,10 @@ a name rather than expressing an intention. Callers reach
 from dataclasses import dataclass, field
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.supported_ranges import require_supported_run_length
+from anesthesia_sim.core.supported_ranges import (
+    require_supported_run_length,
+    require_supported_step_count,
+)
 from anesthesia_sim.core.uptake_system import (
     AgentUptakeSystem,
     UptakeStepResult,
@@ -66,10 +69,28 @@ class SimulationState:
     """
 
     def __post_init__(self) -> None:
+        """Refuse a state no supported run could be standing in.
+
+        A state built part-way through a run - which a branch always is, since
+        it continues its parent's count - is checked against the supported run
+        length here, where it is built, rather than by its first `advance()`:
+        until then a snapshot, a readout or a chart axis would present it as an
+        ordinary run (`PL-BMY5`). A count exactly at the limit is accepted,
+        because a run may stand there; it is the step from it that is refused.
+
+        Raises:
+            SimulationConfigurationError: `step_count` is not a whole,
+                nonnegative number; `simulation_step_s` is not a supported
+                step; the count is past zero with no step to multiply it by;
+                or the two put the run past the supported run length,
+                `core/supported_ranges.py`'s `require_supported_step_count`.
+        """
+
         _require_step_count(self.step_count)
 
         if self.simulation_step_s is not None:
             require_supported_simulation_step(self.simulation_step_s)
+            require_supported_step_count(self.step_count, self.simulation_step_s)
         elif self.step_count > 0:
             raise SimulationConfigurationError(
                 f"step_count is {self.step_count} but no simulation_step_s was given, so the "
@@ -107,10 +128,10 @@ class SimulationState:
 
         The run length is checked here too, and it is the one guard this
         class could not delegate: the supported span is a limit on elapsed
-        simulated time, and `step_count` is the only record of that anywhere
-        in `core/`. A compartment advanced on its own has no run length to
-        be past the end of, which is why the three flow ranges are enforced
-        on the compartments and this is not.
+        simulated time, which this class counts in `step_count`. A
+        compartment advanced on its own has no run length to be past the end
+        of, which is why the three flow ranges are enforced on the
+        compartments and this is not.
 
         Raises `SimulationDomainLimitError` when the run has reached the
         supported length. That is not a failure - see
