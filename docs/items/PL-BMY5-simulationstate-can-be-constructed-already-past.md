@@ -3,11 +3,13 @@ id: PL-BMY5
 title: SimulationState can be constructed already past the supported run length, and only the next advance refuses it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: numerical-domain
-touches: src/anesthesia_sim/core/simulation.py, tests/unit/test_simulation.py
+touches: src/anesthesia_sim/core/simulation.py, tests/unit/test_simulation.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py, docs/MODEL.md
 added: 2026-09-14
+closed: 2026-10-03
+pr: 1292
 verify: grep -q 'def test_a_state_past_the_supported_run_length_is_refused_at_construction' tests/unit/test_simulation.py && uv run pytest tests/unit/test_simulation.py
 ---
 
@@ -67,3 +69,22 @@ twice.
 `simulation_step_s` pair whose implied elapsed time exceeds the supported run
 length, using `require_supported_run_length` rather than a restated bound, and
 `tests/unit/test_simulation.py` covers construction at and just past the edge.
+
+**Re-confirmed 2026-10-03, and the brief's prediction has come true**
+(numerical-domain chain, link 2, #1292). Still true against the tree, and now
+reached: `PL-J2TD`'s fork landed with a branch continuing its parent's step
+count, so `SimulationController._open_at` builds a mid-run `SimulationState`
+for every branch.
+
+**Built with a sibling guard rather than `require_supported_run_length`
+itself**, which the brief's note on the boundary anticipated. Called at
+construction, the step's guard answers the other question: it refuses the
+count a run stands on at the limit, which is legal to stand on and illegal to
+step from, and its `SimulationDomainLimitError` and its message ("this run has
+reached ...") say that no value handed in was wrong. The new
+`supported_ranges.require_supported_step_count` refuses only a count past
+`maximum_step_count(simulation_step_s)`, raises `SimulationConfigurationError`
+naming the count, the step and the largest count allowed, and reads the same
+`maximum_step_count` derivation as the step's guard, so the two agree exactly
+at every step size - tested at 0.1, 0.07, 0.03, 0.025 and 0.01 s. No bound is
+restated.

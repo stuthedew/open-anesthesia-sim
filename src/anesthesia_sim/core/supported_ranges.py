@@ -4,8 +4,11 @@ that refuse a setting outside them.
 Four of the five bound a *setting* and are checked when a caller changes it.
 The fifth bounds the *run* - how much elapsed simulated time the model is
 claimed to represent a patient over - and is checked as each step is taken,
-because a run length is reached rather than set. It is otherwise the same
-kind of statement as the four, and lives here for that reason.
+because a run length is reached rather than set. It is also checked where a
+run is *handed* a point on that span instead of reaching it - a state built
+part-way through a run, a run definition's opening - because there the value
+handed in is what is wrong. It is otherwise the same kind of statement as the
+four, and lives here for that reason.
 
 `docs/MODEL.md` § "Supported input ranges" is the specification; this module
 is where the numbers live, so that every path that can change a setting -
@@ -72,6 +75,15 @@ refuses the step that would cross the boundary rather than raising after
 crossing it, so a run that stops here stands on a completed step at a
 simulated time inside the supported span.
 
+Two more guards refuse a point on the span that is handed in rather than
+reached: `require_supported_step_count` for a `SimulationState` built
+part-way through a run, and `require_supported_case_instant` for the instant
+a `RunDefinition` opens at. A branch is both, built where its parent stood,
+so these are what refuse one taken past the span before anything reads it
+(`PL-BMY5`, `PL-73ZN`). The first is built on the same `maximum_step_count`
+as the step's guard, so the count a run stops on at the limit is exactly the
+last one a state may be built at, whatever the step.
+
 Widening any interval is a safety-critical change and not a convenience, but
 the work it now takes is different: argue that the compartment structure still
 represents a patient over the wider range, re-run the reference gates at the
@@ -103,6 +115,9 @@ MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10.0
 # this bounds the *run* rather than a setting, and it is reached mid-run
 # rather than refused at entry, so `require_supported_run_length` below
 # refuses the step that would cross it instead of a value a caller passed.
+# Where a caller does pass a point on it - a step count, a run's opening
+# instant - `require_supported_step_count` and `require_supported_case_instant`
+# refuse that value.
 #
 # **It is a validity limit, and it was a memory one.** The 30-day figure it
 # replaces was set on 2026-08-25 to size a concentration history that no
@@ -295,4 +310,71 @@ def require_supported_run_length(step_count: int, simulation_step_s: float) -> N
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h); beyond it this model's "
             f"omitted metabolism and its fat perfusion dominate the trace, so it is not "
             f'claimed to represent a patient (docs/MODEL.md, "Supported run length")'
+        )
+
+
+def require_supported_step_count(step_count: int, simulation_step_s: float) -> None:
+    """Require a run standing at `step_count` steps to be inside the supported run length.
+
+    The question a run *handed* a position asks, where
+    `require_supported_run_length` is the one a run *taking* a step asks,
+    and the two differ at exactly one count: `maximum_step_count` is a
+    legal place to stand and an illegal one to step from. Both read that one
+    derivation, so a state built at the count a run stops on at the limit is
+    accepted and the next count is not, at every step size - a run reached
+    by stepping and one built at the same count cannot disagree about
+    whether it is inside the span.
+
+    `SimulationConfigurationError` rather than `SimulationDomainLimitError`,
+    the reverse of the step's guard and for its reason: here a value handed
+    in is wrong. No supported run stood past the span, so a state built
+    there is refused before a snapshot, a readout or a chart axis can
+    present it as one (`PL-BMY5`).
+
+    Like `maximum_step_count`, it takes `simulation_step_s` to be a step
+    `uptake_system.require_supported_simulation_step` has already accepted.
+
+    Raises:
+        SimulationConfigurationError: `step_count` is more than
+            `maximum_step_count(simulation_step_s)`.
+    """
+
+    limit = maximum_step_count(simulation_step_s)
+
+    if step_count > limit:
+        raise SimulationConfigurationError(
+            f"a run of {step_count} steps of {simulation_step_s} s is past the supported run "
+            f"length of {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
+            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h), which allows at most {limit} "
+            f"steps of that size; past it this model is not claimed to represent a patient "
+            f'(docs/MODEL.md, "Supported run length")'
+        )
+
+
+def require_supported_case_instant(instant_s: float) -> None:
+    """Require an instant on the case's axis inside the supported run length.
+
+    The case's axis is simulated time since induction, which a branch shares
+    with its parent, so this bounds where an instant falls and not how long
+    whatever holds it has lasted: a branch opened at 23 h has one hour of the
+    span left, as `docs/MODEL.md` § "Supported run length" says. Closed at
+    both ends like every interval here, so an instant of exactly
+    `MAXIMUM_ELAPSED_SIMULATION_TIME_S` is one a run may stand on.
+
+    It guards the one instant a run is handed rather than reaches - a
+    `RunDefinition`'s opening, which a branch takes from its parent - and
+    raises `SimulationConfigurationError` for the reason
+    `require_supported_step_count` gives (`PL-73ZN`).
+
+    Raises:
+        SimulationConfigurationError: `instant_s` is not finite, or is
+            outside 0 to `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+    """
+
+    if not isfinite(instant_s) or not 0.0 <= instant_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S:
+        raise SimulationConfigurationError(
+            f"a case instant of {instant_s} s is outside the supported run length of 0 to "
+            f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
+            f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h), the span this model is claimed "
+            f'to represent a patient over (docs/MODEL.md, "Supported run length")'
         )

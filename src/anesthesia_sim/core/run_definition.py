@@ -69,6 +69,7 @@ from anesthesia_sim.core.governing_equations import (
     require_canonical_state,
 )
 from anesthesia_sim.core.matrix_exponential import Matrix, matrix_exponential, propagate
+from anesthesia_sim.core.supported_ranges import require_supported_case_instant
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,11 +248,15 @@ class RunDefinition:
                 is the fork for a branch taken at a control event and the
                 keyframe before it for one taken at a bookmark
                 (`app/controller.py`, `SimulationController._open_at`).
+                At most the supported run length, which is the case's 24
+                hours and not this run's.
 
         Raises:
             SimulationConfigurationError: `opened_at_s` is not finite or is
-                negative, since no case instant precedes induction; or
-                `initial_state` came from the display path, is not
+                negative, since no case instant precedes induction, or is
+                past the supported run length, which
+                `core/supported_ranges.py`'s `require_supported_case_instant`
+                refuses; or `initial_state` came from the display path, is not
                 `STATE_SIZE` long, holds a non-finite value, or does not carry
                 exactly one in `UNIT_STATE`. The display-path case is a fork
                 opening from a drawing value, which `docs/MODEL.md`
@@ -271,6 +276,11 @@ class RunDefinition:
             raise SimulationConfigurationError(
                 f"a run opens at or after induction, not at {opened_at_s} s"
             )
+
+        # And at or before the far end of the span, here where the opening is
+        # handed in rather than at the first step past it: a branch inherits
+        # this instant as the origin of everything it reports (`PL-73ZN`).
+        require_supported_case_instant(opened_at_s)
 
         self._segments: tuple[RunSegment, ...] = (
             RunSegment(settings=settings, opening=Keyframe(opened_at_s, initial_state)),
@@ -323,6 +333,12 @@ class RunDefinition:
         treat the opening and the reach as a closed span, so a second writer of
         `_reached_s` - a reset in place, a deserializer restoring a saved run -
         would have to re-establish it rather than assume it.
+
+        Nor an upper bound, unlike the opening: the opening is handed in, while
+        the reach is moved to the instant a step count stands at
+        (`app/controller.py`), and `SimulationState.advance` refuses the step
+        that would carry that count past the supported run length before the
+        reach could follow it.
 
         Raises:
             SimulationConfigurationError: `instant_s` is not finite, or is

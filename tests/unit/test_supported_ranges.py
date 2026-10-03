@@ -37,8 +37,10 @@ from anesthesia_sim.core.supported_ranges import (
     maximum_step_count,
     require_supported_alveolar_ventilation,
     require_supported_cardiac_output,
+    require_supported_case_instant,
     require_supported_fresh_gas_flow,
     require_supported_run_length,
+    require_supported_step_count,
 )
 
 
@@ -208,9 +210,10 @@ def test_the_step_that_would_cross_the_boundary_is_refused() -> None:
 def test_a_run_already_past_the_boundary_is_refused_too() -> None:
     """A count beyond the limit refuses as well, rather than only equality.
 
-    `>=` rather than `==`, so a state constructed part-way through a run -
-    which `SimulationState` explicitly supports - cannot step on from past
-    the boundary because it never met it exactly.
+    `>=` rather than `==`, so a count past the boundary cannot step on
+    because it never met it exactly. A `SimulationState` can no longer be
+    built standing there - `require_supported_step_count` refuses it first
+    (`PL-BMY5`) - so on that path this is the second guard, not the only one.
     """
 
     with pytest.raises(SimulationDomainLimitError):
@@ -250,6 +253,106 @@ def test_the_run_length_refusal_is_not_a_configuration_error() -> None:
 
     assert not isinstance(raised.value, SimulationConfigurationError)
     assert isinstance(raised.value, SimulationExecutionError)
+
+
+# --- A point on the span handed in rather than reached (PL-BMY5, PL-73ZN) ---
+#
+# A branch is built where its parent stood: a `SimulationState` at the parent's
+# step count and a `RunDefinition` opening at one of its keyframes. Those are
+# values a caller passes, so they are refused as configuration errors, and the
+# step-count guard has to agree with the step's guard about where the span
+# ends - or a branch taken where its parent stopped would be refused, or one
+# no run could reach would be accepted.
+
+
+@pytest.mark.parametrize("simulation_step_s", [0.1, 0.07, 0.03, 0.025, 0.01])
+def test_a_run_may_be_built_where_stepping_stops_it_and_no_further(
+    simulation_step_s: float,
+) -> None:
+    """The count a run stops on is legal to stand on and illegal to step from.
+
+    Both guards read `maximum_step_count`, so they cannot disagree at any
+    step, including the ones that do not divide 24 hours evenly.
+    """
+
+    limit = maximum_step_count(simulation_step_s)
+
+    require_supported_run_length(limit - 1, simulation_step_s)
+    require_supported_step_count(limit, simulation_step_s)
+
+    with pytest.raises(SimulationDomainLimitError):
+        require_supported_run_length(limit, simulation_step_s)
+
+    with pytest.raises(SimulationConfigurationError, match="supported run length"):
+        require_supported_step_count(limit + 1, simulation_step_s)
+
+
+def test_the_step_count_refusal_names_the_count_the_step_and_the_limit() -> None:
+    """Counts rather than a time, because the counts are exact.
+
+    One step past 24 hours at a step that does not divide it would print as
+    a time indistinguishable from the limit at the precision a message
+    rounds to; the count beside the largest one allowed cannot be misread.
+    """
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_supported_step_count(864_001, 0.1)
+
+    message = str(raised.value)
+
+    assert "864001 steps of 0.1 s" in message
+    assert "at most 864000" in message
+    assert "86400 s" in message
+    assert "24 h" in message
+    assert "Supported run length" in message
+
+
+@pytest.mark.parametrize("instant_s", [0.0, 3_600.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S])
+def test_a_case_instant_is_supported_over_the_closed_span(instant_s: float) -> None:
+    """Both ends included, like every interval here: a run may stand on 24 h."""
+
+    require_supported_case_instant(instant_s)
+
+
+@pytest.mark.parametrize(
+    "instant_s",
+    [
+        nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf),
+        100_000.0,
+        nextafter(0.0, -inf),
+        -1.0,
+        nan,
+        inf,
+        -inf,
+    ],
+)
+def test_a_case_instant_outside_the_span_is_refused(instant_s: float) -> None:
+    """Refused on either side, and when it is not a finite number at all.
+
+    `nan` fails every comparison, so a guard written only as a test against
+    the maximum would let it through; one expression refuses every case with
+    one message, as `_require_supported` does for the flows.
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="supported run length"):
+        require_supported_case_instant(instant_s)
+
+
+def test_the_case_instant_refusal_names_the_instant_and_the_span() -> None:
+    """The value is printed exactly, not rounded to look like the limit."""
+
+    past = nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf)
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        require_supported_case_instant(past)
+
+    message = str(raised.value)
+
+    assert f"{past} s" in message
+    assert "86400 s is" not in message
+    assert "0 to 86400 s" in message
+    assert "24 h" in message
+    assert "Supported run length" in message
 
 
 # --- The model envelope against the machine's range (PL-8PS6) ---------------

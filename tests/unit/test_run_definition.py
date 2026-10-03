@@ -24,7 +24,7 @@ is tested here is that the display path is refused where the rule says it is.
 """
 
 from bisect import bisect_right
-from math import inf, nan
+from math import inf, nan, nextafter
 
 import pytest
 
@@ -53,6 +53,7 @@ from anesthesia_sim.core.run_definition import (
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -535,6 +536,47 @@ def test_a_run_definition_refuses_to_open_before_induction() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="at or after induction"):
         RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=-1.0)
+
+
+def test_a_run_may_open_at_the_end_of_the_supported_run_length() -> None:
+    """The span is closed, so a run may open standing on its far end (`PL-73ZN`).
+
+    A branch taken where its trunk stopped at the limit opens exactly there;
+    refusing the instant would refuse that branch. It opens with no time left
+    to run, which is the parent's 24 hours being spent rather than an error.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    definition = RunDefinition(
+        system.equation_settings(),
+        system.state_vector(),
+        opened_at_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    )
+
+    assert definition.opened_at_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+    assert definition.state_at(MAXIMUM_ELAPSED_SIMULATION_TIME_S) == system.state_vector()
+
+
+@pytest.mark.parametrize(
+    "opened_at_s",
+    [nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf), MAXIMUM_ELAPSED_SIMULATION_TIME_S + 0.1],
+)
+def test_opening_past_the_supported_envelope_is_refused(opened_at_s: float) -> None:
+    """Refused where the opening is declared, not at the first step after it (`PL-73ZN`).
+
+    The opening is the origin of every instant a branch reports, so one past
+    the envelope would carry it into every value read from the run. The edge
+    is the declared constant itself: the next float past it is refused. The
+    message names the value exactly and the envelope it is outside of.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+
+    with pytest.raises(SimulationConfigurationError, match="supported run length") as raised:
+        RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=opened_at_s)
+
+    assert f"{opened_at_s} s" in str(raised.value)
+    assert "0 to 86400 s" in str(raised.value)
 
 
 def test_a_run_refuses_to_go_backwards() -> None:

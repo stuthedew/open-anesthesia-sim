@@ -5053,11 +5053,17 @@ is `PL-7CRY` (narrow the fresh gas flow control to the intersection) — no test
 A run is supported up to **24 hours of elapsed simulated time**, declared as
 `MAXIMUM_ELAPSED_SIMULATION_TIME_S` in `core/supported_ranges.py`. The step
 that would carry a run past it is refused by `SimulationState.advance()`,
-which raises `SimulationDomainLimitError` before anything advances.
+which raises `SimulationDomainLimitError` before anything advances. A run
+handed a point past it instead of reaching one - a `SimulationState` built at
+a step count beyond it, or a `RunDefinition` opening at an instant beyond it,
+which is how a branch is built - is refused where it is built, with
+`SimulationConfigurationError`, because there the value handed in is what is
+wrong (`PL-BMY5`, `PL-73ZN`). The step count a run stops on at the limit is
+one it may be built at; only the step from it is refused.
 
 | Quantity | Limit | Declared and refused by |
 | --- | --- | --- |
-| Elapsed simulated time | 0 to 24 h (86 400 s) | `core/supported_ranges.py`, enforced on `SimulationState` |
+| Elapsed simulated time | 0 to 24 h (86 400 s) | `core/supported_ranges.py`, enforced on `SimulationState` and on a `RunDefinition`'s opening |
 
 **It is the case's 24 hours and not each run's, which matters once a case can
 be branched.** The limit is what this model's omissions are argued against
@@ -5071,7 +5077,8 @@ its parent's, so the arithmetic that bounds a trunk bounds every branch of it
 **It is the same kind of statement as the four ranges above, and it is
 reached rather than set.** A flow is a setting, refused when a caller offers
 one outside its interval; a run length is a property of how far the run has
-gone, so it can only be checked as each step is taken. Everything else about
+gone, so it is checked as each step is taken, and otherwise only where a run
+is built already part-way along it. Everything else about
 it is the same: the interval is closed, so a run may complete the step that
 lands on 24 hours; and outside it the equations still solve exactly, as
 "What a setting outside the range costs" says of the flows. What stops at the

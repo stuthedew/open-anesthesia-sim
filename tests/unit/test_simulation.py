@@ -265,3 +265,63 @@ def test_reset_returns_a_run_stopped_at_the_limit_to_a_startable_one() -> None:
     state.advance(MAXIMUM_SIMULATION_STEP_S)
 
     assert state.step_count == 1
+
+
+# --- Built part-way through a run (PL-BMY5) ----------------------------------
+#
+# A branch is built at its parent's step count, so construction is where a run
+# is handed a point on the span rather than reaching one. Checked at steps that
+# do not divide 24 hours evenly as well as the shipped one, because the limit
+# is a whole number of steps of whatever size the run is taken at.
+
+STEPS_A_RUN_MAY_TAKE_S = (MAXIMUM_SIMULATION_STEP_S, 0.07, 0.025)
+
+
+@pytest.mark.parametrize("simulation_step_s", STEPS_A_RUN_MAY_TAKE_S)
+def test_a_state_may_be_built_standing_on_the_supported_run_length(
+    simulation_step_s: float,
+) -> None:
+    """The count a run stops on is a place it may stand, so it may be built there.
+
+    Refusing it would refuse a branch taken where its parent stopped at the
+    limit. Only the step from it is refused, by `advance()`.
+    """
+
+    state = SimulationState(
+        step_count=maximum_step_count(simulation_step_s), simulation_step_s=simulation_step_s
+    )
+
+    assert state.elapsed_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S
+
+    with pytest.raises(SimulationDomainLimitError):
+        state.advance(simulation_step_s)
+
+
+@pytest.mark.parametrize("simulation_step_s", STEPS_A_RUN_MAY_TAKE_S)
+def test_a_state_past_the_supported_run_length_is_refused_at_construction(
+    simulation_step_s: float,
+) -> None:
+    """One count past the limit is refused where it is built, not by its first advance.
+
+    A configuration error rather than the domain limit: the count handed in
+    is what is wrong, since no run reaches it by stepping.
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="supported run length"):
+        SimulationState(
+            step_count=maximum_step_count(simulation_step_s) + 1,
+            simulation_step_s=simulation_step_s,
+        )
+
+
+def test_the_state_measured_past_the_limit_is_refused() -> None:
+    """The regression case: 1 000 000 steps of 0.1 s, 27.8 hours.
+
+    Measured 2026-09-14 constructing without complaint and reporting an
+    `elapsed_s` of 100 000 s, which every reader of the state - a snapshot, a
+    readout, a chart axis - would have presented as an ordinary run until
+    something tried to step it.
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="supported run length"):
+        SimulationState(step_count=1_000_000, simulation_step_s=0.1)
