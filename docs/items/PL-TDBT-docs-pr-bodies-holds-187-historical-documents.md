@@ -3,11 +3,13 @@ id: PL-TDBT
 title: docs/pr-bodies holds 187 historical documents that read as current: 21 cited paths no longer exist, 30 cite an unresolvable sha, and 22 angle-bracket placeholders in 15 files vanish in GitHub's own blob view, with doc_check blind to all of it by design
 priority: P3
 effort: M
-status: needs-decision
+status: ready
 classes: docs, infra
 feature: pr-body-integrity
 touches: docs/pr-bodies, tools/pr_body_check.py, tests/unit/test_pr_body_check.py
 added: 2026-09-20
+payoff: a reader who opens a recovered pull-request body learns on its first lines that it is a verbatim, unmaintained record, so a dead citation in it stops reading as a defect
+verify: grep -qF 'def test_recovery_header_says_the_record_is_historical' tests/unit/test_pr_body_check.py
 ---
 
 **Problem.** docs/pr-bodies holds 187 historical documents that read as current: 21 cited paths no longer exist, 30 cite an unresolvable sha, and 22 angle-bracket placeholders in 15 files vanish in GitHub's own blob view, with doc_check blind to all of it by design
