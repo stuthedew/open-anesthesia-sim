@@ -3,11 +3,13 @@ id: PL-162Y
 title: docket next names a blocked item whose item blockers have all closed, but not one whose blocked-by milestone is now scoped, which docket check reports as equally promotable
 priority: P3
 effort: S
-status: needs-decision
+status: dropped
 classes: defect, infra
 feature: stale-blocked-routing
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
+closed: 2026-10-03
+reason: design round 2026-10-03, ratified: bin/docket check prints no milestone-shape promotable advisory, one open item carries a milestone blocker and only two ever have, so the state next would report is zero with a ceiling of one, which check's advisory already names
 ---
 
 **Problem.** docket next names a blocked item whose item blockers have all closed, but not one whose blocked-by milestone is now scoped, which docket check reports as equally promotable
@@ -95,3 +97,11 @@ branch, which is not taken. Close with `bin/docket set PL-162Y --status dropped
 **What would change the answer.** Three or more open items blocked on a
 milestone at once. Then the report branch above is the build, under its own
 wording and composed in `cmd_next` rather than grown into `plan.promotable`.
+
+## Answers 2026-10-03
+
+**Answered 2026-10-03: Q1 ratified: drop** (project owner, 2026-10-03,
+ratified, over reporting the milestone-scoped case in `next` under wording of
+its own, the filed recommendation). Dropped on the count: zero items in the
+state, a ceiling of one, and `check`'s advisory already naming that one.
+Three or more open items blocked on a milestone at once reopen it.
