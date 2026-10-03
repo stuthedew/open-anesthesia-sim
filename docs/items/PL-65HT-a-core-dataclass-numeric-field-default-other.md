@@ -6,7 +6,7 @@ effort: M
 status: needs-decision
 classes: infra, docs
 feature: provenance
-touches: tools, tests/unit, Makefile
+touches: tests/unit
 added: 2026-09-13
 ---
 
@@ -108,3 +108,7 @@ pinned by test, and if so which of the three homes it takes. Nothing in
 **Recommendation: build the screen as one unit test under `tests/unit/`, not as a tool, which closes the three-home question by removing it.** The test imports every dataclass under `core/`, reads each numeric field default through `dataclasses.fields()`, exempts 0 and 1, and asserts the rest appear in the Selected-value column of `docs/MODEL.md`'s provenance table, read through `tools/doc_check.py`'s existing `_provenance_rows` (`tests/unit/test_contrast_check.py` already imports a `tools/` module the same way). It runs under `pytest` in the project virtualenv, so the interpreter-floor question the brief could not settle does not arise: `doc_check.py` keeps its bare-floor rule, `core_vocabulary_check.py` keeps provenance off-topic, and no third tool with Makefile wiring is built. Reading resolved values rather than source literals also catches a default spelled as a named constant, which the `ast` route misses, as the fourth constant above shows. The failure message states the limit where a reader of the output sees it: a screen rather than a proof, since a new constant equal to an existing table value passes. Cost: one test of about forty lines; upkeep: none beyond the provenance table the project already maintains. The build narrows `touches` to `tests/unit`.
 
 The alternative is to close on the counting - four constants, all pinned by named tests, zero inflow measured. It is defensible today and wrong by v0.8.0, which is why it is not the recommendation; if the owner prefers it, close with the counting above as the reason and re-file when v0.8.0 is scoped.
+
+## Answers 2026-10-03
+
+Build the screen as one unit test under `tests/unit/`, reading `dataclasses.fields()` defaults against `docs/MODEL.md`'s Selected-value column (project owner, 2026-10-03, ratified, over a home in `tools/core_vocabulary_check.py`, `tools/doc_check.py` or a third tool, and over closing on the counting). `touches` re-pointed from `tools, tests/unit, Makefile` to `tests/unit` and status moved to `ready` with this answer.
