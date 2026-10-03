@@ -137,3 +137,15 @@ trust question the brief raises is answered by picking (a) alone or (a) with
 **Build.** One clause in `CLAUDE.md`, batched with any other `CLAUDE.md` edit
 open at the time, since resident text costs a cached prefix per edit; the
 `verify:` is a `grep -qF` for the new clause's opening words. Size S, as filed.
+
+## Answers 2026-10-03
+
+**Answered 2026-10-03: Q1 ratified: (a)** (project owner, 2026-10-03,
+ratified, over (b), a refusal restored in `verify --self`, and over (c), the
+`Fix-now:` trailer that would make such a refusal sound). The build replaces
+the 183-character clause in `CLAUDE.md`'s fix-now test 2 with the
+221-character clause quoted in the design round above, batched with any other
+`CLAUDE.md` edit open at the time, and names the 38-character growth as a
+false claim exchanged for a true one. (c) stays recorded as the route if the
+deterrent is wanted back. Status stays `needs-decision` in this round; the
+thread that builds it sets `ready` first.
