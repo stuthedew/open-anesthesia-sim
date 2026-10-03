@@ -4157,7 +4157,7 @@ def check_line_citations(root: Path, documents: dict[Path, str], report: Report)
 
     Item briefs are read here rather than through `read_docs`, because
     `DOC_GLOBS` deliberately holds the authoritative documents and `docs/items/`
-    is a queue of 1,227 files.
+    is the queue, nearly two thousand files of it.
     """
     basenames: dict[str, list[Path]] = {}
     for path in _walk(root):
