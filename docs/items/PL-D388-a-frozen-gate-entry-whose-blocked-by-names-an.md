@@ -135,12 +135,14 @@ be closed under its prerequisites; here closure is reached from either end.
    `PL-YVV4` drops as moot. The alternative is deferring the pair to Gate 3 as
    Gate 1 did; that would be the third gate to carry one decision.
 
-   The second direction has a pending instance. `PL-YBFB` (defer `PL-5B1N` to
-   Gate 3) was claimed at 20:43Z on 2026-10-03, and as briefed it moves
-   `PL-5B1N` into the deferral group without a holding condition. `PL-5B1N`
-   carries no `blocked-by`, so wave would keep it among the 30 entries this
-   gate can clear, which is `PL-18BD`'s case again. The thread holding
-   `PL-YBFB` was told the same day, and its file was left alone under the claim.
+   The second direction had an instance the same day. `PL-YBFB` (defer
+   `PL-5B1N` to Gate 3) was claimed at 20:43Z on 2026-10-03, and as briefed it
+   moved `PL-5B1N` into the deferral group without a holding condition, so
+   wave would have kept `PL-5B1N` among the entries this gate can clear, which
+   is `PL-18BD`'s case again. The thread holding `PL-YBFB` was told, and
+   `#1309` (merged 2026-10-03) gave `PL-5B1N` `blocked-by: v0.7.0`, so wave
+   counts it outside the gate. Only that message caught it, which is what the
+   check's second direction is for.
 
 **Generator check.** The fact is the one `PL-WD5Z` and `PL-J6HP` state, a debt
 item's gate disposition, at the frozen entries that `PL-WD5Z`'s field does not
