@@ -115,7 +115,14 @@ UNIT_STATE = 8
 """The constant 1, which turns `dy/dt = Ay + b` into `dy/dt = Ay`.
 
 Its row is empty, so it is constant by construction rather than by convention,
-and no step can perturb the forcing term the other rows read from it.
+and no step can perturb the forcing term the other rows read from it. That
+holds in floating point as well as in the algebra, because `matrix_exponential`
+writes an empty row's propagator row as the identity's before its squarings,
+which then keep it to the last bit; the shift that makes the propagator
+nonnegative had returned it as $`1+\\delta`$, raised by the squarings to
+$`(1+\\delta)^{2^{s}}`$ (`PL-2MD9`). Every propagator the module returns
+carries it, since one needing more squarings than `MAXIMUM_SQUARINGS` is
+refused rather than returned.
 """
 
 STATE_SIZE = 9

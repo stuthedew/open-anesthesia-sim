@@ -64,7 +64,6 @@ from math import inf, isfinite
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
-    UNIT_STATE,
     UptakeEquationSettings,
     build_system_matrix,
     require_canonical_state,
@@ -829,26 +828,22 @@ def _propagator(segment: RunSegment, interval_s: float) -> Matrix | None:
 
 
 def _advanced(propagator: Matrix | None, state: tuple[float, ...]) -> tuple[float, ...]:
-    """Apply `propagator` to `state`, holding the unit state at exactly one.
+    """Apply `propagator` to `state`, or return `state` when there is no interval.
 
-    The unit state is the constant one that turns `dy/dt = Ay + b` into
-    `dy/dt = Ay`, and its row in the system matrix is empty, so it is constant
-    by construction. Its propagator entry is nonetheless a product of two
-    rounded factors - `matrix_exponential` computes the shift and the shifted
-    series separately - and lands within a few units in the last place of one
-    rather than on it. Left to drift, the constant that scales every delivery
-    term would drift with it. Writing it back is restating what the matrix
-    already says, and it is what the stepped path does too: it reads the
-    vector out of the compartments each step with this entry set to one.
+    The unit state comes back exactly one, as it went in, with nothing written
+    back. `matrix_exponential` returns its row as the identity's to the last
+    bit, and that row applied to a state carrying one there is one term of one
+    times one and the rest times zero. Until `PL-2MD9` the entry was a product
+    of two rounded factors and was overwritten here, which held the unit state
+    but not the forcing column the squarings had multiplied the same drift
+    into; the fix belonged in the propagator, and the tests that read one back
+    out of `state_at` now check it there.
     """
 
     if propagator is None:
         return state
 
-    advanced = list(propagate(propagator, state))
-    advanced[UNIT_STATE] = 1.0
-
-    return tuple(advanced)
+    return propagate(propagator, state)
 
 
 def _require_state(state: tuple[float, ...] | DisplayState) -> None:

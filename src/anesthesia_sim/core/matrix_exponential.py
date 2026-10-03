@@ -93,16 +93,25 @@ the argument.
 
 **What it costs, stated rather than left to be discovered.** The shift
 computes $`e^{-\\mu\\Delta t}`$ and $`\\exp(B\\Delta t)`$ separately, so a state
-whose own rate is far below $`\\mu`$ - the constant forcing state, whose exact
-propagator entry is 1 - is recovered as a product of two rounded factors and
-lands within a few units in the last place of its true value rather than on
-it. Measured over the intervals this module is exercised at, that is at most
-$`2\\times10^{-15}`$ relative, against the $`10^{-12}`$ the squarings
-themselves contribute at an hour-long interval. It is bounded by
-$`e^{\\mu\\Delta t/2^{s}}`$, which the scaling holds below
-$`e^{1/16} = 1.065`$ whatever the matrix.
+whose own rate is far below $`\\mu`$ is recovered at the scaled interval as a
+product of two rounded factors, and lands within a few units in the last place
+of its true value rather than on it. Each squaring can then double that error,
+so after $`s`$ of them the state carries up to about $`2^{s}\\varepsilon`$,
+with $`\\varepsilon = 2^{-52}`$. At an hour-long interval, sixteen squarings,
+that bound is $`1.5\\times10^{-11}`$, and the analytic comparisons in the tests
+measure $`2\\times10^{-12}`$. `MAXIMUM_SQUARINGS` is where this module stops,
+because past it the bound passes one part in a million.
 
-## The two constants, derived rather than inherited
+**One kind of state is exempt, and exactly.** A row of $`A`$ with no nonzero
+entry is a state nothing moves - the constant forcing state is one - and its
+row of $`\\exp(A\\Delta t)`$ is the identity's at every interval. The shift
+would recover it as $`1+\\delta`$ and the squarings would raise that to
+$`(1+\\delta)^{2^{s}}`$, which was measured at $`2.28\\times10^{222}`$ with the
+alveolar volume driven to 1e-19 L (`PL-2MD9`). So that row is written as the
+identity's before the squarings, which then keep it to the last bit;
+`_with_constant_rows_restored` says why they do.
+
+## The series constants, derived rather than inherited
 
 `MAXIMUM_SERIES_ARGUMENT_NORM` is how small the scaled argument is made -
 tighter than the $`\\lVert A\\rVert/m \\leq 1`$ Moler and Van Loan call the
@@ -121,7 +130,8 @@ which at $`\\theta = 1/16`$ and $`N = 12`$ is
 $`2^{-52}/13! \\times 1.005 = 3.6\\times10^{-26}`$, against
 $`\\lVert\\exp X\\rVert_\\infty \\geq 1`$. That is ten orders of magnitude below
 double precision's $`2.2\\times10^{-16}`$, so truncation is not what limits the
-result and the whole error budget is spent on the squarings.
+result and the whole error budget is spent on the squarings, which
+`MAXIMUM_SQUARINGS` bounds.
 
 Both constants are stated rather than searched for. Their inverse error
 analysis (p. 12) supports choosing the cheapest $`(q,j)`$ pair for a target
@@ -161,6 +171,31 @@ SERIES_TERMS = 12
 docstring at $`3.6\\times10^{-26}`$ relative - ten orders below double
 precision, so truncation is not what limits the result."""
 
+MAXIMUM_SQUARINGS = 32
+"""The most squarings performed before a result is refused as unestablished.
+
+Each squaring can double the relative error the scaled propagator carries into
+it, and that error is not zero: the module docstring's shift leaves every state
+whose own rate is far below $`\\mu`$ a rounding error of its own. After $`s`$
+squarings the bound is about $`2^{s}\\varepsilon`$, with
+$`\\varepsilon = 2^{-52}`$, and the shipped system follows it. Measured
+2026-10-03 on sevoflurane at the 0.1 s step, with the alveolar volume driven
+down a decade at a time and every entry compared with a high-precision
+evaluation of the same exponential, the worst entry's error stayed between 0.6
+and 2.7 times the bound at every decade from none to 45 squarings -
+$`6.0\\times10^{-16}`$ at none, $`6.5\\times10^{-11}`$ at 18,
+$`6.3\\times10^{-7}`$ at 31 - and was 174% at 51 (`PL-2MD9`).
+
+Thirty-two puts the bound at $`2^{32}\\cdot2^{-52} = 2^{-20}`$, about one part
+in a million. The most any supported input needs is 19, at the 24-hour horizon
+`RunDefinition.state_at` can be asked for at the widest supported flows, so the
+cap leaves a factor of $`2^{13}`$ in rate or interval before it refuses
+anything a run can reach. What it does refuse is the regime the alveolar sweep
+found: at 1e-18 L the propagator was wrong by about 100% in every entry, and
+the run advanced three steps with its accounting check passing, because the
+same failure had reached every term of the identity.
+"""
+
 
 def multiply(left: Matrix, right: Matrix) -> Matrix:
     """Return the matrix product, requiring conformable square operands.
@@ -199,9 +234,13 @@ def matrix_exponential(matrix: Matrix, interval_s: float) -> Matrix:
 
     Raises:
         SimulationConfigurationError: `matrix` is not square, holds a
-            non-finite entry, or has a negative off-diagonal entry; or
-            `interval_s` is not positive and finite. Every one of these is
-            checked before any arithmetic, so a refused call computes nothing.
+            non-finite entry, or has a negative off-diagonal entry;
+            `interval_s` is not positive and finite; or the interval needs
+            more than `MAXIMUM_SQUARINGS` squarings, or a number of them that
+            overflows. Every one of these is checked before any arithmetic, so
+            a refused call computes nothing. Two more are checked on what the
+            squarings produced: an entry that is not finite, and the zero
+            matrix.
     """
 
     size = _require_square(matrix, "matrix")
@@ -221,6 +260,7 @@ def matrix_exponential(matrix: Matrix, interval_s: float) -> Matrix:
     propagator = _shifted_series(shifted, scaled_interval_s)
     decay = exp(-shift * scaled_interval_s)
     propagator = tuple(tuple(value * decay for value in row) for row in propagator)
+    propagator = _with_constant_rows_restored(matrix, propagator)
 
     for _ in range(squarings):
         propagator = multiply(propagator, propagator)
@@ -327,24 +367,32 @@ def _require_a_nonzero_propagator(propagator: Matrix) -> None:
     statement rather than a tolerance: there is no margin to choose, and no
     legitimate argument approaches it from one side.
 
-    Reached by driving `AlveolarCompartment.gas_volume_l` to 1e-300 L. The
-    scaled interval is then small enough that the series entries land near the
-    subnormal floor; the first squaring multiplies two of them to zero, and
-    every squaring after that keeps the whole matrix there. The result is
-    finite and entrywise nonnegative, so both properties this module states
-    hold of it, and `propagate()` then returns the zero state vector: every
+    First reached by driving `AlveolarCompartment.gas_volume_l` to 1e-300 L,
+    which needs 995 squarings. The shift's round trip leaves every slow state's
+    scaled diagonal entry, and the constant state's, at $`1-2^{-53}`$ rather
+    than at one; 62 squarings raise that to $`e^{-512}`$, the 63rd to zero,
+    and every squaring after that keeps the whole matrix there - the mechanism
+    `PL-2MD9` measured, with the opposite sign. The result is finite and
+    entrywise nonnegative, so both properties this module states held of it,
+    and `propagate()` then returned the zero state vector: every
     compartment empty, nothing delivered, nothing exhausted. The mass-balance
-    identity in `agent_simulation_validation.py` passes on it, because every
-    term of that identity has been annihilated too and zero does balance zero.
-    A concentration of exactly 0.0 is reported, and no guard anywhere in the
-    path objects (`PL-3PRZ`).
+    identity in `agent_simulation_validation.py` passed on it, because every
+    term of that identity had been annihilated too and zero does balance zero.
+    A concentration of exactly 0.0 was reported, and no guard anywhere in the
+    path objected (`PL-3PRZ`).
+
+    **The model no longer reaches it, for two reasons** (`PL-2MD9`). That
+    volume now stops earlier, at `MAXIMUM_SQUARINGS`. And a matrix with a
+    constant state cannot produce the zero matrix at any interval, because
+    `_with_constant_rows_restored` writes that state's row as the identity's
+    and the squarings keep it. What still reaches this check is a matrix with
+    no constant state whose every mode decays below the smallest subnormal.
 
     **Individual zero entries are left alone, including on the diagonal.** A
     mode that has genuinely decayed below the smallest subnormal returns 0.0
     correctly: `exp(-0.5 * 3600)` is a real number no double can hold, and
     `test_diagonal_matrix_matches_scalar_decay` propagates exactly that. What
-    distinguishes the failure from the decay is that *nothing* survives it -
-    in the model, not even the constant row that no interval may move.
+    distinguishes the failure from the decay is that *nothing* survives it.
 
     Args:
         propagator: the matrix the squarings produced.
@@ -386,6 +434,11 @@ def _squarings_for(shifted: Matrix, interval_s: float) -> int:
     """Return how many squarings bring the series argument under the bound.
 
     Raises:
+        SimulationConfigurationError: more than `MAXIMUM_SQUARINGS` are
+            needed, past which the error they can amplify is more than one
+            part in a million, so the result could not be established; at the
+            0.1 s step that is an alveolar volume from 1e-11 L to 1e-308 L
+            (`PL-2MD9`).
         SimulationConfigurationError: dividing the norm down to the series
             bound overflows. The norm itself is finite in this case - at an
             alveolar volume of 1e-309 L it is 1.2e+307 - and it is the
@@ -413,7 +466,18 @@ def _squarings_for(shifted: Matrix, interval_s: float) -> int:
             "too large to propagate in double precision"
         )
 
-    return ceil(log2(scaled_norm))
+    squarings = ceil(log2(scaled_norm))
+
+    if squarings > MAXIMUM_SQUARINGS:
+        raise SimulationConfigurationError(
+            f"the shifted matrix has a row sum of {norm} over {interval_s} s, which "
+            f"takes {squarings} squarings to scale to the series bound of "
+            f"{MAXIMUM_SERIES_ARGUMENT_NORM}; past {MAXIMUM_SQUARINGS} the rounding error "
+            "they amplify can exceed one part in a million, so the result could not be "
+            "established in double precision"
+        )
+
+    return squarings
 
 
 def _shifted_series(shifted: Matrix, interval_s: float) -> Matrix:
@@ -441,3 +505,38 @@ def _shifted_series(shifted: Matrix, interval_s: float) -> Matrix:
         )
 
     return total
+
+
+def _with_constant_rows_restored(matrix: Matrix, propagator: Matrix) -> Matrix:
+    """Return `propagator` with each constant state's row written as the identity's.
+
+    A row of `matrix` with no nonzero entry is a state nothing moves, and its
+    row of every power $`A^{k}`$, $`k \\geq 1`$, is zero, so its row of
+    $`\\exp(A\\,\\Delta t)`$ is the identity's at every interval - exactly, not
+    to within a tolerance. The shift does not keep that. It puts $`\\mu`$ on the
+    diagonal where $`A`$ has zero, the series returns about $`e^{\\mu h}`$
+    there and the decay multiplies $`e^{-\\mu h}`$ back, and the round trip lands
+    at $`1+\\delta`$ rather than on one. Each squaring squares that entry and
+    multiplies it into the column every other row reads the state through, so
+    the error the squarings raise to $`(1+\\delta)^{2^{s}}`$ reaches the forcing
+    terms as well as the state (`PL-2MD9`).
+
+    Written back before the squarings, the row leaves them nothing to amplify,
+    and they keep it to the last bit: with row $`i`$ equal to $`e_i^{T}`$,
+    every entry of row $`i`$ of the product is one term multiplied by one and
+    the rest multiplied by zero, and no rounding happens in any of them.
+
+    The rows are found in `matrix` rather than named, so this module still
+    carries no physiology: `governing_equations.UNIT_STATE` is the row the
+    model has, and any other state whose equation is empty would be kept the
+    same way.
+    """
+
+    size = len(matrix)
+
+    return tuple(
+        tuple(float(row == column) for column in range(size))
+        if all(value == 0.0 for value in matrix_row)
+        else propagator_row
+        for row, (matrix_row, propagator_row) in enumerate(zip(matrix, propagator, strict=True))
+    )

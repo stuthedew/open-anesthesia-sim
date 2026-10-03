@@ -3,11 +3,13 @@ id: PL-2MD9
 title: The propagator's constant state row drifts and the squarings amplify it: 2.28e+222 at an alveolar volume of 1e-19 L, where governing_equations.UNIT_STATE promises no step can perturb it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: numerical-domain
-touches: src/anesthesia_sim/core/matrix_exponential.py, src/anesthesia_sim/core/governing_equations.py, tests/unit/test_matrix_exponential.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/matrix_exponential.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_matrix_exponential.py, tests/unit/test_agent_simulation_validation.py, tests/unit/test_resume_at.py, docs/MODEL.md
 added: 2026-09-14
+closed: 2026-10-03
+pr: 1291
 verify: grep -q 'def test_a_zero_row_propagates_to_its_exact_basis_row' tests/unit/test_matrix_exponential.py && uv run pytest tests/unit/test_matrix_exponential.py
 ---
 
@@ -111,3 +113,75 @@ rows after the decay and before the squarings, so there is no $`\delta`$ left to
 square. `tests/unit/test_matrix_exponential.py` asserts it directly, the analytic
 comparisons already in that file still pass, and `UNIT_STATE`'s docstring either
 states a guarantee that now holds or says precisely where it stops.
+
+**Done, 2026-10-03.** Re-confirmed against the tree before the work: the
+mechanism and the table hold. Measured further on sevoflurane at the 0.1 s step,
+every decade from 1e0 to 1e-323 L, each propagator against a high-precision
+(mpmath) evaluation of the same exponential: the worst entry's relative error
+after $`s`$ squarings is $`c\cdot2^{s}\cdot2^{-52}`$ with $`c`$ between 0.6 and
+2.7 from none to 45 squarings, and it saturates at order one past that. So the
+drift is not the constant row's alone - every state whose rate the shift swamps
+carries it - and the constant row is the one whose exact answer is known.
+
+- **The candidate, as the brief described it.** `_with_constant_rows_restored`
+  writes each empty row of $`A`$ as the identity's row after the decay and
+  before the squarings, which then keep it bit for bit (each entry of that row
+  of a product is one term times one and the rest times zero).
+  `test_a_zero_row_propagates_to_its_exact_basis_row` asserts the whole row at
+  shipped intervals and at 24, 28, 29 and 32 squarings, where the old code read
+  0.9999999981, 0.99999997 and 0.99999994.
+  `test_the_forcing_integral_does_not_carry_the_constant_rows_drift` pins what
+  the brief did not name: the squarings multiplied the same drift into the
+  forcing column every other row reads the constant through (-1.9e-9 to -6.0e-8
+  relative at those cases, 1.4e-15 now).
+- **Alone it was worse than the bug, so it carries a cap.** Restoring the row
+  let 114 decades from 1e-25 to 1e-306 L that had been refused advance again,
+  every entry but the constant's destroyed and the accounting passing, because
+  `PL-3PRZ`'s zero-propagator refusal relied on the constant row being
+  annihilated with the rest. `MAXIMUM_SQUARINGS = 32` refuses a propagator
+  needing more, before any arithmetic: the bound is then $`2^{-20}`$, about one
+  part in a million, and the most any supported input needs is 19 (desflurane,
+  10 L/min fresh gas, the 24-hour horizon `RunDefinition.state_at` can be asked
+  for). The final sweep: 1e0 to 1e-7 L advance as before, 1e-8 to 1e-10 L halt
+  on accounting as before, 1e-11 to 1e-308 L stop at the cap, 1e-309 L at the
+  overflow refusal, and below that the matrix itself is not finite. The
+  constant row is exact wherever a propagator is returned. This was taken as
+  the safety floor rather than put as a choice, since the alternative was
+  shipping a silent wrong value; the cap's value is a granular call, recorded
+  in the constant's docstring.
+- **Found: the brief's coverage claim was false at 1e-18 L.** "The mass-balance
+  guard halts the run at 1e-9 L and below, which is every row of the table":
+  at 1e-18 L the shipped code advanced three steps with every propagator entry
+  about 100% wrong (6.4e-32 L delivered where 0.0004 L was) and the accounting
+  passed. The cap refuses it; `test_a_propagator_wrong_in_every_entry_cannot_reach_the_accounting_check`
+  is the regression. `docs/MODEL.md` § "What is not bounded this way" now says
+  so.
+- **Found: `PL-3PRZ`'s recorded mechanism for the 1e-300 L zero matrix was
+  wrong.** It was this item's round trip with the opposite sign, not series
+  entries near the subnormal floor: the scaled diagonals sit at
+  $`1-2^{-53}`$, 62 squarings take them to $`e^{-512}`$ and the 63rd to zero.
+  Corrected in `_require_a_nonzero_propagator`'s docstring, which also says the
+  model no longer reaches that refusal.
+- **`run_definition._advanced` no longer overwrites the unit state.** It wrote
+  1.0 back because the entry drifted; `propagate` now returns exactly one, and
+  the assertions that read one back out of `state_at` check the restoration end
+  to end instead of being masked by it.
+- **`tests/unit/test_resume_at.py` asserted an exactness the compartments
+  cannot provide.** `test_a_resumed_system_holds_the_state_it_was_given`
+  required `resume_at` then `state_vector()` to return each fraction bit for
+  bit. A compartment stores an amount and divides it back out, and for 3.5% to
+  14% of fractions in the alveolar, venous and tissue compartments no amount
+  reads back as the value given (measured 2026-10-03, bracketed: the quotients
+  step over it) - `PL-J2TD` measured the same and is why a branch's definition
+  opens from the keyframe. The test passed because its six fractions happened
+  to round-trip, about an even chance; this change moved the canonical path by
+  a unit in the last place and the draw changed. Restated as the provable bound,
+  one unit in the last place; the element-for-element guarantee a branch rests
+  on is the canonical path's and stays asserted in
+  `tests/integration/test_controller.py`.
+- **What moves.** An hour of sevoflurane, isoflurane and desflurane with a dial
+  change, main against this branch: the stepped path is bit-identical (0 of
+  1 620 sampled elements differ; at the 0.1 s step there are no squarings to
+  carry the drift), and `state_at` moves at the last bits, worst 6.8e-13
+  relative and 9.8e-13 L absolute, on 48 of 135 elements. A release cut after
+  this cannot claim bit-identity for the canonical path against v0.5.21.

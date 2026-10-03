@@ -1472,7 +1472,7 @@ document states them. `core/matrix_exponential.py` computes
 $`\exp(A\Delta t)`$ and carries no physiology. Neither adds a dependency —
 the exponential is scaling and squaring with a truncated Taylor series, about
 sixty lines of arithmetic on plain lists, and its module docstring carries the
-method's provenance and the derivation of its two constants.
+method's provenance and the derivation of its constants.
 
 Two of the nine states are not fractions. They accumulate the agent crossing
 the system boundary, at the rates "External delivery" and "Circuit exhaust"
@@ -5274,15 +5274,18 @@ alveolar volume inflated the operator split's error — and that argument
 retired with the split.
 
 **The numerics do eventually object, and that is a backstop rather than a
-bound.** The same measurement, continued downward: an alveolar volume of
-$`10^{-9}`$ L and below halts the run through `AgentSimulationValidationError`,
-the mass-balance guard rather than any declared domain, which is the required
-"obvious failure rather than a plausible-looking number" arriving by accident
-of arithmetic. It is not a limit this document declares and it must not be read
-as one — it sits six orders of magnitude below any volume a caller would pass
-by mistake, and it says nothing about the physiological question above.
-Circuit volume has no such point: it was advanced up to $`10^{300}`$ L with
-accounting passing throughout.
+bound.** The same measurement, continued downward at the shipped 0.1 s step: an
+alveolar volume of $`10^{-8}`$ to $`10^{-10}`$ L halts the run through
+`AgentSimulationValidationError`, the mass-balance guard rather than any
+declared domain, and from $`10^{-11}`$ L down the propagator is refused before
+any arithmetic, because it would need more squarings than
+`core/matrix_exponential.py` performs (below). Both are the required "obvious
+failure rather than a plausible-looking number" arriving by accident of
+arithmetic. Neither is a limit this document declares and neither may be read
+as one — they sit far below any volume a caller would pass by mistake, and
+they say nothing about the physiological question above. Circuit volume has no
+such point: it was advanced up to $`10^{300}`$ L with accounting passing
+throughout.
 
 **Below that the mass-balance guard stopped firing, and what refuses now is
 upstream of it** (`PL-3PRZ`). At $`10^{-300}`$ L the run advanced and returned
@@ -5302,7 +5305,11 @@ refuses the case where scaling the matrix norm down to the series bound
 overflows, which reached `ceil(log2(inf))` and raised a bare `OverflowError`
 at $`10^{-309}`$ L, outside the hierarchy in `core/exceptions.py` that a
 caller keys on. Both arrive as `SimulationNumericalError` through
-`AgentUptakeSystem.advance()`, with the step rolled back.
+`AgentUptakeSystem.advance()`, with the step rolled back. Since `PL-2MD9` the
+model no longer reaches the first: a matrix carrying the constant state cannot
+produce the zero matrix at all, and those volumes stop earlier, at the cap on
+the squarings described below. The second still fires first wherever the
+scaling overflows.
 
 **Measured across every decade from $`10^{0}`$ to $`10^{-323}`$ L**, before
 and after: 120 advance with the constant state row exact, and the same 120
@@ -5314,15 +5321,36 @@ propagated as 0.0, which is correct — `exp(-0.5 * 3600)` is a real number no
 double can hold — and is what separates a decayed entry from an annihilated
 matrix.
 
-**One failure in this family is still open.** Between $`10^{-8}`$ and
-$`10^{-19}`$ L the propagator stays finite and nonzero, and the constant state
-row — which no interval may move, and whose row in $`A`$ is empty for exactly
-that reason — drifts: 1.0000610 at $`10^{-12}`$ L, then 2.718, then
-$`2.28\times10^{+222}`$ at $`10^{-19}`$ L. The shift is what admits it, and
-the squarings amplify it by $`2^{j}`$. The mass-balance guard catches this
-band today, at $`10^{-9}`$ L and below, so no value reaches a display; it is
-tracked as its own item rather than fixed here, because the remedy is a change
-to the numerical method rather than a guard on its result.
+**The last failure in this family is closed by a cap on the squarings**
+(`PL-2MD9`). Between $`10^{-8}`$ and $`10^{-19}`$ L the propagator stayed
+finite and nonzero while the constant state row — which no interval may move,
+and whose row in $`A`$ is empty for exactly that reason — drifted: 1.0000610
+at $`10^{-12}`$ L, then 2.718, then $`2.28\times10^{+222}`$ at $`10^{-19}`$ L.
+The shift admits it and the squarings amplify it, and it was not the
+constant's alone. Measured 2026-10-03 against a high-precision evaluation of
+the same exponential, the worst entry's relative error after $`s`$ squarings
+is $`c\cdot2^{s}\cdot2^{-52}`$, with $`c`$ between 0.6 and 2.7 at every decade
+from none to 45 squarings, so every state whose own rate the shift swamps
+drifts the same way. Two changes close it. The constant state's row is written
+as the identity's before the squarings, which keep it to the last bit, so
+`governing_equations.UNIT_STATE`'s guarantee that no step perturbs it now holds
+in floating point as well as in the algebra. And a propagator needing more
+than 32 squarings is refused before any arithmetic, because past that the
+bound passes one part in a million; the most any supported input needs is 19,
+at the 24-hour horizon and the widest supported flows. The first change alone
+would have been worse than nothing: it let 114 decades between $`10^{-25}`$
+and $`10^{-306}`$ L that had been refused advance again, with every entry but
+the constant's destroyed, because the zero-propagator refusal above relied on
+the constant row being annihilated with the rest.
+
+**That band was not covered the way this section used to say.** It said the
+mass-balance guard caught the drift from $`10^{-9}`$ L down. At $`10^{-18}`$ L
+it did not: the run advanced three steps with every entry of the propagator
+wrong by about 100% — 6.4e-32 L delivered where the vaporizer had delivered
+0.0004 L — and the accounting check passed, because the same failure had
+reached every term of the identity, which is `PL-3PRZ`'s shape again. The cap
+refuses it, and `tests/unit/test_agent_simulation_validation.py` holds the
+regression.
 
 **What is left open, stated plainly.** A caller writing Python against
 `core/` can still construct `BreathingCircuit(circuit_volume_l=10_000.0)` or
