@@ -1,0 +1,19 @@
+---
+id: PL-ZYHX
+title: The resident instruction set is 75 KB, 72% process and 1.5% engineering discipline, and the architecture rules that hold are the ones with a check: decide whether the resident rules without one, the single-source-of-truth rule first, move to checks with their prose retired
+status: untriaged
+deferred-from: v0.6.0 - a decision about how the resident instruction set carries engineering rules is not debt the layout milestone clears
+added: 2026-10-03
+---
+
+**Problem.** The resident instruction set is 75 KB, 72% process and 1.5% engineering discipline, and the architecture rules that hold are the ones with a check: decide whether the resident rules without one, the single-source-of-truth rule first, move to checks with their prose retired
+
+**Decision needed.** Whether the resident instruction set is rebalanced the way its own disposition rule says: each resident rule a check could carry moves to a check and its prose is retired, starting with the single-source-of-truth rule (PL-40SJ) and the two architecture bullets with no check (no simulation calculations in UI callbacks; no executable equations in data files, which the typed pydantic payloads already prevent and which could be reworded to say so).
+
+**Why it matters.** Measured 2026-10-03: `CLAUDE.md` is 49,804 bytes and 684 lines, from 3,705 bytes on 2026-08-22, touched by 123 of the 1,640 commits since 2026-08-21 (7.5%); with the two unscoped rules files the resident set is 75,331 bytes. By section, 72% of `CLAUDE.md` is process, 1.5% (15 lines) is engineering discipline and 16% is the safety standard. The three architecture bullets with a mechanical check (toolkit independence, no wall clock in `core/`, determinism) hold with zero violations in the tree; the two without one are the two the owner named as recurring on 2026-10-03. Anthropic's guidance for the file: "Keep it concise... Bloated CLAUDE.md files cause Claude to ignore your actual instructions!" and "If Claude keeps doing something you don't want despite having a rule against it, the file is probably too long and the rule is getting lost" (https://code.claude.com/docs/en/best-practices, § "Write an effective CLAUDE.md", read 2026-10-03). Jaroslawicz D, Whiting B, Shah P, Maamari K, *How Many Instructions Can LLMs Follow at Once?*, arXiv:2507.11538 (2025), measured instruction-following falling with instruction count across 20 models, with a bias toward earlier instructions; the architecture bullets sit after 7,760 bytes of owner-collaboration rules. Gloaguen T, Mündler-Sasahara N, Müller MN, Raychev V, Vechev M, *Evaluating AGENTS.md*, arXiv:2602.11988 (ICLR 2026), found repository context files did not improve task success while raising cost over 20%, that agents do follow the instructions they contain, and that the files earn their place for non-standard practices rather than overviews.
+
+**Recommendation.** Yes, in this order: (1) land PL-40SJ and PL-YXFF, then retire the prose each covers under the resident-set editing rule, naming what the edit replaces; (2) reword the data-file bullet to point at the pydantic schema that already prevents it; (3) leave the UI-callback bullet as prose, since "a calculation" is judgment the project has refused to script, but move it to a rule scoped to `app/` so it loads when `app/` is open. No ceiling and no deletion for wordiness: both were refused (PL-H7XN), and this asks for neither.
+
+**What this does not reopen.** "There is too much apparatus" was refuted in `CLAUDE.md` § "What this project is" and stays refuted. This reopens one ratified point on ordinary evidence, as `CLAUDE.md` allows: that resident prose is an adequate carrier for an engineering rule a check could carry.
+
+**Done when.** The owner answers. A yes becomes items per rule under the resident-set editing rule; a no closes this as dropped with the reason recorded.
