@@ -1,9 +1,16 @@
 ---
 id: PL-5F76
 title: A simulation step below about 4.8e-304 s, or a step count too long to print, fails SimulationState construction with OverflowError or ValueError rather than SimulationConfigurationError
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: numerical-domain
+touches: src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+payoff: an absurdly large step count is refused with the simulator's own configuration error, like every other out-of-range input, instead of a Python error raised from inside the guard
+verify: grep -q 'def test_a_step_count_too_long_to_print_is_refused' tests/unit/test_supported_ranges.py
 ---
 
 **Problem.** A simulation step below about 4.8e-304 s, or a step count too long to print, fails SimulationState construction with OverflowError or ValueError rather than SimulationConfigurationError
@@ -35,3 +42,14 @@ a repair, because refusing a tiny step is a statement about the model's domain:
 `docs/MODEL.md` § "Supported simulation step" bounds the step above only, and a
 floor there needs its own argument, not merely the arithmetic one above.
 Regression tests at `4.7e-304` and `10**5000` that fail today.
+
+**Narrowed at triage, 2026-10-03.** The step half is `PL-YZ17`'s: pull request
+1306 adds `MINIMUM_SIMULATION_STEP_S` and refuses a step below it, so this item
+keeps the count half only, as `PL-TS7L` recorded. Reproduced on `main` at
+triage: `SimulationState(step_count=10**5000, simulation_step_s=0.1)` raises
+`ValueError` ("Exceeds the limit (4300 digits) for integer string conversion"),
+and a step of `4.7e-304` s still raises `OverflowError` until 1306 merges.
+
+**Done when.** `SimulationState(step_count=10**5000, simulation_step_s=0.1)`
+raises `SimulationConfigurationError` naming the supported limit, without
+printing a count too long to print, and a regression test pins it.
