@@ -186,6 +186,7 @@ try:
     # tag-span read takes the squash shape of (`PL-YYDT`).
     from docket.vcs import (
         DEFAULT_BRANCHES,
+        ITEM_FILE_RE,
         Cut,
         GitRunner,
         Runner,
@@ -4115,7 +4116,10 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     citation of a closed brief still claims the words are there; only a
     closed brief's own citations go unread, since `_quoting_sources` reads the
     live briefs alone. An id no file under `docs/items/` holds is an error, and
-    one two files hold is declined rather than guessed at.
+    one two files hold is declined rather than guessed at. Which file holds an
+    id's brief is `vcs.ITEM_FILE_RE`'s reading of its name; a glob of this
+    tool's own took a file whose name carries no slug for one, which `docket`
+    reads as no item's (`PL-5QG4`).
     """
     bodies: dict[str, str | None] = {}
     briefs: dict[str, list[str]] = {}
@@ -4129,11 +4133,12 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
         return bodies[cited]
 
     def briefs_of(item: str) -> list[str]:
-        if item not in briefs:
-            store = root / "docs" / "items"
-            named = (*store.glob(f"{item}-*.md"), *store.glob(f"{item}.md"))
-            briefs[item] = sorted(brief.relative_to(root).as_posix() for brief in named)
-        return briefs[item]
+        if not briefs:
+            for brief in sorted((root / "docs" / "items").glob("*.md")):
+                if found := ITEM_FILE_RE.match(brief.name):
+                    held = briefs.setdefault(found.group(1), [])
+                    held.append(brief.relative_to(root).as_posix())
+        return briefs.get(item, [])
 
     for path, offset, text in _quoting_sources(root, documents, report.declined):
         prose = without_fences(text)

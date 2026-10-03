@@ -173,3 +173,28 @@ def test_the_summariser_reads_status_from_the_front_matter(tmp_path: Path, monke
 
     assert set(paths) == {"PL-8888", "PL-BBBB"}
     assert closed == {"PL-8888"}
+
+
+def test_the_summariser_tells_an_item_s_file_by_docket_s_grammar(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Whose file it is comes from `vcs.ITEM_FILE_RE`, not a split on hyphens (`PL-5QG4`).
+
+    The split took a file whose name carries no slug for an item, under the id
+    `PL-CCCC.md`, which no reader of the store's history calls an item at all.
+    """
+    import item_reads
+
+    items = tmp_path / "docs" / "items"
+    items.mkdir(parents=True)
+    for name, identifier in (("PL-8888-named.md", "PL-8888"), ("PL-CCCC.md", "PL-CCCC")):
+        (items / name).write_text(
+            f"---\nid: {identifier}\ntitle: t\nstatus: done\n---\n\n**Problem.** Nothing.\n",
+            encoding="utf-8",
+        )
+    monkeypatch.setattr(item_reads, "ITEMS", items)
+
+    paths, closed = item_reads.store()
+
+    assert set(paths) == {"PL-8888"}
+    assert closed == {"PL-8888"}
