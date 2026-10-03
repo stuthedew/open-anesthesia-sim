@@ -136,8 +136,10 @@ this repository - so a record separates drift from specification where the
 `touches` exemption `PL-3NKZ` proposed excuses 11 of 95. The 5 drifts are
 repaired in place and the 17 deliberate mentions carry the `absent:` marker
 `PL-HJ8G` built for the documents; a fence also escapes, as for line
-citations. The trade: a misspelt path no commit ever held is not reported. A
-checkout whose history git cannot read, or holds only part of, says so in
-`declined`. `docs/ARCHITECTURE.md`'s tools-map sentence now states both halves
+citations. The trade: a misspelt path no commit ever held is not reported
+(project owner, 2026-10-03, ratified, over holding all 95, which flags 90 to
+find the same 5 drifts; the 73 left unflagged held no misspelling and 2
+imprecise spellings of files that exist). A checkout whose history git cannot
+read, or holds only part of, says so in `declined`. `docs/ARCHITECTURE.md`'s tools-map sentence now states both halves
 of the citation check.
 

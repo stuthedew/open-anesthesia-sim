@@ -151,4 +151,8 @@ the `PL-D1NT` paragraph above left for whichever reading landed; the
 `test_slashes_and_dots_alone_are_not_citations`,
 `test_a_line_citation_with_a_leading_slash_is_read_from_the_repository_root`,
 and the `PL-0M7L` glob test, now driven by a patched `glob` since no absolute
-pattern reaches it.
+pattern reaches it. `bin/docket verify --self PL-H0CF` reports REJECT on the
+one assertion that rewrite removed, that `/docs/*.md` is an error: it is the
+behaviour this brief commissioned changing, and is accepted as that (project
+owner, 2026-10-03, ratified, over a pull request declaring `falsifies:` on
+`main` first).
