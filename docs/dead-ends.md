@@ -55,7 +55,7 @@ have to rediscover by building the thing.
 
 - **An index, database or manifest committed beside the items** — rejected: anything an index holds is recomputable, and an index is one more thing two branches conflict over. `subprojects/docket/src/docket/store.py`
 - **One shared queue document** — rejected: it serializes every writer, which is the property one-file-per-item exists to buy. `subprojects/docket/src/docket/model.py`
-- **Partitioning closed items out of the live store** — refuted 2026-09-13: the parse is 76 ms of an 830 ms command whose cost is git; no filesystem knee to 100,000 files; and this store is cross-referenced (86.1%, 2,773 edges), which is the shape that stays flat in every comparable record store. `PL-KM3X`
+- **Partitioning closed items out of the live store** — refuted 2026-09-13: the parse is 76 ms of an 830 ms command whose cost is git; no filesystem knee to 100,000 files; and this store is cross-referenced (86.1%, 2,773 edges), which is the shape that stays flat in every comparable record store. `PL-KM3X`; a reading surface of their own was refused 2026-10-03, since `bin/docket show`, this list and `bin/docket generators` already read them in place. `PL-4V6B`
 - **Open-backlog ratio as a health measure** — refuted 2026-09-13: the comparison set is multi-contributor projects where an open issue is a promise to a stranger. `PL-03XH`
 
 ## Provenance and merge detection
