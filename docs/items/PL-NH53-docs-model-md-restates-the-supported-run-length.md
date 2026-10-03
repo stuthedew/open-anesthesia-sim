@@ -3,6 +3,7 @@ id: PL-NH53
 title: docs/MODEL.md restates the supported run length in prose (§ Supported simulation step; § The first 24 hours of elimination against the published mean curves) and check_prose_provenance holds a prose figure to the data files only, so a change to MAXIMUM_ELAPSED_SIMULATION_TIME_S leaves those sentences wrong: hold a prose figure to a named constant in src/ with a marker, as the data-file figures are
 status: untriaged
 feature: one-home-for-constants
+blocked-by: PL-40SJ
 added: 2026-10-03
 ---
 
