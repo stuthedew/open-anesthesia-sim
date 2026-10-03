@@ -403,3 +403,31 @@ git fetch origin refs/archive/claude/NAME/TIP && git push origin FETCH_HEAD:refs
 Success is `* [new branch]` on the last line. `git ls-remote origin
 'refs/archive/*'` lists every archived tip, if the log has expired. An archive
 ref is not shown on GitHub's Branches page and no clone fetches it unasked.
+
+## Retire the stop hook patch once Anthropic fixes it
+
+The cloud container's `Stop` hook, `~/.claude/stop-hook-git-check.sh`, is
+Anthropic's and is rewritten at every container start, so
+`.claude/hooks/stop_hook_patch.py` corrects it at each session start, for this
+project only (`PL-WW08`, `PL-483K`). Both false push demands it corrects are
+already reported at Anthropic's public tracker, so neither needs a new report
+(`PL-90CJ`; both open on 2026-10-03):
+
+- [anthropics/claude-code#83490](https://github.com/anthropics/claude-code/issues/83490),
+  the stale `origin/<branch>` a merged pull request leaves behind. Claude Code
+  2.1.288 still ships the unpushed count it reports. You commented there on
+  2026-10-03 with the reproduction drafted in `PL-90CJ` - a runnable script
+  against the shipped hook, and a five-line fix - so do not post it again.
+  Commenting subscribed you, so GitHub notifies you when the issue closes
+  ([About notifications](https://docs.github.com/en/subscriptions-and-notifications/concepts/about-notifications),
+  section "Default subscriptions").
+- [anthropics/claude-code#82624](https://github.com/anthropics/claude-code/issues/82624),
+  whose second false positive is a `git clone --depth 1` that fetches `main`
+  only, so a push records no `origin/<branch>`. The half of the patch that
+  answers it costs nothing to keep running, so it needs no watching.
+
+**Once either closes as fixed,** ask a session to retire the half of
+`stop_hook_patch.py` that the fix covers. Nothing in this repository will say
+so for #83490 if the fix is the one the comment proposes, since the patch then
+finds its own line already in place and stays silent. A fix in any other form
+makes it print, at every session start, that the line it rewrites is not there.
