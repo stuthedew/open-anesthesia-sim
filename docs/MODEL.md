@@ -1814,10 +1814,14 @@ The chart's grid is deliberately not held to it: `RunDefinition` chains a
 column spacing at most once per column, so the rounding cannot accumulate past
 what the columns asked for, and a grid at a tenth of the floor still lands on
 the run's own state to within 5e-14. Flooring it would refuse narrow axes the
-controller draws correctly today (`PL-6QYJ`).
+controller draws correctly today (project owner, 2026-10-03, ratified, over
+flooring the grid's spacing as the run's step is floored, `PL-6QYJ`).
 
-The value was chosen by the session that took the measurement above
-(`PL-YZ17`), not by the project owner, so ordinary evidence reopens it.
+The value is the measurement above taken as the floor (project owner,
+2026-10-03, ratified, over refusing only a step whose run length overflows,
+and over a floor at the 9.6e-12 s where a day's step count stops being exact,
+`PL-YZ17`). It was the session's recommendation rather than the owner's own
+specification, so ordinary evidence reopens it.
 
 **The measurements the old bound rested on are kept as history**, because they
 describe a method this project shipped for eleven releases and a reader
