@@ -1231,15 +1231,15 @@ def _placed(
             # Which row is current, and never which row clears the gate.
             # The two labels differ here, and the shorter sentence naming
             # one as clearing the other was read as the plan's own answer:
-            # `ROADMAP.md`'s timeline makes the gate a row of its own, and
-            # "The cadence" has cleared gate work ship inside the milestone
-            # that recorded it rather than in the patch track beneath it -
-            # so "v0.4.x - the code is the model clears it" told every
-            # session a patch may carry the gate, on the one question the
-            # cadence exists to settle (`PL-TNB6`). `Scope` carries no row
-            # for the gate itself, so the honest line says where the
-            # project stands and leaves the clearing to the milestone the
-            # gate is recorded under, which the first clause already names.
+            # "v0.4.x - the code is the model clears it" handed that step
+            # the whole of Gate 1, when 3 of the gate's 119 entries were
+            # the step's own (`PL-TNB6`). What the plan records about
+            # clearing is the milestone the gate is recorded under: it
+            # clears before that milestone is implemented, whichever
+            # release carries each fix. `Scope` carries no row for the
+            # gate itself, so the honest line names that milestone, which
+            # the first clause does, and says only where the project
+            # stands.
             reason = (
                 f"On the debt gate recorded under {scope.anchor}, which clears before "
                 f"that milestone is implemented; the project stands on "
