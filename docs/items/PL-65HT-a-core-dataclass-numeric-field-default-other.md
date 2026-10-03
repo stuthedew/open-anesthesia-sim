@@ -3,11 +3,12 @@ id: PL-65HT
 title: A core/ dataclass numeric field default other than 0 or 1 that appears in no provenance-table value is an unsourced scientific constant, and nothing checks for one
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: infra, docs
 feature: provenance
 touches: tests/unit
 added: 2026-09-13
+verify: grep -q 'Selected value' tests/unit/test_core_constant_provenance.py && grep -q 'fields(' tests/unit/test_core_constant_provenance.py
 ---
 
 **Problem.** `PL-4YY1` found `circuit_volume_l: float = 6.0` and
