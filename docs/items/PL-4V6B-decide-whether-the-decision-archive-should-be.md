@@ -9,6 +9,7 @@ feature: docket-store
 touches: subprojects/docket, docs/items, docs/dead-ends.md
 added: 2026-09-13
 closed: 2026-10-03
+pr: 1298
 verify: grep -qF 'a reading surface of their own was refused 2026-10-03' docs/dead-ends.md
 ---
 

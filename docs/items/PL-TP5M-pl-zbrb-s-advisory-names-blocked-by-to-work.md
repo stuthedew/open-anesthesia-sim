@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-13
 closed: 2026-10-03
+pr: 1298
 verify: grep -qF 'one repair then satisfies both checks' subprojects/docket/src/docket/checks.py
 ---
 
