@@ -79,7 +79,50 @@ create it and work creating a file declares it. That is candidate 1 at the
 altitude that holds. The pattern half of candidate 1 does not: a pattern
 present nowhere is what every unstarted item's command looks like.
 
-**Recommended:** build the file half as an advisory on the admitted shapes -
+[superseded 2026-10-03: the count below found nothing for the file half to fire on; see the design round] **Recommended:** build the file half as an advisory on the admitted shapes -
 advisory, since `touches` is a prediction a branch can outgrow - and record the
 reworded-line half as undecidable (candidate 3), since a line the work will add
 and a line another change reworded away read the same before the work.
+
+## Design round 2026-10-03: recommendation
+
+**Re-checked against the tree, 2026-10-03.** `checks.verify_shape_refusal`
+admits `grep -q` and `! grep -q` over named paths and one whole-suite coverage
+`pytest` shape, binding every command written from 2026-09-24
+(`_verify_allowlist_applies`); `PL-4PC5`'s shape, reading `wave`'s output
+through a pipe, is refused at write. No generator head is marked still
+generating (`bin/docket generators`), so the pause on new mechanisms does not
+decide this.
+
+**The number, counted.** 189 open items carry a `verify:`; 125 are grep-only
+shapes. The file half of candidate 1 - a positive clause naming a path that
+neither exists in the tree nor falls under the item's `touches` - would fire
+today on **0** of the 125 (a parse of the store on 2026-10-03; its three
+apparent hits were two globs over the item's own file, which the shell expands
+to a path that exists, and one pre-allowlist pipe shape). The store's whole
+history holds one dead command, `PL-4PC5`, whose shape can no longer be
+written. A check that fires on none of 125 commands earns no place by
+`CLAUDE.md`'s own test, and its parser is upkeep paid for passes it never
+saves.
+
+**Q. Is a dead `verify:` distinguishable from an outstanding one by anything
+the store can run, and if not, what is recorded instead?**
+**Recommendation: do not build the advisory; record candidate 3, sharpened,
+and close this item on the record.** The enforcement the brief said was
+missing exists now: `PL-1P5V`'s allowlist checks a command on the branch that
+writes it, so a command is live or refused at capture. The reworded-line half
+is undecidable before the work, as the re-pointing above says. The file half is
+decidable and has nothing to fire on. So the record is: a `verify:` that fails
+is read as outstanding, and a dead one is found by the session that starts the
+item, at the first replay that cannot pass - which is what `PL-4PC5` cost, five
+days of a startable item, and what no second item has cost since.
+
+**The cheapest build, if one is ever owed.** Not the parser: the replay
+(`cli._replayed`, run scoped by `make check` since `PL-0HPV` and whole by
+`bin/docket check --verify`) already runs every open command, and `grep` exits
+2, not 1, when a file it names is missing - `-q` keeps that status where
+nothing matched - so a dead path is already distinguishable from an unstarted
+item by exit status alone. One branch on the replayed status, one test.
+
+**What would change the answer.** A second open item whose `grep` names a path
+that has since moved. One reopens this, with the exit-2 report as the build.
