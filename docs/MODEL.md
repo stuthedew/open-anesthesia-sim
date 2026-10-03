@@ -1814,10 +1814,14 @@ The chart's grid is deliberately not held to it: `RunDefinition` chains a
 column spacing at most once per column, so the rounding cannot accumulate past
 what the columns asked for, and a grid at a tenth of the floor still lands on
 the run's own state to within 5e-14. Flooring it would refuse narrow axes the
-controller draws correctly today (`PL-6QYJ`).
+controller draws correctly today (project owner, 2026-10-03, ratified, over
+flooring the grid's spacing as the run's step is floored, `PL-6QYJ`).
 
-The value was chosen by the session that took the measurement above
-(`PL-YZ17`), not by the project owner, so ordinary evidence reopens it.
+The value is the measurement above taken as the floor (project owner,
+2026-10-03, ratified, over refusing only a step whose run length overflows,
+and over a floor at the 9.6e-12 s where a day's step count stops being exact,
+`PL-YZ17`). It was the session's recommendation rather than the owner's own
+specification, so ordinary evidence reopens it.
 
 **The measurements the old bound rested on are kept as history**, because they
 describe a method this project shipped for eleven releases and a reader
@@ -4144,9 +4148,10 @@ direction, so that the intertissue-diffusion note under § "Known limitations"
 and § "Supported run length" can give a number where they could give only a
 direction. Every assertion in
 `tests/reference/test_late_washout_against_published_fits.py` is a regression
-band around what it measured on 2026-09-27, or a property of the published
-coefficients; none asserts agreement with a human washout, and none may be
-restated as one.
+band around what it measured, on 2026-09-27 and, for the muscle group's
+variation below, on 2026-10-03; the reading such a band supports; or a property
+of the published coefficients. None asserts agreement with a human washout, and
+none may be restated as one.
 
 **What is compared, and under what conditions.** Both papers fit each
 volunteer's elimination to a sum of five exponentials,
@@ -4234,13 +4239,28 @@ from 1.8 to 3.1 hours until 20.7 to 29.4 hours
 re-derives those hours from the coefficients), this model has no such term, and
 over those hours its tail falls faster than the measured mean - from the start
 with the apparatus gone, and only from the seventh hour in the shipped
-condition, because the rebreathing circuit holds it above the curve until then:
-with the circuit's return taken away the same hours sit at or below it. The
-model's muscle group also returns more slowly than the fitted muscle term, its
-isolated time constant being 1.5 to 1.7 times the fitted one's, which would
-explain why the open-circuit tail is nearest the curve over hours 2 to 4, the
-hours a slower muscle return fills; that reading is inferred from the time
-constants and was not tested by varying them. The late excess is the model's fat group returning more than the
+condition, because the rebreathing circuit and the muscle group's slow return,
+below, hold it above the curve until then: with the circuit's return taken away
+the same hours sit at or below it.
+
+The model's muscle group returns more slowly than the fitted muscle term, its
+isolated time constant being 1.5 to 1.7 times the fitted one's, and that is
+what puts the peak of model over fit in hours 2 to 4 - in the open circuit the
+tail's closest approach to the curve, in the shipped condition its furthest
+excess over it. It was tested by lowering the group's tissue:gas coefficient to
+0.58 to 0.67 of its stored value, which makes its isolated time constant the
+fitted one's, with everything else stored (`PL-95NW`, 2026-10-03). Over a 30-minute
+wash-in the group is far from equilibrium and takes up agent about as fast as
+its blood flow brings it, whatever its capacity, so it holds only 4 to 10% less
+at discontinuation, and what the change moves is how fast that store comes
+back. With it, in six-hour runs, the open-circuit peak comes at 0.62 to 1.45
+hours rather than 2.17 to 3.92, and at four hours the tail is 0.50, 0.62, 0.24
+and 0.70 of the fitted curve rather than 0.82, 0.85, 0.58 and 1.04. The shipped
+peak comes at 0.65 to 1.97 hours rather than 2.27 to 4.15, and the stretch above
+the curve ends at 1.6, 3.7 and 4.5 hours rather than 6.9, 7.3 and 8.4, and for
+desflurane never opens
+(`test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`).
+The late excess is the model's fat group returning more than the
 fitted fat term's small amplitude (0.028 to 0.080%, with SDs of 53 to 94% of
 the means), and it is still growing at 24 hours - the ratio rises between
 minutes 1400 and 1440 in every cohort - because the fitted curve is still
@@ -5213,7 +5233,8 @@ hours it does (§ "The first 24 hours of elimination against the published mean
 curves", `PL-KK1Q`): the shipped tail runs below them by about a third from
 about the seventh hour until about the twenty-first - from 3.4 to 15.3 hours,
 and by half, for desflurane - above them by a fifth to a half over the hours
-before, while the rebreathing circuit holds it up, and above them again at
+before, while the rebreathing circuit and the muscle group's slow return hold
+it up, and above them again at
 24 hours by 15 to 29%, or a factor of 2.2 for desflurane, as this model's fat
 group returns more than the fitted fat term; with the apparatus taken away the
 tissue return alone is a third to a half of the mean curve between hours 8
@@ -9098,8 +9119,9 @@ that structure rather than from a run:
   near hour 13 - from 3.4 to 15.3 hours, and by half, for desflurane - and with
   the apparatus taken away its tissue return alone is a third to a half of the
   mean curve between hours 8 and 13. Later than the third hour in the shipped
-  condition because the rebreathing circuit holds the tail above the curve
-  until the seventh; the size is known to about a factor of two, which is the
+  condition because the rebreathing circuit and the muscle group's slow
+  return hold the tail above the curve until the seventh (`PL-95NW`); the
+  size is known to about a factor of two, which is the
   fourth compartment's own between-subject spread.
 
 **Eger and Saidman's review draws the same compartment, and names a fourth

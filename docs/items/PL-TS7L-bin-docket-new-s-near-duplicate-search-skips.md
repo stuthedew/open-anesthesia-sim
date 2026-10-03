@@ -1,9 +1,15 @@
 ---
 id: PL-TS7L
 title: bin/docket new's near-duplicate search skips every open item that declares no touches, so two untriaged captures of one defect never meet: PL-YZ17 was filed 2026-10-03 into a store already holding PL-5F76, the same 4.8e-304 s step overflow
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 touches: subprojects/docket/src/docket/duplicates.py, subprojects/docket/tests/test_duplicates.py
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+payoff: two captures of one defect filed the same day meet at the second capture, before either is triaged or built twice
+verify: grep -q 'def test_an_untriaged_item_without_touches_is_a_candidate' subprojects/docket/tests/test_duplicates.py
 ---
 
 **Problem.** bin/docket new's near-duplicate search skips every open item that declares no touches, so two untriaged captures of one defect never meet: PL-YZ17 was filed 2026-10-03 into a store already holding PL-5F76, the same 4.8e-304 s step overflow
@@ -34,6 +40,18 @@ untriaged ones, where same-day duplicates sit.
 `feature:` and rank by title as now. Measure it on the 13 known pairs and this
 one before choosing.
 
+**Why it matters.** A same-day duplicate costs a triage pass and can cost a
+build: `PL-YZ17` was fixed on its own branch while `PL-5F76` sat untriaged
+beside it, and the triage that found the pair had to split `PL-5F76` by hand.
+Same-day captures are where duplicates cluster, and they are the ones this
+search cannot pair.
+
 **Done when.** A capture sharing `feature:` with an untriaged item that
 declares no `touches`, under a near title, is shown that item, and a test pins
 it on the `PL-5F76`/`PL-YZ17` pair.
+
+**Generator check.** An instance of `PL-TZ7T`'s fact, filed after that head
+closed on 2026-09-20: whether an open item already describes the mechanism a
+new capture names. The second post-close instance, after `PL-9VPH` (the
+capture side, filed 2026-09-23), so one short of the three that read as a fix
+that did not hold.
