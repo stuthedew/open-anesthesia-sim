@@ -3,13 +3,14 @@ id: PL-D388
 title: A frozen gate entry whose blocked-by names an item no list holds silently leaves what bin/docket wave asks the gate to clear: PL-VV6N sits under 'Cleared before v0.6.0 begins' behind PL-YVV4, so Gate 2 can read clear with it undecided, and nothing checks the 2026-08-30 rule that what an entry needs is let in
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: gate-prerequisites
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md, .claude/skills/docket/modes/release.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) and not safety or science; its problem was present at the freeze, so the presence test answers yes, and it is deferred on a stated reason: its one instance on this list, PL-VV6N, is disposed by the owner's answer recorded here whether or not the check is built first, and the check itself guards the triage passes and freezes still to come rather than any v0.6.0 entry
 added: 2026-10-03
 payoff: A frozen entry can leave what the gate is asked to clear only through a disposition its section records, so bin/docket wave cannot report Gate 2 clear while an entry like PL-VV6N sits undecided behind a prerequisite no list holds
+verify: grep -q 'def check_gate_prerequisites' tools/doc_check.py
 ---
 
 **Problem.** A frozen gate entry whose blocked-by names an item no list holds silently leaves what bin/docket wave asks the gate to clear: PL-VV6N sits under 'Cleared before v0.6.0 begins' behind PL-YVV4, so Gate 2 can read clear with it undecided, and nothing checks the 2026-08-30 rule that what an entry needs is let in
@@ -101,10 +102,11 @@ be closed under its prerequisites; here closure is reached from either end.
 
 **The build, on that recommendation.**
 
-1. **The check.** In `tools/doc_check.py`, beside `check_self_cleared_group`
-   (`PL-J6HP`), which already reads `_gate_groups` and imports `docket.roadmap`:
-   for the current gate, hold the section's groups and `roadmap.gate_status`'s
-   buckets to one answer per open entry, in both directions.
+1. **The check.** In `tools/doc_check.py`, a `check_gate_prerequisites`
+   beside `check_self_cleared_group` (`PL-J6HP`), which already reads
+   `_gate_groups` and imports `docket.roadmap`: for the current gate, hold the
+   section's groups and `roadmap.gate_status`'s buckets to one answer per open
+   entry, in both directions.
    - An entry under a "Cleared before vX.Y.Z begins" group that `gate_status`
      counts as blocked outside is an error, `PL-VV6N`'s case. It names the ids
      the entry waits on and the remedy that fits. Where every one is in
@@ -159,3 +161,15 @@ holds, or where an entry under a deferral group is one wave counts as
 clearable. It passes once the id is admitted or the entry is deferred with a
 holding condition. The three prose places state the same rule. `PL-VV6N` has a
 disposition on `main`.
+
+## Answers 2026-10-03
+
+Account for each prerequisite, and let `PL-YVV4` into Gate 2 beside `PL-VV6N`
+(project owner, 2026-10-03, ratified, over admitting every open prerequisite of
+a frozen entry automatically and over deferring `PL-VV6N` and `PL-YVV4` to
+Gate 3). The owner asked the same day whether deferring a prerequisite defers
+the gate item that waits on it. It does, so under this answer that move is
+recorded in the gate's section with its reason, and the check refuses the
+silent half of it: a deferred prerequisite under an entry still listed as this
+gate's work. Status moved to `ready` with this answer, as `docket check`
+requires of an answered question.
