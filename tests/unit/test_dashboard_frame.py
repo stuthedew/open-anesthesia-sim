@@ -1296,7 +1296,7 @@ def test_the_delivered_dial_is_held_in_percent_and_read_as_a_fraction() -> None:
 
 
 def test_refresh_view_reports_valid_agent_accounting() -> None:
-    """The three amounts at one decimal of a litre (`PL-TG60`); the residuals as a decade (`PL-3PJZ`)."""
+    """The three amounts at one decimal of a litre (`PL-TG60`); each residual as a decade."""
 
     panel = accounting(_snapshot(passes_validation=True))
 

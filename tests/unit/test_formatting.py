@@ -1224,7 +1224,7 @@ def test_format_agent_residual_reads_zero_as_zero() -> None:
 
 @pytest.mark.parametrize("litres", [math.nan, math.inf, -math.inf])
 def test_format_agent_residual_leaves_a_non_finite_value_visible(litres: float) -> None:
-    """The accounting check cannot produce one; if it does, it shows rather than becoming a bound."""
+    """The accounting check cannot produce one; if it does, it shows instead of being bounded."""
 
     assert format_agent_residual(litres) == f"{litres} L"
 
