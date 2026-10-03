@@ -438,6 +438,27 @@ def test_a_title_escaped_by_hand_or_holding_no_placeholder_is_left_as_it_stands(
     assert markdown_title("``double <n> span`` then <m>") == "``double <n> span`` then \\<m>"
 
 
+def test_a_code_span_is_read_inside_its_paragraph() -> None:
+    """`PL-9L39`: the one reading of a span, which every checker now takes.
+
+    A span wraps across a line break and holds a shorter run, as CommonMark's
+    does; a blank line closes it, so a stray backtick cannot pair with a run
+    paragraphs below and read every span after it inside out.
+    """
+    from docket.release import CODE_SPAN_RE
+
+    def contents(text: str) -> list[str]:
+        return [span["content"] for span in CODE_SPAN_RE.finditer(text)]
+
+    assert contents("run `bin/docket\nwave` and ``a`b`` then `c`") == [
+        "bin/docket\nwave",
+        "a`b",
+        "c",
+    ]
+    assert contents("a stray ` here\n\nthen `x` and `y`") == ["x", "y"]
+    assert contents("``two closed by three```") == []
+
+
 # --- bullets that shipped before their number existed ------------------------
 #
 # `PL-W7WL`: the cut rendered the notes and `docket record` wrote `pr`

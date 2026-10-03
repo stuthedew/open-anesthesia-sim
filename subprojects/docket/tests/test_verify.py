@@ -739,6 +739,15 @@ def test_strip_non_code_leaves_an_unterminated_span_whole() -> None:
     assert "xfail" not in strip_non_code('MESSAGE = "an @pytest.mark.xfail marker"')
 
 
+def test_strip_non_code_blanks_a_double_backtick_literal_whole() -> None:
+    """A reST-style literal is one span, as docket reads one (`PL-9L39`).
+
+    The strip's own regex read it as two empty spans around a bare token, so a
+    docstring line naming a marker that way read as a suppression added.
+    """
+    assert "xfail" not in strip_non_code('    """``@pytest.mark.xfail`` marks it expected to fail.')
+
+
 def test_no_suppression_marker_is_comment_shaped() -> None:
     """`is_suppression_line` blanks comments, so a comment-form marker is dead.
 

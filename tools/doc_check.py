@@ -113,7 +113,8 @@ try:
     # the queue, which `check_gate_reentries` reads an item's `classes` and
     # `status` from; `release` carries the notes format - where a cut writes
     # them, and the heading below which a bullet stops being a claim - which
-    # `check_tag_span_covers_its_notes` reads and must not spell a second time.
+    # `check_tag_span_covers_its_notes` reads and must not spell a second time,
+    # and the one reading of a code span (`PL-9L39`), which `_code_spans` takes.
     # A second copy of either grammar would drift from the one
     # `bin/docket check` enforces, and the drift would be in the documents that
     # say which milestone is current and what it still owes.
@@ -130,6 +131,7 @@ try:
     from docket.fences import without_fences as without_fences
     from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item
     from docket.release import (
+        CODE_SPAN_RE,
         NOTES_BULLET_RE,
         NOTES_DIR,
         REFERENCED_RE,
@@ -367,7 +369,6 @@ TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
 #: A source file named in the reference index, as inline code: `name.pdf`.
 REFERENCE_FILE_RE = re.compile(r"`(?P<name>[\w][\w.-]*\.(?:pdf|txt|csv|json))`")
 TREE_ENTRY_RE = re.compile(r"^(?P<indent>(?:(?:│   )|(?:    ))*)(?:├──|└──) (?P<name>\S+)")
-CODE_SPAN_RE = re.compile(r"`([^`\n]+)`")
 LINK_RE = re.compile(r"\[[^\]\n]*\]\((?P<target>[^)\s]+)\)")
 NUMBER_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
 
@@ -655,12 +656,6 @@ MATH_SPAN_RE = re.compile(r"\$(`+)(?:(?!\1).)*\1\$")
 # the correct delimiters and broken only by a paragraph reflow - which is why
 # the rule is worth keeping after the conversion rather than only during it.
 MATH_EDGE_RE = re.compile(r"\$`|`\$")
-
-# A backtick run that is code rather than math. Blanked before either rule
-# runs: `\(` inside a code span is a quotation of the broken syntax rather than
-# a use of it, and a shell snippet like `"$upstream..HEAD"` is not an unclosed
-# expression.
-BACKTICK_RUN_RE = re.compile(r"(`+)(?:(?!\1).)*\1")
 
 # A list item's opening line: its marker, a bullet or an ordered number, and
 # the gap to its content, or nothing where the item opens empty. What
@@ -1082,7 +1077,7 @@ def check_provenance(root: Path, report: Report) -> None:
             continue
 
         parameter, value_cell, _unit, source_cell = cells[0], cells[1], cells[2], cells[3]
-        spans = CODE_SPAN_RE.findall(source_cell)
+        spans = [span["content"] for span in CODE_SPAN_RE.finditer(source_cell)]
         if len(spans) != 2:
             report.errors.append(
                 f"{where}: {parameter!r} names {len(spans)} code spans in its source cell; "
@@ -3736,6 +3731,26 @@ def _cites_heading(term: str, headings: Iterable[str]) -> bool:
     )
 
 
+def _code_spans(text: str) -> list[re.Match[str]]:
+    """Every code span in a document as docket reads one, in document order.
+
+    The prose is read with its fenced blocks blanked, so a span wrapped across
+    a line break is one span and a fence's own backticks open none. CommonMark
+    reads no span inside a fence, but a package map's comments cite paths as
+    spans, and `docs/ARCHITECTURE.md`'s maps are held to the tree that way; so
+    each fenced line is then read on its own, as every line was read before
+    `PL-9L39`. Offsets are the document's either way.
+    """
+    spans = list(CODE_SPAN_RE.finditer(without_fences(text)))
+    fenced = fenced_lines(text)
+    offset = 0
+    for index, line in enumerate(text.splitlines(keepends=True)):
+        if index in fenced:
+            spans.extend(CODE_SPAN_RE.finditer(text, offset, offset + len(line.splitlines()[0])))
+        offset += len(line)
+    return sorted(spans, key=lambda span: span.start())
+
+
 def check_citations(root: Path, documents: dict[Path, str], report: Report) -> None:
     """Resolve every path and section a documentation file cites."""
     basenames = frozenset(path.name for path in _walk(root))
@@ -3744,8 +3759,8 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
 
     for path, text in documents.items():
         absent = _absent_paths(root, basenames, path, text, report)
-        for match in CODE_SPAN_RE.finditer(text):
-            token = match.group(1)
+        for match in _code_spans(text):
+            token = match["content"]
             if not _is_path_citation(token) or _resolves(root, basenames, token):
                 continue
             line = _line_of(text, match.start())
@@ -3845,7 +3860,7 @@ def _absent_paths(
         if marker is None:
             continue
         start, end = _marked_span(lines, index)
-        cited = {span.group(1) for span in CODE_SPAN_RE.finditer("\n".join(lines[start:end]))}
+        cited = {span["content"] for span in CODE_SPAN_RE.finditer("\n".join(lines[start:end]))}
         for token in marker.group("paths").split():
             if token not in cited:
                 report.errors.append(
@@ -4222,8 +4237,8 @@ def _make_mentions(text: str) -> Iterator[tuple[str, int]]:
 
     Anywhere in a code span; in a fence, only as a line's first word.
     """
-    for match in CODE_SPAN_RE.finditer(text):
-        for mention in MAKE_MENTION_RE.finditer(match.group(1)):
+    for match in _code_spans(text):
+        for mention in MAKE_MENTION_RE.finditer(match["content"]):
             yield mention.group("name"), _line_of(text, match.start())
     for start, body in _fenced_blocks(text):
         for offset, line in enumerate(body):
@@ -4624,7 +4639,11 @@ def _without_code(text: str) -> list[str]:
             items.append(_content_column(item))
         paragraph = True
         blank = MATH_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
-        lines.append(BACKTICK_RUN_RE.sub(lambda m: " " * len(m.group(0)), blank))
+        # A code span is blanked before either rule runs: `\(` inside one is a
+        # quotation of the broken syntax rather than a use of it, and a shell
+        # snippet like `"$upstream..HEAD"` is not an unclosed expression. Read a
+        # line at a time, so a span wrapped from the line above is not seen.
+        lines.append(CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), blank))
     return lines
 
 
@@ -5696,11 +5715,15 @@ def _marks_code(line: str, start: int, end: int) -> bool:
     """Does the line present this occurrence as code rather than as English?"""
     before, after = line[:start], line[end:]
     return (
-        # An odd number of backticks to the left puts the occurrence inside a
-        # code span. A line closing a span it did not open reads as prose,
-        # which is the safe way round: this decides what to *report*, and a
-        # term of this kind is the one whose bare matches are noise.
-        before.count("`") % 2 == 1
+        # Inside a code span on this line (`PL-9L39`). A span wrapped onto the
+        # line from the one above is not seen, so the text before its closing
+        # run reads as prose, which is the safe way round: this decides what to
+        # *report*, and a term of this kind is the one whose bare matches are
+        # noise. The closing run then pairs with the line's next opening one.
+        any(
+            span.start("content") <= start and end <= span.end("content")
+            for span in CODE_SPAN_RE.finditer(line)
+        )
         or after.startswith("(")
         or QUALIFIED_LEFT_RE.search(before) is not None
         or QUALIFIED_RIGHT_RE.match(after) is not None

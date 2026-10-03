@@ -640,6 +640,19 @@ def test_a_quote_inside_a_code_span_opens_no_quotation() -> None:
     )
 
 
+def test_a_quote_inside_a_wrapped_or_double_backtick_span_opens_no_quotation() -> None:
+    """`PL-9L39`: the spans set aside are docket's own reading of one.
+
+    The quotes were counted past a regex that read neither shape, and briefs in
+    the store wrap a span beside a quotation: three read otherwise on 2026-10-03.
+    """
+    for span in ('`grep\n"`', '``"``'):
+        assert _has(
+            _prose(f"The {span} opens nothing - it depends on `PL-0002`.", blocker_status="done"),
+            "lands with",
+        )
+
+
 def _status_advisories(status: str, text: str) -> list[str]:
     """The own-status readings for one item at `status` whose brief says `text`."""
     subject = _item("PL-0001", status=status, body=f"{BRIEF}\n{text}\n")

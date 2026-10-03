@@ -4021,6 +4021,8 @@ docs/items` looked for `docs/docket.toml`, found none, and ran the whole store
 on package defaults, with no `known_classes`, no `workflow_paths` and
 `top_band_limit` at 5 rather than 12.
 
+<!-- absent: docs/docket.toml -->
+
 That failure is fixed. What it cost to find is the reason for the line below:
 it was the quietest of the three, spotted only incidentally while the other two
 were being repaired, and nothing about a run said which policy had governed it.
