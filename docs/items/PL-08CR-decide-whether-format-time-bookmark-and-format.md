@@ -60,3 +60,7 @@ Nothing in `src/` calls either wrapper. `grep -rn "format_time_bookmark\|format_
 **Recommendation: delete both wrappers and repoint the eight tests at `bookmark_panel` with a single run** - the recommendation above, unchanged, with the count corrected. It is the plain call under `CLAUDE.md`'s bar for `src/`: two public functions with no production consumer are what a reader has to be told about, and the guarantees they pin survive on the path a reader actually meets. Cost: about forty lines of test churn in `tests/unit/test_dashboard_frame.py`, no behaviour change, nothing in `docs/MODEL.md`. The alternative, keeping them as a single-row renderer for a future caller, has had no caller since `PL-LHBY` and buys nothing today.
 
 For the build thread: each of the eight tests names one guarantee; keep every test's name and assertion and change only what it calls, so the record of what is pinned does not move with the refactor.
+
+## Answers 2026-10-03
+
+Delete both wrappers and repoint the eight tests at `bookmark_panel` (project owner, 2026-10-03, ratified, over keeping them as a single-row renderer for a future caller). Status moved to `ready` with this answer, as `docket check` requires of an answered question.
