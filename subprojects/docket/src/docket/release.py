@@ -182,6 +182,36 @@ def notes_path(version: str) -> str:
     return f"{NOTES_DIR}/{notes_name(version)}"
 
 
+def notes_version(name: str) -> str:
+    """The version a notes file is named for, or `""` where `name` names none.
+
+    The inverse of `notes_name`, and the one test of whether a file beside the
+    notes is a release's: `v0.5.10.md` is `0.5.10`, and a `README.md` or a
+    draft is nothing. Reading any stem as a version made a branch adding a
+    README look like the cut of a version called `README` (`PL-M6GY`).
+    """
+    stem = name.removesuffix(".md")
+    if stem == name or not stem.startswith("v") or SEMVER_RE.match(stem) is None:
+        return ""
+    return stem.removeprefix("v")
+
+
+def notes_files(root: Path, notes_dir: str = NOTES_DIR) -> list[Path]:
+    """Every cut release's notes file, oldest version first.
+
+    In version order rather than by name, which would put `v0.5.10.md` before
+    `v0.5.9.md`. A directory that does not exist is a project that does not
+    write notes, and comes back empty rather than raising.
+    """
+    directory = root / notes_dir
+    if not directory.is_dir():
+        return []
+    return sorted(
+        (path for path in directory.glob("*.md") if notes_version(path.name)),
+        key=lambda path: version_key(notes_version(path.name)),
+    )
+
+
 #: What a release's *cut* is, stated once for every reader of it: the commit
 #: that added its notes file, compared with its first parent. That commit's
 #: tree is the first to carry the release's notes and its version bump, so it
@@ -274,15 +304,11 @@ def notes_by_version(root: Path, notes_dir: str = NOTES_DIR) -> dict[str, frozen
     A directory that does not exist is a project that does not write notes,
     and comes back empty rather than raising.
     """
-    directory = root / notes_dir
-    if not directory.is_dir():
-        return {}
     return {
         path.stem: frozenset(
             NOTES_ENTRY_RE.findall(notes_claims(path.read_text(encoding="utf-8"))[0])
         )
-        for path in sorted(directory.glob("v*.md"))
-        if SEMVER_RE.match(path.stem)
+        for path in notes_files(root, notes_dir)
     }
 
 
@@ -565,10 +591,10 @@ def reference(item: Item) -> str:
 REFERENCED_RE = re.compile(r" — (#\d+|`[0-9a-f]{7,40}`)$")
 
 #: A notes bullet split into the id it claims and everything after it, which is
-#: the title plus whatever reference the bullet carries. Same anchoring as
-#: `NOTES_ENTRY_RE` and for the same reason: titles quote other ids, so only
-#: the leader says which item a bullet is about.
-NOTES_BULLET_RE = re.compile(rf"^- ({ID_PATTERN})(.*)$", re.M)
+#: the title plus whatever reference the bullet carries. `NOTES_ENTRY_RE`
+#: extended rather than restated, so the two cannot anchor differently: titles
+#: quote other ids, so only the leader says which item a bullet is about.
+NOTES_BULLET_RE = re.compile(rf"{NOTES_ENTRY_RE.pattern}(.*)$", re.M)
 
 
 def unreferenced(text: str) -> tuple[str, ...]:
@@ -591,13 +617,8 @@ def unreferenced_by_version(root: Path, notes_dir: str = NOTES_DIR) -> dict[str,
     Releases whose bullets all carry a reference are absent rather than empty,
     so a healthy project reports `{}` and the caller has nothing to filter.
     """
-    directory = root / notes_dir
-    if not directory.is_dir():
-        return {}
     found: dict[str, tuple[str, ...]] = {}
-    for path in sorted(directory.glob("v*.md")):
-        if not SEMVER_RE.match(path.stem):
-            continue
+    for path in notes_files(root, notes_dir):
         claims, _ = notes_claims(path.read_text(encoding="utf-8"))
         if missing := unreferenced(claims):
             found[path.stem] = missing

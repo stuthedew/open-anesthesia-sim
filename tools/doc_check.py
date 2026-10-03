@@ -133,9 +133,12 @@ try:
         NOTES_BULLET_RE,
         NOTES_DIR,
         REFERENCED_RE,
+        SEMVER_RE,
         SPAN_HEADING,
         notes_claims,
         notes_path,
+        version_in,
+        version_key,
     )
     from docket.roadmap import (
         BASELINE_MARK,
@@ -156,7 +159,6 @@ try:
         parse_timeline,
         parse_version_table,
         table_rows,
-        version_tuple,
     )
 
     # `shell_words` is the one reading of how a shell command splits
@@ -581,8 +583,6 @@ STALE_VERSION_CLAIM_RE = re.compile(
 # where the prose resumes, rather than sweeping up every version in the region.
 LIST_SEPARATOR_RE = re.compile(r"[\s,:]*(?:and\s+)?")
 LIST_VERSION_RE = re.compile(rf"v(?P<version>{SEMVER_PATTERN})")
-# A tag naming a release, as against `v1.2.3-rc1` or a name of another shape.
-RELEASE_TAG_RE = re.compile(r"^v?(?P<version>\d+\.\d+\.\d+)$")
 # The status cell that says a version has gone out.
 COMPLETED_MARK = "completed"
 # This document writes its counts as words, so both forms are read. Anything
@@ -2975,10 +2975,10 @@ def check_tags(root: Path, report: Report) -> None:
             )
 
     unnamed = {
-        name: match.group("version")
+        name: version
         for name in sorted(existing)
-        if (match := RELEASE_TAG_RE.match(name)) is not None
-        and match.group("version") not in completed
+        if SEMVER_RE.match(name) is not None
+        and (version := name.removeprefix("v")) not in completed
     }
     base, ahead = _ahead_of_the_tree(root, tuple(unnamed)) if unnamed else ("", ())
     for name, version in unnamed.items():
@@ -3108,7 +3108,7 @@ def _check_tag_versions(
                 "whether each tag sits on the commit that cut its release is unknown"
             )
         else:
-            for name in sorted(cuts.off_cut, key=lambda name: _release_order(name.lstrip("v"))):
+            for name in sorted(cuts.off_cut, key=version_key):
                 version = name.lstrip("v")
                 where = f"{ROADMAP}:{rows[version]}" if version in rows else str(ROADMAP)
                 report.errors.append(_off_cut_error(where, name, cuts, root, run))
@@ -3140,17 +3140,17 @@ def _check_tag_version_files(
         return
     releases = sorted(
         (
-            (match.group("version"), name)
+            (name.removeprefix("v"), name)
             for name in existing
-            if (match := RELEASE_TAG_RE.match(name)) is not None and name not in off_cut
+            if SEMVER_RE.match(name) is not None and name not in off_cut
         ),
-        key=lambda release: _release_order(release[0]),
+        key=lambda release: version_key(release[0]),
     )
     unread: list[str] = []
     if releases:
         for version, name in releases:
             text = run(["show", f"refs/tags/{name}:pyproject.toml"], root)
-            declared = _declared_version(text) if answered(text) else ""
+            declared = version_in(text) if answered(text) else ""
             if not declared:
                 unread.append(name)
             elif declared == version:
@@ -3215,8 +3215,7 @@ def _release_cuts(root: Path, names: Iterable[str], run: Runner) -> _ReleaseCuts
     releases = sorted(
         name
         for name in names
-        if (match := RELEASE_TAG_RE.match(name)) is not None
-        and (root / notes_path(match.group("version"))).is_file()
+        if SEMVER_RE.match(name) is not None and (root / notes_path(name)).is_file()
     )
     if not releases:
         return _ReleaseCuts({}, {}, frozenset())
@@ -3290,11 +3289,6 @@ def _off_cut_error(where: str, name: str, cuts: _ReleaseCuts, root: Path, run: R
 #: a tag among them written in full. Matching the full form rather than the
 #: `tag: ` prefix is what keeps this independent of the log's decoration style.
 TAG_REF_RE = re.compile(r"refs/tags/([^,\s]+)")
-
-
-def _release_order(version: str) -> tuple[int, int, int]:
-    """A release version as a comparable triple; an unreadable one sorts first."""
-    return version_tuple(version) or (0, 0, 0)
 
 
 def span_bullet(identifiers: Sequence[str], number: str, described: str) -> str:
@@ -3383,16 +3377,12 @@ def _tag_spans(root: Path) -> _TagSpans | None:
         decoration, _, subject = rest.partition("\t")
         refs = TAG_REF_RE.findall(decoration)
         names.update(refs)
-        tagged = [
-            match.group("version")
-            for name in refs
-            if (match := RELEASE_TAG_RE.match(name)) is not None
-        ]
+        tagged = [name.removeprefix("v") for name in refs if SEMVER_RE.match(name) is not None]
         if tagged:
             # Newest first, so the tag met here opens the span every older
             # commit belongs to - and the tagged commit is in its own span,
             # which is where `git describe --contains` puts it.
-            current = max(tagged, key=_release_order)
+            current = max(tagged, key=version_key)
         if current:
             version[commit] = current
         # Read through `docket`'s one parser, the squash shape alone, as this
@@ -3408,7 +3398,7 @@ def _tag_spans(root: Path) -> _TagSpans | None:
     if cuts is None:
         return None
     cut = {name.lstrip("v"): release.commit for name, release in cuts.cut.items() if release.commit}
-    return _TagSpans(version, pull_request, cut, max(version.values(), key=_release_order))
+    return _TagSpans(version, pull_request, cut, max(version.values(), key=version_key))
 
 
 def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
@@ -3496,7 +3486,7 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
         version = spans.version.get(commit)
         if version is None or version == spans.newest or spans.cut.get(version) == commit:
             continue
-        notes = root / NOTES_DIR / f"v{version}.md"
+        notes = root / notes_path(version)
         if not notes.is_file():
             continue
         if version not in named:
@@ -3507,7 +3497,7 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
         uncovered.setdefault(version, {}).setdefault((item.pr, described), []).append(item)
 
     findings: list[str] = []
-    for version in sorted(uncovered, key=_release_order):
+    for version in sorted(uncovered, key=version_key):
         rows = sorted(uncovered[version], key=lambda row: (int(row[0]), row[1]))
         numbers = sorted({number for number, _ in rows}, key=int)
         bullets = [
@@ -3519,7 +3509,7 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
             for row in rows
         ]
         findings.append(
-            f"{NOTES_DIR}/v{version}.md: "
+            f"{notes_path(version)}: "
             + _plural(len(numbers), "closing pull request", "closing pull requests")
             + " inside v"
             + version
@@ -3558,13 +3548,7 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
 
 
 def _project_version(pyproject: Path) -> str:
-    return _declared_version(pyproject.read_text(encoding="utf-8"))
-
-
-def _declared_version(text: str) -> str:
-    """The version a `pyproject.toml` declares, or `""` where it declares none."""
-    match = re.search(r'^version\s*=\s*"([^"]+)"', text, re.M)
-    return match.group(1) if match else ""
+    return version_in(pyproject.read_text(encoding="utf-8"))
 
 
 def _is_path_citation(token: str) -> bool:

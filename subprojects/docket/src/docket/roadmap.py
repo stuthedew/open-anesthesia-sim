@@ -32,7 +32,7 @@ from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from .model import MILESTONE_BLOCKER_RE, SEMVER_PATTERN
-from .release import SEMVER_RE
+from .release import SEMVER_RE, version_key
 from .store import ID_PATTERN
 from .vcs import leading_ids
 
@@ -1001,7 +1001,7 @@ class GateStatus:
         return tuple(
             sorted(
                 (i for i in self._outside if MILESTONE_BLOCKER_RE.match(i) is not None),
-                key=lambda version: version_tuple(version) or (0, 0, 0),
+                key=version_key,
             )
         )
 

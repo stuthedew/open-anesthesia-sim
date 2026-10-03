@@ -114,6 +114,7 @@ from .release import (
     markdown_title,
     milestones,
     notes_by_version,
+    notes_files,
     notes_name,
     notes_path,
     outstanding_roadmap_edits,
@@ -5049,14 +5050,9 @@ def _restate_notes(root: Path, by_id: Mapping[str, Item], dry_run: bool) -> int:
     Only an append is ever made, so a run that finds nothing to add writes
     nothing at all. `restate_references` carries why the title is left alone.
     """
-    directory = root / NOTES_DIR
-    if not directory.is_dir():
-        return 0
     verb = "would restate" if dry_run else "restated"
     total = 0
-    for path in sorted(directory.glob("v*.md")):
-        if not SEMVER_RE.match(path.stem):
-            continue
+    for path in notes_files(root):
         text = path.read_text(encoding="utf-8")
         restated, repaired = restate_references(text, by_id)
         if not repaired:
