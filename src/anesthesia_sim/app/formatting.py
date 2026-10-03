@@ -38,6 +38,7 @@ depth of anesthesia, and the divisor is a tier-3 parameter whose provenance
 the interface displays.
 """
 
+from decimal import Decimal
 from math import isfinite
 from typing import Final
 
@@ -46,7 +47,6 @@ from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, pe
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 __all__ = [
-    "AGENT_RESIDUAL_DISPLAY_DECIMALS",
     "AGENT_VOLUME_DISPLAY_DECIMALS",
     "AGENT_VOLUME_DISPLAY_RESOLUTION_L",
     "CHART_AXIS_TOP_MAC",
@@ -139,14 +139,6 @@ FLOW_DISPLAY_DECIMALS: Final = 1
 AGENT_VOLUME_DISPLAY_DECIMALS: Final = 1
 #: Smallest difference in litres of agent gas the accounting panel resolves.
 AGENT_VOLUME_DISPLAY_RESOLUTION_L: Final = 10.0**-AGENT_VOLUME_DISPLAY_DECIMALS
-
-# Significant digits after the point in the accounting panel's two residual
-# lines - the unaccounted amount and the absolute error. Exponent form rather
-# than the fixed form above, because an order of magnitude is what those two
-# are for: at 1e-12 L a fixed one-decimal line would read `0.0 L` and say
-# nothing, where `1.500e-13 L` says how far below the displayed resolution
-# the conservation check sits (`PL-TG60`).
-AGENT_RESIDUAL_DISPLAY_DECIMALS: Final = 3
 
 # Decimals shown on a MAC multiple, and the resolution that follows. This is
 # *derived*, not chosen: a MAC multiple is a percent divided by the agent's
@@ -1067,17 +1059,45 @@ def format_agent_volume(litres: float) -> str:
 
 
 def format_agent_residual(litres: float) -> str:
-    """Render a residual of the accounting panel in exponent form, with its unit.
+    """Render a residual of the accounting panel as the power of ten it lies below.
 
-    For the unaccounted amount and the absolute error, whose purpose is
-    their order of magnitude; `AGENT_RESIDUAL_DISPLAY_DECIMALS` records why
-    these two lines do not share `format_agent_volume`'s fixed form.
+    For the unaccounted amount and the absolute error, which exist to show how
+    far below the amounts' resolution the conservation check sits: at 1e-12 L
+    `format_agent_volume`'s fixed form would read `0.0 L` and say nothing
+    (`PL-TG60`). Each prints the smallest power of ten its magnitude lies
+    strictly below, so `5.601e-14` reads `<1e-13 L`, the `<` meaning what it
+    means on the amounts above.
+
+    **The decade is the only digit the value has** (`PL-3PJZ`). A passing
+    residual is the rounding left over from summing four amounts, so its
+    mantissa and its sign are set by the order the arithmetic ran in, not by
+    anything modelled, and a correct last-bit change to the propagator redraws
+    them; `docs/MODEL.md` § "Displayed precision" has the measurement. Any
+    finer form prints a digit that is noise. Both lines therefore read alike.
+    The signed values are not lost where they mean something: a check that
+    fails halts the run, and the failure notice prints them to six figures.
+
+    Exactly zero reads `0 L`. A value that is not finite cannot come out of
+    the accounting check, and is printed as itself rather than bounded, so the
+    anomaly is visible instead of absorbed into a plausible reading.
 
     Args:
         litres: The residual, in litres of equivalent pure agent gas.
 
     Returns:
-        The residual in exponent form with its unit.
+        The bound with its unit, such as `<1e-13 L`; `0 L` for exactly zero.
     """
 
-    return f"{litres:.{AGENT_RESIDUAL_DISPLAY_DECIMALS}e} L"
+    if not isfinite(litres):
+        return f"{litres} L"
+
+    if litres == 0.0:
+        return "0 L"
+
+    # `Decimal` holds the float's exact binary value, so `adjusted()` is the
+    # exact floor of its base-10 logarithm. `math.log10` rounds: the float
+    # written `1e-16` is 9.99...e-17 exactly, and it returns -16.0 for it, which
+    # would print the decade above the one the value is in.
+    exponent = Decimal(abs(litres)).adjusted() + 1
+
+    return f"<1e{exponent:+03d} L"
