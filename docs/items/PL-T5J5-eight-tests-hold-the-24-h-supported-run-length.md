@@ -22,7 +22,8 @@ limit? Not a hard coded 24hr? What's the point of having a variable when it
 expects a hard coded value in the tests?"
 
 **Measured the same day.** With `MAXIMUM_ELAPSED_SIMULATION_TIME_S` set to
-172 800.0 (48 h) and the whole suite run, 9 of 3 670 tests fail. Every failure
+172 800.0 (48 h) and the simulator's test tree run, 9 of its 3 670 tests fail.
+Every failure
 is a test expecting the 24-hour text where the application printed the 48-hour
 value; the application itself reads the constant everywhere. Eight are copies
 of the value:
@@ -52,9 +53,12 @@ regression in the banner or the refusal text gets edited away with them.
 string such as "this run has reached 86400 s of simulated time" through the
 controller and the dashboard (nothing reads the number in them); formatter
 cases with a literal input, such as `format_elapsed(86_399.9)`, which hold for
-any limit; and the reference tests whose comparison window is the published
-mean curves' first 24 hours, a scientific window rather than a copy of the
-limit.
+any limit; and the late-washout reference measurement, which runs 1440
+minutes because that was the supported run length when its regression bands
+were measured on 2026-09-27. Its bands describe that window, so a longer limit
+calls for a new measurement over the new span rather than a derived
+expectation, and at 48 h it still passes because it still measures the first
+24 hours.
 
 **Candidate fix.** Derive each of the eight expectations from the constant, or
 from `format_supported_run_length()` where the test checks a sentence that
@@ -70,3 +74,15 @@ is the one test a deliberate change edits, alongside `docs/MODEL.md` §
 against a banner, refusal or clock that states a limit other than the
 constant's; with the constant set to 48 h the whole suite fails only
 `test_the_supported_run_length_is_twenty_four_hours`, and at 24 h it passes.
+
+**Done 2026-10-03** in #1294. Five of the eight derive their expectation from
+the constant; in two of those a derived assertion already stood beside the
+literal, and only the literal went. The two banner tests take the figure from
+`format_supported_run_length()`. Of the two width tests, only the one in
+`test_formatting.py` needed the premise check; the dashboard's already
+compared `WIDEST_READOUT_VALUE` with the formatter. Measured: the three files
+fail only the pin with the limit at each of 1, 12, 23, 25, 48, 72, 168 and
+720 h; the whole suite at 48 h, both test trees and 5 862 tests, fails only
+the pin; and a stale 24 h copy planted at 48 h in the banner template, the
+formatter, the refusal text or the clock reservation is caught by the tests
+that cover it.
