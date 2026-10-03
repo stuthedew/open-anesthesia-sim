@@ -91,6 +91,7 @@ import ast
 import json
 import os
 import platform
+import posixpath
 import re
 import subprocess
 import sys
@@ -3550,53 +3551,80 @@ def _project_version(pyproject: Path) -> str:
 def _is_path_citation(token: str) -> bool:
     if not token or not re.fullmatch(r"[\w./*{},-]+", token):
         return False
+    # Slashes and dots alone - `/`, `./`, `../` - name a place by position
+    # rather than a file by name. Read from the repository root, `/` would cite
+    # the root itself, which is always there, and `../` would climb out of it.
+    if not token.strip("./"):
+        return False
     if token.endswith("/"):
         return True
     return PurePosixPath(token).suffix in PATH_SUFFIXES
 
 
+def _repository_paths(token: str) -> Iterator[str]:
+    """Each repository-relative path `token` may name, under every root in `PATH_ROOTS`.
+
+    **A leading `/` is the repository root**, as `.gitignore` and the `paths:`
+    frontmatter of `.claude/rules/` read one, and never the filesystem's. Read
+    the other way, `/docs/MODEL.md` was reported dangling on a file that is
+    there, and `/root/.ccr/README.md` asked the machine running the check: a
+    session's root could stat it and CI's unprivileged runner could not, so one
+    commit gave two verdicts, and `#880` failed in CI after passing in the
+    session that wrote it (`PL-H0CF`). A path whose `..` climbs out of the
+    repository is not yielded at all, for the same reason: it names nothing
+    here, and asking whether it exists would ask the machine again. So whether
+    a citation resolves depends on the tree alone - the same commit answers the
+    same way as root, as an unprivileged user, and on a machine where the
+    outside path is not there.
+    """
+    for prefix in PATH_ROOTS:
+        for candidate in _expand_braces(token.lstrip("/")):
+            path = posixpath.join(prefix, candidate) if prefix else candidate
+            normal = posixpath.normpath(path)
+            if normal != ".." and not normal.startswith("../"):
+                yield path
+
+
 def _resolves(root: Path, basenames: frozenset[str], token: str) -> bool:
     patterned = "*" in token or "{" in token
-    for prefix in PATH_ROOTS:
-        base = root / prefix if prefix else root
-        for candidate in _expand_braces(token):
-            if patterned:
-                try:
-                    if next(base.glob(candidate), None) is not None:
-                        return True
-                except (ValueError, NotImplementedError):
-                    # `Path.glob` raises rather than returning nothing for some
-                    # token shapes prose legitimately contains - an absolute
-                    # pattern (`/docs/*.md`) gives `NotImplementedError:
-                    # Non-relative patterns are unsupported`, and older
-                    # interpreters raise `ValueError` on a bare `**` component.
-                    # Unguarded, one such token aborted the whole run on a
-                    # traceback, so `doc_check check` reported nothing at all
-                    # about the several hundred citations around it. A token
-                    # glob cannot parse is a citation that does not resolve,
-                    # which is a finding about that line and not a reason to
-                    # stop (`PL-0M7L`).
-                    continue
-            # `os.path.exists`, never `Path.exists`, and a later tidy-up
-            # must not put the method back. Through 3.13 `Path.exists`
-            # re-raises every `OSError` it does not read as "absent" - it
-            # ignores ENOENT, ENOTDIR, EBADF and ELOOP and lets EACCES out -
-            # so a token naming a path this process may not stat aborted the
-            # whole run on a traceback. 3.14 rewrote the method to `return
-            # os.path.exists(self)`, which is what this line calls directly,
-            # so the verdict stops depending on which interpreter ran the
-            # check. That dependency is why the defect reached `main` twice
-            # while `make check` was green in the session that wrote the line:
-            # a session runs as root on 3.14, CI runs `python3
-            # tools/doc_check.py check` unprivileged on the system one, and
-            # there it reported nothing at all about any of the ~1,279
-            # citations around it (`PL-D1NT`). It is the guard the `glob`
-            # branch above has carried since `PL-0M7L`, and this branch did
-            # not: a path the process cannot stat is a citation that does not
-            # resolve, which is a finding about that line and not a reason to
-            # stop.
-            elif os.path.exists(base / candidate):
-                return True
+    for path in _repository_paths(token):
+        if patterned:
+            try:
+                if next(root.glob(path), None) is not None:
+                    return True
+            except (ValueError, NotImplementedError):
+                # `Path.glob` raises rather than returning nothing for some
+                # token shapes prose legitimately contains: older interpreters
+                # raise `ValueError` on a bare `**` component, and an absolute
+                # pattern (`/docs/*.md`) gave `NotImplementedError: Non-relative
+                # patterns are unsupported` until `_repository_paths` began
+                # reading a leading `/` from the repository root. Unguarded,
+                # one such token aborted the whole run on a traceback, so
+                # `doc_check check` reported nothing at all about the several
+                # hundred citations around it. A token glob cannot parse is a
+                # citation that does not resolve, which is a finding about that
+                # line and not a reason to stop (`PL-0M7L`).
+                continue
+        # `os.path.exists`, never `Path.exists`, and a later tidy-up must not
+        # put the method back. Through 3.13 `Path.exists` re-raises every
+        # `OSError` it does not read as "absent" - it ignores ENOENT, ENOTDIR,
+        # EBADF and ELOOP and lets EACCES out - so a token naming a path this
+        # process may not stat aborted the whole run on a traceback. 3.14
+        # rewrote the method to `return os.path.exists(self)`, which is what
+        # this line calls directly, so the verdict stops depending on which
+        # interpreter ran the check. That dependency is why the defect reached
+        # `main` twice while `make check` was green in the session that wrote
+        # the line: a session runs as root on 3.14, CI runs `python3
+        # tools/doc_check.py check` unprivileged on the system one, and there
+        # it reported nothing at all about any of the ~1,279 citations around
+        # it (`PL-D1NT`). It is the guard the `glob` branch above has carried
+        # since `PL-0M7L`: a path the process cannot stat is a citation that
+        # does not resolve, which is a finding about that line and not a
+        # reason to stop. Every path asked about is inside the repository
+        # since `PL-H0CF`, so the refused stat is now a checkout's own oddity
+        # rather than the ordinary case.
+        elif os.path.exists(root / path):
+            return True
     # A bare filename (`parameters.py`, `WORKING_NOTES.md`) is written without
     # a directory throughout the documentation; resolve it by name.
     return "/" not in token and token in basenames
@@ -3636,9 +3664,11 @@ def _covered_by_gitignore(root: Path, token: str) -> bool:
     Every way git can decline - no checkout, a path outside the repository, no
     git on `PATH` - is read as *not* covered, so the citation is reported as it
     would have been without this exemption. It is granted only on a positive
-    answer, and for a braced token only when every expansion has one.
+    answer, and for a braced token only when every expansion has one. A
+    leading `/` is the repository root here as in `_repository_paths`, so
+    `/out/` asks about `out/` rather than about the filesystem's root.
     """
-    for candidate in _expand_braces(token):
+    for candidate in _expand_braces(token.lstrip("/")):
         try:
             result = subprocess.run(
                 ("git", "check-ignore", "-q", "--no-index", "--", candidate),
@@ -3751,6 +3781,25 @@ def _code_spans(text: str) -> list[re.Match[str]]:
     return sorted(spans, key=lambda span: span.start())
 
 
+def _unresolved(token: str) -> str:
+    """What a path citation that resolves to nothing is told, after its token.
+
+    A path outside the repository is told so rather than that it does not
+    exist, which on the machine running the check may be false: the container
+    paths sessions cite, `/root/.ccr/README.md` among them, are there (`PL-H0CF`).
+    """
+    if token.startswith("/"):
+        where = "which is not in this repository - a leading `/` is read from its root"
+    elif next(_repository_paths(token), None) is None:
+        where = "which is outside this repository"
+    else:
+        where = "which does not exist"
+    return (
+        f"{where}; a sentence naming it as absent, planned, deleted or elsewhere says so "
+        f"under its paragraph: <!-- absent: {token} -->"
+    )
+
+
 def check_citations(root: Path, documents: dict[Path, str], report: Report) -> None:
     """Resolve every path and section a documentation file cites."""
     basenames = frozenset(path.name for path in _walk(root))
@@ -3772,10 +3821,7 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
             # around them.
             if _covered_by_gitignore(root, token):
                 continue
-            report.errors.append(
-                f"{path}:{line}: cites `{token}`, which does not exist; a sentence naming it as "
-                f"absent, planned or deleted says so under its paragraph: <!-- absent: {token} -->"
-            )
+            report.errors.append(f"{path}:{line}: cites `{token}`, {_unresolved(token)}")
 
         for match in LINK_RE.finditer(text):
             target = match.group("target")
@@ -3939,10 +3985,11 @@ def _cited_file(root: Path, basenames: Mapping[str, list[Path]], token: str) -> 
     line count from a file the sentence was not talking about - a wrong answer
     stated confidently, which is worse here than no answer at all.
     """
-    for prefix in PATH_ROOTS:
-        candidate = (root / prefix / token) if prefix else (root / token)
-        if candidate.is_file():
-            return candidate
+    for path in _repository_paths(token):
+        # `os.path.isfile` rather than `Path.is_file`, for the reason
+        # `_resolves` gives at its `os.path.exists`.
+        if os.path.isfile(root / path):
+            return root / path
     if "/" in token:
         return None
     matches = basenames.get(token, [])

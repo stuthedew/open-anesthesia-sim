@@ -3,12 +3,14 @@ id: PL-H0CF
 title: doc_check resolves an absolute-path citation against the container filesystem, so one tree gives root and CI different verdicts on the same line
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: doc-consistency-checks
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-2JRC's triage pass
 added: 2026-09-21
+closed: 2026-10-03
+pr: 1300
 payoff: A path citation's verdict depends on the repository alone, so root and the CI runner agree on the same commit - which is what PL-1RTM needs before it hands the queue's 22 absolute tokens to check_citations.
 verify: grep -q 'def test_an_absolute_citation_is_repository_anchored' tests/unit/test_doc_check.py
 ---
@@ -126,3 +128,27 @@ contents - the same commit gives the same answer as root, as an unprivileged
 user, and on a machine where `/root/.ccr/README.md` does not exist - and
 `tests/unit/test_doc_check.py` pins at least the repo-anchored case and the
 outside-the-repository case.
+
+**Built 2026-10-03, reading 1, in #1300.** `tools/doc_check.py`'s
+`_repository_paths` is now the one place a citation's token becomes a path, and
+`_resolves`, `_cited_file` (line citations) and `_covered_by_gitignore` all
+read through it or its anchoring: a leading `/` is the repository root, and a
+path whose `..` climbs out of the repository is not looked up at all. So no
+citation's verdict asks the machine any more. Reading 1 over reading 2 for the
+reason the brief gave, measured on the day: every absolute token in a live
+brief that names a real file is the repo-anchored spelling the `.claude/rules`
+frontmatter uses, and reading 2 would have refused all of them. A token of
+slashes and dots alone (`/`, `./`, `../`) is no longer a path citation, which
+is the degenerate-token check the brief asked for: anchored, `../` would
+otherwise have climbed out and been reported. The standing documents carried
+four absolute tokens, all a bare `/`, so no verdict there changed. An
+unresolved token outside the repository is now told so - `which is not in this
+repository` - rather than that it does not exist, which folds in the wording
+the `PL-D1NT` paragraph above left for whichever reading landed; the
+`absent:` marker is offered for it, as for a planned or deleted file. Tests:
+`test_a_leading_slash_is_read_from_the_repository_root`,
+`test_a_path_outside_the_repository_is_reported_wherever_the_check_runs`,
+`test_slashes_and_dots_alone_are_not_citations`,
+`test_a_line_citation_with_a_leading_slash_is_read_from_the_repository_root`,
+and the `PL-0M7L` glob test, now driven by a patched `glob` since no absolute
+pattern reaches it.

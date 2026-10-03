@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import json
 import subprocess
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
+from typing import Any
 
 import doc_check
 import pytest
@@ -661,6 +662,45 @@ def test_a_citation_the_process_cannot_stat_is_reported_not_raised(
     # The regression is the second line, not the first: an unguarded stat
     # aborted `analyze` before any later citation was judged at all.
     assert any("cites `core/moved.py`" in e for e in errors)
+
+
+@pytest.mark.parametrize("token", ["/docs/MODEL.md", "/docs/*.md", "/core/thing.py"])
+def test_a_leading_slash_is_read_from_the_repository_root(tmp_path: Path, token: str) -> None:
+    """`PL-H0CF`: the spelling `.claude/rules/` frontmatter uses is a repository path.
+
+    Read from the filesystem's root instead, a file that is there was reported
+    dangling, and an absolute pattern went to `glob`, which refuses one.
+    """
+    readme = f"{README}\nSee `{token}`.\n"
+
+    assert not any("cites `" in e for e in _errors(_repo(tmp_path, readme=readme)))
+
+
+def test_a_path_outside_the_repository_is_reported_wherever_the_check_runs(tmp_path: Path) -> None:
+    """`PL-H0CF`: one commit gave root and CI's unprivileged runner two verdicts.
+
+    Both tokens name a file that exists on this machine, outside the checkout,
+    and both resolved: the check was asking the machine rather than the tree.
+    The container's agent-proxy README resolved for a session's root and not
+    for the CI user, and `#880` failed in CI after passing where it was written.
+    """
+    outside = tmp_path / "outside.md"
+    outside.write_text("", encoding="utf-8")
+    readme = f"{README}\nSee `{outside}` and `../outside.md`.\n"
+
+    errors = _errors(_repo(tmp_path, readme=readme))
+
+    assert any(f"cites `{outside}`, which is not in this repository" in e for e in errors)
+    # Read under the package root this is `src/outside.md`, which is not there
+    # either; what matters is that no reading of it leaves the checkout.
+    assert any("cites `../outside.md`" in e for e in errors)
+
+
+def test_slashes_and_dots_alone_are_not_citations(tmp_path: Path) -> None:
+    """Read from the repository root, `../` would climb out of it and be reported."""
+    readme = f"{README}\nA `/` separates names; `./` is here and `../` is one up.\n"
+
+    assert not any("cites `" in e for e in _errors(_repo(tmp_path, readme=readme)))
 
 
 def test_identifiers_are_not_mistaken_for_paths(tmp_path: Path) -> None:
@@ -4759,21 +4799,38 @@ def test_a_table_below_the_provenance_table_does_not_displace_it(tmp_path: Path)
     assert not any("provenance header" in error for error in _errors(_repo(tmp_path, model=model)))
 
 
-def test_an_absolute_glob_citation_is_reported_rather_than_raised(tmp_path: Path) -> None:
+def test_a_citation_glob_refuses_is_reported_rather_than_raised(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A citation `glob` refuses to parse is a finding about that line, not a crash.
 
-    `PL-0M7L`: `Path.glob` raises `NotImplementedError` for a non-relative
+    `PL-0M7L`: `Path.glob` raised `NotImplementedError` for a non-relative
     pattern, and the call was unguarded - so one such token aborted the whole
     run on a traceback and the checker reported nothing at all about the
     several hundred citations around it. The failure also looked like a broken
     tool rather than a broken line.
+
+    The raise is driven rather than staged, as the unstattable citation's is
+    above. `PL-H0CF` reads a leading `/` from the repository root, so no
+    absolute pattern reaches `glob` any more, and the shape still refused - a
+    `**` inside a name, before 3.13 - parses under the interpreter running
+    these tests.
     """
-    model = MODEL + "\nEverything under `/docs/*.md` is checked.\n"
-    root = _repo(tmp_path, model=model)
+    unpatched = Path.glob
 
-    report = doc_check.analyze(root)  # must not raise
+    # `rglob` calls `glob` with keyword options, so they pass through untouched.
+    def refusing_glob(self: Path, pattern: str, **options: Any) -> Iterator[Path]:
+        if "refused" in pattern:
+            raise ValueError("Invalid pattern: '**' can only be an entire path component")
+        return unpatched(self, pattern, **options)
 
-    assert any("/docs/*.md" in error for error in report.errors), report.errors
+    monkeypatch.setattr(Path, "glob", refusing_glob)
+    model = MODEL + "\nEverything under `refused/**.md` is checked; `core/moved.py` is not.\n"
+
+    report = doc_check.analyze(_repo(tmp_path, model=model))  # must not raise
+
+    assert any("refused/**.md" in error for error in report.errors), report.errors
+    assert any("cites `core/moved.py`" in error for error in report.errors), report.errors
 
 
 #: `ROADMAP` with one scoped milestone section, so the two scope headings exist
@@ -5461,6 +5518,19 @@ def test_an_ambiguous_bare_filename_declines(tmp_path: Path) -> None:
     _items(root, {"PL-8888-open": _brief("ready", "See `thing.py:900`.")})
 
     assert _line_citation_errors(root) == []
+
+
+def test_a_line_citation_with_a_leading_slash_is_read_from_the_repository_root(
+    tmp_path: Path,
+) -> None:
+    """`PL-H0CF`, one line finer: the file was looked for on the filesystem's root.
+
+    So a citation of a file that is there was never compared with its length,
+    and one of a file outside the checkout was stat'd as whoever ran the check.
+    """
+    root = _items(_repo(tmp_path), {"PL-8888-open": _brief("ready", "See `/core/thing.py:900`.")})
+
+    assert any("/core/thing.py:900" in error for error in _line_citation_errors(root))
 
 
 def test_this_repository_resolves_every_live_line_citation() -> None:

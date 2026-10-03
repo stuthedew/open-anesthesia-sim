@@ -3,7 +3,7 @@ id: PL-1RTM
 title: doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: defect, infra
 feature: doc-consistency-checks
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md
@@ -15,7 +15,7 @@ recurrences: 2026-09-25 PL-HJ8G
 
 **Problem.** doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked
 
-**Blocked by `PL-H0CF`** (doc_check resolves an absolute-path citation against
+[superseded 2026-10-03] **Blocked by `PL-H0CF`** (doc_check resolves an absolute-path citation against
 the container filesystem), added 2026-09-21 at triage. `PL-H0CF` measured the
 queue and found 22 open and closed briefs carrying 14 distinct absolute tokens
 that `_is_path_citation` already accepts. Handing the item files to
