@@ -3,19 +3,21 @@ id: PL-1RTM
 title: doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked
 priority: P2
 effort: M
-status: blocked
+status: done
 classes: defect, infra
 feature: doc-consistency-checks
-touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md, .claude/rules/citation-drift.md, docs/items/PL-5B1N-simulated-traces-should-be-solid-and-a-dotted.md, docs/items/PL-5N7T-nothing-checks-a-prose-enumeration-of-quality.md, docs/items/PL-CNCF-controller-drawn-window-costs-6-2-ms-a-frame-at.md, docs/items/PL-DBGT-desflurane-json-points-at-the-five-other.md, docs/items/PL-H2K2-nothing-signals-a-run-approaching-the-supported.md, docs/items/PL-MBP6-the-readme-has-no-image-of-the-interface-which.md, docs/items/PL-PGZF-pl-gs3r-made-the-chart-s-column-budget-follow.md, docs/items/PL-S5YM-doc-check-s-covered-directory-branch-now-has-no.md, docs/items/PL-W4M9-write-the-flet-interface-s-parity-inventory-the.md, docs/items/PL-X5L4-app-chart-series-py-s-wash-in-docstrings-still.md
 blocked-by: PL-H0CF
 added: 2026-09-15
+closed: 2026-10-03
+pr: 1300
 verify: grep -q 'def test_a_path_citation_in_an_item_brief_is_resolved' tests/unit/test_doc_check.py && uv run pytest tests/unit/test_doc_check.py
 recurrences: 2026-09-25 PL-HJ8G
 ---
 
 **Problem.** doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked
 
-**Blocked by `PL-H0CF`** (doc_check resolves an absolute-path citation against
+[superseded 2026-10-03] **Blocked by `PL-H0CF`** (doc_check resolves an absolute-path citation against
 the container filesystem), added 2026-09-21 at triage. `PL-H0CF` measured the
 queue and found 22 open and closed briefs carrying 14 distinct absolute tokens
 that `_is_path_citation` already accepts. Handing the item files to
@@ -112,3 +114,32 @@ owes these briefs the escape `check_line_citations` already has, since an item
 reporting a bad citation has to be able to show it. The rest of the
 measurement this brief asks for - relative path citations in the queue, and
 how many are stale - is still untaken.
+
+**Built 2026-10-03, in #1300, after `PL-H0CF`; the measurement first.** Live
+briefs held 1,843 path citations, 95 resolving to nothing and 2 more covered by
+`.gitignore`; closed briefs held 12,237 with 459 unresolved, and stay exempt
+under `.claude/rules/citation-drift.md`. Of the 95: 11 named a path the citing
+item's own `touches` declares, 12 were absolute tokens, and 22 named a path git
+history shows the tree once held. Read one by one, 5 of those 22 were drift -
+two Done-when lines naming the Flet view's test module the Qt port removed
+(`PL-5B1N`, `PL-H2K2`), `PL-CNCF`'s `touches` as they stood before their
+re-point (`PL-PGZF`), and `PL-MBP6`'s two lines on `assets/branding/` - and 17
+named a removal on purpose ("renamed from", "is gone", "does not exist"). The
+other 73 named nothing the tree ever held: planned files, examples
+(`tools/x_check.py`), another repository's paths, container paths.
+
+**So the check is narrower than "resolves path citations in `docs/items/*.md`",
+by that count.** `_check_brief_paths`, called from `check_citations`, holds a
+live brief's unresolved path citation to an error only where history shows the
+tree once held it - one `git log --no-renames --diff-filter=D` walk, 0.2 s on
+this repository - so a record separates drift from specification where the
+`touches` exemption `PL-3NKZ` proposed excuses 11 of 95. The 5 drifts are
+repaired in place and the 17 deliberate mentions carry the `absent:` marker
+`PL-HJ8G` built for the documents; a fence also escapes, as for line
+citations. The trade: a misspelt path no commit ever held is not reported
+(project owner, 2026-10-03, ratified, over holding all 95, which flags 90 to
+find the same 5 drifts; the 73 left unflagged held no misspelling and 2
+imprecise spellings of files that exist). A checkout whose history git cannot
+read, or holds only part of, says so in `declined`. `docs/ARCHITECTURE.md`'s tools-map sentence now states both halves
+of the citation check.
+

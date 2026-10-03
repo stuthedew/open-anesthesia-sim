@@ -32,6 +32,7 @@ word actually is today: `app/chart_frame.py` (three instances, one of them the
 `app/chart_time_base.py` (the module docstring, `following_window`'s prose and
 `newest_sample_s`'s parameter documentation) and `app/controller.py` (four,
 including two that are correct history about what `app/wash_in.py` used to do).
+<!-- absent: app/chart_series.py -->
 
 **Why it matters.** "Sample" and "drawn column" are different quantities after
 `PL-2FM6`, and the docstrings still use the first word for the second thing.
