@@ -3,11 +3,13 @@ id: PL-T5J5
 title: Eight tests hold the 24 h supported run length as literal text instead of reading MAXIMUM_ELAPSED_SIMULATION_TIME_S, so a deliberate change to the limit fails them where the application is right
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test
 feature: numerical-domain
 touches: tests/unit/test_supported_ranges.py, tests/unit/test_dashboard_frame.py, tests/unit/test_formatting.py
 added: 2026-10-03
+closed: 2026-10-03
+pr: 1294
 payoff: a deliberate change to the supported run length fails only the one test written to pin it, so a real regression in the limit's text is not edited away with eight spurious failures
 verify: ! grep -qE 'VALUE == "23h59m59|widest == "23h59m59|"24 h" in|"86400 s" in|length of 24 hours|== 864_000|\) == "24 ?h(ours)?"' tests/unit/test_supported_ranges.py tests/unit/test_dashboard_frame.py tests/unit/test_formatting.py && grep -q 'MAXIMUM_ELAPSED_SIMULATION_TIME_S == 86_400.0' tests/unit/test_supported_ranges.py
 ---

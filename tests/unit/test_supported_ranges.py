@@ -158,6 +158,12 @@ def test_the_supported_run_length_is_twenty_four_hours() -> None:
     model omits, and `core/supported_ranges.py` carries the argument and its
     source. Moving it is a safety-critical change; moving it by accident is
     what this catches.
+
+    It is the one test meant to fail when the number moves. The tests that
+    check text or counts derived from the limit read
+    `MAXIMUM_ELAPSED_SIMULATION_TIME_S` rather than restating it (`PL-T5J5`),
+    so a deliberate move edits the constant, this test and that section of
+    `docs/MODEL.md`.
     """
 
     assert MAXIMUM_ELAPSED_SIMULATION_TIME_S == 86_400.0
@@ -185,13 +191,19 @@ def test_the_shipped_step_reaches_the_boundary_exactly() -> None:
     """At 0.1 s the span is a whole number of steps, and the run lands on it.
 
     Not implied by the test above, which only requires the last step to be
-    inside the span. Here it is *on* it: 864 000 steps of 0.1 s reach exactly
-    86 400.0 s, so a learner watching a run to its limit reads a round 24
-    hours rather than a value a tenth of a second short of one.
+    inside the span. Here it is *on* it: the last step a run may take at
+    0.1 s lands exactly on the limit, so a learner watching a run to its
+    limit reads the limit itself rather than a value a tenth of a second
+    short of it. A count one step either side lands a tenth away, so this
+    pins the count as well.
+
+    Not a property of every limit. Every whole number of hours from 1 to 720
+    lands exactly in floating point (measured 2026-10-03, `PL-T5J5`); a limit
+    that did not would fail here, because a learner would then read a value
+    a tenth of a second short of it.
     """
 
-    assert maximum_step_count(0.1) == 864_000
-    assert 864_000 * 0.1 == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+    assert maximum_step_count(0.1) * 0.1 == MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 
 def test_a_run_may_complete_the_step_that_reaches_the_boundary() -> None:
@@ -234,8 +246,8 @@ def test_the_run_length_refusal_says_what_was_reached_and_why() -> None:
 
     message = str(raised.value)
 
-    assert "86400 s" in message
-    assert "24 h" in message
+    assert f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s" in message
+    assert f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h)" in message
     assert "metabolism" in message
     assert "Supported run length" in message
 
