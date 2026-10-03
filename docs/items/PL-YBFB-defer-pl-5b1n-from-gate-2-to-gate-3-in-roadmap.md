@@ -36,23 +36,9 @@ beat 3's hazard clause does not reach it; and its hazard is not live in any
 case, since no preview is drawn today and nothing on screen can be mistaken
 for one.
 
-**Found 2026-10-03 (`PL-D388`).** Moving the entry under the deferral group is
-not enough for wave. `roadmap.gate_status` reads no group heading; it takes a
-frozen entry out of what the gate can clear only when the milestone's Required
-scope names it or its `blocked-by` chain leaves the list. That is why `PL-18BD` gave the five `PL-DB64` moved a holding
-condition (project owner, 2026-09-27, ratified). `PL-5B1N` carries no
-`blocked-by`, so as briefed it would stay among the entries `bin/docket wave`
-says this gate can clear, and Gate 2 would go on holding it. `bin/docket gate`
-lists open debt only, so it never listed this `feature`-classed entry, and its
-clause below is met already. A `ready` item may carry a `blocked-by`, so the
-holding condition does not change its status.
-
 **Done when.** `ROADMAP.md` § "Debt gate: the frozen list" under v0.6.0
 records `PL-5B1N` as deferred to Gate 3 beside the five `PL-DB64` moved, in a
 paragraph whose lead-in is the string `verify:` pins, with the ratified clause
 above and this item's id, and moved out of its lane group as those five were;
 `PL-5B1N` stays written on the list and stays `ready`; and `bin/docket gate`
-reports v0.6.0 without it, as it reports the five. `PL-5B1N` carries a
-`blocked-by` naming its holding condition, as `PL-B396`'s names `PL-YRLM`, so
-`bin/docket wave` lists it among the entries blocked outside the gate, not
-among those this gate can clear.
+reports v0.6.0 without it, as it reports the five.
