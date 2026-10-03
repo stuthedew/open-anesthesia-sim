@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) and not safety or science; the Projects trial began on 2026-09-25, so the problem was not present at the freeze, and nothing on the frozen list names it
 added: 2026-10-03
 closed: 2026-10-03
+pr: 1320
 payoff: every session holds for the owner's read only a change to the simulator paths or arming.py, and arms any other on green, as his rule asks
 verify: grep -q 'def test_a_change_outside_the_owners_read_list_arms_on_green' subprojects/docket/tests/test_cli.py
 ---

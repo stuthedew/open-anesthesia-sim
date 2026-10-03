@@ -10,6 +10,7 @@ touches: docs/maintainer.md, CLAUDE.md, .claude/skills/docket, .claude/rules/ins
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) and not safety or science; the Projects trial began on 2026-09-25, so the problem was not present at the freeze, and nothing on the frozen list names it
 added: 2026-10-03
 closed: 2026-10-03
+pr: 1320
 payoff: a rule the owner gives in the Project reaches every session from one record, so no session follows a rule he has replaced and no thread chooses between two
 verify: grep -qF '## Rules for sessions live in the repository' docs/maintainer.md
 root-cause-of: PL-8XQS, PL-F23S, PL-KKHD
