@@ -3,11 +3,13 @@ id: PL-PFK1
 title: bin/docket verify REJECTs a self-audited branch on commission checks alone without ever naming --self, so a session reaching the command from CLAUDE.md or --help still hits the wall PL-7XTS closed for the skill
 priority: P3
 effort: S
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: delegation
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-15
+payoff: a session that audits its own branch without --self is told so above the verdict, instead of reading a REJECT on correct work as a commission breach
+verify: grep -qF 'def test_verify_names_self_when_the_claim_is_this_sessions_own' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket verify REJECTs a self-audited branch on commission checks alone without ever naming --self, so a session reaching the command from CLAUDE.md or --help still hits the wall PL-7XTS closed for the skill
