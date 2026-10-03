@@ -3,10 +3,11 @@ id: PL-5B1N
 title: Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
 priority: P2
 effort: M
-status: ready
+status: blocked
 classes: feature
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/theme.py, tools/contrast_check.py, docs/MODEL.md, tests/integration/test_qt_chart.py, tests/integration/test_qt_widgets.py, tests/unit/test_chart_frame.py, tests/unit/test_chart_time_base.py, tests/unit/test_theme.py, tests/unit/test_contrast_check.py
+blocked-by: v0.7.0
 added: 2026-09-12
 verify: grep -qF 'PREVIEW_REGION' src/anesthesia_sim/app/theme.py && grep -qF 'preview' tests/integration/test_qt_chart.py
 ---
@@ -140,6 +141,20 @@ item of the presentation-safety chain), which `PL-YBFB` records in
 `ROADMAP.md`'s gate section. Q1 to Q5 under "Design round 2026-09-27:
 recommendations" below carry the reasoning. Status `ready`; `touches` widened
 as that section's "For the build" lists.
+
+**Moved to `blocked` on 2026-10-03, with `blocked-by: v0.7.0`, when `PL-YBFB`
+wrote the deferral above into `ROADMAP.md`'s v0.6.0 gate section.** The design
+is unchanged and still decided; what moved is how the store holds the Gate 3
+deferral. `bin/docket wave` counts a gate entry apart from the work the gate
+can clear only where the entry's `blocked-by` leaves the frozen list, and it
+reads no group heading (`PL-18BD`), so at `ready` this entry went on counting
+as Gate 2 work. Naming the milestone while the status still said `ready` would
+say the work both can and cannot start, and `blocked` also stops `bin/docket
+next` offering a build the owner chose not to start now. `v0.7.0` is the
+milestone Gate 3 clears before, as it was for `PL-Y04W`'s Gate 3 deferral. A
+milestone blocker clears when its milestone is scoped, so `bin/docket check`
+names this item ready to promote once v0.7.0 is scoped. A build the owner picks
+sooner sets the status back to `ready` and drops the edge first.
 
 **Done when.** A learner changing the vaporizer dial, fresh gas flow or
 cardiac output without committing sees the resulting trajectory drawn from the
