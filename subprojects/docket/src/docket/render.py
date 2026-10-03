@@ -2849,6 +2849,9 @@ def format_gate(gate: Gate, debt_classes: tuple[str, ...]) -> str:
     This printed its feature split as "Cleared by the milestone itself" until
     `PL-RFHH`, the phrase `format_wave` prints for the rule, so a reader of
     either took one answer for both and `PL-YVP7` was filed on the wrong one.
+
+    Each list is reported by lane as well as by effort (`PL-M26Q`), from
+    `Gate.by_lane`, which reads every item's lane as `docket next` does.
     """
     if not gate.items:
         # Every open debt item, so an empty store is the only way to get here:
@@ -2861,24 +2864,25 @@ def format_gate(gate: Gate, debt_classes: tuple[str, ...]) -> str:
     ]
 
     lines.append("")
-    lines.append(
-        f"Not carrying `{gate.feature}` - {len(gate.outside)} ({effort_total(gate.outside)}):"
-        if gate.feature
-        else f"Open debt - {len(gate.outside)} ({effort_total(gate.outside)}):"
+    lines.extend(
+        _gate_group(
+            f"Not carrying `{gate.feature}`" if gate.feature else "Open debt", gate.outside, gate
+        )
     )
-    lines.extend(_gate_lines(gate.outside))
 
     if gate.feature:
         lines.append("")
-        lines.append(
-            f"Carrying `{gate.feature}` - {len(gate.inside)} ({effort_total(gate.inside)}):"
-        )
-        lines.extend(_gate_lines(gate.inside))
+        lines.extend(_gate_group(f"Carrying `{gate.feature}`", gate.inside, gate))
         if not gate.inside:
             lines.append("  nothing carries that feature")
 
     lines.append("")
     lines.append(f"Debt is an open item classed {', '.join(debt_classes)}, or at needs-decision.")
+    if gate.workflow_paths:
+        lines.append("Lanes are `docket next`'s, read from each item's `touches`: crossing reaches")
+        lines.append("both halves, so neither lane offers it; unplaced declares no `touches`.")
+    else:
+        lines.append("No lane split: no `workflow_paths` are declared, so no item has a lane.")
     lines.append("This reads the whole store, on a frozen list or not. `bin/docket wave` reads the")
     lines.append("frozen list, and counts as the milestone's own what its Required scope names -")
     lines.append("the roadmap's rule, which is not the feature: the two can differ both ways.")
@@ -2887,10 +2891,36 @@ def format_gate(gate: Gate, debt_classes: tuple[str, ...]) -> str:
     return "\n".join(lines)
 
 
-def _gate_lines(items: list[Item]) -> list[str]:
+def _gate_group(heading: str, items: list[Item], gate: Gate) -> list[str]:
+    """One of `format_gate`'s groups: its sizes and lanes, then its items lane by lane.
+
+    The heading names every lane, the ones at zero included, for the reason
+    `_lane_counts` gives: a lane left out reads as one that does not exist,
+    and the two easiest to drop are the two no single-lane session is offered.
+    Each lane's items follow under its own sizes, which is how `ROADMAP.md`
+    records a frozen list and what "how evenly does it divide" asks for. A
+    lane holding nothing gets no heading, since the count already says so,
+    and an empty group gets no lane counts, since every one would be zero.
+    """
+    lanes = gate.by_lane(items)
+    sizes = effort_total(items)
+    if not lanes or not items:
+        return [f"{heading} - {len(items)} ({sizes}):", *_gate_lines(items)]
+    counts = ", ".join(f"{len(members)} {lane}" for lane, members in lanes.items())
+    lines = [f"{heading} - {len(items)} ({sizes}; {counts}):"]
+    width = max(len(item.identifier) for item in items)
+    for lane, members in lanes.items():
+        if members:
+            lines.append(f"  {lane} - {len(members)} ({effort_total(members)}):")
+            lines.extend(f"  {line}" for line in _gate_lines(members, width))
+    return lines
+
+
+def _gate_lines(items: list[Item], width: int = 0) -> list[str]:
+    """One line per item. `width` aligns the ids across a group's lanes."""
     if not items:
         return ["  nothing"]
-    width = max(len(item.identifier) for item in items)
+    width = width or max(len(item.identifier) for item in items)
     lines = []
     for item in items:
         marks = ", ".join(item.classes) or "no classes"

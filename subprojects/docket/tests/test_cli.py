@@ -3034,6 +3034,78 @@ def test_gate_writes_nothing_and_reaches_no_verdict(
     assert "not decided here" in capsys.readouterr().out
 
 
+def _lanes_gate_listed(printed: str) -> dict[str, str]:
+    """Each id `docket gate` printed, against the lane heading it sits under."""
+    listed: dict[str, str] = {}
+    lane = ""
+    for line in printed.splitlines():
+        if heading := re.match(r"  (\w+) - \d+ \(", line):
+            lane = heading.group(1)
+        elif item := re.match(r"    P\d \S+ (PL-\w+) ", line):
+            listed[item.group(1)] = lane
+    return listed
+
+
+def test_gate_reports_lanes(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """`PL-M26Q`. The lane split is what decides how a gate is worked - whether
+    it divides into two sessions' worth, and how evenly - and freezing Gate 1
+    took a script importing `docket.model` to get it. Each group now carries
+    its lane counts beside its sizes and lists its items lane by lane, and the
+    lane is the one `docket next` reads: what `gate` lists under a lane is what
+    `next` offers in it, and what it lists under neither is what `next` sets
+    aside by name."""
+    store = _laned_store(tmp_path)
+    # Declaring no `touches`, and carrying the feature, so the fourth lane and
+    # the second group are read too.
+    (store / "PL-N0WH-x.md").write_text(
+        "---\nid: PL-N0WH\ntitle: Item PL-N0WH\npriority: P2\neffort: M\nstatus: ready\n"
+        "classes: perf\nfeature: halted-step\nadded: 2026-08-01\n---\n\n"
+        "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n",
+        encoding="utf-8",
+    )
+
+    assert _run("gate", "--feature", "halted-step", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+
+    assert (
+        "Not carrying `halted-step` - 3 (3 S; 1 product, 1 workflow, 1 crossing, 0 unplaced):"
+        in out
+    )
+    assert "Carrying `halted-step` - 1 (1 M; 0 product, 0 workflow, 0 crossing, 1 unplaced):" in out
+    listed = _lanes_gate_listed(out)
+    assert listed == {
+        "PL-PR0D": "product",
+        "PL-W0RK": "workflow",
+        "PL-B0TH": "crossing",
+        "PL-N0WH": "unplaced",
+    }
+
+    for lane in ("product", "workflow"):
+        assert _run("next", lane, "--items", str(store)) == 0
+        answer = capsys.readouterr().out
+        offered = answer.partition("Set aside")[0]
+        assert {i for i in listed if i in offered} == {i for i, at in listed.items() if at == lane}
+        assert "reaching both halves (1): PL-B0TH." in answer
+        assert "declaring no `touches` (1): PL-N0WH." in answer
+
+
+def test_gate_says_why_it_prints_no_lanes_where_no_boundary_is_declared(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Fail closed, as `Item.lane` does, and say so. Without `workflow_paths`
+    every item reads `unplaced`, which printed would say the store's items
+    declare no `touches` - and a split left out silently reads as one the
+    command never makes."""
+    store = _store(tmp_path, READY, DEBT)
+
+    assert _run("gate", "--feature", "teachable-case", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+
+    assert "No lane split: no `workflow_paths` are declared" in out
+    assert "unplaced" not in out
+    assert "Carrying `teachable-case` - 1 (1 M):" in out
+
+
 def _branched_repo(tmp_path: Path, store: str = "items") -> Path:
     """A repository whose second branch carries an item `main` has never seen.
 

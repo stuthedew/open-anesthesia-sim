@@ -28,6 +28,7 @@ from .model import (
     LANE_UNPLACED,
     MIN_RECURRENCES,
     PRIORITIES,
+    SELECTABLE_LANES,
     Item,
     impairs_generators_soundly,
     is_generator,
@@ -252,6 +253,11 @@ def generator_defects(items: list[Item], generator_paths: tuple[str, ...]) -> li
     )
 
 
+#: The order `docket gate` lists lanes in: the two `docket next` takes as an
+#: argument, then the two it offers to neither and reports as set aside.
+GATE_LANES = (*SELECTABLE_LANES, LANE_CROSSING, LANE_UNPLACED)
+
+
 @dataclass(frozen=True)
 class Gate:
     """Every open debt item in the store, split by the `feature` it carries.
@@ -272,10 +278,33 @@ class Gate:
     inside: list[Item]
     #: Every other open debt item.
     outside: list[Item]
+    #: The boundary `docket.toml` declares, which `by_lane` reads. Empty where
+    #: none is declared.
+    workflow_paths: tuple[str, ...] = ()
 
     @property
     def items(self) -> list[Item]:
         return self.outside + self.inside
+
+    def by_lane(self, items: list[Item]) -> dict[str, list[Item]]:
+        """`items` under the lane each one's `touches` places it in, every lane named.
+
+        The lane is what decides how a gate is *worked*: whether it divides
+        into two sessions' worth and how evenly, which freezing Gate 1 took a
+        script importing `docket.model` to answer (`PL-M26Q`). `Item.lane`
+        against the same `workflow_paths` is the reading `docket next` ranks
+        by, so the gate and `next` cannot place one item differently.
+
+        Empty where no boundary is declared, rather than every item under
+        `unplaced`: `lane` answers that for a project that has drawn no
+        boundary, and printed here it would read as a store whose items
+        declare no `touches`.
+        """
+        if not self.workflow_paths:
+            return {}
+        return {
+            lane: [i for i in items if i.lane(self.workflow_paths) == lane] for lane in GATE_LANES
+        }
 
 
 def effort_total(items: list[Item]) -> str:
@@ -325,7 +354,13 @@ def is_new_work(
     return any(cls in new_work_classes for cls in item.classes)
 
 
-def gate(items: list[Item], feature: str, debt_classes: tuple[str, ...]) -> Gate:
+def gate(
+    items: list[Item],
+    feature: str,
+    debt_classes: tuple[str, ...],
+    *,
+    workflow_paths: tuple[str, ...] = (),
+) -> Gate:
     """Every open debt item in the store, split by whether it carries `feature`.
 
     It computes the list and nothing else. Whether an item is *really* debt,
@@ -336,7 +371,7 @@ def gate(items: list[Item], feature: str, debt_classes: tuple[str, ...]) -> Gate
     debt = sorted((i for i in items if is_debt(i, debt_classes)), key=lambda i: i.sort_key())
     inside = [i for i in debt if feature and i.feature == feature]
     outside = [i for i in debt if not (feature and i.feature == feature)]
-    return Gate(feature=feature, inside=inside, outside=outside)
+    return Gate(feature=feature, inside=inside, outside=outside, workflow_paths=workflow_paths)
 
 
 def features(items: list[Item]) -> dict[str, Feature]:
