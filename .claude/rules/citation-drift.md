@@ -121,6 +121,15 @@ whose line is past the end of its file, in a live document. That is
 *resolvability*: the line cannot be what the sentence says, whatever the
 sentence says.
 
+Its `check_citations` holds a live brief's *path* citations to the tree too,
+but only where git history shows the tree once held the path: a brief also
+names files its work will create, and those are not drift (project owner,
+2026-10-03, ratified, over holding every unresolved one, at the cost of a
+misspelt path no commit ever held going unreported; `PL-1RTM` carries the
+count). A brief that names a removed file on purpose - a rename, or the
+deletion it reports - says so with an `<!-- absent: path -->` marker under the
+paragraph, as the documents do.
+
 It does **not** check whether a line that exists still holds what the prose
 claims. The blame-based test for that — has the cited line changed since the
 citation was written — came back 36% across the store, and it is a heuristic: a

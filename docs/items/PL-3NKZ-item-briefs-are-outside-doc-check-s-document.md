@@ -3,12 +3,14 @@ id: PL-3NKZ
 title: Item briefs are outside doc_check's document set, so a brief's path citations are never resolved - and they cannot simply be added, because a brief names paths it intends to create as well as paths that exist
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-19
+closed: 2026-10-03
+pr: 1300
 payoff: settles whether a brief's 62 dangling path citations are drift worth catching or the specifications a brief exists to write, so nobody re-opens it
-verify: grep -q 'def test_a_brief_citing_a_path_it_declares_is_quiet' tests/unit/test_doc_check.py
+verify: grep -q 'def test_a_brief_may_name_a_file_no_commit_ever_held' tests/unit/test_doc_check.py && uv run pytest -q tests/unit/test_doc_check.py -k 'brief or removal'
 ---
 
 **Problem.** Item briefs are outside doc_check's document set, so a brief's path citations are never resolved - and they cannot simply be added, because a brief names paths it intends to create as well as paths that exist
@@ -57,3 +59,14 @@ are drift - and either `docs/items/*.md` joins the checked set behind that
 exemption with a test driving both cases, or the item is dropped with the count
 recorded and the reason a brief's path citations cannot be checked without
 reading intent.
+
+**Settled 2026-10-03 with `PL-1RTM`, in #1300, and not by the `touches`
+exemption.** Measured on the day: of the 95 path citations in live briefs that
+resolved to nothing, 11 named a path the citing item declares in `touches`, so
+the exemption could not tell a specification from drift. Git history can: 22
+named a path the tree once held, and only those are held to it, while the 73
+never-held paths - planned files, examples, other repositories' and the
+container's - are not judged. `PL-1RTM` records the count in full. The
+`verify:` above predicted a test of the `touches` exemption and is re-pointed
+at the test of what was built.
+

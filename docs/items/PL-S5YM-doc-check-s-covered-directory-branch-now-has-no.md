@@ -23,6 +23,7 @@ against a fixture whose tree draws `harness/` bare with `run.py` under it.
 Nothing asserts the other direction - that a file *outside* one still fails.
 As of PL-STNV none is exercised by the trees either — `tools/review-verification/` was the only bare
 directory any tree drew, and it is gone.
+<!-- absent: tools/review-verification/ -->
 
 **Why it matters.** `tools/doc_check.py` gates every documentation change in
 CI, and this branch decides whether a file counts as mapped. Untested and with

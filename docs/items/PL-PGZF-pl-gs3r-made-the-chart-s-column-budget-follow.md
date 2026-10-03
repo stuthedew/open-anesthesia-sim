@@ -59,7 +59,7 @@ on a 4-core container with no GPU.
 **Triaged `P3`, and kept separate from `PL-CNCF` rather than folded in.** The
 two name different functions in different modules - `controller.drawn_window`
 in `app/controller.py` against `assemble_chart_frame` in `app/chart_frame.py` -
-and `PL-CNCF` carries `docs/MODEL.md` and `core/run_score.py` in its `touches`
+and `PL-CNCF` carries `docs/MODEL.md` and `core/run_definition.py` in its `touches`
 where this carries neither. Folding would make one item whose `verify:` cannot
 speak for both halves. `PL-R460` is closed and is not a candidate at all.
 

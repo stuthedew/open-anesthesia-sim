@@ -45,7 +45,8 @@ arithmetic on the clock; the statement takes the limit from
 `MAXIMUM_ELAPSED_SIMULATION_TIME_S` rather than from a number written in the
 view, so the interface cannot state a limit the model does not enforce; the
 existing halt message is unchanged; and
-`tests/unit/test_simulation_view.py` carries
+`tests/unit/test_dashboard_frame.py`, which holds the interface's run-length
+tests since the Qt port, carries
 `test_the_interface_says_the_run_is_approaching_its_supported_length`.
 
 **Note on the mechanism, which is open.** A warning at a threshold, a persistent
