@@ -5056,17 +5056,24 @@ that would carry a run past it is refused by `SimulationState.advance()`,
 which raises `SimulationDomainLimitError` before anything advances. A run
 handed a point past it instead of reaching one - a `SimulationState` built at
 a step count beyond it, or a `RunDefinition` opening at an instant beyond it,
-which is how a branch is built - is refused where it is built, with
-`SimulationConfigurationError`, because there the value handed in is what is
-wrong (`PL-BMY5`, `PL-73ZN`). The step count a run stops on at the limit is
-one it may be built at; only the step from it is refused. The step's guard and
-the state's read that count from one derivation, `maximum_step_count`, which at
-the shipped 0.1 s step puts the last step exactly on 24 hours and at a few
-computed steps rounds to one step too many or one too few (`PL-8H2R`).
+which is how a branch is built, or moved to one - is refused where it is
+handed in, with `SimulationConfigurationError`, because there the value handed
+in is what is wrong (`PL-BMY5`, `PL-73ZN`). The step count a run stops on at
+the limit is one it may be built at; only the step from it is refused. The
+step's guard and the state's read that count from one derivation,
+`maximum_step_count`: the largest count whose simulated time - the count times
+the step, rounded once, which is `elapsed_s` - is no later than 24 hours. At the
+shipped 0.1 s step that puts the last step exactly on 24 hours. It is decided on
+that product rather than on the quotient of 24 hours by the step, which at some
+computed steps rounds a whole step either way - to a last step a float past 24
+hours, or one short of a step landing on it - so a count is accepted exactly
+where the instant it stands at is, and a branch is built or refused alike
+whether it is taken from its parent's count or its parent's instant
+(`PL-8H2R`).
 
 | Quantity | Limit | Declared and refused by |
 | --- | --- | --- |
-| Elapsed simulated time | 0 to 24 h (86 400 s) | `core/supported_ranges.py`, enforced on `SimulationState` and on a `RunDefinition`'s opening |
+| Elapsed simulated time | 0 to 24 h (86 400 s) | `core/supported_ranges.py`, enforced on `SimulationState` and on a `RunDefinition`'s opening and reach |
 
 **It is the case's 24 hours and not each run's, which matters once a case can
 be branched.** The limit is what this model's omissions are argued against
