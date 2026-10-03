@@ -52,3 +52,11 @@ is currently misleading. This is the tidy-up that decision deferred.
 **Done when.** Either both functions are gone and the six tests assert the
 same guarantees through `bookmark_panel`, or they are kept with a recorded
 reason naming what calls them.
+
+## Design round 2026-10-03: re-checked against the tree
+
+Nothing in `src/` calls either wrapper. `grep -rn "format_time_bookmark\|format_mac_target" src/` finds the two definitions, `src/anesthesia_sim/app/dashboard_frame.py:1467` and `:1514`, two docstring mentions, and nothing else. `tests/unit/test_dashboard_frame.py` reaches them from **eight** test functions (the brief said six; two have joined since), every one pinning a wording guarantee that `bookmark_panel` draws through the same `_stated_*` helpers and `MARK_STANDING_TEXT`.
+
+**Recommendation: delete both wrappers and repoint the eight tests at `bookmark_panel` with a single run** - the recommendation above, unchanged, with the count corrected. It is the plain call under `CLAUDE.md`'s bar for `src/`: two public functions with no production consumer are what a reader has to be told about, and the guarantees they pin survive on the path a reader actually meets. Cost: about forty lines of test churn in `tests/unit/test_dashboard_frame.py`, no behaviour change, nothing in `docs/MODEL.md`. The alternative, keeping them as a single-row renderer for a future caller, has had no caller since `PL-LHBY` and buys nothing today.
+
+For the build thread: each of the eight tests names one guarantee; keep every test's name and assertion and change only what it calls, so the record of what is pinned does not move with the refactor.
