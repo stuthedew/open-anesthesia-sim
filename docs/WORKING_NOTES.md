@@ -732,6 +732,12 @@ owner, 2026-09-16: do not take a position on numpy until it is relevant. The
 longer re-argument `PL-3SQT` first wrote here was the thing that rule was aimed
 at, and was cut to this.)
 
+**Relevant to the tests from 2026-10-03 (`PL-921Y`).** A reference test calls
+`numpy.linalg.eig`, to decompose the model's open-circuit system into its
+modes, so the `dev` dependency group declares numpy, by the rule above. No
+module under `src/` calls it, so for the application this note still stands
+where it did.
+
 ## Decided: control resolution is not what the interface promised at speed - PL-X9KD, PL-NBWP, PL-NBCJ (2026-09-06)
 
 `PL-X9KD` re-derived `MAXIMUM_SIMULATION_STEP_S` as a *declared control-resolution
