@@ -586,12 +586,24 @@ def awaits_decision(item: Item) -> bool:
     the reason line that its next step is a decision). `P0` is the exception,
     as everywhere in the plan: a hotfix tops the list whatever its status.
 
-    One predicate for `recommend`, `longest_waiting`, `set_aside` and
+    One predicate for `offerable`, `longest_waiting`, `set_aside` and
     `awaiting_decision`, so the picks, the decisions line and the lane footer
     divide one startable population between them, with nothing counted twice
     and nothing left out.
     """
     return item.status == "needs-decision" and item.priority != "P0"
+
+
+def offerable(
+    items: list[Item], in_flight: Collection[str] | None = None, *, effort: str | None = None
+) -> list[Item]:
+    """The work a session may be handed now: `_startable`'s, less what awaits a decision.
+
+    What `recommend` ranks before a lane narrows it, and what `docket
+    concurrent`'s bare batch is drawn from, so the two commands cannot offer
+    different work (`PL-4ZK8`). The order given is kept.
+    """
+    return [i for i in _startable(items, in_flight, effort=effort) if not awaits_decision(i)]
 
 
 def awaiting_decision(
@@ -1466,8 +1478,8 @@ def recommend(
     """
     startable = [
         item
-        for item in _startable(items, in_flight, effort=effort)
-        if (lane is None or item.lane(workflow_paths) == lane) and not awaits_decision(item)
+        for item in offerable(items, in_flight, effort=effort)
+        if lane is None or item.lane(workflow_paths) == lane
     ]
     # From every item rather than from `startable`: an item passing its rank
     # down is blocked, so the startable set is exactly what cannot contain it.
