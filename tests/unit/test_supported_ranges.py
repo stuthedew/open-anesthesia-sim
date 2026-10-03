@@ -177,8 +177,8 @@ def test_the_supported_run_length_is_twenty_four_hours() -> None:
 def test_the_last_supported_step_lands_inside_the_declared_span(simulation_step_s: float) -> None:
     """The step count is whole, and the run it allows stays inside the span.
 
-    Checked across every step a run might be taken at rather than only the
-    shipped 0.1 s, because the count is derived from the step: a step that
+    Checked across a spread of steps rather than only the shipped 0.1 s,
+    because the count is derived from the step: a step that
     does not divide the span evenly must round *down*, leaving the last
     completed step at or below the boundary and never past it, and the next
     step past it.
@@ -191,6 +191,11 @@ def test_the_last_supported_step_lands_inside_the_declared_span(simulation_step_
     round to one simulated time and only a search on that time finds the
     last. At 5e-304 s the count is near the largest a float holds, so a
     search bracket built by doubling the guess would itself overflow there.
+
+    No run can take the last three since `PL-YZ17` put them below
+    `MINIMUM_SIMULATION_STEP_S`, as none can take the four above 0.1 s. They
+    stay because `maximum_step_count` is arithmetic on the step it is handed,
+    and what they caught was in that arithmetic.
     """
 
     count = maximum_step_count(simulation_step_s)
