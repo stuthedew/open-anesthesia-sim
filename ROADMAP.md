@@ -5636,7 +5636,7 @@ named here, for the reason beat 3 gives.
 
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
 
-**Cleared before v0.6.0 begins, the product lane - 48 entries**
+**Cleared before v0.6.0 begins, the product lane - 49 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
@@ -5648,6 +5648,7 @@ named here, for the reason beat 3 gives.
 - PL-7CRY (S) The fresh gas flow slider reads the model envelope alone, so a machine profile declaring a narrower deliverable range would offer settings the circuit refuses
 - PL-7TBQ (S) SimulationController.has_recorded_run reads elapsed_s > 0.0, so it is True the instant a branch is made and before the learner has touched it
 - PL-7TXJ (M) RunDefinition.record_change rebuilds the whole segment tuple per change, and each segment carries a keyframe, so it is the larger of the two unbounded records
+- PL-921Y (S) docs/MODEL.md's first-24-hours subsection compares the model's isolated muscle time constant with Yasuda's fitted one, which is an apparent constant read off the whole washout curve; read the same way, off the eigenvalues of the model's open-circuit system, the model's muscle term runs 1.9 to 2.0 times the fitted one at about half its amplitude (measured 2026-10-03), not 1.5 to 1.7
 - PL-95NW (M) Test whether the model's slower muscle return explains the open-circuit washout tail's closest approach to Yasuda's fitted mean curves over hours 2 to 4, by varying the muscle tissue:gas coefficient in the late-washout module; docs/MODEL.md's first-24-hours subsection records that reading as inferred from the isolated time constants and not tested (PL-KK1Q)
 - PL-BMY5 (S) SimulationState can be constructed already past the supported run length, and only the next advance refuses it
 - PL-CBDX (M) Read every simulator diff merged unread since 2026-09-23 against the safety-critical standard, since the review hold was clicked through rather than read
@@ -5843,6 +5844,10 @@ fat-perfusion note weighed against one source, the 24-hour tail never compared
 with the published fits, and the supported run length silent on the missing
 fourth compartment. The triage pass that classed them placed them in the
 product lane.
+`PL-921Y` (`science`, 2026-10-03) is what `PL-95NW`'s measurement turned up
+beside its own answer: the subsection compares an isolated muscle time
+constant with a fitted apparent one. The triage pass that classed it placed it
+in the product lane.
 
 `PL-YVV4` (`planning`, filed 2026-09-13) was let in on 2026-10-03 and sits in
 the workflow lane with `PL-VV6N`, which waits on it. It was in the store at the
