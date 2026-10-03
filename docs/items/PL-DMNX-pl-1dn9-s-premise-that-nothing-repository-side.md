@@ -71,3 +71,37 @@ live carrier, and this item is it.
 lost content the sent copy had. That is a measurement `tools/pr_body_check.py`
 could take going forward at no cost to the session, and it is the thing to
 watch rather than to argue about.
+
+## Design round 2026-10-03: recommendation
+
+**Re-checked against the tree, 2026-10-03.** The premise correction holds:
+`.github/workflows/pr-title.yml` triggers on `opened`, `synchronize`,
+`reopened` and `edited`, so something repository-side does run when a pull
+request is created. `tools/pr_body_check.py` already fetches published bodies
+from the API (`fetch_body`) and compares them against squash commits
+(`compare`); it has no sent copy to compare a published body against, and
+nothing else holds one. The resident passage runs 336 characters from "Then"
+to its `PL-1DN9` citation (`CLAUDE.md`, the commit-and-push bullet). The hazard
+is still unobserved since `#132`: the 0-of-30 survey above stands, no later
+instance has been reported, and the current harness passes at least one kind
+of angle bracket through unchanged - every project-thread pull request opens
+with an HTML comment (`<!-- ccr-projects-attribution ... -->`), and `#1293`'s
+published body, read on 2026-10-03, carries it intact. Whether an unknown tag
+such as `<branch>` is still stripped has not been measured since `#132`. No
+generator head is marked still generating (`bin/docket generators`,
+2026-10-03), so the pause on new mechanisms is not what decides this.
+
+**Q. Build the sent-versus-published diff now, or keep the route recorded?**
+**Recommendation: keep it recorded, and close this item on the record.** The
+diff needs the sent copy, which costs every session a step on every pull
+request to catch a hazard with no instance since `#132`; the 336 resident
+characters are the cheaper guard until the resident set needs them back, and
+the moment it does is the moment the trade pays. This item is the live carrier
+of the corrected premise, which `.claude/rules/citation-drift.md` forbids
+writing into `PL-1DN9`'s closed brief. The close-out is the record itself: no
+code, no `CLAUDE.md` edit.
+
+**What would change the answer.** A published body found to differ from what
+its session sent - a session's own read-back is the only instrument that can
+see it - or the resident set needing the characters. Either reopens this with
+the `--sent <file>` shape above as the build.
