@@ -9,6 +9,7 @@ feature: late-washout-evidence
 touches: docs/MODEL.md, tests/reference/test_late_washout_against_published_fits.py, pyproject.toml, uv.lock, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md
 added: 2026-10-03
 closed: 2026-10-03
+pr: 1319
 payoff: docs/MODEL.md's explanation of the washout tail's middle hours compares the model's muscle and fat terms with the fitted ones like for like, so the size of the difference it names is the real one
 verify: grep -q 'def test_[a-z0-9_]*apparent' tests/reference/test_late_washout_against_published_fits.py
 ---
