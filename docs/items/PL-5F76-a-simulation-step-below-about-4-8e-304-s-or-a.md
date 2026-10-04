@@ -3,12 +3,13 @@ id: PL-5F76
 title: A simulation step below about 4.8e-304 s, or a step count too long to print, fails SimulationState construction with OverflowError or ValueError rather than SimulationConfigurationError
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: numerical-domain
-touches: src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py
+touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation.py, tests/unit/test_supported_ranges.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+closed: 2026-10-04
 payoff: an absurdly large step count is refused with the simulator's own configuration error, like every other out-of-range input, instead of a Python error raised from inside the guard
 verify: grep -q 'def test_a_step_count_too_long_to_print_is_refused' tests/unit/test_supported_ranges.py
 ---
@@ -53,3 +54,14 @@ while a step of `4.7e-304` s is now refused by name.
 **Done when.** `SimulationState(step_count=10**5000, simulation_step_s=0.1)`
 raises `SimulationConfigurationError` naming the supported limit, without
 printing a count too long to print, and a regression test pins it.
+
+**Built 2026-10-04**, found again by `PL-V10T`'s generated edges, in three
+places rather than the one named above: `require_supported_step_count` printed
+the count, `require_supported_run_length` multiplied it by the step, which
+raises `OverflowError` past the largest float, and `simulation.py`'s
+`_require_step_count` printed a negative one. `supported_ranges.describe_count`
+names a count CPython will not print as `<more than 4,300 digits>`, which is the
+reason it is not printed, and all three refusals use it; a printable count
+reads as before. `test_a_step_count_too_long_to_print_is_refused` pins all
+three, and `touches` gained `src/anesthesia_sim/core/simulation.py` for the
+third.

@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
 from anesthesia_sim.core.supported_ranges import (
+    describe_count,
     require_supported_run_length,
     require_supported_step_count,
 )
@@ -43,8 +44,10 @@ def _require_step_count(step_count: int) -> None:
     """Require a whole, nonnegative number of completed steps."""
 
     if not isinstance(step_count, int) or step_count < 0:
+        shown = describe_count(step_count) if isinstance(step_count, int) else repr(step_count)
+
         raise SimulationConfigurationError(
-            f"step_count must be a whole, nonnegative number of steps, not {step_count!r}"
+            f"step_count must be a whole, nonnegative number of steps, not {shown}"
         )
 
 
