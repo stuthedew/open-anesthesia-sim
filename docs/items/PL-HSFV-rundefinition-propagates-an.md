@@ -5,11 +5,12 @@ priority: P1
 effort: S
 status: ready
 classes: defect, safety
-feature: numerical-domain
+feature: parse-dont-validate
 touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_governing_equations.py, tests/unit/test_run_definition.py, docs/MODEL.md, ROADMAP.md
 added: 2026-10-04
 payoff: a run built from a settings record is refused outside the supported flow ranges exactly as a control change is, so no caller - a notebook today, a saved-run loader later - can get a precise-looking trace for a patient the model does not represent
 verify: grep -q 'def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges' tests/unit/test_run_definition.py && grep -q 'def test_rejects_a_flow_outside_its_supported_range' tests/unit/test_governing_equations.py
+recurrences: 2026-10-04 PL-0YYV withdrawn 2026-10-04 PL-51B7
 ---
 
 **Problem.** RunDefinition propagates an UptakeEquationSettings whose flows are outside the supported ranges - cardiac output 1000 L/min, a hundred times the supported maximum, ran on 2026-10-04 - because the settings record checks only that the tissue flows sum to cardiac output, and the range guards run only in the compartments' constructors and setters, which a run built from a settings record never calls
@@ -83,8 +84,8 @@ building it on 1342), with the rest of the `parse-dont-validate` feature on
 v0.6.0's gate; 1342 merged as records only, and this item's claim was yielded
 for the slice's builder. Next, for that builder:
 
-1. Claim the item that carries slice 1 and this one, and read `PL-51B7`'s
-   brief for the design and the call-site count.
+1. Claim `PL-0YYV`, the item that carries slice 1, and this one, and read
+   `PL-51B7`'s brief for the design and `PL-0YYV`'s for the call-site count.
 2. Carry `c48a99be`'s tests over in the slice's form. Fetch it with
    `git fetch origin pull/1342/head`, since its branch may be gone:
    `test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges`

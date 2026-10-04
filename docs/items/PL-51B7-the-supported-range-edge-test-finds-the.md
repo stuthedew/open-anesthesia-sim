@@ -1,9 +1,16 @@
 ---
 id: PL-51B7
 title: The supported-range edge test finds the functions behind the six guards other than the step's by parameter name on five classes kept by hand, so a function taking a guarded quantity under another name, RunDefinition's opened_at_s, is never drawn; a checked type per quantity, as SimulationStep is for the step, would let it find every one by type
-status: untriaged
-feature: numerical-domain
+priority: P2
+effort: M
+status: blocked
+classes: defect, test
+feature: parse-dont-validate
+touches: tests/unit/test_supported_range_edges.py
+blocked-by: PL-0YYV, PL-CN5S
 added: 2026-10-04
+payoff: the edge test draws every function and record field that holds a guarded quantity, whatever it is named, so a way in added later is tested at its edges the day it is written
+verify: ! grep -qF 'parameters.get(name) is checked' tests/unit/test_supported_range_edges.py
 ---
 
 **Problem.** The supported-range edge test finds the functions behind the six guards other than the step's by parameter name on five classes kept by hand, so a function taking a guarded quantity under another name, RunDefinition's opened_at_s, is never drawn; a checked type per quantity, as SimulationStep is for the step, would let it find every one by type
@@ -15,9 +22,36 @@ yes, in that order.
 **Decided 2026-10-04: build it, in that order** (project owner, 2026-10-04,
 ratified, over a range check in the settings record alone and over building
 the types only once another unchecked way in turned up, which the owner
-refused in their own words as good enough and hope). At the owner's
-direction, slice 1 went to the session holding `PL-HSFV`'s claim, on branch
-`claude/bold-goodall-ekvvcr`. Slices 2 and 3 follow it in order.
+refused in their own words as good enough and hope).
+
+[superseded 2026-10-04: the Ship v0.6.0 project builds all three slices,
+filed as items of their own, below] At the owner's direction, slice 1 went to
+the session holding `PL-HSFV`'s claim, on branch `claude/bold-goodall-ekvvcr`.
+Slices 2 and 3 follow it in order.
+
+**Filed as three items, built by the Ship v0.6.0 project** (project owner,
+2026-10-04, over building slice 1 on pull request 1342, which merged as
+records only). Slice 1 is `PL-0YYV` and closes `PL-HSFV` with it; slice 2 is
+`PL-CN5S`, blocked by slice 1; slice 3 is this item, blocked by both. All
+three are on v0.6.0's frozen list with the rest of the `parse-dont-validate`
+feature, there at the owner's direction the same day. One item per slice
+because each slice is one pull request: a claim, a `verify:` and a `touches`
+audit that each describe one change.
+
+**Why it matters.** This test is the check that every function behind a
+supported-range guard is exercised at the guard's IEEE 754 edges (`PL-V10T`).
+Re-read 2026-10-04: for a guard whose quantity is still a bare `float`, `_takes`
+draws a function only where `parameters.get(name) is checked`, `name` being
+the guard's own parameter, and only on a class in `RECEIVERS`. So
+`RunDefinition.__init__`'s `opened_at_s`, against the guard's `instant_s`, is
+never drawn, and nor is a value carried inside a record, the gap `PL-HSFV`
+went through. The test passes while those ways in go untested.
+
+**Done when.** Slices 1 and 2 have landed, and
+`tests/unit/test_supported_range_edges.py` finds every function and dataclass
+field behind a guard by the guard's type, with the name matching in `_takes`
+deleted, so it draws `UptakeEquationSettings`'s three flows and
+`RunDefinition`'s instants at their edges.
 
 **What it is.** Each quantity gets a type the way `PL-0GJC` gave the run's
 step one, and every signature and record field in `core/` and `app/` that
