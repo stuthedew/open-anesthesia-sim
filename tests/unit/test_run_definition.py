@@ -1303,12 +1303,16 @@ def _a_run_with_two_changes_in_view() -> tuple[AgentUptakeSystem, RunDefinition]
         system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
     )
     definition.advance_to(CaseInstant(1300.0))
-    system.set_delivered_concentration_percent(Percent(2.0))
+    system.set_delivered_concentration_percent(Percent(3.0))
     definition.record_change(system.equation_settings())
     definition.advance_to(CaseInstant(1600.0))
     system.set_fresh_gas_flow(FreshGasFlow(1.0))
     definition.record_change(system.equation_settings())
     definition.advance_to(CaseInstant(WINDOW_CLOSING_S))
+
+    # A change to a setting already in force records nothing, so a value equal
+    # to the agent's default would leave a stretch fewer than the tests count.
+    assert len(definition.segments) == 3
 
     return system, definition
 
@@ -1358,8 +1362,10 @@ def test_a_window_drawn_from_kept_propagators_is_the_window_drawn_afresh() -> No
         definition.advance_to(reach_s)
 
         if frame == 3:
-            system.set_delivered_concentration_percent(Percent(3.0))
+            system.set_delivered_concentration_percent(Percent(3.5))
             definition.record_change(system.equation_settings())
+
+            assert len(definition.segments) == 4
 
         if frame == 6:
             system.set_delivered_concentration_percent(Percent(4.0))
@@ -1367,11 +1373,16 @@ def test_a_window_drawn_from_kept_propagators_is_the_window_drawn_afresh() -> No
             system.set_fresh_gas_flow(FreshGasFlow(2.0))
             definition.record_change(system.equation_settings())
 
+            assert len(definition.segments) == 5
+            assert definition.segments[-1].settings.fresh_gas_flow_l_min == 2.0
+
         if frame == 8:
             system.set_delivered_concentration_percent(Percent(5.0))
             definition.record_change(system.equation_settings())
             system.set_delivered_concentration_percent(Percent(4.0))
             definition.record_change(system.equation_settings())
+
+            assert len(definition.segments) == 5
 
         if frame == 10:
             spacing_s = 2 * CHART_SPACING_S
@@ -1431,7 +1442,7 @@ def test_a_window_drawn_again_forms_only_what_it_did_not_keep(
     definition.evaluate_anchored(WINDOW_OPENING_S + 0.2, WINDOW_CLOSING_S + 0.2, CHART_SPACING_S)
 
     assert sorted(formed) == pytest.approx(
-        [WINDOW_OPENING_S + 0.2, WINDOW_CLOSING_S + 0.2 - 1600.0]
+        [WINDOW_CLOSING_S + 0.2 - 1600.0, WINDOW_OPENING_S + 0.2]
     )
 
 
