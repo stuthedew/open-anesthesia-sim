@@ -3,11 +3,12 @@ id: PL-V10T
 title: Each supported-range guard is tested at the edge values its author thought of, so the overflow class behind PL-YZ17, PL-5F76 and PL-BPRK was found one function at a time: generate IEEE 754 edges across every range core/supported_ranges.py declares, and assert a finite result or the simulator's own error
 priority: P2
 effort: M
-status: ready
+status: done
 classes: test
 feature: numerical-domain
 touches: pyproject.toml, uv.lock, tests/unit/test_supported_range_edges.py
 added: 2026-10-03
+closed: 2026-10-04
 payoff: a value a supported-range guard accepts but the function behind it cannot compute with fails a test when the function is written, instead of escaping as a raw OverflowError or ValueError found one function at a time
 verify: grep -q '"hypothesis>=' pyproject.toml && grep -q '^name = "hypothesis"$' uv.lock && grep -q 'def test_each_guard_admits_only_what_its_functions_compute' tests/unit/test_supported_range_edges.py
 ---
@@ -104,3 +105,24 @@ For `PL-74T0`'s cluster 3 (the supported step, guarded entry point by entry
 point) this is the tests' side. It catches a member among the functions it
 finds, while stopping an unguarded entry point is `PL-0GJC`'s type's work, so
 it is no head's fix.
+
+**Built 2026-10-04.** Hypothesis 6.168.3 is a dev dependency, locked with
+`sortedcontainers`, its one dependency. `tests/unit/test_supported_range_edges.py`
+finds the seven guards by name, `require_supported_*` in the two modules, and
+the functions behind each by the quantity they take: the run's step by its type
+wherever the package annotates it, and any other quantity by the name and type
+the guard gives it, on the run's own classes. At the build that was the two
+setters and the controller's constructor behind each flow, `RunDefinition`'s
+`advance_to`, `state_at` and `segment_at` behind the case instant, and seven
+functions behind the step, the two count guards among them. What it keeps by
+hand is how to build those classes at their defaults, `RECEIVERS`, and a
+function taking the step that it cannot call fails the test by name. Its
+docstring states the two limits: a function taking a quantity under another
+name, `RunDefinition`'s `opened_at_s`, is reached only through those using the
+guard's; and a dataclass constructor that only stores, `ResumePoint`, does not
+count. Every edge runs at the finest and the coarsest step on every run, then
+50 derandomized draws per guard: about 16 s in all, 3.5 s at most for one guard.
+
+Its first run failed on the class it exists for. A count too long to print
+escaped three refusals as `ValueError` or `OverflowError`, which is `PL-5F76`'s
+open half, fixed on this branch so that the test lands green.
