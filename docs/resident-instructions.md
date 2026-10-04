@@ -750,3 +750,53 @@ late, and no check can decide whether a decision still exists somewhere,
 which is the judgment half. `.claude/rules/expert-review.md` carries the
 count that follows once the decision is named; this clause carries the step
 before it.
+
+## Rule 14's obvious-calls test, and three clauses in `CLAUDE.md`, added 2026-10-03
+
+`PL-PDVF` moved the rules the project owner had set for sessions in the
+Projects trial's instructions into the repository, one record each, and
+`PL-KKHD` wrote the owner's read list into `bin/docket arm`. Four of the moves
+are resident, and this section is their test.
+
+**Rule 14's "Which of the first two applies" bullet** now carries the owner's
+own words of 2026-09-27: a choice with one clearly correct option is taken,
+recorded in the item and said in one line, an item closed on its own
+measurements included, and a choice is offered only where it is genuinely
+close, changes the goal or cannot be undone, with the recommendation first.
+The carrier test is the bullet's own: it governs a reply, which no read
+precedes, so a `paths:` scope and the skill both arrive too late and no check
+can read a reply. **What it replaced.** The sentence beginning "A choice whose
+options are all defensible and whose blast radius is one document's phrasing"
+is kept as an instance of the owner's test rather than as the test itself,
+with its three examples; nothing else in the bullet said what the owner's
+sentence says. About 330 characters net.
+
+**`CLAUDE.md`'s reset bullet** gains one sentence: a Projects thread, into which
+the owner cannot type `/compact`, writes its next steps into the item file,
+pushes, says so in one line and stops, and the coordinator starts a fresh
+thread on the branch. The moment is the budget check the bullet already
+prescribes, which precedes no read a `paths:` scope could hang on, and the
+`docket` skill has no trigger there. **Why nothing is cut.** The `/compact`
+sentence stays true for every session the owner can type into, so nothing is
+superseded. About 310 characters.
+
+**`CLAUDE.md`'s commit-and-push bullet** gains the two stop rules the trial's
+instructions carried since 2026-09-25 - `main` red for a reason outside the
+item, or the same check failing twice, stops the session, which tells the
+owner before any retry - and `PL-KKHD` rewrote its `hold` clause for the
+owner's read list in the same pull request. A session meets a red check at a
+push, after its reads, and would retry before thinking to look anything up,
+which is the resident case; the `hold` clause was resident already and is a
+rewrite, not a growth, though the advisory counts the longer wording. **Why
+nothing is cut.** No resident sentence said what to do with a red `main` or a
+second failure: the base-merge bullet waits for `main` to be green again and
+did not say to stop. About 290 characters for the stop rules and 559 for the
+longer `hold` clause, the two directories the owner added the same day
+included.
+
+**What should retire each.** The obvious-calls test, nothing short of the
+owner withdrawing it. The Projects-thread sentence, the trial's end
+(`PL-NZC0`). The stop rules, a check that holds a push while `main` is red,
+which none does. The `hold` clause, `arm` printing the owner's list in every
+answer, which it does since `PL-KKHD` - the clause stays because a push is
+preceded by no read, as the row above on the claim shapes already found.

@@ -28,8 +28,9 @@ three clusters share a fact. Most members of the second and third are not on
    KGYT closed on 2026-10-01. KGYT's `generator:` says its sweep searched every
    export of `model`, `vcs` and `release`; `shell.py` and `doc_check`'s own
    readers sit outside those three. With `PL-Q9LK` after PVW2, the fact has
-   re-entered after each of its two fixes. Two post-close instances of KGYT:
-   one short of the three the triage rule reads as a fix that did not hold.
+   re-entered after each of its two fixes. Two post-close instances of KGYT at
+   the first triage pass, one short of the three the triage rule reads as a fix
+   that did not hold; `PL-HNXS` made three at the second (below).
    `PL-F66M` (twelve hand-built store prefixes) reads `PL-NGBM`'s fact instead,
    and is a post-close instance of that head.
 2. **A frozen gate's entries: which items it holds, each one's lane, and what
@@ -66,6 +67,15 @@ is `PL-P72R` and `PL-Z8RS`, with `PL-F66M` an instance of `PL-NGBM` instead;
 cluster 2's members on `main` are `PL-QWF8`, `PL-JV5Q` and `PL-Z64T`, the last
 blocked on this item; `PL-5F76` now keeps only its count half, the step half
 being `PL-YZ17`'s.
+
+**Second triage pass, 2026-10-03.** `PL-HNXS` joins cluster 1: which files
+the repository holds is spelt as git's list in `workflow_paths_check.tracked_files`
+and as a walk with its own skip list in `ruff_configs`, `fixture_id_check._walk`
+(`PL-QJ5F`) and `doc_check._walk` (`PL-2P5L`), the last two classed one-offs at
+capture. `PL-JCS3` (line-at-a-time readers, untriaged) claims `PL-Z8RS` for a
+fact of its own, so cluster 1's count depends on it; judge the two together.
+Cluster 3: `PL-0GJC`, the validated step type, is in flight, and `PL-WP52` is
+blocked on its open question about compartments.
 
 **Done when.** Each cluster is recorded as a head - `root-cause-of:`,
 `generator:` and `misread:` - or refused with its reason in this brief, after

@@ -4,6 +4,7 @@ title: A test that restates a core constant's value passes while the constant mo
 status: untriaged
 feature: one-home-for-constants
 touches: tools, .github/workflows/drift.yml, tests
+blocked-by: PL-40SJ
 added: 2026-10-03
 ---
 
@@ -16,3 +17,5 @@ added: 2026-10-03
 **Done when.** The job runs on its schedule, reports zero restating tests on `main`, and a deliberately restated test on a branch is named in its output.
 
 **Generator check.** Serves PL-40SJ's family from the tests' side; not a head of its own.
+
+**Decided 2026-10-03: waits for PL-40SJ** (project owner, 2026-10-03, ratified, over lifting the apparatus pause for this item and PL-NH53 while PL-40SJ carries `generator: live`). A new check, so it is built once PL-40SJ, the head of its cluster, has closed and its tool's baseline exists to shape this against; `blocked-by:` records it.
