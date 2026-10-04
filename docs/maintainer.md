@@ -5,6 +5,41 @@ sessions themselves. It lives outside `CLAUDE.md` for that reason: a rule a
 session cannot act on still costs every session the context to read it.
 `docs/worker.md` is the opposite document — instructions to a worker agent.
 
+## Rules for sessions live in the repository
+
+**Every rule about how a session works has one record, the repository, and
+the Projects trial's instructions carry none of their own** (project owner,
+2026-10-03, ratified, over a dated copy of the instructions kept in the
+repository for sessions outside the Project, `PL-PDVF`). `CLAUDE.md`, the
+`docket` skill, the rules under `.claude/rules/` and what `bin/docket` prints
+reach every session, in a Project or not; a Project's instructions reach only
+its coordinator and its threads. A rule given there alone left the
+repository's copy missing or older, so a session outside the Project followed
+the old one and a Project thread read two that disagreed, each carrying your
+authority: the review ask's summary (`PL-8XQS`), re-running `tag-release.yml`
+(`PL-F23S`), the arm rule for read holds (`PL-KKHD`), and the direct squash
+merge the instructions asked for from 2026-09-27 while the hook refused it
+from 2026-09-30 (`PL-NXRJ`). Nothing in the repository can read the
+instructions, so no check can catch the split; the routing is what prevents
+it.
+
+**What the instructions keep** is the trial's own coordination and nothing
+else: the Goal, the Order and its pause, the thread caps and which model each
+thread runs, where threads post and record - the review summary in the project
+chat, one line on a merge, the project's shared folder - and one line saying every
+other rule is the repository's. `PL-PDVF` carries the cut-down text as written
+on 2026-10-03 and the table of where each rule went.
+
+**When you give a rule for sessions in the Project, it goes to the repository
+in the same sitting.** Say it to the coordinator, which starts a thread that
+writes it in by `CLAUDE.md`'s routing - a check, the `docket` skill, a
+path-scoped rule, then resident - under `CLAUDE.md`'s rule that a behavior
+change takes effect in the session that asks for it, recording your words and
+the date beside it. The instructions then name nothing about it. A thread that
+meets a rule in the instructions and one in the repository that disagree
+reports both to you rather than choosing, and the repository is where the fix
+lands; a rule you give in one of your own sessions already takes this route.
+
 ## Match model capability to the work
 
 A session cannot switch its own model, so this is the owner's lever.
@@ -199,21 +234,40 @@ set it when the session opens rather than toggling it.
 
 ## Read a simulator change before you arm it
 
-`bin/docket arm` answers `arm` for a pull request whose every changed path is
-under `docs/items/`, `docs/pr-bodies/` (`PL-979D`) or `subprojects/docket/`, so
-a session arms it and it merges on green with no read from you. It holds
-everything else for your read, and a change to
-`subprojects/docket/src/docket/arming.py` as well, although that file is under
-`subprojects/docket/`: it is the gate itself, and a change to it could loosen
-the rule (project owner, 2026-09-25, ratified, over holding every pull request
-that changes anything outside `docs/items/`, `PL-SQTR`; built by `PL-K6B2`). A
-session leaves a held pull request unarmed. Read it before you arm it, most
-closely where it changes `src/`, `tests/` outside `subprojects/`,
-`docs/MODEL.md`, `src/anesthesia_sim/data/` or `README.md`, where a wrong
-clinical value could reach the screen. The old hold fired on every docket
-change as well, and on 2026-09-25 you confirmed those holds were being clicked
-through, so it was guarding nothing. `PL-CBDX` reads the diffs merged unread
-since 2026-09-23.
+`bin/docket arm` holds a pull request for your read where it changes `src/`,
+`tests/` outside `subprojects/`, `docs/MODEL.md`, `src/anesthesia_sim/data/`
+or `README.md` - the paths where a wrong clinical value could reach the screen
+- or `.github/workflows/`, `.claude/hooks/` and
+`subprojects/docket/src/docket/arming.py`, which decide what merges and what
+is tagged and could loosen the rule (the Projects trial's instructions,
+2026-10-03, kind unrecorded, over holding every path outside `docs/items/`,
+`docs/pr-bodies/` and `subprojects/docket/`; the workflows and hooks project
+owner, 2026-10-03, ratified, over leaving them armed on green; built by
+`PL-KKHD`). A session leaves a held pull
+request unarmed, asks for the read with the plain-language summary `arm`
+prints under the hold (`PL-8XQS`), and merges it on your word alone - "Merge
+it" - by the route § "Bring a stale base in when you merge, with Update
+branch" describes. Every other change arms on green: the store, the body
+records (`PL-979D`) and the queue's tooling as before (project owner,
+2026-09-25, ratified, over holding every path outside `docs/items/`,
+`PL-SQTR`; built by `PL-K6B2`), and since 2026-10-03 `CLAUDE.md`, `ROADMAP.md`,
+`tools/`, the rest of `.claude/` and `.github/`, and everything else. `arm` names the paths
+outside the store it armed, so the session's report carries the reason the
+old hold would have given, and the session still holds a change it judges
+raises a question for you, whatever path it is on. The old hold fired on
+every change outside the store, and you confirmed on 2026-09-25 that those
+holds were being clicked through, so it was guarding nothing; `PL-CBDX` reads
+the diffs merged unread since 2026-09-23.
+
+Two answers of 2026-10-03, recorded so that the list reads as decided rather
+than defaulted. `ROADMAP.md` and `docs/WORKING_NOTES.md` arm on green, where
+`PL-0JGZ` (project owner, 2026-09-26, ratified) had held them because the
+roadmap is where you set direction: your list reopened it, and you settled it
+so (project owner, 2026-10-03, ratified, over holding them as before,
+`PL-KKHD`). `.github/workflows/` and `.claude/hooks/` joined the list, since
+`update-armed.yml`, `tag-release.yml` and `direct-merge-guard.sh` decide
+merges and tags as `arming.py` does, at about one read a day lately (project
+owner, 2026-10-03, ratified, over leaving them armed on green, `PL-KKHD`).
 
 ## Merge on the Mac or by auto-merge, never in the GitHub app
 

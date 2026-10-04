@@ -46,3 +46,16 @@ Evidence: `docs/stress-2026-09-25/evidence.tar.gz` (PL-P0FP).
 **Recommendation:** yes, `arming.py`. Name arming's inline test there as `arming.arms_on_green`, have `arm` call it, and make each docstring name the other and the question it answers: `in_queue` whether a change owes a claim, `arms_on_green` whether it merges on green CI without the owner's read. `test_a_roadmap_only_branch_is_queue_work_but_not_armable` stays in `test_claims.py`, where `PL-PVW2`'s `verify:` names it, and asks both. It costs the side-by-side placement: the two definitions sit in two modules, and the cross-referencing docstrings carry what placement would have shown. The alternative keeps the done-when as written and reverses `PL-F6MM`, putting the rule for what merges unread outside the one file whose every change waits on a read. Under the recommendation the done-when is: `claims.in_queue` and `arming.arms_on_green`, each docstring naming the other, `arm` calling the second, and that test asking both about a `ROADMAP.md`-only branch.
 
 **Answered 2026-09-26: `arming.py`** (project owner, 2026-09-26, ratified, over two named predicates in `claims.py`), on a decision card in the Fix generators project. **Built in #1084.** `arming.arms_on_green(path, items_dir)` is arming's answer, asked by `arm` path by path, and answers no for `arming.py` itself; `arm` still asks `GATE in paths` directly, so the gate's hold does not rest on the predicate. `claims.in_queue`'s docstring names it and the question each answers, and its own docstring names `in_queue`. `test_a_roadmap_only_branch_is_queue_work_but_not_armable` asks both about `ROADMAP.md` and `docs/WORKING_NOTES.md` and holds a real `ROADMAP.md`-only branch for each; `test_what_arms_on_green_is_the_store_the_tooling_and_the_records_but_the_gate` pins the rest. `vcs._annotates_only`, the third spelling, stays with `PL-GJPD` under `PL-HMZZ`.
+
+**Reopened 2026-10-03 by `PL-KKHD`**, on the owner's read list of 2026-10-03,
+which names neither `ROADMAP.md` nor `docs/WORKING_NOTES.md`: `arm` arms a
+branch changing only them on green and names them as outside the store, so
+`test_a_roadmap_only_branch_is_queue_work_but_not_armable` became
+`test_a_roadmap_only_branch_is_queue_work_and_arms_named_as_outside_the_store`
+and `arming.arms_on_green` takes the path alone. The answer of 2026-09-26
+above is put back to the owner there; the `verify:` line here reads the tree
+as it stood at closure.
+
+**Settled 2026-10-03** (project owner, 2026-10-03, ratified, over holding them
+as before, on `PL-KKHD`'s review ask): both arm on green.
+

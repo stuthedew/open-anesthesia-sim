@@ -94,6 +94,15 @@ Running `claim` again on an item the branch already holds writes nothing, and
 pushes a claim an earlier run could not - unless another session has published
 a claim on it since, when it withdraws this branch's instead, as below.
 
+**Several items go in one pull request by default, where it makes sense**
+(project owner, 2026-09-30; written into the Projects trial's instructions and
+nowhere in the repository until `PL-PDVF`). Each keeps its own claim and its
+own id-led commit, every id leads the title, and a build and the members it
+closes go together. An item keeps a pull request of its own where combining
+would cost later: a claim likely to stall and hold the rest, a path that waits
+on the owner's read holding items that would arm on green, or a change better
+reverted on its own.
+
 **Taking over a dead claim is `bin/docket claim <id> --over <branch> --reason
 "..."`, and only on the owner's word or with `get_session` showing the holding
 session ARCHIVED or failed.** A claim lasts seven days past its branch's last
@@ -269,6 +278,14 @@ will create, and says nothing either way.
 The session starting the item decides this and says what it decided in the
 reply. An item's disposition is the session's call under
 `.claude/rules/instruction-writing.md` rule 14, not a question for the owner.
+
+**An item named to you untriaged is triaged first, in this session**, by
+`.claude/skills/docket/modes/triage.md` - its fields, its `verify:`, and its
+gate placement where the gate has already frozen - before any work on it
+(project owner, 2026-09-25, ratified, in the Projects trial's instructions,
+`PL-NZC0`). **An item at `needs-decision`, or whose brief asks a decision,
+takes the design round first**, item files only, and the build follows the
+answer: `.claude/skills/docket/modes/design.md`.
 
 Then decide where the work happens and act on it — do not ask. Continue here when
 this session's context is an asset (short, already about this item, just
