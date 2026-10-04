@@ -3,12 +3,14 @@ id: PL-MFVV
 title: docket's roadmap list walker (list_entry_lines, under list_entries) ends an entry at an unindented line CommonMark reads as that entry's lazy continuation (0.31.2 section 5.2), so a Required-scope or gate entry wrapped without an indent is read short and its declaration lost; doc_check's _list_members declines the shape by name since PL-R417 slice 1, the walker's other readers do not
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests, tools/doc_check.py, tests/unit/test_doc_check.py
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1343
 payoff: a frozen-list or Required-scope entry continued without an indent is refused by name - by make check, wave and the digest - instead of read short with nothing saying so
 verify: grep -q 'def test_the_walker_declines_a_lazy_continuation_by_name' subprojects/docket/tests/test_roadmap.py && grep -qF '"frozen list, a lazy continuation is refused"' tests/unit/test_doc_check.py
 ---
@@ -82,3 +84,16 @@ whose `misread:` states the fact: where one statement ends, in a format that
 lets a statement continue across physical lines - here a Markdown list entry
 continued by a lazy line. Not a re-entry of `PL-6SRZ`, closed in `#1332`, which
 taught `doc_check`'s reader alone.
+
+**Closed 2026-10-04**, in `#1343`. The walker declines as the fix above says,
+through `UnreadEntry` and `MilestoneSection.unread`: `check_milestone_lists`
+fails each line, `wave` prints them under a heading of their own and exits 1,
+and the digest's plan line says so. Measured with the new walker, v0.5.0's
+section declines two lines on `main` before `PL-DSMK` - 2636, and 2680, which
+follows a wrapped dash the walker read as an entry under the same gate heading,
+so "one" above undercounted - and none after it. Two refinements came with the
+move, each checked with markdown-it-py 4.2.0: `CONTINUED_LINE` takes a thematic
+break (`---`, `***`, `___`) as ending a paragraph rather than continuing it
+(§ 4.1, § 4.3), and the walker's `LAZY_LINE_RE` takes a block quote's `>` as
+interrupting one (§ 5.1). Without them `make check` would refuse a list
+followed by either, which CommonMark reads as written.

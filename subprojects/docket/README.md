@@ -1627,7 +1627,7 @@ Out-of-scope work is marked, never hidden. Whether an item is *really* out of
 scope is a judgment about the prose around its id, and the command reads
 structure rather than sentences.
 
-Three things follow, and they are limitations in the same way the concurrency
+Four things follow, and they are limitations in the same way the concurrency
 answer below is:
 
 - Scope written without a declaration is placed nowhere. Declaring the id in
@@ -1651,6 +1651,16 @@ answer below is:
   unreleased section *below* the anchor - the Qt port, numbered as a patch and
   placed between Gate 1 and v0.5.0 - is work the step has not reached, and its
   ids read as later work mapped to it (`PL-FWJF`).
+- An entry carried on from the margin is declined rather than read short.
+  CommonMark folds an unindented line that carries on an entry's paragraph into
+  the entry (0.31.2 § 5.2), and the walker ends an entry at the margin, so a
+  frozen-list pair or a scope declaration wrapped that way would lose its
+  second half with nothing saying so. The walker records the line on
+  `MilestoneSection.unread` instead. `tools/doc_check.py` fails it, `wave`
+  prints it and exits non-zero, and the digest's plan line says the plan was
+  not read whole. A release cut does not refuse on it, as it does on a
+  timeline that does not parse, because a list entry holds no version
+  (`PL-MFVV`).
 
 ### Concurrency is computed, and honestly qualified
 

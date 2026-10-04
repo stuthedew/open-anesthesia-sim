@@ -36,6 +36,10 @@ checked here, and never left to a session to remember:
   grammar, and the milestones, gates and step numbers run in order. The table
   is the project's only statement of which milestone is current and which is
   next, so it has to stay readable by a tool and not only by a person.
+- **Milestone lists.** Every frozen-list and `Required scope` entry is read
+  whole by docket's list walker, or the line that stops it is named: an entry
+  carried on from the margin, which CommonMark reads as one entry and the
+  walker cannot. See `check_milestone_lists`.
 - **Frozen-list counts.** Every count a release's frozen list states about
   itself - in a group heading over the entries it counts, or in the version
   or timeline row naming that release - matches the entries below. The same
@@ -147,6 +151,7 @@ try:
     )
     from docket.roadmap import (
         BASELINE_MARK,
+        CONTINUED_LINE,
         DECLARATION_RE,
         EXCLUDED_SUBSECTION,
         HEADING_RE,
@@ -156,6 +161,7 @@ try:
         VERSION_TABLE_HEADING,
         GateEntry,
         MilestoneSection,
+        UnreadEntry,
         _section_end,
         baseline_gate,
         baseline_heading,
@@ -374,25 +380,16 @@ TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
 REFERENCE_FILE_RE = re.compile(r"`(?P<name>[\w][\w.-]*\.(?:pdf|txt|csv|json))`")
 TREE_ENTRY_RE = re.compile(r"^(?P<indent>(?:(?:│   )|(?:    ))*)(?:├──|└──) (?P<name>\S+)")
 
-#: Where a Markdown statement goes on past the end of a physical line
-#: (`PL-R417`): a line ending inside a paragraph, which CommonMark reads as a
-#: soft break (0.31.2 § 6.7), with the indent and blockquote markers that open
-#: the continued line. Not a blank line, which ends the paragraph (§ 4.8), nor a
-#: line opening a block of its own - a list item, an ATX heading, a fence, a
-#: table row or an HTML block - which interrupts it. Possessive, so backtracking
-#: cannot hand a list marker to whatever follows as the continued text. Every
-#: reader of a phrase the documents may wrap takes its whitespace from here,
-#: rather than each meeting the wrap one capture at a time.
-CONTINUED_LINE = (
-    r"[ \t]*+(?:>[ \t]*+)*+"
-    r"(?!\n|\Z|[-*+][ \t]|\d{1,9}[.)][ \t]|#{1,6}(?:[ \t\n]|\Z)|```|~~~|\||<)"
-)
+#: A soft break (CommonMark 0.31.2 § 6.7): a line ending inside a paragraph, and
+#: the opening of the line it carries on to. Where a paragraph goes on is
+#: `CONTINUED_LINE`, which is docket's, so its list walker reads the same rule
+#: (`PL-R417`, `PL-MFVV`); every reader of a phrase the documents may wrap takes
+#: its whitespace from here, rather than each meeting the wrap one capture at a
+#: time.
 SOFT_BREAK = rf"[ \t]*+\n{CONTINUED_LINE}"
 #: The space between two words of a Markdown phrase: spaces or tabs, or a soft
 #: break.
 GAP = rf"(?:[ \t]++|{SOFT_BREAK})"
-#: A line that carries on the paragraph above it, read at its own start.
-LAZY_LINE_RE = re.compile(CONTINUED_LINE)
 #: Any character of a statement's text, a soft break taken as one.
 STATEMENT_CHAR = rf"(?:[^\n]|{SOFT_BREAK})"
 #: A statement read from the start of the line it opens on: that line and every
@@ -1558,6 +1555,29 @@ def check_timeline(root: Path, report: Report) -> None:
         report.errors.append(f"{ROADMAP}: the timeline names no milestone version")
 
 
+def check_milestone_lists(root: Path, report: Report) -> None:
+    """Fail each frozen-list or `Required scope` entry docket could not read whole.
+
+    docket reads a milestone's gate and scope an entry at a time, through
+    `list_entry_lines`, and that walker declines an entry carried on by a line
+    with no indent, which CommonMark reads as part of the entry and the walker
+    cannot (`PL-MFVV`). It records the line on `MilestoneSection.unread` rather
+    than raising, so `wave` still counts what it could read and says the rest
+    was not; this is where the line fails, so a plan read short never reaches
+    `main`.
+    """
+    roadmap = root / ROADMAP
+    if not roadmap.is_file():
+        return
+    for section in parse_milestones(roadmap.read_text(encoding="utf-8")):
+        rendered = "v{}.{}.{}".format(*section.version)
+        report.errors.extend(
+            f"{ROADMAP}:{entry.line}: a list entry of the {rendered} section was not read "
+            f"whole, so the gate and scope docket reads there may be short: {entry.why}"
+            for entry in section.unread
+        )
+
+
 def check_baseline(root: Path, report: Report) -> None:
     """Hold the three statements of the current version to each other.
 
@@ -2365,9 +2385,9 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
     **A lazy continuation is refused by name** (`PL-R417`). CommonMark folds an
     unindented line that carries on an entry's paragraph into the entry (0.31.2
     § 5.2), and the walker does not, so a test named there would be named by no
-    member. In this repository such a line is as often a blank line forgotten
-    before a new paragraph, so neither reading can be assumed: the writer is
-    asked for the indent or the blank line instead.
+    member. The walker declines the entry itself (`PL-MFVV`), and this passes
+    its decline on as `UnreadStatement`, in its words: the writer is asked for
+    the indent or the blank line.
 
     Its bound is the next heading at depth three or shallower, so a family
     whose list is closed by a `####` heading would read that subsection's
@@ -2381,15 +2401,11 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
         if heading is None or len(heading.group("hashes")) != family.level:
             continue
         if heading.group("title").strip() == family.heading:
-            for first, end in list_entry_lines(lines, index + 1):
-                if end < len(lines) and LAZY_LINE_RE.match(lines[end]):
-                    raise UnreadStatement(
-                        end + 1,
-                        "this line carries on the entry above it without an indent, which "
-                        "CommonMark reads as part of that entry and the list walker does not; "
-                        "indent it to keep it in the entry, or put a blank line before it",
-                    )
-                yield first + 1, "\n".join(lines[first:end])
+            try:
+                for first, end in list_entry_lines(lines, index + 1):
+                    yield first + 1, "\n".join(lines[first:end])
+            except UnreadEntry as lazy:
+                raise UnreadStatement(lazy.line, lazy.why) from lazy
             return
 
 
@@ -6078,6 +6094,7 @@ def analyze(root: Path) -> Report:
     check_line_citations(root, documents, report)
     check_quoted_sources(root, documents, report)
     check_timeline(root, report)
+    check_milestone_lists(root, report)
     check_baseline(root, report)
     check_gate_counts(root, report)
     check_self_cleared_group(root, report)

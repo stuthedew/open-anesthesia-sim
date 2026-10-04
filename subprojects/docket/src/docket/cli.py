@@ -4391,9 +4391,10 @@ def cmd_wave(args: argparse.Namespace) -> int:
     that survives a session with no memory: by reading the files.
 
     Exits non-zero when it cannot compute an answer - no roadmap, no timeline,
-    a gate naming an item the store does not hold, or a plan whose numbering
-    the project has stepped past - because a beat the tool is unsure of is
-    worth less than an obvious failure to produce one.
+    a gate naming an item the store does not hold, a list entry it could not
+    read whole, or a plan whose numbering the project has stepped past -
+    because a beat the tool is unsure of is worth less than an obvious failure
+    to produce one.
     """
     _, items, config = _load(args)
     root = _invocation(args).root
@@ -4414,6 +4415,7 @@ def cmd_wave(args: argparse.Namespace) -> int:
         plan.step is None
         or plan.problems
         or plan.stale
+        or plan.unread
         or (plan.gate is not None and plan.gate.unknown_ids)
     ):
         return 1
