@@ -9,6 +9,7 @@ feature: machine-profile-framework
 touches: tests/unit/test_circuit.py, tests/unit/test_alveolar.py, docs/MODEL.md
 added: 2026-09-27
 closed: 2026-10-03
+pr: 1331
 payoff: a change that stops for_agent() reading the circuit volume or the alveolar values fails a test instead of passing on matching defaults
 verify: grep -q 'def test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume' tests/unit/test_circuit.py && grep -q 'def test_for_agent_builds_the_alveoli_at_changed_patient_file_values' tests/unit/test_alveolar.py
 ---
