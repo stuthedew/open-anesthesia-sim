@@ -3,10 +3,12 @@ id: PL-G2HP
 title: No docket command prints the what's-left pick list - the gate's open entries grouped by feature with sizes, lanes and waiting decisions, and the Required-scope entries that can start now with what each unblocks - so every report rebuilds it by script
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature, infra
 touches: subprojects/docket/src/docket/picks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_picks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/picking.md, docs/items/PL-QWF8-a-report-on-a-frozen-gate-cannot-read-every.md
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1345
 payoff: a what's-left answer is one command: the gate's open work by feature with sizes, lanes and waiting decisions, and the build entries that can start now, where a helper used to rebuild it by script for every report
 verify: grep -q 'def test_picks_collapses_a_one_entry_feature_into_its_lanes_line' subprojects/docket/tests/test_picks.py
 ---

@@ -76,6 +76,7 @@ from .model import (
     recurrence_count,
     recurrences_of,
 )
+from .picks import picks
 from .plan import (
     HELD,
     NOWHERE,
@@ -4420,6 +4421,58 @@ def cmd_wave(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_picks(args: argparse.Namespace) -> int:
+    """The what's-left pick list: the gate's open work by feature, and the build that can start.
+
+    One call for the list a "what's left" report gives, which a helper rebuilt
+    by script from `wave`, the item files and the roadmap for every report
+    (`PL-G2HP`). `picks.picks` decides the lines; this reads as `next` does -
+    the default branch's copy of an item moved since the fork, the plan, the
+    claims in flight - and says which refs went unread.
+
+    Exits non-zero where there is no list to give, as `wave` does: no
+    roadmap, a plan that cannot be read, no recorded gate, or a gate naming an
+    id the store does not hold, whose state is then unknown rather than open.
+    """
+    _, items, config = _load(args)
+    root = _invocation(args).root
+    items, replaced = _from_base(args, items)
+    flight = _flight(args)
+    plan = _plan(root, items, config) if (root / config.roadmap_file).is_file() else None
+    failure = ""
+    if not (root / config.roadmap_file).is_file():
+        failure = f"no {config.roadmap_file} to read: there is no gate to list the work of"
+    elif plan is None:
+        failure = f"{config.roadmap_file} could not be read; `docket wave` says what is wrong"
+    elif plan.gate is None:
+        failure = "the plan records no gate to list; `docket wave` says which beat is due"
+    elif plan.gate.unknown_ids:
+        failure = (
+            "the gate names ids the store does not hold, so its open work cannot be counted: "
+            + ", ".join(plan.gate.unknown_ids)
+        )
+    if failure or plan is None:
+        print(failure)
+        _say_unread(args, flight)
+        return 1
+    print(
+        render.format_picks(
+            picks(
+                items,
+                plan,
+                flight.ids,
+                workflow_paths=config.workflow_paths,
+                generator_paths=config.generator_paths,
+                protected_paths=config.protected_paths,
+                gate_paths=config.gate_paths,
+            )
+        )
+    )
+    _say_read_from_base(args, replaced)
+    _say_unread(args, flight)
+    return 0
+
+
 def cmd_trend(args: argparse.Namespace) -> int:
     """How the balance between the two halves of the project has moved.
 
@@ -5471,6 +5524,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     add("status", "the project at feature altitude").set_defaults(func=cmd_status)
     add("wave", "which beat of the planning cadence is due").set_defaults(func=cmd_wave)
+    add(
+        "picks", "what's left: the gate's open work by feature, and the build that can start"
+    ).set_defaults(func=cmd_picks)
     trend_cmd = add("trend", "how the workflow-to-product balance has moved over time")
     trend_cmd.add_argument(
         "--by",
