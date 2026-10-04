@@ -442,7 +442,7 @@ class RunView(QWidget):
             slider.value_changed.connect(handler)
 
         # The two sidebar panels' headings. Instance labels rather than
-        # widgets built inside `build_sidebar_panels`, because each has to
+        # widgets built inside `_lay_out_sidebar_panels`, because each has to
         # gain and lose this run's name as the dashboard's run set changes,
         # and `set_run_name` is the one writer of that name (`PL-C3GS`).
         self._accounting_heading_text = styled_label(ACCOUNTING_HEADING, color=INK, bold=True)
@@ -466,8 +466,11 @@ class RunView(QWidget):
         self._control_timeline_overflow_text = styled_label(
             "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
         )
-        self._control_timeline_overflow_text.setParent(self)
         self._control_timeline_overflow_text.setHidden(True)
+
+        # Laid out once, here, so `build_sidebar_panels` hands back the
+        # panels these labels are already in (`PL-N67T`).
+        self._sidebar_panels = self._lay_out_sidebar_panels()
 
         # This run's rather than the chart's: whether a trace is clipped is
         # a property of the samples this run drew, and one line over two
@@ -1134,6 +1137,22 @@ class RunView(QWidget):
 
         Both are records of one run: the mass-balance diagnostic is of this
         run's own agent, and the timeline is what was changed during it.
+
+        The same two panels on every call, laid out as the run was built.
+        Built anew on each call, they took the run's labels with them - a
+        layout takes a widget from wherever it sits - so a second call left
+        the sidebar on screen empty (`PL-N67T`). Handed back rather than
+        refused, because a view is to be lifted into areas a reader
+        rearranges, and placing the same panels again is what moves them
+        (`.claude/rules/ui-areas.md`).
+        """
+
+        return self._sidebar_panels
+
+    def _lay_out_sidebar_panels(self) -> tuple[QWidget, QWidget]:
+        """Build the two sidebar panels around this run's labels; only the constructor calls it.
+
+        A second call would move the labels out of the panels on screen (`PL-N67T`).
         """
 
         accounting_panel = _panel("accountingPanel")

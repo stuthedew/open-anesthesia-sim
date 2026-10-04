@@ -3,11 +3,13 @@ id: PL-N67T
 title: RunView.build_sidebar_panels constructs fresh panels on every call and reparents the run's live labels into them, so a second call silently strips the accounting and control-change panels out of the sidebar
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: sidebar-panel-rebuild
-touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py, docs/items/PL-KZR1-runview-s-build-methods-are-split-between.md
 added: 2026-09-21
+closed: 2026-10-04
+pr: 1336
 payoff: calling build_sidebar_panels twice stops emptying the sidebar a learner is looking at
 verify: grep -q 'def test_a_second_build_sidebar_panels_leaves_the_run_labels_on_screen' tests/integration/test_simulation_view.py
 ---
@@ -44,3 +46,36 @@ carry back. Both answers are defensible, both are cheap, and the blast radius is
 one class's internal contract. `.claude/rules/ui-areas.md` decides it on a read
 rather than a preference: whether an area is ever relaid out is a fact about the
 design, and the answer to that names which of the two is right.
+
+**Built (2026-10-04): the panels are handed back.** `.claude/rules/ui-areas.md`
+answers the fork: a view is to be lifted into areas a reader splits, resizes,
+closes or replaces, so a layout being rearranged will ask a run for its panels
+again and put them somewhere else. Placing the same widget again moves it,
+which is what that needs. A method that refused a second call would refuse the
+move, and one that built new panels strips the old ones, as this item found.
+So `RunView.__init__` lays the two panels out once, through
+`_lay_out_sidebar_panels`, and `build_sidebar_panels` returns them. The
+overflow label loses the `setParent(self)` that kept it from opening a window
+of its own before its panel existed: it sits in the panel from construction.
+
+`test_a_second_build_sidebar_panels_leaves_the_run_labels_on_screen` makes the
+second call. It holds every sidebar label to being shown and inside the shared
+column before the call and after it, and the two panels handed back to being
+the two placed. On the old method it failed at the first label, "a second call
+took a run label off screen"; on the new one it passes. Two test docstrings
+that described the old method in the present tense now use the past.
+
+**What measuring added (2026-10-04, against a shown `SimulationView` over one
+run).** A second call whose result was dropped did more than strip the labels.
+The orphan panels were Python-owned, so garbage collection deleted them and
+the run's live labels with them, and any later write to one raises
+`RuntimeError`: `_agent_accounting_status_text` read as deleted. Now the panels
+are the run's own, and kept or dropped, the label stays on screen.
+
+The other three `build_*` methods that lay the run's live widgets into a new
+container on every call, `build_transport_row`, `build_readout_section` and
+`build_parameter_controls`, do the same. With the second result kept, the
+Start button, the substance heading and the fresh gas flow slider each went
+off screen; with it dropped, each was deleted. That is `PL-KZR1`'s to fix, and
+this commit rewrote its brief to say so. It also set that item `ready` and
+raised it to `P2`, the band this item held for the same defect.
