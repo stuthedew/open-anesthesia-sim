@@ -17,21 +17,23 @@ or the simulator's own error. An `OverflowError`, a `ValueError`, a
 **Found rather than listed.** The guards are every `require_supported_*`
 function the two modules define, so a guard added to either is drawn without
 editing this file. A function is behind a guard when it takes a quantity the
-guard bounds: the run's step by its type, `SimulationStep`, wherever the package
-annotates it (`PL-0GJC`), and any other quantity by its name and the type it is
+guard bounds: the run's step and its step count by their types,
+`SimulationStep` and `StepCount`, wherever the package annotates them
+(`PL-0GJC`, `PL-CN5S`), and any other quantity by its name and the type it is
 checked as, on the run's own classes. That type is the guard's own parameter
 type or, where the quantity is built only through the guard as the three flows
-are since `PL-0YYV`, the `float` subclass whose constructor names it. Matching
-a flow by its type anywhere, as the step is matched, would reach the
-compartments' own setters, which `RECEIVERS` cannot build - a compartment
-stepped alone reports an infinite time constant at zero flow - so it waits
-for `PL-51B7`'s last slice to decide. What is kept by hand is how to build
-those classes at their defaults, `RECEIVERS`, and a function taking the step
-that this cannot call fails the test by name rather than going untested. A
-function that
-takes a quantity under another name - `RunDefinition`'s `opened_at_s` - is
-reached only through the ones that use the guard's. A constructor counts where
-it checks or computes - written by hand, or a dataclass's with a
+are since `PL-0YYV` and the case instant since `PL-CN5S`, the `float` subclass
+whose constructor names it. Matching a flow by its type anywhere, as the step
+is matched, would reach the compartments' own setters, which `RECEIVERS`
+cannot build - a compartment stepped alone reports an infinite time constant
+at zero flow - so it waits for `PL-51B7`'s last slice to decide. What is kept
+by hand is how to build those classes at their defaults, `RECEIVERS`, and a
+function taking the step that this cannot call fails the test by name rather
+than going untested. A function that takes a quantity under another name -
+`RunDefinition`'s `opened_at_s` - is reached only through the ones that use
+the guard's; one that takes an instant as a plain `float` - `state_at`, which
+the run's own opening and reach bound - is behind no guard here. A constructor
+counts where it checks or computes - written by hand, or a dataclass's with a
 `__post_init__` - and not where it only stores, as `app/controller.py`'s
 `ResumePoint` does.
 
@@ -75,7 +77,7 @@ from anesthesia_sim.core.simulation_step import (
     MINIMUM_SIMULATION_STEP_S,
     SimulationStep,
 )
-from anesthesia_sim.core.supported_ranges import describe_count
+from anesthesia_sim.core.supported_ranges import CaseInstant, StepCount, describe_count
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 GUARD_MODULES = (supported_ranges, simulation_step)
@@ -86,7 +88,9 @@ Function = Callable[..., object]
 def _run_definition() -> RunDefinition:
     system = AgentUptakeSystem.default()
 
-    return RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
+    return RunDefinition(
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+    )
 
 
 # How to build, at its defaults, each class whose methods a guard's quantity is
@@ -103,7 +107,10 @@ RECEIVERS: Mapping[type, Callable[[], object]] = {
 # A value for a parameter the guard being drawn does not bound, where a
 # function behind it takes one without a default: the shipped tick, and the
 # count of a run that has not stepped.
-TYPICAL: Mapping[str, object] = {"tick_interval_s": SIMULATION_TICK_INTERVAL_S, "step_count": 0}
+TYPICAL: Mapping[str, object] = {
+    "tick_interval_s": SIMULATION_TICK_INTERVAL_S,
+    "step_count": StepCount(0),
+}
 
 
 def _without_none(annotation: object) -> object:
@@ -213,11 +220,13 @@ def _checked_types() -> dict[str, type]:
 CHECKED = _checked_types()
 
 # The types a guard itself takes, which the package annotates wherever it
-# passes them: a function is behind such a guard wherever it takes the type.
-# A flow's type is not among them, since its guard takes the `float` it
-# checks, so a flow is found by name on the run's own classes: by type it
-# would reach the compartments' own setters, which `RECEIVERS` cannot build
-# (`PL-51B7`'s last slice decides that).
+# passes them - the step and the step count: a function is behind such a guard
+# wherever it takes the type. Neither a flow's type nor the case instant's is
+# among them, since each one's guard takes the `float` it checks, so each is
+# found by name on the run's own classes: by type a flow would reach the
+# compartments' own setters, which `RECEIVERS` cannot build (`PL-51B7`'s last
+# slice decides that), and by type an instant would reach every mark and
+# keyframe that stores one, none of which `RECEIVERS` builds either.
 TAKEN = frozenset(
     annotation
     for guard in GUARDS
@@ -316,37 +325,49 @@ def _spans(step: SimulationStep) -> list[int]:
     return [math.floor(bound / step) for bound in BOUNDS if bound > 0]
 
 
-def _count_edges(step: SimulationStep) -> tuple[int, ...]:
-    return tuple(
-        sorted(
-            {
-                0,
-                1,
-                -1,
-                2**53,
-                2**53 + 1,
-                2**63,
-                TOO_LONG_TO_PRINT,
-                -TOO_LONG_TO_PRINT,
-                *(span + offset for span in _spans(step) for offset in (-1, 0, 1)),
-            }
-        )
-    )
+def _admitted_count(count: int) -> StepCount | None:
+    try:
+        return StepCount(count)
+    except AnesthesiaSimulationError:
+        return None
 
 
-def _counts(step: SimulationStep) -> st.SearchStrategy[int]:
+def _count_edges(step: SimulationStep) -> tuple[StepCount, ...]:
+    """The counts a count guard's edges fall on, as `StepCount` admits them.
+
+    The negative edges are offered to the type, which refuses them with the
+    simulator's own error or fails this test, and reach no guard: a count is
+    checked whole and nonnegative once, where it is built (`PL-CN5S`).
+    """
+
+    edges = {
+        0,
+        1,
+        -1,
+        2**53,
+        2**53 + 1,
+        2**63,
+        TOO_LONG_TO_PRINT,
+        -TOO_LONG_TO_PRINT,
+        *(span + offset for span in _spans(step) for offset in (-1, 0, 1)),
+    }
+
+    return tuple(count for count in map(_admitted_count, sorted(edges)) if count is not None)
+
+
+def _counts(step: SimulationStep) -> st.SearchStrategy[StepCount]:
     return st.one_of(
-        st.integers(),
+        st.integers(min_value=0),
         st.sampled_from(_count_edges(step)),
-        *(st.integers(min_value=-1, max_value=2 * span + 1) for span in _spans(step)),
-    )
+        *(st.integers(min_value=0, max_value=2 * span + 1) for span in _spans(step)),
+    ).map(StepCount)
 
 
 def _edges(annotation: object, step: SimulationStep) -> tuple[object, ...]:
     if annotation is SimulationStep:
         return (step,)
 
-    if annotation is int:
+    if annotation is StepCount:
         return _count_edges(step)
 
     if annotation is float:
@@ -359,7 +380,7 @@ def _drawn(annotation: object, step: SimulationStep) -> st.SearchStrategy[object
     if annotation is SimulationStep:
         return st.just(step)
 
-    if annotation is int:
+    if annotation is StepCount:
         return _counts(step)
 
     if annotation is float:
@@ -423,7 +444,9 @@ def _step(built: object, step: SimulationStep) -> None:
 
     for name, member in vars(type(built)).items():
         if isinstance(member, property) and not name.startswith("_") and member.fget is not None:
-            if typing.get_type_hints(member.fget).get("return") is float:
+            returned = typing.get_type_hints(member.fget).get("return")
+
+            if isinstance(returned, type) and issubclass(returned, float):
                 _require_finite(getattr(built, name), member.fget)
 
 
@@ -457,7 +480,7 @@ def _naming(guard: Function, values: Mapping[str, object], step: SimulationStep)
         yield
     except BaseException as failure:
         shown = ", ".join(
-            f"{name}={describe_count(value) if type(value) is int else repr(value)}"
+            f"{name}={describe_count(value) if isinstance(value, int) else repr(value)}"
             for name, value in values.items()
         )
         failure.add_note(f"{guard.__name__}({shown}), stepping at {step!r} s")

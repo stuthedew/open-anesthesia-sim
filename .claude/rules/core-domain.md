@@ -88,5 +88,8 @@ the flows' sign and finiteness, and skipped their supported ranges. A record
 found letting a bad sign through would be the evidence to widen this. `PL-0YYV`
 brought the flows into line - `FreshGasFlow`, `AlveolarVentilation` and
 `CardiacOutput` in `src/anesthesia_sim/core/supported_ranges.py`, each built
-only through its guard - and `PL-51B7`'s remaining slices bring the case
-instant and the step count, in that order.
+only through its guard - and `PL-CN5S` the case instant and the step count,
+`CaseInstant` and `StepCount` beside them. The count is where this stops, in
+the code: built, it is checked for what a count is alone, whole and
+nonnegative, and how many steps fit is a relation with the step it multiplies,
+which `SimulationState`, holding both, checks.

@@ -103,7 +103,7 @@ from anesthesia_sim.core.governing_equations import (
     UptakeEquationSettings,
 )
 from anesthesia_sim.core.run_definition import DisplayState, RunDefinition
-from anesthesia_sim.core.supported_ranges import AlveolarVentilation, FreshGasFlow
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 CHANGES: tuple[tuple[float, str, float], ...] = (
@@ -216,10 +216,12 @@ def _run_definition(length_s: float = RUN_LENGTH_S, probe: Random | None = None)
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
-    definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
+    definition = RunDefinition(
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+    )
 
     for at_s, setter, value in CHANGES:
-        definition.advance_to(at_s)
+        definition.advance_to(CaseInstant(at_s))
 
         if probe is not None:
             _query(definition, probe)
@@ -227,7 +229,7 @@ def _run_definition(length_s: float = RUN_LENGTH_S, probe: Random | None = None)
         getattr(system, setter)(value)
         definition.record_change(system.equation_settings())
 
-    definition.advance_to(length_s)
+    definition.advance_to(CaseInstant(length_s))
 
     if probe is not None:
         _query(definition, probe)
@@ -369,7 +371,7 @@ def test_a_fork_opening_from_a_keyframe_reproduces_its_parent() -> None:
     child = RunDefinition(
         parent.segments[-1].settings, opening.state, opened_at_s=opening.instant_s
     )
-    child.advance_to(RUN_LENGTH_S)
+    child.advance_to(CaseInstant(RUN_LENGTH_S))
 
     for elapsed_s in _shared_instants(opening.instant_s):
         assert child.state_at(elapsed_s) == parent.state_at(elapsed_s), (
@@ -416,7 +418,7 @@ def test_a_fork_opening_between_two_keyframes_reproduces_its_parent() -> None:
 
     before = [candidate.opening for candidate in parent.segments]
     child = RunDefinition(segment.settings, opening.state, opened_at_s=opening.instant_s)
-    child.advance_to(RUN_LENGTH_S)
+    child.advance_to(CaseInstant(RUN_LENGTH_S))
 
     assert child.state_at(FORK_BETWEEN_KEYFRAMES_S) == parent.state_at(FORK_BETWEEN_KEYFRAMES_S), (
         "the branch does not stand at the state its parent holds at the fork"
@@ -462,9 +464,9 @@ def test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_paren
     restarted = RunDefinition(
         segment.settings,
         parent.state_at(FORK_BETWEEN_KEYFRAMES_S),
-        opened_at_s=FORK_BETWEEN_KEYFRAMES_S,
+        opened_at_s=CaseInstant(FORK_BETWEEN_KEYFRAMES_S),
     )
-    restarted.advance_to(RUN_LENGTH_S)
+    restarted.advance_to(CaseInstant(RUN_LENGTH_S))
 
     differing = 0
 
@@ -510,7 +512,7 @@ def test_a_display_value_cannot_open_a_run_definition() -> None:
     assert not isinstance(drawn, tuple)
 
     with pytest.raises(SimulationConfigurationError, match="came from the display path"):
-        RunDefinition(_settings_at(definition, 0.0), drawn, opened_at_s=0.0)  # type: ignore[arg-type]
+        RunDefinition(_settings_at(definition, 0.0), drawn, opened_at_s=CaseInstant(0.0))  # type: ignore[arg-type]
 
 
 def test_the_display_path_stays_within_its_measured_separation() -> None:

@@ -132,7 +132,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.core.concentration import MacMultiple
-from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
+from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, CaseInstant
 
 # How much of the screen's available area the window's normal geometry takes
 # (`PL-005`): what a reader gets back on un-maximizing, since the window
@@ -1225,7 +1225,12 @@ class ForkPanel(QWidget):
     `dashboard_frame.fork_offer`, where a test reads them without a display;
     this writes the answer into widgets. The selector carries the instant as
     `userData`, so the caller acts on the number the panel was given rather
-    than on the string a reader sees.
+    than on the string a reader sees. It carries it as a plain `float`, and
+    `selected_instant_s` builds the `CaseInstant` again on the way out: Qt
+    holds a `float` subclass as an opaque Python object, which `findData`
+    matches against nothing, an equal `CaseInstant` included (measured
+    2026-10-04, PySide6), so a selection kept across a rebuilt list would be
+    lost.
 
     **Refused the way the transport refuses** (`PL-61WW`): `setDisabled`
     beside `setHidden` with one operand, and the reason standing where the
@@ -1297,12 +1302,17 @@ class ForkPanel(QWidget):
         column.addLayout(halt_row)
         column.addWidget(self.notice)
 
-    def selected_instant_s(self) -> float | None:
-        """The instant the selector stands on, or None while it offers none."""
+    def selected_instant_s(self) -> CaseInstant | None:
+        """The instant the selector stands on, or None while it offers none.
+
+        Built as a `CaseInstant` again here, because the selector holds each
+        entry's instant as a plain `float` (see this class's docstring);
+        every entry came from `ForkOffer.points_s`, so none is refused.
+        """
 
         instant_s = self.point_selector.currentData()
 
-        return None if instant_s is None else float(instant_s)
+        return None if instant_s is None else CaseInstant(float(instant_s))
 
     def set_offer(self, offer: ForkOffer) -> None:
         """Draw one tick's offer, keeping the reader's selection where it still exists.
@@ -1344,10 +1354,12 @@ class ForkPanel(QWidget):
                 self.point_selector.clear()
 
                 for label, instant_s in zip(offer.labels, offer.points_s, strict=True):
-                    self.point_selector.addItem(label, userData=instant_s)
+                    self.point_selector.addItem(label, userData=float(instant_s))
 
                 if selected_s is not None:
-                    self.point_selector.setCurrentIndex(self.point_selector.findData(selected_s))
+                    self.point_selector.setCurrentIndex(
+                        self.point_selector.findData(float(selected_s))
+                    )
 
         self.point_selector.setDisabled(offer.locked)
         self.point_selector.setHidden(offer.locked)
@@ -1561,11 +1573,14 @@ class BookmarkDialog(QDialog):
         """The time bookmark the form currently describes.
 
         Raises:
-            SimulationConfigurationError: If the entered instant or name is
-                one `TimeBookmark` refuses.
+            SimulationConfigurationError: If the entered instant is one
+                `CaseInstant` refuses, which the spin box's own range keeps it
+                from being, or the name is one `TimeBookmark` refuses.
         """
 
-        return TimeBookmark(self.instant_spin.value(), _entered_label(self.time_label_edit))
+        return TimeBookmark(
+            CaseInstant(self.instant_spin.value()), _entered_label(self.time_label_edit)
+        )
 
     def entered_mac_target(self) -> MacTarget:
         """The MAC target the form currently describes.

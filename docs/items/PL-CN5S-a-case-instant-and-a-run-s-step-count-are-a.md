@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: refactor
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/simulation_view.py, tests, docs/MODEL.md
+touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/simulation_view.py, tests, docs/MODEL.md, .claude/rules/core-domain.md
 blocked-by: PL-0YYV
 added: 2026-10-04
 payoff: no record or function can hold a case instant past the 24-hour run length, or a step count that is not a whole nonnegative number, so a new way in for either is checked without anyone remembering to

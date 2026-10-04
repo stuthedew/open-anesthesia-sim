@@ -112,6 +112,7 @@ from anesthesia_sim.app.dashboard_frame import (
 from anesthesia_sim.app.playback import playback_rate_for
 from anesthesia_sim.app.qt_chart import ConcentrationChart
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.core.supported_ranges import CaseInstant
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND, SECONDS_PER_MINUTE
 
 #: The size the dashboard is measured at, matching
@@ -375,7 +376,7 @@ def measure(
     induction_s = case.fork_points_s[0]
 
     for _ in range(runs - 1):
-        case.fork_at(induction_s)
+        case.fork_at(CaseInstant(induction_s))
 
     for controller in case.runs:
         controller.start()

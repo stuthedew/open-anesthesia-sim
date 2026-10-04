@@ -8,6 +8,7 @@ from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
     FreshGasFlow,
+    StepCount,
     maximum_step_count,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -83,7 +84,9 @@ def test_an_invalid_initial_step_is_refused_before_a_run_length_is_read_from_it(
     """
 
     with pytest.raises(SimulationConfigurationError, match="simulation_step_s"):
-        SimulationState(step_count=0, simulation_step_s=SimulationStep(simulation_step_s))
+        SimulationState(
+            step_count=StepCount(0), simulation_step_s=SimulationStep(simulation_step_s)
+        )
 
 
 def test_rejects_a_step_above_the_maximum_simulation_step() -> None:
@@ -163,7 +166,7 @@ def test_elapsed_time_holds_where_an_accumulated_sum_has_drifted() -> None:
     for _ in range(600):
         accumulated_s += 0.1
 
-    state = SimulationState(step_count=600, simulation_step_s=SimulationStep(0.1))
+    state = SimulationState(step_count=StepCount(600), simulation_step_s=SimulationStep(0.1))
 
     assert state.elapsed_s == 60.0
     assert accumulated_s != 60.0
@@ -202,23 +205,32 @@ def test_reset_frees_the_step_so_a_fresh_run_may_take_a_different_one() -> None:
     assert state.elapsed_s == 0.05
 
 
-def test_rejects_a_negative_initial_step_count() -> None:
-    with pytest.raises(SimulationConfigurationError, match="step_count"):
-        SimulationState(step_count=-1)
+@pytest.mark.parametrize("step_count", [-1, 2.5, True])
+def test_a_count_that_is_not_whole_and_nonnegative_cannot_be_built(step_count: object) -> None:
+    """Refused where the count is built, before any state holds it (`PL-CN5S`).
+
+    A count below zero stands before the run began, and one that is not whole
+    reaches a time no sequence of steps does. `True` is an `int` to Python
+    and is not a count of anything.
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="whole, nonnegative number of steps"):
+        StepCount(step_count)  # type: ignore[arg-type]
 
 
-def test_rejects_a_fractional_initial_step_count() -> None:
-    """A count that is not whole reaches a time no sequence of steps does."""
+@pytest.mark.parametrize("step_count", [0, 10, -1])
+def test_a_state_refuses_a_count_not_built_as_a_step_count(step_count: int) -> None:
+    """Whatever its value, because nothing has checked it (`PL-CN5S`)."""
 
-    with pytest.raises(SimulationConfigurationError, match="step_count"):
-        SimulationState(step_count=2.5)  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="step_count of .* was not built as StepCount"):
+        SimulationState(step_count=step_count)  # type: ignore[arg-type]
 
 
 def test_rejects_a_step_count_with_no_step_to_multiply_it_by() -> None:
     """A state part-way through a run has to say what step it took."""
 
     with pytest.raises(SimulationConfigurationError, match="simulation_step_s"):
-        SimulationState(step_count=10)
+        SimulationState(step_count=StepCount(10))
 
 
 def test_rejects_an_initial_step_above_the_largest_supported_one() -> None:
@@ -230,7 +242,8 @@ def test_rejects_an_initial_step_above_the_largest_supported_one() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="largest supported step"):
         SimulationState(
-            step_count=1, simulation_step_s=SimulationStep(MAXIMUM_SIMULATION_STEP_S * 10.0)
+            step_count=StepCount(1),
+            simulation_step_s=SimulationStep(MAXIMUM_SIMULATION_STEP_S * 10.0),
         )
 
 
@@ -247,7 +260,9 @@ def test_rejects_an_initial_step_below_the_smallest_supported_one(simulation_ste
     """
 
     with pytest.raises(SimulationConfigurationError, match="smallest supported step"):
-        SimulationState(step_count=0, simulation_step_s=SimulationStep(simulation_step_s))
+        SimulationState(
+            step_count=StepCount(0), simulation_step_s=SimulationStep(simulation_step_s)
+        )
 
 
 # --- The supported run length (PL-Y5WR) -------------------------------------
@@ -263,7 +278,7 @@ def test_a_run_may_be_advanced_up_to_the_supported_run_length() -> None:
     """The last supported step completes and lands on the declared boundary."""
 
     state = SimulationState(
-        step_count=maximum_step_count(MAXIMUM_SIMULATION_STEP_S) - 1,
+        step_count=StepCount(maximum_step_count(MAXIMUM_SIMULATION_STEP_S) - 1),
         simulation_step_s=SimulationStep(MAXIMUM_SIMULATION_STEP_S),
     )
 
@@ -277,7 +292,7 @@ def test_the_step_past_the_supported_run_length_is_refused() -> None:
     """Beyond the boundary the model is not claimed to represent a patient."""
 
     state = SimulationState(
-        step_count=maximum_step_count(MAXIMUM_SIMULATION_STEP_S),
+        step_count=StepCount(maximum_step_count(MAXIMUM_SIMULATION_STEP_S)),
         simulation_step_s=SimulationStep(MAXIMUM_SIMULATION_STEP_S),
     )
 
@@ -296,7 +311,7 @@ def test_a_refused_step_leaves_the_run_exactly_where_it_was() -> None:
     """
 
     state = SimulationState(
-        step_count=maximum_step_count(MAXIMUM_SIMULATION_STEP_S),
+        step_count=StepCount(maximum_step_count(MAXIMUM_SIMULATION_STEP_S)),
         simulation_step_s=SimulationStep(MAXIMUM_SIMULATION_STEP_S),
     )
     stored_before = state.uptake_system.total_stored_agent_l
@@ -315,7 +330,7 @@ def test_reset_returns_a_run_stopped_at_the_limit_to_a_startable_one() -> None:
     """Reset is the way out, and it has to actually clear the count."""
 
     state = SimulationState(
-        step_count=maximum_step_count(MAXIMUM_SIMULATION_STEP_S),
+        step_count=StepCount(maximum_step_count(MAXIMUM_SIMULATION_STEP_S)),
         simulation_step_s=SimulationStep(MAXIMUM_SIMULATION_STEP_S),
     )
 
@@ -349,7 +364,7 @@ def test_a_state_may_be_built_standing_on_the_supported_run_length(
     """
 
     state = SimulationState(
-        step_count=maximum_step_count(simulation_step_s),
+        step_count=StepCount(maximum_step_count(simulation_step_s)),
         simulation_step_s=SimulationStep(simulation_step_s),
     )
 
@@ -371,7 +386,7 @@ def test_a_state_past_the_supported_run_length_is_refused_at_construction(
 
     with pytest.raises(SimulationConfigurationError, match="supported run length"):
         SimulationState(
-            step_count=maximum_step_count(simulation_step_s) + 1,
+            step_count=StepCount(maximum_step_count(simulation_step_s) + 1),
             simulation_step_s=SimulationStep(simulation_step_s),
         )
 
@@ -390,4 +405,4 @@ def test_the_state_measured_past_the_limit_is_refused() -> None:
     step_count = maximum_step_count(0.1) + 136_000
 
     with pytest.raises(SimulationConfigurationError, match="supported run length"):
-        SimulationState(step_count=step_count, simulation_step_s=SimulationStep(0.1))
+        SimulationState(step_count=StepCount(step_count), simulation_step_s=SimulationStep(0.1))

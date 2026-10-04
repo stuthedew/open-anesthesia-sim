@@ -71,6 +71,22 @@ setter, and `UptakeEquationSettings` - calls `require_fresh_gas_flow`,
 a bare `float` as the programming error it is; the layers that forward a flow,
 `AgentUptakeSystem` and `app/controller.py`, take the type and check nothing.
 
+**The case instant and the step count are types too** (`PL-CN5S`, slice 2 of
+`PL-51B7`). `CaseInstant` is a `float` subclass built only through
+`require_supported_case_instant`, for the reasons the flows are, and every
+record field that holds an instant of the case and every method that moves a
+run to one takes it: `RunDefinition`'s opening, reach and keyframes,
+`SimulationState.elapsed_s`, the marks in `app/bookmarks.py`, and the instant a
+branch is taken at. The instants a run is only *read* at - `RunDefinition`'s
+`state_at` and a drawn window's bounds - stay a `float`, because the run's own
+opening and reach, both checked instants, bound them and refuse what falls
+outside: that is a relation between the instant and the run, which belongs to
+the run. `StepCount` is an `int` subclass checking what a count can be checked
+for alone, that it is whole and nonnegative. How many steps a run may complete
+depends on the step it takes them at, so `SimulationState` keeps checking the
+pair. Each is refused as a bare value at run time where it is stored or a run
+is moved to it, by `require_case_instant` and `require_step_count`.
+
 **Fresh gas flow has a second bound of the same shape, and it is not here**
 (`PL-8PS6`). What a *machine* can deliver - its flowmeters, its minimum-flow
 floor, whether it supports minimal- or closed-circuit flow - differs between
@@ -101,10 +117,11 @@ simulated time inside the supported span.
 
 Two more guards refuse a point on the span that is handed in rather than
 reached: `require_supported_step_count` for a `SimulationState` built
-part-way through a run, and `require_supported_case_instant` for the instants
-a `RunDefinition` opens at and is moved to. A branch is both, built where its
-parent stood, so these are what refuse one taken past the span before
-anything reads it (`PL-BMY5`, `PL-73ZN`). The first is built on the same `maximum_step_count`
+part-way through a run, and `require_supported_case_instant`, which every
+`CaseInstant` is built through, for the instants a run opens at, is moved to
+and is marked at. A branch is both, built where its parent stood, so these are
+what refuse one taken past the span before anything reads it (`PL-BMY5`,
+`PL-73ZN`). The first is built on the same `maximum_step_count`
 as the step's guard, so the count a run stops on at the limit is exactly the
 last one a state may be built at, whatever the step. That count is decided on
 the simulated time it lands at, so the instant a run stops on is one the
@@ -146,9 +163,9 @@ MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10.0
 # this bounds the *run* rather than a setting, and it is reached mid-run
 # rather than refused at entry, so `require_supported_run_length` below
 # refuses the step that would cross it instead of a value a caller passed.
-# Where a caller does pass a point on it - a step count, a run's opening
-# instant or its reach - `require_supported_step_count` and
-# `require_supported_case_instant` refuse that value.
+# Where a caller does pass a point on it - a step count, or an instant a run
+# opens at, is moved to or is marked at - `require_supported_step_count` and
+# `require_supported_case_instant`, through `CaseInstant`, refuse that value.
 #
 # **It is a validity limit, and it was a memory one.** The 30-day figure it
 # replaces was set on 2026-08-25 to size a concentration history that no
@@ -458,6 +475,68 @@ def describe_count(count: int) -> str:
         return f"{sign}<more than {sys.get_int_max_str_digits():,} digits>"
 
 
+def _shown(value: object) -> str:
+    """A value as a refusal names it: an `int` through `describe_count`, since
+    its `repr` raises past the digits CPython will print, and anything else by
+    its `repr`."""
+
+    return describe_count(value) if isinstance(value, int) else repr(value)
+
+
+class StepCount(int):
+    """How many steps a run has completed, checked whole and nonnegative when built.
+
+    That is what a count can be checked for on its own. How many steps a run
+    may complete depends on the step it takes them at, so the supported range
+    belongs to the pair, and `SimulationState` checks the two together through
+    `require_supported_step_count`: a relation between two fields is the
+    record's to check, as `.claude/rules/core-domain.md` says.
+
+    It compares and computes as the `int` it was built from, and arithmetic on
+    it returns a plain `int`, so the count after one more step is built as a
+    `StepCount` again where it is stored (`SimulationState.advance`).
+
+    Raises:
+        SimulationConfigurationError: `step_count` is not an `int`, is a
+            `bool`, which is not a count, or is negative.
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, step_count: int) -> StepCount:
+        if isinstance(step_count, bool) or not isinstance(step_count, int) or step_count < 0:
+            raise SimulationConfigurationError(
+                f"step_count must be a whole, nonnegative number of steps, not {_shown(step_count)}"
+            )
+
+        return super().__new__(cls, step_count)
+
+
+def require_step_count(step_count: object) -> None:
+    """Require a count that was built as a `StepCount`, and so checked.
+
+    The runtime half of the type, for the callers `mypy` does not read, as
+    `require_fresh_gas_flow` explains. It runs where a count is stored, which
+    is `SimulationState` when it is built; every count the state stores after
+    that it builds as a `StepCount` itself.
+
+    Raises:
+        TypeError: `step_count` is not a `StepCount` - a bare `int` included,
+            whatever its value. This is a programming error in the caller
+            rather than a rejected setting, so it is not an
+            `AnesthesiaSimulationError` (`core/exceptions.py`).
+    """
+
+    if not isinstance(step_count, StepCount):
+        shown = _shown(step_count)
+
+        raise TypeError(
+            f"step_count of {shown} was not built as StepCount, it is "
+            f"{type(step_count).__name__}: build it as StepCount({shown}) where the count is "
+            "taken, which checks once that it is a whole, nonnegative number of steps"
+        )
+
+
 def maximum_step_count(simulation_step_s: SimulationStep) -> int:
     """How many steps of this size fit inside the supported run length.
 
@@ -520,7 +599,7 @@ def maximum_step_count(simulation_step_s: SimulationStep) -> int:
     return inside
 
 
-def require_supported_run_length(step_count: int, simulation_step_s: SimulationStep) -> None:
+def require_supported_run_length(step_count: StepCount, simulation_step_s: SimulationStep) -> None:
     """Require room for one more step inside the supported run length.
 
     Refuses the step that would carry the run past
@@ -557,7 +636,7 @@ def require_supported_run_length(step_count: int, simulation_step_s: SimulationS
         )
 
 
-def require_supported_step_count(step_count: int, simulation_step_s: SimulationStep) -> None:
+def require_supported_step_count(step_count: StepCount, simulation_step_s: SimulationStep) -> None:
     """Require `step_count` to be no more steps than the supported run length allows.
 
     The question a run *handed* a position asks, where
@@ -580,9 +659,9 @@ def require_supported_step_count(step_count: int, simulation_step_s: SimulationS
     present it as one (`PL-BMY5`).
 
     Like `maximum_step_count`, it takes the step as a `SimulationStep`, which
-    was checked against the supported range when it was built, and
-    `step_count` to be a whole, nonnegative count, which `SimulationState`
-    checks before it calls this.
+    was checked against the supported range when it was built, and the count
+    as a `StepCount`, which was checked whole and nonnegative when it was
+    built, so what is left to check here is the pair.
 
     Raises:
         SimulationConfigurationError: `step_count` is more than
@@ -616,10 +695,12 @@ def require_supported_case_instant(instant_s: float) -> None:
     `maximum_step_count` decides the last step on the time it lands at
     (`PL-8H2R`).
 
-    It guards the instants a run is handed rather than reaches - a
-    `RunDefinition`'s opening, which a branch takes from its parent, and the
-    reach it is moved to - and raises `SimulationConfigurationError` for the
-    reason `require_supported_step_count` gives (`PL-73ZN`).
+    Every `CaseInstant` is built through it, so it guards each instant a run
+    is handed rather than reaches - a `RunDefinition`'s opening, which a
+    branch takes from its parent, the reach it is moved to, a marked instant
+    and the instant a branch is taken at - once, where the instant is built.
+    It raises `SimulationConfigurationError` for the reason
+    `require_supported_step_count` gives (`PL-73ZN`).
 
     Raises:
         SimulationConfigurationError: `instant_s` is not finite, or is
@@ -633,4 +714,62 @@ def require_supported_case_instant(instant_s: float) -> None:
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), the span this "
             f'model is claimed to represent a patient over (docs/MODEL.md, "Supported run '
             f'length")'
+        )
+
+
+class CaseInstant(float):
+    """An instant of the case in seconds, checked against the supported run length when built.
+
+    Simulated time since induction, which is the axis a branch shares with
+    its parent, so one number means the same instant on every run of a case.
+    It compares and computes as the `float` it was built from, and a sum or a
+    difference of it is a plain `float`: the instant one step on, or the width
+    of a window, carries no proof it was never given, and is built as a
+    `CaseInstant` where something holds it as an instant
+    (`SimulationState.elapsed_s`).
+
+    Raises:
+        SimulationConfigurationError: the instant is not finite, or is
+            outside 0 to `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, as
+            `require_supported_case_instant` states.
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, instant_s: float) -> CaseInstant:
+        require_supported_case_instant(instant_s)
+
+        return super().__new__(cls, instant_s)
+
+
+def require_case_instant(name: str, instant_s: object) -> None:
+    """Require an instant that was built as a `CaseInstant`, and so checked.
+
+    The runtime half of the type, for the callers `mypy` does not read, as
+    `require_fresh_gas_flow` explains. It runs where an instant is stored -
+    `Keyframe`, `TimeBookmark` and `BookmarkCrossing` - and where a run is
+    opened at or moved to one: `RunDefinition`, built or advanced, and the
+    branch `SimulationController.resumed_at` takes. A function that only
+    compares an instant, or forwards one, takes the type and checks nothing.
+
+    Args:
+        name: The parameter the instant was handed in as, for the message. An
+            instant is an opening, a reach, a mark or a fork by where it is
+            handed in rather than by its type, so the name is the caller's.
+        instant_s: What was handed in.
+
+    Raises:
+        TypeError: `instant_s` is not a `CaseInstant` - a bare `float`
+            included, whatever its value. This is a programming error in the
+            caller rather than a rejected setting, so it is not an
+            `AnesthesiaSimulationError` (`core/exceptions.py`).
+    """
+
+    if not isinstance(instant_s, CaseInstant):
+        shown = _shown(instant_s)
+
+        raise TypeError(
+            f"{name} of {shown} was not built as CaseInstant, it is {type(instant_s).__name__}: "
+            f"build it as CaseInstant({shown}) where the instant is chosen, which checks it "
+            'against the supported run length once (docs/MODEL.md, "Supported run length")'
         )

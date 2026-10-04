@@ -51,7 +51,7 @@ from anesthesia_sim.core.governing_equations import (
 )
 from anesthesia_sim.core.run_definition import DisplayState, Keyframe, RunDefinition, RunSegment
 from anesthesia_sim.core.simulation_step import SimulationStep
-from anesthesia_sim.core.supported_ranges import FreshGasFlow
+from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 SIMULATION_STEP_S = SimulationStep(0.1)
@@ -99,11 +99,13 @@ def _run(
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
-    definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
+    definition = RunDefinition(
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+    )
 
     for step in range(1, steps + 1):
         system.advance(SIMULATION_STEP_S)
-        definition.advance_to(step * SIMULATION_STEP_S)
+        definition.advance_to(CaseInstant(step * SIMULATION_STEP_S))
 
         if step == dial_step:
             system.set_delivered_concentration_percent(Percent(0.8))
@@ -208,11 +210,11 @@ def test_a_resumed_system_steps_the_way_the_run_it_resumes_did() -> None:
 
     system.resume_at(opening.state, initial_agent_l=0.0)
 
-    ahead = RunDefinition(segment.settings, opening.state, opened_at_s=0.0)
+    ahead = RunDefinition(segment.settings, opening.state, opened_at_s=CaseInstant(0.0))
 
     for step in range(1, 601):
         system.advance(SIMULATION_STEP_S)
-        ahead.advance_to(step * SIMULATION_STEP_S)
+        ahead.advance_to(CaseInstant(step * SIMULATION_STEP_S))
 
     stepped = system.state_vector()
     closed_form = ahead.state_at(600 * SIMULATION_STEP_S)
