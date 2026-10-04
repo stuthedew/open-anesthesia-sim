@@ -53,7 +53,8 @@ import pytest
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
 from anesthesia_sim.core import supported_ranges
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
-from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
+from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 AGENT_IDS = ("sevoflurane", "isoflurane", "desflurane")
 
@@ -68,7 +69,7 @@ STATE_LABELS = ("circuit", "alveolar", "mixed venous", "vessel rich", "muscle", 
 #: decision with three recorded reasons rather than a default, and every figure
 #: in both published tables is measured *at* it, so the two cannot be allowed
 #: to part company.
-SHIPPED_STEP_S = 0.1
+SHIPPED_STEP_S = SimulationStep(0.1)
 
 #: The interface's run-loop tick, restated rather than imported from
 #: `app/simulation_view.py`, which needs Flet. `test_simulation_view.py` holds

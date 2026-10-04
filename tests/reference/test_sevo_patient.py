@@ -10,11 +10,12 @@ from anesthesia_sim.core.parameters import (
     parse_agent_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.uptake_system import (
+from anesthesia_sim.core.simulation_step import (
     MAXIMUM_SIMULATION_STEP_S,
     MINIMUM_SIMULATION_STEP_S,
-    AgentUptakeSystem,
+    SimulationStep,
 )
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 
@@ -97,7 +98,7 @@ def _run_for(system: AgentUptakeSystem, duration_s: float, simulation_step_s: fl
     step_count = round(duration_s / simulation_step_s)
 
     for _ in range(step_count):
-        system.advance(simulation_step_s)
+        system.advance(SimulationStep(simulation_step_s))
 
 
 def _synthetic_agent(blood_gas_partition_coefficient: float) -> AgentParameters:
@@ -450,7 +451,7 @@ def test_washout_never_increases_total_system_mass() -> None:
     step_count = round(WASHOUT_DURATION_S / WASHOUT_STEP_S)
 
     for step_index in range(step_count):
-        system.advance(WASHOUT_STEP_S)
+        system.advance(SimulationStep(WASHOUT_STEP_S))
 
         current_agent_l = system.total_stored_agent_l
 
@@ -515,7 +516,7 @@ def test_equilibrium_produces_no_net_internal_transfer() -> None:
     # amount must match the state actually under test.
     system.agent_simulation_validator.reset(initial_agent_l=system.total_stored_agent_l)
 
-    result = system.advance(0.1)
+    result = system.advance(SimulationStep(0.1))
 
     assert result.circuit_to_alveolar_agent_l == pytest.approx(
         0.0, abs=EQUILIBRIUM_FRACTION_TOLERANCE

@@ -4,6 +4,7 @@ from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
@@ -44,7 +45,7 @@ def _run_for(system: AgentUptakeSystem, duration_s: float, simulation_step_s: fl
     step_count = round(duration_s / simulation_step_s)
 
     for _ in range(step_count):
-        system.advance(simulation_step_s)
+        system.advance(SimulationStep(simulation_step_s))
 
 
 def _build_system_for_agent(agent_id: str) -> AgentUptakeSystem:
@@ -119,7 +120,7 @@ def test_equilibrium_produces_no_net_internal_transfer(agent_id: str) -> None:
 
     system.agent_simulation_validator.reset(initial_agent_l=system.total_stored_agent_l)
 
-    result = system.advance(0.1)
+    result = system.advance(SimulationStep(0.1))
 
     assert result.circuit_to_alveolar_agent_l == pytest.approx(
         0.0, abs=EQUILIBRIUM_FRACTION_TOLERANCE

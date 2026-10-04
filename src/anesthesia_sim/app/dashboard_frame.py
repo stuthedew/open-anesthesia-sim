@@ -75,6 +75,7 @@ from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -86,9 +87,10 @@ from anesthesia_sim.core.supported_ranges import (
 )
 
 # The step each simulation tick advances by. What range of steps is
-# *supported* is `core/`'s to declare: `core.uptake_system.MINIMUM_SIMULATION_STEP_S`
-# and `MAXIMUM_SIMULATION_STEP_S` are that declaration, and a step outside them
-# is refused there rather than displayed here. This is a cadence choice inside
+# *supported* is `core/`'s to declare: `core.simulation_step.MINIMUM_SIMULATION_STEP_S`
+# and `MAXIMUM_SIMULATION_STEP_S` are that declaration, and `SimulationStep`
+# refuses a step outside them when it is built, here at import, so none reaches
+# a run to be displayed. This is a cadence choice inside
 # that range, at its ceiling
 # deliberately: running finer buys nothing a reader could see (halving the
 # step moves a displayed fraction by around 1e-16), and running coarser
@@ -97,7 +99,7 @@ from anesthesia_sim.core.supported_ranges import (
 # `test_the_shipped_step_is_within_the_maximum_simulation_step` holds the
 # relation; `docs/MODEL.md` § "Supported simulation step" and § "Displayed
 # precision" carry the two derivations separately (`PL-X9KD`).
-SIMULATION_STEP_S: Final = 0.1
+SIMULATION_STEP_S: Final = SimulationStep(0.1)
 # How often the simulation timer fires, in *real* seconds. Numerically equal
 # to the step and conceptually unrelated to it: the playback multiplier is
 # the ratio between them - a tick advances `rate.steps_per_tick(...)` steps of
@@ -107,7 +109,7 @@ SIMULATION_STEP_S: Final = 0.1
 # interface's control resolution (`PL-NBWP`): a tick advances its whole burst
 # uninterrupted, so a setting changed while the run plays first acts at a
 # tick boundary, `multiplier` times this interval apart.
-SIMULATION_TICK_INTERVAL_S: Final = SIMULATION_STEP_S
+SIMULATION_TICK_INTERVAL_S: Final = float(SIMULATION_STEP_S)
 # Render cadence, independent of the simulation step. Twice the tick, so a
 # frame is two control-grid steps at every playback rate - which is why
 # `PL-NBWP` left the grid where it is. Written as its own number rather than
