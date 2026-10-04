@@ -3,12 +3,13 @@ id: PL-LBQY
 title: A bare float written straight onto a non-frozen compartment field (circuit.fresh_gas_flow_l_min = 1000.0) is caught only at the next equation_settings(), so for one tick the snapshot and the readouts carry an unchecked value and SimulationSnapshot's typed fields carry no runtime check of their own; decide whether a __setattr__ guard or frozen compartments moves the check to the write, or record the one-tick window as accepted (found reviewing #1350)
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: safety, defect
 feature: parse-dont-validate
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_supported_ranges.py, tests/unit/test_state_capture.py, docs/MODEL.md
 added: 2026-10-04
 payoff: a flow nobody checked can never appear on the setting readout, and a Reset after a bad write cannot leave a paused run showing a hundred times the supported maximum with no notice
+verify: grep -q 'def test_a_bare_float_written_onto_a_compartment_is_refused_at_the_write' tests/unit/test_supported_ranges.py
 ---
 
 **Problem.** A bare float written straight onto a non-frozen compartment field (circuit.fresh_gas_flow_l_min = 1000.0) is caught only at the next equation_settings(), so for one tick the snapshot and the readouts carry an unchecked value and SimulationSnapshot's typed fields carry no runtime check of their own; decide whether a __setattr__ guard or frozen compartments moves the check to the write, or record the one-tick window as accepted (found reviewing #1350)
@@ -99,6 +100,12 @@ one: 45 test rewrites and an `object.__setattr__` on every per-step write is
 too much to pay for those. Accepting leaves a notebook one assignment from a
 paused run reading a flow a hundred times the supported maximum with no
 notice, where `CLAUDE.md`'s standard puts an obvious failure first.
+
+**Answered 2026-10-04** (project owner, 2026-10-04, ratified, over frozen
+compartments, at 45 test rewrites and an `object.__setattr__` on every
+per-step write, and over accepting the window, which leaves the Reset path
+open): the `__setattr__` guard, as recommended above. The Done when below
+was written for it and stands as the decided form.
 
 **Done when.** Assigning a bare `float` to
 `BreathingCircuit.fresh_gas_flow_l_min`,

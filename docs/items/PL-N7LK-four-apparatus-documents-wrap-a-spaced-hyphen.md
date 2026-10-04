@@ -56,6 +56,8 @@ rather than a reader: a Markdown paragraph runs on across physical lines until
 a line opening with a list marker ends it, and each of these wraps took that
 line for a continuation. With `PL-DSMK` (done) and `PL-T4FK` it is three items
 on the head's fact, so it belongs to that head rather than to a new one. It is
-not added to `PL-R417`'s `root-cause-of:` here, because #1353's branch holds
-that file. No check holds the fact for a writer; `PL-LNNL` is the one that
-would.
+not added to `PL-R417`'s `root-cause-of:`: that head's fix makes readers read
+a continued statement whole and reaches no writer, so recording writer-side
+members there would put `PL-LNNL` inside its scope, a re-scoping for that
+head's next worker to weigh rather than for triage. No check holds the fact
+for a writer; `PL-LNNL` is the one that would.

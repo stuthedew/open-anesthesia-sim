@@ -5920,7 +5920,8 @@ liver. The triage pass that classed them placed both in the product lane.
 `PL-LBQY`, `PL-LLMN` and `PL-Z0T3` (`safety`, 2026-10-04) are what the review
 of `#1350` turned up in the flows' checked types and the compartments holding
 them: a bare `float` written onto a flow field, which a Reset can leave
-standing on a paused run with no notice, put as a decision; minus zero, a
+standing on a paused run with no notice, put as a decision and answered the
+same day for a write guard; minus zero, a
 `bool` and a `Decimal` admitted as flows; and `dataclasses.replace` rewriting
 the original patient's tissue flows. The triage pass that classed them placed
 them in the product lane.
