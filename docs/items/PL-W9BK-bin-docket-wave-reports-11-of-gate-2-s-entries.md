@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) and not
 added: 2026-10-03
 payoff: bin/docket wave's 'blocked outside the gate' lists only entries that wait on work outside the milestone, so a reader stops reading 11 of v0.6.0's own entries as stuck
 verify: grep -q 'def test_an_entry_waiting_only_on_its_milestones_own_scope_is_cleared_by_it' subprojects/docket/tests/test_roadmap.py
+recurrences: 2026-10-04 PL-MFVV withdrawn 2026-10-04 PL-MFVV
 ---
 
 **Problem.** bin/docket wave reports 11 of Gate 2's entries as blocked outside the gate when everything they wait on is v0.6.0's own Required scope, so it prints 3 cleared by the milestone where the frozen list's own group, which doc_check holds to Required scope, says 14

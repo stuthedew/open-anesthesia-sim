@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import subprocess
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -1615,6 +1615,32 @@ def test_candidates_mode_reports_a_removed_heading_not_a_filename(
     # The document that changed is not searched for its own name; every other
     # file linking to `docs/MODEL.md` is not evidence of drift.
     assert "MODEL.md  (MODEL.md)" not in output
+
+
+def test_candidates_find_a_title_cited_across_a_line_wrap(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A removed heading cited across a soft break is still a candidate (`PL-R417`).
+
+    The sweep matched a term against one physical line at a time, so a title
+    the prose wrapped lay on no line: 448 of the 2,180 `§ "..."` citations in
+    the tracked Markdown were wrapped on 2026-10-04, and the sweep left them
+    out or printed that nothing mentioned the term.
+    """
+    readme = README.replace('See § "Known limitations"', 'See § "Known\nlimitations"')
+    root = _repo(tmp_path, readme=readme)
+    _git_init(root)
+
+    model = root / "docs" / "MODEL.md"
+    model.write_text(
+        model.read_text(encoding="utf-8").replace("## Known limitations", "## Caveats"),
+        encoding="utf-8",
+    )
+
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "HEAD"]) == 0
+    output = capsys.readouterr().out
+    assert "README.md:4  (Known limitations)" in output
+    assert "Nothing in the documentation mentions" not in output
 
 
 def test_candidate_line_is_labelled_with_the_most_specific_term(
@@ -4203,6 +4229,22 @@ def test_math_broken_syntax_quoted_in_a_code_span_is_quiet(tmp_path: Path) -> No
     assert _math_errors(tmp_path / "repo", "docs/NOTE.md", body) == []
 
 
+def test_without_code_reads_a_span_wrapped_across_lines() -> None:
+    """A wrapped span is blanked whole, and the prose after its close stays prose.
+
+    `PL-Z8RS`. Read a line at a time, the wrapped span's closing run paired
+    with the next span's opening run on its line, so the TeX delimiter between
+    them was blanked as code and the math rules never saw it. The guard's math
+    case below holds the same reading end to end, through the reported error.
+    """
+    lines = doc_check._without_code("A `wrapped\nspan` then \\(x\\) and `next`.\n")
+
+    assert lines == [
+        "A " + " " * len("`wrapped"),
+        " " * len("span`") + " then \\(x\\) and " + " " * len("`next`") + ".",
+    ]
+
+
 def test_math_fenced_sample_is_quiet(tmp_path: Path) -> None:
     body = "Before:\n\n```text\n\\(F_A\\) and \\[F = 0.02\\]\n```\n"
 
@@ -5126,6 +5168,34 @@ def test_no_test_directory_declines_rather_than_failing(tmp_path: Path) -> None:
 
     assert not [e for e in report.errors if "test_absent_suite" in e]
     assert any("no test directory was found" in d for d in report.declined)
+
+
+def test_a_test_name_cited_in_working_notes_is_resolved(tmp_path: Path) -> None:
+    """Every standing document's test citations resolve, wrapped or not; the queue's do not.
+
+    `check_named_tests` read `docs/MODEL.md` alone until `PL-6SRZ`, so a test
+    deleted from under `docs/WORKING_NOTES.md` was reported by nothing, and a
+    name a line wrap broke inside its span was never read. An item brief's name
+    is a forward reference to work not yet done, so `docs/items/` stays quiet.
+    """
+    root = _with_tests(_repo(tmp_path), "test_the_thing_holds")
+    (root / "docs" / "WORKING_NOTES.md").write_text(
+        "# Notes\n\nHeld by `test_the_thing_\nholds`, and once by `test_renamed_away`.\n"
+        "Also by `test_wrapped_\naway`.\n",
+        encoding="utf-8",
+    )
+    store = root / "docs" / "items"
+    store.mkdir()
+    (store / "PL-ZZZZ-demo.md").write_text(
+        "Its work adds `test_not_written_yet`.\n", encoding="utf-8"
+    )
+
+    errors = [e for e in _errors(root) if "names the test" in e]
+
+    assert [error.split(", which")[0] for error in errors] == [
+        "docs/WORKING_NOTES.md:4: names the test `test_renamed_away`",
+        "docs/WORKING_NOTES.md:5: names the test `test_wrapped_away`",
+    ]
 
 
 # --- bound families, the question that comes before "does the name resolve" --
@@ -6117,3 +6187,189 @@ def test_git_answers_an_undecodable_path_as_unanswered(tmp_path: Path) -> None:
         doc_check.GitUnanswered, match=r"^`git diff` printed a path this cannot read"
     ):
         doc_check._git_output(root, "diff", "--no-renames", "-z", "--name-only", "HEAD~1", "HEAD")
+
+
+# --- statements a format carries across lines (`PL-R417`) --------------------
+#
+# Each reader below once took a physical line for a statement its format lets
+# run on: CommonMark continues a paragraph across a soft break (0.31.2 § 4.8,
+# § 6.7) and a code span across a line ending (§ 6.1). The guard hands every
+# Markdown reader its format's continuation forms and holds it to reading the
+# statement whole, or refusing it by name. The Makefile and YAML readers join
+# it with the slices that teach them.
+
+
+def _gate_heading_wrapped(tmp_path: Path) -> list[str]:
+    """A group heading wrapped before its count, and the count now wrong."""
+    roadmap = GATE_ROADMAP.replace(
+        "*The loop is visibly broken without these — two entries:*",
+        "*The loop is visibly broken without these —\nthree entries:*",
+    )
+    return _gate_errors(tmp_path, roadmap)
+
+
+def _withheld_sentence_wrapped(tmp_path: Path) -> list[str]:
+    """A `not-delegable` count wrapped mid-sentence, and the count now wrong."""
+    roadmap = WITHHELD_GATE_ROADMAP.replace(
+        "**Two entries are marked `not-delegable`,**",
+        "**Three entries are\nmarked `not-delegable`,**",
+    )
+    return _withheld_errors(_withheld_repo(tmp_path, roadmap))
+
+
+def _split_marker_errors(root: Path) -> list[str]:
+    return [error for error in _errors(root) if "does not close on its line" in error]
+
+
+def _provenance_marker_split(tmp_path: Path) -> list[str]:
+    model = MODEL + (
+        "\nThe fraction is 0.5.\n"
+        "<!-- provenance: data/agents/demo.json\n"
+        "blood_gas_partition_coefficient = 0.5 -->\n"
+    )
+    return _split_marker_errors(_repo(tmp_path, model=model))
+
+
+def _absent_marker_split(tmp_path: Path) -> list[str]:
+    readme = README + "\nA `tools/planned.py` will do it.\n<!-- absent:\ntools/planned.py -->\n"
+    return _split_marker_errors(_repo(tmp_path, readme=readme))
+
+
+def _lazy_family_member(tmp_path: Path) -> list[str]:
+    """A list member whose second line lost its indent."""
+    model = MODEL.replace(f"  (`{LIST_FAMILY_TEST}`).", f"(`{LIST_FAMILY_TEST}`).")
+    return [error for error in _errors(_repo(tmp_path, model=model)) if "bound family" in error]
+
+
+def _wrapped_family_member(_: Path) -> bool:
+    """A list member naming its test in a code span the wrap broke."""
+    document = LIST_FAMILY_DOCUMENT.replace(
+        "`test_the_clock_states_its_playback_rate`", "`test_the_clock_states_\n  its_playback_rate`"
+    )
+    members = list(doc_check._list_members(document, _list_family()))
+    return doc_check._names_a_test(members[1][1])
+
+
+TEX_ERROR = (
+    "docs/NOTE.md:2 writes math as `{}`, which GitHub does not render; use `$`...`$` inline "
+    "or a `$$` fence for a block"
+)
+SPLIT_MARKER_ERROR = (
+    "{}: this `{}:` marker does not close on its line; a marker is read a line at a time, so "
+    "this one was read as nothing - write it on one line"
+)
+
+#: Each Markdown reader, a statement its format carries across a line break,
+#: and what the reader must make of it: the statement read whole, or refused by
+#: name. Keyed by reader, so a failure names the one that read a fragment.
+CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
+    # The close-out sweep's search, `mentions`.
+    "candidates, a paragraph's soft break": (
+        lambda _: doc_check.mentions("Known limitations", 'See § "Known\nlimitations".\n'),
+        [1],
+    ),
+    "candidates, a list item's continuation": (
+        lambda _: doc_check.mentions("Known limitations", '- See § "Known\n  limitations".\n'),
+        [1],
+    ),
+    "candidates, a blockquote's continuation": (
+        lambda _: doc_check.mentions("Known limitations", '> See § "Known\n> limitations".\n'),
+        [1],
+    ),
+    "candidates, a blank line ends the phrase": (
+        lambda _: doc_check.mentions("Known limitations", "Known\n\nlimitations\n"),
+        [],
+    ),
+    "candidates, a list item interrupts the phrase": (
+        lambda _: doc_check.mentions("Known limitations", "Known\n- limitations\n"),
+        [],
+    ),
+    "candidates, a fence's line break is no soft break": (
+        lambda _: doc_check.mentions("Known limitations", "```text\nKnown\nlimitations\n```\n"),
+        [],
+    ),
+    # `_marks_code` (`PL-Z8RS`): a wrapped span's closing run no longer pairs
+    # with the next span's opening one, so the word between them is prose.
+    "code marking, prose after a wrapped span": (
+        lambda _: doc_check.mentions("token", "A `wrapped\nspan` then token and `next`.\n"),
+        [],
+    ),
+    "code marking, a word inside a wrapped span": (
+        lambda _: doc_check.mentions("token", "A `wrapped\ntoken` here.\n"),
+        [2],
+    ),
+    # `_without_code` (`PL-Z8RS`): the delimiter after the wrapped span's close
+    # reaches the math rule instead of being blanked as code.
+    "math prose, a TeX delimiter after a wrapped span": (
+        lambda root: _math_errors(
+            root / "repo", "docs/NOTE.md", "A `wrapped\nspan` then \\(x\\) and `next`.\n"
+        ),
+        [TEX_ERROR.format("\\("), TEX_ERROR.format("\\)")],
+    ),
+    # `check_named_tests` and `check_bound_families` (`PL-6SRZ`).
+    "named tests, a name wrapped inside its span": (
+        lambda _: list(doc_check._named_tests("Held by `test_the_clock_states_\nits_rate`.\n")),
+        [(1, "test_the_clock_states_its_rate")],
+    ),
+    "bound family, a member's name wrapped inside its span": (_wrapped_family_member, True),
+    "bound family, a lazy continuation is refused": (
+        _lazy_family_member,
+        [
+            'docs/MODEL.md:29: § "Minimum displayed outputs" is a bound family, and its '
+            "members were not read: this line carries on the entry above it without an "
+            "indent, which CommonMark reads as part of that entry and the list walker does "
+            "not; indent it to keep it in the entry, or put a blank line before it"
+        ],
+    ),
+    # The section titles a citation may name, and the links it may follow.
+    "section titles, a wrapped bold title": (
+        lambda _: "A title that wraps" in doc_check._headings("**A title that\nwraps.** Body.\n"),
+        True,
+    ),
+    "links, wrapped link text": (
+        lambda _: [link["target"] for link in doc_check.LINK_RE.finditer("[the\nnotes](x.md)")],
+        ["x.md"],
+    ),
+    # The counts a frozen list states about itself.
+    "gate counts, a wrapped group heading": (
+        _gate_heading_wrapped,
+        [
+            "ROADMAP.md:32: this group heading of v0.4.0's frozen list says 3 entries, but 2 "
+            "follow it",
+            "ROADMAP.md:26: the group headings of v0.4.0's frozen list count 6 entries between "
+            "them, but the list holds 5",
+        ],
+    ),
+    "gate counts, a wrapped not-delegable sentence": (
+        _withheld_sentence_wrapped,
+        [
+            "ROADMAP.md:60: this sentence says 3 of v0.4.0's frozen entries are marked "
+            "`not-delegable`, but 2 of them hold an item carrying that field"
+        ],
+    ),
+    # Markers are syntax, read a line at a time, so a split one is refused.
+    "markers, a provenance marker split across lines": (
+        _provenance_marker_split,
+        [SPLIT_MARKER_ERROR.format("docs/MODEL.md:32", "provenance")],
+    ),
+    "markers, an absent marker split across lines": (
+        _absent_marker_split,
+        [SPLIT_MARKER_ERROR.format("README.md:7", "absent")],
+    ),
+}
+
+
+@pytest.mark.parametrize("reader", sorted(CONTINUED_STATEMENTS))
+def test_each_reader_reads_its_formats_continued_statement_whole(
+    reader: str, tmp_path: Path
+) -> None:
+    """Every reader takes a continued statement whole, or refuses it by name.
+
+    `PL-R417`'s guard. Six readers took a physical line for the statement of a
+    format that continues one across lines, and each fix taught one reader one
+    rule; this holds them all to their format's continuation forms at once, so
+    a reader that reads a fragment fails here under its own name.
+    """
+    read, expected = CONTINUED_STATEMENTS[reader]
+
+    assert read(tmp_path) == expected

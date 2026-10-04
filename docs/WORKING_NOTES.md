@@ -1803,11 +1803,11 @@ a session cannot forget: a fault-injection test that fails the Nth git call and
 asserts each public read declines or keeps the mark. Prose demonstrably cannot
 do it — `_superseded`'s docstring states the correct direction in three cases
 while the code inverts two of them. No test asserted `_superseded`'s inverted
-cases: the test this sentence first cited, by line number,
-`test_no_git_means_no_claims_about_branches` in
-`subprojects/docket/tests/test_vcs.py`, asserted the same silence-as-clean
+cases: the test this sentence first cited, by line number, in
+`subprojects/docket/tests/test_vcs.py` asserted the same silence-as-clean
 reading one level up, `branches_in_flight` reporting no branches when git
-answered nothing. `PL-Q9Z1` (#687) turned that test around, and the direction
+answered nothing. `PL-Q9Z1` (#687) turned that test around under a new name,
+since gone too, and the direction
 is now held by `test_one_silenced_git_call_never_leaves_a_read_looking_clean`
 in `subprojects/docket/tests/test_vcs_silence.py` (corrected under `PL-245B`).
 
