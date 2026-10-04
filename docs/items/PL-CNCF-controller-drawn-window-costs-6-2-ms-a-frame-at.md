@@ -143,3 +143,40 @@ consequence once claimed for the stale spelling, that it escaped
 `protected_paths`, never held: `docket.toml` protects the directory
 `src/anesthesia_sim/core`, which either spelling matches (`PL-RWBV`, 2026-09-21).
 <!-- absent: core/run_score.py -->
+
+**Re-confirmed and re-measured 2026-10-04, before the work.** The brief still
+holds against the tree; `evaluate_anchored` is now at
+`src/anesthesia_sim/core/run_definition.py:536`. A 30-minute run with one dial
+change at 600 s, a 15-minute window ending at the run's instant, median of 40
+`drawn_window` calls on this session's container:
+
+| Columns | Per call |
+| ---: | ---: |
+| 150 | 6.6 ms |
+| 601 | 9.3 ms |
+| 1 069 | 12.2 ms |
+| 2 400 | 22.1 ms |
+
+Every call formed four matrix exponentials with one segment in view - the
+window's two bounds, the segment's first grid column, and the spacing - about
+1.4 ms each, plus about 6.9 us a column. A window following the run, two
+steps a frame, read the same.
+
+- *Two of the four repeat frame to frame.* The spacing's propagator is the
+  same matrix every frame, and the keyframe-to-first-grid-column one changes
+  only when the window's start crosses a grid multiple, about once in 30
+  frames at 150 columns. A memo keyed on `(settings, interval_s)` skips both,
+  about 2.8 ms a run a frame, and changes no drawn value:
+  `UptakeEquationSettings` is a frozen dataclass
+  (`src/anesthesia_sim/core/governing_equations.py:269`) and
+  `build_system_matrix` reads nothing else, so a hit returns the bits a
+  recompute would. Neither `record_change` shape above can fool that key,
+  because neither reuses a settings value for different physics.
+- *The two bounds move every frame*, so they keep costing about 2.8 ms, and
+  the per-column products are untouched: at 1 069 columns the memo saves
+  about a fifth.
+- *Still to measure before choosing the memo or recording the cost as
+  accepted:* the frame interval the dashboard actually runs at, and how many
+  runs it draws a frame. The memo would stay on the display path, per
+  instance and bounded, so `state_at`'s "no cache" guarantee and
+  `docs/MODEL.md` § "The canonical evaluation rule" are untouched.
