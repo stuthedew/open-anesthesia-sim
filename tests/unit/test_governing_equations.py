@@ -14,6 +14,7 @@ agent - are asserted separately, because those hold for every parameter set
 rather than for these numbers.
 """
 
+from dataclasses import fields
 from math import inf, nan, nextafter
 from typing import NamedTuple
 
@@ -63,6 +64,8 @@ CARDIAC_OUTPUT_L_S = CARDIAC_OUTPUT_L_MIN / SECONDS_PER_MINUTE
 BLOOD_GAS = 0.65
 DELIVERED_PERCENT = Percent(2.0)
 DELIVERED_FRACTION = fraction_from_percent(DELIVERED_PERCENT)
+MAX_DELIVERED_PERCENT = Percent(8.0)
+"""Sevoflurane's vaporizer maximum, the one the `PL-BBMG` reproduction ran past."""
 
 TISSUES = (
     ("vessel_rich", 6.0, 5.85, 1.7),
@@ -87,6 +90,7 @@ def _settings(**overrides: object) -> UptakeEquationSettings:
         "cardiac_output_l_min": CARDIAC_OUTPUT_L_MIN,
         "blood_gas_partition_coefficient": BLOOD_GAS,
         "delivered_concentration_percent": DELIVERED_PERCENT,
+        "max_delivered_concentration_percent": MAX_DELIVERED_PERCENT,
         "tissues": tuple(
             TissueGroupEquationSettings(
                 name=name,
@@ -217,6 +221,74 @@ def test_rejects_a_flow_handed_in_as_a_bare_float(flow: Flow) -> None:
 
     with pytest.raises(TypeError, match=f"not built as {flow.flow_type.__name__}"):
         _settings(**{flow.field: float(held)})
+
+
+# --- The dial against the vaporizer maximum (PL-BBMG) ------------------------
+#
+# The one bound in the record that is a relation rather than a range: a dial is
+# deliverable only against the maximum of the vaporizer in use, so the record
+# carries the maximum beside the dial and refuses the one above the other,
+# through the guard the circuit calls.
+
+
+def test_rejects_a_dial_above_the_vaporizer_maximum() -> None:
+    """`PL-BBMG`, reproduced 2026-10-04: 20% sevoflurane against an 8% maximum built a record.
+
+    The record held the dial alone and bounded it at `require_percent`'s 100,
+    so a dial the circuit refuses was accepted by the record a run is built
+    from. It refuses now, in the circuit's own sentence, and the first percent
+    past the maximum is refused with it.
+    """
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"delivered_concentration_percent exceeds the vaporizer maximum "
+        r"\(20% requested, 8% maximum\)",
+    ):
+        _settings(delivered_concentration_percent=Percent(20.0))
+
+    with pytest.raises(SimulationConfigurationError, match="exceeds the vaporizer maximum"):
+        _settings(delivered_concentration_percent=Percent(nextafter(MAX_DELIVERED_PERCENT, inf)))
+
+
+def test_accepts_a_dial_at_the_vaporizer_maximum_and_the_vaporizer_off() -> None:
+    """The maximum is a dial position the machine has, and zero is washout."""
+
+    for dialled in (MAX_DELIVERED_PERCENT, Percent(0.0)):
+        settings = _settings(delivered_concentration_percent=dialled)
+
+        assert settings.delivered_concentration_percent == dialled
+        assert settings.max_delivered_concentration_percent == MAX_DELIVERED_PERCENT
+
+
+@pytest.mark.parametrize("maximum", [0.0, -1.0, 101.0, nan, inf], ids=repr)
+def test_rejects_a_vaporizer_maximum_no_vaporizer_has(maximum: float) -> None:
+    """The maximum is checked as `BreathingCircuit` checks its own: a positive percent."""
+
+    with pytest.raises(SimulationConfigurationError, match="max_delivered_concentration_percent"):
+        _settings(
+            delivered_concentration_percent=Percent(0.0),
+            max_delivered_concentration_percent=maximum,
+        )
+
+
+def test_a_record_cannot_be_built_without_a_vaporizer_maximum() -> None:
+    """The field has no default, so a record that states no maximum is refused outright.
+
+    `BreathingCircuit` defaults its maximum to 100% for a circuit built without
+    an agent; a record defaulting the same way would be the gap `PL-BBMG`
+    closes with a field added.
+    """
+
+    held = _settings()
+    without_a_maximum = {
+        field.name: getattr(held, field.name)
+        for field in fields(UptakeEquationSettings)
+        if field.name != "max_delivered_concentration_percent"
+    }
+
+    with pytest.raises(TypeError, match="max_delivered_concentration_percent"):
+        UptakeEquationSettings(**without_a_maximum)  # type: ignore[arg-type]
 
 
 def test_the_matrix_is_square_and_the_right_size() -> None:

@@ -99,6 +99,7 @@ from anesthesia_sim.core.validation import (
     require_nonnegative_finite,
     require_percent,
     require_positive_finite,
+    require_within_vaporizer_maximum,
 )
 
 INSPIRED_FRACTION = 0
@@ -268,13 +269,17 @@ class TissueGroupEquationSettings:
 
 @dataclass(frozen=True, slots=True)
 class UptakeEquationSettings:
-    """Everything the governing equations need that a step does not change.
+    """Everything the governing equations need that a step does not change,
+    and the one bound a run owes its reader beside them.
 
     Frozen and compared by value, because `uptake_system.py` uses it as the
     key its propagator is cached against: two steps taken under equal settings
     must reuse one propagator, and a step taken under any different setting
     must not. Deriving the key from the same object the matrix is built from is
     what makes a stale propagator unrepresentable rather than merely unlikely.
+    It is also what a run holds per stretch (`core/run_definition.py`), and a
+    stretch that cannot say its dial was deliverable is incomplete, which is
+    why it carries the one field the matrix never reads, below.
 
     **Flows are held in the litres per minute they were set to, and read in
     litres per second.** `docs/MODEL.md` § "Governing equations" writes every
@@ -305,18 +310,37 @@ class UptakeEquationSettings:
     checks a range again, and a bare `float` is refused as the programming
     error it is. A tissue group's flow needs no range of its own: each is
     nonnegative and together they sum to cardiac output, so none can exceed
-    it. The delivered concentration is bounded at 100% and no lower, because
-    its limit is the agent's vaporizer maximum, which this record does not
-    carry (`PL-BBMG`).
+    it.
+
+    **The dial is bounded by the vaporizer maximum it is held beside**
+    (`PL-BBMG`). The delivered concentration's limit is the maximum of the
+    agent's vaporizer rather than a constant of the model, so no type can
+    carry it: a dial is deliverable only against a maximum, and the check
+    belongs to a record holding both, which is where
+    `.claude/rules/core-domain.md` stops the checked-type pattern. Until
+    `PL-BBMG` this record held the dial alone and bounded it at
+    `require_percent`'s 100, so a record rebuilt with `dataclasses.replace`
+    to 20% sevoflurane against an 8% maximum opened a run and answered a
+    precise-looking trace. It carries `max_delivered_concentration_percent`
+    now, required and with no default, and refuses a dial above it through
+    `require_within_vaporizer_maximum`, the guard `BreathingCircuit` calls,
+    so the two refuse in one sentence. No default, because `BreathingCircuit`
+    defaults its maximum to 100% for a circuit built without an agent, and a
+    record defaulting the same way would be the gap this closes with a field
+    added. The matrix never reads the maximum; `AgentUptakeSystem` reads it
+    off the circuit into every record it builds, and into the propagator
+    cache key with the rest of the record.
 
     Raises:
         SimulationConfigurationError: a volume or the blood:gas partition
-            coefficient is not positive and finite, the delivered
-            concentration is not a percent in [0, 100], the number of tissue
-            groups is not the three `patient.py` builds, or the tissue flows
-            do not sum to cardiac output.
+            coefficient is not positive and finite, the vaporizer maximum is
+            not a positive percent, the delivered concentration is not a
+            percent in [0, 100] or is above the vaporizer maximum, the number
+            of tissue groups is not the three `patient.py` builds, or the
+            tissue flows do not sum to cardiac output.
         TypeError: a flow was not built as its checked type, in
-            `core/supported_ranges.py`.
+            `core/supported_ranges.py`, or the record was built without a
+            vaporizer maximum.
     """
 
     circuit_volume_l: float
@@ -327,6 +351,7 @@ class UptakeEquationSettings:
     cardiac_output_l_min: CardiacOutput
     blood_gas_partition_coefficient: float
     delivered_concentration_percent: Percent
+    max_delivered_concentration_percent: Percent
     tissues: tuple[TissueGroupEquationSettings, ...]
 
     def __post_init__(self) -> None:
@@ -339,7 +364,18 @@ class UptakeEquationSettings:
         require_positive_finite(
             "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
         )
+        require_percent(
+            "max_delivered_concentration_percent", self.max_delivered_concentration_percent
+        )
+        require_positive_finite(
+            "max_delivered_concentration_percent", self.max_delivered_concentration_percent
+        )
         require_percent("delivered_concentration_percent", self.delivered_concentration_percent)
+        require_within_vaporizer_maximum(
+            "delivered_concentration_percent",
+            self.delivered_concentration_percent,
+            self.max_delivered_concentration_percent,
+        )
 
         if len(self.tissues) != TISSUE_GROUP_COUNT:
             raise SimulationConfigurationError(

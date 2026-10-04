@@ -10,11 +10,13 @@ from math import inf, nan
 
 import pytest
 
+from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import (
     require_fraction,
     require_nonnegative_finite,
     require_positive_finite,
+    require_within_vaporizer_maximum,
 )
 
 
@@ -49,3 +51,23 @@ def test_require_fraction_rejects_within_the_hierarchy(value: float) -> None:
 )
 def test_guards_accept_their_boundary_values(guard, value: float) -> None:
     guard("value", value)
+
+
+def test_require_within_vaporizer_maximum_rejects_within_the_hierarchy() -> None:
+    """The one relation among the guards refuses in the circuit's sentence (`PL-BBMG`)."""
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=r"delivered_concentration_percent exceeds the vaporizer maximum "
+        r"\(20% requested, 8% maximum\)",
+    ):
+        require_within_vaporizer_maximum(
+            "delivered_concentration_percent", Percent(20.0), Percent(8.0)
+        )
+
+
+@pytest.mark.parametrize("dialled", [0.0, 7.999, 8.0])
+def test_require_within_vaporizer_maximum_accepts_up_to_the_maximum(dialled: float) -> None:
+    require_within_vaporizer_maximum(
+        "delivered_concentration_percent", Percent(dialled), Percent(8.0)
+    )
