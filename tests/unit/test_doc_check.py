@@ -4229,6 +4229,22 @@ def test_math_broken_syntax_quoted_in_a_code_span_is_quiet(tmp_path: Path) -> No
     assert _math_errors(tmp_path / "repo", "docs/NOTE.md", body) == []
 
 
+def test_without_code_reads_a_span_wrapped_across_lines() -> None:
+    """A wrapped span is blanked whole, and the prose after its close stays prose.
+
+    `PL-Z8RS`. Read a line at a time, the wrapped span's closing run paired
+    with the next span's opening run on its line, so the TeX delimiter between
+    them was blanked as code and the math rules never saw it. The guard's math
+    case below holds the same reading end to end, through the reported error.
+    """
+    lines = doc_check._without_code("A `wrapped\nspan` then \\(x\\) and `next`.\n")
+
+    assert lines == [
+        "A " + " " * len("`wrapped"),
+        " " * len("span`") + " then \\(x\\) and " + " " * len("`next`") + ".",
+    ]
+
+
 def test_math_fenced_sample_is_quiet(tmp_path: Path) -> None:
     body = "Before:\n\n```text\n\\(F_A\\) and \\[F = 0.02\\]\n```\n"
 
@@ -5170,7 +5186,7 @@ def test_a_test_name_cited_in_working_notes_is_resolved(tmp_path: Path) -> None:
     )
     store = root / "docs" / "items"
     store.mkdir()
-    (store / "PL-ABCD-demo.md").write_text(
+    (store / "PL-ZZZZ-demo.md").write_text(
         "Its work adds `test_not_written_yet`.\n", encoding="utf-8"
     )
 
