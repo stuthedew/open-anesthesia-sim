@@ -903,10 +903,11 @@ class _BreathingCircuitPayload(_StrictPayload):
 
     `default_fresh_gas_flow_l_min` is checked as positive and finite here and
     not against `core/supported_ranges.py`, matching how the reference
-    patient's flows are handled: the range guard belongs to the compartment
-    that will hold the value, so a data file naming an unsupported flow is
-    refused by `BreathingCircuit.__post_init__` with the message that names
-    the interval, rather than by a second copy of the interval here.
+    patient's flows are handled: the range is checked once, where the value
+    is built as its `FreshGasFlow` in `AgentUptakeSystem.for_agent`, so a
+    data file naming an unsupported flow is refused there with the message
+    that names the interval, rather than by a second copy of the interval
+    here (`PL-0YYV`).
 
     It is also optional, and omitting it or writing `null` reads as *this
     profile states no startup flow*, never as *this machine has none*

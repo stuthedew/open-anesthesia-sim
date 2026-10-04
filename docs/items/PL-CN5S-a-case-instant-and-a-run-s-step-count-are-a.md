@@ -3,7 +3,7 @@ id: PL-CN5S
 title: A case instant and a run's step count are a bare float and a bare int checked by hand where each enters - require_supported_case_instant at RunDefinition's two ways in, _require_step_count in SimulationState - so a new way in for either repeats the check or skips it; slice 2 of PL-51B7 gives each a checked type, CaseInstant in s and StepCount, an int subclass checking what a count can be checked for alone
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: refactor
 feature: parse-dont-validate
 touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/simulation_view.py, tests, docs/MODEL.md
@@ -40,10 +40,11 @@ know to call it.
   the step and the flows.
 - `docs/MODEL.md` says where each is enforced.
 
-**Blocked by `PL-0YYV`**, slice 1. The two slices share no code, since the
-quantities are independent. They do share files, `app/controller.py`,
-`docs/MODEL.md` and the tests, and the owner set the order: three slices, each
-green on its own, run in order (`PL-51B7`).
+**Was blocked by `PL-0YYV`**, slice 1, which closed in pull request 1350 on
+2026-10-04. The two slices share no code, since the quantities are
+independent. They do share files, `app/controller.py`, `docs/MODEL.md` and
+the tests, and the owner set the order: three slices, each green on its own,
+run in order (`PL-51B7`) - so this one starts once 1350 has merged.
 
 **Done when.** `CaseInstant` and `StepCount` exist and are built only through
 their checks; `RunDefinition`'s instants, `app/bookmarks.py`'s and the instants a

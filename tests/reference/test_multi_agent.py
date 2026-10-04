@@ -5,6 +5,7 @@ from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
@@ -70,7 +71,9 @@ def _build_system_for_agent(agent_id: str) -> AgentUptakeSystem:
         ),
         alveoli=AlveolarCompartment(
             gas_volume_l=patient_parameters.alveolar_gas_volume_l,
-            alveolar_ventilation_l_min=patient_parameters.default_alveolar_ventilation_l_min,
+            alveolar_ventilation_l_min=AlveolarVentilation(
+                patient_parameters.default_alveolar_ventilation_l_min
+            ),
         ),
         patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
     )
@@ -107,7 +110,7 @@ def test_equilibrium_produces_no_net_internal_transfer(agent_id: str) -> None:
     """
 
     system = _build_system_for_agent(agent_id)
-    system.set_fresh_gas_flow(0.0)
+    system.set_fresh_gas_flow(FreshGasFlow(0.0))
 
     equilibrium_fraction = 0.05
 

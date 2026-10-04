@@ -19,6 +19,7 @@ from anesthesia_sim.core.parameters import (
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
+    FreshGasFlow,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -34,7 +35,9 @@ def test_rejects_agent_amount_above_circuit_capacity() -> None:
 
 def test_one_time_constant_reaches_expected_fraction() -> None:
     circuit = BreathingCircuit(
-        circuit_volume_l=6.0, fresh_gas_flow_l_min=6.0, delivered_concentration_percent=100.0
+        circuit_volume_l=6.0,
+        fresh_gas_flow_l_min=FreshGasFlow(6.0),
+        delivered_concentration_percent=100.0,
     )
 
     circuit.advance(circuit.time_constant_s)
@@ -44,7 +47,7 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
 
 def test_zero_fresh_gas_flow_preserves_concentration() -> None:
     circuit = BreathingCircuit(
-        fresh_gas_flow_l_min=0.0,
+        fresh_gas_flow_l_min=FreshGasFlow(0.0),
         delivered_concentration_percent=100.0,
         inspired_partial_pressure_fraction=0.25,
     )
@@ -58,7 +61,7 @@ def test_zero_fresh_gas_flow_preserves_concentration() -> None:
 def test_zero_delivered_concentration_washes_out_circuit() -> None:
     circuit = BreathingCircuit(
         circuit_volume_l=6.0,
-        fresh_gas_flow_l_min=6.0,
+        fresh_gas_flow_l_min=FreshGasFlow(6.0),
         delivered_concentration_percent=0.0,
         inspired_partial_pressure_fraction=1.0,
     )
@@ -100,7 +103,7 @@ def test_rejects_invalid_circuit_volume(circuit_volume_l: float) -> None:
 @pytest.mark.parametrize("fresh_gas_flow_l_min", [-1.0, float("nan")])
 def test_rejects_invalid_fresh_gas_flow(fresh_gas_flow_l_min: float) -> None:
     with pytest.raises(SimulationConfigurationError):
-        BreathingCircuit(fresh_gas_flow_l_min=fresh_gas_flow_l_min)
+        BreathingCircuit(fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min))
 
 
 @pytest.mark.parametrize("delivered_concentration_percent", [-1.0, 101.0, float("nan")])
@@ -169,11 +172,11 @@ def test_accepts_fresh_gas_flow_at_both_ends_of_the_supported_range() -> None:
     corner of the settings envelope every reference gate measures at."""
 
     for fresh_gas_flow_l_min in (0.0, MAXIMUM_FRESH_GAS_FLOW_L_MIN):
-        circuit = BreathingCircuit(fresh_gas_flow_l_min=fresh_gas_flow_l_min)
+        circuit = BreathingCircuit(fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min))
 
         assert circuit.fresh_gas_flow_l_min == fresh_gas_flow_l_min
 
-        circuit.set_fresh_gas_flow(fresh_gas_flow_l_min)
+        circuit.set_fresh_gas_flow(FreshGasFlow(fresh_gas_flow_l_min))
 
         assert circuit.fresh_gas_flow_l_min == fresh_gas_flow_l_min
 
@@ -187,17 +190,17 @@ def test_rejects_fresh_gas_flow_above_the_supported_range() -> None:
     passes through, the same argument the vaporizer maximum above rests on.
     """
 
-    circuit = BreathingCircuit(fresh_gas_flow_l_min=4.0)
+    circuit = BreathingCircuit(fresh_gas_flow_l_min=FreshGasFlow(4.0))
 
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
-        circuit.set_fresh_gas_flow(500.0)
+        circuit.set_fresh_gas_flow(FreshGasFlow(500.0))
 
     assert circuit.fresh_gas_flow_l_min == 4.0
 
 
 def test_rejects_construction_with_fresh_gas_flow_above_the_supported_range() -> None:
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
-        BreathingCircuit(fresh_gas_flow_l_min=500.0)
+        BreathingCircuit(fresh_gas_flow_l_min=FreshGasFlow(500.0))
 
 
 def test_changing_circuit_volume_conserves_stored_agent() -> None:
@@ -481,14 +484,14 @@ def test_a_declared_range_includes_both_of_its_own_endpoints() -> None:
     """
 
     circuit = BreathingCircuit(
-        fresh_gas_flow_l_min=1.0,
+        fresh_gas_flow_l_min=FreshGasFlow(1.0),
         deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
             minimum_l_min=0.5, maximum_l_min=8.0
         ),
     )
 
     for flow in (0.5, 4.0, 8.0):
-        circuit.set_fresh_gas_flow(flow)
+        circuit.set_fresh_gas_flow(FreshGasFlow(flow))
         assert circuit.fresh_gas_flow_l_min == flow
 
 
@@ -502,7 +505,7 @@ def test_construction_is_refused_at_a_flow_the_machine_cannot_deliver() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="machine can deliver"):
         BreathingCircuit(
-            fresh_gas_flow_l_min=0.2,
+            fresh_gas_flow_l_min=FreshGasFlow(0.2),
             deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
                 minimum_l_min=0.5, maximum_l_min=8.0
             ),
@@ -522,12 +525,12 @@ def test_a_profile_declaring_no_range_leaves_the_model_envelope_alone() -> None:
 
     assert circuit.deliverable_fresh_gas_flow_range is None
 
-    circuit.set_fresh_gas_flow(MAXIMUM_FRESH_GAS_FLOW_L_MIN)
+    circuit.set_fresh_gas_flow(FreshGasFlow(MAXIMUM_FRESH_GAS_FLOW_L_MIN))
 
     assert circuit.fresh_gas_flow_l_min == MAXIMUM_FRESH_GAS_FLOW_L_MIN
 
     with pytest.raises(SimulationConfigurationError, match="compartment model"):
-        circuit.set_fresh_gas_flow(MAXIMUM_FRESH_GAS_FLOW_L_MIN + 1.0)
+        circuit.set_fresh_gas_flow(FreshGasFlow(MAXIMUM_FRESH_GAS_FLOW_L_MIN + 1.0))
 
 
 def test_a_machine_that_overlaps_the_envelope_nowhere_is_refused_when_built() -> None:
@@ -558,7 +561,7 @@ def test_a_range_touching_the_envelope_at_one_point_is_built() -> None:
     """The overlap test is on the closed intervals, so one shared flow is enough."""
 
     circuit = BreathingCircuit(
-        fresh_gas_flow_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+        fresh_gas_flow_l_min=FreshGasFlow(MAXIMUM_FRESH_GAS_FLOW_L_MIN),
         deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
             minimum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN,
             maximum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN + 5.0,
@@ -600,7 +603,7 @@ def test_a_range_may_be_floored_at_zero() -> None:
         )
     )
 
-    circuit.set_fresh_gas_flow(0.0)
+    circuit.set_fresh_gas_flow(FreshGasFlow(0.0))
 
     assert circuit.fresh_gas_flow_l_min == 0.0
 

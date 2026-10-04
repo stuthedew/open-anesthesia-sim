@@ -45,6 +45,7 @@ from anesthesia_sim.core.governing_equations import (
 )
 from anesthesia_sim.core.patient import PatientCompartmentsState
 from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem, AgentUptakeSystemState
 
@@ -376,9 +377,9 @@ def test_restoring_the_system_cannot_raise_on_a_state_a_run_produced() -> None:
 
     state = system.capture_state()
 
-    system.set_cardiac_output(10.0)
-    system.set_fresh_gas_flow(0.5)
-    system.set_alveolar_ventilation(1.0)
+    system.set_cardiac_output(CardiacOutput(10.0))
+    system.set_fresh_gas_flow(FreshGasFlow(0.5))
+    system.set_alveolar_ventilation(AlveolarVentilation(1.0))
     system.circuit.set_circuit_volume(0.5)
 
     system.restore_state(state)
@@ -428,9 +429,9 @@ def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
         (lambda s: s.circuit.set_circuit_volume(7.0), "circuit volume"),
         (lambda s: setattr(s.alveoli, "gas_volume_l", 3.0), "alveolar volume"),
         (lambda s: setattr(s.patient.venous_blood, "volume_l", 6.0), "venous volume"),
-        (lambda s: s.set_fresh_gas_flow(3.0), "fresh gas flow"),
-        (lambda s: s.set_alveolar_ventilation(5.0), "alveolar ventilation"),
-        (lambda s: s.set_cardiac_output(6.0), "cardiac output"),
+        (lambda s: s.set_fresh_gas_flow(FreshGasFlow(3.0)), "fresh gas flow"),
+        (lambda s: s.set_alveolar_ventilation(AlveolarVentilation(5.0)), "alveolar ventilation"),
+        (lambda s: s.set_cardiac_output(CardiacOutput(6.0)), "cardiac output"),
         (
             lambda s: setattr(s.patient.venous_blood, "blood_gas_partition_coefficient", 0.9),
             "blood:gas partition coefficient",
@@ -474,12 +475,12 @@ def test_a_step_after_a_setting_moved_propagates_with_the_new_matrix() -> None:
 
     changed = AgentUptakeSystem.for_agent("sevoflurane")
     changed.advance(SimulationStep(0.1))
-    changed.set_alveolar_ventilation(8.0)
+    changed.set_alveolar_ventilation(AlveolarVentilation(8.0))
     changed.advance(SimulationStep(0.1))
 
     rebuilt = AgentUptakeSystem.for_agent("sevoflurane")
     rebuilt.advance(SimulationStep(0.1))
-    rebuilt.set_alveolar_ventilation(8.0)
+    rebuilt.set_alveolar_ventilation(AlveolarVentilation(8.0))
     rebuilt._propagator = None
     rebuilt._propagator_key = None
     rebuilt.advance(SimulationStep(0.1))

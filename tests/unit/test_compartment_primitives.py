@@ -29,6 +29,7 @@ import pytest
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
+from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 
 # The fraction each compartment is loaded to, and the constant input each is
@@ -111,7 +112,7 @@ class CompartmentPrimitive:
 def _build_circuit(fresh_gas_flow_l_min: float) -> BreathingCircuit:
     return BreathingCircuit(
         circuit_volume_l=6.0,
-        fresh_gas_flow_l_min=fresh_gas_flow_l_min,
+        fresh_gas_flow_l_min=FreshGasFlow(fresh_gas_flow_l_min),
         delivered_concentration_percent=DRIVING_PERCENT,
         inspired_partial_pressure_fraction=LOADED_FRACTION,
     )

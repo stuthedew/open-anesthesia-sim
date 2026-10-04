@@ -4,6 +4,7 @@ import pytest
 
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
+from anesthesia_sim.core.supported_ranges import FreshGasFlow
 
 
 @pytest.mark.parametrize("elapsed_s", [0.0, 30.0, 60.0, 120.0, 300.0])
@@ -11,7 +12,7 @@ def test_circuit_matches_analytic_wash_in(elapsed_s: float) -> None:
     delivered_percent = Percent(8.0)
     circuit = BreathingCircuit(
         circuit_volume_l=6.0,
-        fresh_gas_flow_l_min=6.0,
+        fresh_gas_flow_l_min=FreshGasFlow(6.0),
         delivered_concentration_percent=delivered_percent,
     )
 

@@ -103,12 +103,13 @@ from anesthesia_sim.core.governing_equations import (
     UptakeEquationSettings,
 )
 from anesthesia_sim.core.run_definition import DisplayState, RunDefinition
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 CHANGES: tuple[tuple[float, str, float], ...] = (
     (30.0, "set_delivered_concentration_percent", 4.0),
-    (120.0, "set_alveolar_ventilation", 6.0),
-    (450.0, "set_fresh_gas_flow", 2.0),
+    (120.0, "set_alveolar_ventilation", AlveolarVentilation(6.0)),
+    (450.0, "set_fresh_gas_flow", FreshGasFlow(2.0)),
     (900.0, "set_delivered_concentration_percent", 1.0),
 )
 """When each control moves, and to what, in the run every test here uses.

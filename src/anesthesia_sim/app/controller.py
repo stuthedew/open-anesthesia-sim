@@ -51,6 +51,9 @@ from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    AlveolarVentilation,
+    CardiacOutput,
+    FreshGasFlow,
     require_supported_run_length,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -105,10 +108,10 @@ class SimulationSnapshot:
     trace it is read against, and why it is not a time to wake-up.
     """
     circuit_volume_l: float
-    fresh_gas_flow_l_min: float
+    fresh_gas_flow_l_min: FreshGasFlow
     delivered_concentration_percent: Percent
-    alveolar_ventilation_l_min: float
-    cardiac_output_l_min: float
+    alveolar_ventilation_l_min: AlveolarVentilation
+    cardiac_output_l_min: CardiacOutput
     # The six compartment values, and they are `agent_id`'s. Flat named
     # floats rather than a mapping keyed by substance, which is what the
     # recorded run became at `PL-W3DD` - and the asymmetry is deliberate
@@ -338,10 +341,10 @@ class SimulationController:
         self,
         agent_id: str = "sevoflurane",
         circuit_volume_l: float | None = None,
-        fresh_gas_flow_l_min: float | None = None,
+        fresh_gas_flow_l_min: FreshGasFlow | None = None,
         delivered_concentration_percent: Percent | None = None,
-        alveolar_ventilation_l_min: float | None = None,
-        cardiac_output_l_min: float | None = None,
+        alveolar_ventilation_l_min: AlveolarVentilation | None = None,
+        cardiac_output_l_min: CardiacOutput | None = None,
     ) -> None:
         """Build a session, taking every unspecified setting from the core.
 
@@ -406,10 +409,10 @@ class SimulationController:
         self,
         agent_id: str,
         circuit_volume_l: float | None,
-        fresh_gas_flow_l_min: float | None,
+        fresh_gas_flow_l_min: FreshGasFlow | None,
         delivered_concentration_percent: Percent | None,
-        alveolar_ventilation_l_min: float | None,
-        cardiac_output_l_min: float | None,
+        alveolar_ventilation_l_min: AlveolarVentilation | None,
+        cardiac_output_l_min: CardiacOutput | None,
     ) -> None:
         """(Re)build dynamic state from scratch for a chosen agent.
 
@@ -1017,19 +1020,28 @@ class SimulationController:
         branch = SimulationController(
             agent_id=self._agent_id,
             circuit_volume_l=circuit.circuit_volume_l,
-            fresh_gas_flow_l_min=self._setting_at(
-                ControlInput.FRESH_GAS_FLOW, fork_at_s, circuit.fresh_gas_flow_l_min
+            # The timeline records every control as a plain `float`, so each
+            # setting is built back into its checked type here; the record
+            # holds values the core accepted, so none can be refused.
+            fresh_gas_flow_l_min=FreshGasFlow(
+                self._setting_at(
+                    ControlInput.FRESH_GAS_FLOW, fork_at_s, circuit.fresh_gas_flow_l_min
+                )
             ),
             delivered_concentration_percent=Percent(
                 self._setting_at(
                     ControlInput.DELIVERED, fork_at_s, circuit.delivered_concentration_percent
                 )
             ),
-            alveolar_ventilation_l_min=self._setting_at(
-                ControlInput.ALVEOLAR_VENTILATION, fork_at_s, alveoli.alveolar_ventilation_l_min
+            alveolar_ventilation_l_min=AlveolarVentilation(
+                self._setting_at(
+                    ControlInput.ALVEOLAR_VENTILATION, fork_at_s, alveoli.alveolar_ventilation_l_min
+                )
             ),
-            cardiac_output_l_min=self._setting_at(
-                ControlInput.CARDIAC_OUTPUT, fork_at_s, patient.cardiac_output_l_min
+            cardiac_output_l_min=CardiacOutput(
+                self._setting_at(
+                    ControlInput.CARDIAC_OUTPUT, fork_at_s, patient.cardiac_output_l_min
+                )
             ),
         )
 
@@ -1598,7 +1610,7 @@ class SimulationController:
     # primitive. `docs/MODEL.md` § "What is not bounded this way" carries the
     # argument.
 
-    def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
+    def set_fresh_gas_flow(self, fresh_gas_flow_l_min: FreshGasFlow) -> None:
         circuit = self._state.uptake_system.circuit
         previous_value = circuit.fresh_gas_flow_l_min
         self._state.uptake_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
@@ -1616,7 +1628,7 @@ class SimulationController:
             ControlInput.DELIVERED, previous_value, circuit.delivered_concentration_percent
         )
 
-    def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:
+    def set_alveolar_ventilation(self, alveolar_ventilation_l_min: AlveolarVentilation) -> None:
         alveoli = self._state.uptake_system.alveoli
         previous_value = alveoli.alveolar_ventilation_l_min
         self._state.uptake_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
@@ -1624,7 +1636,7 @@ class SimulationController:
             ControlInput.ALVEOLAR_VENTILATION, previous_value, alveoli.alveolar_ventilation_l_min
         )
 
-    def set_cardiac_output(self, cardiac_output_l_min: float) -> None:
+    def set_cardiac_output(self, cardiac_output_l_min: CardiacOutput) -> None:
         patient = self._state.uptake_system.patient
         previous_value = patient.cardiac_output_l_min
         self._state.uptake_system.set_cardiac_output(cardiac_output_l_min)

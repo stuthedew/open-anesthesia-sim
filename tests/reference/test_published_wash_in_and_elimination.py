@@ -304,6 +304,7 @@ from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -697,17 +698,21 @@ def _configured_system(
             tissue_gas_partition_coefficient=vessel_rich_tissue_gas_partition_coefficient,
         )
 
-    system.set_fresh_gas_flow(fresh_gas_flow_l_min)
+    system.set_fresh_gas_flow(FreshGasFlow(fresh_gas_flow_l_min))
     system.set_delivered_concentration_percent(delivered_percent)
     system.set_alveolar_ventilation(
-        patient_parameters.default_alveolar_ventilation_l_min
-        if alveolar_ventilation_l_min is None
-        else alveolar_ventilation_l_min
+        AlveolarVentilation(
+            patient_parameters.default_alveolar_ventilation_l_min
+            if alveolar_ventilation_l_min is None
+            else alveolar_ventilation_l_min
+        )
     )
     system.set_cardiac_output(
-        patient_parameters.default_cardiac_output_l_min
-        if cardiac_output_l_min is None
-        else cardiac_output_l_min
+        CardiacOutput(
+            patient_parameters.default_cardiac_output_l_min
+            if cardiac_output_l_min is None
+            else cardiac_output_l_min
+        )
     )
 
     return system
@@ -1030,7 +1035,7 @@ def _eliminate_without_rebreathing(
     system.set_delivered_concentration_percent(0.0)
 
     if elimination_fresh_gas_flow_l_min is not None:
-        system.set_fresh_gas_flow(elimination_fresh_gas_flow_l_min)
+        system.set_fresh_gas_flow(FreshGasFlow(elimination_fresh_gas_flow_l_min))
 
     _discard_circuit_contents(system)
     peak_inspired_to_alveolar_ratio = 0.0

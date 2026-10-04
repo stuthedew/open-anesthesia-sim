@@ -172,6 +172,9 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
+    AlveolarVentilation,
+    CardiacOutput,
+    FreshGasFlow,
 )
 
 #: The agent every fixture here runs unless it says otherwise. Named once
@@ -344,10 +347,10 @@ def _snapshot(
         agent_mac_percent=Percent(agent_mac_percent),
         agent_mac_awake=agent_mac_awake,
         circuit_volume_l=6.0,
-        fresh_gas_flow_l_min=4.0,
+        fresh_gas_flow_l_min=FreshGasFlow(4.0),
         delivered_concentration_percent=Percent(8.0),
-        alveolar_ventilation_l_min=4.0,
-        cardiac_output_l_min=5.0,
+        alveolar_ventilation_l_min=AlveolarVentilation(4.0),
+        cardiac_output_l_min=CardiacOutput(5.0),
         inspired_partial_pressure_fraction=Fraction(compartments[RecordedQuantity.CIRCUIT]),
         alveolar_partial_pressure_fraction=Fraction(compartments[RecordedQuantity.ALVEOLAR]),
         mixed_venous_partial_pressure_fraction=Fraction(
@@ -510,7 +513,7 @@ def _paused_run_with_history(elapsed_s: float = 60.0) -> SimulationController:
     controller = SimulationController()
     controller.start()
     _advance_to(controller, elapsed_s=elapsed_s)
-    controller.set_fresh_gas_flow(2.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(2.0))
     controller.pause()
 
     return controller
@@ -1110,9 +1113,13 @@ def test_every_slider_endpoint_is_a_setting_the_core_accepts() -> None:
 
     controller = SimulationController()
     setters: dict[ControlInput, Callable[[float], None]] = {
-        ControlInput.FRESH_GAS_FLOW: controller.set_fresh_gas_flow,
-        ControlInput.ALVEOLAR_VENTILATION: controller.set_alveolar_ventilation,
-        ControlInput.CARDIAC_OUTPUT: controller.set_cardiac_output,
+        ControlInput.FRESH_GAS_FLOW: lambda flow: controller.set_fresh_gas_flow(FreshGasFlow(flow)),
+        ControlInput.ALVEOLAR_VENTILATION: lambda flow: controller.set_alveolar_ventilation(
+            AlveolarVentilation(flow)
+        ),
+        ControlInput.CARDIAC_OUTPUT: lambda flow: controller.set_cardiac_output(
+            CardiacOutput(flow)
+        ),
         ControlInput.DELIVERED: lambda percent: controller.set_delivered_concentration_percent(
             Percent(percent)
         ),

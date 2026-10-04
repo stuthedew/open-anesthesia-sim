@@ -70,6 +70,7 @@ from anesthesia_sim.core.simulation_step import (
     MINIMUM_SIMULATION_STEP_S,
     SimulationStep,
 )
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -433,41 +434,41 @@ def test_the_ordinary_step_is_unaffected() -> None:
 
 
 @pytest.mark.parametrize(
-    ("setter_name", "rejected_value"),
+    ("setter_name", "flow_type", "rejected_value"),
     [
-        ("set_fresh_gas_flow", 500.0),
-        ("set_alveolar_ventilation", 200.0),
-        ("set_cardiac_output", 1000.0),
+        ("set_fresh_gas_flow", FreshGasFlow, 500.0),
+        ("set_alveolar_ventilation", AlveolarVentilation, 200.0),
+        ("set_cardiac_output", CardiacOutput, 1000.0),
     ],
 )
 def test_a_setting_outside_the_supported_range_is_refused_by_the_system(
-    setter_name: str, rejected_value: float
+    setter_name: str, flow_type: type[float], rejected_value: float
 ) -> None:
-    """The three values PL-0MLQ found accepted, refused at the coupled system.
+    """The three values PL-0MLQ found accepted, refused before the coupled system sees them.
 
-    `AgentUptakeSystem` forwards each of these to the compartment that owns
-    the setting, so this is cover for the forwarding rather than a second
-    guard: what it holds is that no supported entry point into `core/` can
-    put the model outside the domain it is claimed to represent a patient
-    over.
+    Each setter of `AgentUptakeSystem` takes its flow as the type only its
+    guard builds (`PL-0YYV`), so the value is refused where the caller builds
+    it, in the simulator's own error, and the forwarding is never reached:
+    what this holds is that no supported entry point into `core/` can put the
+    model outside the domain it is claimed to represent a patient over.
     """
 
     system = _sevoflurane_at_one_mac()
 
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
-        getattr(system, setter_name)(rejected_value)
+        getattr(system, setter_name)(flow_type(rejected_value))
 
 
 @pytest.mark.parametrize(
-    ("setter_name", "rejected_value"),
+    ("setter_name", "flow_type", "rejected_value"),
     [
-        ("set_fresh_gas_flow", 500.0),
-        ("set_alveolar_ventilation", 200.0),
-        ("set_cardiac_output", 1000.0),
+        ("set_fresh_gas_flow", FreshGasFlow, 500.0),
+        ("set_alveolar_ventilation", AlveolarVentilation, 200.0),
+        ("set_cardiac_output", CardiacOutput, 1000.0),
     ],
 )
 def test_a_refused_setting_leaves_the_run_trustworthy(
-    setter_name: str, rejected_value: float
+    setter_name: str, flow_type: type[float], rejected_value: float
 ) -> None:
     """A refused setting is not a failed run, and must not read like one.
 
@@ -482,7 +483,7 @@ def test_a_refused_setting_leaves_the_run_trustworthy(
     before = system.total_stored_agent_l
 
     with pytest.raises(SimulationConfigurationError) as raised:
-        getattr(system, setter_name)(rejected_value)
+        getattr(system, setter_name)(flow_type(rejected_value))
 
     assert not isinstance(raised.value, SimulationNumericalError)
     assert system.total_stored_agent_l == before

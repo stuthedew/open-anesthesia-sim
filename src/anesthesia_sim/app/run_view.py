@@ -136,6 +136,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 
 # Adding a built-in agent without a verified identification colour would make
@@ -785,8 +786,15 @@ class RunView(QWidget):
 
         self.controller.begin_control_adjustment()
 
+    # Each dial's value is built into its checked type inside the call
+    # `_apply_setting` makes, so a value the model refuses is refused there
+    # and reported as the refused setting it is, exactly as the vaporizer
+    # dial's `Percent` is below (`PL-0YYV`).
+
     def _handle_fresh_gas_flow_change(self, flow_l_min: float) -> None:
-        self._apply_setting(lambda: self.controller.set_fresh_gas_flow(flow_l_min), coalesce=True)
+        self._apply_setting(
+            lambda: self.controller.set_fresh_gas_flow(FreshGasFlow(flow_l_min)), coalesce=True
+        )
 
     def _handle_delivered_concentration_change(self, percent: float) -> None:
         self._apply_setting(
@@ -796,11 +804,14 @@ class RunView(QWidget):
 
     def _handle_alveolar_ventilation_change(self, flow_l_min: float) -> None:
         self._apply_setting(
-            lambda: self.controller.set_alveolar_ventilation(flow_l_min), coalesce=True
+            lambda: self.controller.set_alveolar_ventilation(AlveolarVentilation(flow_l_min)),
+            coalesce=True,
         )
 
     def _handle_cardiac_output_change(self, flow_l_min: float) -> None:
-        self._apply_setting(lambda: self.controller.set_cardiac_output(flow_l_min), coalesce=True)
+        self._apply_setting(
+            lambda: self.controller.set_cardiac_output(CardiacOutput(flow_l_min)), coalesce=True
+        )
 
     # ----------------------------------------------------------- transport
 

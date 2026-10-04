@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.supported_ranges import require_supported_alveolar_ventilation
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, require_alveolar_ventilation
 from anesthesia_sim.core.validation import (
     require_fraction,
     require_nonnegative_finite,
@@ -63,12 +63,12 @@ class AlveolarCompartment:
     """
 
     gas_volume_l: float = 2.5
-    alveolar_ventilation_l_min: float = 4.0
+    alveolar_ventilation_l_min: AlveolarVentilation = AlveolarVentilation(4.0)
     agent_amount_l: float = 0.0
 
     def __post_init__(self) -> None:
         require_positive_finite("gas_volume_l", self.gas_volume_l)
-        require_supported_alveolar_ventilation(self.alveolar_ventilation_l_min)
+        require_alveolar_ventilation(self.alveolar_ventilation_l_min)
         require_nonnegative_finite("agent_amount_l", self.agent_amount_l)
 
         if self.agent_amount_l > self.gas_volume_l:
@@ -88,14 +88,19 @@ class AlveolarCompartment:
 
         return self.agent_amount_l / self.gas_volume_l
 
-    def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:
+    def set_alveolar_ventilation(self, alveolar_ventilation_l_min: AlveolarVentilation) -> None:
         """Change ventilation without changing stored alveolar agent.
 
-        Rejects a ventilation outside the supported range rather than
-        clamping it; see `core/supported_ranges.py`.
+        The ventilation arrives checked against the supported range, which
+        its type was built through and nothing here checks again
+        (`core/supported_ranges.py`).
+
+        Raises:
+            TypeError: `alveolar_ventilation_l_min` was not built as an
+                `AlveolarVentilation`. Nothing is written when it is refused.
         """
 
-        require_supported_alveolar_ventilation(alveolar_ventilation_l_min)
+        require_alveolar_ventilation(alveolar_ventilation_l_min)
         self.alveolar_ventilation_l_min = alveolar_ventilation_l_min
 
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:

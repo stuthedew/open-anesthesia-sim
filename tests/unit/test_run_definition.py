@@ -24,6 +24,7 @@ is tested here is that the display path is refused where the rule says it is.
 """
 
 from bisect import bisect_right
+from dataclasses import replace
 from math import inf, nan, nextafter
 
 import pytest
@@ -57,6 +58,9 @@ from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    AlveolarVentilation,
+    CardiacOutput,
+    FreshGasFlow,
     maximum_step_count,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -107,7 +111,7 @@ def _stepped_run(
     if changes is None:
         changes = {
             300: ("set_delivered_concentration_percent", 4.0),
-            1200: ("set_alveolar_ventilation", 6.0),
+            1200: ("set_alveolar_ventilation", AlveolarVentilation(6.0)),
         }
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
@@ -267,7 +271,7 @@ def test_two_changes_at_one_instant_are_one_segment() -> None:
     definition.advance_to(10.0)
     system.set_delivered_concentration_percent(3.0)
     definition.record_change(system.equation_settings())
-    system.set_cardiac_output(4.0)
+    system.set_cardiac_output(CardiacOutput(4.0))
     definition.record_change(system.equation_settings())
 
     assert len(definition.segments) == 2
@@ -289,14 +293,16 @@ def _configured_from(settings: UptakeEquationSettings) -> AgentUptakeSystem:
 
 
 @pytest.mark.parametrize(
-    ("control", "maximum_l_min"),
+    ("control", "maximum_l_min", "flow_type"),
     [
-        ("cardiac_output", MAXIMUM_CARDIAC_OUTPUT_L_MIN),
-        ("fresh_gas_flow", MAXIMUM_FRESH_GAS_FLOW_L_MIN),
-        ("alveolar_ventilation", MAXIMUM_ALVEOLAR_VENTILATION_L_MIN),
+        ("cardiac_output", MAXIMUM_CARDIAC_OUTPUT_L_MIN, CardiacOutput),
+        ("fresh_gas_flow", MAXIMUM_FRESH_GAS_FLOW_L_MIN, FreshGasFlow),
+        ("alveolar_ventilation", MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, AlveolarVentilation),
     ],
 )
-def test_a_recorded_setting_round_trips_to_what_was_set(control: str, maximum_l_min: float) -> None:
+def test_a_recorded_setting_round_trips_to_what_was_set(
+    control: str, maximum_l_min: float, flow_type: type[float]
+) -> None:
     """A segment holds each flow as it was set, and so rebuilds the settings it ran under.
 
     `PL-SM5V`. Segments held flows in litres per second, and multiplying back
@@ -314,7 +320,7 @@ def test_a_recorded_setting_round_trips_to_what_was_set(control: str, maximum_l_
     for tenths in range(round(maximum_l_min * 10) + 1):
         set_l_min = tenths / 10
         system = AgentUptakeSystem.for_agent("sevoflurane")
-        set_control(system, set_l_min)
+        set_control(system, flow_type(set_l_min))
         definition = RunDefinition(
             system.equation_settings(), system.state_vector(), opened_at_s=0.0
         )
@@ -327,6 +333,71 @@ def test_a_recorded_setting_round_trips_to_what_was_set(control: str, maximum_l_
             unrecovered.append(set_l_min)
 
     assert unrecovered == []
+
+
+@pytest.mark.parametrize(
+    ("field", "flow_type", "reproduced_l_min"),
+    [
+        ("cardiac_output_l_min", CardiacOutput, 1000.0),
+        ("fresh_gas_flow_l_min", FreshGasFlow, 500.0),
+        ("alveolar_ventilation_l_min", AlveolarVentilation, 200.0),
+    ],
+)
+def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges(
+    field: str, flow_type: type[float], reproduced_l_min: float
+) -> None:
+    """Neither way into a run can be handed a record whose flow is outside its range.
+
+    `PL-HSFV`, reproduced 2026-10-04: the settings a system holds, rebuilt with
+    `replace` to a cardiac output of 1000 L/min with the tissue flows scaled
+    to sum to it, opened a run and was recorded as a change to one, and the
+    run answered with finite, plausible fractions - because the record checked
+    only that sum, and the range guards ran only in the compartments, which a
+    run built from a record never calls. The same for a fresh gas flow of
+    500 L/min and an alveolar ventilation of 200 L/min.
+
+    Each flow field now takes a type only its guard builds (`PL-0YYV`), so the
+    record cannot exist: built as its type, the flow is refused in the guard's
+    words before `replace` runs; handed in as a bare float, it is refused by
+    the record itself. The run keeps the segments it had either way, and
+    checks nothing of its own.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    held = system.equation_settings()
+
+    def rebuilt(value: float) -> UptakeEquationSettings:
+        changed: dict[str, object] = {field: value}
+
+        if field == "cardiac_output_l_min":
+            changed["tissues"] = tuple(
+                replace(
+                    tissue,
+                    blood_flow_l_min=tissue.blood_flow_l_min / held.cardiac_output_l_min * value,
+                )
+                for tissue in held.tissues
+            )
+
+        return replace(held, **changed)
+
+    definition = RunDefinition(held, system.state_vector(), opened_at_s=0.0)
+    definition.advance_to(30.0)
+    segments = definition.segments
+    refused = f"not a {flow_type.__name__}"
+
+    with pytest.raises(SimulationConfigurationError, match="supported input range"):
+        RunDefinition(rebuilt(flow_type(reproduced_l_min)), system.state_vector(), opened_at_s=0.0)
+
+    with pytest.raises(TypeError, match=refused):
+        RunDefinition(rebuilt(reproduced_l_min), system.state_vector(), opened_at_s=0.0)
+
+    with pytest.raises(SimulationConfigurationError, match="supported input range"):
+        definition.record_change(rebuilt(flow_type(reproduced_l_min)))
+
+    with pytest.raises(TypeError, match=refused):
+        definition.record_change(rebuilt(reproduced_l_min))
+
+    assert definition.segments == segments
 
 
 def test_a_recorded_segment_gives_back_each_vaporizer_percent_as_dialled() -> None:
@@ -369,7 +440,7 @@ def test_a_change_opens_a_segment_at_the_run_s_own_reach() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
     definition.advance_to(12.5)
-    system.set_fresh_gas_flow(1.5)
+    system.set_fresh_gas_flow(FreshGasFlow(1.5))
     definition.record_change(system.equation_settings())
 
     assert [segment.opening.instant_s for segment in definition.segments] == [0.0, 12.5]
@@ -442,7 +513,7 @@ def test_a_segment_too_short_to_hold_a_column_is_skipped() -> None:
 
     for elapsed_s, flow in ((10.0, 1.5), (10.5, 3.0), (60.0, 5.0)):
         definition.advance_to(elapsed_s)
-        system.set_fresh_gas_flow(flow)
+        system.set_fresh_gas_flow(FreshGasFlow(flow))
         definition.record_change(system.equation_settings())
 
     definition.advance_to(120.0)
@@ -1147,7 +1218,7 @@ def _two_change_run() -> RunDefinition:
     system.set_delivered_concentration_percent(Percent(2.0))
     definition.record_change(system.equation_settings())
     definition.advance_to(600.0)
-    system.set_fresh_gas_flow(1.0)
+    system.set_fresh_gas_flow(FreshGasFlow(1.0))
     definition.record_change(system.equation_settings())
     definition.advance_to(3600.0)
 
@@ -1210,9 +1281,9 @@ def test_a_pixel_wide_chord_misses_an_extremum_by_under_the_readout_s_resolution
     """
 
     system = AgentUptakeSystem.for_agent("desflurane")
-    system.set_fresh_gas_flow(10.0)
-    system.set_alveolar_ventilation(12.0)
-    system.set_cardiac_output(10.0)
+    system.set_fresh_gas_flow(FreshGasFlow(10.0))
+    system.set_alveolar_ventilation(AlveolarVentilation(12.0))
+    system.set_cardiac_output(CardiacOutput(10.0))
     system.set_delivered_concentration_percent(12.0)
     definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
     definition.advance_to(600.0)
