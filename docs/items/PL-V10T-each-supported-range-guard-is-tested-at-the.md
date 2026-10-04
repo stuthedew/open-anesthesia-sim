@@ -49,10 +49,11 @@ each function behind that guard computes with, and every value it refuses
 raises the simulator's own error. Neither `OverflowError`, `ValueError` nor
 `ZeroDivisionError` escapes. The guards are the six `require_supported_*`
 functions in `src/anesthesia_sim/core/supported_ranges.py` and
-`require_supported_simulation_step` in `uptake_system.py`, which is not in that
-module. Which functions sit behind which guard is today a list someone keeps;
-with `PL-0GJC`'s type it is every function annotated with it, which
-`typing.get_type_hints` finds.
+`require_supported_simulation_step`, which is not in that module: #1328 moved
+it from `uptake_system.py` to `core/simulation_step.py`. Which functions sit
+behind which guard was a list someone kept; with `PL-0GJC`'s `SimulationStep`,
+which #1328 landed in that module, it is every function annotated with it,
+which `typing.get_type_hints` finds.
 
 **Decided 2026-10-03: yes** (project owner, 2026-10-03, ratified, over a
 shared edge-value table that adds no dependency): Hypothesis joins the dev
@@ -80,7 +81,11 @@ rather than listing them, so a new range is covered without editing the test.
 **Blocked on `PL-0GJC`** (triage, 2026-10-04). Its `SimulationStep` type is
 how this test finds the functions behind the step guard: every function
 annotated with it. Built before that type lands, the test would keep the list
-by hand, which the Done-when below refuses.
+by hand, which the Done-when below refuses. #1328 landed the type (checked
+2026-10-04: parameters and returns annotated with it in six modules), but
+`PL-0GJC` stays open, at `needs-decision`, on whether the compartments take it
+or a second, floor-only type. That answer sets which types this test finds
+functions by, so the wait holds until `PL-0GJC` closes.
 
 **Done when.** Hypothesis is a dev dependency in `pyproject.toml`, locked in
 `uv.lock`, and `tests/unit/test_supported_range_edges.py` checks the property
