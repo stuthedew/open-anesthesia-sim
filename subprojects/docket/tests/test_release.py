@@ -36,7 +36,7 @@ from docket.release import (
     unreferenced_by_version,
     version_key,
 )
-from docket.roadmap import CLEAR, IMPLEMENT, RELEASE, SCOPE, Wave, wave
+from docket.roadmap import CLEAR, IMPLEMENT, LAZY_ENTRY, RELEASE, SCOPE, UnreadEntry, Wave, wave
 from docket.vcs import SILENT, Cut, find_cut, notes_added
 
 TODAY = date(2026, 8, 24)
@@ -577,6 +577,56 @@ def test_unreferenced_by_version_reports_only_the_releases_with_a_gap(tmp_path: 
 
 def test_a_project_that_writes_no_notes_reports_nothing_rather_than_raising(tmp_path: Path) -> None:
     assert unreferenced_by_version(tmp_path) == {}
+
+
+#: A bullet whose title wrapped onto an indented line before its reference.
+WRAPPED = "- PL-2222 A title long enough that it wraps\n  onto a second line — #48\n"
+#: The same bullet carried on from the margin, which CommonMark reads as one
+#: bullet (0.31.2 § 5.2) and the list walker does not.
+LAZY = "- PL-2222 A title long enough that it wraps\nonto a second line — #48\n"
+
+
+def test_a_title_wrapped_onto_an_indented_line_keeps_its_reference() -> None:
+    """`PL-CL8R`: the indented line is the bullet's, so its reference is too.
+
+    Read a line at a time, the first line ended with no reference, so the
+    bullet was reported unreferenced and `make fix` appended a second one.
+    """
+    assert unreferenced(WRAPPED) == ()
+    assert restate_references(WRAPPED, {"PL-2222": _item("PL-2222")}) == (WRAPPED, ())
+
+
+def test_restating_a_wrapped_bullet_appends_to_its_last_line() -> None:
+    text = "- PL-2222 A title long enough that it wraps\n  onto a second line\n"
+
+    restated, repaired = restate_references(text, {"PL-2222": _item("PL-2222")})
+
+    assert repaired == ("PL-2222",)
+    assert restated == "- PL-2222 A title long enough that it wraps\n  onto a second line — #48\n"
+
+
+def test_a_list_nested_under_a_bullet_is_not_its_text() -> None:
+    """The reference ends the bullet's own paragraph, as v0.5.9's notes nest a note under one."""
+    text = "- PL-2222 A title — #48\n  - A note on it.\n"
+    assert unreferenced(text) == ()
+
+    bare = "- PL-2222 A title\n  - A note on it.\n"
+    restated, repaired = restate_references(bare, {"PL-2222": _item("PL-2222")})
+    assert (restated, repaired) == (text, ("PL-2222",))
+
+
+def test_a_bullet_carried_on_from_the_margin_is_declined_and_left_alone(tmp_path: Path) -> None:
+    """Where it ends was not read, so it is named in neither direction (`PL-CL8R`)."""
+    unread: list[UnreadEntry] = []
+    assert unreferenced(LAZY, unread) == ()
+    assert [entry.line for entry in unread] == [2]
+    assert restate_references(LAZY, {"PL-2222": _item("PL-2222")}) == (LAZY, ())
+
+    (tmp_path / "docs" / "releases").mkdir(parents=True)
+    (tmp_path / "docs" / "releases" / "v0.3.0.md").write_text(LAZY, encoding="utf-8")
+    declined: list[str] = []
+    assert unreferenced_by_version(tmp_path, unread=declined) == {}
+    assert declined == [f"docs/releases/v0.3.0.md line 2: {LAZY_ENTRY}"]
 
 
 # --- the pointer section, which is not a claim -------------------------------

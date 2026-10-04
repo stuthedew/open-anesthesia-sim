@@ -36,9 +36,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import doc_check
 
-#: The possessive citation, in the two spellings this project writes.
+#: The possessive citation, in the two spellings this project writes. Its gaps
+#: are `doc_check.GAP`, so one wrapped inside a blockquote is read past the next
+#: line's `>` as CommonMark reads it (`PL-XW87`).
 POSSESSIVE_RE = re.compile(
-    r"`(?P<document>[\w./-]+\.md)`['’]s(?:\s+own)?[ \n]*\"(?P<quoted>\w[^\"]{2,200}?)\"", re.DOTALL
+    r"`(?P<document>[\w./-]+\.md)`['’]s(?:"
+    + doc_check.GAP
+    + r"+own)?"
+    + doc_check.GAP
+    + r'*"(?P<quoted>\w[^"]{2,200}?)"',
+    re.DOTALL,
 )
 
 

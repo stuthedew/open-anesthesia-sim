@@ -150,6 +150,34 @@ def test_a_wrapped_entry_is_refused() -> None:
     assert any("continuation" in p for p in problems)
 
 
+@pytest.mark.parametrize(
+    "wrapped",
+    [
+        "- **One shared\nqueue document** — rejected. `PL-D188`\n",
+        "- **An approach** — measured in\n#1234 and PL-ZZZZ\n",
+        "- **An approach** — measured in\n*one* run, PL-ZZZZ\n",
+        "- **An approach** — measured in\n| one run | PL-ZZZZ |\n",
+    ],
+)
+def test_an_entry_carried_on_from_the_margin_is_refused(wrapped: str) -> None:
+    """`PL-F5B9`: CommonMark carries the entry onto each of these lines (0.31.2 § 5.2).
+
+    Read a line at a time, a bolded title wrapped onto a second line made no
+    entry at all - nothing emitted, nothing refused - and a line opening `#`,
+    `*` or a pipe was taken for the next block, so the entry was read short and
+    its `PL-ZZZZ` never checked.
+    """
+    problems = dead_ends.check(PREAMBLE + wrapped)
+    assert any("dead-ends.md:10: continuation of the entry above" in p for p in problems)
+
+
+def test_an_entry_wrapped_onto_an_indented_line_is_read_whole_and_refused() -> None:
+    """Indented, the second line is the entry's: emitted joined, and still one line too many."""
+    text = PREAMBLE + "- **One shared\n  queue document** — rejected. `PL-D188`\n"
+    assert dead_ends.entries(text) == [(9, "- **One shared queue document** — rejected. `PL-D188`")]
+    assert any("dead-ends.md:10: continuation" in p for p in dead_ends.check(text))
+
+
 def test_a_following_bullet_or_heading_is_not_a_continuation() -> None:
     text = (
         PREAMBLE

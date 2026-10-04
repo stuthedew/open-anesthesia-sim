@@ -1,4 +1,4 @@
-"""The instruction-set parser: which lines carry a date, and which date counts.
+"""The instruction-set parser: which sentences carry a date, and which date counts.
 
 Every date here is synthetic. The point of the item this file was written for
 is that the advisory reading this parser must be proven working before the
@@ -52,6 +52,43 @@ def test_the_newest_date_on_a_line_is_the_one_that_counts() -> None:
     rows = parse("CLAUDE.md", "(project owner, 2026-08-31; re-verified 2026-11-20)\n")
 
     assert [row.when for row in rows] == [date(2026, 11, 20)]
+
+
+def test_a_record_wrapped_across_lines_is_one_assertion() -> None:
+    """`PL-B1D0`: a paragraph goes on across its soft breaks, so its record does.
+
+    `CLAUDE.md` wraps "(measured ..., re-verified" before the date that
+    re-verifies it, and read a line at a time that was two assertions, the
+    first already old. Read as the sentence it is, it is one, dated by its
+    newest date, on the line holding that date.
+    """
+    text = "A fact (measured 2026-06-01, re-verified\n2026-10-04). The next sentence.\n"
+
+    assert parse("CLAUDE.md", text) == [
+        Assertion(
+            file="CLAUDE.md",
+            line=2,
+            when=date(2026, 10, 4),
+            text="A fact (measured 2026-06-01, re-verified 2026-10-04).",
+        )
+    ]
+
+
+def test_each_sentence_of_a_paragraph_is_dated_on_its_own() -> None:
+    """Not the paragraph: one re-verified record must not discharge an older one beside it."""
+    text = "Rule one (2026-06-01). Rule two, re-verified\n2026-11-20.\n"
+
+    assert [(row.line, row.when) for row in parse("r.md", text)] == [
+        (1, date(2026, 6, 1)),
+        (2, date(2026, 11, 20)),
+    ]
+
+
+def test_a_paragraph_goes_on_past_a_line_opening_like_a_block() -> None:
+    """`17) `, a pipe and `<id>` under a paragraph's line carry it on, as CommonMark reads them."""
+    for opening in ("17) it", "| it", "<id> it"):
+        rows = parse("r.md", f"Measured 2026-06-01, and the count reached\n{opening} 2026-11-20.\n")
+        assert [(row.line, row.when) for row in rows] == [(2, date(2026, 11, 20))], opening
 
 
 def test_the_line_number_is_where_the_reader_goes() -> None:

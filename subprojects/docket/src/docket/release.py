@@ -32,7 +32,7 @@ from .model import RELEASE_TRAIN, SEMVER_PATTERN, Item
 from .store import ID_PATTERN
 
 if TYPE_CHECKING:  # `roadmap` reads this module's version grammar, so the
-    from .roadmap import ReservedVersion, Wave  # runtime import would close the cycle.
+    from .roadmap import ReservedVersion, UnreadEntry, Wave  # runtime import would close the cycle.
 
 VERSION_RE = re.compile(r'^(version\s*=\s*")([^"]+)(")', re.M)
 SEMVER_RE = re.compile(rf"^v?{SEMVER_PATTERN}$")
@@ -616,16 +616,63 @@ REFERENCED_RE = re.compile(r" — (#\d+|`[0-9a-f]{7,40}`)$")
 NOTES_BULLET_RE = re.compile(rf"{NOTES_ENTRY_RE.pattern}(.*)$", re.M)
 
 
-def unreferenced(text: str) -> tuple[str, ...]:
-    """The ids one notes file names with no route back to the change that made them."""
+def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, str]]:
+    """Each top-level bullet of a notes file's text, as (first line, end, joined text).
+
+    The indices are 0-based into `text.split("\\n")`, the end one past the
+    last line of the bullet's text, and the text is the bullet's own paragraph,
+    its wrapped lines joined by a space. Read through
+    `roadmap.document_entry_lines`, section by section, and
+    `roadmap.statement_lines` within the bullet (`PL-CL8R`, `PL-R417`): an
+    indented line carries a bullet's paragraph on, as CommonMark reads it
+    (0.31.2 § 5.2), so a title wrapped before its reference is one bullet with
+    one reference, where a line at a time read it as none and a writer appended
+    a second. A list nested under the bullet is the bullet's but not its text,
+    which the reference ends - `PL-QYBW`'s in v0.5.9's notes carries one. A
+    bullet carried on from the margin is declined onto `unread` and left out,
+    since neither where it ends nor what it ends with can be read.
+    """
+    # A runtime import, since `roadmap` imports this module.
+    from .roadmap import document_entry_lines, statement_lines
+
+    lines = text.split("\n")
+    declined: list[UnreadEntry] = []
+    spans = list(document_entry_lines(lines, declined))
+    unread += declined
+    ended = {entry.line - 1 for entry in declined}
+    bullets: list[tuple[int, int, str]] = []
+    for first, end in spans:
+        if end in ended:
+            continue
+        end = first + next(statement_lines(lines[first:end]))[1]
+        bullets.append(
+            (
+                first,
+                end,
+                " ".join([lines[first], *(line.strip() for line in lines[first + 1 : end])]),
+            )
+        )
+    return bullets
+
+
+def unreferenced(text: str, unread: list[UnreadEntry] | None = None) -> tuple[str, ...]:
+    """The ids one notes file names with no route back to the change that made them.
+
+    Each bullet read whole, by `notes_bullets`. One it declines is named in
+    neither direction - its reference is unread, not missing - and goes onto
+    `unread` where the caller passes a list.
+    """
     return tuple(
         identifier
-        for identifier, tail in NOTES_BULLET_RE.findall(text)
+        for _, _, bullet in notes_bullets(text, [] if unread is None else unread)
+        for identifier, tail in NOTES_BULLET_RE.findall(bullet)
         if not REFERENCED_RE.search(tail)
     )
 
 
-def unreferenced_by_version(root: Path, notes_dir: str = NOTES_DIR) -> dict[str, tuple[str, ...]]:
+def unreferenced_by_version(
+    root: Path, notes_dir: str = NOTES_DIR, unread: list[str] | None = None
+) -> dict[str, tuple[str, ...]]:
     """Which items each cut release's notes name without saying where they landed.
 
     The companion to `notes_by_version`, reading the same files for the other
@@ -634,13 +681,18 @@ def unreferenced_by_version(root: Path, notes_dir: str = NOTES_DIR) -> dict[str,
     this answers which of those claims a reader cannot follow.
 
     Releases whose bullets all carry a reference are absent rather than empty,
-    so a healthy project reports `{}` and the caller has nothing to filter.
+    so a healthy project reports `{}` and the caller has nothing to filter. A
+    bullet `notes_bullets` declines is named on `unread`, where the caller
+    passes a list, as the file and line it could not read.
     """
     found: dict[str, tuple[str, ...]] = {}
     for path in notes_files(root, notes_dir):
         claims, _ = notes_claims(path.read_text(encoding="utf-8"))
-        if missing := unreferenced(claims):
+        declined: list[UnreadEntry] = []
+        if missing := unreferenced(claims, declined):
             found[path.stem] = missing
+        if unread is not None:
+            unread += (f"{notes_dir}/{path.name} {entry}" for entry in declined)
     return found
 
 
@@ -660,23 +712,27 @@ def restate_references(text: str, by_id: Mapping[str, Item]) -> tuple[str, tuple
     number nor a commit, is left alone. This supplies a fact or it does
     nothing; there is no third thing it could honestly write.
 
+    Each bullet is read whole, by `notes_bullets` (`PL-CL8R`): one wrapped onto
+    an indented line takes its reference on its last line, where a reader
+    looks for it, and one carried on from the margin is left alone, since
+    where it ends was not read.
+
     Returns the new text and the ids it repaired, so a caller can report the
     repair rather than a diff.
     """
     repaired: list[str] = []
-
-    def restate(match: re.Match[str]) -> str:
-        identifier, tail = match.group(1), match.group(2)
-        item = by_id.get(identifier)
-        if item is None or REFERENCED_RE.search(tail):
-            return match.group(0)
-        if not (suffix := reference(item)):
-            return match.group(0)
-        repaired.append(identifier)
-        return f"- {identifier}{tail}{suffix}"
-
     claims, pointer = notes_claims(text)
-    return NOTES_BULLET_RE.sub(restate, claims) + pointer, tuple(repaired)
+    lines = claims.split("\n")
+    for _, end, bullet in notes_bullets(claims, []):
+        found = NOTES_BULLET_RE.match(bullet)
+        if found is None or REFERENCED_RE.search(found.group(2)):
+            continue
+        item = by_id.get(found.group(1))
+        if item is None or not (suffix := reference(item)):
+            continue
+        repaired.append(found.group(1))
+        lines[end - 1] += suffix
+    return "\n".join(lines) + pointer, tuple(repaired)
 
 
 @dataclass(frozen=True)
