@@ -3,13 +3,13 @@ id: PL-V10T
 title: Each supported-range guard is tested at the edge values its author thought of, so the overflow class behind PL-YZ17, PL-5F76 and PL-BPRK was found one function at a time: generate IEEE 754 edges across every range core/supported_ranges.py declares, and assert a finite result or the simulator's own error
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: test
 feature: numerical-domain
 touches: pyproject.toml, uv.lock, tests/unit/test_supported_range_edges.py
-blocked-by: PL-0GJC
 added: 2026-10-03
 payoff: a value a supported-range guard accepts but the function behind it cannot compute with fails a test when the function is written, instead of escaping as a raw OverflowError or ValueError found one function at a time
+verify: grep -q '"hypothesis>=' pyproject.toml && grep -q '^name = "hypothesis"$' uv.lock && grep -q 'def test_each_guard_admits_only_what_its_functions_compute' tests/unit/test_supported_range_edges.py
 ---
 
 **Problem.** Each supported-range guard is tested at the edge values its author thought of, so the overflow class behind PL-YZ17, PL-5F76 and PL-BPRK was found one function at a time: generate IEEE 754 edges across every range core/supported_ranges.py declares, and assert a finite result or the simulator's own error
@@ -78,14 +78,15 @@ trade is one maintained dependency against the next class nobody listed.
 the property above for every guard, finding the guards and what they protect
 rather than listing them, so a new range is covered without editing the test.
 
-**Blocked on `PL-0GJC`** (triage, 2026-10-04). Its `SimulationStep` type is
+**Unblocked 2026-10-04, when `PL-0GJC` closed.** Its `SimulationStep` type is
 how this test finds the functions behind the step guard: every function
-annotated with it. Built before that type lands, the test would keep the list
-by hand, which the Done-when below refuses. #1328 landed the type (checked
-2026-10-04: parameters and returns annotated with it in six modules), but
-`PL-0GJC` stays open, at `needs-decision`, on whether the compartments take it
-or a second, floor-only type. That answer sets which types this test finds
-functions by, so the wait holds until `PL-0GJC` closes.
+annotated with it. Built before that type landed, the test would have kept the
+list by hand, which the Done-when below refuses. #1328 landed the type (checked
+2026-10-04: parameters and returns annotated with it in six modules), and
+`PL-0GJC` closed on the run's step: the compartments keep a plain float, and
+whether one needs a floor is `PL-WP52`'s measurement. So this test finds the
+step's functions by `SimulationStep`, and by a floor-only type as well if
+`PL-WP52` adds one.
 
 **Done when.** Hypothesis is a dev dependency in `pyproject.toml`, locked in
 `uv.lock`, and `tests/unit/test_supported_range_edges.py` checks the property
