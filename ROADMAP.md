@@ -5450,6 +5450,29 @@ the `v0.5.0` tag: that release's settings record checked the three flows for
 sign and finiteness alone, and its `RunDefinition` already opened and recorded
 changes from one. It is product-lane work and is listed in that group.
 
+**The `parse-dont-validate` feature joined this list on 2026-10-04, after the
+freeze, at the project owner's direction** (project owner, 2026-10-04: "Add
+'parse don't validate' feature to current gate in v0.6.0 for it to be
+implemented by 'Ship v0.6.0' project"). The feature gives each quantity with a
+check of its own a type that only the check builds, so a way in nobody guarded
+cannot take an unchecked value, which is how `PL-HSFV` came about. Five entries
+joined with it, beside `PL-HSFV`, which was already here:
+
+- `PL-51B7`'s three slices, which the owner decided the same day to build in
+  order: `PL-0YYV`, the three flows as checked types, which closes `PL-HSFV`;
+  `PL-CN5S`, the case instant and the step count; and `PL-51B7` itself, the
+  supported-range edge test finding every guarded quantity by its type.
+- Two decisions: `PL-4R3W`, whether a concentration's fraction and percent
+  become checked types too, and `PL-BBMG`, a dial above the vaporizer maximum
+  reaching a run through the record `PL-HSFV` went through.
+
+`PL-BBMG` is classed `safety` and would have joined under the exception on its
+own, and `PL-4R3W`'s `NewType`s and its hand check on a fraction's range were
+both in the code at the `v0.5.0` tag. The feature joined whole on the owner's
+word, though, so none of the five rests on either. All five are product-lane
+work and are listed in that group, and `bin/docket feature parse-dont-validate`
+reads their progress.
+
 **Three kinds of group, and only the third is a precondition.** The first is
 debt inside this milestone's own Required scope, cleared *by* it per § "Debt
 inside the milestone's own scope" - the test is whether `Required scope` below
@@ -5665,12 +5688,15 @@ named here, for the reason beat 3 gives.
 
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
 
-**Cleared before v0.6.0 begins, the product lane - 51 entries**
+**Cleared before v0.6.0 begins, the product lane - 56 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
+- PL-0YYV (L) The three flows - fresh gas flow, alveolar ventilation and cardiac output - are bare floats range-checked by hand at each way in, so the way in nobody checked, UptakeEquationSettings, ran a cardiac output of 1000 L/min (PL-HSFV); slice 1 of PL-51B7 gives each a checked type built only through its require_supported_* guard, as SimulationStep is for the step
 - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
 - PL-2MD9 (M) "The propagator's constant state row drifts and the squarings amplify it: 2.28e+222 at an alveolar volume of 1e-19 L, where governing_equations.UNIT_STATE promises no step can perturb it"
 - PL-3JP0 (S) Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it
+- PL-4R3W (M) Fraction and Percent are NewTypes, which the interpreter erases, so their ranges of 0 to 1 and 0 to 100 are checked by hand wherever a value enters - require_percent at four sites in circuit.py and governing_equations.py - the hand-checked pattern PL-51B7 replaces with checked types for the supported-range quantities; whether a concentration becomes a checked type too is undecided, because concentration.py chose NewTypes to catch a missing conversion, and whether a fraction computed at a bound can round past it is unmeasured
+- PL-51B7 (M) The supported-range edge test finds the functions behind the six guards other than the step's by parameter name on five classes kept by hand, so a function taking a guarded quantity under another name, RunDefinition's opened_at_s, is never drawn; a checked type per quantity, as SimulationStep is for the step, would let it find every one by type
 - PL-5291 (S) A branch built standing on the 24 h supported run length still offers Start, because SimulationController._open_at never sets _supported_limit_reason, the only limit signal the transport's stopped state reads, against Transport's own docstring
 - PL-59WB (S) chart_time_base.fit_to_run takes a parameter called run_length_s but is passed a case instant, which is the duration_s-was-not-a-duration defect one module over
 - PL-624C (S) test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis draws its own frame, so it cannot detect a fork that fails to redraw
@@ -5680,8 +5706,10 @@ named here, for the reason beat 3 gives.
 - PL-7TXJ (M) RunDefinition.record_change rebuilds the whole segment tuple per change, and each segment carries a keyframe, so it is the larger of the two unbounded records
 - PL-921Y (S) docs/MODEL.md's first-24-hours subsection compares the model's isolated muscle time constant with Yasuda's fitted one, which is an apparent constant read off the whole washout curve; read the same way, off the eigenvalues of the model's open-circuit system, the model's muscle term runs 1.9 to 2.0 times the fitted one at about half its amplitude (measured 2026-10-03), not 1.5 to 1.7
 - PL-95NW (M) Test whether the model's slower muscle return explains the open-circuit washout tail's closest approach to Yasuda's fitted mean curves over hours 2 to 4, by varying the muscle tissue:gas coefficient in the late-washout module; docs/MODEL.md's first-24-hours subsection records that reading as inferred from the isolated time constants and not tested (PL-KK1Q)
+- PL-BBMG (M) RunDefinition accepts a delivered concentration above the agent's vaporizer maximum - 20% sevoflurane against an 8% maximum ran on 2026-10-04 - because UptakeEquationSettings carries no agent and no vaporizer maximum, so a run built from a settings record bounds the dial only at 100%, and the BreathingCircuit that refuses it is never built
 - PL-BMY5 (S) SimulationState can be constructed already past the supported run length, and only the next advance refuses it
 - PL-CBDX (M) Read every simulator diff merged unread since 2026-09-23 against the safety-critical standard, since the review hold was clicked through rather than read
+- PL-CN5S (M) A case instant and a run's step count are a bare float and a bare int checked by hand where each enters - require_supported_case_instant at RunDefinition's two ways in, _require_step_count in SimulationState - so a new way in for either repeats the check or skips it; slice 2 of PL-51B7 gives each a checked type, CaseInstant in s and StepCount, an int subclass checking what a count can be checked for alone
 - PL-CZTR (S) ResumePoint.elapsed_s is the fork instant on the case's axis and should be named fork_instant_s, now that the definition's own instants are instant_s
 - PL-DBGT (S) desflurane.json points at 'the five other candidates ruled out' in a MODEL.md table that now has nine rows, and names tests/reference/test_published_wash_in.py, which does not exist
 - PL-FPY2 (M) A wrapped mark row's continuation can be a whole clause naming a run, so it reads as a row of its own and binds to the wrong mark
