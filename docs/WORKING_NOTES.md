@@ -734,9 +734,11 @@ at, and was cut to this.)
 
 **Relevant to the tests from 2026-10-03 (`PL-921Y`).** A reference test calls
 `numpy.linalg.eig`, to decompose the model's open-circuit system into its
-modes, so the `dev` dependency group declares numpy, by the rule above. No
-module under `src/` calls it, so for the application this note still stands
-where it did.
+modes, so the `dev` dependency group declares numpy, by the rule above
+(project owner, 2026-10-03, ratified, over an eigen-solver written here, which
+would have been a second hand-built numerical method needing verification in a
+test whose job is to verify the first). No module under `src/` calls it, so for
+the application this note still stands where it did.
 
 ## Decided: control resolution is not what the interface promised at speed - PL-X9KD, PL-NBWP, PL-NBCJ (2026-09-06)
 
