@@ -132,7 +132,8 @@ statement whole. `check_ruff_cache` now reads the shell's words for `ruff
 check` and its flag, since a continuation between the two left a pattern over
 the text matching nothing, and `_make_mentions` reads a fence through
 `script_lines`, falling back to a line at a time where bash cannot read it. The
-guard gained ten cases, each failing on main's reader. Closes `PL-G2FY`. Left:
+guard gained eleven cases, each failing on main's reader, one pinning
+that a coverage run split in the Makefile alone is still a drift. Closes `PL-G2FY`. Left:
 the YAML readers (`PL-6P6H` and the sweep's YAML line), and `PL-MFVV`; `PL-RR1N`
 keeps its own fix.
 
