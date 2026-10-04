@@ -3,13 +3,15 @@ id: PL-0GJC
 title: The simulation step is a bare float in 15 signatures and 2 fields, and its 1 ms floor is checked at 4 call sites, so each entry point that skips the check becomes a capture: carry it as a SimulationStep type that refuses an unsupported step when it is constructed
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: refactor
 feature: numerical-domain
-touches: src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/chart_frame.py, tests, docs/MODEL.md, docs/ARCHITECTURE.md
+touches: src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/chart_frame.py, tests, docs/MODEL.md, docs/ARCHITECTURE.md, docs/items/PL-WP52-a-compartment-advanced-on-its-own.md, docs/items/PL-V10T-each-supported-range-guard-is-tested-at-the.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 session that claimed it
 added: 2026-10-03
+closed: 2026-10-04
 payoff: a run's step is checked once, where it is chosen, so the next function written to take one cannot be the next entry point that forgot the 1 ms floor
+verify: grep -q '^class SimulationStep(float):' src/anesthesia_sim/core/simulation_step.py && grep -q 'def test_a_bare_float_step_is_refused_at_each_run_entry' tests/unit/test_simulation_step.py && ! grep -q 'simulation_step_s: float' src/anesthesia_sim/core/simulation.py src/anesthesia_sim/core/uptake_system.py src/anesthesia_sim/core/supported_ranges.py src/anesthesia_sim/app/playback.py src/anesthesia_sim/app/controller.py
 ---
 
 **Problem.** The simulation step is a bare float in 15 signatures and 2 fields, and its 1 ms floor is checked at 4 call sites, so each entry point that skips the check becomes a capture: carry it as a SimulationStep type that refuses an unsupported step when it is constructed
@@ -103,6 +105,13 @@ The alternative is a second, floor-only type the compartments take now, which
 answers `PL-WP52` without the measurement. The run's half is the same under
 either answer, so it is built while this is open.
 
+**Decided 2026-10-04: the run's step only** (project owner, 2026-10-04,
+ratified, over a second, floor-only type the compartments take now). The
+compartment clause of "Done when" moved to `PL-WP52`, which measures a
+compartment stepped alone, decides its floor on that measurement and, if it
+needs one, how the floor is carried. The run's half, built below, is the whole
+of this item.
+
 **Built 2026-10-03, the run's half, while the question is open.**
 `core/simulation_step.py` now holds the two bounds, their guard and
 `SimulationStep`, moved out of `core/uptake_system.py` because
@@ -115,12 +124,19 @@ constructor's refusal with the same message; and
 `tests/unit/test_simulation_step.py` pins the type and the four entries. One
 test was passing for the wrong reason once the check landed - it injects a
 `TypeError` mid-step and expected to see it, and a bare float raised one first -
-and now builds its step. The compartments are unchanged. The `verify:` is
-removed until the answer: no command can tell the two answers' remaining work
-apart, and the one written for the run's half passes now, which
-`docket check` refuses on an open item.
+and now builds its step. The compartments are unchanged. The `verify:` was
+off while the question stood, because the one written for the run's half
+already passed, which `docket check` refuses on an open item, and went back
+on at the close.
 
+[superseded 2026-10-04: the decision above, and the Done-when below]
 **Done when.** Every function that takes a run's step takes a
 `SimulationStep`; the step is checked once, when constructed; a compartment
 refuses a step below `MINIMUM_SIMULATION_STEP_S`; and a test pins that a bare
 float reaching a run's entry raises instead of computing.
+
+**Done when.** Every function that takes a run's step takes a
+`SimulationStep`; the step is checked once, when constructed; and a test pins
+that a bare float reaching a run's entry raises instead of computing. Whether a
+compartment refuses a step below `MINIMUM_SIMULATION_STEP_S` is `PL-WP52`'s,
+by the decision above.
