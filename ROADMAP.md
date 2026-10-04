@@ -5938,7 +5938,8 @@ removed, and this file's history before that change holds their text.
 6. **The import boundary with teeth** (queue item `PL-L8RN`). `QSplitter`
    confined to the adapter and concrete View modules confined out of the
    layout tree, which needs `tools/import_boundary_check.py` to decide a dotted
-   import target rather than a root package. Both entries land in the commit
+   import target rather than a root package - as it has since `PL-YXFF`, which
+   declared the first such boundary. Both entries land in the commit
    that creates the adapter, because a boundary over a tree that does not exist
    is an `empty` error by construction.
 
