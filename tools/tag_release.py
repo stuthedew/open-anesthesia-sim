@@ -99,7 +99,12 @@ def run(root: Path, *, apply: bool, remote: str = REMOTE, branch: str | None = N
     if fetched.returncode != 0:
         print(f"Declined: `git fetch {remote} {branch}` failed: {_failure(fetched)}")
         return 1
-    version = version_in(_git(["show", f"{ref}:{VERSION_FILE}"], root).stdout)
+    try:
+        version = version_in(_git(["show", f"{ref}:{VERSION_FILE}"], root).stdout)
+    except ValueError as error:
+        # Not TOML, which is not the same as declaring no version (`PL-3DD9`).
+        print(f"Declined: {ref}:{VERSION_FILE} is not TOML ({error}), so no tag can be named.")
+        return 1
     if not version:
         print(f"Declined: {ref} declares no version in {VERSION_FILE}, so no tag can be named.")
         return 1

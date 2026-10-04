@@ -462,7 +462,7 @@ def test_a_suppression_is_still_found_after_a_word_character(tmp_path: Path) -> 
         ("skipTest", 'self.skipTest("broken")'),
         ("SkipTest", 'raise unittest.SkipTest("broken")'),
         ("collect_ignore", 'collect_ignore = ["test_thing.py"]'),
-        ("pytest_ignore_collect", "def pytest_ignore_collect(collection_path, config):"),
+        ("pytest_ignore_collect", "def pytest_ignore_collect(collection_path, config): ..."),
     ],
 )
 def test_a_pytest_mark_skip_is_a_suppression(tmp_path: Path, shape: str, marker: str) -> None:
@@ -725,6 +725,93 @@ def test_a_suppression_beside_a_string_is_still_found(tmp_path: Path) -> None:
     suppression = _check(report, "no suppression added")
     assert not suppression.passed
     assert any("xfail" in line for line in suppression.lines)
+
+
+@pytest.mark.parametrize(
+    ("split", "marker", "shown"),
+    [
+        (
+            "backslash",
+            "@pytest.mark.\\\n    skip(reason='flaky')",
+            "@pytest.mark.\\ skip(reason='flaky')",
+        ),
+        (
+            "bracket",
+            "@(pytest.mark\n  .skip(reason='flaky'))",
+            "@(pytest.mark .skip(reason='flaky'))",
+        ),
+    ],
+)
+def test_a_suppression_split_across_lines_is_found(
+    tmp_path: Path, split: str, marker: str, shown: str
+) -> None:
+    """Python continues a statement after a backslash and inside brackets (`PL-CFWP`).
+
+    Split inside its dotted name, a marker holds no entry of `SUPPRESSIONS` on
+    either physical line, so a check reading diff lines said `none`. Read as
+    logical lines, the statement is whole and is printed as written.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        f"PL-K7QX silence it, split by a {split}",
+        "tests/test_thing.py",
+        KEPT + f"\n\n{marker}\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    suppression = _check(report, "no suppression added")
+    assert not suppression.passed
+    assert suppression.lines == (shown,)
+
+
+def test_a_suppression_reflowed_or_recommented_adds_nothing(tmp_path: Path) -> None:
+    """The statement is the unit, so its layout and its comment are not.
+
+    The other side of reading logical lines, pinned because it narrows a check
+    whose safe direction is reporting: a marker the base already held, wrapped
+    over three lines and given a comment, is the same statement, where a diff
+    line read the wrapped opening line as a suppression added (`PL-CFWP`). A
+    token changed is not layout, so the trailing comma a formatter adds when it
+    wraps still re-adds the statement, as an edit to a one-line marker does.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "base: a test already skipped",
+        "tests/test_thing.py",
+        KEPT + '\n\n@pytest.mark.skip(reason="broken")\ndef test_b() -> None:\n    assert 2 == 2\n',
+    )
+    _work(
+        root,
+        "PL-K7QX reflow it",
+        "tests/test_thing.py",
+        KEPT
+        + '\n\n@pytest.mark.skip(  # until the fix lands\n    reason="broken"\n)\n'
+        + "def test_b() -> None:\n    assert 2 == 2\n",
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    assert _check(report, "no suppression added").detail == "none"
+
+
+def test_a_python_file_this_interpreter_cannot_parse_is_read_line_by_line(tmp_path: Path) -> None:
+    """Where the statements cannot be read, the lines are, and the page says so."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX silence it in a file that does not parse",
+        "tests/test_thing.py",
+        KEPT + "\n\n@pytest.mark.xfail\ndef test_b( -> None:\n    assert 2 == 2\n",
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    suppression = _check(report, "no suppression added")
+    assert not suppression.passed
+    assert suppression.lines[0] == "@pytest.mark.xfail"
+    assert suppression.lines[1].startswith(
+        "read line by line, not parsed: tests/test_thing.py - this interpreter cannot parse"
+    )
 
 
 def test_strip_non_code_leaves_an_unterminated_span_whole() -> None:
@@ -2244,6 +2331,56 @@ def test_a_second_recurrence_extending_the_line_is_sanctioned_and_a_rewrite_is_n
     )
     _git(root, "add", "-A")
     _git(root, "commit", "-qm", "PL-K7QX replace what was recorded")
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == ""
+
+
+def test_an_append_onto_a_value_continued_on_an_indented_line_is_sanctioned(tmp_path: Path) -> None:
+    """The append lands on the continuation line, which carries no key (`PL-J503`).
+
+    `with_front_matter_field` appends at the end of the last line the reader
+    folds into the value, so the diff is that indented line growing - which a
+    match on one diff line read as an ordinary edit outside `touches`, though
+    `parse_item` read every entry on both sides. Each copy is read whole now,
+    and an edit to another field riding the same commit is still refused.
+    """
+    root = _repo(tmp_path)
+    items = root / "docs" / "items"
+    neighbour = items / "PL-B2B2-do-the-other.md"
+    neighbour.write_text(
+        neighbour.read_text().replace(
+            "---\n\n", "recurrences: 2026-09-01 PL-N3W1,\n  2026-09-03 PL-N3W3\n---\n\n", 1
+        )
+    )
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: a neighbour whose recurrences wrap")
+    path = "docs/items/PL-B2B2-do-the-other.md"
+
+    def append(entry: str) -> None:
+        insert_field(
+            items,
+            parse_item(neighbour.read_text(), neighbour.name),
+            "recurrences",
+            entry,
+            append=True,
+        )
+
+    append("2026-10-04 PL-N3W4")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX a capture matched to the wrapped item")
+    assert neighbour.read_text().count("  2026-09-03 PL-N3W3, 2026-10-04 PL-N3W4\n") == 1
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == "recurrence"
+
+    # A second capture in a commit of its own is the same append again.
+    append("2026-10-05 PL-N3W5")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX a second capture matched to it")
+    assert sanctioned_queue_edit(root, "HEAD~2", ("HEAD~1", "HEAD"), path) == "recurrence"
+
+    # An append that carries another edit with it is no longer only an append.
+    append("2026-10-06 PL-N3W6")
+    neighbour.write_text(neighbour.read_text().replace("status: ready", "status: blocked"))
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX a capture, and a reopening")
     assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == ""
 
 

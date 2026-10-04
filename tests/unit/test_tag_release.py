@@ -214,6 +214,20 @@ def test_notes_added_twice_name_no_cut(
     assert _git(origin, "tag", "--list") == ""
 
 
+def test_a_version_file_that_is_not_toml_is_declined_as_that(
+    published: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Unreadable is not version-less, and the decline says which it met (`PL-3DD9`)."""
+    origin, work = published
+    _commit(work, "PL-D1D1: break the version file", {"pyproject.toml": 'version = "0.3.0\n'})
+    _git(work, "push", "-q", "origin", "HEAD:main")
+
+    assert run(work, apply=True) == 1
+
+    assert "origin/main:pyproject.toml is not TOML" in capsys.readouterr().out
+    assert _git(origin, "tag", "--list") == ""
+
+
 def test_a_shallow_clone_is_declined(
     published: tuple[Path, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
