@@ -31,7 +31,14 @@ nothing says a block was misread.
 refused by name as a form the reader does not take; either way a test pins the
 folded case. Refusing is the cheaper answer while no workflow folds.
 
-**Generator check.** A one-off: one reader missing one input form, not two
-spellings of a predicate disagreeing, so not `PL-PVW2`'s or `PL-KGYT`'s fact.
-Filed in `PL-Q9LK`'s closing commit as a residual that fix left on purpose, so
-not a re-entry of it either.
+[superseded 2026-10-04: a member of `PL-R417`, below] **Generator check.** A
+one-off: one reader missing one input form, not two spellings of a predicate
+disagreeing, so not `PL-PVW2`'s or `PL-KGYT`'s fact. Filed in `PL-Q9LK`'s
+closing commit as a residual that fix left on purpose, so not a re-entry of it
+either.
+
+**Generator check, 2026-10-04.** A member of `PL-R417`: YAML folds a `>`
+block's lines into one before bash reads it (YAML 1.2.2 § 8.1.3), so the reader
+took a physical line for a statement its format continues - the fact
+`PL-JCS3` found six readers misreading. The reading above, that no second
+spelling disagrees, still holds; it tested a different fact.
