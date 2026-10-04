@@ -1,8 +1,15 @@
+import json
+from importlib.resources import files
+
 import pytest
 
+from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.parameters import load_reference_adult_parameters
+from anesthesia_sim.core.parameters import (
+    load_reference_adult_parameters,
+    parse_reference_adult_parameters,
+)
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ALVEOLAR_VENTILATION_L_MIN
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -93,19 +100,17 @@ def test_the_bare_alveolar_defaults_match_the_shipped_patient_file() -> None:
 
 
 def test_for_agent_builds_the_alveoli_at_the_patient_file_s_values() -> None:
-    """The shipped path reads the file rather than falling through to a default.
-
-    The pair matters more than either half. Because the defaults currently
-    equal the file's values, dropping the explicit keyword arguments in
-    `for_agent()` would change no number and no test above would notice — the
-    run would simply stop reading its own parameter file, and every provenance
-    row pointing at `data/patients/reference_adult.json` would quietly become
-    a claim about a file the model no longer consults.
+    """A run from the shipped patient file carries its values, and the 37.5 s they give.
 
     Asserting the ventilation time constant as well as the two inputs is the
     same reasoning `PL-4YY1` applied to the circuit's 90 s: 37.5 s is the
     alveolar washout the early rise is read against, and it is what a silent
     change to either value would move.
+
+    It cannot show that the file was read, because the shipped values equal
+    `AlveolarCompartment`'s field defaults;
+    `test_for_agent_builds_the_alveoli_at_changed_patient_file_values` below
+    does (`PL-H8QP`).
     """
 
     patient = load_reference_adult_parameters()
@@ -114,3 +119,36 @@ def test_for_agent_builds_the_alveoli_at_the_patient_file_s_values() -> None:
     assert alveoli.gas_volume_l == patient.alveolar_gas_volume_l
     assert alveoli.alveolar_ventilation_l_min == patient.default_alveolar_ventilation_l_min
     assert alveoli.gas_volume_l / alveoli.alveolar_ventilation_l_min * 60.0 == pytest.approx(37.5)
+
+
+def test_for_agent_builds_the_alveoli_at_changed_patient_file_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The shipped path reads the file rather than falling through to a default.
+
+    Because the defaults equal the shipped file's values, dropping the explicit
+    keyword arguments in `for_agent()` would change no number in a run built
+    from that file: the run would simply stop reading its own parameter file,
+    and every provenance row pointing at `data/patients/reference_adult.json`
+    would quietly become a claim about a file the model no longer consults. So
+    this run is built from the shipped file with both values moved off the
+    defaults, parsed as the loader parses it and handed to `for_agent()` by
+    replacing the loader it calls, the way `tests/unit/test_circuit.py` hands it
+    a machine profile (`PL-H8QP`). 3.0 L at 5.0 L/min is 36 s.
+    """
+
+    payload: dict[str, object] = json.loads(
+        files("anesthesia_sim.data.patients")
+        .joinpath("reference_adult.json")
+        .read_text(encoding="utf-8")
+    )
+    payload["alveolar_gas_volume_l"] = 3.0
+    payload["default_alveolar_ventilation_l_min"] = 5.0
+    patient = parse_reference_adult_parameters(payload)
+    monkeypatch.setattr(uptake_system, "load_reference_adult_parameters", lambda: patient)
+
+    alveoli = AgentUptakeSystem.for_agent("sevoflurane").alveoli
+
+    assert alveoli.gas_volume_l == 3.0
+    assert alveoli.alveolar_ventilation_l_min == 5.0
+    assert alveoli.gas_volume_l / alveoli.alveolar_ventilation_l_min * 60.0 == pytest.approx(36.0)
