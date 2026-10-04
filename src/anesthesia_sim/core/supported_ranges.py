@@ -73,19 +73,23 @@ a bare `float` as the programming error it is; the layers that forward a flow,
 
 **The case instant and the step count are types too** (`PL-CN5S`, slice 2 of
 `PL-51B7`). `CaseInstant` is a `float` subclass built only through
-`require_supported_case_instant`, for the reasons the flows are, and every
-record field that holds an instant of the case and every method that moves a
-run to one takes it: `RunDefinition`'s opening, reach and keyframes,
-`SimulationState.elapsed_s`, the marks in `app/bookmarks.py`, and the instant a
-branch is taken at. The instants a run is only *read* at - `RunDefinition`'s
-`state_at` and a drawn window's bounds - stay a `float`, because the run's own
-opening and reach, both checked instants, bound them and refuse what falls
-outside: that is a relation between the instant and the run, which belongs to
-the run. `StepCount` is an `int` subclass checking what a count can be checked
-for alone, that it is whole and nonnegative. How many steps a run may complete
+`require_supported_case_instant`, for the reasons the flows are. What opens,
+moves, keyframes, marks or branches a run takes it - `RunDefinition`'s
+opening, reach and keyframes, the marks in `app/bookmarks.py`, and the instant
+a branch is taken at - and `SimulationState.elapsed_s` returns one. The
+control record's instants are still annotated `float` (`PL-RCYZ`). The
+instants a run is only *read* at - `RunDefinition`'s `state_at` and a drawn
+window's bounds - stay a `float`, because the run's own opening and reach,
+both checked instants, bound them and refuse what falls outside: that is a
+relation between the instant and the run, which belongs to the run.
+`StepCount` is an `int` subclass checking what a count can be checked for
+alone, that it is whole and nonnegative. How many steps a run may complete
 depends on the step it takes them at, so `SimulationState` keeps checking the
-pair. Each is refused as a bare value at run time where it is stored or a run
-is moved to it, by `require_case_instant` and `require_step_count`.
+pair. A bare value is refused at run time, by `require_case_instant` where
+`Keyframe`, `TimeBookmark` or `BookmarkCrossing` keeps an instant or a run is
+opened at or moved to one, and by `require_step_count` where `SimulationState`
+keeps its count; what only carries either onward checks nothing. A value built
+as another checked quantity is refused as the swapped argument it is.
 
 **Fresh gas flow has a second bound of the same shape, and it is not here**
 (`PL-8PS6`). What a *machine* can deliver - its flowmeters, its minimum-flow
@@ -518,7 +522,10 @@ def require_step_count(step_count: object) -> None:
     The runtime half of the type, for the callers `mypy` does not read, as
     `require_fresh_gas_flow` explains. It runs where a count is stored, which
     is `SimulationState` when it is built; every count the state stores after
-    that it builds as a `StepCount` itself.
+    that it builds as a `StepCount` itself. A value built as another checked
+    quantity is named as that and not told to rebuild, as `_require_built`
+    names a swapped flow: a step or an instant arriving where a count belongs
+    is a swapped argument, which no `StepCount` built from it would correct.
 
     Raises:
         TypeError: `step_count` is not a `StepCount` - a bare `int` included,
@@ -527,14 +534,23 @@ def require_step_count(step_count: object) -> None:
             `AnesthesiaSimulationError` (`core/exceptions.py`).
     """
 
-    if not isinstance(step_count, StepCount):
-        shown = _shown(step_count)
+    if isinstance(step_count, StepCount):
+        return
 
+    shown = _shown(step_count)
+
+    if isinstance(step_count, _CHECKED_QUANTITIES):
         raise TypeError(
-            f"step_count of {shown} was not built as StepCount, it is "
-            f"{type(step_count).__name__}: build it as StepCount({shown}) where the count is "
-            "taken, which checks once that it is a whole, nonnegative number of steps"
+            f"step_count of {shown} was built as {type(step_count).__name__}, which is not "
+            "StepCount: it is another quantity, so build StepCount from the count's own value "
+            "where the count is taken"
         )
+
+    raise TypeError(
+        f"step_count of {shown} was not built as StepCount, it is "
+        f"{type(step_count).__name__}: build it as StepCount(...) where the count is taken, "
+        "which checks once that it is a whole, nonnegative number of steps"
+    )
 
 
 def maximum_step_count(simulation_step_s: SimulationStep) -> int:
@@ -742,6 +758,19 @@ class CaseInstant(float):
         return super().__new__(cls, instant_s)
 
 
+# Every quantity built only through its own check. One handed in where another
+# is required is a swapped argument, which `require_case_instant` and
+# `require_step_count` name as that rather than advising a rebuild.
+_CHECKED_QUANTITIES = (
+    FreshGasFlow,
+    AlveolarVentilation,
+    CardiacOutput,
+    SimulationStep,
+    StepCount,
+    CaseInstant,
+)
+
+
 def require_case_instant(name: str, instant_s: object) -> None:
     """Require an instant that was built as a `CaseInstant`, and so checked.
 
@@ -751,6 +780,10 @@ def require_case_instant(name: str, instant_s: object) -> None:
     opened at or moved to one: `RunDefinition`, built or advanced, and the
     branch `SimulationController.resumed_at` takes. A function that only
     compares an instant, or forwards one, takes the type and checks nothing.
+    A value built as another checked quantity is named as that and not told
+    to rebuild, as `_require_built` names a swapped flow: a count of 600
+    steps arriving where an instant belongs is a swapped argument, and a
+    `CaseInstant` built from it would hold an instant of 600 s.
 
     Args:
         name: The parameter the instant was handed in as, for the message. An
@@ -765,11 +798,20 @@ def require_case_instant(name: str, instant_s: object) -> None:
             `AnesthesiaSimulationError` (`core/exceptions.py`).
     """
 
-    if not isinstance(instant_s, CaseInstant):
-        shown = _shown(instant_s)
+    if isinstance(instant_s, CaseInstant):
+        return
 
+    shown = _shown(instant_s)
+
+    if isinstance(instant_s, _CHECKED_QUANTITIES):
         raise TypeError(
-            f"{name} of {shown} was not built as CaseInstant, it is {type(instant_s).__name__}: "
-            f"build it as CaseInstant({shown}) where the instant is chosen, which checks it "
-            'against the supported run length once (docs/MODEL.md, "Supported run length")'
+            f"{name} of {shown} was built as {type(instant_s).__name__}, which is not "
+            "CaseInstant: it is another quantity, so build CaseInstant from the instant's own "
+            "value where the instant is chosen"
         )
+
+    raise TypeError(
+        f"{name} of {shown} was not built as CaseInstant, it is {type(instant_s).__name__}: "
+        "build it as CaseInstant(...) where the instant is chosen, which checks it against "
+        'the supported run length once (docs/MODEL.md, "Supported run length")'
+    )

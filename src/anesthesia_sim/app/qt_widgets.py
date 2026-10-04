@@ -1228,9 +1228,9 @@ class ForkPanel(QWidget):
     than on the string a reader sees. It carries it as a plain `float`, and
     `selected_instant_s` builds the `CaseInstant` again on the way out: Qt
     holds a `float` subclass as an opaque Python object, which `findData`
-    matches against nothing, an equal `CaseInstant` included (measured
-    2026-10-04, PySide6), so a selection kept across a rebuilt list would be
-    lost.
+    matches only by identity, so an equal `CaseInstant` built anew is not
+    found (measured 2026-10-04, PySide6) and a selection kept across a
+    rebuilt list would be lost.
 
     **Refused the way the transport refuses** (`PL-61WW`): `setDisabled`
     beside `setHidden` with one operand, and the reason standing where the

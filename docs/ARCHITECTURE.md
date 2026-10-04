@@ -51,7 +51,7 @@ src/anesthesia_sim/
 │   ├── validation.py              # shared input-validation guards (raise SimulationConfigurationError)
 │   ├── concentration.py           # fraction vs percent: the two forms, and the only crossing
 │   ├── units.py                   # seconds, minutes, hours, milliseconds: the factors between them, each written once
-│   ├── supported_ranges.py        # the declared domain: FreshGasFlow, AlveolarVentilation and CardiacOutput, which cannot hold a flow outside it, and the guards that refuse a run outside it
+│   ├── supported_ranges.py        # the declared domain: FreshGasFlow, AlveolarVentilation and CardiacOutput, which cannot hold a flow outside it, CaseInstant, which cannot hold an instant outside the run length, StepCount, a whole nonnegative count, and the guards that refuse a run outside it
 │   ├── simulation_step.py         # the run's step: its supported range, and SimulationStep, which cannot hold one outside it
 │   ├── exceptions.py              # exception hierarchy; every core failure is inside it
 │   ├── parameters.py              # load + validate agent/patient/machine JSON data

@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/simulation_view.py, tests, docs/MODEL.md, .claude/rules/core-domain.md
+touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/simulation_view.py, tests, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/core-domain.md
 blocked-by: PL-0YYV
 added: 2026-10-04
 closed: 2026-10-04
@@ -76,10 +76,27 @@ calls taken in the build and put to the owner in the pull request for his read:
 - **`StepCount` refuses `bool`**, which `SimulationState` accepted as 0 and 1.
   `2.0` is refused as before.
 - **The fork panel stores plain floats as Qt `userData`** and rebuilds the
-  `CaseInstant` on the way out: PySide6's `findData` matches nothing against a
-  stored `float` subclass, an equal `CaseInstant` included (measured
-  2026-10-04).
+  `CaseInstant` on the way out: PySide6's `findData` matches a stored `float`
+  subclass only by identity, so an equal `CaseInstant` built anew is not found
+  (measured 2026-10-04, corrected by the second review pass).
 
 Filed rather than done, being outside `touches`: `PL-RCYZ`, the control
 record's instants (`ControlChange.elapsed_s`, an adjustment's start and end),
 still annotated `float` though each is taken from a `CaseInstant`.
+
+**Review passes** (three: the type boundary and state; domain invariants, what
+a learner sees and whether the docs tell the truth; tests and dead code). No
+wrong standing, no clinical value and no new exception a learner could reach.
+Folded: a value built as another checked quantity - a `StepCount` handed in as
+an instant, a `SimulationStep`, a flow - is refused by `require_case_instant`
+and `require_step_count` as a swapped argument with no rebuild advice, since
+`CaseInstant(StepCount(600))` would hold an instant of 600 s, and an unbuilt
+value is told `CaseInstant(...)` rather than having its value echoed, which
+advised `CaseInstant(True)`; `SimulationState`'s refusal of a count with no
+step names a count past 4,300 digits through `describe_count` rather than
+raising `ValueError`; and the docs were narrowed to the records that actually
+refuse a bare value. Filed: `PL-8W1W` (`SimulationState`'s fields assignable
+after construction without a check, to decide with `PL-LBQY`), `PL-7N8P`
+(`CaseInstant` admits `True` and lets `OverflowError` escape, to decide with
+`PL-LLMN`) and `PL-848D` (the step's and the flows' type refusals brought to
+the same shape).

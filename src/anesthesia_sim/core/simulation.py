@@ -35,6 +35,7 @@ from anesthesia_sim.core.simulation_step import SimulationStep, require_simulati
 from anesthesia_sim.core.supported_ranges import (
     CaseInstant,
     StepCount,
+    describe_count,
     require_step_count,
     require_supported_run_length,
     require_supported_step_count,
@@ -92,8 +93,8 @@ class SimulationState:
             require_supported_step_count(self.step_count, self.simulation_step_s)
         elif self.step_count > 0:
             raise SimulationConfigurationError(
-                f"step_count is {self.step_count} but no simulation_step_s was given, so the "
-                "simulated time those steps reached is unknown"
+                f"step_count is {describe_count(self.step_count)} but no simulation_step_s was "
+                "given, so the simulated time those steps reached is unknown"
             )
 
     @property

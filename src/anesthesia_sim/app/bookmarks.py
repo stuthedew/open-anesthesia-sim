@@ -779,10 +779,10 @@ def _time_bookmark_standing(
     stopped run, so a run standing at the cap and failed was failed by a
     setting *after* it had already run out of supported time, and the cap is
     then what the mark went unreached within. It is also the more durable
-    answer of the two — a mark the cap leaves ahead of the clock, between the
-    last step a run's step lands on and the end of the span, is out of reach
-    of the fresh run a reset would give, which stops on the same step, and
-    one merely unreached before a failure is not.
+    answer of the two — a mark the cap leaves ahead of the clock lies past
+    the last instant a run at this step can stand on, so the fresh run a
+    reset would give stops short of it too, and one merely unreached before
+    a failure is not out of reach.
 
     `REACHED` is not among them. It is a historical claim, it is
     `_mac_target_standing`'s answer, and `MarkStanding` carries the argument

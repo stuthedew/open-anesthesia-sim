@@ -647,9 +647,13 @@ def test_a_step_count_too_long_to_print_is_refused() -> None:
     with pytest.raises(SimulationDomainLimitError) as stepped_from:
         require_supported_run_length(StepCount(too_long), SimulationStep(0.1))
 
+    with pytest.raises(SimulationConfigurationError) as without_a_step:
+        SimulationState(step_count=StepCount(too_long))
+
     assert f"a run of {named} steps of 0.1 s" in str(past_the_span.value)
     assert f"not -{named}" in str(negative.value)
     assert f"reached {named} steps of 0.1 s" in str(stepped_from.value)
+    assert f"step_count is {named} but no simulation_step_s" in str(without_a_step.value)
 
 
 def test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one() -> None:
@@ -848,25 +852,87 @@ def test_an_instant_and_a_count_survive_copy_and_pickle_as_their_types(built: ob
 def test_a_value_not_built_as_the_type_is_refused_whatever_it_holds() -> None:
     """The runtime half of each type refuses the missing check, not the number.
 
-    An equal plain number, the other type, and a flow are each refused by
-    name; the refusal says what to build, and where its check is argued.
+    An equal plain number, a `bool` and `None` are each refused by name, and
+    the refusal says what to build without repeating the value as the thing
+    to build it from: `CaseInstant(True)` would be built, as 1 s, and
+    `StepCount(None)` would not.
     """
 
-    for unbuilt in (600.0, 600, StepCount(600), FreshGasFlow(4.0)):
+    for unbuilt in (600.0, 600, True, None):
         with pytest.raises(TypeError, match="was not built as CaseInstant") as raised:
             require_case_instant("instant_s", unbuilt)
 
         assert f"it is {type(unbuilt).__name__}" in str(raised.value)
+        assert "build it as CaseInstant(...)" in str(raised.value)
         assert "Supported run length" in str(raised.value)
 
-    for unbuilt in (6_000, 6_000.0, CaseInstant(600.0), True):
+    for unbuilt in (6_000, 6_000.0, True, None):
         with pytest.raises(TypeError, match="was not built as StepCount") as raised:
             require_step_count(unbuilt)
 
         assert f"it is {type(unbuilt).__name__}" in str(raised.value)
+        assert "build it as StepCount(...)" in str(raised.value)
 
     require_case_instant("instant_s", CaseInstant(600.0))
     require_step_count(StepCount(6_000))
+
+
+@pytest.mark.parametrize(
+    "other",
+    [
+        StepCount(600),
+        SimulationStep(0.1),
+        FreshGasFlow(4.0),
+        AlveolarVentilation(4.0),
+        CardiacOutput(5.0),
+    ],
+    ids=lambda other: type(other).__name__,
+)
+def test_another_quantity_handed_in_as_an_instant_is_refused_as_a_swapped_argument(
+    other: object,
+) -> None:
+    """Named as the quantity it was built as, and not told to rebuild as an instant.
+
+    A count of 600 steps, or the 0.1 s step, arriving where an instant belongs
+    is a swapped argument. A refusal that prescribed `CaseInstant(600)` would
+    have the caller build an instant of 600 s from it, which passes every
+    check and is the wrong quantity, so the message prescribes nothing.
+    """
+
+    with pytest.raises(TypeError) as raised:
+        require_case_instant("instant_s", other)
+
+    message = str(raised.value)
+
+    assert f"was built as {type(other).__name__}, which is not CaseInstant" in message
+    assert "it is another quantity" in message
+    assert "CaseInstant(" not in message
+
+
+@pytest.mark.parametrize(
+    "other",
+    [
+        CaseInstant(600.0),
+        SimulationStep(0.1),
+        FreshGasFlow(4.0),
+        AlveolarVentilation(4.0),
+        CardiacOutput(5.0),
+    ],
+    ids=lambda other: type(other).__name__,
+)
+def test_another_quantity_handed_in_as_a_count_is_refused_as_a_swapped_argument(
+    other: object,
+) -> None:
+    """Named as the quantity it was built as, and not told to rebuild as a count."""
+
+    with pytest.raises(TypeError) as raised:
+        require_step_count(other)
+
+    message = str(raised.value)
+
+    assert f"was built as {type(other).__name__}, which is not StepCount" in message
+    assert "it is another quantity" in message
+    assert "StepCount(" not in message
 
 
 # --- The model envelope against the machine's range (PL-8PS6) ---------------
