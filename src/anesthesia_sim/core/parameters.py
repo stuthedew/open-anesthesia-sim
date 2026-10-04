@@ -1,4 +1,4 @@
-"""Load and validate agent, reference-patient and apparatus parameter files.
+"""Load and validate agent, reference-patient and breathing-system parameter files.
 
 Public types (`AgentParameters`, `ReferenceAdultParameters`,
 `BreathingCircuitParameters`) are plain, frozen dataclasses with no dependency
@@ -291,7 +291,7 @@ class ReferenceAdultParameters:
 
 @dataclass(frozen=True, slots=True)
 class BreathingCircuitParameters:
-    """Validated apparatus parameters: the breathing system, not the patient.
+    """Validated breathing-system parameters: what is in front of the patient.
 
     A third kind beside `AgentParameters` and `ReferenceAdultParameters`,
     because circuit volume and fresh gas flow belong to neither. They describe
@@ -299,7 +299,7 @@ class BreathingCircuitParameters:
     run opens at, which a profile may leave to the run (`PL-QW19`) - and a file
     that filed them under either would say something false about where they
     came from - the reference adult's eleven values are one product's default
-    *patient*, and these are its default *apparatus*.
+    *patient*, and these are its default *breathing system*.
 
     Both were hardcoded as `BreathingCircuit` field defaults until `PL-4YY1`.
     That put them outside `tools/doc_check.py`'s `check_provenance`, which
@@ -312,6 +312,10 @@ class BreathingCircuitParameters:
     schema_version: int
     id: str
     display_name: str
+    # V_C whole: apparatus plus patient circuit, never a manufacturer's
+    # apparatus volume as published, which leaves the patient circuit out.
+    # `_BreathingCircuitPayload` says what a profile author adds to one, and
+    # why nothing in the tree could tell the two apart (`PL-TBMX`).
     circuit_volume_l: float
     # The flow this profile opens a run at, or `None` where it states none.
     # `None` reads as *this profile states no startup flow* and never as *this
@@ -881,6 +885,22 @@ class _BreathingCircuitPayload(_StrictPayload):
     being nothing nested to flatten; the pair is kept anyway, because the
     reason for it is the Pydantic boundary rather than the reshaping.
 
+    `circuit_volume_l` is the assembled total, apparatus plus patient circuit
+    (`PL-TBMX`). The model has one well-mixed gas compartment in front of the
+    patient, so the corrugated limbs and the Y-piece can only be inside it. A
+    manufacturer's apparatus volume includes the absorber and excludes the
+    disposable patient circuit - every figure `docs/machine-survey.md`
+    § "(a1) Apparatus gas volume" found is of that kind - so an author holding
+    one adds a patient-circuit volume before storing it: 1.2 L, the Hudson RCI
+    circuit Shin et al. added to each Dräger machine's figure (BMC Anesthesiol
+    2017;17(1):10; their sums leave its 3 L reservoir bag out), unless the
+    profile assumes a circuit whose own volume is stated. Stored bare, a
+    Perseus A500's 2.1 L gives a circuit time constant of 31.5 s at 4.0 L/min
+    where its assembled 3.3 L gives 49.5 s, and nothing here can tell the two
+    apart: both are positive finite volumes, and `check_provenance` asks only
+    that a stored number has a row in `docs/MODEL.md`. That document states
+    the rule under "Breathing circuit".
+
     `default_fresh_gas_flow_l_min` is checked as positive and finite here and
     not against `core/supported_ranges.py`, matching how the reference
     patient's flows are handled: the range guard belongs to the compartment
@@ -1168,7 +1188,7 @@ def load_reference_adult_parameters() -> ReferenceAdultParameters:
 def load_reference_circle_system_parameters() -> BreathingCircuitParameters:
     """Load and validate the built-in reference circle breathing system.
 
-    The apparatus half of what `AgentUptakeSystem.for_agent()` builds, beside
+    The breathing-system half of what `AgentUptakeSystem.for_agent()` builds, beside
     the agent and the reference adult. Its two values were `BreathingCircuit`
     field defaults until `PL-4YY1`, so a run took them from `core/` and no
     provenance row could name them.
