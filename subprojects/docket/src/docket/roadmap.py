@@ -549,25 +549,38 @@ def list_entries(lines: Sequence[str], start: int) -> Iterator[tuple[int, str]]:
     exclusion advisory in `tools/doc_check.py` - because what an entry *is* is
     one question, and it was answered in three places that could drift.
     """
-    line_number = 0
-    parts: list[str] = []
+    for first, end in list_entry_lines(lines, start):
+        parts = [LIST_ENTRY_RE.sub(r"\g<text>", lines[first])]
+        parts.extend(line.strip() for line in lines[first + 1 : end])
+        yield first + 1, " ".join(parts)
+
+
+def list_entry_lines(lines: Sequence[str], start: int) -> Iterator[tuple[int, int]]:
+    """The walker `list_entries` reads, as each entry's span of `lines`.
+
+    Each pair is the 0-based index of the entry's own line and the index one
+    past its last continuation line. A reader that needs an entry as written -
+    its line breaks kept, so a name wrapped inside a code span is read whole
+    rather than joined with a space no test name holds (`PL-6SRZ`) - slices
+    `lines` with it, and what an entry *is* stays answered once.
+    """
+    first = -1
+    end = len(lines)
     for index in range(start, len(lines)):
         line = lines[index]
         heading = HEADING_RE.match(line)
         if heading is not None and len(heading.group("hashes")) <= 3:
+            end = index
             break
-        entry = LIST_ENTRY_RE.match(line)
-        if entry is not None:
-            if parts:
-                yield line_number, " ".join(parts)
-            line_number, parts = index + 1, [entry.group("text")]
-        elif parts and line.strip() and line[:1].isspace():
-            parts.append(line.strip())
-        elif parts:
-            yield line_number, " ".join(parts)
-            parts = []
-    if parts:
-        yield line_number, " ".join(parts)
+        if LIST_ENTRY_RE.match(line) is not None:
+            if first >= 0:
+                yield first, index
+            first = index
+        elif first >= 0 and not (line.strip() and line[:1].isspace()):
+            yield first, index
+            first = -1
+    if first >= 0:
+        yield first, end
 
 
 def _subsection_text(lines: Sequence[str], start: int) -> str:

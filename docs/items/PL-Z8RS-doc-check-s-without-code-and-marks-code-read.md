@@ -3,12 +3,14 @@ id: PL-Z8RS
 title: doc_check's _without_code and _marks_code read code spans a line at a time, so on a line a wrapped span closes, its closing run pairs with the next span's opening run and the prose between reads as code: a TeX delimiter there goes unchecked, and a word there is listed as code
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+closed: 2026-10-04
+pr: 1332
 payoff: a TeX delimiter in prose after a code span wrapped across lines is checked instead of silently read as code
 verify: grep -q 'def test_without_code_reads_a_span_wrapped_across_lines' tests/unit/test_doc_check.py
 ---

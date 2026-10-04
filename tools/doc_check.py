@@ -88,6 +88,8 @@ from __future__ import annotations
 
 import argparse
 import ast
+import bisect
+import itertools
 import json
 import os
 import platform
@@ -157,7 +159,7 @@ try:
         _section_end,
         baseline_gate,
         baseline_heading,
-        list_entries,
+        list_entry_lines,
         parse_milestones,
         parse_timeline,
         parse_version_table,
@@ -371,7 +373,36 @@ TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
 #: A source file named in the reference index, as inline code: `name.pdf`.
 REFERENCE_FILE_RE = re.compile(r"`(?P<name>[\w][\w.-]*\.(?:pdf|txt|csv|json))`")
 TREE_ENTRY_RE = re.compile(r"^(?P<indent>(?:(?:│   )|(?:    ))*)(?:├──|└──) (?P<name>\S+)")
-LINK_RE = re.compile(r"\[[^\]\n]*\]\((?P<target>[^)\s]+)\)")
+
+#: Where a Markdown statement goes on past the end of a physical line
+#: (`PL-R417`): a line ending inside a paragraph, which CommonMark reads as a
+#: soft break (0.31.2 § 6.7), with the indent and blockquote markers that open
+#: the continued line. Not a blank line, which ends the paragraph (§ 4.8), nor a
+#: line opening a block of its own - a list item, an ATX heading, a fence, a
+#: table row or an HTML block - which interrupts it. Possessive, so backtracking
+#: cannot hand a list marker to whatever follows as the continued text. Every
+#: reader of a phrase the documents may wrap takes its whitespace from here,
+#: rather than each meeting the wrap one capture at a time.
+CONTINUED_LINE = (
+    r"[ \t]*+(?:>[ \t]*+)*+"
+    r"(?!\n|\Z|[-*+][ \t]|\d{1,9}[.)][ \t]|#{1,6}(?:[ \t\n]|\Z)|```|~~~|\||<)"
+)
+SOFT_BREAK = rf"[ \t]*+\n{CONTINUED_LINE}"
+#: The space between two words of a Markdown phrase: spaces or tabs, or a soft
+#: break.
+GAP = rf"(?:[ \t]++|{SOFT_BREAK})"
+#: A line that carries on the paragraph above it, read at its own start.
+LAZY_LINE_RE = re.compile(CONTINUED_LINE)
+#: Any character of a statement's text, a soft break taken as one.
+STATEMENT_CHAR = rf"(?:[^\n]|{SOFT_BREAK})"
+#: A statement read from the start of the line it opens on: that line and every
+#: line a soft break carries it onto.
+STATEMENT_RE = re.compile(rf"{STATEMENT_CHAR}*")
+
+#: An inline link, its text and the gap after `(` allowed to wrap as CommonMark
+#: allows (§ 6.3): a link whose text a wrap split was not read, so its target
+#: went unchecked.
+LINK_RE = re.compile(rf"\[(?:[^\]\n]|{SOFT_BREAK})*\]\({GAP}?(?P<target>[^)\s]+)\)")
 NUMBER_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
 
 # A prose value that restates a data-file constant declares which one, so it
@@ -407,6 +438,11 @@ PROSE_MARKER_RE = re.compile(r"^<!--\s*(?P<kind>provenance|derived):\s*(?P<body>
 # the hard gates; the marker is syntax, and it is a claim of its own that is
 # checked: a path it names must be absent, and cited in its paragraph.
 ABSENT_MARKER_RE = re.compile(r"^<!--\s*absent:\s*(?P<paths>.+?)\s*-->$")
+# A marker opened on a line and not closed there (`PL-R417`). Markers are read a
+# line at a time, as the syntax they are, so a comment carried across lines was
+# read as nothing and the claim it made went unchecked; it is refused by name
+# instead, which costs the writer one join.
+SPLIT_MARKER_RE = re.compile(r"^<!--\s*(?P<kind>provenance|derived|absent):(?!.*-->)")
 DERIVED_FROM_RE = re.compile(r"^(?P<figure>.+?)\s+from\s+(?P<rest>\S+\.json\s.+)$")
 MARKER_SOURCE_RE = re.compile(r"^(?P<relative>\S+\.json)\s+(?P<assertions>.+)$")
 ASSERTION_RE = re.compile(r"^(?P<key>[A-Za-z_][\w.]*)\s*=\s*(?P<value>[-+]?\d+(?:\.\d+)?)$")
@@ -477,8 +513,10 @@ MARKED_RE = re.compile(r"§{1,2}[ \n]*$")
 # deeper `#` levels, and then cites them by name exactly as it cites headings
 # - `docs/MODEL.md` alone carries 513 of them against 269 headings. Reading
 # only `#` lines therefore made a correct citation look stale, which is the
-# worse failure of the two: a reader sent to repair prose that was right.
-MARKER_RE = re.compile(r"^(?:[-*+]\s+)?\*\*(?P<title>[^*\n]+?)\.?\*\*", re.M)
+# worse failure of the two: a reader sent to repair prose that was right. A
+# title wrapped across a soft break is still one title (`PL-R417`); `_headings`
+# hands it back on one line, as a citation of it is compared.
+MARKER_RE = re.compile(rf"^(?:[-*+]\s+)?\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)\.?\*\*", re.M)
 
 # A citation that names its target document and then quotes it:
 # `` `docs/WORKING_NOTES.md`, "Splitting error outside the gate's operating
@@ -1304,6 +1342,14 @@ def _is_marker(text: str) -> bool:
     return any(rule.match(stripped) for rule in (PROSE_MARKER_RE, ABSENT_MARKER_RE))
 
 
+def _split_marker(document: Path, line: int, kind: str) -> str:
+    """What a marker split across lines is told; see `SPLIT_MARKER_RE`."""
+    return (
+        f"{document}:{line}: this `{kind}:` marker does not close on its line; a marker is "
+        "read a line at a time, so this one was read as nothing - write it on one line"
+    )
+
+
 def _marked_span(lines: Sequence[str], index: int) -> tuple[int, int]:
     """The run of prose a marker sits under, as a half-open range of `lines`.
 
@@ -1408,6 +1454,10 @@ def check_prose_provenance(root: Path, report: Report) -> None:
         # one. Reading it as a claim would force every example to be
         # coincidentally true of the shipped data.
         if index in fenced:
+            continue
+        split = SPLIT_MARKER_RE.match(line.strip())
+        if split is not None and split.group("kind") != "absent":
+            report.errors.append(_split_marker(MODEL, index + 1, split.group("kind")))
             continue
         match = PROSE_MARKER_RE.match(line.strip())
         if match is None:
@@ -1630,7 +1680,7 @@ GATE_GROUP_RE = re.compile(
 # it does for the group headings above: a sentence in one section counting
 # another section's list would otherwise be compared against the wrong list.
 NOT_DELEGABLE_COUNT_RE = re.compile(
-    r"(?P<count>[\w-]+)\s+entr(?:y|ies)\s+(?:is|are)\s+marked\s+`not-delegable`"
+    rf"(?P<count>[\w-]+){GAP}entr(?:y|ies){GAP}(?:is|are){GAP}marked{GAP}`not-delegable`"
 )
 
 # An entry count stated in a *heading*, singular accepted: `- 13 entries`,
@@ -1672,7 +1722,7 @@ class _GateGroup:
     """One count-carrying group heading of a frozen list, and the entries under it."""
 
     line: int
-    #: The heading's own line, emphasis and all.
+    #: The heading as one line, emphasis and all, however many it wraps across.
     heading: str
     stated: int
     stated_ids: int | None
@@ -1686,18 +1736,29 @@ def _gate_groups(lines: Sequence[str], section: MilestoneSection) -> Iterator[_G
     between it and the next such heading. A heading stating no readable count
     is not one of these and is passed over: it groups the list without
     claiming a size, which is a shape the file already uses.
+
+    A heading is read as the statement it is, from its line on through every
+    line a soft break carries it onto (`PL-R417`): a label wrapped before its
+    count was read as a heading stating none, and the entries under it went to
+    the group above.
     """
     end = _subsection_end(lines, section.gate_line)
+    text = "\n".join(lines)
+    starts = list(itertools.accumulate((len(line) + 1 for line in lines), initial=0))
     headings: list[tuple[int, str, int, int | None]] = []
     for index in range(section.gate_line, end):
-        match = GATE_GROUP_RE.match(lines[index])
+        if not lines[index].startswith("*"):
+            continue  # what `GATE_GROUP_RE` opens with, so no other line is one
+        statement = STATEMENT_RE.match(text, starts[index])
+        heading = _normalized(statement.group(0)) if statement is not None else ""
+        match = GATE_GROUP_RE.match(heading)
         if match is None:
             continue
         stated = _count_word(match.group("entries"))
         if stated is None:
             continue
         ids = match.group("ids")
-        headings.append((index + 1, lines[index], stated, _count_word(ids) if ids else None))
+        headings.append((index + 1, heading, stated, _count_word(ids) if ids else None))
 
     for position, (line, heading, stated, stated_ids) in enumerate(headings):
         following = headings[position + 1][0] if position + 1 < len(headings) else end + 1
@@ -1826,17 +1887,17 @@ def _store_or_decline(root: Path, report: Report, rule: str) -> _Store | None:
 def _withheld_counts(lines: Sequence[str], section: MilestoneSection) -> Iterator[tuple[int, int]]:
     """Each `N entries are marked `not-delegable`` claim in one frozen list.
 
-    Yields the line and the number stated. Scanned over the gate subsection
-    alone - see `NOT_DELEGABLE_COUNT_RE` for why position rather than wording
-    is what bounds it.
+    Yields the line the sentence opens on and the number stated. Scanned over
+    the gate subsection alone - see `NOT_DELEGABLE_COUNT_RE` for why position
+    rather than wording is what bounds it - and read whole, so a sentence a
+    wrap splits is still the one claim (`PL-R417`).
     """
-    for index in range(section.gate_line, _subsection_end(lines, section.gate_line)):
-        match = NOT_DELEGABLE_COUNT_RE.search(lines[index])
-        if match is None:
-            continue
+    end = _subsection_end(lines, section.gate_line)
+    subsection = "\n".join(lines[section.gate_line : end])
+    for match in NOT_DELEGABLE_COUNT_RE.finditer(subsection):
         stated = _count_word(match.group("count"))
         if stated is not None:
-            yield index + 1, stated
+            yield section.gate_line + _line_of(subsection, match.start()), stated
 
 
 def _withheld_entries(
@@ -2085,16 +2146,40 @@ def _subsection_line(section: MilestoneSection, lines: list[str], prefix: str) -
     return None
 
 
-#: A test function named inside a code span, e.g. `` `test_washout` ``.
-NAMED_TEST_RE = re.compile(r"`(test_[A-Za-z0-9_]+)`")
+#: A test function's name, as the whole of a code span names one, e.g.
+#: `` `test_washout` ``.
+TEST_NAME_RE = re.compile(r"test_[A-Za-z0-9_]+")
+#: A line ending inside a code span, with the indent and blockquote markers of
+#: the line it carries on to. No test name holds a space, so a name broken here
+#: was broken by the wrap, and is read with the break taken out (`PL-6SRZ`).
+SPAN_BREAK_RE = re.compile(r"\n[ \t]*(?:>[ \t]*)*")
 #: A test function definition, at module level or inside a class.
 TEST_DEF_RE = re.compile(r"^\s*def (test_[A-Za-z0-9_]+)", re.MULTILINE)
 #: Where test functions are defined: the product suite and the apparatus one.
 TEST_ROOTS = (Path("tests"), Path("subprojects/docket/tests"))
 
 
-def check_named_tests(root: Path, report: Report) -> None:
-    """Resolve every test `docs/MODEL.md` names, so a citation cannot rot.
+def _named_tests(text: str) -> Iterator[tuple[int, str]]:
+    """Each test a passage names, with the line its code span opens on.
+
+    The spans are `_code_spans`', which reads a span wrapped across a line as
+    one. This repository wraps prose at about 76 columns and names its tests as
+    sentences, so the names most worth citing are the ones a wrap breaks, and
+    a pattern held to one line saw none of them (`PL-6SRZ`).
+    """
+    for span in _code_spans(text):
+        name = SPAN_BREAK_RE.sub("", span["content"]).strip()
+        if TEST_NAME_RE.fullmatch(name):
+            yield _line_of(text, span.start()), name
+
+
+def _names_a_test(text: str) -> bool:
+    """Whether a passage names a test at all, which is all a bound family asks."""
+    return next(_named_tests(text), None) is not None
+
+
+def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report) -> None:
+    """Resolve every test the documentation names, so a citation cannot rot.
 
     The specification earns its authority by being checkable, and a named test
     is the most checkable claim in it: `docs/MODEL.md` asserts that an invariant
@@ -2106,27 +2191,26 @@ def check_named_tests(root: Path, report: Report) -> None:
     is the cheap half of `PL-8LDF`, which keeps the annotation pass over the
     required invariants.
 
-    **Scoped to `docs/MODEL.md`, and the exclusion is the point rather than
-    laziness.** Measured 2026-09-13 across every markdown file in the tree: 161
-    test names are cited, 21 of them resolve to nothing, and **all 21 sit in
-    `docs/items/`**. That is correct there - an item brief names the test its
-    work will add, which is a specification of future work and the same forward
-    reference a `verify:` command makes. Failing on those would punish the queue
-    for doing what it is for. A specification asserts what holds *now*, so only
-    it is held to this.
+    **Every documentation file, and not the queue, and the exclusion is the
+    point rather than laziness.** Measured 2026-09-13 across every markdown
+    file in the tree: 161 test names are cited, 21 of them resolve to nothing,
+    and **all 21 sit in `docs/items/`**. That is correct there - an item brief
+    names the test its work will add, which is a specification of future work
+    and the same forward reference a `verify:` command makes. Failing on those
+    would punish the queue for doing what it is for. A document asserts what
+    holds *now*, so the files `DOC_GLOBS` reads are held to this. It read
+    `docs/MODEL.md` alone until `PL-6SRZ`, while `make check` said the
+    documentation's citations resolve: a test deleted from under
+    `docs/WORKING_NOTES.md` on 2026-09-21 was reported by nothing.
 
     What the check cannot judge is whether the test is any good, or whether it
     tests the sentence it is cited under. It validates linkage, exactly as the
     provenance check does, and says so.
     """
-    document = root / MODEL
-    if not document.is_file():
-        report.declined.append(f"{MODEL} is absent, so the tests it names were not resolved")
-        return
-    text = document.read_text(encoding="utf-8")
-    seen: dict[str, int] = {}
-    for match in NAMED_TEST_RE.finditer(text):
-        seen.setdefault(match.group(1), _line_of(text, match.start()))
+    seen: dict[tuple[Path, str], int] = {}
+    for path, text in documents.items():
+        for line, name in _named_tests(text):
+            seen.setdefault((path, name), line)
     # **Read the citations before looking for the suite, so that a document
     # naming no test declines nothing.** A decline is the claim "this was not
     # checked", and there is nothing to check here until a name is cited -
@@ -2145,13 +2229,18 @@ def check_named_tests(root: Path, report: Report) -> None:
             defined |= set(TEST_DEF_RE.findall(path.read_text(encoding="utf-8")))
     if not searched:
         report.declined.append(
-            f"the {len(seen)} test(s) {MODEL} names: no test directory was found in this checkout"
+            f"the {len(seen)} test citation(s) in the documentation: no test directory was "
+            "found in this checkout"
         )
         return
-    for name, line in sorted(seen.items(), key=lambda pair: pair[1]):
-        if name not in defined:
+    for (path, name), line in sorted(seen.items(), key=lambda pair: (pair[0][0], pair[1])):
+        # A name ending in `_` cites the tests it prefixes - "the `test_arm_`
+        # tests" - and resolves while one of them is defined.
+        if name not in defined and not (
+            name.endswith("_") and any(test.startswith(name) for test in defined)
+        ):
             report.errors.append(
-                f"{MODEL}:{line}: names the test `{name}`, which no test under "
+                f"{path}:{line}: names the test `{name}`, which no test under "
                 f"{' or '.join(str(one) for one in TEST_ROOTS)} defines; the statement it "
                 "holds up is unverified until the name resolves"
             )
@@ -2164,11 +2253,11 @@ class EntityKind:
     #: The word the document uses for the thing, in both the declared-none form
     #: and the error text: "test", and later "field".
     noun: str
-    #: Finds an entity the member names. Presence is all this asks: resolving
+    #: Whether the member names an entity. Presence is all this asks: resolving
     #: what it finds stays with the check that already does it -
     #: `check_named_tests` for a test name - so this never becomes a second
     #: resolver that could disagree with the first.
-    names: re.Pattern[str]
+    names: Callable[[str], bool]
     #: `docs/MODEL.md` clause 3's fixed form. The words in front of it are the
     #: sentence's own; this parenthesis is what makes a declared absence
     #: distinguishable from a forgotten link by a script rather than by a
@@ -2176,12 +2265,15 @@ class EntityKind:
     declares_none: re.Pattern[str]
 
 
-def _entity_kind(noun: str, names: re.Pattern[str]) -> EntityKind:
-    """An `EntityKind` whose declared-none form is built from its own noun."""
-    return EntityKind(noun, names, re.compile(rf"\bno {noun} yet \(`({ID_PATTERN})`\)"))
+def _entity_kind(noun: str, names: Callable[[str], bool]) -> EntityKind:
+    """An `EntityKind` whose declared-none form is built from its own noun.
+
+    Its words may wrap like any sentence's, so each gap is Markdown's `GAP`.
+    """
+    return EntityKind(noun, names, re.compile(rf"\bno{GAP}{noun}{GAP}yet{GAP}\(`({ID_PATTERN})`\)"))
 
 
-TEST_ENTITY = _entity_kind("test", NAMED_TEST_RE)
+TEST_ENTITY = _entity_kind("test", _names_a_test)
 
 
 @dataclass(frozen=True)
@@ -2222,8 +2314,22 @@ def _table_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
         yield line, " | ".join(cells)
 
 
+class UnreadStatement(Exception):
+    """A statement a reader found continued in a form it does not read.
+
+    Raised rather than reading a fragment as the statement (`PL-R417`), so the
+    caller can say by name what went unread - the decline the head's fix allows
+    where reading the form whole would cost more than refusing it.
+    """
+
+    def __init__(self, line: int, why: str) -> None:
+        super().__init__(f"line {line}: {why}")
+        self.line = line
+        self.why = why
+
+
 def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
-    """Each top-level entry of the list under the family's heading, as one line.
+    """Each top-level entry of the list under the family's heading, as written.
 
     The second member shape, and it arrives with the first family that is laid
     out as a list rather than as a table - `BoundFamily.members` is a callable
@@ -2231,9 +2337,19 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
 
     Continuation lines are folded into the entry they open, because a member of
     this shape routinely wraps and an entity named on a bullet's second line is
-    named by that bullet. `list_entries` is borrowed rather than rewritten for
-    the reason its own docstring gives: what a list entry *is* is one question,
-    and a fourth answer to it would be a fourth thing to keep true.
+    named by that bullet. Its walker is borrowed rather than rewritten for the
+    reason `list_entries` gives: what a list entry *is* is one question, and a
+    fourth answer to it would be a fourth thing to keep true. The entry comes
+    back with its line breaks, through `list_entry_lines`, because a test name
+    wrapped inside a code span is read whole only where the break is still
+    there to read; joined with a space, it named nothing (`PL-6SRZ`).
+
+    **A lazy continuation is refused by name** (`PL-R417`). CommonMark folds an
+    unindented line that carries on an entry's paragraph into the entry (0.31.2
+    § 5.2), and the walker does not, so a test named there would be named by no
+    member. In this repository such a line is as often a blank line forgotten
+    before a new paragraph, so neither reading can be assumed: the writer is
+    asked for the indent or the blank line instead.
 
     Its bound is the next heading at depth three or shallower, so a family
     whose list is closed by a `####` heading would read that subsection's
@@ -2247,7 +2363,15 @@ def _list_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
         if heading is None or len(heading.group("hashes")) != family.level:
             continue
         if heading.group("title").strip() == family.heading:
-            yield from list_entries(lines, index + 1)
+            for first, end in list_entry_lines(lines, index + 1):
+                if end < len(lines) and LAZY_LINE_RE.match(lines[end]):
+                    raise UnreadStatement(
+                        end + 1,
+                        "this line carries on the entry above it without an indent, which "
+                        "CommonMark reads as part of that entry and the list walker does not; "
+                        "indent it to keep it in the entry, or put a blank line before it",
+                    )
+                yield first + 1, "\n".join(lines[first:end])
             return
 
 
@@ -2327,7 +2451,14 @@ def check_bound_families(root: Path, report: Report) -> None:
                 f'{family.document} is absent, so § "{family.heading}" was not held to its members'
             )
             continue
-        members = list(family.members(document.read_text(encoding="utf-8"), family))
+        try:
+            members = list(family.members(document.read_text(encoding="utf-8"), family))
+        except UnreadStatement as unread:
+            report.errors.append(
+                f'{family.document}:{unread.line}: § "{family.heading}" is a bound family, '
+                f"and its members were not read: {unread.why}"
+            )
+            continue
         if not members:
             report.errors.append(
                 f'{family.document}: § "{family.heading}" is a bound family and has no '
@@ -2340,7 +2471,7 @@ def check_bound_families(root: Path, report: Report) -> None:
             # document holds several and a line number alone does not say which
             # promise was broken.
             where = f'{family.document}:{line}: § "{family.heading}"'
-            if family.kind.names.search(member):
+            if family.kind.names(member):
                 continue
             declared = family.kind.declares_none.search(member)
             if declared is None:
@@ -3722,7 +3853,7 @@ def _headings(text: str) -> list[str]:
     vertical range is denominated in MAC, and fixed.**` marker, and that
     citation is correct.
     """
-    return _hash_headings(text) + MARKER_RE.findall(text)
+    return _hash_headings(text) + [_normalized(title) for title in MARKER_RE.findall(text)]
 
 
 def _hash_headings(text: str) -> list[str]:
@@ -4033,6 +4164,9 @@ def _absent_paths(
     lines = without_fences(text).splitlines()
     declared: dict[int, set[str]] = {}
     for index, line in enumerate(lines):
+        split = SPLIT_MARKER_RE.match(line.strip())
+        if split is not None and split.group("kind") == "absent":
+            report.errors.append(_split_marker(path, index + 1, "absent"))
         marker = ABSENT_MARKER_RE.match(line.strip())
         if marker is None:
             continue
@@ -4812,6 +4946,16 @@ def _without_code(text: str) -> list[str]:
     A fenced block is where `docket.fences` finds one, blanked from its opening
     line through its closing one, so an opener nothing closes blanks nothing
     and the prose below it is still read (`PL-92MY`).
+
+    **A code span is read from the prose whole, not a line at a time**
+    (`PL-Z8RS`). CommonMark lets a span continue across a line ending (0.31.2
+    § 6.1), and read a line at a time, a wrapped span's closing run paired with
+    the next span's opening run on its line and blanked the prose between them:
+    a TeX delimiter there went unchecked. One exception keeps the split-math
+    rule's evidence: where a wrapped span's run stands against a `$`, the span
+    is an inline expression the wrap broke, so that run is left for
+    `MATH_EDGE_RE` to report on its line, as it was when neither half read as a
+    span.
     """
     lines: list[str] = []
     closes = {block.start: block.end for block in blocks(text)}
@@ -4840,13 +4984,29 @@ def _without_code(text: str) -> list[str]:
         if item is not None:
             items.append(_content_column(item))
         paragraph = True
-        blank = MATH_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
-        # A code span is blanked before either rule runs: `\(` inside one is a
-        # quotation of the broken syntax rather than a use of it, and a shell
-        # snippet like `"$upstream..HEAD"` is not an unclosed expression. Read a
-        # line at a time, so a span wrapped from the line above is not seen.
-        lines.append(CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), blank))
-    return lines
+        lines.append(MATH_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line))
+    # A code span is blanked before either rule runs: `\(` inside one is a
+    # quotation of the broken syntax rather than a use of it, and a shell
+    # snippet like `"$upstream..HEAD"` is not an unclosed expression.
+    prose = "\n".join(lines)
+    return CODE_SPAN_RE.sub(lambda span: _blanked_span(prose, span), prose).split("\n")
+
+
+def _blanked_span(prose: str, span: re.Match[str]) -> str:
+    """A code span's text as `_without_code` hands it on: blank, its line breaks kept.
+
+    A span a line ending splits keeps a run that stands against a `$` - see
+    `_without_code`.
+    """
+    blank = re.sub(r"[^\n]", " ", span.group(0))
+    if "\n" not in blank:
+        return blank
+    run = len(span["run"])
+    if prose[span.start() - 1 : span.start()] == "$":
+        blank = span["run"] + blank[run:]
+    if prose[span.end() : span.end() + 1] == "$":
+        blank = blank[:-run] + span["run"]
+    return blank
 
 
 def _content_column(item: re.Match[str]) -> int:
@@ -5684,7 +5844,7 @@ def analyze(root: Path) -> Report:
     check_self_cleared_group(root, report)
     check_scope_exclusions(root, report)
     check_scope_declarations(root, report)
-    check_named_tests(root, report)
+    check_named_tests(root, documents, report)
     check_bound_families(root, report)
     check_gate_reentries(root, report)
     check_tags(root, report)
@@ -5913,38 +6073,62 @@ def is_distinctive(term: str) -> bool:
     return ORDINARY_WORD_RE.fullmatch(term) is None
 
 
-def _marks_code(line: str, start: int, end: int) -> bool:
-    """Does the line present this occurrence as code rather than as English?"""
-    before, after = line[:start], line[end:]
+def _marks_code(text: str, spans: Sequence[re.Match[str]], start: int, end: int) -> bool:
+    """Does the document present this occurrence as code rather than as English?
+
+    `spans` are the document's code spans in order, as `_code_spans` reads
+    them: whole, so a span wrapped onto a line from the one above is the span
+    it is, and its closing run no longer pairs with the line's next opening one
+    and reads the prose between them as code (`PL-Z8RS`).
+    """
+    inside = bisect.bisect_right([span.start() for span in spans], start) - 1
     return (
-        # Inside a code span on this line (`PL-9L39`). A span wrapped onto the
-        # line from the one above is not seen, so the text before its closing
-        # run reads as prose, which is the safe way round: this decides what to
-        # *report*, and a term of this kind is the one whose bare matches are
-        # noise. The closing run then pairs with the line's next opening one.
-        any(
-            span.start("content") <= start and end <= span.end("content")
-            for span in CODE_SPAN_RE.finditer(line)
+        (
+            inside >= 0
+            and spans[inside].start("content") <= start
+            and end <= spans[inside].end("content")
         )
-        or after.startswith("(")
-        or QUALIFIED_LEFT_RE.search(before) is not None
-        or QUALIFIED_RIGHT_RE.match(after) is not None
+        or text.startswith("(", end)
+        or QUALIFIED_LEFT_RE.search(text, max(0, start - 2), start) is not None
+        or QUALIFIED_RIGHT_RE.match(text, end) is not None
     )
 
 
-def mentions(term: str, line: str) -> bool:
-    """Does this line name the term as code, rather than use it as a word?
+def mentions(term: str, text: str, spans: Sequence[re.Match[str]] | None = None) -> list[int]:
+    """The lines on which a document names the term as code, not as a word.
 
     A distinctive term counts wherever it stands as a word, so a line reading
     `changed_tokens returns` is reported without needing backticks. A term
     that is also an ordinary word counts only where the line marks it as code.
     Both are word-bounded, so `mine` no longer matches "determine".
+
+    **The document is read whole, not a line at a time** (`PL-R417`). A term
+    with a space in it - a removed heading's title - is a phrase the prose
+    wraps like any other, and a title cited across a soft break lay on no one
+    line: 448 of the 2,180 `§ "..."` citations in the tracked Markdown wrapped
+    on 2026-10-04, so the sweep left them out or printed that nothing mentioned
+    the term. A mention counts on the line it opens on, and one a code block's
+    own line break splits is not a phrase. `spans` are the document's code
+    spans, read once by a caller asking about many terms.
     """
     distinctive = is_distinctive(term)
-    for match in re.finditer(rf"(?<!\w){re.escape(term)}(?!\w)", line):
-        if distinctive or _marks_code(line, match.start(), match.end()):
-            return True
-    return False
+    if not distinctive and spans is None:
+        spans = _code_spans(text)
+    phrase = GAP.join(re.escape(word) for word in term.split())
+    fenced: frozenset[int] | None = None
+    lines: list[int] = []
+    for match in re.finditer(rf"(?<!\w){phrase}(?!\w)", text):
+        if not distinctive and not _marks_code(text, spans or (), match.start(), match.end()):
+            continue
+        line = _line_of(text, match.start())
+        if "\n" in match.group(0):
+            fenced = fenced_lines(text) if fenced is None else fenced
+            last = line + match.group(0).count("\n")
+            if any(number - 1 in fenced for number in range(line, last + 1)):
+                continue
+        if not lines or lines[-1] != line:
+            lines.append(line)
+    return lines
 
 
 def _more_specific(candidate: str, incumbent: str, distinctive: bool) -> bool:
@@ -5978,6 +6162,7 @@ def format_candidates(root: Path, base: str) -> str:
     lines = [f"Documentation to review for the diff against {base}:", ""]
     total = 0
     narrowed: set[str] = set()
+    spans: dict[Path, list[re.Match[str]]] = {}
     for relative, wanted in tokens.items():
         # One entry per documentation line, however many tokens hit it, so a
         # rename does not print the same line a dozen times.
@@ -5991,8 +6176,11 @@ def format_candidates(root: Path, base: str) -> str:
                 (doc, number)
                 for doc, doc_text in documents.items()
                 if doc != Path(relative)
-                for number, line in enumerate(doc_text.splitlines(), start=1)
-                if mentions(token, line)
+                for number in mentions(
+                    token,
+                    doc_text,
+                    None if distinctive else spans.setdefault(doc, _code_spans(doc_text)),
+                )
             ]
             if not distinctive and len(found) > CROWDED_TERM_LIMIT:
                 crowded.append(
