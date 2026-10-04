@@ -4156,8 +4156,8 @@ and § "Supported run length" can give a number where they could give only a
 direction. Every assertion in
 `tests/reference/test_late_washout_against_published_fits.py` is a regression
 band around what it measured, on 2026-09-27 and, for the muscle group's
-variation below, on 2026-10-03; the reading such a band supports; or a property
-of the published coefficients. None asserts agreement with a human washout, and
+variation and the open circuit's modes below, on 2026-10-03; the reading such a
+band supports; or a property of the published coefficients. None asserts agreement with a human washout, and
 none may be restated as one.
 
 **What is compared, and under what conditions.** Both papers fit each
@@ -4250,13 +4250,54 @@ condition, because the rebreathing circuit and the muscle group's slow return,
 below, hold it above the curve until then: with the circuit's return taken away
 the same hours sit at or below it.
 
-The model's muscle group returns more slowly than the fitted muscle term, its
-isolated time constant being 1.5 to 1.7 times the fitted one's, and that is
-what puts the peak of model over fit in hours 2 to 4 - in the open circuit the
-tail's closest approach to the curve, in the shipped condition its furthest
-excess over it. It was tested by lowering the group's tissue:gas coefficient to
-0.58 to 0.67 of its stored value, which makes its isolated time constant the
-fitted one's, with everything else stored (`PL-95NW`, 2026-10-03). Over a 30-minute
+The model's muscle group returns more slowly than the fitted muscle term, and
+that is what puts the peak of model over fit in hours 2 to 4 - in the open
+circuit the tail's closest approach to the curve, in the shipped condition its
+furthest excess over it. A fitted time constant is an apparent one, read off
+the whole curve, so the model's terms are read off its curve the same way: as
+the modes of its open-circuit system - the five equations of § "Governing
+equations" with nothing inspired - decomposed from its state at discontinuation
+(`PL-921Y`, 2026-10-03). Each term as its time constant in minutes and its
+amplitude in percent of $`F_{A0}`$, cohorts in the tables' order
+(`test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones` holds
+the model's to 0.2%):
+
+| Term | Sevoflurane | Isoflurane | Desflurane | Isoflurane (second study) |
+| --- | ---: | ---: | ---: | ---: |
+| Muscle, model | 155 min, 2.37% | 161 min, 4.31% | 92.6 min, 2.47% | 161 min, 4.31% |
+| Muscle, fitted | 81.7 min, 4.60% | 85.0 min, 7.19% | 48.9 min, 4.86% | 80.0 min, 5.93% |
+| Fat, model | 2650 min, 0.060% | 2860 min, 0.12% | 1540 min, 0.063% | 2860 min, 0.12% |
+| Fat, fitted | 2230 min, 0.028% | 2310 min, 0.072% | 1350 min, 0.031% | 2110 min, 0.080% |
+
+So the model's muscle term is 1.89 to 2.02 times as slow as the fitted one and
+0.51 to 0.73 times as large, and its fat term 1.14 to 1.36 times as slow and
+1.5 to 2.1 times as large, against fitted fat amplitudes whose SDs are 53 to 94%
+of their means. The modes are the stepped open-circuit run to within 0.08% at
+every minute from the fifth, the run lying above them by what the driver
+re-breathes within each step before it empties the circuit. Each group's
+isolated time constant - tissue volume times the tissue:gas coefficient over
+tissue blood flow times the blood:gas coefficient, on the reference adult's 33 L
+of muscle perfused at 0.9 L/min and 14.5 L of fat at 0.3 L/min - is shorter than
+its apparent one: 135, 127 and 84.7 minutes for muscle, about 2500, 2600 and
+1500 for fat. The arterial blood reaching a group during the washout is not
+free of agent, since what the lungs do not exhale of every group's return goes
+round again, so a store empties more slowly than its own blood flow alone
+would empty it. Set against the fitted constant, as this subsection set it
+before `PL-921Y`, the isolated muscle constant reads 1.5 to 1.7 times as slow,
+and understates the difference.
+<!-- derived: 135 minutes from data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33.0, tissue_groups.muscle.perfusion_fraction = 0.18, default_cardiac_output_l_min = 5 -->
+<!-- derived: 135 minutes from data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 127 minutes from data/agents/isoflurane.json tissue_gas_partition_coefficients.muscle = 4.5, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 84.7 minutes from data/agents/desflurane.json tissue_gas_partition_coefficients.muscle = 0.97, blood_gas_partition_coefficient = 0.42 -->
+<!-- derived: 2500 minutes from data/patients/reference_adult.json tissue_groups.fat.volume_l = 14.5, tissue_groups.fat.perfusion_fraction = 0.06, default_cardiac_output_l_min = 5 -->
+<!-- derived: 2500 minutes from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34.0, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 2600 minutes from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70.0, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 1500 minutes from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13.0, blood_gas_partition_coefficient = 0.42 -->
+
+It was tested by lowering the group's tissue:gas coefficient to 0.58 to 0.67 of
+its stored value, which makes its isolated time constant the fitted one's and
+its apparent one 1.09 to 1.28 times the fitted, most of the way to it, with
+everything else stored (`PL-95NW`, 2026-10-03). Over a 30-minute
 wash-in the group is far from equilibrium and takes up agent about as fast as
 its blood flow brings it, whatever its capacity, so it holds only 4 to 10% less
 at discontinuation, and what the change moves is how fast that store comes
@@ -4267,21 +4308,11 @@ peak comes at 0.65 to 1.97 hours rather than 2.27 to 4.15, and the stretch above
 the curve ends at 1.6, 3.7 and 4.5 hours rather than 6.9, 7.3 and 8.4, and for
 desflurane never opens
 (`test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`).
-The late excess is the model's fat group returning more than the
-fitted fat term's small amplitude (0.028 to 0.080%, with SDs of 53 to 94% of
-the means), and it is still growing at 24 hours - the ratio rises between
-minutes 1400 and 1440 in every cohort - because the fitted curve is still
-falling on the fourth compartment's time constant while the model is already
-on its fat group's, which at about 2500 minutes for sevoflurane, 2600 for
-isoflurane and 1500 for desflurane is also longer than every fitted fat time
-constant (2230, 2310, 1350 and 2110). Those two model time constants are the
-isolated compartment's, tissue volume times the tissue:gas coefficient over
-tissue blood flow times the blood:gas coefficient, on the reference adult's
-14.5 L of fat perfused at 0.3 L/min and 33 L of muscle at 0.9 L/min.
-<!-- derived: 2500 minutes from data/patients/reference_adult.json tissue_groups.fat.volume_l = 14.5, tissue_groups.fat.perfusion_fraction = 0.06, tissue_groups.muscle.volume_l = 33.0, tissue_groups.muscle.perfusion_fraction = 0.18, default_cardiac_output_l_min = 5 -->
-<!-- derived: 2500 minutes from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34.0, tissue_gas_partition_coefficients.muscle = 2.4, blood_gas_partition_coefficient = 0.65 -->
-<!-- derived: 2600 minutes from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70.0, tissue_gas_partition_coefficients.muscle = 4.5, blood_gas_partition_coefficient = 1.3 -->
-<!-- derived: 1500 minutes from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13.0, tissue_gas_partition_coefficients.muscle = 0.97, blood_gas_partition_coefficient = 0.42 -->
+
+The late excess is the model's larger and slower fat term, and it is still
+growing at 24 hours - the ratio rises between minutes 1400 and 1440 in every
+cohort - because the fitted curve is still falling on the fourth compartment's
+time constant while the model is already on its fat term's.
 
 **Three things bound how sharply any of that may be read.**
 

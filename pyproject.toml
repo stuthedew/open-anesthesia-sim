@@ -101,6 +101,14 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "mypy>=2.3.1",
+    # The reference tests decompose the model's open-circuit system into its
+    # exponential modes with `numpy.linalg.eig`, LAPACK's validated solver,
+    # where the alternative was an eigen-solver written here that would need
+    # verifying in its own right (`PL-921Y`). Declared rather than taken from
+    # pyqtgraph, which installs it today for reasons of its own and promises
+    # the tests nothing. Tests only: no module under `src/` imports it, and
+    # `tools/import_boundary_check.py` still refuses it under `core/`.
+    "numpy>=2.5.3",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pytest-xdist>=3.8.0",
