@@ -11,8 +11,8 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 payoff: a statement a shell script, Makefile, workflow or Markdown document continues across lines is read as the one statement its format makes it, or refused by name, so the close-out sweep and the checks stop answering from fragments
 verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py && grep -q '^generator: spent' docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
-root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9
-generator: live - six readers misread it in fifteen days, three on 2026-10-03 alone, each fix taught one reader one format's rule, and the 2026-10-04 sweep found readers no item names in every format the members cover, one live today: format_candidates misses 448 wrapped section citations
+root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9
+generator: live - the close-out sweep of 2026-10-04 reproduced eight more readers outside those the head's own sweep named, one reading live input in CLAUDE.md, so every sweep has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, and these eight after the TMX9 link
 misread: Where one statement ends, in a format that lets a statement continue across physical lines
 ---
 
@@ -161,6 +161,37 @@ key's line, a reader the sweep missed, now a member. Left: `PL-MFVV` (after
 were the last thing it asked for and `docket check` refuses an open item whose
 command passes; `generator:` is rewritten `spent` only when those three close,
 so the command passes then and no sooner.
+
+**Link 5, `PL-TMX9` and the close-out sweep (`#1349`, 2026-10-04).** Done:
+`PL-TMX9`, `required_checks_check._job_name` reading a job's `name:` whole or
+refusing it by name, with five `required checks, a job name ...` guard cases,
+four failing on main's reader. Not done: the close-out. Before writing why the
+mechanism could hand the store no more members, a read-only sweep covered
+every reader the 2026-10-04 sweep had not reached - 92 readers across
+`tools/`, `subprojects/docket/src/docket/` and `.claude/hooks/`, and 18 more
+modules that read no text in these formats - and reproduced eight more that
+take a physical line for a statement their format continues, now members:
+`PL-B1D0` (`instructions.parse`, reading live input in `CLAUDE.md`),
+`PL-F5B9` (`dead_ends`), `PL-XYJF` (`checks._passage`), `PL-CL8R` (the
+release-notes bullet readers), `PL-XW87` (the citation patterns, inside a
+blockquote), `PL-J503` (a continued `recurrences:` in `verify`), `PL-CFWP`
+(`is_suppression_line`, Python) and `PL-3DD9` (`version_in`, TOML). So
+`generator:` stays `live`, and the slice-3 note's "`generator:` is rewritten
+`spent` only when those three close" no longer says when the head closes: two
+of the three closed, and the sweep added eight.
+
+**Next steps (recorded 2026-10-04 for the thread that takes the head up).**
+Two more slices, one pull request each, each closing its members and adding
+their cases to `CONTINUED_STATEMENTS`. Markdown first, since `PL-B1D0` reads
+live input: `PL-B1D0`, `PL-F5B9`, `PL-XYJF`, `PL-CL8R` and `PL-XW87`, each
+read through `docket.roadmap`'s `CONTINUED_LINE` and `list_entry_lines`, or
+`doc_check`'s `GAP`, or declined by name. Then the other formats: `PL-J503`
+through `parse_item`'s reading of a field, `PL-CFWP` through the parsed
+statements `removed_assertions` already reads, and `PL-3DD9` through
+`tomllib`. Then one more sweep of the same reach, and `generator:` rewritten
+`spent` only when it finds nothing. Whether the head waits for `PL-RR1N` is
+still the coordinator's default (follow Done-when and close without it), put
+to the project owner and not yet answered.
 
 **Done when.** Every reader the table and the sweep name reads its format's
 statement whole or declines it by name, each pinned by a test; the guard test
