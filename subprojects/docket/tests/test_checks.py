@@ -616,6 +616,22 @@ def test_a_marker_covers_its_own_passage_and_no_other() -> None:
     assert len([a for a in advisories if "lands with" in a]) == 2
 
 
+def test_a_marker_covers_its_passage_past_a_line_opening_like_a_block() -> None:
+    """`PL-XYJF`: under a line of a paragraph, `17. ` and a pipe line carry it on.
+
+    Only an item numbered 1 interrupts a paragraph (CommonMark 0.31.2 § 5.2),
+    and a pipe line opens a table only over a delimiter row (GitHub Flavored
+    Markdown § 4.10), so the marker opening the paragraph covers the line - which
+    began a passage of its own, and drew the advisory the marker was written to
+    retire.
+    """
+    for opening in ("17. It", "| It"):
+        text = f"[superseded 2026-09-30] The count stopped at\n{opening} is left at `blocked`."
+        assert _status_advisories("ready", text) == [], opening
+    # Numbered 1, the same line opens a list item: a separate claim, and read.
+    assert _status_advisories("ready", text.replace("| It", "1. It"))
+
+
 def test_a_marker_needs_its_date() -> None:
     """One greppable token, and the date is part of it: it is what tells a
     reader when the passage stopped being true."""
@@ -3487,6 +3503,17 @@ def test_the_commit_counts_where_an_item_closed_before_the_field_existed() -> No
 def test_a_caller_that_does_not_ask_leaves_the_comparison_unmade() -> None:
     """Every command but `check`, which is the pattern the rest of `analyze` follows."""
     assert _reference_advisories({}, _item(status="done", closed=TODAY, pr="311")) == []
+
+
+def test_a_bullet_the_notes_reader_declined_is_named_rather_than_passed_over() -> None:
+    """`PL-CL8R`: a bullet carried on from the margin is neither counted nor silent."""
+    unread = "docs/releases/v0.3.8.md line 7: this line carries on the entry above it"
+
+    report = analyze([_item()], TODAY, unreferenced={}, unread_notes=[unread])
+
+    assert report.declined == [
+        f"whether a release-notes bullet says where its change landed: {unread}"
+    ]
 
 
 # --- the seam between a release's notes and its tag --------------------------

@@ -4240,19 +4240,21 @@ that, because it measures how much text there is rather than how old what the
 text claims has become.
 
 `instruction_paths` names the files: a markdown file, or a directory every
-`.md` beneath it is read from. Each line carrying an ISO date is one assertion,
-dated by the **newest** date on it, and one more than `instruction_stale_days`
-old puts it in a grooming advisory - oldest first, the five oldest named and
-the rest counted.
+`.md` beneath it is read from. Each sentence carrying an ISO date is one
+assertion, dated by the **newest** date in it wherever the paragraph's line
+breaks fall, and one more than `instruction_stale_days` old puts it in a
+grooming advisory - oldest first, the five oldest named and the rest counted.
+A sentence rather than a line, because a record's re-verification date often
+wraps onto the line after the date it re-verifies (`PL-B1D0`).
 
 Only the decidable half is here. *Which* assertions are due is arithmetic on
-dates; whether an aged one is still true is left to whoever reads the line.
+dates; whether an aged one is still true is left to whoever reads the sentence.
 
 **It can reach zero, which is what shaped it.** A raw age list cannot, since
 every assertion ages and the report would name more of them every day - and
 the cost of an advisory that cannot reach zero is not the entries it names but
 the next advisory, which gets read the same way. The threshold bounds the set;
-re-verifying a line and writing today onto it empties it. Reading the newest
+re-verifying a sentence and writing today into it empties it. Reading the newest
 date is what makes that work for both kinds of dated text: a measured fact is
 re-measured and re-dated, and a record - what was decided, and when - keeps its
 own date and gains a re-verification one, so neither has to be falsified to be

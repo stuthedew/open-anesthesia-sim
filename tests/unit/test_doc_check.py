@@ -18,10 +18,16 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+import dead_ends
 import doc_check
+import possessive_section_check
 import pytest
 import required_checks_check as rcc
 import rules_paths_check
+from docket import checks as docket_checks
+from docket.instructions import parse as dated_assertions
+from docket.release import unreferenced
+from docket.roadmap import LAZY_ENTRY
 
 ARCHITECTURE = """# Architecture overview
 
@@ -6069,6 +6075,29 @@ def test_a_span_note_names_its_pull_request_as_a_token(tmp_path: Path) -> None:
     assert "(#11)" in errors[0]
 
 
+def _notes_span_report(tmp_path: Path, notes: str) -> doc_check.Report:
+    """The span report over `SPAN_HISTORY` with v0.2.4's notes written as given."""
+    history = tuple(
+        (subject, {"docs/releases/v0.2.4.md": notes}, tag)
+        if tag == "v0.2.4"
+        else (subject, files, tag)
+        for subject, files, tag in SPAN_HISTORY
+    )
+    return _span_report(_span_repo(tmp_path, history, SPAN_ITEMS))
+
+
+#: `#11` named after a title wrapped onto an indented line, in each place a
+#: note names a pull request: a claimed bullet, and a pointer.
+WRAPPED_CLAIM = (
+    NOTES_0_2_4 + "- PL-7KD2 The late one, whose title runs long\n  enough to wrap — #11\n"
+)
+WRAPPED_POINTER = (
+    NOTES_0_2_4 + f"\n{doc_check.SPAN_HEADING}\n\n- PL-7KD2 - #11 - described\n  in v0.2.5\n"
+)
+#: The claimed bullet carried on from the margin instead.
+LAZY_CLAIM = NOTES_0_2_4 + "- PL-7KD2 The late one, whose title runs long\nenough to wrap — #11\n"
+
+
 def test_a_releases_own_cut_is_not_a_closure_its_notes_owe_a_line(tmp_path: Path) -> None:
     """Inside its own span by construction, and stamped by the next release every time.
 
@@ -6415,6 +6444,30 @@ SPLIT_MARKER_ERROR = (
     "this one was read as nothing - write it on one line"
 )
 
+
+def _citation_findings(tmp_path: Path, readme: str, brief: str = "") -> list[str]:
+    """What the citation checks say of `readme`, with `brief` as `PL-T3ST`'s where given."""
+    root = _repo(tmp_path, readme=readme)
+    if brief:
+        _item(root, "PL-T3ST-demo", _brief("done", brief))
+    report = doc_check.analyze(root)
+    return [
+        finding
+        for finding in report.errors + report.advisories
+        if any(said in finding for said in ("cites section", "names a section", "quotes "))
+    ]
+
+
+def _possessive_sites(tmp_path: Path, readme: str) -> list[str]:
+    return possessive_section_check.sites(_repo(tmp_path, readme=readme), [])
+
+
+def _passage_of(body: str) -> str:
+    """The passage a superseded marker at the start of `body` covers."""
+    start, end = docket_checks._passage(body, 0)
+    return body[start:end]
+
+
 #: Each reader, a statement its format carries across a line break,
 #: and what the reader must make of it: the statement read whole, or refused by
 #: name. Keyed by reader, so a failure names the one that read a fragment.
@@ -6667,6 +6720,143 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "required checks, a job name a comment line follows is read whole": (
         lambda _: _job_names("    name: quality gate", "      # why"),
         ["quality gate"],
+    ),
+    # Markdown's paragraph, read by the soft break every `GAP` reader takes:
+    # neither a placeholder nor a code span opens a block that ends it.
+    "soft break, a line opening with a placeholder": (
+        lambda _: doc_check.STATEMENT_RE.match("It wraps\n<PL-GGGG> here.\n").group(0),
+        "It wraps\n<PL-GGGG> here.",
+    ),
+    "soft break, a line opening with a code span": (
+        lambda _: doc_check.STATEMENT_RE.match("It wraps\n```x``` here.\n").group(0),
+        "It wraps\n```x``` here.",
+    ),
+    "frozen list, a lazy line opening with a placeholder is refused": (
+        lambda tmp_path: _lazy_milestone_entry(
+            tmp_path, "- PL-FFFF **and PL-GGGG** (S)", "- PL-FFFF **and**\n<PL-GGGG> (S)"
+        ),
+        [LAZY_LIST_ERROR.format("ROADMAP.md:43")],
+    ),
+    # The instruction audit's dated sentence (`PL-B1D0`), read through
+    # `roadmap.statement_lines`: one assertion, dated by its newest date.
+    "instruction audit, a dated record wrapped across a soft break": (
+        lambda _: [
+            (dated.line, str(dated.when))
+            for dated in dated_assertions(
+                "CLAUDE.md", "Held (measured 2026-06-01,\nre-verified 2026-10-04).\n"
+            )
+        ],
+        [(2, "2026-10-04")],
+    ),
+    # The passage a superseded marker covers (`PL-XYJF`): only an item numbered
+    # 1 interrupts a paragraph, and a pipe line opens a table only over a
+    # delimiter row.
+    "passage, a line opening with a later number": (
+        lambda _: _passage_of("A claim that stopped at\n17. It is left.\n"),
+        "A claim that stopped at\n17. It is left.\n",
+    ),
+    "passage, a pipe line with no delimiter row": (
+        lambda _: _passage_of("A claim that stopped at\n| it is left.\n"),
+        "A claim that stopped at\n| it is left.\n",
+    ),
+    # `docs/dead-ends.md`, an entry at a time through docket's list walker (`PL-F5B9`).
+    "dead ends, a title wrapped onto an indented line": (
+        lambda _: dead_ends.entries("- **One shared\n  queue document** — rejected.\n"),
+        [(1, "- **One shared queue document** — rejected.")],
+    ),
+    "dead ends, a title carried on from the margin is refused by name": (
+        lambda _: dead_ends.check("- **One shared\nqueue document** — rejected.\n"),
+        [
+            "docs/dead-ends.md:2: continuation of the entry above, carried on from the margin. "
+            "One line per entry - shorten it instead."
+        ],
+    ),
+    # A release's notes, a bullet at a time through the same walker (`PL-CL8R`).
+    "release notes, a reference after a wrapped title": (
+        lambda _: unreferenced("- PL-2222 A title long enough\n  to wrap — #48\n"),
+        (),
+    ),
+    "release notes, a list nested under a bullet is not its text": (
+        lambda _: unreferenced("- PL-2222 A title — #48\n  - A note on it.\n"),
+        (),
+    ),
+    "tag span, a pull request named after a wrapped title": (
+        lambda tmp_path: _notes_span_report(tmp_path, WRAPPED_CLAIM).errors,
+        [],
+    ),
+    "tag span, a pointer wrapped onto an indented line": (
+        lambda tmp_path: _notes_span_report(tmp_path, WRAPPED_POINTER).errors,
+        [],
+    ),
+    "tag span, a bullet carried on from the margin is refused by name": (
+        lambda tmp_path: _notes_span_report(tmp_path, LAZY_CLAIM).declined,
+        [
+            "docs/releases/v0.2.4.md:7: v0.2.4's tag span was not compared against its notes, "
+            f"since a bullet there was not read whole: {LAZY_ENTRY}"
+        ],
+    ),
+    # A citation's gaps (`PL-XW87`): a blockquote carries a paragraph past the
+    # next line's `>`, so each gap is a `GAP` rather than `[ \n]*`.
+    "citations, a section mark wrapped in a blockquote": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\n> See §\n> "Renamed limitations" for what it omits.\n'
+        ),
+        [
+            'README.md:3: cites section "Renamed limitations", which no documentation file has '
+            "(§ names a section of these documents; write an outside source's section without "
+            "the mark)"
+        ],
+    ),
+    "citations, a direction wrapped in a blockquote": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\n> See § "Known limitations"\n> below for what it omits.\n'
+        ),
+        ['README.md:3: cites section "Known limitations" in this file, which has no such heading'],
+    ),
+    "citations, an unmarked one wrapped in a blockquote": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\n> See\n> "Known limitations" for what it omits.\n'
+        ),
+        [
+            'README.md:3: "Known limitations" names a section without the mark, so a rename of '
+            'it would pass unreported; write § "Known limitations"'
+        ],
+    ),
+    "citations, a mark wrapped in a blockquote before a direction": (
+        lambda tmp_path: _citation_findings(
+            tmp_path,
+            '# Demo\n\n## Known limitations\n\nNone.\n\n> Read §\n> "Known limitations" above.\n',
+        ),
+        [],
+    ),
+    "quoted sources, a section mark wrapped in a blockquote": (
+        lambda tmp_path: _citation_findings(
+            tmp_path, '# Demo\n\n> It is `docs/MODEL.md` §\n> "A thread that was deleted".\n'
+        ),
+        [
+            'README.md:3: quotes docs/MODEL.md as "A thread that was deleted", which is not in '
+            "that file"
+        ],
+    ),
+    "quoted sources, an item's section mark wrapped in a blockquote": (
+        lambda tmp_path: _citation_findings(
+            tmp_path,
+            '# Demo\n\n> Who holds an item is `PL-T3ST` §\n> "Design round".\n',
+            "**Other holds.** The recorded claim decides.",
+        ),
+        [
+            'README.md:3: quotes PL-T3ST as "Design round", which is not in '
+            "docs/items/PL-T3ST-demo.md"
+        ],
+    ),
+    "possessive citations, wrapped in a blockquote": (
+        lambda tmp_path: _possessive_sites(
+            tmp_path, '# Demo\n\n> As `docs/MODEL.md`\'s\n> "Known limitations" says.\n'
+        ),
+        [
+            'README.md:3: `docs/MODEL.md`\'s "Known limitations" names a section; write it as '
+            '`docs/MODEL.md` § "Known limitations"'
+        ],
     ),
 }
 

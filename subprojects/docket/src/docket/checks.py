@@ -61,7 +61,7 @@ from .release import (
     unrecorded_milestones,
     version_key,
 )
-from .roadmap import MilestoneStates
+from .roadmap import SENTENCE_BREAK, MilestoneStates, statement_lines
 from .shell import Clause, Word, shell_words
 from .store import ID_PATTERN, ID_RE, filename_for
 from .vcs import (
@@ -1604,7 +1604,7 @@ def _check_release_notes(
 
 
 def _check_notes_references(
-    report: Report, unreferenced: dict[str, tuple[str, ...]] | None
+    report: Report, unreferenced: dict[str, tuple[str, ...]] | None, unread: Sequence[str] = ()
 ) -> None:
     """Released bullets whose route back to the change the store can supply.
 
@@ -1635,7 +1635,14 @@ def _check_notes_references(
     22 of this project's 40 releases, every one of them recoverable from a `pr`
     the store already held (`PL-W7WL`, filed four times from four cuts because
     nothing compared these two files on this axis).
+
+    A bullet carried on from the margin is neither counted nor passed over in
+    silence: `release.notes_bullets` declines it, since where it ends is not
+    read, and `unread` names it here (`PL-CL8R`).
     """
+    report.declined.extend(
+        f"whether a release-notes bullet says where its change landed: {line}" for line in unread
+    )
     if unreferenced is None:  # a caller that did not ask; every command but `check`
         return
     by_id = {item.identifier: item for item in report.items}
@@ -2943,10 +2950,6 @@ OWN_STATUS = re.compile(
     re.IGNORECASE,
 )
 
-# A new passage starts at a blank line, and at a list item or table row within
-# a paragraph: one bullet marked superseded says nothing about its siblings.
-_PASSAGE_START = re.compile(r"^[ \t]*(?:[-*+][ \t]|\d+\.[ \t]|\|)", re.MULTILINE)
-_SENTENCE_BREAK = re.compile(r"[.!?][*`)\]]*\s")
 _ANY_ID = re.compile(ID_PATTERN)
 
 
@@ -3279,18 +3282,31 @@ def _passage(body: str, position: int) -> tuple[int, int]:
     sit, and a bullet is narrower because a list is one paragraph whose items
     are separate claims: marking one instance in a list of them says nothing
     about the rest.
+
+    Each is a statement as `roadmap.statement_lines` reads one, so a passage
+    goes on wherever CommonMark carries its paragraph on (`PL-XYJF`): a line
+    opening `17. ` or a pipe, under a line of the paragraph, began a passage of
+    its own, and the superseded marker above it covered nothing below. A fenced
+    block is a passage of its own, and so is a blank line.
     """
-    opened = body.rfind("\n\n", 0, position)
-    start = 0 if opened < 0 else opened + 2
-    closed = body.find("\n\n", position)
-    end = len(body) if closed < 0 else closed
-    for boundary in _PASSAGE_START.finditer(body, start, end):
-        if boundary.start() <= position:
-            start = boundary.start()
-        else:
-            end = boundary.start()
-            break
-    return start, end
+    for start, end in _passages(body):
+        if start <= position < end:
+            return start, end
+    end = body.find("\n", position)
+    return body.rfind("\n", 0, position) + 1, len(body) if end < 0 else end
+
+
+def _passages(body: str) -> list[tuple[int, int]]:
+    """Every passage of `body` as its offsets: each statement, and each fenced block."""
+    starts = [0]
+    for line in body.splitlines(keepends=True):
+        starts.append(starts[-1] + len(line))
+    spans = [
+        (starts[first], starts[end])
+        for first, end in statement_lines(body.splitlines(), fences.fenced_lines(body))
+    ]
+    spans += ((starts[block.start], starts[block.end + 1]) for block in fences.blocks(body))
+    return spans
 
 
 def _standing(body: str, position: int) -> bool:
@@ -3313,7 +3329,7 @@ def _standing(body: str, position: int) -> bool:
 def _names_another_item(item: Item, position: int) -> bool:
     """Whether the sentence holding `position` names another item before it."""
     start, _end = _passage(item.body, position)
-    for boundary in _SENTENCE_BREAK.finditer(item.body, start, position):
+    for boundary in SENTENCE_BREAK.finditer(item.body, start, position):
         start = boundary.end()
     return any(found != item.identifier for found in _ANY_ID.findall(item.body, start, position))
 
@@ -3636,10 +3652,11 @@ def _check_stale_instructions(
     list cannot, since every assertion ages and the report would name more of
     them every day - and the cost of an advisory that cannot reach zero is not
     the entries it names but the next advisory, which gets read the same way.
-    The threshold is what bounds the set; re-verifying a line and writing
-    today onto it is what empties it. `instructions.py` reads the *newest*
-    date on a line for exactly that reason, so "(project owner, 2026-08-31;
-    re-verified 2026-12-05)" discharges a record without falsifying the record.
+    The threshold is what bounds the set; re-verifying a sentence and writing
+    today into it is what empties it. `instructions.py` reads the *newest*
+    date in a sentence for exactly that reason, so "(project owner, 2026-08-31;
+    re-verified 2026-12-05)" discharges a record without falsifying the record,
+    wherever the paragraph's line breaks fall (`PL-B1D0`).
 
     **Known limitation, recorded so it is not rediscovered as a defect.** Age
     is a proxy for staleness, not staleness. A dated record does not go stale;
@@ -3676,8 +3693,8 @@ def _check_stale_instructions(
     report.advisories.append(
         f"{len(stale)} dated assertion(s) in the instruction set have gone "
         f"{config.instruction_stale_days} days without being re-checked, oldest first - "
-        f"{shown}; read each against the world it describes and write today's date onto the "
-        "line. A measured fact is re-measured and re-dated; a record of what was decided "
+        f"{shown}; read each against the world it describes and write today's date into the "
+        "sentence. A measured fact is re-measured and re-dated; a record of what was decided "
         "keeps its own date and gains a re-verification one, so neither has to be falsified "
         "to clear it. Where the claim has stopped being true, the edit is the point of the "
         "advisory - age is only the proxy, and whether the sentence still holds is yours"
@@ -4111,6 +4128,7 @@ def analyze(
     notes: dict[str, frozenset[str]] | None = None,
     window: CutWindow | None = None,
     unreferenced: dict[str, tuple[str, ...]] | None = None,
+    unread_notes: Sequence[str] = (),
     threads: tuple[Thread, ...] | None = None,
     assertions: tuple[Assertion, ...] | None = None,
     settings_source: SettingsSource | None = None,
@@ -4149,7 +4167,8 @@ def analyze(
     `unreferenced` is which released bullets say where nothing landed. It is
     read from the same files as `notes` and passed separately rather than
     folded into it, because the two answer different questions about them and
-    a caller that wants one does not always want the other.
+    a caller that wants one does not always want the other. `unread_notes` is
+    each bullet that reading declined, by file and line.
 
     `threads` is the project's running cross-session log split at its `##`
     headings - `notes_file`, not the release notes `notes` carries. Passed in
@@ -4196,7 +4215,7 @@ def analyze(
     _check_gone_touches(report, gone, settings)
     _check_milestones(report, version)
     _check_release_notes(report, notes, version)
-    _check_notes_references(report, unreferenced)
+    _check_notes_references(report, unreferenced, unread_notes)
     _check_cut_window(report, window, notes)
     _check_provenance(report, history, closures)
     _check_landed(report, landed)
