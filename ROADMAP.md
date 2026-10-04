@@ -3549,17 +3549,18 @@ enables and does not schedule.
 `circuit_volume_l` meant apparatus-plus-circuit and that a real profile would
 therefore understate the circuit time constant by about 40%. The re-scoping
 audit's own adversarial verifier refuted it against the source - the profile
-states "This file's `circuit_volume_l` is the apparatus alone" - and `PL-TBMX`
+then stated "This file's `circuit_volume_l` is the apparatus alone" - and `PL-TBMX`
 is `dropped` carrying that refutation. Recorded here because a `safety`-classed
 `P1` briefly existed on the strength of it, and a later reader meeting the
 dropped item is owed the reason it never reached this list.
 
 **The refutation was itself the misreading, and `PL-TBMX` is open again**
 (project owner, 2026-09-27, ratified, over building `PL-HGB6` as written). The
-profile's "the apparatus alone" contrasts the stored volume with Targ et al.'s
+profile's "the apparatus alone" contrasted the stored volume with Targ et al.'s
 system plus the bag that stood in for the lung, and that system's corrugated
-limbs and Y-piece were apparatus, so the phrase means without the lung, not
-without the patient circuit; the model's one gas compartment in front of the
+limbs and Y-piece were inside what it measured, so the phrase meant without the
+lung, not without the patient circuit, as `PL-TBMX`'s rewording of it now says;
+the model's one gas compartment in front of the
 patient leaves the limbs nowhere else to be. `PL-HGB6` was re-scoped to keep the
 assembled-total meaning in `docs/machine-abstraction.md`, and `PL-TBMX` joined
 v0.6.0's frozen list as a post-freeze `safety` entry.
@@ -5412,8 +5413,9 @@ waiting understates itself by however many of them turn out to be debt.
 **`PL-TBMX` joined this list on 2026-09-27, after the freeze, under the
 exception that admits a `safety` finding whenever it is made.** It was filed on
 2026-09-20 and dropped the same day on a misreading of the reference profile's
-phrase "the apparatus alone", which there means without the lung and not without
-the patient circuit; § "Declined to Gate 2 on the refilling-queue ground"
+phrase "the apparatus alone", which there meant without the lung and not without
+the patient circuit, as `PL-TBMX` reworded it to say; § "Declined to Gate 2 on
+the refilling-queue ground"
 carries the history. The project owner reopened it as a `P1` when `PL-HGB6` was
 re-scoped (project owner, 2026-09-27, ratified, over building `PL-HGB6` as
 written). It is `ready` rather than `blocked` behind `PL-2FZ9`, so the

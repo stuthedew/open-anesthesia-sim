@@ -3,11 +3,12 @@ id: PL-TBMX
 title: circuit_volume_l means apparatus plus patient circuit, so a real machine profile storing a published apparatus figure would understate the circuit time constant by about 40%
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, anticipated
 feature: machine-profile-framework
-touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md
+touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md, docs/machine-abstraction.md, ROADMAP.md
 added: 2026-09-20
+closed: 2026-10-04
 payoff: stops the next machine profile shipping a circuit time constant about a third too short, built from a correctly-cited manufacturer apparatus figure that no check can tell from an assembled total
 verify: grep -qF 'is the assembled total, apparatus plus patient circuit' docs/MODEL.md && grep -qF 'is the assembled total, apparatus plus patient circuit' src/anesthesia_sim/core/parameters.py
 ---
@@ -193,3 +194,62 @@ from; no stored value has changed; and `make check` is green. The `verify:`
 command greps `docs/MODEL.md` and `src/anesthesia_sim/core/parameters.py`
 for the shared phrase **"is the assembled total, apparatus plus patient
 circuit"**, so write the sentence around that clause in both.
+
+**Built (2026-10-04).** The meaning is stated where a profile author meets it,
+and each statement names the addend and where it comes from. No stored value
+changed and nothing displayed moves.
+
+- **`_BreathingCircuitPayload`'s docstring** says `circuit_volume_l` "is the
+  assembled total, apparatus plus patient circuit", why (the model's one
+  well-mixed compartment leaves the limbs and Y-piece nowhere else), what an
+  author holding a manufacturer's apparatus volume adds (Shin et al.'s 1.2 L
+  Hudson RCI circuit, unless the profile assumes a circuit whose volume is
+  stated), what storing it bare costs (a Perseus A500 at 31.5 s against
+  49.5 s), and why no check could catch it.
+- **`BreathingCircuitParameters.circuit_volume_l`** gains the comment its
+  sibling fields already carried, pointing at that docstring. The class
+  summary, the module summary and the loader's docstring called the whole
+  breathing system "apparatus" a few lines from a field now defined as
+  apparatus *plus* patient circuit, so those three say "breathing system".
+- **`reference_circle_system.json`.** The `provenance_gap` states the rule for
+  this file's 6.0 L, as a declared sum no source apportions, and for the next
+  profile. The Targ note's "the apparatus alone" now says what it includes
+  (the limbs and Y-piece Targ measured) and excludes (the lung the bag
+  simulated), and records that it was reworded and why. Seven other volume
+  statements in the file that used "apparatus" for the system without the lung
+  now say "assembled system" or "without the lung".
+- **`docs/MODEL.md` § "Breathing circuit"** states it as a rule, beside the
+  paragraph that pins what $`\dot V_F`$ means the same way. The provenance
+  section's 6.0 L row now says it is such a sum, and the bound, the
+  like-for-like comparison and the survey paragraph set like against like. The
+  survey paragraph also stopped calling Shin et al.'s carried figures
+  measurements.
+- **Two documents quoted the old phrase in the present tense**:
+  `docs/machine-abstraction.md` and `ROADMAP.md`. Both now put it in the past
+  tense and point at the rewording, which is why both joined `touches`.
+
+**What the source added.** Shin et al. were read at full text on 2026-10-04,
+from PubMed Central (PMC5248460) through NCBI efetch, to check the addend
+before writing it into a `safety`-classed file. That reading found three facts
+this brief did not carry:
+
+- the apparatus volumes are "including the CO2 absorbers, but without the
+  breathing circuits", cited to Dräger's instructions-for-use manuals (their
+  references 12-14), which confirms this brief's premise that a manufacturer's
+  figure leaves the patient circuit out;
+- the 1.2 L is the internal volume of a Hudson RCI breathing circuit, and the
+  paper does not say whether it was measured or taken from a specification;
+- their sums ("the internal volume of AM + the volume of breathing circuit
+  1.2 L") leave out the 3 L reservoir bag of the same set-up. A total built
+  from them does too, and the rule says so, since an author who added the bag
+  would nearly double a Perseus total.
+
+The 8.5 L comparison is not used as evidence anywhere in the new text, as this
+brief required.
+
+**Considered and not filed.** "Apparatus" still names the whole breathing
+system elsewhere: "apparatus dead space", "the apparatus lag" and "the
+published apparatus" in `docs/MODEL.md`, and two docstrings outside this item's
+files. They were listed before deciding. Each is standard domain usage, and
+none states what `circuit_volume_l` holds, so they are not this hazard and no
+item was filed for them.
