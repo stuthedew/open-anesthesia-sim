@@ -6251,8 +6251,17 @@ def _wrapped_family_member(_: Path) -> bool:
     return doc_check._names_a_test(members[1][1])
 
 
-def _continued_coverage_gate(tmp_path: Path) -> list[str]:
-    """One coverage run, continued alike in the Makefile and in a `run: |` block."""
+#: CI's coverage run, continued as `_continued_coverage_gate`'s Makefile continues it.
+CONTINUED_RUN = (
+    "|\n          uv run pytest -n auto \\\n"
+    "            --cov=demo.core --cov-branch --cov-fail-under=100"
+)
+#: The same run on one line.
+ONE_LINE_RUN = "uv run pytest -n auto --cov=demo.core --cov-branch --cov-fail-under=100"
+
+
+def _continued_coverage_gate(tmp_path: Path, run: str) -> list[str]:
+    """One coverage run continued in the Makefile, and CI's `run:` step spelled as given."""
     root = _repo(tmp_path)
     (root / "Makefile").write_text(
         ".PHONY: check\ncheck:\n\tuv run pytest -n auto \\\n"
@@ -6262,9 +6271,7 @@ def _continued_coverage_gate(tmp_path: Path) -> list[str]:
     _with_workflow(
         root,
         "name: quality\n\non: [push, pull_request]\n\njobs:\n  checks:\n"
-        "    runs-on: ubuntu-latest\n    steps:\n      - run: |\n"
-        "          uv run pytest -n auto \\\n"
-        "            --cov=demo.core --cov-branch --cov-fail-under=100\n",
+        f"    runs-on: ubuntu-latest\n    steps:\n      - run: {run}\n",
     )
     return [error for error in _errors(root) if "coverage" in error]
 
@@ -6419,7 +6426,21 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: doc_check.make_targets(".PHONY: a \\\n\tb\nb:\n\ttrue\n"),
         (frozenset({"a", "b"}), frozenset({"b"})),
     ),
-    "coverage gate, one run continued alike in both files": (_continued_coverage_gate, []),
+    "coverage gate, one run continued alike in both files": (
+        lambda root: _continued_coverage_gate(root, CONTINUED_RUN),
+        [],
+    ),
+    # The strict rule `PL-D3M2` chose holds for a continued run too: split in
+    # one file alone, it is the same run spelled differently, and a drift.
+    "coverage gate, one run split in the Makefile alone": (
+        lambda root: _continued_coverage_gate(root, ONE_LINE_RUN),
+        [
+            "the coverage gate differs between the Makefile and CI, so the local gate and the "
+            "merge gate are not asking the same question - Makefile:3: `uv run pytest -n auto "
+            "\\\n  --cov=demo.core --cov-branch --cov-fail-under=100`, "
+            f".github/workflows/quality.yml:9: `{ONE_LINE_RUN}`"
+        ],
+    ),
     "gate parity, an option on a continuation line": (_continued_parity, ([], [])),
     "ruff cache, the flag on a continuation line": (
         lambda root: _ruff_errors(root, "uv run ruff check \\\n\t--no-cache ."),
