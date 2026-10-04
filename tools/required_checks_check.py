@@ -73,9 +73,12 @@ when changing a job name.
 **What it refuses to decide.** Matrix jobs expand into one check per
 combination and reusable workflows report as `<caller> / <called>`; this parser
 handles neither, and says so and exits non-zero rather than guessing a name.
-Likewise an unreachable API is reported as unreachable and fails - distinctly
-from a genuine disagreement - rather than passing on the assumption that
-nothing has changed. `CLAUDE.md`: prefer an obvious failure to a plausible
+So with a job's `name:`: it is read where it sits on the key's line, and one
+YAML carries past that line, or resolves there before GitHub reports it, is
+refused rather than read as its first line (`PL-TMX9`). Likewise an
+unreachable API is reported as unreachable and fails - distinctly from a
+genuine disagreement - rather than passing on the assumption that nothing has
+changed. `CLAUDE.md`: prefer an obvious failure to a plausible
 answer when correctness cannot be established.
 
 A `paths:` or `paths-ignore:` filter under a `pull_request` or
@@ -143,6 +146,15 @@ PULL_REQUEST_EVENTS = frozenset({"pull_request", "pull_request_target"})
 PATH_FILTER = re.compile(r"(?:^|[{,\s])(paths-ignore|paths)\s*:")
 
 NOT_REQUIRED = re.compile(r"#\s*not-required:\s*(?P<reason>\S.*?)\s*$")
+
+# A comment closing a plain scalar on its line: a `#` after white space
+# (YAML 1.2.2 § 6.6), which is no part of the value.
+TRAILING_COMMENT = re.compile(r"[ \t]+#.*$")
+
+# What opens a value other than a plain scalar (YAML 1.2.2 § 5.3): a block
+# scalar's header, a quote, an anchor, alias or tag, a flow collection, or a
+# reserved indicator.
+NODE_INDICATORS = frozenset("|>\"'&*![]{}%@`")
 
 
 class Undecidable(Exception):
@@ -228,6 +240,61 @@ def _triggers(lines: list[str]) -> set[str]:
     raise Undecidable("no `on:` block at the top level")
 
 
+def _job_name(lines: list[str], index: int, job: str) -> str | None:
+    """The check name a job's `name:` key at `lines[index]` gives, as YAML reads it.
+
+    Two forms are read, the ones a workflow writes: a plain scalar on the key's
+    line, which a comment ends (YAML 1.2.2 § 6.6), and a quoted scalar that
+    closes on that line and holds no escape, read as what lies between its
+    quotes. `None` where the key holds no value, so the job id names the check.
+
+    Every other form raises `Undecidable`, naming it (`PL-TMX9`). Read from the
+    key's line alone, `name: >` was the check name `>`, and `name: Long` over
+    an indented `title` was `Long` where YAML hands GitHub `Long title`
+    (§ 7.3.3, § 8.1). So a block scalar is refused, as is a plain scalar
+    carried onto the lines after the key or opening on the line after it, a
+    quoted scalar carried past the key's line or holding an escape, and an
+    anchor, alias, tag or flow collection. A comment line is no continuation.
+    No workflow here writes any of these, so each is refused rather than
+    folded, as `doc_check._run_script` refuses them in a `run:` value
+    (`PL-R417`).
+    """
+    inline = lines[index].split(":", 1)[1].strip()
+    if inline.startswith("#"):
+        # A comment, so the value is whatever the lines after the key hold.
+        inline = ""
+    after = []
+    for following in lines[index + 1 :]:
+        if not following.strip():
+            continue
+        if len(following) - len(following.lstrip(" ")) <= 4:
+            break
+        if not following.lstrip().startswith("#"):
+            after.append(following)
+
+    form = None
+    if inline[:1] in ("|", ">"):
+        form = f"a block scalar (`{inline[0]}`)"
+    elif inline[:1] in ('"', "'"):
+        end = inline.find(inline[0], 1)
+        if end < 0 or after:
+            form = "a quoted scalar carried past the key's line"
+        elif inline[end + 1 : end + 2] == "'" or (inline[0] == '"' and "\\" in inline[1:end]):
+            form = "a quoted scalar holding an escape"
+        else:
+            return inline[1:end]
+    elif inline[:1] in NODE_INDICATORS:
+        form = f"a YAML node opening `{inline[0]}`"
+    elif after:
+        form = f"a plain scalar {'carried onto' if inline else 'opening on'} the line after it"
+    if form is not None:
+        raise Undecidable(
+            f"job `{job}` writes its `name:` as {form}, which YAML resolves into the check "
+            "name GitHub reports and this parser does not - write the name on the key's line"
+        )
+    return TRAILING_COMMENT.sub("", inline) or None
+
+
 def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
     """Return every job in the workflow, with the check name it would report."""
     start = None
@@ -256,7 +323,7 @@ def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
             )
         )
 
-    for line in lines[start:]:
+    for index, line in enumerate(lines[start:], start):
         indent = len(line) - len(line.lstrip(" "))
         if not line.strip():
             comment_block = []
@@ -283,7 +350,7 @@ def _jobs(lines: list[str], workflow: str) -> list[ReportingJob]:
             continue
         inner = _key_at(line, 4)
         if inner == "name":
-            display_name = line.strip().split(":", 1)[1].strip().strip("'\"")
+            display_name = _job_name(lines, index, current)
         elif inner == "strategy":
             raise Undecidable(
                 f"job `{current}` declares `strategy:` - a matrix expands into one check "
