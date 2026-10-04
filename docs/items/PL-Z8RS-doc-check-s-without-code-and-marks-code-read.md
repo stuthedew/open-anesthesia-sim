@@ -39,3 +39,10 @@ document, inside one tool. Filed by `PL-9L39`, a KGYT member whose fix moved
 both readers onto `CODE_SPAN_RE` and kept the per-line reading, so a residual
 of that fix rather than a re-entry. With `PL-P72R`, the second post-close
 instance, which `PL-74T0` reads as its cluster 1.
+
+**Generator check, 2026-10-04.** Also a member of `PL-R417`, with two causes:
+the per-line reading is a second spelling of where a code span is, which is
+`PL-KGYT`'s fact above, and that spelling is wrong because CommonMark § 6.1 lets
+a span continue across lines, which is `PL-R417`'s. Both heads' fixes are the
+one this brief already names - read the spans `doc_check._code_spans` reads -
+so this item still counts in `PL-74T0`'s cluster 1.
