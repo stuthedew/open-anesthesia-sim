@@ -103,6 +103,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path, PurePosixPath
 
 # `ROADMAP.md`'s release-train grammar lives in `docket`, which reasons about
@@ -136,6 +137,11 @@ try:
     # reads it from here.
     from docket.fences import blocks, fenced_lines
     from docket.fences import without_fences as without_fences
+
+    # `markdown` is the one reading of a document's blocks (`PL-R417`): where
+    # each statement ends, so a code span or a bold run is read within its own
+    # (`PL-FP7J`, `PL-VQBY`), and where an HTML block runs (`PL-GT0J`).
+    from docket.markdown import statement_lines
     from docket.model import CLOSED_STATUSES, SEMVER_PATTERN, Item
     from docket.release import (
         CODE_SPAN_RE,
@@ -3977,14 +3983,15 @@ def _cites_heading(term: str, headings: Iterable[str]) -> bool:
 def _code_spans(text: str) -> list[re.Match[str]]:
     """Every code span in a document as docket reads one, in document order.
 
-    The prose is read with its fenced blocks blanked, so a span wrapped across
-    a line break is one span and a fence's own backticks open none. CommonMark
+    The prose is read a statement at a time (`_statement_spans`), so a span
+    wrapped across a line break is one span, a fence's own backticks open none,
+    and a stray backtick pairs with nothing past its own statement. CommonMark
     reads no span inside a fence, but a package map's comments cite paths as
     spans, and `docs/ARCHITECTURE.md`'s maps are held to the tree that way; so
     each fenced line is then read on its own, as every line was read before
     `PL-9L39`. Offsets are the document's either way.
     """
-    spans = list(CODE_SPAN_RE.finditer(without_fences(text)))
+    spans = list(_statement_spans(text))
     fenced = fenced_lines(text)
     offset = 0
     for index, line in enumerate(text.splitlines(keepends=True)):
@@ -3992,6 +3999,23 @@ def _code_spans(text: str) -> list[re.Match[str]]:
             spans.extend(CODE_SPAN_RE.finditer(text, offset, offset + len(line.splitlines()[0])))
         offset += len(line)
     return sorted(spans, key=lambda span: span.start())
+
+
+def _statement_spans(text: str) -> Iterator[re.Match[str]]:
+    """Every code span outside a fence, each read within the statement holding it.
+
+    A statement as `markdown.statement_lines` cuts one: CommonMark keeps a
+    span inside its paragraph (0.31.2 § 6.1), and a paragraph ends at a list
+    item's, a block quote's, a heading's or an HTML block's start as well as at
+    a blank line, which `CODE_SPAN_RE` alone reads only the last of. Read
+    across them, a stray backtick paired with the next statement's first span
+    and blanked the prose between them (`PL-FP7J`). Offsets are the document's.
+    """
+    starts = [0]
+    for line in text.splitlines(keepends=True):
+        starts.append(starts[-1] + len(line))
+    for first, end in statement_lines(text.splitlines()):
+        yield from CODE_SPAN_RE.finditer(text, starts[first], starts[end])
 
 
 def _unresolved(token: str) -> str:
@@ -4062,7 +4086,7 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
         # A fence or a code span holds a literal - an example, a command, the
         # form being described - and a literal is not a claim about the tree.
         prose = without_fences(text)
-        spans = [(span.start(), span.end()) for span in CODE_SPAN_RE.finditer(prose)]
+        spans = [(span.start(), span.end()) for span in _statement_spans(text)]
 
         for match in CITATION_RE.finditer(prose):
             # A code-spanned source directly before the mark says where the
@@ -4133,7 +4157,7 @@ def _check_brief_paths(root: Path, basenames: frozenset[str], report: Report) ->
     for path, raw in _live_item_briefs(root):
         text = without_fences(raw)
         absent = _absent_paths(root, basenames, path, text, report)
-        for match in CODE_SPAN_RE.finditer(text):
+        for match in _statement_spans(raw):
             token = match["content"]
             if not _is_path_citation(token) or _resolves(root, basenames, token):
                 continue
@@ -5203,15 +5227,17 @@ def _without_code(text: str) -> list[str]:
     line through its closing one, so an opener nothing closes blanks nothing
     and the prose below it is still read (`PL-92MY`).
 
-    **A code span is read from the prose whole, not a line at a time**
+    **A code span is read from its statement whole, not a line at a time**
     (`PL-Z8RS`). CommonMark lets a span continue across a line ending (0.31.2
     § 6.1), and read a line at a time, a wrapped span's closing run paired with
     the next span's opening run on its line and blanked the prose between them:
-    a TeX delimiter there went unchecked. One exception keeps the split-math
-    rule's evidence: where a wrapped span's run stands against a `$`, the span
-    is an inline expression the wrap broke, so that run is left for
-    `MATH_EDGE_RE` to report on its line, as it was when neither half read as a
-    span.
+    a TeX delimiter there went unchecked. Nor past its statement, which a list
+    item's or a block quote's start ends as surely as a blank line does
+    (`PL-FP7J`): a stray backtick paired across one the same way. One
+    exception keeps the split-math rule's evidence: where a wrapped span's run
+    stands against a `$`, the span is an inline expression the wrap broke, so
+    that run is left for `MATH_EDGE_RE` to report on its line, as it was when
+    neither half read as a span.
     """
     lines: list[str] = []
     closes = {block.start: block.end for block in blocks(text)}
@@ -5243,9 +5269,13 @@ def _without_code(text: str) -> list[str]:
         lines.append(MATH_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line))
     # A code span is blanked before either rule runs: `\(` inside one is a
     # quotation of the broken syntax rather than a use of it, and a shell
-    # snippet like `"$upstream..HEAD"` is not an unclosed expression.
-    prose = "\n".join(lines)
-    return CODE_SPAN_RE.sub(lambda span: _blanked_span(prose, span), prose).split("\n")
+    # snippet like `"$upstream..HEAD"` is not an unclosed expression. Each is
+    # read within its statement, as `_statement_spans` reads one (`PL-FP7J`).
+    for first, end in statement_lines(text.splitlines()):
+        prose = "\n".join(lines[first:end])
+        blanked = CODE_SPAN_RE.sub(partial(_blanked_span, prose), prose)
+        lines[first:end] = blanked.split("\n")
+    return lines
 
 
 def _blanked_span(prose: str, span: re.Match[str]) -> str:

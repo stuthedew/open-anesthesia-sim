@@ -25,10 +25,19 @@ import pytest
 import required_checks_check as rcc
 import rules_paths_check
 from docket import checks as docket_checks
+from docket.fences import blocks as fence_blocks
 from docket.instructions import parse as dated_assertions
 from docket.model import with_front_matter_field
+from docket.notes import read as read_threads
 from docket.release import prepare_bump, unreferenced, version_in
-from docket.roadmap import LAZY_ENTRY
+from docket.roadmap import (
+    LAZY_ENTRY,
+    UnreadEntry,
+    baseline_heading,
+    document_entry_lines,
+    parse_milestones,
+    table_rows,
+)
 from docket.verify import is_suppression_statement, read_logical_lines, sanctioned_queue_edit
 
 ARCHITECTURE = """# Architecture overview
@@ -6470,6 +6479,44 @@ def _passage_of(body: str) -> str:
     return body[start:end]
 
 
+def _threads(tmp_path: Path, notes: str) -> list[tuple[str, int]]:
+    """The working-notes threads `notes` holds, as each one's title and line."""
+    path = tmp_path / "WORKING_NOTES.md"
+    path.write_text(notes, encoding="utf-8")
+    return [(thread.title, thread.line) for thread in read_threads(path)]
+
+
+def _cue_ids(body: str) -> list[str]:
+    """The ids a brief's prose names as prerequisites, in the order it names them."""
+    found = docket_checks._prerequisite_matches(body, docket_checks.PROSE_DEPENDENCY)
+    return [match.group(1) for match in found]
+
+
+def _entry_spans(text: str) -> tuple[list[tuple[int, int]], list[int]]:
+    """Each top-level list entry's span of lines, and the line of each one declined."""
+    unread: list[UnreadEntry] = []
+    spans = list(document_entry_lines(text.splitlines(), unread))
+    return spans, [entry.line for entry in unread]
+
+
+def _fence_spans(text: str) -> list[tuple[int, int]]:
+    """Each closed fence in `text`, as the index of its opening line and of its last."""
+    return [(block.start, block.end) for block in fence_blocks(text)]
+
+
+#: A milestone whose exclusions sit under a setext heading, which ends the
+#: section rather than leaving its entry to be read as scope.
+SETEXT_EXCLUSION = (
+    "## v9.9.0 \u2014 Demo\n\n### Required scope\n\n- Something (queue item `PL-CCCC`).\n\n"
+    "Explicitly out of scope for v9.9.0\n==================================\n\n"
+    "- Something else (queue item `PL-BBBB`).\n"
+)
+#: A milestone section kept as a template inside a comment.
+COMMENTED_MILESTONE = (
+    "<!--\n## v9.9.9 \u2014 Old\n\n### Required scope\n\n- X (queue item `PL-MNPQ`).\n-->\n"
+)
+
+
 #: An item whose `recurrences:` value wraps onto an indented line.
 WRAPPED_RECURRENCES = (
     "---\nid: PL-B2B2\ntitle: The other\nstatus: ready\n"
@@ -6775,7 +6822,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         [LAZY_LIST_ERROR.format("ROADMAP.md:43")],
     ),
     # The instruction audit's dated sentence (`PL-B1D0`), read through
-    # `roadmap.statement_lines`: one assertion, dated by its newest date.
+    # `markdown.statement_lines`: one assertion, dated by its newest date.
     "instruction audit, a dated record wrapped across a soft break": (
         lambda _: [
             (dated.line, str(dated.when))
@@ -6795,6 +6842,171 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "passage, a pipe line with no delimiter row": (
         lambda _: _passage_of("A claim that stopped at\n| it is left.\n"),
         "A claim that stopped at\n| it is left.\n",
+    ),
+    # The superseded marker itself (`PL-TY1Z`): a soft break may fall between
+    # its keyword and its date, and a blank line may not.
+    "superseded marker, wrapped before its date": (
+        lambda _: docket_checks._standing(
+            "[superseded\n2026-09-30: answered] Left at `needs-decision`.\n", 40
+        ),
+        False,
+    ),
+    "superseded marker, a blank line ends it": (
+        lambda _: docket_checks._standing(
+            "[superseded\n\n2026-09-30: answered] Left at `needs-decision`.\n", 40
+        ),
+        True,
+    ),
+    # A brief's prerequisite cues (`PL-WF35`): a cue and its id are one clause
+    # across a soft break, and never across a blank line or a block's start.
+    "prerequisite cues, a cue wrapped before its id": (
+        lambda _: _cue_ids("**Depends on.** This item is blocked on\n`PL-GHJK`, which is open.\n"),
+        ["PL-GHJK"],
+    ),
+    "prerequisite cues, a continuation wrapped before its id": (
+        lambda _: _cue_ids("Blocked on `PL-GHJK` and on\n`PL-MNPQ`.\n"),
+        ["PL-GHJK", "PL-MNPQ"],
+    ),
+    "prerequisite cues, a blank line ends the clause": (
+        lambda _: _cue_ids("This item is blocked on\n\n`PL-GHJK`, which is unrelated.\n"),
+        [],
+    ),
+    "prerequisite cues, a list item's start ends the clause": (
+        lambda _: _cue_ids("- This item is blocked on\n- `PL-GHJK`, which is unrelated.\n"),
+        [],
+    ),
+    # Where a statement ends (`PL-FP7J`): a code span, an emphasis run and a cued
+    # clause each end with the statement holding them, so a stray delimiter
+    # costs its own statement and no more.
+    "paragraph ends, a recommendation below a stray backtick": (
+        lambda _: docket_checks._marks_recommendation(
+            "Whether a stray ` backtick matters.\n\nRecommendation: take `x`, as it is cheaper.\n"
+        ),
+        True,
+    ),
+    "paragraph ends, a continuation cue in the next list item": (
+        lambda _: _cue_ids(
+            "- Blocked on `PL-GHJK` until it lands.\n"
+            "- This reports on `PL-MNPQ` and on `PL-ZZZZ`.\n"
+        ),
+        ["PL-GHJK"],
+    ),
+    "paragraph ends, an answer below a stray asterisk's list item": (
+        lambda _: docket_checks._answered_beneath(
+            "**Decision needed.** Which?\n\n- 2*3 is six\n- *Answered 2026-09-30.*\n"
+        ),
+        "Answered 2026-09-30.",
+    ),
+    "paragraph ends, a code span after a stray backtick's paragraph": (
+        lambda _: [
+            span["content"]
+            for span in doc_check._code_spans(
+                "A stray ` backtick in prose\n- an item with `code`\n"
+            )
+        ],
+        ["code"],
+    ),
+    # The headings docket reads sections, threads and answers under (`PL-HKHP`):
+    # none inside a comment or a fence, and a setext heading is one.
+    "docket headings, a baseline heading inside a comment is none": (
+        lambda _: baseline_heading(
+            "<!--\n## Current baseline: v9.9.9\n-->\n\n## Current baseline: v0.5.22\n"
+        ),
+        (5, "0.5.22"),
+    ),
+    "docket headings, a milestone heading inside a comment is none": (
+        lambda _: [section.title for section in parse_milestones(COMMENTED_MILESTONE)],
+        [],
+    ),
+    "docket headings, a setext heading ends a milestone's scope": (
+        lambda _: [section.own_scope_ids for section in parse_milestones(SETEXT_EXCLUSION)],
+        [("PL-CCCC",)],
+    ),
+    "docket headings, a thread heading inside a fence is none": (
+        lambda tmp_path: _threads(
+            tmp_path, "## Open thread: PL-GHJK\n\n```\n## Not a thread\n```\n"
+        ),
+        [("Open thread: PL-GHJK", 1)],
+    ),
+    "docket headings, a setext thread heading": (
+        lambda tmp_path: _threads(
+            tmp_path, "Open thread: PL-GHJK\n--------------------\n\nOn PL-BBBB.\n"
+        ),
+        [("Open thread: PL-GHJK", 1)],
+    ),
+    "docket headings, an answer heading inside a comment is none": (
+        lambda _: docket_checks._answered_beneath(
+            "**Decision needed.** Which?\n\n<!--\n## Answers 2026-09-30\n-->\n"
+        ),
+        None,
+    ),
+    "docket headings, a setext answer heading": (
+        lambda _: docket_checks._answered_beneath(
+            "**Decision needed.** Which?\n\nAnswers 2026-09-30\n------------------\n\nTake it.\n"
+        ),
+        "Answers 2026-09-30",
+    ),
+    # Where a fence is (`PL-J0C6`): at most three columns into its container,
+    # inside a block quote or a list item as readily as outside, and ended by
+    # its container's end; one nothing closes is read as written.
+    "fences, one behind a block quote's marker": (
+        lambda _: _fence_spans("> ```\n> ## not a heading\n> ```\n"),
+        [(0, 2)],
+    ),
+    "fences, one indented to sit inside its list item": (
+        lambda _: _fence_spans("- An entry.\n\n    ```\n    code\n    ```\n"),
+        [(2, 4)],
+    ),
+    "fences, one indented four columns past its container is none": (
+        lambda _: _fence_spans("Prose.\n\n    ```\n    code\n    ```\n"),
+        [],
+    ),
+    "fences, its container's end closes it": (
+        lambda _: _fence_spans("> ```\n> code\nafter\n"),
+        [(0, 1)],
+    ),
+    "fences, one nothing closes is read as written": (lambda _: _fence_spans("```\nopen\n"), []),
+    # A list's entries (`PL-YSMD`), as CommonMark reads its top-level items.
+    "list entries, a later paragraph is the entry's": (
+        lambda _: _entry_spans("- First.\n\n  Second paragraph.\n- Next.\n"),
+        ([(0, 3), (3, 4)], []),
+    ),
+    "list entries, an ordered marker past 1 under a paragraph carries it on": (
+        lambda _: _entry_spans("- Entry text that\n  17. carries on.\n"),
+        ([(0, 2)], []),
+    ),
+    "list entries, an item opening on an empty marker line": (
+        lambda _: _entry_spans("-\n  Entry on the next line.\n- Next.\n"),
+        ([(0, 2), (2, 3)], []),
+    ),
+    "list entries, a marker inside a fence is none": (
+        lambda _: _entry_spans("- Entry.\n\n  ```\n  - not an entry\n  ```\n- Next.\n"),
+        ([(0, 5), (5, 6)], []),
+    ),
+    "list entries, a thematic break is none": (
+        lambda _: _entry_spans("- Entry.\n\n* * *\n"),
+        ([(0, 1)], []),
+    ),
+    "list entries, any bullet or ordered marker": (
+        lambda _: _entry_spans("+ One.\n1) Two.\n"),
+        ([(0, 1), (1, 2)], []),
+    ),
+    "list entries, a line carried on from the margin is declined by name": (
+        lambda _: _entry_spans("- An entry that\nwraps.\n"),
+        ([(0, 1)], [2]),
+    ),
+    # A table's rows (`PL-5NC3`), as GitHub Flavored Markdown 0.29 reads them.
+    "table rows, a row without its outer pipes": (
+        lambda _: list(table_rows("## T\n\n| a | b |\n| - | - |\nc | d\n", "T")),
+        [(5, ["c", "d"])],
+    ),
+    "table rows, an escaped pipe inside a cell": (
+        lambda _: list(table_rows("## T\n\n| a | b |\n| - | - |\n| x \\| y | z |\n", "T")),
+        [(5, ["x | y", "z"])],
+    ),
+    "table rows, a block's start ends the table": (
+        lambda _: list(table_rows("## T\n\n| a |\n| - |\n| x |\n> quoted |\n", "T")),
+        [(5, ["x"])],
     ),
     # `docs/dead-ends.md`, an entry at a time through docket's list walker (`PL-F5B9`).
     "dead ends, a title wrapped onto an indented line": (

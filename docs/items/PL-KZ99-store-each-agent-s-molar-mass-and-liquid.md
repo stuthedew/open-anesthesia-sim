@@ -55,8 +55,8 @@ on the accounting panel; the project owner has since ruled that panel
 developer-facing (`PL-B396`). The consumer is now `ROADMAP.md` § "Planned
 milestones" item 28, agent cost, which needs the same two constants for the
 same conversion. Nothing about the work changes — the same two fields, the
-same primary source, the same `schema_version` bump, the same block on
-`PL-S6WW`. Only the thing that consumes it does.
+same primary source, the same `schema_version` bump. Only the thing that
+consumes it does. (`PL-S6WW`, which held it then, closed on 2026-09-17.)
 
 **Why it matters.** The alternative is storing the published composite constant
 - one number per agent for the vapour volume from 1 mL of liquid - which puts a

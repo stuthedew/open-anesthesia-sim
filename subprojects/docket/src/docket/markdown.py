@@ -56,6 +56,10 @@ CODE = "code"
 HTML = "html"
 BREAK = "break"
 
+#: The kinds a reader judging prose reads. The rest hold a literal - a fence,
+#: an HTML block, an indented code block - or, a thematic break, nothing.
+PROSE = frozenset({PARAGRAPH, HEADING, TABLE})
+
 
 @dataclass(frozen=True)
 class Block:
@@ -228,7 +232,9 @@ def _read(lines: tuple[str, ...]) -> Document:
             unread |= {start}
 
 
-def statement_lines(lines: Sequence[str]) -> Iterator[tuple[int, int]]:
+def statement_lines(
+    lines: Sequence[str], kinds: Collection[str] | None = None
+) -> Iterator[tuple[int, int]]:
     """Each statement of a Markdown document, as its span of `lines` (`PL-R417`).
 
     A statement is a paragraph, with every line CommonMark 0.31.2 carries it
@@ -238,9 +244,12 @@ def statement_lines(lines: Sequence[str]) -> Iterator[tuple[int, int]]:
     list item's paragraph is one, so a list is as many statements as it has
     paragraphs. A fence is a literal rather than prose and is none. Each pair is
     the index of the statement's first line and one past its last.
+
+    `kinds`, where given, keeps the statements of those kinds of block alone:
+    `PROSE`'s, for a reader that judges prose and reads past every literal.
     """
     for block in read(lines).blocks:
-        if block.kind == FENCE:
+        if block.kind == FENCE or (kinds is not None and block.kind not in kinds):
             continue
         if block.kind == TABLE:
             yield from ((index, index + 1) for index in range(block.start, block.end))
