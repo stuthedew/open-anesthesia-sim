@@ -97,9 +97,10 @@ class Document:
 
 @dataclass(frozen=True)
 class Heading:
-    """A top-level heading: the index of its first line, its level and its text."""
+    """A top-level heading: its first line's index, one past its last, its level and its text."""
 
     line: int
+    end: int
     level: int
     title: str
 
@@ -282,7 +283,7 @@ def headings(lines: Sequence[str]) -> list[Heading]:
             title = _ATX_CLOSE.sub("", line[opening.end() :].strip())
         else:
             title = " ".join(line.strip() for line in lines[block.start : block.end - 1])
-        found.append(Heading(block.start, block.level, title.strip()))
+        found.append(Heading(block.start, block.end, block.level, title.strip()))
     return found
 
 

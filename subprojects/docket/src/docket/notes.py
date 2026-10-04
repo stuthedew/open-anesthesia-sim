@@ -36,7 +36,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from .roadmap import HEADING_RE
+from . import markdown
 from .store import ID_PATTERN
 
 THREAD_HEADING_LEVEL = 2
@@ -114,37 +114,24 @@ def read(path: Path) -> tuple[Thread, ...]:
     except OSError:
         return ()
 
+    # `markdown`'s headings, so a `##` line inside a fence or a comment opens no
+    # thread and a setext one opens its own (`PL-HKHP`). A thread's body is
+    # every line after its heading up to the next thread's.
+    lines = text.splitlines()
+    found = [h for h in markdown.headings(lines) if h.level == THREAD_HEADING_LEVEL]
     threads: list[Thread] = []
-    title = ""
-    line_number = 0
-    about: list[str] = []
-    body: list[str] = []
-
-    def flush() -> None:
-        if not title:
-            return
-        named = dict.fromkeys(about)
+    for position, heading in enumerate(found):
+        end = found[position + 1].line if position + 1 < len(found) else len(lines)
+        named = dict.fromkeys(_ID_RE.findall(heading.title))
+        body = dict.fromkeys(i for line in lines[heading.end : end] for i in _ID_RE.findall(line))
         threads.append(
             Thread(
-                title=title,
-                line=line_number,
+                title=heading.title,
+                line=heading.line + 1,
                 about=tuple(named),
-                mentions=tuple(i for i in dict.fromkeys(body) if i not in named),
+                mentions=tuple(i for i in body if i not in named),
             )
         )
-
-    for number, line in enumerate(text.splitlines(), start=1):
-        heading = HEADING_RE.match(line)
-        if heading is not None and len(heading.group("hashes")) == THREAD_HEADING_LEVEL:
-            flush()
-            title = heading.group("title")
-            line_number = number
-            about = _ID_RE.findall(title)
-            body = []
-        elif title:
-            body.extend(_ID_RE.findall(line))
-
-    flush()
     return tuple(threads)
 
 
