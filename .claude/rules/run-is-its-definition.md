@@ -73,14 +73,20 @@ aliases the run whatever it samples - a question about what to draw, which
 storage answers no part of.
 
 Since `PL-CNCF` those figures are a first frame's: `RunDefinition.evaluate_anchored`
-keeps the propagators one window forms for the next, and a frame following the
-run forms only its two bounds' - 5.9 ms with sixty changes in view on a 24-hour
-run. **That is not a store of the run, and the test above is why.** An entry is
-an operator rather than a state, found by a stretch's settings and an interval,
-and a hit returns the bits forming it again would. Two runs built from
-identical definitions can keep different ones and still answer identically, so
-there is no second source of truth for a trace to come from; and only the last
-window's are kept, so it does not grow with the watching.
+keeps the propagators one window uses for the next, so a frame following the
+run forms only those that moved - its two bounds' and, when its left edge has
+passed a grid column, one more - and the full span of a 24-hour run with sixty
+changes in view costs 5.9 ms. **By the test above, that store is indexed by the
+watching**: what it holds depends on the window drawn last, so two runs built
+from identical definitions can hold different entries. It is kept as the one
+exception the test's own reason leaves room for. The watching is refused as a
+second argument because a second argument makes a second source of truth, and
+here it cannot: an entry is found only by a stretch's settings and an interval,
+the whole of what it is formed from, so a hit returns the bits forming it again
+would, and two runs holding different entries draw the same window. Only the
+last window's are kept, so it does not grow with the watching either. A
+collection whose entries are anything but a function of their key alone - a
+state, a sample, anything taken from the run's past - has no such exemption.
 
 ## Two names here say "recorded" and mean "addressed"
 

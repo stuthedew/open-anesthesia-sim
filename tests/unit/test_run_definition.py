@@ -42,8 +42,9 @@ from anesthesia_sim.core.governing_equations import (
     UNIT_STATE,
     VENOUS_FRACTION,
     UptakeEquationSettings,
+    build_system_matrix,
 )
-from anesthesia_sim.core.matrix_exponential import Matrix
+from anesthesia_sim.core.matrix_exponential import Matrix, matrix_exponential
 from anesthesia_sim.core.run_definition import (
     DisplayState,
     Keyframe,
@@ -1277,10 +1278,10 @@ def test_an_anchored_window_refuses_bounds_the_run_has_not_reached() -> None:
 """Keeping the chart's propagators from one frame to the next (`PL-CNCF`).
 
 A frame asks `evaluate_anchored` for nearly every propagator the frame before
-formed, so it keeps them. The claim has two halves and they are tested apart:
-that a window drawn from kept propagators is the window drawn afresh, bit for
-bit, and that they are kept at all - without the second, the first passes on a
-store that keeps nothing.
+used, so it keeps them. The claim has three parts and they are tested apart:
+that a window drawn from kept propagators is the window drawn with nothing
+kept, bit for bit; that they are kept at all - without that, the first passes
+on a store that keeps nothing; and that no canonical answer reads them.
 """
 
 CHART_SPACING_S = 900.0 / 1068
@@ -1340,18 +1341,49 @@ def _bits(window: SampledWindow) -> list[tuple[str, ...]]:
     return [tuple(value.hex() for value in state.values) for state in window.states]
 
 
-def test_a_window_drawn_from_kept_propagators_is_the_window_drawn_afresh() -> None:
+class _NothingKept:
+    """`run_definition._WindowPropagators` with no reuse: each propagator formed where asked.
+
+    The reference a kept store is held to. Drawn through the same code with
+    reuse in place, a store that answered for the wrong stretch would agree
+    with itself, and so with a reference that kept the same way.
+    """
+
+    def __init__(self, kept: object) -> None:
+        self.used: dict[object, Matrix] = {}
+
+    def over(self, settings: UptakeEquationSettings, interval_s: float) -> Matrix:
+        return matrix_exponential(build_system_matrix(settings), interval_s)
+
+
+def _drawn_with_nothing_kept(
+    definition: RunDefinition,
+    monkeypatch: pytest.MonkeyPatch,
+    start_s: float,
+    stop_s: float,
+    spacing_s: float,
+) -> SampledWindow:
+    """The window as the same run, rebuilt, draws it with every propagator formed afresh."""
+
+    twin = _afresh(definition)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(run_definition, "_WindowPropagators", _NothingKept)
+
+        return twin.evaluate_anchored(start_s, stop_s, spacing_s)
+
+
+def test_a_window_drawn_from_kept_propagators_is_the_window_drawn_afresh(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Keeping propagators across frames moves no drawn value by so much as a bit.
 
-    Frame after frame of a window following the run, through each thing a
-    frame can meet: a change, which brings into view a stretch nothing was
-    kept for; two controls moved before one step, so the second replaces the
-    settings the first opened a stretch under; a dial moved and moved back
-    before one step, which drops that stretch; and a new time base, whose
-    spacing is one no propagator was kept for. The two middle ones are the
-    `record_change` shapes that change a run's settings at an instant it
-    already holds. Each frame is compared with the same run rebuilt from its
-    segments and drawn once.
+    Frame after frame of a window following the run, its left edge passing a
+    grid column every few frames, through a change, which brings into view a
+    stretch nothing was kept for, and a new time base, whose spacing is one no
+    propagator was kept for. Each frame is compared with the same run drawn
+    with nothing kept, so a propagator kept under the wrong key - the wrong
+    stretch's, or the wrong interval's - shows as a drawn value that moved.
     """
 
     system, definition = _a_run_with_two_changes_in_view()
@@ -1367,29 +1399,12 @@ def test_a_window_drawn_from_kept_propagators_is_the_window_drawn_afresh() -> No
 
             assert len(definition.segments) == 4
 
-        if frame == 6:
-            system.set_delivered_concentration_percent(Percent(4.0))
-            definition.record_change(system.equation_settings())
-            system.set_fresh_gas_flow(FreshGasFlow(2.0))
-            definition.record_change(system.equation_settings())
-
-            assert len(definition.segments) == 5
-            assert definition.segments[-1].settings.fresh_gas_flow_l_min == 2.0
-
         if frame == 8:
-            system.set_delivered_concentration_percent(Percent(5.0))
-            definition.record_change(system.equation_settings())
-            system.set_delivered_concentration_percent(Percent(4.0))
-            definition.record_change(system.equation_settings())
-
-            assert len(definition.segments) == 5
-
-        if frame == 10:
             spacing_s = 2 * CHART_SPACING_S
 
         start_s = reach_s - 1068 * spacing_s
         drawn = definition.evaluate_anchored(start_s, reach_s, spacing_s)
-        afresh = _afresh(definition).evaluate_anchored(start_s, reach_s, spacing_s)
+        afresh = _drawn_with_nothing_kept(definition, monkeypatch, start_s, reach_s, spacing_s)
 
         assert drawn.times_s == afresh.times_s
         assert _bits(drawn) == _bits(afresh)
@@ -1438,11 +1453,30 @@ def test_a_window_drawn_again_forms_only_what_it_did_not_keep(
     # A frame later, following the run: only the two bounds have moved. The
     # window's left edge stays short of its next grid column, so the offset
     # to the first column it draws in that stretch is the one already kept.
+    first_column = int(WINDOW_OPENING_S // CHART_SPACING_S) + 1
+
+    assert WINDOW_OPENING_S + 0.2 < first_column * CHART_SPACING_S < WINDOW_OPENING_S + 0.6
+
     definition.advance_to(CaseInstant(WINDOW_CLOSING_S + 0.2))
     definition.evaluate_anchored(WINDOW_OPENING_S + 0.2, WINDOW_CLOSING_S + 0.2, CHART_SPACING_S)
 
     assert sorted(formed) == pytest.approx(
         [WINDOW_CLOSING_S + 0.2 - 1600.0, WINDOW_OPENING_S + 0.2]
+    )
+
+    # Once the left edge passes that column, the stretch it opens in starts
+    # at the next one, so that stretch's offset is formed too - the most a
+    # following frame forms with no stretch newly in view.
+    formed.clear()
+    definition.advance_to(CaseInstant(WINDOW_CLOSING_S + 0.6))
+    definition.evaluate_anchored(WINDOW_OPENING_S + 0.6, WINDOW_CLOSING_S + 0.6, CHART_SPACING_S)
+
+    assert sorted(formed) == pytest.approx(
+        [
+            WINDOW_CLOSING_S + 0.6 - 1600.0,
+            WINDOW_OPENING_S + 0.6,
+            (first_column + 1) * CHART_SPACING_S,
+        ]
     )
 
 
@@ -1465,6 +1499,39 @@ def test_only_the_last_window_s_propagators_are_kept(monkeypatch: pytest.MonkeyP
     definition.evaluate_anchored(WINDOW_OPENING_S, WINDOW_CLOSING_S, CHART_SPACING_S)
 
     assert sorted(formed) == first
+
+
+class _Untouchable:
+    """A kept store that fails on any read, so a canonical answer consulting it is caught."""
+
+    def __getattribute__(self, name: str) -> object:
+        raise AssertionError(f"a canonical answer read `{name}` on the chart's kept propagators")
+
+
+def test_a_canonical_answer_reads_nothing_the_chart_kept(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`state_at` and the keyframes are taken from the definition alone, whatever a window kept.
+
+    Comparing answers cannot show this: a kept propagator read under its own
+    key is exact, so a canonical path that consulted the store would agree
+    with one that did not, until a key was wrong. So the store is swapped for
+    one that fails on any read, under any key.
+    """
+
+    system, definition = _a_run_with_two_changes_in_view()
+    instants = (650.0, 1300.0, 1450.25, WINDOW_CLOSING_S)
+    before = [definition.state_at(instant_s) for instant_s in instants]
+
+    definition.evaluate_anchored(WINDOW_OPENING_S, WINDOW_CLOSING_S, CHART_SPACING_S)
+    monkeypatch.setattr(definition, "_last_window_propagators", _Untouchable())
+
+    assert [definition.state_at(instant_s) for instant_s in instants] == before
+
+    # A keyframe laid now is the one the run rebuilt from its settings lays.
+    definition.advance_to(CaseInstant(WINDOW_CLOSING_S + 30.0))
+    system.set_delivered_concentration_percent(Percent(3.5))
+    definition.record_change(system.equation_settings())
+
+    assert _afresh(definition).segments == definition.segments
 
 
 """Why a fork opens at a keyframe, measured rather than asserted (`PL-TFX5`).

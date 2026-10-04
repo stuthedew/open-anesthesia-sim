@@ -42,14 +42,14 @@ propagator across uniformly spaced columns, which is what makes a frame cheap
 and which composes those operations in a different order. The two therefore
 agree to floating-point composition rather than exactly.
 
-**The chart's path keeps the propagators it formed from one call to the
+**The chart's path keeps the propagators it used from one call to the
 next**, because a frame asks `evaluate_anchored` for nearly the same ones the
 frame before did. A propagator is a function of a stretch's settings and an
 interval and of nothing else, so one kept under those two is the matrix
-forming it again would give, bit for bit. What is kept is operators rather
-than states, and only those the last window used, so it is no record of the
-run (`.claude/rules/run-is-its-definition.md`), and `state_at` reads none of
-it.
+forming it again would give, bit for bit. Which ones are held depends on the
+window drawn last, but nothing drawn can, and only that window's are held, so
+the store is no record of the run (`.claude/rules/run-is-its-definition.md`
+says why that is the line), and `state_at` reads none of it.
 
 `docs/MODEL.md` § "The canonical evaluation rule" states that separation as a
 guarantee: every stored, exported, replayed or forked value is taken
@@ -88,8 +88,8 @@ _PropagatorKey = tuple[UptakeEquationSettings, float]
 class Keyframe:
     """The exact state at one segment boundary, computed canonically.
 
-    One of these per setting change, and one at the run's opening, is the
-    whole of what a run stores besides its settings. Everything between two of them is
+    One of these per setting change, and one at the run's opening, is every
+    state a run stores. Everything between two of them is
     recovered by propagating the earlier one forward, which is why a keyframe
     is computed canonically even though the values drawn from it are not:
     an error here is inherited by every value derived from it, while an error
@@ -593,27 +593,30 @@ class RunDefinition:
         is why the grid stays uniform within a segment rather than each
         column being taken from its keyframe.
 
-        **Those are formed once rather than once a frame.** Every propagator
-        but the two bounds' is over an interval the grid fixes - the spacing,
-        which the time base holds, and a segment's offset to its first grid
-        column, which the anchoring holds - so a window drawn a frame later
-        asks for the same ones again, and each call keeps what it formed for
-        the next. A frame following the run forms only its two bounds' and
-        those of a segment newly in view; a new spacing, from a new time base
-        or plot width, forms them all once more. `docs/MODEL.md` § "The run
-        is that record, and every state is derived from it" has what that
-        costs (`PL-CNCF`).
+        **Those are formed once rather than once a frame.** All but three are
+        over an interval the grid fixes - the spacing, which the time base
+        holds, and a segment's offset to its first grid column, which the
+        anchoring holds - so a window drawn a frame later asks for the same
+        ones again, and each call keeps what it used for the next. The three
+        that move are the two bounds', and the offset in the segment the
+        window opens in, whose first grid column is the first past `start_s`
+        and so moves each time the left edge passes one. A frame following
+        the run forms its two bounds', that third only on a frame whose left
+        edge has passed a column, and those of a segment newly in view; a new
+        spacing, from a new time base or plot width, forms them all once
+        more. `docs/MODEL.md` § "The run is that record, and every state is
+        derived from it" has how often, and what that costs (`PL-CNCF`).
 
         Reuse cannot move a drawn value by so much as a bit. A propagator is a
         function of a segment's settings and an interval alone, it is kept
         under both, and the settings record is frozen and compared by value
         for exactly this use (`UptakeEquationSettings`), so a kept propagator
-        is the matrix forming it again would give - after a `record_change`
-        has replaced or dropped the open stretch as much as before. Only the
-        last call's are kept, so what is held is bounded by one window, at
-        most two a segment in view and one a bound, and is replaced rather
-        than added to: it does not grow with the run, or with how often or
-        where it was drawn.
+        is the matrix forming it again would give. Only the last call's are
+        kept, so what is held is bounded by one window - two a segment in
+        view and one a bound, and never more than one a column even at a
+        spacing too fine for its multiples to be distinct instants - and is
+        replaced rather than added to: it does not grow with the run, or with
+        how often or where it was drawn.
 
         Args:
             start_s: The window's first instant, in seconds. Always a column.
@@ -690,7 +693,7 @@ class RunDefinition:
 
             column += 1
 
-        self._last_window_propagators = propagators.formed
+        self._last_window_propagators = propagators.used
 
         return SampledWindow(times_s=times_s, states=tuple(DisplayState(state) for state in states))
 
@@ -740,7 +743,13 @@ class RunDefinition:
         A column landing exactly on the keyframe is the event-column case,
         and it is answered by reading the keyframe rather than by forming a
         propagator over a zero interval. Any other is propagated by the
-        window's own `propagators`, so one the last window formed is reused.
+        window's own `propagators`, so one the last window used is reused.
+
+        Raises:
+            SimulationConfigurationError: `instant_s` precedes the keyframe,
+                which `matrix_exponential` refuses as a non-positive interval
+                rather than answering with the keyframe. No call here makes
+                one: each column is read from the segment it falls in.
         """
 
         if instant_s == segment.opening.instant_s:
@@ -906,19 +915,20 @@ def _propagator(segment: RunSegment, interval_s: float) -> Matrix | None:
 
 
 class _WindowPropagators:
-    """The propagators one drawn window applies, reusing those the window before it formed.
+    """The propagators one drawn window applies, reusing those the window before it used.
 
     `RunDefinition.evaluate_anchored` builds one per call from what the last
-    call `formed`, and keeps this call's `formed` for the next. A propagator
-    the last window formed and this one never asks for is therefore not
-    carried on, which is what bounds the store to one window.
+    call `used`, and keeps this call's `used` for the next. `used` holds every
+    propagator this window applied, whether it formed it or found it kept, so
+    one the last window used and this one never asks for is not carried on,
+    which is what bounds the store to one window.
     """
 
-    __slots__ = ("_kept", "formed")
+    __slots__ = ("_kept", "used")
 
     def __init__(self, kept: dict[_PropagatorKey, Matrix]) -> None:
         self._kept = kept
-        self.formed: dict[_PropagatorKey, Matrix] = {}
+        self.used: dict[_PropagatorKey, Matrix] = {}
 
     def over(self, settings: UptakeEquationSettings, interval_s: float) -> Matrix:
         """`exp(A * interval_s)` for `settings`, formed only where neither window already has.
@@ -927,13 +937,16 @@ class _WindowPropagators:
         of what `build_system_matrix` and `matrix_exponential` read: no
         `record_change` can then leave a kept propagator answering for a
         stretch it was not formed under, because a propagator is found only
-        by the settings it was formed from. `interval_s` is positive, since
-        the caller reads a keyframe rather than forming a propagator over no
-        interval, and `matrix_exponential` refuses one that is not.
+        by the settings it was formed from.
+
+        Raises:
+            SimulationConfigurationError: `interval_s` is not positive and
+                finite, which `matrix_exponential` refuses. The caller reads a
+                keyframe rather than asking for a propagator over no interval.
         """
 
         key = (settings, interval_s)
-        propagator = self.formed.get(key)
+        propagator = self.used.get(key)
 
         if propagator is None:
             propagator = self._kept.get(key)
@@ -941,7 +954,7 @@ class _WindowPropagators:
         if propagator is None:
             propagator = matrix_exponential(build_system_matrix(settings), interval_s)
 
-        self.formed[key] = propagator
+        self.used[key] = propagator
 
         return propagator
 

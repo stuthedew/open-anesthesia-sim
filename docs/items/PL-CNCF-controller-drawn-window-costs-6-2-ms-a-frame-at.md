@@ -6,11 +6,11 @@ effort: M
 status: done
 classes: perf
 feature: chart-readout
-touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py, tests/reference/test_canonical_evaluation.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/run-is-its-definition.md, docs/items/PL-PGZF-pl-gs3r-made-the-chart-s-column-budget-follow.md
+touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py, tests/reference/test_canonical_evaluation.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/run-is-its-definition.md, docs/items/PL-PGZF-pl-gs3r-made-the-chart-s-column-budget-follow.md, docs/items/PL-HWNG-tests-unit-test-run-definition-py-s-two-change.md
 added: 2026-09-08
 closed: 2026-10-04
 pr: 1359
-verify: grep -qF 'drawn_window` costs' docs/MODEL.md && grep -qF 'self._last_window_propagators = propagators.formed' src/anesthesia_sim/core/run_definition.py
+verify: grep -qF 'drawn_window` costs' docs/MODEL.md && grep -qF 'self._last_window_propagators = propagators.used' src/anesthesia_sim/core/run_definition.py
 ---
 
 **Problem.** controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
@@ -198,15 +198,17 @@ applied as it passes, and a two-second drag at 1x records 20 stretches
 so the choice was taken rather than offered.
 
 What was built, in `RunDefinition.evaluate_anchored`: each call keeps the
-propagators it formed, and the next call reuses them - every one but the two
-bounds' is over an interval the grid fixes. They are keyed by the settings
+propagators it used, and the next call reuses them - all but three are over
+an interval the grid fixes, the three being the two bounds' and, on a frame
+whose left edge has passed a grid column, the offset in the stretch the window
+opens in. They are keyed by the settings
 record's value and the interval, the key `AgentUptakeSystem._propagator_for`
 already uses on the stepped path and the use `UptakeEquationSettings` is frozen
 and compared by value for. Only the last call's are kept. Measured in one
 process against `main`'s module, frames interleaved, every setting distinct so
-that reuse within a call flatters nothing, a following frame costs 3.5-3.9 ms,
-9.1-10.1 ms and 18.0-18.8 ms at 150, 1 069 and 2 401 columns whatever the
-changes in view. `docs/MODEL.md` § "The run is that record, and every state is
+that reuse within a call flatters nothing, a following frame at 1x costs
+3.5-3.9 ms, 9.1-10.1 ms and 18.0-18.8 ms at 150, 1 069 and 2 401 columns
+whatever the changes in view. `docs/MODEL.md` § "The run is that record, and every state is
 derived from it" carries the table, and the first frame at a new spacing still
 costs what it did.
 
@@ -231,14 +233,33 @@ Why reuse is safe, checked rather than argued. The spacing a following frame
 asks for came out bit-identical frame to frame on every rung of
 `TIME_BASE_LADDER`, at run lengths from 30 minutes to 30 days and at 150,
 1 069 and 2 400 columns, 3 000 frames each - so reuse hits. A window drawn from
-kept propagators equals the run rebuilt and drawn afresh to the bit, through a
-change, both `record_change` shapes above and a new spacing
-(`test_a_window_drawn_from_kept_propagators_is_the_window_drawn_afresh`). Four
+kept propagators equals the same run drawn with nothing kept, to the bit,
+through a change, a left edge passing grid columns and a new spacing
+(`test_a_window_drawn_from_kept_propagators_is_the_window_drawn_afresh`). Six
 mutations - a key without the settings, a key without the interval, nothing
-kept, a store that only grows - each fail a new test, and the settings-blind
-key also fails `test_anchored_matches_a_stepped_run` on drawn values.
+kept, a store that only grows, a store holding only what it newly formed, and a
+canonical path reading the store - each fail a new test.
 `tests/reference/test_canonical_evaluation.py` now hammers the canonical answer
-with `evaluate_anchored` calls as well.
+with `evaluate_anchored` calls as well, and
+`test_a_canonical_answer_reads_nothing_the_chart_kept` swaps the store for one
+that fails on any read.
+
+**Two adversarial reviews, before the owner's read.** One found the claim that
+a following frame forms only its two bounds' wrong in kind: the stretch the
+window opens in has a new first grid column each time the left edge passes
+one, so a third forms then - one following frame in four at 1x and 1 069
+columns, and nearly every frame from 5x up, about 1.4 ms more. `docs/MODEL.md`
+now says so, and `test_a_window_drawn_again_forms_only_what_it_did_not_keep`
+pins it. The same review found that the first test's reference ran the same
+reuse code, so a settings-blind key passed it; that the reference test's
+hammering could not see a canonical path reading the store, since a kept
+propagator read under its own key is exact; and that
+`.claude/rules/run-is-its-definition.md`'s new paragraph cited as its warrant a
+test the store meets - by that test it is indexed by the watching, and the
+paragraph now says so and gives the reason it is kept anyway. All three were
+fixed, with a stale `Keyframe` docstring and the misleading name below. The
+other review found no defect the app can reach. Its two gaps outside the app,
+both in what the settings record accepts as a cache key, are `PL-5BD7`.
 
 **`verify:` was rewritten at the close.** The commissioned grep wanted
 `drawn_window costs` with nothing between the two words, which
@@ -246,4 +267,7 @@ with `evaluate_anchored` calls as well.
 written since 2026-09-24 may not run `doc_check`, which `make check` runs
 anyway. The rewrite greps the formatted phrase and the line that keeps the
 propagators. `touches` lost `app/controller.py`, which needed no change, and
-gained the tests, `docs/ARCHITECTURE.md`, the rule that governs this module and `PL-PGZF`'s brief.
+gained the tests, `docs/ARCHITECTURE.md`, the rule that governs this module,
+`PL-PGZF`'s brief and `PL-HWNG`'s `feature:` line. The grep was rewritten once
+more after the reviews, when `_WindowPropagators.formed` became `used`, since it
+holds the propagators a window found kept as well as those it formed.

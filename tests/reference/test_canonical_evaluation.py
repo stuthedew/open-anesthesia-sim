@@ -18,8 +18,12 @@ than one route.
   tolerance. This is what a cache, a memoised propagator or a reused buffer
   would break, and each of those is a reasonable-looking optimisation somebody
   will propose. The chart's `evaluate_anchored` does keep the propagators it
-  forms, for the next frame to reuse (`PL-CNCF`), which is why the hammering
-  includes it: nothing it keeps may reach a canonical answer.
+  uses, for the next frame to reuse (`PL-CNCF`), which is why the hammering
+  includes it: drawing a window must leave the definition every canonical
+  answer is derived from as it found it. That no canonical answer reads what it
+  keeps is a different claim, which agreement here cannot show, since a kept
+  propagator read under its own key is exact; `tests/unit/test_run_definition.py`
+  holds it by swapping the store for one that fails on any read.
 - *A fork reproduces its parent exactly, wherever it was taken.* `ROADMAP.md`
   item 12 requires element-wise reproduction rather than agreement within a
   tolerance, and the canonical rule supplies it under one condition on where

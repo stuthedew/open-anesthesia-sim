@@ -4764,21 +4764,26 @@ run in any case; what to draw instead is an interface question rather than a
 model one.
 
 **It now moves on the first frame only.** `RunDefinition.evaluate_anchored`
-keeps the propagators each window forms for the window after it. Every one but
-the two bounds' is over an interval the grid fixes - the column spacing, which
-the time base holds, and each stretch's offset to its first grid column, which
-the anchoring holds - so a window that follows the run forms only its two
-bounds' and those of a stretch newly in view, and a new spacing forms them all
-once more. Re-measured 2026-10-04 on a 24-hour run, the longest § "Supported
-run length" allows, with every setting distinct: the full-span window at 600
-columns costs 13.2 ms, 179 ms and 819 ms on its first frame with two, sixty and
-six hundred changes in view, as it did before, and 6.3 ms, 5.9 ms and 8.3 ms
-on each frame after it. Only the last window's propagators are kept, about
-3.1 KB each and 1.8 MiB at six hundred, so what is held is bounded by one
-window and does not grow with the run. A kept propagator is the matrix forming
-it again would give, bit for bit, because it is found only by the settings and
-the interval it was formed from; and it is an operator rather than a state, so
-it is no second record of the run, and `state_at` never reads one.
+keeps the propagators each window uses for the window after it. All but three
+are over an interval the grid fixes - the column spacing, which the time base
+holds, and each stretch's offset to its first grid column, which the anchoring
+holds. The three that move are the two bounds', and the offset in the stretch
+the window opens in, whose first grid column is the first past the left edge.
+So a window that follows the run forms its two bounds', that third on a frame
+whose left edge has passed a grid column since the frame before, and those of
+a stretch newly in view; a new spacing forms them all once more. Re-measured
+2026-10-04 on a 24-hour run, the longest § "Supported run length" allows, with
+every setting distinct: the full-span window at 600 columns, whose left edge is
+the run's opening and never moves, costs 13.2 ms, 179 ms and 819 ms on its
+first frame with two, sixty and six hundred changes in view, as it did before,
+and 6.3 ms, 5.9 ms and 8.3 ms on each frame after it. Only the last window's
+propagators are kept, about 3.1 KB each and 1.8 MiB at six hundred, so what is
+held is bounded by one window and does not grow with the run. A kept
+propagator is the matrix forming it again would give, bit for bit, because it
+is found only by the settings and the interval it was formed from, which are
+the whole of what it is formed from. Which ones are held depends on the window
+drawn last, but no drawn value can, so the store is no second record of the
+run; and `state_at` reads none of it.
 
 **What `drawn_window` costs a frame, at the settings the dashboard draws
 with** (PL-CNCF, measured 2026-10-04). The dashboard draws every 200 ms
@@ -4786,7 +4791,7 @@ with** (PL-CNCF, measured 2026-10-04). The dashboard draws every 200 ms
 (`MAX_DISPLAYED_RUNS`), each through one `SimulationController.drawn_window`
 call at `max(150, plot width in pixels + 1)` columns (`chart_columns` in
 `app/chart_frame.py`). One run's call, following a 15-minute window on a
-30-minute run, median of 40 frames, before the propagators were kept and
+30-minute run at 1x, median of 40 frames, before the propagators were kept and
 after:
 
 | Changes in view | 150 columns | 1 069 columns | 2 401 columns |
@@ -4796,11 +4801,17 @@ after:
 | Sixty | 135 ms, now 3.7 ms | 119 ms, now 9.1 ms | 129 ms, now 18.8 ms |
 
 What is left is the two bounds' propagators, which move every frame, at about
-1.4 ms each, and one chained product a column at about 7 us, so the column
-count rather than the changes in view now sets the cost: two runs at 2 401
-columns take about 38 ms of a 200 ms frame. Before, sixty changes in view on
-two runs at 1 069 columns took about 240 ms, longer than the frame they were
-drawn in.
+1.4 ms each; the third, on a frame whose left edge has passed a grid column;
+and one chained product a column at about 7 us. So the column count rather
+than the changes in view now sets the cost. At 1x the third forms on about one
+following frame in forty at 150 columns, one in four at 1 069 and one in two at
+2 401. From 5x up the left edge passes a column on nearly every frame at 1 069
+columns or more, so nearly every frame forms it. Re-measured in a later process
+whose times ran about a quarter above the table's, sixty changes in view cost
+13.0 ms at 20x against 12.0 ms at 1x at 1 069 columns, and 23.9 ms against
+22.8 ms at 2 401. Two runs at 2 401 columns therefore take about 40-50 ms of a
+200 ms frame. Before, sixty changes in view on two runs at 1 069 columns took
+about 240 ms, longer than the frame they were drawn in.
 
 **This is the only record.** Until PL-2FM6 a recorded history remained
 beside the definition and the chart was drawn from it, with "Closed-form
@@ -4831,7 +4842,7 @@ horizon takes that away. This is the rule that replaces it.
   makes a frame cost the window rather than the run. It solves the same
   equations exactly and composes the operations in a different order.
   `RunDefinition.evaluate` is this path, and so is the chart's
-  `RunDefinition.evaluate_anchored`, which also keeps the propagators it formed
+  `RunDefinition.evaluate_anchored`, which also keeps the propagators it used
   for the next frame. A kept propagator is the matrix forming it again would
   give, so keeping them changes no drawn value, and the canonical path reads
   none of them.
