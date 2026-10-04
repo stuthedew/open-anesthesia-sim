@@ -3,12 +3,14 @@ id: PL-51B7
 title: The supported-range edge test finds the functions behind the six guards other than the step's by parameter name on five classes kept by hand, so a function taking a guarded quantity under another name, RunDefinition's opened_at_s, is never drawn; a checked type per quantity, as SimulationStep is for the step, would let it find every one by type
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, test
 feature: parse-dont-validate
 touches: tests/unit/test_supported_range_edges.py
 blocked-by: PL-0YYV, PL-CN5S
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1360
 payoff: the edge test draws every function and record field that holds a guarded quantity, whatever it is named, so a way in added later is tested at its edges the day it is written
 verify: ! grep -qF 'parameters.get(name) is checked' tests/unit/test_supported_range_edges.py
 ---
@@ -118,3 +120,47 @@ up. It was wrong on two counts:
 
 The project owner refused the deferral on 2026-10-04, in the session that
 filed this item. `PL-YJY3` records why the rule did not stop it.
+
+**Built 2026-10-04, as slice 3, in the Ship v0.6.0 project.** A function is
+behind a guard wherever one of its parameters is annotated with a type the
+guard's quantities are checked as, on any class and under any name; `_takes`
+and `TAKEN` are deleted. Measured on this branch, the test finds 50
+guard-and-function pairs where `main`'s found 32, and loses none. The 18 it
+adds are `RunDefinition.__init__` and `Keyframe.__init__`; the circuit's, the
+alveolar compartment's and the patient's constructors and flow setters;
+`UptakeEquationSettings.__init__` once per flow; the three bookmark
+constructors' and methods' instants; and `SimulationController.resumed_at` and
+`BranchedCase.fork_at`.
+
+- **Records.** A constructor is drawn from the record `RECEIVERS` builds, with
+  only the drawn field replaced. Cardiac output is built through `TIED`,
+  because the settings record checks that the tissue flows sum to it. A
+  constructor that refuses a value its guard admits fails the test by name,
+  so a tie nobody wrote into `TIED` cannot quietly draw nothing. Three records
+  hold a checked quantity and only store it: `RunFrame`, `SimulationSnapshot`
+  and `ResumePoint`. None computes with it; `SimulationSnapshot.has_recorded_run`
+  only compares two instants.
+- **A type taken twice.** `TimeBookmark.crossed_between`,
+  `BookmarkSet.crossings_between` and `BookmarkSet.standings` each take two
+  instants. The drawn value goes in the first place and every admitted edge
+  in turn in the second, so the edge-by-edge product is covered. Handing the
+  drawn value to both places, which was the first draft, can never draw a
+  span with a mark inside it. The bookmark receivers now mark the middle of
+  the span for the same reason.
+- **The allowance for infinity.** `BreathingCircuit.time_constant_s` may
+  compute `inf`, at zero flow and where a subnormal flow overflows the
+  quotient. Nothing else may.
+
+**Checked by planting defects, one at a time.** Each defect below was put into
+`src/` alone, the edge test was run against it, and the tree was restored with
+`git checkout`: `RunDefinition` opened at the span's end divides by zero; a
+bookmark crossed at the span's end divides by zero; the circuit's time
+constant is `nan` at the flow maximum; the settings record's ventilation per
+second overflows at zero. `main`'s test passes all four and this one fails on
+each. It runs in about 5.5 s where `main`'s took about 19.5 s, because each
+signature's type hints are read once rather than on every draw.
+
+**Found on the way, filed and not fixed:** `PL-B26Y`. The circuit's own
+fresh-gas step reports a `nan` exhaust at an admitted subnormal flow. This
+test cannot reach it, because the circuit's own step takes a `float`
+(`PL-0GJC`).
