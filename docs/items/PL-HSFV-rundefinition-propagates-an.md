@@ -3,11 +3,13 @@ id: PL-HSFV
 title: RunDefinition propagates an UptakeEquationSettings whose flows are outside the supported ranges - cardiac output 1000 L/min, a hundred times the supported maximum, ran on 2026-10-04 - because the settings record checks only that the tissue flows sum to cardiac output, and the range guards run only in the compartments' constructors and setters, which a run built from a settings record never calls
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, safety
 feature: parse-dont-validate
 touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_governing_equations.py, tests/unit/test_run_definition.py, docs/MODEL.md, ROADMAP.md
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1350
 payoff: a run built from a settings record is refused outside the supported flow ranges exactly as a control change is, so no caller - a notebook today, a saved-run loader later - can get a precise-looking trace for a patient the model does not represent
 verify: grep -q 'def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges' tests/unit/test_run_definition.py && grep -q 'def test_rejects_a_flow_outside_its_supported_range' tests/unit/test_governing_equations.py
 recurrences: 2026-10-04 PL-0YYV withdrawn 2026-10-04 PL-51B7

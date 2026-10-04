@@ -22,7 +22,7 @@ from anesthesia_sim.core.parameters import (
     AgentParameters,
     ReferenceAdultParameters,
 )
-from anesthesia_sim.core.supported_ranges import require_supported_cardiac_output
+from anesthesia_sim.core.supported_ranges import CardiacOutput, require_cardiac_output
 from anesthesia_sim.core.tissue import TissueGroup, TissueGroupState
 
 
@@ -45,14 +45,14 @@ class PatientCompartmentsState:
 class PatientCompartments:
     """VRG, muscle, fat, and mixed-venous blood."""
 
-    cardiac_output_l_min: float
+    cardiac_output_l_min: CardiacOutput
     vessel_rich: TissueGroup
     muscle: TissueGroup
     fat: TissueGroup
     venous_blood: VenousBloodCompartment
 
     def __post_init__(self) -> None:
-        require_supported_cardiac_output(self.cardiac_output_l_min)
+        require_cardiac_output(self.cardiac_output_l_min)
 
         if abs(self.total_perfusion_fraction - 1.0) > FLOW_FRACTION_TOLERANCE:
             raise SimulationConfigurationError("tissue perfusion fractions must sum to 1")
@@ -63,12 +63,23 @@ class PatientCompartments:
     def from_parameters(
         cls, agent: AgentParameters, patient: ReferenceAdultParameters
     ) -> PatientCompartments:
-        """Construct the v0.1.0 reference patient."""
+        """Construct the v0.1.0 reference patient.
+
+        The data file's default cardiac output is parsed into its checked type
+        here, where the patient is built from it, so a file naming one outside
+        the supported range is refused in the words a refused control uses
+        (`core/supported_ranges.py`); `core/parameters.py` checks the value
+        for sign and finiteness alone and holds no copy of the range.
+
+        Raises:
+            SimulationConfigurationError: the file's default cardiac output is
+                outside the supported range.
+        """
 
         blood_gas = agent.blood_gas_partition_coefficient
 
         return cls(
-            cardiac_output_l_min=patient.default_cardiac_output_l_min,
+            cardiac_output_l_min=CardiacOutput(patient.default_cardiac_output_l_min),
             vessel_rich=TissueGroup(
                 name="vessel_rich",
                 volume_l=patient.vessel_rich_volume_l,
@@ -140,14 +151,20 @@ class PatientCompartments:
             sum(tissue.agent_amount_l for tissue in self.tissues) + self.venous_blood.agent_amount_l
         )
 
-    def set_cardiac_output(self, cardiac_output_l_min: float) -> None:
+    def set_cardiac_output(self, cardiac_output_l_min: CardiacOutput) -> None:
         """Change cardiac output without changing stored agent.
 
-        Rejects an output outside the supported range rather than clamping
-        it; see `core/supported_ranges.py`.
+        The output arrives checked against the supported range, which its
+        type was built through and nothing here checks again
+        (`core/supported_ranges.py`); every tissue's blood flow is then its
+        perfusion fraction of the new value.
+
+        Raises:
+            TypeError: `cardiac_output_l_min` was not built as a
+                `CardiacOutput`. Nothing is written when it is refused.
         """
 
-        require_supported_cardiac_output(cardiac_output_l_min)
+        require_cardiac_output(cardiac_output_l_min)
         self.cardiac_output_l_min = cardiac_output_l_min
         self._update_blood_flows()
 

@@ -89,6 +89,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.supported_ranges import FreshGasFlow
 
 _STEP_S = SimulationStep(0.1)
 
@@ -1097,7 +1098,7 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
     branch = case.fork_at(600.0)
     branch.start()
     branch.begin_control_adjustment()
-    branch.set_fresh_gas_flow(1.0)
+    branch.set_fresh_gas_flow(FreshGasFlow(1.0))
     _advance(branch, 600.0)
 
     frame = _frame(*case.runs)

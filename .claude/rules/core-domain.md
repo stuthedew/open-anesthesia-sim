@@ -57,9 +57,9 @@ processes the input (Momot, Bratus, Hallberg and Patterson, "The Seven Turrets
 of Babel: A Taxonomy of LangSec Errors and How to Expunge Them", IEEE SecDev
 2016,
 https://www.iti.illinois.edu/credc/publications/seven-turrets-babel-taxonomy-langsec-errors-and-how-expunge-them).
-`PL-HSFV` is that failure here: each compartment checked its flow's supported
+`PL-HSFV` was that failure here: each compartment checked its flow's supported
 range, and the settings record a run is built from was a way in that checked
-none of them.
+none of them, until `PL-0YYV` made each flow a type only its guard builds.
 
 **The instance is `SimulationStep`, in
 `src/anesthesia_sim/core/simulation_step.py`; read it before writing another.**
@@ -85,5 +85,8 @@ refuses is one quantity's own check made again by each record or function that
 receives it. The shared sign-and-finiteness guards in `validation.py` stay with
 each record that holds the field: the way in `PL-HSFV` found unguarded checked
 the flows' sign and finiteness, and skipped their supported ranges. A record
-found letting a bad sign through would be the evidence to widen this. `PL-51B7`
-brings the flows, the case instant and the step count into line, in that order.
+found letting a bad sign through would be the evidence to widen this. `PL-0YYV`
+brought the flows into line - `FreshGasFlow`, `AlveolarVentilation` and
+`CardiacOutput` in `src/anesthesia_sim/core/supported_ranges.py`, each built
+only through its guard - and `PL-51B7`'s remaining slices bring the case
+instant and the step count, in that order.

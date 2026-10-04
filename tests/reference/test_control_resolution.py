@@ -54,6 +54,7 @@ from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
 from anesthesia_sim.core import supported_ranges
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 AGENT_IDS = ("sevoflurane", "isoflurane", "desflurane")
@@ -319,9 +320,9 @@ def _apply(system: AgentUptakeSystem, point: OperatingPoint) -> None:
     the state does not.
     """
 
-    system.set_fresh_gas_flow(point.fresh_gas_flow_l_min)
-    system.set_alveolar_ventilation(point.alveolar_ventilation_l_min)
-    system.set_cardiac_output(point.cardiac_output_l_min)
+    system.set_fresh_gas_flow(FreshGasFlow(point.fresh_gas_flow_l_min))
+    system.set_alveolar_ventilation(AlveolarVentilation(point.alveolar_ventilation_l_min))
+    system.set_cardiac_output(CardiacOutput(point.cardiac_output_l_min))
     system.set_delivered_concentration_percent(point.delivered_percent)
 
 

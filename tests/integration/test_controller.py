@@ -34,6 +34,9 @@ from anesthesia_sim.core.run_definition import RunDefinition, RunSegment
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    AlveolarVentilation,
+    CardiacOutput,
+    FreshGasFlow,
     maximum_step_count,
     require_supported_run_length,
 )
@@ -173,7 +176,7 @@ def test_explicit_patient_settings_still_override_the_data_file() -> None:
     """The constructor arguments remain explicit overrides."""
 
     snapshot = SimulationController(
-        alveolar_ventilation_l_min=3.0, cardiac_output_l_min=7.0
+        alveolar_ventilation_l_min=AlveolarVentilation(3.0), cardiac_output_l_min=CardiacOutput(7.0)
     ).snapshot()
 
     assert snapshot.alveolar_ventilation_l_min == pytest.approx(3.0)
@@ -213,10 +216,10 @@ def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration()
     controller = SimulationController(
         agent_id="sevoflurane",
         circuit_volume_l=5.0,
-        fresh_gas_flow_l_min=3.0,
+        fresh_gas_flow_l_min=FreshGasFlow(3.0),
         delivered_concentration_percent=3.0,
-        alveolar_ventilation_l_min=5.5,
-        cardiac_output_l_min=6.0,
+        alveolar_ventilation_l_min=AlveolarVentilation(5.5),
+        cardiac_output_l_min=CardiacOutput(6.0),
     )
     controller.start()
     _advance_for(controller, duration_s=30.0)
@@ -485,7 +488,7 @@ def test_parameter_changes_do_not_reset_dynamic_state() -> None:
     _advance_for(controller, duration_s=10.0)
     before = controller.snapshot()
 
-    controller.set_fresh_gas_flow(3.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
     controller.set_delivered_concentration_percent(6.0)
 
     after = controller.snapshot()
@@ -520,7 +523,7 @@ def test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter() -> N
     controller = SimulationController(circuit_volume_l=5.0)
     controller.start()
     _advance_for(controller, duration_s=10.0)
-    controller.set_fresh_gas_flow(3.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
 
     assert controller.snapshot().circuit_volume_l == 5.0
 
@@ -760,7 +763,7 @@ def test_a_setting_change_is_recorded_with_the_time_it_took_effect() -> None:
     controller.start()
     _advance_for(controller, 1.0)
 
-    controller.set_fresh_gas_flow(3.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
 
     (change,) = controller.snapshot().control_timeline
     assert change.control is ControlInput.FRESH_GAS_FLOW
@@ -781,10 +784,10 @@ def test_every_control_records_under_its_own_stable_identifier() -> None:
 
     controller = SimulationController()
 
-    controller.set_fresh_gas_flow(3.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
     controller.set_delivered_concentration_percent(3.0)
-    controller.set_alveolar_ventilation(5.0)
-    controller.set_cardiac_output(4.0)
+    controller.set_alveolar_ventilation(AlveolarVentilation(5.0))
+    controller.set_cardiac_output(CardiacOutput(4.0))
 
     assert [change.control.value for change in controller.snapshot().control_timeline] == [
         "fresh_gas_flow",
@@ -797,10 +800,10 @@ def test_every_control_records_under_its_own_stable_identifier() -> None:
 def test_every_recorded_control_carries_its_declared_unit() -> None:
     controller = SimulationController()
 
-    controller.set_fresh_gas_flow(3.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
     controller.set_delivered_concentration_percent(3.0)
-    controller.set_alveolar_ventilation(5.0)
-    controller.set_cardiac_output(4.0)
+    controller.set_alveolar_ventilation(AlveolarVentilation(5.0))
+    controller.set_cardiac_output(CardiacOutput(4.0))
 
     for change in controller.snapshot().control_timeline:
         assert change.unit == CONTROL_INPUT_UNITS[change.control]
@@ -854,7 +857,7 @@ def test_a_setting_equal_to_the_one_in_place_records_nothing() -> None:
     controller = SimulationController()
     current = controller.snapshot().fresh_gas_flow_l_min
 
-    controller.set_fresh_gas_flow(current)
+    controller.set_fresh_gas_flow(FreshGasFlow(current))
 
     assert controller.snapshot().control_timeline == ()
 
@@ -929,9 +932,9 @@ def test_consecutive_changes_to_one_control_are_one_adjustment() -> None:
     controller = SimulationController()
     controller.start()
 
-    controller.set_fresh_gas_flow(3.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
     _advance_for(controller, 1.0)
-    controller.set_fresh_gas_flow(2.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
     timeline = controller.snapshot().control_timeline
     assert {change.adjustment for change in timeline} == {1}
@@ -948,10 +951,10 @@ def test_a_declared_boundary_separates_two_drags_of_one_control() -> None:
     controller = SimulationController()
     controller.start()
 
-    controller.set_fresh_gas_flow(3.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
     _advance_for(controller, 60.0)
     controller.begin_control_adjustment()
-    controller.set_fresh_gas_flow(2.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
     first, second = controller.snapshot().control_timeline
     assert first.adjustment == 1
@@ -961,8 +964,8 @@ def test_a_declared_boundary_separates_two_drags_of_one_control() -> None:
 def test_changing_a_different_control_starts_a_new_adjustment() -> None:
     controller = SimulationController()
 
-    controller.set_fresh_gas_flow(3.0)
-    controller.set_cardiac_output(4.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
+    controller.set_cardiac_output(CardiacOutput(4.0))
 
     first, second = controller.snapshot().control_timeline
     assert first.adjustment == 1
@@ -973,7 +976,7 @@ def test_reset_clears_the_control_timeline_with_the_run() -> None:
     controller = SimulationController()
     controller.start()
     _advance_for(controller, 1.0)
-    controller.set_fresh_gas_flow(3.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
 
     controller.reset()
 
@@ -988,11 +991,11 @@ def test_reset_restarts_adjustment_numbering() -> None:
     """
 
     controller = SimulationController()
-    controller.set_fresh_gas_flow(3.0)
-    controller.set_cardiac_output(4.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
+    controller.set_cardiac_output(CardiacOutput(4.0))
 
     controller.reset()
-    controller.set_fresh_gas_flow(2.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
     (change,) = controller.snapshot().control_timeline
     assert change.adjustment == 1
@@ -1002,7 +1005,7 @@ def test_changing_agent_clears_the_control_timeline() -> None:
     """A new agent is a new run, and the old run's inputs are not its own."""
 
     controller = SimulationController()
-    controller.set_fresh_gas_flow(3.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
 
     controller.set_agent("isoflurane")
 
@@ -1012,7 +1015,9 @@ def test_changing_agent_clears_the_control_timeline() -> None:
 def test_the_constructor_overrides_are_not_recorded_as_changes() -> None:
     """Initial conditions are what the run starts from, not inputs to it."""
 
-    controller = SimulationController(fresh_gas_flow_l_min=3.0, cardiac_output_l_min=4.0)
+    controller = SimulationController(
+        fresh_gas_flow_l_min=FreshGasFlow(3.0), cardiac_output_l_min=CardiacOutput(4.0)
+    )
 
     assert controller.snapshot().control_timeline == ()
 
@@ -1030,7 +1035,7 @@ def test_a_recorded_change_is_stamped_with_the_instant_it_took_effect() -> None:
     controller.start()
     _advance_for(controller, 2.0)
 
-    controller.set_cardiac_output(4.0)
+    controller.set_cardiac_output(CardiacOutput(4.0))
 
     (change,) = controller.snapshot().control_timeline
     elapsed_s = controller.snapshot().elapsed_s
@@ -1071,7 +1076,7 @@ def test_a_setting_changed_before_the_run_starts_is_something_to_discard() -> No
     """
 
     controller = SimulationController()
-    controller.set_fresh_gas_flow(2.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
     snapshot = controller.snapshot()
     assert snapshot.elapsed_s == 0.0
@@ -1090,7 +1095,7 @@ def test_reset_returns_a_run_to_holding_nothing_to_discard() -> None:
     controller = SimulationController()
     controller.start()
     _advance_for(controller, duration_s=10.0)
-    controller.set_fresh_gas_flow(2.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(2.0))
     controller.reset()
 
     assert controller.snapshot().has_recorded_run is False
@@ -1160,7 +1165,7 @@ def test_a_setting_changed_on_a_fresh_branch_is_something_to_destroy() -> None:
 
     trunk = _trunk_with_two_changes()
     branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
-    branch.set_fresh_gas_flow(1.0)
+    branch.set_fresh_gas_flow(FreshGasFlow(1.0))
 
     snapshot = branch.snapshot()
 
@@ -1179,7 +1184,7 @@ def test_resetting_a_branch_returns_it_to_holding_nothing_to_destroy() -> None:
     branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
     branch.start()
     _advance_for(branch, duration_s=5.0)
-    branch.set_fresh_gas_flow(1.0)
+    branch.set_fresh_gas_flow(FreshGasFlow(1.0))
     branch.reset()
 
     assert branch.snapshot().has_recorded_run is False
@@ -1317,7 +1322,7 @@ def _run_with_two_changes(controller: SimulationController) -> None:
     _advance_through_halts(controller, duration_s=30.0)
     controller.set_delivered_concentration_percent(4.0)
     _advance_through_halts(controller, duration_s=30.0)
-    controller.set_alveolar_ventilation(6.0)
+    controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
     _advance_through_halts(controller, duration_s=60.0)
 
 
@@ -2186,7 +2191,7 @@ def test_resetting_a_branch_returns_it_to_its_fork_rather_than_to_zero() -> None
 
     branch.start()
     _advance_for(branch, duration_s=10.0)
-    branch.set_fresh_gas_flow(1.0)
+    branch.set_fresh_gas_flow(FreshGasFlow(1.0))
     branch.reset()
 
     after = branch.snapshot()
@@ -2202,7 +2207,7 @@ def test_resetting_a_branch_returns_it_to_its_fork_rather_than_to_zero() -> None
 def test_a_branch_is_the_agent_and_patient_its_parent_was() -> None:
     """`PL-TFX5`: a branch that could change either would be a second case."""
 
-    trunk = SimulationController(agent_id="desflurane", cardiac_output_l_min=3.8)
+    trunk = SimulationController(agent_id="desflurane", cardiac_output_l_min=CardiacOutput(3.8))
     _run_with_two_changes(trunk)
     trunk.pause()
 
@@ -2266,8 +2271,8 @@ def test_a_case_holds_two_branches_taken_at_one_decision_point() -> None:
     assert case.branches == (coasting, holding)
     assert coasting is not holding
 
-    coasting.set_fresh_gas_flow(0.5)
-    holding.set_fresh_gas_flow(6.0)
+    coasting.set_fresh_gas_flow(FreshGasFlow(0.5))
+    holding.set_fresh_gas_flow(FreshGasFlow(6.0))
 
     assert coasting.snapshot().fresh_gas_flow_l_min == 0.5
     assert holding.snapshot().fresh_gas_flow_l_min == 6.0
@@ -2288,7 +2293,7 @@ def test_forking_a_case_repeatedly_leaves_the_trunk_where_it_was() -> None:
 
     for elapsed_s in case.fork_points_s:
         branch = case.fork_at(elapsed_s)
-        branch.set_cardiac_output(2.5)
+        branch.set_cardiac_output(CardiacOutput(2.5))
         branch.start()
         _advance_for(branch, duration_s=30.0)
         branch.pause()
@@ -2342,10 +2347,10 @@ def test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork() -> 
     value the trunk is standing at.
     """
 
-    trunk = SimulationController(agent_id="isoflurane", cardiac_output_l_min=4.2)
+    trunk = SimulationController(agent_id="isoflurane", cardiac_output_l_min=CardiacOutput(4.2))
     trunk.start()
     _advance_for(trunk, duration_s=30.0)
-    trunk.set_cardiac_output(6.5)
+    trunk.set_cardiac_output(CardiacOutput(6.5))
     _advance_for(trunk, duration_s=30.0)
     trunk.pause()
 
@@ -2420,8 +2425,8 @@ def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -
     opening = trunk.snapshot()
     trunk.pause()
 
-    trunk.set_fresh_gas_flow(opening.fresh_gas_flow_l_min + 1.0)
-    trunk.set_cardiac_output(opening.cardiac_output_l_min + 1.0)
+    trunk.set_fresh_gas_flow(FreshGasFlow(opening.fresh_gas_flow_l_min + 1.0))
+    trunk.set_cardiac_output(CardiacOutput(opening.cardiac_output_l_min + 1.0))
     trunk.set_fresh_gas_flow(opening.fresh_gas_flow_l_min)
     trunk.set_cardiac_output(opening.cardiac_output_l_min)
 
@@ -2436,7 +2441,7 @@ def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -
     # is shown is a fork point, which is what the clause promises.
     trunk.start()
     _advance_for(trunk, duration_s=30.0)
-    trunk.set_alveolar_ventilation(6.0)
+    trunk.set_alveolar_ventilation(AlveolarVentilation(6.0))
     _advance_for(trunk, duration_s=30.0)
     trunk.pause()
 
@@ -3140,7 +3145,7 @@ def test_a_branch_taken_at_a_control_event_agrees_with_its_trunk_about_a_mark_th
     marked.add_time_bookmark(at_the_keyframe)
     marked.start()
     _advance_until_halted(marked, limit_s=60.0)
-    marked.set_fresh_gas_flow(3.0)
+    marked.set_fresh_gas_flow(FreshGasFlow(3.0))
 
     branch = marked.resumed_at(30.0)
 
@@ -3243,7 +3248,7 @@ def test_a_control_moved_before_a_bookmark_branch_steps_opens_a_segment_at_the_f
     fork_state = marked._run_definition.state_at(fork_s)
     branch = marked.resumed_at_halt()
 
-    branch.set_alveolar_ventilation(6.0)
+    branch.set_alveolar_ventilation(AlveolarVentilation(6.0))
 
     assert [segment.opening.instant_s for segment in branch.run_segments] == [30.0, fork_s]
     assert branch.run_segments[1].opening.state == fork_state
@@ -3419,13 +3424,13 @@ def test_two_reversible_acts_in_either_order_leave_one_branch() -> None:
     _advance_for(marked, duration_s=60.0)
     marked.pause()
 
-    dialled_back_first.set_cardiac_output(4.0)
-    dialled_back_first.set_cardiac_output(original)
+    dialled_back_first.set_cardiac_output(CardiacOutput(4.0))
+    dialled_back_first.set_cardiac_output(CardiacOutput(original))
     dialled_back_first.reset()
 
-    reset_first.set_cardiac_output(4.0)
+    reset_first.set_cardiac_output(CardiacOutput(4.0))
     reset_first.reset()
-    reset_first.set_cardiac_output(original)
+    reset_first.set_cardiac_output(CardiacOutput(original))
 
     for branch in (untouched, dialled_back_first, reset_first):
         assert branch.snapshot().cardiac_output_l_min == original
@@ -3466,7 +3471,7 @@ def test_a_branch_reset_under_new_settings_records_them_at_its_fork() -> None:
     fork_state = marked._run_definition.state_at(fork_s)
     branch = marked.resumed_at_halt()
 
-    branch.set_cardiac_output(4.0)
+    branch.set_cardiac_output(CardiacOutput(4.0))
     branch.reset()
 
     assert [segment.opening.instant_s for segment in branch.run_segments] == [30.0, fork_s]
@@ -3647,7 +3652,7 @@ def test_a_branch_forked_where_a_dial_moved_on_the_supported_run_length_reads_as
     """
 
     trunk = trunk_stepped_onto_the_limit
-    trunk.set_fresh_gas_flow(6.0)
+    trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
 
     assert trunk.run_segments[-1].opening.instant_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
 

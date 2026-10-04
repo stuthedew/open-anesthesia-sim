@@ -36,7 +36,8 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
-    require_supported_fresh_gas_flow,
+    FreshGasFlow,
+    require_fresh_gas_flow,
 )
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
@@ -46,7 +47,7 @@ from anesthesia_sim.core.validation import (
     require_positive_finite,
 )
 
-TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN = 4.0
+TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN = FreshGasFlow(4.0)
 """The fresh gas flow a run opens at when its machine profile states none.
 
 A teaching default, not a clinical recommendation, and not a property of any
@@ -208,7 +209,7 @@ class BreathingCircuit:
     """
 
     circuit_volume_l: float = 6.0
-    fresh_gas_flow_l_min: float = TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
+    fresh_gas_flow_l_min: FreshGasFlow = TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
     delivered_concentration_percent: Percent = Percent(0.0)
     inspired_partial_pressure_fraction: Fraction = Fraction(0.0)
     max_delivered_concentration_percent: Percent = Percent(100.0)
@@ -217,7 +218,7 @@ class BreathingCircuit:
     def __post_init__(self) -> None:
         require_positive_finite("circuit_volume_l", self.circuit_volume_l)
         self._require_the_two_flow_claims_overlap()
-        require_supported_fresh_gas_flow(self.fresh_gas_flow_l_min)
+        require_fresh_gas_flow(self.fresh_gas_flow_l_min)
         self._require_deliverable_flow(self.fresh_gas_flow_l_min)
         require_percent(
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
@@ -263,14 +264,14 @@ class BreathingCircuit:
                 f'(docs/MODEL.md, "Supported input ranges")'
             )
 
-    def _require_deliverable_flow(self, fresh_gas_flow_l_min: float) -> None:
+    def _require_deliverable_flow(self, fresh_gas_flow_l_min: FreshGasFlow) -> None:
         """Reject a fresh gas flow the machine in front of the patient cannot set.
 
-        The second of the two bounds on this control, and the caller has
-        already passed the first: `require_supported_fresh_gas_flow` is the
-        *model's* envelope and this is the *machine's* range. They are
-        enforced separately and refuse in their own words so that a reader of
-        the refusal can tell which claim was violated — a flow this machine
+        The second of the two bounds on this control, and the flow arrives
+        inside the first: a `FreshGasFlow` was checked against the *model's*
+        envelope when it was built, and this is the *machine's* range. They
+        are enforced separately and refuse in their own words so that a reader
+        of the refusal can tell which claim was violated — a flow this machine
         cannot reach is a fact about the device, and one outside the envelope
         is a statement that the model is not claimed to represent a patient
         there. Merging them would let a wider flowmeter silently widen the
@@ -388,24 +389,25 @@ class BreathingCircuit:
         self.circuit_volume_l = circuit_volume_l
         self.inspired_partial_pressure_fraction = Fraction(stored_agent_l / circuit_volume_l)
 
-    def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
-        """Set fresh gas flow, rejecting one either claim on it refuses.
+    def set_fresh_gas_flow(self, fresh_gas_flow_l_min: FreshGasFlow) -> None:
+        """Set fresh gas flow, rejecting one the machine's claim on it refuses.
 
-        The effective limit is the intersection of the model\'s supported
-        range (`core/supported_ranges.py`) and the machine\'s deliverable
-        range, where the profile declares one. The model is checked first, so
-        a flow outside both is reported against the envelope: it is the
-        stronger statement of the two, and the one that holds whichever
-        machine is mounted.
+        The effective limit is the intersection of the model's supported
+        range (`core/supported_ranges.py`) and the machine's deliverable
+        range, where the profile declares one. The model's range was checked
+        when the flow was built as a `FreshGasFlow`, so a flow outside both is
+        refused there, against the envelope: it is the stronger statement of
+        the two, and the one that holds whichever machine is mounted. What
+        reaches this is checked against the machine's range alone.
 
         Raises:
-            SimulationConfigurationError: the flow is outside the model\'s
-                supported range, or outside what this machine can deliver.
-                The message names which. Nothing is written when it is
-                refused.
+            SimulationConfigurationError: the flow is outside what this
+                machine can deliver. Nothing is written when it is refused.
+            TypeError: `fresh_gas_flow_l_min` was not built as a
+                `FreshGasFlow`. Nothing is written when it is refused.
         """
 
-        require_supported_fresh_gas_flow(fresh_gas_flow_l_min)
+        require_fresh_gas_flow(fresh_gas_flow_l_min)
         self._require_deliverable_flow(fresh_gas_flow_l_min)
         self.fresh_gas_flow_l_min = fresh_gas_flow_l_min
 
