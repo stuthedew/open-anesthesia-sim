@@ -2633,6 +2633,7 @@ exists for. It is not inside this milestone's Required scope, so it clears
 before implementation begins.
 
 - PL-V6M0 (S) _apply_setting reports a SimulationExecutionError as a refused setting and lets the run continue, which is the opposite of what that type means
+
 **Two more arrived from the Targ, Yasuda and Eger 1989 circuit paper**, read
 at full text from the private corpus on 2026-09-13 and merged the same evening.
 Both are `science`-classed and neither changes a displayed value; what puts them
@@ -2675,8 +2676,8 @@ snapshot rule decides that a recorded deferral is how it may then be sequenced
 out of it. Silence is the third thing, and the only one forbidden.
 
 **What it is.** It is the build half of `PL-YLKR`, split from it on the project
-owner's decision of 2026-09-14. The design and its derivation landed on v0.4.x
-- `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show" -
+owner's decision of 2026-09-14. The design and its derivation landed on v0.4.x -
+`docs/MODEL.md` § "The chart's hover readout: what the tooltip may show" -
 and what remains is writing the hover against pyqtgraph, which cannot be done
 before the toolkit exists. It carries `safety` for the same reason its parent
 did: a number a reader stopped the simulation to look at, with nothing around
@@ -3985,9 +3986,9 @@ invariant that now has teeth.
 why they are recorded here rather than left to look deferred:
 `PL-J0F7` and `PL-TCR5` are live defects in what the Qt chart shows a reader -
 a hover box nobody has looked at rendered, and a hover readout that answers the
-pointer's previous position and never re-answers a resting pointer while paused
-- so both are seated `P2` and belong to the v0.4.26 port beat, ahead of this
-gate on the timeline rather than behind it. `PL-QRD1` was `blocked` on
+pointer's previous position and never re-answers a resting pointer while
+paused - so both are seated `P2` and belong to the v0.4.26 port beat, ahead of
+this gate on the timeline rather than behind it. `PL-QRD1` was `blocked` on
 `PL-8PSW`, which was expected to decide whether a two-run dashboard needs a
 selector lock at all, and no shipped entry point reached the defect.
 
@@ -6005,8 +6006,8 @@ removed, and this file's history before that change holds their text.
 
     *A View's state survives leaving its Area and coming back.* The provenance
     record adopts Blender's per-Area stack of previously-open Editors for the
-    property it buys - the outgoing View's state is kept rather than destroyed
-    - and this milestone ships `swap` and `set_view`, which are the operations
+    property it buys - the outgoing View's state is kept rather than destroyed -
+    and this milestone ships `swap` and `set_view`, which are the operations
     that would destroy it. The minimum form is in scope: one retained entry per
     View kind, which is how Blender bounds the stack by construction rather
     than by a cap.
@@ -6032,8 +6033,8 @@ removed, and this file's history before that change holds their text.
     once?* Yes routes to the View; incoherent routes to preferences; and a
     setting that changes the numbers rather than their drawing is neither and
     stays in the versioned data files. So a Workspace excludes preference state
-    because it is a container of View instances and a preference has one value
-    - not because a unit or a price "is not layout", which is the weaker argument
+    because it is a container of View instances and a preference has one value -
+    not because a unit or a price "is not layout", which is the weaker argument
     and the one that misroutes the axis range. This is also what keeps Blender's
     four Save & Load entries addable later without a migration: its preference
     reset reads `use_data = false, use_userdef = true`, resetting that third tier
@@ -7530,8 +7531,8 @@ specified.
     the question a learner came with. That asymmetry is why the mechanism is
     open rather than inherited.
 
-    *The teaching payoff needs item 11.* A single trace cannot show an effect
-    - the contrast is the lesson - so what this milestone is *for* only fully
+    *The teaching payoff needs item 11.* A single trace cannot show an effect -
+    the contrast is the lesson - so what this milestone is *for* only fully
     arrives with side-by-side comparison (item 11) and the two-run rendering
     `PL-B9PY` holds. That is a reason to scope item 11 knowing this is one of
     its uses, not a reason to hold this behind it.
@@ -7988,10 +7989,12 @@ once someone is ready to scope it.
     measurement that the port did not in fact redecide them; **this reservation
     is unaffected and is the reason why.** A layout container really is built
     once by the port, so reserving costs nothing and rebuilding would cost
-    twice — which is exactly the test the palette half failed. So the port reserves for this item and builds none of it: each
-    dashboard surface becomes an independent widget inside nested `QSplitter`s
-    with the handles inert, and this item is what turns them live — § "Completed: v0.4.26
-    - the interface moves to Qt" → "Required scope" item 2 carries it.
+    twice — which is exactly the test the palette half failed. So the port
+    reserves for this item and builds none of it: each dashboard surface
+    becomes an independent widget inside nested `QSplitter`s with the handles
+    inert, and this item is what turns them live —
+    § "Completed: v0.4.26 - the interface moves to Qt" → "Required scope" item 2
+    carries it.
 
     *The widget catalogue is separate work, and the layout comes first*
     (project owner, 2026-09-15): "the layout part with the adding, resizing,

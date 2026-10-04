@@ -3,11 +3,13 @@ id: PL-DSMK
 title: ROADMAP.md renders four passages differently from what they say: a ' - ' dash wrapped to the start of a line opens a list item at lines 2679, 3988 and 7992, the last splitting the section citation 'Completed: v0.4.26 - the interface moves to Qt' so no reader finds it, and no blank line before line 2636 makes its bold paragraph a lazy continuation of PL-V6M0's list entry (CommonMark 0.31.2 sections 5.2 and 5.3)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, defect
 touches: ROADMAP.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1343
 payoff: ROADMAP.md renders as the prose it is, so the v0.4.26 citation it split is found by the close-out sweep and docket can refuse a lazily continued list entry without firing on v0.5.0's frozen list
 verify: grep -qF '§ "Completed: v0.4.26 - the interface moves to Qt" → "Required scope" item 2' ROADMAP.md && ! grep -qE '^ *- (so both are seated|and this milestone ships|not because a unit or a price|the contrast is the lesson|the interface moves to Qt|.docs/MODEL.md. § "The chart)' ROADMAP.md
 ---
