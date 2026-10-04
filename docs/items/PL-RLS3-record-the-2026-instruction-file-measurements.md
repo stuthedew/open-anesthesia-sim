@@ -1,9 +1,14 @@
 ---
 id: PL-RLS3
 title: Record the 2026 instruction-file measurements (McMillan, Gloaguen, Anthropic's 200-line target) beside PL-H253, whose own sources PL-YJG1 found overstated
-status: untriaged
+priority: P3
+effort: S
+status: blocked
+classes: docs
 touches: docs/resident-instructions.md
+blocked-by: PL-R417
 added: 2026-10-04
+payoff: the next proposal to trim the resident set for adherence meets the published measurements beside the project's own count, instead of re-deriving the case from the count alone
 ---
 
 **Problem.** `PL-H253` (the measurement that session length, not resident-set
@@ -57,3 +62,17 @@ is already what the routing rule pays for. The number that would reopen the
 size question is an adherence failure traced to a rule's position in the file,
 which nothing has yet recorded. Apparatus documentation under the 2026-09-25
 product focus: captured, not built, until a product session is not blocked by it.
+
+**Held by the generator pause** (triage, 2026-10-04). Recording evidence
+beside a conclusion that still holds fixes no defect in what exists: it is
+apparatus housekeeping, which `CLAUDE.md` § "What this project is" holds while
+any open item carries `generator: live`. On `main` at `8f24fe78`, `bin/docket
+generators` marks `PL-R417` still generating, its last slice open in #1353.
+Before promoting, check that `bin/docket generators` marks no head "still
+generating"; recording it sooner is the owner's call, made by asking
+(`PL-6Q9L`).
+
+**Generator check.** One-off. Nothing misread a fact: the conclusion
+`docs/resident-instructions.md` records for `PL-H253` still holds, and this
+adds the sources published since that carry it. No head's `misread:` states a
+fact it touches.
