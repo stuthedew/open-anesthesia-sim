@@ -234,7 +234,8 @@ format per pull request as before, each closing its members and adding their
 cases to `CONTINUED_STATEMENTS`: Markdown first, fourteen members held to
 `statement_lines` with `PL-WF35` the live one, then the Python, YAML, shell and
 Makefile readers and the two that read a change or a commit record. `PL-TC2D`
-waits on the owner's answer to the question its brief puts. Then one more sweep
+reads a file the interpreter cannot parse through `tokenize` first (project
+owner, 2026-10-04, ratified, over keeping the line fallback). Then one more sweep
 of the same reach, and `generator:` rewritten `spent` only when it finds nothing
 (the coordinator's brief, 2026-10-04). The head closes without waiting for
 `PL-RR1N`, naming it in the reason as Done-when says (project owner,
