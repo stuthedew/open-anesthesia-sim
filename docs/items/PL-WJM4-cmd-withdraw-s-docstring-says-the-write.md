@@ -6,11 +6,11 @@ effort: S
 status: ready
 classes: docs, defect
 feature: front-matter-round-trip
-touches: subprojects/docket/src/docket/cli.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
 payoff: a session reading cmd_withdraw is told the true extent of what a withdrawal rewrites, so nobody trusts a one-line diff a wrapped recurrences value does not give, or narrows the write to match and orphans the tail
-verify: ! grep -qF 'replaces one line' subprojects/docket/src/docket/cli.py
+verify: ! grep -qF 'replaces one line' subprojects/docket/src/docket/cli.py && ! grep -qF 'whose diff is *one* line' subprojects/docket/src/docket/model.py
 ---
 
 **Problem.** cmd_withdraw's docstring says the write replaces one line, but with_front_matter_value replaces the key's line and every continuation _fold gives it; latent
@@ -25,4 +25,4 @@ verify: ! grep -qF 'replaces one line' subprojects/docket/src/docket/cli.py
 
 **Generator check.** An instance of `PL-9HD1`'s fact, the item front-matter value grammar: where a field's value ends and which spellings it may take, filed after that head closed on 2026-09-21. The docstring states a value's extent as one line where `_fold` gives it continuations. One of three such instances, with `PL-0779` and `PL-LNDJ`, recorded under `PL-HXJY` as a generator whose fix did not hold.
 
-**Done when.** `cmd_withdraw`'s docstring states the write's extent as `_fold` gives it, the field's own line and every indented continuation folded into it, and no longer says it replaces one line; `! grep -qF 'replaces one line' subprojects/docket/src/docket/cli.py` passes, and nothing in the command's behaviour changes. A docstring correction, so no test is owed.
+**Done when.** `cmd_withdraw`'s docstring states the write's extent as `_fold` gives it, the field's own line and every indented continuation folded into it, and no longer says it replaces one line; `with_front_matter_value`'s own docstring in `model.py`, which makes the same claim as "an edit whose diff is *one* line" (found at triage, 2026-10-04), says the same; both `! grep -qF` clauses of `verify:` pass, and nothing in the command's behaviour changes. A docstring correction, so no test is owed.
