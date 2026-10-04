@@ -84,6 +84,22 @@ a span continues across lines (`PL-R417`'s, recorded that day). `PL-Q9LK` is the
 same shape against `PL-PVW2`. So cluster 1 counts `PL-P72R`, `PL-Z8RS` and
 `PL-HNXS` as before.
 
+**Cluster 3 reached past the step, 2026-10-04.** `PL-0GJC` gave the step its
+type, and the same fact turned up the next day for the three flows and for the
+dial. `PL-HSFV` is a run built from a settings record that skips the flows'
+range guards (a cardiac output of 1000 L/min ran), and `PL-BBMG` is the same
+record skipping the vaporizer maximum (20% sevoflurane ran). `PL-M7QH` named
+the fact as a design principle (pull request 1346). The fix the project owner
+chose is the `parse-dont-validate` feature, on v0.6.0's frozen list:
+
+- checked types for the flows (`PL-0YYV`), for the case instant and the step
+  count (`PL-CN5S`), and the edge test finding every guarded quantity by type
+  (`PL-51B7`);
+- two decisions, `PL-4R3W` and `PL-BBMG`.
+
+Judge cluster 3 with those members counted. A head would sit on one of those
+items.
+
 **Done when.** Each cluster is recorded as a head - `root-cause-of:`,
 `generator:` and `misread:` - or refused with its reason in this brief, after
 1306, 1308 and 1309 have merged.
