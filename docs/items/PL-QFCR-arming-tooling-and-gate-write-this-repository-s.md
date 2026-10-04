@@ -7,7 +7,7 @@ status: blocked
 classes: refactor
 feature: review-hold
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/config.py, docket.toml
-blocked-by: PL-979D, PL-GPJ7, PL-HMZZ, PL-MT3R, PL-PVW2, PL-QHCW
+blocked-by: PL-R417
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-09-26 triage pass
 added: 2026-09-25
 ---
@@ -24,6 +24,6 @@ added: 2026-09-25
 
 **Blocked, triage 2026-09-26.**
 - **Held by the generator pause.** The fix is a new `docket.toml` field, confirmed: no existing field means the tooling or the gate, and reusing `gate_paths` would re-specify it. The constants give no wrong answer, so this is not a defect in what exists. A request from the project owner lifts the pause for this item (`PL-6Q9L`).
-- `blocked-by` names the six open items carrying `generator: live` on 2026-09-26. The pause's own test is `bin/docket generators` marking no head "still generating"; a head recorded spent while open, or a new live one, moves that without touching this list, so check the command before unblocking.
+- `blocked-by` named the six open items carrying `generator: live` on 2026-09-26. Every one has since closed, and on 2026-10-04 it names `PL-R417`, the one head `bin/docket generators` then marked still generating. The pause's own test is `bin/docket generators` marking no head "still generating"; a head recorded spent while open, or a new live one, moves that without touching this list, so check the command before unblocking.
 
 **Generator check.** One-off. The fact misread is where this repository's layout is recorded: `docket.toml`, not a module constant. No head's `misread:` states it, and its one other instance, `claims.CUTOVER_MARKER`, is deleted by `PL-CH3Z` rather than filed. The cause was `PL-K6B2`'s `touches`, which reached neither `config.py` nor `docket.toml`.
