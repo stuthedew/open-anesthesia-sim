@@ -55,4 +55,4 @@ spelling a workflow can write reads as no trigger. `PL-R417`'s YAML slice
 already refuses a flow collection carried past `on:`'s line, which the reader
 keeps.
 
-**Generator check.** The head: the fact is which events a workflow's `on:` names, and so whether its checks report on a pull request, an external behaviour (YAML syntax and GitHub's trigger rules) the tools model by hand. Recorded on 2026-10-04 at its fifth item, `PL-C72H` the second, as the 2026-10-01 triage note asked when it put both under `feature: required-check-trigger-reading` so a third would be seen.
+**Generator check.** The head: the fact is which events a workflow's `on:` names, and so whether its checks report on a pull request, an external behaviour (YAML syntax and GitHub's trigger rules) the tools model by hand. Recorded on 2026-10-04 at six readings of the fact, this item the first and `PL-C72H` the second, as the 2026-10-01 triage note asked when it put both under `feature: required-check-trigger-reading` so a third would be seen.
