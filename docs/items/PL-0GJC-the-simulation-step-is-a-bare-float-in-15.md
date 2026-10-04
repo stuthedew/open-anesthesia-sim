@@ -1,9 +1,15 @@
 ---
 id: PL-0GJC
 title: The simulation step is a bare float in 15 signatures and 2 fields, and its 1 ms floor is checked at 4 call sites, so each entry point that skips the check becomes a capture: carry it as a SimulationStep type that refuses an unsupported step when it is constructed
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: refactor
 feature: numerical-domain
+touches: src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/simulation.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/chart_frame.py, tests, docs/MODEL.md, docs/ARCHITECTURE.md
+deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 session that claimed it
 added: 2026-10-03
+payoff: a run's step is checked once, where it is chosen, so the next function written to take one cannot be the next entry point that forgot the 1 ms floor
 ---
 
 **Problem.** The simulation step is a bare float in 15 signatures and 2 fields, and its 1 ms floor is checked at 4 call sites, so each entry point that skips the check becomes a capture: carry it as a SimulationStep type that refuses an unsupported step when it is constructed
@@ -21,6 +27,16 @@ them the guard and count functions in `supported_ranges.py` and
 `AgentUptakeSystem.advance` and `app/playback.py`'s `steps_per_tick`. Each
 compartment's own `advance` checks only `require_positive_finite`, which is
 `PL-WP52`'s open question.
+
+**Why it matters.** The five captures were one fact - that a run's step lies
+inside the supported range - re-checked by hand wherever the last fix reached,
+and each entry point that missed it handed the arithmetic a step nothing had
+verified. Below the floor, rounding is a growing share of what each step
+changes and the number it produces stays plausible (`docs/MODEL.md` §
+"Supported simulation step"); far below it, `maximum_step_count` raised
+`OverflowError` from outside the simulator's own exceptions (`PL-YZ17`). A step
+checked once, where it is chosen, turns the next forgotten check into a mypy
+error in `src/` and a `TypeError` anywhere else, rather than another capture.
 
 **Decided 2026-10-03: yes** (project owner, 2026-10-03, ratified, over a
 guard added to each compartment by hand and over the `NewType` and
@@ -67,6 +83,42 @@ Nothing stored or displayed changes, so reverting is the annotations alone.
 If the owner takes this, `PL-74T0` records this item as its third cluster's
 head. The same shape fits the other ranges `supported_ranges.py` declares, but
 the step is the one with five captures behind it, so it goes first and alone.
+
+**Decision needed.** Whether a compartment stepped on its own takes this type.
+The case ratified on 2026-10-03 did not carry one cost, found when the work
+began: `require_supported_simulation_step` checks the 0.1 s ceiling as well as
+the floor, and the ceiling is the coupled system's - how long its settings are
+held constant - which the guard's own docstring and `docs/MODEL.md` §
+"Supported simulation step" both say binds the run and not a compartment.
+Taken by `BreathingCircuit.advance_fresh_gas` and `.advance`,
+`TissueGroup.advance` and `VenousBloodCompartment.advance`, the type would refuse a
+compartment stepped alone at 1 s, which is correct today. The floor alone is
+`PL-WP52`'s question, and it asks for a compartment to be measured alone first.
+
+**Recommended:** this item covers the run's step - the 10 parameters and 2
+fields that take the step a run is taken at - and the compartment clause of
+"Done when" moves to `PL-WP52`, which decides a compartment's floor on its
+measurement and, if the answer is yes, whether a floor-only type carries it.
+The alternative is a second, floor-only type the compartments take now, which
+answers `PL-WP52` without the measurement. The run's half is the same under
+either answer, so it is built while this is open.
+
+**Built 2026-10-03, the run's half, while the question is open.**
+`core/simulation_step.py` now holds the two bounds, their guard and
+`SimulationStep`, moved out of `core/uptake_system.py` because
+`supported_ranges.py` needs the type and `uptake_system.py` already imports it.
+The 10 parameters and 2 fields take a `SimulationStep`; the four run entries
+call `require_simulation_step`, which raises `TypeError` for anything else;
+`app/dashboard_frame.py`'s shipped step is built as one; 124 places in 20
+existing test files build the step, so each refusal test there now meets the
+constructor's refusal with the same message; and
+`tests/unit/test_simulation_step.py` pins the type and the four entries. One
+test was passing for the wrong reason once the check landed - it injects a
+`TypeError` mid-step and expected to see it, and a bare float raised one first -
+and now builds its step. The compartments are unchanged. The `verify:` is
+removed until the answer: no command can tell the two answers' remaining work
+apart, and the one written for the run's half passes now, which
+`docket check` refuses on an open item.
 
 **Done when.** Every function that takes a run's step takes a
 `SimulationStep`; the step is checked once, when constructed; a compartment

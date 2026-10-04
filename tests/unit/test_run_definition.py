@@ -51,6 +51,7 @@ from anesthesia_sim.core.run_definition import (
     SampledWindow,
 )
 from anesthesia_sim.core.simulation import SimulationState
+from anesthesia_sim.core.simulation_step import MINIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -58,9 +59,9 @@ from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     maximum_step_count,
 )
-from anesthesia_sim.core.uptake_system import MINIMUM_SIMULATION_STEP_S, AgentUptakeSystem
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-SIMULATION_STEP_S = 0.1
+SIMULATION_STEP_S = SimulationStep(0.1)
 COMPARTMENT_STATES = (
     INSPIRED_FRACTION,
     ALVEOLAR_FRACTION,
@@ -650,7 +651,8 @@ def test_a_run_may_reach_the_last_step_it_is_allowed_to_take(simulation_step_s: 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
     last_step_s = SimulationState(
-        step_count=maximum_step_count(simulation_step_s), simulation_step_s=simulation_step_s
+        step_count=maximum_step_count(simulation_step_s),
+        simulation_step_s=SimulationStep(simulation_step_s),
     ).elapsed_s
 
     definition.advance_to(last_step_s)

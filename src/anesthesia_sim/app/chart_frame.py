@@ -87,7 +87,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, is_wash_in
 from anesthesia_sim.core.concentration import Fraction, Percent, percent_from_fraction
-from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
+from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
 
 __all__ = [
     "CHART_COLUMN_BUDGET_PER_SERIES",

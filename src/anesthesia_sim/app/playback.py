@@ -95,7 +95,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.uptake_system import require_supported_simulation_step
+from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
 
 #: How far the derived step count may sit from a whole number and still be
 #: treated as that whole number. The conversion is a ratio of two float
@@ -131,7 +131,7 @@ class PlaybackRate:
                 f"a playback multiplier is at least 1 (real time), not {self.multiplier}"
             )
 
-    def steps_per_tick(self, *, tick_interval_s: float, simulation_step_s: float) -> int:
+    def steps_per_tick(self, *, tick_interval_s: float, simulation_step_s: SimulationStep) -> int:
         """How many steps one tick takes to play at this rate.
 
         A tick of `tick_interval_s` real seconds must advance
@@ -141,9 +141,9 @@ class PlaybackRate:
         Args:
             tick_interval_s: Real seconds the run loop waits between
                 wakeups. Must be positive.
-            simulation_step_s: Simulated seconds one step advances. Must be a
-                step `core` supports, since it is a run's step, and is
-                returned to the caller unchanged in every case — this method
+            simulation_step_s: Simulated seconds one step advances, as the
+                `SimulationStep` the run is taken at, and left unchanged in
+                every case — this method
                 decides how many steps a tick takes and never how large one
                 is.
 
@@ -151,9 +151,11 @@ class PlaybackRate:
             The whole number of steps, at least one.
 
         Raises:
+            TypeError: If `simulation_step_s` is not a `SimulationStep`, so
+                nothing has checked it against `core`'s supported range
+                (`core/simulation_step.py`).
             SimulationConfigurationError: If the tick interval is not
-                positive and finite; if the step is outside
-                `core.uptake_system`'s supported range; if the step count
+                positive and finite; if the step count
                 these give is too large to count, which a vanishing step or
                 an enormous tick used to raise as a bare `OverflowError`
                 (`PL-YZ17`); or if this rate does not land on a whole number
@@ -168,7 +170,7 @@ class PlaybackRate:
                 f"not {tick_interval_s!r}"
             )
 
-        require_supported_simulation_step(simulation_step_s)
+        require_simulation_step(simulation_step_s)
 
         exact = self.multiplier * tick_interval_s / simulation_step_s
 

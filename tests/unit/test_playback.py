@@ -19,13 +19,13 @@ from anesthesia_sim.app.playback import (
     playback_rate_for,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.uptake_system import MINIMUM_SIMULATION_STEP_S
+from anesthesia_sim.core.simulation_step import MINIMUM_SIMULATION_STEP_S, SimulationStep
 
 #: The intervals the interface ships, restated here rather than imported from
 #: `app/simulation_view.py`, which needs Flet. `test_simulation_view.py` holds
 #: the shipped constants to these values, so a change there fails there.
 TICK_INTERVAL_S = 0.1
-SIMULATION_STEP_S = 0.1
+SIMULATION_STEP_S = SimulationStep(0.1)
 
 
 @pytest.mark.parametrize("rate", SUPPORTED_PLAYBACK_RATES, ids=lambda rate: f"{rate.multiplier}x")
@@ -139,9 +139,9 @@ def test_the_step_size_is_an_input_to_the_conversion_and_never_an_output() -> No
 
     rate = PlaybackRate(60)
 
-    assert rate.steps_per_tick(tick_interval_s=0.1, simulation_step_s=0.1) == 60
-    assert rate.steps_per_tick(tick_interval_s=0.1, simulation_step_s=0.05) == 120
-    assert rate.steps_per_tick(tick_interval_s=0.2, simulation_step_s=0.1) == 120
+    assert rate.steps_per_tick(tick_interval_s=0.1, simulation_step_s=SimulationStep(0.1)) == 60
+    assert rate.steps_per_tick(tick_interval_s=0.1, simulation_step_s=SimulationStep(0.05)) == 120
+    assert rate.steps_per_tick(tick_interval_s=0.2, simulation_step_s=SimulationStep(0.1)) == 120
 
 
 def test_a_rate_needing_a_fractional_step_is_refused() -> None:
@@ -153,14 +153,14 @@ def test_a_rate_needing_a_fractional_step_is_refused() -> None:
     """
 
     with pytest.raises(SimulationConfigurationError, match="not a whole number of steps"):
-        PlaybackRate(3).steps_per_tick(tick_interval_s=0.05, simulation_step_s=0.1)
+        PlaybackRate(3).steps_per_tick(tick_interval_s=0.05, simulation_step_s=SimulationStep(0.1))
 
 
 def test_a_rate_that_would_take_no_step_at_all_is_refused() -> None:
     """A tick shorter than a step cannot advance the run and must say so."""
 
     with pytest.raises(SimulationConfigurationError):
-        PlaybackRate(1).steps_per_tick(tick_interval_s=0.01, simulation_step_s=0.1)
+        PlaybackRate(1).steps_per_tick(tick_interval_s=0.01, simulation_step_s=SimulationStep(0.1))
 
 
 @pytest.mark.parametrize("multiplier", [0, -1, -60])
@@ -189,10 +189,14 @@ def test_an_unusable_interval_is_refused(interval: float) -> None:
     """A non-positive or non-finite interval has no step count to give."""
 
     with pytest.raises(SimulationConfigurationError):
-        PlaybackRate(1).steps_per_tick(tick_interval_s=interval, simulation_step_s=0.1)
+        PlaybackRate(1).steps_per_tick(
+            tick_interval_s=interval, simulation_step_s=SimulationStep(0.1)
+        )
 
     with pytest.raises(SimulationConfigurationError):
-        PlaybackRate(1).steps_per_tick(tick_interval_s=0.1, simulation_step_s=interval)
+        PlaybackRate(1).steps_per_tick(
+            tick_interval_s=0.1, simulation_step_s=SimulationStep(interval)
+        )
 
 
 @pytest.mark.parametrize(
@@ -206,14 +210,18 @@ def test_a_step_outside_the_supported_range_is_refused(simulation_step_s: float)
     """
 
     with pytest.raises(SimulationConfigurationError, match="supported step"):
-        PlaybackRate(1).steps_per_tick(tick_interval_s=0.1, simulation_step_s=simulation_step_s)
+        PlaybackRate(1).steps_per_tick(
+            tick_interval_s=0.1, simulation_step_s=SimulationStep(simulation_step_s)
+        )
 
 
 def test_a_step_count_too_large_to_count_is_refused() -> None:
     """An enormous tick gives an infinite count, refused rather than rounded."""
 
     with pytest.raises(SimulationConfigurationError, match="than can be counted"):
-        PlaybackRate(300).steps_per_tick(tick_interval_s=1e307, simulation_step_s=0.1)
+        PlaybackRate(300).steps_per_tick(
+            tick_interval_s=1e307, simulation_step_s=SimulationStep(0.1)
+        )
 
 
 def test_a_rate_is_looked_up_by_multiplier() -> None:
