@@ -6313,6 +6313,13 @@ def _lazy_family_member(tmp_path: Path) -> list[str]:
     return [error for error in _errors(_repo(tmp_path, model=model)) if "bound family" in error]
 
 
+def _lazy_milestone_entry(tmp_path: Path, entry: str, carried: str) -> list[str]:
+    """A frozen-list or `Required scope` entry carried on by a line with no indent."""
+    roadmap = GATE_ROADMAP.replace(entry, carried)
+    errors = _errors(_repo(tmp_path, roadmap=roadmap))
+    return [error for error in errors if "not read whole" in error]
+
+
 def _wrapped_family_member(_: Path) -> bool:
     """A list member naming its test in a code span the wrap broke."""
     document = LIST_FAMILY_DOCUMENT.replace(
@@ -6391,6 +6398,12 @@ TEX_ERROR = (
     "docs/NOTE.md:2 writes math as `{}`, which GitHub does not render; use `$`...`$` inline "
     "or a `$$` fence for a block"
 )
+LAZY_LIST_ERROR = (
+    "{}: a list entry of the v0.4.0 section was not read whole, so the gate and scope "
+    "docket reads there may be short: this line carries on the entry above it without an "
+    "indent, which CommonMark reads as part of that entry and the list walker does not; "
+    "indent it to keep it in the entry, or put a blank line before it"
+)
 SPLIT_MARKER_ERROR = (
     "{}: this `{}:` marker does not close on its line; a marker is read a line at a time, so "
     "this one was read as nothing - write it on one line"
@@ -6457,6 +6470,20 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             "indent, which CommonMark reads as part of that entry and the list walker does "
             "not; indent it to keep it in the entry, or put a blank line before it"
         ],
+    ),
+    # The lists docket reads a milestone's gate and scope from, an entry at a
+    # time, through the same walker (`PL-MFVV`).
+    "frozen list, a lazy continuation is refused": (
+        lambda tmp_path: _lazy_milestone_entry(
+            tmp_path, "- PL-FFFF **and PL-GGGG** (S)", "- PL-FFFF **and**\nPL-GGGG (S)"
+        ),
+        [LAZY_LIST_ERROR.format("ROADMAP.md:43")],
+    ),
+    "required scope, a lazy continuation is refused": (
+        lambda tmp_path: _lazy_milestone_entry(
+            tmp_path, "- Something.", "- Something, in a title long enough\nto wrap (PL-BBBB)."
+        ),
+        [LAZY_LIST_ERROR.format("ROADMAP.md:25")],
     ),
     # The section titles a citation may name, and the links it may follow.
     "section titles, a wrapped bold title": (

@@ -20,9 +20,10 @@ the table to it. Both are standard-library only and both must run in a bare
 checkout with no virtualenv, so the constraint that shaped the parser is
 identical on either side.
 
-The three markdown primitives at the top are exported for the same reason:
-`doc_check` reads a table of its own with them, and a second implementation
-of "the rows under this heading" is a second thing to keep true.
+The markdown primitives at the top are exported for the same reason:
+`doc_check` reads a table of its own with them, and builds its phrase readers
+on `CONTINUED_LINE`, and a second implementation of "the rows under this
+heading" or "where a paragraph goes on" is a second thing to keep true.
 """
 
 from __future__ import annotations
@@ -45,6 +46,51 @@ TABLE_ROW_RE = re.compile(r"^\|(?P<cells>.+)\|\s*$")
 #: v0.6.0's as a numbered list - so a reader that knew only the bullet was
 #: blind to a whole milestone's worth of entries.
 LIST_ENTRY_RE = re.compile(r"^(?:[-*]|\d+\.)\s+(?P<text>\S.*)$")
+#: Where a Markdown statement goes on past the end of a physical line
+#: (`PL-R417`): a line ending inside a paragraph, which CommonMark reads as a
+#: soft break (0.31.2 § 6.7), with the indent and blockquote markers that open
+#: the continued line. Not a blank line, which ends the paragraph (§ 4.8), nor a
+#: line opening a block of its own - a list item, an ATX heading, a fence, a
+#: table row, an HTML block or a thematic break - which interrupts it (§ 4.1;
+#: under a paragraph `---` is a setext underline, § 4.3, and ends it all the
+#: same). Possessive, so backtracking cannot hand a list marker to whatever
+#: follows as the continued text. Every reader of a phrase the documents may
+#: wrap takes its whitespace from here, rather than each meeting the wrap one
+#: capture at a time. Here rather than in `tools/doc_check.py`, which builds its
+#: phrase readers on it, because the list walker below asks the same question
+#: and docket cannot import `doc_check` (`PL-MFVV`).
+CONTINUED_LINE = (
+    r"[ \t]*+(?:>[ \t]*+)*+"
+    r"(?!\n|\Z|[-*+][ \t]|\d{1,9}[.)][ \t]|#{1,6}(?:[ \t\n]|\Z)|```|~~~|\||<"
+    r"|(?:-[ \t]*+){3,}(?:\n|\Z)|(?:\*[ \t]*+){3,}(?:\n|\Z)|(?:_[ \t]*+){3,}(?:\n|\Z))"
+)
+#: A line that carries on a list entry's paragraph from the margin: CommonMark's
+#: lazy continuation line (0.31.2 § 5.2). Any line `CONTINUED_LINE` would carry a
+#: paragraph onto, less one opening a block quote, which interrupts the
+#: paragraph (§ 5.1); inside a quote the same marker only continues it.
+LAZY_LINE_RE = re.compile(rf"(?![ \t]*+>){CONTINUED_LINE}")
+#: Why the walker declines an entry a lazy line carries on, in the words every
+#: reader of it passes on.
+LAZY_ENTRY = (
+    "this line carries on the entry above it without an indent, which CommonMark reads as "
+    "part of that entry and the list walker does not; indent it to keep it in the entry, "
+    "or put a blank line before it"
+)
+
+
+class UnreadEntry(Exception):
+    """A list entry the walker found continued in a form it does not read (`PL-MFVV`).
+
+    Raised, or put on the caller's list, rather than handing the entry over
+    read short. What an entry *is* is answered once, by `list_entry_lines`, so
+    its decline is answered there too, and every reader of the walker passes it
+    on rather than testing the line itself.
+    """
+
+    def __init__(self, line: int, why: str) -> None:
+        super().__init__(f"line {line}: {why}")
+        self.line = line
+        self.why = why
 
 
 def table_rows(text: str, heading: str, level: int = 2) -> Iterator[tuple[int, list[str]]]:
@@ -461,6 +507,13 @@ class MilestoneSection:
     #: declares nothing. Empty for a section recording no scope subsection, and
     #: for one whose scope is a paragraph rather than a list.
     scope_entries: tuple[ScopeEntry, ...] = ()
+    #: Each line the walker declined in the frozen list or `Required scope`: an
+    #: entry carried on without an indent, read only as far as that line
+    #: (`PL-MFVV`). Recorded rather than raised, so the entries it could read are
+    #: read, and every reader of the section can say its answer rests on a list
+    #: not read whole - `tools/doc_check.py` fails each line, and `wave` and the
+    #: digest say so.
+    unread: tuple[UnreadEntry, ...] = ()
 
     @property
     def label(self) -> str:
@@ -532,7 +585,9 @@ def _scope_ids(entries: Sequence[GateEntry], scope_ids: Iterable[str]) -> tuple[
     return _deduped([identifier for entry in entries for identifier in entry.ids] + list(scope_ids))
 
 
-def list_entries(lines: Sequence[str], start: int) -> Iterator[tuple[int, str]]:
+def list_entries(
+    lines: Sequence[str], start: int, unread: list[UnreadEntry] | None = None
+) -> Iterator[tuple[int, str]]:
     """Each top-level list entry under one `###` heading, as (line, joined text).
 
     `start` is the heading's line number, so reading begins on the line after
@@ -547,15 +602,18 @@ def list_entries(lines: Sequence[str], start: int) -> Iterator[tuple[int, str]]:
 
     One walker and three readers - the frozen list, `Required scope`, and the
     exclusion advisory in `tools/doc_check.py` - because what an entry *is* is
-    one question, and it was answered in three places that could drift.
+    one question, and it was answered in three places that could drift. An
+    entry it cannot read whole is declined by the walker, through `unread`.
     """
-    for first, end in list_entry_lines(lines, start):
+    for first, end in list_entry_lines(lines, start, unread):
         parts = [LIST_ENTRY_RE.sub(r"\g<text>", lines[first])]
         parts.extend(line.strip() for line in lines[first + 1 : end])
         yield first + 1, " ".join(parts)
 
 
-def list_entry_lines(lines: Sequence[str], start: int) -> Iterator[tuple[int, int]]:
+def list_entry_lines(
+    lines: Sequence[str], start: int, unread: list[UnreadEntry] | None = None
+) -> Iterator[tuple[int, int]]:
     """The walker `list_entries` reads, as each entry's span of `lines`.
 
     Each pair is the 0-based index of the entry's own line and the index one
@@ -563,6 +621,17 @@ def list_entry_lines(lines: Sequence[str], start: int) -> Iterator[tuple[int, in
     its line breaks kept, so a name wrapped inside a code span is read whole
     rather than joined with a space no test name holds (`PL-6SRZ`) - slices
     `lines` with it, and what an entry *is* stays answered once.
+
+    **An entry carried on from the margin is declined, not read short**
+    (`PL-MFVV`). An entry ends at the first line with no indent, and CommonMark
+    folds such a line into the entry when it carries on the entry's paragraph
+    (0.31.2 § 5.2), so its words - a gate entry's second id, a scope entry's
+    declaration - would belong to no entry while the entry read as whole. Here
+    that line is as often a blank line forgotten before a new paragraph, so
+    neither reading can be assumed. The walker raises `UnreadEntry` naming the
+    line, or, where the caller passes `unread`, puts it there and ends the entry
+    where it always has, so one doubtful line costs the reader nothing it could
+    read.
     """
     first = -1
     end = len(lines)
@@ -577,6 +646,11 @@ def list_entry_lines(lines: Sequence[str], start: int) -> Iterator[tuple[int, in
                 yield first, index
             first = index
         elif first >= 0 and not (line.strip() and line[:1].isspace()):
+            if line.strip() and LAZY_LINE_RE.match(line):
+                lazy = UnreadEntry(index + 1, LAZY_ENTRY)
+                if unread is None:
+                    raise lazy
+                unread.append(lazy)
             yield first, index
             first = -1
     if first >= 0:
@@ -623,7 +697,9 @@ def _declared_ids(text: str) -> tuple[str, ...]:
     )
 
 
-def _gate_entries(lines: Sequence[str], start: int) -> tuple[GateEntry, ...]:
+def _gate_entries(
+    lines: Sequence[str], start: int, unread: list[UnreadEntry]
+) -> tuple[GateEntry, ...]:
     """Read the list entries under a gate heading, ignoring its prose.
 
     An entry is a top-level list entry that opens with an item id. The prose
@@ -638,14 +714,16 @@ def _gate_entries(lines: Sequence[str], start: int) -> tuple[GateEntry, ...]:
     waiting on.
     """
     entries: list[GateEntry] = []
-    for line_number, text in list_entries(lines, start):
+    for line_number, text in list_entries(lines, start, unread):
         ids = leading_ids(text)
         if ids:
             entries.append(GateEntry(line=line_number, ids=ids, text=text))
     return tuple(entries)
 
 
-def _scope_entries(lines: Sequence[str], start: int) -> tuple[ScopeEntry, ...]:
+def _scope_entries(
+    lines: Sequence[str], start: int, unread: list[UnreadEntry]
+) -> tuple[ScopeEntry, ...]:
     """Read the entries of a `Required scope` list, declarations and all.
 
     Every entry, including one declaring nothing: an empty `ids` is exactly
@@ -654,7 +732,7 @@ def _scope_entries(lines: Sequence[str], start: int) -> tuple[ScopeEntry, ...]:
     """
     return tuple(
         ScopeEntry(line=line_number, ids=_deduped(_declared_ids(text)), text=text)
-        for line_number, text in list_entries(lines, start)
+        for line_number, text in list_entries(lines, start, unread)
     )
 
 
@@ -690,9 +768,10 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
         if version is None:
             return
         heading_line, heading_title = gate or (0, "")
-        entries = _gate_entries(lines, heading_line) if gate else ()
+        unread: list[UnreadEntry] = []
+        entries = _gate_entries(lines, heading_line, unread) if gate else ()
         own_scope = _deduped(_declared_ids(_subsection_text(lines, scope))) if scope else ()
-        scope_entries = _scope_entries(lines, scope) if scope else ()
+        scope_entries = _scope_entries(lines, scope, unread) if scope else ()
         found.append(
             MilestoneSection(
                 line=line_number,
@@ -707,6 +786,7 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
                 own_scope_ids=own_scope,
                 excluded_ids=_deduped(_subsection_ids(lines, excluded)) if excluded else (),
                 scope_entries=scope_entries,
+                unread=tuple(unread),
             )
         )
 
@@ -1340,6 +1420,11 @@ class Wave:
     #: of the table's grammar: these rows parse, and the beat above them is
     #: computed from an arrangement one of the files has made stale.
     stale: tuple[str, ...] = ()
+    #: Each list entry a section of the plan was not read whole at
+    #: (`MilestoneSection.unread`), so a count read from that list may be short.
+    #: Distinct from `problems`, which a release cut refuses on because a
+    #: reservation might be unread: a list entry holds no version (`PL-MFVV`).
+    unread: tuple[str, ...] = ()
 
 
 def version_tuple(version: str) -> tuple[int, int, int] | None:
@@ -2292,5 +2377,10 @@ def wave(
             train.stale
             + tuple(stale_scopes(train, closed_ids, known_ids))
             + tuple(stale_gates(train, closed_ids, known_ids))
+        ),
+        unread=tuple(
+            "line {}, in the v{}.{}.{} section: {}".format(entry.line, *section.version, entry.why)
+            for section in train.sections
+            for entry in section.unread
         ),
     )
