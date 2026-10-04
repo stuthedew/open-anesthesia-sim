@@ -8,7 +8,7 @@ from anesthesia_sim.core.parameters import (
     load_sevoflurane_parameters,
 )
 from anesthesia_sim.core.patient import FLOW_FRACTION_TOLERANCE, PatientCompartments
-from anesthesia_sim.core.supported_ranges import MAXIMUM_CARDIAC_OUTPUT_L_MIN
+from anesthesia_sim.core.supported_ranges import MAXIMUM_CARDIAC_OUTPUT_L_MIN, CardiacOutput
 
 
 def _build_patient() -> PatientCompartments:
@@ -108,7 +108,7 @@ def test_changing_output_preserves_stored_agent() -> None:
     _load_patient_stores(patient)
     amount_before = patient.total_agent_amount_l
 
-    patient.set_cardiac_output(7.0)
+    patient.set_cardiac_output(CardiacOutput(7.0))
 
     assert amount_before > 0.0
     assert patient.total_agent_amount_l == pytest.approx(amount_before)
@@ -133,7 +133,7 @@ def test_accepts_cardiac_output_at_both_ends_of_the_supported_range() -> None:
     patient = _build_patient()
 
     for cardiac_output_l_min in (0.0, MAXIMUM_CARDIAC_OUTPUT_L_MIN):
-        patient.set_cardiac_output(cardiac_output_l_min)
+        patient.set_cardiac_output(CardiacOutput(cardiac_output_l_min))
 
         assert patient.cardiac_output_l_min == cardiac_output_l_min
         assert patient.venous_blood.blood_flow_l_min == cardiac_output_l_min
@@ -153,7 +153,7 @@ def test_rejects_cardiac_output_above_the_supported_range() -> None:
     supported_output_l_min = patient.cardiac_output_l_min
 
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
-        patient.set_cardiac_output(1000.0)
+        patient.set_cardiac_output(CardiacOutput(1000.0))
 
     assert patient.cardiac_output_l_min == supported_output_l_min
     assert patient.venous_blood.blood_flow_l_min == supported_output_l_min

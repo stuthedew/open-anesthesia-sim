@@ -12,6 +12,9 @@ from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    AlveolarVentilation,
+    CardiacOutput,
+    FreshGasFlow,
 )
 
 #: The step this suite drives the controller at, matching the shipped
@@ -76,8 +79,8 @@ def test_ventilation_and_cardiac_output_changes_preserve_state() -> None:
     _advance_for(controller, duration_s=30.0)
     before = controller.snapshot()
 
-    controller.set_alveolar_ventilation(7.0)
-    controller.set_cardiac_output(6.5)
+    controller.set_alveolar_ventilation(AlveolarVentilation(7.0))
+    controller.set_cardiac_output(CardiacOutput(6.5))
 
     after = controller.snapshot()
 
@@ -94,10 +97,10 @@ def test_ventilation_and_cardiac_output_changes_preserve_state() -> None:
 def test_reset_preserves_all_user_settings() -> None:
     controller = SimulationController(
         circuit_volume_l=5.0,
-        fresh_gas_flow_l_min=3.0,
+        fresh_gas_flow_l_min=FreshGasFlow(3.0),
         delivered_concentration_percent=6.0,
-        alveolar_ventilation_l_min=5.5,
-        cardiac_output_l_min=6.0,
+        alveolar_ventilation_l_min=AlveolarVentilation(5.5),
+        cardiac_output_l_min=CardiacOutput(6.0),
     )
     controller.start()
     _advance_for(controller, duration_s=30.0)
@@ -129,8 +132,8 @@ def test_identical_runs_produce_identical_snapshots_and_history() -> None:
         controller = SimulationController()
         controller.start()
         _advance_for(controller, duration_s=20.0)
-        controller.set_alveolar_ventilation(6.0)
-        controller.set_cardiac_output(4.5)
+        controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
+        controller.set_cardiac_output(CardiacOutput(4.5))
         _advance_for(controller, duration_s=20.0)
         controller.set_delivered_concentration_percent(5.0)
         _advance_for(controller, duration_s=20.0)
@@ -164,9 +167,9 @@ def _scripted_run(
             steps_taken += 1
 
             if steps_taken == 100:
-                controller.set_alveolar_ventilation(6.0)
+                controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
             elif steps_taken == 250:
-                controller.set_cardiac_output(4.5)
+                controller.set_cardiac_output(CardiacOutput(4.5))
             elif steps_taken == 400:
                 controller.set_delivered_concentration_percent(5.0)
 
@@ -274,10 +277,10 @@ def test_extreme_ui_slider_range_stays_valid_through_wash_in_and_washout() -> No
     controller = SimulationController()
     controller.start()
     max_delivered_concentration_percent = controller.snapshot().max_delivered_concentration_percent
-    controller.set_fresh_gas_flow(MAXIMUM_FRESH_GAS_FLOW_L_MIN)
+    controller.set_fresh_gas_flow(FreshGasFlow(MAXIMUM_FRESH_GAS_FLOW_L_MIN))
     controller.set_delivered_concentration_percent(max_delivered_concentration_percent)
-    controller.set_alveolar_ventilation(MAXIMUM_ALVEOLAR_VENTILATION_L_MIN)
-    controller.set_cardiac_output(MAXIMUM_CARDIAC_OUTPUT_L_MIN)
+    controller.set_alveolar_ventilation(AlveolarVentilation(MAXIMUM_ALVEOLAR_VENTILATION_L_MIN))
+    controller.set_cardiac_output(CardiacOutput(MAXIMUM_CARDIAC_OUTPUT_L_MIN))
 
     _advance_for(controller, duration_s=300.0)
 

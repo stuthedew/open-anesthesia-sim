@@ -1,14 +1,19 @@
 """The closed intervals the shipped model is supported over, and the guards
 that refuse a setting outside them.
 
-Four of the five bound a *setting* and are checked when a caller changes it.
-The fifth bounds the *run* - how much elapsed simulated time the model is
-claimed to represent a patient over - and is checked as each step is taken,
-because a run length is reached rather than set. It is also checked where a
-run is *handed* a point on that span instead of reaching it - a state built
-part-way through a run, a run definition's opening or its reach - because
-there the value handed in is what is wrong. It is otherwise the same kind of statement as the
-four, and lives here for that reason.
+Four of the five bound a *setting*. The three flows among them are checked
+once, where a flow is built as its type - `FreshGasFlow`, `AlveolarVentilation`
+and `CardiacOutput`, below - and every signature and record field that holds a
+flow past that point takes the type, so the check is made nowhere else and no
+way in has to remember it (`PL-0YYV`); the fourth, the delivered
+concentration, is checked when a caller changes it. The fifth bounds the
+*run* - how much elapsed simulated time the model is claimed to represent a
+patient over - and is checked as each step is taken, because a run length is
+reached rather than set. It is also checked where a run is *handed* a point on
+that span instead of reaching it - a state built part-way through a run, a run
+definition's opening or its reach - because there the value handed in is what
+is wrong. It is otherwise the same kind of statement as the four, and lives
+here for that reason.
 
 `docs/MODEL.md` § "Supported input ranges" is the specification; this module
 is where the numbers live, so that every path that can change a setting -
@@ -46,6 +51,25 @@ The fourth control, delivered concentration, is bounded here only by the
 0-to-1 fraction every concentration obeys; its real limit is the vaporizer's
 calibrated maximum, which is agent-specific and therefore lives on
 `BreathingCircuit` as instance state rather than as a constant here.
+
+**Each flow is a type, built only through its guard** (`PL-0YYV`, slice 1 of
+`PL-51B7`). `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput` are
+`float` subclasses whose constructors call the guards below, for the reasons
+`core/simulation_step.py` gives for `SimulationStep`: a `NewType` is erased at
+run time and proves nothing about a range, and a frozen record would put a
+field access into every equation. Each is the number itself in the
+arithmetic, and arithmetic on one returns a plain `float`, so a quantity
+derived from a flow - a tissue's share of cardiac output, the litres per
+second the equations read - carries no proof it was never given. Checked by
+hand at each way in, the three were checked by every compartment and by no
+settings record, and a `RunDefinition` built from one ran a cardiac output of
+1000 L/min (`PL-HSFV`); a record whose fields take the types cannot be built
+holding one. `mypy` reads `src/` and not `tests/`, and passes a value typed
+`Any`, so each place a flow is *stored* - a compartment's constructor and
+setter, and `UptakeEquationSettings` - calls `require_fresh_gas_flow`,
+`require_alveolar_ventilation` or `require_cardiac_output` first, which refuse
+a bare `float` as the programming error it is; the layers that forward a flow,
+`AgentUptakeSystem` and `app/controller.py`, take the type and check nothing.
 
 **Fresh gas flow has a second bound of the same shape, and it is not here**
 (`PL-8PS6`). What a *machine* can deliver - its flowmeters, its minimum-flow
@@ -95,6 +119,8 @@ re-derivation of the displayed resolution or of the supported simulation step.
 Those two used to hang off the splitting coefficient measured here, and that
 chain is cut: neither is derived from anything measured over this envelope.
 """
+
+from __future__ import annotations
 
 import sys
 from math import floor, isfinite
@@ -262,6 +288,156 @@ def require_supported_cardiac_output(cardiac_output_l_min: float) -> None:
         MINIMUM_CARDIAC_OUTPUT_L_MIN,
         MAXIMUM_CARDIAC_OUTPUT_L_MIN,
     )
+
+
+class FreshGasFlow(float):
+    """A fresh gas flow in L/min, checked against the supported range when built.
+
+    It compares and computes as the `float` it was built from. A product or
+    quotient of it is a plain `float`: the litres per second the circuit
+    balance reads, or the circuit's wash-in time constant, is not a flow and
+    is not presented as a checked one. The machine's own bound on this
+    control is not checked here, since it is the device's and not the
+    model's; `BreathingCircuit` checks it where the flow is set (`PL-8PS6`).
+
+    Raises:
+        SimulationConfigurationError: the flow is not finite, or is outside
+            `MINIMUM_FRESH_GAS_FLOW_L_MIN` to `MAXIMUM_FRESH_GAS_FLOW_L_MIN`,
+            the model's envelope (`docs/MODEL.md`, "Supported input ranges").
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, fresh_gas_flow_l_min: float) -> FreshGasFlow:
+        require_supported_fresh_gas_flow(fresh_gas_flow_l_min)
+
+        return super().__new__(cls, fresh_gas_flow_l_min)
+
+
+class AlveolarVentilation(float):
+    """An alveolar ventilation in L/min, checked against the supported range when built.
+
+    It compares and computes as the `float` it was built from, and a product
+    or quotient of it is a plain `float`, as `FreshGasFlow` says.
+
+    Raises:
+        SimulationConfigurationError: the ventilation is not finite, or is
+            outside `MINIMUM_ALVEOLAR_VENTILATION_L_MIN` to
+            `MAXIMUM_ALVEOLAR_VENTILATION_L_MIN`, the model's envelope
+            (`docs/MODEL.md`, "Supported input ranges").
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, alveolar_ventilation_l_min: float) -> AlveolarVentilation:
+        require_supported_alveolar_ventilation(alveolar_ventilation_l_min)
+
+        return super().__new__(cls, alveolar_ventilation_l_min)
+
+
+class CardiacOutput(float):
+    """A cardiac output in L/min, checked against the supported range when built.
+
+    It compares and computes as the `float` it was built from. Every tissue's
+    blood flow is a perfusion fraction of it and the venous pool's is all of
+    it, and each of those is a plain `float` that no supported-range guard
+    bounds: a tissue cannot receive more than a checked cardiac output, and
+    `UptakeEquationSettings` holds the three to summing to it.
+
+    Raises:
+        SimulationConfigurationError: the output is not finite, or is outside
+            `MINIMUM_CARDIAC_OUTPUT_L_MIN` to `MAXIMUM_CARDIAC_OUTPUT_L_MIN`,
+            the model's envelope (`docs/MODEL.md`, "Supported input ranges").
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, cardiac_output_l_min: float) -> CardiacOutput:
+        require_supported_cardiac_output(cardiac_output_l_min)
+
+        return super().__new__(cls, cardiac_output_l_min)
+
+
+def _require_built(name: str, value: object, flow_type: type[float]) -> None:
+    """Refuse a flow that was not built as `flow_type`, naming what to do instead.
+
+    One message for the three flows, as `_require_supported` is one message
+    for their ranges: the refusal names the parameter, the value and the
+    type it has, the type it should have been built as, and where the range
+    it would then be checked against is argued. A value built as one of the
+    other two flow types is named as that and not told to rebuild, because a
+    fresh gas flow arriving where a cardiac output belongs is a swapped
+    argument, and rebuilding it as a `CardiacOutput` would check and store
+    the wrong quantity under the right type.
+    """
+
+    if isinstance(value, flow_type):
+        return
+
+    if isinstance(value, (FreshGasFlow, AlveolarVentilation, CardiacOutput)):
+        raise TypeError(
+            f"{name} of {value!r} was built as {type(value).__name__}, which is not "
+            f"{flow_type.__name__}: it was set from another flow, so build "
+            f"{flow_type.__name__} from this flow's own value where it is set"
+        )
+
+    raise TypeError(
+        f"{name} of {value!r} was not built as {flow_type.__name__}, it is "
+        f"{type(value).__name__}: build it as {flow_type.__name__}(...) where it is set, "
+        'which checks it against the supported range once (docs/MODEL.md, "Supported input '
+        'ranges")'
+    )
+
+
+def require_fresh_gas_flow(fresh_gas_flow_l_min: object) -> None:
+    """Require a fresh gas flow that was built as a `FreshGasFlow`, and so checked.
+
+    The runtime half of the type, for the callers `mypy` does not read: a
+    test, a notebook, or a value typed `Any`. It checks the type and not the
+    range, which the constructor has already checked, and it runs where a flow
+    is stored - `BreathingCircuit`, built or set, and `UptakeEquationSettings`
+    - rather than at each layer that forwards one, so a bare `float` is
+    refused once, before anything changes.
+
+    Raises:
+        TypeError: `fresh_gas_flow_l_min` is not a `FreshGasFlow` - a bare
+            `float` included, whatever its value. This is a programming error
+            in the caller rather than a rejected setting, so it is not an
+            `AnesthesiaSimulationError` (`core/exceptions.py`).
+    """
+
+    _require_built("fresh_gas_flow_l_min", fresh_gas_flow_l_min, FreshGasFlow)
+
+
+def require_alveolar_ventilation(alveolar_ventilation_l_min: object) -> None:
+    """Require an alveolar ventilation built as an `AlveolarVentilation`, and so checked.
+
+    The runtime half of the type, run where a ventilation is stored -
+    `AlveolarCompartment`, built or set, and `UptakeEquationSettings` - as
+    `require_fresh_gas_flow` explains.
+
+    Raises:
+        TypeError: `alveolar_ventilation_l_min` is not an
+            `AlveolarVentilation` - a bare `float` included, whatever its
+            value.
+    """
+
+    _require_built("alveolar_ventilation_l_min", alveolar_ventilation_l_min, AlveolarVentilation)
+
+
+def require_cardiac_output(cardiac_output_l_min: object) -> None:
+    """Require a cardiac output that was built as a `CardiacOutput`, and so checked.
+
+    The runtime half of the type, run where a cardiac output is stored -
+    `PatientCompartments`, built or set, and `UptakeEquationSettings` - as
+    `require_fresh_gas_flow` explains.
+
+    Raises:
+        TypeError: `cardiac_output_l_min` is not a `CardiacOutput` - a bare
+            `float` included, whatever its value.
+    """
+
+    _require_built("cardiac_output_l_min", cardiac_output_l_min, CardiacOutput)
 
 
 def describe_count(count: int) -> str:

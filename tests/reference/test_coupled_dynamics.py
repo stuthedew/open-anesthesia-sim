@@ -35,6 +35,7 @@ import pytest
 
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # Declared here rather than imported from `core/units.py` and
@@ -769,8 +770,18 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 # `SimulationStep` is the type the system under test takes its step as
 # (`PL-0GJC`). It checks a number against the supported range and solves
 # nothing, so the property holds of it too.
+#
+# `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput` are the types the
+# system under test takes its three flows as (`PL-0YYV`), and the same
+# property holds of each: it checks a number against the supported range and
+# solves nothing. The oracle's own operating points stay plain floats; the
+# types are built only where `_apply_operating_point` hands a point to the
+# shipped system.
 ALLOWED_PACKAGE_IMPORTS = frozenset(
     {
+        "AlveolarVentilation",
+        "CardiacOutput",
+        "FreshGasFlow",
         "load_agent_parameters",
         "load_reference_adult_parameters",
         "load_reference_circle_system_parameters",
@@ -997,9 +1008,9 @@ def _apply_operating_point(system: AgentUptakeSystem, point: OperatingPoint) -> 
     the state does not.
     """
 
-    system.set_fresh_gas_flow(point.fresh_gas_flow_l_min)
-    system.set_alveolar_ventilation(point.alveolar_ventilation_l_min)
-    system.set_cardiac_output(point.cardiac_output_l_min)
+    system.set_fresh_gas_flow(FreshGasFlow(point.fresh_gas_flow_l_min))
+    system.set_alveolar_ventilation(AlveolarVentilation(point.alveolar_ventilation_l_min))
+    system.set_cardiac_output(CardiacOutput(point.cardiac_output_l_min))
     system.set_delivered_concentration_percent(point.delivered_percent)
 
 

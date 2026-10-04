@@ -18,10 +18,17 @@ or the simulator's own error. An `OverflowError`, a `ValueError`, a
 function the two modules define, so a guard added to either is drawn without
 editing this file. A function is behind a guard when it takes a quantity the
 guard bounds: the run's step by its type, `SimulationStep`, wherever the package
-annotates it (`PL-0GJC`), and any other quantity by the name and type the guard
-gives it, on the run's own classes. What is kept by hand is how to build those
-classes at their defaults, `RECEIVERS`, and a function taking the step that this
-cannot call fails the test by name rather than going untested. A function that
+annotates it (`PL-0GJC`), and any other quantity by its name and the type it is
+checked as, on the run's own classes. That type is the guard's own parameter
+type or, where the quantity is built only through the guard as the three flows
+are since `PL-0YYV`, the `float` subclass whose constructor names it. Matching
+a flow by its type anywhere, as the step is matched, would reach the
+compartments' own setters, which `RECEIVERS` cannot build - a compartment
+stepped alone reports an infinite time constant at zero flow - so it waits
+for `PL-51B7`'s last slice to decide. What is kept by hand is how to build
+those classes at their defaults, `RECEIVERS`, and a function taking the step
+that this cannot call fails the test by name rather than going untested. A
+function that
 takes a quantity under another name - `RunDefinition`'s `opened_at_s` - is
 reached only through the ones that use the guard's. A constructor counts where
 it checks or computes - written by hand, or a dataclass's with a
@@ -163,16 +170,39 @@ GUARDS: tuple[Function, ...] = tuple(
 CALLABLES = tuple(_callables())
 
 
+def _built_types() -> dict[str, type]:
+    """The `float` subclass each guarded quantity is built as, by the name its
+    constructor gives it: `FreshGasFlow(fresh_gas_flow_l_min)` names the
+    quantity `require_supported_fresh_gas_flow` bounds (`PL-0YYV`)."""
+
+    return {
+        name: value
+        for module in GUARD_MODULES
+        for value in vars(module).values()
+        if inspect.isclass(value)
+        and issubclass(value, float)
+        and value is not float
+        and value.__module__ == module.__name__
+        for name in _parameters(value.__new__)
+    }
+
+
 def _checked_types() -> dict[str, type]:
     """The type each guarded quantity has once checked: the narrowest any
     guard gives its name, so the run's step is `SimulationStep` although its
-    own guard, which builds that type, takes a `float`."""
+    own guard, which builds that type, takes a `float`; and for a quantity
+    no guard takes as more than a `float`, the type built through its guard,
+    which is how the three flows are found."""
 
     checked: dict[str, type] = {}
+    built = _built_types()
 
     for guard in GUARDS:
         for name, annotation in _parameters(guard).items():
             assert isinstance(annotation, type)
+
+            if name in built and issubclass(built[name], annotation):
+                annotation = built[name]
 
             if name not in checked or issubclass(annotation, checked[name]):
                 checked[name] = annotation
@@ -182,11 +212,24 @@ def _checked_types() -> dict[str, type]:
 
 CHECKED = _checked_types()
 
+# The types a guard itself takes, which the package annotates wherever it
+# passes them: a function is behind such a guard wherever it takes the type.
+# A flow's type is not among them, since its guard takes the `float` it
+# checks, so a flow is found by name on the run's own classes: by type it
+# would reach the compartments' own setters, which `RECEIVERS` cannot build
+# (`PL-51B7`'s last slice decides that).
+TAKEN = frozenset(
+    annotation
+    for guard in GUARDS
+    for annotation in _parameters(guard).values()
+    if isinstance(annotation, type) and annotation.__module__ != "builtins"
+)
+
 
 def _takes(owner: type | None, function: Function, name: str, checked: type) -> bool:
     parameters = _parameters(function)
 
-    if checked.__module__ != "builtins":
+    if checked in TAKEN:
         return checked in parameters.values()
 
     return parameters.get(name) is checked and (owner is None or owner in RECEIVERS)
