@@ -5688,7 +5688,7 @@ named here, for the reason beat 3 gives.
 
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
 
-**Cleared before v0.6.0 begins, the product lane - 56 entries**
+**Cleared before v0.6.0 begins, the product lane - 61 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-0YYV (L) The three flows - fresh gas flow, alveolar ventilation and cardiac output - are bare floats range-checked by hand at each way in, so the way in nobody checked, UptakeEquationSettings, ran a cardiac output of 1000 L/min (PL-HSFV); slice 1 of PL-51B7 gives each a checked type built only through its require_supported_* guard, as SimulationStep is for the step
@@ -5724,8 +5724,11 @@ named here, for the reason beat 3 gives.
 - PL-KK1Q (M) Compare this model's washout over the first 24 h against Yasuda 1991's published five-compartment mean fits, to measure whether the modelled tail runs fast or slow where only the five-minute point is validated today
 - PL-KRZW (M) Decide what the interface does under a dark system appearance, now that every colour it declares is a light-theme value
 - PL-KZR1 (S) RunView's build_* methods are split between returning a stored widget (build_notice, build_off_scale_notice) and constructing a new one on each call (build_sidebar_panels, build_readout_section), with nothing in the names saying which
+- PL-LBQY (M) A bare float written straight onto a non-frozen compartment field (circuit.fresh_gas_flow_l_min = 1000.0) is caught only at the next equation_settings(), so for one tick the snapshot and the readouts carry an unchecked value and SimulationSnapshot's typed fields carry no runtime check of their own; decide whether a __setattr__ guard or frozen compartments moves the check to the write, or record the one-tick window as accepted (found reviewing #1350)
 - PL-LLBV (S) The whole-step guard on a fork instant refuses 35.5% of the one-decimal times a user could type
+- PL-LLMN (S) _require_supported admits -0.0 (shown as -0.0 L/min), True (as 1.0 L/min) and Decimal, and refuses a str with math.isfinite's own TypeError rather than the simulator's wording; none is reachable from the sliders (found reviewing #1350)
 - PL-LPH9 (S) ROADMAP.md's cadence says no interim release is cut partway through clearing a gate, but 159 of Gate 1's 175 frozen entries already shipped in v0.4.x patches, so the sentence a later session would cite to refuse a cut describes nothing this project has done since v0.4.5
+- PL-LTKL (S) The chart hover keeps answering after the pointer leaves the plot: nothing clears the stored pointer position on a Leave event, so the box stays up and every later frame re-answers for a pointer that has gone
 - PL-N67T (S) RunView.build_sidebar_panels constructs fresh panels on every call and reparents the run's live labels into them, so a second call silently strips the accounting and control-change panels out of the sidebar
 - PL-NC62 (S) resumed_at's settings-mismatch refusal blames the control timeline whatever the cause, so a patient or agent mismatch would be misdiagnosed
 - PL-Q7V1 (S) ROADMAP.md's varying-perfusion note ('Also unsupported at rest, one layer down', under planned milestone item 35) reads the stored fat flow as 'that far out' against Heinonen alone, where PL-HBH2 records that Yasuda 1991's washout fits put it at or a little above the stored figure
@@ -5735,6 +5738,7 @@ named here, for the reason beat 3 gives.
 - PL-SM5V (M) A run's settings cannot be recovered from RunSegment.settings: the L/min to L/s conversion does not round-trip for 7 of 101 cardiac outputs
 - PL-SPN6 (S) Three compartments now raise the same 'partial_pressure_fraction must be between 0 and 1', so a refused step no longer says which one refused
 - PL-SQJ1 (M) Playback delivers 73-91% of the rate the dropdown displays: 300x measured at 220x, 1x at 0.9x, so the clock on screen runs slower than its label
+- PL-T4FK (S) docs/MODEL.md line 2350 wraps '+ brain + liver' to the margin, so CommonMark renders it as a bullet reading 'brain + liver is 3,820 of 6,480 ml/min - 59.0%', which gives the kidney + heart + brain + liver sum to two organs (the wrapped-marker shape PL-DSMK fixed in ROADMAP.md)
 - PL-TBMX (S) circuit_volume_l means apparatus plus patient circuit, so a real machine profile storing a published apparatus figure would understate the circuit time constant by about 40%
 - PL-TCR5 (S) The chart hover answers the pointer's previous position and never re-answers a resting pointer while paused, because the direct sigMouseMoved slot reads the position the rate-limited proxy stored one event earlier
 - PL-TDBT (M) docs/pr-bodies holds 187 historical documents that read as current: 21 cited paths no longer exist, 30 cite an unresolvable sha, and 22 angle-bracket placeholders in 15 files vanish in GitHub's own blob view, with doc_check blind to all of it by design
@@ -5745,6 +5749,7 @@ named here, for the reason beat 3 gives.
 - PL-WPDB (S) The frame-cost harness measures a one-run dashboard, but v0.5.0 draws two runs on one chart, so the frame cost the branching milestone will actually pay is unmeasured
 - PL-Y4YX (S) PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
 - PL-YD2V (S) Supported run length and the validation section's caveat 4 bound the slow tail on metabolism and fat flow alone, but the fourth compartment this model lacks is the largest term in Yasuda 1991's measured washouts from about hour 2-3 to hour 21-29, inside the 24 h envelope, and neither passage says so
+- PL-Z0T3 (S) dataclasses.replace() on PatientCompartments rewrites the tissue and venous flows of the original it shares those sub-objects with, because __post_init__ calls _update_blood_flows on them: a running system is left perfusing at the twin's cardiac output while its snapshot reports the old one, until the next step's tissue-sum check halts the run (found reviewing #1350)
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
 
 **Cleared before v0.6.0 begins, the workflow lane - 116 entries**
@@ -5907,6 +5912,19 @@ product lane.
 beside its own answer: the subsection compares an isolated muscle time
 constant with a fitted apparent one. The triage pass that classed it placed it
 in the product lane.
+`PL-LTKL` (`safety`, 2026-10-04) is the chart hover that keeps answering for a
+pointer that has left the plot, a modelled concentration that climbs with the
+run as if it were live. `PL-T4FK` (`science`, 2026-10-04) is `docs/MODEL.md`
+rendering the four-organ share of cardiac output as a bullet about brain and
+liver. The triage pass that classed them placed both in the product lane.
+`PL-LBQY`, `PL-LLMN` and `PL-Z0T3` (`safety`, 2026-10-04) are what the review
+of `#1350` turned up in the flows' checked types and the compartments holding
+them: a bare `float` written onto a flow field, which a Reset can leave
+standing on a paused run with no notice, put as a decision and answered the
+same day for a write guard; minus zero, a
+`bool` and a `Decimal` admitted as flows; and `dataclasses.replace` rewriting
+the original patient's tissue flows. The triage pass that classed them placed
+them in the product lane.
 
 `PL-YVV4` (`planning`, filed 2026-09-13) was let in on 2026-10-03 and sits in
 the workflow lane with `PL-VV6N`, which waits on it. It was in the store at the

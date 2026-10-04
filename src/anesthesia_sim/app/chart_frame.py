@@ -88,6 +88,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, is_wash_in
 from anesthesia_sim.core.concentration import Fraction, Percent, percent_from_fraction
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
+from anesthesia_sim.core.supported_ranges import CaseInstant
 
 __all__ = [
     "CHART_COLUMN_BUDGET_PER_SERIES",
@@ -565,11 +566,11 @@ class RunFrame:
     """
 
     label: str
-    branch_point_s: float | None
+    branch_point_s: CaseInstant | None
     agent_id: str
     agent_display_name: str
     mac_percent: float
-    elapsed_s: float
+    elapsed_s: CaseInstant
     times_s: tuple[float, ...]
     fractions: Mapping[RecordedQuantity, tuple[float, ...]]
     wash_in: tuple[WashInStretch, ...]

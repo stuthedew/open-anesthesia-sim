@@ -174,6 +174,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
     AlveolarVentilation,
     CardiacOutput,
+    CaseInstant,
     FreshGasFlow,
 )
 
@@ -280,19 +281,13 @@ def _standings(
     stopped_at_cap: bool = False,
     run_failed: bool = False,
 ) -> BookmarkStandings:
-    """One run's standings on that set, defaulting to a run that has just opened.
-
-    The cap is the model's own rather than a number written here, so a test
-    that means "not at the cap" cannot come to disagree with the run length
-    `core/supported_ranges.py` supports.
-    """
+    """One run's standings on that set, defaulting to a run that has just opened."""
 
     return marks.standings(
         reached_instants_s=reached_instants_s,
         reached_crossings=reached_crossings,
         opened_at_s=opened_at_s,
         elapsed_s=elapsed_s,
-        run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
         stopped_at_cap=stopped_at_cap,
         run_failed=run_failed,
     )
@@ -1948,7 +1943,7 @@ def _marks() -> BookmarkSet:
 
     return (
         BookmarkSet()
-        .with_time_bookmark(TimeBookmark(600.0, "intubation"))
+        .with_time_bookmark(TimeBookmark(CaseInstant(600.0), "intubation"))
         .with_mac_target(MacTarget(RecordedQuantity.VESSEL_RICH, MacMultiple(0.8), "wash-in"))
     )
 
@@ -1975,7 +1970,7 @@ def test_a_marked_instant_is_listed_at_the_clock_the_run_states() -> None:
 
 
 def test_an_unnamed_instant_is_listed_under_its_own_time() -> None:
-    panel = _panel(BookmarkSet().with_time_bookmark(TimeBookmark(600.0)))
+    panel = _panel(BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600.0))))
 
     assert panel.times.rows == (format_elapsed(600.0),)
 
@@ -2029,8 +2024,8 @@ def test_marks_are_listed_oldest_first() -> None:
     # to and scan, so a row that moves is one they have to find again.
     marks = (
         BookmarkSet()
-        .with_time_bookmark(TimeBookmark(120.0, "first"))
-        .with_time_bookmark(TimeBookmark(600.0, "second"))
+        .with_time_bookmark(TimeBookmark(CaseInstant(120.0), "first"))
+        .with_time_bookmark(TimeBookmark(CaseInstant(600.0), "second"))
     )
 
     rows = bookmark_panel(marks, _one_run(_unreached(marks))).times.rows
@@ -2068,7 +2063,7 @@ def test_a_mark_on_a_failed_run_says_the_run_stopped_rather_than_saying_nothing(
     statement about what the model supports.
     """
 
-    bookmark = TimeBookmark(600.0, "check")
+    bookmark = TimeBookmark(CaseInstant(600.0), "check")
     target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
     said = MARK_STANDING_TEXT[MarkStanding.NOT_REACHED_BEFORE_FAILURE]
 
@@ -2099,7 +2094,7 @@ def test_a_mark_the_clock_has_gone_past_is_worded_apart_from_one_the_run_halted_
     perfectly reachable.
     """
 
-    bookmark = TimeBookmark(600.0)
+    bookmark = TimeBookmark(CaseInstant(600.0))
     target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
 
     passed = format_time_bookmark(bookmark, MarkStanding.PASSED)
@@ -2115,7 +2110,7 @@ def test_the_two_unreachable_outcomes_are_worded_apart() -> None:
     # a bookmark standing before this branch's fork might arrive if they kept
     # running. `CLAUDE.md`'s safety-critical standard is what rules that out:
     # the model can decide it outright, so a row must not imply otherwise.
-    bookmark = TimeBookmark(600.0)
+    bookmark = TimeBookmark(CaseInstant(600.0))
     at_the_cap = format_time_bookmark(bookmark, MarkStanding.NOT_REACHED_WITHIN_CAP)
     inherited = format_time_bookmark(bookmark, MarkStanding.BEFORE_THIS_BRANCH)
 
@@ -2126,7 +2121,7 @@ def test_the_two_unreachable_outcomes_are_worded_apart() -> None:
 
 def test_the_panel_reads_the_marks_the_snapshot_carries() -> None:
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(600.0, "intubation"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "intubation"))
 
     panel = bookmark_panel(
         controller.snapshot().bookmarks, _one_run(controller.snapshot().bookmark_standings)
@@ -2148,7 +2143,7 @@ def test_two_runs_that_answer_a_mark_alike_state_it_once_and_name_no_run() -> No
     quiet on.
     """
 
-    marks = BookmarkSet().with_time_bookmark(TimeBookmark(30.0, "check"))
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
     passed = _standings(marks, elapsed_s=120.0)
 
     (row,) = bookmark_panel(marks, _two_runs(passed, passed)).times.rows
@@ -2215,7 +2210,7 @@ def test_a_bookmark_the_branch_opened_after_is_not_drawn_as_the_trunk_left_it() 
     the wrong run being the wrong standing.
     """
 
-    marks = BookmarkSet().with_time_bookmark(TimeBookmark(30.0, "check"))
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
     trunk = _standings(marks, elapsed_s=60.0)
     branch = _standings(marks, opened_at_s=60.0, elapsed_s=60.0)
 
@@ -2237,7 +2232,7 @@ def test_the_inherited_standing_can_reach_a_drawn_row() -> None:
     this asserts the word itself rather than only the row that carries it.
     """
 
-    marks = BookmarkSet().with_time_bookmark(TimeBookmark(30.0))
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30.0)))
     trunk = _standings(marks, elapsed_s=60.0)
     branch = _standings(marks, opened_at_s=60.0, elapsed_s=60.0)
 
@@ -2398,7 +2393,9 @@ def test_fork_offer_offers_the_halt_fork_while_the_trunk_stands_on_a_crossing() 
     run clock.
     """
 
-    halt = BookmarkCrossing(45.0, (TimeBookmark(45.0, "the decision point"),))
+    halt = BookmarkCrossing(
+        CaseInstant(45.0), (TimeBookmark(CaseInstant(45.0), "the decision point"),)
+    )
 
     offer = fork_offer((0.0, 60.0), comparing=False, halt=halt)
 
@@ -2426,7 +2423,7 @@ def test_the_halt_fork_is_labelled_with_the_instant_it_forks_at_not_the_marked_o
 
     marked_s = 45.3
     halted_s = 45.4
-    halt = BookmarkCrossing(halted_s, (TimeBookmark(marked_s),))
+    halt = BookmarkCrossing(CaseInstant(halted_s), (TimeBookmark(CaseInstant(marked_s)),))
 
     label = fork_offer((0.0,), comparing=False, halt=halt).halt_label
 
@@ -2443,8 +2440,8 @@ def test_a_marked_height_offers_the_halt_fork_in_the_same_words() -> None:
     """
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8))
-    height = BookmarkCrossing(72.0, (), (target,))
-    both = BookmarkCrossing(72.0, (TimeBookmark(72.0),), (target,))
+    height = BookmarkCrossing(CaseInstant(72.0), (), (target,))
+    both = BookmarkCrossing(CaseInstant(72.0), (TimeBookmark(CaseInstant(72.0)),), (target,))
     expected = HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(72.0))
 
     assert fork_offer((0.0,), comparing=False, halt=height).halt_label == expected
@@ -2461,7 +2458,7 @@ def test_the_halt_fork_is_refused_with_the_rest_while_a_comparison_is_shown() ->
     interface that prevents the error to the one that reports it.
     """
 
-    halt = BookmarkCrossing(45.0, (TimeBookmark(45.0),))
+    halt = BookmarkCrossing(CaseInstant(45.0), (TimeBookmark(CaseInstant(45.0)),))
 
     offer = fork_offer((0.0, 60.0), comparing=True, halt=halt)
 
