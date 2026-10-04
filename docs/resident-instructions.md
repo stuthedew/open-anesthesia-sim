@@ -198,6 +198,11 @@ failure added. Its code-and-provenance half stayed path-scoped in
 `.claude/rules/sources-and-docstrings.md`, because the Gas Man rule and the
 docstring obligations both fire with a file already open. Cost: +4721
 characters, the largest single addition this file records (`PL-WWDT`).
+`PL-M7QH` added one principle to its list, parse, don't validate, at +508
+characters with nothing cut: the nearest line, favoring interfaces that prevent
+errors, is about what a user is shown, and stays. Its pattern went to
+`.claude/rules/core-domain.md` on the same split, because it fires with a
+`core/` file already open.
 
 *Extended 2026-09-16, +1420 characters (`PL-GDB0`, project owner).* § "Say
 what would falsify it, then record the instance rather than the rule": before
