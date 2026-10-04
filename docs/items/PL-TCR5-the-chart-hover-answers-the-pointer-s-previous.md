@@ -46,3 +46,11 @@ off carefully rather than watching the trend.
 position and refreshes the hover, the direct `sigMouseMoved` connection is gone,
 and a headless test moves the pointer once and asserts the readout names the
 point under it - including with the run paused, where no `draw()` follows.
+
+**Confirmed 2026-10-04, before the claim**, on the shipped dashboard under the
+`offscreen` platform, sevoflurane five minutes in. `QTest.mouseMove` onto the
+alveolar point at 100 s and `QTest.qWait(60)`: `hover_text()` was `None`. A
+second move, to the point at 200 s, and the same wait: the hover read
+`Modelled sevoflurane · 1m39.9s`, the first position. Taken with `PL-J0F7` on
+one branch and first, because that item's test drives the real pointer to the
+plot's edges and cannot pass while the hover answers the previous event.
