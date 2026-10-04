@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-27
 payoff: make check passes in a desktop worktree, and in the main checkout beside one, exactly as it does on CI
 verify: grep -q 'def test_a_checkout_inside_a_claude_directory' tests/unit/test_fixture_id_check.py
+recurrences: 2026-10-04 PL-WG6S withdrawn 2026-10-04 PL-R417
 ---
 
 **Problem.** tools/fixture_id_check.py asks whether a file is under .claude/ of its absolute path, so in a checkout under .claude/worktrees/ it reads ROADMAP.md, docs/ and the item store as .claude text and make check fails on 112 ids that are not errors

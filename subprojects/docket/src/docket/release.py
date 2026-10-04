@@ -22,6 +22,7 @@ is *for*; a milestone says which release it left in.
 from __future__ import annotations
 
 import re
+import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -34,6 +35,10 @@ from .store import ID_PATTERN
 if TYPE_CHECKING:  # `roadmap` reads this module's version grammar, so the
     from .roadmap import ReservedVersion, UnreadEntry, Wave  # runtime import would close the cycle.
 
+#: The line a bump rewrites, and only that: what a project file declares is
+#: `version_in`'s to read, as TOML. `prepare_bump` reads its write back
+#: through `version_in`, so a declaration this cannot reach is refused there
+#: rather than a different line rewritten (`PL-3DD9`).
 VERSION_RE = re.compile(r'^(version\s*=\s*")([^"]+)(")', re.M)
 SEMVER_RE = re.compile(rf"^v?{SEMVER_PATTERN}$")
 
@@ -371,9 +376,27 @@ def version_in(text: str) -> str:
     Separated from `read_version` because the same grammar has to answer for a
     file on disk and for the same file read out of another ref, and two
     spellings of one question are two answers waiting to disagree.
+
+    **Read as TOML, never as a line** (`PL-3DD9`). A one-line pattern took the
+    first `version = "..."` line for the declaration, so a value TOML carries
+    across lines - a multi-line string, whose value is the one-line form's once
+    TOML trims the newline after its opening quotes - read as no version at
+    all, and `tools/tag_release.py` declined for a reason that was not true.
+    The key is `[project]`'s, where PEP 621 puts it, then a top-level one,
+    which is what a project file outside Python's packaging spells and what
+    this package's own fixtures write. A value that is not a string declares
+    no version.
+
+    Raises `tomllib.TOMLDecodeError`, a `ValueError`, where the text is not
+    TOML: a file nothing can read is not a file that declares no version, and
+    each caller reading another ref's copy says which of the two it met.
     """
-    match = VERSION_RE.search(text)
-    return match.group(2) if match else ""
+    data = tomllib.loads(text)
+    project = data.get("project")
+    declared = project.get("version") if isinstance(project, dict) else None
+    if declared is None:
+        declared = data.get("version")
+    return declared if isinstance(declared, str) else ""
 
 
 def read_version(pyproject: Path) -> str:
@@ -382,7 +405,8 @@ def read_version(pyproject: Path) -> str:
     A missing or version-less file is a legitimate state - a store consulted
     on its own, or a project that does not version - so it reports nothing
     rather than raising. Bumping is the operation that requires a version to
-    exist, and that one still fails loudly.
+    exist, and that one still fails loudly. A file that is not TOML is neither,
+    and raises as `version_in` does.
     """
     if not pyproject.is_file():
         return ""
@@ -475,7 +499,8 @@ class PreparedBump:
     claiming items it had not stamped.
 
     Separating the proof from the write removes the choice. Everything the
-    bump can reject - an absent file, a file carrying no version field - is
+    bump can reject - an absent file, a file that is not TOML, a file carrying
+    no version field, a declaration the one-line write does not reach - is
     settled here, before the first stamp is written, and what survives is a
     path and the text to put at it.
     """
@@ -497,19 +522,31 @@ def prepare_bump(pyproject: Path, version: str) -> PreparedBump:
     from package metadata has nothing else to update; a second hard-coded
     copy somewhere else is a second thing to forget.
 
-    Raises on a file that is absent or carries no version field. `read_version`
-    tolerates both, because a store may be consulted away from any project;
-    bumping is the operation that requires a version to exist.
+    Raises on a file that is absent, is not TOML or carries no version field.
+    `read_version` tolerates the first and the last, because a store may be
+    consulted away from any project; bumping is the operation that requires a
+    version to exist.
+
+    **And on a bump its one line cannot make** (`PL-3DD9`). The declaration is
+    read as TOML and the write is one line's substitution, so the two can
+    disagree: the version may sit in a multi-line string the line does not
+    match, or under `[project]` after another table's `version = "..."` line,
+    which the substitution would have rewritten instead. The bumped text is
+    read back, and a file whose declared version did not become `version` is
+    refused naming why, before anything is stamped.
     """
     text = pyproject.read_text(encoding="utf-8")
-    match = VERSION_RE.search(text)
-    if match is None:
+    previous = version_in(text)
+    if not previous:
         raise ValueError(f"{pyproject}: no version field to bump")
-    return PreparedBump(
-        path=pyproject,
-        previous=match.group(2),
-        text=VERSION_RE.sub(rf"\g<1>{version}\g<3>", text, count=1),
-    )
+    bumped = VERSION_RE.sub(rf"\g<1>{version}\g<3>", text, count=1)
+    if version_in(bumped) != version:
+        raise ValueError(
+            f"{pyproject}: declares version {previous}, but not on its first"
+            ' `version = "..."` line, which is the one line a bump rewrites;'
+            " write the declaration on that line to bump it"
+        )
+    return PreparedBump(path=pyproject, previous=previous, text=bumped)
 
 
 def release_notes(milestone: Milestone, today: date) -> str:

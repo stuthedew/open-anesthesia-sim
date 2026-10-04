@@ -26,8 +26,10 @@ import required_checks_check as rcc
 import rules_paths_check
 from docket import checks as docket_checks
 from docket.instructions import parse as dated_assertions
-from docket.release import unreferenced
+from docket.model import with_front_matter_field
+from docket.release import prepare_bump, unreferenced, version_in
 from docket.roadmap import LAZY_ENTRY
+from docket.verify import is_suppression_statement, read_logical_lines, sanctioned_queue_edit
 
 ARCHITECTURE = """# Architecture overview
 
@@ -6468,6 +6470,41 @@ def _passage_of(body: str) -> str:
     return body[start:end]
 
 
+#: An item whose `recurrences:` value wraps onto an indented line.
+WRAPPED_RECURRENCES = (
+    "---\nid: PL-B2B2\ntitle: The other\nstatus: ready\n"
+    "recurrences: 2026-09-01 PL-B1B1, 2026-09-02 PL-BBBB,\n  2026-09-03 PL-CCCC\n---\n\nBody.\n"
+)
+
+
+def _queue_edit(tmp_path: Path, edit: Callable[[str], str]) -> str:
+    """How the queue-edit audit classifies `edit`, made to an item whose recurrences wrap."""
+    root = tmp_path / "queue"
+    item = root / "docs" / "items" / "PL-B2B2-the-other.md"
+    item.parent.mkdir(parents=True)
+    item.write_text(WRAPPED_RECURRENCES, encoding="utf-8")
+    _git_init(root)
+    item.write_text(edit(WRAPPED_RECURRENCES), encoding="utf-8")
+    _git(root, "commit", "-qam", "PL-K7QX capture a finding")
+    return sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), "docs/items/PL-B2B2-the-other.md")
+
+
+def _suppressions(source: str) -> list[str]:
+    """The logical lines of `source` that the suppression check reads as suppressions."""
+    return [line.shown for line in read_logical_lines(source) if is_suppression_statement(line)]
+
+
+def _bump_refusal(tmp_path: Path) -> str:
+    """What `prepare_bump` says of a version TOML continues across lines, or "" if it bumps."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text('[project]\nversion = """\n0.5.22"""\n', encoding="utf-8")
+    try:
+        prepare_bump(pyproject, "0.5.23")
+    except ValueError as error:
+        return str(error).removeprefix(f"{tmp_path}/")
+    return ""
+
+
 #: Each reader, a statement its format carries across a line break,
 #: and what the reader must make of it: the statement read whole, or refused by
 #: name. Keyed by reader, so a failure names the one that read a fragment.
@@ -6857,6 +6894,58 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             'README.md:3: `docs/MODEL.md`\'s "Known limitations" names a section; write it as '
             '`docs/MODEL.md` § "Known limitations"'
         ],
+    ),
+    # The queue-edit audit (`PL-J503`): `docket new` appends at the end of the
+    # last line the reader folds into `recurrences:`, an indented one where the
+    # value wraps, and a line carrying no key is no `recurrences:` line.
+    "queue edit, an append onto a value continued on an indented line": (
+        lambda tmp_path: _queue_edit(
+            tmp_path,
+            lambda text: with_front_matter_field(
+                text, "recurrences", "2026-10-04 PL-DDDD", append=True
+            ),
+        ),
+        "recurrence",
+    ),
+    "queue edit, an entry rewritten on the continuation line is no append": (
+        lambda tmp_path: _queue_edit(
+            tmp_path,
+            lambda text: text.replace(
+                "2026-09-03 PL-CCCC", "2026-09-03 PL-ZZZZ, 2026-10-04 PL-DDDD"
+            ),
+        ),
+        "",
+    ),
+    # The suppression check (`PL-CFWP`): a marker is written in a statement,
+    # which Python continues after a backslash and inside brackets.
+    "suppressions, a mark split by a backslash": (
+        lambda _: _suppressions("@pytest.mark.\\\n    skip(reason='flaky')\ndef test_a(): ...\n"),
+        ["@pytest.mark.\\ skip(reason='flaky')"],
+    ),
+    "suppressions, a mark split inside brackets": (
+        lambda _: _suppressions("@(pytest.mark\n  .skip(reason='flaky'))\ndef test_a(): ...\n"),
+        ["@(pytest.mark .skip(reason='flaky'))"],
+    ),
+    "suppressions, a mark inside a string continued across lines is none": (
+        lambda _: _suppressions('NOTE = """\n@pytest.mark.skip\n"""\n'),
+        [],
+    ),
+    # From 3.12 the tokenizer hands an f-string over in parts, its fields' code
+    # among them; blanked whole, it reads as 3.11's one string does.
+    "suppressions, a field of a formatted string continued across lines is none": (
+        lambda _: _suppressions('NOTE = f"""\n{pytest.mark.skip}\n"""\n'),
+        [],
+    ),
+    # The version reader (`PL-3DD9`): TOML carries a string across lines, and a
+    # bump its one-line substitution cannot make is refused by name.
+    "project version, a multi-line string": (
+        lambda _: version_in('[project]\nname = "x"\nversion = """\n0.5.22"""\n'),
+        "0.5.22",
+    ),
+    "project version, a bump the version line cannot make is refused by name": (
+        _bump_refusal,
+        'pyproject.toml: declares version 0.5.22, but not on its first `version = "..."` line, '
+        "which is the one line a bump rewrites; write the declaration on that line to bump it",
     ),
 }
 

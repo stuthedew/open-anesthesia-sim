@@ -34,6 +34,7 @@ from docket.release import (
     suggest_version,
     unreferenced,
     unreferenced_by_version,
+    version_in,
     version_key,
 )
 from docket.roadmap import CLEAR, IMPLEMENT, LAZY_ENTRY, RELEASE, SCOPE, UnreadEntry, Wave, wave
@@ -304,6 +305,49 @@ def test_bumping_a_missing_version_still_fails_loudly(tmp_path: Path) -> None:
         prepare_bump(target, "0.3.0")
     with pytest.raises(OSError):
         prepare_bump(tmp_path / "absent.toml", "0.3.0")
+
+
+def test_a_version_toml_carries_across_lines_is_read_whole() -> None:
+    """A multi-line string is one value to TOML, and the version reads through it.
+
+    A one-line pattern read it as no version at all, so `tag_release` declined
+    saying the file declared none (`PL-3DD9`). The second shape is the one the
+    pattern read wrongly rather than not at all: another table's `version` line
+    first, which is not the project's.
+    """
+    assert version_in('[project]\nname = "x"\nversion = """\n0.5.22"""\n') == "0.5.22"
+    assert version_in('[tool.x]\nversion = "9"\n[project]\nversion = "0.5.22"\n') == "0.5.22"
+    assert version_in('version = "0.2.5"\n') == "0.2.5"
+
+
+def test_a_file_that_is_not_toml_is_not_one_declaring_no_version() -> None:
+    """Unreadable and version-less are two answers, so the first raises (`PL-3DD9`)."""
+    with pytest.raises(ValueError):
+        version_in('version = "0.5.22\n')
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '[project]\nversion = """\n0.5.22"""\n',
+        '[tool.x]\nversion = "9"\n[project]\nversion = "0.5.22"\n',
+        "[project]\nversion = '0.5.22'\n",
+    ],
+    ids=["multi-line string", "another table's line first", "literal string"],
+)
+def test_a_bump_its_one_line_cannot_make_is_refused(tmp_path: Path, text: str) -> None:
+    """The read is TOML and the write is one line, so the bump reads itself back.
+
+    Each shape is one the substitution cannot reach, or reaches on the wrong
+    line: the second rewrote `[tool.x]`'s version and left the project's where
+    it was (`PL-3DD9`). Refused before anything is written.
+    """
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="not on its first"):
+        prepare_bump(pyproject, "0.5.23")
+    assert pyproject.read_text(encoding="utf-8") == text
 
 
 def test_a_shipped_version_with_no_tag_is_reported() -> None:
