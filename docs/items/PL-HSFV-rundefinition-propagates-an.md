@@ -63,24 +63,36 @@ joins that gate's frozen list under the exception that admits a `safety`
 finding whenever it is made, as `PL-5291` did; `ROADMAP.md` records it in the
 product lane.
 
+**Recommended fix, 2026-10-04: slice 1 of `PL-51B7`, not a check of its
+own.** **Recommendation:** close this with `PL-51B7`'s first slice. That slice
+types `UptakeEquationSettings`'s three flow fields, so a record holding an
+out-of-range flow cannot be built. The narrow alternative, recommended when
+this was filed, was a range check added to the record's `__post_init__`. It
+is withdrawn, because the typed fields would delete it, and this project does
+the durable fix once rather than the cheap one twice. Until the slice lands,
+the gap stands. The application never builds a run this way, since its flows
+come through the compartments' checked setters, but a notebook or a test can,
+and it gets finite, plausible numbers from outside the range the model is
+claimed over.
+
 **Rebuilding as `PL-51B7`'s slice 1, 2026-10-04** (project owner, 2026-10-04,
 over the range check in `__post_init__` this branch built first). Pull request
 1342 carried that check, with its tests, as `c48a99be`, and the commit
 withdrawing it reverts it whole; `PL-51B7`'s brief holds the slice's design and
 call-site count. Next, in order:
 
-1. Once `#1341` merges, bring `main` in. It appends to this file: keep both.
-2. Claim `PL-51B7`, read its brief, and re-size this item's `effort` to the
-   slice's.
-3. Build slice 1 on this branch.
-4. Carry `c48a99be`'s tests over in the slice's form:
+1. Claim `PL-51B7`, read its brief, and re-size this item's `effort` to the
+   slice's. `#1341` has merged and is brought in here, with its section above
+   kept beside this one.
+2. Build slice 1 on this branch.
+3. Carry `c48a99be`'s tests over in the slice's form:
    `test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges`
    and `test_rejects_a_flow_outside_its_supported_range`, the two names this
    item's `verify:` greps for, and
    `test_rejects_tissue_flows_that_do_not_sum_to_cardiac_output`'s mismatch
    moved inside the supported range, since 1.5 times 7.8 L/min is past it.
    `git show c48a99be` has all three.
-5. Revise `docs/MODEL.md` § "Supported input ranges" for where each range is
+4. Revise `docs/MODEL.md` § "Supported input ranges" for where each range is
    then enforced. `c48a99be` added a paragraph there for the narrow check, and
    it went with the revert.
-6. Close this item with the slice, and retitle 1342 to lead with both ids.
+5. Close this item with the slice, and retitle 1342 to lead with both ids.
