@@ -121,6 +121,7 @@ from anesthesia_sim.app.theme import (
     ACCOUNTING_STATUS_SIZE,
     AGENT_COLOR_SCHEMES,
     AGENT_SELECTOR_WIDTH,
+    CONTROL_TIMELINE_ROW_SPACING,
     INK,
     METRIC_QUALIFIER_SIZE,
     MUTED,
@@ -1175,7 +1176,7 @@ class RunView(QWidget):
         timeline_column.setContentsMargins(
             PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING
         )
-        timeline_column.setSpacing(4)
+        timeline_column.setSpacing(CONTROL_TIMELINE_ROW_SPACING)
         timeline_column.addWidget(self._control_timeline_heading_text)
         timeline_column.addWidget(
             styled_label(

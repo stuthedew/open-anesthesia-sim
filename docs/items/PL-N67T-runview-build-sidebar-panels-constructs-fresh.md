@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: sidebar-panel-rebuild
-touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py, docs/items/PL-KZR1-runview-s-build-methods-are-split-between.md
+touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py, docs/items/PL-KZR1-runview-s-build-methods-are-split-between.md, src/anesthesia_sim/app/theme.py, tools/literal_home_check.py
 added: 2026-09-21
 closed: 2026-10-04
 pr: 1336
@@ -64,6 +64,12 @@ column before the call and after it, and the two panels handed back to being
 the two placed. On the old method it failed at the first label, "a second call
 took a run label off screen"; on the new one it passes. Two test docstrings
 that described the old method in the present tense now use the past.
+
+Moving the layout code took its bare `4`, the control-change panel's row
+spacing, into a scope `tools/literal_home_check.py` had no baseline entry for,
+and that baseline only shrinks. So the spacing is named instead,
+`CONTROL_TIMELINE_ROW_SPACING` in `app/theme.py`, and the stale entry is
+deleted: 43 bare literals now, from 44. Both files are declared in `touches`.
 
 **What measuring added (2026-10-04, against a shown `SimulationView` over one
 run).** A second call whose result was dropped did more than strip the labels.
