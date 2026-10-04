@@ -109,8 +109,8 @@ either answer, so it is built while this is open.
 `supported_ranges.py` needs the type and `uptake_system.py` already imports it.
 The 10 parameters and 2 fields take a `SimulationStep`; the four run entries
 call `require_simulation_step`, which raises `TypeError` for anything else;
-`app/dashboard_frame.py`'s shipped step is built as one; 74 test call sites
-build the step at the call, so each refusal test there now meets the
+`app/dashboard_frame.py`'s shipped step is built as one; 124 places in 20
+existing test files build the step, so each refusal test there now meets the
 constructor's refusal with the same message; and
 `tests/unit/test_simulation_step.py` pins the type and the four entries. One
 test was passing for the wrong reason once the check landed - it injects a
