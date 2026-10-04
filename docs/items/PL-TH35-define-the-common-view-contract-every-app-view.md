@@ -224,3 +224,10 @@ ratified, over the alternative each names). The one decision the owner
 specified otherwise is `PL-WV9K` Q4: layouts are saved by an explicit "Save
 as default" action in the layout menu, not automatically; `PL-WV9K`
 § "Answers 2026-09-27" carries that design. Q4's "next save" is that explicit save.
+
+**For the contract's names, from `PL-KZR1` (2026-10-04).** `RunView`'s eight
+`build_*` methods each hand back a widget the run laid out once, the same
+one on every call, so placing it again moves it. In Qt's idiom a `build_`
+or `create_` name reads as a factory whose caller gets a new object to own.
+The contract should name what a view hands an area for what it is; `PL-KZR1`
+kept the prefix only so it is not renamed twice.
