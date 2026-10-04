@@ -20,6 +20,8 @@ from typing import Any
 
 import doc_check
 import pytest
+import required_checks_check as rcc
+import rules_paths_check
 
 ARCHITECTURE = """# Architecture overview
 
@@ -2891,6 +2893,75 @@ def test_a_quote_that_never_closes_is_declined_rather_than_read(tmp_path: Path) 
         and "were not resolved" in message
         for message in report.declined
     ), report.declined
+
+
+# PL-6P6H: a folded `run: >` block was read as a literal one, so a command YAML
+# folds onto one line was read as several. Declined by name now (`PL-R417`).
+
+
+def test_workflow_commands_reads_a_folded_block_as_a_step_it_declines(tmp_path: Path) -> None:
+    """The brief's reproduction: YAML hands bash `python3 tools/harness/gone.py --flag`.
+
+    Read a line at a time it was two commands, the flag one of its own, and
+    nothing said the block was misread. The step is declined by name, and the
+    step after it is still read.
+    """
+    body = WORKFLOW.replace(
+        "      - run: bin/runner check\n",
+        "      - run: >\n"
+        "          python3 tools/harness/gone.py\n"
+        "          --flag\n"
+        "      - run: tools/harness/gone.py\n",
+    )
+    report = doc_check.Report()
+
+    doc_check.check_workflow_paths(_with_workflow(_repo(tmp_path), body=body), report)
+
+    assert report.declined == [
+        ".github/workflows/quality.yml:11: this `run:` step is a folded block (`>`), whose "
+        "lines YAML joins into one before bash reads them, and this reader does not; write "
+        "it as a literal block (`|`), so the paths it runs were not resolved"
+    ]
+    assert report.errors == [
+        ".github/workflows/quality.yml:14: runs `tools/harness/gone.py`, which does not exist"
+    ]
+
+
+def test_a_comment_after_a_plain_step_carries_nothing_on() -> None:
+    """A comment line is no continuation (YAML 1.2.2 § 6.6), so the step is read, not declined."""
+    unread: list[doc_check.UnreadStatement] = []
+
+    commands = list(doc_check.workflow_commands("      - run: bin/x\n          # why\n", unread))
+
+    assert (commands, unread) == ([("bin/x", 1)], [])
+
+
+def test_a_declined_step_leaves_the_coverage_gate_uncompared(tmp_path: Path) -> None:
+    """The coverage run may be the step CI's side could not read, so no difference is a fact.
+
+    YAML folds this step into the Makefile's own command. Read a line at a
+    time, its flag was a command of its own, and the gates read as differing.
+    """
+    root = _repo(tmp_path)
+    (root / "Makefile").write_text(
+        ".PHONY: check\ncheck:\n\tuv run pytest --cov-fail-under=100\n", encoding="utf-8"
+    )
+    _with_workflow(
+        root,
+        "name: quality\n\non: [push, pull_request]\n\njobs:\n  checks:\n"
+        "    runs-on: ubuntu-latest\n    steps:\n"
+        "      - run: >\n          uv run pytest\n          --cov-fail-under=100\n",
+    )
+    report = doc_check.Report()
+
+    doc_check.check_coverage_gate(root, report)
+
+    assert report.errors == []
+    assert report.declined == [
+        ".github/workflows/quality.yml:9: this `run:` step is a folded block (`>`), whose "
+        "lines YAML joins into one before bash reads them, and this reader does not; write "
+        "it as a literal block (`|`), so the coverage gate was not compared"
+    ]
 
 
 def test_a_repository_with_no_workflows_is_left_alone(tmp_path: Path) -> None:
@@ -6297,6 +6368,25 @@ def _ruff_errors(tmp_path: Path, check: str) -> list[str]:
     return [error for error in _errors(_ruffed(_repo(tmp_path), check=check)) if "ruff" in error]
 
 
+def _run_step(step: str) -> tuple[list[tuple[str, int]], list[tuple[int, str]]]:
+    """The commands `workflow_commands` reads from a step, and each step it declines, by form."""
+    unread: list[doc_check.UnreadStatement] = []
+    commands = list(doc_check.workflow_commands(step, unread))
+    return commands, [(declined.line, declined.why.partition(",")[0]) for declined in unread]
+
+
+def _refused(read: Callable[[], object]) -> object:
+    """A reader's answer, or the form it names in declining to give one."""
+    try:
+        return read()
+    except (doc_check.UnreadStatement, rules_paths_check.Unreadable, rcc.Undecidable) as unread:
+        return f"declined: {str(unread).partition(',')[0]}"
+
+
+#: A rule's front matter whose description is a literal block holding `---`.
+INDENTED_RULE = '---\ndescription: |\n  ---\n  more\npaths:\n  - "/src/**"\n---\nbody\n'
+
+
 TEX_ERROR = (
     "docs/NOTE.md:2 writes math as `{}`, which GitHub does not render; use `$`...`$` inline "
     "or a `$$` fence for a block"
@@ -6306,7 +6396,7 @@ SPLIT_MARKER_ERROR = (
     "this one was read as nothing - write it on one line"
 )
 
-#: Each Markdown reader, a statement its format carries across a line break,
+#: Each reader, a statement its format carries across a line break,
 #: and what the reader must make of it: the statement read whole, or refused by
 #: name. Keyed by reader, so a failure names the one that read a fragment.
 CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
@@ -6457,6 +6547,69 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "make mentions, `make` continued in a shell fence": (
         lambda _: list(doc_check._make_mentions("```bash\nmake \\\n  lint\n```\n")),
         [("lint", 2)],
+    ),
+    # YAML (`PL-6P6H`), read through `_run_script`: a literal block is read with
+    # its header and ends where its content does; every form YAML folds or
+    # resolves before bash reads it is refused by name.
+    "workflow commands, a folded block is refused by name": (
+        lambda _: _run_step("      - run: >\n          python3 tools/x.py\n          --flag\n"),
+        ([], [(1, "a folded block (`>`)")]),
+    ),
+    "workflow commands, a plain scalar carried onto the next line is refused by name": (
+        lambda _: _run_step("      - run: python3 tools/x.py\n          --flag\n"),
+        ([], [(1, "a plain scalar carried onto the line after it")]),
+    ),
+    "workflow commands, a value opening on the line after the key is refused by name": (
+        lambda _: _run_step("      - run:\n          echo a\n          echo b\n"),
+        ([], [(1, "a plain scalar opening on the line after it")]),
+    ),
+    "workflow commands, a quoted scalar carried across lines is refused by name": (
+        lambda _: _run_step('      - run: "python3 tools/x.py\n          --flag"\n'),
+        ([], [(1, "a quoted scalar")]),
+    ),
+    "workflow commands, an indentation indicator places the block's content": (
+        lambda _: _run_step("      - run: |2\n            deeper\n          python3 tools/x.py\n"),
+        ([("deeper", 2), ("python3 tools/x.py", 3)], []),
+    ),
+    "workflow commands, a block header carrying a comment": (
+        lambda _: _run_step("      - run: | # why\n          python3 tools/x.py\n"),
+        ([("python3 tools/x.py", 2)], []),
+    ),
+    "workflow commands, a sibling key after a literal block ends it": (
+        lambda _: _run_step("      - run: |\n          python3 tools/x.py\n        shell: bash\n"),
+        ([("python3 tools/x.py", 2)], []),
+    ),
+    "pull request trigger, a flow collection carried past its line is refused by name": (
+        lambda _: _refused(lambda: doc_check._gates_pull_requests("on: [push,\n  pull_request]\n")),
+        "declined: line 1: its `on:` events are a flow collection carried past the key's line",
+    ),
+    "front matter, an indented `---` is a line of the value above it": (
+        lambda _: doc_check.is_path_scoped(INDENTED_RULE),
+        True,
+    ),
+    "rules paths, an indented `---` is a line of the value above it": (
+        lambda _: rules_paths_check.entries(rules_paths_check.frontmatter(INDENTED_RULE) or []),
+        ["/src/**"],
+    ),
+    "rules paths, a comment between two items": (
+        lambda _: rules_paths_check.entries(["paths:", '  - "/a/**"', "  # why", '  - "/b/**"']),
+        ["/a/**", "/b/**"],
+    ),
+    "rules paths, a glob on the line after the key is refused by name": (
+        lambda _: _refused(lambda: rules_paths_check.entries(["paths:", '  "/src/**"'])),
+        'declined: `"/src/**"` under `paths:` is no `- ` item',
+    ),
+    "rules paths, a glob carried onto the line after it is refused by name": (
+        lambda _: _refused(lambda: rules_paths_check.entries(["paths: /src/**", "  /more"])),
+        "declined: `paths:` carries its glob onto the line after it",
+    ),
+    "rules paths, a flow collection is refused by name": (
+        lambda _: _refused(lambda: rules_paths_check.entries(['paths: ["/a/**",', '  "/b/**"]'])),
+        "declined: `paths:` is a flow collection",
+    ),
+    "required checks, a flow collection carried past its line is refused by name": (
+        lambda _: _refused(lambda: rcc._triggers(["on: [push,", "  pull_request]", "jobs:"])),
+        "declined: `on:` is a flow collection carried past the key's line",
     ),
 }
 

@@ -10,8 +10,8 @@ touches: tools/doc_check.py, tools/required_checks_check.py, tools/rules_paths_c
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head by PL-JCS3
 added: 2026-10-04
 payoff: a statement a shell script, Makefile, workflow or Markdown document continues across lines is read as the one statement its format makes it, or refused by name, so the close-out sweep and the checks stop answering from fragments
-verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py
-root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV
+verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py && grep -q '^generator: spent' docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
+root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9
 generator: live - six readers misread it in fifteen days, three on 2026-10-03 alone, each fix taught one reader one format's rule, and the 2026-10-04 sweep found readers no item names in every format the members cover, one live today: format_candidates misses 448 wrapped section citations
 misread: Where one statement ends, in a format that lets a statement continue across physical lines
 ---
@@ -136,6 +136,31 @@ guard gained eleven cases, each failing on main's reader, one pinning
 that a coverage run split in the Makefile alone is still a drift. Closes `PL-G2FY`. Left:
 the YAML readers (`PL-6P6H` and the sweep's YAML line), and `PL-MFVV`; `PL-RR1N`
 keeps its own fix.
+
+**Slice 3, YAML (`#1339`, 2026-10-04).** Done: `workflow_commands` reads a
+step's value through `_run_script`, which reads the two forms the workflows
+write - a plain scalar on the key's line, and a literal block (`|`) with its
+header's indentation and chomping indicators and comment honoured, ended at the
+first line indented less than its content, so a sibling key such as `shell:`
+is no longer a line of the script - and declines every other form by name: a
+folded block (`>`, `PL-6P6H`), a plain scalar carried onto the next line or
+opening on the line after the key, a quoted scalar, and an anchor, alias, tag
+or flow collection. The three checks that read it say which step went unread,
+and the coverage gate and gate parity draw no conclusion from a side a decline
+left incomplete. `_gates_pull_requests`, and `required_checks_check._triggers`,
+refuse an `on:` flow collection carried past its line; `_frontmatter` and
+`rules_paths_check.frontmatter` close only on a `---` that opens its line;
+`rules_paths_check.entries` reads a list past a comment line and refuses a
+flow collection or a glob YAML carries onto another line. The guard gained
+fifteen cases, each failing on main's readers, and the 66 commands the six
+workflows hold read the same before and after. Closes `PL-6P6H`. The slice also
+found `PL-TMX9`: `required_checks_check._jobs` reads a job's `name:` from the
+key's line, a reader the sweep missed, now a member. Left: `PL-MFVV` (after
+`PL-DSMK`'s blank line), `PL-TMX9`, and `PL-RR1N`'s own fix. `verify:` gained
+`grep -q '^generator: spent'` on this file, since the YAML slice's guard cases
+were the last thing it asked for and `docket check` refuses an open item whose
+command passes; `generator:` is rewritten `spent` only when those three close,
+so the command passes then and no sooner.
 
 **Done when.** Every reader the table and the sweep name reads its format's
 statement whole or declines it by name, each pinned by a test; the guard test
