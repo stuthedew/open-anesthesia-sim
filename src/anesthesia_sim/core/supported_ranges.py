@@ -96,6 +96,7 @@ Those two used to hang off the splitting coefficient measured here, and that
 chain is cut: neither is derived from anything measured over this envelope.
 """
 
+import sys
 from math import floor, isfinite
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
@@ -263,6 +264,24 @@ def require_supported_cardiac_output(cardiac_output_l_min: float) -> None:
     )
 
 
+def describe_count(count: int) -> str:
+    """A count as a refusal names it: in digits, or, past the digits CPython
+    will print (`sys.get_int_max_str_digits`, 4,300 unless set otherwise), as
+    more than that many.
+
+    Printing such a count raises `ValueError`, so a refusal that printed it
+    escaped the simulator's own exceptions while it was being written
+    (`PL-5F76`).
+    """
+
+    try:
+        return str(count)
+    except ValueError:
+        sign = "-" if count < 0 else ""
+
+        return f"{sign}<more than {sys.get_int_max_str_digits():,} digits>"
+
+
 def maximum_step_count(simulation_step_s: SimulationStep) -> int:
     """How many steps of this size fit inside the supported run length.
 
@@ -345,8 +364,15 @@ def require_supported_run_length(step_count: int, simulation_step_s: SimulationS
     """
 
     if step_count >= maximum_step_count(simulation_step_s):
+        # A count past the largest float has no time to print: multiplying it
+        # by the step raises `OverflowError` (`PL-5F76`).
+        try:
+            reached = f"{step_count * simulation_step_s:g} s of simulated time"
+        except OverflowError:
+            reached = f"{describe_count(step_count)} steps of {simulation_step_s} s"
+
         raise SimulationDomainLimitError(
-            f"this run has reached {step_count * simulation_step_s:g} s of simulated time, "
+            f"this run has reached {reached}, "
             f"which is the supported run length of {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h); beyond it "
             f"this model's omitted metabolism and its fat perfusion dominate the trace, "
@@ -391,8 +417,8 @@ def require_supported_step_count(step_count: int, simulation_step_s: SimulationS
 
     if step_count > limit:
         raise SimulationConfigurationError(
-            f"a run of {step_count} steps of {simulation_step_s} s is past the supported run "
-            f"length of {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
+            f"a run of {describe_count(step_count)} steps of {simulation_step_s} s is past the "
+            f"supported run length of {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), which allows "
             f"at most {limit} steps of that size; past it this model is not claimed to "
             f'represent a patient (docs/MODEL.md, "Supported run length")'

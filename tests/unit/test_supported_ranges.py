@@ -14,6 +14,7 @@ excluded an endpoint would take a measured case out of the reachable domain
 without failing anything.
 """
 
+import sys
 from collections.abc import Callable
 from math import inf, nan, nextafter
 from typing import NamedTuple
@@ -26,6 +27,8 @@ from anesthesia_sim.core.exceptions import (
     SimulationDomainLimitError,
     SimulationExecutionError,
 )
+from anesthesia_sim.core.simulation import SimulationState
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -444,6 +447,33 @@ def test_the_step_count_refusal_prints_the_step_it_was_given_in_full() -> None:
         require_supported_step_count(past, simulation_step_s)
 
     assert f"{past} steps of 0.07680000000000001 s" in str(raised.value)
+
+
+def test_a_step_count_too_long_to_print_is_refused() -> None:
+    """Refused with the simulator's own error, named by how long it is (`PL-5F76`).
+
+    CPython will not print an integer past `sys.get_int_max_str_digits`
+    digits, so a refusal that printed the count raised `ValueError` while it
+    was being written, and the run-length refusal, which multiplies it by the
+    step, raised `OverflowError`. Either escaped the simulator's exceptions
+    where every guard here promises one of its own.
+    """
+
+    too_long = 10**5000
+    named = f"<more than {sys.get_int_max_str_digits():,} digits>"
+
+    with pytest.raises(SimulationConfigurationError) as past_the_span:
+        SimulationState(step_count=too_long, simulation_step_s=SimulationStep(0.1))
+
+    with pytest.raises(SimulationConfigurationError) as negative:
+        SimulationState(step_count=-too_long, simulation_step_s=SimulationStep(0.1))
+
+    with pytest.raises(SimulationDomainLimitError) as stepped_from:
+        require_supported_run_length(too_long, SimulationStep(0.1))
+
+    assert f"a run of {named} steps of 0.1 s" in str(past_the_span.value)
+    assert f"not -{named}" in str(negative.value)
+    assert f"reached {named} steps of 0.1 s" in str(stepped_from.value)
 
 
 @pytest.mark.parametrize("instant_s", [0.0, 3_600.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S])

@@ -100,6 +100,12 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    # Property-based tests draw values across and beyond every supported-range
+    # guard rather than the edges one test's author thought of, the class
+    # behind `PL-YZ17`, `PL-5F76` and `PL-BPRK` (`PL-V10T`, decided
+    # 2026-10-03). Tests only, and derandomized there, so the suite stays
+    # deterministic.
+    "hypothesis>=6.168.3",
     "mypy>=2.3.1",
     # The reference tests decompose the model's open-circuit system into its
     # exponential modes with `numpy.linalg.eig`, LAPACK's validated solver,
