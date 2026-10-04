@@ -3,13 +3,11 @@ id: PL-HSFV
 title: RunDefinition propagates an UptakeEquationSettings whose flows are outside the supported ranges - cardiac output 1000 L/min, a hundred times the supported maximum, ran on 2026-10-04 - because the settings record checks only that the tissue flows sum to cardiac output, and the range guards run only in the compartments' constructors and setters, which a run built from a settings record never calls
 priority: P1
 effort: S
-status: done
+status: ready
 classes: defect, safety
 feature: numerical-domain
 touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_governing_equations.py, tests/unit/test_run_definition.py, docs/MODEL.md, ROADMAP.md
 added: 2026-10-04
-closed: 2026-10-04
-pr: 1342
 payoff: a run built from a settings record is refused outside the supported flow ranges exactly as a control change is, so no caller - a notebook today, a saved-run loader later - can get a precise-looking trace for a patient the model does not represent
 verify: grep -q 'def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges' tests/unit/test_run_definition.py && grep -q 'def test_rejects_a_flow_outside_its_supported_range' tests/unit/test_governing_equations.py
 ---
@@ -47,14 +45,13 @@ builds a run from a stored record instead of from compartments, such as a saved
 run restored by a deserializer, which `RunDefinition.advance_to`'s docstring
 already anticipates.
 
-**Done when.** `UptakeEquationSettings` refuses a fresh gas flow, an alveolar
-ventilation or a cardiac output outside its supported range with the guard in
-`core/supported_ranges.py` that a compartment raises, so neither
-`RunDefinition(...)` nor `record_change` can be handed one; a regression test
-following the reproduction's path pins all three flows at both entry points;
-the record's own tests pin both endpoints and the first value past each
-maximum; and `docs/MODEL.md` § "Supported input ranges" names the settings
-record beside the compartments.
+**Done when.** `PL-51B7`'s slice 1 has landed: `UptakeEquationSettings` types
+its three flow fields with checked flow types, as `SimulationStep` is for the
+step, so a record holding a flow outside its supported range cannot be built and
+neither `RunDefinition(...)` nor `record_change` can be handed one; regression
+tests replay the reproduction above for all three flows at both entry points,
+and pin both endpoints and the first value past each maximum; and
+`docs/MODEL.md` § "Supported input ranges" says where each range is enforced.
 
 **Not in scope: the delivered concentration.** The same route carries a dial
 above the agent's vaporizer maximum, but the record holds no agent and no
@@ -66,14 +63,24 @@ joins that gate's frozen list under the exception that admits a `safety`
 finding whenever it is made, as `PL-5291` did; `ROADMAP.md` records it in the
 product lane.
 
-**Built 2026-10-04**, in pull request 1342. `UptakeEquationSettings.__post_init__`
-calls `require_supported_fresh_gas_flow`, `require_supported_alveolar_ventilation`
-and `require_supported_cardiac_output` in place of the sign-and-finiteness checks,
-so the reproduction above now raises at `dataclasses.replace`, before any run is
-handed the record. `test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges`
-replays it for all three flows at both entry points;
-`test_rejects_a_flow_outside_its_supported_range` compares the record's refusal
-whole against the compartment guard's at five values per flow; and
-`test_rejects_tissue_flows_that_do_not_sum_to_cardiac_output` moved its mismatch to
-1.2 times 7.8 L/min, since 1.5 times is now refused by the range before the venous
-balance is reached.
+**Rebuilding as `PL-51B7`'s slice 1, 2026-10-04** (project owner, 2026-10-04,
+over the range check in `__post_init__` this branch built first). Pull request
+1342 carried that check, with its tests, as `c48a99be`, and the commit
+withdrawing it reverts it whole; `PL-51B7`'s brief holds the slice's design and
+call-site count. Next, in order:
+
+1. Once `#1341` merges, bring `main` in. It appends to this file: keep both.
+2. Claim `PL-51B7`, read its brief, and re-size this item's `effort` to the
+   slice's.
+3. Build slice 1 on this branch.
+4. Carry `c48a99be`'s tests over in the slice's form:
+   `test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges`
+   and `test_rejects_a_flow_outside_its_supported_range`, the two names this
+   item's `verify:` greps for, and
+   `test_rejects_tissue_flows_that_do_not_sum_to_cardiac_output`'s mismatch
+   moved inside the supported range, since 1.5 times 7.8 L/min is past it.
+   `git show c48a99be` has all three.
+5. Revise `docs/MODEL.md` § "Supported input ranges" for where each range is
+   then enforced. `c48a99be` added a paragraph there for the narrow check, and
+   it went with the revert.
+6. Close this item with the slice, and retitle 1342 to lead with both ids.

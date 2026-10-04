@@ -86,11 +86,6 @@ from math import isfinite
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.matrix_exponential import Matrix
-from anesthesia_sim.core.supported_ranges import (
-    require_supported_alveolar_ventilation,
-    require_supported_cardiac_output,
-    require_supported_fresh_gas_flow,
-)
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_nonnegative_finite,
@@ -291,26 +286,12 @@ class UptakeEquationSettings:
     to 8% dial makes at 0.01% steps, so a fraction stored here would not give
     back what was set. `docs/MODEL.md` § "Concentrations" states it.
 
-    **Each flow is refused outside its supported range here, and not only by
-    the compartment that usually supplies it** (`PL-HSFV`). A run is built from
-    this record, and a record built anywhere but
-    `AgentUptakeSystem.equation_settings` passes through no compartment, so
-    until it checked its own flows a `RunDefinition` opened under a cardiac
-    output of 1000 L/min and simulated it. The guards are the compartments'
-    own, from `core/supported_ranges.py`, so a refused record names the
-    interval in the words a refused control does. A tissue group's flow needs
-    none: each is nonnegative and together they sum to cardiac output, so none
-    can exceed it. The delivered concentration is bounded at 100% and no lower,
-    because its limit is the agent's vaporizer maximum, which this record does
-    not carry (`PL-BBMG`).
-
     Raises:
         SimulationConfigurationError: a volume or the blood:gas partition
-            coefficient is not positive and finite, a flow is outside its
-            supported range (`core/supported_ranges.py`), the delivered
-            concentration is not a percent in [0, 100], the number of tissue
-            groups is not the three `patient.py` builds, or the tissue flows
-            do not sum to cardiac output.
+            coefficient is not positive and finite, a flow is not nonnegative
+            and finite, the delivered concentration is not a percent in
+            [0, 100], or the number of tissue groups is not the three
+            `patient.py` builds.
     """
 
     circuit_volume_l: float
@@ -327,9 +308,9 @@ class UptakeEquationSettings:
         require_positive_finite("circuit_volume_l", self.circuit_volume_l)
         require_positive_finite("alveolar_volume_l", self.alveolar_volume_l)
         require_positive_finite("venous_volume_l", self.venous_volume_l)
-        require_supported_fresh_gas_flow(self.fresh_gas_flow_l_min)
-        require_supported_alveolar_ventilation(self.alveolar_ventilation_l_min)
-        require_supported_cardiac_output(self.cardiac_output_l_min)
+        require_nonnegative_finite("fresh_gas_flow_l_min", self.fresh_gas_flow_l_min)
+        require_nonnegative_finite("alveolar_ventilation_l_min", self.alveolar_ventilation_l_min)
+        require_nonnegative_finite("cardiac_output_l_min", self.cardiac_output_l_min)
         require_positive_finite(
             "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
         )
