@@ -33,22 +33,14 @@ from dataclasses import dataclass, field
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
 from anesthesia_sim.core.supported_ranges import (
+    CaseInstant,
+    StepCount,
     describe_count,
+    require_step_count,
     require_supported_run_length,
     require_supported_step_count,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem, UptakeStepResult
-
-
-def _require_step_count(step_count: int) -> None:
-    """Require a whole, nonnegative number of completed steps."""
-
-    if not isinstance(step_count, int) or step_count < 0:
-        shown = describe_count(step_count) if isinstance(step_count, int) else repr(step_count)
-
-        raise SimulationConfigurationError(
-            f"step_count must be a whole, nonnegative number of steps, not {shown}"
-        )
 
 
 @dataclass(slots=True)
@@ -56,8 +48,13 @@ class SimulationState:
     """Own elapsed time and the complete agent uptake simulation."""
 
     uptake_system: AgentUptakeSystem = field(default_factory=AgentUptakeSystem.default)
-    step_count: int = 0
-    """How many simulation steps this run has completed."""
+    step_count: StepCount = StepCount(0)
+    """How many simulation steps this run has completed.
+
+    A `StepCount`, so whole and nonnegative by construction; whether the
+    count fits inside the supported run length depends on the step below, so
+    `__post_init__` checks the pair.
+    """
     simulation_step_s: SimulationStep | None = None
     """The step every one of those steps was taken at, or `None` before the
     first one.
@@ -79,40 +76,47 @@ class SimulationState:
         because a run may stand there; it is the step from it that is refused.
 
         Raises:
-            TypeError: `simulation_step_s` is neither `None` nor a
-                `SimulationStep`, so nothing has checked it against the
-                supported range (`core/simulation_step.py`).
-            SimulationConfigurationError: `step_count` is not a whole,
-                nonnegative number; the count is past zero with no step to
-                multiply it by; or the two put the run past the supported run
-                length, `core/supported_ranges.py`'s
+            TypeError: `step_count` is not a `StepCount`, or
+                `simulation_step_s` is neither `None` nor a `SimulationStep`,
+                so nothing has checked it (`core/supported_ranges.py`,
+                `core/simulation_step.py`).
+            SimulationConfigurationError: the count is past zero with no step
+                to multiply it by, or the two put the run past the supported
+                run length, `core/supported_ranges.py`'s
                 `require_supported_step_count`.
         """
 
-        _require_step_count(self.step_count)
+        require_step_count(self.step_count)
 
         if self.simulation_step_s is not None:
             require_simulation_step(self.simulation_step_s)
             require_supported_step_count(self.step_count, self.simulation_step_s)
         elif self.step_count > 0:
             raise SimulationConfigurationError(
-                f"step_count is {self.step_count} but no simulation_step_s was given, so the "
-                "simulated time those steps reached is unknown"
+                f"step_count is {describe_count(self.step_count)} but no simulation_step_s was "
+                "given, so the simulated time those steps reached is unknown"
             )
 
     @property
-    def elapsed_s(self) -> float:
+    def elapsed_s(self) -> CaseInstant:
         """Simulated time reached, in seconds: the steps taken times the step.
 
         One multiplication, rounded once, rather than a sum rounded at every
         step, so the value depends on how far the run has gone and not on the
         arithmetic that got it there.
+
+        Built as a `CaseInstant` here, where the product becomes an instant of
+        the case, because it is the instant a run's definition is moved to and
+        a mark is crossed at. It is never refused: `__post_init__` and
+        `advance` hold the count to `maximum_step_count`, which is decided on
+        this same product (`PL-8H2R`), so the product is inside the supported
+        run length whenever the state is one a run could stand in.
         """
 
         if self.simulation_step_s is None:
-            return 0.0
+            return CaseInstant(0.0)
 
-        return self.step_count * self.simulation_step_s
+        return CaseInstant(self.step_count * self.simulation_step_s)
 
     def advance(self, simulation_step_s: SimulationStep) -> UptakeStepResult:
         """Advance the complete system and time as one operation.
@@ -168,13 +172,13 @@ class SimulationState:
         result = self.uptake_system.advance(simulation_step_s)
 
         self.simulation_step_s = simulation_step_s
-        self.step_count += 1
+        self.step_count = StepCount(self.step_count + 1)
 
         return result
 
     def reset(self) -> None:
         """Clear dynamic state while preserving user settings."""
 
-        self.step_count = 0
+        self.step_count = StepCount(0)
         self.simulation_step_s = None
         self.uptake_system.reset()

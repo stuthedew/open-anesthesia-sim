@@ -5253,14 +5253,15 @@ is `PL-7CRY` (narrow the fresh gas flow control to the intersection) — no test
 A run is supported up to **24 hours of elapsed simulated time**, declared as
 `MAXIMUM_ELAPSED_SIMULATION_TIME_S` in `core/supported_ranges.py`. The step
 that would carry a run past it is refused by `SimulationState.advance()`,
-which raises `SimulationDomainLimitError` before anything advances. A run
-handed a point past it instead of reaching one - a `SimulationState` built at
-a step count beyond it, or a `RunDefinition` opening at an instant beyond it,
-which is how a branch is built, or moved to one - is refused where it is
-handed in, with `SimulationConfigurationError`, because there the value handed
-in is what is wrong (`PL-BMY5`, `PL-73ZN`). The step count a run stops on at
-the limit is one it may be built at; only the step from it is refused. The
-step's guard and the state's read that count from one derivation,
+which raises `SimulationDomainLimitError` before anything advances. A point
+past it that is handed in rather than reached is refused before any run holds
+it, with `SimulationConfigurationError`, because there the value handed in is
+what is wrong (`PL-BMY5`, `PL-73ZN`): a step count beyond it where a
+`SimulationState` pairs the count with its step, and an instant beyond it - the
+opening a branch's `RunDefinition` is built at, or a reach one is moved to -
+where the instant is built as a `CaseInstant` (`PL-CN5S`, below). The step count
+a run stops on at the limit is one it may be built at; only the step from it is
+refused. The step's guard and the state's read that count from one derivation,
 `maximum_step_count`: the largest count whose simulated time - the count times
 the step, rounded once, which is `elapsed_s` - is no later than 24 hours. At the
 shipped 0.1 s step that puts the last step exactly on 24 hours. It is decided on
@@ -5268,12 +5269,11 @@ that product rather than on the quotient of 24 hours by the step, which at some
 computed steps rounds a whole step either way - to a last step a float past 24
 hours, or one short of a step landing on it - so a count is accepted exactly
 where the instant it stands at is, and a branch is built or refused alike
-whether it is taken from its parent's count or its parent's instant
-(`PL-8H2R`).
+whether it is taken from its parent's count or its parent's instant (`PL-8H2R`).
 
 | Quantity | Limit | Declared and refused by |
 | --- | --- | --- |
-| Elapsed simulated time | 0 to 24 h (86 400 s) | `core/supported_ranges.py`, enforced on `SimulationState` and on a `RunDefinition`'s opening and reach |
+| Elapsed simulated time | 0 to 24 h (86 400 s) | `core/supported_ranges.py`: `CaseInstant`, which every instant a run opens, moves, keyframes, marks or branches at is built as, and `SimulationState`, which holds a `StepCount` to its step |
 
 **It is the case's 24 hours and not each run's, which matters once a case can
 be branched.** The limit is what this model's omissions are argued against
@@ -5283,6 +5283,38 @@ was taken. A fork at 23 h leaves one hour, not another twenty-four. Nothing
 enforces this separately: every guard on it reads the case's axis - a step
 count or a case instant - and a branch continues its parent's, so the
 arithmetic that bounds a trunk bounds every branch of it (`PL-J2TD`).
+
+**The instant and the count are types, each checked once where it is built**
+(`PL-CN5S`, the second slice of `PL-51B7`, in the shape § "Supported input
+ranges" gives the flows). An instant a run is opened at, moved to, keyframed,
+marked or branched at is a `CaseInstant`, a `float` subclass whose constructor
+is the only thing that runs `require_supported_case_instant`. Where an instant
+is kept or a run is moved to one, the type is required and anything else refused
+with a `TypeError`, whatever its value: a `RunDefinition`'s opening and every
+reach it is advanced to, each `Keyframe`, a `TimeBookmark` and the
+`BookmarkCrossing` a run halts on, and the instant
+`SimulationController.resumed_at` branches at. A value built as another checked
+quantity, such as a `StepCount` handed in as an instant, is refused as the
+swapped argument it is, with no advice to rebuild it. What only carries one
+onward - a snapshot, a chart frame, the instants a fork is offered at - is
+annotated with the type and checks nothing again. So a time bookmark past the
+span cannot be made at all; until `PL-CN5S` one could be built in code, though
+not from the bookmark dialog, whose entry already stopped at 86 400 s, and it
+stood as not reached within the supported run length from the moment it was
+added. A completed-step count is a `StepCount`, an `int` subclass checked only
+for what a count can be checked for alone - whole and nonnegative, with `bool`
+refused - because how many steps fit depends on the step: `SimulationState`
+holds the pair to `maximum_step_count` through `require_supported_step_count`, a
+relation between two fields and so the record's to check.
+`SimulationState.elapsed_s` builds its product as a `CaseInstant`, which never
+refuses it, since the count it multiplies is decided on that same product
+(`PL-8H2R`). An instant a run is only *asked* about - `RunDefinition.state_at`,
+the bounds of a drawn window - stays a plain `float`: the run's own opening and
+reach bound it, and that relation is the run's to check. Arithmetic on either
+type returns a plain `float` or `int`, so a derived instant or count never reads
+as checked. The control record's instants, `ControlChange.elapsed_s` and an
+adjustment's start and end, are still annotated `float`, though each is taken
+from a `CaseInstant` (`PL-RCYZ`).
 
 **It is the same kind of statement as the four ranges above, and it is
 reached rather than set.** A flow is a setting, refused when a caller offers
