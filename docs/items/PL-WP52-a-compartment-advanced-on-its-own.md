@@ -3,13 +3,14 @@ id: PL-WP52
 title: A compartment advanced on its own (BreathingCircuit.advance_fresh_gas, TissueGroup.advance, the blood compartment's advance) accepts any positive finite step, so it takes steps below MINIMUM_SIMULATION_STEP_S, where rounding is a growing share of what a step changes (measured on the coupled system, PL-YZ17); only AgentUptakeSystem.advance refuses them, and whether a compartment should too is undecided
 priority: P3
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: numerical-domain
-touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/circuit.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_circuit.py, docs/MODEL.md
-blocked-by: PL-0GJC
+touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/simulation_step.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_circuit.py, docs/MODEL.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+payoff: a compartment stepped on its own either refuses a step below the floor by name or is shown by measurement not to need one, so a caller stepping it finely cannot be handed a plausible number nothing checked
+not-delegable: the item ends in one of two states chosen on a measurement - a floor each compartment refuses below, with a test per compartment, or the measured error against step recorded with why none is needed - and a command written before the measurement could pin only the state chosen in advance; its touches reach src/anesthesia_sim/core besides, which delegation may never modify
 ---
 
 **Problem.** A compartment advanced on its own (BreathingCircuit.advance_fresh_gas, TissueGroup.advance, the blood compartment's advance) accepts any positive finite step, so it takes steps below MINIMUM_SIMULATION_STEP_S, where rounding is a growing share of what a step changes (measured on the coupled system, PL-YZ17); only AgentUptakeSystem.advance refuses them, and whether a compartment should too is undecided
@@ -48,12 +49,25 @@ below the floor gets a plausible number with none of the run's refusal: at
 1e-14 s, none at all for the tissue. That is the safety standard's plausible
 value where an error state belongs, though no screen path reaches it today.
 
+[superseded 2026-10-04: the owner's answer, below]
 **Blocked on `PL-0GJC`** (the run's step as a validated type). That item's
 session put to the owner on 2026-10-03 whether a compartment stepped on its own
 takes the type. Its recommendation moves the compartment clause here, to be
 decided on this item's measurement; the alternative, a floor-only type the
 compartments take now, would answer this item with that work. Either way this
 item's shape follows that answer, so it waits on it.
+
+**Moved here from `PL-0GJC`, 2026-10-04** (project owner, 2026-10-04,
+ratified, over a second, floor-only type the compartments take now): whether a
+compartment stepped on its own takes a floor is decided on this item's
+measurement, not by the run's type. `PL-0GJC` made the run's step a
+`SimulationStep` (`src/anesthesia_sim/core/simulation_step.py`), which checks
+both bounds when it is built. The compartments still take a plain float,
+because the 0.1 s ceiling binds the run and a compartment stepped alone at
+1 s is correct today, so the run's type cannot be theirs as it stands. If the
+measurement says a compartment needs the floor, the same decision chooses how
+it is carried: a floor check in each compartment's `advance`, or a floor-only
+type beside `SimulationStep`, which is the larger change.
 
 **Done when.** Each compartment stepped on its own below
 `MINIMUM_SIMULATION_STEP_S` raises the simulator's own error, with a test per

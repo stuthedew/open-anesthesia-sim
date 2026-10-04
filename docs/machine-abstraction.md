@@ -314,9 +314,9 @@ with-circuit 3.3 L, never the 2.1 L apparatus figure, which would give a
 $`\tau_C = V_C/\dot V_F`$ of 31.5 s at 4 L/min where 49.5 s is right. **The
 condition is the split itself:** the two names stay distinct until item 1 moves
 the patient circuit to the run, and from then a machine profile carries
-`apparatus_volume_l` and the run supplies the rest of $`V_C`$. Writing today's
-meaning where a profile author reads it — the schema docstring, the data file
-and `docs/MODEL.md` — is `PL-TBMX`'s.
+`apparatus_volume_l` and the run supplies the rest of $`V_C`$. `PL-TBMX` wrote
+today's meaning where a profile author reads it — the schema docstring, the
+data file and `docs/MODEL.md`.
 
 ### Three homes, and why the shipped constants move
 
@@ -401,8 +401,9 @@ grounds. The model has one well-mixed gas compartment in front of the patient,
 so the limbs and Y-piece can only be inside $`V_C`$, as the survey's section
 (a1) says. The file's Targ et al. note refuses the measured 9.86 L chiefly
 because that system held a reservoir bag standing in for the lung, while its
-corrugated limbs and Y-piece were part of the apparatus measured, so the note's
-"the apparatus alone" means without the lung, not without the hoses. And
+corrugated limbs and Y-piece were part of the system measured, so the note's
+"the apparatus alone" meant without the lung, not without the hoses, which is
+what `PL-TBMX` reworded it to say. And
 `docs/MODEL.md` sets it beside Shin et al.'s with-circuit totals, the Primus's
 5.9 L, rather than beside their apparatus figures. What the note's comparison
 adds to the stored figure before setting it against the measured 9.86 L is the
@@ -411,7 +412,8 @@ a lung twice and says nothing about how the 6.0 L divides between apparatus and
 patient circuit. **No source apportions it**, so splitting it into an apparatus
 volume and a patient-circuit volume would invent two numbers where one is
 recorded. It therefore keeps its stored figure with a declared statement that
-it is the sum, which `PL-TBMX` writes, and real machines are added beside it
+it is the sum, which `PL-TBMX` wrote into its `provenance_gap`, and real
+machines are added beside it
 rather than by retrofitting it into a machine it never claimed to be. A profile
 built from Shin et al.'s figures carries a true apparatus volume once the split
 lands and takes its 1.2 L patient circuit from the run; until then it stores

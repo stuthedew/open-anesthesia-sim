@@ -954,6 +954,35 @@ a layout (`PL-71CF`).
 <!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 2.44 L/min from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
+**$`V_C`$ is the assembled breathing system, never a manufacturer's apparatus
+figure.** The model has one well-mixed gas compartment in front of the
+patient, so the corrugated limbs and the Y-piece can only be inside $`V_C`$,
+and the machine profile's `circuit_volume_l` that supplies it
+is the assembled total, apparatus plus patient circuit (`PL-TBMX`).
+*Apparatus* is the workstation's internal volume including its absorber and
+without the breathing circuit, which is how every volume
+`docs/machine-survey.md` § "(a1) Apparatus gas volume" found is stated (Shin
+et al. cite Dräger's instructions for use for theirs); the *patient circuit*
+is the disposable limbs and Y-piece fitted for the case. A profile author
+holding an apparatus figure therefore adds a patient-circuit volume before
+storing it: 1.2 L, the internal volume of the Hudson RCI circuit Shin et al.
+added to each machine's figure, unless the profile assumes a circuit whose own
+volume is stated (*BMC Anesthesiol* 2017;17(1):10, PMID 28103806; read at full
+text 2026-10-04 from PubMed Central, PMC5248460). Their sums leave the
+circuit's 3 L reservoir bag out, so a total built from them does too (project
+owner, 2026-10-04, ratified, over counting the bag in the total or leaving the
+point open). Stored bare, the apparatus figure shortens $`\tau_C`$ by the
+circuit's share: a Perseus A500's 2.1 L gives 31.5 s at 4.0 L/min where its assembled
+3.3 L gives 49.5 s, 36% short. No check can catch that, because both are
+correctly cited volumes and `tools/doc_check.py`'s `check_provenance` asks
+only that a stored number has a row in this document. The rule lasts until
+`docs/machine-abstraction.md`'s split gives the machine an
+`apparatus_volume_l` and the run its patient circuit. The shipped 6.0 L is
+such a total, and no source apportions it between the two (§ "Parameter
+provenance").
+<!-- derived: 31.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+<!-- derived: 49.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+
 Ventilation transfers gas between the breathing circuit and alveolar compartment.
 
 The circuit amount balance is:
@@ -2719,7 +2748,9 @@ where no provenance row could reach them and changed neither value.
   8.0 L and the same flow, a 25% shorter apparatus lag. That lag is the part of
   the inspired curve a learner is most likely to attribute to uptake, so a run
   reproducing a published Gas Man trajectory has to set 8.0 L rather than
-  assume it.
+  assume it. Like every `circuit_volume_l`, the 6.0 L is an assembled total,
+  apparatus plus patient circuit (§ "Breathing circuit"), and no source
+  apportions it between the two.
   <!-- derived: 90 s from data/machines/reference_circle_system.json circuit_volume_l = 6, default_fresh_gas_flow_l_min = 4 -->
 - **Default fresh gas flow, 4.0 L/min.** No published counterpart exists for
   this one anywhere this project has reached. The Workbook's parameter table
@@ -2759,14 +2790,15 @@ volume, and a latex bag full of water distends past whatever it holds as a gas
 reservoir.
 
 What the measurement supplies instead is a **bound and an ordering**: a real
-conventional circle system's apparatus volume is at most 9.86 L, which leaves
-both the stored 6.0 L and the Workbook's 8.0 L admissible and puts the three
-figures in one order with only one of them measured. At 4.0 L/min the implied
-apparatus lags are 90 s, 120 s and 148 s.
+conventional circle system's assembled volume, apparatus and patient circuit
+together, is at most 9.86 L, which leaves both the stored 6.0 L and the
+Workbook's 8.0 L admissible and puts the three figures in one order with only
+one of them measured. At 4.0 L/min the implied circuit time constants are
+90 s, 120 s and 148 s.
 <!-- derived: 148 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
 
-**Read the like-for-like comparison, not the bare one.** Targ measured
-apparatus *plus* lung; this model's corresponding total is
+**Read the like-for-like comparison, not the bare one.** Targ measured an
+assembled system *plus* a lung; this model's corresponding total is
 $`V_C + V_A`$ = 6.0 + 2.5 = 8.5 L, which is 13.8% below the measured 9.86 L
 where the bare 6.0 against 9.86 reads as 39% below. The study invites the
 comparison in that form: its Figures 3 and 5 draw the ideal wash-in and
@@ -2780,13 +2812,14 @@ is not a lung, and that apparatus had no patient taking up agent.
 **What real workstations hold, and why that does not settle this row either**
 (`PL-4DCG`). `docs/machine-survey.md` surveys the machines in current clinical
 use for the variables that reach a number this model computes, and the
-apparatus volumes it collects sit below both figures above: 4.7 L for a Dräger
-Primus, 2.1 L for a Perseus A500 and 2.0 L for a Zeus IE, each including the
-absorber and excluding the disposable patient circuit. Adding the 1.2 L circuit
-those measurements were made with gives 5.9, 3.3 and 3.2 L, so at this file's
-flow the apparatus lag runs from 89 s on the oldest of the three to about 50 s
-on the newest — a factor of about 1.8 across machines a learner would meet in
-the same department. The stored 6.0 L lands within 2% of the Primus figure,
+assembled volumes it collects sit below both figures above. The apparatus
+volumes Shin et al. print are 4.7 L for a Dräger Primus, 2.1 L for a Perseus
+A500 and 2.0 L for a Zeus IE, each including the absorber and excluding the
+disposable patient circuit, and adding the 1.2 L circuit they computed their
+totals with gives 5.9, 3.3 and 3.2 L. So at this file's flow the circuit time
+constant runs from 89 s on the oldest of the three to about 50 s on the newest
+— a factor of about 1.8 across machines a learner would meet in the same
+department. The stored 6.0 L lands within 2% of the Primus's assembled 5.9 L,
 which is a coincidence rather than a sourcing: it predates the survey and was
 kept on the ruling above.
 <!-- derived: 89 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
