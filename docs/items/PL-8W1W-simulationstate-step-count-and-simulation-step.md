@@ -36,6 +36,8 @@ holds a checked field on every mutable core record; it is this pass's
 application of a ratified answer, not a separate decision, and reopens on
 ordinary evidence.
 
+**Weighed at triage against read-only fields** (2026-10-04). Part of `PL-LBQY`'s case does not carry over: no test writes either field, so the 45 test rewrites that ruled out freezing there cost nothing here, and read-only fields would also refuse a valid but wrong `StepCount` that the guard admits. The guard is kept so the two mutable core records hold a checked field one way. A session that finds read-only fields cheaper once `simulation.py` is open may take them, since the end state, no unchecked write to either field, is the same.
+
 **Why it matters.** `elapsed_s` is the run's clock: the controller copies it
 into every snapshot, moves the run's definition to it, crosses marks at it and
 stamps each recorded control change with it, so a count or a step written past
