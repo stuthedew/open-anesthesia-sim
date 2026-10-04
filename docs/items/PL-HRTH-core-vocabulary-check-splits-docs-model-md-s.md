@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 payoff: a Symbols row whose symbol needs a literal pipe, such as an absolute value, is checked against its own Code cell instead of being refused or read from the wrong column
 verify: grep -q 'def test_an_escaped_pipe_stays_inside_its_cell' tests/unit/test_core_vocabulary_check.py
+recurrences: 2026-10-04 PL-FBWD withdrawn 2026-10-04 PL-R417
 ---
 
 **Problem.** core_vocabulary_check splits docs/MODEL.md's Symbols table on every pipe, so a GFM-escaped \| inside a Symbol cell shifts every later column

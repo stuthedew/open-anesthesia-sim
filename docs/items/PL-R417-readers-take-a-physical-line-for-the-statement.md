@@ -11,8 +11,8 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 payoff: a statement a shell script, Makefile, workflow or Markdown document continues across lines is read as the one statement its format makes it, or refused by name, so the close-out sweep and the checks stop answering from fragments
 verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py && grep -q '^generator: spent' docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
-root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G
-generator: live - the close-out sweep of 2026-10-04 reproduced eight more readers outside those the head's own sweep named, one reading live input in CLAUDE.md, and the Markdown slice's walker found a ninth, PL-2S1G, in the pattern every Markdown reader shares, so every pass has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link and PL-2S1G in link 6
+root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G, PL-TY1Z, PL-YSMD, PL-HKHP, PL-5NC3, PL-WF35, PL-FP7J, PL-BLKJ, PL-J0C6, PL-GMR6, PL-VQBY, PL-4ZDZ, PL-GT0J, PL-KT0H, PL-FBWD, PL-F7Z6, PL-V2HK, PL-TC2D, PL-S3XS, PL-4T49, PL-PPNV, PL-97CF, PL-2JYP, PL-WG6S, PL-4MLK, PL-4ZVH
+generator: live - every pass over its reach has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link, PL-2S1G in link 6, and twenty-five in the last slice's sweep of 2026-10-04, PL-WF35 among them missing an advisory today
 misread: Where one statement ends, in a format that lets a statement continue across physical lines
 ---
 
@@ -198,16 +198,47 @@ the tree, doc_check, the possessive check and `bin/docket check` report as
 before, and the dead-ends digest is byte-identical. `generator:` stays `live`,
 its reason now naming `PL-2S1G`.
 
-**Next steps (recorded 2026-10-04, revised by link 6).** One more slice, one
-pull request, closing its members and adding their cases to
-`CONTINUED_STATEMENTS`: the other formats, `PL-J503` through `parse_item`'s
-reading of a field, `PL-CFWP` through the parsed statements
-`removed_assertions` already reads, and `PL-3DD9` through `tomllib`. Then one
-more sweep of the same reach, with `statement_lines` as the Markdown reading
-to hold readers to, and `generator:` rewritten `spent` only when it finds
-nothing. Whether the head waits for `PL-RR1N` is still the coordinator's
-default, to follow Done-when and close without it, put to the project owner;
-this slice was not briefed to settle it.
+**Link 7, the last slice (`#1353`, 2026-10-04).** Done: `PL-J503`, `PL-CFWP`
+and `PL-3DD9`, with eight `CONTINUED_STATEMENTS` cases. `sanctioned_queue_edit`
+reads an item's `recurrences:` through `parse_item`'s fold; the suppression
+check reads a Python file's logical lines through `tokenize`, falling back to a
+line at a time, named, for a file the running interpreter cannot parse; and
+`version_in` reads through `tomllib`. Then the sweep the next steps asked for:
+eight read-only auditors over every reader in `tools/`,
+`subprojects/docket/src/docket/` and `.claude/hooks/`, holding the Markdown
+readers to `statement_lines`, each case reproduced on bare python3 3.11.15 and
+checked against bash and dash, markdown-it-py or PyYAML. It found twenty-five
+more readers that take a physical line for a statement their format continues,
+now members: in Markdown `PL-TY1Z`, `PL-YSMD`, `PL-HKHP`, `PL-5NC3`, `PL-WF35`,
+`PL-FP7J`, `PL-BLKJ`, `PL-J0C6`, `PL-GMR6`, `PL-VQBY`, `PL-4ZDZ`, `PL-GT0J`,
+`PL-KT0H` and `PL-FBWD`; in Python `PL-V2HK` and `PL-TC2D`; in YAML `PL-S3XS`,
+`PL-4T49` and `PL-PPNV`; in shell `PL-97CF`, `PL-2JYP` and `PL-WG6S`; in a
+Makefile `PL-4MLK`; and in a change or a commit record, `PL-F7Z6` and
+`PL-4ZVH`. One changes an answer today: `PL-WF35`'s cue patterns miss a wait
+wrapped before its id, so `PL-KZ99`'s wait on a done item raises no advisory.
+Five are live in form with no wrong verdict (`PL-YSMD`, `PL-VQBY`, `PL-V2HK`,
+`PL-FP7J`, `PL-J0C6`) and the rest are latent, so `generator:` stays `live` and
+the head stays open. Fifteen other findings are filed outside this head:
+`PL-P95F`, `PL-K1D6`, `PL-LRBV`, `PL-BYJ5`, `PL-LNDJ`, `PL-MR8Z`, `PL-GZXY`,
+`PL-PZP7`, `PL-T1X0`, `PL-XG77`, `PL-0779`, `PL-WJM4`, `PL-K23D`, `PL-GWQ7` and
+`PL-PXT7`. `BRIEF_HEADING` reading a brief's heading by line was weighed and
+not filed, since the item format defines those headings by line (`PL-6G8T`).
+`docket new` matched twenty of the filings to an item sharing a path. Eighteen
+were another reader's fault or another fact, and are withdrawn on this item's
+reading. The two onto `PL-848V` were the same fact misread again, so they stand,
+and `PL-848V` is recorded as the head they surfaced, for which events a
+workflow's `on:` names; `PL-4T49` and `PL-S3XS` are members of both heads.
+
+**Next steps (recorded 2026-10-04, revised by link 7).** The members, one
+format per pull request as before, each closing its members and adding their
+cases to `CONTINUED_STATEMENTS`: Markdown first, fourteen members held to
+`statement_lines` with `PL-WF35` the live one, then the Python, YAML, shell and
+Makefile readers and the two that read a change or a commit record. `PL-TC2D`
+waits on the owner's answer to the question its brief puts. Then one more sweep
+of the same reach, and `generator:` rewritten `spent` only when it finds nothing
+(the coordinator's brief, 2026-10-04). The head closes without waiting for
+`PL-RR1N`, naming it in the reason as Done-when says (project owner,
+2026-10-04, ratified, over waiting for it).
 
 **Done when.** Every reader the table and the sweep name reads its format's
 statement whole or declines it by name, each pinned by a test; the guard test
