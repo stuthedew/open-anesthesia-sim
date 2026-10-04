@@ -58,6 +58,13 @@ code:
   owner did not explicitly ask about that discipline.
 - Favor interfaces that prevent errors over interfaces that merely warn after
   an error occurs.
+- **Parse, don't validate:** the same preference, in the code's own interfaces
+  (project owner, 2026-10-04). A quantity with a check of its own — a supported
+  range, a whole count — is checked once, by building a type only that check
+  produces, and every signature past that point takes the type rather than
+  re-checking a `float`. A check repeated at each way in fails at the one
+  nobody guarded, as `PL-HSFV`'s settings record did.
+  `.claude/rules/core-domain.md` has the pattern and where it stops.
 - Minimize hidden modes, surprising defaults, context-dependent behavior, and
   stale UI state.
 - Consider how an expert, trainee, distracted clinician, color-blind user,

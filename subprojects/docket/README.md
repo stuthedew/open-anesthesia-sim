@@ -26,6 +26,7 @@ docket next --effort S       # what to work on, and why
 docket next workflow         # ...confined to one half of the project, for a second session
 docket next --oldest         # owed work longest-waiting first, so what newer work outranks surfaces
 docket wave                  # which beat of the plan's cadence is due
+docket picks                 # what's left: the gate's open work by feature, and the build that can start
 docket list                  # the queue, one line per item
 docket triage                # what is untriaged, and the rules the answers must satisfy
 docket set PL-K7QX --priority P2 --effort S --classes defect   # write triage's answers; refused where check would fail them
@@ -1361,6 +1362,40 @@ on the tier ranks nowhere until triage seats it, whichever entrance it came by,
 and so does a blocker handed a rank while it is itself untriaged or blocked.
 Where each item stands is read once, by `plan.tier_standings`, so `next`,
 `show` and `generators` cannot give three answers about one status.
+
+### What is left, in one list: `docket picks`
+
+`docket next` gives three picks, one per lane, and `wave`, `status` and `gate`
+each give a part of what a "what's left" report asks for. `docket picks` gives
+the list whole (`PL-G2HP`): the open entries the current gate can clear -
+`wave`'s count exactly - grouped by `feature:`, and the `Required scope`
+entries of the gate's milestone that hold an item that can start now.
+
+- A feature holding two or more of those entries has a line of its own. One
+  holding a single entry, and entries carrying no feature, collapse into one
+  line per lane: product, workflow, crossing, unplaced.
+- Each line gives its lane or lane mix, its open count with sizes, how many
+  await a decision, are blocked or are in flight, the pick `next` would make
+  from its items alone with that item's payoff, and the member ids, so a line
+  named back maps to items.
+- A live generator head leads with a line of its own, as it leads `next`, and
+  is never grouped a second time.
+- A build line names its entry by number and bold lead, the items it can
+  start, and how many of the scope's other open items wait on them through
+  `blocked-by`, at any depth and directly. While the beat is clearing the gate
+  it says the roadmap clears the gate first.
+- At most eight lines. Heads, lane lines and build entries are placed first;
+  features fill what is left, largest first, and one that does not fit folds
+  into its items' lane lines, which the foot names. Build entries past the cap
+  collapse into one line.
+- What the milestone clears itself and what waits outside the gate are counted
+  in one closing line and never offered.
+
+It reads as `next` does - one fetch, the default branch's copy of an item moved
+since the fork, the claims in flight - and exits non-zero, as `wave` does,
+where there is no list: no roadmap, a plan it cannot read, no recorded gate, or
+a gate naming an id the store does not hold. What a line buys in a sentence,
+and which line to recommend, are judgment, and stay the reply's.
 
 ### What newer work keeps outranking: `docket next --oldest`
 

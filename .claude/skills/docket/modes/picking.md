@@ -18,6 +18,7 @@ docket next            # the specific next item, with its reason and its lane
 docket next product    # ...the simulator only
 docket next workflow   # ...the apparatus only
 docket next --oldest   # owed work longest-waiting first - "what is next debt"
+docket picks           # "what's left": the gate's open work by feature, and the build that can start
 ```
 
 **Start above the queue.** `docket wave` says where the project stands on the

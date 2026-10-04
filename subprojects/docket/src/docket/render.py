@@ -46,6 +46,8 @@ from .model import (
     split_generator_verdict,
 )
 from .notes import Thread
+from .picks import BUILD, BUILD_REST, HEAD, LANE, PickLine, Picks
+from .picks import MAX_LINES as MAX_PICK_LINES
 from .plan import (
     HELD,
     PLACEMENT_MARKS,
@@ -3144,6 +3146,100 @@ def _plan_header(scope: Scope | None, used: tuple[str, ...]) -> list[str]:
     ]
     glosses.append("unmarked, no section of the roadmap places the id")
     return [f"Plan: {beat}.", f"      {'; '.join(glosses)}.", ""]
+
+
+def _pick_name(line: PickLine) -> str:
+    """What a reader names back to pick this line."""
+    if line.kind == HEAD:
+        return f"{line.name}, a live generator head"
+    if line.kind == LANE:
+        return f"{line.name} lane, one-item features and items carrying none"
+    if line.kind == BUILD:
+        return f"build entry {line.entry}, {line.name}"
+    if line.kind == BUILD_REST:
+        return "build entries " + ", ".join(str(number) for number in line.entries)
+    return line.name
+
+
+def _pick_block(number: int, line: PickLine) -> list[str]:
+    """One numbered line of `format_picks`, with its next pick and its members beneath."""
+    lanes = (
+        ", ".join(f"{lane} {count}" for lane, count in line.lanes)
+        if len(line.lanes) > 1
+        else "".join(lane for lane, _ in line.lanes)
+    )
+    held = (
+        (line.awaiting, "awaiting a decision"),
+        (line.blocked, "blocked"),
+        (line.in_flight, "in flight"),
+    )
+    counts = "; ".join(
+        [effort_total(list(line.items)), *(f"{count} {said}" for count, said in held if count)]
+    )
+    what = "startable" if line.kind in (BUILD, BUILD_REST) else "open"
+    head = f"  {number}. {_pick_name(line)} - {len(line.items)} {what} ({lanes}): {counts}"
+    if line.kind == BUILD:
+        others = _plural(line.scope_others, "other open item", "other open items")
+        head += (
+            f"; {line.waiting_on_it} of the scope's {others} wait on it,"
+            f" {line.waiting_directly} directly"
+            if line.waiting_on_it
+            else f"; none of the scope's {others} waits on it"
+        )
+    lines = [head]
+    if line.pick is None:
+        lines.append("       next: nothing here can start now")
+    else:
+        item = line.pick.item
+        lines.append(f"       next: {item.identifier} ({item.effort}) {_gloss(item.title, 100)}")
+        if item.payoff:
+            lines.append(f"       payoff: {item.payoff}")
+    if line.kind != HEAD:
+        lines.append("       " + ", ".join(item.identifier for item in line.items))
+    return lines
+
+
+def format_picks(picks: Picks) -> str:
+    """`docket picks`: the what's-left list, numbered so a line can be named back.
+
+    Counts and ids only. What a line buys in a sentence, and which to
+    recommend, are the reply's: this prints what the store and the plan
+    decide (`PL-G2HP`).
+    """
+    entries = _plural(picks.clearable, "entry", "entries")
+    lines = [
+        f"{picks.milestone}: the {entries} its gate can clear, by feature, and the"
+        " Required-scope work that can start now.",
+        "",
+    ]
+    number = 0
+    built = False
+    for line in picks.lines:
+        if line.kind in (BUILD, BUILD_REST) and not built:
+            built = True
+            waits = (
+                f" - the roadmap clears the gate first, with {entries} still open"
+                if picks.build_waits
+                else ""
+            )
+            lines += ["", f"  Build, from the milestone's Required scope{waits}:"]
+        number += 1
+        lines += _pick_block(number, line)
+    if not picks.lines:
+        lines.append(
+            "  Nothing: the gate holds no entry it can clear, and no build entry can start."
+        )
+    if picks.led:
+        lines.append(f"  Led on a generator line rather than grouped: {', '.join(picks.led)}.")
+    lines.append("")
+    lines.append(
+        f"Not offered: {picks.self_cleared} the milestone clears itself and"
+        f" {picks.blocked_outside} blocked outside the gate; `docket wave` names them."
+    )
+    if picks.folded:
+        folded = ", ".join(f"{name} ({count})" for name, count in picks.folded)
+        lines.append(f"Folded into their lane lines to keep to {MAX_PICK_LINES}: {folded}.")
+    return "\n".join(lines)
 
 
 def format_wave(plan: Wave, items: Mapping[str, Item] | None = None) -> str:
