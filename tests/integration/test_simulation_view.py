@@ -278,9 +278,11 @@ def _page_of(view: SimulationView) -> QWidget:
 def _sidebar_panels(run: RunView) -> tuple[QWidget, QWidget]:
     """The accounting and control-change panels a run placed in the sidebar, in that order.
 
-    Reached through the heading placed in each, never built again: a second
-    `build_sidebar_panels()` call returns panels with no parent and moves
-    the run's live labels into them (`PL-N67T`).
+    Reached through the heading placed in each rather than through
+    `build_sidebar_panels`, so what the tests below measure is what the page
+    holds whatever that method hands back. A second call to it used to build
+    panels with no parent and move the run's live labels into them
+    (`PL-N67T`).
     """
 
     accounting = run._accounting_heading_text.parentWidget()
@@ -3081,7 +3083,7 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
 
     The sidebar panels measured are the ones the page holds, which the test
     below proves. They used to come from a second `build_sidebar_panels()`
-    call, whose panels have no parent: `mapTo(page, ...)` assumes the page is
+    call, whose panels had no parent: `mapTo(page, ...)` assumes the page is
     an ancestor and checks nothing, so the last two assertions compared
     coordinates that never reached the page and could not fail (`PL-JS0X`).
     """
@@ -3125,6 +3127,52 @@ def test_the_sidebar_panels_measured_are_the_ones_the_page_holds(application: QA
     for panel, name in ((accounting, "accountingPanel"), (timeline, "controlTimelinePanel")):
         assert page.findChildren(QWidget, name) == [panel], f"{name} is not the page's own"
         assert panel.isVisible(), f"{name} is not shown"
+
+
+def test_a_second_build_sidebar_panels_leaves_the_run_labels_on_screen(
+    application: QApplication,
+) -> None:
+    """Asking a run for its sidebar panels again hands back the two it placed.
+
+    The method used to build two new panels on every call and lay the run's
+    own labels into them, and a layout takes a widget from wherever it sits:
+    a second call moved the accounting status, its amounts and the control
+    changes into panels with no parent, and the sidebar a learner was reading
+    went empty of them (`PL-N67T`). Every label is held to being on screen
+    and in the shared column before the call as well as after it, so the
+    test cannot pass on a sidebar that never showed them. The overflow line
+    is hidden while nothing overflows, so it is held to the column alone.
+    """
+
+    view = _shown_view(application, SimulationController())
+    run = view.runs[0]
+    sidebar = view._sidebar_column.parentWidget()
+    placed = _sidebar_panels(run)
+    shown = (
+        run._accounting_heading_text,
+        run._agent_accounting_status_text,
+        run._agent_accounting_detail_text,
+        run._agent_amounts_text,
+        run._control_timeline_heading_text,
+        run._control_timeline_text,
+    )
+
+    assert sidebar is not None
+
+    for label in shown:
+        assert label.isVisible(), "a run label is off screen before the second call"
+        assert sidebar.isAncestorOf(label), "a run label is outside the sidebar to begin with"
+
+    again = run.build_sidebar_panels()
+    _settle(application)
+
+    for label in shown:
+        assert label.isVisible(), "a second call took a run label off screen"
+        assert sidebar.isAncestorOf(label), "a second call moved a run label out of the sidebar"
+
+    assert sidebar.isAncestorOf(run._control_timeline_overflow_text)
+    assert again[0] is placed[0], "a second call built a new accounting panel"
+    assert again[1] is placed[1], "a second call built a new control-change panel"
 
 
 def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QApplication) -> None:
