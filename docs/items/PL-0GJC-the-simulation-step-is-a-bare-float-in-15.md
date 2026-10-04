@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/upt
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 session that claimed it
 added: 2026-10-03
 closed: 2026-10-04
+pr: 1335
 payoff: a run's step is checked once, where it is chosen, so the next function written to take one cannot be the next entry point that forgot the 1 ms floor
 verify: grep -q '^class SimulationStep(float):' src/anesthesia_sim/core/simulation_step.py && grep -q 'def test_a_bare_float_step_is_refused_at_each_run_entry' tests/unit/test_simulation_step.py && ! grep -q 'simulation_step_s: float' src/anesthesia_sim/core/simulation.py src/anesthesia_sim/core/uptake_system.py src/anesthesia_sim/core/supported_ranges.py src/anesthesia_sim/app/playback.py src/anesthesia_sim/app/controller.py
 ---
