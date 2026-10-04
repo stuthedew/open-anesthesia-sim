@@ -2,11 +2,12 @@ import pytest
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.simulation import SimulationState
+from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     maximum_step_count,
 )
-from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
 def _advance_for(state: SimulationState, duration_s: float) -> None:
@@ -19,7 +20,7 @@ def _advance_for(state: SimulationState, duration_s: float) -> None:
     """
 
     for _ in range(round(duration_s / MAXIMUM_SIMULATION_STEP_S)):
-        state.advance(MAXIMUM_SIMULATION_STEP_S)
+        state.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
 
 def test_advance_updates_time_and_complete_uptake_system() -> None:
@@ -62,7 +63,7 @@ def test_reset_preserves_settings_and_clears_dynamic_state() -> None:
 @pytest.mark.parametrize("simulation_step_s", [0.0, -0.1, float("nan")])
 def test_rejects_invalid_simulation_step(simulation_step_s: float) -> None:
     with pytest.raises(SimulationConfigurationError):
-        SimulationState().advance(simulation_step_s)
+        SimulationState().advance(SimulationStep(simulation_step_s))
 
 
 @pytest.mark.parametrize("simulation_step_s", [0.0, -0.1, float("nan"), float("inf")])
@@ -79,7 +80,7 @@ def test_an_invalid_initial_step_is_refused_before_a_run_length_is_read_from_it(
     """
 
     with pytest.raises(SimulationConfigurationError, match="simulation_step_s"):
-        SimulationState(step_count=0, simulation_step_s=simulation_step_s)
+        SimulationState(step_count=0, simulation_step_s=SimulationStep(simulation_step_s))
 
 
 def test_rejects_a_step_above_the_maximum_simulation_step() -> None:
@@ -92,11 +93,11 @@ def test_rejects_a_step_above_the_maximum_simulation_step() -> None:
     """
 
     state = SimulationState()
-    state.advance(MAXIMUM_SIMULATION_STEP_S)
+    state.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
     before_s = state.elapsed_s
 
     with pytest.raises(SimulationConfigurationError, match="largest supported step"):
-        state.advance(MAXIMUM_SIMULATION_STEP_S * 10.0)
+        state.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S * 10.0))
 
     assert state.elapsed_s == before_s
 
@@ -114,7 +115,7 @@ def test_rejects_a_step_below_the_minimum_simulation_step() -> None:
     state = SimulationState()
 
     with pytest.raises(SimulationConfigurationError, match="smallest supported step"):
-        state.advance(5e-324)
+        state.advance(SimulationStep(5e-324))
 
     assert state.elapsed_s == 0.0
     assert state.simulation_step_s is None
@@ -139,7 +140,7 @@ def test_elapsed_time_is_the_step_count_times_the_step() -> None:
     state = SimulationState()
 
     for _ in range(10):
-        state.advance(0.1)
+        state.advance(SimulationStep(0.1))
 
     assert state.step_count == 10
     assert state.elapsed_s == 1.0
@@ -159,7 +160,7 @@ def test_elapsed_time_holds_where_an_accumulated_sum_has_drifted() -> None:
     for _ in range(600):
         accumulated_s += 0.1
 
-    state = SimulationState(step_count=600, simulation_step_s=0.1)
+    state = SimulationState(step_count=600, simulation_step_s=SimulationStep(0.1))
 
     assert state.elapsed_s == 60.0
     assert accumulated_s != 60.0
@@ -174,10 +175,10 @@ def test_a_run_keeps_the_step_it_started_at() -> None:
     """
 
     state = SimulationState()
-    state.advance(0.1)
+    state.advance(SimulationStep(0.1))
 
     with pytest.raises(SimulationConfigurationError, match="cannot switch"):
-        state.advance(0.05)
+        state.advance(SimulationStep(0.05))
 
     assert state.step_count == 1
     assert state.elapsed_s == 0.1
@@ -185,7 +186,7 @@ def test_a_run_keeps_the_step_it_started_at() -> None:
 
 def test_reset_frees_the_step_so_a_fresh_run_may_take_a_different_one() -> None:
     state = SimulationState()
-    state.advance(0.1)
+    state.advance(SimulationStep(0.1))
 
     state.reset()
 
@@ -193,7 +194,7 @@ def test_reset_frees_the_step_so_a_fresh_run_may_take_a_different_one() -> None:
     assert state.simulation_step_s is None
     assert state.elapsed_s == 0.0
 
-    state.advance(0.05)
+    state.advance(SimulationStep(0.05))
 
     assert state.elapsed_s == 0.05
 
@@ -225,7 +226,9 @@ def test_rejects_an_initial_step_above_the_largest_supported_one() -> None:
     """
 
     with pytest.raises(SimulationConfigurationError, match="largest supported step"):
-        SimulationState(step_count=1, simulation_step_s=MAXIMUM_SIMULATION_STEP_S * 10.0)
+        SimulationState(
+            step_count=1, simulation_step_s=SimulationStep(MAXIMUM_SIMULATION_STEP_S * 10.0)
+        )
 
 
 @pytest.mark.parametrize("simulation_step_s", [5e-324, 4e-304, 1e-12])
@@ -241,7 +244,7 @@ def test_rejects_an_initial_step_below_the_smallest_supported_one(simulation_ste
     """
 
     with pytest.raises(SimulationConfigurationError, match="smallest supported step"):
-        SimulationState(step_count=0, simulation_step_s=simulation_step_s)
+        SimulationState(step_count=0, simulation_step_s=SimulationStep(simulation_step_s))
 
 
 # --- The supported run length (PL-Y5WR) -------------------------------------
@@ -258,10 +261,10 @@ def test_a_run_may_be_advanced_up_to_the_supported_run_length() -> None:
 
     state = SimulationState(
         step_count=maximum_step_count(MAXIMUM_SIMULATION_STEP_S) - 1,
-        simulation_step_s=MAXIMUM_SIMULATION_STEP_S,
+        simulation_step_s=SimulationStep(MAXIMUM_SIMULATION_STEP_S),
     )
 
-    state.advance(MAXIMUM_SIMULATION_STEP_S)
+    state.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
     assert state.step_count == maximum_step_count(MAXIMUM_SIMULATION_STEP_S)
     assert state.elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
@@ -272,11 +275,11 @@ def test_the_step_past_the_supported_run_length_is_refused() -> None:
 
     state = SimulationState(
         step_count=maximum_step_count(MAXIMUM_SIMULATION_STEP_S),
-        simulation_step_s=MAXIMUM_SIMULATION_STEP_S,
+        simulation_step_s=SimulationStep(MAXIMUM_SIMULATION_STEP_S),
     )
 
     with pytest.raises(SimulationDomainLimitError, match="supported run length"):
-        state.advance(MAXIMUM_SIMULATION_STEP_S)
+        state.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
 
 def test_a_refused_step_leaves_the_run_exactly_where_it_was() -> None:
@@ -291,13 +294,13 @@ def test_a_refused_step_leaves_the_run_exactly_where_it_was() -> None:
 
     state = SimulationState(
         step_count=maximum_step_count(MAXIMUM_SIMULATION_STEP_S),
-        simulation_step_s=MAXIMUM_SIMULATION_STEP_S,
+        simulation_step_s=SimulationStep(MAXIMUM_SIMULATION_STEP_S),
     )
     stored_before = state.uptake_system.total_stored_agent_l
     alveolar_before = state.uptake_system.alveoli.partial_pressure_fraction
 
     with pytest.raises(SimulationDomainLimitError):
-        state.advance(MAXIMUM_SIMULATION_STEP_S)
+        state.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
     assert state.step_count == maximum_step_count(MAXIMUM_SIMULATION_STEP_S)
     assert state.elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
@@ -310,11 +313,11 @@ def test_reset_returns_a_run_stopped_at_the_limit_to_a_startable_one() -> None:
 
     state = SimulationState(
         step_count=maximum_step_count(MAXIMUM_SIMULATION_STEP_S),
-        simulation_step_s=MAXIMUM_SIMULATION_STEP_S,
+        simulation_step_s=SimulationStep(MAXIMUM_SIMULATION_STEP_S),
     )
 
     state.reset()
-    state.advance(MAXIMUM_SIMULATION_STEP_S)
+    state.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
 
     assert state.step_count == 1
 
@@ -343,13 +346,14 @@ def test_a_state_may_be_built_standing_on_the_supported_run_length(
     """
 
     state = SimulationState(
-        step_count=maximum_step_count(simulation_step_s), simulation_step_s=simulation_step_s
+        step_count=maximum_step_count(simulation_step_s),
+        simulation_step_s=SimulationStep(simulation_step_s),
     )
 
     assert state.elapsed_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
     with pytest.raises(SimulationDomainLimitError):
-        state.advance(simulation_step_s)
+        state.advance(SimulationStep(simulation_step_s))
 
 
 @pytest.mark.parametrize("simulation_step_s", STEPS_A_RUN_MAY_TAKE_S)
@@ -365,7 +369,7 @@ def test_a_state_past_the_supported_run_length_is_refused_at_construction(
     with pytest.raises(SimulationConfigurationError, match="supported run length"):
         SimulationState(
             step_count=maximum_step_count(simulation_step_s) + 1,
-            simulation_step_s=simulation_step_s,
+            simulation_step_s=SimulationStep(simulation_step_s),
         )
 
 
@@ -383,4 +387,4 @@ def test_the_state_measured_past_the_limit_is_refused() -> None:
     step_count = maximum_step_count(0.1) + 136_000
 
     with pytest.raises(SimulationConfigurationError, match="supported run length"):
-        SimulationState(step_count=step_count, simulation_step_s=0.1)
+        SimulationState(step_count=step_count, simulation_step_s=SimulationStep(0.1))

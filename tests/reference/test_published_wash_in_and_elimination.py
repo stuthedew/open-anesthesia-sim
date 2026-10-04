@@ -303,8 +303,9 @@ import pytest
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
-from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # The measurement's own horizon: both studies administered the potent agent
 # for 30 minutes and report F_A/F_I at the end of it.
@@ -324,7 +325,7 @@ ELIMINATION_DURATION_S = 300.0
 # (docs/MODEL.md, "Supported simulation step"); if it is ever raised, this
 # validation should move with it and be re-measured, not keep quietly running
 # at a step the interface no longer uses.
-SIMULATION_STEP_S = MAXIMUM_SIMULATION_STEP_S
+SIMULATION_STEP_S = SimulationStep(MAXIMUM_SIMULATION_STEP_S)
 
 # The operating point. Alveolar ventilation and cardiac output are *not*
 # chosen here: they are read from the reference-patient data file below, and

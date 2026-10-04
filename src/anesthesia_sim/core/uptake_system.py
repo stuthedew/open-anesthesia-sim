@@ -54,142 +54,8 @@ from anesthesia_sim.core.parameters import (
     load_reference_circle_system_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments, PatientCompartmentsState
-from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
-
-# The largest simulation step `advance()` accepts.
-#
-# It is not a bound on the arithmetic, and re-deriving it (`PL-X9KD`) did not
-# find one. The propagator is the exact solution of the governing equations
-# over whatever interval it is given, and its floating-point evaluation is
-# measured across the settings envelope at 1e-14 to 2e-12 in fraction for every
-# step from 1e-3 s to 3600 s - not growing with the step but U-shaped in it,
-# because the only mechanism left is rounding, which accumulates once per step
-# and so gets *worse* as the step shrinks. The first step at which any displayed
-# digit is wrong by a whole count is around 1e13 s. No numerical ceiling
-# reachable by a caller exists.
-#
-# What a longer step costs is control resolution. Every setting is held
-# constant across a step, so a control change takes effect at the next step
-# boundary and is displaced later by up to one whole step. That displacement is
-# exactly proportional to the step, with no threshold anywhere in it, so no step
-# size is the one at which control timing "becomes invisible" - which means this
-# constant is a declared tolerance rather than a derived limit, and is recorded
-# here as one.
-#
-# The tolerance it declares, measured 2026-09-06 in percentage points of one
-# atmosphere and stated in those units rather than in counts of any readout:
-# at this step the case-opening manoeuvre - dialling from off to 1 MAC at the
-# reference adult's own flows - displaces every displayed compartment by at most
-# 6.7e-3 pp, desflurane binding. One standard deviation of a single measured
-# partition coefficient displaces one by 9e-4 to 6.8e-2 pp (Yasuda 1989; see
-# docs/MODEL.md "Displayed precision"). So an ordinary control action is timed
-# well inside the model's own parameter uncertainty, which is the criterion,
-# and it is a criterion no display decimal count enters.
-#
-# What that does *not* cover, stated rather than left to be found: an abrupt
-# manoeuvre is not held inside it. A ventilator start at this step displaces the
-# alveolar reading by up to 1.4e-1 pp for the duration of its transient, about
-# twice one parameter SD. Holding that inside one SD needs a step near 0.05 s.
-#
-# That was put to the project owner and decided on 2026-09-06: the value stays
-# here and the timing is accepted (PL-NBCJ). Moving to 0.05 s would double the
-# propagations per simulated second and force the interface's tick structure to
-# be revisited, and PL-NBWP had by then narrowed what it would buy to 1x
-# playback alone - above 1x the interface's own control grid is `multiplier x
-# 0.1` s and dominates the step outright. So this is a declared tolerance that
-# has been argued rather than a default nobody revisited, and the ventilator
-# start being timed to about twice one parameter SD is the accepted cost of it
-# rather than an oversight. docs/MODEL.md "Supported simulation step" carries
-# the measurements and the whole of the decision.
-#
-# Both figures are per step of delay, and a *caller* decides how many steps of
-# delay a control change waits (PL-NBWP). They are therefore what a caller
-# advancing one step per control opportunity sees, which the shipped interface
-# is only at 1x playback: it advances a whole tick's worth of steps between
-# opportunities, so its own resolution is that many times this one - 30 s and
-# up to about 10 pp at 300x, measured over the same manoeuvres. That is a
-# property of the caller's loop and not of this constant, which is why the
-# number here does not move; but the constant is a floor on the interface's
-# resolution rather than a statement of it, and a reader who takes it for the
-# latter is reading it as several hundred times better than it is. The whole
-# per-rate table is in docs/MODEL.md "Supported simulation step" beside this
-# one, and app/playback.py states which grid the interface actually offers.
-#
-# Every figure quoted above, and this constant's own value, is re-measured from
-# the parameter files at each run by tests/reference/test_control_resolution.py.
-# Until PL-ZVS7 they were held by this comment and by docs/MODEL.md and by
-# nothing else, so moving the model would have left both documents asserting a
-# tolerance the code no longer held, with make check passing.
-MAXIMUM_SIMULATION_STEP_S = 0.1
-
-# The smallest simulation step `advance()` accepts (PL-YZ17).
-#
-# Unlike the ceiling above, this bound is numerical. The exact step has no
-# truncation error at any step size, so what a finer step costs is rounding:
-# each step adds what it changed to what was already stored, and the finer the
-# step, the smaller that change is beside the store it is added to, so the same
-# rounding is a larger share of it. Measured 2026-10-03 over 10 000 steps from
-# 60 s into the default sevoflurane wash-in, what the alveolar, vessel-rich,
-# muscle and fat fractions changed by is wrong by at most 3e-12 of itself at
-# 1 ms, 7e-9 at 1 us, 1e-4 at 1e-10 s and a third at 1e-14 s, and nothing
-# raises at any of them. The growth has no knee, so - as with the ceiling - no
-# step is the one at which the answer "becomes wrong", and this constant is
-# declared rather than derived.
-#
-# It is declared at the finest step the solution has been shown to be the
-# shipped one at: the bottom of the step sweep PL-X9KD took. A test beside the
-# step-refinement gate in tests/reference/test_sevo_patient.py drives it, and
-# pins this constant to the value its figures were measured at. Nothing runs
-# finer: apart from the tests of this floor itself, the finest step any test
-# takes is 0.02304 s.
-#
-# It also keeps the run's own arithmetic exact. At this step the supported run
-# length is 86 400 000 steps, well inside the 2**53 below which a float holds
-# every whole count. Below about 9.6e-12 s a day's count passes that and
-# `elapsed_s` would round it before multiplying, and below about 4.8e-304 s the
-# run length divided by the step overflows, which `maximum_step_count` met as
-# an `OverflowError` from outside the simulator's own exceptions.
-#
-# Lowering it is a measurement rather than an edit: drive the gate at the new
-# floor and re-measure the figures above. docs/MODEL.md "Supported simulation
-# step" carries the measurement in full.
-MINIMUM_SIMULATION_STEP_S = 1e-3
-
-
-def require_supported_simulation_step(simulation_step_s: float) -> None:
-    """Require a step inside the interval the coupled system is supported over.
-
-    The guard belongs to the coupled system rather than to a compartment, and
-    for a different reason at each end. The ceiling is how long settings are
-    held constant for, which is a property of the step the whole system takes.
-    The floor is where the solution has been verified, and a compartment is
-    stepped at a run's step only by `AgentUptakeSystem.advance()`, which has
-    checked it here first.
-
-    Raises:
-        SimulationConfigurationError: the step is not positive and finite, is
-            shorter than `MINIMUM_SIMULATION_STEP_S`, or exceeds
-            `MAXIMUM_SIMULATION_STEP_S`. Nothing is calculated in any of these
-            cases, so a caller can retry inside the supported range with the
-            run it already has.
-    """
-
-    require_positive_finite("simulation_step_s", simulation_step_s)
-
-    if simulation_step_s < MINIMUM_SIMULATION_STEP_S:
-        raise SimulationConfigurationError(
-            f"simulation_step_s of {simulation_step_s} s is shorter than the "
-            f"smallest supported step of {MINIMUM_SIMULATION_STEP_S} s, below which "
-            "rounding is a growing share of what each step changes "
-            '(docs/MODEL.md, "Supported simulation step")'
-        )
-
-    if simulation_step_s > MAXIMUM_SIMULATION_STEP_S:
-        raise SimulationConfigurationError(
-            f"simulation_step_s of {simulation_step_s} s is longer than the "
-            f"largest supported step of {MAXIMUM_SIMULATION_STEP_S} s, over which "
-            "settings are held constant"
-        )
+from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
+from anesthesia_sim.core.validation import require_nonnegative_finite
 
 
 @dataclass(frozen=True, slots=True)
@@ -357,7 +223,7 @@ class AgentUptakeSystem:
     def set_cardiac_output(self, cardiac_output_l_min: float) -> None:
         self.patient.set_cardiac_output(cardiac_output_l_min)
 
-    def advance(self, simulation_step_s: float) -> UptakeStepResult:
+    def advance(self, simulation_step_s: SimulationStep) -> UptakeStepResult:
         """Advance one conservative, validated simulation step, or none.
 
         The step is all-or-nothing. `_advance_step()` applies five
@@ -394,11 +260,10 @@ class AgentUptakeSystem:
         The caller must stop.
 
         Raises:
-            SimulationConfigurationError: `simulation_step_s` is not a
-                positive finite number, or is outside
-                `MINIMUM_SIMULATION_STEP_S` to `MAXIMUM_SIMULATION_STEP_S`.
-                Checked before anything is changed, so the system is
-                untouched and the caller can retry with a valid step.
+            TypeError: `simulation_step_s` is not a `SimulationStep`, so
+                nothing has checked it against the supported range
+                (`core/simulation_step.py`). Checked before anything is
+                changed, so the system is untouched.
             SimulationNumericalError: the step began and could not be
                 completed — a compartment guard rejected a value produced
                 by the step itself. The exact propagator cannot reach this
@@ -410,7 +275,7 @@ class AgentUptakeSystem:
                 from it.
         """
 
-        require_supported_simulation_step(simulation_step_s)
+        require_simulation_step(simulation_step_s)
 
         state_before_step = self.capture_state()
         step_completed = False
@@ -477,7 +342,7 @@ class AgentUptakeSystem:
         self.patient.restore_state(state.patient)
         self.agent_simulation_validator.restore_state(state.agent_simulation_validator)
 
-    def _advance_step(self, simulation_step_s: float) -> UptakeStepResult:
+    def _advance_step(self, simulation_step_s: SimulationStep) -> UptakeStepResult:
         """Advance every compartment at once, by one exact propagation.
 
         Writes each compartment as it goes and does not clean up after
@@ -570,7 +435,7 @@ class AgentUptakeSystem:
             ),
         )
 
-    def _propagator_for(self, simulation_step_s: float) -> Matrix:
+    def _propagator_for(self, simulation_step_s: SimulationStep) -> Matrix:
         """Return `exp(A * simulation_step_s)`, rebuilding it if a setting moved.
 
         The cache is keyed on the settings themselves rather than invalidated
@@ -613,7 +478,7 @@ class AgentUptakeSystem:
 
         return self._propagator
 
-    def _propagator_cache_key(self, simulation_step_s: float) -> tuple[float, ...]:
+    def _propagator_cache_key(self, simulation_step_s: SimulationStep) -> tuple[float, ...]:
         """Return the step and every compartment value the system matrix reads.
 
         One entry per field of `UptakeEquationSettings`, in its order, read

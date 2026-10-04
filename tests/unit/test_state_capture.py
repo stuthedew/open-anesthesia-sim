@@ -44,6 +44,7 @@ from anesthesia_sim.core.governing_equations import (
     UptakeEquationSettings,
 )
 from anesthesia_sim.core.patient import PatientCompartmentsState
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem, AgentUptakeSystemState
 
@@ -347,14 +348,14 @@ def test_the_propagator_cache_is_not_restored_by_a_rollback() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
     for _ in range(10):
-        system.advance(0.1)
+        system.advance(SimulationStep(0.1))
 
     captured = system.capture_state()
-    system.advance(0.1)
+    system.advance(SimulationStep(0.1))
     after_first_l = system.total_stored_agent_l
 
     system.restore_state(captured)
-    system.advance(0.1)
+    system.advance(SimulationStep(0.1))
 
     assert system.total_stored_agent_l == after_first_l
 
@@ -371,7 +372,7 @@ def test_restoring_the_system_cannot_raise_on_a_state_a_run_produced() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
     for _ in range(10):
-        system.advance(0.1)
+        system.advance(SimulationStep(0.1))
 
     state = system.capture_state()
 
@@ -472,15 +473,15 @@ def test_a_step_after_a_setting_moved_propagates_with_the_new_matrix() -> None:
     """
 
     changed = AgentUptakeSystem.for_agent("sevoflurane")
-    changed.advance(0.1)
+    changed.advance(SimulationStep(0.1))
     changed.set_alveolar_ventilation(8.0)
-    changed.advance(0.1)
+    changed.advance(SimulationStep(0.1))
 
     rebuilt = AgentUptakeSystem.for_agent("sevoflurane")
-    rebuilt.advance(0.1)
+    rebuilt.advance(SimulationStep(0.1))
     rebuilt.set_alveolar_ventilation(8.0)
     rebuilt._propagator = None
     rebuilt._propagator_key = None
-    rebuilt.advance(0.1)
+    rebuilt.advance(SimulationStep(0.1))
 
     assert changed.state_vector() == rebuilt.state_vector()

@@ -99,6 +99,7 @@ chain is cut: neither is derived from anything measured over this envelope.
 from math import floor, isfinite
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.units import SECONDS_PER_HOUR
 
 # Fresh gas flow into the breathing circuit.
@@ -262,7 +263,7 @@ def require_supported_cardiac_output(cardiac_output_l_min: float) -> None:
     )
 
 
-def maximum_step_count(simulation_step_s: float) -> int:
+def maximum_step_count(simulation_step_s: SimulationStep) -> int:
     """How many steps of this size fit inside the supported run length.
 
     Whole steps only, and the boundary is included: a run may complete
@@ -324,7 +325,7 @@ def maximum_step_count(simulation_step_s: float) -> int:
     return inside
 
 
-def require_supported_run_length(step_count: int, simulation_step_s: float) -> None:
+def require_supported_run_length(step_count: int, simulation_step_s: SimulationStep) -> None:
     """Require room for one more step inside the supported run length.
 
     Refuses the step that would carry the run past
@@ -354,7 +355,7 @@ def require_supported_run_length(step_count: int, simulation_step_s: float) -> N
         )
 
 
-def require_supported_step_count(step_count: int, simulation_step_s: float) -> None:
+def require_supported_step_count(step_count: int, simulation_step_s: SimulationStep) -> None:
     """Require `step_count` to be no more steps than the supported run length allows.
 
     The question a run *handed* a position asks, where
@@ -376,10 +377,10 @@ def require_supported_step_count(step_count: int, simulation_step_s: float) -> N
     there is refused before a snapshot, a readout or a chart axis can
     present it as one (`PL-BMY5`).
 
-    Like `maximum_step_count`, it takes `simulation_step_s` to be a step
-    `uptake_system.require_supported_simulation_step` has already accepted,
-    and `step_count` to be a whole, nonnegative count; `SimulationState`
-    checks both before it calls this.
+    Like `maximum_step_count`, it takes the step as a `SimulationStep`, which
+    was checked against the supported range when it was built, and
+    `step_count` to be a whole, nonnegative count, which `SimulationState`
+    checks before it calls this.
 
     Raises:
         SimulationConfigurationError: `step_count` is more than
