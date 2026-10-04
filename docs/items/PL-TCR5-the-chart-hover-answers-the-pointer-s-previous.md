@@ -87,3 +87,32 @@ wash-in plot is held to one move. Each half fails when its fix is reverted:
 restoring the direct slot gives `None` on the first move; feeding the proxy
 from `sigMouseMoved` again gives the pair's first point (0.73 ×MAC) for its
 second (1.11 ×MAC).
+
+**Review, 2026-10-04: two defects in the first build, both fixed here.**
+Four adversarial passes ran before the pull request went ready.
+
+- *A segmentation fault.* CI's first run lost two workers to a segmentation
+  fault in `QPainter::resetTransform`, raised from pyqtgraph's
+  `GraphicsView.paintEvent`. The first build handed the hover the chart's own
+  `_refresh_hover` to call back. That is a reference cycle, so a chart let go
+  was freed only when the cycle collector next ran, and that can fall in the
+  middle of the chart's own paint. Reproduced headless with the collector
+  forced to run constantly: exit 139, at the same frame. Now the chart
+  connects its own slot, `_on_pointer`, to a Qt signal on the hover. That
+  slot stores the position and then answers it, and the connection holds no
+  cycle: freed by reference count, measured.
+  `test_a_chart_let_go_is_freed_at_once_rather_than_by_the_collector` holds
+  it, with the collector off. It fails when the chart's method is held again.
+- *Starvation.* `pg.SignalProxy` restarts its timer on every signal it
+  receives. Once every move reached it, moves under a millisecond apart, as a
+  1 kHz mouse reports them, held its delivery back for as long as the pointer
+  kept moving. The review measured 1 delivery in 400 ms, against 23 on `main`,
+  where the scene's thinning had hidden the problem. `_PointerMoves` now
+  throttles itself. The first move is answered at once, a delivery starts a
+  17 ms cooldown that no move restarts, and the newest position is answered
+  when the cooldown ends. The test's moving-pointer case requires at least
+  three answers in 200 ms of moves sent back to back. It saw 0 with the
+  cooldown restarted on every move.
+
+**Filed, not fixed:** `PL-LTKL`. The box stays up after the pointer leaves the
+widget, which is older than this item; `main` does the same.

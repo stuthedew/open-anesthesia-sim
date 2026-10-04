@@ -105,3 +105,27 @@ read after each paint, none was. The test fails with either flip removed. The
 six cases were rendered on one sheet, looked at in this session, and sent to
 the project owner on 2026-10-04 at 10:29 CDT; the owner's read of the pull
 request is the person's look the brief asks for.
+
+**Review, 2026-10-04: three weaknesses in the first test, fixed here.**
+
+- *The fill check could not fail.* The plot's background is `PANEL` as well,
+  so a box with no fill still had `PANEL` as its modal colour. The test now
+  paints the plot with the pointer off it, then again with the box up, and
+  requires that at most 5% of what was drawn beneath the box shows through.
+  With the fill: 0 to 1% of 239 to 3,271 pixels. With the fill taken away:
+  56 to 100%.
+- *The `INK` check depended on the font.* With sub-pixel smoothing, a font
+  such as Liberation Sans paints no pixel exactly `INK`. The test now
+  requires the box's darkest pixel to lie nearer `INK` than `MUTED`. As
+  shipped it is exactly `INK`; with the text made `MUTED`, it is exactly
+  `MUTED`.
+- *The wash-in claim overreached.* The wash-in points stay below that plot's
+  own top quarter, so the docstrings now say its two ends, which take the
+  left-right flip.
+
+The box is now shown through pyqtgraph's own `setVisible(True)` rather than
+Qt's `show`. `show` skips the override that orients the box for the view, so
+before its next paint the box could measure thousands of pixels tall, which
+was the trap noted above. Shown this way, `hover_box` needs no paint first,
+and the test asserts that: with `show` restored, the box measured 11,843 px
+tall before its paint.

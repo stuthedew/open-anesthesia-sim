@@ -13,8 +13,9 @@ the agent badge is filled in the agent's own colour, that the 1 MAC line is
 painted on the row the axis maps its value to, that the alveolar trace stays
 inside the plot, that no readout is clipped by its panel, that the row and
 the sidebar sit inside the page, that the hover on the shipped chart says
-what the formatters say, and that its box, driven to every edge of both
-plots, is painted inside the plot in `INK` on `PANEL`. A pixel snapshot
+what the formatters say, and that its box, driven to the compartment
+chart's four corners and the wash-in plot's two ends, is painted inside the
+plot, hiding what is drawn beneath it, its text in `INK`. A pixel snapshot
 would be brittle across Qt versions and font stacks and would hold nothing
 a reader interprets.
 
@@ -31,7 +32,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QDeadlineTimer, QEvent, QPoint, QPointF, Qt
-from PySide6.QtGui import QFontMetrics, QImage, QMouseEvent
+from PySide6.QtGui import QColor, QFontMetrics, QImage, QMouseEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QWidget
 
@@ -43,7 +44,7 @@ from anesthesia_sim.app.qt_chart import ConcentrationChart, WashInChart
 from anesthesia_sim.app.qt_widgets import MetricPanel
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, INK, ONE_MAC_LINE_COLOR, PANEL
+from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, INK, MUTED, ONE_MAC_LINE_COLOR, PANEL
 from anesthesia_sim.core.concentration import Percent
 
 #: The size the dashboard is rendered at. Wide enough that the page's own
@@ -82,8 +83,17 @@ _EDGE_TOLERANCE_PX = 0.5
 #: border and the anti-aliasing either side of it.
 _BOX_BORDER_INSET_PX = 2
 
-#: Sixty times the rate-limited hover proxy's own 1/60 s, the longest it
-#: holds a pointer position before delivering it from its timer.
+#: How much of what is drawn beneath a box may still show through it: the
+#: text's own pixels land on a few. Measured 0 to 1% with the fill, and 56 to
+#: 100% with the fill taken away (`PL-J0F7`).
+_SHOWING_THROUGH_FRACTION = 0.05
+
+#: The fewest pixels drawn beneath a box for the fill to be tested at all.
+#: The six cases have 239 to 3,271.
+_DRAWN_BENEATH_MIN_PX = 100
+
+#: Sixty times the hover's own cooldown of 1/60 s, the longest it holds a
+#: pointer position before answering it.
 _HOVER_DELIVERY_MS = 1000
 
 
@@ -186,9 +196,9 @@ def _move_pointer(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> Non
 def _wait_for(condition: Callable[[], bool]) -> None:
     """Run the event loop until `condition` holds or `_HOVER_DELIVERY_MS` has passed.
 
-    The way `QTRY_COMPARE` waits: the pointer's position reaches the hover
-    through pyqtgraph's rate-limited `SignalProxy`, which delivers from a
-    timer rather than inside the move, and the caller asserts what then holds.
+    The way `QTRY_COMPARE` waits: a move inside the hover's cooldown is
+    answered when the cooldown ends, from a timer rather than inside the move,
+    and the caller asserts what then holds.
     """
 
     deadline = QDeadlineTimer(_HOVER_DELIVERY_MS)
@@ -197,17 +207,37 @@ def _wait_for(condition: Callable[[], bool]) -> None:
         QTest.qWait(10)
 
 
-def _hover_over(chart: ConcentrationChart | WashInChart, time_s: float, value: float) -> None:
-    """Take the pointer off the plot, then onto one drawn point, and wait for the box to answer.
+def _painted_with_the_pointer_off(chart: ConcentrationChart | WashInChart) -> QImage:
+    """The chart as painted once the pointer has left the plot and the box has gone.
 
-    Off first, so that the answer waited for cannot be the previous case's
-    box still standing.
+    Over the axis rather than outside the widget, so the move is the plot's
+    own and the box answers it by hiding.
     """
 
     _move_pointer(chart, QPoint(1, 1))
     _wait_for(lambda: chart.hover_text() is None)
+
+    return chart.painted()
+
+
+def _hover_on(chart: ConcentrationChart | WashInChart, time_s: float, value: float) -> None:
+    """Move the pointer onto one drawn point, and wait for the box to answer it."""
+
     _move_pointer(chart, QPoint(*chart.plot_pixel(time_s, value)))
     _wait_for(lambda: chart.hover_text() is not None)
+
+
+def _distance(colour: QColor, to: str) -> float:
+    other = QColor(to)
+
+    return (
+        float(
+            (colour.red() - other.red()) ** 2
+            + (colour.green() - other.green()) ** 2
+            + (colour.blue() - other.blue()) ** 2
+        )
+        ** 0.5
+    )
 
 
 @pytest.fixture
@@ -377,17 +407,25 @@ def test_the_hover_reports_the_drawn_state_on_the_shipped_chart(dashboard: Simul
 def test_the_hover_box_stays_inside_the_plot_at_every_edge(
     induction_dashboard: SimulationView,
 ) -> None:
-    """`PL-J0F7`: at every edge of both plots the box is painted inside the plot, `INK` on `PANEL`.
+    """`PL-J0F7`: at each corner and end the box is painted inside the plot, over what lies beneath.
 
     The box stands to the right of its point and above it, and flips to the
     left past the middle of the window and below it in the top quarter of the
-    axis, so the corners are where a wrong flip would cut it off - the right
-    edge most of all, where a following window keeps its newest point and a
-    reader's pointer spends most of its time. Each case moves the pointer and
-    reads the box back as painted, since pyqtgraph places it for the view only
-    as it paints it. Each case is a point a pointer can rest on, its whole
-    pixel inside the plot: the window's first instant stands on the left edge,
-    where its pixel can fall a fraction outside and rightly no hover answers.
+    axis, so the compartment chart's four corners are where a wrong flip would
+    cut it off - the right edge most of all, where a following window keeps
+    its newest point and a reader's pointer spends most of its time. The
+    wash-in plot is held at its two ends, which take the left-right flip; its
+    points here stay below its own top quarter. Each case is a point a pointer
+    can rest on, its pixel inside the plot: the window's first instant stands
+    on the left edge, where its pixel can fall outside and rightly no hover
+    answers.
+
+    The plot's background is `PANEL` too, so the fill is held by what it
+    hides - the plot painted with the pointer off it, against the plot with
+    the box up - and the text by its darkest pixel, which a glyph's stem
+    paints in `INK` or close to it in any font, rather than by a count of
+    exact `INK` pixels, which a font rendered with sub-pixel smoothing can
+    leave at none.
     """
 
     chart = induction_dashboard._concentration_chart
@@ -426,24 +464,40 @@ def test_the_hover_box_stays_inside_the_plot_at_every_edge(
             assert value < quarter, name
 
     for name, (plot, (time_s, value)) in cases.items():
-        _hover_over(plot, time_s, value)
-        image = plot.painted()
+        beneath = _painted_with_the_pointer_off(plot)
+        _hover_on(plot, time_s, value)
+        unpainted = plot.hover_box()
+        shown = plot.painted()
         box = plot.hover_box()
         area = plot.plot_area()
 
         assert box is not None, f"{name}: no hover answered"
+        # The box is placed for the view as it is shown, not at its next paint.
+        assert unpainted == box, f"{name}: the box measured {unpainted} before its paint"
         assert area.adjusted(
             -_EDGE_TOLERANCE_PX, -_EDGE_TOLERANCE_PX, _EDGE_TOLERANCE_PX, _EDGE_TOLERANCE_PX
         ).contains(box), f"{name}: the box {box} is not inside the plot {area}"
 
         inset = _BOX_BORDER_INSET_PX
-        colours = Counter(
-            image.pixelColor(x, y).name()
+        inside = [
+            (x, y)
             for x in range(ceil(box.left()) + inset, floor(box.right()) - inset)
             for y in range(ceil(box.top()) + inset, floor(box.bottom()) - inset)
-        )
+        ]
+        drawn_beneath = [
+            (x, y) for x, y in inside if beneath.pixelColor(x, y).name() != PANEL.lower()
+        ]
+        showing_through = [
+            (x, y) for x, y in drawn_beneath if shown.pixelColor(x, y) == beneath.pixelColor(x, y)
+        ]
+        colours = Counter(shown.pixelColor(x, y).name() for x, y in inside)
+        darkest = min((shown.pixelColor(x, y) for x, y in inside), key=lambda c: c.lightness())
 
-        # The fill is what most of the box is; the text's anti-aliased edges
-        # are blends, but where a glyph covers a pixel whole it is the ink.
+        assert len(drawn_beneath) >= _DRAWN_BENEATH_MIN_PX, f"{name}: too little beneath the box"
+        assert len(showing_through) <= _SHOWING_THROUGH_FRACTION * len(drawn_beneath), (
+            f"{name}: {len(showing_through)} of {len(drawn_beneath)} pixels show through the box"
+        )
         assert colours.most_common(1)[0][0] == PANEL.lower(), (name, colours.most_common(3))
-        assert colours[INK.lower()] > 0, f"{name}: no pixel of the text is painted in INK"
+        assert _distance(darkest, INK) < _distance(darkest, MUTED), (
+            f"{name}: the text's darkest pixel {darkest.name()} is nearer MUTED than INK"
+        )

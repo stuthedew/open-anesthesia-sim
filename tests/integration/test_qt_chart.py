@@ -13,6 +13,8 @@ would be brittle across Qt versions and font stacks and would hold nothing
 a reader interprets.
 """
 
+import gc
+import weakref
 from collections import Counter
 from collections.abc import Iterator
 
@@ -587,9 +589,12 @@ def test_the_hover_answers_while_the_run_is_playing(application: QApplication) -
     )
 
 
-# Sixty times the rate-limited proxy's own 1/60 s, the longest it holds a
-# pointer position before delivering it from its timer.
+# Sixty times the hover's own cooldown of 1/60 s, the longest it holds a
+# pointer position before answering it.
 _HOVER_DELIVERY_MS = 1000
+
+# How long the moving-pointer case keeps the pointer moving: twelve cooldowns.
+_SWEEP_MS = 200
 
 
 def _move_pointer(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> None:
@@ -617,10 +622,10 @@ def _move_pointer(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> Non
 def _wait_for_hover(chart: ConcentrationChart | WashInChart, text: str | None) -> None:
     """Run the event loop until the hover says `text` or `_HOVER_DELIVERY_MS` has passed.
 
-    The way `QTRY_COMPARE` waits: the pointer's position reaches the hover
-    through a rate-limited `SignalProxy`, which delivers from a timer rather
-    than inside the move, and the caller asserts what the hover then says. No
-    `draw` follows, which is what a paused run is.
+    The way `QTRY_COMPARE` waits: a move inside the hover's cooldown is
+    answered when the cooldown ends, from a timer rather than inside the move,
+    and the caller asserts what the hover then says. No `draw` follows, which
+    is what a paused run is.
     """
 
     deadline = QDeadlineTimer(_HOVER_DELIVERY_MS)
@@ -638,7 +643,9 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
     one the point under the move before, and with the run paused no `draw`
     followed to correct it. And pyqtgraph's scene drops a move that follows
     the last one it passed on by under 10 ms, so a fast pointer's last move
-    went unanswered.
+    went unanswered. Reading every move instead, through `pg.SignalProxy`,
+    starved: that restarts its timer on every move, so a pointer that kept
+    moving went unanswered until it stopped.
     """
 
     controller = _run_with_a_dial_change()
@@ -686,7 +693,26 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
 
     assert chart.hover_text() is None
 
-    # The wash-in plot hangs its hover on the same proxy.
+    # A pointer that keeps moving, moves sent back to back with the event
+    # loop run between them, is answered while it moves and not only once it
+    # stops: about one answer a cooldown.
+    answered: set[str] = set()
+    sweep = QDeadlineTimer(_SWEEP_MS)
+    index = earlier
+
+    while not sweep.hasExpired():
+        _move_pointer(chart, pixel(index))
+        application.processEvents()
+        shown = chart.hover_text()
+
+        if shown is not None:
+            answered.add(shown)
+
+        index = earlier if index == later else index + 1
+
+    assert len(answered) >= 3, f"a moving pointer was answered {len(answered)} times"
+
+    # The wash-in plot hangs its hover on the same mechanism.
     wash_in = _shown(application, WashInChart(), 300)
     wash_in.draw(frame)
     application.processEvents()
@@ -700,6 +726,55 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
     _wait_for_hover(wash_in, under_pointer)
 
     assert wash_in.hover_text() == under_pointer
+
+
+def test_a_chart_let_go_is_freed_at_once_rather_than_by_the_collector(
+    application: QApplication,
+) -> None:
+    """`PL-TCR5`: a chart nothing holds any more is freed when its last reference goes.
+
+    Its hover once held the chart's own method to call back, a reference
+    cycle, so a chart let go was freed only when the cycle collector next ran
+    - which can be in the middle of that chart's own paint, and in CI was: a
+    segmentation fault in `QPainter::resetTransform`. The collector is off
+    here, so only the reference count can free it.
+    """
+
+    controller = _run_with_a_dial_change()
+    frame = _frame(controller)
+    stretch = frame.runs[0].wash_in[0]
+    run = frame.runs[0]
+    collecting = gc.isenabled()
+    gc.disable()
+
+    try:
+        chart = _shown(application, ConcentrationChart(), 480)
+        chart.draw(frame)
+        application.processEvents()
+        time_s, percent = run.times_s[150], run.percents(RecordedQuantity.CIRCUIT)[150]
+        _move_pointer(chart, QPoint(*chart.plot_pixel(time_s, percent)))
+        _wait_for_hover(chart, format_trace_hover(run, RecordedQuantity.CIRCUIT, 150, 1))
+        assert chart.hover_text() is not None, "the hover must have answered for this to test it"
+        concentration = weakref.ref(chart)
+        del chart
+
+        wash_in = _shown(application, WashInChart(), 300)
+        wash_in.draw(frame)
+        application.processEvents()
+        index = len(stretch.times_s) // 2
+        _move_pointer(
+            wash_in, QPoint(*wash_in.plot_pixel(stretch.times_s[index], stretch.ratios[index]))
+        )
+        _wait_for_hover(wash_in, wash_in.readout_at(stretch.times_s[index], stretch.ratios[index]))
+        assert wash_in.hover_text() is not None, "the hover must have answered for this to test it"
+        ratio = weakref.ref(wash_in)
+        del wash_in
+
+        assert concentration() is None
+        assert ratio() is None
+    finally:
+        if collecting:
+            gc.enable()
 
 
 def test_the_wash_in_hover_reports_the_ratio_in_its_own_units(application: QApplication) -> None:
