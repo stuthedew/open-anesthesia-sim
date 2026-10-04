@@ -53,6 +53,7 @@ from types import MappingProxyType
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 __all__ = [
     "BookmarkCrossing",
@@ -195,31 +196,29 @@ class TimeBookmark:
     case.
 
     Attributes:
-        instant_s: The simulated time, in seconds from the case's opening.
+        instant_s: The simulated time, in seconds from the case's opening. A
+            `CaseInstant`, so finite, at or after that opening and inside the
+            supported run length: a mark before the case began, or past the
+            last instant any run of it may reach, cannot be made at all
+            (`PL-CN5S`).
         label: What to call it in a list, or `None` to list it under its own
             time. `None` rather than a generated name so that nothing
             fabricates a name the learner did not choose.
 
     Raises:
-        SimulationConfigurationError: If `instant_s` is negative or not
-            finite, or if `label` is present and blank. A case opens at zero,
-            so a negative instant is before the run began and cannot be
-            reached; a non-finite one cannot be compared against a clock.
+        TypeError: If `instant_s` is not a `CaseInstant`, so nothing has
+            checked it against the case's span (`core/supported_ranges.py`).
+        SimulationConfigurationError: If `label` is present and blank.
     """
 
-    instant_s: float
+    instant_s: CaseInstant
     label: str | None = None
 
     def __post_init__(self) -> None:
-        if not isfinite(self.instant_s) or self.instant_s < 0.0:
-            raise SimulationConfigurationError(
-                f"a time bookmark stands at a finite instant from the case's opening at 0 s; "
-                f"given {self.instant_s} s"
-            )
-
+        require_case_instant("instant_s", self.instant_s)
         object.__setattr__(self, "label", _checked_label(self.label))
 
-    def crossed_between(self, before_s: float, after_s: float) -> bool:
+    def crossed_between(self, before_s: CaseInstant, after_s: CaseInstant) -> bool:
         """Whether this instant lies in the span one simulation step covered.
 
         `before_s < instant_s <= after_s` — open where the step began and
@@ -395,13 +394,20 @@ class BookmarkCrossing:
             set lists them.
         mac_targets: The marked heights the step crossed, in the order the set
             lists them.
+
+    Raises:
+        TypeError: If `instant_s` is not a `CaseInstant`
+            (`core/supported_ranges.py`).
+        SimulationConfigurationError: If both collections are empty.
     """
 
-    instant_s: float
+    instant_s: CaseInstant
     time_bookmarks: tuple[TimeBookmark, ...] = ()
     mac_targets: tuple[MacTarget, ...] = ()
 
     def __post_init__(self) -> None:
+        require_case_instant("instant_s", self.instant_s)
+
         if not self.time_bookmarks and not self.mac_targets:
             raise SimulationConfigurationError(
                 "a crossing names at least one mark; a step that crossed nothing is reported "
@@ -574,8 +580,8 @@ class BookmarkSet:
     def crossings_between(
         self,
         *,
-        before_s: float,
-        after_s: float,
+        before_s: CaseInstant,
+        after_s: CaseInstant,
         before: Mapping[RecordedQuantity, MacMultiple],
         after: Mapping[RecordedQuantity, MacMultiple],
     ) -> BookmarkCrossing | None:
@@ -634,11 +640,10 @@ class BookmarkSet:
     def standings(
         self,
         *,
-        reached_instants_s: frozenset[float],
+        reached_instants_s: frozenset[CaseInstant],
         reached_crossings: frozenset[tuple[RecordedQuantity, float]],
-        opened_at_s: float,
-        elapsed_s: float,
-        run_length_cap_s: float,
+        opened_at_s: CaseInstant,
+        elapsed_s: CaseInstant,
         stopped_at_cap: bool,
         run_failed: bool,
     ) -> BookmarkStandings:
@@ -665,14 +670,11 @@ class BookmarkSet:
                 than a history — `_time_bookmark_standing` says what that
                 buys and `MarkStanding.PASSED` says why it is the honest
                 answer. A MAC target reads neither: no clock orders a height.
-            run_length_cap_s: `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, passed in
-                rather than imported so this module keeps naming no core
-                range of its own. A bookmark beyond it is reported as
-                unreachable within the cap at once rather than after a
-                simulated day of waiting.
-            stopped_at_cap: Whether the run is standing at that limit with the
-                next step refused. Everything still outstanding is then
-                `NOT_REACHED_WITHIN_CAP`.
+            stopped_at_cap: Whether the run is standing at the supported run
+                length with the next step refused. Everything still
+                outstanding is then `NOT_REACHED_WITHIN_CAP`. No mark lies
+                beyond that length to be answered sooner, because a
+                `TimeBookmark` past it cannot be built.
             run_failed: Whether the run is halted by a failure rather than
                 paused — `SimulationController.has_failed`, which is the other
                 state `SimulationController.start` refuses to resume.
@@ -712,7 +714,6 @@ class BookmarkSet:
                         reached_instants_s=reached_instants_s,
                         opened_at_s=opened_at_s,
                         elapsed_s=elapsed_s,
-                        run_length_cap_s=run_length_cap_s,
                         stopped_at_cap=stopped_at_cap,
                         run_failed=run_failed,
                     )
@@ -736,10 +737,9 @@ class BookmarkSet:
 def _time_bookmark_standing(
     bookmark: TimeBookmark,
     *,
-    reached_instants_s: frozenset[float],
-    opened_at_s: float,
-    elapsed_s: float,
-    run_length_cap_s: float,
+    reached_instants_s: frozenset[CaseInstant],
+    opened_at_s: CaseInstant,
+    elapsed_s: CaseInstant,
     stopped_at_cap: bool,
     run_failed: bool,
 ) -> MarkStanding:
@@ -779,9 +779,10 @@ def _time_bookmark_standing(
     stopped run, so a run standing at the cap and failed was failed by a
     setting *after* it had already run out of supported time, and the cap is
     then what the mark went unreached within. It is also the more durable
-    answer of the two — a mark beyond `run_length_cap_s` is out of reach of
-    the fresh run a reset would give, and one merely unreached before a
-    failure is not.
+    answer of the two — a mark the cap leaves ahead of the clock lies past
+    the last instant a run at this step can stand on, so the fresh run a
+    reset would give stops short of it too, and one merely unreached before
+    a failure is not out of reach.
 
     `REACHED` is not among them. It is a historical claim, it is
     `_mac_target_standing`'s answer, and `MarkStanding` carries the argument
@@ -797,7 +798,7 @@ def _time_bookmark_standing(
     if bookmark.instant_s < opened_at_s:
         return MarkStanding.BEFORE_THIS_BRANCH
 
-    if stopped_at_cap or bookmark.instant_s > run_length_cap_s:
+    if stopped_at_cap:
         return MarkStanding.NOT_REACHED_WITHIN_CAP
 
     if run_failed:

@@ -150,6 +150,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
     AlveolarVentilation,
+    CaseInstant,
     FreshGasFlow,
 )
 from anesthesia_sim.core.tissue import TissueGroup
@@ -446,7 +447,7 @@ def _halted_trunk_case(application: QApplication) -> tuple[BranchedCase, Simulat
 
     case = _branched_case()
     view = _case_view(application, case)
-    case.trunk.add_time_bookmark(TimeBookmark(_HALT_MARK_S, "the decision point"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(_HALT_MARK_S), "the decision point"))
     case.trunk.start()
 
     for _ in range(_TRUNK_STEP_BUDGET):
@@ -3832,7 +3833,7 @@ def _halted_branch_view(application: QApplication) -> SimulationView:
     case = _branched_case()
     view = _case_view(application, case)
     case.trunk.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5)))
-    case.trunk.add_time_bookmark(TimeBookmark(30.0, "check"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
 
     _take_fork(view, 60.0)
 
@@ -3980,7 +3981,7 @@ def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
     _advance_to(controller, 60.0)
     # Marked behind the clock, so the run passes it without halting on it:
     # this test is about how the standing is attributed, not about the halt.
-    controller.add_time_bookmark(TimeBookmark(30.0, "check"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
     view.present(False)
 
     listed = view._bookmarks_panel.times.text()
@@ -4618,7 +4619,7 @@ def test_a_mark_inside_a_step_branches_where_the_run_stopped_not_where_it_was_ma
     halted_s = 80.1
     case = _branched_case()
     view = _case_view(application, case)
-    case.trunk.add_time_bookmark(TimeBookmark(marked_s, "mid-step"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(marked_s), "mid-step"))
     case.trunk.start()
     _advance_to(case.trunk, halted_s)
     view.present(False)
@@ -4659,7 +4660,7 @@ def test_the_halt_fork_is_off_the_panel_until_the_trunk_stands_on_a_halt(
     assert view._fork_panel.halt_button.isEnabled() is False
     assert view._fork_panel.halt_button.text() == ""
 
-    case.trunk.add_time_bookmark(TimeBookmark(_HALT_MARK_S))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(_HALT_MARK_S)))
     case.trunk.start()
     _advance_to(case.trunk, _HALT_MARK_S)
     view.present(False)
@@ -5050,7 +5051,7 @@ def test_add_run_refuses_a_branch_of_another_case(application: QApplication) -> 
 
     view = _case_view(application, _branched_case())
     elsewhere = BranchedCase(_paused_run_with_history())
-    foreign = elsewhere.fork_at(60.0)
+    foreign = elsewhere.fork_at(CaseInstant(60.0))
 
     with pytest.raises(ValueError, match=re.escape("opened at 60.0 s but belongs to another case")):
         view.add_run(foreign)
@@ -5109,3 +5110,37 @@ def test_a_vanished_fork_instant_leaves_nothing_selected(application: QApplicati
     assert len(view.runs) == 1
     assert case.branches == ()
     assert panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+
+
+def test_a_fork_instant_still_offered_stays_selected_when_the_offer_grows(
+    application: QApplication,
+) -> None:
+    """The other half of `PL-J12Z`: a rebuilt list keeps a choice it still offers.
+
+    A running trunk adds a keyframe at each setting change, and the selector
+    is rebuilt when one appears. It holds each instant as a plain `float`, so
+    `set_offer` looks the reader's choice up as one: `selected_instant_s`
+    builds a new `CaseInstant`, which `findData` matches only by identity, so
+    handed over as that it is found nowhere and the choice is dropped
+    (`PL-CN5S`).
+    """
+
+    trunk = SimulationController()
+    trunk.start()
+    _advance_to(trunk, 60.0)
+    trunk.pause()
+    original_flow = trunk.snapshot().fresh_gas_flow_l_min
+    trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
+    case = BranchedCase(trunk)
+    view = _case_view(application, case)
+    panel = view._fork_panel
+    panel.point_selector.setCurrentIndex(panel.point_selector.findData(60.0))
+
+    trunk.start()
+    _advance_to(trunk, 120.0)
+    trunk.pause()
+    trunk.set_fresh_gas_flow(FreshGasFlow(original_flow))
+    view.present(False)
+
+    assert case.fork_points_s == (0.0, 60.0, 120.0)
+    assert panel.selected_instant_s() == 60.0

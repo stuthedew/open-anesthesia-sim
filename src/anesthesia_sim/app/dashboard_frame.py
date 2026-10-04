@@ -84,6 +84,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
+    CaseInstant,
 )
 
 # The step each simulation tick advances by. What range of steps is
@@ -1677,7 +1678,7 @@ class ForkOffer:
             reader can no longer see.
     """
 
-    points_s: tuple[float, ...]
+    points_s: tuple[CaseInstant, ...]
     labels: tuple[str, ...]
     locked: bool
     lock_reason: str
@@ -1711,7 +1712,7 @@ def comparing_fork_lock_text() -> str:
 
 
 def fork_offer(
-    fork_points_s: Sequence[float],
+    fork_points_s: Sequence[CaseInstant],
     *,
     comparing: bool,
     halt: BookmarkCrossing | None,
