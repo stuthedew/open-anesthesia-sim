@@ -9,6 +9,7 @@ feature: machine-profile-framework
 touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md, docs/machine-abstraction.md, ROADMAP.md
 added: 2026-09-20
 closed: 2026-10-04
+pr: 1334
 payoff: stops the next machine profile shipping a circuit time constant about a third too short, built from a correctly-cited manufacturer apparatus figure that no check can tell from an assembled total
 verify: grep -qF 'is the assembled total, apparatus plus patient circuit' docs/MODEL.md && grep -qF 'is the assembled total, apparatus plus patient circuit' src/anesthesia_sim/core/parameters.py
 ---
