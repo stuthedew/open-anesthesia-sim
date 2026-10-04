@@ -24,6 +24,7 @@ is tested here is that the display path is refused where the rule says it is.
 """
 
 from bisect import bisect_right
+from dataclasses import replace
 from math import inf, nan, nextafter
 
 import pytest
@@ -543,6 +544,59 @@ def test_a_run_definition_refuses_to_open_before_induction() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="at or after induction"):
         RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=-1.0)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("cardiac_output_l_min", 1000.0),
+        ("fresh_gas_flow_l_min", 500.0),
+        ("alveolar_ventilation_l_min", 200.0),
+    ],
+)
+def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges(
+    field: str, value: float
+) -> None:
+    """`PL-HSFV`: the three settings found simulating through a run on 2026-10-04.
+
+    Settings rebuilt from a system's own, as a notebook or a saved-run loader
+    would build them, pass through no compartment, so until the record checked
+    its own flows a run opened under each of these and returned states for it,
+    and one already open recorded a change to them. Both ways in are tried
+    here, and the open run keeps the settings it had.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    settings = system.equation_settings()
+    refused = f"^{field} of {value} is outside the supported input range"
+
+    def out_of_range() -> UptakeEquationSettings:
+        if field != "cardiac_output_l_min":
+            return replace(settings, **{field: value})
+
+        # Every tissue flow is cardiac output times a perfusion fraction, so a
+        # record consistent in every other respect scales them with it.
+        scale = value / settings.cardiac_output_l_min
+
+        return replace(
+            settings,
+            cardiac_output_l_min=value,
+            tissues=tuple(
+                replace(tissue, blood_flow_l_min=tissue.blood_flow_l_min * scale)
+                for tissue in settings.tissues
+            ),
+        )
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        RunDefinition(out_of_range(), system.state_vector(), opened_at_s=0.0)
+
+    definition = RunDefinition(settings, system.state_vector(), opened_at_s=0.0)
+    definition.advance_to(30.0)
+
+    with pytest.raises(SimulationConfigurationError, match=refused):
+        definition.record_change(out_of_range())
+
+    assert [segment.settings for segment in definition.segments] == [settings]
 
 
 def test_a_run_may_open_at_the_end_of_the_supported_run_length() -> None:

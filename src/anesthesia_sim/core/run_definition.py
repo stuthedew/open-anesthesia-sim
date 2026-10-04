@@ -237,7 +237,10 @@ class RunDefinition:
         `TypeError` rather than a plausible run.
 
         Args:
-            settings: The settings the run begins under.
+            settings: The settings the run begins under. Inside the supported
+                flow ranges by construction: `UptakeEquationSettings` refuses
+                a flow outside them, so neither this nor `record_change`
+                checks one again (`PL-HSFV`).
             initial_state: The state at `opened_at_s`, in
                 `governing_equations`' state order. Its accumulators are the
                 run's starting totals, which is zero for a run that has

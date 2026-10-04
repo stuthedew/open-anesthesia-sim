@@ -5097,6 +5097,20 @@ step". A flow is persistent state, reachable through
 compartment's constructor; the compartment is the only point all three pass
 through.
 
+**And on the settings record a run is built from** (`PL-HSFV`). A run
+definition opens under an `UptakeEquationSettings` and records one for each
+stretch of constant settings, and a record built anywhere but
+`AgentUptakeSystem.equation_settings()` reaches the equations through no
+compartment at all: until 2026-10-04 a `RunDefinition` opened under, or changed
+to, a cardiac output of 1000 L/min, a fresh gas flow of 500 L/min or an
+alveolar ventilation of 200 L/min, and returned states for it. The record now
+calls the same three guards when it is built, so it refuses such a flow in the
+words a refused control uses, and no run can be handed one. A tissue group's
+flow needs no guard of its own: each is nonnegative and together they must sum
+to cardiac output, so none can exceed it. The delivered concentration's bound
+is the agent's vaporizer maximum, which the record does not carry, so a run
+built from a record bounds it at 100% only (`PL-BBMG`).
+
 #### What a setting outside the range costs
 
 **The argument here changed with the exact step, and the ranges did not.**

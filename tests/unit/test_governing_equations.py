@@ -14,6 +14,9 @@ agent - are asserted separately, because those hold for every parameter set
 rather than for these numbers.
 """
 
+from collections.abc import Callable
+from math import inf, isfinite, nan, nextafter
+
 import pytest
 
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
@@ -31,6 +34,17 @@ from anesthesia_sim.core.governing_equations import (
     TissueGroupEquationSettings,
     UptakeEquationSettings,
     build_system_matrix,
+)
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MINIMUM_CARDIAC_OUTPUT_L_MIN,
+    MINIMUM_FRESH_GAS_FLOW_L_MIN,
+    require_supported_alveolar_ventilation,
+    require_supported_cardiac_output,
+    require_supported_fresh_gas_flow,
 )
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 
@@ -343,13 +357,6 @@ def test_a_zero_tissue_flow_leaves_that_group_alone() -> None:
         ("circuit_volume_l", 0.0, "^circuit_volume_l must be positive and finite$"),
         ("alveolar_volume_l", -1.0, "^alveolar_volume_l must be positive and finite$"),
         ("venous_volume_l", float("inf"), "^venous_volume_l must be positive and finite$"),
-        ("fresh_gas_flow_l_min", -0.1, "^fresh_gas_flow_l_min must be nonnegative and finite$"),
-        (
-            "alveolar_ventilation_l_min",
-            float("nan"),
-            "^alveolar_ventilation_l_min must be nonnegative and finite$",
-        ),
-        ("cardiac_output_l_min", -1.0, "^cardiac_output_l_min must be nonnegative and finite$"),
         (
             "blood_gas_partition_coefficient",
             0.0,
@@ -369,6 +376,114 @@ def test_rejects_a_parameter_set_that_could_not_describe_a_patient(
         _settings(**{field: value})
 
 
+SUPPORTED_FLOWS = (
+    (
+        "fresh_gas_flow_l_min",
+        require_supported_fresh_gas_flow,
+        MINIMUM_FRESH_GAS_FLOW_L_MIN,
+        MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    ),
+    (
+        "alveolar_ventilation_l_min",
+        require_supported_alveolar_ventilation,
+        MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
+        MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    ),
+    (
+        "cardiac_output_l_min",
+        require_supported_cardiac_output,
+        MINIMUM_CARDIAC_OUTPUT_L_MIN,
+        MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    ),
+)
+"""(field, the guard a compartment calls for it, its supported minimum and maximum)."""
+
+SUPPORTED_FLOW_IDS = [field for field, _, _, _ in SUPPORTED_FLOWS]
+
+
+def _settings_with_flow(field: str, value: float) -> UptakeEquationSettings:
+    """Settings with one flow at `value`, and nothing else wrong with them.
+
+    A finite, nonnegative cardiac output carries the tissue flows with it,
+    scaled to sum to it, so the venous balance's check cannot be what refuses
+    the record and the range guard is the one thing under test. Any other
+    cardiac output leaves them alone, because a tissue group refuses a negative
+    or non-finite flow of its own before the record could be built at all.
+    """
+
+    if field != "cardiac_output_l_min" or not (isfinite(value) and value >= 0.0):
+        return _settings(**{field: value})
+
+    scale = value / CARDIAC_OUTPUT_L_MIN
+
+    return _settings(
+        cardiac_output_l_min=value,
+        tissues=tuple(
+            TissueGroupEquationSettings(
+                name=name,
+                volume_l=volume_l,
+                blood_flow_l_min=blood_flow_l_min * scale,
+                tissue_blood_partition_coefficient=tissue_blood,
+            )
+            for name, volume_l, blood_flow_l_min, tissue_blood in TISSUES
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "minimum", "maximum"),
+    [(field, minimum, maximum) for field, _, minimum, maximum in SUPPORTED_FLOWS],
+    ids=SUPPORTED_FLOW_IDS,
+)
+def test_accepts_each_flow_at_both_ends_of_its_supported_range(
+    field: str, minimum: float, maximum: float
+) -> None:
+    """Both endpoints are supported, and the record keeps the value it was given.
+
+    The envelope corner every reference gate drives sits on all three maxima,
+    and one gate trajectory holds cardiac output at zero, so a record refusing
+    an endpoint would take a measured case out of what a run can be built from.
+    """
+
+    for value in (minimum, maximum):
+        assert getattr(_settings_with_flow(field, value), field) == value
+
+
+@pytest.mark.parametrize(
+    ("field", "guard", "minimum", "maximum"), SUPPORTED_FLOWS, ids=SUPPORTED_FLOW_IDS
+)
+@pytest.mark.parametrize("outside", ["just above", "a hundredfold", "negative", "nan", "inf"])
+def test_rejects_a_flow_outside_its_supported_range(
+    field: str, guard: Callable[[float], None], minimum: float, maximum: float, outside: str
+) -> None:
+    """`PL-HSFV`: the record refuses what the compartment refuses, in its words.
+
+    A run is built from this record, and a record built anywhere but
+    `AgentUptakeSystem.equation_settings` passes through no compartment, so
+    the record checked the flows for sign and finiteness alone and a
+    `RunDefinition` opened under a cardiac output of 1000 L/min - the
+    hundredfold case here - and simulated it. The message is compared whole
+    against the compartment's guard, so the refusal names the interval exactly
+    as a refused control does.
+    """
+
+    value = {
+        "just above": nextafter(maximum, inf),
+        "a hundredfold": maximum * 100.0,
+        "negative": minimum - 0.1,
+        "nan": nan,
+        "inf": inf,
+    }[outside]
+
+    with pytest.raises(SimulationConfigurationError) as from_the_guard:
+        guard(value)
+
+    with pytest.raises(SimulationConfigurationError) as from_the_record:
+        _settings_with_flow(field, value)
+
+    assert str(from_the_record.value) == str(from_the_guard.value)
+
+
 def test_rejects_tissue_flows_that_do_not_sum_to_cardiac_output() -> None:
     """The venous pool returns exactly what the tissues receive.
 
@@ -380,10 +495,12 @@ def test_rejects_tissue_flows_that_do_not_sum_to_cardiac_output() -> None:
     object they are actually built from.
     """
 
+    # A fifth more than the tissues receive, and still inside cardiac output's
+    # supported range, so the venous balance is what refuses it (`PL-HSFV`).
     with pytest.raises(
         SimulationConfigurationError, match="the venous balance returns what the tissues receive"
     ):
-        _settings(cardiac_output_l_min=CARDIAC_OUTPUT_L_MIN * 1.5)
+        _settings(cardiac_output_l_min=CARDIAC_OUTPUT_L_MIN * 1.2)
 
 
 def test_rejects_a_tissue_group_count_the_model_does_not_have() -> None:
