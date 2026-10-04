@@ -5,6 +5,9 @@ from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    AlveolarVentilation,
+    CardiacOutput,
+    FreshGasFlow,
     maximum_step_count,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -38,10 +41,10 @@ def test_advance_updates_time_and_complete_uptake_system() -> None:
 def test_reset_preserves_settings_and_clears_dynamic_state() -> None:
     system = AgentUptakeSystem.default()
     system.circuit.set_circuit_volume(5.0)
-    system.set_fresh_gas_flow(3.0)
+    system.set_fresh_gas_flow(FreshGasFlow(3.0))
     system.set_delivered_concentration_percent(6.0)
-    system.set_alveolar_ventilation(5.5)
-    system.set_cardiac_output(6.0)
+    system.set_alveolar_ventilation(AlveolarVentilation(5.5))
+    system.set_cardiac_output(CardiacOutput(6.0))
 
     state = SimulationState(uptake_system=system)
     _advance_for(state, duration_s=10.0)

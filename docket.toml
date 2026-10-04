@@ -700,11 +700,12 @@ instruction_stale_days = 90
 # of the 22 markdown files these four entries reach.
 #
 # `docs/maintainer.md` is deliberately absent, and it is the one judgment in
-# this list. It carries 12 dated assertions and is addressed to the *person*
-# running the sessions rather than to a session - so an assertion in it that
-# has gone wrong misleads somebody who can see the tree, while the same
-# sentence in `CLAUDE.md` is obeyed by a session that cannot. Add it if that
-# stops being the right split; nothing here depends on its absence.
+# this list. It carries 33 dated assertions (counted 2026-10-04) and is
+# addressed to the *person* running the sessions rather than to a session -
+# so an assertion in it that has gone wrong misleads somebody who can see the
+# tree, while the same sentence in `CLAUDE.md` is obeyed by a session that
+# cannot. Add it if that stops being the right split; nothing here depends on
+# its absence.
 #
 # `ROADMAP.md`, `docs/MODEL.md` and the item store are absent for a different
 # reason: they are records of what was decided and measured, not instructions

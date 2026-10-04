@@ -6,6 +6,12 @@ enforced. `AgentUptakeSystem.set_cardiac_output(1000.0)` was accepted and
 simulated, and the interface's sliders were the only thing keeping a run
 inside the domain the verification gates cover.
 
+Since `PL-0YYV` each flow is a type - `FreshGasFlow`, `AlveolarVentilation`
+and `CardiacOutput` - built only through its guard, and every field that
+stores a flow takes the type. The tests under "Each flow is a type" hold that
+the type admits and refuses exactly what its guard does, keeps the value it
+was built from, and is required wherever a flow is stored.
+
 The endpoints are tested as carefully as the rejections. Every range is
 closed, and both ends are load-bearing: one reference gate trajectory holds
 cardiac output at zero for its loading phase, and the envelope corner every
@@ -14,8 +20,11 @@ excluded an endpoint would take a measured case out of the reachable domain
 without failing anything.
 """
 
+import copy
+import pickle
 import sys
 from collections.abc import Callable
+from dataclasses import replace
 from math import inf, nan, nextafter
 from typing import NamedTuple
 
@@ -37,6 +46,9 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
+    AlveolarVentilation,
+    CardiacOutput,
+    FreshGasFlow,
     maximum_step_count,
     require_supported_alveolar_ventilation,
     require_supported_cardiac_output,
@@ -45,35 +57,46 @@ from anesthesia_sim.core.supported_ranges import (
     require_supported_run_length,
     require_supported_step_count,
 )
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
 class Control(NamedTuple):
-    """One control's guard and the closed interval it declares."""
+    """One control: its guard, the type only that guard builds, the closed
+    interval it declares, and the compartment of `AgentUptakeSystem` that
+    stores it."""
 
     name: str
     guard: Callable[[float], None]
+    flow_type: type[float]
     minimum: float
     maximum: float
+    stored_on: str
 
 
 CONTROLS = (
     Control(
         "fresh_gas_flow_l_min",
         require_supported_fresh_gas_flow,
+        FreshGasFlow,
         MINIMUM_FRESH_GAS_FLOW_L_MIN,
         MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+        "circuit",
     ),
     Control(
         "alveolar_ventilation_l_min",
         require_supported_alveolar_ventilation,
+        AlveolarVentilation,
         MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
         MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+        "alveoli",
     ),
     Control(
         "cardiac_output_l_min",
         require_supported_cardiac_output,
+        CardiacOutput,
         MINIMUM_CARDIAC_OUTPUT_L_MIN,
         MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+        "patient",
     ),
 )
 
@@ -138,6 +161,151 @@ def test_the_refusal_names_the_setting_the_value_and_the_interval(control: Contr
     assert control.name in message
     assert str(rejected) in message
     assert f"{control.minimum} to {control.maximum} L/min" in message
+
+
+# --- Each flow is a type, built only through its guard (PL-0YYV) ------------
+#
+# The guard above runs once, where a flow is built as its type, and every field
+# and signature past that point takes the type, so the check is made nowhere
+# else. That is only as good as the type: it has to hold the value it was built
+# from exactly, refuse in the guard's own words, come back from a copy as
+# itself, and be demanded wherever a bare float could otherwise be stored in
+# its place.
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
+def test_the_type_holds_the_value_it_was_built_from_exactly(control: Control) -> None:
+    """Built at either end and between, the type is the float it was given, bit for bit.
+
+    A type that rounded or re-derived its value would move the envelope corner
+    the reference gates measure at; `hex` compares the bits rather than the
+    printed digits, and two of the values carry a full mantissa, since a
+    rounding to any number of decimals leaves the endpoints where they are.
+    """
+
+    midpoint = (control.minimum + control.maximum) / 2.0
+    full_mantissa = (nextafter(control.maximum, -inf), control.maximum / 3.0)
+
+    for value in (control.minimum, midpoint, control.maximum, *full_mantissa):
+        built = control.flow_type(value)
+
+        assert isinstance(built, control.flow_type)
+        assert isinstance(built, float)
+        assert built.hex() == float(value).hex()
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
+def test_the_type_refuses_what_its_guard_refuses_in_the_guards_words(control: Control) -> None:
+    """One check, so the type can neither admit what the guard refuses nor word it differently."""
+
+    for value in (nextafter(control.maximum, inf), control.maximum * 10.0, -1.0, nan, inf, -inf):
+        with pytest.raises(SimulationConfigurationError) as by_the_guard:
+            control.guard(value)
+
+        with pytest.raises(SimulationConfigurationError) as by_the_type:
+            control.flow_type(value)
+
+        assert str(by_the_type.value) == str(by_the_guard.value)
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
+def test_arithmetic_on_a_flow_is_a_plain_float(control: Control) -> None:
+    """A quantity derived from a flow is not a checked flow, and must not read as one.
+
+    Two flows at the maximum sum to a value past it; were the sum still the
+    type, it would carry a promise of a check that never ran. A subclass of
+    `float` returns `float` from every operator, which is what keeps the
+    promise to what was actually built.
+    """
+
+    at_maximum = control.flow_type(control.maximum)
+
+    assert type(at_maximum + at_maximum) is float
+    assert type(at_maximum / 60.0) is float
+    assert type(-at_maximum) is float
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
+def test_a_flow_survives_copy_and_pickle_as_its_type(control: Control) -> None:
+    """A record copied or stored keeps its flows checked, not demoted to floats.
+
+    `dataclasses.replace` copies the fields it is not given, and a saved run
+    would come back through `pickle`; each rebuilds the flow through the
+    type's own constructor, so the guard runs again and the type is kept.
+    """
+
+    built = control.flow_type(control.maximum)
+
+    for copied in (copy.copy(built), copy.deepcopy(built), pickle.loads(pickle.dumps(built))):
+        assert type(copied) is control.flow_type
+        assert copied == built
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
+def test_a_bare_float_is_refused_wherever_a_flow_is_stored(control: Control) -> None:
+    """A float never built as the type is refused where it would be stored, in range or not.
+
+    The static half of the check is the annotation, which a caller outside
+    `mypy`'s reach - a notebook, a test, a deserializer - never sees. The
+    runtime half lives where a flow is stored: the compartment's setter, its
+    constructor, and the settings record. Each refuses a bare float and names
+    the type to build; the forwarding setter on `AgentUptakeSystem` reaches the
+    same refusal. The value is the one already held, so what is refused is the
+    missing check and not the number, and nothing changes on refusal.
+    """
+
+    system = AgentUptakeSystem.default()
+    compartment = getattr(system, control.stored_on)
+    setter = f"set_{control.name.removesuffix('_l_min')}"
+    held = getattr(compartment, control.name)
+    bare = float(held)
+    refused = f"not built as {control.flow_type.__name__}"
+
+    assert type(held) is control.flow_type
+
+    with pytest.raises(TypeError, match=refused):
+        getattr(compartment, setter)(bare)
+
+    with pytest.raises(TypeError, match=refused):
+        getattr(system, setter)(bare)
+
+    if control.stored_on != "patient":
+        # `replace` on `PatientCompartments` rewrites the flows of the tissue
+        # and venous objects it shares with the original (`PL-Z0T3`), so its
+        # constructor is not driven from here.
+        with pytest.raises(TypeError, match=refused):
+            replace(compartment, **{control.name: bare})
+
+    with pytest.raises(TypeError, match=refused):
+        replace(system.equation_settings(), **{control.name: bare})
+
+    assert getattr(compartment, control.name) is held
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
+def test_another_flows_type_is_refused_as_a_swapped_argument(control: Control) -> None:
+    """A flow of another type is named as that, and not told to rebuild as this one.
+
+    A fresh gas flow arriving where a cardiac output belongs is a swapped
+    argument. A refusal that prescribed `CardiacOutput(4.0)` would have the
+    caller check and store the wrong quantity under the right type, so the
+    message names the type the value was built as and prescribes nothing.
+    """
+
+    system = AgentUptakeSystem.default()
+    compartment = getattr(system, control.stored_on)
+    setter = getattr(compartment, f"set_{control.name.removesuffix('_l_min')}")
+    held = getattr(compartment, control.name)
+    other = next(each for each in CONTROLS if each.flow_type is not control.flow_type)
+
+    with pytest.raises(TypeError) as raised:
+        setter(other.flow_type(float(held)))
+
+    message = str(raised.value)
+
+    assert f"was built as {other.flow_type.__name__}" in message
+    assert f"{control.flow_type.__name__}(" not in message
+    assert getattr(compartment, control.name) is held
 
 
 # --- The supported run length (PL-Y5WR) -------------------------------------
@@ -550,10 +718,10 @@ def test_machine_deliverable_flow_range_is_separate_from_model_envelope() -> Non
     circuit = BreathingCircuit(deliverable_fresh_gas_flow_range=machine_range)
 
     with pytest.raises(SimulationConfigurationError) as below_the_machine:
-        circuit.set_fresh_gas_flow(0.2)
+        circuit.set_fresh_gas_flow(FreshGasFlow(0.2))
 
     with pytest.raises(SimulationConfigurationError) as above_the_model:
-        circuit.set_fresh_gas_flow(MAXIMUM_FRESH_GAS_FLOW_L_MIN + 1.0)
+        circuit.set_fresh_gas_flow(FreshGasFlow(MAXIMUM_FRESH_GAS_FLOW_L_MIN + 1.0))
 
     assert "machine" in str(below_the_machine.value)
     assert "0.5 to 15.0 L/min" in str(below_the_machine.value)

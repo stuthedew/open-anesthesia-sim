@@ -14,6 +14,9 @@ agent - are asserted separately, because those hold for every parameter set
 rather than for these numbers.
 """
 
+from math import inf, nan, nextafter
+from typing import NamedTuple
+
 import pytest
 
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
@@ -32,6 +35,17 @@ from anesthesia_sim.core.governing_equations import (
     UptakeEquationSettings,
     build_system_matrix,
 )
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MINIMUM_CARDIAC_OUTPUT_L_MIN,
+    MINIMUM_FRESH_GAS_FLOW_L_MIN,
+    AlveolarVentilation,
+    CardiacOutput,
+    FreshGasFlow,
+)
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 
 # Deliberately unlike each other and unlike the reference adult's: every
@@ -40,9 +54,9 @@ from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 CIRCUIT_VOLUME_L = 6.0
 ALVEOLAR_VOLUME_L = 2.5
 VENOUS_VOLUME_L = 3.5
-FRESH_GAS_FLOW_L_MIN = 4.2
-ALVEOLAR_VENTILATION_L_MIN = 6.6
-CARDIAC_OUTPUT_L_MIN = 7.8
+FRESH_GAS_FLOW_L_MIN = FreshGasFlow(4.2)
+ALVEOLAR_VENTILATION_L_MIN = AlveolarVentilation(6.6)
+CARDIAC_OUTPUT_L_MIN = CardiacOutput(7.8)
 FRESH_GAS_FLOW_L_S = FRESH_GAS_FLOW_L_MIN / SECONDS_PER_MINUTE
 ALVEOLAR_VENTILATION_L_S = ALVEOLAR_VENTILATION_L_MIN / SECONDS_PER_MINUTE
 CARDIAC_OUTPUT_L_S = CARDIAC_OUTPUT_L_MIN / SECONDS_PER_MINUTE
@@ -86,6 +100,123 @@ def _settings(**overrides: object) -> UptakeEquationSettings:
     fields.update(overrides)
 
     return UptakeEquationSettings(**fields)  # type: ignore[arg-type]
+
+
+class Flow(NamedTuple):
+    """One flow field: its checked type, the closed interval that type admits,
+    and the value `PL-HSFV` found a record holding on 2026-10-04."""
+
+    field: str
+    flow_type: type[float]
+    minimum: float
+    maximum: float
+    reproduced_l_min: float
+
+
+SUPPORTED_FLOWS = (
+    Flow(
+        "fresh_gas_flow_l_min",
+        FreshGasFlow,
+        MINIMUM_FRESH_GAS_FLOW_L_MIN,
+        MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+        500.0,
+    ),
+    Flow(
+        "alveolar_ventilation_l_min",
+        AlveolarVentilation,
+        MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
+        MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+        200.0,
+    ),
+    Flow(
+        "cardiac_output_l_min",
+        CardiacOutput,
+        MINIMUM_CARDIAC_OUTPUT_L_MIN,
+        MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+        1000.0,
+    ),
+)
+
+FLOW_IDS = [flow.field for flow in SUPPORTED_FLOWS]
+
+
+def _settings_with_flow(field: str, value: float) -> UptakeEquationSettings:
+    """`_settings` with one flow moved, the tissue flows following cardiac output.
+
+    The venous balance requires the tissue flows to sum to cardiac output, so
+    moving that one alone would be refused for the mismatch rather than for
+    the range; each tissue keeps its share of the output instead.
+    """
+
+    if field != "cardiac_output_l_min":
+        return _settings(**{field: value})
+
+    return _settings(
+        cardiac_output_l_min=value,
+        tissues=tuple(
+            TissueGroupEquationSettings(
+                name=name,
+                volume_l=volume_l,
+                blood_flow_l_min=blood_flow_l_min / CARDIAC_OUTPUT_L_MIN * value,
+                tissue_blood_partition_coefficient=tissue_blood,
+            )
+            for name, volume_l, blood_flow_l_min, tissue_blood in TISSUES
+        ),
+    )
+
+
+@pytest.mark.parametrize("flow", SUPPORTED_FLOWS, ids=FLOW_IDS)
+def test_accepts_each_flow_at_both_ends_of_its_supported_range(flow: Flow) -> None:
+    """The intervals are closed, and a record may hold either end (`PL-HSFV`).
+
+    Both ends are measured cases: one reference trajectory holds cardiac
+    output at zero through its loading phase, and the envelope corner every
+    reference gate drives sits on all three maxima at once.
+    """
+
+    for value in (flow.minimum, flow.maximum):
+        settings = _settings_with_flow(flow.field, flow.flow_type(value))
+
+        assert getattr(settings, flow.field) == value
+        assert isinstance(getattr(settings, flow.field), flow.flow_type)
+
+
+@pytest.mark.parametrize("flow", SUPPORTED_FLOWS, ids=FLOW_IDS)
+def test_rejects_a_flow_outside_its_supported_range(flow: Flow) -> None:
+    """A flow outside its range is refused before any record can hold it (`PL-HSFV`).
+
+    A record rebuilt with a cardiac output of 1000 L/min, a hundred times the
+    supported maximum, was propagated by `RunDefinition` on 2026-10-04,
+    because the record checked only that the tissue flows summed to cardiac
+    output and the range guards ran only in the compartments. Each flow field
+    now takes a type only its guard builds (`PL-0YYV`), so the refusal is the
+    guard's, in the guard's own words, at the first float past the maximum as
+    much as at a hundred times it, and the record never exists: `_settings_with_flow`
+    is never entered, and the test below is the one that reaches the record.
+    """
+
+    past_each_end = (nextafter(flow.maximum, inf), nextafter(flow.minimum, -inf))
+
+    for value in (*past_each_end, flow.reproduced_l_min, nan, inf):
+        with pytest.raises(SimulationConfigurationError, match="supported input range"):
+            _settings_with_flow(flow.field, flow.flow_type(value))
+
+
+@pytest.mark.parametrize("flow", SUPPORTED_FLOWS, ids=FLOW_IDS)
+def test_rejects_a_flow_handed_in_as_a_bare_float(flow: Flow) -> None:
+    """A flow never built as its type is refused by the record, in range or not (`PL-0YYV`).
+
+    The record is where a flow is stored, so it carries the runtime half of
+    the type check: a caller that forgot the type - a notebook, a test, a
+    deserializer - is told which type to build and where, rather than having
+    its float range-checked again here. The value is the record's own, inside
+    the range, so what is refused is the missing check and not the number.
+    """
+
+    held = getattr(_settings(), flow.field)
+
+    with pytest.raises(TypeError, match=f"not built as {flow.flow_type.__name__}"):
+        _settings(**{flow.field: float(held)})
 
 
 def test_the_matrix_is_square_and_the_right_size() -> None:
@@ -261,34 +392,22 @@ def test_the_compartments_neither_create_nor_lose_agent() -> None:
         )
 
 
-@pytest.mark.parametrize(
-    "zeroed", ["fresh_gas_flow_l_min", "alveolar_ventilation_l_min", "cardiac_output_l_min"]
-)
-def test_a_zero_flow_is_a_zero_rate_and_needs_no_branch(zeroed: str) -> None:
+@pytest.mark.parametrize("flow", SUPPORTED_FLOWS, ids=FLOW_IDS)
+def test_a_zero_flow_is_a_zero_rate_and_needs_no_branch(flow: Flow) -> None:
     """`docs/MODEL.md`'s three zero-flow cases, expressed as arithmetic.
 
     Each says a transfer stops. Under the operator split each needed an early
     return, because its closed form divided by the flow; here the flow is a
     factor of the matrix entry and zero is simply zero.
+
+    Every tissue flow is cardiac output times that group's perfusion fraction,
+    so a stopped heart stops all three with it; `_settings_with_flow` scales
+    them, since zeroing the one without the others is the inconsistency the
+    settings refuse.
     """
 
-    overrides: dict[str, object] = {zeroed: 0.0}
-
-    if zeroed == "cardiac_output_l_min":
-        # Every tissue flow is cardiac output times that group's perfusion
-        # fraction, so a stopped heart stops all three with it. Zeroing the
-        # one without the others is the inconsistency the settings refuse.
-        overrides["tissues"] = tuple(
-            TissueGroupEquationSettings(
-                name=name,
-                volume_l=volume_l,
-                blood_flow_l_min=0.0,
-                tissue_blood_partition_coefficient=tissue_blood,
-            )
-            for name, volume_l, _, tissue_blood in TISSUES
-        )
-
-    matrix = build_system_matrix(_settings(**overrides))
+    zeroed = flow.field
+    matrix = build_system_matrix(_settings_with_flow(zeroed, flow.flow_type(0.0)))
 
     assert all(all(value == value for value in row) for row in matrix)
 
@@ -327,7 +446,9 @@ def test_a_zero_tissue_flow_leaves_that_group_alone() -> None:
     matrix = build_system_matrix(
         _settings(
             tissues=unperfused_fat,
-            cardiac_output_l_min=sum(tissue.blood_flow_l_min for tissue in unperfused_fat),
+            cardiac_output_l_min=CardiacOutput(
+                sum(tissue.blood_flow_l_min for tissue in unperfused_fat)
+            ),
         )
     )
     fat = FIRST_TISSUE_FRACTION + 2
@@ -343,13 +464,6 @@ def test_a_zero_tissue_flow_leaves_that_group_alone() -> None:
         ("circuit_volume_l", 0.0, "^circuit_volume_l must be positive and finite$"),
         ("alveolar_volume_l", -1.0, "^alveolar_volume_l must be positive and finite$"),
         ("venous_volume_l", float("inf"), "^venous_volume_l must be positive and finite$"),
-        ("fresh_gas_flow_l_min", -0.1, "^fresh_gas_flow_l_min must be nonnegative and finite$"),
-        (
-            "alveolar_ventilation_l_min",
-            float("nan"),
-            "^alveolar_ventilation_l_min must be nonnegative and finite$",
-        ),
-        ("cardiac_output_l_min", -1.0, "^cardiac_output_l_min must be nonnegative and finite$"),
         (
             "blood_gas_partition_coefficient",
             0.0,
@@ -378,12 +492,16 @@ def test_rejects_tissue_flows_that_do_not_sum_to_cardiac_output() -> None:
     smooth and in range. `patient.py` states the same requirement as
     perfusion fractions summing to one; this is the equations checking the
     object they are actually built from.
+
+    The mismatched output is inside the supported range, so the mismatch is
+    the only thing refused: 1.5 times the reference output was past the
+    range, and would now be refused for that first (`PL-HSFV`).
     """
 
     with pytest.raises(
         SimulationConfigurationError, match="the venous balance returns what the tissues receive"
     ):
-        _settings(cardiac_output_l_min=CARDIAC_OUTPUT_L_MIN * 1.5)
+        _settings(cardiac_output_l_min=CardiacOutput(CARDIAC_OUTPUT_L_MIN * 1.2))
 
 
 def test_rejects_a_tissue_group_count_the_model_does_not_have() -> None:

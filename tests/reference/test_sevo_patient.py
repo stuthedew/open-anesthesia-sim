@@ -15,6 +15,7 @@ from anesthesia_sim.core.simulation_step import (
     MINIMUM_SIMULATION_STEP_S,
     SimulationStep,
 )
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
@@ -157,7 +158,9 @@ def _build_system_with_blood_gas_coefficient(
         ),
         alveoli=AlveolarCompartment(
             gas_volume_l=patient_parameters.alveolar_gas_volume_l,
-            alveolar_ventilation_l_min=patient_parameters.default_alveolar_ventilation_l_min,
+            alveolar_ventilation_l_min=AlveolarVentilation(
+                patient_parameters.default_alveolar_ventilation_l_min
+            ),
         ),
         patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
     )
@@ -180,7 +183,7 @@ def test_no_delivered_agent_keeps_every_store_zero() -> None:
 
 def test_zero_ventilation_prevents_patient_delivery() -> None:
     system = AgentUptakeSystem.default()
-    system.set_alveolar_ventilation(0.0)
+    system.set_alveolar_ventilation(AlveolarVentilation(0.0))
 
     _run_for(system, duration_s=120.0, simulation_step_s=0.1)
 
@@ -192,7 +195,7 @@ def test_zero_ventilation_prevents_patient_delivery() -> None:
 
 def test_zero_cardiac_output_prevents_patient_uptake() -> None:
     system = AgentUptakeSystem.default()
-    system.set_cardiac_output(0.0)
+    system.set_cardiac_output(CardiacOutput(0.0))
 
     _run_for(system, duration_s=120.0, simulation_step_s=0.1)
 
@@ -237,8 +240,8 @@ def test_higher_cardiac_output_increases_early_uptake_and_lowers_alveolar_fracti
     lower_output = AgentUptakeSystem.default()
     higher_output = AgentUptakeSystem.default()
 
-    lower_output.set_cardiac_output(2.5)
-    higher_output.set_cardiac_output(7.5)
+    lower_output.set_cardiac_output(CardiacOutput(2.5))
+    higher_output.set_cardiac_output(CardiacOutput(7.5))
 
     _run_for(lower_output, duration_s=60.0, simulation_step_s=0.1)
     _run_for(higher_output, duration_s=60.0, simulation_step_s=0.1)
@@ -256,8 +259,8 @@ def test_higher_ventilation_increases_early_alveolar_fraction() -> None:
     lower_ventilation = AgentUptakeSystem.default()
     higher_ventilation = AgentUptakeSystem.default()
 
-    lower_ventilation.set_alveolar_ventilation(2.0)
-    higher_ventilation.set_alveolar_ventilation(8.0)
+    lower_ventilation.set_alveolar_ventilation(AlveolarVentilation(2.0))
+    higher_ventilation.set_alveolar_ventilation(AlveolarVentilation(8.0))
 
     _run_for(lower_ventilation, duration_s=30.0, simulation_step_s=0.1)
     _run_for(higher_ventilation, duration_s=30.0, simulation_step_s=0.1)
@@ -500,7 +503,7 @@ def test_equilibrium_produces_no_net_internal_transfer() -> None:
     """
 
     system = AgentUptakeSystem.default()
-    system.set_fresh_gas_flow(0.0)
+    system.set_fresh_gas_flow(FreshGasFlow(0.0))
 
     equilibrium_fraction = 0.05
 

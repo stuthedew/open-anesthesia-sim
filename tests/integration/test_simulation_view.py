@@ -149,6 +149,8 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
+    AlveolarVentilation,
+    FreshGasFlow,
 )
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -378,7 +380,7 @@ def _paused_run_with_history(elapsed_s: float = 60.0) -> SimulationController:
     controller = SimulationController()
     controller.start()
     _advance_to(controller, elapsed_s)
-    controller.set_fresh_gas_flow(2.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(2.0))
     controller.pause()
 
     return controller
@@ -873,12 +875,12 @@ def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins(
         controller = SimulationController()
         run = _shown_view(application, controller).runs[0]
         controller.start()
-        controller.set_fresh_gas_flow(3.0)
+        controller.set_fresh_gas_flow(FreshGasFlow(3.0))
         controller.advance(SIMULATION_STEP_S)
 
         control: ParameterSlider = getattr(run, slider_name)
         control.slider.sliderPressed.emit()
-        controller.set_fresh_gas_flow(2.0)
+        controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
         assert {change.adjustment for change in controller.snapshot().control_timeline} == {1, 2}, (
             f"{slider_name}'s press did not declare an adjustment boundary"
@@ -890,10 +892,10 @@ def test_a_declared_boundary_reaches_the_controller(application: QApplication) -
     run = _shown_view(application, controller).runs[0]
 
     controller.start()
-    controller.set_fresh_gas_flow(3.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
     controller.advance(SIMULATION_STEP_S)
     run._handle_adjustment_start()
-    controller.set_fresh_gas_flow(2.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
     assert {change.adjustment for change in controller.snapshot().control_timeline} == {1, 2}
 
@@ -2340,7 +2342,7 @@ def test_the_control_timeline_is_not_regrouped_when_it_has_not_grown(
 
     for index in range(4):
         controller.begin_control_adjustment()
-        controller.set_fresh_gas_flow(4.0 - (index + 1) * 0.1)
+        controller.set_fresh_gas_flow(FreshGasFlow(4.0 - (index + 1) * 0.1))
         _advance(controller, 1.0)
 
     view = _shown_view(application, controller)
@@ -2554,7 +2556,7 @@ def test_a_recorded_change_is_marked_on_the_chart_at_its_own_time(
     controller.start()
     _advance(controller, 600.0)
     controller.begin_control_adjustment()
-    controller.set_fresh_gas_flow(2.0)
+    controller.set_fresh_gas_flow(FreshGasFlow(2.0))
     _advance(controller, 600.0)
     view = _shown_view(application, controller)
 
@@ -4250,7 +4252,7 @@ def test_the_wash_in_state_and_off_scale_lines_name_their_run(application: QAppl
     trunk.start()
     trunk.set_delivered_concentration_percent(Percent(8.0))
     _advance_to(trunk, 600.0)
-    trunk.set_fresh_gas_flow(2.0)
+    trunk.set_fresh_gas_flow(FreshGasFlow(2.0))
     trunk.pause()
     view = _case_view(application, BranchedCase(trunk))
     selector = view._fork_panel.point_selector
@@ -4442,7 +4444,7 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
     trunk = SimulationController()
     trunk.start()
     _advance_to(trunk, 120.0)
-    trunk.set_fresh_gas_flow(2.0)
+    trunk.set_fresh_gas_flow(FreshGasFlow(2.0))
     _advance_to(trunk, 600.0)
     trunk.pause()
     view = _case_view(application, BranchedCase(trunk))
@@ -4453,7 +4455,7 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
     assert len(view.runs) == 2
 
     branch = view.runs[1]
-    branch.controller.set_alveolar_ventilation(6.0)
+    branch.controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
     view.present(False)
     sidebar = view._sidebar_column.parentWidget()
 
@@ -5085,7 +5087,7 @@ def test_a_vanished_fork_instant_leaves_nothing_selected(application: QApplicati
     _advance_to(trunk, 60.0)
     trunk.pause()
     original_flow = trunk.snapshot().fresh_gas_flow_l_min
-    trunk.set_fresh_gas_flow(original_flow + 2.0)
+    trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
     case = BranchedCase(trunk)
     view = _case_view(application, case)
     panel = view._fork_panel
@@ -5096,7 +5098,7 @@ def test_a_vanished_fork_instant_leaves_nothing_selected(application: QApplicati
 
     assert panel.selected_instant_s() == pytest.approx(60.0)
 
-    trunk.set_fresh_gas_flow(original_flow)
+    trunk.set_fresh_gas_flow(FreshGasFlow(original_flow))
     view.present(False)
 
     assert case.fork_points_s == (0.0,)

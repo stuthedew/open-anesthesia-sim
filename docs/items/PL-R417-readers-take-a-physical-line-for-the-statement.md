@@ -11,8 +11,8 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 payoff: a statement a shell script, Makefile, workflow or Markdown document continues across lines is read as the one statement its format makes it, or refused by name, so the close-out sweep and the checks stop answering from fragments
 verify: grep -q 'def test_candidates_find_a_title_cited_across_a_line_wrap' tests/unit/test_doc_check.py && grep -q 'def test_each_reader_reads_its_formats_continued_statement_whole' tests/unit/test_doc_check.py && grep -q 'recipe commands, ' tests/unit/test_doc_check.py && grep -q 'workflow commands, ' tests/unit/test_doc_check.py && grep -q '^generator: spent' docs/items/PL-R417-readers-take-a-physical-line-for-the-statement.md
-root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9
-generator: live - six readers misread it in fifteen days, three on 2026-10-03 alone, each fix taught one reader one format's rule, and the 2026-10-04 sweep found readers no item names in every format the members cover, one live today: format_candidates misses 448 wrapped section citations
+root-cause-of: PL-Q9LK, PL-6P6H, PL-G2FY, PL-Z8RS, PL-6SRZ, PL-RR1N, PL-MFVV, PL-TMX9, PL-B1D0, PL-F5B9, PL-XYJF, PL-CL8R, PL-XW87, PL-J503, PL-CFWP, PL-3DD9, PL-2S1G
+generator: live - the close-out sweep of 2026-10-04 reproduced eight more readers outside those the head's own sweep named, one reading live input in CLAUDE.md, and the Markdown slice's walker found a ninth, PL-2S1G, in the pattern every Markdown reader shares, so every pass has found readers the last one missed: PL-MFVV after slice 1, PL-TMX9 after slice 3, eight after the TMX9 link and PL-2S1G in link 6
 misread: Where one statement ends, in a format that lets a statement continue across physical lines
 ---
 
@@ -161,6 +161,53 @@ key's line, a reader the sweep missed, now a member. Left: `PL-MFVV` (after
 were the last thing it asked for and `docket check` refuses an open item whose
 command passes; `generator:` is rewritten `spent` only when those three close,
 so the command passes then and no sooner.
+
+**Link 5, `PL-TMX9` and the close-out sweep (`#1349`, 2026-10-04).** Done:
+`PL-TMX9`, `required_checks_check._job_name` reading a job's `name:` whole or
+refusing it by name, with five `required checks, a job name ...` guard cases,
+four failing on main's reader. Not done: the close-out. Before writing why the
+mechanism could hand the store no more members, a read-only sweep covered
+every reader the 2026-10-04 sweep had not reached - 92 readers across
+`tools/`, `subprojects/docket/src/docket/` and `.claude/hooks/`, and 18 more
+modules that read no text in these formats - and reproduced eight more that
+take a physical line for a statement their format continues, now members:
+`PL-B1D0` (`instructions.parse`, reading live input in `CLAUDE.md`),
+`PL-F5B9` (`dead_ends`), `PL-XYJF` (`checks._passage`), `PL-CL8R` (the
+release-notes bullet readers), `PL-XW87` (the citation patterns, inside a
+blockquote), `PL-J503` (a continued `recurrences:` in `verify`), `PL-CFWP`
+(`is_suppression_line`, Python) and `PL-3DD9` (`version_in`, TOML). So
+`generator:` stays `live`, and the slice-3 note's "`generator:` is rewritten
+`spent` only when those three close" no longer says when the head closes: two
+of the three closed, and the sweep added eight.
+
+**Link 6, the Markdown slice (`#1352`, 2026-10-04).** Done: `PL-B1D0`, `PL-F5B9`,
+`PL-XYJF`, `PL-CL8R` and `PL-XW87`, and `PL-2S1G`, which the slice found. It
+built `roadmap.statement_lines`, one walker of where a CommonMark paragraph
+ends, holding the context a pattern cannot see: the list item a line sits in,
+a delimiter row under a pipe line, an HTML block's end marker. Checked against
+markdown-it-py 4.2.0 over the 2,380 tracked Markdown files, it agrees on every
+paragraph but three front-matter blocks markdown-it reads as tables. The
+instruction audit and `checks._passage` read through it, `dead_ends` and the
+release-notes readers through `document_entry_lines`, the list walker run under
+every heading, and the citation patterns through `GAP`. Checking the walker
+found `PL-2S1G`: `CONTINUED_LINE` refused every `<` and every run of three
+backticks, which split 33 paragraphs of the tracked documents. The guard gained
+twenty cases, nineteen failing on main's readers; the twentieth pins a list
+nested under a notes bullet, which main read right by reading one line. Over
+the tree, doc_check, the possessive check and `bin/docket check` report as
+before, and the dead-ends digest is byte-identical. `generator:` stays `live`,
+its reason now naming `PL-2S1G`.
+
+**Next steps (recorded 2026-10-04, revised by link 6).** One more slice, one
+pull request, closing its members and adding their cases to
+`CONTINUED_STATEMENTS`: the other formats, `PL-J503` through `parse_item`'s
+reading of a field, `PL-CFWP` through the parsed statements
+`removed_assertions` already reads, and `PL-3DD9` through `tomllib`. Then one
+more sweep of the same reach, with `statement_lines` as the Markdown reading
+to hold readers to, and `generator:` rewritten `spent` only when it finds
+nothing. Whether the head waits for `PL-RR1N` is still the coordinator's
+default, to follow Done-when and close without it, put to the project owner;
+this slice was not briefed to settle it.
 
 **Done when.** Every reader the table and the sweep name reads its format's
 statement whole or declines it by name, each pinned by a test; the guard test

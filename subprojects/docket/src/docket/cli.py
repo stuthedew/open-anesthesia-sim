@@ -904,6 +904,7 @@ def _complete_report(
     inv = _invocation(args)
     git = inv.git
     tracked = inv.tracked
+    unread_notes: list[str] = []
     return analyze(
         items,
         args.today or date.today(),
@@ -981,8 +982,10 @@ def _complete_report(
         # The third thing those two files can disagree about, and the one that
         # nothing compared until it had been filed four separate times: a
         # bullet naming an item and no pull request, while the item records
-        # one. The same directory read as above (`PL-W7WL`).
-        unreferenced=unreferenced_by_version(root),
+        # one. The same directory read as above (`PL-W7WL`), and the bullets it
+        # declined to read, which the report names (`PL-CL8R`).
+        unreferenced=unreferenced_by_version(root, unread=unread_notes),
+        unread_notes=unread_notes,
         # The seam between those two halves. The notes are written at the cut
         # and the tag goes on the merge, so anything landing in between is
         # inside the tag's span and named in no notes - measured at 12 closing

@@ -55,6 +55,7 @@ from anesthesia_sim.core.parameters import (
 )
 from anesthesia_sim.core.patient import PatientCompartments, PatientCompartmentsState
 from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.validation import require_nonnegative_finite
 
 
@@ -165,6 +166,19 @@ class AgentUptakeSystem:
         the route buys is that a profile which *does* declare one narrows the
         flow this system will accept without touching that envelope
         (`PL-8PS6`).
+
+        The two flows the files state are parsed into their checked types
+        here, where the compartments are built from them, and the patient's
+        cardiac output in `PatientCompartments.from_parameters` (`PL-0YYV`).
+        `core/parameters.py` checks each for sign and finiteness alone and
+        holds no copy of the ranges, so a file naming a flow outside its
+        supported range is refused here, in the words a refused control uses,
+        before any compartment holds it.
+
+        Raises:
+            SimulationConfigurationError: a file's flow is outside its
+                supported range, or the profile's deliverable range excludes
+                the flow the run opens at.
         """
 
         agent = load_agent_parameters(agent_id)
@@ -173,7 +187,7 @@ class AgentUptakeSystem:
         opening_fresh_gas_flow_l_min = (
             TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN
             if circuit_parameters.default_fresh_gas_flow_l_min is None
-            else circuit_parameters.default_fresh_gas_flow_l_min
+            else FreshGasFlow(circuit_parameters.default_fresh_gas_flow_l_min)
         )
 
         return cls(
@@ -188,7 +202,9 @@ class AgentUptakeSystem:
             ),
             alveoli=AlveolarCompartment(
                 gas_volume_l=patient_parameters.alveolar_gas_volume_l,
-                alveolar_ventilation_l_min=patient_parameters.default_alveolar_ventilation_l_min,
+                alveolar_ventilation_l_min=AlveolarVentilation(
+                    patient_parameters.default_alveolar_ventilation_l_min
+                ),
             ),
             patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
         )
@@ -211,16 +227,16 @@ class AgentUptakeSystem:
             currently_stored_agent_l=self.total_stored_agent_l
         )
 
-    def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
+    def set_fresh_gas_flow(self, fresh_gas_flow_l_min: FreshGasFlow) -> None:
         self.circuit.set_fresh_gas_flow(fresh_gas_flow_l_min)
 
     def set_delivered_concentration_percent(self, delivered_concentration_percent: Percent) -> None:
         self.circuit.set_delivered_concentration_percent(delivered_concentration_percent)
 
-    def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:
+    def set_alveolar_ventilation(self, alveolar_ventilation_l_min: AlveolarVentilation) -> None:
         self.alveoli.set_alveolar_ventilation(alveolar_ventilation_l_min)
 
-    def set_cardiac_output(self, cardiac_output_l_min: float) -> None:
+    def set_cardiac_output(self, cardiac_output_l_min: CardiacOutput) -> None:
         self.patient.set_cardiac_output(cardiac_output_l_min)
 
     def advance(self, simulation_step_s: SimulationStep) -> UptakeStepResult:

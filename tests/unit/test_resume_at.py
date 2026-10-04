@@ -51,6 +51,7 @@ from anesthesia_sim.core.governing_equations import (
 )
 from anesthesia_sim.core.run_definition import DisplayState, Keyframe, RunDefinition, RunSegment
 from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 SIMULATION_STEP_S = SimulationStep(0.1)
@@ -109,7 +110,7 @@ def _run(
             definition.record_change(system.equation_settings())
 
         if step == flow_step:
-            system.set_fresh_gas_flow(1.0)
+            system.set_fresh_gas_flow(FreshGasFlow(1.0))
             definition.record_change(system.equation_settings())
 
     return system, definition

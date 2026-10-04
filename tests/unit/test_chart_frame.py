@@ -55,6 +55,7 @@ from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuanti
 from anesthesia_sim.app.theme import COMPARED_RUN_WIDTH_STEP, ONE_MAC_LINE_DASH_PATTERN
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.supported_ranges import FreshGasFlow
 
 _STEP_S = SimulationStep(0.1)
 _PLOT_WIDTH_PX = 900.0
@@ -226,7 +227,7 @@ def test_the_fitted_window_reaches_a_branch_s_newest_instant_rather_than_its_len
 
     trunk = _run(120.0)
     trunk.begin_control_adjustment()
-    trunk.set_fresh_gas_flow(3.0)
+    trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
     branch = BranchedCase(trunk).fork_at(120.0)
     branch.start()
     _advance(branch, 30.0)
@@ -1366,7 +1367,7 @@ def test_a_branch_carries_its_fork_and_a_trunk_carries_none() -> None:
 
     trunk = _run(60.0)
     trunk.begin_control_adjustment()
-    trunk.set_fresh_gas_flow(3.0)
+    trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
     _advance(trunk, 60.0)
     case = BranchedCase(trunk)
     branch = case.fork_at(60.0)
@@ -1397,7 +1398,7 @@ def test_a_bookmark_branch_is_marked_at_its_fork_and_not_at_its_definition_s_ope
     trunk.start()
     _advance(trunk, 30.0)
     trunk.begin_control_adjustment()
-    trunk.set_fresh_gas_flow(3.0)
+    trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
 
     for _ in range(round(60.0 / _STEP_S)):
         trunk.advance(_STEP_S)
@@ -1427,7 +1428,7 @@ def test_a_fork_outside_the_drawn_window_is_not_marked_at_its_edge() -> None:
 
     trunk = _run(60.0)
     trunk.begin_control_adjustment()
-    trunk.set_fresh_gas_flow(3.0)
+    trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
     _advance(trunk, 1800.0)
     case = BranchedCase(trunk)
     branch = case.fork_at(60.0)

@@ -3,11 +3,13 @@ id: PL-0YYV
 title: The three flows - fresh gas flow, alveolar ventilation and cardiac output - are bare floats range-checked by hand at each way in, so the way in nobody checked, UptakeEquationSettings, ran a cardiac output of 1000 L/min (PL-HSFV); slice 1 of PL-51B7 gives each a checked type built only through its require_supported_* guard, as SimulationStep is for the step
 priority: P1
 effort: L
-status: ready
+status: done
 classes: refactor, safety
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests, docs/MODEL.md, docs/ARCHITECTURE.md
+touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/core-domain.md
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1350
 payoff: no record or function in core/ or app/ can hold a flow outside its supported range, because the only way to make one is its guard, so a way in nobody thought to check - a settings record today, a saved run's loader later - is checked anyway
 verify: grep -q 'fresh_gas_flow_l_min: FreshGasFlow' src/anesthesia_sim/core/governing_equations.py && grep -q 'alveolar_ventilation_l_min: AlveolarVentilation' src/anesthesia_sim/core/governing_equations.py && grep -q 'cardiac_output_l_min: CardiacOutput' src/anesthesia_sim/core/governing_equations.py
 ---

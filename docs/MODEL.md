@@ -5056,10 +5056,10 @@ setting outside it is refused rather than simulated:
 
 | Control | Range | Declared and refused by |
 | --- | --- | --- |
-| Fresh gas flow | 0 to 10 L/min | `core/supported_ranges.py` |
+| Fresh gas flow | 0 to 10 L/min | `FreshGasFlow` in `core/supported_ranges.py`, which every fresh gas flow is built as |
 | Delivered concentration | 0 to the agent's `max_delivered_concentration_percent` | `BreathingCircuit` |
-| Alveolar ventilation | 0 to 12 L/min | `core/supported_ranges.py` |
-| Cardiac output | 0 to 10 L/min | `core/supported_ranges.py` |
+| Alveolar ventilation | 0 to 12 L/min | `AlveolarVentilation` in `core/supported_ranges.py`, which every alveolar ventilation is built as |
+| Cardiac output | 0 to 10 L/min | `CardiacOutput` in `core/supported_ranges.py`, which every cardiac output is built as |
 
 Fresh gas flow carries a **second** bound that is not in this table and is
 not the model's: what the anesthesia machine in front of the patient can
@@ -5074,8 +5074,9 @@ as were a fresh gas flow of 500 L/min and an alveolar ventilation of
 nonnegative and finite. The sliders were the sole thing keeping a run inside
 the domain the verification gates cover, so every other caller of `core/` —
 a headless run, a notebook, a test — could leave it. `core/supported_ranges.py`
-declares the three intervals now, each compartment refuses a value outside
-its own, and every `AgentUptakeSystem` setter forwards to that compartment;
+declares the three intervals now and builds each flow as a type only its guard
+produces, so a value outside its range is refused where the flow is built,
+before any compartment or settings record can hold it (`PL-0YYV`, below);
 `app/` imports the same constants for its sliders rather than restating them.
 
 **Refused, not clamped**, for the reason the vaporizer maximum is: a silently
@@ -5086,16 +5087,34 @@ refusal beside the control that caused it — the same distinction § "Supported
 simulation step" above draws between a refused argument and a step that
 broke down.
 
-**Enforced on the compartment, not on the coupled system**, which is the
-opposite of where the step's two bounds sit, and for a reason the two cases do
-not share. A step is an argument to one call, and a compartment advanced alone
-has no truncation error at any step, so guarding a compartment at
-`MAXIMUM_SIMULATION_STEP_S` would refuse an exact calculation; why the floor
-binds the run rather than the compartment is argued in § "Supported simulation
-step". A flow is persistent state, reachable through
-`AgentUptakeSystem`, through the compartment it belongs to, and through that
-compartment's constructor; the compartment is the only point all three pass
-through.
+**Enforced where a flow is built, not where it is stored or used** (`PL-0YYV`,
+closing `PL-HSFV`), which is the opposite of where the step's two bounds sit,
+and for a reason the two cases do not share. A step is an argument to one call,
+and a compartment advanced alone has no truncation error at any step, so
+guarding a compartment at `MAXIMUM_SIMULATION_STEP_S` would refuse an exact
+calculation; why the floor binds the run rather than the compartment is argued
+in § "Supported simulation step". A flow is persistent state with four ways in:
+an `AgentUptakeSystem` setter, the setter of the compartment it belongs to,
+that compartment's constructor, and the `UptakeEquationSettings` record a
+`RunDefinition` is built from and records a change as. Until `PL-0YYV` the
+compartment checked the first three and the fourth checked only sign and
+finiteness, so a
+record rebuilt with `dataclasses.replace` to a cardiac output of 1000 L/min,
+a hundred times the supported maximum, opened a run and answered with finite,
+plausible fractions (`PL-HSFV`, measured 2026-10-04). Each flow is now a
+`float` subclass in `core/supported_ranges.py` — `FreshGasFlow`,
+`AlveolarVentilation`, `CardiacOutput` — whose constructor is the only thing
+that runs its guard, and every field and signature that holds a flow in the
+compartments, the settings record, the application's snapshot and the setters
+that feed them takes the type; the control timeline is annotated `float`, and
+a setting reopened from it is built back into its type. The check is made
+once, where the value is
+built, and no way in has to remember it: a bare `float` handed to any of the
+four is refused with a `TypeError` naming the type to build, whatever its
+value, and arithmetic on a flow returns a plain `float`, so a derived
+quantity never reads as checked. It is the shape `SimulationStep` gives the
+step, and the first slice of `PL-51B7`, which carries it to the remaining
+checked quantities.
 
 #### What a setting outside the range costs
 
@@ -5166,7 +5185,7 @@ statements about different things:
 
 | Claim | What it says | Declared in | Refused by |
 | --- | --- | --- | --- |
-| The model's envelope | The range the lumped compartment structure, the reference adult's fixed volumes and the constant-coefficient partition model are claimed to represent a patient over | `MINIMUM_FRESH_GAS_FLOW_L_MIN` and `MAXIMUM_FRESH_GAS_FLOW_L_MIN` in `core/supported_ranges.py` | `require_supported_fresh_gas_flow` |
+| The model's envelope | The range the lumped compartment structure, the reference adult's fixed volumes and the constant-coefficient partition model are claimed to represent a patient over | `MINIMUM_FRESH_GAS_FLOW_L_MIN` and `MAXIMUM_FRESH_GAS_FLOW_L_MIN` in `core/supported_ranges.py` | `FreshGasFlow`, which runs `require_supported_fresh_gas_flow` as it is built |
 | A machine's deliverable range | What that machine's flowmeters, minimum-flow floor and fresh gas delivery can physically set | `deliverable_fresh_gas_flow_range` in that machine's `data/machines/*.json` profile | `BreathingCircuit._require_deliverable_flow` |
 
 **The effective limit on the control is the intersection**, and each side

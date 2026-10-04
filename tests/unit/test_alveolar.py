@@ -10,7 +10,10 @@ from anesthesia_sim.core.parameters import (
     load_reference_adult_parameters,
     parse_reference_adult_parameters,
 )
-from anesthesia_sim.core.supported_ranges import MAXIMUM_ALVEOLAR_VENTILATION_L_MIN
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    AlveolarVentilation,
+)
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
@@ -27,14 +30,16 @@ def test_changing_ventilation_preserves_alveolar_agent() -> None:
     alveoli.set_partial_pressure_fraction(0.05)
     amount_before = alveoli.agent_amount_l
 
-    alveoli.set_alveolar_ventilation(8.0)
+    alveoli.set_alveolar_ventilation(AlveolarVentilation(8.0))
 
     assert alveoli.alveolar_ventilation_l_min == 8.0
     assert alveoli.agent_amount_l == amount_before
 
 
 def test_reset_clears_agent_and_preserves_settings() -> None:
-    alveoli = AlveolarCompartment(gas_volume_l=3.0, alveolar_ventilation_l_min=5.0)
+    alveoli = AlveolarCompartment(
+        gas_volume_l=3.0, alveolar_ventilation_l_min=AlveolarVentilation(5.0)
+    )
     alveoli.set_partial_pressure_fraction(0.05)
 
     alveoli.reset()
@@ -50,11 +55,13 @@ def test_accepts_ventilation_at_both_ends_of_the_supported_range() -> None:
     maximum is the corner of the settings envelope the gates measure at."""
 
     for alveolar_ventilation_l_min in (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN):
-        alveoli = AlveolarCompartment(alveolar_ventilation_l_min=alveolar_ventilation_l_min)
+        alveoli = AlveolarCompartment(
+            alveolar_ventilation_l_min=AlveolarVentilation(alveolar_ventilation_l_min)
+        )
 
         assert alveoli.alveolar_ventilation_l_min == alveolar_ventilation_l_min
 
-        alveoli.set_alveolar_ventilation(alveolar_ventilation_l_min)
+        alveoli.set_alveolar_ventilation(AlveolarVentilation(alveolar_ventilation_l_min))
 
         assert alveoli.alveolar_ventilation_l_min == alveolar_ventilation_l_min
 
@@ -62,17 +69,17 @@ def test_accepts_ventilation_at_both_ends_of_the_supported_range() -> None:
 def test_rejects_ventilation_above_the_supported_range() -> None:
     """Regression (PL-0MLQ): 200 L/min was accepted and simulated."""
 
-    alveoli = AlveolarCompartment(alveolar_ventilation_l_min=4.0)
+    alveoli = AlveolarCompartment(alveolar_ventilation_l_min=AlveolarVentilation(4.0))
 
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
-        alveoli.set_alveolar_ventilation(200.0)
+        alveoli.set_alveolar_ventilation(AlveolarVentilation(200.0))
 
     assert alveoli.alveolar_ventilation_l_min == 4.0
 
 
 def test_rejects_construction_with_ventilation_above_the_supported_range() -> None:
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
-        AlveolarCompartment(alveolar_ventilation_l_min=200.0)
+        AlveolarCompartment(alveolar_ventilation_l_min=AlveolarVentilation(200.0))
 
 
 def test_the_bare_alveolar_defaults_match_the_shipped_patient_file() -> None:
