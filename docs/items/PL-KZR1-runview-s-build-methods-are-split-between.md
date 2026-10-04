@@ -3,12 +3,13 @@ id: PL-KZR1
 title: RunView's build_* methods are split between handing back what the run built once (build_notice, build_off_scale_notice, build_sidebar_panels) and laying its live widgets into a new container on each call (build_transport_row, build_readout_section, build_parameter_controls), so a second call to one of those three takes its widgets off screen or deletes them, and nothing in the names says which
 priority: P2
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: sidebar-panel-rebuild
 touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py, tools/literal_home_check.py, docs/items/PL-TH35-define-the-common-view-contract-every-app-view.md
 blocked-by: PL-N67T
 added: 2026-09-21
+closed: 2026-10-04
 payoff: a second call to any of RunView's build_ methods leaves the run's widgets on screen, so no caller has to know which of them is safe to call twice
 verify: grep -q 'def test_a_second_build_call_leaves_each_run_widget_on_screen' tests/integration/test_simulation_view.py && grep -q 'def _lay_out_transport_row' src/anesthesia_sim/app/run_view.py && grep -q 'def _lay_out_readout_section' src/anesthesia_sim/app/run_view.py && grep -q 'def _lay_out_parameter_controls' src/anesthesia_sim/app/run_view.py
 ---
@@ -94,3 +95,10 @@ the session that picks it up.
 - *`verify:` rewritten.* The grep for the test's name alone passed once the
   test was committed, before any fix. `bin/docket check` refused that, so
   `verify:` now also greps for the three `_lay_out_` methods the fix adds.
+
+**Done 2026-10-04, as planned above.** Each of the three fixes, reverted
+alone, fails the test on its own case: "a second call hid the transport
+row", "the readout section", "the setting controls". `RunView`'s docstring
+states the rule once, so `build_sidebar_panels` no longer repeats it. The
+`literal_home_check.py` baseline still holds 42 literals. Four of them are
+now keyed under the `_lay_out_` methods that contain them.

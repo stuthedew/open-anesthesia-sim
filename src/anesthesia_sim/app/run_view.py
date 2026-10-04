@@ -249,6 +249,14 @@ class RunView(QWidget):
     where a run's parts sit relative to another run's is the dashboard's
     decision.
 
+    Each returns the same widgets on every call, laid out once as the run
+    was built. A layout takes a widget from wherever it sits, so a container
+    built anew on a call took the run's live widgets off the screen, and
+    deleted them once it was dropped (`PL-N67T`, `PL-KZR1`). Handed back
+    rather than refused, because a view is to be lifted into areas a reader
+    rearranges, and placing the same widgets again is what moves them
+    (`.claude/rules/ui-areas.md`).
+
     Refuses nothing at construction. What it refuses per tick is decided
     by `dashboard_frame`: which setting values the core rejects, and how a
     raise is reported, are read from the exception and never guessed at
@@ -470,8 +478,11 @@ class RunView(QWidget):
         )
         self._control_timeline_overflow_text.setHidden(True)
 
-        # Laid out once, here, so `build_sidebar_panels` hands back the
-        # panels these labels are already in (`PL-N67T`).
+        # Laid out once, here, so the build methods hand back the containers
+        # these widgets are already in (`PL-N67T`, `PL-KZR1`).
+        self._transport_row = self._lay_out_transport_row()
+        self._readout_section = self._lay_out_readout_section()
+        self._parameter_controls = self._lay_out_parameter_controls()
         self._sidebar_panels = self._lay_out_sidebar_panels()
 
         # This run's rather than the chart's: whether a trace is clipped is
@@ -1047,6 +1058,14 @@ class RunView(QWidget):
         a reader unable to say which run a press acted on.
         """
 
+        return self._transport_row
+
+    def _lay_out_transport_row(self) -> QWidget:
+        """Build the transport row around this run's controls; only the constructor calls it.
+
+        A second call would move the controls out of the row on screen (`PL-KZR1`).
+        """
+
         row = QWidget()
         layout = QHBoxLayout(row)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1115,6 +1134,14 @@ class RunView(QWidget):
         beside the values it qualifies (`PL-2K1R`).
         """
 
+        return self._readout_section
+
+    def _lay_out_readout_section(self) -> QWidget:
+        """Build the section around this run's heading and readouts; only the constructor calls it.
+
+        A second call would move them out of the section on screen (`PL-KZR1`).
+        """
+
         section = QWidget()
         column = QVBoxLayout(section)
         column.setContentsMargins(0, 0, 0, 0)
@@ -1134,6 +1161,14 @@ class RunView(QWidget):
     def build_parameter_controls(self) -> QWidget:
         """The four setting controls in a row, in `PARAMETER_CONTROLS` order."""
 
+        return self._parameter_controls
+
+    def _lay_out_parameter_controls(self) -> QWidget:
+        """Build the row around this run's four setting controls; only the constructor calls it.
+
+        A second call would move the controls out of the row on screen (`PL-KZR1`).
+        """
+
         row = QWidget()
         layout = QHBoxLayout(row)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1149,14 +1184,6 @@ class RunView(QWidget):
 
         Both are records of one run: the mass-balance diagnostic is of this
         run's own agent, and the timeline is what was changed during it.
-
-        The same two panels on every call, laid out as the run was built.
-        Built anew on each call, they took the run's labels with them - a
-        layout takes a widget from wherever it sits - so a second call left
-        the sidebar on screen empty (`PL-N67T`). Handed back rather than
-        refused, because a view is to be lifted into areas a reader
-        rearranges, and placing the same panels again is what moves them
-        (`.claude/rules/ui-areas.md`).
         """
 
         return self._sidebar_panels
