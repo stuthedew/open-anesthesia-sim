@@ -5154,6 +5154,34 @@ def test_no_test_directory_declines_rather_than_failing(tmp_path: Path) -> None:
     assert any("no test directory was found" in d for d in report.declined)
 
 
+def test_a_test_name_cited_in_working_notes_is_resolved(tmp_path: Path) -> None:
+    """Every standing document's test citations resolve, wrapped or not; the queue's do not.
+
+    `check_named_tests` read `docs/MODEL.md` alone until `PL-6SRZ`, so a test
+    deleted from under `docs/WORKING_NOTES.md` was reported by nothing, and a
+    name a line wrap broke inside its span was never read. An item brief's name
+    is a forward reference to work not yet done, so `docs/items/` stays quiet.
+    """
+    root = _with_tests(_repo(tmp_path), "test_the_thing_holds")
+    (root / "docs" / "WORKING_NOTES.md").write_text(
+        "# Notes\n\nHeld by `test_the_thing_\nholds`, and once by `test_renamed_away`.\n"
+        "Also by `test_wrapped_\naway`.\n",
+        encoding="utf-8",
+    )
+    store = root / "docs" / "items"
+    store.mkdir()
+    (store / "PL-ABCD-demo.md").write_text(
+        "Its work adds `test_not_written_yet`.\n", encoding="utf-8"
+    )
+
+    errors = [e for e in _errors(root) if "names the test" in e]
+
+    assert [error.split(", which")[0] for error in errors] == [
+        "docs/WORKING_NOTES.md:4: names the test `test_renamed_away`",
+        "docs/WORKING_NOTES.md:5: names the test `test_wrapped_away`",
+    ]
+
+
 # --- bound families, the question that comes before "does the name resolve" --
 #
 # `check_named_tests` asks whether a name resolves. These cover the prior

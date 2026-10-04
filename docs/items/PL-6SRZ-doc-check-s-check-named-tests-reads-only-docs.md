@@ -3,12 +3,14 @@ id: PL-6SRZ
 title: doc_check's check_named_tests reads only docs/MODEL.md and its regex cannot match a backticked name broken across a line, so a dead test name in WORKING_NOTES.md or ARCHITECTURE.md is unreported and a wrapped one is unreported anywhere
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: doc-consistency-checks
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/src/docket/roadmap.py, docs/WORKING_NOTES.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by PL-2JRC's triage pass
 added: 2026-09-21
+closed: 2026-10-04
+pr: 1332
 payoff: make check's claim that documentation citations resolve becomes true for test names outside docs/MODEL.md, and a backticked name broken by a line wrap stops being invisible to the check everywhere.
 verify: grep -q 'def test_a_test_name_cited_in_working_notes_is_resolved' tests/unit/test_doc_check.py
 ---
