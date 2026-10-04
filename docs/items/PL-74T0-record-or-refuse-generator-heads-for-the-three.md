@@ -77,6 +77,13 @@ fact of its own, so cluster 1's count depends on it; judge the two together.
 Cluster 3: `PL-0GJC`, the validated step type, is in flight, and `PL-WP52` is
 blocked on its open question about compartments.
 
+**`PL-JCS3`'s judgment, 2026-10-04.** `PL-Z8RS` has two causes and stays in
+cluster 1: the per-line reading is a second spelling of where a code span is,
+beside `doc_check._code_spans` (KGYT's fact), and that spelling is wrong because
+a span continues across lines (`PL-R417`'s, recorded that day). `PL-Q9LK` is the
+same shape against `PL-PVW2`. So cluster 1 counts `PL-P72R`, `PL-Z8RS` and
+`PL-HNXS` as before.
+
 **Done when.** Each cluster is recorded as a head - `root-cause-of:`,
 `generator:` and `misread:` - or refused with its reason in this brief, after
 1306, 1308 and 1309 have merged.
