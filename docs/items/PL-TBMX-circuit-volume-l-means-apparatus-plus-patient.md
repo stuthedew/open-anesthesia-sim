@@ -243,7 +243,9 @@ this brief did not carry:
 - their sums ("the internal volume of AM + the volume of breathing circuit
   1.2 L") leave out the 3 L reservoir bag of the same set-up. A total built
   from them does too, and the rule says so, since an author who added the bag
-  would nearly double a Perseus total.
+  would nearly double a Perseus total. The project owner ratified leaving it
+  out when reading the pull request (2026-10-04), over counting it in the total
+  or leaving the point open, and `docs/MODEL.md` records that beside the rule.
 
 The 8.5 L comparison is not used as evidence anywhere in the new text, as this
 brief required.

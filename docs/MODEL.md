@@ -969,9 +969,10 @@ storing it: 1.2 L, the internal volume of the Hudson RCI circuit Shin et al.
 added to each machine's figure, unless the profile assumes a circuit whose own
 volume is stated (*BMC Anesthesiol* 2017;17(1):10, PMID 28103806; read at full
 text 2026-10-04 from PubMed Central, PMC5248460). Their sums leave the
-circuit's 3 L reservoir bag out, so a total built from them does too. Stored
-bare, the apparatus figure shortens $`\tau_C`$ by the circuit's
-share: a Perseus A500's 2.1 L gives 31.5 s at 4.0 L/min where its assembled
+circuit's 3 L reservoir bag out, so a total built from them does too (project
+owner, 2026-10-04, ratified, over counting the bag in the total or leaving the
+point open). Stored bare, the apparatus figure shortens $`\tau_C`$ by the
+circuit's share: a Perseus A500's 2.1 L gives 31.5 s at 4.0 L/min where its assembled
 3.3 L gives 49.5 s, 36% short. No check can catch that, because both are
 correctly cited volumes and `tools/doc_check.py`'s `check_provenance` asks
 only that a stored number has a row in this document. The rule lasts until
