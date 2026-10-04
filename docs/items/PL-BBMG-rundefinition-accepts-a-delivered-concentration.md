@@ -80,3 +80,104 @@ enforced.
 **Gate.** On v0.6.0's frozen list, in the product lane, with the rest of the
 `parse-dont-validate` feature (project owner, 2026-10-04). Classed `safety`, it
 would have joined under the exception on its own.
+
+## Design round 2026-10-04
+
+Run by the Ship v0.6.0 project's design thread, on `main` at `63bc149a` under
+Python 3.14.7, with no code changed.
+
+**Re-measured 2026-10-04 on that tree.** The reproduction above still holds at
+both of `RunDefinition`'s entry points: the circuit refuses the 20% dial with
+"delivered_concentration_percent exceeds the vaporizer maximum (20% requested,
+8% maximum)", a run opened under the replaced settings gives an alveolar
+fraction of 0.033306 at 60 s, and a run that records the change at 30 s gives
+0.015975 at 60 s. The first percent past sevoflurane's maximum is
+`8.000000000000002`.
+
+**Recommendation (design round, 2026-10-04): the maximum, as recommended
+above, with two refinements.**
+
+1. **One guard, shared with the circuit.** `BreathingCircuit._require_deliverable`
+   and the record's `__post_init__` call the same module-level function - in
+   `core/circuit.py`, since the circuit owns the delivery limit, or
+   `core/validation.py`; the builder's call - so both refuse in the one sentence
+   quoted above and the relation is written once. That is the shape
+   `.claude/rules/core-domain.md` § "A quantity with a check of its own is a
+   type, checked once" admits for a guard shared by the records that hold the
+   field, and it is the duplication the alternative below would otherwise be
+   the only way to remove.
+2. **The field is `max_delivered_concentration_percent: Percent`, required,
+   beside the dial.** `AgentUptakeSystem.equation_settings()` passes
+   `self.circuit.max_delivered_concentration_percent`; `_propagator_cache_key`
+   gains the matching entry, so
+   `test_the_propagator_cache_key_covers_every_equation_setting` holds and the
+   key stays a bijection of the settings. The matrix never reads it, so the
+   entry costs one matrix exponential per run at most, when a run's maximum
+   differs from the last run's.
+
+**Weighed and not taken: the dial and its maximum as one frozen record.** A
+vaporizer setting holding both, refusing the one above the other in its own
+`__post_init__`, held by `BreathingCircuit` and by `UptakeEquationSettings`
+alike, with `equation_settings()` passing it through unchecked because holding
+one is the proof. It is the purer parse-don't-validate shape, and the one to
+take if a third holder of the pair appears. Refused now on
+`.claude/rules/expert-review.md` § "Count what undoing it would cost, before
+taking the cheaper route": downstream of the choice today are one builder in
+`src/` and one in `tests/`, nothing stored depends on the record's shape, and
+what the record form removes is, with the shared guard, two calls of one
+function - at the cost of folding two of `BreathingCircuit`'s fields into one,
+about ten construction sites in `src/` and the tests, and properties kept for
+the thirty readers of the two names in `app/`. The saved-run format
+(`ROADMAP.md`, planned item 9) is where the record's shape becomes a one-way
+door, and this record's `__post_init__` checks a deserialized segment either
+way; weigh the pair record again there.
+
+**Rejected as above.** The agent's name, which cannot check itself without
+loading the agent's data; and a check wherever a run is built, which is the
+shotgun parsing this feature removes.
+
+**What the build carries**, for the thread that takes it:
+
+- `RunDefinition(...)` and `record_change` gain no code: a record whose dial
+  is above its maximum cannot be built, so neither can be handed one. The
+  reproduction's `dataclasses.replace(..., delivered_concentration_percent=20.0)`
+  raises at the `replace`.
+- Regression tests: in `tests/unit/test_governing_equations.py`, the record
+  refuses a dial above its maximum, accepts the maximum itself (8.0) and zero,
+  the vaporizer off, and refuses the first value past it,
+  `math.nextafter(8.0, math.inf)`; in `tests/unit/test_run_definition.py`,
+  the 20% sevoflurane reproduction replayed at both entry points, by replacing
+  the dial on the settings a run opens from and on the settings a change is
+  recorded with, each refused before the run is touched. Proposed names, which
+  the `verify:` below greps for: `test_rejects_a_dial_above_the_vaporizer_maximum`
+  and `test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum`.
+- `UptakeEquationSettings`' docstring, "Everything the governing equations need
+  that a step does not change", widens by one clause: the record is also what
+  a run holds per stretch (`core/run_definition.py`), and a stretch that
+  cannot say its dial was deliverable is incomplete, so it carries the one
+  field the matrix does not read and refuses a dial above it.
+- `docs/MODEL.md` § "Supported input ranges": the table's delivered-concentration
+  row names `BreathingCircuit` and `UptakeEquationSettings` as where the bound
+  is declared and refused, and the paragraph "Enforced on the compartment, not
+  on the coupled system", which `PL-0YYV` already revises for the flows, says
+  the settings record is a second point every setting passes through.
+- Where the number comes from does not move: the agent file today (`PL-JQY1`),
+  the record carrying the number whatever file it is read from.
+- With `PL-4R3W` ratified, `require_percent` leaves the record's
+  `__post_init__` and the relation alone remains. Build this item first, being
+  `P1` and `safety`-classed, then `PL-4R3W`; both after `PL-0YYV` (slice 1),
+  with which this shares `core/governing_equations.py`,
+  `core/run_definition.py`, `core/uptake_system.py` and `docs/MODEL.md`. It
+  changes nothing in slice 1, which types the three flow fields of the same
+  record; the two meet at a merge and nowhere else.
+- Size stays M.
+- Done-when, in the decided form, to replace the one above at the answer:
+  `UptakeEquationSettings` carries `max_delivered_concentration_percent`,
+  required, and refuses a dial above it through the guard `BreathingCircuit`
+  uses, so neither `RunDefinition(...)` nor `record_change` can be handed such a
+  record; regression tests replay the 20% sevoflurane reproduction at both
+  entry points and pin the maximum and the first value past it; and
+  `docs/MODEL.md` § "Supported input ranges" names both records as where the
+  dial's bound is enforced.
+- `verify:`, to set at the answer:
+  `grep -q "max_delivered_concentration_percent" src/anesthesia_sim/core/governing_equations.py && grep -q "test_rejects_a_dial_above_the_vaporizer_maximum" tests/unit/test_governing_equations.py && grep -q "test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum" tests/unit/test_run_definition.py`.
