@@ -50,10 +50,12 @@ from anesthesia_sim.core.run_definition import Keyframe, RunDefinition, RunSegme
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
-    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     AlveolarVentilation,
     CardiacOutput,
+    CaseInstant,
     FreshGasFlow,
+    StepCount,
+    require_case_instant,
     require_supported_run_length,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -64,8 +66,8 @@ class SimulationSnapshot:
     """Read-only simulation data exposed to the user interface."""
 
     is_running: bool
-    elapsed_s: float
-    began_at_s: float
+    elapsed_s: CaseInstant
+    began_at_s: CaseInstant
     """The case instant this run itself began at: zero on a trunk, its fork on a branch.
 
     On the case's own axis like `elapsed_s`, and the value
@@ -328,7 +330,7 @@ class ResumePoint:
 
     segment: RunSegment
     fork: Keyframe
-    step_count: int
+    step_count: StepCount
     simulation_step_s: SimulationStep | None
     accounting_anchor_l: float
     crossing: BookmarkCrossing | None
@@ -368,7 +370,7 @@ class SimulationController:
         # was forked at, which is where it is rather than something an earlier
         # run did.
         self._bookmark_halt: BookmarkCrossing | None = None
-        self._reached_instants_s: frozenset[float] = frozenset()
+        self._reached_instants_s: frozenset[CaseInstant] = frozenset()
         self._reached_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset()
         # Set here and not in `_build_state`, which is deliberate rather than
         # incidental: `_build_state` is also what `set_agent` comes back
@@ -455,7 +457,9 @@ class SimulationController:
         # so a run's recorded substance is always the one its samples were
         # produced by.
         self._run_definition = RunDefinition(
-            uptake_system.equation_settings(), uptake_system.state_vector(), opened_at_s=0.0
+            uptake_system.equation_settings(),
+            uptake_system.state_vector(),
+            opened_at_s=CaseInstant(0.0),
         )
         # A run built here is a trunk, so it opens at the case's own zero.
         # `resumed_at()` is what sets this, and a branch built there opens its
@@ -848,7 +852,7 @@ class SimulationController:
         return self._opened_from
 
     @property
-    def began_at_s(self) -> float:
+    def began_at_s(self) -> CaseInstant:
         """The case instant this run itself began at: induction, or its fork.
 
         Zero on a trunk and the fork instant on a branch, on the case's own
@@ -868,9 +872,9 @@ class SimulationController:
         earlier than it exists and draw it across an interval it never lived.
         """
 
-        return 0.0 if self._opened_from is None else self._opened_from.fork.instant_s
+        return CaseInstant(0.0) if self._opened_from is None else self._opened_from.fork.instant_s
 
-    def resumed_at(self, elapsed_s: float) -> SimulationController:
+    def resumed_at(self, elapsed_s: CaseInstant) -> SimulationController:
         """Open a second live run at this run's canonical state at `elapsed_s`.
 
         The seam `PL-J2TD` exists for: a branch has to become something a
@@ -944,13 +948,16 @@ class SimulationController:
             timeline of its own and a copy of this run's bookmarks.
 
         Raises:
-            SimulationConfigurationError: `elapsed_s` is not finite or is not
-                an instant this run holds a keyframe for; this run is itself a
-                branch, since a branch of a branch is refused rather than
-                silently flattened (`PL-TFX5`); the fork instant is not a whole
-                number of this run's steps; or the rebuilt branch holds an
-                equation setting or agent reference this run did not hold at
-                the fork, each named with both of its values.
+            TypeError: `elapsed_s` is not a `CaseInstant`, so nothing has
+                checked it against the supported run length
+                (`core/supported_ranges.py`).
+            SimulationConfigurationError: `elapsed_s` is not an instant this
+                run holds a keyframe for; this run is itself a branch, since a
+                branch of a branch is refused rather than silently flattened
+                (`PL-TFX5`); the fork instant is not a whole number of this
+                run's steps; or the rebuilt branch holds an equation setting or
+                agent reference this run did not hold at the fork, each named
+                with both of its values.
         """
 
         return self._branch_from(self._resume_point_at(elapsed_s))
@@ -1272,21 +1279,18 @@ class SimulationController:
         # what keeps that record from naming a row the panel no longer draws.
         self._forget_unmarked()
 
-    def _resume_point_at(self, elapsed_s: float) -> ResumePoint:
+    def _resume_point_at(self, elapsed_s: CaseInstant) -> ResumePoint:
         """Everything a branch opening at `elapsed_s` needs, or a refusal saying why.
 
         Raises:
+            TypeError: `elapsed_s` is not a `CaseInstant`.
             SimulationConfigurationError: this run is a branch; `elapsed_s` is
-                not finite or is not one of this run's keyframes; or the
-                instant is not a whole number of this run's steps.
+                not one of this run's keyframes; or the instant is not a whole
+                number of this run's steps.
         """
 
         self._require_forkable()
-
-        if not isfinite(elapsed_s):
-            raise SimulationConfigurationError(
-                f"a run is opened at a finite instant, not {elapsed_s}"
-            )
+        require_case_instant("elapsed_s", elapsed_s)
 
         openings = [segment.opening.instant_s for segment in self._run_definition.segments]
 
@@ -1383,9 +1387,9 @@ class SimulationController:
         simulation_step_s = self._state.simulation_step_s
 
         if simulation_step_s is None:
-            step_count = 0
+            step_count = StepCount(0)
         else:
-            step_count = round(fork.instant_s / simulation_step_s)
+            step_count = StepCount(round(fork.instant_s / simulation_step_s))
 
             if step_count * simulation_step_s != fork.instant_s:
                 raise SimulationConfigurationError(
@@ -1595,7 +1599,9 @@ class SimulationController:
             return
 
         self._run_definition = RunDefinition(
-            uptake_system.equation_settings(), uptake_system.state_vector(), opened_at_s=0.0
+            uptake_system.equation_settings(),
+            uptake_system.state_vector(),
+            opened_at_s=CaseInstant(0.0),
         )
         self._clear_control_timeline()
 
@@ -1809,7 +1815,6 @@ class SimulationController:
             reached_crossings=self._reached_crossings,
             opened_at_s=self.began_at_s,
             elapsed_s=self._state.elapsed_s,
-            run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
             stopped_at_cap=self.has_reached_supported_limit,
             run_failed=self._failure_reason is not None,
         )
@@ -2021,7 +2026,7 @@ class BranchedCase:
         return (self._trunk, *self._branches)
 
     @property
-    def fork_points_s(self) -> tuple[float, ...]:
+    def fork_points_s(self) -> tuple[CaseInstant, ...]:
         """The case instants a fork may be taken at, earliest first.
 
         The trunk's keyframes: its opening at induction, and every setting
@@ -2047,7 +2052,7 @@ class BranchedCase:
 
         return tuple(segment.opening.instant_s for segment in self._trunk.run_segments)
 
-    def fork_at(self, elapsed_s: float) -> SimulationController:
+    def fork_at(self, elapsed_s: CaseInstant) -> SimulationController:
         """Take a branch from the trunk at `elapsed_s`, and keep it.
 
         The trunk is left exactly as it was - `resumed_at` reads it and writes
@@ -2065,10 +2070,11 @@ class BranchedCase:
             lost it.
 
         Raises:
+            TypeError: `elapsed_s` is not a `CaseInstant`.
             SimulationConfigurationError: `elapsed_s` is not one of
-                `fork_points_s`, is not finite, or is not a whole number of
-                the trunk's steps; or the branch rebuilt there would not hold
-                what the trunk held. `resumed_at` raises these and names which.
+                `fork_points_s` or is not a whole number of the trunk's steps;
+                or the branch rebuilt there would not hold what the trunk held.
+                `resumed_at` raises these and names which.
         """
 
         return self._kept(self._trunk.resumed_at(elapsed_s))

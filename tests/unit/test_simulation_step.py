@@ -21,6 +21,7 @@ from anesthesia_sim.core.simulation_step import (
     MINIMUM_SIMULATION_STEP_S,
     SimulationStep,
 )
+from anesthesia_sim.core.supported_ranges import StepCount
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
@@ -102,7 +103,7 @@ def test_a_bare_float_step_is_refused_at_each_run_entry() -> None:
     bare_step_s = 0.1
 
     with pytest.raises(TypeError, match="not a SimulationStep"):
-        SimulationState(step_count=0, simulation_step_s=bare_step_s)  # type: ignore[arg-type]
+        SimulationState(step_count=StepCount(0), simulation_step_s=bare_step_s)  # type: ignore[arg-type]
 
     state = SimulationState()
     vector_before = state.uptake_system.state_vector()

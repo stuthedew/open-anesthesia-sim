@@ -69,7 +69,7 @@ from anesthesia_sim.core.governing_equations import (
     require_canonical_state,
 )
 from anesthesia_sim.core.matrix_exponential import Matrix, matrix_exponential, propagate
-from anesthesia_sim.core.supported_ranges import require_supported_case_instant
+from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,10 +102,19 @@ class Keyframe:
             That is the point - the agent a patient has received is the
             case's, and a branch restarting the count at zero would report a
             mass balance for a patient nobody has.
+
+    Raises:
+        TypeError: `instant_s` is not a `CaseInstant`, so nothing has checked
+            it against the supported run length (`core/supported_ranges.py`).
+            The state is checked by the `RunDefinition` that holds it, which
+            refuses a display value by name before anything reads it.
     """
 
-    instant_s: float
+    instant_s: CaseInstant
     state: tuple[float, ...]
+
+    def __post_init__(self) -> None:
+        require_case_instant("instant_s", self.instant_s)
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,7 +228,7 @@ class RunDefinition:
         settings: UptakeEquationSettings,
         initial_state: tuple[float, ...],
         *,
-        opened_at_s: float,
+        opened_at_s: CaseInstant,
     ) -> None:
         """Open a run at `opened_at_s` under `settings`, from `initial_state`.
 
@@ -251,39 +260,29 @@ class RunDefinition:
                 is the fork for a branch taken at a control event and the
                 keyframe before it for one taken at a bookmark
                 (`app/controller.py`, `SimulationController._open_at`).
-                At most the supported run length, which is the case's and not
-                this run's.
+                A `CaseInstant`, so it is at or after induction and inside the
+                supported run length, which is the case's and not this run's:
+                a branch inherits this instant as the origin of everything it
+                reports, so it is checked where it is built rather than at the
+                first step past it (`PL-73ZN`).
 
         Raises:
-            SimulationConfigurationError: `opened_at_s` is not finite or is
-                negative, since no case instant precedes induction, or is
-                past the supported run length, which
-                `core/supported_ranges.py`'s `require_supported_case_instant`
-                refuses; or `initial_state` came from the display path, is not
-                `STATE_SIZE` long, holds a non-finite value, or does not carry
-                exactly one in `UNIT_STATE`. The display-path case is a fork
-                opening from a drawing value, which `docs/MODEL.md`
-                § "The canonical evaluation rule" refuses; the last is what
-                makes every forcing term in `build_system_matrix` mean what it
-                says; a state that carried anything else there would scale the
-                whole of the delivery term without changing any setting a
-                reader can see.
+            TypeError: `opened_at_s` is not a `CaseInstant`, so nothing has
+                checked it against the supported run length
+                (`core/supported_ranges.py`).
+            SimulationConfigurationError: `initial_state` came from the
+                display path, is not `STATE_SIZE` long, holds a non-finite
+                value, or does not carry exactly one in `UNIT_STATE`. The
+                display-path case is a fork opening from a drawing value,
+                which `docs/MODEL.md` § "The canonical evaluation rule"
+                refuses; the last is what makes every forcing term in
+                `build_system_matrix` mean what it says; a state that carried
+                anything else there would scale the whole of the delivery term
+                without changing any setting a reader can see.
         """
 
         _require_state(initial_state)
-
-        if not isfinite(opened_at_s):
-            raise SimulationConfigurationError(f"{opened_at_s} s is not a finite instant")
-
-        if opened_at_s < 0.0:
-            raise SimulationConfigurationError(
-                f"a run opens at or after induction, not at {opened_at_s} s"
-            )
-
-        # And at or before the far end of the span, here where the opening is
-        # handed in rather than at the first step past it: a branch inherits
-        # this instant as the origin of everything it reports (`PL-73ZN`).
-        require_supported_case_instant(opened_at_s)
+        require_case_instant("opened_at_s", opened_at_s)
 
         self._segments: tuple[RunSegment, ...] = (
             RunSegment(settings=settings, opening=Keyframe(opened_at_s, initial_state)),
@@ -291,7 +290,7 @@ class RunDefinition:
         self._reached_s = opened_at_s
 
     @property
-    def opened_at_s(self) -> float:
+    def opened_at_s(self) -> CaseInstant:
         """The case instant this run opens at: zero at induction, a parent keyframe for a branch.
 
         Read off the first segment rather than stored beside it, so there is
@@ -318,12 +317,12 @@ class RunDefinition:
         return self._segments
 
     @property
-    def reached_s(self) -> float:
+    def reached_s(self) -> CaseInstant:
         """The simulated time the run has reached, in seconds."""
 
         return self._reached_s
 
-    def advance_to(self, instant_s: float) -> None:
+    def advance_to(self, instant_s: CaseInstant) -> None:
         """Move the time the run has reached to `instant_s`.
 
         Records no state: the states are already implied by the settings and
@@ -338,37 +337,34 @@ class RunDefinition:
         would have to re-establish it rather than assume it.
 
         Its upper bound is the opening's, the end of the supported run length,
-        so a reach moved past it is refused before the run definition could be
-        evaluated over a stretch the model is not claimed for. The application
-        moves it only to the instant a step count stands at - each step's, or a
+        and it is the type's: a reach past it cannot be built as a
+        `CaseInstant` to hand in, so the run definition is never evaluated
+        over a stretch the model is not claimed for. The application moves it
+        only to the instant a step count stands at - each step's, or a
         branch's fork (`app/controller.py`) - and `SimulationState.advance`
-        refuses the step that would carry that count past the span, so this
-        never refuses a step already taken: `maximum_step_count` decides the
-        last step on the time it lands at, which is the instant passed here
-        (`PL-8H2R`).
+        refuses the step that would carry that count past the span, so no step
+        already taken lands on an instant that cannot be built:
+        `maximum_step_count` decides the last step on the time it lands at,
+        which is the instant passed here (`PL-8H2R`).
 
         Raises:
-            SimulationConfigurationError: `instant_s` is not finite, is
-                earlier than the time already reached, or is past the
-                supported run length (`core/supported_ranges.py`'s
-                `require_supported_case_instant`). A run cannot un-happen,
-                and rewinding the reach would leave the segments recorded
-                after it describing a stretch the run definition would then refuse to
-                evaluate. Checked before the reach moves, so a refused call
-                leaves it where it was.
+            TypeError: `instant_s` is not a `CaseInstant`, so nothing has
+                checked it against the supported run length
+                (`core/supported_ranges.py`).
+            SimulationConfigurationError: `instant_s` is earlier than the time
+                already reached. A run cannot un-happen, and rewinding the
+                reach would leave the segments recorded after it describing a
+                stretch the run definition would then refuse to evaluate.
+                Checked before the reach moves, so a refused call leaves it
+                where it was.
         """
 
-        if not isfinite(instant_s):
-            raise SimulationConfigurationError(
-                f"a run cannot reach {instant_s} s, which is not a finite instant"
-            )
+        require_case_instant("instant_s", instant_s)
 
         if instant_s < self._reached_s:
             raise SimulationConfigurationError(
                 f"a run cannot go back from {self._reached_s} s to {instant_s} s"
             )
-
-        require_supported_case_instant(instant_s)
 
         self._reached_s = instant_s
 

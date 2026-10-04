@@ -150,6 +150,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
     AlveolarVentilation,
+    CaseInstant,
     FreshGasFlow,
 )
 from anesthesia_sim.core.tissue import TissueGroup
@@ -446,7 +447,7 @@ def _halted_trunk_case(application: QApplication) -> tuple[BranchedCase, Simulat
 
     case = _branched_case()
     view = _case_view(application, case)
-    case.trunk.add_time_bookmark(TimeBookmark(_HALT_MARK_S, "the decision point"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(_HALT_MARK_S), "the decision point"))
     case.trunk.start()
 
     for _ in range(_TRUNK_STEP_BUDGET):
@@ -3177,6 +3178,56 @@ def test_a_second_build_sidebar_panels_leaves_the_run_labels_on_screen(
     assert again[1] is placed[1], "a second call built a new control-change panel"
 
 
+def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QApplication) -> None:
+    """Asking a run again for its transport row, readouts or controls hands back the placed one.
+
+    Each of the three used to lay the run's live widgets into a new container
+    on every call, so a second call took the Start button, the substance
+    heading and the fresh gas flow slider off screen, and dropping its result
+    deleted them (`PL-KZR1`). Held the way the sidebar's test above holds its
+    panels (`PL-N67T`): every widget is on the page before the call as well as
+    after it, and each shown one stays shown, so the test cannot pass on a
+    row that never showed them. Each case names a widget that has to be
+    shown to begin with; the lone run's name and the agent chip are hidden
+    in this state, so they are held to the page alone.
+    """
+
+    view = _shown_view(application, SimulationController())
+    run = view.runs[0]
+    page = _page_of(view)
+    transport = (
+        run._run_name_text,
+        run._agent_dropdown,
+        run._running_agent_display,
+        run._start_button,
+        run._pause_button,
+        run._reset_button,
+        run._playback_rate_dropdown,
+        run._status_text,
+    )
+    readouts = (run._compartment_substance_text, run._interpretation_text, run._readout_row)
+    controls = tuple(run._sliders())
+    cases = (
+        ("transport row", run.build_transport_row, run._start_button, transport),
+        ("readout section", run.build_readout_section, run._compartment_substance_text, readouts),
+        ("setting controls", run.build_parameter_controls, run._fresh_gas_flow_slider, controls),
+    )
+
+    for name, build, witness, widgets in cases:
+        placed = widgets[-1].parentWidget()
+        shown = tuple(widget for widget in widgets if widget.isVisible())
+
+        assert witness in shown, f"the {name} is off screen before the second call"
+        assert all(page.isAncestorOf(widget) for widget in widgets), f"the {name} is off the page"
+
+        again = build()
+        _settle(application)
+
+        assert all(widget.isVisible() for widget in shown), f"a second call hid the {name}"
+        assert all(page.isAncestorOf(widget) for widget in widgets), f"the {name} left the page"
+        assert again is placed, f"a second call built a new {name}"
+
+
 def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QApplication) -> None:
     """The readout and setting sections stand at their own height; the chart row takes the rest.
 
@@ -3782,7 +3833,7 @@ def _halted_branch_view(application: QApplication) -> SimulationView:
     case = _branched_case()
     view = _case_view(application, case)
     case.trunk.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5)))
-    case.trunk.add_time_bookmark(TimeBookmark(30.0, "check"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
 
     _take_fork(view, 60.0)
 
@@ -3930,7 +3981,7 @@ def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
     _advance_to(controller, 60.0)
     # Marked behind the clock, so the run passes it without halting on it:
     # this test is about how the standing is attributed, not about the halt.
-    controller.add_time_bookmark(TimeBookmark(30.0, "check"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
     view.present(False)
 
     listed = view._bookmarks_panel.times.text()
@@ -4568,7 +4619,7 @@ def test_a_mark_inside_a_step_branches_where_the_run_stopped_not_where_it_was_ma
     halted_s = 80.1
     case = _branched_case()
     view = _case_view(application, case)
-    case.trunk.add_time_bookmark(TimeBookmark(marked_s, "mid-step"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(marked_s), "mid-step"))
     case.trunk.start()
     _advance_to(case.trunk, halted_s)
     view.present(False)
@@ -4609,7 +4660,7 @@ def test_the_halt_fork_is_off_the_panel_until_the_trunk_stands_on_a_halt(
     assert view._fork_panel.halt_button.isEnabled() is False
     assert view._fork_panel.halt_button.text() == ""
 
-    case.trunk.add_time_bookmark(TimeBookmark(_HALT_MARK_S))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(_HALT_MARK_S)))
     case.trunk.start()
     _advance_to(case.trunk, _HALT_MARK_S)
     view.present(False)
@@ -5000,7 +5051,7 @@ def test_add_run_refuses_a_branch_of_another_case(application: QApplication) -> 
 
     view = _case_view(application, _branched_case())
     elsewhere = BranchedCase(_paused_run_with_history())
-    foreign = elsewhere.fork_at(60.0)
+    foreign = elsewhere.fork_at(CaseInstant(60.0))
 
     with pytest.raises(ValueError, match=re.escape("opened at 60.0 s but belongs to another case")):
         view.add_run(foreign)
@@ -5059,3 +5110,37 @@ def test_a_vanished_fork_instant_leaves_nothing_selected(application: QApplicati
     assert len(view.runs) == 1
     assert case.branches == ()
     assert panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+
+
+def test_a_fork_instant_still_offered_stays_selected_when_the_offer_grows(
+    application: QApplication,
+) -> None:
+    """The other half of `PL-J12Z`: a rebuilt list keeps a choice it still offers.
+
+    A running trunk adds a keyframe at each setting change, and the selector
+    is rebuilt when one appears. It holds each instant as a plain `float`, so
+    `set_offer` looks the reader's choice up as one: `selected_instant_s`
+    builds a new `CaseInstant`, which `findData` matches only by identity, so
+    handed over as that it is found nowhere and the choice is dropped
+    (`PL-CN5S`).
+    """
+
+    trunk = SimulationController()
+    trunk.start()
+    _advance_to(trunk, 60.0)
+    trunk.pause()
+    original_flow = trunk.snapshot().fresh_gas_flow_l_min
+    trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
+    case = BranchedCase(trunk)
+    view = _case_view(application, case)
+    panel = view._fork_panel
+    panel.point_selector.setCurrentIndex(panel.point_selector.findData(60.0))
+
+    trunk.start()
+    _advance_to(trunk, 120.0)
+    trunk.pause()
+    trunk.set_fresh_gas_flow(FreshGasFlow(original_flow))
+    view.present(False)
+
+    assert case.fork_points_s == (0.0, 60.0, 120.0)
+    assert panel.selected_instant_s() == 60.0
