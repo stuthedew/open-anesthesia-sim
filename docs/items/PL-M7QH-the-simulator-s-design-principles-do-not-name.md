@@ -8,6 +8,7 @@ classes: docs
 touches: .claude/rules/expert-review.md, .claude/rules/core-domain.md, docs/resident-instructions.md
 added: 2026-10-04
 closed: 2026-10-04
+pr: 1346
 payoff: a quantity with a check of its own is checked once, into a type, so a new way in cannot skip the check, and a session choosing a fix reads that before writing one
 verify: grep -qF 'the same preference, in the code' .claude/rules/expert-review.md && grep -qF '## A quantity with a check of its own is a type, checked once' .claude/rules/core-domain.md
 ---
