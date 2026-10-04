@@ -54,9 +54,9 @@ from anesthesia_sim.app.formatting import (
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import COMPARED_RUN_WIDTH_STEP, ONE_MAC_LINE_DASH_PATTERN
 from anesthesia_sim.core.concentration import Fraction, Percent
-from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
+from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 
-_STEP_S = 0.1
+_STEP_S = SimulationStep(0.1)
 _PLOT_WIDTH_PX = 900.0
 
 

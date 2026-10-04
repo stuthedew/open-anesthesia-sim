@@ -163,6 +163,7 @@ from anesthesia_sim.core.parameters import (
     load_agent_parameters,
 )
 from anesthesia_sim.core.run_definition import DisplayState
+from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, MINIMUM_SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -172,7 +173,6 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
 )
-from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, MINIMUM_SIMULATION_STEP_S
 
 #: The agent every fixture here runs unless it says otherwise. Named once
 #: because the snapshot and the recorded run have to agree on it.

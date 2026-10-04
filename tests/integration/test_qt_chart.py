@@ -84,8 +84,9 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
 from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.simulation_step import SimulationStep
 
-_STEP_S = 0.1
+_STEP_S = SimulationStep(0.1)
 
 
 @pytest.fixture(scope="module")
