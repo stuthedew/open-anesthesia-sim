@@ -5436,6 +5436,19 @@ stop, branches and step-exact bookmark halts, and its `_open_at` already opened 
 branch without setting the limit's reason. It is product-lane work and is listed
 in that group.
 
+**`PL-HSFV` joined this list on 2026-10-04, after the freeze, under the same
+exception.** Filed that day by `PL-V10T`'s session, it is a run definition
+opened under, or changed to, an `UptakeEquationSettings` whose flows are outside
+the supported ranges - a cardiac output of 1000 L/min, a fresh gas flow of
+500 L/min, an alveolar ventilation of 200 L/min - which simulated instead of
+being refused, because the range guards ran only in the compartments, and a run
+built from a settings record calls none of them. Its triage classed it `defect`
+and `safety`, on the precedent of `PL-0MLQ`, the same three flows reached
+through a setter. It would re-enter by presence as well, read from the code at
+the `v0.5.0` tag: that release's settings record checked the three flows for
+sign and finiteness alone, and its `RunDefinition` already opened and recorded
+changes from one. It is product-lane work and is listed in that group.
+
 **Three kinds of group, and only the third is a precondition.** The first is
 debt inside this milestone's own Required scope, cleared *by* it per § "Debt
 inside the milestone's own scope" - the test is whether `Required scope` below
@@ -5651,7 +5664,7 @@ named here, for the reason beat 3 gives.
 
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
 
-**Cleared before v0.6.0 begins, the product lane - 50 entries**
+**Cleared before v0.6.0 begins, the product lane - 51 entries**
 
 - PL-08CR (S) Decide whether format_time_bookmark and format_mac_target survive now that bookmark_panel builds every drawn row from the _stated_ helpers
 - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
@@ -5675,6 +5688,7 @@ named here, for the reason beat 3 gives.
 - PL-HBH2 (S) docs/MODEL.md's fat-perfusion note weighs the stored fat flow against Heinonen's PET adipose perfusion alone, though Yasuda 1991's two human washout fits put the fat group's time constant (1,340-2,130 min) and flow (2.1-2.4 mL/100 mL/min) where the stored parameters already sit (1,496-2,603 min, 2.07), so its 'would over-estimate fat loading' reading may be one-sided
 - PL-HGB6 (S) docs/machine-abstraction.md says circuit_volume_l is apparatus-plus-circuit where the shipped profile says apparatus alone, so a profile author following the design document would store an assembled total the code does not expect
 - PL-HNWX (M) SUPPORTED_SCHEMA_VERSION is one global constant across agents, patients and machines, so a machine-only schema bump drags three agent files and the patient file with it
+- PL-HSFV (S) RunDefinition propagates an UptakeEquationSettings whose flows are outside the supported ranges - cardiac output 1000 L/min, a hundred times the supported maximum, ran on 2026-10-04 - because the settings record checks only that the tissue flows sum to cardiac output, and the range guards run only in the compartments' constructors and setters, which a run built from a settings record never calls
 - PL-J0F7 (S) The Qt chart's hover box was never looked at rendered: its placement flips near the window's right edge and the axis top, and nothing has confirmed the flip lands the box inside the plot or that INK on PANEL in a pg.TextItem is what is painted
 - PL-JQY1 (S) max_delivered_concentration_percent is a vaporizer device maximum stored as an agent property, so 18% reads as a fact about desflurane
 - PL-JS0X (S) test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar calls build_sidebar_panels a second time and then measures mapTo(page, ...) on panels that are not in the page, so its last two assertions are vacuous and the sidebar they claim to measure has been dismantled
