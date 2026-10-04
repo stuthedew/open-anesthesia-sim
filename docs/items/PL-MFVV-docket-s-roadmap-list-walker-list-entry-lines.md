@@ -14,9 +14,13 @@ added: 2026-10-04
 in `docket.roadmap`, `_gate_entries` and `_scope_entries`, as they were: outside
 that slice. A member of `PL-R417`'s head. Measured 2026-10-04: three lazy lines
 follow list entries in `ROADMAP.md` (lines 2636, 2680 and 3989, the document
-defects `PL-DSMK` holds), none inside a gate or Required-scope list, so the
-fault is latent. The head's fix applies: the walker reports a lazy line itself,
+defects `PL-DSMK` holds). One, line 2636, follows a gate entry docket reads:
+`PL-V6M0`'s, in v0.5.0's frozen list. There the walker's reading happens to be
+the author's - the bold paragraph is separate prose that lost its blank line -
+and the entry's leading id is read either way, so nothing is misread today and
+the fault is latent. The head's fix applies: the walker reports a lazy line itself,
 so every reader of it declines by name from one place rather than one reader
-at a time. `docket new` matched this capture to `PL-W9BK` on the shared path
+at a time. `PL-DSMK`'s blank line before line 2636 has to land first, or that
+refusal fires on v0.5.0's list. `docket new` matched this capture to `PL-W9BK` on the shared path
 alone; that item is about which entries `wave` counts as blocked outside the
 gate, and this is not it.
