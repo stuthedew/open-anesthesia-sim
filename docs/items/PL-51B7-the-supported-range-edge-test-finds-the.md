@@ -10,7 +10,14 @@ added: 2026-10-04
 
 **Question for the project owner, 2026-10-04:** give every supported-range
 quantity a checked type now, in the three slices below? **Recommendation:**
-yes, in that order. The answer is pending.
+yes, in that order.
+
+**Decided 2026-10-04: build it, in that order** (project owner, 2026-10-04,
+ratified, over a range check in the settings record alone and over building
+the types only once another unchecked way in turned up, which the owner
+refused in their own words as good enough and hope). At the owner's
+direction, slice 1 went to the session holding `PL-HSFV`'s claim, on branch
+`claude/bold-goodall-ekvvcr`. Slices 2 and 3 follow it in order.
 
 **What it is.** Each quantity gets a type the way `PL-0GJC` gave the run's
 step one, and every signature and record field in `core/` and `app/` that
