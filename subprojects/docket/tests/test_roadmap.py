@@ -16,6 +16,7 @@ from __future__ import annotations
 import pytest
 
 from docket.checks import Report
+from docket.fences import fenced_lines
 from docket.model import Item, parse_item
 from docket.render import format_digest, format_wave
 from docket.roadmap import (
@@ -38,6 +39,7 @@ from docket.roadmap import (
     parse_timeline,
     parse_version_table,
     scope_status,
+    statement_lines,
     wave,
 )
 
@@ -1300,6 +1302,27 @@ def test_the_walker_declines_a_lazy_continuation_by_name() -> None:
 
 @pytest.mark.parametrize(
     "follows",
+    ["| PL-GHJK (S) |", "<PL-GHJK> (S)", "``` `PL-GHJK` (S) ```", "#1234 and PL-GHJK", "*PL-GHJK*"],
+)
+def test_a_lazy_line_opening_like_a_block_is_declined_too(follows: str) -> None:
+    """A line that only looks like a block's opening carries the entry on (`PL-F5B9`).
+
+    A pipe line with no delimiter row under it is paragraph text (GitHub
+    Flavored Markdown § 4.10), a tag outside § 4.6's first six kinds cannot
+    interrupt a paragraph, a backtick run with a backtick after it is a code
+    span (§ 4.5), and `#1234` and `*bold*` open no heading or item. CommonMark
+    reads each into the entry above, so the walker declines it as it declines
+    any other lazy line, rather than ending the entry short.
+    """
+    unread: list[UnreadEntry] = []
+    lines = ["### Required scope", "", "- PL-BCDF (S) one entry", follows]
+
+    assert list(list_entry_lines(lines, 1, unread)) == [(2, 3)]
+    assert [entry.line for entry in unread] == [4]
+
+
+@pytest.mark.parametrize(
+    "follows",
     [
         "",
         "---",
@@ -1310,21 +1333,23 @@ def test_the_walker_declines_a_lazy_continuation_by_name() -> None:
         "```",
         "+ A list of another marker",
         "1) A list of another delimiter",
-        "| a | table |",
+        "| a | table |\n| - | - |",
         "<!-- a comment -->",
+        "<details>",
     ],
 )
 def test_a_line_opening_a_block_of_its_own_ends_the_entry_unrefused(follows: str) -> None:
     """Only a line that carries on the paragraph is lazy (0.31.2 § 5.2).
 
     A blank line ends it (§ 4.8), and a thematic break, block quote, heading,
-    fence, list or HTML block interrupts it (§ 4.1, 5.1, 4.2, 4.5, 5.3, 4.6);
-    `CONTINUED_LINE` takes a table row for one too. Each ends the entry where
-    the walker always has, and refusing one would hold `make check` red over a
-    document that reads as written.
+    fence, list or HTML block interrupts it (§ 4.1, 5.1, 4.2, 4.5, 5.3, 4.6),
+    as does a table's header row with its delimiter row under it (GitHub
+    Flavored Markdown § 4.10). Each ends the entry where the walker always has,
+    and refusing one would hold `make check` red over a document that reads as
+    written.
     """
     unread: list[UnreadEntry] = []
-    lines = ["### Required scope", "", "- PL-BCDF (S) one entry", follows]
+    lines = ["### Required scope", "", "- PL-BCDF (S) one entry", *follows.split("\n")]
 
     assert list(list_entry_lines(lines, 1, unread)) == [(2, 3)]
     assert unread == []
@@ -2035,3 +2060,82 @@ def test_a_released_frozen_list_entry_deferred_to_a_later_gate_says_nothing() ->
         "0.3.6", GATE_IDS | {"PL-PRT7"}, roadmap=GATE_ONLY_SHIPPED_ROADMAP, known=PORT_KNOWN
     )
     assert cleared.stale == ()
+
+
+# --- where a Markdown statement ends (`PL-R417`) -----------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "statements"),
+    [
+        # A soft break carries a paragraph on (0.31.2 § 6.7); a blank line ends it.
+        ("one\ntwo\n\nthree", [(0, 2), (3, 4)]),
+        # An item numbered other than 1, or an empty one, cannot interrupt a
+        # paragraph (§ 5.2), inside the paragraph's own item or quote (`PL-XYJF`) ...
+        ("foo\n17. bar", [(0, 2)]),
+        ("  foo\n17. bar", [(0, 2)]),
+        ("- foo\n  17. bar", [(0, 2)]),
+        ("- foo\n    17. bar", [(0, 2)]),
+        ("> foo\n> 17. bar", [(0, 2)]),
+        ("foo\n17) bar", [(0, 2)]),
+        ("foo\n17.", [(0, 2)]),
+        ("foo\n1.", [(0, 2)]),
+        ("- a\n  - b\n    17. c\n  18. d", [(0, 1), (1, 3), (3, 4)]),
+        # ... and outside them it opens an item, kept across a blank line.
+        ("- foo\n17. bar", [(0, 1), (1, 2)]),
+        ("16. foo\n17. bar", [(0, 1), (1, 2)]),
+        ("16. foo\nmore\n17. bar", [(0, 2), (2, 3)]),
+        ("- foo\n\n  bar\n17. baz", [(0, 1), (2, 3), (3, 4)]),
+        ("1. foo\n   17. bar\n2. baz", [(0, 2), (2, 3)]),
+        ("> foo\n17. bar", [(0, 1), (1, 2)]),
+        # A bullet, or an item numbered 1, interrupts.
+        ("foo\n- bar", [(0, 1), (1, 2)]),
+        ("foo\n1. bar", [(0, 1), (1, 2)]),
+        ("foo\n01. bar", [(0, 1), (1, 2)]),
+        ("- foo\n  1. bar", [(0, 1), (1, 2)]),
+        # A pipe line is paragraph text unless a delimiter row under it opens a
+        # table (GitHub Flavored Markdown § 4.10); each row is its own statement.
+        ("foo\n| a |", [(0, 2)]),
+        ("- foo\n| a |", [(0, 2)]),
+        ("foo\n| a |\n| - |\n| b |", [(0, 1), (1, 2), (2, 3), (3, 4)]),
+        # Lazy continuation lines (§ 5.2).
+        ("- foo\nbar", [(0, 2)]),
+        ("- foo\n*bar", [(0, 2)]),
+        ("foo\n#1234 and", [(0, 2)]),
+        ("> foo\nbar", [(0, 2)]),
+        # A block quote, heading, thematic break or fence interrupts; a setext
+        # underline ends the paragraph it underlines (§ 4.3).
+        ("foo\n> bar", [(0, 1), (1, 2)]),
+        ("foo\n# bar", [(0, 1), (1, 2)]),
+        ("# foo\nbar", [(0, 1), (1, 2)]),
+        ("foo\n***", [(0, 1), (1, 2)]),
+        ("foo\n===\nbar", [(0, 2), (2, 3)]),
+        ("foo\n- \nbar", [(0, 2), (2, 3)]),
+        ("foo\n```\nbar\n```\nbaz", [(0, 1), (4, 5)]),
+        # A line is read from the column of the item it sits in: four columns
+        # past it nothing interrupts a paragraph (§ 4.4), and a heading or an
+        # underline is read there.
+        ("foo\n    - bar", [(0, 2)]),
+        ("- foo\n      # bar", [(0, 2)]),
+        ("1.  foo\n\n    # bar\n    baz", [(0, 1), (2, 3), (3, 4)]),
+        ("1.  foo\n    ---", [(0, 2)]),
+        # Only HTML blocks of § 4.6's first six kinds interrupt; the first five
+        # run to their end marker; a wrapped code span opens no fence (§ 4.5).
+        ("foo\n<id> bar", [(0, 2)]),
+        ("foo\n<https://example.org>", [(0, 2)]),
+        ("foo\n<div>", [(0, 1), (1, 2)]),
+        ("<!-- a -->\nfoo", [(0, 1), (1, 2)]),
+        ("<!--\na\n-->\nfoo", [(0, 3), (3, 4)]),
+        ("foo\n``` `x` ```", [(0, 2)]),
+    ],
+)
+def test_statement_lines_ends_a_statement_where_commonmark_does(
+    text: str, statements: list[tuple[int, int]]
+) -> None:
+    """Each statement as CommonMark 0.31.2 reads it, checked against markdown-it-py 4.2.0.
+
+    Every case but the delimiter row's was read by markdown-it-py on 2026-10-04
+    and gave these spans; a delimiter row is a line of its own here, where
+    markdown-it makes it no row.
+    """
+    assert list(statement_lines(text.split("\n"), fenced_lines(text))) == statements

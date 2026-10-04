@@ -29,7 +29,7 @@ heading" or "where a paragraph goes on" is a second thing to keep true.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Container, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from .model import MILESTONE_BLOCKER_RE, SEMVER_PATTERN
@@ -59,9 +59,29 @@ LIST_ENTRY_RE = re.compile(r"^(?:[-*]|\d+\.)\s+(?P<text>\S.*)$")
 #: capture at a time. Here rather than in `tools/doc_check.py`, which builds its
 #: phrase readers on it, because the list walker below asks the same question
 #: and docket cannot import `doc_check` (`PL-MFVV`).
+#:
+#: A fence and an HTML block are refused only where they would open: a backtick
+#: run with a backtick after it on its line is a code span, since a backtick
+#: fence's info string holds none (§ 4.5), and only the HTML blocks of § 4.6's
+#: kinds 1 to 6 interrupt a paragraph, so `<id>`, `<https://...>` and every
+#: other tag carry it on. Refusing every `<` and every backtick run split 33
+#: paragraphs of the tracked documents, 32 at a placeholder or an autolink and
+#: one at a wrapped code span, measured against markdown-it-py 4.2.0 on
+#: 2026-10-04 (`PL-2S1G`). Every ordered marker, every pipe line and every
+#: block's opening indented four columns or more is still refused, though each
+#: can carry a paragraph on: whether one does turns on the paragraph's list
+#: item or the line under it, which a pattern cannot see, so `statement_lines`
+#: reads that context below.
 CONTINUED_LINE = (
     r"[ \t]*+(?:>[ \t]*+)*+"
-    r"(?!\n|\Z|[-*+][ \t]|\d{1,9}[.)][ \t]|#{1,6}(?:[ \t\n]|\Z)|```|~~~|\||<"
+    r"(?!\n|\Z|[-*+][ \t]|\d{1,9}[.)][ \t]|#{1,6}(?:[ \t\n]|\Z)"
+    r"|`{3,}+[^`\n]*+(?:\n|\Z)|~~~|\|"
+    r"|<(?:(?i:pre|script|style|textarea)(?=[ \t>\n]|\Z)|!--|\?|![A-Za-z]|!\[CDATA\["
+    r"|/?(?i:address|article|aside|basefont|base|blockquote|body|caption|center|colgroup|col"
+    r"|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frameset"
+    r"|frame|h[1-6]|head|header|hr|html|iframe|legend|link|li|main|menuitem|menu|nav"
+    r"|noframes|ol|optgroup|option|param|p|search|section|summary|table|tbody|td|tfoot|th"
+    r"|thead|title|track|tr|ul)(?=[ \t\n]|/?>|\Z))"
     r"|(?:-[ \t]*+){3,}(?:\n|\Z)|(?:\*[ \t]*+){3,}(?:\n|\Z)|(?:_[ \t]*+){3,}(?:\n|\Z))"
 )
 #: A line that carries on a list entry's paragraph from the margin: CommonMark's
@@ -69,6 +89,8 @@ CONTINUED_LINE = (
 #: paragraph onto, less one opening a block quote, which interrupts the
 #: paragraph (§ 5.1); inside a quote the same marker only continues it.
 LAZY_LINE_RE = re.compile(rf"(?![ \t]*+>){CONTINUED_LINE}")
+#: `CONTINUED_LINE` on its own, for a walker reading one line at a time.
+CONTINUED_RE = re.compile(CONTINUED_LINE)
 #: Why the walker declines an entry a lazy line carries on, in the words every
 #: reader of it passes on.
 LAZY_ENTRY = (
@@ -76,6 +98,45 @@ LAZY_ENTRY = (
     "part of that entry and the list walker does not; indent it to keep it in the entry, "
     "or put a blank line before it"
 )
+#: A table's delimiter row (GitHub Flavored Markdown 0.29 § 4.10): the line
+#: that makes the pipe line above it a table's header row. Without one under
+#: it, a pipe line is paragraph text, carried on to like any other (`PL-XYJF`).
+#: `CONTINUED_LINE` refuses every pipe line all the same, because a pattern
+#: cannot see that the line above it is a row; the walkers below can.
+DELIMITER_ROW_RE = re.compile(
+    r"[ \t]*+(?:>[ \t]*+)*+\|?[ \t]*+:?-++:?[ \t]*+(?:\|[ \t]*+:?-++:?[ \t]*+)*+\|?[ \t]*+$"
+)
+#: A list item's marker at any depth, with the indent before it and the gap
+#: after it (CommonMark 0.31.2 § 5.2): what opens an item, and where its
+#: content starts. An empty gap is the line's end, an item opened empty.
+LIST_MARKER_RE = re.compile(
+    r"(?P<indent> *+)(?P<marker>[-*+]|(?P<start>\d{1,9})[.)])(?P<gap>[ \t]++|$)"
+)
+#: One block-quote marker and the space it takes with it (§ 5.1).
+QUOTE_MARKER_RE = re.compile(r" {0,3}> ?")
+#: The lines that are a block of their own and carry nothing on: an ATX
+#: heading (§ 4.2) and a thematic break (§ 4.1).
+SINGLE_LINE_BLOCK_RE = re.compile(
+    r" {0,3}(?:#{1,6}(?:[ \t]|$)|(?:-[ \t]*){3,}$|(?:\*[ \t]*){3,}$|(?:_[ \t]*){3,}$)"
+)
+#: A setext heading's underline (§ 4.3), which ends the paragraph it underlines.
+SETEXT_UNDERLINE_RE = re.compile(r" {0,3}(?:=+|-+)[ \t]*$")
+#: The HTML blocks that run to an end marker rather than to a blank line, kinds
+#: 1 to 5 of § 4.6, as the line opening each and the marker closing it, which
+#: may sit on the opening line itself: `<!-- absent: ... -->` is one line.
+HTML_BLOCKS = (
+    (
+        re.compile(r" {0,3}<(?i:pre|script|style|textarea)(?:[ \t>]|$)"),
+        re.compile(r"</(?i:pre|script|style|textarea)>"),
+    ),
+    (re.compile(r" {0,3}<!--"), re.compile(r"-->")),
+    (re.compile(r" {0,3}<\?"), re.compile(r"\?>")),
+    (re.compile(r" {0,3}<![A-Za-z]"), re.compile(r">")),
+    (re.compile(r" {0,3}<!\[CDATA\["), re.compile(r"\]\]>")),
+)
+#: Where a sentence of prose ends: its stop, any closing emphasis, code,
+#: parenthesis or bracket, and the space after it. A soft break is a space.
+SENTENCE_BREAK = re.compile(r"[.!?][*`)\]]*\s")
 
 
 class UnreadEntry(Exception):
@@ -646,7 +707,7 @@ def list_entry_lines(
                 yield first, index
             first = index
         elif first >= 0 and not (line.strip() and line[:1].isspace()):
-            if line.strip() and LAZY_LINE_RE.match(line):
+            if line.strip() and (LAZY_LINE_RE.match(line) or _pipe_text(lines, index, line)):
                 lazy = UnreadEntry(index + 1, LAZY_ENTRY)
                 if unread is None:
                     raise lazy
@@ -655,6 +716,169 @@ def list_entry_lines(
             first = -1
     if first >= 0:
         yield first, end
+
+
+def document_entry_lines(
+    lines: Sequence[str], unread: list[UnreadEntry] | None = None
+) -> Iterator[tuple[int, int]]:
+    """`list_entry_lines` over a whole document: the entries under every heading.
+
+    The walker stops at a heading of depth three or less, so it starts again
+    after each one, and once at the top for the entries before the first. For
+    a document that is a list in sections - a release's notes,
+    `docs/dead-ends.md` - so that each is read by the one walker (`PL-R417`).
+    """
+    starts = [0] + [
+        index + 1
+        for index, line in enumerate(lines)
+        if (heading := HEADING_RE.match(line)) is not None and len(heading["hashes"]) <= 3
+    ]
+    for start in starts:
+        yield from list_entry_lines(lines, start, unread)
+
+
+def _pipe_text(lines: Sequence[str], index: int, line: str) -> bool:
+    """Whether `line`, at `lines[index]`, is a pipe line opening no table.
+
+    Such a line is paragraph text, so it carries on the paragraph above it as
+    any other text would (GitHub Flavored Markdown 0.29 § 4.10): only a
+    delimiter row under it makes it a header row instead.
+    """
+    if not line.lstrip(" \t").startswith("|"):
+        return False
+    return index + 1 >= len(lines) or DELIMITER_ROW_RE.match(lines[index + 1]) is None
+
+
+def _unquoted(line: str) -> tuple[int, str]:
+    """How many block-quote markers open `line`, and what follows them (§ 5.1)."""
+    depth = 0
+    while (marker := QUOTE_MARKER_RE.match(line)) is not None:
+        depth += 1
+        line = line[marker.end() :]
+    return depth, line
+
+
+def _interrupts(marker: re.Match[str], line: str) -> bool:
+    """Whether the list item `marker` opens may interrupt a paragraph (§ 5.2).
+
+    A bullet may, and an ordered item numbered 1; neither may when it opens
+    empty. So `17. ` under a line of a paragraph carries the paragraph on.
+    """
+    if not line[marker.end() :].strip():
+        return False
+    return marker["start"] is None or int(marker["start"]) == 1
+
+
+def _content_column(marker: re.Match[str], line: str) -> int:
+    """The column a list item's content starts at, from its marker (§ 5.2).
+
+    One space past the marker where the item opens empty, or where five or
+    more follow it - the content is then an indented code block, and the
+    item's own column is the first of those spaces.
+    """
+    gap = len(marker["gap"])
+    if gap == 0 or gap > 4 or not line[marker.end() :].strip():
+        gap = 1
+    return len(marker["indent"]) + len(marker["marker"]) + gap
+
+
+def statement_lines(
+    lines: Sequence[str], skip: Container[int] = frozenset()
+) -> Iterator[tuple[int, int]]:
+    """Each statement of a Markdown document, as its span of `lines` (`PL-R417`).
+
+    A statement is a paragraph, with every line CommonMark 0.31.2 carries it
+    onto - a soft break's (§ 6.7) and a lazy continuation line's (§ 5.2) - or a
+    line that is a block of its own: a heading, a table row, a thematic break.
+    A list item's paragraph is one, so a list is as many statements as it has
+    items. A blank line ends a statement, and so does a line in `skip`, where a
+    caller passes its fenced lines, which are a literal rather than prose. Each
+    pair is the 0-based index of the statement's first line and the index one
+    past its last, as `list_entry_lines` gives an entry's.
+
+    **The context `CONTINUED_LINE` cannot see is read here.** That pattern
+    refuses every line opening with an ordered item's marker or a pipe, because
+    whether one carries a paragraph on depends on what holds the paragraph.
+    `17. ` cannot interrupt a paragraph - only an item numbered 1 can, and
+    only a non-empty one - so it carries the paragraph on where the line sits
+    inside the paragraph's own list item and quote, and opens an item where it
+    sits outside them (`PL-XYJF`). Which item holds a paragraph is kept across
+    blank lines, as the content columns of the items still open. A pipe line
+    carries a paragraph on unless a delimiter row under it opens a table.
+
+    An HTML block of § 4.6's kinds 1 to 5 is one statement, through the line
+    holding its end marker; one nothing closes is read as written, as `fences`
+    reads a fence nothing closes. Kinds 6 and 7, which run to a blank line, are
+    read as paragraphs. Indentation is read from the content column of the
+    list item a line sits in, with tabs at four-column stops, so a line four
+    columns past it carries a paragraph on whatever it opens with, as an
+    indented code block cannot interrupt one (§ 4.4). A list item inside a
+    block quote inside a list item is read as the quote alone: a change of
+    quote depth starts its items afresh. Checked against
+    markdown-it-py 4.2.0 on every tracked Markdown document on 2026-10-04.
+    """
+    items: list[int] = []
+    depth = 0
+    first = html_end = -1
+    paragraph = row = False
+    for index, raw in enumerate(lines):
+        if index <= html_end:
+            continue
+        quotes, line = _unquoted(raw)
+        line = line.expandtabs(4)
+        if index in skip or not line.strip():
+            if first >= 0:
+                yield first, index
+            first, paragraph, row = -1, False, False
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        if paragraph and quotes <= depth:
+            # Inside the paragraph's own item and quote, or lazily outside them,
+            # where a line is read from the column of the item it sits in.
+            held = quotes == depth and indent >= (items[-1] if items else 0)
+            base = max((c for c in items if c <= indent), default=0) if quotes == depth else 0
+            if indent - base >= 4:
+                continue  # an indented code block cannot interrupt a paragraph (§ 4.4)
+            if held and SETEXT_UNDERLINE_RE.match(line[base:]):
+                paragraph = False
+                continue
+            if CONTINUED_RE.match(line) or _pipe_text(lines, index, line):
+                continue
+            marker = LIST_MARKER_RE.match(line)
+            if held and marker is not None and not _interrupts(marker, line):
+                continue
+        if first >= 0:
+            yield first, index
+        if quotes != depth:
+            items, depth = [], quotes
+        while items and items[-1] > indent:
+            items.pop()
+        block = line[items[-1] if items else 0 :]
+        marker = LIST_MARKER_RE.match(line)
+        if marker is not None:
+            items.append(_content_column(marker, line))
+        first = index
+        html_end = _html_block_end(lines, index, block)
+        row = line.lstrip(" ").startswith("|") and (row or not _pipe_text(lines, index, line))
+        paragraph = html_end < 0 and not row and SINGLE_LINE_BLOCK_RE.match(block) is None
+    if first >= 0:
+        yield first, len(lines)
+
+
+def _html_block_end(lines: Sequence[str], index: int, line: str) -> int:
+    """The index of the line closing the HTML block `line` opens, or -1.
+
+    -1 where `line` opens none of `HTML_BLOCKS`' kinds, and where nothing
+    closes the one it opens.
+    """
+    for opening, closing in HTML_BLOCKS:
+        if opening.match(line):
+            if closing.search(line):
+                return index
+            return next(
+                (end for end in range(index + 1, len(lines)) if closing.search(lines[end])), -1
+            )
+    return -1
 
 
 def _subsection_text(lines: Sequence[str], start: int) -> str:

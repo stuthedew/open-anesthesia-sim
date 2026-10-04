@@ -144,6 +144,7 @@ try:
         REFERENCED_RE,
         SEMVER_RE,
         SPAN_HEADING,
+        notes_bullets,
         notes_claims,
         notes_path,
         version_in,
@@ -481,7 +482,12 @@ BRACE_RE = re.compile(r"\{([^{}]*)\}")
 # without examining one of them. The bound replaces the newline as the thing
 # that stops a runaway match, and `_normalized` puts the term back on one line
 # before it is compared.
-CITATION_RE = re.compile(r'§{1,2}[ \n]*"(?P<term>[^"]{1,160}?)"', re.DOTALL)
+#
+# The gaps around a quotation are `GAP`s, so a citation wrapped inside a
+# blockquote is read past the next line's `>` as CommonMark reads it, where
+# `[ \n]*` stood and stopped there, leaving it unchecked (`PL-XW87`). The
+# quotation's own wrapped lines lose their markers in `_normalized`.
+CITATION_RE = re.compile(r"§{1,2}" + GAP + r'*"(?P<term>[^"]{1,160}?)"', re.DOTALL)
 # The same two positions without the mark, which is how 147 of the documents'
 # citations were written until `PL-YSMV` marked them. Read only to say that one
 # lacks its mark, and only where its quotation names a heading: that is a fact
@@ -497,13 +503,17 @@ CITATION_RE = re.compile(r'§{1,2}[ \n]*"(?P<term>[^"]{1,160}?)"', re.DOTALL)
 # does not. Measured across the documents this reads on 2026-09-13: 40 directed
 # citations, none of which opens on anything else.
 UNMARKED_CITATION_RE = re.compile(
-    r'(?:\b(?:see|under)[ \n]+"(?P<named>[^"]{1,160}?)")'
-    r'|(?:"(?P<directed>[`A-Za-z][^"]{0,159}?)"[ \n]+(?:above|below)\b)',
+    r"(?:\b(?:see|under)" + GAP + r'+"(?P<named>[^"]{1,160}?)")'
+    r'|(?:"(?P<directed>[`A-Za-z][^"]{0,159}?)"' + GAP + r"+(?:above|below)\b)",
     re.IGNORECASE | re.DOTALL,
 )
-DIRECTION_RE = re.compile(r"^[ \n]*(?:above|below)\b", re.IGNORECASE)
-#: What stands immediately before a quotation that already carries the mark.
-MARKED_RE = re.compile(r"§{1,2}[ \n]*$")
+#: A direction after a quotation, matched at the quotation's end.
+DIRECTION_RE = re.compile(GAP + r"*(?:above|below)\b", re.IGNORECASE)
+#: What stands immediately before a quotation that already carries the mark,
+#: searched in the text up to and including the match's first character: a
+#: soft break is known only by the line it opens onto, so a window ending at
+#: the break would read the end of the window there (`PL-XW87`).
+MARKED_RE = re.compile(r"§{1,2}" + GAP + r"*(?=.\Z)", re.DOTALL)
 
 # A `**Bold.**` run opening a line, with or without a list bullet in front of
 # it. This repository subdivides long documents with these rather than with
@@ -553,11 +563,12 @@ MARKER_RE = re.compile(rf"^(?:[-*+]\s+)?\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)
 #: text that is not wrong. That is `PL-KJ63`'s over-reach, so widening this set
 #: still means adding a *named* connective with no second use that containment
 #: cannot answer, and nothing else.
-CITATION_CONNECTIVE = r"(?:[,:(]|§{1,2}|['\u2019]s(?:\s+own)?|\bunder\b)"
+CITATION_CONNECTIVE = r"(?:[,:(]|§{1,2}|['\u2019]s(?:" + GAP + r"+own)?|\bunder\b)"
 
 QUOTED_SOURCE_RE = re.compile(
-    r"(?:\b(?:see|under|in)\s+)?"
-    r"`(?P<document>[\w./-]+\.md)`[ \n]*(?P<connective>" + CITATION_CONNECTIVE + r")?[ \n]*"
+    r"(?:\b(?:see|under|in)" + GAP + r"+)?"
+    r"`(?P<document>[\w./-]+\.md)`" + GAP + r"*"
+    r"(?P<connective>" + CITATION_CONNECTIVE + r")?" + GAP + r"*"
     r'"(?P<quoted>\w[^"]{2,200}?)"',
     re.DOTALL,
 )
@@ -576,12 +587,14 @@ QUOTED_SOURCE_RE = re.compile(
 #: one contained in its file that day, so the move lost no finding. The
 #: possessive stays hard because neither refusal came through it, and because
 #: it is how this project quotes a sentence, whose drift is the point.
-CLAIMING_CONNECTIVE_RE = re.compile(r"§{1,2}|['\u2019]s(?:\s+own)?")
+CLAIMING_CONNECTIVE_RE = re.compile(r"§{1,2}|['\u2019]s(?:" + GAP + r"+own)?")
 #: A code-spanned source - a document, an item, a module - standing directly
 #: before a citation, which then quotes *that* source. `` `docs/MODEL.md` under
 #: "Known limitations" `` is `QUOTED_SOURCE_RE`'s to hold, by containment, and
 #: telling it to take a `§` would break the one match that reads it.
-QUALIFIED_RE = re.compile(r"`[\w./-]+`[ \n]*" + CITATION_CONNECTIVE + r"?[ \n]*$")
+QUALIFIED_RE = re.compile(
+    r"`[\w./-]+`" + GAP + r"*" + CITATION_CONNECTIVE + r"?" + GAP + r"*(?=.\Z)", re.DOTALL
+)
 #: A section mark after a code-spanned item id, which cites that item's brief:
 #: `` `PL-MB2W` § "Design round, 2026-09-24" ``. `QUALIFIED_RE` hands it on
 #: from `check_citations`, since no documentation heading answers it, and
@@ -592,7 +605,8 @@ QUALIFIED_RE = re.compile(r"`[\w./-]+`[ \n]*" + CITATION_CONNECTIVE + r"?[ \n]*$
 #: did that day, and a quotation after a bare id is prose. The possessive would
 #: claim it, and waits on a comparison that folds emphasis (`PL-RX0W`).
 ITEM_SECTION_RE = re.compile(
-    r"`(?P<item>" + ID_PATTERN + r')`[ \n]*§{1,2}[ \n]*"(?P<quoted>\w[^"]{2,200}?)"', re.DOTALL
+    r"`(?P<item>" + ID_PATTERN + r")`" + GAP + r"*§{1,2}" + GAP + r'*"(?P<quoted>\w[^"]{2,200}?)"',
+    re.DOTALL,
 )
 
 # The `**Tags.**` statement. What it claims is deliberately not a list: the
@@ -3470,7 +3484,7 @@ def span_bullet(identifiers: Sequence[str], number: str, described: str) -> str:
 SPAN_BULLET_RE = re.compile(r"^- .+? - #(\d+) - described in .+$", re.M)
 
 
-def _pull_requests_named(text: str) -> frozenset[str]:
+def _pull_requests_named(text: str, unread: list[UnreadEntry]) -> frozenset[str]:
     """The pull requests one notes file names as a reference, never as a substring.
 
     Two places name one, each in its writer's grammar: a claimed bullet's tail,
@@ -3480,14 +3494,28 @@ def _pull_requests_named(text: str) -> frozenset[str]:
     span holding a closure its notes never name passed whenever its number was
     a prefix of a longer one the notes carry (`PL-M9R6`) - every pull request
     under 1000, against the four-digit numbers the notes carry now.
+
+    Each bullet is read whole, through `release.notes_bullets` (`PL-CL8R`), so
+    a reference after a title wrapped onto an indented line is named, where a
+    line at a time read the title's first line and found none. A bullet carried
+    on from the margin is put on `unread`, by its line in the file, since what
+    it ends with was not read.
     """
     claims, pointers = notes_claims(text)
     named = {
         reference.group(1).removeprefix("#")
-        for _identifier, tail in NOTES_BULLET_RE.findall(claims)
+        for _, _, bullet in notes_bullets(claims, unread)
+        for _identifier, tail in NOTES_BULLET_RE.findall(bullet)
         if (reference := REFERENCED_RE.search(tail)) and reference.group(1).startswith("#")
     }
-    named.update(SPAN_BULLET_RE.findall(pointers))
+    declined: list[UnreadEntry] = []
+    named.update(
+        found.group(1)
+        for _, _, bullet in notes_bullets(pointers, declined)
+        if (found := SPAN_BULLET_RE.match(bullet)) is not None
+    )
+    # The pointer half's lines count from its heading; the file's from the top.
+    unread.extend(UnreadEntry(entry.line + claims.count("\n"), entry.why) for entry in declined)
     return frozenset(named)
 
 
@@ -3603,7 +3631,8 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     recorded pull requests are, all of them numbered 3 to 105, from before the
     convention. A truncated clone declines rather than reporting, because a
     span this checkout cannot walk and one whose notes are genuinely short look
-    identical from inside it.
+    identical from inside it. So does a span whose notes carry a bullet on from
+    the margin, which may name what reads as missing (`PL-CL8R`).
     """
     held = tags(root)
     if not held.known or not held.names:
@@ -3637,6 +3666,7 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     # v0.3.0, and `PL-21GS`, stamped twelve releases later by v0.4.15.
     uncovered: dict[str, dict[tuple[str, str], list[Item]]] = {}
     named: dict[str, frozenset[str]] = {}
+    unread: dict[str, list[UnreadEntry]] = {}
     for item in sorted(store.items.values(), key=lambda entry: entry.identifier):
         # `done` rather than `CLOSED_STATUSES`: a dropped item shipped nothing,
         # so no release's notes owe it a line and its pull request is not a
@@ -3653,7 +3683,10 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
         if not notes.is_file():
             continue
         if version not in named:
-            named[version] = _pull_requests_named(notes.read_text(encoding="utf-8"))
+            unread[version] = []
+            named[version] = _pull_requests_named(
+                notes.read_text(encoding="utf-8"), unread[version]
+            )
         if item.pr in named[version]:
             continue
         described = item.milestone or "a later release"
@@ -3661,6 +3694,16 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
 
     findings: list[str] = []
     for version in sorted(uncovered, key=version_key):
+        # A bullet read short may be the one naming what reads as missing
+        # (`PL-CL8R`), so the span is not judged. One read whole can only have
+        # named more, so a span with nothing missing needs no such caveat.
+        if unread[version]:
+            report.declined.extend(
+                f"{notes_path(version)}:{entry.line}: v{version}'s tag span was not compared "
+                f"against its notes, since a bullet there was not read whole: {entry.why}"
+                for entry in unread[version]
+            )
+            continue
         rows = sorted(uncovered[version], key=lambda row: (int(row[0]), row[1]))
         numbers = sorted({number for number, _ in rows}, key=int)
         bullets = [
@@ -4021,7 +4064,7 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
             # A code-spanned source directly before the mark says where the
             # section lives: a document, or an item brief no heading here
             # answers, and `check_quoted_sources` holds either by containment.
-            before = prose[max(0, match.start() - 200) : match.start()]
+            before = prose[max(0, match.start() - 200) : match.start() + 1]
             if _inside(match.start(), spans) or QUALIFIED_RE.search(before):
                 continue
             term, same_file = _cited_section(prose, match)
@@ -4040,7 +4083,7 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                 )
 
         for match in UNMARKED_CITATION_RE.finditer(prose):
-            before = prose[max(0, match.start() - 200) : match.start()]
+            before = prose[max(0, match.start() - 200) : match.start() + 1]
             if (
                 _inside(match.start(), spans)
                 or MARKED_RE.search(before)
@@ -4237,9 +4280,7 @@ def _cited_section(text: str, match: re.Match[str]) -> tuple[str, bool]:
     `UNMARKED_CITATION_RE` names its directed position by group.
     """
     term = _normalized(match.group(match.lastgroup or 0))
-    same_file = match.lastgroup == "directed" or bool(
-        DIRECTION_RE.match(text[match.end() : match.end() + 24])
-    )
+    same_file = match.lastgroup == "directed" or bool(DIRECTION_RE.match(text, match.end()))
     return term, same_file
 
 

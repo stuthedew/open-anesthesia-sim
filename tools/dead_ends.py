@@ -14,8 +14,9 @@ small.
 `check` reports two different things, and the split is deliberate. A
 *structural* fault fails the build: an entry citing an id that resolves to
 nothing, or an entry wrapped across two lines. Both are silent otherwise - a
-dangling id leaves a claim with no reasoning behind it, and a wrapped entry's
-second line is emitted by nothing and budgeted by nothing.
+dangling id leaves a claim with no reasoning behind it, and a wrapped entry is
+two lines in the file and one in the digest, or, carried on from the margin, a
+line nothing can place in an entry (`PL-F5B9`).
 
 **Size never fails, and that is a decision rather than laxity.** Going over
 budget does not make a commit on an unrelated task wrong, and a red gate that
@@ -97,6 +98,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
 
+from docket.roadmap import UnreadEntry, document_entry_lines  # noqa: E402
 from docket.store import ID_PATTERN  # noqa: E402
 from docket.vcs import ITEM_FILE_RE  # noqa: E402
 
@@ -118,6 +120,11 @@ MAX_EMITTED_BYTES = 4000
 NUDGE_FRACTION = 0.8
 
 ENTRY = re.compile(r"^- \*\*(?P<what>.+?)\*\* [-—] (?P<why>.+)$")
+#: What an entry opens with, before its title is known to close: a top-level
+#: bullet and a bolded approach. A bullet opening this way is held to the
+#: entry's rules even where its title wraps, so it cannot leave the digest
+#: unreported (`PL-F5B9`).
+OPENING = re.compile(r"^- \*\*")
 #: The store's own grammar, so that "cites X, which is not an item" is
 #: refused on the same tokens `bin/docket check` calls ids. `PL-[A-Z0-9]{3,4}`
 #: stood here and read a three-letter token as an id (`PL-KYW3`).
@@ -129,18 +136,34 @@ HEADER = (
 )
 
 
+def _bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, str]]:
+    """Every top-level bullet opening like an entry, as (line number, lines spanned, text).
+
+    Read through `docket.roadmap.document_entry_lines`, section by section, so a
+    bullet is what CommonMark makes one: an indented line carries it on and is
+    joined into it, and a line carrying it on from the margin is declined onto
+    `unread` rather than ending it short (`PL-F5B9`, `PL-R417`). Read a line at
+    a time, an entry whose bolded title wrapped was no entry at all, and a
+    margin line opening `#1234`, `*` or a pipe ended one with its ids unread.
+    """
+    lines = text.splitlines()
+    bullets: list[tuple[int, int, str]] = []
+    for first, end in document_entry_lines(lines, unread):
+        if OPENING.match(lines[first]):
+            joined = " ".join([lines[first], *(line.strip() for line in lines[first + 1 : end])])
+            bullets.append((first + 1, end - first, joined))
+    return bullets
+
+
 def entries(text: str) -> list[tuple[int, str]]:
-    """Return `(line number, line)` for every bullet that is an entry.
+    """Return `(line number, text)` for every bullet that is an entry.
 
     An entry is a top-level bullet opening with a bolded approach. Prose
     bullets in the preamble are not entries, are not emitted, and do not count
-    against either budget.
+    against either budget. An entry's text is the whole bullet, its wrapped
+    lines joined.
     """
-    return [
-        (number, line)
-        for number, line in enumerate(text.splitlines(), start=1)
-        if ENTRY.match(line)
-    ]
+    return [(number, joined) for number, _, joined in _bullets(text, []) if ENTRY.match(joined)]
 
 
 def emitted(text: str) -> str:
@@ -212,18 +235,24 @@ def check(text: str) -> list[str]:
                     f"An entry's whole retrieval path is `bin/docket show {cited}`."
                 )
 
-    # A wrapped entry reads as an entry plus a stray prose line, and the stray
-    # line is then outside everything above - unemitted, unbudgeted and citing
-    # nothing. Cheap to catch, and invisible to a reader scanning for bullets.
-    lines = text.splitlines()
-    for number, _ in found:
-        if number < len(lines):
-            following = lines[number]
-            if following.strip() and not following.lstrip().startswith(("-", "#", "*", "|")):
-                problems.append(
-                    f"docs/dead-ends.md:{number + 1}: continuation of the entry above. "
-                    f"One line per entry - shorten it instead."
-                )
+    # A wrapped entry is emitted joined, but the one-line rule is what keeps the
+    # file and the digest the same text, and a line carrying an entry on from
+    # the margin is one the walker could not place at all: both are refused.
+    unread: list[UnreadEntry] = []
+    bullets = _bullets(text, unread)
+    for number, spanned, _ in bullets:
+        if spanned > 1:
+            problems.append(
+                f"docs/dead-ends.md:{number + 1}: continuation of the entry above. "
+                f"One line per entry - shorten it instead."
+            )
+    opened = {number + spanned for number, spanned, _ in bullets}
+    for lazy in unread:
+        if lazy.line in opened:
+            problems.append(
+                f"docs/dead-ends.md:{lazy.line}: continuation of the entry above, carried on "
+                f"from the margin. One line per entry - shorten it instead."
+            )
 
     return problems
 
