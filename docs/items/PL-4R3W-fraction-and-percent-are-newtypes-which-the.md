@@ -3,12 +3,13 @@ id: PL-4R3W
 title: Fraction and Percent are NewTypes, which the interpreter erases, so their ranges of 0 to 1 and 0 to 100 are checked by hand wherever a value enters - require_percent at four sites in circuit.py and governing_equations.py - the hand-checked pattern PL-51B7 replaces with checked types for the supported-range quantities; whether a concentration becomes a checked type too is undecided, because concentration.py chose NewTypes to catch a missing conversion, and whether a fraction computed at a bound can round past it is unmeasured
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: refactor
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, tests, docs/MODEL.md
+touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/simulation_step.py, src/anesthesia_sim/core/parameters.py, .claude/rules/core-domain.md, tests, docs/MODEL.md
 added: 2026-10-04
 payoff: whether a concentration is checked once into a type, as the flows are, is answered on a measurement, so the eleven hand checks on its ranges are either replaced or kept for a recorded reason
+verify: ! grep -q "def require_fraction" src/anesthesia_sim/core/validation.py && ! grep -q "def require_percent" src/anesthesia_sim/core/validation.py && grep -q "class Fraction(float)" src/anesthesia_sim/core/concentration.py && grep -q "class Percent(float)" src/anesthesia_sim/core/concentration.py
 ---
 
 **Problem.** Fraction and Percent are NewTypes, which the interpreter erases, so their ranges of 0 to 1 and 0 to 100 are checked by hand wherever a value enters - require_percent at four sites in circuit.py and governing_equations.py - the hand-checked pattern PL-51B7 replaces with checked types for the supported-range quantities; whether a concentration becomes a checked type too is undecided, because concentration.py chose NewTypes to catch a missing conversion, and whether a fraction computed at a bound can round past it is unmeasured
@@ -24,6 +25,14 @@ flows, the instants and the step count, and `PL-HSFV` is what it leaks.
 subclasses, each built only through its range check, as the flows become in
 `PL-0YYV`?
 
+**Answered 2026-10-04: yes, both.** (project owner, 2026-10-04, ratified, over
+keeping either as a `NewType` once the measurement came in; "Agree with recs"
+in the project chat at 17:53 UTC, answering the design round's summary of
+§ "Design round 2026-10-04" below). `Fraction` and `Percent` become checked
+`float` subclasses on `SimulationStep`'s pattern and `MacMultiple` stays a
+`NewType`. The 100% case the measurement found is recorded as the type's
+documented limit, not as a reason to keep a `NewType`.
+
 **Recommendation: yes, once one measurement is in.**
 
 - **They are ranges.** `core/simulation_step.py`'s module docstring, written
@@ -34,7 +43,9 @@ subclasses, each built only through its range check, as the flows become in
   missing conversion is still refused, and arithmetic on either still returns a
   plain `float`.
 - **It removes the eleven hand checks**, each becoming its type's own.
-- **The measurement comes first**, because wrapping a computed value in a
+- [superseded 2026-10-04: the measurement is in, § "Design round 2026-10-04"
+  below, and its condition did not fire] **The measurement comes first**,
+  because wrapping a computed value in a
   checked type checks it. Record the extremes the exact step computes across
   the supported envelope's corners and the reference cases, at every place a
   computed value would be wrapped. If a fraction can round past 0 or 1 - a
@@ -44,11 +55,13 @@ subclasses, each built only through its range check, as the flows become in
 - **`MacMultiple` stays a `NewType` either way**, being unbounded above by
   design.
 
-**Done when.** The decision is recorded beneath the question, with the
-measurement it rests on, and either the conversion it chooses has landed, the
-hand checks it replaces deleted and `docs/MODEL.md` § "Concentrations" saying
-where each range is enforced, or `concentration.py`'s module docstring says why
-the type stays a `NewType`.
+**Done when.** `Fraction` and `Percent` in `core/concentration.py` are
+`float` subclasses checked when built, with the 100% limit the measurement
+found in the module docstring; `require_fraction` and `require_percent` are
+gone from `core/validation.py` with their eleven call sites, each public entry
+point that took a bare `float` refusing one with `TypeError`; and
+`docs/MODEL.md` § "Concentrations" says the range is enforced by the type where
+a value is built. `MacMultiple` stays a `NewType`.
 
 **Gate.** On v0.6.0's frozen list, in the product lane, with the rest of the
 `parse-dont-validate` feature (project owner, 2026-10-04).
@@ -130,6 +143,28 @@ not committed; each part and its result:
    1 µs more against the 23.8 µs whole step `core/matrix_exponential.py`
    records in `propagate`'s docstring (`PL-R460`), around 4%; a chart paint
    pays one construction per plotted point.
+8. **What the whole test suite constructs today.** The suite, 3 911 tests,
+   ran green with recording `float` subclasses bound in place of both types in
+   every `anesthesia_sim` module: 115 061 942 constructions at 83 sites, 28 of
+   them in `src/`, and 11 outside the range, at five sites, every one
+   deliberate. Two are `tests/unit/test_resume_at.py` handing the stepped path
+   a state of 2.0 and of 1.5 to watch a setter refuse it
+   (`uptake_system.py:658` and `:662`); the type refuses in the same statement,
+   and `advance()` still reports it as a `SimulationNumericalError`. Four are a
+   test tissue in `tests/integration/test_simulation_view.py` writing
+   `Fraction(-1.0)` to make a step fail, which the build makes fail some other
+   way. Four are `percent_from_fraction` on the impossible negatives
+   `tests/unit/test_formatting.py` feeds `format_percent` and
+   `format_mac_multiple` to see them left visible; a checked `Fraction` cannot
+   carry one, so that guarantee moves to the constructor - an impossible value
+   is refused where it is built rather than displayed, which is the
+   safety-critical standard's own preference - and the two tests become
+   constructor cases. One is `tests/unit/test_concentration.py`'s
+   `Percent(150.0)`, there to show the `NewType` checks nothing, which
+   inverts. Nothing a run or a chart computed was outside the range: the
+   largest computed fraction on the stepped path was `0.17999812938938445`,
+   the inspired fraction under an 18% dial, over 14 851 330 constructions at
+   that site, and the largest the application built was `0.0801` in a chart.
 
 **Recommendation (design round, 2026-10-04): yes, convert both.** The
 measurement the brief made the condition is in: inside the supported envelope no

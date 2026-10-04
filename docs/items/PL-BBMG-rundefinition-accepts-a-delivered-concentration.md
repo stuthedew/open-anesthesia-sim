@@ -3,12 +3,13 @@ id: PL-BBMG
 title: RunDefinition accepts a delivered concentration above the agent's vaporizer maximum - 20% sevoflurane against an 8% maximum ran on 2026-10-04 - because UptakeEquationSettings carries no agent and no vaporizer maximum, so a run built from a settings record bounds the dial only at 100%, and the BreathingCircuit that refuses it is never built
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: defect, safety
 feature: parse-dont-validate
-touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/uptake_system.py, tests/unit/test_governing_equations.py, tests/unit/test_run_definition.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/validation.py, tests/unit/test_governing_equations.py, tests/unit/test_run_definition.py, docs/MODEL.md
 added: 2026-10-04
 payoff: a run built from a settings record refuses a dial above the vaporizer maximum exactly as the circuit does, so no caller gets a trace for a setting the machine cannot deliver
+verify: grep -q "max_delivered_concentration_percent" src/anesthesia_sim/core/governing_equations.py && grep -q "test_rejects_a_dial_above_the_vaporizer_maximum" tests/unit/test_governing_equations.py && grep -q "test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum" tests/unit/test_run_definition.py
 ---
 
 **Problem.** RunDefinition accepts a delivered concentration above the agent's vaporizer maximum - 20% sevoflurane against an 8% maximum ran on 2026-10-04 - because UptakeEquationSettings carries no agent and no vaporizer maximum, so a run built from a settings record bounds the dial only at 100%, and the BreathingCircuit that refuses it is never built
@@ -48,6 +49,14 @@ that gap's fix cannot reach.
 bound travels with it: the maximum, the agent the maximum is read from, or
 neither, with a check wherever a run is built from stored settings?
 
+**Answered 2026-10-04: the maximum.** (project owner, 2026-10-04, ratified,
+over the agent's name and over a check wherever a run is built; "Agree with
+recs" in the project chat at 17:53 UTC, answering the design round's summary
+of § "Design round 2026-10-04" below). `UptakeEquationSettings` carries
+`max_delivered_concentration_percent`, required, and refuses a dial above it
+through the guard `BreathingCircuit` uses; the vaporizer pair record the round
+weighs waits for the saved-run format.
+
 **Recommendation: the maximum.** `UptakeEquationSettings` carries the maximum
 its dial is bounded by, required and with no default, and refuses a dial above
 it in `__post_init__`.
@@ -70,12 +79,13 @@ it in `__post_init__`.
   agent's today, and the vaporizer's if `PL-JQY1` (a vaporizer's maximum stored
   as an agent property) moves it. The record holds the number either way.
 
-**Done when.** The decision is recorded beneath the question; a run definition
-refuses a dial above its maximum at `RunDefinition(...)` and at
-`record_change`, with regression tests replaying the 20% sevoflurane
-reproduction at both and pinning the maximum and the first value past it; and
-`docs/MODEL.md` § "Supported input ranges" says where the dial's bound is
-enforced.
+**Done when.** `UptakeEquationSettings` carries
+`max_delivered_concentration_percent`, required, and refuses a dial above it
+through the guard `BreathingCircuit` uses, so neither `RunDefinition(...)` nor
+`record_change` can be handed such a record; regression tests replay the 20%
+sevoflurane reproduction at both entry points and pin the maximum and the first
+value past it; and `docs/MODEL.md` § "Supported input ranges" names both records
+as where the dial's bound is enforced.
 
 **Gate.** On v0.6.0's frozen list, in the product lane, with the rest of the
 `parse-dont-validate` feature (project owner, 2026-10-04). Classed `safety`, it
