@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_v
 blocked-by: PL-N67T
 added: 2026-09-21
 closed: 2026-10-04
+pr: 1356
 payoff: a second call to any of RunView's build_ methods leaves the run's widgets on screen, so no caller has to know which of them is safe to call twice
 verify: grep -q 'def test_a_second_build_call_leaves_each_run_widget_on_screen' tests/integration/test_simulation_view.py && grep -q 'def _lay_out_transport_row' src/anesthesia_sim/app/run_view.py && grep -q 'def _lay_out_readout_section' src/anesthesia_sim/app/run_view.py && grep -q 'def _lay_out_parameter_controls' src/anesthesia_sim/app/run_view.py
 ---
