@@ -38,14 +38,14 @@ own, so `tools/contrast_check.py`'s palette stays the one that is drawn.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from math import ceil
 from typing import Any, Final
 
 import pyqtgraph as pg
-from PySide6.QtCore import QPointF, QSize, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPaintEvent, QPen
+from PySide6.QtCore import QEvent, QObject, QPointF, QRectF, QSize, Qt, Signal
+from PySide6.QtGui import QBrush, QColor, QImage, QMouseEvent, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.chart_frame import (
@@ -363,6 +363,31 @@ class _GridLines:
         _place_marks(pool, positions)
 
 
+class _PointerMoves(QObject):
+    """Every pointer move over one plot, in scene coordinates, before pyqtgraph thins them.
+
+    pyqtgraph's scene passes on at most its `mouseRateLimit` moves a second -
+    100 as shipped - and drops the rest with nothing delivered after them, so a
+    pointer whose last move came within 10 ms of the one before was answered
+    for where it had been a move earlier (`PL-TCR5`). Read off the plot's
+    viewport instead, every move reaches the hover's own rate-limited proxy,
+    and that delivers the newest of them.
+    """
+
+    moved = Signal(QPointF)
+
+    def __init__(self, plot: Any) -> None:
+        super().__init__(plot)
+        self._plot = plot
+        plot.viewport().installEventFilter(self)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # Qt spells this in camelCase.
+        if isinstance(event, QMouseEvent) and event.type() == QEvent.Type.MouseMove:
+            self.moved.emit(QPointF(self._plot.mapToScene(event.position().toPoint())))
+
+        return False
+
+
 class _HoverReadout:
     """The hover's mechanics, shared by both plots.
 
@@ -372,21 +397,26 @@ class _HoverReadout:
     correct rather than a defect to design around.
     """
 
-    def __init__(self, plot: Any) -> None:
+    def __init__(self, plot: Any, refresh: Callable[[], None]) -> None:
         self._plot = plot
+        self._refresh = refresh
         self._dot, self._text = _hover_items()
         plot.getPlotItem().addItem(self._dot, ignoreBounds=True)
         plot.getPlotItem().addItem(self._text, ignoreBounds=True)
         self._scene_position: QPointF | None = None
         # Rate-limited, so a pointer sweeping across the plot costs at most
         # sixty lookups a second whatever the event rate; the proxy has to
-        # be held, or it is collected and the signal goes nowhere.
-        self._proxy = pg.SignalProxy(
-            plot.scene().sigMouseMoved, rateLimit=60, slot=self._on_mouse_moved
-        )
+        # be held, or it is collected and the signal goes nowhere. The
+        # proxy's own delivery is the only thing that answers a pointer: a
+        # second slot on the scene's signal ran before the proxy had stored
+        # the position, so it answered where the pointer had been one event
+        # earlier, and while paused nothing corrected it (`PL-TCR5`).
+        self._moves = _PointerMoves(plot)
+        self._proxy = pg.SignalProxy(self._moves.moved, rateLimit=60, slot=self._on_mouse_moved)
 
     def _on_mouse_moved(self, event: tuple[Any, ...]) -> None:
         self._scene_position = event[0]
+        self._refresh()
 
     def scene_position(self) -> QPointF | None:
         """Where the pointer last was, in scene coordinates, if over the widget."""
@@ -433,6 +463,19 @@ class _HoverReadout:
         """What the hover currently says, or `None` while it is hidden."""
 
         return str(self._text.textItem.toPlainText()) if self._text.isVisible() else None
+
+    def shown_box(self) -> QRectF | None:
+        """Where the box stands in the plot widget's pixels, or `None` while it is hidden.
+
+        pyqtgraph orients a text item for the view only as it paints it, so a
+        box read before it has been painted can measure thousands of pixels
+        tall (`PL-J0F7`).
+        """
+
+        if not self._text.isVisible():
+            return None
+
+        return QRectF(self._plot.viewportTransform().mapRect(self._text.sceneBoundingRect()))
 
 
 class _RunPens:
@@ -629,8 +672,7 @@ class ConcentrationChart(QWidget):
 
         self._runs: list[_RunItems] = []
         self._frame: ChartFrame | None = None
-        self._hover = _HoverReadout(self._plot)
-        self._plot.scene().sigMouseMoved.connect(self._on_pointer)
+        self._hover = _HoverReadout(self._plot, self._refresh_hover)
 
     def draw(self, frame: ChartFrame) -> None:
         """Move every item to match one frame.
@@ -798,6 +840,11 @@ class ConcentrationChart(QWidget):
 
         return _plot_pixel(self._plot, time_s, percent)
 
+    def plot_area(self) -> QRectF:
+        """The plot inside its axes, in the pixels of `painted`: where the hover box has to stay."""
+
+        return _plot_area(self._plot)
+
     def readout_at(self, time_s: float, percent: float) -> str | None:
         """What the hover would say for a pointer at this plot position.
 
@@ -829,11 +876,6 @@ class ConcentrationChart(QWidget):
             self._frame, time_s, percent, seconds_per_pixel, percent_per_pixel, HOVER_RADIUS_PIXELS
         )
 
-    def _on_pointer(self, scene_position: QPointF) -> None:
-        del scene_position
-
-        self._refresh_hover()
-
     def _refresh_hover(self) -> None:
         """Answer for wherever the pointer is, or hide when it is nowhere near."""
 
@@ -862,6 +904,14 @@ class ConcentrationChart(QWidget):
         """What the hover box currently shows, or `None` while it is hidden."""
 
         return self._hover.shown_text()
+
+    def hover_box(self) -> QRectF | None:
+        """Where the hover box stands in the pixels of `painted`, or `None` while it is hidden.
+
+        Read it after `painted`, which is when pyqtgraph places it for the view.
+        """
+
+        return self._hover.shown_box()
 
 
 class _WashInRunItems:
@@ -955,8 +1005,7 @@ class WashInChart(QWidget):
 
         self._runs: list[_WashInRunItems] = []
         self._frame: ChartFrame | None = None
-        self._hover = _HoverReadout(self._plot)
-        self._plot.scene().sigMouseMoved.connect(self._on_pointer)
+        self._hover = _HoverReadout(self._plot, self._refresh_hover)
 
     def draw(self, frame: ChartFrame) -> None:
         """Move every item to match one frame.
@@ -1085,6 +1134,11 @@ class WashInChart(QWidget):
 
         return _plot_pixel(self._plot, time_s, ratio)
 
+    def plot_area(self) -> QRectF:
+        """The plot inside its axes, in the pixels of `painted`: where the hover box has to stay."""
+
+        return _plot_area(self._plot)
+
     def readout_at(self, time_s: float, ratio: float) -> str | None:
         """What the hover would say for a pointer at this plot position.
 
@@ -1112,11 +1166,6 @@ class WashInChart(QWidget):
             self._frame, time_s, ratio, seconds_per_pixel, ratio_per_pixel, HOVER_RADIUS_PIXELS
         )
 
-    def _on_pointer(self, scene_position: QPointF) -> None:
-        del scene_position
-
-        self._refresh_hover()
-
     def _refresh_hover(self) -> None:
         position = self._hover.scene_position()
         view_box = self._plot.getPlotItem().getViewBox()
@@ -1143,6 +1192,14 @@ class WashInChart(QWidget):
         """What the hover box currently shows, or `None` while it is hidden."""
 
         return self._hover.shown_text()
+
+    def hover_box(self) -> QRectF | None:
+        """Where the hover box stands in the pixels of `painted`, or `None` while it is hidden.
+
+        Read it after `painted`, which is when pyqtgraph places it for the view.
+        """
+
+        return self._hover.shown_box()
 
 
 def _axis_titles(plot: Any) -> tuple[str, ...]:
@@ -1209,6 +1266,18 @@ def _plot_pixel(plot: Any, x: float, y: float) -> tuple[int, int]:
     view_point = plot.mapFromScene(scene_point)
 
     return round(view_point.x()), round(view_point.y())
+
+
+def _plot_area(plot: Any) -> QRectF:
+    """The view box of `plot` - the plot inside its axes - in the pixels of its widget.
+
+    In the pixels of the chart that owns it too, for the reason `_plot_pixel`
+    gives.
+    """
+
+    return QRectF(
+        plot.viewportTransform().mapRect(plot.getPlotItem().getViewBox().sceneBoundingRect())
+    )
 
 
 class _LineSwatch(QWidget):

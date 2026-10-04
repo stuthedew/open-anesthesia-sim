@@ -3,11 +3,13 @@ id: PL-J0F7
 title: The Qt chart's hover box was never looked at rendered: its placement flips near the window's right edge and the axis top, and nothing has confirmed the flip lands the box inside the plot or that INK on PANEL in a pg.TextItem is what is painted
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: qt-port
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_rendering.py
 added: 2026-09-14
+closed: 2026-10-04
+pr: 1340
 verify: grep -q 'def test_the_hover_box_stays_inside_the_plot_at_every_edge' tests/integration/test_qt_rendering.py && uv run pytest tests/integration/test_qt_rendering.py
 ---
 
@@ -75,9 +77,31 @@ at once while the item is hidden and is otherwise driven by the scene's
 before a grab, 390x78 px after. Measure after `chart.painted()`, which grabs and
 so paints.
 
-**Driving the pointer waits on `PL-TCR5`.** One `QTest.mouseMove` onto the plot
-answers nothing and the next answers the previous position, so a test that
-drives the pointer to an edge cannot pass while that lag stands. The two are
-taken on one branch, `PL-TCR5`'s fix first; this item's test then moves the real
-pointer, `QTest.mouseMove(chart._plot.viewport(), QPoint(*chart.plot_pixel(t, v)))`
-and a `QTest.qWait` long enough for the 60 Hz proxy to deliver.
+[superseded 2026-10-04] **Driving the pointer waited on `PL-TCR5`.** One
+`QTest.mouseMove` onto the plot answered nothing and the next answered the
+previous position, so a test that drives the pointer to an edge could not pass
+while that lag stood. The two were taken on one branch, `PL-TCR5`'s fix first.
+The test as built sends the move to the widget under the pixel rather than
+through `QTest.mouseMove`, and waits on the event loop until the box answers;
+"Built 2026-10-04" below says why.
+
+**Built 2026-10-04.** `test_the_hover_box_stays_inside_the_plot_at_every_edge`
+builds its own dashboard at the module's 1600x1000: sevoflurane dialled to 8%,
+its maximum delivered concentration, for twenty minutes, paused, in the
+15-minute width. That puts the circuit and alveolar traces in the top quarter
+of the 6% axis and the newest points at the right edge. It drives the real
+pointer to six cases - the concentration chart's four corners and the wash-in
+plot's two edges - and after `painted()` reads back two new seams on both
+charts, `hover_box` and `plot_area` (both views, per
+`.claude/rules/ui-areas.md`). It asserts the box inside the plot within half a
+pixel, the modal colour inside the border exactly `PANEL`, and `INK` among the
+text's pixels. Each case is the first or last drawn point whose whole pixel
+lies inside the plot: the window's first instant stands on the left edge, and
+its rounded pixel can fall outside, where rightly no hover answers. The plot
+area has to be read after painting too, not only the box: a sweep that read
+the wash-in plot's rectangle once flagged 14 boxes "outside" at 1024x768 with
+two runs, because that plot grew from 208 to 242 px tall on its first paint;
+read after each paint, none was. The test fails with either flip removed. The
+six cases were rendered on one sheet, looked at in this session, and sent to
+the project owner on 2026-10-04 at 10:29 CDT; the owner's read of the pull
+request is the person's look the brief asks for.

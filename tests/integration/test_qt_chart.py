@@ -17,7 +17,9 @@ from collections import Counter
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtGui import QPalette
+from PySide6.QtCore import QDeadlineTimer, QEvent, QPoint, QPointF, Qt
+from PySide6.QtGui import QMouseEvent, QPalette
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QCheckBox, QLabel, QWidget
 
 from anesthesia_sim.app.chart_frame import (
@@ -583,6 +585,121 @@ def test_the_hover_answers_while_the_run_is_playing(application: QApplication) -
     assert (
         chart.readout_at(*_a_drawn_point(chart, RecordedQuantity.ALVEOLAR, frame=frame)) is not None
     )
+
+
+# Sixty times the rate-limited proxy's own 1/60 s, the longest it holds a
+# pointer position before delivering it from its timer.
+_HOVER_DELIVERY_MS = 1000
+
+
+def _move_pointer(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> None:
+    """Move the pointer onto one pixel of the chart, as the platform delivers a move.
+
+    To the widget under that pixel rather than through `QTest.mouseMove`,
+    which moves the platform cursor: the offscreen platform gives that move to
+    a window it finds at the screen position, and a chart an earlier test left
+    shown can stand there first.
+    """
+
+    under = chart.childAt(pixel)
+    local = QPointF(under.mapFrom(chart, pixel))
+    move = QMouseEvent(
+        QEvent.Type.MouseMove,
+        local,
+        under.mapToGlobal(local),
+        Qt.MouseButton.NoButton,
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    QApplication.sendEvent(under, move)
+
+
+def _wait_for_hover(chart: ConcentrationChart | WashInChart, text: str | None) -> None:
+    """Run the event loop until the hover says `text` or `_HOVER_DELIVERY_MS` has passed.
+
+    The way `QTRY_COMPARE` waits: the pointer's position reaches the hover
+    through a rate-limited `SignalProxy`, which delivers from a timer rather
+    than inside the move, and the caller asserts what the hover then says. No
+    `draw` follows, which is what a paused run is.
+    """
+
+    deadline = QDeadlineTimer(_HOVER_DELIVERY_MS)
+
+    while chart.hover_text() != text and not deadline.hasExpired():
+        QTest.qWait(10)
+
+
+def test_the_hover_answers_the_point_under_the_pointer(application: QApplication) -> None:
+    """`PL-TCR5`: a real pointer move is answered for where the pointer is, run paused.
+
+    `readout_at` calls the lookup directly, so it could not see either way
+    this went wrong. A second slot on the scene's signal answered before the
+    proxy had stored the position: the first move answered nothing, each later
+    one the point under the move before, and with the run paused no `draw`
+    followed to correct it. And pyqtgraph's scene drops a move that follows
+    the last one it passed on by under 10 ms, so a fast pointer's last move
+    went unanswered.
+    """
+
+    controller = _run_with_a_dial_change()
+    controller.pause()
+    assert not controller.is_running
+    frame = _frame(controller)
+    chart = _shown(application, ConcentrationChart(), 480)
+    chart.draw(frame)
+    # Labelling the axes can widen one and move the plot, so the layout is
+    # settled before a pixel is read off it.
+    application.processEvents()
+    run = frame.runs[0]
+    # The circuit trace stands more than 30 px clear of the other five at all
+    # three instants, so each point is answered for itself alone, and the
+    # instants differ, so the readouts do too.
+    count = len(run.times_s)
+    earlier, third, later = count // 4, 3 * count // 5, 3 * count // 4
+
+    def pixel(index: int) -> QPoint:
+        return QPoint(
+            *chart.plot_pixel(run.times_s[index], run.percents(RecordedQuantity.CIRCUIT)[index])
+        )
+
+    def answer(index: int) -> str:
+        return format_trace_hover(run, RecordedQuantity.CIRCUIT, index, 1)
+
+    for index in (earlier, later):
+        _move_pointer(chart, pixel(index))
+        _wait_for_hover(chart, answer(index))
+
+        assert chart.hover_text() == answer(index)
+
+    # Two moves with nothing between them, as a fast pointer's last two often
+    # are: the hover answers where the pointer stopped.
+    _move_pointer(chart, pixel(earlier))
+    _move_pointer(chart, pixel(third))
+    _wait_for_hover(chart, answer(third))
+
+    assert chart.hover_text() == answer(third)
+
+    # Off the plot, over the axis, the box goes rather than keeping the last
+    # point's answer.
+    _move_pointer(chart, QPoint(1, 1))
+    _wait_for_hover(chart, None)
+
+    assert chart.hover_text() is None
+
+    # The wash-in plot hangs its hover on the same proxy.
+    wash_in = _shown(application, WashInChart(), 300)
+    wash_in.draw(frame)
+    application.processEvents()
+    stretch = run.wash_in[0]
+    index = len(stretch.times_s) // 2
+    time_s, ratio = stretch.times_s[index], stretch.ratios[index]
+    under_pointer = wash_in.readout_at(time_s, ratio)
+    assert under_pointer is not None
+
+    _move_pointer(wash_in, QPoint(*wash_in.plot_pixel(time_s, ratio)))
+    _wait_for_hover(wash_in, under_pointer)
+
+    assert wash_in.hover_text() == under_pointer
 
 
 def test_the_wash_in_hover_reports_the_ratio_in_its_own_units(application: QApplication) -> None:

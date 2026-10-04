@@ -3,11 +3,13 @@ id: PL-TCR5
 title: The chart hover answers the pointer's previous position and never re-answers a resting pointer while paused, because the direct sigMouseMoved slot reads the position the rate-limited proxy stored one event earlier
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: qt-port
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_chart.py
 added: 2026-09-15
+closed: 2026-10-04
+pr: 1340
 verify: grep -q 'def test_the_hover_answers_the_point_under_the_pointer' tests/integration/test_qt_chart.py && uv run pytest tests/integration/test_qt_chart.py
 ---
 
@@ -54,3 +56,34 @@ second move, to the point at 200 s, and the same wait: the hover read
 `Modelled sevoflurane · 1m39.9s`, the first position. Taken with `PL-J0F7` on
 one branch and first, because that item's test drives the real pointer to the
 plot's edges and cannot pass while the hover answers the previous event.
+
+**Built 2026-10-04, and a second way to the same stale answer found while
+building it.** The proxy's own delivery now stores the position and calls the
+chart's `_refresh_hover`, and both charts' direct `sigMouseMoved` connections
+and their `_on_pointer` slots are gone. The test then showed the brief had one
+mechanism of two: pyqtgraph 0.14.0's `GraphicsScene.mouseMoveEvent` passes on a
+move only when `1000 / mouseRateLimit` ms - 10 ms as shipped - have passed
+since the last one it passed on, and drops the rest with nothing delivered
+after them. So whenever a pointer's last move came within 10 ms of the one
+before - every other event from a 120 Hz device - the scene never emitted
+where the pointer stopped, the proxy never saw it, and the hover answered a
+move earlier, running or paused. Measured headless: two moves sent with nothing
+between them, the hover kept the first. That is this item's own outcome
+failing, so it was fixed here rather than filed (capture mode: a finding that
+completes an in-progress item is not a new item). `_PointerMoves` reads every
+move off the plot's viewport with an event filter and feeds the same proxy,
+which still caps the lookups at sixty a second and always delivers the newest
+position it holds. The process-wide `mouseRateLimit` was left alone: switching
+it off would also unthrottle the scene's own hover dispatch to every item.
+
+`test_the_hover_answers_the_point_under_the_pointer` moves the pointer with a
+`QMouseEvent` sent to the widget under the pixel - `QTest.mouseMove` moves the
+platform cursor, and the offscreen platform gave that move to another chart
+left shown at the same screen position - onto three circuit-trace points more
+than 30 px clear of the other five traces, the run paused: the first move
+answers, each later one answers its own point, a pair of moves with nothing
+between them answers the second, and a move over the axis hides the box. The
+wash-in plot is held to one move. Each half fails when its fix is reverted:
+restoring the direct slot gives `None` on the first move; feeding the proxy
+from `sigMouseMoved` again gives the pair's first point (0.73 ×MAC) for its
+second (1.11 ×MAC).
