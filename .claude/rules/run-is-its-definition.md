@@ -72,6 +72,16 @@ where the columns are sparser than the changes, in which sampling 600 instants
 aliases the run whatever it samples - a question about what to draw, which
 storage answers no part of.
 
+Since `PL-CNCF` those figures are a first frame's: `RunDefinition.evaluate_anchored`
+keeps the propagators one window forms for the next, and a frame following the
+run forms only its two bounds' - 5.9 ms with sixty changes in view on a 24-hour
+run. **That is not a store of the run, and the test above is why.** An entry is
+an operator rather than a state, found by a stretch's settings and an interval,
+and a hit returns the bits forming it again would. Two runs built from
+identical definitions can keep different ones and still answer identically, so
+there is no second source of truth for a trace to come from; and only the last
+window's are kept, so it does not grow with the watching.
+
 ## Two names here say "recorded" and mean "addressed"
 
 `run_series.RecordedQuantity` and `RecordedSeries` name what a trace *is* - one

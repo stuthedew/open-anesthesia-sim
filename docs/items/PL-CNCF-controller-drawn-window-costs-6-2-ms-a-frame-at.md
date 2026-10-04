@@ -3,12 +3,14 @@ id: PL-CNCF
 title: controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
 priority: P2
 effort: M
-status: ready
+status: done
 classes: perf
 feature: chart-readout
-touches: src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py, tests/reference/test_canonical_evaluation.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/run-is-its-definition.md, docs/items/PL-PGZF-pl-gs3r-made-the-chart-s-column-budget-follow.md
 added: 2026-09-08
-verify: grep -qF 'drawn_window costs' docs/MODEL.md && python3 tools/doc_check.py check
+closed: 2026-10-04
+pr: 1359
+verify: grep -qF 'drawn_window` costs' docs/MODEL.md && grep -qF 'self._last_window_propagators = propagators.formed' src/anesthesia_sim/core/run_definition.py
 ---
 
 **Problem.** controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
@@ -145,8 +147,8 @@ consequence once claimed for the stale spelling, that it escaped
 <!-- absent: core/run_score.py -->
 
 **Re-confirmed and re-measured 2026-10-04, before the work.** The brief still
-holds against the tree; `evaluate_anchored` is now at
-`src/anesthesia_sim/core/run_definition.py:536`. A 30-minute run with one dial
+holds against the tree; only `RunDefinition.evaluate_anchored`'s line had
+moved. A 30-minute run with one dial
 change at 600 s, a 15-minute window ending at the run's instant, median of 40
 `drawn_window` calls on this session's container:
 
@@ -168,7 +170,7 @@ steps a frame, read the same.
   frames at 150 columns. A memo keyed on `(settings, interval_s)` skips both,
   about 2.8 ms a run a frame, and changes no drawn value:
   `UptakeEquationSettings` is a frozen dataclass
-  (`src/anesthesia_sim/core/governing_equations.py:269`) and
+  (`src/anesthesia_sim/core/governing_equations.py`) and
   `build_system_matrix` reads nothing else, so a hit returns the bits a
   recompute would. Neither `record_change` shape above can fool that key,
   because neither reuses a settings value for different physics.
@@ -180,3 +182,68 @@ steps a frame, read the same.
   runs it draws a frame. The memo would stay on the display path, per
   instance and bounded, so `state_at`'s "no cache" guarantee and
   `docs/MODEL.md` § "The canonical evaluation rule" are untouched.
+
+**Done 2026-10-04: the chart's path keeps the propagators it forms, rather
+than the cost being recorded as accepted.** The two numbers the re-measure
+left open decided it. The dashboard draws every 200 ms (`RENDER_INTERVAL_S`)
+and at most two runs (`MAX_DISPLAYED_RUNS`), so with no change in view one run
+is 6.6-20.3 ms of that frame at 150-2 401 columns - the cost this brief was
+filed about, and affordable. What the brief's measurements never reached is
+changes in view. Each stretch in view paid two exponentials every frame, so
+sixty changes in a following 15-minute window cost 119-135 ms a run and two
+runs about 240 ms, longer than the frame. A learner reaches that by dragging a
+setting slider for about six seconds while the run plays: each position is
+applied as it passes, and a two-second drag at 1x records 20 stretches
+(measured through `SimulationController` today). Accepting that was not close,
+so the choice was taken rather than offered.
+
+What was built, in `RunDefinition.evaluate_anchored`: each call keeps the
+propagators it formed, and the next call reuses them - every one but the two
+bounds' is over an interval the grid fixes. They are keyed by the settings
+record's value and the interval, the key `AgentUptakeSystem._propagator_for`
+already uses on the stepped path and the use `UptakeEquationSettings` is frozen
+and compared by value for. Only the last call's are kept. Measured in one
+process against `main`'s module, frames interleaved, every setting distinct so
+that reuse within a call flatters nothing, a following frame costs 3.5-3.9 ms,
+9.1-10.1 ms and 18.0-18.8 ms at 150, 1 069 and 2 401 columns whatever the
+changes in view. `docs/MODEL.md` § "The run is that record, and every state is
+derived from it" carries the table, and the first frame at a new spacing still
+costs what it did.
+
+Three routes were weighed and not taken:
+
+- *A bounded LRU*, which the re-measure above proposed. A window walks its
+  stretches in the same order every frame, so once they outnumber the bound
+  an LRU evicts each entry just before it is asked for again and hits nothing.
+  Keeping exactly the last window's is bounded by the window instead - at most
+  two a stretch in view and one a bound, 3.1 KB each, 1.8 MiB at six hundred
+  changes - and cannot thrash.
+- *Keying on the settings object's identity*. It would put a zero's sign in
+  the key, but the stepped path's cache has keyed on value since it was
+  written, and value keys reuse across equal settings, which a dial returned
+  to an earlier position produces.
+- *Cheapening the two bound propagators that remain every frame*, by taking
+  the right-hand one from the canonical state or forming them by
+  eigendecomposition. Both change how a drawn value is computed, which
+  `docs/MODEL.md` would have to re-validate, for about 2.8 ms a run.
+
+Why reuse is safe, checked rather than argued. The spacing a following frame
+asks for came out bit-identical frame to frame on every rung of
+`TIME_BASE_LADDER`, at run lengths from 30 minutes to 30 days and at 150,
+1 069 and 2 400 columns, 3 000 frames each - so reuse hits. A window drawn from
+kept propagators equals the run rebuilt and drawn afresh to the bit, through a
+change, both `record_change` shapes above and a new spacing
+(`test_a_window_drawn_from_kept_propagators_is_the_window_drawn_afresh`). Four
+mutations - a key without the settings, a key without the interval, nothing
+kept, a store that only grows - each fail a new test, and the settings-blind
+key also fails `test_anchored_matches_a_stepped_run` on drawn values.
+`tests/reference/test_canonical_evaluation.py` now hammers the canonical answer
+with `evaluate_anchored` calls as well.
+
+**`verify:` was rewritten at the close.** The commissioned grep wanted
+`drawn_window costs` with nothing between the two words, which
+`docs/MODEL.md`'s code formatting of the name never produces, and a command
+written since 2026-09-24 may not run `doc_check`, which `make check` runs
+anyway. The rewrite greps the formatted phrase and the line that keeps the
+propagators. `touches` lost `app/controller.py`, which needed no change, and
+gained the tests, `docs/ARCHITECTURE.md`, the rule that governs this module and `PL-PGZF`'s brief.

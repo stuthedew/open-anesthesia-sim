@@ -1274,6 +1274,188 @@ def test_an_anchored_window_refuses_bounds_the_run_has_not_reached() -> None:
         definition.evaluate_anchored(5.0, 1.0, 1.0)
 
 
+"""Keeping the chart's propagators from one frame to the next (`PL-CNCF`).
+
+A frame asks `evaluate_anchored` for nearly every propagator the frame before
+formed, so it keeps them. The claim has two halves and they are tested apart:
+that a window drawn from kept propagators is the window drawn afresh, bit for
+bit, and that they are kept at all - without the second, the first passes on a
+store that keeps nothing.
+"""
+
+CHART_SPACING_S = 900.0 / 1068
+"""A 15-minute time base across 1 069 columns, as the dashboard divides it."""
+
+WINDOW_OPENING_S = 1100.0
+WINDOW_CLOSING_S = 2000.0
+"""A 15-minute window ending at the run's reach, holding both its changes."""
+
+
+def _a_run_with_two_changes_in_view() -> tuple[AgentUptakeSystem, RunDefinition]:
+    """A sevoflurane run reaching 2000 s, changed at 1300 s and 1600 s.
+
+    The system comes back too, so a test can record a further change the way
+    the app layer does: the setter first, then the settings it now holds.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    definition = RunDefinition(
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+    )
+    definition.advance_to(CaseInstant(1300.0))
+    system.set_delivered_concentration_percent(Percent(2.0))
+    definition.record_change(system.equation_settings())
+    definition.advance_to(CaseInstant(1600.0))
+    system.set_fresh_gas_flow(FreshGasFlow(1.0))
+    definition.record_change(system.equation_settings())
+    definition.advance_to(CaseInstant(WINDOW_CLOSING_S))
+
+    return system, definition
+
+
+def _afresh(definition: RunDefinition) -> RunDefinition:
+    """The same run rebuilt from its own segments, so it holds nothing a window kept."""
+
+    first, *rest = definition.segments
+    twin = RunDefinition(first.settings, first.opening.state, opened_at_s=first.opening.instant_s)
+
+    for segment in rest:
+        twin.advance_to(segment.opening.instant_s)
+        twin.record_change(segment.settings)
+
+    twin.advance_to(definition.reached_s)
+
+    assert twin.segments == definition.segments
+
+    return twin
+
+
+def _bits(window: SampledWindow) -> list[tuple[str, ...]]:
+    """Every drawn value as its exact bits, so that even a zero's sign is compared."""
+
+    return [tuple(value.hex() for value in state.values) for state in window.states]
+
+
+def test_a_window_drawn_from_kept_propagators_is_the_window_drawn_afresh() -> None:
+    """Keeping propagators across frames moves no drawn value by so much as a bit.
+
+    Frame after frame of a window following the run, through each thing a
+    frame can meet: a change, which brings into view a stretch nothing was
+    kept for; two controls moved before one step, so the second replaces the
+    settings the first opened a stretch under; a dial moved and moved back
+    before one step, which drops that stretch; and a new time base, whose
+    spacing is one no propagator was kept for. The two middle ones are the
+    `record_change` shapes that change a run's settings at an instant it
+    already holds. Each frame is compared with the same run rebuilt from its
+    segments and drawn once.
+    """
+
+    system, definition = _a_run_with_two_changes_in_view()
+    spacing_s = CHART_SPACING_S
+
+    for frame in range(1, 13):
+        reach_s = CaseInstant(WINDOW_CLOSING_S + 0.2 * frame)
+        definition.advance_to(reach_s)
+
+        if frame == 3:
+            system.set_delivered_concentration_percent(Percent(3.0))
+            definition.record_change(system.equation_settings())
+
+        if frame == 6:
+            system.set_delivered_concentration_percent(Percent(4.0))
+            definition.record_change(system.equation_settings())
+            system.set_fresh_gas_flow(FreshGasFlow(2.0))
+            definition.record_change(system.equation_settings())
+
+        if frame == 8:
+            system.set_delivered_concentration_percent(Percent(5.0))
+            definition.record_change(system.equation_settings())
+            system.set_delivered_concentration_percent(Percent(4.0))
+            definition.record_change(system.equation_settings())
+
+        if frame == 10:
+            spacing_s = 2 * CHART_SPACING_S
+
+        start_s = reach_s - 1068 * spacing_s
+        drawn = definition.evaluate_anchored(start_s, reach_s, spacing_s)
+        afresh = _afresh(definition).evaluate_anchored(start_s, reach_s, spacing_s)
+
+        assert drawn.times_s == afresh.times_s
+        assert _bits(drawn) == _bits(afresh)
+
+
+def _counting_exponentials(monkeypatch: pytest.MonkeyPatch) -> list[float]:
+    """Count every matrix exponential the run definition forms, by its interval."""
+
+    formed: list[float] = []
+    exact = run_definition.matrix_exponential
+
+    def counting_exponential(matrix: Matrix, interval_s: float) -> Matrix:
+        formed.append(interval_s)
+
+        return exact(matrix, interval_s)
+
+    monkeypatch.setattr(run_definition, "matrix_exponential", counting_exponential)
+
+    return formed
+
+
+def test_a_window_drawn_again_forms_only_what_it_did_not_keep(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The propagators are kept, so the test above is not passing on a store that keeps nothing.
+
+    Counted rather than timed, as `test_a_window_reads_only_the_segments_it_covers`
+    counts: which matrix exponentials a frame forms is the claim, and a clock
+    would say the same thing less reliably.
+    """
+
+    _, definition = _a_run_with_two_changes_in_view()
+    formed = _counting_exponentials(monkeypatch)
+
+    definition.evaluate_anchored(WINDOW_OPENING_S, WINDOW_CLOSING_S, CHART_SPACING_S)
+
+    # Three stretches in view, two propagators each - the offset to its first
+    # grid column and the spacing - and one for each bound.
+    assert len(formed) == 3 * 2 + 2
+
+    formed.clear()
+    definition.evaluate_anchored(WINDOW_OPENING_S, WINDOW_CLOSING_S, CHART_SPACING_S)
+
+    assert formed == []
+
+    # A frame later, following the run: only the two bounds have moved. The
+    # window's left edge stays short of its next grid column, so the offset
+    # to the first column it draws in that stretch is the one already kept.
+    definition.advance_to(CaseInstant(WINDOW_CLOSING_S + 0.2))
+    definition.evaluate_anchored(WINDOW_OPENING_S + 0.2, WINDOW_CLOSING_S + 0.2, CHART_SPACING_S)
+
+    assert sorted(formed) == pytest.approx(
+        [WINDOW_OPENING_S + 0.2, WINDOW_CLOSING_S + 0.2 - 1600.0]
+    )
+
+
+def test_only_the_last_window_s_propagators_are_kept(monkeypatch: pytest.MonkeyPatch) -> None:
+    """What is kept is bounded by one window, rather than grown by every window drawn.
+
+    A window at another spacing and other bounds asks for none of the first
+    window's propagators, so after it the first is formed whole again: the
+    store was replaced, not added to, and a run drawn for hours holds no more
+    than one window's worth.
+    """
+
+    _, definition = _a_run_with_two_changes_in_view()
+    formed = _counting_exponentials(monkeypatch)
+
+    definition.evaluate_anchored(WINDOW_OPENING_S, WINDOW_CLOSING_S, CHART_SPACING_S)
+    first = sorted(formed)
+    definition.evaluate_anchored(WINDOW_OPENING_S - 100.0, WINDOW_CLOSING_S - 50.0, 1.0)
+    formed.clear()
+    definition.evaluate_anchored(WINDOW_OPENING_S, WINDOW_CLOSING_S, CHART_SPACING_S)
+
+    assert sorted(formed) == first
+
+
 """Why a fork opens at a keyframe, measured rather than asserted (`PL-TFX5`).
 
 `SimulationController.resumed_at` refuses an instant the run holds no keyframe

@@ -12,11 +12,14 @@ than one route.
 **What is tested, and why each half is needed.**
 
 - *The canonical answer is a function of the run definition alone.* One run is built and
-  then read; an identical run is hammered with arbitrary `state_at` and
-  `evaluate` calls as it is built. Every keyframe and every checkpoint must
-  agree **element for element**, not within a tolerance. This is what a cache,
-  a memoised propagator or a reused buffer would break, and each of those is a
-  reasonable-looking optimisation somebody will propose.
+  then read; an identical run is hammered with arbitrary `state_at`,
+  `evaluate` and `evaluate_anchored` calls as it is built. Every keyframe and
+  every checkpoint must agree **element for element**, not within a
+  tolerance. This is what a cache, a memoised propagator or a reused buffer
+  would break, and each of those is a reasonable-looking optimisation somebody
+  will propose. The chart's `evaluate_anchored` does keep the propagators it
+  forms, for the next frame to reuse (`PL-CNCF`), which is why the hammering
+  includes it: nothing it keeps may reach a canonical answer.
 - *A fork reproduces its parent exactly, wherever it was taken.* `ROADMAP.md`
   item 12 requires element-wise reproduction rather than agreement within a
   tolerance, and the canonical rule supplies it under one condition on where
@@ -247,6 +250,9 @@ def _query(definition: RunDefinition, probe: Random) -> None:
 
     start_s = probe.uniform(0.0, reach_s)
     definition.evaluate(start_s, probe.uniform(start_s, reach_s), probe.randint(1, 97))
+
+    start_s = probe.uniform(0.0, reach_s)
+    definition.evaluate_anchored(start_s, probe.uniform(start_s, reach_s), probe.uniform(1.0, 60.0))
 
 
 def _probe_instants(count: int = 200) -> tuple[float, ...]:
