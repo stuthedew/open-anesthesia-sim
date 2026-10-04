@@ -1127,7 +1127,7 @@ def test_a_fresh_branch_holds_nothing_to_destroy() -> None:
 
     trunk = _trunk_with_two_changes()
     fork_s = trunk.run_segments[-1].opening.instant_s
-    branch = BranchedCase(trunk).fork_at(CaseInstant(fork_s))
+    branch = BranchedCase(trunk).fork_at(fork_s)
 
     snapshot = branch.snapshot()
 
@@ -1528,7 +1528,7 @@ def test_an_axis_entirely_before_a_branch_s_fork_draws_nothing() -> None:
 
     trunk = _trunk_with_two_changes()
     fork_s = trunk.run_segments[-1].opening.instant_s
-    branch = trunk.resumed_at(CaseInstant(fork_s))
+    branch = trunk.resumed_at(fork_s)
 
     window = branch.drawn_window(0.0, fork_s / 2, 150)
 
@@ -1643,7 +1643,7 @@ def test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis() -> None:
     trunk = _trunk_with_two_changes()
     fork_s = trunk.run_segments[-1].opening.instant_s
 
-    branch = trunk.resumed_at(CaseInstant(fork_s))
+    branch = trunk.resumed_at(fork_s)
 
     # The clock is the case's: the branch stands at the fork instant, not at zero.
     assert branch.snapshot().elapsed_s == fork_s
@@ -1686,7 +1686,7 @@ def test_a_branch_continues_the_case_s_step_count_so_the_envelope_is_the_case_s(
     trunk = _trunk_with_two_changes()
     fork_s = trunk.run_segments[-1].opening.instant_s
 
-    branch = trunk.resumed_at(CaseInstant(fork_s))
+    branch = trunk.resumed_at(fork_s)
 
     assert branch._state.step_count == round(fork_s / MAXIMUM_SIMULATION_STEP_S)
     assert branch._state.simulation_step_s == MAXIMUM_SIMULATION_STEP_S
@@ -1707,7 +1707,7 @@ def test_a_branch_reproduces_its_parent_at_every_instant_they_share() -> None:
 
     trunk = _trunk_with_two_changes()
     fork_s = trunk.run_segments[-1].opening.instant_s
-    branch = trunk.resumed_at(CaseInstant(fork_s))
+    branch = trunk.resumed_at(fork_s)
 
     trunk.start()
     _advance_for(trunk, duration_s=20.0)
@@ -1755,7 +1755,7 @@ def test_a_branch_on_its_own_axis_would_not_reproduce_its_parent() -> None:
 
     trunk = _trunk_with_two_changes()
     fork_s = trunk.run_segments[-1].opening.instant_s
-    branch = trunk.resumed_at(CaseInstant(fork_s))
+    branch = trunk.resumed_at(fork_s)
 
     trunk.start()
     _advance_for(trunk, duration_s=60.0)
@@ -1811,7 +1811,7 @@ def test_a_branch_steps_to_where_its_parent_stepped() -> None:
     at_end = trunk.snapshot()
     fork_s = trunk.run_segments[-1].opening.instant_s
 
-    branch = trunk.resumed_at(CaseInstant(fork_s))
+    branch = trunk.resumed_at(fork_s)
     branch.start()
     _advance_for(branch, duration_s=at_end.elapsed_s - fork_s)
 
@@ -1847,7 +1847,7 @@ def test_a_branch_s_drawn_window_is_on_the_case_s_axis() -> None:
 
     trunk = _trunk_with_two_changes()
     fork_s = trunk.run_segments[-1].opening.instant_s
-    branch = trunk.resumed_at(CaseInstant(fork_s))
+    branch = trunk.resumed_at(fork_s)
     branch.start()
     _advance_for(branch, duration_s=10.0)
 
@@ -1901,7 +1901,7 @@ def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from() -> No
 
     fork_s = trunk.run_segments[-1].opening.instant_s
     stop_s = trunk.snapshot().elapsed_s
-    branch = trunk.resumed_at(CaseInstant(fork_s))
+    branch = trunk.resumed_at(fork_s)
 
     branch.start()
     _advance_for(branch, duration_s=stop_s - fork_s)
@@ -1942,7 +1942,7 @@ def test_a_control_moved_before_a_branch_steps_reopens_its_first_segment() -> No
 
     trunk = _trunk_with_two_changes()
     fork_s = trunk.run_segments[-1].opening.instant_s
-    branch = trunk.resumed_at(CaseInstant(fork_s))
+    branch = trunk.resumed_at(fork_s)
 
     assert len(branch.run_segments) == 1
 
@@ -1972,7 +1972,7 @@ def test_a_branch_carries_the_case_s_delivered_and_exhausted_totals() -> None:
 
     trunk = _trunk_with_two_changes()
     fork_s = trunk.run_segments[-1].opening.instant_s
-    branch = trunk.resumed_at(CaseInstant(fork_s))
+    branch = trunk.resumed_at(fork_s)
 
     at_fork = branch.snapshot()
 
@@ -2205,7 +2205,7 @@ def test_resetting_a_branch_returns_it_to_its_fork_rather_than_to_zero() -> None
 
     trunk = _trunk_with_two_changes()
     fork_s = trunk.run_segments[-1].opening.instant_s
-    branch = trunk.resumed_at(CaseInstant(fork_s))
+    branch = trunk.resumed_at(fork_s)
     at_fork = branch.snapshot()
 
     branch.start()
@@ -2264,7 +2264,7 @@ def test_a_case_forks_at_every_instant_the_trunk_offers() -> None:
     assert case.fork_points_s == (0.0, *(change.elapsed_s for change in timeline))
 
     for elapsed_s in case.fork_points_s:
-        branch = case.fork_at(CaseInstant(elapsed_s))
+        branch = case.fork_at(elapsed_s)
 
         assert branch.run_segments[0].opening.instant_s == elapsed_s
         assert branch.snapshot().elapsed_s == elapsed_s
@@ -2284,8 +2284,8 @@ def test_a_case_holds_two_branches_taken_at_one_decision_point() -> None:
     case = BranchedCase(_trunk_with_two_changes())
     fork_s = case.fork_points_s[-1]
 
-    coasting = case.fork_at(CaseInstant(fork_s))
-    holding = case.fork_at(CaseInstant(fork_s))
+    coasting = case.fork_at(fork_s)
+    holding = case.fork_at(fork_s)
 
     assert case.branches == (coasting, holding)
     assert coasting is not holding
@@ -2311,7 +2311,7 @@ def test_forking_a_case_repeatedly_leaves_the_trunk_where_it_was() -> None:
     segments_before = case.trunk.run_segments
 
     for elapsed_s in case.fork_points_s:
-        branch = case.fork_at(CaseInstant(elapsed_s))
+        branch = case.fork_at(elapsed_s)
         branch.set_cardiac_output(CardiacOutput(2.5))
         branch.start()
         _advance_for(branch, duration_s=30.0)
@@ -2378,8 +2378,8 @@ def test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork() -> 
 
     assert trunk.snapshot().cardiac_output_l_min == 6.5
 
-    at_earlier_fork = case.fork_at(CaseInstant(before_s)).snapshot()
-    at_later_fork = case.fork_at(CaseInstant(after_s)).snapshot()
+    at_earlier_fork = case.fork_at(before_s).snapshot()
+    at_later_fork = case.fork_at(after_s).snapshot()
 
     assert at_earlier_fork.cardiac_output_l_min == 4.2
     assert at_later_fork.cardiac_output_l_min == 6.5
@@ -2401,7 +2401,7 @@ def test_a_branch_cannot_change_its_agent_out_from_under_the_case() -> None:
 
     trunk = _trunk_with_two_changes()
     case = BranchedCase(trunk)
-    branch = case.fork_at(CaseInstant(case.fork_points_s[-1]))
+    branch = case.fork_at(case.fork_points_s[-1])
 
     with pytest.raises(SimulationConfigurationError, match="carries the agent of the case"):
         branch.set_agent("desflurane")

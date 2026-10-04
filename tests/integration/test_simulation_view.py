@@ -5060,3 +5060,37 @@ def test_a_vanished_fork_instant_leaves_nothing_selected(application: QApplicati
     assert len(view.runs) == 1
     assert case.branches == ()
     assert panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+
+
+def test_a_fork_instant_still_offered_stays_selected_when_the_offer_grows(
+    application: QApplication,
+) -> None:
+    """The other half of `PL-J12Z`: a rebuilt list keeps a choice it still offers.
+
+    A running trunk adds a keyframe at each setting change, and the selector
+    is rebuilt when one appears. It holds each instant as a plain `float`, so
+    `set_offer` looks the reader's choice up as one: `selected_instant_s`
+    builds a new `CaseInstant`, which `findData` matches only by identity, so
+    handed over as that it is found nowhere and the choice is dropped
+    (`PL-CN5S`).
+    """
+
+    trunk = SimulationController()
+    trunk.start()
+    _advance_to(trunk, 60.0)
+    trunk.pause()
+    original_flow = trunk.snapshot().fresh_gas_flow_l_min
+    trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
+    case = BranchedCase(trunk)
+    view = _case_view(application, case)
+    panel = view._fork_panel
+    panel.point_selector.setCurrentIndex(panel.point_selector.findData(60.0))
+
+    trunk.start()
+    _advance_to(trunk, 120.0)
+    trunk.pause()
+    trunk.set_fresh_gas_flow(FreshGasFlow(original_flow))
+    view.present(False)
+
+    assert case.fork_points_s == (0.0, 60.0, 120.0)
+    assert panel.selected_instant_s() == 60.0

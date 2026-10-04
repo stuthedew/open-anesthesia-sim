@@ -100,3 +100,21 @@ after construction without a check, to decide with `PL-LBQY`), `PL-7N8P`
 (`CaseInstant` admits `True` and lets `OverflowError` escape, to decide with
 `PL-LLMN`) and `PL-848D` (the step's and the flows' type refusals brought to
 the same shape).
+
+The third pass mutated the change and found five mutations the suite let
+through: four that `mypy --strict` refuses in `src/`, and one it cannot see,
+the fork panel handing `findData` the `CaseInstant` rather than its `float`,
+which drops a reader's chosen fork point whenever the offer grows. That one now
+has a test (`test_a_fork_instant_still_offered_stays_selected_when_the_offer_grows`),
+as do three of mypy's (`test_a_state_keeps_the_checked_types_through_every_move`).
+Twenty-one test lines that rebuilt an instant which was already a `CaseInstant`
+were unwrapped, so those tests hold that what `fork_points_s` and a keyframe's
+`instant_s` hand out, `fork_at` and `resumed_at` accept. Kept against the
+pass's two nits: the seven tests that build only the type, in the test file of
+the run they protect (`test_an_opening_no_case_reaches_cannot_be_built` and its
+kin), because each keeps beside that run why its input is refused - a
+non-finite opening would propagate `nan`, and `PL-73ZN`'s opening past the
+envelope - at no cost but a duplicate of the type's own test; and
+`RunDefinition`'s own `require_case_instant`, which the opening's `Keyframe`
+would also refuse, so that the refusal names `opened_at_s`, the parameter the
+caller used.

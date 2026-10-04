@@ -31,11 +31,11 @@ by hand is how to build those classes at their defaults, `RECEIVERS`, and a
 function taking the step that this cannot call fails the test by name rather
 than going untested. A function that takes a quantity under another name -
 `RunDefinition`'s `opened_at_s` - is reached only through the ones that use
-the guard's; one that takes an instant as a plain `float` - `state_at`, which
-the run's own opening and reach bound - is behind no guard here. A constructor
-counts where it checks or computes - written by hand, or a dataclass's with a
-`__post_init__` - and not where it only stores, as `app/controller.py`'s
-`ResumePoint` does.
+the guard's; one that takes an instant as a plain `float` - `state_at` and
+`segment_at`, which the run's own opening and reach bound - is behind no guard
+here. A constructor counts where it checks or computes - written by hand, or a
+dataclass's with a `__post_init__` - and not where it only stores, as
+`app/controller.py`'s `ResumePoint` does.
 
 **Drawn, and the edges every time.** Hypothesis draws each value across and
 beyond every bound the two modules declare, derandomized, so a red run

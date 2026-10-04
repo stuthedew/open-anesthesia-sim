@@ -281,12 +281,7 @@ def _standings(
     stopped_at_cap: bool = False,
     run_failed: bool = False,
 ) -> BookmarkStandings:
-    """One run's standings on that set, defaulting to a run that has just opened.
-
-    The cap is the model's own rather than a number written here, so a test
-    that means "not at the cap" cannot come to disagree with the run length
-    `core/supported_ranges.py` supports.
-    """
+    """One run's standings on that set, defaulting to a run that has just opened."""
 
     return marks.standings(
         reached_instants_s=reached_instants_s,

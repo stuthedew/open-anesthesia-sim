@@ -7,6 +7,7 @@ from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     AlveolarVentilation,
     CardiacOutput,
+    CaseInstant,
     FreshGasFlow,
     StepCount,
     maximum_step_count,
@@ -224,6 +225,30 @@ def test_a_state_refuses_a_count_not_built_as_a_step_count(step_count: int) -> N
 
     with pytest.raises(TypeError, match="step_count of .* was not built as StepCount"):
         SimulationState(step_count=step_count)  # type: ignore[arg-type]
+
+
+def test_a_state_keeps_the_checked_types_through_every_move() -> None:
+    """`advance` and `reset` store a `StepCount`, and `elapsed_s` is a `CaseInstant`.
+
+    Arithmetic on either type returns the plain number, so a count one step
+    on, or the product that is the clock, carries no proof until the state
+    builds it as the type again; a run that stored the plain one would hand
+    an unchecked value to every reader of the state (`PL-CN5S`).
+    """
+
+    state = SimulationState()
+
+    assert type(state.elapsed_s) is CaseInstant
+
+    state.advance(SimulationStep(0.1))
+
+    assert type(state.step_count) is StepCount
+    assert type(state.elapsed_s) is CaseInstant
+
+    state.reset()
+
+    assert type(state.step_count) is StepCount
+    assert type(state.elapsed_s) is CaseInstant
 
 
 def test_rejects_a_step_count_with_no_step_to_multiply_it_by() -> None:

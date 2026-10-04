@@ -795,7 +795,7 @@ def test_a_run_may_reach_the_last_step_it_is_allowed_to_take(simulation_step_s: 
         simulation_step_s=SimulationStep(simulation_step_s),
     ).elapsed_s
 
-    definition.advance_to(CaseInstant(last_step_s))
+    definition.advance_to(last_step_s)
 
     assert definition.reached_s == last_step_s
 
