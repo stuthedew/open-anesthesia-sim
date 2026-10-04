@@ -133,6 +133,33 @@ def test_the_check_name_is_the_display_name_where_a_job_declares_one(tmp_path: P
     assert jobs[0].job_id == "checks"
 
 
+@pytest.mark.parametrize(
+    "spelling", ["quality gate  # the gate", "'quality gate'", '"quality gate" # the gate']
+)
+def test_the_display_name_is_the_value_yaml_reads_on_the_keys_line(
+    tmp_path: Path, spelling: str
+) -> None:
+    """A comment is no part of a plain name, and a quoted one is read inside its quotes.
+
+    Each was read off the key's line by splitting it at the colon, which kept a
+    trailing comment in the check name (YAML 1.2.2 § 6.6) - a name branch
+    protection then reports as both unrequired and missing (`PL-TMX9`).
+    """
+    directory = _workflows(
+        tmp_path, quality=f"on: pull_request\njobs:\n  checks:\n    name: {spelling}\n"
+    )
+    assert [job.check_name for job in rcc.reporting_jobs(directory)] == ["quality gate"]
+
+
+def test_a_quoted_display_name_holding_an_escape_is_refused(tmp_path: Path) -> None:
+    """YAML unquotes `''` to `'`, which a split at the colon left doubled (`PL-TMX9`)."""
+    directory = _workflows(
+        tmp_path, quality="on: pull_request\njobs:\n  checks:\n    name: 'owner''s gate'\n"
+    )
+    with pytest.raises(rcc.Undecidable, match="holding an escape"):
+        rcc.reporting_jobs(directory)
+
+
 def test_steps_are_not_mistaken_for_jobs(tmp_path: Path) -> None:
     """A `run:` block holds colons and list items; none of them is a job key."""
     directory = _workflows(

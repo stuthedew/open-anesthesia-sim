@@ -6390,6 +6390,12 @@ def _refused(read: Callable[[], object]) -> object:
         return f"declined: {str(unread).partition(',')[0]}"
 
 
+def _job_names(*name: str) -> list[str]:
+    """The check names `required_checks_check` reads off a `checks` job with these lines."""
+    lines = ["jobs:", "  checks:", *name, "    runs-on: ubuntu-latest"]
+    return [job.check_name for job in rcc._jobs(lines, "quality.yml")]
+
+
 #: A rule's front matter whose description is a literal block holding `---`.
 INDENTED_RULE = '---\ndescription: |\n  ---\n  more\npaths:\n  - "/src/**"\n---\nbody\n'
 
@@ -6637,6 +6643,30 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "required checks, a flow collection carried past its line is refused by name": (
         lambda _: _refused(lambda: rcc._triggers(["on: [push,", "  pull_request]", "jobs:"])),
         "declined: `on:` is a flow collection carried past the key's line",
+    ),
+    # A job's display name (`PL-TMX9`), read through `_job_name`: the check name
+    # is a plain scalar on the key's line, and a value YAML carries past it is
+    # refused by name rather than reconciled as its first line.
+    "required checks, a job name in a folded block is refused by name": (
+        lambda _: _refused(lambda: _job_names("    name: >", "      quality gate")),
+        "declined: job `checks` writes its `name:` as a block scalar (`>`)",
+    ),
+    "required checks, a job name carried onto the next line is refused by name": (
+        lambda _: _refused(lambda: _job_names("    name: quality", "      gate")),
+        "declined: job `checks` writes its `name:` as a plain scalar carried onto the line "
+        "after it",
+    ),
+    "required checks, a job name opening on the line after the key is refused by name": (
+        lambda _: _refused(lambda: _job_names("    name:", "      quality gate")),
+        "declined: job `checks` writes its `name:` as a plain scalar opening on the line after it",
+    ),
+    "required checks, a job name quoted across lines is refused by name": (
+        lambda _: _refused(lambda: _job_names('    name: "quality', '      gate"')),
+        "declined: job `checks` writes its `name:` as a quoted scalar carried past the key's line",
+    ),
+    "required checks, a job name a comment line follows is read whole": (
+        lambda _: _job_names("    name: quality gate", "      # why"),
+        ["quality gate"],
     ),
 }
 
