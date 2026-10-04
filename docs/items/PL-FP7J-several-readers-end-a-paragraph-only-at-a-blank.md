@@ -3,12 +3,14 @@ id: PL-FP7J
 title: Several readers end a paragraph only at a blank line - release.CODE_SPAN_PATTERN under doc_check's _code_spans and _without_code, and checks' _PARAGRAPH, _cued_paragraphs and _marks_recommendation - so a code span, an emphasis run or a cued clause reads across a list item, block quote, heading or HTML block; live in five closed briefs, no wrong verdict today
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/markdown.py, tools/doc_check.py, subprojects/docket/tests, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1358
 payoff: a stray backtick or asterisk costs its own statement and no more, so the block after it is still read for citations, TeX and recommendation markers
 verify: grep -qF '"paragraph ends, ' tests/unit/test_doc_check.py
 recurrences: 2026-10-04 PL-VQBY withdrawn 2026-10-04 PL-R417, 2026-10-04 PL-4ZDZ withdrawn 2026-10-04 PL-R417

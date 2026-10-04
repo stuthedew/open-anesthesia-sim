@@ -3,12 +3,14 @@ id: PL-TY1Z
 title: docket's checks.SUPERSEDED needs a literal space after its keyword, so a [superseded marker a soft break wraps before its date is not recognised and the passage it retires is read as standing; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1358
 payoff: a passage its writer marked superseded is read as retired however the marker wraps, so no check advises on a state the brief has already left
 verify: grep -qF '"superseded marker, ' tests/unit/test_doc_check.py
 ---

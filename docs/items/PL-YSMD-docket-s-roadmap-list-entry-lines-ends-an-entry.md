@@ -3,12 +3,14 @@ id: PL-YSMD
 title: docket's roadmap.list_entry_lines ends an entry at a blank line, opens one at an ordered marker past 1 inside a paragraph, and reads entries inside an HTML comment or a fence but none on an empty marker line, so gates, scopes, dead ends and release notes read entries CommonMark does not; live in form, no answer changed
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/tests, tests/unit
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/tests, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1358
 payoff: a gate, scope, dead-end or release-notes entry is read as the item the rendered page shows, so none is counted that is not there or dropped that is
 verify: grep -qF '"list entries, ' tests/unit/test_doc_check.py
 recurrences: 2026-10-04 PL-HKHP withdrawn 2026-10-04 PL-R417, 2026-10-04 PL-BLKJ withdrawn 2026-10-04 PL-R417, 2026-10-04 PL-J0C6 withdrawn 2026-10-04 PL-R417

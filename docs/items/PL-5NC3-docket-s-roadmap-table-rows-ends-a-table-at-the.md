@@ -3,12 +3,14 @@ id: PL-5NC3
 title: docket's roadmap.table_rows ends a table at the first row without outer pipes and silently drops the rows after it, and splits a cell on an escaped pipe, so the version table and the timeline would read short; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/tests, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1358
 payoff: the version table and the timeline are read row for row as GitHub renders them, so a row without its outer pipes or holding an escaped pipe drops nothing
 verify: grep -qF '"table rows, ' tests/unit/test_doc_check.py
 ---

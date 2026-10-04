@@ -3,12 +3,14 @@ id: PL-WF35
 title: docket's prerequisite cue patterns - checks._cue_pattern, PROSE_DEPENDENCY, CLOSED_DEPENDENCY and the continuation - refuse a line break between cue and id, so a waits-on clause wrapped before its id is never read, and PL-KZ99's dependency on an item done since 2026-09-17 raises no advisory; live
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests, tests/unit, docs/items/PL-KZ99-store-each-agent-s-molar-mass-and-liquid.md, docs/items/PL-BYMX-bin-docket-stranded-compares-branches-by-item.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1358
 payoff: a wait wrapped before its id is read like one on a single line, so a brief still waiting on finished work, or naming an undeclared prerequisite, is advised on wherever its line breaks
 verify: grep -qF '"prerequisite cues, ' tests/unit/test_doc_check.py
 ---

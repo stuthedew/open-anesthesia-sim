@@ -3,12 +3,14 @@ id: PL-HKHP
 title: docket's heading scans - roadmap's table_rows, baseline_heading, _subsection_ids, _subsection_text, _section_end and parse_milestones, checks._labels and notes.read - take each physical line a heading pattern matches for a heading, so a ## line inside a multi-line HTML comment or a fence opens a section and a setext heading opens none; latent
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
-touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/notes.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/tests, tests/unit
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/notes.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/README.md, subprojects/docket/tests, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1358
 payoff: a commented-out or fenced heading opens no section and a setext one opens its own, so milestones, working-notes threads and answers are read from the headings the page shows
 verify: grep -qF '"docket headings, ' tests/unit/test_doc_check.py
 ---

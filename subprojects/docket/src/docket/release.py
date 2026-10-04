@@ -582,8 +582,11 @@ def release_notes(milestone: Milestone, today: date) -> str:
 #: has needed. A blank line closes the paragraph, so a span open across one is
 #: not a span, which keeps a stray backtick from pairing with a run paragraphs
 #: below and reading every span after it inside out. The other places a
-#: paragraph ends - a heading, a list item - are not read. The pattern carries
-#: no flags, so `verify.NON_CODE_RE` takes it into an alternation as it stands.
+#: paragraph ends - a heading, a list item, a block quote - are not the
+#: pattern's to read, so a reader of a whole document applies it a statement
+#: at a time, as `markdown.statement_lines` cuts them (`PL-FP7J`). The pattern
+#: carries no flags, so `verify.NON_CODE_RE` takes it into an alternation as it
+#: stands.
 CODE_SPAN_PATTERN = (
     r"(?<!`)(?P<run>`+)(?!`)(?P<content>(?:(?!\n[ \t]*\n)[\s\S])+?)(?<!`)(?P=run)(?!`)"
 )

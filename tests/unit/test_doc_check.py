@@ -6906,6 +6906,10 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         ],
         ["code"],
     ),
+    "paragraph ends, a TeX delimiter in the list item below a stray backtick": (
+        lambda root: _math_errors(root / "repo", "docs/NOTE.md", "Run `a\n- \\(F_D\\) b` here.\n"),
+        [TEX_ERROR.format("\\("), TEX_ERROR.format("\\)")],
+    ),
     # The headings docket reads sections, threads and answers under (`PL-HKHP`):
     # none inside a comment or a fence, and a setext heading is one.
     "docket headings, a baseline heading inside a comment is none": (

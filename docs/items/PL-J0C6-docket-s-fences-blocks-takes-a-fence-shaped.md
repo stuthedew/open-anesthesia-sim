@@ -3,12 +3,14 @@ id: PL-J0C6
 title: docket's fences.blocks takes a fence-shaped line at any indentation and tracks no container, so a backtick run indented four or more inside a paragraph opens a fence, a fence in a list item runs past the item's end, and a fence behind a block quote's > opens none; live in PL-9TNJ's brief, nothing fires today
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/fences.py, subprojects/docket/src/docket/markdown.py, subprojects/docket/tests, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1358
 payoff: every check that skips a fenced literal skips exactly the fences GitHub renders, inside block quotes and list items as outside them
 verify: grep -qF '"fences, ' tests/unit/test_doc_check.py
 ---
