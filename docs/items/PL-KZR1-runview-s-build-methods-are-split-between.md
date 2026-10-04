@@ -3,14 +3,16 @@ id: PL-KZR1
 title: RunView's build_* methods are split between handing back what the run built once (build_notice, build_off_scale_notice, build_sidebar_panels) and laying its live widgets into a new container on each call (build_transport_row, build_readout_section, build_parameter_controls), so a second call to one of those three takes its widgets off screen or deletes them, and nothing in the names says which
 priority: P2
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: sidebar-panel-rebuild
-touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py, tools/literal_home_check.py, docs/items/PL-TH35-define-the-common-view-contract-every-app-view.md
 blocked-by: PL-N67T
 added: 2026-09-21
+closed: 2026-10-04
+pr: 1356
 payoff: a second call to any of RunView's build_ methods leaves the run's widgets on screen, so no caller has to know which of them is safe to call twice
-verify: grep -q 'def test_a_second_build_call_leaves_each_run_widget_on_screen' tests/integration/test_simulation_view.py
+verify: grep -q 'def test_a_second_build_call_leaves_each_run_widget_on_screen' tests/integration/test_simulation_view.py && grep -q 'def _lay_out_transport_row' src/anesthesia_sim/app/run_view.py && grep -q 'def _lay_out_readout_section' src/anesthesia_sim/app/run_view.py && grep -q 'def _lay_out_parameter_controls' src/anesthesia_sim/app/run_view.py
 ---
 
 **Problem.** RunView's build_* methods are split between handing back what the run built once (build_notice, build_off_scale_notice, build_sidebar_panels) and laying its live widgets into a new container on each call (build_transport_row, build_readout_section, build_parameter_controls), so a second call to one of those three takes its widgets off screen or deletes them, and nothing in the names says which
@@ -59,3 +61,45 @@ each of the three leaves its widgets on screen and in the view, which
 the call and after it. Whether the `build_` prefix stays, now that none of the
 eight builds on a call, is this item's own call: a rename goes through every
 `SimulationView` call site.
+
+**Started 2026-10-04; stopped for length before the fix.** The test is
+committed ahead of the fix, which is decided and written down here for
+the session that picks it up.
+
+- *The test.* `test_a_second_build_call_leaves_each_run_widget_on_screen`
+  fails on the unfixed code with "a second call hid the transport row".
+  Each case names a widget that has to be shown before the call: the Start
+  button, the substance heading and the fresh gas flow slider. The lone
+  run's name and the agent chip are hidden in that state, so the test holds
+  them to the page alone.
+- *The fix.* Lay the three containers out once, in the constructor, beside
+  `self._sidebar_panels = self._lay_out_sidebar_panels()`.
+  `_lay_out_transport_row`, `_lay_out_readout_section` and
+  `_lay_out_parameter_controls` take the three methods' bodies, and the
+  methods return what they stored. `RunView`'s docstring already says the
+  build methods return widgets for `SimulationView` to place; it states the
+  rule there once: the same widget on every call.
+- *The `build_` prefix stays.* `PL-TH35` (the common View contract) decides
+  what a view hands an area, so these names are rewritten there, and a
+  rename now would be done twice. It would also reach `simulation_view.py`,
+  `tools/contrast_check.py` and `ROADMAP.md`. `PL-TH35`'s file carries the
+  case against the prefix, for that decision.
+- *Two more files, both in `touches`.* `tools/literal_home_check.py`'s
+  baseline keys four literals by the method holding them
+  (`RunView.build_transport_row` "8", `RunView.build_readout_section` "12"
+  and "4", `RunView.build_parameter_controls` "12"). They move to the
+  `_lay_out_` names. `PL-TH35` takes the note.
+- *Then.* Revert each of the three fixes in turn and see the test fail on
+  it. Run `make check` and `bin/docket verify --self PL-KZR1`, close the
+  item out, and open the pull request. It holds for the owner's read
+  (`src/`, `tests/`).
+- *`verify:` rewritten.* The grep for the test's name alone passed once the
+  test was committed, before any fix. `bin/docket check` refused that, so
+  `verify:` now also greps for the three `_lay_out_` methods the fix adds.
+
+**Done 2026-10-04, as planned above.** Each of the three fixes, reverted
+alone, fails the test on its own case: "a second call hid the transport
+row", "the readout section", "the setting controls". `RunView`'s docstring
+states the rule once, so `build_sidebar_panels` no longer repeats it. The
+`literal_home_check.py` baseline still holds 42 literals. Four of them are
+now keyed under the `_lay_out_` methods that contain them.
