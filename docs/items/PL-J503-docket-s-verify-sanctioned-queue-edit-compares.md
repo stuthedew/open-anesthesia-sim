@@ -3,12 +3,14 @@ id: PL-J503
 title: docket's verify.sanctioned_queue_edit compares a recurrences: value one diff line at a time, so a capture's append to a value continued on an indented line reads as an ordinary edit outside touches and fails verify; latent
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests, tests/unit
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-04 triage pass
 added: 2026-10-04
+closed: 2026-10-04
+pr: 1353
 payoff: a capture's recurrence appended to a value continued on an indented line is read as the append it is, so following the capture rule never fails verify
 verify: grep -qF '"queue edit, ' tests/unit/test_doc_check.py
 ---
@@ -24,3 +26,16 @@ verify: grep -qF '"queue edit, ' tests/unit/test_doc_check.py
 **Generator check.** A member of `PL-R417`: the reader takes a physical line for a statement its format continues, the fact that head names.
 
 **Done when.** `sanctioned_queue_edit` reads the item before and after each of the scope's changes through docket's own front-matter reader, and sanctions a change only where `recurrences:` gained entries at its end and nothing else that reader returns moved, whatever lines carry the value; a `queue edit, ...` case in `CONTINUED_STATEMENTS` pins it.
+
+**Built 2026-10-04 (`#1353`).** `sanctioned_queue_edit` reads each of the
+scope's changes to the item - each commit naming it against its first parent,
+or the branch against its fork point where none does - as two whole copies,
+through `_front_matter_pairs` and `_split_list`, the fold `parse_item` uses
+(`_recurrence_appended`, `_recurrences_grew`). It sanctions a change only where
+`recurrences:` gained whole entries at its end, each matching
+`RECURRENCE_ENTRY`, the earlier ones unchanged, and no other field, unread line
+or body line moved; `RECURRENCE_LINE_RE` is gone. Two guard cases, `queue edit,
+...` in `CONTINUED_STATEMENTS`, the first failing on main's reader, and
+`test_an_append_onto_a_value_continued_on_an_indented_line_is_sanctioned` in
+docket's tests, which also holds a second append in its own commit and an
+append beside a status edit.

@@ -3327,7 +3327,10 @@ def _check_tag_version_files(
     if releases:
         for version, name in releases:
             text = run(["show", f"refs/tags/{name}:pyproject.toml"], root)
-            declared = version_in(text) if answered(text) else ""
+            try:
+                declared = version_in(text) if answered(text) else ""
+            except ValueError:  # not TOML, which reads nothing rather than no version
+                declared = ""
             if not declared:
                 unread.append(name)
             elif declared == version:
@@ -3353,8 +3356,9 @@ def _check_tag_version_files(
     if unread:
         report.declined.append(
             f"release tags: no version could be read from the pyproject.toml at "
-            f"{', '.join(unread)} - the file is absent or declares none at that commit, or git "
-            "did not answer - so whether each sits on its own release's commit is unknown"
+            f"{', '.join(unread)} - the file is absent, is not TOML or declares none at that "
+            "commit, or git did not answer - so whether each sits on its own release's commit "
+            "is unknown"
         )
 
 
