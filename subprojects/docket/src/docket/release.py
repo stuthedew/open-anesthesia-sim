@@ -660,7 +660,7 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
     last line of the bullet's text, and the text is the bullet's own paragraph,
     its wrapped lines joined by a space. Read through
     `roadmap.document_entry_lines`, section by section, and
-    `roadmap.statement_lines` within the bullet (`PL-CL8R`, `PL-R417`): an
+    `markdown.statement_lines` within the bullet (`PL-CL8R`, `PL-R417`): an
     indented line carries a bullet's paragraph on, as CommonMark reads it
     (0.31.2 § 5.2), so a title wrapped before its reference is one bullet with
     one reference, where a line at a time read it as none and a writer appended
@@ -670,7 +670,8 @@ def notes_bullets(text: str, unread: list[UnreadEntry]) -> list[tuple[int, int, 
     since neither where it ends nor what it ends with can be read.
     """
     # A runtime import, since `roadmap` imports this module.
-    from .roadmap import document_entry_lines, statement_lines
+    from .markdown import statement_lines
+    from .roadmap import document_entry_lines
 
     lines = text.split("\n")
     declined: list[UnreadEntry] = []

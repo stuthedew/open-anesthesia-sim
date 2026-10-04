@@ -29,6 +29,7 @@ from pathlib import Path
 from . import fences
 from .config import Config
 from .instructions import Assertion
+from .markdown import statement_lines
 from .model import (
     CLOSED_STATUSES,
     EFFORTS,
@@ -61,7 +62,7 @@ from .release import (
     unrecorded_milestones,
     version_key,
 )
-from .roadmap import SENTENCE_BREAK, MilestoneStates, statement_lines
+from .roadmap import SENTENCE_BREAK, MilestoneStates
 from .shell import Clause, Word, shell_words
 from .store import ID_PATTERN, ID_RE, filename_for
 from .vcs import (
@@ -3283,7 +3284,7 @@ def _passage(body: str, position: int) -> tuple[int, int]:
     are separate claims: marking one instance in a list of them says nothing
     about the rest.
 
-    Each is a statement as `roadmap.statement_lines` reads one, so a passage
+    Each is a statement as `markdown.statement_lines` reads one, so a passage
     goes on wherever CommonMark carries its paragraph on (`PL-XYJF`): a line
     opening `17. ` or a pipe, under a line of the paragraph, began a passage of
     its own, and the superseded marker above it covered nothing below. A fenced
@@ -3301,10 +3302,7 @@ def _passages(body: str) -> list[tuple[int, int]]:
     starts = [0]
     for line in body.splitlines(keepends=True):
         starts.append(starts[-1] + len(line))
-    spans = [
-        (starts[first], starts[end])
-        for first, end in statement_lines(body.splitlines(), fences.fenced_lines(body))
-    ]
+    spans = [(starts[first], starts[end]) for first, end in statement_lines(body.splitlines())]
     spans += ((starts[block.start], starts[block.end + 1]) for block in fences.blocks(body))
     return spans
 
