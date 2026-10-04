@@ -180,12 +180,20 @@ def _triggers(lines: list[str]) -> set[str]:
     sequence (`on: [push, pull_request]`), and a bare scalar (`on: push`).
 
     Raises `Undecidable` on a path filter under a pull-request trigger, which
-    only the block mapping can carry (`PL-NWSK`).
+    only the block mapping can carry (`PL-NWSK`), and on a flow collection YAML
+    carries past the key's line (`PL-R417`): read from its first line,
+    `on: [push,` over `pull_request]` reported nothing onto a pull request.
     """
     for index, line in enumerate(lines):
         if _key_at(line, 0) != "on":
             continue
         inline = line.strip().split(":", 1)[1].strip()
+        opened = inline.count("[") + inline.count("{")
+        if inline[:1] in "[{" and opened > inline.count("]") + inline.count("}"):
+            raise Undecidable(
+                "`on:` is a flow collection carried past the key's line, which this parser "
+                "does not join - write it on one line, or as a block mapping"
+            )
         if inline.startswith("["):
             return {
                 name.strip().strip("'\"") for name in inline.strip("[]").split(",") if name.strip()
