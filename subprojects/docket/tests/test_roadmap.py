@@ -24,11 +24,14 @@ from docket.roadmap import (
     FREEZE,
     IMPLEMENT,
     IN_SCOPE,
+    LAZY_ENTRY,
     OUT_OF_SCOPE,
     RELEASE,
     SCOPE,
     UNPLACED,
+    UnreadEntry,
     baseline_heading,
+    list_entry_lines,
     milestone_scope,
     milestone_states,
     parse_milestones,
@@ -1257,6 +1260,108 @@ def test_a_timeline_that_does_not_parse_says_so_rather_than_stating_a_step() -> 
     stated = next(line for line in _digest(plan).splitlines() if line.startswith("Plan:"))
 
     assert "does not parse cleanly" in stated
+
+
+# --- an entry the list walker cannot read whole (`PL-MFVV`) ------------------
+
+#: The fixture's pair, its second id wrapped to the margin: CommonMark reads
+#: `PL-GHJK` into the entry (0.31.2 § 5.2), and the walker ends it at the margin.
+LAZY_GATE = ROADMAP.replace("- PL-BCDF **and PL-GHJK** (S)", "- PL-BCDF **and**\nPL-GHJK (S)")
+#: The fixture's scope written as a list, its declaration wrapped to the margin.
+LAZY_SCOPE = ROADMAP.replace(
+    "A displayed clinical unit (queue item PL-MNPQ).",
+    "1. **A displayed clinical unit**, in a title long enough to wrap\n(queue item PL-MNPQ).",
+)
+
+
+def _line_of(text: str, opening: str) -> int:
+    """The 1-based number of the one line of `text` that opens with `opening`."""
+    (number,) = (n for n, line in enumerate(text.splitlines(), 1) if line.startswith(opening))
+    return number
+
+
+def test_the_walker_declines_a_lazy_continuation_by_name() -> None:
+    """An entry carried on from the margin is refused by name, never read short.
+
+    Without a list to put it on the walker raises before handing the entry
+    over; given one, it records the line and yields every entry as far as it
+    could read it, so the doubtful line costs the reader nothing it could read.
+    """
+    lines = ["### Required scope", "", "- PL-BCDF **and**", "PL-GHJK (S) a pair", "- PL-KLMN"]
+
+    with pytest.raises(UnreadEntry) as raised:
+        list(list_entry_lines(lines, 1))
+    assert (raised.value.line, raised.value.why) == (4, LAZY_ENTRY)
+
+    unread: list[UnreadEntry] = []
+    assert list(list_entry_lines(lines, 1, unread)) == [(2, 3), (4, 5)]
+    assert [entry.line for entry in unread] == [4]
+
+
+@pytest.mark.parametrize(
+    "follows",
+    [
+        "",
+        "---",
+        "***",
+        "_ _ _",
+        "> A block quote",
+        "#### A deeper heading",
+        "```",
+        "+ A list of another marker",
+        "1) A list of another delimiter",
+        "| a | table |",
+        "<!-- a comment -->",
+    ],
+)
+def test_a_line_opening_a_block_of_its_own_ends_the_entry_unrefused(follows: str) -> None:
+    """Only a line that carries on the paragraph is lazy (0.31.2 § 5.2).
+
+    A blank line ends it (§ 4.8), and a thematic break, block quote, heading,
+    fence, list or HTML block interrupts it (§ 4.1, 5.1, 4.2, 4.5, 5.3, 4.6);
+    `CONTINUED_LINE` takes a table row for one too. Each ends the entry where
+    the walker always has, and refusing one would hold `make check` red over a
+    document that reads as written.
+    """
+    unread: list[UnreadEntry] = []
+    lines = ["### Required scope", "", "- PL-BCDF (S) one entry", follows]
+
+    assert list(list_entry_lines(lines, 1, unread)) == [(2, 3)]
+    assert unread == []
+
+
+@pytest.mark.parametrize(
+    ("roadmap", "lazy_line"),
+    [(LAZY_GATE, "PL-GHJK (S)"), (LAZY_SCOPE, "(queue item PL-MNPQ).")],
+    ids=["frozen list", "required scope"],
+)
+def test_a_milestone_list_carried_on_from_the_margin_records_the_line(
+    roadmap: str, lazy_line: str
+) -> None:
+    """The section says which line it could not read, and keeps what it could."""
+    (section,) = (s for s in parse_milestones(roadmap) if s.version == (0, 4, 0))
+
+    assert [entry.line for entry in section.unread] == [_line_of(roadmap, lazy_line)]
+    assert [entry.ids for entry in section.gate_entries][0] == ("PL-001",)
+    assert section.gate_entries[-1].ids == ("PL-KLMN",)
+
+
+def test_wave_and_the_digest_say_the_plan_rests_on_a_list_not_read_whole() -> None:
+    """A gate counted from an entry read short is a plausible wrong answer.
+
+    Carried apart from `problems`, which a release cut refuses on because a
+    reservation might be unread: a list entry holds no version.
+    """
+    plan = _wave("0.2.5", frozenset({"PL-001"}), roadmap=LAZY_GATE)
+    stated = next(line for line in _digest(plan).splitlines() if line.startswith("Plan:"))
+
+    assert plan.unread == (
+        f"line {_line_of(LAZY_GATE, 'PL-GHJK (S)')}, in the v0.4.0 section: {LAZY_ENTRY}",
+    )
+    assert plan.problems == ()
+    assert "was not read whole, so a count above may be short" in format_wave(plan)
+    assert "A roadmap list was not read whole" in stated
+    assert _wave("0.2.5", frozenset({"PL-001"})).unread == ()
 
 
 # --- which milestones an item may be blocked on (`PL-W8XP`) ------------------

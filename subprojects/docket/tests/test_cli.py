@@ -1647,6 +1647,24 @@ def test_wave_exits_nonzero_when_the_gate_names_an_item_that_is_not_there(
     assert "not in the store" in capsys.readouterr().out
 
 
+def test_wave_exits_nonzero_when_a_list_it_reads_was_not_read_whole(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A gate entry carried on from the margin is declined, so its count may be short.
+
+    `PL-MFVV`: the walker declines it rather than read it short, and `wave`
+    says so and exits non-zero, as it does for a timeline that does not parse.
+    """
+    store = _wave_project(tmp_path, READY)
+    (tmp_path / "ROADMAP.md").write_text(
+        WAVE_ROADMAP.replace("The one entry on this gate", "The one entry\non this gate"),
+        encoding="utf-8",
+    )
+
+    assert _run("wave", "--items", str(store)) == 1
+    assert "was not read whole" in capsys.readouterr().out
+
+
 DONE = """---
 id: PL-D1D1
 title: A finished item
