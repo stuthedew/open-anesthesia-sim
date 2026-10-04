@@ -122,6 +122,21 @@ its own fix. The slice also found `PL-MFVV`: docket's own list walker, which
 `_list_members` now shares, ends an entry at a lazy continuation line, and its
 other readers do not decline it.
 
+**Slice 2, Makefile (`#1338`, 2026-10-04).** Done: `_make_lines` reads a
+Makefile's logical lines as GNU make 4.3 does - a recipe line keeps each
+backslash-newline and loses each continuation's leading tab, any other line
+becomes one, and a comment ending in a backslash takes the next line with it.
+`_recipe_commands`, `_target_recipes` and `make_targets` read through it, so
+the coverage gate, gate parity and `check_make_targets` read a continued
+statement whole. `check_ruff_cache` now reads the shell's words for `ruff
+check` and its flag, since a continuation between the two left a pattern over
+the text matching nothing, and `_make_mentions` reads a fence through
+`script_lines`, falling back to a line at a time where bash cannot read it. The
+guard gained eleven cases, each failing on main's reader, one pinning
+that a coverage run split in the Makefile alone is still a drift. Closes `PL-G2FY`. Left:
+the YAML readers (`PL-6P6H` and the sweep's YAML line), and `PL-MFVV`; `PL-RR1N`
+keeps its own fix.
+
 **Done when.** Every reader the table and the sweep name reads its format's
 statement whole or declines it by name, each pinned by a test; the guard test
 fails a reader that takes a physical line for a continued statement; and
