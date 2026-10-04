@@ -76,23 +76,23 @@ and it gets finite, plausible numbers from outside the range the model is
 claimed over.
 
 **Rebuilding as `PL-51B7`'s slice 1, 2026-10-04** (project owner, 2026-10-04,
-over the range check in `__post_init__` this branch built first). Pull request
-1342 carried that check, with its tests, as `c48a99be`, and the commit
-withdrawing it reverts it whole; `PL-51B7`'s brief holds the slice's design and
-call-site count. Next, in order:
+over the range check in `__post_init__` that pull request 1342 built first).
+That check, with its tests, was `c48a99be`, and `a8007351` reverted it whole.
+**The Ship v0.6.0 project builds the slice** (project owner, 2026-10-04, over
+building it on 1342), with the rest of the `parse-dont-validate` feature on
+v0.6.0's gate; 1342 merged as records only, and this item's claim was yielded
+for the slice's builder. Next, for that builder:
 
-1. Claim `PL-51B7`, read its brief, and re-size this item's `effort` to the
-   slice's. `#1341` has merged and is brought in here, with its section above
-   kept beside this one.
-2. Build slice 1 on this branch.
-3. Carry `c48a99be`'s tests over in the slice's form:
+1. Claim the item that carries slice 1 and this one, and read `PL-51B7`'s
+   brief for the design and the call-site count.
+2. Carry `c48a99be`'s tests over in the slice's form. Fetch it with
+   `git fetch origin pull/1342/head`, since its branch may be gone:
    `test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges`
    and `test_rejects_a_flow_outside_its_supported_range`, the two names this
    item's `verify:` greps for, and
    `test_rejects_tissue_flows_that_do_not_sum_to_cardiac_output`'s mismatch
    moved inside the supported range, since 1.5 times 7.8 L/min is past it.
-   `git show c48a99be` has all three.
-4. Revise `docs/MODEL.md` § "Supported input ranges" for where each range is
-   then enforced. `c48a99be` added a paragraph there for the narrow check, and
-   it went with the revert.
-5. Close this item with the slice, and retitle 1342 to lead with both ids.
+3. Revise `docs/MODEL.md` § "Supported input ranges" for where each range is
+   then enforced: it still says the compartment is "the only point all three
+   pass through", which this item's settings record disproves.
+4. Close this item with the slice.
