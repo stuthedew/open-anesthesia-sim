@@ -6193,10 +6193,11 @@ def test_git_answers_an_undecodable_path_as_unanswered(tmp_path: Path) -> None:
 #
 # Each reader below once took a physical line for a statement its format lets
 # run on: CommonMark continues a paragraph across a soft break (0.31.2 § 4.8,
-# § 6.7) and a code span across a line ending (§ 6.1). The guard hands every
-# Markdown reader its format's continuation forms and holds it to reading the
-# statement whole, or refusing it by name. The Makefile and YAML readers join
-# it with the slices that teach them.
+# § 6.7) and a code span across a line ending (§ 6.1), and make continues a line
+# ending in a backslash (GNU make manual, "Splitting Long Lines", "Splitting
+# Recipe Lines"). The guard hands every reader its format's continuation forms
+# and holds it to reading the statement whole, or refusing it by name. The YAML
+# readers join it with the slice that teaches them.
 
 
 def _gate_heading_wrapped(tmp_path: Path) -> list[str]:
@@ -6248,6 +6249,45 @@ def _wrapped_family_member(_: Path) -> bool:
     )
     members = list(doc_check._list_members(document, _list_family()))
     return doc_check._names_a_test(members[1][1])
+
+
+def _continued_coverage_gate(tmp_path: Path) -> list[str]:
+    """One coverage run, continued alike in the Makefile and in a `run: |` block."""
+    root = _repo(tmp_path)
+    (root / "Makefile").write_text(
+        ".PHONY: check\ncheck:\n\tuv run pytest -n auto \\\n"
+        "\t  --cov=demo.core --cov-branch --cov-fail-under=100\n",
+        encoding="utf-8",
+    )
+    _with_workflow(
+        root,
+        "name: quality\n\non: [push, pull_request]\n\njobs:\n  checks:\n"
+        "    runs-on: ubuntu-latest\n    steps:\n      - run: |\n"
+        "          uv run pytest -n auto \\\n"
+        "            --cov=demo.core --cov-branch --cov-fail-under=100\n",
+    )
+    return [error for error in _errors(root) if "coverage" in error]
+
+
+def _continued_parity(tmp_path: Path) -> tuple[list[str], list[str]]:
+    """A script run with an option the next recipe line carries, as CI runs it."""
+    root = _parity_repo(
+        _repo(tmp_path),
+        local=["python3 tools/b_check.py", "python3 tools/a_check.py \\\n\t--strict"],
+        workflows={
+            "quality.yml": (
+                GATING_WORKFLOW,
+                ["python3 tools/a_check.py --strict", "python3 tools/b_check.py"],
+            )
+        },
+    )
+    report = doc_check.Report()
+    doc_check.check_gate_parity(root, report)
+    return report.errors, report.declined
+
+
+def _ruff_errors(tmp_path: Path, check: str) -> list[str]:
+    return [error for error in _errors(_ruffed(_repo(tmp_path), check=check)) if "ruff" in error]
 
 
 TEX_ERROR = (
@@ -6356,6 +6396,47 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         _absent_marker_split,
         [SPLIT_MARKER_ERROR.format("README.md:7", "absent")],
     ),
+    # The Makefile (`PL-G2FY`), read through `_make_lines`: a recipe line keeps
+    # the backslash-newline and loses the continuation's tab, any other line
+    # becomes one, a comment included.
+    "recipe commands, a backslash continues a recipe line": (
+        lambda _: list(doc_check._recipe_commands("check:\n\tpython3 a.py \\\n\t  --strict\n")),
+        [("python3 a.py \\\n  --strict", 2)],
+    ),
+    "recipe commands, a comment a backslash continues takes the next line": (
+        lambda _: list(doc_check._recipe_commands("check:\n# C:\\\n\techo gone\n\techo kept\n")),
+        [("echo kept", 4)],
+    ),
+    "target recipes, a continued prerequisite list": (
+        lambda _: doc_check._target_recipes("check: sync \\\n\tlint\n\tpytest\n"),
+        ({"check": ["pytest"]}, {"check": ["sync", "lint"]}),
+    ),
+    "make targets, a continued prerequisite list is no recipe": (
+        lambda _: doc_check.make_targets(".PHONY: docket\ndocket: sync \\\n\tlint\n"),
+        (frozenset({"docket"}), frozenset()),
+    ),
+    "make targets, a continued .PHONY list": (
+        lambda _: doc_check.make_targets(".PHONY: a \\\n\tb\nb:\n\ttrue\n"),
+        (frozenset({"a", "b"}), frozenset({"b"})),
+    ),
+    "coverage gate, one run continued alike in both files": (_continued_coverage_gate, []),
+    "gate parity, an option on a continuation line": (_continued_parity, ([], [])),
+    "ruff cache, the flag on a continuation line": (
+        lambda root: _ruff_errors(root, "uv run ruff check \\\n\t--no-cache ."),
+        [],
+    ),
+    "ruff cache, a continuation between ruff and check": (
+        lambda root: _ruff_errors(root, "uv run ruff \\\n\tcheck ."),
+        [
+            "Makefile:3 runs `uv run ruff check .` without `--no-cache`, so a module deleted "
+            "since the last run leaves a stale clean result on every file that imports it "
+            "and the local gate passes where CI fails"
+        ],
+    ),
+    "make mentions, `make` continued in a shell fence": (
+        lambda _: list(doc_check._make_mentions("```bash\nmake \\\n  lint\n```\n")),
+        [("lint", 2)],
+    ),
 }
 
 
@@ -6373,3 +6454,37 @@ def test_each_reader_reads_its_formats_continued_statement_whole(
     read, expected = CONTINUED_STATEMENTS[reader]
 
     assert read(tmp_path) == expected
+
+
+def test_recipe_commands_join_a_backslash_continuation() -> None:
+    """A continued recipe line is the one command make hands the shell (`PL-G2FY`).
+
+    The recipe and the expected spelling are what GNU make 4.3 printed for them
+    on 2026-10-04: each continuation loses its leading tab and nothing else,
+    one with no tab is kept as written, and the backslash-newline pairs stay
+    for the shell to read.
+    """
+    recipe = 'check:\n\techo "a" \\\n\t  b \\\nc\n\techo next\n'
+
+    assert list(doc_check._recipe_commands(recipe)) == [
+        ('echo "a" \\\n  b \\\nc', 2),
+        ("echo next", 5),
+    ]
+
+
+def test_an_even_run_of_backslashes_continues_no_recipe_line() -> None:
+    """In an even run each backslash escapes the next, so the line ends there."""
+    recipe = "check:\n\techo a \\\\\n\techo next\n"
+
+    assert list(doc_check._recipe_commands(recipe)) == [("echo a \\\\", 2), ("echo next", 3)]
+
+
+def test_a_fence_bash_cannot_read_is_still_read_a_line_at_a_time() -> None:
+    """An apostrophe in prose leaves the fence unreadable to bash from that line.
+
+    Its lines are then read one at a time, as every fence was before `PL-R417`,
+    so a `make` command after it is still held to the Makefile.
+    """
+    fence = "```text\nIt's done.\nmake lint\n```\n"
+
+    assert list(doc_check._make_mentions(fence)) == [("lint", 3)]
