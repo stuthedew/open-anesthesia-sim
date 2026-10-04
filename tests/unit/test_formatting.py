@@ -55,6 +55,7 @@ from anesthesia_sim.app.formatting import (
 from anesthesia_sim.app_metadata import APP_BUILD, APP_BUILD_VERSION, APP_VERSION
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 
@@ -1254,7 +1255,7 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
         controller.start()
 
         for _ in range(round(120.0 / step_s)):
-            controller.advance(step_s)
+            controller.advance(SimulationStep(step_s))
 
         snapshot = controller.snapshot()
 

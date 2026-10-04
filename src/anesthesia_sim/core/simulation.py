@@ -31,15 +31,12 @@ a name rather than expressing an intention. Callers reach
 from dataclasses import dataclass, field
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
 from anesthesia_sim.core.supported_ranges import (
     require_supported_run_length,
     require_supported_step_count,
 )
-from anesthesia_sim.core.uptake_system import (
-    AgentUptakeSystem,
-    UptakeStepResult,
-    require_supported_simulation_step,
-)
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem, UptakeStepResult
 
 
 def _require_step_count(step_count: int) -> None:
@@ -58,7 +55,7 @@ class SimulationState:
     uptake_system: AgentUptakeSystem = field(default_factory=AgentUptakeSystem.default)
     step_count: int = 0
     """How many simulation steps this run has completed."""
-    simulation_step_s: float | None = None
+    simulation_step_s: SimulationStep | None = None
     """The step every one of those steps was taken at, or `None` before the
     first one.
 
@@ -79,17 +76,20 @@ class SimulationState:
         because a run may stand there; it is the step from it that is refused.
 
         Raises:
+            TypeError: `simulation_step_s` is neither `None` nor a
+                `SimulationStep`, so nothing has checked it against the
+                supported range (`core/simulation_step.py`).
             SimulationConfigurationError: `step_count` is not a whole,
-                nonnegative number; `simulation_step_s` is not a supported
-                step; the count is past zero with no step to multiply it by;
-                or the two put the run past the supported run length,
-                `core/supported_ranges.py`'s `require_supported_step_count`.
+                nonnegative number; the count is past zero with no step to
+                multiply it by; or the two put the run past the supported run
+                length, `core/supported_ranges.py`'s
+                `require_supported_step_count`.
         """
 
         _require_step_count(self.step_count)
 
         if self.simulation_step_s is not None:
-            require_supported_simulation_step(self.simulation_step_s)
+            require_simulation_step(self.simulation_step_s)
             require_supported_step_count(self.step_count, self.simulation_step_s)
         elif self.step_count > 0:
             raise SimulationConfigurationError(
@@ -111,17 +111,18 @@ class SimulationState:
 
         return self.step_count * self.simulation_step_s
 
-    def advance(self, simulation_step_s: float) -> UptakeStepResult:
+    def advance(self, simulation_step_s: SimulationStep) -> UptakeStepResult:
         """Advance the complete system and time as one operation.
 
-        The step is checked here as well as in `AgentUptakeSystem.advance()`,
-        rather than left to it, so that this class states its own contract:
-        a step outside `MINIMUM_SIMULATION_STEP_S` to
-        `MAXIMUM_SIMULATION_STEP_S` is refused before elapsed time moves,
-        and a caller that catches
-        `SimulationConfigurationError` still holds a run it can trust. The
-        second check is this class's alone: a run keeps the step it took its
-        first step at, so no recorded history mixes two cadences.
+        The step is a `SimulationStep`, so it was checked against the
+        supported range when it was built, and anything else is refused here
+        before elapsed time moves rather than left to
+        `AgentUptakeSystem.advance()`, so that this class states its own
+        contract. The second check is this class's alone: a run keeps the
+        step it took its first step at, so no recorded history mixes two
+        cadences, and a caller that catches the
+        `SimulationConfigurationError` it raises still holds a run it can
+        trust.
 
         The count and the step are recorded after the system has advanced,
         so a step that could not be completed leaves simulated time exactly
@@ -139,9 +140,19 @@ class SimulationState:
         `core/supported_ranges.py` § `require_supported_run_length` - and
         the step is refused before anything advances, so the state left
         behind is a completed step inside the supported span.
+
+        Raises:
+            TypeError: `simulation_step_s` is not a `SimulationStep`
+                (`core/simulation_step.py`).
+            SimulationConfigurationError: the step differs from the one this
+                run took its first step at.
+            SimulationDomainLimitError: the run has reached the supported run
+                length.
+            SimulationNumericalError: `AgentUptakeSystem.advance()` could not
+                complete the step, and has rolled it back.
         """
 
-        require_supported_simulation_step(simulation_step_s)
+        require_simulation_step(simulation_step_s)
 
         if self.simulation_step_s is not None and simulation_step_s != self.simulation_step_s:
             raise SimulationConfigurationError(

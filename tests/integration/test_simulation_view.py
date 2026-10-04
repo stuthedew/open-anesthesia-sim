@@ -141,6 +141,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationNumericalError,
 )
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
+from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -150,7 +151,7 @@ from anesthesia_sim.core.supported_ranges import (
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
 )
 from anesthesia_sim.core.tissue import TissueGroup
-from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S, AgentUptakeSystem
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # The size every dashboard here is shown at: wide enough for the seven
 # readouts to stand side by side and for a chart column with pixels to
@@ -613,7 +614,7 @@ def _real_step_failure() -> SimulationNumericalError:
     )
 
     try:
-        system.advance(MAXIMUM_SIMULATION_STEP_S)
+        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
     except SimulationNumericalError as error:
         return error
 

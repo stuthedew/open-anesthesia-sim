@@ -50,9 +50,10 @@ from anesthesia_sim.core.governing_equations import (
     VENOUS_FRACTION,
 )
 from anesthesia_sim.core.run_definition import DisplayState, Keyframe, RunDefinition, RunSegment
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-SIMULATION_STEP_S = 0.1
+SIMULATION_STEP_S = SimulationStep(0.1)
 """The step every run in this file takes, and the one the app layer ships."""
 
 FRACTION_STATES: tuple[int, ...] = (
