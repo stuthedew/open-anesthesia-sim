@@ -13,9 +13,10 @@ which hour and in which direction, so that a reader of the washout tail has a
 number where the intertissue-diffusion note under `docs/MODEL.md` § "Known
 limitations" could give only a direction (`PL-KK1Q`). Every assertion below is
 a regression band around what this module itself measured, on 2026-09-27 and,
-for the muscle group's variation, on 2026-10-03; the reading such a band
-supports; or a property of the published coefficients. None asserts agreement
-with a human washout, and none may be restated as one.
+for the muscle group's variation and the open circuit's modes, on 2026-10-03;
+the reading such a band supports; or a property of the published
+coefficients. None asserts agreement with a human washout, and none may be
+restated as one.
 
 **What is compared.** Both papers fit each volunteer's elimination to a sum of
 five exponentials, $`F_A/F_{A0} = \\sum_i A_i e^{-t/\\tau_i}`$, and publish the
@@ -89,21 +90,23 @@ the measured mean - later than the third hour in the shipped condition,
 because the rebreathing circuit and the muscle group's slow return hold it
 above the curve until the seventh (with the circuit's return taken away the
 same hours sit at or below it), and from the start with the apparatus gone.
-The model's muscle group returns more slowly than the fitted muscle term, its
-isolated time constant being 1.5 to 1.7 times the fitted one's, and that is
-what puts the peak of model over fit in hours 2 to 4: with the group's
-coefficient lowered until that constant is the fitted one's, six-hour runs
+The model's muscle group returns more slowly than the fitted muscle term: read
+off the curve as the fitted term was, as a mode of the open-circuit system,
+its term is 1.89 to 2.02 times as slow and 0.51 to 0.73 times as large
+(`test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones`).
+That is what puts the peak of model over fit in hours 2 to 4: with the
+group's coefficient lowered until its isolated time constant is the fitted
+one's, which brings the apparent one to 1.09 to 1.28 times it, six-hour runs
 peak before the second hour in both conditions and every cohort, and the tail
 at four hours is 24 to 60% lower
 (`test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`;
-`docs/MODEL.md` has the numbers). The late
-excess is the model's fat group returning more than the fitted fat term's
-small amplitude (0.028 to 0.080%, with SDs of 53 to 94% of the means), and
-it is still growing at 24 hours - the ratio rises between minutes 1400 and
-1440 in every cohort - because the fitted curve is still falling on the
-fourth compartment's time constant while the model is already on its fat
-group's, which is longer than every fitted fat time constant
-(`docs/MODEL.md` has the arithmetic).
+`docs/MODEL.md` has the numbers). The late excess is the model's fat term,
+1.5 to 2.1 times the fitted fat term's small amplitude (0.028 to 0.080%, with
+SDs of 53 to 94% of the means), and it is still growing at 24 hours - the
+ratio rises between minutes 1400 and 1440 in every cohort - because the
+fitted curve is still falling on the fourth compartment's time constant while
+the model is already on its fat term's, 1.14 to 1.36 times every fitted fat
+time constant.
 
 **Three things bound how sharply any of that may be read.**
 
@@ -178,6 +181,7 @@ and Kharasch ED, *Biotransformation of sevoflurane*, Anesth Analg
 
 from __future__ import annotations
 
+import cmath
 import math
 import pickle
 from collections.abc import Callable
@@ -185,6 +189,7 @@ from dataclasses import dataclass, replace
 from functools import cache
 from typing import Literal
 
+import numpy
 import pytest
 from test_published_wash_in_and_elimination import (
     MODELLED_ELIMINATION_RATIOS,
@@ -568,6 +573,96 @@ MUSCLE_STORE_SHARE_TOLERANCE = 0.002
 # stretch the reading about the muscle group names.
 FOUR_HOURS_MIN = 240
 
+# The states `_open_circuit_system_per_min()` writes an equation for, in its
+# order, which is also the order of `WashoutCurve.fractions_at_discontinuation`.
+OPEN_CIRCUIT_STATES = ("alveolar", "mixed venous", "vessel-rich group", "muscle group", "fat group")
+
+# How closely the open circuit's modes reproduce the stepped open-circuit run,
+# as a share of the run, at every minute from `RECONSTRUCTION_FROM_MINUTE` on.
+# What separates them is the driver's: `_discard_circuit_contents()` empties
+# the circuit after each 0.1 s step, so within a step the patient re-breathes
+# a little of what it exhaled, and the stepped run lies above the modes by up
+# to 0.08%. Halving the step halved that, 0.052 to 0.026% at five minutes and
+# 0.061 to 0.030% at four hours for sevoflurane (measured once, 2026-10-03,
+# `PL-921Y`). Before the fifth minute the fast terms carry the curve, and the
+# stepped run departs from them by up to 1.6%, at the first.
+MODE_RECONSTRUCTION_TOLERANCE = 0.0008
+RECONSTRUCTION_FROM_MINUTE = 5
+
+# A band around values the stored parameters fix exactly: eigenvalues of a
+# matrix built from them and a decomposition of one stepped state, rather than
+# a stepped run's samples, so it can be tighter than the curve's 1% and still
+# hold every value `docs/MODEL.md` prints from them at three figures.
+APPARENT_TERM_TOLERANCE = 0.002
+
+
+@dataclass(frozen=True, slots=True)
+class RecordedApparentTerms:
+    """One agent's muscle and fat terms as its open-circuit modes give them.
+
+    The model's curve is the same for both isoflurane cohorts, so these are
+    per agent; what differs between those cohorts is the fit.
+
+    Attributes:
+        muscle_time_constant_min: the muscle group's mode's time constant, the
+            apparent one, read off the curve as the fitted one was.
+        muscle_amplitude_percent: that mode's amplitude, $`A \\times 100`$ of
+            F_A0, the papers' unit.
+        fat_time_constant_min: the fat group's mode's time constant.
+        fat_amplitude_percent: that mode's amplitude, as above.
+        isolated_muscle_time_constant_min: the muscle group's time constant
+            with nothing returned to it in arterial blood, the arithmetic
+            `docs/MODEL.md` compared with the fitted one before `PL-921Y`.
+        isolated_fat_time_constant_min: the same for the fat group.
+    """
+
+    muscle_time_constant_min: float
+    muscle_amplitude_percent: float
+    fat_time_constant_min: float
+    fat_amplitude_percent: float
+    isolated_muscle_time_constant_min: float
+    isolated_fat_time_constant_min: float
+
+
+# Measured 2026-10-03 (`PL-921Y`). Model outputs, kept apart from
+# `PUBLISHED_FITS` for the reason `RECORDED_COMPARISONS` is.
+RECORDED_APPARENT_TERMS: dict[str, RecordedApparentTerms] = {
+    "sevoflurane": RecordedApparentTerms(
+        muscle_time_constant_min=154.5,
+        muscle_amplitude_percent=2.37,
+        fat_time_constant_min=2653,
+        fat_amplitude_percent=0.05968,
+        isolated_muscle_time_constant_min=135.4,
+        isolated_fat_time_constant_min=2528,
+    ),
+    "isoflurane": RecordedApparentTerms(
+        muscle_time_constant_min=161.4,
+        muscle_amplitude_percent=4.307,
+        fat_time_constant_min=2860,
+        fat_amplitude_percent=0.1225,
+        isolated_muscle_time_constant_min=126.9,
+        isolated_fat_time_constant_min=2603,
+    ),
+    "desflurane": RecordedApparentTerms(
+        muscle_time_constant_min=92.58,
+        muscle_amplitude_percent=2.466,
+        fat_time_constant_min=1543,
+        fat_amplitude_percent=0.06308,
+        isolated_muscle_time_constant_min=84.68,
+        isolated_fat_time_constant_min=1496,
+    ),
+}
+
+# The muscle group's apparent time constant with the coefficient
+# `test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`
+# runs, which makes the isolated one the fitted one's.
+RECORDED_APPARENT_MUSCLE_TIME_CONSTANTS_AT_FITTED_ISOLATED_MIN: dict[str, float] = {
+    "sevoflurane/Anesth Analg 1991;72:316-24": 93.40,
+    "isoflurane/Anesth Analg 1991;72:316-24": 108.4,
+    "desflurane/Anesthesiology 1991;74:489-98": 53.53,
+    "isoflurane/Anesthesiology 1991;74:489-98": 102.1,
+}
+
 
 @dataclass(frozen=True, slots=True)
 class WashoutCurve:
@@ -582,6 +677,10 @@ class WashoutCurve:
         muscle_tissue_gas_partition_coefficient: the coefficient the run gave
             the muscle group in place of the stored one, `None` for the stored.
         alveolar_fraction_at_discontinuation: F_A0, the papers' own denominator.
+        fractions_at_discontinuation: the alveolar, mixed venous and three
+            tissue groups' partial-pressure fractions at discontinuation, in
+            `OPEN_CIRCUIT_STATES`' order: the state `_open_circuit_modes()`
+            decomposes the open circuit's elimination from.
         ratios_by_minute: F_A/F_A0 at each whole minute of elimination, index
             0 being discontinuation itself, so `ratios_by_minute[5]` is the
             gate's five-minute point.
@@ -601,6 +700,7 @@ class WashoutCurve:
     hepatic_elimination_rate_constant_per_min: float
     muscle_tissue_gas_partition_coefficient: float | None
     alveolar_fraction_at_discontinuation: float
+    fractions_at_discontinuation: tuple[float, float, float, float, float]
     ratios_by_minute: tuple[float, ...]
     agent_taken_up_l: float
     muscle_agent_at_discontinuation_l: float
@@ -613,6 +713,45 @@ class WashoutCurve:
     @property
     def metabolised_share_of_uptake(self) -> float:
         return self.agent_metabolised_l / self.agent_taken_up_l
+
+
+@dataclass(frozen=True, slots=True)
+class OpenCircuitModes:
+    """The open circuit's F_A/F_A0 as the sum of its system's exponential modes.
+
+    $`F_A/F_{A0} = \\sum_k A_k e^{-t/\\tau_k}`$ holds exactly for the five
+    equations `_open_circuit_system_per_min()` writes out, from the state the
+    modes were decomposed from: the form Yasuda et al. fitted to each
+    volunteer's curve, read off the model's rather than fitted to it, so a
+    mode's time constant is an apparent one, as a fitted one is. Sevoflurane's
+    and isoflurane's two fastest modes are a complex-conjugate pair, a damped
+    oscillation that falls e-fold in about a quarter of a minute, so a time
+    constant and an amplitude are complex in general; the pair's imaginary
+    parts cancel in the sum, and the three slower modes are real.
+
+    Attributes:
+        time_constants_min: $`\\tau_k`$, fastest first.
+        amplitudes: $`A_k`$ as fractions of F_A0, in the same order. They sum
+            to 1, since the decomposition is of the state itself.
+        dominant_states: for each mode, the state in `OPEN_CIRCUIT_STATES` its
+            part of the state at discontinuation is largest in, which is what
+            names a mode for a compartment.
+    """
+
+    time_constants_min: tuple[complex, ...]
+    amplitudes: tuple[complex, ...]
+    dominant_states: tuple[str, ...]
+
+    def ratio_at(self, minutes: float) -> float:
+        """F_A/F_A0 at one instant, the real part of the modes' sum."""
+
+        total = sum(
+            amplitude * cmath.exp(-minutes / time_constant)
+            for amplitude, time_constant in zip(
+                self.amplitudes, self.time_constants_min, strict=True
+            )
+        )
+        return total.real
 
 
 def _metabolise(system: AgentUptakeSystem, rate_constant_per_min: float) -> float:
@@ -693,6 +832,13 @@ def _washout_curve(
             metabolised += _metabolise(system, hepatic_elimination_rate_constant_per_min)
 
     alveolar_fraction_at_discontinuation = system.alveoli.partial_pressure_fraction
+    fractions_at_discontinuation = (
+        alveolar_fraction_at_discontinuation,
+        system.patient.mixed_venous_partial_pressure_fraction,
+        system.patient.vessel_rich.partial_pressure_fraction,
+        system.patient.muscle.partial_pressure_fraction,
+        system.patient.fat.partial_pressure_fraction,
+    )
     agent_taken_up_l = system.patient.total_agent_amount_l + metabolised
     muscle_agent_at_discontinuation_l = system.patient.muscle.agent_amount_l
 
@@ -718,6 +864,7 @@ def _washout_curve(
         hepatic_elimination_rate_constant_per_min=hepatic_elimination_rate_constant_per_min,
         muscle_tissue_gas_partition_coefficient=muscle_tissue_gas_partition_coefficient,
         alveolar_fraction_at_discontinuation=alveolar_fraction_at_discontinuation,
+        fractions_at_discontinuation=fractions_at_discontinuation,
         ratios_by_minute=tuple(ratios),
         agent_taken_up_l=agent_taken_up_l,
         muscle_agent_at_discontinuation_l=muscle_agent_at_discontinuation_l,
@@ -822,10 +969,15 @@ def _muscle_coefficient_at_the_fitted_time_constant(fit: PublishedWashoutFit) ->
 
     The isolated group's time constant is its volume times its tissue:gas
     coefficient over its blood flow times the blood:gas coefficient, the
-    arithmetic `docs/MODEL.md` compares with the fitted one. This solves it
-    for the coefficient, on the reference adult the run is configured from,
-    so the volume, the flow and the blood:gas coefficient stay the stored
-    ones and only the muscle group's solubility moves.
+    arithmetic `docs/MODEL.md` compared with the fitted one until `PL-921Y`
+    read the model's term off its curve instead. This solves it for the
+    coefficient, on the reference adult the run is configured from, so the
+    volume, the flow and the blood:gas coefficient stay the stored ones and
+    only the muscle group's solubility moves. The apparent time constant it
+    leaves the group, the one that compares with the fitted, is 1.09 to 1.28
+    times the fitted
+    (`test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones`),
+    so the variation takes the muscle term most of the way to the fitted one.
     """
 
     patient = load_reference_adult_parameters()
@@ -873,6 +1025,134 @@ def _rise_toward_the_fitted_curve(
             f"dip within {len(ratios) - 1} min, so there is no rise toward the curve to place"
         )
     return peaks[0] / MINUTES_PER_HOUR, ratios[peaks[0]]
+
+
+def _open_circuit_system_per_min(
+    agent_id: str, muscle_tissue_gas_partition_coefficient: float | None = None
+) -> numpy.ndarray:
+    """The open circuit's elimination as $`dF/dt = M F`$, written out from the specification.
+
+    F is the alveolar, mixed venous and three tissue groups' partial-pressure
+    fractions, in `OPEN_CIRCUIT_STATES`' order, at the reference patient's
+    default ventilation and cardiac output, which is `_configured_system()`'s
+    operating point. Each row is the equation `docs/MODEL.md` § "Governing
+    equations" gives for its state, with the inspired fraction held at zero:
+    the limit `_discard_circuit_contents()` approaches by emptying the circuit
+    after every step. Only the parameter loaders are reused, as
+    `test_coupled_dynamics.py`'s `_build_derivative()` reuses them; nothing
+    here reaches the implementation under test, so the stepped run's agreement
+    with these equations' modes is evidence rather than an identity.
+
+    `muscle_tissue_gas_partition_coefficient` replaces the stored coefficient
+    as `_washout_curve()`'s does, with the group's blood flow unchanged.
+    """
+
+    agent = load_agent_parameters(agent_id)
+    patient = load_reference_adult_parameters()
+    blood_gas = agent.blood_gas_partition_coefficient
+    muscle_tissue_gas = (
+        agent.muscle_tissue_gas_partition_coefficient
+        if muscle_tissue_gas_partition_coefficient is None
+        else muscle_tissue_gas_partition_coefficient
+    )
+    # Volume, share of cardiac output and tissue:blood coefficient, per group.
+    tissues = (
+        (
+            patient.vessel_rich_volume_l,
+            patient.vessel_rich_perfusion_fraction,
+            agent.vessel_rich_tissue_gas_partition_coefficient / blood_gas,
+        ),
+        (patient.muscle_volume_l, patient.muscle_perfusion_fraction, muscle_tissue_gas / blood_gas),
+        (
+            patient.fat_volume_l,
+            patient.fat_perfusion_fraction,
+            agent.fat_tissue_gas_partition_coefficient / blood_gas,
+        ),
+    )
+    ventilation_l_min = patient.default_alveolar_ventilation_l_min
+    cardiac_output_l_min = patient.default_cardiac_output_l_min
+    alveolar_volume_l = patient.alveolar_gas_volume_l
+    venous_volume_l = patient.venous_pool_volume_l
+    alveolar, venous = 0, 1
+
+    system = numpy.zeros((len(OPEN_CIRCUIT_STATES), len(OPEN_CIRCUIT_STATES)))
+
+    # Alveolar gas, breathing nothing in: ventilation out, pulmonary uptake out.
+    system[alveolar, alveolar] = (
+        -(ventilation_l_min + cardiac_output_l_min * blood_gas) / alveolar_volume_l
+    )
+    system[alveolar, venous] = cardiac_output_l_min * blood_gas / alveolar_volume_l
+
+    # Venous pool: each group's outflow in, mixed at the cardiac output.
+    system[venous, venous] = -cardiac_output_l_min / venous_volume_l
+
+    # Each group, perfusion-limited and driven by arterial blood, which is
+    # alveolar.
+    for state, (volume_l, perfusion_fraction, tissue_blood) in enumerate(tissues, start=2):
+        blood_flow_l_min = cardiac_output_l_min * perfusion_fraction
+        rate_per_min = blood_flow_l_min / (volume_l * tissue_blood)
+        system[state, alveolar] = rate_per_min
+        system[state, state] = -rate_per_min
+        system[venous, state] = blood_flow_l_min / venous_volume_l
+
+    return system
+
+
+def _open_circuit_modes(
+    agent_id: str,
+    fractions_at_discontinuation: tuple[float, ...],
+    muscle_tissue_gas_partition_coefficient: float | None = None,
+) -> OpenCircuitModes:
+    """Decompose the open circuit's elimination into its modes, from one state.
+
+    `numpy.linalg.eig` is LAPACK's general eigensolver, and the state is
+    expanded on the eigenvectors by a linear solve; each mode's amplitude is
+    its eigenvector's alveolar entry times its weight, over F_A0.
+    """
+
+    system = _open_circuit_system_per_min(agent_id, muscle_tissue_gas_partition_coefficient)
+    rates_per_min, vectors = numpy.linalg.eig(system)
+    weights = numpy.linalg.solve(vectors, numpy.array(fractions_at_discontinuation))
+    fastest_first = sorted(range(len(rates_per_min)), key=lambda mode: rates_per_min[mode].real)
+    alveolar_fraction_at_discontinuation = fractions_at_discontinuation[0]
+
+    return OpenCircuitModes(
+        time_constants_min=tuple(complex(-1.0 / rates_per_min[mode]) for mode in fastest_first),
+        amplitudes=tuple(
+            complex(vectors[0, mode] * weights[mode] / alveolar_fraction_at_discontinuation)
+            for mode in fastest_first
+        ),
+        dominant_states=tuple(
+            OPEN_CIRCUIT_STATES[int(numpy.argmax(numpy.abs(vectors[:, mode] * weights[mode])))]
+            for mode in fastest_first
+        ),
+    )
+
+
+def _isolated_time_constants_min(agent_id: str) -> tuple[float, float]:
+    """The muscle and fat groups' time constants with nothing returned to them in arterial blood.
+
+    Each is the group's volume times its tissue:gas coefficient over its blood
+    flow times the blood:gas coefficient, on the reference adult: the
+    arithmetic `_muscle_coefficient_at_the_fitted_time_constant()` inverts.
+    """
+
+    agent = load_agent_parameters(agent_id)
+    patient = load_reference_adult_parameters()
+    blood_gas = agent.blood_gas_partition_coefficient
+    cardiac_output_l_min = patient.default_cardiac_output_l_min
+
+    muscle = (
+        patient.muscle_volume_l
+        * agent.muscle_tissue_gas_partition_coefficient
+        / (patient.muscle_perfusion_fraction * cardiac_output_l_min * blood_gas)
+    )
+    fat = (
+        patient.fat_volume_l
+        * agent.fat_tissue_gas_partition_coefficient
+        / (patient.fat_perfusion_fraction * cardiac_output_l_min * blood_gas)
+    )
+    return muscle, fat
 
 
 @pytest.mark.parametrize("condition", CONDITIONS)
@@ -1031,10 +1311,12 @@ def test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4(
 
     `PL-KK1Q` read the tail's rise toward the fitted curve over hours 2 to 4
     off the time constants alone: the model's isolated muscle group returns
-    on a constant 1.5 to 1.7 times the fitted muscle term's. This runs the
-    counterfactual instead (`PL-95NW`): the same protocol with the group's
-    tissue:gas coefficient lowered until its isolated time constant is the
-    cohort's fitted one, everything else stored.
+    on a constant 1.5 to 1.7 times the fitted muscle term's, an isolated
+    constant against an apparent one, which `PL-921Y` later read like for
+    like at 1.89 to 2.02. This runs the counterfactual instead (`PL-95NW`):
+    the same protocol with the group's tissue:gas coefficient lowered until
+    its isolated time constant is the cohort's fitted one, everything else
+    stored.
 
     It checks first that the change moves the rate of return and not the
     store: the group holds 4 to 10% less at discontinuation, because over a
@@ -1121,6 +1403,152 @@ def test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4(
         f"{fit.label}, {condition}: at the fitted time constant the tail now crosses the curve at "
         f"{tuple(round(h, 2) for h in crossings)} h where this module measured "
         f"{expected_crossings} on 2026-10-03"
+    )
+
+
+def _shortfalls_from_the_stepped_run(
+    curve: WashoutCurve, modes: OpenCircuitModes
+) -> dict[int, float]:
+    """The modes' F_A/F_A0 over the stepped run's, less 1, at each minute from the fifth."""
+
+    return {
+        minute: modes.ratio_at(minute) / curve.ratio_at(minute) - 1.0
+        for minute in range(RECONSTRUCTION_FROM_MINUTE, len(curve.ratios_by_minute))
+    }
+
+
+@pytest.mark.parametrize("fit", PUBLISHED_FITS, ids=[f.label for f in PUBLISHED_FITS])
+def test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones(
+    fit: PublishedWashoutFit, washout_curve: Callable[..., WashoutCurve]
+) -> None:
+    """Read the model's muscle and fat terms off its own curve, as the fits were read.
+
+    A fitted time constant is an apparent one, read off the whole washout, and
+    `docs/MODEL.md` compared the fitted muscle and fat constants with the
+    model's isolated ones, which leave out the agent arterial blood brings
+    back to a group during the washout (`PL-921Y`). Like for like is the
+    model's own curve read the same way, which is its open-circuit system's
+    modes.
+
+    It checks first that the modes are the stepped run: decomposed from the
+    state the open-circuit run held at discontinuation, they reproduce it to
+    within `MODE_RECONSTRUCTION_TOLERANCE` at every minute from the fifth,
+    with the run above them, where the driver's re-breathing puts it; and the
+    three slowest are real, the two slowest the muscle and fat groups'. Then
+    it holds
+    both terms, the isolated constants and, at the coefficient
+    `test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`
+    runs, the apparent muscle constant, to what was measured on 2026-10-03.
+    Last it asserts the reading `docs/MODEL.md` gives: the muscle term is
+    slower than the fitted one and smaller, and the fat term slower and
+    larger; each isolated constant is shorter than the apparent one; and the
+    varied coefficient takes the apparent muscle constant most of the way to
+    the fitted one, not all of it.
+    """
+
+    coefficient = _muscle_coefficient_at_the_fitted_time_constant(fit)
+    runs = {
+        "stored": washout_curve(fit.agent_id, "open circuit"),
+        "varied": washout_curve(
+            fit.agent_id, "open circuit", 0.0, coefficient, MUSCLE_VARIATION_DURATION_MIN
+        ),
+    }
+    modes = {
+        "stored": _open_circuit_modes(fit.agent_id, runs["stored"].fractions_at_discontinuation),
+        "varied": _open_circuit_modes(
+            fit.agent_id, runs["varied"].fractions_at_discontinuation, coefficient
+        ),
+    }
+
+    for which, run in runs.items():
+        amplitudes_sum = sum(modes[which].amplitudes)
+        assert abs(amplitudes_sum - 1.0) <= 1e-12, (
+            f"{fit.label}, {which}: the modes' amplitudes sum to {amplitudes_sum}, not to the "
+            "state they were decomposed from"
+        )
+        shortfalls = _shortfalls_from_the_stepped_run(run, modes[which])
+        worst = max(shortfalls, key=lambda minute: abs(shortfalls[minute]))
+        assert abs(shortfalls[worst]) <= MODE_RECONSTRUCTION_TOLERANCE, (
+            f"{fit.label}, {which}: the open circuit's modes depart from the stepped run by "
+            f"{shortfalls[worst]:+.4%} at minute {worst}, so they no longer describe the curve "
+            "the model draws, and nothing read off them is the model's"
+        )
+        assert all(shortfall < 0.0 for shortfall in shortfalls.values()), (
+            f"{fit.label}, {which}: the stepped run falls below its modes at some minute, "
+            "where re-breathing within each step can only hold it above them"
+        )
+        assert modes[which].dominant_states[-2:] == ("muscle group", "fat group"), (
+            f"{fit.label}, {which}: the two slowest modes are mostly "
+            f"{modes[which].dominant_states[-2:]}, so they are no longer the muscle and fat "
+            "groups' returns and cannot be set against the fitted muscle and fat terms"
+        )
+        for mode in (-3, -2, -1):
+            time_constant = modes[which].time_constants_min[mode]
+            amplitude = modes[which].amplitudes[mode]
+            assert time_constant.imag == 0.0 and abs(amplitude.imag) <= 1e-12 * abs(amplitude), (
+                f"{fit.label}, {which}: the {modes[which].dominant_states[mode]}'s mode is "
+                f"complex, tau {time_constant} min and A {amplitude}, so it is not a term of "
+                "the fitted form"
+            )
+
+    muscle_min, fat_min = (modes["stored"].time_constants_min[mode].real for mode in (-2, -1))
+    muscle_percent, fat_percent = (
+        100.0 * modes["stored"].amplitudes[mode].real for mode in (-2, -1)
+    )
+    varied_muscle_min = modes["varied"].time_constants_min[-2].real
+    isolated_muscle_min, isolated_fat_min = _isolated_time_constants_min(fit.agent_id)
+    recorded = RECORDED_APPARENT_TERMS[fit.agent_id]
+    for name, measured, expected in (
+        ("muscle term's time constant, min", muscle_min, recorded.muscle_time_constant_min),
+        ("muscle term's amplitude, %", muscle_percent, recorded.muscle_amplitude_percent),
+        ("fat term's time constant, min", fat_min, recorded.fat_time_constant_min),
+        ("fat term's amplitude, %", fat_percent, recorded.fat_amplitude_percent),
+        (
+            "isolated muscle time constant, min",
+            isolated_muscle_min,
+            recorded.isolated_muscle_time_constant_min,
+        ),
+        (
+            "isolated fat time constant, min",
+            isolated_fat_min,
+            recorded.isolated_fat_time_constant_min,
+        ),
+        (
+            "apparent muscle time constant at the varied coefficient, min",
+            varied_muscle_min,
+            RECORDED_APPARENT_MUSCLE_TIME_CONSTANTS_AT_FITTED_ISOLATED_MIN[fit.label],
+        ),
+    ):
+        assert abs(measured - expected) <= APPARENT_TERM_TOLERANCE * expected, (
+            f"{fit.label}: the {name} is now {measured:.5g} where this module measured "
+            f"{expected} on 2026-10-03; re-measure it here and in docs/MODEL.md"
+        )
+
+    fitted_muscle_min = fit.time_constants_min[MUSCLE_GROUP]
+    fitted_fat_min = fit.time_constants_min[FAT_GROUP]
+    assert (
+        muscle_min > fitted_muscle_min and muscle_percent < fit.amplitudes_percent[MUSCLE_GROUP]
+    ), (
+        f"{fit.label}: the model's muscle term is {muscle_percent:.2f}% on {muscle_min:.1f} min "
+        f"against the fitted {fit.amplitudes_percent[MUSCLE_GROUP]}% on {fitted_muscle_min} min, "
+        "no longer slower and smaller"
+    )
+    assert fat_min > fitted_fat_min and fat_percent > fit.amplitudes_percent[FAT_GROUP], (
+        f"{fit.label}: the model's fat term is {fat_percent:.3f}% on {fat_min:.0f} min against "
+        f"the fitted {fit.amplitudes_percent[FAT_GROUP]}% on {fitted_fat_min} min, no longer "
+        "slower and larger"
+    )
+    assert isolated_muscle_min < muscle_min and isolated_fat_min < fat_min, (
+        f"{fit.agent_id}: an isolated time constant, {isolated_muscle_min:.1f} or "
+        f"{isolated_fat_min:.0f} min, is no longer shorter than the apparent one, "
+        f"{muscle_min:.1f} or {fat_min:.0f} min, which recirculation alone should make it"
+    )
+    assert fitted_muscle_min < varied_muscle_min < muscle_min and (
+        varied_muscle_min - fitted_muscle_min < muscle_min - varied_muscle_min
+    ), (
+        f"{fit.label}: with the isolated constant made the fitted one's, the apparent muscle "
+        f"constant is {varied_muscle_min:.1f} min, against {fitted_muscle_min} fitted and "
+        f"{muscle_min:.1f} stored, no longer most of the way to the fitted one"
     )
 
 

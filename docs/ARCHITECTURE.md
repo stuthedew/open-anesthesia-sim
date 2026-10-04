@@ -610,9 +610,13 @@ all, and that is the rule.
 **numpy arrives underneath pyqtgraph**, whose metadata requires
 `numpy>=1.25.0` outright, so it is installed in every environment and
 `uv.lock` names the version - but no module under `src/` imports it, and
-`import_boundary_check.py` permits it in none under `core/`. Nothing here
-takes a position on declaring it; `docs/WORKING_NOTES.md` § "Decided: no
-numpy" says why that stays open until a module wants it.
+`import_boundary_check.py` permits it in none under `core/`. The tests declare
+it for themselves, in the `dev` group, since
+`tests/reference/test_late_washout_against_published_fits.py` decomposes the
+model's open-circuit system with `numpy.linalg.eig` (`PL-921Y`). Nothing here
+takes a position on declaring it for the application; `docs/WORKING_NOTES.md`
+§ "Decided: no numpy" says why that stays open until a module under `src/`
+wants it.
 
 **What Linux has to supply, which the Qt wheels do not carry.** Measured
 2026-09-16 with `ldd` over the wheel's own `Qt/lib/libQt6Gui.so.6` and
