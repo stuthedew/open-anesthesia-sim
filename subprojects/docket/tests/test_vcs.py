@@ -2506,6 +2506,19 @@ def test_a_base_whose_version_file_cannot_be_read_is_unknown_rather_than_empty()
     assert report.notes == frozenset()
 
 
+def test_a_base_whose_version_file_is_not_toml_is_unknown_rather_than_version_less() -> None:
+    """A file nothing can read is not one that declares no version (`PL-3DD9`)."""
+    report = released_on_base(
+        ROOT,
+        version_file="pyproject.toml",
+        notes_dir="docs/releases",
+        runner=_base_runner('version = "0.3.8\n'),
+    )
+
+    assert not report.known
+    assert report.version == ""
+
+
 def test_a_base_holding_no_notes_at_all_is_still_a_real_answer() -> None:
     """No notes is what a project that has never cut one looks like."""
     report = released_on_base(
