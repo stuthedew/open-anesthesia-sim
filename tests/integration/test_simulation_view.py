@@ -3175,6 +3175,56 @@ def test_a_second_build_sidebar_panels_leaves_the_run_labels_on_screen(
     assert again[1] is placed[1], "a second call built a new control-change panel"
 
 
+def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QApplication) -> None:
+    """Asking a run again for its transport row, readouts or controls hands back the placed one.
+
+    Each of the three used to lay the run's live widgets into a new container
+    on every call, so a second call took the Start button, the substance
+    heading and the fresh gas flow slider off screen, and dropping its result
+    deleted them (`PL-KZR1`). Held the way the sidebar's test above holds its
+    panels (`PL-N67T`): every widget is on the page before the call as well as
+    after it, and each shown one stays shown, so the test cannot pass on a
+    row that never showed them. Each case names a widget that has to be
+    shown to begin with; the lone run's name and the agent chip are hidden
+    in this state, so they are held to the page alone.
+    """
+
+    view = _shown_view(application, SimulationController())
+    run = view.runs[0]
+    page = _page_of(view)
+    transport = (
+        run._run_name_text,
+        run._agent_dropdown,
+        run._running_agent_display,
+        run._start_button,
+        run._pause_button,
+        run._reset_button,
+        run._playback_rate_dropdown,
+        run._status_text,
+    )
+    readouts = (run._compartment_substance_text, run._interpretation_text, run._readout_row)
+    controls = tuple(run._sliders())
+    cases = (
+        ("transport row", run.build_transport_row, run._start_button, transport),
+        ("readout section", run.build_readout_section, run._compartment_substance_text, readouts),
+        ("setting controls", run.build_parameter_controls, run._fresh_gas_flow_slider, controls),
+    )
+
+    for name, build, witness, widgets in cases:
+        placed = widgets[-1].parentWidget()
+        shown = tuple(widget for widget in widgets if widget.isVisible())
+
+        assert witness in shown, f"the {name} is off screen before the second call"
+        assert all(page.isAncestorOf(widget) for widget in widgets), f"the {name} is off the page"
+
+        again = build()
+        _settle(application)
+
+        assert all(widget.isVisible() for widget in shown), f"a second call hid the {name}"
+        assert all(page.isAncestorOf(widget) for widget in widgets), f"the {name} left the page"
+        assert again is placed, f"a second call built a new {name}"
+
+
 def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QApplication) -> None:
     """The readout and setting sections stand at their own height; the chart row takes the rest.
 
