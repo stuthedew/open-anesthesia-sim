@@ -3,10 +3,12 @@ id: PL-JCS3
 title: Record or refuse a generator head for formats whose statements span lines but are read one line at a time - PL-6P6H, PL-G2FY and PL-Z8RS after PL-Q9LK, all in tools/doc_check.py - a fact no head's misread: states, which the 2026-10-03 triage classed as one-offs and instances of existing heads
 priority: P2
 effort: S
-status: untriaged
+status: done
 classes: housekeeping
 touches: docs/items
 added: 2026-10-03
+closed: 2026-10-04
+pr: 1329
 payoff: six readers' captures are ranked as one generator head instead of six one-offs, so its next member is stopped at the source
 not-delegable: The deliverable is a judgment - whether six items misread one fact no head states - and a grep for the recorded fields would pass on a head recorded wrongly
 ---
