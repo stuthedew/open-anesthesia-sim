@@ -3,14 +3,17 @@ id: PL-6P6H
 title: tools/doc_check.py's workflow_commands reads a folded run: > block as a literal one, so a command YAML folds onto one line is read as several; no workflow uses > today
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-answer
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
+closed: 2026-10-04
+pr: 1339
 payoff: a CI step written as a folded YAML block is checked as the one command bash runs, instead of as fragments nobody is told were misread
 verify: grep -q 'def test_workflow_commands_reads_a_folded_block' tests/unit/test_doc_check.py
+recurrences: 2026-10-04 PL-TMX9 withdrawn 2026-10-04 PL-TMX9
 ---
 
 **Problem.** tools/doc_check.py's workflow_commands reads a folded run: > block as a literal one, so a command YAML folds onto one line is read as several; no workflow uses > today
@@ -42,3 +45,13 @@ block's lines into one before bash reads it (YAML 1.2.2 § 8.1.3), so the reader
 took a physical line for a statement its format continues - the fact
 `PL-JCS3` found six readers misreading. The reading above, that no second
 spelling disagrees, still holds; it tested a different fact.
+
+**Worked 2026-10-04, slice 3 of `PL-R417` (`#1339`).** Re-confirmed on
+`5b460a54`: `workflow_commands` on the brief's step returned `python3
+tools/x.py` and `--flag` as two commands. Refused by name, the cheaper answer
+the Done-when prefers while no workflow folds: `_run_script` raises
+`UnreadStatement` for a folded block, the step goes on the caller's `unread`
+list, and `check_workflow_paths`, the coverage gate and gate parity each report
+it as not checked, naming the form, and carry on to the next step. Pinned by
+`test_workflow_commands_reads_a_folded_block_as_a_step_it_declines` and the
+`workflow commands,` cases of `PL-R417`'s guard.

@@ -89,9 +89,15 @@ def frontmatter(text: str) -> list[str] | None:
     if not lines or lines[0].strip() != "---":
         return None
     for index, line in enumerate(lines[1:], start=1):
-        if line.strip() == "---":
+        # A `---` that opens its line, never an indented one: that is a line of
+        # the value above it, which YAML carries on past it (`PL-R417`).
+        if line.rstrip() == "---":
             return lines[1:index]
     return None
+
+
+class Unreadable(Exception):
+    """A `paths:` value continued in a form `entries` does not read, named in the message."""
 
 
 def entries(block: list[str]) -> list[str]:
@@ -99,15 +105,33 @@ def entries(block: list[str]) -> list[str]:
 
     Both shapes the harness accepts: a single glob inline after the key, and a
     YAML list beneath it. The list ends at the first line that is neither an
-    item nor blank, so a later key cannot be read as one.
+    item, a comment nor blank, so a later key cannot be read as one, and a
+    comment between two items does not end it, as YAML's does not (`PL-R417`).
+
+    A value YAML carries past its line in any other way raises `Unreadable`
+    naming it, rather than being read from its first line (`PL-R417`): a flow
+    collection, a glob on the line after the key, or a line carrying a glob on,
+    each of which YAML joins into the value. None is written here, and a glob
+    read from a fragment would be checked as the rule's scope when it is not.
     """
     found: list[str] = []
     in_paths = False
-    for line in block:
+    for index, line in enumerate(block):
         stripped = line.strip()
         if not line.startswith((" ", "\t")) and stripped.startswith("paths:"):
             inline = stripped[len("paths:") :].strip()
-            if inline:
+            if inline.startswith(("[", "{")):
+                raise Unreadable(
+                    "`paths:` is a flow collection, which this reader does not take; "
+                    "write each glob as a `- ` item beneath the key"
+                )
+            if inline and not inline.startswith("#"):
+                carried = next((later for later in block[index + 1 :] if later.strip()), "")
+                if carried.startswith((" ", "\t")) and not carried.lstrip().startswith("#"):
+                    raise Unreadable(
+                        "`paths:` carries its glob onto the line after it, which YAML "
+                        "joins into the glob; write it on the key's line"
+                    )
                 found.append(_unquote(inline))
                 in_paths = False
             else:
@@ -115,11 +139,16 @@ def entries(block: list[str]) -> list[str]:
             continue
         if not in_paths:
             continue
-        if not stripped:
+        if not stripped or stripped.startswith("#"):
             continue
         if stripped.startswith("- "):
             found.append(_unquote(stripped[2:]))
             continue
+        if line.startswith((" ", "\t")):
+            raise Unreadable(
+                f"`{stripped}` under `paths:` is no `- ` item, so YAML joins it into the "
+                "value above it; write each glob on one line, as a `- ` item"
+            )
         in_paths = False
     return found
 
@@ -183,7 +212,12 @@ def problems(root: Path) -> list[str]:
                     f"scope it declares cannot be read"
                 )
             continue
-        for entry in entries(block):
+        try:
+            declared = entries(block)
+        except Unreadable as unread:
+            found.append(f"{name}: {unread}, so the scope it declares was not read")
+            continue
+        for entry in declared:
             if entry.startswith("/"):
                 prefix = literal_prefix(entry)
                 target = root / prefix

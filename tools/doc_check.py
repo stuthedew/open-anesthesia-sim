@@ -714,9 +714,20 @@ WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 # `run:` opens a step's shell, either inline or as a block scalar whose body
 # is every following line indented past the key. Reading it this way rather
 # than parsing YAML keeps this tool standard-library only, which is what lets
-# a hook or a bare checkout run it.
-RUN_STEP_RE = re.compile(r"^(?P<indent>\s*)-?\s*run:\s*(?P<inline>.*)$")
-BLOCK_SCALARS = frozenset({"|", ">", "|-", ">-", "|+", ">+"})
+# a hook or a bare checkout run it. `lead` is everything before the key, so its
+# length is the key's column, which a value's lines are indented past.
+RUN_STEP_RE = re.compile(r"^(?P<lead>\s*-?\s*)run:\s*(?P<inline>.*)$")
+#: A block scalar's header (YAML 1.2.2 § 8.1.1): `|` for a literal block or `>`
+#: for a folded one, then an indentation indicator and a chomping indicator in
+#: either order, each optional, then an optional comment. `width` or `late` is
+#: the indentation indicator, whichever order it was written in.
+BLOCK_HEADER_RE = re.compile(
+    r"(?P<style>[|>])(?:(?P<width>[1-9])?[-+]?|[-+](?P<late>[1-9]))(?:[ \t]+#.*)?"
+)
+#: The characters that open a YAML node other than a plain scalar or a block
+#: scalar, where a `run:` value starts (§ 5.3): a quote, an anchor, alias or
+#: tag, a flow collection, or a reserved indicator.
+YAML_NODE_INDICATORS = frozenset("\"'&*![]{}%@`")
 
 # A token this check cannot resolve by reading the tree: a shell or GitHub
 # expansion, a glob whose intended match is not stated, a URL, or an action
@@ -4648,7 +4659,9 @@ def check_make_targets(root: Path, documents: dict[Path, str], report: Report) -
                 )
 
 
-def workflow_commands(text: str) -> Iterator[tuple[str, int]]:
+def workflow_commands(
+    text: str, unread: list[UnreadStatement] | None = None
+) -> Iterator[tuple[str, int]]:
     """Every line of shell a workflow's `run:` steps execute, with the line number it starts on.
 
     A block scalar's body reaches bash as one script, so it is read as one,
@@ -4662,6 +4675,13 @@ def workflow_commands(text: str) -> Iterator[tuple[str, int]]:
     YAML hands bash the body less its own indentation, which its first
     non-blank line sets, and keeps the rest: `x\\` over an indented `y` is
     two words to bash, where stripping each line first would make it `xy`.
+
+    **Where a step's value ends, and in which form, is read as YAML reads it**
+    (`PL-R417`), through `_run_script`. A step whose value is in a form that
+    reader declines is no commands here: it goes on `unread` where the caller
+    passes one, so the check can say which step it did not read and carry on
+    to the next, and is raised where none is passed, so no reading of it is
+    silent.
     """
     lines = text.splitlines()
     index = 0
@@ -4670,23 +4690,106 @@ def workflow_commands(text: str) -> Iterator[tuple[str, int]]:
         index += 1
         if match is None:
             continue
-        inline = match.group("inline").strip()
-        if inline and inline not in BLOCK_SCALARS:
-            yield inline, index
-            continue
-        indent = len(match.group("indent"))
         first = index
-        while index < len(lines):
-            body = lines[index]
-            if body.strip() and len(body) - len(body.lstrip()) <= indent:
-                break
+        while index < len(lines) and (
+            not lines[index].strip() or _indent(lines[index]) > len(match["lead"])
+        ):
             index += 1
-        block = lines[first:index]
-        margin = next((len(line) - len(line.lstrip(" ")) for line in block if line.strip()), 0)
-        script = "".join(f"{line[margin:]}\n" for line in block)
-        for command, offset in script_lines(script):
+        try:
+            script = _run_script(match, lines, first, index)
+        except UnreadStatement as step:
+            if unread is None:
+                raise
+            unread.append(step)
+            continue
+        body = "".join(f"{line}\n" for line, _ in script)
+        for command, offset in script_lines(body):
             if command.strip():
-                yield command.strip(), first + 1 + script.count("\n", 0, offset)
+                yield command.strip(), script[body.count("\n", 0, offset)][1]
+
+
+def _indent(line: str) -> int:
+    """How many spaces open a line, which is all YAML's indentation is made of (§ 6.1)."""
+    return len(line) - len(line.lstrip(" "))
+
+
+def _run_script(
+    step: re.Match[str], lines: list[str], first: int, end: int
+) -> list[tuple[str, int]]:
+    """The script a `run:` step hands bash, a line at a time, each with its line number.
+
+    `first` and `end` bound the lines after the key that are blank or
+    indented past it, which is everything the value can span. Two forms are
+    read, the two this repository's workflows write:
+
+    - **A plain scalar on the key's line** is the command. Nothing after it may
+      carry it on: YAML folds a plain scalar's following, deeper lines into it
+      as one line (YAML 1.2.2 § 7.3.3), so `run: python3 x.py` over an indented
+      `--flag` is `python3 x.py --flag` to bash, where the line alone was half
+      of it. A comment line is no continuation (§ 6.6).
+    - **A literal block (`|`)** is the script, kept line for line. Its header
+      may carry a chomping indicator, an indentation indicator - the content
+      then sits that many columns past the key rather than where its first line
+      does - and a comment (§ 8.1.1); each was read as the command before. It
+      ends at the first line indented less than its content (§ 8.1.1.1), which
+      a sibling key like `shell:` is: read to the next line no deeper than the
+      step's dash, as it was, that key became a line of the script.
+
+    Every other form is declined by name, raising `UnreadStatement` at the
+    key's line: a folded block (`>`), whose lines YAML joins before bash reads
+    them (§ 8.1.3, `PL-6P6H`); a plain scalar carried onto the lines after it,
+    or one opening on the line after the key, which YAML folds the same way; a
+    quoted scalar, which YAML unquotes; and an anchor, alias, tag or flow
+    collection. None is written in this repository's workflows, so each is
+    refused rather than folded, the cheaper answer `PL-R417` allows while no
+    workflow writes one.
+    """
+    line = first
+    inline = step["inline"].strip()
+    if inline.startswith("#"):
+        # A comment, so the value is whatever the lines after the key hold.
+        inline = ""
+    after = [
+        (at, text)
+        for at, text in enumerate(lines[first:end], start=first)
+        if text.strip() and not text.lstrip().startswith("#")
+    ]
+    header = BLOCK_HEADER_RE.fullmatch(inline)
+    if header is not None and header["style"] == "|":
+        body = lines[first:end]
+        width = header["width"] or header["late"]
+        margin = (
+            len(step["lead"]) + int(width)
+            if width
+            else next((_indent(text) for text in body if text.strip()), 0)
+        )
+        stop = next(
+            (at for at, text in enumerate(body) if text.strip() and _indent(text) < margin),
+            len(body),
+        )
+        return [(text[margin:], first + 1 + at) for at, text in enumerate(body[:stop])]
+    if header is not None:
+        raise UnreadStatement(
+            line,
+            "a folded block (`>`), whose lines YAML joins into one before bash reads "
+            "them, and this reader does not; write it as a literal block (`|`)",
+        )
+    if inline[:1] in YAML_NODE_INDICATORS:
+        form = "a quoted scalar" if inline[0] in "\"'" else f"a YAML node opening `{inline[0]}`"
+        raise UnreadStatement(
+            line,
+            f"{form}, which YAML resolves before bash reads it, and this reader does "
+            "not; write the command itself, on the key's line or as a literal block (`|`)",
+        )
+    if after:
+        where = "carried onto the line after it" if inline else "opening on the line after it"
+        raise UnreadStatement(
+            line,
+            f"a plain scalar {where}, which YAML folds into one line before bash reads "
+            "it, and this reader does not; write it on the key's line or as a literal "
+            "block (`|`)",
+        )
+    return [(inline, line)] if inline else []
 
 
 def _shell_words(where: str, command: str, report: Report, unread: str) -> tuple[str, ...]:
@@ -4816,13 +4919,13 @@ def check_workflow_paths(root: Path, report: Report) -> None:
     # `_is_path_citation` does not work here: `bin/docket` has no suffix, and
     # it is exactly the reference this check exists to hold.
     top_level = {child.name for child in root.iterdir()}
+    unread = "the paths it runs were not resolved"
     for path in workflows:
         relative = path.relative_to(root)
         reported: set[tuple[str, int]] = set()
-        for command, line in workflow_commands(path.read_text(encoding="utf-8")):
-            words = _shell_words(
-                f"{relative}:{line}", command, report, "the paths it runs were not resolved"
-            )
+        steps: list[UnreadStatement] = []
+        for command, line in workflow_commands(path.read_text(encoding="utf-8"), steps):
+            words = _shell_words(f"{relative}:{line}", command, report, unread)
             for token in _command_paths(words):
                 if PurePosixPath(token).parts[0] not in top_level:
                     continue
@@ -4831,6 +4934,17 @@ def check_workflow_paths(root: Path, report: Report) -> None:
                 reported.add((token, line))
                 if not (root / token).exists():
                     report.errors.append(f"{relative}:{line}: runs `{token}`, which does not exist")
+        _decline_steps(report, relative, steps, unread)
+
+
+def _decline_steps(
+    report: Report, workflow: Path, steps: Iterable[UnreadStatement], unread: str
+) -> None:
+    """Say which `run:` steps `workflow_commands` declined, and what went unchecked for it."""
+    for step in steps:
+        report.declined.append(
+            f"{workflow}:{step.line}: this `run:` step is {step.why}, so {unread}"
+        )
 
 
 # What marks the invocation the two files promise to keep identical. The
@@ -4906,14 +5020,20 @@ def check_coverage_gate(root: Path, report: Report) -> None:
             if COVERAGE_GATE_MARK in command
         ]
     remote: list[tuple[str, str]] = []
+    steps: list[UnreadStatement] = []
     for path in workflows:
         relative = path.relative_to(root)
+        unread: list[UnreadStatement] = []
         remote += [
             (command, f"{relative}:{line}")
-            for command, line in workflow_commands(path.read_text(encoding="utf-8"))
+            for command, line in workflow_commands(path.read_text(encoding="utf-8"), unread)
             if COVERAGE_GATE_MARK in command
         ]
-    if not local and not remote:
+        _decline_steps(report, relative, unread, "the coverage gate was not compared")
+        steps += unread
+    # A step CI's side could not read may be the coverage run, so neither
+    # "absent" nor "differs" would be a fact; the declines above say why.
+    if steps or (not local and not remote):
         return
     # Reported before the comparison, because "the sets differ" is the wrong
     # sentence for a gate that is missing from one side entirely - and an
@@ -5291,12 +5411,26 @@ def _gate_invocations(root: Path, commands: Iterable[Sequence[str]]) -> Iterator
 
 
 def _gates_pull_requests(text: str) -> bool:
-    """Whether this workflow runs on `pull_request`, read from its `on:` block."""
+    """Whether this workflow runs on `pull_request`, read from its `on:` block.
+
+    A flow collection YAML carries past the key's line - `on: [push,` over
+    `pull_request]` - raises `UnreadStatement` naming it (`PL-R417`): read from
+    its first line, `pull_request` was not in it, so the workflow gated nothing
+    and every script only it runs read as missing from the merge gate. No
+    workflow here writes one, so it is refused rather than joined.
+    """
     inside = False
-    for line in text.splitlines():
+    for number, line in enumerate(text.splitlines(), start=1):
         opening = ON_BLOCK_RE.match(line)
         if opening is not None:
             inline = opening.group("inline").strip()
+            if _unclosed_flow(inline):
+                raise UnreadStatement(
+                    number,
+                    "its `on:` events are a flow collection carried past the key's line, "
+                    "which this reader does not join; write it on one line, or as a block "
+                    "mapping",
+                )
             if inline:
                 return "pull_request" in inline
             inside = True
@@ -5308,6 +5442,15 @@ def _gates_pull_requests(text: str) -> bool:
         if PULL_REQUEST_TRIGGER_RE.match(line):
             return True
     return False
+
+
+def _unclosed_flow(value: str) -> bool:
+    """Whether a YAML value opens a flow collection that its own line does not close (§ 7.4).
+
+    Counted by bracket, which is exact for the event names a workflow lists.
+    """
+    opened = value.count("[") + value.count("{")
+    return value[:1] in "[{" and opened > value.count("]") + value.count("}")
 
 
 def check_gate_parity(root: Path, report: Report) -> None:
@@ -5375,19 +5518,31 @@ def check_gate_parity(root: Path, report: Report) -> None:
         )
     }
     merge: set[tuple[str, ...]] = set()
+    steps: list[UnreadStatement] = []
     for path in workflows:
         text = path.read_text(encoding="utf-8")
-        if not _gates_pull_requests(text):
-            continue
         where = path.relative_to(root)
+        try:
+            gates = _gates_pull_requests(text)
+        except UnreadStatement as trigger:
+            report.declined.append(f"{where}:{trigger.line}: {trigger.why}, so {unread}")
+            steps.append(trigger)
+            continue
+        if not gates:
+            continue
+        declined: list[UnreadStatement] = []
         merge |= {
             invocation
-            for command, line in workflow_commands(text)
+            for command, line in workflow_commands(text, declined)
             for invocation in _gate_invocations(
                 root, _shell_commands(f"{where}:{line}", command, report, unread)
             )
         }
-    if not local or not merge:
+        _decline_steps(report, where, declined, unread)
+        steps += declined
+    # A workflow or step left unread may hold a script either side runs, so a
+    # difference would not be a fact; the declines above say what went unread.
+    if steps or not local or not merge:
         return
     for invocation in sorted(local - merge):
         spelled = " ".join(invocation)
@@ -5487,12 +5642,17 @@ def _frontmatter_end(text: str) -> int:
 
 
 def _frontmatter(text: str) -> list[str] | None:
-    """The YAML frontmatter block's lines, or `None` if the file has none."""
+    """The YAML frontmatter block's lines, or `None` if the file has none.
+
+    It closes on a `---` that opens its line. An indented one is a line of the
+    value above it, such as a literal block's, which YAML carries on past it
+    (`PL-R417`); read as the close, it cut the block short.
+    """
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
         return None
     for index, line in enumerate(lines[1:], start=1):
-        if line.strip() == "---":
+        if line.rstrip() == "---":
             return lines[1:index]
     return None
 
