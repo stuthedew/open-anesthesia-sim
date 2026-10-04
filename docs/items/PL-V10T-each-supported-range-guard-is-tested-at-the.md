@@ -9,6 +9,7 @@ feature: numerical-domain
 touches: pyproject.toml, uv.lock, tests/unit/test_supported_range_edges.py
 added: 2026-10-03
 closed: 2026-10-04
+pr: 1337
 payoff: a value a supported-range guard accepts but the function behind it cannot compute with fails a test when the function is written, instead of escaping as a raw OverflowError or ValueError found one function at a time
 verify: grep -q '"hypothesis>=' pyproject.toml && grep -q '^name = "hypothesis"$' uv.lock && grep -q 'def test_each_guard_admits_only_what_its_functions_compute' tests/unit/test_supported_range_edges.py
 ---

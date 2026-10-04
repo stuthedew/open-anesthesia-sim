@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/si
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
 closed: 2026-10-04
+pr: 1337
 payoff: an absurdly large step count is refused with the simulator's own configuration error, like every other out-of-range input, instead of a Python error raised from inside the guard
 verify: grep -q 'def test_a_step_count_too_long_to_print_is_refused' tests/unit/test_supported_ranges.py
 ---
