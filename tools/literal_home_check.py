@@ -20,7 +20,10 @@ mechanism before anything refused it (`PL-40SJ`).
 - *One definition per name.* A module-level name bound to a number is defined
   in one module and imported by the rest. Two modules each declaring the same
   constant is the second copy arriving with a name already on it, which the
-  first rule exempts. Equal values under different names are not refused:
+  first rule exempts. A leading underscore does not make a new name: marking a
+  copy private leaves it a copy, and `PL-QRBB`'s fix removed two `app/` copies
+  spelled `_MILLISECONDS_PER_SECOND` (project owner, 2026-10-04, ratified, over
+  matching names exactly). Equal values under different names are not refused:
   `SECONDS_PER_MINUTE` and `MINUTES_PER_HOUR` are both 60.0 and are different
   quantities, and which quantity a number is cannot be read off the tree.
 
@@ -395,7 +398,7 @@ def analyze(
 
     by_name: dict[str, list[Constant]] = defaultdict(list)
     for constant in constants:
-        by_name[constant.name].append(constant)
+        by_name[constant.name.lstrip("_")].append(constant)
     redefined = tuple(
         (name, tuple(definitions))
         for name, definitions in sorted(by_name.items())
@@ -499,7 +502,7 @@ def format_report(report: Report, tree: str = TREE) -> str:
         lines.append("")
         lines.append("A numeric constant defined in more than one module:")
         for name, definitions in report.redefined:
-            where = ", ".join(f"{d.path}:{d.line} = {d.value!r}" for d in definitions)
+            where = ", ".join(f"{d.path}:{d.line} {d.name} = {d.value!r}" for d in definitions)
             lines.append(f"  {name}: {where}")
         lines.append(
             "  Keep one definition and import it everywhere else; two agree only until "

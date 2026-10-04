@@ -160,6 +160,21 @@ def test_a_constant_defined_in_two_modules_fails_and_an_import_does_not(tmp_path
     assert analyze(tmp_path, baseline={}).errors == 0
 
 
+def test_a_leading_underscore_does_not_make_a_copy_a_new_name(tmp_path: Path) -> None:
+    """`PL-QRBB`'s fix removed two `app/` copies spelled `_MILLISECONDS_PER_SECOND`."""
+    _tree(
+        tmp_path,
+        core__units="MILLISECONDS_PER_SECOND = 1000\n",
+        app__run_view="_MILLISECONDS_PER_SECOND = 1000\n",
+    )
+
+    printed = _report(tmp_path)
+
+    assert "MILLISECONDS_PER_SECOND: " in printed
+    assert f"{PACKAGE}/app/run_view.py:1 _MILLISECONDS_PER_SECOND = 1000" in printed
+    assert f"{PACKAGE}/core/units.py:1 MILLISECONDS_PER_SECOND = 1000" in printed
+
+
 def test_a_tree_with_no_python_files_is_an_error(tmp_path: Path) -> None:
     (tmp_path / PACKAGE).mkdir(parents=True)
 
